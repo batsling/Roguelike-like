@@ -22,7 +22,7 @@ here and is left plain.*
 
 ## 1. Decisions locked
 
-Sixteen forks were settled before any code, in the same discovery-pass style as the
+Seventeen forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
@@ -43,6 +43,7 @@ Sixteen forks were settled before any code, in the same discovery-pass style as 
 | 14 | **Other potion sources** | **None yet.** The ⅓ loot payout is the only tap; shops, drops and boss rewards are later calls (§8). |
 | 15 | **The pack cap** | **Stays 9**, but `LOOT_CAPACITY` becomes a *function* so a future relic can raise it (§8.1). |
 | 16 | **What the run pays for a throw** | Same as a quaff: one piece of loot, echoed and remembered identically. A throw is not a bomb and spends no charge (§4.4). |
+| 17 | **Landmines and damage** | **A mine goes off when it is stood on OR when it takes damage** — a thrown potion, a bomb blast, anything. A third trigger on the unit sheet, and a change to §17 rather than to potions (§4.7). |
 
 ---
 
@@ -238,6 +239,38 @@ spawns and serialized beside `health` and `shield`:
 `max_health` is worth having anyway: it is the number an enemy health bar has been
 drawing without ever being told, and a bomb chipping a 3-Health body currently has
 nothing to draw a fraction against.
+
+### 4.7 What a throw sets off
+
+Decision #17, and it is properly a §17 change rather than a potion one: **a Landmine
+detonates when it takes damage, not only when it is stood on.** Today `units2.0`
+authors it as `enemy_enters: detonate` and that is the only way one ever goes off
+(bar the fire interaction). It gains a second trigger — a mine caught in a thrown
+Ampoule's row goes up, and so does one caught in a bomb blast, or in anything else
+that ever damages ground.
+
+This is the right reading of the unit's own sheet row: it has **Health 1**, and a
+thing with a Health that nothing can damage is carrying a number for decoration.
+
+Three consequences to build deliberately:
+
+- **The blast is the MINE's, not the potion's.** A mine going off runs
+  `GameLoop2._explode`, which is where Brimstone widens, Sticky stuns, Hot Bombs
+  lays fire and `bomb_used` pays Blood Bombs. So a potion that sets one off *does*
+  reach the pack's bomb upgrades — through the mine, which is exactly what a proxy
+  bomb is for (§17.2). What stays un-upgraded is the potion's **own** `deal_damage`:
+  Brimstone does not widen a bottle.
+- **Chains stay finite** for the reason they already do: every detonation spends the
+  unit that caused it, and `MAX_CHAIN` is the belt to that brace. A Fire Potion over
+  a 3×3 of mines is a big, terminating chain.
+- **Order matters.** Resolve the potion's damage on bodies first, then detonate
+  whatever mines the area covered — the same ordering `_explode` already uses when
+  it lays Hot Bombs' fire after its damage, so a body killed by the bottle is gone
+  before the mine's blast looks for targets.
+
+The authoring shape for the new trigger is an open question (§12) — the two triggers
+today (`enemy_enters`, `enemy_turn_start`) are both about a *body*, and this one is
+about the unit itself.
 
 ---
 
@@ -580,6 +613,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/redesign2/BattlefieldView.gd` | Generalise `aim_cells` past `ItemData` (§4.2); a throw-armed state beside `bomb_mode` / `aiming_item`. |
 | `scripts/redesign2/LootInfoCard.gd`, `LootGrid.gd`, `LootDropModal.gd`, `LootWindow.gd`, `LootDiscoveries.gd` | Potions are loot: they draw, drag, bin, offer and get listed under *Known this run* with no per-kind branching beyond the glyph. `LootSystem.glyph` needs a third one — 🧪. |
 | `scripts/autoload/DevTools.gd` | Grant a named potion, identified or not, like `add_scroll_loot`. |
+| `tools/generate_unit_tres.py` + the `units2.0` sheet | The Landmine's damage trigger (§4.7) — a spec edit to §17.1's trigger vocabulary, whichever authoring shape wins. |
 | `test/test_potion_system.gd` | New suite (§9.3). |
 | `README.md` | The autoload table (22 → 23), the `data/` and `images2.0/` trees, the loot paragraphs. |
 | `CHANGELOG.md` | The narrative entry. |
@@ -607,7 +641,10 @@ are actually about potions rather than about loot:
   raises the ceiling and the pool together (§4.6);
 - Sacred Bark doubles a Negative potion's damage as well as a Positive one's
   shields;
-- an echoed potion lands on the same cell as the throw that fired it.
+- an echoed potion lands on the same cell as the throw that fired it;
+- a thrown `deal_damage` over a cell holding a Landmine detonates it, the mine's own
+  blast carries the pack's bomb upgrades and the potion's damage does not, and a 3×3
+  of mines chains to a stop (§4.7).
 
 ---
 
@@ -643,7 +680,8 @@ would otherwise copy in its broken state.
 4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
    At this point a potion is a pill with better art and it is fully playable.
 5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
-   picker generalisation, the second button.
+   picker generalisation, the second button — and the Landmine's damage trigger
+   (§4.7), which is the one piece of this step that is not potion code.
 6. **`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.
 7. **The income switch** to a three-way split (§8) — last, so the run is not paying
    out a kind that is only half built.
@@ -663,12 +701,14 @@ letting steps 1 and 2 sprawl.
   allowed — only *moving* the pack is not (spec §4.3) — so a throw should be too. Worth
   confirming that arming a board picker while the report checklist is up is not a
   way to click something the report has locked.
-- **Whether a thrown potion sets off a Landmine.** Fire meeting a mine annihilates
-  both (§17.2), so a thrown Fire Potion covering nine cells will clear a minefield —
-  that falls out of `apply_tile` for free and is probably right. Whether
-  `deal_damage` should detonate one is a separate call: a mine is a **proxy bomb**,
-  and a potion that sets one off is a potion borrowing the pack's bomb upgrades
-  through the back door.
+- **How the mine's new trigger is authored** (§4.7). The two triggers `tiles2.0` /
+  `units2.0` share today are both about a *body* arriving or lingering
+  (`enemy_enters`, `enemy_turn_start`), and "I took damage" is about the unit
+  itself. Either a third trigger word on the Effect column (`damaged: detonate`), or
+  a rule read off the `Health` column — a unit at 0 Health runs its `detonate`
+  — which needs no new vocabulary but makes Health mean something it currently does
+  not. §17.1 says the pair is the whole vocabulary on purpose, so this is a spec
+  edit either way.
 - **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
   op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
   Correct, but worth eyeballing against the one-clause rows once it is in.
