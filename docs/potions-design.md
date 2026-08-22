@@ -22,7 +22,7 @@ here and is left plain.*
 
 ## 1. Decisions locked
 
-Seventeen forks were settled before any code, in the same discovery-pass style as the
+Twenty-one forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
@@ -44,6 +44,10 @@ Seventeen forks were settled before any code, in the same discovery-pass style a
 | 15 | **The pack cap** | **Stays 9**, but `LOOT_CAPACITY` becomes a *function* so a future relic can raise it (§8.1). |
 | 16 | **What the run pays for a throw** | Same as a quaff: one piece of loot, echoed and remembered identically. A throw is not a bomb and spends no charge (§4.4). |
 | 17 | **Landmines and damage** | **A mine goes off when it is stood on OR when it takes damage** — a thrown potion, a bomb blast, anything. A third trigger on the unit sheet, and a change to §17 rather than to potions (§4.7). |
+| 18 | **What an unknown bottle is called** | **By its colour** — "Swirly Potion", "Ruby Potion". Pills never spell a colour out; potions do, because 37 of them cannot be told apart in text otherwise (§6.4). |
+| 19 | **Sacred Bark's reach on a potion** | **Values AND geometry** — damage, healing, status stacks, shields, *and* the area: a 3×3 becomes 5×5, a line becomes the cross (§8.2). |
+| 20 | **`find_weight`** | **A weight inside the rarity bucket.** Identify is 1.25× as likely as the other Commons; rarity keeps meaning what it means (§10). |
+| 21 | **Scroll of Remove Curse** | **Ships with a real effect.** Curse GOALS are live (three authored, events and the Calling Bell hand them out) — `remove_curse choose 1` retires one (§10.1). |
 
 ---
 
@@ -426,6 +430,33 @@ the bottle it has been wearing all run**, which is the scroll rule (spec §4.1) 
 the thing potions have and scrolls do not. Never a null texture, and never a fifth
 mystery art invented for the artless six.
 
+### 6.4 An unknown bottle names its colour
+
+Decision #18, and it is the one place potions deliberately *depart* from pills. A
+pill's mystery is a capsule the run never spells out: the "Known this run" fold
+names colours by art alone, because a game that wrote "green is Bad Trip" would be
+handing back deductions the three spare capsules exist to prevent (spec §4.3).
+
+Potions go the other way. `PotionSystem.display_name` answers **"Swirly Potion"**,
+"Ruby Potion", "Effervescent Potion" — the colour off the art file's own name —
+and only once identified does it become "Potion of Extra Healing". Three reasons
+the pills' rule does not transfer:
+
+- **Thirty-seven vials cannot be told apart in text.** Two NetHack bottles at 16px
+  in a 48px cell are a colour swatch and little else; a run log reading "you drank
+  an unidentified potion" four times has recorded nothing at all.
+- **It costs no deduction.** Naming a colour is not naming what is *in* it. The 22
+  sitting out do the same work they do for pills, and they do it whether or not the
+  player can say "amber" out loud.
+- **It is the genre's own voice.** *You drink the swirly potion.* The colours are
+  NetHack's and Shattered Pixel Dungeon's exact adjectives, and they are better
+  writing than anything a mask would put in their place.
+
+So the file name is content: `Swirly_NetHack.png` → colour "Swirly", source
+"NetHack". The generator's job on `PotionSystem.COLORS` is to carry both halves,
+since the source game is worth showing on a card the same way every other row in
+this project credits where it came from.
+
 ---
 
 ## 7. The sheet and the effect DSL
@@ -569,6 +600,48 @@ with about five pixels to spare (spec §4.3) and a fourth row is a fit test away
 failing. Whoever authors the bigger bag inherits that problem knowingly rather than
 discovering it.
 
+### 8.2 What Sacred Bark doubles
+
+The Bark doubles **named fields per op**, never every integer in the dict — that is
+`ScrollSystem.LOOT_SCALED_FIELDS`, and the reason it exists is that a Teleportation
+scroll's `spread` is how far a landing may *vary*, and doubling that is not twice
+the scroll, it is a worse one. Potions get their own table in the same shape, and
+decision #19 puts **four** kinds of number in it:
+
+| Op | Doubled |
+|---|---|
+| `take_damage`, `deal_damage` | `value` |
+| `gain_hp`, `gain_max_hp`, `grant_health`, `grant_max_health` | `value` |
+| `apply_status` | `value` (the stacks) |
+| `gain_stat bonus_shields`, `grant_shield` | `value` |
+| **every throw clause** | **`area`** — see the ladder below |
+| `gain_level` | `value` |
+
+**The area is the unusual one**, and it is unusual because a grid has no way to be
+exactly twice as big. So the Bark widens by **one step of a shape ladder** rather
+than by a multiplier:
+
+| `area=` | Doubled |
+|---|---|
+| `cell` | `cell` — a radius of 0 doubles to 0 |
+| `3x3` | `5x5` |
+| `row` / `col` | the **cross** — that row *and* that column |
+| `board` | `board` |
+
+Two of those want saying out loud. **A bottle aimed at one square still hits one
+square**, because the radius the potion authored is zero and twice nothing is
+nothing — a Bark that turned every single-target throw into a nine-cell blast would
+make the aiming pointless, which is not what doubling a potion should mean.
+**A line becomes the cross** because that is the widening this game already has a
+word for: it is exactly what Brimstone does to a bomb (spec §4), so a doubled
+Explosive Ampoule reads as a shape the player has seen before.
+
+Everything else about the Bark holds: it doubles the **Negative** rows too — a
+Barked Fire Potion is 6 damage to the drinker — because a relic that only doubled
+the upside would make drinking an unknown bottle a strictly better gamble than it
+is, and that is the one thing an identification minigame cannot afford (spec §4.1).
+Burn's `Max: 3` still caps on the way up, so the Barked Burn clause lands at 3.
+
 ---
 
 ## 9. The code plan
@@ -603,10 +676,11 @@ bearing in the best way — **the save format already has potions in it**:
 | `tools/generate_potion2_tres.py` | New generator → `data/potions2.0/`. Parses both effect columns with the scroll parser's clause loop plus `area=` / `games=`. |
 | `scripts/autoload/PotionSystem.gd` | New autoload (**#23**) — the colour deal, identification, art, `quaff_potion`, `throw_potion`. Registered in `project.godot` (`;` comments, never `#`). |
 | `scripts/autoload/Data.gd` | `_load_dir("res://data/potions2.0/", _potions)`, `get_potion` / `all_potions` / `roll_potion`. |
-| `scripts/autoload/GameState.gd` | The three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
+| `scripts/autoload/GameState.gd` | `remove_curse_goal(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
 | `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
 | `scripts/autoload/EffectSystem.gd` | `gain_potion`; `deal_damage`; `gain_level`; `games=` on `apply_status`. |
+| `scripts/autoload/ScrollSystem.gd` | `identify_loot` (widened, §10); `forget` across all three kinds; `remove_curse` + its picker (§10.1); the potion half of `LOOT_SCALED_FIELDS`, area ladder included (§8.2). |
 | `scripts/resources/StatusData.gd` | `tooltip_for` grows the `⏱ this game` line, so every pip that draws a timed status says so (§5.3). |
 | `scripts/autoload/SaveSystem.gd` | Serialize the timed layer. The two potion fields are **already saved**. |
 | `scripts/redesign2/LootUseModal.gd` | A second button. **Quaff** and **Throw** side by side on a potion, one Use on everything else; the throw arms the picker, hides the modal, and resumes on the click. |
@@ -644,7 +718,12 @@ are actually about potions rather than about loot:
 - an echoed potion lands on the same cell as the throw that fired it;
 - a thrown `deal_damage` over a cell holding a Landmine detonates it, the mine's own
   blast carries the pack's bomb upgrades and the potion's damage does not, and a 3×3
-  of mines chains to a stop (§4.7).
+  of mines chains to a stop (§4.7);
+- an unidentified potion names its colour and an identified one does not (§6.4);
+- Sacred Bark widens a 3×3 to 5×5 and a row to the cross, and leaves a `cell` alone
+  (§8.2);
+- `remove_curse` lifts the Calling Bell's permanent row, and fizzles with no curse
+  held (§10.1).
 
 ---
 
@@ -656,14 +735,47 @@ both kinds go through the same rarity roller and the same identification plumbin
 | Delta | What is true now | What to do |
 |---|---|---|
 | **`Rarity` column added** | `ScrollData.rarity` exists and `Data.roll_scroll` weights by `rarity_index()` — but `generate_scroll2_tres.py` never writes the field, so **every scroll is Common and the weighting is inert**. | Write `rarity` from the column. One line in the generator, then regenerate. This is the fix that makes the roller do what its comment says. |
-| **`Scroll of Remove Curse` (new row)** | Rare, Positive, blank Effect. Curses are shelved (§5), so there is nothing for it to remove. | Generate it with an empty `effect` (it parses to `[]` already) and let it read as authored-but-inert, **or** hold the row out of the generator until curses come back. Recommendation: hold it out — a Rare bucket that is one scroll doing nothing is a worse roll than a Rare bucket that is empty and falls back to the pool. |
+| **`Scroll of Remove Curse` (new row)** | Rare, Positive, blank Effect — and it has a real job (§10.1). | Author `remove_curse choose 1` and build the op. |
 | **Amnesia widened** | Prose now says *"Forget 1 random **Identified Loot**"*, but the Effect cell still says `forget scroll 1`, and `ScrollSystem._forget_scrolls` only knows scrolls. | Make `forget`'s `kind` mean it: `forget loot 1` unidentifies across scrolls, pills **and potions**. The pills' horse Amnesia already authors `forget loot all`, so the verb was always meant to be kind-blind — it just has no implementation for the wide case. |
 | **`Description` column added** | Authored prose the generator does not read; `LootSystem._scroll_line` reassembles a description from the ops instead. | Carry it onto `ScrollData.description` and prefer it where it is non-empty, falling back to the assembled line. Authored words beat generated ones, and potions should do this from day one rather than growing the same gap. |
-| **Identify's `Notes`: "+25% find rate"** | No such concept exists. | A `find_weight` multiplier on the resource, applied inside the bucket after the rarity roll. Small, and it wants to exist on `PotionData` too — but it is the one delta here that is a **new mechanic**, so it can land after the rest. |
+| **Identify's `Notes`: "+25% find rate"** | No such concept exists. | Decision #20: a `find_weight` float on the resource, applied as a **weight inside the rolled rarity bucket** — after the 75/20/5 roll picks Common, Identify is drawn at 1.25× the weight of the other Commons. Rarity keeps meaning what it means, which a flat "25% of scroll drops are Identify" would break. One field, one weighted pick, and it wants to exist on `PotionData` too. |
 | **Identify widens with Amnesia** (decision #13) | `identify_scrolls choose 1` only ever offers carried **scrolls** (`ScrollSystem._carried_unidentified_scroll_ids`). | Rename the op `identify_loot` and let it offer any unidentified carried piece — scroll, pill or potion. With three alphabets in one pack a scroll-only Identify is dead weight two thirds of the time, and it is the exact mirror of the Amnesia change directly above: one verb that forgets loot, one that learns it. The picker in `LootUseModal._pick_identify` already lists candidates by name and art — it needs the candidate list widened, not rebuilt. Keep `identify_scrolls` parsing as an alias so an old cell still resolves. |
 
-None of this is potion work, but every row except Remove Curse is something potions
-would otherwise copy in its broken state.
+None of this is potion work, but every row of it is something potions would
+otherwise copy in its broken state.
+
+### 10.1 Remove Curse has something to remove
+
+**A correction to an earlier draft of this doc, which read the spec's §5 too fast.**
+§5 shelves the combat-era **curse CARDS** (`CurseData`, `data/curses/`, the 16-card
+gambit layer). It does not shelve **curse GOALS**, which are live, authored and
+drawn on screen every game:
+
+- `data/curses2.0/` holds three — **Curse of the Bell**, **Injury**, **Poor Sleep**
+  — generated from the `curses2.0` sheet onto `CurseData2`;
+- `GameState.curse_goals` carries them, `ReportChecklist` draws them as the rows you
+  are trying *not* to tick, and `trigger_curse_goal` bills you when you admit to one;
+- **events hand them out** (`EffectSystem._h_add_curse` → `GameState.add_curse_goal`),
+  the Amnesia pill hands out a random one, and the **Calling Bell** relic arrives
+  carrying Curse of the Bell permanently.
+
+So a Rare scroll that removes one is not a placeholder — it is a good card, and its
+best target is the one row in the game that **never expires on its own**: the Bell's,
+whose `Timer` is `N/A` and which `add_curse_goal` therefore stores as `games_left =
+-1`. Everything else on that list clears itself in three games.
+
+The op is `remove_curse choose|random|all N`, in the shape `identify_loot` and
+`stun_enemies` already use — a `request` back to `LootUseModal`, a picker listing
+the held curses by name and condition, and a line naming what was lifted. It needs
+one new function, `GameState.remove_curse_goal(index)`: the list has `add`, `has`,
+`trigger` and `tick`, and nothing that takes a row off it early.
+
+> **Do not reach for `GameState.remove_active_curse`.** That is the *card* system's
+> removal and it operates on a different list. Same word, different thing — the
+> warning `CurseData2.gd` opens with.
+
+A fizzle when the player holds none — *"Nothing is weighing on you."* — and the
+scroll is identified either way (§4.5).
 
 ---
 
@@ -672,9 +784,10 @@ would otherwise copy in its broken state.
 1. **The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3), with
    tests. No potions yet — this is the only genuinely new system, and it is testable
    on its own by hand-applying a timed status.
-2. **The scroll deltas** (§10) — the generator's rarity fix, the widened `forget`,
-   the widened `identify`, `description`. Potions are then born into a roller and a
-   picker that already work for three kinds.
+2. **The scroll deltas** (§10) — the generator's rarity fix, `description`, the
+   widened `forget` and `identify`, `find_weight`, and `remove_curse` with its
+   picker (§10.1). Potions are then born into a roller and a picker that already
+   work for three kinds.
 3. **Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
    `Data` wiring, the editor rescan.
 4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
@@ -712,10 +825,9 @@ letting steps 1 and 2 sprawl.
 - **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
   op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
   Correct, but worth eyeballing against the one-clause rows once it is in.
-- **`Scroll of Remove Curse`** — generate it inert, or hold the row out until curses
-  return (§10). Recommendation stands: hold it out.
-- **`find_weight`** (§10, the "+25% find rate" note) is the one scroll delta that is
-  a new mechanic, and it wants to exist on `PotionData` too. It can land after
-  everything else here.
+- **Does `area` doubling leave a `cell` alone?** §8.2 says yes — a radius of zero
+  doubles to zero, so a Barked Block Potion still shields one body. The alternative
+  (`cell` → `3x3`) makes every single-target throw a blast under the Bark, which
+  reads as a different relic.
 - **Lucky Foot's reach** — pills-only for now (§8). Sacred Bark and Echo Chamber
   already cover all three kinds.
