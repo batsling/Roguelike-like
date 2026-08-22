@@ -80,9 +80,10 @@ var _hp_shown: int = -1
 # next one must not have its leftover timers keep subtracting from the new one's
 # Health.
 var _fx_gen: int = 0
-# Shields — the tries at the game in play (§3), drawn as pips over the hero:
-# filled for the ones still standing, hollow for the ones already spent on a lost
-# run. This is what the attempt tracker visibly drains.
+# Shields — the armour the game in play granted (§3), drawn as pips over the hero:
+# one per shield still standing, each of them one whole hit that will not land.
+# Nothing hollow beside them any more: a lost run costs a turn of the board, not
+# a shield, so they only ever go by being hit.
 var _hero_shields: Label
 var _field: Control                  # fixed-size board the two layers stack inside
 var _cell_layer: Control             # the static backdrop of empty cells
@@ -248,7 +249,7 @@ static func fitted_cell(cols: int, rows: int = -1) -> int:
 	var per_w: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
 	var per_h: float = float(_height_budget - (r - 1) * CELL_SEP) / float(r)
 	return clampi(int(floor(minf(per_w, per_h))), CELL_MIN, CELL_MAX)
-# Shields (the tries, §3) share the overworld's steel blue.
+# Shields (§3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 # Everything on the board layers by TREE ORDER, never z_index: z_index is relative
 # to the parent and would punch the board out through anything drawn later in the
@@ -840,9 +841,9 @@ func _build() -> void:
 	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	hero_box.add_theme_constant_override("separation", 4)
 	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Pips ABOVE the portrait: the tries you have left at this game, in the same
-	# place the damage numbers land, so ticking a lost run reads as something being
-	# taken off the hero.
+	# Pips ABOVE the portrait: the hits you can still shrug off, in the same place
+	# the damage numbers land, so a swing that a shield eats reads as the two
+	# things meeting.
 	_hero_shields = Label.new()
 	_hero_shields.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hero_shields.add_theme_font_size_override("font_size", 18)
@@ -857,7 +858,7 @@ func _build() -> void:
 	hero_box.add_child(hero_frame)
 	_scale_hero()
 	# Statuses BETWEEN the portrait and the health, so the hero column reads
-	# top-to-bottom as "tries you have / who you are / what is riding you / what is
+	# top-to-bottom as "hits you can take / who you are / what is riding you / what is
 	# left of you" (§13). Hidden entirely when nothing is on the player.
 	_hero_statuses = HBoxContainer.new()
 	_hero_statuses.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1808,18 +1809,21 @@ func refresh_hero() -> void:
 	_paint_hp()
 	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
 		STATUS_PIP_HERO)
-	# Filled pips = shields still standing, hollow = tries already spent on one.
+	# One pip per shield: each is one INSTANCE of damage it stops dead, whatever
+	# that instance was for (§3). Nothing is drawn hollow any more — a lost run
+	# doesn't spend them, so there is no "already used" state to show; a shield is
+	# there until something hits it.
 	#
 	# BONUS SHIELDS SIT CLOSEST TO THE PLAYER (§4.3), at the head of the row and in
-	# their own glyph: they are a different pool, spent only once the tries are
-	# gone, and drawing them as more ◆ would promise the player tries at THIS game
-	# that they do not have. Their position is the reading — the further from the
+	# their own glyph: they are a different pool, spent only once this game's are
+	# gone, and drawing them as more ◆ would promise armour that expires with the
+	# game when it doesn't. Their position is the reading — the further from the
 	# portrait a pip is, the sooner it goes.
 	var left: int = GameState.shields
-	var spent: int = GameLoop2.attempts_on_shields()
 	var bonus: int = GameState.bonus_shields
-	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left) + "◇".repeat(spent)
-	_hero_shields.tooltip_text = "%d shield(s) left — one per lost run." % left
+	_hero_shields.text = "◈".repeat(bonus) + "◆".repeat(left)
+	_hero_shields.tooltip_text = ("%d shield(s) — each stops one hit outright, "
+		+ "however big, then expires with this game.") % left
 	if bonus > 0:
 		_hero_shields.tooltip_text += ("\n◈ %d Bonus Shield(s) — spent after those,"
 			+ " and they don't expire with this game.") % bonus

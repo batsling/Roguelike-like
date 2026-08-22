@@ -67,7 +67,7 @@ const DASH_BLUE := Color(0.5, 0.85, 1.0)
 # walk into, where this is a property of every roll.
 const LUCK_GREEN := Color(0.55, 0.9, 0.55)
 
-# Shields — the tries at the game in play (§3). One steel-blue used by the HUD
+# Shields — the armour the game in play granted (§3). One steel-blue used by the HUD
 # count, the attempt strip, and the pips on the board.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
 
@@ -330,7 +330,7 @@ var _scroll: ScrollContainer
 # them (OfferingCards). Built in _build_ui, once the three containers it fills
 # exist. It also owns the hovered card's shield grant, which only its own hover
 # line reads.
-# Attempt tracker (§3) — the tries at the game in play.
+# Attempt tracker (§3) — the runs of the game in play you have lost.
 var _attempt_count: Label
 var _attempt_pips: Label
 var _attempt_hint: Label
@@ -560,7 +560,7 @@ func _start_choice(index: int) -> Dictionary:
 	}
 
 # Clicking a start card opens the ordinary card popup over it — the enemy waiting
-# there, its goal, the tries the game grants, the connections it opens onto, and
+# there, its goal, the shields the game grants, the connections it opens onto, and
 # the route from it. Bash and Transmute are withheld: they reshape an OFFERING,
 # and the picker is three roads out of the same run rather than a table of cards
 # that can be refilled.
@@ -583,7 +583,7 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		# position — and the amulet distances that comparison reads are not built
 		# until the first offering is.
 		"pace": _start_pace_note(int(opt["path_len"])),
-		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
 		"escort": _escort_note(choice),
 		"no_verbs": true,
@@ -615,7 +615,7 @@ func _start_pace_note(hops: int) -> Dictionary:
 # The start used to be a doorstep: you landed on the game, nothing spawned, no
 # shields were granted, and the run's first real game was whatever you travelled
 # to from it. It is a GAME now — its goal-enemy spawns and stands on the board
-# with the rest, it hands over its tries, and the run opens on the report panel
+# with the rest, it hands over its shields, and the run opens on the report panel
 # with something to beat. Mechanically this is the commit half of `pick`, which
 # is why it reads the same: one path, so a start and a travel cannot drift.
 func choose_start(index: int) -> void:
@@ -640,7 +640,7 @@ func choose_start(index: int) -> void:
 			GameLoop2.game_type_key(game), _current_tier())
 		_log_escort()
 		var granted: int = GameLoop2.grant_selection_shields(game)
-		GameLog.add("%s — %d shields to spend on tries." % [game.display_name, granted],
+		GameLog.add("%s — %d shields, one hit stopped each." % [game.display_name, granted],
 			SHIELD_BLUE)
 		_phase = Phase.PLAYING
 		_populate_play_panel()
@@ -952,7 +952,7 @@ func open_choice(index: int) -> GameChoiceModal:
 	var notes: Dictionary = {
 		"route": route_note(choice),
 		"pace": turn_note(choice),
-		"tries": GameLoop2.shields_for_game(choice["game"]),
+		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
@@ -1000,10 +1000,10 @@ func pick(index: int) -> void:
 	GameLoop2.choose_game(_chosen["enemy"],
 		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
 	_log_escort()
-	# Selecting the game hands over your TRIES at it (§3): 3 shields, 5 for a
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
-	GameLog.add("%s — %d shields to spend on tries." % [_chosen["game"].display_name, granted],
+	GameLog.add("%s — %d shields, one hit stopped each." % [_chosen["game"].display_name, granted],
 		SHIELD_BLUE)
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
@@ -1028,7 +1028,7 @@ func pick(index: int) -> void:
 	# the top and the checklist under the grid is a scroll away.
 	_scroll_to_top()
 	# Committing to a game is a move worth recovering to — the shields it granted
-	# and the tries you're about to log all hang off it.
+	# and the lost runs you're about to log all hang off it.
 	autosave()
 
 # Say who came WITH the game's enemy (§7.5). Called at each of the three places a
@@ -1048,9 +1048,10 @@ func _log_escort() -> void:
 	Notifications.notify(msg, UITheme.DANGER)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
-# the game they're playing. Each try spends a shield; once the shields are gone a
-# try GIVES THE BOARD A TURN, which can kill. The board pops a pip / flashes the
-# hero off GameLoop2's attempt_logged signal.
+# the game they're playing. THE TICK COSTS A TURN OF THE BOARD — the enemies
+# swing and close in, which can kill — and it costs nothing else: the shields are
+# armour now, not tries, so failing at a game does not thin the wall you are
+# about to meet the stack with (GameLoop2.log_attempt).
 #
 # A turn is the same beat the end of a game plays, so it is watched the same way:
 # the positions are snapshotted first, the loop resolves, and the board replays
@@ -1059,52 +1060,46 @@ func _log_escort() -> void:
 # end-of-run screen from inside it and that screen has to wait for the blow that
 # caused it to land.
 func log_attempt() -> String:
-	var costs_turn: bool = GameLoop2.next_attempt_cost() == "turn"
+	if not GameLoop2.can_log_attempt():
+		return ""
 	var before: Dictionary = _board.capture_positions() if _board != null else {}
 	var hp_before: int = GameState.hp
-	if costs_turn:
-		_resolving = true
-		_attempt_resolve = true
+	_resolving = true
+	_attempt_resolve = true
 	var cost: String = GameLoop2.log_attempt()
 	if cost == "":
 		_resolving = false
 		_attempt_resolve = false
 		return ""
 	var game: GameData = _chosen.get("game")
-	var game_name: String = game.display_name if game != null else "this game"
-	if cost == "turn":
-		_announce_attempt_turn(game_name, GameLoop2.last_attempt_turn)
-	elif cost == "bonus":
-		GameLog.add("Lost a run of %s — a Bonus Shield goes (attempt %d)." % [
-			game_name, GameLoop2.attempts()], SHIELD_BLUE)
-	else:
-		GameLog.add("Lost a run of %s — a shield goes (attempt %d)." % [game_name, GameLoop2.attempts()],
-			SHIELD_BLUE)
+	_announce_attempt_turn(game.display_name if game != null else "this game",
+		GameLoop2.last_attempt_turn)
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 	_refresh()
 	# Repaint first, then replay: the board is already in the state the turn left
 	# it in, and the animation is how it got there (the same order report() uses).
-	if cost == "turn" and _board != null:
+	if _board != null:
 		_hold_for_resolve(_board.animate_resolve(before, GameLoop2.last_attempt_turn, hp_before))
 	else:
 		_resolving = false
 		_attempt_resolve = false
 	return cost
 
-# What a lost run just cost, once it cost a turn. Two facts, because they are the
-# two the player has to act on: the tries are gone (so this is the price from here
-# on), and this is what the turn did — the Health it took, or the fact that it
-# took none and merely walked everyone a column closer, which is the version that
-# reads as "nothing happened" if it isn't said.
+# What a lost run just did. Two facts, because they are the two the player has to
+# act on: the board took a turn (which is the price of every tick from the first
+# one), and this is what that turn did — the Health it took, the shields that
+# stopped it, or the fact that nobody was in reach and they all merely walked,
+# which is the version that reads as "nothing happened" if it isn't said.
 func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 	var took: int = int(res.get("damage_taken", 0))
 	var blocked: int = int(res.get("blocked", 0))
-	var msg: String = "Out of shields on %s — the enemies take a turn." % game_name
+	var msg: String = "Lost a run of %s (attempt %d) — the enemies take a turn." % [
+		game_name, GameLoop2.attempts()]
 	if took > 0:
 		msg += " They hit you for %d." % took
 	elif blocked > 0:
-		msg += " Their hits were absorbed."
+		msg += " Your shields stopped it."
 	elif not (res.get("attacks", []) as Array).is_empty():
 		msg += " Nothing landed."
 	else:
@@ -1180,17 +1175,19 @@ func escape_game() -> void:
 	report(false, null, true)
 
 # Take back the last tick — the tracker is hand-driven, so a mis-click has to be
-# reversible. Puts back exactly what that try spent: the shield, or the whole
-# board the turn moved (GameLoop2._run_snapshot).
+# reversible. Puts the whole board the turn moved back where it was
+# (GameLoop2._run_snapshot).
 func undo_attempt() -> String:
 	var cost: String = GameLoop2.undo_attempt()
 	if cost == "":
 		return ""
-	var what: String = "1 shield"
-	if cost == "bonus":
+	# "shield" / "bonus" only come back from a save written when a try spent one
+	# (GameLoop2.undo_attempt); a tick logged by this build always undoes a turn.
+	var what: String = "the enemies' turn"
+	if cost == "shield":
+		what = "1 shield"
+	elif cost == "bonus":
 		what = "1 Bonus Shield"
-	elif cost == "turn":
-		what = "the enemies' turn"
 	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
 	# The board is a different board now — bodies walked back, the ground it
 	# burned is unburnt — so it is rebuilt rather than repainted in place.
@@ -1811,6 +1808,12 @@ func _end_resolve() -> void:
 		return
 	_resolving = false
 	_refresh_stage()
+	# The tracker's buttons go dead for the length of a playback (a second tick
+	# mid-animation would be resolving a turn onto a board still sliding through
+	# the last one), so the flag coming down has to repaint them. Without this a
+	# lost run's own playback left "Lost a run" and "Undo" greyed until something
+	# else happened to refresh the page.
+	_refresh_attempts()
 	# A pickup during the playback deferred its board repaint to here (see
 	# _on_inventory_changed) — the board is the player's again now.
 	if _board_dirty:
@@ -3532,7 +3535,7 @@ func _paint_health_chip() -> void:
 		_health_chip.text += "   ◈ %d" % GameState.bonus_shields
 		_health_chip.tooltip_text = ("Health. At zero the run ends."
 			+ "\n\n◈ %d Bonus Shield(s) — gained off the board, spent after the game's"
-			+ " own tries are gone, and they never expire.") % GameState.bonus_shields
+			+ " own are gone, and they never expire.") % GameState.bonus_shields
 	else:
 		_health_chip.tooltip_text = "Health. At zero the run ends."
 	# It goes white-hot at a quarter left, because the number people miss is the
@@ -4736,9 +4739,11 @@ func _build_attempt_strip() -> Control:
 	wrap.add_child(row)
 
 	_attempt_btn = Button.new()
-	_attempt_btn.text = "Lost a run  −1"
+	_attempt_btn.text = "Lost a run  ⚔"
 	_attempt_btn.tooltip_text = ("Tick every run of this game you lose.\n"
-		+ "It spends a shield, and once they are gone it gives the enemies a turn.")
+		+ "Each tick gives the enemies a turn — they swing and close in. It costs "
+		+ "you no shields: there is no limit on how many times you may fail, only "
+		+ "a board that is a turn closer every time you do.")
 	_attempt_btn.custom_minimum_size = Vector2(0, 30)
 	_attempt_btn.add_theme_font_size_override("font_size", 13)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
@@ -4769,37 +4774,33 @@ func _build_attempt_strip() -> Control:
 	row.add_child(_attempt_hint)
 	return wrap
 
-# Repaint the attempt strip: the count, the pips (filled = shields still standing,
-# hollow = tries already spent on one), and what the next lost run will cost.
+# Repaint the attempt strip: how many runs have been lost, the shields still
+# standing (one pip each, and a lost run does not spend them), and what the next
+# press does.
 func _refresh_attempts() -> void:
 	if _attempt_count == null:
 		return
 	var attempts: int = GameLoop2.attempts()
-	var spent: int = GameLoop2.attempts_on_shields()
 	var left: int = GameState.shields
-	_attempt_count.text = "Attempts  %d" % attempts
+	var bonus: int = GameState.bonus_shields
+	_attempt_count.text = "Lost runs  %d" % attempts
 	_attempt_count.add_theme_color_override("font_color",
 		UITheme.TEXT if attempts == 0 else UITheme.ACCENT)
-	_attempt_pips.text = "◆".repeat(left) + "◇".repeat(spent)
-	_attempt_pips.tooltip_text = "%d shield(s) left of the %d this game granted." % [left, left + spent]
-	if left > 0:
-		_attempt_hint.text = "Shields %d — the next lost run spends one." % left
-		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
-	elif GameState.bonus_shields > 0:
-		_attempt_hint.text = "Bonus Shields %d — the next lost run spends one of those." % GameState.bonus_shields
-		_attempt_hint.add_theme_color_override("font_color", SHIELD_BLUE)
-	else:
-		# What the next press ACTUALLY costs, in the terms the board is in: not a
-		# number off the corner of the screen but a move by everything standing on
-		# it. Said before it happens, because it is the reason to stop playing this
-		# game and report it (§3).
-		_attempt_hint.text = "No shields left — the next lost run gives the enemies a turn."
-		_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
-	# The button carries the cost too, because it is the thing under the cursor:
-	# a pip while the tries last, and the ⚔ the board's damage badges use once
-	# pressing it is a swing rather than a subtraction.
-	_attempt_btn.text = ("Lost a run  −1" if left > 0 or GameState.bonus_shields > 0
-		else "Lost a run  ⚔")
+	# The shields, and nothing hollow beside them: a lost run doesn't spend one, so
+	# there is no "already used" state to draw. Bonus Shields lead the row in their
+	# own glyph, the way the board's hero draws them (§4.3).
+	_attempt_pips.text = "◈".repeat(bonus) + "◆".repeat(left)
+	_attempt_pips.tooltip_text = ("%d shield(s) — each one stops a single hit "
+		+ "outright, however big it is, and they expire when you report the game.") % left
+	if bonus > 0:
+		_attempt_pips.tooltip_text += ("\n◈ %d Bonus Shield(s) — used after those, "
+			+ "and they don't expire.") % bonus
+	# What the next press ACTUALLY does, in the terms the board is in: not a
+	# number off the corner of the screen but a move by everything standing on it.
+	# Said before it happens, because it is the reason to stop playing this game
+	# and report it (§3).
+	_attempt_hint.text = "Every lost run gives the enemies a turn — your shields stay."
+	_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
 	# A TURN CAN ONLY BE TAKEN BACK BY THE SESSION THAT PLAYED IT (§3): its undo is

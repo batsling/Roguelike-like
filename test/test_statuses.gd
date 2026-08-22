@@ -704,17 +704,18 @@ func test_a_burn_bites_every_game_it_goes_unanswered() -> void:
 	assert_eq(before - GameState.hp, 6, "two games, two bites")
 	assert_eq(GameState.status_stacks(&"burn"), 1, "and it is still on you")
 
-func test_the_tries_are_still_standing_when_a_burn_bites() -> void:
+func test_the_shields_are_still_standing_when_a_burn_bites() -> void:
 	# It lands at the end of the game but BEFORE the shields go with it (§3), so
-	# what you didn't spend on the game absorbs it.
+	# one of them stops it — the whole 3, for one shield, like any other instance.
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 5
+	GameState.bonus_shields = 0
 	_choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(true)
-	assert_eq(GameState.hp, before, "the tries took it")
-	assert_eq(int(res.get("blocked", 0)), 3, "all three points of it")
-	assert_eq(int(res.get("shields_expired", 0)), 2, "and the rest expired after")
+	assert_eq(GameState.hp, before, "a shield took it")
+	assert_eq(int(res.get("blocked", 0)), 3, "all three points of it, for one shield")
+	assert_eq(int(res.get("shields_expired", 0)), 4, "and the other four expired after")
 
 func test_a_burn_does_not_bite_a_run_the_enemies_already_ended() -> void:
 	# The bill comes after the swings, and there is no after for a run the swings
@@ -741,13 +742,19 @@ func test_a_lethal_burn_ends_the_run() -> void:
 	assert_true(GameLoop2.run_over, "and the run went with it")
 
 func test_the_take_damage_verb_resolves_on_the_battlefield() -> void:
-	# Which is the whole difference between it and `lose_hp`: the tries get their
-	# say, because "take 3 Damage" has to mean in a status what it means in combat.
+	# Which is the whole difference between it and `lose_hp`: a shield stops it,
+	# because "take 3 Damage" has to mean in a status what it means in combat —
+	# one instance of damage, and one shield is enough to eat the whole of it.
 	GameState.shields = 2
+	GameState.bonus_shields = 0
 	var before: int = GameState.hp
 	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
-	assert_eq(GameState.shields, 0, "the tries were spent on it")
-	assert_eq(before - GameState.hp, 1, "and only the overflow reached Health")
+	assert_eq(GameState.shields, 1, "one shield stopped it, whatever its size")
+	assert_eq(before - GameState.hp, 0, "so nothing reached Health")
+	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
+	EffectSystem.apply({"type": "take_damage", "value": 3}, {})
+	assert_eq(GameState.shields, 0)
+	assert_eq(before - GameState.hp, 3, "the third one had nothing in front of it")
 
 func test_burn_halves_what_a_body_hits_for() -> void:
 	# Rounded the way every other hit is: a 2-damage body comes down to 1, and a

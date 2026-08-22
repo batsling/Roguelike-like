@@ -91,10 +91,10 @@ func test_no_format_specifier_survives_into_the_prose() -> void:
 
 # --- the manual agrees with the build ---------------------------------------
 
-func test_the_tries_the_manual_quotes_are_the_tries_the_build_grants() -> void:
+func test_the_shields_the_manual_quotes_are_the_shields_the_build_grants() -> void:
 	var text: String = _all_text()
-	assert_string_contains(text, "%d tries" % GameLoop2.SHIELDS_PER_GAME)
-	assert_string_contains(text, "%d tries" % GameLoop2.SHIELDS_TRADITIONAL)
+	assert_string_contains(text, "%d shields" % GameLoop2.SHIELDS_PER_GAME)
+	assert_string_contains(text, "%d shields" % GameLoop2.SHIELDS_TRADITIONAL)
 
 
 func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:

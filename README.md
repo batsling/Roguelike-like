@@ -372,7 +372,7 @@ node and its script.
     a row under the offering, since all four change what is on the table. Dash and
     Scramble are buttons; Bash and Transmute need a target, so they are readouts
     pressed inside a game's popup.
-  - **the tries a game grants** ride the offering's one-line hover, which also
+  - **the shields a game grants** ride the offering's one-line hover, which also
     carries the enemy's **portrait** — sized by the line rather than setting its
     height, so it costs the page nothing (`Overworld2.HOVER_ART`).
   - **everything else on the page describes itself on hover**, as a small themed
@@ -392,7 +392,7 @@ node and its script.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
     cover, the name and the Amulet's flag; everything else about the decision
     lives here — the **optimal path from that game drawn as the real route
-    ladder**, the enemy waiting there and its goal, the tries the game grants, the
+    ladder**, the enemy waiting there and its goal, the shields the game grants, the
     pace it puts the board on, your record in it — over the three buttons that
     answer it: **Travel**, **Bash**, **Transmute**. The cover is drawn small on
     purpose: it is the one thing you have already seen (it is what you clicked),
@@ -739,7 +739,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `gain_chest reward N` | The sheet's **`[chest reward]`** — N chest *points* spent on the size ladder instead of N chests of one size. Small 1, Medium 2, Large 3, Huge 4, then greedily Huge + a remainder: 3 = one Large, 6 = a Huge and a Medium, 8 = two Huges. Use this wherever the payout has to grow with something (a status's stack count); `gain_chest small {X}` grows into X screens each worth less than the last. |
 | `gain_hp N` / `gain_max_hp N` / `gain_empty_max_hp N` / `heal_full` | Health. `gain_max_hp` raises the cap **and heals by the same amount** — the container arrives full. `gain_empty_max_hp` is the half that doesn't heal, for the item that means an empty container (Hollow Heart). |
 | `lose_hp N` / `lose_max_hp N` | The same, pointed the other way — except `lose_max_hp` **costs no Health**: it takes the room, and Health only moves when it no longer fits. A `lose_hp` that empties Health ends the run — no separate kill token. |
-| `take_damage N` | Damage rather than a bill: it resolves through `GameLoop2.damage_player`, so the tries (§3) absorb it first and the player's own statuses scale it. `lose_hp` goes straight to Health past both. Burn's "or take 3 Damage" is what it was added for. |
+| `take_damage N` | Damage rather than a bill: it resolves through `GameLoop2.damage_player`, so a Shield (§3) stops the whole instance and the player's own statuses scale it. `lose_hp` goes straight to Health past both. Burn's "or take 3 Damage" is what it was added for. |
 | `gain_gold N` / `lose_gold N` / `lose_gold all` | Gold. `all` empties the purse — the one amount settled when the choice is taken rather than when the `.tres` is written. |
 | `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
 | `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |

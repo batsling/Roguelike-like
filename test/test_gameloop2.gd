@@ -514,23 +514,28 @@ func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
 # Shields belong to the game in play, so these set them just before the resolve
 # that takes the hit — exactly where a selection grant would have put them.
 
-func test_shields_absorb_the_front_line_before_hp() -> void:
+func test_a_shield_blocks_the_front_lines_swing_outright() -> void:
 	var a: int = _choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	GameState.shields = 3
-	_tick()                                                        # 2 dmg -> shields
-	assert_eq(GameState.hp, 10, "the shields ate the hit")
-	assert_eq(int(GameLoop2.last_result["blocked"]), 2, "the resolve reports what they absorbed")
+	_tick()                                                        # 2 dmg -> one shield
+	assert_eq(GameState.hp, 10, "the shield ate the hit")
+	assert_eq(int(GameLoop2.last_result["blocked"]), 2, "the resolve reports what it stopped")
 	assert_eq(GameState.shields, 0, "and whatever survived expired with the game")
-	assert_eq(int(GameLoop2.last_result["shields_expired"]), 1, "the leftover is reported too")
+	assert_eq(int(GameLoop2.last_result["shields_expired"]), 2,
+		"the two the swing never touched are the leftover")
 
-func test_shield_overflow_hits_hp() -> void:
+func test_a_swing_with_no_shield_left_lands_whole() -> void:
 	var a: int = _choose_solo(_enemy(3)) ; GameLoop2.beat_game(false)  # spawn col
 	_march_to_front(a)
 	GameState.shields = 1
-	_tick()                                                        # 3 dmg: 1 shield, 2 hp
+	_tick()                          # 3 dmg: the one shield stops all of it
 	assert_eq(GameState.shields, 0)
-	assert_eq(GameState.hp, 8)
+	assert_eq(GameState.hp, 10, "one shield, one instance — the size never mattered")
+	_march_to_front(a)
+	GameState.shields = 0
+	_tick()                          # and with none left the whole 3 lands
+	assert_eq(GameState.hp, 7)
 
 func test_unspent_shields_do_not_carry_into_the_next_game() -> void:
 	_choose_solo(_enemy(1))
@@ -577,24 +582,21 @@ func _front_liner_with_a_game_in_play() -> int:
 	GameState.bonus_shields = 0
 	return a
 
-func test_each_attempt_spends_a_shield_then_gives_the_board_a_turn() -> void:
+func test_every_lost_run_gives_the_board_a_turn_and_leaves_the_shields_alone() -> void:
 	var a: int = _choose_solo(_enemy(1))
 	GameState.shields = 2
-	GameState.bonus_shields = 0
-	assert_eq(GameLoop2.log_attempt(), "shield", "a lost run spends a shield first")
-	assert_eq(GameState.shields, 1)
-	assert_eq(GameLoop2.log_attempt(), "shield")
-	assert_eq(GameState.shields, 0)
-	assert_eq(GameState.hp, 10, "nothing else is touched while shields last")
+	GameState.bonus_shields = 1
 	var col: int = _col_of(a)
-	assert_eq(GameLoop2.log_attempt(), "turn",
-		"out of shields, a lost run gives the board a turn instead")
+	assert_eq(GameLoop2.log_attempt(), "turn", "the first lost run already costs a turn")
 	assert_eq(_col_of(a), col - 1, "and the board took it — everything closes a column")
-	assert_eq(GameLoop2.attempts(), 3, "every try is counted")
-	assert_eq(GameLoop2.attempts_on_shields(), 2, "two of them were paid with shields")
+	assert_eq(GameState.shields, 2, "the shields are armour, not tries: nothing was spent")
+	assert_eq(GameState.bonus_shields, 1, "and neither pool is touched by a tick")
+	assert_eq(GameLoop2.log_attempt(), "turn", "the second costs the same")
+	assert_eq(GameState.shields, 2)
+	assert_eq(GameLoop2.attempts(), 2, "every lost run is counted")
 
 func test_a_lost_runs_turn_lands_the_front_lines_hits() -> void:
-	var a: int = _front_liner_with_a_game_in_play()
+	var a: int = _front_liner_with_a_game_in_play()   # no shields, so the swing lands
 	assert_eq(GameLoop2.log_attempt(), "turn")
 	assert_eq(GameState.hp, 8, "the front-liner swung for its damage")
 	var res: Dictionary = GameLoop2.last_attempt_turn
@@ -622,26 +624,21 @@ func test_a_lost_runs_turn_can_kill_the_run() -> void:
 	assert_signal_emitted(GameLoop2, "run_lost")
 	assert_eq(GameLoop2.log_attempt(), "", "and no further tries are logged")
 
-func test_undo_attempt_puts_back_exactly_what_it_spent() -> void:
+func test_undo_attempt_puts_the_whole_turn_back() -> void:
 	var a: int = _front_liner_with_a_game_in_play()
-	GameState.shields = 1
-	GameLoop2.log_attempt()                       # spends the shield
 	# The body the game in play walked on with, still back at the spawn column: the
 	# front-liner has nowhere left to walk, so this is what shows that the turn
 	# MOVED the board as well as swinging.
 	var b: int = int(GameLoop2.arrivals[0])
 	var col: int = _col_of(b)
-	GameLoop2.log_attempt()                       # the board takes a turn
-	assert_eq(GameState.shields, 0)
+	GameLoop2.log_attempt()
 	assert_eq(GameState.hp, 8)
 	assert_eq(_col_of(b), col - 1)
 	assert_eq(GameLoop2.undo_attempt(), "turn")
 	assert_eq(GameState.hp, 10, "the Health the swing took comes back")
 	assert_eq(_col_of(b), col, "and the body walks back to where it stood")
-	assert_eq(GameLoop2.attempts(), 1, "the tick came off the tracker with it")
-	assert_eq(GameLoop2.undo_attempt(), "shield")
-	assert_eq(GameState.shields, 1, "and the shield goes back in its pool")
-	assert_eq(GameLoop2.attempts(), 0)
+	assert_eq(_col_of(a), 1, "with the front-liner where it swung from")
+	assert_eq(GameLoop2.attempts(), 0, "the tick came off the tracker with it")
 	assert_eq(GameLoop2.undo_attempt(), "", "nothing left to take back")
 
 func test_two_turns_can_be_taken_back_one_at_a_time() -> void:
@@ -668,18 +665,43 @@ func test_a_turn_cannot_be_taken_back_after_the_run_was_reloaded() -> void:
 	assert_false(GameLoop2.can_undo_attempt(), "but the turn behind it cannot be replayed backwards")
 	assert_eq(GameLoop2.undo_attempt(), "", "so it refuses rather than half-undoing")
 
-func test_next_attempt_cost_says_what_the_next_tick_will_take() -> void:
-	assert_eq(GameLoop2.next_attempt_cost(), "", "nothing is in play")
+func test_a_lost_run_needs_a_game_in_play_to_be_lost_at() -> void:
+	assert_false(GameLoop2.can_log_attempt(), "nothing is in play")
+	assert_eq(GameLoop2.log_attempt(), "", "so there is nothing to tick")
 	_choose_solo(_enemy(1))
+	assert_true(GameLoop2.can_log_attempt())
+	assert_eq(GameLoop2.log_attempt(), "turn",
+		"and the one thing a tick ever costs is a turn")
+
+func test_a_shield_stops_one_whole_instance_of_damage() -> void:
+	# The rule in one assertion: a 3-damage swing breaks ONE shield and lands for
+	# nothing. It used to take three points off the pool and leave it empty.
+	var a: int = _choose_solo(_enemy(3))
+	_march_to_front(a)
+	_choose_solo(_enemy(0))
+	GameState.shields = 2
+	GameState.bonus_shields = 0
+	GameLoop2.log_attempt()
+	assert_eq(GameState.hp, 10, "the shield ate the whole swing")
+	assert_eq(GameState.shields, 1, "and cost exactly one shield doing it")
+	assert_eq(int(GameLoop2.last_attempt_turn.get("blocked", 0)), 3,
+		"the turn reports the whole 3 as blocked")
+	assert_eq(int(GameLoop2.last_attempt_turn.get("damage_taken", 0)), 0)
+
+func test_the_per_game_pool_blocks_before_the_bonus_pool() -> void:
+	var a: int = _choose_solo(_enemy(2))
+	_march_to_front(a)
+	_choose_solo(_enemy(0))
 	GameState.shields = 1
 	GameState.bonus_shields = 1
-	assert_eq(GameLoop2.next_attempt_cost(), "shield")
-	GameState.shields = 0
-	assert_eq(GameLoop2.next_attempt_cost(), "bonus")
-	GameState.bonus_shields = 0
-	assert_eq(GameLoop2.next_attempt_cost(), "turn")
-	assert_eq(GameLoop2.next_attempt_cost(), GameLoop2.log_attempt(),
-		"and it is the same ladder the tick itself walks")
+	GameLoop2.log_attempt()
+	assert_eq(GameState.shields, 0, "this game's shield goes first — it expires anyway")
+	assert_eq(GameState.bonus_shields, 1, "the pool that survives the game is spent last")
+	GameLoop2.log_attempt()
+	assert_eq(GameState.bonus_shields, 0, "and only then")
+	assert_eq(GameState.hp, 10, "neither hit reached Health")
+	GameLoop2.log_attempt()
+	assert_eq(GameState.hp, 8, "with nothing left, the third swing lands whole")
 
 func test_attempts_are_per_game() -> void:
 	_choose_solo(_enemy(1))

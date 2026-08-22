@@ -418,23 +418,25 @@ var discovery: int = 0
 # base_max_hp at run start) and Dash reuses dash_charges above; only these are
 # new. Granted via CharacterData start_* loadout, item effects (gain_stat),
 # and level-up rewards. All default 0, so combat runs are unaffected.
-# Shields — the TRIES you get at the game you're playing (§3). A game grants
+# Shields — the ARMOUR the game you're playing granted (§3). A game hands you
 # GameLoop2.shields_for_game() of them the moment you select it (3, or 5 for a
-# Traditional game); each run of that game you LOSE spends one (the attempt
-# tracker, GameLoop2.log_attempt), and once they're gone a lost run gives the
-# board a TURN instead — the enemies swing and close in, which is where the
-# Health goes now. Whatever is still standing when you report the game absorbs the
-# followers' hits before Health, then EXPIRES — shields are per-game and do not
-# carry into the next one (GameLoop2.beat_game clears them after the enemies have
-# struck and advanced). No cap.
+# Traditional game), and EACH ONE STOPS ONE INSTANCE OF DAMAGE: a 3-damage swing
+# breaks a shield and lands for nothing, and so does a 1-damage one
+# (GameLoop2._take_hit). Losing a run does NOT spend them — that costs a turn of
+# the board instead (GameLoop2.log_attempt) — so what you carry into the report
+# step is what the followers have to get through.
+#
+# Then they EXPIRE: shields are per-game and do not carry into the next one
+# (GameLoop2.beat_game clears them after the enemies have struck and advanced),
+# unless Barricade banks the survivors into `bonus_shields` below. No cap.
 var shields: int = 0
 # BONUS SHIELDS — the pool that is not per-game (§4.3). Gained off the board
 # (Balls of Steel, horse Full Health) or banked out of a resolved game by
 # Barricade, and unlike `shields` they do NOT expire: they stay until something
 # breaks them, which is what makes one worth saving for the game after next.
 #
-# Spent LAST, everywhere: a lost run ticks `shields` first and only reaches these
-# once the tries are gone, and enemy damage reads the same order. Drawn closest to
+# Spent LAST: a hit breaks one of `shields` first and only reaches these once
+# those are gone. Drawn closest to
 # the player — nearest the portrait on the board's hero, and on the header's
 # Health chip, since a pool gained on the overworld has to be readable when no
 # board is on screen.

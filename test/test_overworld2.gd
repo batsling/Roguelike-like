@@ -836,15 +836,15 @@ func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
 	assert_true(_ui._is_boss_round())
 	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
 
-# --- shields = the tries at the game you selected (§3.2) -------------------
+# --- shields = the armour the game you selected granted (§3.2) -------------
 
 func test_picking_a_game_grants_its_shields() -> void:
-	assert_eq(GameState.shields, 0, "no tries before a game is selected")
+	assert_eq(GameState.shields, 0, "no shields before a game is selected")
 	var game: GameData = _ui._choices[0]["game"]
 	var expected: int = GameLoop2.shields_for_game(game)
 	_ui.pick(0)
 	assert_eq(GameState.shields, expected,
-		"%s granted its %d tries" % [game.display_name, expected])
+		"%s granted its %d shields" % [game.display_name, expected])
 	assert_eq(expected, 5 if game.type == GameData.GameType.TRADITIONAL else 3,
 		"5 for a Traditional roguelike, 3 for anything else")
 
@@ -859,35 +859,32 @@ func test_shields_expire_when_the_game_is_reported() -> void:
 	_ui.pick(0)
 	assert_gt(GameState.shields, 0)
 	_report_beat(_ui)
-	assert_eq(GameState.shields, 0, "the tries belonged to that game")
+	assert_eq(GameState.shields, 0, "the armour belonged to that game")
 
 # --- the attempt tracker ---------------------------------------------------
 
-func test_ticking_an_attempt_spends_a_shield_then_gives_the_board_a_turn() -> void:
+func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> void:
 	_ui.pick(0)
 	var shields: int = GameState.shields
-	assert_eq(_ui.log_attempt(), "shield")
-	assert_eq(GameState.shields, shields - 1, "a lost run costs a shield")
-	assert_true(_ui._attempt_count.text.contains("1"), "the strip counts it: %s" % _ui._attempt_count.text)
-	assert_true(_ui._attempt_pips.text.contains("◇"), "and a pip goes hollow: %s" % _ui._attempt_pips.text)
-	# Burn the rest, then the next tick has to come off the board.
-	while GameState.shields > 0:
-		_ui.log_attempt()
-	GameState.bonus_shields = 0
-	_ui._refresh()
-	assert_true(_ui._attempt_hint.text.contains("turn"),
-		"the strip warns what the next one costs: %s" % _ui._attempt_hint.text)
 	assert_eq(_ui.log_attempt(), "turn")
 	_ui._end_resolve()                     # land the playback the tick started
+	assert_eq(GameState.shields, shields, "a lost run costs no shields at all")
+	assert_true(_ui._attempt_count.text.contains("1"),
+		"the strip counts the lost run: %s" % _ui._attempt_count.text)
+	assert_false(_ui._attempt_pips.text.contains("◇"),
+		"and nothing goes hollow — the pips are armour, not tries: %s" % _ui._attempt_pips.text)
+	assert_true(_ui._attempt_hint.text.contains("turn"),
+		"the strip says what a tick does: %s" % _ui._attempt_hint.text)
 	assert_false(GameLoop2.last_attempt_turn.is_empty(),
 		"and the turn it bought is left where the board can replay it")
 
-func test_undoing_an_attempt_restores_the_shield() -> void:
+func test_undoing_an_attempt_takes_the_turn_back() -> void:
 	_ui.pick(0)
 	var shields: int = GameState.shields
 	_ui.log_attempt()
-	assert_eq(_ui.undo_attempt(), "shield")
-	assert_eq(GameState.shields, shields, "the shield came back")
+	_ui._end_resolve()
+	assert_eq(_ui.undo_attempt(), "turn")
+	assert_eq(GameState.shields, shields, "the shields were never in it")
 	assert_eq(GameLoop2.attempts(), 0)
 	assert_true(_ui._attempt_undo.disabled, "nothing left to take back")
 
@@ -898,17 +895,17 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	_report_beat(_ui)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
 
-# The tries a game grants are part of the routing decision, so the hover line
+# The shields a game grants are part of the routing decision, so the hover line
 # under the offering quotes them for whatever card you're pointing at.
 func test_the_hover_line_previews_the_games_grant() -> void:
 	_ui._show_preview(0)                          # hovering the first card
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_ui._preview.text.contains("%d tries" % grant),
+	assert_true(_ui._preview.text.contains("%d shields" % grant),
 		"hovering previews what that game grants: %s" % _ui._preview.text)
 	assert_true(_ui._preview.text.contains(_ui._choices[0]["enemy"].display_name),
 		"and what it would put on the board: %s" % _ui._preview.text)
 	_ui._clear_hover_grant()                      # mouse left the card
-	assert_false(_ui._preview.text.contains("tries"),
+	assert_false(_ui._preview.text.contains("shields"),
 		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
 
 # The pack panel carries no heading. A bordered strip of relic and scroll tiles
@@ -1093,12 +1090,12 @@ func test_the_hover_portrait_respects_the_dome() -> void:
 	assert_false(_ui._preview_art.visible, "the Dome hides the picture as well as the name")
 	GameState.inventory.erase(dome)
 
-func test_the_popup_shows_the_tries_the_game_grants() -> void:
-	# The tries a game hands you used to be printed on its card. The card is the
+func test_the_popup_shows_the_shields_the_game_grants() -> void:
+	# The shields a game hands you used to be printed on its card. The card is the
 	# cover and the name now — this is one of the facts that moved into the popup.
 	var modal = _ui.open_choice(0)
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_text_of(modal).contains("%d tries" % grant),
+	assert_true(_text_of(modal).contains("%d shields" % grant),
 		"the popup states the game's shield grant: %s" % _text_of(modal))
 
 # --- the HUD carries the player, and only the player -----------------------

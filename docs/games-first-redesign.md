@@ -60,7 +60,7 @@ Kept deliberately tiny for HUD readability.
 |---|---|---|
 | Health | character-set (5–10) | Current HP. Lose at 0. |
 | Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Raising it heals by the same amount — a container arrives full — so the item that means an *empty* one says so with its own token (`gain_empty_max_hp`, Hollow Heart). Lowering it is not the mirror: it takes the room and leaves the Health, which only moves when it no longer fits. |
-| Shields | granted per game, **no cap** | **The TRIES at the game you selected** (see §3.2). Absorbed before `health` on any hit, and **expire with the game that granted them**. |
+| Shields | granted per game, **no cap** | **The ARMOUR the game you selected granted** (see §3.2). Each one stops **one whole instance of damage**, however big, before `health` is touched — and they **expire with the game that granted them**. Losing a run does not spend them. |
 | Enemy damage | 1–3 (by tier) | Dealt by each stacked enemy after **every** game played, until its goal is fulfilled (Low 1 / Med 2 / High 3, per `enemies2.0`). |
 
 **Starting loadout depends on the chosen character** (`characters2.0`). Character
@@ -79,8 +79,8 @@ Current roster:
 Shield sources beyond the per-game grant: items (**Anchor** — "when a game is
 selected, gain +1 Shield"), and future tag routes / scrolls. **Bonus Shields**
 (§4.3) are the one pool that is *not* per-game: gained off the board from a pill
-or banked out of a resolved game by Barricade, spent after the tries are gone,
-and carried until something breaks them.
+or banked out of a resolved game by Barricade, spent after the per-game shields
+are gone, and carried until something breaks them.
 
 ### 3.1 Characters, Level Up & the reward loop
 
@@ -112,61 +112,78 @@ How it already works in the project (to be kept):
 - Rewards draw from the same resource vocabulary as drops (Max Health, Dash,
   Transmute, Scroll, Small Chest — see §8.1 Chests).
 
-### 3.2 Shields = the tries (the attempt tracker)
+### 3.2 Shields, and the attempt tracker
 
-A roguelike is not beaten in one run, so **shields are how many runs you get**:
+These were one mechanic and are now two, which is the whole of this section.
+Losing a run of the real game moves the **board**; shields are **armour** and
+nothing but armour.
+
+**A LOST RUN GIVES THE ENEMIES A TURN.** Every run of the game in play you lose
+is one tick of the attempt tracker, and a tick costs exactly one turn of the
+board — the same `_resolve_enemy_turn` a reported game takes `enemy_turns()` of
+(§7.4): the ground burns whoever is standing on it, every body touching the front
+column **strikes** for what its statuses make of its damage, everything behind it
+**steps a column closer**, and a stun costs one turn of either. It can kill —
+Health reaching 0 ends the run right there, exactly like an enemy hit at the end
+of a game.
+
+- **There is no limit on how many times you may fail.** What there is, is a board
+  that is one turn closer every time you do. The cost compounds where it should:
+  the board a tick moves is the board the *next* tick moves again.
+- **Nobody holds their fire**: the goals-met exemption is a fact about a
+  *reported* game, and nothing has been reported yet.
+- **A board with nothing in reach charges nothing**, and that is the design
+  rather than an oversight: the turn *is* the cost, so a cleared stack has
+  nothing to take and a body still walking in merely walks. The tick is still
+  logged — it is what the escape hatch counts and what the tracker shows.
+- **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
+  breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
+  Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
+  resources before it resolves and `undo_attempt` puts the whole thing back.
+  Those snapshots are **runtime-only** — a save carries the run, not its undo
+  history — so a turn taken before a reload cannot be taken back, which
+  `can_undo_attempt` answers and the undo button reads off.
+
+**A SHIELD STOPS ONE INSTANCE OF DAMAGE.** The whole of it, whatever its size: a
+3-damage swing breaks one shield and lands for nothing, and so does a 1-damage
+one (`GameLoop2._take_hit`).
 
 - **Selecting a game grants them** — **3** for any game, **5** for a
   **Traditional** roguelike (the long haul); nothing else moves the number, so it
   reads straight off the game's type. Items hooked on *"when a game is selected"*
-  add to the grant, which is what **Anchor** now does (+1 Shield): the extra try
+  add to the grant, which is what **Anchor** now does (+1 Shield): the extra cover
   has to arrive *before* you go and play. The grant is part of the routing
-  decision, so it's stated in the game's popup (§4.2) and previews in the HUD on
-  hover.
-- **Every run of that game you LOSE is one tick of the attempt tracker**, and each
-  tick **spends a shield**. The tracker lives with the checklist in the left column
-  of the playing screen; the board stands in the right column (with the pack under
-  it) and draws the pool as pips on the hero, so ticking visibly drains it. The
-  stage keeps that shape between games: the board stays put and the checklist
-  becomes the standing-goals list — the level-up challenge and every follower's
-  outstanding goal (§2) — so "what do I need to do?" is answerable before you
-  commit to a game, not only after.
-- **Out of shields, a lost run gives the enemies a turn** — one turn of the board,
-  resolved by the same `_resolve_enemy_turn` a reported game takes `enemy_turns()`
-  of (§7.4): the ground burns whoever is standing on it, every body touching the
-  front column **strikes** for what its statuses make of its damage, everything
-  behind it **steps a column closer**, and a stun costs one turn of either. It can
-  kill — Health reaching 0 ends the run right there, exactly like an enemy hit at
-  the end of a game.
-  - It costs Health *through the board* rather than off the corner of the screen,
-    which is the point. A flat 1 Health was the one price in the loop the board
-    could not see: the enemies walking at you are the whole tension of a game, and
-    running out of tries quietly stepped around them. A turn spends the one thing
-    the game is about — the distance between you and them — and it compounds,
-    because the board a tick moves is the board the *next* tick moves again.
-  - **Nobody holds their fire**: the goals-met exemption is a fact about a
-    *reported* game, and nothing has been reported yet.
-  - **A board with nothing in reach charges nothing**, and that is the design
-    rather than an oversight: the turn *is* the cost, so a cleared stack has
-    nothing to take and a body still walking in merely walks. The tick is still
-    logged — it is what the escape hatch counts and what the pips draw.
-  - **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
-    breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
-    Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
-    resources before it resolves and `undo_attempt` puts the whole thing back.
-    Those snapshots are **runtime-only** — a save carries the run, not its undo
-    history — so a turn taken before a reload cannot be taken back, which
-    `can_undo_attempt` answers and the undo button reads off.
-- **Whatever is left when you report the game absorbs the followers' hits** before
-  Health, then **expires**. Shields never bank into the next game: an easy game
-  cleared first try does not arm you for the next one.
+  decision, so it's stated in the game's popup (§4.2) and on the card's hover
+  line.
+- **A block, not a point.** That is deliberately blunt, and it is what makes the
+  pool readable: three shields is three hits you don't take, and the arithmetic of
+  "which hits do these five points cover" never has to be done. It also makes a
+  big hit the one you *want* a shield to meet — the same shield spent on a chip
+  hit is the worse trade, which is a thing to play around (a Push, a Stun) rather
+  than a sum to do.
+- **Any instance of damage**, whatever threw it: a follower's swing, Burn's "take
+  3 Damage" bill at the end of a game (§13), a `take_damage` effect from anywhere.
+  They all funnel through `_take_hit`, which is the only path damage reaches the
+  player by. A **`lose_hp` bill** — an event's price, a machine's lever — is not
+  damage and never was: it does not come through there and shields do not stop it.
+- **Marked pierces.** A debuff is felt by whoever carries it, so Marked on the
+  player doubles what lands *and* takes it straight past the shields (§13.4).
+- **Enemies read the same rule.** A Dexterity stack gives a body a shield, and
+  that shield eats one whole hit (`_damage_enemy`). Every hit in this game is
+  worth exactly 1 today, so it changes nothing right now — it is written that way
+  so both sides of the board answer "what does a shield do" identically the day
+  something hits for more.
+- **They expire when you report the game.** Shields never bank into the next one
+  on their own: an easy game cleared first try does not arm you for the next.
+  **Barricade** (§4.3) is the exception, and it banks the survivors into Bonus
+  Shields rather than stopping the expiry.
 
-The tension is *spend your tries getting the goal done → what you didn't need is
-the armour that carries you through the enemies you left alive.* A game cleared
-first try leaves the whole pool standing, so the stack can't touch you; a game that
-fights back leaves you open to it. **Health is meant to be hard to reach while
+The tension is *don't lose runs → the stack never moves, and the wall is still
+whole when you report.* A game cleared first try leaves the board where it was and
+the whole pool standing; a game that fights back walks the stack into your face
+and then makes you report from there. **Health is meant to be hard to reach while
 you're playing well** — the followers' 1–3 damage is a threat to a player who is
-burning tries, not to one who isn't.
+already having a bad time, not to one who isn't.
 
 ---
 
@@ -186,7 +203,7 @@ mean.
 | Verb | Effect |
 |---|---|
 | **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** The card it vacated is **refilled from the same pool the offering is drawn from**: another game *connected to where you are standing*, with its own freshly-rolled goal-enemy (the other cards keep the enemies they were already showing). When that node has no other connection left to give, the slot simply goes — bash is destruction, not a guaranteed reroll. Two bashes are refused outright, because both end the run rather than shape it: the **Amulet game** (destroying the goal makes the run unwinnable) and the **last card on the table** with nothing to replace it. |
-| **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 tries rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
+| **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 shields rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
 | **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
@@ -288,7 +305,7 @@ The popup is where the decision is actually made. It carries:
   shortest-path ladder the 🗺 map window shows (§6), routed from the game being
   considered rather than from where the player stands — plus the route badge in
   words (`★ OPTIMAL — 4 steps left` / `↩ Detour +1` / `🏆 THE AMULET`);
-- the **game**: cover at full size, type and year, the **tries** it grants (§3.2),
+- the **game**: cover at full size, type and year, the **shields** it grants (§3.2),
   what taking it does to the board's **pace** (§7.4), whether going back to it
   pays a Dash (see below), and the player's own record in it;
 - the **enemy waiting there**: portrait, name, and the goal as it would actually
@@ -353,15 +370,15 @@ identified Bad Trip colour reads **Full Health** while you are in death range an
 than the pill, which is why two colours can both claim to be Full Health.
 
 **Bonus Shields.** Shields can now be gained **outside a game** (Balls of Steel,
-horse Full Health), and those are a separate pool from the per-game tries of §3.2:
+horse Full Health), and those are a separate pool from the per-game shields of
+§3.2:
 
 - They are drawn **closest to the player** — nearest the portrait on the board's
   hero, and beside the always-visible Health chip in the header, because a pool
   gained on the overworld has to be readable when no board is on screen.
-- They are **spent last**: a lost run ticks the per-game pool first, then bonus
-  shields, and only with both empty does it hand the board a turn (§3.2) — a lost
-  run *does* eat them, since the tries are shields and so are these. Enemy damage
-  reads the same order.
+- They are **spent last**: a hit breaks one of the per-game shields first and
+  only reaches these once those are gone (§3.2). A lost run spends neither — it
+  costs a turn of the board and nothing else.
 - They **never expire.** The per-game pool dies with the game that granted it;
   a bonus shield stays until something breaks it, which is what makes it worth
   saving across several games.
@@ -371,7 +388,7 @@ expiring, which quietly made them a second non-expiring pool with its own rules.
 It now **converts what a resolved game left standing into Bonus Shields**, so
 there is one pool that persists and one relic that fills it. That is a small buff
 — banked shields are spent last too, where the old behaviour spent them first —
-and it is the right one: the relic is about the tries you *didn't need*.
+and it is the right one: the relic is about the cover you *didn't need*.
 
 **Where pills come from.** **Beating a game pays 1 random piece of loot** — a
 straight 50/50 between a scroll and a pill, and the run's baseline loot income.
@@ -1492,10 +1509,10 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   the graph allows it, at *different* distances — so the panel is a choice of run
   length as well as genre.
   **The start is the run's first game, not a doorstep**: taking one rolls its
-  goal-enemy, stands it on the board, hands over the game's tries, and drops
+  goal-enemy, stands it on the board, hands over the game's shields, and drops
   straight into the report step — so a run opens with something to go and play
   rather than with a free move. The card opens the ordinary `GameChoiceModal`
-  (enemy, goal, tries, connections, route) before you commit; Bash and Transmute
+  (enemy, goal, shields, connections, route) before you commit; Bash and Transmute
   are withheld there, since they reshape an offering and the picker is not one.
   **The amulet is named on this panel** — on its heading, on each card's distance
   line and on the last rung of the map the card opens. It used to be the run's one
@@ -1611,9 +1628,9 @@ grants, §8.2): `gain_chest [small|medium|large|huge] <n>`,
 `gain_max_hp <n>`, `gain_gold <n>`. A penalty is written in the same vocabulary
 pointed the other way (`lose_hp`, `lose_gold`, `lose_stat`) plus one verb of its
 own: **`take_damage <n>` is damage, not a bill** — it resolves through
-`GameLoop2.damage_player`, so the tries absorb it and the player's own statuses
-scale it, where `lose_hp` comes straight off Health whatever is standing in front
-of it. Any `<n>` is a literal or an
+`GameLoop2.damage_player`, so a shield stops it outright like any other instance
+(§3.2) and the player's own statuses scale it, where `lose_hp` comes straight off
+Health whatever is standing in front of it. Any `<n>` is a literal or an
 `{expr}`; expressions are held in a `scaled` sub-dict and evaluated at apply time,
 since X isn't known until the status is on something.
 
@@ -1680,9 +1697,9 @@ Its two sides bite in opposite directions, which is the point:
 
 - **On the player** it is a `demand`: an extra row on every report, and the only
   row whose *unticked* state does something. The 3 Damage lands at the **end of
-  the game, after the enemies have swung** — through the normal hit path, so the
-  tries that game granted absorb it before Health does, and a run the enemies
-  already ended is never billed. Answering it sheds a stack, which makes the next
+  the game, after the enemies have swung** — through the normal hit path, so one
+  of that game's shields stops it outright before it reaches Health (§3.2), and a
+  run the enemies already ended is never billed. Answering it sheds a stack, which makes the next
   game's asking price *lower*; missing it does not, so it keeps asking at the
   same price until you pay.
 - **On an enemy** it is an `instead`: that body's goal grows "or instead skip or
@@ -1811,9 +1828,9 @@ Three rules hold the side together:
   Strength on the player would want a player attack to sit on and this game has
   none. Every debuff clears it, so **a debuff is felt by whoever is carrying it**:
   Marked on the player doubles the damage they take and takes it straight past the
-  Shields — the tries — they were counting on to absorb it.
+  Shields they were counting on to stop it.
 - **Shields are a POOL the status hands out, not a reading of the stack count.**
-  Dexterity 2 grants two shield points; each absorbs one damage and is gone. The
+  Dexterity 2 grants two shields; each stops one whole hit and is gone. The
   body still has two Dexterity stacks afterwards (its goal clause is unchanged) and
   no shield left, which is why `shield` is saved on the board entry beside
   `health` rather than recomputed from the statuses on load.
@@ -2345,7 +2362,7 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 | Section | What it carries |
 |---|---|
 | **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
-| **The fight** | damage taken and blocked, goals cleared, what is still following, tries left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
+| **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
 | **The spoils** | every relic chest down the left and the loot payout down the right, **all of it at once** rather than one question after another |
 | **The shelf** | a hub's shop, if this game was one of the ten (§14) |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |

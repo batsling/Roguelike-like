@@ -398,15 +398,19 @@ func test_piggy_bank_ignores_a_hit_the_shields_ate() -> void:
 	assert_eq(GameState.hp, 10, "the shields took the whole swing")
 	assert_eq(GameState.gold, 0, "damage taken is not Health lost")
 
-func test_piggy_bank_pays_on_the_overflow_past_the_shields() -> void:
+func test_piggy_bank_pays_on_the_hit_no_shield_was_left_for() -> void:
 	_give(&"piggy_bank")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.shields = 1
+	GameState.bonus_shields = 0
 	GameState.gold = 0
 	var res: Dictionary = {}
 	GameLoop2._take_hit(3, res)
-	assert_eq(GameState.hp, 8, "two got through")
+	assert_eq(GameState.hp, 10, "the one shield stopped the whole 3")
+	assert_eq(GameState.gold, 0, "and a hit that never reached Health pays nothing")
+	GameLoop2._take_hit(3, res)
+	assert_eq(GameState.hp, 7, "the next one has nothing in front of it")
 	assert_eq(GameState.gold, 1, "and the loss paid once")
 
 func test_piggy_bank_pays_off_the_map_too() -> void:
@@ -463,19 +467,18 @@ func test_every_undone_try_gives_back_its_own_winnings() -> void:
 	assert_eq(GameState.gold, 0, "and every undo gave one back")
 	assert_eq(GameState.hp, 10, "with the Health where it started")
 
-func test_undoing_a_shield_try_leaves_the_purse_alone() -> void:
-	var enemy := GoalEnemyData.new()
-	enemy.id = &"synthetic"
-	enemy.display_name = "Synthetic"
-	enemy.health = 1
-	enemy.damage = 1
+func test_a_try_whose_turn_took_no_health_leaves_the_purse_alone() -> void:
+	# Piggy Bank pays on HEALTH LOST, and a turn that reaches nobody takes none:
+	# the tick still happened, the board still moved, and the purse is untouched.
 	_give(&"piggy_bank")
-	_choose_solo(enemy)
-	GameState.shields = 2
+	_choose_solo(_fighter(2))         # spawns at the back, so it walks rather than swings
+	GameState.shields = 0
+	GameState.bonus_shields = 0
 	GameState.gold = 4
-	assert_eq(GameLoop2.log_attempt(), "shield")
+	assert_eq(GameLoop2.log_attempt(), "turn")
+	assert_eq(GameState.gold, 4, "nothing was lost, so nothing was paid")
 	GameLoop2.undo_attempt()
-	assert_eq(GameState.gold, 4, "a shield try never paid, so nothing is clawed back")
+	assert_eq(GameState.gold, 4, "and nothing is clawed back")
 
 # --- There's Options: the boss's chest goes up a size --------------------
 

@@ -5,7 +5,7 @@ extends Control
 #
 # Picking a game used to be one click on its cover, and every fact that click
 # needed had to be printed ON the cover: the route badge, the pace warning, the
-# tries it grants, the repeat bonus, a Map button, a Beatable row, and the
+# shields it grants, the repeat bonus, a Map button, a Beatable row, and the
 # Bash/Transmute verbs. Seven stacked rows per card, which is why the covers had
 # to be halved to fit three of them side by side (COVER_SIZE), and the whole
 # offering still ran taller than the board beside it.
@@ -17,7 +17,7 @@ extends Control
 #   • the OPTIMAL PATH, drawn as the real route ladder (RouteLadder) — the same
 #     arrowed graph the 🗺 map window shows, for the road as it would stand if
 #     you took this game;
-#   • the GAME — its cover, its type and year, the tries it grants,
+#   • the GAME — its cover, its type and year, the shields it grants,
 #     the pace it puts the board on, whether you've beaten it before;
 #   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
 #   • and the three things you can DO about it: travel, bash, transmute.
@@ -55,7 +55,7 @@ const LADDER_MIN_H := 300.0
 
 var _index: int = -1
 var _choice: Dictionary = {}
-var _notes: Dictionary = {}          # {route, pace, tries, beatable} from the overworld
+var _notes: Dictionary = {}          # {route, pace, shields, beatable} from the overworld
 var _layer: CanvasLayer = null
 var _answered: bool = false
 var _ladder_holder: Control = null
@@ -325,7 +325,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 
 	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
 	# else on the card already speaks for the REPLACEMENT — its cover, its type,
-	# its tries, the enemy standing there — so the one fact the card cannot state
+	# its shields, the enemy standing there — so the one fact the card cannot state
 	# for itself is that it is a replacement at all, and what it was pasted over.
 	# Which is exactly what the routing decision turns on: the rung keeps its
 	# place on the graph, so the road out is the OLD game's road, not this one's.
@@ -348,18 +348,19 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 	col.add_child(chip)
 
-	# The tries this game hands you (§3) — the reason a Traditional roguelike is
+	# The SHIELDS this game hands you (§3) — the reason a Traditional roguelike is
 	# worth routing through even when it isn't the short way. A card that only MOVES
 	# the run grants none of them: nothing is being committed to yet.
-	var tries: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("tries", 0))
-	if tries > 0:
-		col.add_child(_fact_line("%s  %d tries" % ["◆".repeat(tries), tries],
+	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
+	if shields > 0:
+		col.add_child(_fact_line("%s  %d shields" % ["◆".repeat(shields), shields],
 			Overworld2.SHIELD_BLUE,
-			"Selecting %s grants %d shields — one per run of it you lose." % [
-				game.display_name, tries]))
+			("Selecting %s grants %d shields. Each one stops a single hit outright, "
+				+ "however big, and whatever is left expires when you report the game.") % [
+				game.display_name, shields]))
 
 	# What taking this does to the board's PACE (§7.4). Also a fact about playing a
-	# game, so it goes with the tries on a move-only card.
+	# game, so it goes with the shields on a move-only card.
 	var pace: Dictionary = {} if bool(_notes.get("move_only", false)) else _notes.get("pace", {})
 	if String(pace.get("text", "")) != "":
 		col.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),

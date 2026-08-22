@@ -9,25 +9,31 @@ extends Node
 # this autoload + GameState.
 #
 # The tiny run resources it moves live on GameState (hp / max_hp = Health /
-# Max Health, shields = the per-game tries, and the verb/consumable counts); this
+# Max Health, shields = the per-game armour, and the verb/consumable counts); this
 # node owns only the enemy-stack state machine on top of them.
 #
-# SHIELDS ARE THE TRIES (§3). Selecting a game grants shields_for_game() of them;
-# every run of that game you lose is one tick of the ATTEMPT TRACKER
-# (log_attempt), which spends a shield — and ONCE THEY ARE GONE, GIVES THE BOARD
-# A TURN instead (attempt_turn). Whatever survives absorbs the followers' hits
-# when you report the game, and then expires: shields never carry into the next
-# game.
+# THE TWO HALVES OF §3, and they are separate things that used to be one:
 #
-# A lost run used to cost 1 Health flat once the shields were out. It doesn't any
-# more, and the reason is that Health was the one resource the board couldn't
-# see: the enemies walking at you were the whole tension of a game, and running
-# out of tries quietly bypassed them to bill a number in the corner. A turn is
-# the same pressure the rest of the loop is made of — the front line swings for
-# what its statuses make of its damage, everything behind it closes a column, the
-# ground burns whoever is standing on it — so losing runs now spends the ONE
-# thing the game is about, which is the distance between you and them. It still
-# costs Health, usually more than one; it just costs it through the board.
+#   A LOST RUN GIVES THE ENEMIES A TURN. Every run of the game you lose is one
+#   tick of the ATTEMPT TRACKER (log_attempt), and the whole of what a tick costs
+#   is one turn of the board (attempt_turn): the front line swings, everything
+#   behind it closes a column, the ground burns whoever is standing on it. There
+#   is no limit on how many times you may fail — only a board that is a turn
+#   closer every time you do.
+#
+#   A SHIELD STOPS ONE INSTANCE OF DAMAGE. Selecting a game grants
+#   shields_for_game() of them, and each one blocks one hit outright, whatever its
+#   size — a 3-damage swing breaks a shield and lands for nothing, and so does a
+#   1-damage one (_take_hit). Whatever is left when you report the game expires
+#   with it, unless Barricade banks it (§4.3): shields do not carry into the next
+#   game on their own.
+#
+# The two were the same resource until now — shields were the tries AND the
+# armour, so every failed attempt at the real game was also a hole in the wall
+# you were about to meet the stack with. Splitting them makes each one legible:
+# the tracker is about the board's distance and the shields are about the board's
+# damage, and "how many tries do I get" stops having an answer that punishes you
+# twice.
 #
 # Lifecycle of one game (§7.2):
 #   choose_game(enemy)  — the enemy SPAWNS ONTO THE BOARD when you pick its game,
@@ -58,21 +64,22 @@ extends Node
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
 signal enemy_defeated(enemy)          # a GoalEnemyData was defeated (drop granted)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
-# A try at the current game was logged or taken back. `cost` is "shield",
-# "bonus" or "turn" (what that try spent), `undone` true when it was reversed.
-# The board animates off this, so it fires once per tick.
+# A try at the current game was logged or taken back. `cost` is "turn" — the one
+# thing a tick costs — or, from a save written before that was true, "shield" or
+# "bonus". `undone` is true when it was reversed. The board animates off this, so
+# it fires once per tick.
 signal attempt_logged(cost: String, undone: bool)
 signal run_lost()
 signal run_won()
 
-# Shields granted when a game is SELECTED — the tries you get at it (§3). A
-# Traditional roguelike is the long haul, so it grants more.
+# Shields granted when a game is SELECTED — the hits you get to not take at it
+# (§3). A Traditional roguelike is the long haul, so it grants more.
 const SHIELDS_PER_GAME: int = 3
 const SHIELDS_TRADITIONAL: int = 5
-# How many turns the board takes for one lost run once the shields are gone (§3).
-# One: the same beat the stack takes per turn of a reported game, so a try and a
-# game are measured in the same unit and "how much did that cost me" is a
-# question about the board rather than about two different currencies.
+# How many turns the board takes for one lost run (§3). One: the same beat the
+# stack takes per turn of a reported game, so a try and a game are measured in the
+# same unit and "how much did that cost me" is a question about the board rather
+# than about two different currencies.
 const ATTEMPT_TURNS: int = 1
 
 # What the player's two ways of hurting an enemy are worth, in the damage unit
@@ -754,8 +761,8 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # did not have to widen.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1) -> int:
-	# A new game means a fresh set of tries — whatever was logged against the last
-	# one is closed out.
+	# A new game means a fresh tracker — whatever was logged against the last one
+	# is closed out.
 	_clear_attempts()
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the escort only ever
@@ -820,16 +827,16 @@ func _clear_arrivals() -> void:
 			_take_off_board(idx)
 	arrivals.clear()
 
-# --- shields = the tries at a game (§3) -----------------------------------
+# --- shields = the armour a game grants (§3) -------------------------------
 
 # How many shields selecting `game` grants: the long haul of a Traditional
-# roguelike is worth more tries than anything else.
+# roguelike is worth more cover than anything else.
 func shields_for_game(game: GameData) -> int:
 	if game != null and game.type == GameData.GameType.TRADITIONAL:
 		return SHIELDS_TRADITIONAL
 	return SHIELDS_PER_GAME
 
-# Selecting a game hands the player their tries at it. Adds the grant on top of
+# Selecting a game hands the player their armour for it. Adds the grant on top of
 # whatever is carried (a shield from Anchor bought before this point still
 # counts), then announces the selection so items hooked on "when a game is
 # selected" — Anchor's +1 Shield — land on top of the grant. Returns the base
@@ -842,69 +849,52 @@ func grant_selection_shields(game: GameData) -> int:
 	loop_changed.emit()
 	return n
 
-# The tries logged against the game in play.
+# The lost runs logged against the game in play.
 func attempts() -> int:
 	return attempt_costs.size()
 
-# How many of those tries were paid for with a shield — the hollow pips the board
-# draws next to the ones still standing.
-func attempts_on_shields() -> int:
-	return attempt_costs.count("shield")
+# Whether a lost run can be logged at all: there has to be a game in play to be
+# losing runs of, and a run still going to lose them in. Asked by the overworld so
+# the board can be ready to animate before the tick lands.
+func can_log_attempt() -> bool:
+	return not run_over and not arrivals.is_empty()
 
-# What the NEXT lost run would cost, without spending anything: "shield",
-# "bonus", "turn", or "" when there is no game in play to be losing runs of.
-# Asked by the overworld's hint line, and by the board so it can be ready to
-# animate before the tick lands — and it is the same ladder log_attempt walks, so
-# what the strip promises and what the tick charges cannot drift apart.
-func next_attempt_cost() -> String:
-	if run_over or arrivals.is_empty():
-		return ""
-	if GameState.shields > 0:
-		return "shield"
-	if GameState.bonus_shields > 0:
-		return "bonus"
-	return "turn"
-
-# ONE LOST RUN at the game being played (§3): it spends a shield, or GIVES THE
-# BOARD A TURN once the shields are gone — the enemies swing and close in, which
-# can kill, same as an enemy hit at the end of a game. Refused when no game is in
-# play or the run is already over. Returns the cost ("shield" / "bonus" / "turn"),
-# or "" when nothing was logged.
+# ONE LOST RUN at the game being played (§3): THE ENEMIES TAKE A TURN. That is
+# the whole cost — they swing and close in, which can kill, same as an enemy hit
+# at the end of a game. Refused when no game is in play or the run is already
+# over. Returns "turn", or "" when nothing was logged.
 #
-# THE ORDER IS PER-GAME, THEN BONUS, THEN THE BOARD (§4.3). The tries granted by
-# the game in play are spent first because they die with it anyway; a Bonus Shield
-# is spent only once they are gone, because it is the one that would still be
-# there next game. A lost run DOES eat them — they are shields, and a pool that
-# only stopped enemy damage would be a different resource wearing the same pips.
+# IT DOES NOT SPEND A SHIELD. Shields used to be the tries themselves — three
+# ticks and they were gone — which made them two things at once: a count of
+# attempts and a wall against damage. They are only the wall now (see _take_hit),
+# and a lost run is only a turn. So there is no limit on how many times you may
+# fail at a game; what there is, is a board that is one turn closer every time you
+# do, and the tries you never spent are the armour you meet it with.
 #
 # A BOARD WITH NOTHING ON IT CHARGES NOTHING, and that is the design rather than
 # an oversight: the turn is the cost, so a stack that has been cleared has nothing
 # to take. The tick is still logged — it is what the escape hatch counts (§3) and
-# what the pips draw — it simply resolves to a turn in which nobody acts.
+# what the tracker draws — it simply resolves to a turn in which nobody acts.
 func log_attempt() -> String:
-	var cost: String = next_attempt_cost()
-	if cost == "":
+	if not can_log_attempt():
 		return ""
-	if cost == "shield":
-		GameState.shields -= 1
-		_attempt_snapshots.append({})
-	elif cost == "bonus":
-		GameState.bonus_shields -= 1
-		_attempt_snapshots.append({})
-	else:
-		# Taken BEFORE anything swings, because everything the turn is about to do
-		# — the Health, the ground it walks onto, a trinket the hit shatters — is
-		# what the undo has to put back (see _run_snapshot).
-		_attempt_snapshots.append(_run_snapshot())
-		last_attempt_turn = attempt_turn()
-	attempt_costs.append(cost)
-	# Nothing to record: a shield mints nothing, and what a turn minted is inside
-	# the snapshot. Kept in step with `attempt_costs` all the same — undo pops the
-	# pair together, and an old save's payouts are still read back into it.
+	# Taken BEFORE anything swings, because everything the turn is about to do —
+	# the Health, the ground it walks onto, a trinket the hit shatters — is what
+	# the undo has to put back (see _run_snapshot).
+	_attempt_snapshots.append(_run_snapshot())
+	last_attempt_turn = attempt_turn()
+	# One entry per tick, all of them "turn" now that there is only one thing a
+	# tick can cost. Kept as the list rather than collapsed to a count because it
+	# is what a save writes and what an older save reads back — and because the
+	# three attempt lists are indexed in lockstep (see _clear_attempts).
+	attempt_costs.append("turn")
+	# Nothing to record: what a turn minted is inside the snapshot the undo
+	# restores. Kept in step all the same, and an old save's payouts are still
+	# read back into it.
 	_attempt_payouts.append(0)
-	attempt_logged.emit(cost, false)
+	attempt_logged.emit("turn", false)
 	loop_changed.emit()
-	return cost
+	return "turn"
 
 # THE TURN A LOST RUN COSTS (§3), in the same shape and through the same resolver
 # one turn of a reported game uses — because it is one of those turns, and a
@@ -914,7 +904,8 @@ func log_attempt() -> String:
 #
 # Nobody holds their fire: `hit_this_game` is the goals the player reported, and a
 # game in play has not been reported yet. So every body in the front column
-# swings, which is exactly the threat the tries were buying off.
+# swings — and the shields standing at that moment stop what they stop (§3),
+# exactly as they would at the end of a reported game.
 #
 # Public because the dev panel and the text harness want the same beat without
 # having to fake a tracker tick around it.
@@ -1016,10 +1007,13 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	_next_instance = int(snap.get("next_instance", _next_instance))
 	last_result = (snap.get("last_result", {}) as Dictionary).duplicate(true)
 
-# Whether the last logged try can be taken back. A shield always can. A TURN can
-# only be taken back by the session that played it: its snapshot is runtime-only
-# (see `_attempt_snapshots`), so a run reloaded mid-game answers false here and
-# the undo button goes grey rather than half-undoing something.
+# Whether the last logged try can be taken back. A turn can only be taken back by
+# the session that played it: its snapshot is runtime-only (see
+# `_attempt_snapshots`), so a run reloaded mid-game answers false here and the
+# undo button goes grey rather than half-undoing something.
+#
+# An OLD save may carry ticks that cost a shield, from when a try spent one. Those
+# are refundable without a snapshot, and undo_attempt still hands the shield back.
 func can_undo_attempt() -> bool:
 	if run_over or attempt_costs.is_empty():
 		return false
@@ -1028,18 +1022,19 @@ func can_undo_attempt() -> bool:
 	return not _attempt_snapshots.is_empty() and not (
 		_attempt_snapshots[_attempt_snapshots.size() - 1] as Dictionary).is_empty()
 
-# Take back the last logged try, putting back exactly what it spent — the tracker
-# is a hand-driven counter, so a mis-click has to be reversible. Refused once the
-# run is over (a run ended by that tick stays ended), and refused for a turn there
-# is no snapshot of (can_undo_attempt). Returns the cost it undid.
+# Take back the last logged try, putting back exactly what it did — the tracker is
+# a hand-driven counter, so a mis-click has to be reversible. Refused once the run
+# is over (a run ended by that tick stays ended), and refused for a turn there is
+# no snapshot of (can_undo_attempt). Returns the cost it undid.
 func undo_attempt() -> String:
 	if not can_undo_attempt():
 		return ""
 	var cost: String = String(attempt_costs.pop_back())
-	# "Putting back exactly what it spent" has to include what it EARNED, or a
-	# Piggy Bank turns the undo into a coin press. Popped alongside the cost, so a
-	# try's winnings can only ever be clawed back once and only by its own undo.
-	# Only an OLD save records anything here; a turn's winnings ride its snapshot.
+	# Only an OLD save records anything in these two: a payout from when a try
+	# could cost Health directly, and a shield from when a try spent one. A tick
+	# logged by this build costs a turn, and everything a turn did rides its
+	# snapshot. Popped alongside the cost either way, so a try's winnings can only
+	# ever be clawed back once and only by its own undo.
 	var payout: int = int(_attempt_payouts.pop_back()) if not _attempt_payouts.is_empty() else 0
 	var snap: Dictionary = _attempt_snapshots.pop_back() if not _attempt_snapshots.is_empty() else {}
 	if cost == "shield":
@@ -1251,20 +1246,20 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
 	#     damage lands at the END of the game and after the attacks (§13) — it is
 	#     what a burn costs for a game you spent taking every item offered, and it
-	#     arrives while the tries are still standing, so what you didn't spend
-	#     absorbs it before it reaches Health.
+	#     arrives while the shields are still standing, so one of them stops it
+	#     outright before it reaches Health.
 	_resolve_status_demands(claims, res)
 
 	# The enemies have struck and moved, so this game is over — and with it go the
-	# shields it granted (§3). Shields are the tries at ONE game: what you didn't
-	# spend retrying, and what the front line didn't get through, expires here
-	# rather than banking into the next game.
+	# shields it granted (§3). Shields are the armour of ONE game: what the front
+	# line didn't get through expires here rather than banking into the next game,
+	# which is what stops a quiet game from arming you for a loud one.
 	#
 	# Barricade (§4.3) BANKS them instead: the survivors become Bonus Shields, the
 	# pool that does not expire. Not "they stop expiring" — that quietly made the
 	# per-game pool a second permanent pool with its own spend order, and there is
 	# one permanent pool now. Banked shields are therefore spent LAST from here on,
-	# which is a small buff and the right one: the relic is about the tries you
+	# which is a small buff and the right one: the relic is about the cover you
 	# didn't need.
 	if GameState.shields > 0:
 		if GameState.banks_shields():
@@ -1274,8 +1269,8 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		else:
 			res["shields_expired"] = GameState.shields
 			GameState.shields = 0
-	# The tries went with it: `res` already carries the count for the log, and the
-	# board must not keep drawing a finished game's spent pips.
+	# The tracker went with it: `res` already carries the count for the log, and the
+	# board must not keep counting a finished game's lost runs.
 	_clear_attempts()
 
 	# 3. The player's clauses tick for the game just played. A clause rides every
@@ -2233,7 +2228,7 @@ func bash_game(game_id: StringName) -> bool:
 #
 # The replacement keeps the source's TYPE. **Traditional** is the one exception,
 # and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
-# is the run's long haul — it grants 5 tries rather than 3 for a reason — so
+# is the run's long haul — it grants 5 shields rather than 3 for a reason — so
 # trading one for another is arguably no relief at all, and ANY_OTHER lets a
 # Traditional transmute land on any other type instead. Default is SAME_TYPE,
 # the same rule every other type follows. Under ANY_OTHER the roll is flat
@@ -2422,20 +2417,31 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary) -> void:
 	TriggerBus.enemy_killed.emit({"enemy": enemy})
 	enemy_defeated.emit(enemy)
 
-# Applies `damage` to the player: unspent Shields absorb first (§3), the
-# remainder comes off Health. Ends the run on hp <= 0.
+# Applies `damage` to the player. ONE SHIELD STOPS ONE INSTANCE OF DAMAGE (§3) —
+# the whole of it, whatever its size — and with no shield left it comes off
+# Health. Ends the run on hp <= 0.
+#
+# A SHIELD IS A BLOCK, NOT A POINT. A 3-damage swing breaks one shield and lands
+# for nothing; so does a 1-damage one. That is a deliberately blunt rule and it is
+# what makes the pool readable: three shields is three hits you don't take, and
+# the arithmetic of "which hits do these five points cover" never has to be done.
+# It also means a big hit is the one you WANT a shield to meet — the same shield
+# spent on a chip hit is the worse trade, which is a decision the board can be
+# played around (a Push, a Stun) rather than a sum.
 #
 # The player's own statuses are folded in here, and this is where the promise that
 # a DEBUFF is felt by whoever carries it gets paid: Marked doubles what lands and
-# takes it straight past the tries the player was counting on to absorb it, which
+# takes it straight past the shields the player was counting on to stop it, which
 # is the same rule the enemy side of `_damage_enemy` runs. `_take_hit` is the only
 # way damage reaches the player, so there is nowhere for that rule to be missed.
+# A `lose_hp` bill (an event's price, §8) is not damage and never was: it does not
+# come through here and shields do not stop it.
 #
 # Returns {damage, blocked} — what the hit ACTUALLY landed for after the statuses
-# had their say, and how much of that the shields ate. Both, rather than just the
-# blocked count, because the attack log and the board's resolve animation quote
-# this number: a hit that reads "⚔2" while Health drops by four is a UI that is
-# lying about the rule it just applied.
+# had their say, and how much of that the shields ate (all of it, or none of it).
+# Both, rather than just the blocked count, because the attack log and the board's
+# resolve animation quote this number: a hit that reads "⚔2" while Health drops by
+# four is a UI that is lying about the rule it just applied.
 #
 # `source` names what threw it, for the health_lost hook alone (see
 # GameState.HEALTH_SOURCE_STATUS): a swing is the default because every caller but
@@ -2449,18 +2455,20 @@ func _take_hit(damage: int, res: Dictionary,
 		damage, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if damage <= 0:
 		return {"damage": 0, "blocked": 0}
-	# THE PER-GAME POOL EATS FIRST, THE BONUS POOL SECOND (§4.3). Same order a lost
-	# run spends them in, and for the same reason: the tries expire with this game
-	# whether or not they were used, so spending a Bonus Shield while one of them is
-	# still standing would be burning the pool that survives to save the one that
-	# doesn't. Pierce takes both past.
+	# THE PER-GAME POOL BLOCKS FIRST, THE BONUS POOL SECOND (§4.3): the per-game
+	# shields expire with this game whether or not they were used, so spending a
+	# Bonus Shield while one of them is still standing would be burning the pool
+	# that survives to save the one that doesn't. Pierce takes both past.
+	#
+	# ONE shield, whichever pool it comes out of, and the instance is gone.
 	var absorbed: int = 0
 	if not bool(totals["pierce_shields"]):
-		absorbed = mini(GameState.shields, damage)
-		GameState.shields -= absorbed
-		var bonus_eaten: int = mini(GameState.bonus_shields, damage - absorbed)
-		GameState.bonus_shields -= bonus_eaten
-		absorbed += bonus_eaten
+		if GameState.shields > 0:
+			GameState.shields -= 1
+			absorbed = damage
+		elif GameState.bonus_shields > 0:
+			GameState.bonus_shields -= 1
+			absorbed = damage
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		# Tagged as what threw it: this is the ONLY path damage reaches Health by on
@@ -2474,10 +2482,11 @@ func _take_hit(damage: int, res: Dictionary,
 		_finish_run(false)
 	return {"damage": damage, "blocked": absorbed}
 
-# Damage the player from something that is NOT an enemy's swing — today, a
-# status's penalty (Burn's 3, §13). Goes through the same resolver a swing does,
-# deliberately: the tries absorb it and the player's own statuses scale it, because
-# "take 3 Damage" has to mean on the battlefield what it means everywhere else.
+# Damage the player from something that is NOT an enemy's swing — a status's
+# penalty (Burn's 3, §13), a `take_damage` effect from anywhere. Goes through the
+# same resolver a swing does, deliberately: a shield stops it exactly as it stops
+# a swing and the player's own statuses scale it, because "take 3 Damage" has to
+# mean on the battlefield what it means everywhere else.
 # `res` is the resolve's own summary when there is one to bill it to.
 func damage_player(amount: int, res: Dictionary = {}) -> Dictionary:
 	return _take_hit(amount, res, GameState.HEALTH_SOURCE_STATUS)
@@ -2811,11 +2820,13 @@ func _damage_enemy(idx: int, amount: int) -> bool:
 		amount, int(totals["damage_taken"]), float(totals["damage_taken_mult"]))
 	if dmg <= 0:
 		return false
-	if not bool(totals["pierce_shields"]):
-		var absorbed: int = mini(enemy_shield(entry), dmg)
-		entry["shield"] = enemy_shield(entry) - absorbed
-		dmg -= absorbed
-	if dmg <= 0:
+	# ONE SHIELD, ONE INSTANCE — the same rule the player's side runs (_take_hit).
+	# Every hit in this game is worth exactly 1 today, so it costs a Dexterity body
+	# nothing extra right now; it is written this way so that the day something
+	# hits for more, both sides of the board still answer "what does a shield do"
+	# the same way.
+	if not bool(totals["pierce_shields"]) and enemy_shield(entry) > 0:
+		entry["shield"] = enemy_shield(entry) - 1
 		return false
 	entry["health"] = int(entry.get("health", 1)) - dmg
 	if int(entry["health"]) > 0:
@@ -2934,8 +2945,9 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 		for eff in sd.penalty_effects(StatusData.PLAYER, stacks):
 			var d: Dictionary = eff
 			if String(d.get("type", "")) == "take_damage":
-				# Through the board's own resolver, so the tries get their say and a
-				# lethal burn ends the run where every other lethal hit does.
+				# Through the board's own resolver, so a shield can stop it like any
+				# other instance of damage and a lethal burn ends the run where every
+				# other lethal hit does.
 				var hit: Dictionary = damage_player(int(d.get("value", 0)), res)
 				(res["status_penalties"] as Array).append({
 					"status": sd.id, "damage": int(hit["damage"]),

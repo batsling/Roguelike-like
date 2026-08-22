@@ -11,6 +11,46 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Shields stop hits, not attempts — and one shield stops a whole hit.**
+
+  Two mechanics were wearing one resource. Shields were the TRIES at a game (a
+  lost run spent one) *and* the armour you met the stack with, so every failed
+  attempt at the real game was also a hole in the wall you were about to be hit
+  through — punished twice for the same bad evening. They are split now.
+
+  **A lost run costs a turn of the board and nothing else.** No shield is spent,
+  so there is no limit on how many times you may fail at a game; what there is, is
+  a board that is one turn closer every time you do. `next_attempt_cost` is gone
+  (there is only one thing a tick can cost) and `can_log_attempt` replaces it;
+  `attempts_on_shields` went with it, since no attempt is paid for with a shield
+  any more and nothing on the strip goes hollow.
+
+  **A shield stops one INSTANCE of damage** — the whole of it, whatever its size.
+  A 3-damage swing breaks one shield and lands for nothing; so does a 1-damage
+  one. That is deliberately blunt, and it is what makes the pool readable: three
+  shields is three hits you don't take, and "which hits do these five points
+  cover" is never a sum anyone has to do. It also makes a big hit the one you
+  *want* a shield to meet, which is a thing to play around — a Push, a Stun —
+  rather than arithmetic.
+
+  The rule holds wherever damage lands: a follower's swing, Burn's "take 3
+  Damage" bill, any `take_damage` effect, all through `_take_hit`. A `lose_hp`
+  bill (an event's price, a machine's lever) is not damage and never was — it does
+  not come through there and shields do not stop it. Marked still pierces. Enemy
+  shields read the same rule (`_damage_enemy`): identical in practice today, since
+  every hit in this game is worth exactly 1, and written that way so both sides of
+  the board answer "what does a shield do" the same the day one isn't.
+
+  Everything else about them is unchanged: granted on selection (3, or 5 for a
+  Traditional), per-game pool spent before Bonus Shields, and they expire when you
+  report the game unless Barricade banks them.
+
+  The word "tries" is gone from the UI with the mechanic — the manual, the card
+  popup, the offering's hover line and the board's tooltips all say shields now,
+  and say what one does.
+
+---
+
 - **Amulet pressure is BONUS turns now, not the turn count.**
 
   The ladder used to *be* how many turns the enemies took per game — ×1 out in
