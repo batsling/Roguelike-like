@@ -17,6 +17,10 @@ status yet: potions are the content that will. Everything from §11 step 2 onwar
 still unbuilt, and a surprising amount of the plumbing for it is already there —
 §9.1 is the list.
 
+Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
+the branch, the state of the suite, the next step in order, and the repo-specific
+traps worth knowing before touching any of it.
+
 *A bare §x.y is a section of this document. The spec's own §4.1 (scrolls) and §4.3
 (pills) collide with the numbering here, so those two are always written **spec
 §4.1** / **spec §4.3**; every other spec reference (§7.4, §13, §17, …) has no twin
