@@ -22,7 +22,7 @@ here and is left plain.*
 
 ## 1. Decisions locked
 
-Twenty-five forks were settled before any code, in the same discovery-pass style as the
+Twenty-nine forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
@@ -52,6 +52,10 @@ Twenty-five forks were settled before any code, in the same discovery-pass style
 | 23 | **A timed Dexterity's shields** | **Unspent shields expire with it.** A departure from §13.4's "handed out, not recomputed", and the one place a clock reaches back into a pool (§5.5). |
 | 24 | **The mine's damage trigger** | **A third trigger word**, `damaged:`, on `units2.0` — which makes it a §17.1 spec edit (§4.7). |
 | 25 | **Stacking** | **One piece, one slot.** Two Fire Potions cost two slots, like everything else in the pack (§8.1). |
+| 26 | **A wide body under a wide throw** | **Once per body.** A 3×3 clause dedupes to instances like a bomb blast; the fire tile it leaves still bills per cell on later turns (§4.3). |
+| 27 | **Confirming a throw** | **No confirmation.** Arming a picker and clicking a square are two deliberate acts already (§4.2). |
+| 28 | **Potion of Uselessness** | **Uncommon**, not Common — the joke, met less often. Sheet edit made (§3). |
+| 29 | **The six potions with no art** | **The fallback IS the design.** An identified potion with no `File` keeps showing its run colour, permanently (§6.3). |
 
 ---
 
@@ -103,8 +107,8 @@ one-decision consumable wearing two verbs.
 | Explosive Ampoule | Common | Neg | Take 3 damage | 1 damage to the cell and its row | ✅ |
 | Potion of Healing | Common | Pos | +2 Health | +2 Health to what is there | ✖ |
 | Potion of Self-Mutilation | Common | Neg | Take 3 damage | 3 damage to what is there | ✖ |
-| Potion of Uselessness | Common | Neutral | Nothing | Nothing | ✖ |
 | Fysh Oil | Uncommon | Pos | +1 Strength and +1 Dexterity for a game | the same, to what is there | ✅ |
+| Potion of Uselessness | Uncommon | Neutral | Nothing | Nothing | ✖ |
 | Potion of Haste Self | Uncommon | Pos | +2 Speed for a game | +2 Speed for a game | ✖ |
 | Fruit Juice | Rare | Pos | +2 Max Health | +2 Max Health to what is there | ✅ |
 | Potion of Extra Healing | Rare | Pos | +5 Health | +5 Health to what is there | ✖ |
@@ -112,8 +116,14 @@ one-decision consumable wearing two verbs.
 
 Four things the table says out loud:
 
-- **10 Common / 2 Uncommon / 3 Rare** sits cleanly on the shared 75/20/5 ladder
+- **9 Common / 3 Uncommon / 3 Rare** sits cleanly on the shared 75/20/5 ladder
   (`Data.roll_rarity_step`), so the roller needs no potion-specific weighting.
+  Uselessness moved up a rung (decision #28): at one of ten Commons it was ~7.5% of
+  potion drops and, once potions take their third of the payout, ~2.5% of **all**
+  loot spent on a bottle that does nothing in either direction. The joke is worth
+  keeping and worth meeting less often. The edit is made — through
+  `tools/_potions2_uselessness_uncommon.py`, which goes via `_xlsx_surgery` because
+  an openpyxl round-trip of this workbook silently drops its seven charts.
 - **The throw is weaker per body and wider per square.** Dexterity and Strength
   Potions give the drinker +2 and a body +1; the Ampoule takes 3 off you and gives
   1 to a whole row. Area is what you are paying the difference for.
@@ -170,6 +180,13 @@ a throw has nothing to resolve until it knows where it landed, and routing it
 through the request queue would mean an Echo Chamber replay asking for four targets
 after the fact.
 
+**And it does not ask** (decision #27). Arming the picker and clicking a square are
+two deliberate acts, and a dialog between them would sit in front of the fastest
+board verb in the game. The bin asks before it destroys a carried piece (spec §4.3)
+because a drag can *end* somewhere by accident; a throw cannot land anywhere the
+player did not click. Throwing an identified Fruit Juice at a boss is a mistake the
+run log will describe, not one the UI will prevent.
+
 **The consequence for echoes and for Sacred Bark**, which has to be said now rather
 than discovered later: an echoed potion re-throws **at the same cell**. The player
 aimed once; the copies land where the original did, which is both the simple rule
@@ -187,6 +204,19 @@ cell**:
 | `col` | every row of that square's column |
 | `3x3` | the square and its eight neighbours, clipped to the board |
 | `board` | every square |
+
+**A body in the area is hit ONCE, however many of the squares it covers**
+(decision #26). A 2×2 standing under a 3×3 throw takes 1 damage and +3 Burn, not 4
+and 12. That follows the bomb rather than the tile: `_blast_instances` resolves a
+blast's cells to *instances* and dedupes, while a fire tile bills per cell every
+turn (§17.2) — and the difference between them is the difference between a thing
+that happens once and ground that keeps happening. A thrown potion is the first
+kind. Wide bodies still pay for being wide, just on the clock rather than on impact:
+the Fire tile the bottle leaves behind bills all four of that 2×2's cells, every
+turn, for three games.
+
+So the area resolves twice, and the two passes are not the same list: **cells** for
+the tile clauses, **deduped instances** for everything aimed at a body.
 
 They belong on `GameLoop2` beside `target_cells` and `column_cells`, as
 `GameLoop2.area_cells(cell, area)` — the board owns what a shape means, exactly as
@@ -472,6 +502,13 @@ the bottle it has been wearing all run**, which is the scroll rule (spec §4.1) 
 the thing potions have and scrolls do not. Never a null texture, and never a fifth
 mystery art invented for the artless six.
 
+**That fallback is the design, not scaffolding** (decision #29). Six rows — the two
+healings, Raise Level, Haste Self, Self-Mutilation and Uselessness — have no `File`
+and are not waiting for one. An identified potion with no art of its own keeps
+showing the bottle it wore all run, which is honest: the colour is a real fact about
+that potion in that run, and it is the fact the player learned it by. So this is not
+an art TODO and the doc does not list it as a gap.
+
 ### 6.4 An unknown bottle names its colour
 
 Decision #18, and it is the one place potions deliberately *depart* from pills. A
@@ -754,6 +791,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/redesign2/LootUseModal.gd` | A second button. **Quaff** and **Throw** side by side on a potion, one Use on everything else; the throw arms the picker, hides the modal, and resumes on the click. |
 | `scripts/redesign2/BattlefieldView.gd` | Generalise `aim_cells` past `ItemData` (§4.2); a throw-armed state beside `bomb_mode` / `aiming_item`. |
 | `scripts/redesign2/LootInfoCard.gd`, `LootGrid.gd`, `LootDropModal.gd`, `LootWindow.gd`, `LootDiscoveries.gd` | Potions are loot: they draw, drag, bin, offer and get listed under *Known this run* with no per-kind branching beyond the glyph. `LootSystem.glyph` needs a third one — 🧪. |
+| `scripts/ui/Collection.gd` | The Loot tab has two sub-tabs (`LOOT_SCROLLS` / `LOOT_PILLS`) and needs a third. Unlike pills — which draw one stand-in capsule so the catalog can't teach the run's alphabet — a potion's catalog cell shows its **identified** art where it has one, since that is not a per-run secret. |
 | `scripts/autoload/DevTools.gd` | Grant a named potion, identified or not, like `add_scroll_loot`. |
 | `tools/generate_unit_tres.py` + the `units2.0` sheet + spec §17.1 | The `damaged:` trigger and the Landmine's `damaged: detonate` (§4.7). §17.1's "the pair is the whole vocabulary" line becomes a trio. |
 | `test/test_potion_system.gd` | New suite (§9.3). |
@@ -795,7 +833,9 @@ are actually about potions rather than about loot:
 - a timed Dexterity's unspent shields come off the body when it expires, shields it
   already spent do not come out of a later pool, and a PERMANENT Dexterity's shields
   survive (§5.5);
-- quaffing an unknown potion identifies its throw side too (§6.5).
+- quaffing an unknown potion identifies its throw side too (§6.5);
+- a 2×2 body under a 3×3 throw takes the clause ONCE, and the fire tile left behind
+  bills all four of its cells on the next turn (§4.3).
 
 ---
 
