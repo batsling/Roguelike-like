@@ -495,7 +495,27 @@ var game_choice_bonus: int = 0
 # Run-scope: cleared by reset_run, saved by SaveSystem. Never write this directly —
 # apply_status / remove_status keep the zero-stack entries pruned so "is it on me?"
 # is just a `has`.
+#
+# THESE ARE THE PERMANENT STACKS. Anything with a clock on it lives in the timed
+# layer below and is summed on top for every read.
 var player_statuses: Dictionary = {}
+
+# THE TIMED LAYER (docs/potions-design.md §5.4) — stacks that expire on their own,
+# as [{id: StringName, stacks: int, games: int, shield: int}] in the order they
+# were applied. A potion drunk "until the end of the next combat" is a row here
+# with `games` 1; `GameLoop2.beat_game` ticks every row down and drops the ones
+# that run out, exactly where it burns the tiles down (§17).
+#
+# A LAYER RATHER THAN A CLOCK ON THE STACK COUNT, because a status can be half
+# permanent and half borrowed: a run holding a Dexterity from an item and then
+# drinking a Speed Potion has 2 that stay and 5 that go, and one integer cannot
+# say that. So every read — status_stacks, status_list, combat_totals — asks
+# `effective_statuses()` for permanent + timed, and a row expires WHOLE.
+#
+# `shield` is what that row's application handed out (§5.5). It is always 0 here:
+# Dexterity's shield side is `EnemyOnly` (§13.4), so the player is never granted
+# one. The field is on both holders' rows so the two layers stay one shape.
+var timed_statuses: Array = []
 
 # ---------------------------------------------------------------------------
 # Event goals and curse goals (docs/event-sheet-authoring.md §5)
@@ -1022,6 +1042,7 @@ func reset_run() -> void:
 	stat_multiplier.clear()
 	temp_status_stacks.clear()
 	player_statuses.clear()
+	timed_statuses.clear()
 	event_goals.clear()
 	curse_goals.clear()
 	events_fired.clear()
@@ -1669,13 +1690,28 @@ func grant_run_stat(stat: String, value: int) -> void:
 
 # Add `stacks` of `status_id` to the player. Returns the new stack count (0 when
 # the id is unknown). A negative `stacks` ticks it down, same as remove_status.
-func apply_status(status_id: StringName, stacks: int = 1) -> int:
+#
+# `games` > 0 makes the application TEMPORARY (§5.4 of docs/potions-design.md): it
+# becomes a row in the timed layer instead of permanent stacks, and expires whole
+# after that many games are resolved. The default of 0 is permanent, so every
+# existing caller means exactly what it always meant.
+func apply_status(status_id: StringName, stacks: int = 1, games: int = 0) -> int:
 	if stacks == 0:
-		return int(player_statuses.get(status_id, 0))
+		return status_stacks(status_id)
 	var status: StatusData = Data.get_status(status_id)
 	if status == null:
 		push_warning("GameState.apply_status: no status '%s' in the catalog" % status_id)
 		return 0
+	# A timed application is a new row rather than an addition to an old one: two
+	# potions drunk before one game are two clocks, and each has to be able to run
+	# out on its own. Only a GAIN can be timed — a negative `stacks` is a decay and
+	# goes down the permanent path, where remove_status spends the timed rows first.
+	if games > 0 and stacks > 0:
+		timed_statuses.append({
+			"id": status_id, "stacks": stacks, "games": games, "shield": 0,
+		})
+		player_statuses_changed.emit()
+		return status_stacks(status_id)
 	var total: int = int(player_statuses.get(status_id, 0)) + stacks
 	# The authored ceiling (Burn's "Max: 3"), applied on the way UP only: a status
 	# already over its cap — from a save written before the cap, or from a cap the
@@ -1688,17 +1724,110 @@ func apply_status(status_id: StringName, stacks: int = 1) -> int:
 	else:
 		player_statuses[status_id] = total
 	player_statuses_changed.emit()
-	return total
+	return status_stacks(status_id)
 
 # Tick `stacks` off a player status (default 1), removing it at zero. Returns what
 # is left. This is the decay path for a decaying side completed this game.
+#
+# THE TIMED ROWS GO FIRST, soonest expiry first — a stack that is leaving anyway is
+# the one to spend on a decay, and taking the permanent one instead would let a
+# borrowed status quietly eat a status the run actually owns.
 func remove_status(status_id: StringName, stacks: int = 1) -> int:
-	if not player_statuses.has(status_id):
-		return 0
-	return apply_status(status_id, -absi(stacks))
+	var left: int = absi(stacks)
+	for row in _timed_rows_for(status_id):
+		if left <= 0:
+			break
+		var take: int = mini(left, int(row["stacks"]))
+		row["stacks"] = int(row["stacks"]) - take
+		left -= take
+	_prune_timed()
+	if left > 0 and player_statuses.has(status_id):
+		return apply_status(status_id, -left)
+	player_statuses_changed.emit()
+	return status_stacks(status_id)
 
+# Permanent + timed, which is what every status question about the player means.
+#
+# THE CEILING IS APPLIED TO WHAT THE TIMED LAYER ADDS, never to the permanent
+# count underneath it. Burn's "Max: 3" is a rule about the way UP (§13.1): stacks
+# already over it — from a save written before the cap, or a cap the sheet lowered
+# — tick down one at a time rather than being frozen there, and a read that
+# clamped them would freeze exactly the case the permanent path is careful about.
+# So a borrowed stack cannot lift a status past its cap, and cannot lower it
+# either.
 func status_stacks(status_id: StringName) -> int:
+	var permanent: int = int(player_statuses.get(status_id, 0))
+	var total: int = permanent
+	for row in timed_statuses:
+		if StringName(row.get("id", &"")) == status_id:
+			total += int(row.get("stacks", 0))
+	if total <= permanent:
+		return maxi(0, total)
+	var status: StatusData = Data.get_status(status_id)
+	return maxi(permanent, status.cap_stacks(total)) if status != null else total
+
+# The stacks of `status_id` that are NOT going anywhere. The wording rules read
+# this: a clause is only "this game only" when nothing permanent is holding it up
+# (§5.3).
+func permanent_stacks(status_id: StringName) -> int:
 	return int(player_statuses.get(status_id, 0))
+
+# How many games until this status leaves the player entirely — 0 for one that is
+# not going anywhere (no timed rows, or permanent stacks underneath it), otherwise
+# the soonest row's clock. This is the number the goal line and the pip quote.
+func status_games_left(status_id: StringName) -> int:
+	if int(player_statuses.get(status_id, 0)) > 0:
+		return 0
+	var soonest: int = 0
+	for row in timed_statuses:
+		if StringName(row.get("id", &"")) != status_id:
+			continue
+		var games: int = int(row.get("games", 0))
+		if games > 0 and (soonest == 0 or games < soonest):
+			soonest = games
+	return soonest
+
+# Every status on the player as id -> effective stacks. The dictionary the two
+# aggregate readers (status_list, combat_totals) work from, so neither of them has
+# to know the timed layer exists.
+func effective_statuses() -> Dictionary:
+	var out: Dictionary = {}
+	for id in player_statuses.keys():
+		out[id] = status_stacks(id)
+	for row in timed_statuses:
+		var id: StringName = StringName(row.get("id", &""))
+		if id != &"" and not out.has(id):
+			out[id] = status_stacks(id)
+	return out
+
+# The timed rows carrying `status_id`, soonest expiry first.
+func _timed_rows_for(status_id: StringName) -> Array:
+	var rows: Array = timed_statuses.filter(
+		func(r): return StringName(r.get("id", &"")) == status_id)
+	rows.sort_custom(func(a, b): return int(a.get("games", 0)) < int(b.get("games", 0)))
+	return rows
+
+# Drop the rows a decay emptied. Rows are dictionaries held by reference, so the
+# subtraction above lands on the real ones and this only clears the husks.
+func _prune_timed() -> void:
+	timed_statuses = timed_statuses.filter(func(r): return int(r.get("stacks", 0)) > 0)
+
+# One game has been resolved: tick every timed row down and drop what ran out.
+# Returns the dropped rows so the caller can report them — `GameLoop2.beat_game`
+# does, beside the tiles that went out in the same pass (§17).
+func tick_timed_statuses() -> Array:
+	var expired: Array = []
+	var kept: Array = []
+	for row in timed_statuses:
+		row["games"] = int(row.get("games", 0)) - 1
+		if int(row["games"]) <= 0:
+			expired.append(row)
+		else:
+			kept.append(row)
+	timed_statuses = kept
+	if not expired.is_empty():
+		player_statuses_changed.emit()
+	return expired
 
 func has_status(status_id: StringName) -> bool:
 	return status_stacks(status_id) > 0
@@ -1708,11 +1837,16 @@ func has_status(status_id: StringName) -> bool:
 # a raw Dictionary iteration would. Statuses whose resource has gone missing are
 # skipped rather than yielding a null row.
 func status_list() -> Array:
+	var held: Dictionary = effective_statuses()
 	var out: Array = []
 	for s in Data.all_statuses():
 		var sd: StatusData = s
-		if player_statuses.has(sd.id):
-			out.append({"status": sd, "stacks": int(player_statuses[sd.id])})
+		if held.has(sd.id):
+			# `games` rides every row so the surfaces that draw one — the checklist,
+			# the hero's pips, the HUD chip — can say it is temporary without each
+			# of them going back to the timed layer to ask (§5.3).
+			out.append({"status": sd, "stacks": int(held[sd.id]),
+				"games": status_games_left(sd.id)})
 	return out
 
 # The statuses whose PLAYER side is claimable — a `goal` or a `bonus` (§13). These
@@ -1736,7 +1870,7 @@ func status_objectives() -> Array:
 # their Shields, exactly as it does on an enemy. Same aggregator either side, so
 # the two can't drift.
 func combat_totals() -> Dictionary:
-	return StatusData.combat_totals(player_statuses, StatusData.PLAYER)
+	return StatusData.combat_totals(effective_statuses(), StatusData.PLAYER)
 
 # The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
 # onto every enemy's goal.
@@ -1919,6 +2053,39 @@ func restore_statuses(data: Dictionary) -> void:
 		var stacks: int = int(data[key])
 		if stacks > 0 and Data.get_status(id) != null:
 			player_statuses[id] = stacks
+	player_statuses_changed.emit()
+
+# The TIMED layer's own blob (§5.4 of docs/potions-design.md), as a list rather
+# than a dict: two rows can carry the same status id on two different clocks, so
+# there is no key to hold them apart. A row whose status the catalog no longer
+# knows is dropped, like the permanent ones above.
+func serialize_timed_statuses() -> Array:
+	var out: Array = []
+	for row in timed_statuses:
+		out.append({
+			"id": String(row.get("id", "")),
+			"stacks": int(row.get("stacks", 0)),
+			"games": int(row.get("games", 0)),
+			"shield": int(row.get("shield", 0)),
+		})
+	return out
+
+func restore_timed_statuses(rows) -> void:
+	timed_statuses.clear()
+	if not (rows is Array):
+		return
+	for raw in rows:
+		if not (raw is Dictionary):
+			continue
+		var id := StringName(raw.get("id", ""))
+		var stacks: int = int(raw.get("stacks", 0))
+		var games: int = int(raw.get("games", 0))
+		if stacks <= 0 or games <= 0 or Data.get_status(id) == null:
+			continue
+		timed_statuses.append({
+			"id": id, "stacks": stacks, "games": games,
+			"shield": int(raw.get("shield", 0)),
+		})
 	player_statuses_changed.emit()
 
 # --- the undo snapshot (§3) ------------------------------------------------

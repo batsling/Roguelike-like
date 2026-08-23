@@ -143,10 +143,16 @@ func populate_play_panel() -> void:
 	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
+		# A BORROWED goal says so on the row itself, not only in its hover
+		# (docs/potions-design.md §5.3): this is the line the player reads to decide
+		# what to chase, and one that expires tonight is a different offer.
+		var games: int = int(row.get("games", 0))
 		var srow := verify_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
+			"%s %s%s" % [_status_prefix(sd, stacks),
+				sd.objective_text(StatusData.PLAYER, stacks),
+				StatusData.clock_suffix(games)],
 			_status_row_tint(sd), false, null, null, 0,
-			_status_mark(sd, stacks, StatusData.PLAYER))
+			_status_mark(sd, stacks, StatusData.PLAYER, false, games))
 		_box.add_child(srow["row"])
 		status_goal_checks.append({"check": srow["check"], "status": sd.id})
 		# A `demand` is the one row where confirming buys something other than a
@@ -419,10 +425,12 @@ func _add_instead_rows(entry: Dictionary) -> void:
 	for row in GameLoop2.alternatives_for(entry):
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
-		var irow := verify_row("%s or instead: %s" % [
-			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks)],
+		var games: int = int(row.get("games", 0))
+		var irow := verify_row("%s or instead: %s%s" % [
+			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks),
+			StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
-			_status_mark(sd, stacks, StatusData.ENEMY))
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
 		_box.add_child(irow["row"])
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
@@ -459,10 +467,13 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 	for row in GameLoop2.bonus_objectives_for(entry):
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
+		var games: int = int(row.get("games", 0))
 		var brow := verify_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+			"%s %s%s" % [_status_prefix(sd, stacks),
+				sd.objective_text(StatusData.ENEMY, stacks),
+				StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
-			_status_mark(sd, stacks, StatusData.ENEMY))
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
 		_box.add_child(brow["row"])
 		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
 		var key: String = "bonus:%d:%s" % [instance, sd.id]
@@ -504,7 +515,7 @@ const STATUS_ICON_SIZE := 22
 # symbol the player has to have memorised: it answers what it is, at what stack,
 # and what that side does, in the same words the pip would.
 func _status_mark(status: StatusData, stacks: int, which: StringName,
-		nullified: bool = false) -> Control:
+		nullified: bool = false, games: int = 0) -> Control:
 	if status == null or status.image == null:
 		return null
 	var frame := PanelContainer.new()
@@ -513,7 +524,7 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	frame.add_child(UITheme.crisp_tex(status.image, STATUS_ICON_SIZE))
-	HoverCard.attach(frame, status.hover_card(which, stacks, nullified))
+	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games))
 	return frame
 
 # Every per-game checklist binding, dropped together. Five parallel arrays that
@@ -681,9 +692,13 @@ func populate_standing() -> void:
 	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
+		var pgames: int = int(row.get("games", 0))
 		_box.add_child(_objective_row(
-			"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.PLAYER, stacks)],
-			_status_row_tint(sd), null, 0, _status_mark(sd, stacks, StatusData.PLAYER)))
+			"%s %s%s" % [_status_prefix(sd, stacks),
+				sd.objective_text(StatusData.PLAYER, stacks),
+				StatusData.clock_suffix(pgames)],
+			_status_row_tint(sd), null, 0,
+			_status_mark(sd, stacks, StatusData.PLAYER, false, pgames)))
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -705,11 +720,13 @@ func populate_standing() -> void:
 		for alt in GameLoop2.alternatives_for(entry):
 			var asd: StatusData = alt["status"]
 			var astacks: int = int(alt["stacks"])
-			_box.add_child(_objective_row("%s or instead: %s" % [
+			var agames: int = int(alt.get("games", 0))
+			_box.add_child(_objective_row("%s or instead: %s%s" % [
 				_status_prefix(asd, astacks),
-				asd.alternative_text(StatusData.ENEMY, astacks)],
+				asd.alternative_text(StatusData.ENEMY, astacks),
+				StatusData.clock_suffix(agames)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-				_status_mark(asd, astacks, StatusData.ENEMY)))
+				_status_mark(asd, astacks, StatusData.ENEMY, false, agames)))
 		# …and the ones a boss is ignoring, said rather than left out (see
 		# _add_instead_rows, which draws the same line on the report step).
 		for dead in GameLoop2.nullified_alternatives_for(entry):
@@ -717,10 +734,13 @@ func populate_standing() -> void:
 		for bonus in GameLoop2.bonus_objectives_for(entry):
 			var sd: StatusData = bonus["status"]
 			var stacks: int = int(bonus["stacks"])
+			var bgames: int = int(bonus.get("games", 0))
 			_box.add_child(_objective_row(
-				"%s %s" % [_status_prefix(sd, stacks), sd.objective_text(StatusData.ENEMY, stacks)],
+				"%s %s%s" % [_status_prefix(sd, stacks),
+					sd.objective_text(StatusData.ENEMY, stacks),
+					StatusData.clock_suffix(bgames)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-				_status_mark(sd, stacks, StatusData.ENEMY)))
+				_status_mark(sd, stacks, StatusData.ENEMY, false, bgames)))
 
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")

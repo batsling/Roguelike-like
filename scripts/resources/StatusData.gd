@@ -268,7 +268,8 @@ func objective_text(which: StringName, stacks: int) -> String:
 # Passed in rather than worked out here because a status knows nothing about who
 # is wearing it, and it changes the WORDS rather than any of the facts: the pip is
 # real, the stacks are real, and what is void is what it would otherwise buy.
-func hover_card(which: StringName, stacks: int, nullified: bool = false) -> Dictionary:
+func hover_card(which: StringName, stacks: int, nullified: bool = false,
+		games: int = 0) -> Dictionary:
 	var mode: StringName = mode_for(which)
 	var good: bool = is_bonus(which) or is_goal(which) or is_alternative(which)
 	var sub: String = "%s stack%s" % [stacks, "" if stacks == 1 else "s"]
@@ -308,6 +309,9 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false) -> Dict
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
 		lines.append("In combat: %s." % combat_line(stacks))
+	var clock: String = clock_note(games)
+	if clock != "":
+		lines.append(clock)
 
 	return {
 		"title": display_name,
@@ -330,6 +334,23 @@ func decrease_note(which: StringName) -> String:
 	if not decays(which):
 		return ""
 	return "Loses a stack each game you complete it."
+
+# HOW A CLOCK READS, in the one place every surface takes it from
+# (docs/potions-design.md §5.3). A status is usually a thing you have until you
+# have worked it off; a potion's is a thing you have for a game, and the two must
+# never look alike on a goal line the player is routing around. 0 = no clock.
+static func clock_note(games: int) -> String:
+	if games <= 0:
+		return ""
+	return "⏱ This game only." if games == 1 else "⏱ %d games left." % games
+
+# The same fact as a phrase rather than a sentence, for a goal line that is
+# already mid-flow ("...and the difficulty must be increased 3 times, this game
+# only").
+static func clock_suffix(games: int) -> String:
+	if games <= 0:
+		return ""
+	return ", this game only" if games == 1 else ", for %d more games" % games
 
 # The hover tooltip for one side, Slay-the-Spire style: the status's name and
 # stack count, what that side DOES, and the live line at this stack. Every view
@@ -366,7 +387,8 @@ func _side_body(which: StringName, stacks: int) -> String:
 	var cut: int = full.find("\n")
 	return full.substr(cut + 1) if cut >= 0 else full
 
-func tooltip_for(which: StringName, stacks: int, nullified: bool = false) -> String:
+func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
+		games: int = 0) -> String:
 	var head: String = "%s %d" % [display_name, stacks]
 	if is_capped():
 		head += "/%d" % max_stacks
@@ -404,6 +426,12 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false) -> Str
 		body += "\nIn combat: %s." % combat_line(stacks)
 	elif has_combat() and which == PLAYER:
 		body += "\nIts combat effect is felt by enemies only."
+	# LAST LINE, and deliberately after the combat one: how long this lasts is the
+	# thing about it that changes between one look and the next, which is where the
+	# tile's own "⏱ 2 games left" pip sits for the same reason (§17.5).
+	var clock: String = clock_note(games)
+	if clock != "":
+		body += "\n%s" % clock
 	return "%s\n%s" % [head, body]
 
 # --- reward effects -------------------------------------------------------
