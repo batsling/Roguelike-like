@@ -130,9 +130,9 @@ Four things the table says out loud:
 - **Slay the Spire's names came with Slay the Spire's meanings.** "Speed Potion" is
   +5 *Dexterity*, not Speed — that is what it does in its source game. `Potion of
   Haste Self` is the one that is actually Speed.
-- **Six rows have no `File`.** They take the same fallback scrolls take (§6.3), and
-  the two rows whose throw is `N/A` (Raise Level, and Uselessness by authorship)
-  need the fizzle rule of §4.5.
+- **Six rows have no `File`, and are not waiting for one.** They wear their run
+  colour permanently (§6.3, decision #29). The two rows whose throw is `N/A` —
+  Raise Level, and Uselessness by authorship — need the fizzle rule of §4.5.
 
 ---
 
