@@ -181,7 +181,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		for row in statuses:
 			var st: StatusData = row["status"]
 			strip.add_child(_status_chip(st, int(row["stacks"]),
-				st != null and dead.has(st.id)))
+				st != null and dead.has(st.id), int(row.get("games", 0))))
 		inner.add_child(strip)
 
 	# The goal — the thing you actually have to do — gets its own panel.
@@ -320,14 +320,15 @@ func _chip(text: String, color: Color) -> Control:
 # card is the place a player has already stopped to read.
 const STATUS_ART := 28
 
-func _status_chip(status: StatusData, stacks: int, nullified: bool = false) -> Control:
+func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
+		games: int = 0) -> Control:
 	# A nullified way-out never reads as good news, whatever side it is on (§7.1).
 	var good: bool = status.is_bonus(StatusData.ENEMY) and not nullified
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.80), 6, 5, 1, tint.lerp(UITheme.BG, 0.35)))
-	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified)
+	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified, games)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 7)
 	wrap.add_child(row)

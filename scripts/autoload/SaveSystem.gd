@@ -264,6 +264,10 @@ func _build_payload() -> Dictionary:
 		# Statuses on the PLAYER (§13). The enemy-side ones ride the bodies they are
 		# on, so they save inside GameLoop2.serialize() below rather than here.
 		"player_statuses": GameState.serialize_statuses(),
+		# The stacks with a clock on them (docs/potions-design.md §5.4). Its own key
+		# rather than a shape change to the one above, so an older save restores its
+		# permanent statuses and simply has no borrowed ones.
+		"timed_statuses": GameState.serialize_timed_statuses(),
 		"event_goals": GameState.serialize_event_goals(),
 		# The hub list and every shop's remaining shelf (§14).
 		"shops": GameState.serialize_shops(),
@@ -382,6 +386,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.keys = int(data.get("keys", 0))
 	GameState.game_choice_bonus = int(data.get("game_choice_bonus", 0))
 	GameState.restore_statuses(data.get("player_statuses", {}))
+	GameState.restore_timed_statuses(data.get("timed_statuses", []))
 	GameState.restore_event_goals(data.get("event_goals", {}))
 	GameState.restore_shops(data.get("shops", {}))
 	GameState.run_seed = int(data.get("run_seed", 0))

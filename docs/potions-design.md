@@ -9,9 +9,13 @@ Content source: the **`potions2.0`** sheet of `tools/Roguelikes.xlsx` (15 rows) 
 the art in `images2.0/potions_identified/` (9 bottles) +
 `images2.0/potions_unidentified/` (37 coloured vials).
 
-Status: **design decisions locked, unbuilt.** Nothing in `scripts/` knows what a
-potion is yet — but a surprising amount of the plumbing is already there, and §9.1
-is the list.
+Status: **decisions locked; step 1 of §11 is BUILT.** The timed-status layer, its
+expiry, its wording and the shield claw-back shipped (§5, and the CHANGELOG entry
+that opens with *"Statuses can be borrowed"*), with `test/test_timed_statuses.gd`
+covering them — 26 tests, and the full suite green at 1549. Nothing applies a timed
+status yet: potions are the content that will. Everything from §11 step 2 onward is
+still unbuilt, and a surprising amount of the plumbing for it is already there —
+§9.1 is the list.
 
 *A bare §x.y is a section of this document. The spec's own §4.1 (scrolls) and §4.3
 (pills) collide with the numbering here, so those two are always written **spec
@@ -893,9 +897,15 @@ scroll is identified either way (§4.5).
 
 ## 11. Build order
 
-1. **The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3) + the
-   shield claw-back (§5.5), with tests. No potions yet — this is the only genuinely
-   new system, and it is testable on its own by hand-applying a timed status.
+1. ~~**The timed layer** (§5.4) + the `beat_game` expiry + the wording (§5.3) + the
+   shield claw-back (§5.5), with tests.~~ **DONE.** `GameState.timed_statuses` and
+   the twin on each board entry, `GameLoop2._expire_timed_statuses` beside
+   `_decay_tiles`, `StatusData.clock_note` / `clock_suffix` through every surface
+   that draws a pip or a goal line, and `apply_status(id, stacks, games)` /
+   `apply_enemy_status(..., games)` as the way in. One thing the build turned up
+   that the design had not: the authored ceiling has to apply to what the layer
+   ADDS and not to the permanent count under it, or a read clamps stacks that
+   §13.1 is careful to let tick down.
 2. **The scroll deltas** (§10) — the generator's rarity fix, `description`, the
    widened `forget` and `identify`, `find_weight`, and `remove_curse` with its
    picker (§10.1). Potions are then born into a roller and a picker that already

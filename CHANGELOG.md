@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Statuses can be borrowed: the first thing in this build with a clock on it.**
+
+  Every status until now was a thing you had until you worked it off. Potions
+  (`docs/potions-design.md`) need one that is yours for a game and then is not —
+  nine of the fifteen say *"until the end of the next combat"* — and nothing in
+  the build could express that: statuses are permanent until completed (§13), and
+  only the ground counts games (§17).
+
+  So a status now has **two layers**. `player_statuses` (and a board entry's
+  `statuses`) hold what you own; a **timed layer** beside each holds what you
+  borrowed, as rows of `{id, stacks, games, shield}`. Every read — `status_stacks`,
+  `status_list`, `combat_totals`, `enemy_statuses`, `enemy_combat` — asks for the
+  sum, so nothing downstream had to learn the layer exists. A layer rather than a
+  clock on the stack count, because a status can be **half owned and half
+  borrowed**: a run carrying a Dexterity from an item and then drinking a Speed
+  Potion has 2 that stay and 5 that go, and one integer cannot say that. A row
+  expires **whole**, and two potions drunk before one game are two clocks.
+
+  **They run out where the ground burns down** — `GameLoop2.beat_game`, one pass
+  for the player and every body on the board, reported in its result dict beside
+  `tiles_expired`. Beaten or missed, walked away from or fought to a standstill:
+  what the potion bought you was this game, and this game is over now.
+
+  **A borrowed clause says so, everywhere the goal is quoted.** `goal_text_for`
+  appends *", this game only"*, the checklist rows carry it, and every status pip
+  on every surface grows a `⏱ This game only.` line out of one new
+  `StatusData.clock_note` / `clock_suffix` pair. A clause the player cannot tell is
+  temporary is one they will route around a tax that is about to lift.
+
+  **And a borrowed Dexterity takes its shields back.** This is the one place the
+  new layer knowingly departs from §13.4, which says shields are a pool the status
+  hands out and never a reading of the stack count. Under that rule alone a thrown
+  Speed Potion (+5 Dexterity) would hand a body five permanent hits' worth of
+  armour off a Common bottle. Each timed row now remembers what its application
+  granted, and on expiry the body's pool drops by `min(granted, pool)` — shields
+  already spent are not billed twice, and a pool something else refilled is not
+  raided to pay a debt the row no longer has. **Permanent Dexterity is untouched**:
+  the claw-back belongs to the clock, not to the status.
+
+  A decay spends the **borrowed** stack first, since it is leaving anyway. The
+  ceiling (Burn's "Max: 3") applies to what the layer adds and never to the
+  permanent count under it — that cap is a rule about the way *up*, and a read that
+  clamped it would freeze the very stacks `apply_status` is careful to let tick
+  down. Both layers ride the save, on the player and on every body; a save from
+  before this restores as a run carrying nothing borrowed.
+
+  Nothing applies one yet. `test/test_timed_statuses.gd` is what lets the layer
+  land before the content that will.
+
 - **A tick is a confirm, and a confirm resolves NOW.**
 
   The report was the only moment anything on the checklist could happen. That was

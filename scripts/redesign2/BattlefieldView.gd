@@ -1931,13 +1931,13 @@ const STATUS_STRIP_DROP := 20
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and
 # reads gold, anything that taxes reads red.
 func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
-		nullified: bool = false) -> Control:
+		nullified: bool = false, games: int = 0) -> Control:
 	var good: bool = status.is_bonus(which) or status.is_goal(which)
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
 	var chip := HoverPanel.new()
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 1, 1, tint.lerp(UITheme.BORDER, 0.35)))
-	HoverCard.attach(chip, status_hover(status, stacks, which, nullified))
+	HoverCard.attach(chip, status_hover(status, stacks, which, nullified, games))
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 2)
@@ -1974,8 +1974,8 @@ func _nullified_ids(entry: Dictionary) -> Dictionary:
 # `hover_card`, so the board, the enemy card and the hero strip cannot describe
 # the same status differently.
 func status_hover(status: StatusData, stacks: int, which: StringName,
-		nullified: bool = false) -> Dictionary:
-	return status.hover_card(which, stacks, nullified)
+		nullified: bool = false, games: int = 0) -> Dictionary:
+	return status.hover_card(which, stacks, nullified, games)
 
 # Fill `strip` with one pip per status in `rows` ([{status, stacks}]). Returns how
 # many were drawn, so a caller can hide an empty strip rather than leave a gap.
@@ -1991,8 +1991,11 @@ func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
 		child.queue_free()
 	for row in rows:
 		var sd: StatusData = row["status"]
+		# `games` rides the row from GameLoop2.enemy_statuses / GameState.status_list
+		# (docs/potions-design.md §5.3), so a borrowed status's pip says so without
+		# this strip knowing the timed layer exists.
 		strip.add_child(_status_pip(sd, int(row["stacks"]), which, size,
-			sd != null and dead.has(sd.id)))
+			sd != null and dead.has(sd.id), int(row.get("games", 0))))
 	strip.visible = not rows.is_empty()
 	return rows.size()
 

@@ -660,6 +660,9 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
 		"statuses": _serialize_statuses(entry.get("statuses", {})),
+		# The stacks with a clock on them (docs/potions-design.md §5.4), each with
+		# the shield it handed out so a reload can still take back what it owes.
+		"timed_statuses": _serialize_timed(entry.get("timed_statuses", [])),
 	}
 
 # An entry whose enemy no longer exists in the catalog is DROPPED rather than
@@ -680,7 +683,37 @@ func _deserialize_entry(raw) -> Dictionary:
 		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
 		"statuses": _deserialize_statuses(d.get("statuses", {})),
+		"timed_statuses": _deserialize_timed(d.get("timed_statuses", [])),
 	}
+
+# A body's timed rows, JSON-safe and back. Absent from an older save, which
+# restores as a body carrying nothing borrowed — correct, since it wasn't.
+func _serialize_timed(rows: Array) -> Array:
+	var out: Array = []
+	for row in rows:
+		out.append({
+			"id": String(row.get("id", "")),
+			"stacks": int(row.get("stacks", 0)),
+			"games": int(row.get("games", 0)),
+			"shield": int(row.get("shield", 0)),
+		})
+	return out
+
+func _deserialize_timed(raw) -> Array:
+	var out: Array = []
+	if not (raw is Array):
+		return out
+	for item in raw:
+		if not (item is Dictionary):
+			continue
+		var id := StringName(item.get("id", ""))
+		var stacks: int = int(item.get("stacks", 0))
+		var games: int = int(item.get("games", 0))
+		if stacks <= 0 or games <= 0 or Data.get_status(id) == null:
+			continue
+		out.append({"id": id, "stacks": stacks, "games": games,
+			"shield": int(item.get("shield", 0))})
+	return out
 
 # The cell dictionaries (`tiles`, `units`) as a JSON-safe list of flat rows, and
 # back. `count_key` is the one number the kind carries — a tile's games left, a
@@ -1350,6 +1383,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		"attempts": attempts(), "stack_size": stack.size(),
 		"status_rewards": 0, "statuses_ticked": [],
 		"instead_cleared": [], "status_penalties": [], "tiles_expired": [],
+		"statuses_expired": [],
 		"run_over": run_over, "won": won,
 	}
 	if run_over:
@@ -1491,6 +1525,13 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    so a tile laid this game and a tile that expires this game have both had
 	#    their say on the turns above before the count moves.
 	res["tiles_expired"] = _decay_tiles()
+
+	# 5. AND THE BORROWED STATUSES RUN OUT (docs/potions-design.md §5.1), in the
+	#    same breath and for the same reason: a potion's buff is measured in games
+	#    too. AFTER the tiles and after step 3, so a status that expires this game
+	#    has had its full say on the goals, the clauses and the damage above —
+	#    what it bought you was this game, and this game is only over now.
+	res["statuses_expired"] = _expire_timed_statuses()
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).
@@ -2255,6 +2296,57 @@ func _move_entry(entry: Dictionary, row: int, col: int) -> bool:
 # game the player reported is finished with — beaten or not, since the ground
 # burns for the time spent rather than for the result (§17). Returns the cells
 # that went out, for the resolve log.
+# One game has been resolved, so every BORROWED status is a game closer to gone
+# (docs/potions-design.md §5.1). Runs for the player and for every body on the
+# board in one pass, because a thrown potion and a quaffed one are the same clock
+# pointed at different holders — and beside `_decay_tiles` for the same reason
+# that one is where it is: the ground and the buff both measure their lives in
+# games played, beaten or missed.
+#
+# Returns what ran out, as [{status, stacks, who}], for the resolve log.
+func _expire_timed_statuses() -> Array:
+	var out: Array = []
+	for row in GameState.tick_timed_statuses():
+		var sd: StatusData = Data.get_status(StringName(row.get("id", &"")))
+		if sd != null:
+			out.append({"status": sd, "stacks": int(row.get("stacks", 0)), "who": "player"})
+	for entry in stack:
+		for row in _tick_entry_timed(entry):
+			var sd: StatusData = Data.get_status(StringName(row.get("id", &"")))
+			if sd != null:
+				out.append({"status": sd, "stacks": int(row.get("stacks", 0)),
+					"who": String((entry.get("enemy") as GoalEnemyData).display_name)})
+	if not out.is_empty():
+		loop_changed.emit()
+	return out
+
+# Tick one body's timed rows, dropping what ran out and TAKING BACK the shields
+# those rows handed over (§5.5). The claw-back is `min(granted, pool)`: shields the
+# body already spent are gone and are not billed twice, and a pool something else
+# refilled is not raided to pay a debt this row no longer has.
+#
+# This is the one place a shield is removed by anything other than a hit, and it is
+# deliberately narrow: only what a TIMED row granted, only when that row expires.
+# A permanent Dexterity's shields behave exactly as §13.4 says they always did.
+func _tick_entry_timed(entry: Dictionary) -> Array:
+	var rows: Array = entry.get("timed_statuses", [])
+	if rows.is_empty():
+		return []
+	var expired: Array = []
+	var kept: Array = []
+	for row in rows:
+		row["games"] = int(row.get("games", 0)) - 1
+		if int(row["games"]) <= 0:
+			expired.append(row)
+		else:
+			kept.append(row)
+	entry["timed_statuses"] = kept
+	for row in expired:
+		var owed: int = int(row.get("shield", 0))
+		if owed > 0:
+			entry["shield"] = maxi(0, int(entry.get("shield", 0)) - owed)
+	return expired
+
 func _decay_tiles() -> Array:
 	var out: Array = []
 	for cell in tiles.keys():
@@ -2983,14 +3075,14 @@ func _index_of(instance: int) -> int:
 #   "front"   — everything touching the front column: the bodies that strike next
 # Returns how many enemies it landed on. An unknown status id lands on none.
 func apply_enemy_status(status_id: StringName, stacks: int = 1,
-		target: String = "current") -> int:
+		target: String = "current", games: int = 0) -> int:
 	if stacks == 0 or Data.get_status(status_id) == null:
 		if stacks != 0:
 			push_warning("GameLoop2.apply_enemy_status: no status '%s'" % status_id)
 		return 0
 	var targets: Array = _status_targets(target)
 	for entry in targets:
-		_add_status_to(entry, status_id, stacks)
+		_add_status_to(entry, status_id, stacks, games)
 	if not targets.is_empty():
 		loop_changed.emit()
 	return targets.size()
@@ -3021,53 +3113,74 @@ func _status_targets(target: String) -> Array:
 			var landed: Dictionary = arrival()
 			return [] if landed.is_empty() else [landed]
 
-func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int) -> void:
-	var held: Dictionary = entry.get("statuses", {})
-	var before: int = int(held.get(status_id, 0))
-	var total: int = before + stacks
-	# The authored ceiling (Burn's "Max: 3"), the body's half of the rule
-	# GameState.apply_status enforces for the player. On the way UP only, so a body
-	# carrying more than the cap still ticks down one stack at a time.
-	var status: StatusData = Data.get_status(status_id)
-	if stacks > 0 and status != null:
-		total = maxi(before, status.cap_stacks(total))
-	if total <= 0:
-		held.erase(status_id)
+# `games` > 0 lands the stacks in the body's TIMED LAYER instead of on it for good
+# (docs/potions-design.md §5.4) — a thrown potion's buff, which is gone after the
+# next game is resolved. Default 0 is permanent, so a scroll, an item or a location
+# means what it always meant.
+func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int,
+		games: int = 0) -> void:
+	var before: int = entry_status_stacks(entry, status_id)
+	var timed: Dictionary = {}
+	if games > 0 and stacks > 0:
+		# A row of its own, like the player's: two thrown potions are two clocks.
+		var rows: Array = entry.get("timed_statuses", [])
+		timed = {"id": status_id, "stacks": stacks, "games": games, "shield": 0}
+		rows.append(timed)
+		entry["timed_statuses"] = rows
 	else:
-		held[status_id] = total
-	entry["statuses"] = held
-	_grant_shield_for(entry, status_id, before, maxi(0, total))
+		var held: Dictionary = entry.get("statuses", {})
+		var total: int = int(held.get(status_id, 0)) + stacks
+		# The authored ceiling (Burn's "Max: 3"), the body's half of the rule
+		# GameState.apply_status enforces for the player. On the way UP only, so a
+		# body carrying more than the cap still ticks down one stack at a time.
+		var status: StatusData = Data.get_status(status_id)
+		if stacks > 0 and status != null:
+			total = maxi(int(held.get(status_id, 0)), status.cap_stacks(total))
+		if total <= 0:
+			held.erase(status_id)
+		else:
+			held[status_id] = total
+		entry["statuses"] = held
+	var gained: int = _grant_shield_for(entry, status_id, before,
+		entry_status_stacks(entry, status_id))
+	# What a TIMED application handed out is remembered on its own row, because the
+	# clock has to be able to take back what has not been spent (§5.5).
+	if gained > 0 and not timed.is_empty():
+		timed["shield"] = gained
 
 # A shield-granting status (Dexterity) HANDS OUT its shield when it lands, rather
 # than being read as one. The difference is the whole of how the shield behaves:
 # it is a pool the body spends absorbing hits and does not get back, so a second
 # application tops it up by the difference and losing stacks never claws back a
 # point the body already spent. Nothing is granted when a status is removed.
+# Returns what was handed out, so a timed application can record its own debt.
 func _grant_shield_for(entry: Dictionary, status_id: StringName,
-		before: int, after: int) -> void:
+		before: int, after: int) -> int:
 	if after <= before:
-		return
+		return 0
 	var status: StatusData = Data.get_status(status_id)
 	if status == null or not status.combat_applies(StatusData.ENEMY):
-		return
+		return 0
 	var gained: int = status.combat_bonus(&"shield", after) \
 		- status.combat_bonus(&"shield", before)
 	if gained > 0:
 		entry["shield"] = int(entry.get("shield", 0)) + gained
+	return maxi(0, gained)
 
 # Apply `stacks` of a status to ONE body, named by instance — the aimed version of
 # apply_enemy_status, for when the caller already knows which enemy it means (the
 # dev panel, and any future effect that targets a picked body). Returns the new
 # stack count, or 0 when nothing holds that instance.
-func apply_status_to(instance: int, status_id: StringName, stacks: int = 1) -> int:
+func apply_status_to(instance: int, status_id: StringName, stacks: int = 1,
+		games: int = 0) -> int:
 	if stacks == 0 or Data.get_status(status_id) == null:
 		return 0
 	var entry: Dictionary = entry_for(instance)
 	if entry.is_empty():
 		return 0
-	_add_status_to(entry, status_id, stacks)
+	_add_status_to(entry, status_id, stacks, games)
 	loop_changed.emit()
-	return int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
+	return entry_status_stacks(entry, status_id)
 
 # Tick a status off one enemy, by instance. Returns what is left on it.
 func remove_enemy_status(instance: int, status_id: StringName, stacks: int = 1) -> int:
@@ -3076,7 +3189,7 @@ func remove_enemy_status(instance: int, status_id: StringName, stacks: int = 1) 
 		return 0
 	_add_status_to(entry, status_id, -absi(stacks))
 	loop_changed.emit()
-	return int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
+	return entry_status_stacks(entry, status_id)
 
 # The board entry holding `instance`, or {} when nothing does. The current game's
 # enemy needs no special case: it is on the board like every other body (§7.2).
@@ -3084,18 +3197,64 @@ func entry_for(instance: int) -> Dictionary:
 	var idx: int = _index_of(instance)
 	return stack[idx] if idx >= 0 else {}
 
-# The statuses on one enemy as [{status: StatusData, stacks: int}], catalog-ordered
-# so a card redrawn between frames doesn't reshuffle its pips.
+# The statuses on one enemy as [{status: StatusData, stacks: int, games: int}],
+# catalog-ordered so a card redrawn between frames doesn't reshuffle its pips.
+# `games` is 0 for a status that is not going anywhere and the soonest clock
+# otherwise, which is what the goal line and the pips quote (§5.3).
 func enemy_statuses(entry: Dictionary) -> Array:
-	var held: Dictionary = entry.get("statuses", {})
+	var held: Dictionary = entry_statuses_effective(entry)
 	var out: Array = []
 	if held.is_empty():
 		return out
 	for s in Data.all_statuses():
 		var sd: StatusData = s
 		if held.has(sd.id):
-			out.append({"status": sd, "stacks": int(held[sd.id])})
+			out.append({"status": sd, "stacks": int(held[sd.id]),
+				"games": entry_status_games_left(entry, sd.id)})
 	return out
+
+# PERMANENT + TIMED for one body — the same merge `GameState.effective_statuses`
+# does for the player, and for the same reason: a status can be half owned and half
+# borrowed, and every reader wants the total (docs/potions-design.md §5.4).
+func entry_statuses_effective(entry: Dictionary) -> Dictionary:
+	var timed: Array = entry.get("timed_statuses", [])
+	var held: Dictionary = entry.get("statuses", {})
+	if timed.is_empty():
+		return held
+	var out: Dictionary = held.duplicate()
+	for row in timed:
+		var id: StringName = StringName(row.get("id", &""))
+		if id != &"":
+			out[id] = entry_status_stacks(entry, id)
+	return out
+
+# One status's effective stacks on a body. The ceiling applies to what the timed
+# layer ADDS and never to the permanent count under it — the same rule, and the
+# same reason, as GameState.status_stacks.
+func entry_status_stacks(entry: Dictionary, status_id: StringName) -> int:
+	var permanent: int = int((entry.get("statuses", {}) as Dictionary).get(status_id, 0))
+	var total: int = permanent
+	for row in entry.get("timed_statuses", []):
+		if StringName(row.get("id", &"")) == status_id:
+			total += int(row.get("stacks", 0))
+	if total <= permanent:
+		return maxi(0, total)
+	var status: StatusData = Data.get_status(status_id)
+	return maxi(permanent, status.cap_stacks(total)) if status != null else total
+
+# Games until `status_id` leaves this body entirely: 0 when permanent stacks hold
+# it up (or nothing is timed), the soonest row's clock otherwise.
+func entry_status_games_left(entry: Dictionary, status_id: StringName) -> int:
+	if int((entry.get("statuses", {}) as Dictionary).get(status_id, 0)) > 0:
+		return 0
+	var soonest: int = 0
+	for row in entry.get("timed_statuses", []):
+		if StringName(row.get("id", &"")) != status_id:
+			continue
+		var games: int = int(row.get("games", 0))
+		if games > 0 and (soonest == 0 or games < soonest):
+			soonest = games
+	return soonest
 
 # Every clause that must ALSO be satisfied before `entry`'s goal counts as met:
 # the enemy's own clauses, then the player's (which are on every enemy at
@@ -3105,9 +3264,11 @@ func required_clauses_for(entry: Dictionary) -> Array:
 	var out: Array = []
 	for row in enemy_statuses(entry):
 		if (row["status"] as StatusData).is_clause(StatusData.ENEMY):
-			out.append({"status": row["status"], "stacks": row["stacks"], "source": "enemy"})
+			out.append({"status": row["status"], "stacks": row["stacks"],
+				"games": int(row.get("games", 0)), "source": "enemy"})
 	for row in GameState.status_clauses():
-		out.append({"status": row["status"], "stacks": row["stacks"], "source": "player"})
+		out.append({"status": row["status"], "stacks": row["stacks"],
+			"games": int(row.get("games", 0)), "source": "player"})
 	return out
 
 # The OPTIONAL bonus objectives hanging off `entry`. Claiming one pays its reward;
@@ -3176,7 +3337,11 @@ func goal_text_for(entry: Dictionary) -> String:
 		var sd: StatusData = clause["status"]
 		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
 			else StatusData.ENEMY
-		text += " and %s" % sd.clause_text(which, int(clause["stacks"]))
+		# A BORROWED clause says so, right where it is read (§5.3 of
+		# docs/potions-design.md). A player who cannot tell a thrown potion's clause
+		# from a permanent one will route around a tax that is about to lift.
+		text += " and %s%s" % [sd.clause_text(which, int(clause["stacks"])),
+			StatusData.clock_suffix(int(clause.get("games", 0)))]
 	for alt in alternatives_for(entry):
 		var asd: StatusData = alt["status"]
 		text += " or instead %s" % asd.alternative_text(
@@ -3201,7 +3366,7 @@ func goal_text_for(entry: Dictionary) -> String:
 
 # What every status on `entry` adds up to in combat.
 func enemy_combat(entry: Dictionary) -> Dictionary:
-	return StatusData.combat_totals(entry.get("statuses", {}), StatusData.ENEMY)
+	return StatusData.combat_totals(entry_statuses_effective(entry), StatusData.ENEMY)
 
 # What one body's hit lands for: its authored damage plus what its statuses say.
 # Ask for this rather than `entry["enemy"].damage` anywhere a hit is dealt or
