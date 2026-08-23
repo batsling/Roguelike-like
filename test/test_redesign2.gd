@@ -525,15 +525,58 @@ func test_transient_high_tier_damage() -> void:
 # --- Scrolls2.0 -----------------------------------------------------------
 
 func test_scrolls2_load() -> void:
-	assert_eq(Data.all_scrolls2().size(), 7, "7 scrolls2.0 rows -> 7 .tres")
+	assert_eq(Data.all_scrolls2().size(), 8, "8 scrolls2.0 rows -> 8 .tres")
 
 func test_identify_scroll_effect_and_preference() -> void:
 	var s: ScrollData = Data.get_scroll2(&"scroll_of_identify")
 	assert_not_null(s)
 	assert_eq(s.preference, "Positive")
 	assert_eq(s.effect.size(), 1)
-	assert_eq(String(s.effect[0].get("op", "")), "identify_scrolls")
+	assert_eq(String(s.effect[0].get("op", "")), "identify_loot")
 	assert_eq(String(s.effect[0].get("mode", "")), "choose")
+
+# --- Rarity, description and find rate came off the sheet ------------------
+
+func test_scrolls_carry_the_sheets_rarity() -> void:
+	# The generator never wrote this field, so every scroll on disk was Common and
+	# Data.roll_scroll's rarity weighting had nothing to weight — an inert roller
+	# that read as a working one.
+	assert_eq(Data.get_scroll2(&"scroll_of_remove_curse").rarity, "Rare")
+	assert_eq(Data.get_scroll2(&"scroll_of_amnesia").rarity, "Uncommon")
+	assert_eq(Data.get_scroll2(&"scroll_of_identify").rarity, "Common")
+	var rarities: Dictionary = {}
+	for s in Data.all_scrolls2():
+		rarities[s.rarity] = true
+	assert_gt(rarities.size(), 1, "the roster is not all one rung any more")
+
+func test_scrolls_carry_the_sheets_description() -> void:
+	assert_eq(Data.get_scroll2(&"scroll_of_identify").description,
+		"Choose 1 Loot to Identify.")
+
+func test_identify_carries_its_find_rate_off_the_notes_column() -> void:
+	# The sheet says "Has a +25% find rate" in prose; the generator reads the
+	# number out of it. If that note is ever reworded past the pattern, this fails
+	# rather than the weight silently reverting to 1.0.
+	assert_almost_eq(Data.get_scroll2(&"scroll_of_identify").find_weight, 1.25, 0.001)
+	assert_almost_eq(Data.get_scroll2(&"scroll_of_fire").find_weight, 1.0, 0.001,
+		"a scroll with no such note weighs the same as everything at its rarity")
+
+func test_the_find_rate_skews_the_draw_inside_its_own_rarity() -> void:
+	# Three Commons, one of them at 1.25 — so Identify should come up about a
+	# quarter more often than either of the others, and NEVER in place of a Rare.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260823
+	var seen: Dictionary = {}
+	for _i in range(3000):
+		var s: ScrollData = Data.roll_scroll(rng)
+		seen[s.id] = int(seen.get(s.id, 0)) + 1
+	var identify: int = int(seen.get(&"scroll_of_identify", 0))
+	for id in [&"scroll_of_aggravate_monsters", &"scroll_of_teleportation"]:
+		assert_gt(identify, int(seen.get(id, 0)),
+			"Identify outdraws the other Commons (%d vs %s at %d)"
+			% [identify, id, int(seen.get(id, 0))])
+	assert_lt(int(seen.get(&"scroll_of_remove_curse", 0)), identify,
+		"and a find rate never promotes a Common past the Rare ladder")
 
 func test_aggravate_scroll_is_negative_buff() -> void:
 	var s: ScrollData = Data.get_scroll2(&"scroll_of_aggravate_monsters")

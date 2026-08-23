@@ -158,6 +158,53 @@ func art_tex(entry: Dictionary, base: int) -> TextureRect:
 func glyph(entry: Dictionary) -> String:
 	return "💊" if String(entry.get("type", "")) == "pill" else "📜"
 
+# ===========================================================================
+# Knowledge — what the run has learned, across every alphabet at once
+# ===========================================================================
+
+# The identified type ids of one kind, or of every kind when `kind` is "loot".
+# Returned as a fresh Array, since the callers forget from what they are iterating.
+#
+# TWO ARMS TODAY, THREE WHEN POTIONS LAND. Every kind-blind verb — `forget loot`,
+# `identify_loot` — reads through the functions in this section rather than through
+# GameState's per-kind lists, so widening them to potions is a line in each of
+# these and nothing at any call site.
+func identified_types(kind: String = "loot") -> Array:
+	var out: Array = []
+	if kind == "scroll" or kind == "loot":
+		out.append_array(GameState.identified_scroll_types)
+	if kind == "pill" or kind == "loot":
+		out.append_array(GameState.identified_pill_types)
+	return out
+
+# Unidentify one type id, whichever alphabet it belongs to. A pill and a scroll
+# cannot share an id, so the id alone says which system owns it — which is what
+# lets Amnesia forget a mixed handful without being told what it drew.
+func unidentify(id: StringName) -> void:
+	if GameState.identified_scroll_types.has(id):
+		ScrollSystem.unidentify(id)
+	if GameState.identified_pill_types.has(id):
+		PillSystem.unidentify(id)
+
+# Forget `count` (-1 = all) random identified types of `kind`; returns how many.
+#
+# BOTH AMNESIAS COME THROUGH HERE. The pill's horse dose has authored
+# `forget loot all` since it shipped and the scroll's cell now says `forget loot 1`
+# (§10), so the two verbs mean the same thing and there is one implementation of
+# it. What each caller keeps is its own sentence about what just happened.
+#
+# The targets are snapshotted first, because forgetting is what removes them.
+func forget_identified(kind: String, count: int, rng: RandomNumberGenerator) -> int:
+	var pool: Array = identified_types(kind)
+	var n: int = pool.size() if count < 0 else mini(count, pool.size())
+	for _i in range(n):
+		if pool.is_empty():
+			break
+		var idx: int = rng.randi_range(0, pool.size() - 1)
+		unidentify(pool[idx])
+		pool.remove_at(idx)
+	return n
+
 # Is this piece of loot known? An unidentified piece is the gamble; a known one is
 # a decision. The window draws the two differently, and the drop modal has to say
 # which it is offering.
@@ -170,6 +217,56 @@ func is_identified(entry: Dictionary) -> bool:
 			return PillSystem.is_identified(id)
 	return false
 
+# Learn what a carried piece is, whichever alphabet it belongs to — Identify's
+# half of the pair above. Returns whether this was news.
+func identify(entry: Dictionary) -> bool:
+	var id := StringName(entry.get("id", ""))
+	match String(entry.get("type", "")):
+		"scroll":
+			return ScrollSystem.identify(id)
+		"pill":
+			return PillSystem.identify(id)
+	return false
+
+# One representative carried entry per unidentified TYPE in the pack — the
+# candidate list every "choose something to identify" verb offers (§10).
+#
+# PER TYPE, NOT PER SLOT, because identification is of the type: two capsules of
+# the same unknown colour are one thing to learn, and offering both would let a
+# player spend a Rare scroll's whole count on one fact. The first entry of each
+# type is the representative, since what the picker draws off it — its art, its
+# masked name — is a property of the type rather than of the slot.
+func carried_unidentified() -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for entry in GameState.loot_items:
+		if not (entry is Dictionary) or is_identified(entry):
+			continue
+		var key: String = "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		out.append(entry)
+	return out
+
+# How a candidate reads in an identify picker, where the player is choosing
+# between things they have not learned yet.
+#
+# THE TWO KINDS MASK DIFFERENTLY AND THE LABEL FOLLOWS THE MASK. Every
+# unidentified scroll wears the same art, so the picker has named them outright
+# since it shipped — with nothing else to tell two of them apart, a list of
+# identical rows is not a choice. A pill's mask IS its colour, which the art in the
+# row already shows and which the run protects everywhere else (spec §4.3: the
+# "Known this run" fold never writes a colour down), so naming one would hand back
+# the deduction the three spare capsules exist to prevent. Scrolls name themselves;
+# pills show their capsule and stay anonymous.
+func pick_label(entry: Dictionary) -> String:
+	if String(entry.get("type", "")) == "scroll":
+		var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
+		if s != null:
+			return s.display_name
+	return display_name(entry)
+
 # What the piece does, in one line, or the "you don't know yet" line when it is
 # unidentified. The loot window's hover and the drop modal both quote this.
 func description(entry: Dictionary) -> String:
@@ -180,7 +277,11 @@ func description(entry: Dictionary) -> String:
 				return ""
 			if not ScrollSystem.is_identified(s.id):
 				return "Unidentified — reading it is a gamble."
-			return _scroll_line(s)
+			# This file used to assemble the scroll's ops into words itself,
+			# alongside a second copy in the collection's catalog. Both go through
+			# ScrollSystem.scroll_text now, which prefers the sheet's authored
+			# Description and assembles only as a fallback.
+			return ScrollSystem.scroll_text(s)
 		"pill":
 			return PillSystem.description(entry)
 	return ""
@@ -221,27 +322,3 @@ func hover_card(entry: Dictionary) -> Dictionary:
 		"lines": [description(entry)],
 		"note": "" if known else "▸ Using it is how you learn what it is.",
 	}
-
-# A scroll's ops in words. The read modal grew its own version of this first; this
-# is the same list, phrased for a one-line hover rather than for a full card.
-func _scroll_line(scroll: ScrollData) -> String:
-	var parts: Array = []
-	for e in scroll.effect:
-		if not (e is Dictionary):
-			continue
-		match String(e.get("op", "")):
-			"apply_status":
-				parts.append(ScrollSystem.status_effect_text(e))
-			"apply_tile":
-				parts.append(ScrollSystem.tile_effect_text(e))
-			"forget":
-				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
-			"spawn_enemy":
-				parts.append("Spawn a random enemy that follows you.")
-			"identify_scrolls":
-				parts.append("Choose %d scroll(s) to identify." % int(e.get("count", 1)))
-			"stun_enemies":
-				parts.append("Choose %d following enemy to Stun." % int(e.get("count", 1)))
-			"teleport":
-				parts.append("Teleport ~the same distance from the Amulet.")
-	return " ".join(parts)

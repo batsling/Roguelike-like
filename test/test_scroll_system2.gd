@@ -8,7 +8,7 @@ extends GutTest
 const SCROLL_IDS := [
 	"scroll_of_aggravate_monsters", "scroll_of_amnesia", "scroll_of_create_monster",
 	"scroll_of_identify", "scroll_of_scare_monster", "scroll_of_teleportation",
-	"scroll_of_fire",
+	"scroll_of_fire", "scroll_of_remove_curse",
 ]
 
 # Choose a game and take its ESCORT straight back off the board.
@@ -136,7 +136,7 @@ func test_identify_returns_a_choice_request() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_identify")
 	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": _rng()})
 	assert_eq(out["requests"].size(), 1, "Identify surfaces a choose request")
-	assert_eq(String(out["requests"][0]["kind"]), "identify_scrolls")
+	assert_eq(String(out["requests"][0]["kind"]), "identify_loot")
 
 func test_scare_monster_returns_a_stun_request() -> void:
 	GameLoop2.spawn_to_stack(_enemy(2))
@@ -260,14 +260,15 @@ func test_identifying_says_what_you_learned() -> void:
 	GameState.loot_items.clear()
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	ScrollSystem.unidentify(&"scroll_of_fire")
-	var said: String = ScrollSystem.identify_scrolls_chosen([&"scroll_of_fire"])
+	var said: String = ScrollSystem.identify_loot_chosen(
+		[{"type": "scroll", "id": &"scroll_of_fire"}])
 	assert_true(ScrollSystem.is_identified(&"scroll_of_fire"), "it identifies it")
 	assert_true(said.contains(ScrollSystem.display_name(Data.get_scroll(&"scroll_of_fire"))),
 		"and NAMES it — a scroll whose entire subject is 'what is this' cannot "
 		+ "answer with a count: %s" % said)
 
 func test_identifying_nothing_says_so() -> void:
-	assert_ne(ScrollSystem.identify_scrolls_chosen([]), "",
+	assert_ne(ScrollSystem.identify_loot_chosen([]), "",
 		"confirming with nothing picked is still an outcome")
 
 func test_a_random_identify_names_what_it_revealed() -> void:
@@ -275,7 +276,7 @@ func test_a_random_identify_names_what_it_revealed() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	ScrollSystem.unidentify(&"scroll_of_fire")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		_scroll_with([{"op": "identify_scrolls", "mode": "random", "count": 1}]))
+		_scroll_with([{"op": "identify_loot", "mode": "random", "count": 1}]))
 	assert_true(str(out["logs"]).contains("Scroll of Fire"),
 		"the random mode used to reveal something and never say what: %s" % str(out["logs"]))
 
@@ -309,6 +310,180 @@ func test_every_scroll_says_something_about_itself() -> void:
 		var said: bool = not (out["logs"] as Array).is_empty()
 		# A request is what a scroll has to say for itself at this layer: the choice
 		# has not been made yet, and its line comes back from the fulfilment (see
-		# identify_scrolls_chosen / stun_enemies_chosen / Overworld2.loot_teleport).
+		# identify_loot_chosen / stun_enemies_chosen / Overworld2.loot_teleport).
 		var asked: bool = not (out["requests"] as Array).is_empty()
 		assert_true(said or asked, "%s reports what it did" % scroll.display_name)
+
+# ===========================================================================
+# The step-2 scroll deltas (docs/potions-design.md §10)
+# ===========================================================================
+
+# --- Amnesia forgets across every alphabet ---------------------------------
+
+func test_amnesia_forgets_loot_and_not_just_scrolls() -> void:
+	# The cell said `forget scroll 1` while the Description beside it said
+	# "Identified Loot"; a run that had learned one pill and one scroll could have
+	# the scroll taken and never the pill. Both are in the pool now.
+	PillSystem.ensure_colors()
+	ScrollSystem.identify(&"scroll_of_fire")
+	PillSystem.identify(&"telepills")
+	# `all`, so which two of the three known types the draw happens to take is not
+	# what is under test — that the pill is reachable at all is.
+	var out: Dictionary = ScrollSystem.read_scroll(
+		_scroll_with([{"op": "forget", "kind": "loot", "count": -1}]), {"rng": _rng()})
+	assert_false(ScrollSystem.is_identified(&"scroll_of_fire"), "the scroll is forgotten")
+	assert_false(PillSystem.is_identified(&"telepills"), "and so is the pill")
+	assert_false((out["logs"] as Array).is_empty(), "and it says so")
+
+func test_amnesia_can_still_be_narrowed_to_one_kind() -> void:
+	# `kind` is not decoration: a cell that asks for scrolls gets scrolls. Nothing
+	# in the roster authors that today, and the verb keeps meaning it.
+	PillSystem.ensure_colors()
+	ScrollSystem.identify(&"scroll_of_fire")
+	PillSystem.identify(&"telepills")
+	ScrollSystem.read_scroll(
+		_scroll_with([{"op": "forget", "kind": "scroll", "count": 5}]), {"rng": _rng()})
+	assert_false(ScrollSystem.is_identified(&"scroll_of_fire"), "the scroll goes")
+	assert_true(PillSystem.is_identified(&"telepills"), "the pill is not touched")
+
+func test_a_forget_of_one_forgets_ONE_thing() -> void:
+	# It used to run the count against each alphabet in turn, so "forget 1" forgot
+	# one scroll AND one pill — two things, from a scroll that promises one.
+	PillSystem.ensure_colors()
+	ScrollSystem.identify(&"scroll_of_fire")
+	PillSystem.identify(&"telepills")
+	ScrollSystem.read_scroll(
+		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": _rng()})
+	var still_known: int = GameState.identified_scroll_types.size() \
+		+ GameState.identified_pill_types.size()
+	# Reading the synthetic scroll identifies it too, so the run knows its own id
+	# plus whichever of the two survived.
+	assert_eq(still_known, 2, "exactly one of the two was forgotten")
+
+func test_an_amnesia_read_by_a_run_that_knows_nothing_forgets_itself() -> void:
+	# There is no such thing as reading one with nothing to forget: read_scroll
+	# identifies the scroll BEFORE it resolves it (learn-by-use), so the run always
+	# knows at least the thing in its hand. The pills' horse Amnesia documents the
+	# same shape — the dose that erases the run's knowledge erases its own name.
+	assert_true(GameState.identified_scroll_types.is_empty(), "a fresh run knows nothing")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": _rng()})
+	assert_true(GameState.identified_scroll_types.is_empty(),
+		"learned and then forgotten, in that order")
+	assert_false((out["logs"] as Array).is_empty(), "and it reports the one it took")
+
+# --- Identify covers the whole pack ----------------------------------------
+
+func test_identify_offers_pills_as_well_as_scrolls() -> void:
+	PillSystem.ensure_colors()
+	GameState.add_scroll_loot(&"scroll_of_teleportation")
+	GameState.add_pill_loot(&"telepills")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+	assert_eq(out["requests"].size(), 1)
+	var kinds: Array = []
+	for entry in out["requests"][0]["candidates"]:
+		kinds.append(String(entry.get("type", "")))
+	assert_true(kinds.has("scroll"), "the scroll is a candidate: %s" % str(kinds))
+	assert_true(kinds.has("pill"), "and so is the pill — with three alphabets in "
+		+ "one pack a scroll-only Identify is dead weight: %s" % str(kinds))
+
+func test_identify_lists_a_type_once_however_many_are_carried() -> void:
+	PillSystem.ensure_colors()
+	GameState.add_pill_loot(&"telepills")
+	GameState.add_pill_loot(&"telepills")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+	assert_eq((out["requests"][0]["candidates"] as Array).size(), 1,
+		"identification is of the TYPE — two capsules are one thing to learn")
+
+func test_identify_skips_what_is_already_known() -> void:
+	PillSystem.ensure_colors()
+	GameState.add_pill_loot(&"telepills")
+	PillSystem.identify(&"telepills")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+	assert_true((out["requests"] as Array).is_empty(), "nothing left to ask about")
+	assert_true(str(out["logs"]).contains("nothing unidentified"),
+		"and it fizzles in words: %s" % str(out["logs"]))
+
+func test_identifying_a_chosen_pill_learns_the_colour() -> void:
+	PillSystem.ensure_colors()
+	GameState.add_pill_loot(&"telepills")
+	var entry: Dictionary = GameState.loot_items[0]
+	var said: String = ScrollSystem.identify_loot_chosen([entry])
+	assert_true(PillSystem.is_identified(&"telepills"), "the pill is learned")
+	assert_true(said.contains("Telepills"),
+		"and NAMED, after the identify rather than before it: %s" % said)
+
+func test_a_random_identify_can_land_on_a_pill() -> void:
+	PillSystem.ensure_colors()
+	GameState.add_pill_loot(&"telepills")
+	ScrollSystem.read_scroll(
+		_scroll_with([{"op": "identify_loot", "mode": "random", "count": 1}]), {"rng": _rng()})
+	assert_true(PillSystem.is_identified(&"telepills"))
+
+# --- Remove Curse ----------------------------------------------------------
+
+func test_remove_curse_lifts_the_permanent_row() -> void:
+	# Curse of the Bell's Timer is N/A, so it is the one row on the list that never
+	# clears itself — which is exactly what a Rare scroll should be able to answer.
+	GameState.add_curse_goal(&"curse_of_the_bell")
+	assert_eq(GameState.curse_goals.size(), 1)
+	var said: String = ScrollSystem.remove_curse_chosen([0])
+	assert_eq(GameState.curse_goals.size(), 0, "the permanent curse comes off")
+	assert_true(said.contains("Curse of the Bell"), "and is named: %s" % said)
+
+func test_remove_curse_asks_which_one() -> void:
+	GameState.add_curse_goal(&"injury")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": _rng()})
+	assert_eq(out["requests"].size(), 1)
+	assert_eq(String(out["requests"][0]["kind"]), "remove_curse")
+
+func test_remove_curse_with_nothing_held_fizzles() -> void:
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": _rng()})
+	assert_true((out["requests"] as Array).is_empty(), "no picker over an empty list")
+	assert_true(str(out["logs"]).contains("Nothing is weighing on you"),
+		"it fizzles in words, and the scroll is identified either way: %s" % str(out["logs"]))
+	assert_true(ScrollSystem.is_identified(&"scroll_of_remove_curse"))
+
+func test_removing_several_curses_takes_the_ones_that_were_picked() -> void:
+	# Descending removal, or every index above the first one lifted points at the
+	# wrong row — which the player would read as the scroll taking the wrong curse.
+	GameState.add_curse_goal(&"curse_of_the_bell")
+	GameState.add_curse_goal(&"injury")
+	GameState.add_curse_goal(&"poor_sleep")
+	ScrollSystem.remove_curse_chosen([0, 2])
+	assert_eq(GameState.curse_goals.size(), 1)
+	assert_eq(StringName(GameState.curse_goals[0].get("curse", &"")), &"injury",
+		"the middle row is the one left standing")
+
+func test_remove_curse_all_clears_the_list() -> void:
+	GameState.add_curse_goal(&"injury")
+	GameState.add_curse_goal(&"poor_sleep")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		_scroll_with([{"op": "remove_curse", "mode": "all", "count": 1}]), {"rng": _rng()})
+	assert_eq(GameState.curse_goals.size(), 0)
+	assert_false((out["logs"] as Array).is_empty())
+
+func test_remove_curse_goal_refuses_a_stale_index() -> void:
+	assert_eq(GameState.remove_curse_goal(0), {}, "an empty list removes nothing")
+	GameState.add_curse_goal(&"injury")
+	assert_eq(GameState.remove_curse_goal(9), {}, "and neither does an index past the end")
+	assert_eq(GameState.curse_goals.size(), 1)
+
+# --- Authored words beat generated ones ------------------------------------
+
+func test_the_sheets_description_is_what_a_scroll_says() -> void:
+	var s: ScrollData = Data.get_scroll(&"scroll_of_amnesia")
+	assert_eq(ScrollSystem.scroll_text(s), s.description,
+		"the authored sentence wins — its op can only name one kind, the sentence "
+		+ "names the category")
+	assert_ne(s.description, "", "and Amnesia has one")
+
+func test_a_scroll_with_no_description_still_describes_itself() -> void:
+	var s: ScrollData = _scroll_with([{"op": "stun_enemies", "mode": "choose", "count": 1}])
+	assert_true(ScrollSystem.scroll_text(s).contains("Stun"),
+		"the assembled line is the floor: %s" % ScrollSystem.scroll_text(s))

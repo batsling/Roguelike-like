@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ScrollData" load_steps=2 format=3 uid="uid://scroll2_scroll_of_remove_curse"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollData.gd" id="1_scroll"]
+
+[resource]
+script = ExtResource("1_scroll")
+id = &"scroll_of_remove_curse"
+display_name = "Scroll of Remove Curse"
+reference = "Rogue"
+rarity = "Rare"
+preference = "Positive"
+description = "Remove 1 target Curse"
+file = ""
+find_weight = 1.0
+effect = [{"op": "remove_curse", "mode": "choose", "count": 1}]

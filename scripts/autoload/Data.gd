@@ -271,7 +271,31 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _pick_by_find_weight(bucket, r)
+
+# One of `bucket`, drawn by find_weight (potions-design §10, decision #20).
+#
+# THE BUCKET IS ALREADY CHOSEN when this runs, which is the whole point: a find
+# rate decides which Common you met, never whether you met a Common. Identify's
+# 1.25 makes it 1.25 draws to every other Common's 1 — noticeably the one you see
+# most, and still unable to turn up in place of a Rare. Every scroll at 1.0 gives
+# exactly the uniform pick this replaced.
+func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollData:
+	var total: float = 0.0
+	for s: ScrollData in bucket:
+		total += maxf(0.0, s.find_weight)
+	if total <= 0.0:
+		# Every candidate authored a weight of 0 — a sheet mistake rather than a
+		# roster with nothing in it, so fall back to the uniform draw.
+		return bucket[rng.randi_range(0, bucket.size() - 1)]
+	var roll: float = rng.randf() * total
+	for s: ScrollData in bucket:
+		roll -= maxf(0.0, s.find_weight)
+		if roll < 0.0:
+			return s
+	# Float error only — the running total cannot fall short of `total` by more
+	# than a rounding step, so this is the last candidate rather than a fallback.
+	return bucket[bucket.size() - 1]
 
 func get_encounter(id: StringName) -> EncounterData:
 	return _encounters.get(id)

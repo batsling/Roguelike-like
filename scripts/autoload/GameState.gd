@@ -1950,6 +1950,29 @@ func trigger_curse_goal(index: int) -> Dictionary:
 	event_goals_changed.emit()
 	return entry
 
+# Lift a curse off the run early — Scroll of Remove Curse (potions-design §10.1).
+# Returns the row that came off, or {} when the index is stale.
+#
+# THE LIST HAD NO WAY OFF IT BUT THE CLOCK. add / has / trigger / tick were the
+# whole API, and `trigger` is the opposite of this one: it pays the bill and leaves
+# the curse standing, because meeting a curse's condition is not how you are rid of
+# it. Removal is a thing an effect does TO the list, and nothing could do it.
+#
+# Its best target is the one row that never leaves on its own: Curse of the Bell's
+# Timer is N/A, which add_curse_goal stores as games_left = -1. Everything else
+# clears itself in three games, and a scroll that hurries that along is a fair Rare;
+# a scroll that can lift the permanent one is the reason it exists.
+#
+# NOT remove_active_curse (above) — that is the shelved curse CARD system and it
+# operates on a different list. Same word, different thing (CurseData2).
+func remove_curse_goal(index: int) -> Dictionary:
+	if index < 0 or index >= curse_goals.size():
+		return {}
+	var entry: Dictionary = curse_goals[index]
+	curse_goals.remove_at(index)
+	event_goals_changed.emit()
+	return entry
+
 # One game has been played. Ticks both lists and drops whatever ran out.
 # Returns the EXPIRED event goals so the caller can print their "missed" line —
 # expired curses need no announcement, since nothing happened.

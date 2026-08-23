@@ -11,6 +11,67 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every scroll in the game was Common, and one verb at a time learned to mean
+  loot.**
+
+  Step 2 of `docs/potions-design.md` §11 — the scroll deltas potions would
+  otherwise inherit in their broken state, done before the potions rather than
+  alongside them.
+
+  **The roller was reading a field nobody wrote.** `ScrollData.rarity` has existed
+  since the scrolls were re-authored, `Data.roll_scroll` has weighted by
+  `rarity_index()` for just as long, and `generate_scroll2_tres.py` never carried
+  the sheet's Rarity column onto the resource — so all seven scrolls landed on disk
+  as Common and the weighting had nothing to weight. It reads it now, and the
+  roster is 3 Common / 4 Uncommon / 1 Rare. The generator also carries the sheet's
+  **Description**, and an authored sentence beats the one the UI assembles from the
+  ops: Amnesia's op can only name one kind, and only its sentence knows that
+  *"Identified Loot"* is the category the player recognises. The pack's hover and
+  the collection's cell had a copy of that assembly each, one wording adrift; both
+  go through `ScrollSystem.scroll_text` now, which prefers the authored line and
+  assembles only as a fallback.
+
+  **Scroll of Remove Curse ships with an effect.** It was added to the sheet as a
+  row with a Description and a blank Effect, which is why no `.tres` for it had
+  ever been generated. Its target is the one thing on the checklist that never
+  clears itself: `curse_goals` had `add`, `has`, `trigger` and `tick` and no way
+  off the list early, and `trigger` is the opposite of removal — meeting a curse's
+  condition pays its bill and leaves it standing. `GameState.remove_curse_goal`
+  takes a row off, the op offers a picker listing each curse by its condition and
+  how long it has left, and Curse of the Bell — Timer `N/A`, `games_left` of −1 —
+  is the row a Rare scroll exists to answer. (These are curse **goals**, the live
+  checklist rows, not the shelved curse **cards**; `remove_active_curse` is a
+  different list with the same word.)
+
+  **Amnesia forgets loot and Identify learns it.** Two verbs that had grown past
+  their implementations in the same direction: Amnesia's cell said
+  `forget scroll 1` under a Description promising Identified Loot, and Identify
+  offered carried scrolls under one promising Loot — dead weight two thirds of the
+  time, in a nine-slot pack that will soon hold three alphabets. Both are
+  kind-blind now, through `LootSystem`, which is the layer that knows there is more
+  than one alphabet: `identified_types` / `unidentify` / `forget_identified` /
+  `carried_unidentified` are the shared half, and the pills' horse Amnesia — which
+  has authored `forget loot all` since it shipped and carried its own
+  implementation of it — drops onto the same call. One correction fell out of the
+  merge: a `loot` forget used to run its count against *each* alphabet in turn, so
+  "forget 1" forgot one scroll **and** one pill. It forgets one thing now, drawn
+  from everything known. Identify's candidates are entries rather than scroll ids,
+  deduped per **type** — two capsules of the same unknown colour are one fact to
+  learn — and the picker names a scroll while leaving a pill as its capsule, since
+  a pill's mask *is* its colour and the run protects that everywhere else.
+  `identify_scrolls` still parses, to the wide op.
+
+  **A find rate that cannot break the rarity ladder.** Identify's sheet note says
+  *"Has a +25% find rate"*, which nothing implemented. It is a `find_weight` float
+  read out of that prose, applied as a weight **inside** the bucket the 75/20/5
+  roll already chose — so Identify is 1.25 draws to every other Common's 1 and can
+  never turn up in place of a Rare. A flat "25% of scroll drops are Identify" would
+  have made rarity mean something different for one scroll.
+
+  `test_scroll_system2.gd` grew 17 tests over the four verbs and
+  `test_redesign2.gd` four over the generator's output, including the one that
+  pins the find rate to the prose it is parsed from.
+
 - **Statuses can be borrowed: the first thing in this build with a clock on it.**
 
   Every status until now was a thing you had until you worked it off. Potions

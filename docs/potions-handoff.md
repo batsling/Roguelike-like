@@ -2,7 +2,7 @@
 
 Written at the end of the session that produced
 [`potions-design.md`](potions-design.md) and built step 1 of its §11, and
-**refreshed at the top of the session that started step 2**. **That doc is the
+**rewritten at the end of the session that built step 2**. **That doc is the
 spec; this one is only how to pick the work back up.** Everything about *what*
 potions are and *why* lives there — nothing in here restates it, so if the two ever
 disagree, the plan is right and this file is stale.
@@ -17,12 +17,18 @@ disagree, the plan is right and this file is stale.
   The branch it was built on, `claude/potions-loot-design-hlpttv`, is spent; the
   earlier revision of this file told you to check it out, and that instruction is
   now wrong.
-- **Step 2 is on `claude/potions-handoff-docs-9mjklk`**, branched off `16ea81d`.
-- **A fresh session clones `main` and already has everything step 1 built**, so
-  there is nothing to check out before reading the plan. Start with
-  `docs/potions-design.md` §1 (the 30 locked decisions), §9.1 (the reuse map — the
-  list of things that already exist and should not be rebuilt) and §11 (the build
-  order).
+- **Step 2 is on `claude/potions-handoff-docs-9mjklk`**, branched off `16ea81d`,
+  pushed. No PR — none was asked for. If it has landed on `main` by the time you
+  read this, a fresh clone has it and there is nothing to check out.
+- **Suite:** green. `Scripts 32, Tests 1570, Passing 1570, Orphans 3` in ~510s —
+  1549 before step 2, and 21 tests added by it. (The ASSERT count moves between
+  runs — 32539 and 32650 on two green runs of the same tree — because several
+  tests walk a random graph. The test count is the number that should be stable.)
+  The 3 orphans and the leaked-RID warnings at the end of a run are pre-existing
+  UI-test noise; a **Risky / "Did not assert" is not** (see CLAUDE.md).
+- Read `docs/potions-design.md` §1 (the 30 locked decisions), §9.1 (the reuse map —
+  the list of things that already exist and should not be rebuilt) and §11 (the
+  build order).
 
 ## 2. What is already built (§11 step 1)
 
@@ -59,38 +65,73 @@ Where the pieces sit, for the session that has to extend them:
 **Nothing applies one yet.** That is deliberate: the layer was built and tested
 ahead of the content so a potion bug and a clock bug can never be the same bug.
 
-## 3. What is next
+## 3. What step 2 built, and the three things it decided
 
-**§11 step 2 — the scroll deltas.** All of it is specified in §10 and §10.1 of the
-plan; the order that works is:
+**The scroll deltas** (§10, §10.1): `rarity` and `description` off the sheet,
+`find_weight`, the kind-blind `forget`, `identify_loot`, and `remove_curse` with
+its picker. The narrative is the CHANGELOG entry opening *"Every scroll in the game
+was Common"*; the tests are 17 in `test_scroll_system2.gd` and 4 in
+`test_redesign2.gd`. What matters to step 3 is where it put things:
 
-1. `tools/generate_scroll2_tres.py` writes `rarity` from the sheet's column, and
-   carries `Description` onto a new `ScrollData.description`. Regenerate
-   `data/scrolls2.0/`. **This is the fix with the most reach in the whole step:**
-   `Data.roll_scroll` has been rarity-weighting off a field the generator never
-   wrote, so every scroll in the game is currently Common.
-2. `forget` goes kind-blind (Amnesia forgets any identified loot).
-3. `identify_scrolls` → `identify_loot`, offering scrolls, pills and potions; keep
-   the old verb parsing as an alias.
-4. `find_weight` (Identify's "+25% find rate") as a weight *inside* the rolled
-   rarity bucket.
-5. `remove_curse choose|random|all N` + `GameState.remove_curse_goal(index)` + a
-   picker in `LootUseModal`. Read §10.1 first — curse GOALS are live content and
-   are not the shelved curse CARDS, and `remove_active_curse` is the wrong
-   function.
+| Piece | Where |
+|---|---|
+| Kind-blind knowledge | `LootSystem.identified_types` / `unidentify` / `forget_identified` / `carried_unidentified` / `identify` / `pick_label` |
+| The scroll's words | `ScrollSystem.scroll_text` (authored Description first, `assembled_text` as the fallback, `op_text` per op) |
+| Remove Curse | `ScrollSystem._remove_curse` + `GameState.remove_curse_goal(index)` + `LootUseModal._pick_remove_curse` |
+| The weighted draw | `Data._pick_by_find_weight`, inside `roll_scroll`'s rarity bucket |
+| The sheet edit | `tools/_scrolls2_step2_effects.py` (three Effect cells, one one-shot) |
 
-Steps 3–8 then run as §11 lists them. Step 3 is the big one — the `PotionData`
-resource, the generator, and **writing §7.3's 30 effect cells into the workbook**
-(decision #30; see §4 below for how).
+Three decisions the plan left open, settled by the build:
 
-## 4. The workbook, as verified on `main`
+- **The kind-blind half lives on `LootSystem`, not on either consumable.** It is
+  the layer that already knew there was more than one alphabet. `PotionSystem` is
+  therefore a **one-line** addition to `identified_types` and `unidentify` in
+  step 4 — every kind-blind verb widens at once and no call site changes.
+- **`find_weight` is parsed out of the Notes column's PROSE** (`"+25% find rate"`
+  → `1.25`) rather than given a column of its own, because it is one annotation on
+  one row. `PotionData` should do the same. A test pins the parsed value, so a
+  reworded note fails rather than silently reverting the weight to 1.0.
+- **Identify's candidates are carried ENTRIES, deduped per type**, not ids — a
+  pill's name depends on its entry, and an unknown potion's will too. The picker
+  names a scroll outright (they all wear one art, so an unnamed list is not a
+  choice) and leaves a pill as its capsule (its mask IS the colour, which the run
+  protects everywhere else). **A potion is the pill case**: name the colour, per
+  decision #18, and never the potion.
 
-- **Both edits survived the merge, and this was checked cell by cell rather than
+## 4. What is next
+
+**§11 step 3 — the data.** `PotionData`, `tools/generate_potion2_tres.py`,
+`Data` wiring, the editor rescan, and **writing §7.3's 30 effect cells into the
+workbook** (decision #30; §5 and §7 below are how). Then step 4 is `PotionSystem` with
+quaff only, at which point a potion is playable as a pill with better art, and
+step 5 is where the new gameplay actually is.
+
+Two things now true that the plan was written before:
+
+- `data/scrolls2.0/` holds **8** rows, not 7, and they are **3 Common / 4 Uncommon
+  / 1 Rare**. A test asserts the count; regenerating after a sheet edit that adds a
+  row means updating it.
+- `ScrollData` is the template `PotionData` copies — it now carries `rarity`,
+  `description` and `find_weight` as well as `rarity_index()` and `art_file()`,
+  and §7.1's list of fields is one draft behind it.
+
+## 5. The workbook, as verified
+
+- **The uploads survived the merge, and this was checked part by part rather than
   assumed.** A new `Roguelikes.xlsx` was uploaded twice while the design session was
   running (`1ffbc37`, `76fdec9`); the second added `scrolls2.0`'s `Notes` column
   header and Identify's *"Has a +25% find rate"* cell, which is the note §10 turns
   into `find_weight`. #204's squash merge landed the Uselessness surgery **on top of**
-  that upload rather than reverting it. Nothing was lost.
+  that upload rather than reverting it: between `76fdec9` and `16ea81d` the only
+  parts that changed are `potions2.0`'s two, so the uploaded `scrolls2.0` came
+  through untouched.
+- **Step 2 made the third edit**, `tools/_scrolls2_step2_effects.py`: three
+  `scrolls2.0` Effect cells — Amnesia's `forget loot 1`, Identify's
+  `identify_loot choose 1`, and Remove Curse's `remove_curse choose 1`, which had
+  been a row with a Description and no Effect since it was added. Three cells in
+  ONE one-shot rather than three, because each write is a chance for two versions
+  of a binary blob to exist at once. It changed exactly `sheet9.xml` +
+  `table9.xml`, by the check below.
 - **`potions2.0`'s two effect columns are still empty for all 15 rows** — column `E`
   (`On Player Effect`) and column `G` (`On Tile Effect`). §7.3 of the plan is still
   what goes into them, and writing them is still the build session's job
@@ -127,9 +168,11 @@ resource, the generator, and **writing §7.3's 30 effect cells into the workbook
   changed elsewhere does not merge — one version wins. It happened to be safe this
   time because the two edits touched different sheets. If it does get edited in the
   meantime, say so at the start of the session and it will re-read the sheet first
-  rather than writing over it.
+  rather than writing over it. It was safe this time because the surgery was run
+  against the uploaded copy rather than against a stale one — not because the two
+  edits could not have collided. They were on the same sheet.
 
-## 5. Working notes that cost time
+## 6. Working notes that cost time
 
 - **The GUT filter flag.** `-gtest=res://test/foo.gd` does **not** filter; it runs
   all 32 scripts. What works:
@@ -137,7 +180,8 @@ resource, the generator, and **writing §7.3's 30 effect cells into the workbook
   godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://test -gprefix=test_timed -gexit
   ```
   Iterate with that (sub-second), then run the whole suite before committing.
-- **A full run is ~6.5 minutes** and buffers its output until it exits, so a
+- **A full run is ~9 minutes**, not the ~5 the older notes said — measured at 522s
+  on 1549 tests and 516s on 1570. It buffers its output until it exits, so a
   backgrounded run shows an empty log the whole time it is working. Redirect to a
   file and wait for it rather than assuming it has died.
 - **A fresh clone has no `.godot/`**, so the first headless run pays for an import
@@ -150,22 +194,25 @@ resource, the generator, and **writing §7.3's 30 effect cells into the workbook
   `class_name`-shadows-a-native-class check CLAUDE.md describes.
 - **Never openpyxl-save the workbook** — it silently drops the charts. Use
   `tools/_xlsx_surgery.py` and keep the edit as a one-shot beside the others;
-  `_potions2_uselessness_uncommon.py` is the template. Verify afterwards with the
-  part-hash check in §4.
+  `_scrolls2_step2_effects.py` is the template. Verify afterwards with the
+  part-hash check in §5.
 
-## 6. Two things to know before step 3
+## 7. Two things to know before step 3
 
 - **The 30 sheet cells are the next build session's to write** (decision #30),
   through `_xlsx_surgery`, from §7.3 of the plan. Follow
-  `_potions2_uselessness_uncommon.py`: one one-shot, kept in `tools/`, and the
-  part-hash check afterwards.
+  `_scrolls2_step2_effects.py`, which is the closer template — it writes several
+  cells in one pass, guards each against the value it EXPECTS to find, and refuses
+  the whole edit if the sheet has moved underneath it. One one-shot, kept in
+  `tools/`, and the part-hash check afterwards. Regenerate in the same pass, or the
+  sheet and `data/` disagree until somebody notices.
 - **The four open questions in §12** are all recommendations already written down,
   not blockers: throwing mid-report, Fysh Oil under Sacred Bark, whether Bark's
   area-doubling leaves a `cell` alone, and Lucky Foot's reach. They are better
   answered by playing the thing than by asking again — the `verify` skill
   (`.claude/skills/verify/`) is how to get it on screen.
 
-## 7. One correction worth carrying forward
+## 8. One correction worth carrying forward
 
 The design said to cap a status's stacks on read. That is wrong and the suite
 caught it: the authored ceiling (Burn's `Max: 3`) is a rule about the way **up**,

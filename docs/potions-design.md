@@ -9,13 +9,15 @@ Content source: the **`potions2.0`** sheet of `tools/Roguelikes.xlsx` (15 rows) 
 the art in `images2.0/potions_identified/` (9 bottles) +
 `images2.0/potions_unidentified/` (37 coloured vials).
 
-Status: **decisions locked; step 1 of §11 is BUILT.** The timed-status layer, its
-expiry, its wording and the shield claw-back shipped (§5, and the CHANGELOG entry
-that opens with *"Statuses can be borrowed"*), with `test/test_timed_statuses.gd`
-covering them — 26 tests, and the full suite green at 1549. Nothing applies a timed
-status yet: potions are the content that will. Everything from §11 step 2 onward is
-still unbuilt, and a surprising amount of the plumbing for it is already there —
-§9.1 is the list.
+Status: **decisions locked; steps 1 and 2 of §11 are BUILT.** The timed-status
+layer, its expiry, its wording and the shield claw-back shipped (§5, and the
+CHANGELOG entry that opens with *"Statuses can be borrowed"*), with
+`test/test_timed_statuses.gd` covering them — 26 tests. The scroll deltas (§10,
+§10.1) followed: the generator's rarity fix, `description`, `find_weight`, the
+kind-blind `forget`, `identify_loot` and `remove_curse` with its picker. Nothing
+applies a timed status yet: potions are the content that will. Everything from §11
+step 3 onward is still unbuilt, and a surprising amount of the plumbing for it is
+already there — §9.1 is the list.
 
 Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
 the branch, the state of the suite, the next step in order, and the repo-specific
@@ -853,6 +855,12 @@ are actually about potions rather than about loot:
 `scrolls2.0` changed under the generator, and the changes matter to potions because
 both kinds go through the same rarity roller and the same identification plumbing.
 
+> **BUILT** (§11 step 2). The table below is kept in the tense it was written in —
+> "What is true now" describes the state this step found, not the state it left.
+> All six rows are done; the CHANGELOG entry opening *"Every scroll in the game was
+> Common"* is what actually landed, and where it and this table disagree, it is the
+> one describing the build.
+
 | Delta | What is true now | What to do |
 |---|---|---|
 | **`Rarity` column added** | `ScrollData.rarity` exists and `Data.roll_scroll` weights by `rarity_index()` — but `generate_scroll2_tres.py` never writes the field, so **every scroll is Common and the weighting is inert**. | Write `rarity` from the column. One line in the generator, then regenerate. This is the fix that makes the roller do what its comment says. |
@@ -911,10 +919,17 @@ scroll is identified either way (§4.5).
    that the design had not: the authored ceiling has to apply to what the layer
    ADDS and not to the permanent count under it, or a read clamps stacks that
    §13.1 is careful to let tick down.
-2. **The scroll deltas** (§10) — the generator's rarity fix, `description`, the
+2. ~~**The scroll deltas** (§10) — the generator's rarity fix, `description`, the
    widened `forget` and `identify`, `find_weight`, and `remove_curse` with its
-   picker (§10.1). Potions are then born into a roller and a picker that already
-   work for three kinds.
+   picker (§10.1).~~ **DONE.** Potions are born into a roller and a picker that
+   already work for more than one kind. Three things the build settled that the
+   plan had left open: the kind-blind half of `forget` and `identify` lives on
+   **`LootSystem`** (`identified_types`, `unidentify`, `forget_identified`,
+   `carried_unidentified`), which is where the potion arm goes in step 4 — one
+   line, and no call site changes; `find_weight` is read out of the **Notes
+   column's prose** rather than from a column of its own, so `PotionData` gets the
+   same treatment; and Identify's candidates are **entries, deduped per type**,
+   which is what makes an unknown potion offerable at all.
 3. **Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
    `Data` wiring, the editor rescan.
 4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
