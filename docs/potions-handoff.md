@@ -10,8 +10,8 @@ two ever disagree, the plan is right and this file is stale.
 
 ## 1. Where things are
 
-- **Branch:** `claude/potions-loot-design-hlpttv`, 8 commits, pushed, tree clean.
-  No PR — none was asked for.
+- **Branch:** `claude/potions-loot-design-hlpttv`, pushed, tree clean. No PR —
+  none was asked for.
 - **Suite:** green. `1549 tests, 0 failing, 0 risky, 3 orphans` (the orphans and
   the leaked-RID warnings at the end of a run are pre-existing UI-test noise).
 - **The workbook has one real edit in it** — Potion of Uselessness moved Common →
@@ -25,7 +25,7 @@ git fetch origin claude/potions-loot-design-hlpttv
 git checkout claude/potions-loot-design-hlpttv
 ```
 
-Then read `docs/potions-design.md` §1 (the 29 locked decisions) and §11 (the build
+Then read `docs/potions-design.md` §1 (the 30 locked decisions) and §11 (the build
 order). §9.1 is the reuse map — the list of things that already exist and should
 not be rebuilt.
 
@@ -73,8 +73,9 @@ plan; the order that works is:
    are not the shelved curse CARDS, and `remove_active_curse` is the wrong
    function.
 
-Steps 3–8 then run as §11 lists them. Step 3 (the `PotionData` resource, the
-generator, the sheet cells) is the one with a **decision in it** — see §5 below.
+Steps 3–8 then run as §11 lists them. Step 3 is the big one — the `PotionData`
+resource, the generator, and **writing §7.3's 30 effect cells into the workbook**
+(decision #30; see §5 for how).
 
 ## 4. Working notes that cost time this session
 
@@ -98,14 +99,19 @@ generator, the sheet cells) is the one with a **decision in it** — see §5 bel
 - **A new `class_name` needs `godot --headless --editor --quit` once** before the
   suite can see it. `PotionData` will hit this.
 
-## 5. Two things to settle at the top of the next session
+## 5. Two things to know before step 3
 
-- **Who authors the 30 sheet cells?** `potions2.0`'s `On Player Effect` and
-  `On Tile Effect` are both empty for all 15 rows. §7.3 of the plan proposes every
-  cell. Either the owner pastes them in, or the next session writes them through
-  `_xlsx_surgery` the way the Uselessness edit went. Ask — the sheet is upstream of
-  `data/`, and two people editing it in one day is how a regeneration silently
-  reverts someone.
+- ~~**Who authors the 30 sheet cells?**~~ **Settled: the next session writes them**,
+  through `_xlsx_surgery`, from §7.3 of the plan — `potions2.0`'s `On Player Effect`
+  and `On Tile Effect` are empty for all 15 rows and are what the generator reads.
+  Follow `_potions2_uselessness_uncommon.py`: one one-shot, kept in `tools/`, and
+  check afterwards that only that sheet's two XML parts changed.
+
+  **The corollary is that the workbook should not be hand-edited before then.** It
+  is a binary blob in git, so a session writing 30 cells into a copy that has since
+  changed elsewhere does not merge — one version wins. If it does get edited in the
+  meantime, say so at the start of the session and it will re-read the sheet first
+  rather than writing over it.
 - **The four open questions in §12** are all recommendations already written down,
   not blockers: throwing mid-report, Fysh Oil under Sacred Bark, whether Bark's
   area-doubling leaves a `cell` alone, and Lucky Foot's reach. They are better

@@ -30,7 +30,7 @@ here and is left plain.*
 
 ## 1. Decisions locked
 
-Twenty-nine forks were settled before any code, in the same discovery-pass style as the
+Thirty forks were settled before any code, in the same discovery-pass style as the
 [implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
@@ -64,6 +64,7 @@ Twenty-nine forks were settled before any code, in the same discovery-pass style
 | 27 | **Confirming a throw** | **No confirmation.** Arming a picker and clicking a square are two deliberate acts already (§4.2). |
 | 28 | **Potion of Uselessness** | **Uncommon**, not Common — the joke, met less often. Sheet edit made (§3). |
 | 29 | **The six potions with no art** | **The fallback IS the design.** An identified potion with no `File` keeps showing its run colour, permanently (§6.3). |
+| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). |
 
 ---
 
