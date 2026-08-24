@@ -9,15 +9,17 @@ Content source: the **`potions2.0`** sheet of `tools/Roguelikes.xlsx` (15 rows) 
 the art in `images2.0/potions_identified/` (9 bottles) +
 `images2.0/potions_unidentified/` (37 coloured vials).
 
-Status: **decisions locked; steps 1 and 2 of §11 are BUILT.** The timed-status
+Status: **decisions locked; steps 1-3 of §11 are BUILT.** The timed-status
 layer, its expiry, its wording and the shield claw-back shipped (§5, and the
 CHANGELOG entry that opens with *"Statuses can be borrowed"*), with
 `test/test_timed_statuses.gd` covering them — 26 tests. The scroll deltas (§10,
 §10.1) followed: the generator's rarity fix, `description`, `find_weight`, the
-kind-blind `forget`, `identify_loot` and `remove_curse` with its picker. Nothing
-applies a timed status yet: potions are the content that will. Everything from §11
-step 3 onward is still unbuilt, and a surprising amount of the plumbing for it is
-already there — §9.1 is the list.
+kind-blind `forget`, `identify_loot` and `remove_curse` with its picker. Then the
+data: `PotionData`, `tools/generate_potion2_tres.py`, **§7.3's 30 effect cells
+written into the sheet** (decision #30) and `Data.roll_potion`, so all 15 potions
+now load as content. Nothing SPENDS one yet — `PotionSystem` and the two verbs are
+steps 4 and 5, and a surprising amount of the plumbing for them is already there:
+§9.1 is the list.
 
 Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
 the branch, the state of the suite, the next step in order, and the repo-specific
@@ -66,7 +68,7 @@ Thirty forks were settled before any code, in the same discovery-pass style as t
 | 27 | **Confirming a throw** | **No confirmation.** Arming a picker and clicking a square are two deliberate acts already (§4.2). |
 | 28 | **Potion of Uselessness** | **Uncommon**, not Common — the joke, met less often. Sheet edit made (§3). |
 | 29 | **The six potions with no art** | **The fallback IS the design.** An identified potion with no `File` keeps showing its run colour, permanently (§6.3). |
-| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). |
+| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). **Done**, in `tools/_potions2_effect_cells.py`. |
 
 ---
 
@@ -575,13 +577,20 @@ verb.
     potions2.0: Name | Rarity | Preference | On Player | On Player Effect |
                 On Tile | On Tile Effect | Reference | File
 
-Prose column, machine column, in pairs — the `statuses2.0` shape (§13.1).
-**Both machine columns are empty today**, for all 15 rows. Filling them is the
-authoring half of this work and §7.3 is a proposed first pass at every cell.
+Prose column, machine column, in pairs — the `statuses2.0` shape (§13.1). Both
+machine columns were empty for all 15 rows; §7.3 was the proposed first pass and
+is now what the sheet says, written by `tools/_potions2_effect_cells.py`.
 
 `PotionData` (`scripts/resources/PotionData.gd`) carries
 `id, display_name, rarity, preference, reference, file, quaff: Array, throw: Array`
-plus `rarity_index()` and `art_file()`, both copied from `ScrollData`.
+plus `rarity_index()` and `art_file()`, both copied from `ScrollData`. **As built
+it also carries the two PROSE columns** — `quaff_text` and `throw_text` — because
+an identified potion shows both halves at once (§6.5) and the sheet's words beat
+words assembled from ops, which is the lesson §10 learned on `ScrollData`. It has
+`ops(verb)` / `line(verb)` in place of the pill's `ops(horse)` / `line(horse)`, and
+`has_throw()` for §4.5's button rule. **No `find_weight`**: `potions2.0` has no
+Notes column to author one in, and a field nothing can write is the mistake
+`rarity` was making until §10 caught it.
 `tools/generate_potion2_tres.py` writes `data/potions2.0/*.tres`, importing nothing
 and duplicating little: the clause parser is the scroll generator's, extended.
 
@@ -930,8 +939,16 @@ scroll is identified either way (§4.5).
    column's prose** rather than from a column of its own, so `PotionData` gets the
    same treatment; and Identify's candidates are **entries, deduped per type**,
    which is what makes an unknown potion offerable at all.
-3. **Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
-   `Data` wiring, the editor rescan.
+3. ~~**Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
+   `Data` wiring, the editor rescan.~~ **DONE.** All 30 cells are written
+   (`tools/_potions2_effect_cells.py`) and all 15 rows load, 9/3/3 on the shared
+   ladder. Two things the build turned up: Raise Level's `On Tile` PROSE cell is
+   the sheet's `N/A` as well as its effect, so one potion in fifteen has no throw
+   line for a card to draw — step 4 has to read a blank there as *"this one cannot
+   be thrown"* rather than as missing text; and the two effect columns are
+   different enough that the generator parses them in two dialects, refusing a
+   quaff verb in a throw cell and vice versa, which is what caught the difference
+   in the first place.
 4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
    At this point a potion is a pill with better art and it is fully playable.
 5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the

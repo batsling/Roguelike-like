@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_fire_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"fire_potion"
+display_name = "Fire Potion"
+rarity = "Common"
+preference = "Negative"
+reference = "Slay the Spire"
+quaff_text = "Take 3 Damage and Gain +3 Burn"
+throw_text = "Apply the Fire tile, Deal 1 Damage, and Apply +3 Burn to everything in a 3x3 area centered on this tile"
+quaff = [{"op": "take_damage", "value": 3}, {"op": "apply_status", "status": "burn", "value": 3, "target": "player"}]
+throw = [{"op": "apply_tile", "tile": "fire", "area": "3x3"}, {"op": "deal_damage", "value": 1, "area": "3x3"}, {"op": "apply_status", "status": "burn", "value": 3, "area": "3x3"}]
+file = "FirePotion"

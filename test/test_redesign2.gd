@@ -586,6 +586,157 @@ func test_aggravate_scroll_is_negative_buff() -> void:
 	assert_eq(int(s.effect[0].get("value", 0)), 1)
 	assert_eq(String(s.effect[0].get("target", "")), "all", "the whole board, not one body")
 
+# --- Potions2.0 ------------------------------------------------------------
+#
+# The DATA layer only (docs/potions-design.md §11 step 3): the resource, the
+# generator's output and the roller. Nothing applies a potion yet — quaffing and
+# throwing arrive with PotionSystem in steps 4 and 5, and get their own suite.
+
+func test_potions2_load() -> void:
+	assert_eq(Data.all_potions().size(), 15, "15 potions2.0 rows -> 15 .tres")
+	assert_not_null(Data.get_potion(&"fire_potion"))
+	assert_not_null(Data.get_potion(&"potion_of_uselessness"))
+
+func test_the_potion_roster_sits_on_the_shared_rarity_ladder() -> void:
+	# 9/3/3 is what lets the 75/20/5 ladder roll potions with no potion-specific
+	# weighting (§3). Uselessness moving Common -> Uncommon is what made it 9/3/3.
+	var counts: Dictionary = {}
+	for p in Data.all_potions():
+		counts[p.rarity] = int(counts.get(p.rarity, 0)) + 1
+	assert_eq(int(counts.get("Common", 0)), 9)
+	assert_eq(int(counts.get("Uncommon", 0)), 3)
+	assert_eq(int(counts.get("Rare", 0)), 3)
+	assert_eq(Data.get_potion(&"potion_of_uselessness").rarity, "Uncommon",
+		"the joke is worth meeting less often (decision #28)")
+
+func test_every_potion_says_what_drinking_it_does() -> void:
+	# An identified potion shows both halves on its card (§6.5), and the quaff half
+	# is the one every bottle has.
+	for p in Data.all_potions():
+		assert_ne(p.quaff_text, "", "%s says what drinking it does" % p.display_name)
+
+func test_only_the_potion_with_no_throw_has_no_throw_prose() -> void:
+	# Raise Level's `On Tile` cell is the sheet's `N/A`, so its throw_text is empty
+	# — correctly, since there is no throw to describe. EVERY OTHER ROW HAS PROSE,
+	# Uselessness included: "Do nothing" is a description, and a bottle that does
+	# nothing loudly is not the same as one with no tile side at all.
+	#
+	# Whoever draws the card in step 4 inherits this: one potion in fifteen has
+	# nothing to put in its throw row, and a blank line there needs to read as
+	# "this one cannot be thrown" rather than as missing text.
+	var silent: Array = []
+	for p in Data.all_potions():
+		if p.throw_text == "":
+			silent.append(String(p.id))
+	assert_eq(silent, ["potion_of_raise_level"],
+		"exactly one row, and it is the one with no throw: %s" % str(silent))
+	assert_false(Data.get_potion(&"potion_of_raise_level").has_throw(),
+		"the prose and the ops agree about it")
+	assert_ne(Data.get_potion(&"potion_of_uselessness").throw_text, "",
+		"doing nothing is still something to say")
+
+func test_every_potion_clause_names_content_that_exists() -> void:
+	# THE SWEEP. A status or tile the sheet names and `data/` does not have is a
+	# clause that will resolve to nothing at runtime, and the generator cannot catch
+	# it — it parses words, it does not look them up.
+	for p in Data.all_potions():
+		for op in p.quaff + p.throw:
+			match String(op.get("op", "")):
+				"apply_status":
+					assert_not_null(Data.get_status(StringName(op.get("status", ""))),
+						"%s names status '%s'" % [p.display_name, op.get("status", "")])
+				"apply_tile":
+					assert_not_null(Data.get_tile(StringName(op.get("tile", ""))),
+						"%s names tile '%s'" % [p.display_name, op.get("tile", "")])
+
+func test_a_quaffed_status_lands_on_the_drinker_and_a_thrown_one_on_an_area() -> void:
+	# The one verb both sides speak, targeted two different ways: `target` is the
+	# quaff side's word and `area` is the throw side's, and neither carries the
+	# other's (§7.2).
+	var speed: PotionData = Data.get_potion(&"speed_potion")
+	assert_eq(String(speed.quaff[0].get("target", "")), "player")
+	assert_false(speed.quaff[0].has("area"), "a drunk potion has no geometry")
+	assert_eq(String(speed.throw[0].get("area", "")), "cell")
+	assert_false(speed.throw[0].has("target"), "a thrown one is aimed, not targeted")
+
+func test_the_clock_is_only_on_the_rows_whose_prose_has_one() -> void:
+	# `games=1` means "until the end of the next combat" (§5.2). Fire Potion's Burn
+	# carries NO clock: Burn is a debt, and a debt that expires by itself is a
+	# suggestion.
+	var speed: PotionData = Data.get_potion(&"speed_potion")
+	assert_eq(int(speed.quaff[0].get("games", 0)), 1)
+	assert_eq(int(speed.throw[0].get("games", 0)), 1)
+	var fire: PotionData = Data.get_potion(&"fire_potion")
+	for op in fire.quaff + fire.throw:
+		assert_false(op.has("games"),
+			"Fire Potion's Burn is permanent: %s" % str(op))
+
+func test_a_potion_without_a_clock_says_nothing_about_games() -> void:
+	# Absent rather than zero, so every op written before potions existed still
+	# means what it meant.
+	var block: PotionData = Data.get_potion(&"block_potion")
+	assert_false(block.quaff[0].has("games"))
+
+func test_fire_potions_throw_covers_the_whole_3x3_with_every_clause() -> void:
+	# Decision #11, and the roster's loudest argument: nine squares of burning
+	# ground, 1 damage and +3 Burn on everything in them, off a COMMON bottle.
+	var fire: PotionData = Data.get_potion(&"fire_potion")
+	assert_eq(fire.throw.size(), 3, "tile, damage and Burn")
+	for op in fire.throw:
+		assert_eq(String(op.get("area", "")), "3x3",
+			"all three clauses cover the area: %s" % str(op))
+	assert_eq(fire.rarity, "Common")
+	assert_eq(fire.preference, "Negative", "and drinking it is why")
+
+func test_the_ampoule_throws_down_a_row() -> void:
+	var amp: PotionData = Data.get_potion(&"explosive_ampoule")
+	assert_eq(String(amp.throw[0].get("op", "")), "deal_damage")
+	assert_eq(String(amp.throw[0].get("area", "")), "row",
+		"area is what you pay 3 Health for")
+
+func test_the_two_potions_with_no_throw_have_an_empty_one() -> void:
+	# Authored, not missing (§4.5). Raise Level has nothing to aim and Uselessness
+	# is the joke; both fizzle rather than refusing to be spent.
+	var raise_level: PotionData = Data.get_potion(&"potion_of_raise_level")
+	assert_false(raise_level.has_throw(), "no Throw button for a KNOWN Raise Level")
+	assert_eq(String(raise_level.quaff[0].get("op", "")), "gain_level")
+	var useless: PotionData = Data.get_potion(&"potion_of_uselessness")
+	assert_true(useless.quaff.is_empty() and useless.throw.is_empty(),
+		"nothing, loudly, in both directions")
+
+func test_a_potion_hands_over_the_side_the_verb_asks_for() -> void:
+	var fysh: PotionData = Data.get_potion(&"fysh_oil")
+	assert_eq(fysh.ops("quaff"), fysh.quaff)
+	assert_eq(fysh.ops("throw"), fysh.throw)
+	assert_eq(fysh.line("throw"), fysh.throw_text)
+	assert_eq(fysh.ops("QUAFF"), fysh.quaff, "the verb is not case-sensitive")
+	assert_eq(fysh.quaff.size(), 2, "Fysh Oil is two clauses, and both are timed")
+
+func test_the_six_artless_potions_still_answer_with_a_name() -> void:
+	# Their fallback IS the design (§6.3, decision #29) — an identified potion with
+	# no art of its own keeps wearing the run's bottle. art_file() must still answer
+	# something rather than "", so the caller falls back for the right reason.
+	var artless: int = 0
+	for p in Data.all_potions():
+		if p.file == "":
+			artless += 1
+			assert_ne(p.art_file(), "", "%s still names something" % p.display_name)
+	assert_eq(artless, 6, "six rows have no File and are not waiting for one")
+
+func test_roll_potion_respects_the_rarity_ladder() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260824
+	var counts: Dictionary = {}
+	for _i in range(3000):
+		var p: PotionData = Data.roll_potion(rng)
+		counts[p.rarity] = int(counts.get(p.rarity, 0)) + 1
+	assert_gt(int(counts.get("Common", 0)), int(counts.get("Uncommon", 0)),
+		"75/20/5, and Luck rides it through roll_item_rarity")
+	assert_gt(int(counts.get("Uncommon", 0)), int(counts.get("Rare", 0)))
+
+func test_roll_potion_answers_without_an_rng() -> void:
+	assert_not_null(Data.roll_potion(), "it makes its own when nobody supplies one")
+
 # --- GameState verb / shield resources ------------------------------------
 
 func test_grant_run_stat_routes_verbs() -> void:

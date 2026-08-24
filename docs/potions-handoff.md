@@ -2,7 +2,7 @@
 
 Written at the end of the session that produced
 [`potions-design.md`](potions-design.md) and built step 1 of its §11, and
-**rewritten at the end of the session that built step 2**. **That doc is the
+**rewritten at the end of the session that built steps 2 and 3**. **That doc is the
 spec; this one is only how to pick the work back up.** Everything about *what*
 potions are and *why* lives there — nothing in here restates it, so if the two ever
 disagree, the plan is right and this file is stale.
@@ -20,10 +20,10 @@ disagree, the plan is right and this file is stale.
 - **Step 2 is on `claude/potions-handoff-docs-9mjklk`**, branched off `16ea81d`,
   pushed. No PR — none was asked for. If it has landed on `main` by the time you
   read this, a fresh clone has it and there is nothing to check out.
-- **Suite:** green. `Scripts 32, Tests 1570, Passing 1570, Orphans 3` in ~510s —
-  1549 before step 2, and 21 tests added by it. (The ASSERT count moves between
-  runs — 32539 and 32650 on two green runs of the same tree — because several
-  tests walk a random graph. The test count is the number that should be stable.)
+- **Suite:** green. `Scripts 32, Tests 1585, Passing 1585, Orphans 3` in ~560s.
+  1549 before step 2, +21 for step 2, +15 for step 3. (The ASSERT count moves
+  between runs — 32539 and 32650 on two green runs of the same tree — because
+  several tests walk a random graph. The test count is the stable number.)
   The 3 orphans and the leaked-RID warnings at the end of a run are pre-existing
   UI-test noise; a **Risky / "Did not assert" is not** (see CLAUDE.md).
 - Read `docs/potions-design.md` §1 (the 30 locked decisions), §9.1 (the reuse map —
@@ -98,24 +98,67 @@ Three decisions the plan left open, settled by the build:
   protects everywhere else). **A potion is the pill case**: name the colour, per
   decision #18, and never the potion.
 
-## 4. What is next
+## 4. What step 3 built
 
-**§11 step 3 — the data.** `PotionData`, `tools/generate_potion2_tres.py`,
-`Data` wiring, the editor rescan, and **writing §7.3's 30 effect cells into the
-workbook** (decision #30; §5 and §7 below are how). Then step 4 is `PotionSystem` with
-quaff only, at which point a potion is playable as a pill with better art, and
-step 5 is where the new gameplay actually is.
+**The data layer**, all of it: `scripts/resources/PotionData.gd`,
+`tools/generate_potion2_tres.py`, `data/potions2.0/` (15 rows, 9 Common /
+3 Uncommon / 3 Rare), `Data.get_potion` / `all_potions` / `roll_potion`, and
+**§7.3's 30 effect cells written into the sheet** (decision #30) by
+`tools/_potions2_effect_cells.py`. 15 tests in `test_redesign2.gd`'s
+*Potions2.0* section.
 
-Two things now true that the plan was written before:
+**Nothing spends a potion yet.** Same discipline as step 1: the content exists
+and is asserted before anything can run it, so a content bug and a `PotionSystem`
+bug can never be the same bug.
+
+Three things the build settled or turned up:
+
+- **The two effect columns parse in two DIALECTS**, and the generator refuses a
+  quaff verb in a throw cell and vice versa. They diverge more than they look: the
+  quaff side targets the drinker (`target: "player"`) and the throw side is aimed
+  (`area:`), and neither carries the other's word. That check is what turned up the
+  next item.
+- **Raise Level's `On Tile` PROSE cell is `N/A` too**, not just its effect — so one
+  potion in fifteen has no throw line at all. Step 4's card has to read a blank
+  there as *"this one cannot be thrown"* rather than as missing text. Uselessness
+  is the contrast and is pinned by a test: it has no throw OPS but it does have
+  prose (*"Do nothing"*), because doing nothing loudly is not the same as having no
+  tile side.
+- **`PotionData` carries no `find_weight`**, unlike `ScrollData`. `potions2.0` has
+  no Notes column to author one in, and a field nothing can write is exactly the
+  mistake `rarity` was making until step 2 caught it. It belongs there the day the
+  sheet grows a place to say it.
+
+## 5. What is next
+
+**§11 step 4 — `PotionSystem`, quaff only.** The colour deal, identification, art
+and `quaff_potion`; at that point a potion is playable as a pill with better art.
+Then step 5 is the throw, which is where the new gameplay actually is.
+
+Four things waiting for it:
+
+- **`PotionSystem` is autoload #23** and goes in `project.godot`, whose comments
+  are `;` and never `#` (CLAUDE.md).
+- **The kind-blind verbs widen in one place.** Add a `"potion"` arm to
+  `LootSystem.identified_types` and `LootSystem.unidentify`, and `forget loot`,
+  `identify_loot` and everything after them cover potions with no call site
+  touched. `GameState.identified_potion_types` and `potion_color_map` are
+  **already declared, reset, saved and restored** — §9.1.
+- **`PotionSystem.COLORS` must list all 37 vials**, and its test should check the
+  list against the folder **in both directions**. `test_pill_system.gd` only checks
+  one way, which is why art that ships without being listed is art no run can ever
+  show; do not inherit that.
+- **The prose is on the resource already** (`quaff_text` / `throw_text`), so the
+  card quotes the sheet rather than assembling from ops — which is the lesson §10
+  learned the hard way on `ScrollData`.
+
+Also true, and the plan predates it:
 
 - `data/scrolls2.0/` holds **8** rows, not 7, and they are **3 Common / 4 Uncommon
-  / 1 Rare**. A test asserts the count; regenerating after a sheet edit that adds a
-  row means updating it.
-- `ScrollData` is the template `PotionData` copies — it now carries `rarity`,
-  `description` and `find_weight` as well as `rarity_index()` and `art_file()`,
-  and §7.1's list of fields is one draft behind it.
+  / 1 Rare**. A test asserts the count; a sheet edit that adds a row means updating
+  it.
 
-## 5. The workbook, as verified
+## 6. The workbook, as verified
 
 - **The uploads survived the merge, and this was checked part by part rather than
   assumed.** A new `Roguelikes.xlsx` was uploaded twice while the design session was
@@ -132,11 +175,10 @@ Two things now true that the plan was written before:
   ONE one-shot rather than three, because each write is a chance for two versions
   of a binary blob to exist at once. It changed exactly `sheet9.xml` +
   `table9.xml`, by the check below.
-- **`potions2.0`'s two effect columns are still empty for all 15 rows** — column `E`
-  (`On Player Effect`) and column `G` (`On Tile Effect`). §7.3 of the plan is still
-  what goes into them, and writing them is still the build session's job
-  (decision #30). The prose columns `D` / `F`, `Rarity`, `Preference`, `Reference`
-  and `File` are all authored.
+- **Step 3 made the fourth**, `tools/_potions2_effect_cells.py`: `potions2.0`'s
+  column `E` (`On Player Effect`) and column `G` (`On Tile Effect`), all 15 rows,
+  from §7.3 of the plan — the decision #30 cells. Every row is now fully authored;
+  the sheet has no empty machine column left.
 - **The file got 83 KB SMALLER in #204, and that is not damage.** `_xlsx_surgery`
   rewrites the whole zip, so the deflate level changes and git reports a large binary
   delta for a one-cell edit. The archive still holds its 8 charts and 47 worksheets.
@@ -155,10 +197,13 @@ Two things now true that the plan was written before:
   PY
   ```
 
-  A clean one-sheet edit prints **exactly two** parts: that sheet's
-  `xl/worksheets/sheetN.xml` and its `xl/tables/tableN.xml`. #204 prints
-  `sheet11.xml` + `table11.xml` and nothing else. Any `xl/charts/*` in that list
-  means the charts were touched, which is the failure this check exists to catch.
+  A clean one-sheet edit prints **one or two** parts: that sheet's
+  `xl/worksheets/sheetN.xml`, and its `xl/tables/tableN.xml` **only when the grid's
+  shape changed** — `_xlsx_surgery` rewrites the table part every time, but filling
+  in cells inside an unchanged rectangle regenerates it byte-for-byte and git never
+  sees it. #204 and the step-2 edit print two; step 3's 30 cells print one. Any
+  `xl/charts/*` in that list means the charts were touched, which is the failure
+  this check exists to catch.
 - **A sheet's NAME does not tell you its file name.** `potions2.0` is `sheet11.xml`
   and `scrolls2.0` is `sheet9.xml`, but that is a coincidence of this workbook's
   ordering — the real map is `<sheet name=… r:id=…>` in `xl/workbook.xml` resolved
@@ -168,11 +213,11 @@ Two things now true that the plan was written before:
   changed elsewhere does not merge — one version wins. It happened to be safe this
   time because the two edits touched different sheets. If it does get edited in the
   meantime, say so at the start of the session and it will re-read the sheet first
-  rather than writing over it. It was safe this time because the surgery was run
-  against the uploaded copy rather than against a stale one — not because the two
-  edits could not have collided. They were on the same sheet.
+  rather than writing over it. It was safe the one time it was tested because the
+  surgery ran against the uploaded copy rather than against a stale one — not
+  because the two edits could not have collided. They were on the same sheet.
 
-## 6. Working notes that cost time
+## 7. Working notes that cost time
 
 - **The GUT filter flag.** `-gtest=res://test/foo.gd` does **not** filter; it runs
   all 32 scripts. What works:
@@ -181,7 +226,7 @@ Two things now true that the plan was written before:
   ```
   Iterate with that (sub-second), then run the whole suite before committing.
 - **A full run is ~9 minutes**, not the ~5 the older notes said — measured at 522s
-  on 1549 tests and 516s on 1570. It buffers its output until it exits, so a
+  on 1549 tests, 516s on 1570 and 558s on 1585. It buffers its output until it exits, so a
   backgrounded run shows an empty log the whole time it is working. Redirect to a
   file and wait for it rather than assuming it has died.
 - **A fresh clone has no `.godot/`**, so the first headless run pays for an import
@@ -195,30 +240,41 @@ Two things now true that the plan was written before:
 - **Never openpyxl-save the workbook** — it silently drops the charts. Use
   `tools/_xlsx_surgery.py` and keep the edit as a one-shot beside the others;
   `_scrolls2_step2_effects.py` is the template. Verify afterwards with the
-  part-hash check in §5.
+  part-hash check in §6.
 
-## 7. Two things to know before step 3
+## 8. Two things to know about the sheet
 
-- **The 30 sheet cells are the next build session's to write** (decision #30),
-  through `_xlsx_surgery`, from §7.3 of the plan. Follow
-  `_scrolls2_step2_effects.py`, which is the closer template — it writes several
-  cells in one pass, guards each against the value it EXPECTS to find, and refuses
-  the whole edit if the sheet has moved underneath it. One one-shot, kept in
-  `tools/`, and the part-hash check afterwards. Regenerate in the same pass, or the
-  sheet and `data/` disagree until somebody notices.
+- **The 30 sheet cells are written** (decision #30, `_potions2_effect_cells.py`),
+  so the next edit to `potions2.0` is a re-tune rather than a first pass — and it
+  will hit that script's guard, which refuses to run over a cell that is not blank.
+  That is on purpose: it authors §7.3's first pass and nothing else. A tuning pass
+  is its own one-shot, guarded against the value it expects to find, the way
+  `_scrolls2_step2_effects.py` is. Regenerate in the same commit, or the sheet and
+  `data/` disagree until somebody notices.
 - **The four open questions in §12** are all recommendations already written down,
   not blockers: throwing mid-report, Fysh Oil under Sacred Bark, whether Bark's
   area-doubling leaves a `cell` alone, and Lucky Foot's reach. They are better
   answered by playing the thing than by asking again — the `verify` skill
   (`.claude/skills/verify/`) is how to get it on screen.
 
-## 8. One correction worth carrying forward
+## 9. Corrections worth carrying forward
 
-The design said to cap a status's stacks on read. That is wrong and the suite
-caught it: the authored ceiling (Burn's `Max: 3`) is a rule about the way **up**,
-and stacks already over it — from a save written before the cap, or a cap the sheet
-lowered — must tick down one at a time rather than being frozen. The cap now
-applies only to what the timed layer *adds*, floored at the permanent count.
+Three so far, one per step, and each was found by writing the thing down rather
+than by reasoning about it:
+
+- **Step 1.** The design said to cap a status's stacks on read. That is wrong and
+  the suite caught it: the authored ceiling (Burn's `Max: 3`) is a rule about the
+  way **up**, and stacks already over it — from a save written before the cap, or a
+  cap the sheet lowered — must tick down one at a time rather than being frozen.
+  The cap now applies only to what the timed layer *adds*, floored at the permanent
+  count.
+- **Step 2.** A `loot` forget ran its count against EACH alphabet in turn, so
+  `forget 1` forgot one scroll **and** one pill — a scroll promising one thing
+  taking two. Merging the two implementations is what exposed it; neither was wrong
+  on its own terms.
+- **Step 3.** Raise Level has no throw PROSE either, not just no throw effect. The
+  plan's §3 roster writes that cell as "— (N/A)" and it is easy to read as a
+  formatting choice; it is data, and a card is going to have to draw it.
 
 Expect more of these. The plan is careful but it is still a plan; where it and a
 green test disagree, the test is describing the build.

@@ -85,6 +85,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
 │   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
 │   │                     #   (the horse dose is a 5% roll on the drop, §4.3)
+│   ├── potions2.0/       #   PotionData — identify-by-using potions, two VERBS
+│   │                     #   each: quaff it, or throw it at a cell
+│   │                     #   (docs/potions-design.md)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4)
 │   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
@@ -104,7 +107,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── fonts/                 # ★ Subsetted Noto symbol fonts (OFL) — the ~70 glyphs the UI
 │                          #   draws, shipped so they don't cost a host font search each
 │                          #   time a Label is made. Built by tools/build_glyph_font.py
-├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters, scrolls
+├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters,
+│                          #   scrolls, pills, and 37 potion vials + 9 identified bottles
 ├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
 ├── addons/gut/            # GUT — the GDScript unit-test framework
 ├── test/                  # GUT test suites (test_*.gd)
@@ -124,6 +128,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
 │   ├── generate_pill2_tres.py      #   data/pills2.0
+│   ├── generate_potion2_tres.py    #   data/potions2.0
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -596,6 +601,7 @@ editing the sheet, then review the diff):
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
+| `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions2.0` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles2.0` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units2.0` sheet — imports the parsers above rather than restating them |

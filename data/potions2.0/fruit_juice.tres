@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_fruit_juice"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"fruit_juice"
+display_name = "Fruit Juice"
+rarity = "Rare"
+preference = "Positive"
+reference = "Slay the Spire"
+quaff_text = "Gain +2 Max Health"
+throw_text = "Apply +2 Max Health"
+quaff = [{"op": "gain_max_hp", "value": 2}]
+throw = [{"op": "grant_max_health", "value": 2, "area": "cell"}]
+file = "FruitJuice"

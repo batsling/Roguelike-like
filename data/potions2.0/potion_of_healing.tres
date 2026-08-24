@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_potion_of_healing"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"potion_of_healing"
+display_name = "Potion of Healing"
+rarity = "Common"
+preference = "Positive"
+reference = "Rogue"
+quaff_text = "Gain +2 Health"
+throw_text = "Apply +2 Health"
+quaff = [{"op": "gain_hp", "value": 2}]
+throw = [{"op": "grant_health", "value": 2, "area": "cell"}]
+file = ""

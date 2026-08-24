@@ -11,6 +11,58 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Fifteen potions exist as content, and none of them can be spent yet.**
+
+  Step 3 of `docs/potions-design.md` §11 — the data layer, deliberately ahead of
+  anything that runs it. `PotionSystem` and the two verbs are steps 4 and 5; this
+  is the same discipline the timed-status layer shipped under, so a content bug
+  and a resolver bug can never turn out to be the same bug.
+
+  **A potion is the first piece of loot with two VERBS.** A scroll hides its name
+  behind one shared art and a pill hides its name behind a colour, and each is one
+  effect behind a mask. Every `potions2.0` row authors two: an `On Player` side and
+  an `On Tile` side, and the player chooses which they are buying at the moment
+  they spend it — **quaff** it, or **throw** it at a square of the board. So
+  `PotionData` carries `quaff` and `throw` rather than one `effect`, with
+  `ops(verb)` / `line(verb)` where the pill has `ops(horse)` / `line(horse)`. The
+  Preference describes the QUAFF and the throw is usually its mirror: Fire Potion
+  is Negative because drinking it costs 3 Health and sets you alight, and thrown it
+  is the strongest offensive piece of loot in the game. That is what keeps an
+  unidentified bottle a two-sided gamble rather than a one-sided one.
+
+  **The 30 effect cells are written** (`tools/_potions2_effect_cells.py`). Both
+  machine columns had been empty since the sheet was drafted, and decision #30
+  reserved them for a build session rather than for the design; they are §7.3's
+  first pass, verbatim. The loudest row is Fire Potion, whose throw puts all three
+  of its clauses over the same 3×3 — nine squares of burning ground, 1 damage and
+  +3 Burn on everything standing in them, off a **Common** bottle, and 3 damage and
+  3 Burn on you if you drink it not knowing what it is. `games=1` appears only on
+  the rows whose prose says *"until the end of the next combat"*: Fire Potion's Burn
+  carries no clock, because Burn is a debt and a debt that expires by itself is a
+  suggestion.
+
+  **The two columns parse in two dialects**, and the generator refuses a quaff verb
+  in a throw cell or the reverse. They diverge more than they look — a quaffed
+  status lands on the drinker (`target: "player"`) and a thrown one on every body
+  an `area=` covers, and neither side carries the other's word. That check is what
+  turned up the one thing the plan had wrong: Raise Level's `On Tile` **prose** cell
+  is the sheet's `N/A` as well as its effect cell, so one potion in fifteen has no
+  throw line at all, and whatever draws the card in step 4 has to read that blank
+  as *"this one cannot be thrown"* rather than as missing text. Uselessness is the
+  contrast — no throw ops, but prose that says *"Do nothing"*, because doing nothing
+  loudly is not the same as having no tile side.
+
+  `Data.roll_potion` is `roll_scroll`'s twin, rarity-weighted through
+  `roll_item_rarity` so **Luck rides a potion drop for free**. The roster is
+  9 Common / 3 Uncommon / 3 Rare, which sits on the shared 75/20/5 ladder with no
+  potion-specific weighting. It gets **no `find_weight`**, unlike a scroll:
+  `potions2.0` has no Notes column to author one in, and a field nothing can write
+  is the exact mistake `rarity` was making until the entry below caught it.
+
+  15 tests in `test_redesign2.gd`, including the sweep that every status and tile
+  the 30 cells name is content that actually exists — the generator parses words,
+  it does not look them up.
+
 - **Every scroll in the game was Common, and one verb at a time learned to mean
   loot.**
 

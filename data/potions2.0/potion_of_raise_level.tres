@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_potion_of_raise_level"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"potion_of_raise_level"
+display_name = "Potion of Raise Level"
+rarity = "Rare"
+preference = "Positive"
+reference = "Rogue"
+quaff_text = "Gain +1 Level"
+throw_text = ""
+quaff = [{"op": "gain_level", "value": 1}]
+throw = []
+file = ""
