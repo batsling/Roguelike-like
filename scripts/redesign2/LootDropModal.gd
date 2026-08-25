@@ -305,7 +305,7 @@ func _build() -> void:
 		# The cap, said where it bites — beside the nine full slots that are the
 		# reason, and beside the three things that can be done about it.
 		box.add_child(_line("Your pack is full (%d/%d) — use or bin something to make room, "
-			% [GameState.loot_items.size(), GameState.LOOT_CAPACITY]
+			% [GameState.loot_items.size(), GameState.loot_capacity()]
 			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
 	# NO ANSWER BUTTONS WHEN EMBEDDED. "Take" and "Leave the rest" are the modal's
@@ -436,7 +436,7 @@ func _pack_column() -> Control:
 	col.add_theme_constant_override("separation", 6)
 	col.custom_minimum_size = Vector2(PACK_W, 0)
 	col.add_child(_line("Your pack — %d / %d" % [
-		GameState.loot_items.size(), GameState.LOOT_CAPACITY], UITheme.TEXT_DIM, 12))
+		GameState.loot_items.size(), GameState.loot_capacity()], UITheme.TEXT_DIM, 12))
 	col.add_child(_grid)
 	var bin := LootTrash.new()
 	bin.grid = _grid

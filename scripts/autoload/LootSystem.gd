@@ -86,9 +86,13 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 		"pill":
 			return PillSystem.take_pill(entry, ctx)
 		"potion":
-			# Quaff only, for now. The THROW verb needs a cell in hand before it can
-			# resolve anything (potions-design §4.2), so it arrives with the board
-			# picker in step 5 and reads ctx.verb / ctx.target here.
+			# THE ONLY KIND WITH TWO VERBS (potions-design §4). Which one the player
+			# bought rides in `ctx.verb`, and the square a throw was aimed at in
+			# `ctx.target` — both set once, by the caller that armed the picker, so an
+			# ECHOED copy coming back through here re-throws at the same cell the
+			# original was aimed at (§4.2).
+			if is_throw(ctx):
+				return PotionSystem.throw_potion(entry, ctx)
 			return PotionSystem.quaff_potion(entry, ctx)
 	return {}
 
@@ -322,6 +326,44 @@ func preference(entry: Dictionary) -> String:
 		"potion":
 			return PotionSystem.preference(entry)
 	return ""
+
+# ===========================================================================
+# The second verb (potions-design.md §4.2, §4.5)
+# ===========================================================================
+
+# Does this piece offer a THROW as well as a use? One kind answers yes, and only
+# one — a scroll is read and a pill is swallowed, and neither has ever had a
+# second thing you could do with it.
+#
+# AN UNKNOWN BOTTLE ALWAYS DOES, even the one that turns out to be Raise Level and
+# fizzles on impact (§4.5). The button is hidden only for a KNOWN potion with
+# nothing on its tile side, because there is nothing to aim; hiding it for
+# unknowns would leak which bottles have no throw, which is exactly the fact the
+# identification gamble is selling.
+func can_throw(entry: Dictionary) -> bool:
+	if String(entry.get("type", "")) != "potion":
+		return false
+	var p: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	if p == null:
+		return false
+	return p.has_throw() or not PotionSystem.is_identified(p.id)
+
+# Is this use context a throw? One reading of `ctx.verb`, here rather than at each
+# call site, so "throw" can never be spelled two ways.
+func is_throw(ctx: Dictionary) -> bool:
+	return String(ctx.get("verb", "quaff")).to_lower() == "throw"
+
+# What the button on a piece says. A potion's quaff is a QUAFF and not a "use":
+# the whole point of the pair is that the player is choosing between two named
+# things, and one of them being called by the generic word would make the choice
+# read as "do it" versus "throw it".
+func use_verb(entry: Dictionary) -> String:
+	match String(entry.get("type", "")):
+		"pill":
+			return "Take Pill"
+		"potion":
+			return "Quaff"
+	return "Read Scroll"
 
 # What KIND of thing this is, in the words the player sees: Scroll, Pill, or the
 # dose that announces itself.

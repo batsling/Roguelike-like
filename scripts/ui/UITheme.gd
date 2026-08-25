@@ -169,27 +169,39 @@ static func accent_box(accent: Color, bg: Color = PANEL, margin: int = 12) -> St
 # on one baseline. Both take a minimum size because the same pair is drawn at
 # three scales (a 14px cell button, a 34px card button, a 42px modal button).
 static func confirm_button(text: String, min_size: Vector2 = Vector2.ZERO, font_size: int = 0) -> Button:
+	return action_button(text, SUCCESS, min_size, font_size)
+
+# THE SAME AFFIRMATIVE PLATE IN A COLOUR OF ITS OWN — for the screen that offers
+# TWO of them and needs the pair to be told apart. A potion's card is the one that
+# does (docs/potions-design.md §4.5): Quaff and Throw are both things you are
+# saying yes to, and the choice between them is the whole of what the kind is for,
+# so two identical green plates would read as one button drawn twice.
+#
+# `confirm_button` is this in SUCCESS, which is the only colour anything else on
+# the page wants.
+static func action_button(text: String, color: Color,
+		min_size: Vector2 = Vector2.ZERO, font_size: int = 0) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.custom_minimum_size = min_size
 	if font_size > 0:
 		btn.add_theme_font_size_override("font_size", font_size)
 	btn.add_theme_stylebox_override("normal",
-		flat(SUCCESS.lerp(BG, 0.80), 8, 6, 1, SUCCESS.lerp(BG, 0.30)))
+		flat(color.lerp(BG, 0.80), 8, 6, 1, color.lerp(BG, 0.30)))
 	btn.add_theme_stylebox_override("hover",
-		flat(SUCCESS.lerp(BG, 0.62), 8, 6, 2, SUCCESS))
+		flat(color.lerp(BG, 0.62), 8, 6, 2, color))
 	btn.add_theme_stylebox_override("pressed",
-		flat(SUCCESS.lerp(BG, 0.52), 8, 6, 2, SUCCESS))
+		flat(color.lerp(BG, 0.52), 8, 6, 2, color))
 	btn.add_theme_stylebox_override("disabled",
 		flat(BG.lerp(BORDER, 0.35), 8, 6, 1, BORDER))
-	# FOCUS KEEPS THE GREEN. A modal's confirm grabs focus when it opens, and the
+	# FOCUS KEEPS THE COLOUR. A modal's confirm grabs focus when it opens, and the
 	# theme's focus stylebox is drawn OVER `normal` — so without this the one button
 	# the screen is steering you towards is the one that isn't wearing its own
 	# colour. Same plate, brighter rule, which is what focus should say here.
 	btn.add_theme_stylebox_override("focus",
-		flat(SUCCESS.lerp(BG, 0.62), 8, 6, 2, SUCCESS.lerp(Color.WHITE, 0.35)))
-	btn.add_theme_color_override("font_color", SUCCESS.lerp(Color.WHITE, 0.45))
-	btn.add_theme_color_override("font_hover_color", SUCCESS.lerp(Color.WHITE, 0.7))
+		flat(color.lerp(BG, 0.62), 8, 6, 2, color.lerp(Color.WHITE, 0.35)))
+	btn.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.45))
+	btn.add_theme_color_override("font_hover_color", color.lerp(Color.WHITE, 0.7))
 	btn.add_theme_color_override("font_disabled_color", TEXT_FAINT)
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	return btn

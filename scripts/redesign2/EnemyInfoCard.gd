@@ -114,7 +114,14 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	stat_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var hp: int = int(entry.get("health", e.health))
-	stat_col.add_child(_stat_row("❤", "Health", "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"], Color(1.0, 0.5, 0.5)))
+	# The ceiling only when the body is not sitting at it (docs/potions-design.md
+	# §4.6) — chipped by a bomb, or GROWN by a thrown Fruit Juice, which is the one
+	# thing in the game that moves it.
+	var ceiling: int = GameLoop2.entry_max_health(entry)
+	var hp_note: String = "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"]
+	if hp < ceiling:
+		hp_note = "%d of %d goals to defeat" % [hp, ceiling]
+	stat_col.add_child(_stat_row("❤", "Health", hp_note, Color(1.0, 0.5, 0.5)))
 	# Damage as it stands, with the authored number in brackets when a status has
 	# moved it (§13.4). Both, because "⚔4" alone tells you what is coming and
 	# "⚔4 (2 base)" tells you WHY — and why is what decides whether bombing the

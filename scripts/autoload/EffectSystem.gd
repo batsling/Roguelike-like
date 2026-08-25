@@ -266,9 +266,17 @@ func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 	var stacks: int = int(effect.get("value", 1))
 	if stacks == 0:
 		return
+	# HOW LONG FOR (docs/potions-design.md §5.1). 0 is permanent, which is what
+	# every apply_status written before potions meant and still means; a positive
+	# `games` lands the stacks in the timed layer instead. It rides through here
+	# rather than through a second path, because a second path for a borrowed stack
+	# is the mistake that layer was built early to prevent — both sides of the
+	# board already take it (GameState.apply_status / GameLoop2.apply_status_to)
+	# and this was the one caller that dropped it on the floor.
+	var games: int = int(effect.get("games", 0))
 	var target: String = String(effect.get("target", "player")).to_lower()
 	if target == "player" or target == "self":
-		GameState.apply_status(status_id, stacks)
+		GameState.apply_status(status_id, stacks, games)
 		return
 	# `target=enemy` is the sheet asking for a body to be POINTED AT rather than
 	# named by a rule (Staff of Flame). The instance rides `ctx.target`, put there
@@ -280,9 +288,9 @@ func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 		if not (aimed is int) or int(aimed) <= 0:
 			push_warning("EffectSystem.apply_status: target=enemy fired with no body aimed")
 			return
-		GameLoop2.apply_status_to(int(aimed), status_id, stacks)
+		GameLoop2.apply_status_to(int(aimed), status_id, stacks, games)
 		return
-	GameLoop2.apply_enemy_status(status_id, stacks, target)
+	GameLoop2.apply_enemy_status(status_id, stacks, target, games)
 
 # TILE EFFECTS AND UNITS (§17) — the two ways an item or a scroll reaches the
 # GROUND rather than a body. Both take the same target vocabulary, and the split

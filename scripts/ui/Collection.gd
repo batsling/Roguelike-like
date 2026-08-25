@@ -30,6 +30,7 @@ enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS }
 # reference and one effect, a pill has two doses and no art of its own.
 const LOOT_SCROLLS := "scrolls"
 const LOOT_PILLS := "pills"
+const LOOT_POTIONS := "potions"
 
 # The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
 # (PillData carries no image field): its picture is the COLOUR the run deals it
@@ -94,8 +95,8 @@ const GRID_META_FONT := 10
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
-	"games": "", "events": "", "objects": ""}
-# Which sub-tab the Loot tab is on, one of LOOT_SCROLLS / LOOT_PILLS.
+	"potions": "", "games": "", "events": "", "objects": ""}
+# Which sub-tab the Loot tab is on: LOOT_SCROLLS / LOOT_PILLS / LOOT_POTIONS.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
 var _games_type: int = -1
@@ -1568,15 +1569,13 @@ func _build_loot() -> void:
 	var subs := _controls_row()
 	subs.add_child(_loot_sub_button("📜  Scrolls (%d)" % Data.all_scrolls().size(), LOOT_SCROLLS))
 	subs.add_child(_loot_sub_button("💊  Pills (%d)" % Data.all_pills().size(), LOOT_PILLS))
-	# WHAT THE TAB IS, said once, where the difference between the two halves
-	# actually matters: a scroll hides behind a shared Unidentified art and a pill
-	# hides behind a colour, and the catalog shows both of them revealed.
-	var note := _label(
-		"Revealed reference — a run hides all of this until you identify it."
-		if _loot_sub == LOOT_SCROLLS else
-		"Revealed reference. Every run deals these a random colour out of 13, so the "
-		+ "capsule here is a stand-in, not the one you'll be holding.",
-		Color(0.6, 0.6, 0.65), 11)
+	subs.add_child(_loot_sub_button("🧪  Potions (%d)" % Data.all_potions().size(),
+		LOOT_POTIONS))
+	# WHAT THE TAB IS, said once, where the difference between the three halves
+	# actually matters: a scroll hides behind a shared Unidentified art, a pill
+	# hides behind a colour, and a potion hides behind a bottle it does NOT own —
+	# so a potion's own art can be shown here where a pill's capsule cannot.
+	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11)
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	subs.add_child(note)
@@ -1597,6 +1596,22 @@ func _build_loot() -> void:
 	_content.add_child(scroll)
 	_populate_loot()
 
+# The line under the sub-tabs, per half. A POTION'S IDENTIFIED ART IS NOT A
+# PER-RUN SECRET the way a pill's capsule is: the bottle it wears is dealt fresh
+# every run, but what it looks like once you know it is a fact about the potion,
+# so the catalog draws it (docs/potions-design.md §9.2). Six of the fifteen have
+# no art of their own and keep wearing a vial forever, which is the design (§6.3).
+func _loot_note() -> String:
+	match _loot_sub:
+		LOOT_PILLS:
+			return ("Revealed reference. Every run deals these a random colour out of "
+				+ "13, so the capsule here is a stand-in, not the one you'll be holding.")
+		LOOT_POTIONS:
+			return ("Revealed reference — including both verbs. Every run deals these "
+				+ "a bottle out of 37, so the colour you'll be holding is not this one.")
+		_:
+			return "Revealed reference — a run hides all of this until you identify it."
+
 func _loot_sub_button(label: String, sub: String) -> Button:
 	# A full _refresh rather than a repopulate: the sub-tabs carry their own search
 	# term and their own note, and both live outside the grid.
@@ -1605,10 +1620,13 @@ func _loot_sub_button(label: String, sub: String) -> Button:
 		_refresh())
 
 func _populate_loot() -> void:
-	if _loot_sub == LOOT_PILLS:
-		_populate_pills()
-	else:
-		_populate_scrolls()
+	match _loot_sub:
+		LOOT_PILLS:
+			_populate_pills()
+		LOOT_POTIONS:
+			_populate_potions()
+		_:
+			_populate_scrolls()
 
 func _populate_scrolls() -> void:
 	_clear_children(_grid)
@@ -1705,6 +1723,57 @@ func _pill_card(p: PillData) -> Control:
 	head.add_child(_label("%s Preference" % p.preference, Color(0.7, 0.7, 0.75), 11))
 	vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
 	vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55)))
+	return cell.panel
+
+func _populate_potions() -> void:
+	_clear_children(_grid)
+	var term: String = _search["potions"].to_lower()
+	var potions: Array = Data.all_potions()
+	potions.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for p in potions:
+		if not (p is PotionData):
+			continue
+		if term != "" and not (term in p.display_name.to_lower()):
+			continue
+		_grid.add_child(_potion_card(p))
+		shown += 1
+	_set_count(shown, Data.all_potions().size())
+
+# 2.0 potion cell: the identified bottle where there is one, the name, Rarity and
+# Preference, then BOTH VERBS. A potion is one resource with two effects and the
+# choice between them is what the kind is for, so a card showing one of them would
+# be describing half of what spending one can do (§6.5).
+#
+# UNLIKE A PILL, THE ART IS THE POTION'S OWN. A pill's picture is the colour the
+# run deals it, so the catalog draws a stand-in rather than teaching an
+# association the game randomises on purpose. A potion's identified art is not a
+# per-run secret — the six rows without any fall back to a plain vial here, the
+# same way they do in a run.
+func _potion_card(p: PotionData) -> Control:
+	var pcol := _preference_color(p.preference)
+	var cell := _cell(pcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	var path := "res://images2.0/potions_identified/%s.png" % p.art_file()
+	var tex: Texture2D = load(path) if p.art_file() != "" and ResourceLoader.exists(path) \
+		else null
+	if tex != null:
+		top.add_child(_tex_rect(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(p.display_name, pcol, 14))
+	head.add_child(_label("%s  ·  %s Preference" % [p.rarity, p.preference],
+		Color(0.7, 0.7, 0.75), 11))
+	vb.add_child(_pill_dose("Quaff", p.quaff_text, Color(0.85, 0.85, 0.88)))
+	vb.add_child(_pill_dose("Throw", p.throw_text if p.has_throw()
+		else "Nothing — this one cannot be thrown.", Color(0.78, 0.72, 0.95)))
+	if p.reference != "":
+		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
 	return cell.panel
 
 func _pill_dose(heading: String, text: String, color: Color) -> Control:

@@ -17,15 +17,28 @@ effect belonging to the trigger before it, exactly like the item sheet's:
   enemy_enters: <effect>[; <effect>]      a body's footprint newly covered the cell
   enemy_turn_start: <effect>[; …]         a body was already standing here when an
                                           enemy turn began
+  damaged: <effect>[; …]                  the thing on the cell has taken enough
+                                          damage to spend its Health
 
   <effect> is one of:
     apply_status <status> <n>   -> {op: apply_status, status, value}
     detonate                    -> {op: detonate}   (units; see generate_unit_tres)
 
-The pair of triggers is the whole of the vocabulary on purpose. Between them they
-cover "walked into it" and "stayed in it", which is what a tile effect has to be
-able to say to be worth putting down: a cell that only bit on entry would be free
-to park on, and one that only bit at turn start would be free to walk through.
+The first two cover "walked into it" and "stayed in it", which is what a tile
+effect has to be able to say to be worth putting down: a cell that only bit on
+entry would be free to park on, and one that only bit at turn start would be free
+to walk through.
+
+`damaged` is the third and it belongs to things with a Health (docs/potions-design.md
+§4.7). The Landmine authors `damaged: detonate`, so a mine caught in a thrown
+Ampoule's row — or in a bomb blast, or in anything else that ever damages ground —
+goes up, instead of only ever going off under somebody who stepped on it. A unit
+with a Health that nothing can damage is carrying a number for decoration.
+
+It is a TRIGGER rather than a rule hardcoded to "0 Health runs your detonate"
+because the next unit will want to react to damage differently: a barrel that
+simply breaks, a totem that fires something off when shot. The trigger says WHAT
+happens; the Health column says HOW MUCH IT TAKES.
 
 INTERACTIONS DSL — semicolon-separated, one pairing per `<kind> <id>:` header:
 
@@ -71,7 +84,7 @@ IMG_RES_PREFIX = "res://images2.0/tiles/"
 
 # The triggers a tile effect or a unit may hang an effect on. Shared with
 # generate_unit_tres.py, which imports this module rather than restating them.
-TRIGGERS = ("enemy_enters", "enemy_turn_start")
+TRIGGERS = ("enemy_enters", "enemy_turn_start", "damaged")
 
 # The outcome tokens an `Interactions` cell may name.
 INTERACTION_OUTCOMES = ("detonate_unit", "remove_tile", "remove_unit")
@@ -137,8 +150,8 @@ def parse_effect(cell, what: str) -> dict:
                 continue
         if current is None:
             raise ValueError(
-                "%s: %r has no trigger — write `enemy_enters: …` or "
-                "`enemy_turn_start: …`" % (what, clause))
+                "%s: %r has no trigger — write `enemy_enters: …`, "
+                "`enemy_turn_start: …` or `damaged: …`" % (what, clause))
         out[current].append(parse_one_effect(clause, what))
     for trigger, effects in out.items():
         if not effects:

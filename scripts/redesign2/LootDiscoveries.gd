@@ -15,6 +15,12 @@ extends RefCounted
 # — nine known colours must not tell you what the tenth is — so the unlearned are
 # COUNTED and never listed.
 #
+# THREE ALPHABETS NOW (docs/potions-design.md). A potion is learned the same way
+# and for the same run only: 15 of 37 vials are dealt and 22 mean nothing, which
+# is a much bigger spare pile than the pills' three and the reason the fifteenth
+# potion is undeducible. The unlearned are counted here too — and what the record
+# never writes down for either kind is a COLOUR beside a name it has not learned.
+#
 # It is a class rather than a method on the loot window because BOTH surfaces that
 # draw the pack draw it: the window, and the reward screen, whose right-hand side
 # is the inventory and not a picture of one. `open` is static for the same reason
@@ -42,13 +48,15 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 
 	var pills: Array = known_pills()
 	var scrolls: Array = known_scrolls()
-	var learned: int = pills.size() + scrolls.size()
+	var potions: Array = known_potions()
+	var learned: int = pills.size() + scrolls.size() + potions.size()
 
 	var toggle := UITheme.quiet_button(
 		"%s  Known this run — %d learned" % ["▾" if open else "▸", learned],
 		Vector2(0, 20), 11)
-	toggle.tooltip_text = "The pills and scrolls this run has identified.\n" \
-		+ "A pill's name belongs to its colour and only until the run ends."
+	toggle.tooltip_text = "The pills, scrolls and potions this run has identified.\n" \
+		+ "A pill's name belongs to its colour, and a potion's to its bottle — " \
+		+ "both only until the run ends."
 	toggle.pressed.connect(func():
 		open = not open
 		if on_toggle.is_valid():
@@ -74,12 +82,23 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 		inner.add_child(_row("Pills", pills))
 	if not scrolls.is_empty():
 		inner.add_child(_row("Scrolls", scrolls))
+	if not potions.is_empty():
+		inner.add_child(_row("Potions", potions))
 	# What is left to learn, as a NUMBER rather than as a list of names — see the
 	# header: a row of blanks that could be counted would give the spares away.
+	#
+	# The two masked alphabets get a line each rather than one summed line, because
+	# the words are not interchangeable: a pill is a COLOUR the run dealt out of 13,
+	# a potion is a BOTTLE dealt out of 37, and "7 more out there" over both would
+	# be a number the player cannot use for either.
 	var unknown: int = maxi(0, Data.all_pills().size() - pills.size())
 	if unknown > 0:
 		inner.add_child(note("%d more colour%s out there, unlearned." % [
 			unknown, "" if unknown == 1 else "s"]))
+	var corked: int = maxi(0, Data.all_potions().size() - potions.size())
+	if corked > 0:
+		inner.add_child(note("%d more bottle%s out there, unlearned." % [
+			corked, "" if corked == 1 else "s"]))
 	return box
 
 static func _row(heading: String, entries: Array) -> Control:
@@ -140,6 +159,17 @@ static func known_scrolls() -> Array:
 	for scroll in Data.all_scrolls():
 		if ScrollSystem.is_identified(scroll.id):
 			out.append({"type": "scroll", "id": scroll.id})
+	return out
+
+# Every potion this run has identified. A known bottle draws its OWN art and its
+# own name here (LootSystem goes through PotionSystem for both), which is the
+# whole difference from a pill: what a potion turns out to be is a fact the player
+# has bought, and the vial it arrived in stops being the thing it is called.
+static func known_potions() -> Array:
+	var out: Array = []
+	for potion in Data.all_potions():
+		if PotionSystem.is_identified(potion.id):
+			out.append({"type": "potion", "id": potion.id})
 	return out
 
 static func note(text: String) -> Label:

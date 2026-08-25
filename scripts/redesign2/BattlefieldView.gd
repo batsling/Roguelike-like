@@ -33,6 +33,16 @@ signal item_aimed(item: ItemData, instance: int)
 # two are answered differently at the far end: a body is an instance handle the
 # effect looks up, a cell is ground that may have nothing on it at all.
 signal item_aimed_at_cell(item: ItemData, cell: Vector2i)
+# A THROWN piece of loot was pointed at a cell (potions-design.md §4.2). Its own
+# signal for the same reason again: what comes back is a loot ENTRY and the slot
+# it came out of, and spending it is the overworld's — the board only held it
+# while the aiming lasted. `index` is the pack slot, or -1 for a loose piece.
+signal loot_thrown_at_cell(entry: Dictionary, index: int, cell: Vector2i)
+# An armed throw was PUT AWAY without landing — the player pressed Cancel, or the
+# board stopped having a square to aim at. Nothing was spent, and the screen that
+# armed it needs to know so it can come back rather than leaving the player on a
+# board with a bottle that has silently gone nowhere.
+signal loot_throw_cancelled(entry: Dictionary, index: int)
 # A Bomb was aimed at a CELL rather than at a body. Its own signal for the same
 # reason `item_aimed_at_cell` is one: the far end spends the charge on ground
 # (GameLoop2.bomb_cell) instead of on an instance handle.
@@ -161,6 +171,23 @@ var bomb_mode: bool = false
 # just fire it: a charged item that emptied its bar on the press would charge the
 # player for opening a picker they then cancelled.
 var aiming_item: ItemData = null
+# THE THROWN PIECE OF LOOT, and the same bargain a third time (potions-design.md
+# §4.2). A potion is armed from the use modal and aimed here, and the click on a
+# square is what resolves it — the piece is not spent while it sits in this field,
+# so backing out of the picker costs the player nothing.
+#
+# It is a loot ENTRY ({type, id}) rather than a resource, because that is what
+# LootSystem spends and what a slot holds; `_throw_index` is the slot it came out
+# of, or -1 for a loose piece taken on the spot. Empty when nothing is being
+# thrown.
+#
+# It aims at GROUND like a tile-aimed item and never at a body, which is Red
+# Candle's rule (§17.3) and is right here for the same reason: a Fire Potion
+# thrown at empty ground two columns in front of the stack is one of the best
+# things you can do with one, and a picker that only lit up bodies would make it
+# impossible.
+var throwing_loot: Dictionary = {}
+var _throw_index: int = -1
 # The bodies an armed verb can be pointed at, as a set of instance handles.
 # Rebuilt at the top of every repaint (`refresh`) rather than asked per body, so
 # the whole board is drawn against one answer.
@@ -558,7 +585,9 @@ func _build_battle_toolbar() -> Control:
 	aim_btn = Button.new()
 	aim_btn.add_theme_font_size_override("font_size", 13)
 	aim_btn.visible = false
-	aim_btn.pressed.connect(cancel_item_aim)
+	# One Cancel for whichever ground-aiming verb is up — the button stands in the
+	# same place for both, so it disarms whichever one put it there.
+	aim_btn.pressed.connect(cancel_aim)
 	bar.add_child(aim_btn)
 	return bar
 
@@ -579,6 +608,7 @@ func begin_push() -> void:
 	push_mode = true
 	bomb_mode = false
 	aiming_item = null
+	cancel_loot_throw()
 	selected_instance = 0
 	refresh()
 
@@ -601,6 +631,7 @@ func begin_bomb() -> void:
 	bomb_mode = true
 	push_mode = false
 	aiming_item = null
+	cancel_loot_throw()
 	selected_instance = 0
 	refresh()
 
@@ -637,6 +668,7 @@ func begin_item_aim(item: ItemData) -> bool:
 	aiming_item = item
 	push_mode = false
 	bomb_mode = false
+	cancel_loot_throw()
 	selected_instance = 0
 	refresh()
 	return true
@@ -646,6 +678,46 @@ func cancel_item_aim() -> void:
 		return
 	aiming_item = null
 	refresh()
+
+# Arm a THROWN piece of loot: the next square clicked is where the bottle lands.
+# `index` is the pack slot it will be spent out of, or -1 for a loose piece.
+#
+# It aims at ground, so an empty board is no obstacle — throwing Fire at the
+# squares in front of the stack is one of the best things you can do with a bottle
+# (§4.2). What it does need is a board to aim at, which a run with no battlefield
+# up does not have.
+#
+# NO CONFIRMATION FOLLOWS THE CLICK (decision #27). Arming the picker and clicking
+# a square are two deliberate acts, and a dialog between them would sit in front of
+# the fastest board verb in the game: a throw cannot land anywhere the player did
+# not click.
+func begin_loot_throw(entry: Dictionary, index: int = -1) -> bool:
+	if entry.is_empty() or aim_cells(throw_request()).is_empty():
+		return false
+	throwing_loot = entry.duplicate(true)
+	_throw_index = index
+	aiming_item = null
+	push_mode = false
+	bomb_mode = false
+	selected_instance = 0
+	refresh()
+	return true
+
+func cancel_loot_throw() -> void:
+	if throwing_loot.is_empty():
+		return
+	var put_back: Dictionary = throwing_loot
+	var idx: int = _throw_index
+	throwing_loot = {}
+	_throw_index = -1
+	loot_throw_cancelled.emit(put_back, idx)
+	refresh()
+
+# Put away whichever ground-aiming verb is armed. What the toolbar's one Cancel
+# calls, so the button does not have to know which of the two it is cancelling.
+func cancel_aim() -> void:
+	cancel_item_aim()
+	cancel_loot_throw()
 
 # The armed item's own version of the charge check the other two verbs get: an
 # item sold, dropped, spent elsewhere or emptied of charges is not aiming any
@@ -665,9 +737,24 @@ func _check_aimed_item() -> void:
 	elif GameLoop2.stack.is_empty():
 		aiming_item = null
 
+# The same check for an armed THROW: a bottle sold, spent elsewhere or binned is
+# not aiming any more, and neither is one left armed over a board that has no
+# legal square left to aim at. A cleared board is NOT one of those cases — ground
+# is still there when the last follower dies, and Fire in front of an empty stack
+# is a perfectly good throw (§4.2).
+func _check_thrown_loot() -> void:
+	if throwing_loot.is_empty():
+		return
+	if aim_cells(throw_request()).is_empty():
+		var put_back: Dictionary = throwing_loot
+		var idx: int = _throw_index
+		throwing_loot = {}
+		_throw_index = -1
+		loot_throw_cancelled.emit(put_back, idx)
+
 # Whether a verb is waiting to be pointed at something.
 func is_aiming() -> bool:
-	return push_mode or bomb_mode or aiming_item != null
+	return push_mode or bomb_mode or aiming_item != null or not throwing_loot.is_empty()
 
 # The bodies an armed verb could actually land on, as instance handles. Empty
 # when nothing is armed — this is what the board lights up, and it is the whole
@@ -688,6 +775,9 @@ func armed_targets() -> Array:
 	# stops a picker for the floor from hijacking the board.
 	if aiming_item != null and aiming_item.target_kind() == &"tile":
 		return []
+	# A THROW lights up ground for the same reason and by the same rule.
+	if not throwing_loot.is_empty():
+		return []
 	var out: Array = []
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry.get("instance", 0))
@@ -695,21 +785,53 @@ func armed_targets() -> Array:
 			out.append(inst)
 	return out
 
-# The CELLS a tile-aimed item could be pointed at right now: every square of the
-# board inside the columns the item authored (ItemData.target_columns), or every
-# square when it authored no fence. This is both what the board lights up and what
-# it accepts a click on, so the highlight and the rule are the same list.
-func aim_cells(item: ItemData) -> Array:
-	if item == null or item.target_kind() != &"tile":
+# The CELLS a ground-aimed thing could be pointed at right now: every square of
+# the board inside the columns it authored, or every square when it authored no
+# fence. This is both what the board lights up and what it accepts a click on, so
+# the highlight and the rule are the same list.
+#
+# WIDENED PAST ItemData RATHER THAN FORKED (potions-design.md §4.2). It takes
+# either an `ItemData` (Red Candle) or an AIM REQUEST — `{target_kind, col_min,
+# col_max}`, which is what a thrown potion produces — because one highlight rule
+# and one accepted-click rule is the whole reason this function exists. A second
+# copy for the second kind of thing that aims at ground is a second place for the
+# two to drift.
+func aim_cells(what) -> Array:
+	var req: Dictionary = _aim_request(what)
+	if String(req.get("target_kind", "")) != "tile":
 		return []
-	var fence: Vector2i = item.target_columns()
-	var lo: int = fence.x if fence.x > 0 else 1
-	var hi: int = fence.y if fence.y > 0 else GameLoop2.grid_cols()
+	var lo: int = int(req.get("col_min", 0))
+	var hi: int = int(req.get("col_max", 0))
+	if lo <= 0:
+		lo = 1
+	if hi <= 0:
+		hi = GameLoop2.grid_cols()
 	var out: Array = []
 	for col in range(maxi(1, lo), mini(hi, GameLoop2.grid_cols()) + 1):
 		for row in range(GameLoop2.grid_rows()):
 			out.append(Vector2i(col, row))
 	return out
+
+# The aim request for whatever was handed in: an item's own authored reach, a
+# request passed through unchanged, or the empty one for anything else (which
+# lights nothing up).
+#
+# A THROWN POTION HAS NO FENCE — every square of the board is a legal target,
+# because the whole board is where a bottle can be thrown and the potion's own
+# `area=` decides what it covers from there.
+func _aim_request(what) -> Dictionary:
+	if what is ItemData:
+		var fence: Vector2i = (what as ItemData).target_columns()
+		return {"target_kind": String((what as ItemData).target_kind()),
+			"col_min": fence.x, "col_max": fence.y}
+	if what is Dictionary:
+		return what
+	return {}
+
+# The request a thrown piece of loot aims with. Its own function so the answer to
+# "where may a bottle land" is written down once.
+func throw_request() -> Dictionary:
+	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
 # Re-label and enable/disable the combat verbs for the current selection.
 func refresh_toolbar() -> void:
@@ -723,6 +845,7 @@ func refresh_toolbar() -> void:
 	if bomb_mode and GameState.bombs <= 0:
 		bomb_mode = false
 	_check_aimed_item()
+	_check_thrown_loot()
 	var entry: Dictionary = _stack_entry(selected_instance)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if e == null:
@@ -753,6 +876,11 @@ func refresh_toolbar() -> void:
 			# away from here: "something is armed" is not an answer the player can
 			# act on, and the lit bodies say everything else.
 			_hint_label.text = "%s:" % aiming_item.display_name
+		elif not throwing_loot.is_empty():
+			# The bottle's own name for the same reason — and for a potion it is
+			# doing a second job, since an UNKNOWN one is named by its colour and
+			# that colour is the thing the player is about to learn.
+			_hint_label.text = "🧪 Throw %s:" % LootSystem.display_name(throwing_loot)
 		else:
 			_hint_label.text = "Click an enemy:"
 		_hint_label.add_theme_color_override("font_color",
@@ -766,14 +894,22 @@ func refresh_toolbar() -> void:
 	# Push or Bomb would put the item away anyway (begin_push / begin_bomb), so
 	# while a relic is aiming they are two buttons whose only effect is to cancel
 	# it, and Cancel is right there saying so.
+	# A THROW borrows the same Cancel, and the same standing-in for the other two
+	# verbs: the bottle is not spent while the picker is up, so backing out costs
+	# nothing and the button has to say so.
+	var armed_aside: bool = aiming_item != null or not throwing_loot.is_empty()
 	if aim_btn != null:
-		aim_btn.visible = aiming_item != null
+		aim_btn.visible = armed_aside
 		if aiming_item != null:
 			aim_btn.text = "✕  Cancel"
 			aim_btn.tooltip_text = "Put %s away — nothing has been spent yet." \
 				% aiming_item.display_name
-	push_btn.visible = aiming_item == null
-	bomb_btn.visible = aiming_item == null
+		elif not throwing_loot.is_empty():
+			aim_btn.text = "✕  Cancel"
+			aim_btn.tooltip_text = "Put %s back in the pack — nothing has been spent yet." \
+				% LootSystem.display_name(throwing_loot)
+	push_btn.visible = not armed_aside
+	bomb_btn.visible = not armed_aside
 
 	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
 	push_btn.disabled = not push_mode and GameState.push <= 0
@@ -969,6 +1105,7 @@ func refresh() -> void:
 	if bomb_mode and GameState.bombs <= 0:
 		bomb_mode = false
 	_check_aimed_item()
+	_check_thrown_loot()
 	# Who an armed verb could be pointed at, answered once and drawn against by
 	# every body below (see _style_enemy_cell). Empty whenever nothing is armed.
 	_armed = {}
@@ -1343,6 +1480,13 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 		aiming_item = null
 		item_aimed.emit(armed, instance)
 		return
+	# WHILE A THROW IS ARMED, a click on a body is not a request to read its card —
+	# the picker's squares are drawn over the board and the body under one of them
+	# is exactly what the player is aiming at. Swallowed here rather than routed,
+	# because the lit square above it already took the press.
+	if not throwing_loot.is_empty():
+		refresh()
+		return
 	# While a push is being aimed the click is the AIM, not a request to read the
 	# card: a full-screen info card over the board would bury the arrows the same
 	# click just put there.
@@ -1366,6 +1510,8 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 func target_cells() -> Array:
 	if bomb_mode:
 		return GameLoop2.target_cells("all")
+	if not throwing_loot.is_empty():
+		return aim_cells(throw_request())
 	return aim_cells(aiming_item)
 
 # The cell picker a ground-aiming verb arms. Buttons over every legal square, in
@@ -1412,6 +1558,9 @@ func _target_cell_hint(cell: Vector2i) -> String:
 	if aiming_item != null:
 		return "Aim %s here (column %d, row %d)." % [
 			aiming_item.display_name, cell.x, cell.y + 1]
+	if not throwing_loot.is_empty():
+		return "Throw %s here (column %d, row %d)." % [
+			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
 	return ""
 
 # The stack entry whose footprint covers `cell`, or {} for bare ground. First
@@ -1440,6 +1589,18 @@ func _click_cell(cell: Vector2i) -> void:
 			bomb_requested.emit(int(entry.get("instance", 0)))
 		else:
 			bomb_cell_requested.emit(cell)
+		refresh()
+		return
+	# A THROWN BOTTLE lands here, and the board lets go of it first for the reason
+	# every other armed verb does: what it costs and what it does are the
+	# overworld's, and a board still holding a spent piece would be one press from
+	# throwing it twice.
+	if not throwing_loot.is_empty():
+		var thrown: Dictionary = throwing_loot
+		var idx: int = _throw_index
+		throwing_loot = {}
+		_throw_index = -1
+		loot_thrown_at_cell.emit(thrown, idx, cell)
 		refresh()
 		return
 	if aiming_item == null:
@@ -1721,8 +1882,15 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# small: printed over the art at full size they covered the enemy you were
 	# trying to recognise. Straddling the border puts them clear of the picture
 	# while still obviously belonging to this body.
+	# A FRACTION ONLY WHEN THERE IS ONE (docs/potions-design.md §4.6). Almost every
+	# body on this board is at full Health and "❤1/1" is a badge saying the same
+	# thing twice; a chipped one — or one a thrown Fruit Juice has GROWN — is
+	# exactly the case the second number is for, and it was unreadable while the
+	# ceiling was never written down.
 	var hp: int = int(entry.get("health", e.health))
-	var hp_lbl := _corner_badge("❤%d" % hp, Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
+	var ceiling: int = GameLoop2.entry_max_health(entry)
+	var hp_lbl := _corner_badge("❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling],
+		Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
 
 	# Damage per swing, and — on the rare body that gets more than one swing out of
 	# a single turn — how many that is: "⚔3 ×2". The two numbers are one fact ("it

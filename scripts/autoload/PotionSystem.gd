@@ -5,8 +5,11 @@ extends Node
 # one that is TWO EFFECTS IN ONE PIECE: every row authors a quaff side and a throw
 # side, and the player chooses which they are buying when they spend it.
 #
-# THIS FILE IS THE QUAFF HALF (§11 step 4). `throw_potion` and the board geometry
-# it needs arrive with step 5; nothing here knows what a cell is.
+# BOTH VERBS LIVE HERE (§11 steps 4 and 5). `quaff_potion` applies the sheet's
+# `On Player` side to the drinker; `throw_potion` takes a CELL of the battlefield
+# in `ctx.target` and applies the `On Tile` side around it. The board geometry
+# itself is GameLoop2's (`area_cells`) — this file says which shapes a clause
+# reaches and what lands in them, never what a shape means.
 #
 # It is PillSystem's shape with three differences, all of them from §6:
 #
@@ -310,8 +313,7 @@ func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	return out
 
 # Which of an op's numbers Sacred Bark's "double the effect" doubles (§8.2). Named
-# per op rather than "every integer in the dict", for ScrollSystem's reason. The
-# THROW side's `area` ladder is step 5's; every op here moves a value.
+# per op rather than "every integer in the dict", for ScrollSystem's reason.
 const LOOT_SCALED_FIELDS := {
 	"take_damage": ["value"],
 	"gain_hp": ["value"],
@@ -319,6 +321,14 @@ const LOOT_SCALED_FIELDS := {
 	"gain_stat": ["value"],
 	"apply_status": ["value"],
 	"gain_level": ["value"],
+	# The throw side. `deal_damage` and the three grants move a value like their
+	# quaff-side twins; the `area` every throw clause carries is the unusual half
+	# and goes up the ladder below instead.
+	"deal_damage": ["value"],
+	"grant_shield": ["value"],
+	"grant_health": ["value"],
+	"grant_max_health": ["value"],
+	"apply_tile": [],
 }
 
 func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
@@ -330,6 +340,37 @@ func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
 	if mult <= 1:
 		return raw
 	return maxi(1, raw) * mult
+
+# A GRID HAS NO WAY TO BE EXACTLY TWICE AS BIG, so Sacred Bark widens a throw's
+# shape by ONE STEP of a ladder rather than by a multiplier (§8.2, decision #19).
+#
+# Two rungs want saying out loud. A BOTTLE AIMED AT ONE SQUARE STILL HITS ONE
+# SQUARE: the radius the potion authored is zero and twice nothing is nothing, and
+# a Bark that turned every single-target throw into a nine-cell blast would make
+# aiming pointless. A LINE BECOMES THE CROSS because that is the widening this
+# game already has a word for — it is exactly what Brimstone does to a bomb, so a
+# doubled Explosive Ampoule reads as a shape the player has seen before.
+#
+# `board` is already everything, so it doubles to itself for the same reason
+# `cell` does.
+const AREA_LADDER := {
+	"cell": "cell",
+	"3x3": "5x5",
+	"5x5": "5x5",
+	"row": "cross",
+	"col": "cross",
+	"cross": "cross",
+	"board": "board",
+}
+
+# The shape a clause actually covers for THIS player: the authored `area`, one
+# rung up the ladder when the Bark is in the pack. An area the ladder has never
+# heard of is left exactly as authored rather than guessed at.
+func _scaled_area(op: Dictionary) -> String:
+	var area: String = String(op.get("area", "cell")).to_lower()
+	if GameState.loot_multiplier() <= 1:
+		return area
+	return String(AREA_LADDER.get(area, area))
 
 func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) -> void:
 	match String(op.get("op", "")):
@@ -398,3 +439,197 @@ func _apply_status(op: Dictionary, out: Dictionary) -> void:
 
 func _pretty_stat(stat: String) -> String:
 	return stat.replace("_", " ").capitalize()
+
+# ===========================================================================
+# Throwing one (§4.2 — §4.7)
+# ===========================================================================
+
+# Throw `entry` at a square of the battlefield: identify the bottle, then apply
+# its throw side around `ctx.target`. Same answer shape as the quaff, so one
+# caller can spend a potion either way.
+#   ctx: { "target": Vector2i, "rng": RandomNumberGenerator }
+#
+# THE CELL ARRIVES IN `ctx.target` AND IS NOT A REQUEST (§4.2). A request is
+# fulfilled AFTER the piece resolved, and a throw has nothing to resolve until it
+# knows where it landed — routing it through the request queue would mean an Echo
+# Chamber replay asking for four targets after the fact. `ctx.target` carrying a
+# Vector2i is the existing convention (EffectSystem._effect_cells reads exactly
+# that key), so a thrown potion and an aimed Red Candle reach the ground the same
+# way. The consequence, said now rather than discovered later: an ECHOED potion
+# re-throws at the SAME cell, because the player aimed once and the copies land
+# where the original did.
+#
+# IDENTIFY FIRST, ALWAYS, exactly as the quaff does — the gamble pays its
+# information out even when the bottle smashes on empty ground (§4.5).
+func throw_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"logs": [], "requests": []}
+	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
+	if potion == null:
+		return out
+
+	identify(potion.id)
+
+	var target = ctx.get("target")
+	if not (target is Vector2i):
+		# Nowhere to land. Not reachable from the UI — the picker is the only way
+		# to arm a throw — but a caller that forgot the cell should get the fizzle
+		# rather than a silent no-op with the bottle already spent.
+		out["logs"].append("It goes wide and smashes on nothing.")
+		return out
+	var cell: Vector2i = target
+
+	var ops: Array = potion.throw
+	if ops.is_empty():
+		# Potion of Uselessness in both directions, and Raise Level in this one.
+		# An UNKNOWN bottle can still be thrown even when it turns out to be one of
+		# these — hiding the button for unknowns would leak which bottles have no
+		# throw (§4.5) — so this line is a real outcome the player can buy.
+		out["logs"].append("It smashes. Nothing happens.")
+		return out
+
+	var landed: bool = false
+	for op in ops:
+		if op is Dictionary:
+			landed = _throw_one(op, cell, out) or landed
+	if not landed:
+		out["logs"].append("It smashes on empty ground.")
+	return out
+
+# One throw clause. Returns whether it actually DID anything, so a bottle that
+# found nothing to land on can say so once at the end rather than once per clause.
+#
+# THE AREA RESOLVES TWICE and the two lists are not the same (§4.3): `cells` for
+# the tile clause, `area_instances` — deduped bodies — for everything aimed at
+# somebody. A 2x2 standing under a 3x3 throw takes the clause ONCE.
+func _throw_one(op: Dictionary, cell: Vector2i, out: Dictionary) -> bool:
+	var area: String = _scaled_area(op)
+	var cells: Array = GameLoop2.area_cells(cell, area)
+	if cells.is_empty():
+		return false
+	match String(op.get("op", "")):
+		"apply_tile":
+			return _throw_tile(op, cells, out)
+		"deal_damage":
+			return _throw_damage(op, cells, out)
+		"apply_status":
+			return _throw_status(op, cells, out)
+		"grant_shield":
+			return _throw_shield(op, cells, out)
+		"grant_health":
+			return _throw_health(op, cells, out)
+		"grant_max_health":
+			return _throw_max_health(op, cells, out)
+		_:
+			push_warning("PotionSystem: unknown throw op '%s'" % String(op.get("op", "")))
+			return false
+
+# GROUND, through the board's own tile path — so fire laid on a mine annihilates
+# with it and fire laid under a body bites it on the spot, exactly as a Red
+# Candle's would (§17). Counted by the cells that are CARRYING the tile
+# afterwards, since a cell that took it straight back off did not catch light.
+func _throw_tile(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var tile: TileEffectData = Data.get_tile(StringName(String(op.get("tile", ""))))
+	if tile == null:
+		return false
+	var laid: int = 0
+	for c in cells:
+		if GameLoop2.apply_tile(c, tile.id):
+			laid += 1
+	if laid <= 0:
+		return false
+	out["logs"].append("%s covers %d square%s." % [
+		tile.display_name, laid, "" if laid == 1 else "s"])
+	return true
+
+# DAMAGE, per body and NOT as a bomb (§4.4). Bodies first, then the ground: a mine
+# the area covered goes up after whatever the bottle killed is already gone, which
+# is the ordering §4.7 asks for and the one `_explode` already uses.
+#
+# The mine's blast IS a bomb — Brimstone widens it, Blood Bombs is paid by it —
+# because that is what a proxy bomb is for. What stays un-upgraded is this
+# clause's own damage.
+func _throw_damage(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var dmg: int = maxi(1, _scaled_value(op, "value", 1))
+	var hits: int = 0
+	var destroyed: int = 0
+	for inst in GameLoop2.area_instances(cells):
+		hits += 1
+		if GameLoop2.damage_enemy_instance(inst, dmg):
+			destroyed += 1
+	var mines: int = GameLoop2.damage_ground(cells, dmg)
+	if hits > 0:
+		out["logs"].append("It deals %d damage to %d enem%s%s." % [
+			dmg, hits, "y" if hits == 1 else "ies",
+			"" if destroyed == 0 else " — %d destroyed" % destroyed])
+	if mines > 0:
+		out["logs"].append("The blast sets off %d unit%s on the ground." % [
+			mines, "" if mines == 1 else "s"])
+	return hits > 0 or mines > 0
+
+# A STATUS ON EVERY BODY THE AREA COVERS, with the potion's clock if it authored
+# one. `games` rides straight through to the timed layer, as it does on the quaff
+# side — GameLoop2.apply_status_to already takes it, and a second path for a timed
+# stack is the mistake that layer was built early to prevent (§5.4).
+func _throw_status(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var status: StatusData = Data.get_status(StringName(String(op.get("status", ""))))
+	if status == null:
+		return false
+	var stacks: int = _scaled_value(op, "value", 1)
+	var games: int = int(op.get("games", 0))
+	var landed: int = 0
+	for inst in GameLoop2.area_instances(cells):
+		if GameLoop2.apply_status_to(inst, status.id, stacks, games) > 0:
+			landed += 1
+	if landed <= 0:
+		return false
+	out["logs"].append("%d enem%s gain%s +%d %s%s." % [
+		landed, "y" if landed == 1 else "ies", "s" if landed == 1 else "",
+		stacks, status.display_name, StatusData.clock_suffix(games)])
+	return true
+
+func _throw_shield(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var amount: int = maxi(1, _scaled_value(op, "value", 1))
+	var landed: int = 0
+	for inst in GameLoop2.area_instances(cells):
+		if GameLoop2.grant_enemy_shield(inst, amount) > 0:
+			landed += 1
+	if landed <= 0:
+		return false
+	out["logs"].append("%d enem%s gain%s +%d Shield." % [
+		landed, "y" if landed == 1 else "ies", "s" if landed == 1 else "", amount])
+	return true
+
+# HEALING A BODY, capped at its own ceiling (§4.6). Thrown at an undamaged enemy
+# it is a wasted potion AND THE SCREEN SAYS SO — that sentence is the whole reason
+# this reports the bodies it found separately from the Health it moved.
+func _throw_health(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var amount: int = maxi(1, _scaled_value(op, "value", 1))
+	var found: int = 0
+	var healed: int = 0
+	for inst in GameLoop2.area_instances(cells):
+		found += 1
+		healed += GameLoop2.grant_enemy_health(inst, amount)
+	if found <= 0:
+		return false
+	if healed <= 0:
+		out["logs"].append("It splashes over %s. It is already whole." % (
+			"the enemy" if found == 1 else "them"))
+		return true
+	out["logs"].append("It heals %d Health across %d enem%s." % [
+		healed, found, "y" if found == 1 else "ies"])
+	return true
+
+# RAISING a body's ceiling and its pool together (§4.6). A 1-Health goblin becomes
+# a 3-Health goblin: three bombs, not one, and the price of a misthrown Rare
+# bottle.
+func _throw_max_health(op: Dictionary, cells: Array, out: Dictionary) -> bool:
+	var amount: int = maxi(1, _scaled_value(op, "value", 1))
+	var landed: int = 0
+	for inst in GameLoop2.area_instances(cells):
+		if GameLoop2.grant_enemy_max_health(inst, amount) > 0:
+			landed += 1
+	if landed <= 0:
+		return false
+	out["logs"].append("%d enem%s gain%s +%d Max Health." % [
+		landed, "y" if landed == 1 else "ies", "s" if landed == 1 else "", amount])
+	return true

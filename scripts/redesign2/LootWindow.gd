@@ -100,7 +100,7 @@ func _toggle_button() -> Control:
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.tooltip_text = "Scrolls and pills you're carrying (%d of %d).\nClick or Tab to %s." % [
-		held, GameState.LOOT_CAPACITY, "close" if open else "open"]
+		held, GameState.loot_capacity(), "close" if open else "open"]
 	if full:
 		btn.tooltip_text += "\nFull — the next piece of loot has nowhere to go."
 	# Margin 1, not the theme's: this is a full-width BAR at the foot of the pack
@@ -132,7 +132,7 @@ func _toggle_button() -> Control:
 	row.offset_left = 7
 	row.offset_right = -7
 	row.add_child(_bar_label("%s  Loot" % ("▾" if open else "▸"), tint, false))
-	row.add_child(_bar_label("%d/%d" % [held, GameState.LOOT_CAPACITY], tint, full))
+	row.add_child(_bar_label("%d/%d" % [held, GameState.loot_capacity()], tint, full))
 	for entry in GameState.loot_items.slice(0, TOGGLE_PEEK):
 		if entry is Dictionary:
 			var art: TextureRect = LootSystem.art_tex(entry, TOGGLE_ART)
@@ -190,7 +190,7 @@ func _panel(reporting: bool) -> Control:
 	box.add_child(head)
 	var title := Label.new()
 	title.text = "%s  Loot  —  %d / %d carried" % [
-		"💊" if _has_pills() else "📜", GameState.loot_items.size(), GameState.LOOT_CAPACITY]
+		"💊" if _has_pills() else "📜", GameState.loot_items.size(), GameState.loot_capacity()]
 	title.add_theme_font_size_override("font_size", 14)
 	title.add_theme_color_override("font_color", ACCENT.lerp(Color.WHITE, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL

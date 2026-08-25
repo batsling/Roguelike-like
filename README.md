@@ -231,7 +231,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
-| `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and `quaff_potion`. The THROW verb is not built yet. |
+| `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and the two verbs themselves: `quaff_potion` applies the sheet's `On Player` side to the drinker, `throw_potion` takes an aimed cell in `ctx.target` and applies the `On Tile` side around it. The shapes an `area=` token names are the BOARD's (`GameLoop2.area_cells`); Sacred Bark widens one by a rung of `AREA_LADDER` rather than by a multiplier, because a grid has no way to be exactly twice as big. |
 | `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
@@ -264,8 +264,12 @@ node and its script.
   backdrops. The corner is mounted under the modal layer now.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
     Bosses, **Loot**, Events, Objects. **Loot is one tab with two sub-tabs** —
-    Scrolls and Pills — because they are one thing to the run: one 50/50 payout,
-    one nine-piece pack, one window, and two top-level tabs said the opposite.
+    Scrolls, Pills and Potions — because they are one thing to the run: one
+    three-way payout, one nine-piece pack, one window, and three top-level tabs
+    would say the opposite. **A potion's cell shows its identified art and both
+    verbs**, which is the one place this tab does not draw a stand-in: a pill's
+    picture is the colour the run deals it, but what a potion looks like once you
+    know it is a fact about the potion rather than a per-run secret.
     Both halves are the **revealed reference**, which a run hides until you
     identify it. A pill cell wears a **stand-in capsule and says so**: a pill
     carries no art of its own (`PillData` has no image field) because its picture

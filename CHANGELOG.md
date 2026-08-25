@@ -11,6 +11,84 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **You can throw one now, at a square you pick.**
+
+  Step 5 of `docs/potions-design.md` §11 — the half of the kind that is not a
+  pill with better art. A potion's card offers two buttons: **Quaff**, which
+  happens on that screen, and **Throw**, which arms a picker on the board, takes
+  the card off screen, and resolves where you click. The bottle is not spent while
+  you are aiming, so backing out costs nothing and there is no confirmation after
+  the click — arming the picker and clicking a square are already two deliberate
+  acts, and a dialog between them would sit in front of the fastest board verb in
+  the game.
+
+  **It aims at GROUND, never at a body.** That is Red Candle's rule (§17.3) and it
+  is right here for the same reason: a Fire Potion thrown at empty ground two
+  columns in front of the stack is one of the best things you can do with one, and
+  a picker that only lit up bodies would make it impossible. `BattlefieldView.aim_cells`
+  was widened rather than forked — it takes an `ItemData` or a `{target_kind,
+  col_min, col_max}` aim request now, because one highlight rule and one
+  accepted-click rule is the whole reason that function exists.
+
+  **The area words are the board's**, as `GameLoop2.area_cells(cell, area)`:
+  `cell`, `row`, `col`, `3x3`, `5x5`, `cross`, `board`. Clipped, never wrapped — a
+  3x3 centred on the corner of a 4x4 board is four squares, and that is a real cost
+  of aiming at the edge rather than something refunded on the far side. **The area
+  resolves twice and the two lists differ**: cells for the tile clause, deduped
+  instances for anything aimed at a body, so a 2x2 standing under a 3x3 throw takes
+  the clause ONCE. That follows the bomb rather than the tile, and the difference
+  between them is the difference between a thing that happens once and ground that
+  keeps happening — the fire the bottle leaves behind still bills all four of that
+  2x2's cells, every turn, for three games.
+
+  **A throw is not a bomb.** An Explosive Ampoule goes through `_damage_enemy` per
+  body and not through `_explode`, so it fires no `bomb_used` (Blood Bombs is not
+  paid by a bottle), is not widened by Brimstone or stunned-in by Sticky, and costs
+  no Bomb charge — the potion's own `area=` is its whole geometry. What it inherits
+  is the fairness half: a body it kills is destroyed rather than defeated, and a
+  boss takes no damage from one, because a Rare bottle that one-shot a boss's
+  Health would make §7.1 a suggestion.
+
+  **A body knows what it started with.** Board entries carry `max_health` now,
+  seeded when they spawn and serialized beside `health` and `shield` — thrown
+  healing stops at it, Fruit Juice raises it and the current pool together (a
+  1-Health goblin becomes a 3-Health goblin: three bombs, not one), and the board
+  draws `❤2/3` on a body that is not sitting at its ceiling. It was the number the
+  enemy health bar had been drawing a fraction against without ever being told.
+
+  **Sacred Bark widens the shape by one rung rather than by a multiplier**, because
+  a grid has no way to be exactly twice as big: `3x3` → `5x5`, a row or column →
+  the cross, and `cell` stays `cell` — a radius of zero doubles to zero, and a Bark
+  that turned every single-target throw into a nine-cell blast would make the aiming
+  pointless. A line becoming the cross is the widening this game already has a word
+  for, since that is exactly what Brimstone does to a bomb.
+
+  **The Landmine gained a second trigger, and it is a spec edit.** `units2.0` now
+  authors `enemy_enters: detonate; damaged: detonate`, and §17.1's "the pair is the
+  whole vocabulary" line is a trio. A mine caught in a thrown Ampoule's row goes up
+  — and so does one caught in a bomb blast, which it never did before, because a
+  thing with `Health 1` that nothing can damage is carrying a number for
+  decoration. The blast that answers is the MINE's, so it carries Brimstone, Sticky,
+  Hot Bombs and `bomb_used`; the potion's own damage stays un-upgraded. It is a
+  trigger word rather than a rule hardcoded to "0 Health runs your detonate"
+  because the next unit will want to react to damage differently — a barrel that
+  simply breaks, a totem that fires something off when shot.
+
+  **One correction the build made to the plan.** §4.7 said to take the unit off the
+  board before its `damaged:` list runs, reasoning from Hot Bombs laying fire back
+  over the same cell. Wrong: `detonate` goes back through `detonate_unit`, which is
+  what spends the unit, guards the chain and carries the bomb modifiers — and which
+  refuses a cell with nothing on it. A mine erased ahead of its own trigger quietly
+  failed to go off, and the test that caught it was Blood Bombs not being paid. The
+  list runs with the unit standing there; the cell is cleared afterwards.
+
+  Every dead end is a fizzle and the bottle is identified either way: a throw at
+  empty ground says so, Raise Level's `N/A` throw smashes and does nothing, and
+  Potion of Uselessness does nothing loudly in both directions. The **Throw button
+  is offered on every unknown bottle** including that one — hiding it for unknowns
+  would leak which bottles have no throw, which is precisely the fact the gamble is
+  selling.
+
 - **You can drink a potion. You still cannot throw one.**
 
   Step 4 of `docs/potions-design.md` §11 — `PotionSystem`, autoload #23, and the

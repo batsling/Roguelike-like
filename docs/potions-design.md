@@ -805,13 +805,13 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/autoload/GameState.gd` | `remove_curse_goal(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
 | `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
-| `scripts/autoload/EffectSystem.gd` | `gain_potion`; `deal_damage`; `gain_level`; `games=` on `apply_status`. |
+| `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `generate_item_tres.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
 | `scripts/autoload/ScrollSystem.gd` | `identify_loot` (widened, §10); `forget` across all three kinds; `remove_curse` + its picker (§10.1); the potion half of `LOOT_SCALED_FIELDS`, area ladder included (§8.2). |
 | `scripts/resources/StatusData.gd` | `tooltip_for` grows the `⏱ this game` line, so every pip that draws a timed status says so (§5.3). |
 | `scripts/autoload/SaveSystem.gd` | Serialize the timed layer. The two potion fields are **already saved**. |
 | `scripts/redesign2/LootUseModal.gd` | A second button. **Quaff** and **Throw** side by side on a potion, one Use on everything else; the throw arms the picker, hides the modal, and resumes on the click. |
 | `scripts/redesign2/BattlefieldView.gd` | Generalise `aim_cells` past `ItemData` (§4.2); a throw-armed state beside `bomb_mode` / `aiming_item`. |
-| `scripts/redesign2/LootInfoCard.gd`, `LootGrid.gd`, `LootDropModal.gd`, `LootWindow.gd`, `LootDiscoveries.gd` | Potions are loot: they draw, drag, bin, offer and get listed under *Known this run* with no per-kind branching beyond the glyph. `LootSystem.glyph` needs a third one — 🧪. |
+| `scripts/redesign2/LootInfoCard.gd`, `LootGrid.gd`, `LootDropModal.gd`, `LootWindow.gd`, `LootDiscoveries.gd` | Potions are loot: they draw, drag, bin, offer and get listed under *Known this run* with no per-kind branching beyond the glyph. `LootSystem.glyph` needs a third one — 🧪. **`LootDiscoveries` was the one that did need real work**, because it does not read a kind-blind list: it walks each catalog and asks that system whether the row is identified, so a third alphabet is a third walk, a third row and a second *unlearned* count. A pill's spares must stay unnamed and so must a potion's 22 vials — but a LEARNED bottle is listed by its own name, where a learned pill is listed by nothing but its capsule. |
 | `scripts/ui/Collection.gd` | The Loot tab has two sub-tabs (`LOOT_SCROLLS` / `LOOT_PILLS`) and needs a third. Unlike pills — which draw one stand-in capsule so the catalog can't teach the run's alphabet — a potion's catalog cell shows its **identified** art where it has one, since that is not a per-run secret. |
 | `scripts/autoload/DevTools.gd` | Grant a named potion, identified or not, like `add_scroll_loot`. |
 | `tools/generate_unit_tres.py` + the `units2.0` sheet + spec §17.1 | The `damaged:` trigger and the Landmine's `damaged: detonate` (§4.7). §17.1's "the pair is the whole vocabulary" line becomes a trio. |
@@ -959,34 +959,60 @@ scroll is identified either way (§4.5).
    extracted** — one level (stats + the character's reward, no condition) is
    `GameState.grant_level_up` now, and `Overworld2` keeps the condition and the
    bonus-level chain, which are the parts about EARNING one.
-5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
+5. ~~**The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
    picker generalisation, the second button — and the Landmine's damage trigger
-   (§4.7), which is the one piece of this step that is not potion code.
-6. **`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.
-7. **The income switch** to a three-way split (§8) — last, so the run is not paying
-   out a kind that is only half built.
-8. **README + CHANGELOG**, and `gain_potion` for whoever authors the first potion
-   relic.
+   (§4.7), which is the one piece of this step that is not potion code.~~
+   **DONE.** `GameLoop2.area_cells` / `area_instances`, `max_health` on every
+   board entry (seeded, serialized, re-seeded on a Scramble, and drawn as `❤2/3`
+   where it differs), `PotionSystem.throw_potion` with the six throw ops and
+   §8.2's `AREA_LADDER`, `BattlefieldView.aim_cells` widened to take an aim
+   REQUEST, a second button in `LootUseModal`, and `damaged:` in the tile/unit
+   effect DSL with the Landmine authoring it.
 
-Step 1 is the risky one. Steps 3–4 are mostly transcription from `PillSystem`, and
-step 5 is where the new gameplay actually is — which is a good argument for not
-letting steps 1 and 2 sprawl.
+   Three things the build settled that the plan had left open. **The `damaged:`
+   list runs with the unit still standing on the cell**, not after it has been
+   taken off: `detonate` goes back through `detonate_unit`, which is what spends
+   the unit and carries the bomb modifiers, and which refuses a cell with nothing
+   on it — §4.7's ordering argument was about the fire a detonation lays, which
+   `detonate_unit` already handles. **A throw is refused while the drop screen is
+   up**, because that screen owns the whole window and a picker armed under it
+   lights squares nobody can reach; the bottle is not spent, so the modal says so
+   and the player quaffs it or carries it out. And **arming a throw closes the
+   loot window and the info card**, which float over the board for the same
+   reason.
+6. ~~**`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.~~
+   **DONE.** The const is the BASE now and `GameState.loot_capacity()` is what
+   every surface reads; `LootGrid` derives its columns from it rather than from a
+   literal 3.
+7. ~~**The income switch** to a three-way split (§8) — last, so the run is not
+   paying out a kind that is only half built.~~ **DONE.**
+   `GameState.roll_loot_kind()` is the one roll both kind-blind callers ask, which
+   is the half of this the plan was really about: the two of them each spelled
+   `randi() % 2` out for themselves, and that is two places for the odds to drift
+   the day one is tuned.
+8. ~~**README + CHANGELOG**, and `gain_potion` for whoever authors the first potion
+   relic.~~ **DONE**, plus the Collection's third sub-tab — and `gain_potion` was
+   already registered on `EffectSystem`, written in step 4 and never called.
+
+**All eight steps are built.** Step 1 was the risky one and step 5 is where the
+new gameplay turned out to be, exactly as this list guessed. What is left is
+tuning rather than construction: see §12 for the two questions the build could not
+answer by itself.
 
 ---
 
 ## 12. Open questions
 
-- **A throw during the report step.** §4.5 says a throw at an empty board is fine
-  (it is ground, and Fire ahead of the stack is the point). Spending mid-report is
-  allowed — only *moving* the pack is not (spec §4.3) — so a throw should be too. Worth
-  confirming that arming a board picker while the report checklist is up is not a
-  way to click something the report has locked.
+- ~~**A throw during the report step.**~~ **Answered: it works, and it is fine.**
+  The picker is drawn on the board's own arrow layer and nowhere else, so the
+  checklist beside it keeps its own rules and nothing the report has locked
+  becomes clickable. Verified on screen mid-report.
 - **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
   op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
   Correct, but worth eyeballing against the one-clause rows once it is in.
-- **Does `area` doubling leave a `cell` alone?** §8.2 says yes — a radius of zero
-  doubles to zero, so a Barked Block Potion still shields one body. The alternative
-  (`cell` → `3x3`) makes every single-target throw a blast under the Bark, which
-  reads as a different relic.
+- ~~**Does `area` doubling leave a `cell` alone?**~~ **Built as §8.2 says: yes.**
+  A radius of zero doubles to zero, so a Barked Block Potion still shields one
+  body. The alternative (`cell` → `3x3`) makes every single-target throw a blast
+  under the Bark, which reads as a different relic.
 - **Lucky Foot's reach** — pills-only for now (§8). Sacred Bark and Echo Chamber
   already cover all three kinds.

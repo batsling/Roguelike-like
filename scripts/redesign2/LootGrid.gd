@@ -51,6 +51,8 @@ signal discard_requested(index: int)
 signal offer_discarded(offer: int)
 
 const ACCENT := Color(0.72, 0.62, 0.86)
+# The grid is three wide while the pack holds nine, and `grid_columns()` is what
+# keeps those two facts one fact (docs/potions-design.md §8.1).
 const COLS := 3
 
 # Pieces already in the pack can be dragged between slots.
@@ -77,6 +79,17 @@ var allow_discard: bool = false
 # anything.
 var locked: bool = false
 
+# HOW WIDE THE GRID IS, DERIVED FROM THE CAP rather than from a literal 3 — a
+# 12-slot pack is 4x3, not nine cells and three orphans below them. Three columns
+# is the shape nine wants; a capacity that is not a multiple of three keeps three
+# and lets the last row come up short, because a row of two beside two rows of
+# three still reads as "this is the pack and there is room in it".
+func grid_columns() -> int:
+	var cap: int = GameState.loot_capacity()
+	if cap > COLS * COLS and cap % COLS == 0:
+		return cap / COLS
+	return COLS
+
 func _init() -> void:
 	columns = COLS
 	add_theme_constant_override("h_separation", 6)
@@ -89,8 +102,11 @@ func rebuild() -> void:
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
+	# THE EMPTY SLOTS ARE PART OF THE DRAWING: "the grid is always the cap" is what
+	# makes the room left readable, so this is the capacity and never the count.
+	columns = grid_columns()
 	var layout: Array = GameState.loot_layout()
-	for slot in range(GameState.LOOT_CAPACITY):
+	for slot in range(GameState.loot_capacity()):
 		var index: int = int(layout[slot])
 		var entry = GameState.loot_items[index] if index >= 0 else null
 		add_child(_slot(slot, index, entry if entry is Dictionary else {}))
