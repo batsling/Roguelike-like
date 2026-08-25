@@ -105,6 +105,16 @@ func _mount(host: Node) -> void:
 func _is_pill() -> bool:
 	return String(_entry.get("type", "")) == "pill"
 
+# Which verb this use is buying. A potion is the only piece with two, and the
+# answer is the button the player pressed rather than anything about the piece —
+# it rides into LootSystem as `ctx.verb` and decides which half of the sheet row
+# resolves (potions-design.md §4).
+var _verb: String = "quaff"
+# Where a throw landed, once the board picker has answered. Carried on the modal
+# because the SAME cell has to reach the echoes: an echoed potion re-throws at the
+# square the original was aimed at (§4.2).
+var _target = null
+
 # ---------------------------------------------------------------------------
 # Intro screen — show the scroll and offer Read.
 # ---------------------------------------------------------------------------
@@ -164,10 +174,26 @@ func _show_intro() -> void:
 	var cancel := UITheme.quiet_button("Cancel", Vector2(120, 38))
 	cancel.pressed.connect(_finish)
 	actions.add_child(cancel)
+	# TWO VERBS ON A POTION, side by side (§4.5). Quaff is the confirm — it is the
+	# one that happens right here, on this screen — and Throw sits beside it as its
+	# own weight, because the choice between them is the whole of what the kind is
+	# for and a "more options" arrangement would make one of them the default.
+	#
+	# The Throw button is offered on any UNKNOWN bottle and hidden only on a KNOWN
+	# one with nothing on its tile side, which is Raise Level and nothing else:
+	# hiding it for unknowns would leak which bottles have no throw.
 	var read_btn := UITheme.confirm_button(
-		"Take Pill →" if _is_pill() else "Read Scroll →", Vector2(170, 38), 15)
+		"%s →" % LootSystem.use_verb(_entry), Vector2(170, 38), 15)
 	read_btn.pressed.connect(_on_read)
 	actions.add_child(read_btn)
+	if LootSystem.can_throw(_entry):
+		# IN THE BOTTLE'S OWN VIOLET, not a second green. Both are affirmatives and
+		# two identical plates would read as one button drawn twice — the point of
+		# the pair is that they are different answers to the same question.
+		var throw_btn := UITheme.action_button("Throw →", PotionSystem.POTION_COLOR,
+			Vector2(150, 38), 15)
+		throw_btn.pressed.connect(_arm_throw)
+		actions.add_child(throw_btn)
 	_body.add_child(actions)
 	read_btn.grab_focus()
 
@@ -215,10 +241,20 @@ func _on_read() -> void:
 	# Same reason: the use joins the echo memory as it resolves, so what the echoes
 	# WERE can only be read from in front of it.
 	_echoed = _echo_names()
-	var result: Dictionary = LootSystem.use_entry(_entry, {"rng": _rng}) if _loot_index < 0 \
-		else LootSystem.use_loot(_loot_index, {"rng": _rng})
+	var ctx: Dictionary = {"rng": _rng, "verb": _verb}
+	if _target is Vector2i:
+		# The square the player picked, carried into the resolution AND into every
+		# echo of it — the copies land where the original did, because the player
+		# aimed once (§4.2).
+		ctx["target"] = _target
+	var result: Dictionary = LootSystem.use_entry(_entry, ctx) if _loot_index < 0 \
+		else LootSystem.use_loot(_loot_index, ctx)
 	used.emit()
-	if _loot_index < 0:
+	if _verb == "throw":
+		GameLog.add("You throw %s at column %d, row %d." % [
+			LootSystem.display_name(_entry),
+			(_target as Vector2i).x, (_target as Vector2i).y + 1], ACCENT)
+	elif _loot_index < 0:
 		GameLog.add("Used %s where you stood, without carrying it."
 			% LootSystem.display_name(_entry), ACCENT)
 	for line in result.get("logs", []):
@@ -227,6 +263,51 @@ func _on_read() -> void:
 	_newly_learned = not known_before and LootSystem.is_identified(_entry)
 	_requests = result.get("requests", [])
 	_process_next_request()
+
+# ---------------------------------------------------------------------------
+# The throw — aim first, then resolve (potions-design.md §4.2)
+# ---------------------------------------------------------------------------
+
+# Arm the board's cell picker and get out of the way. NOTHING IS SPENT HERE: the
+# piece is still in the pack while the player is aiming, so cancelling the picker
+# costs them nothing and this screen comes back exactly as they left it.
+#
+# THE MODAL HIDES RATHER THAN CLOSING. It is holding the slot index, the echo
+# names and the Health this use will be reported against, and all three are facts
+# about the moment before the bottle resolved — a screen rebuilt after the click
+# would have to go and find them again.
+#
+# AND IT DOES NOT ASK (decision #27). Arming the picker and clicking a square are
+# two deliberate acts; a confirmation between them would sit in front of the
+# fastest board verb in the game. Throwing an identified Fruit Juice at a boss is
+# a mistake the run log will describe, not one the UI will prevent.
+func _arm_throw() -> void:
+	if _overworld == null or not _overworld.has_method("begin_loot_throw") \
+			or not _overworld.begin_loot_throw(self, _entry, _loot_index):
+		# Nowhere to throw it from — no board, or another screen owning the one
+		# the picker would go on. NOTHING IS SPENT, because a throw that never
+		# left your hand is not a throw, and the player is put back in front of
+		# the same choice rather than being handed a broken button.
+		Notifications.notify("There is nowhere to throw it from right now.",
+			UITheme.TEXT_DIM)
+		return
+	_verb = "throw"
+	visible = false
+
+# The board answered with a square. Come back and resolve, which from here on is
+# the ordinary spend path — the only difference is the two keys in `ctx`.
+func resolve_throw(cell: Vector2i) -> void:
+	_target = cell
+	visible = true
+	_on_read()
+
+# The picker was put away without landing. The bottle is still in the pack, so the
+# screen comes back to the same choice it offered before.
+func throw_cancelled() -> void:
+	_verb = "quaff"
+	_target = null
+	visible = true
+	_show_intro()
 
 # ---------------------------------------------------------------------------
 # Requests — interactive follow-ups returned by the use (and by its echoes)
@@ -438,6 +519,13 @@ func _show_outcome() -> void:
 	if not _echoed.is_empty():
 		_body.add_child(_muted("Echo Chamber also used: %s."
 			% ", ".join(PackedStringArray(_echoed))))
+
+	# WHERE IT LANDED, on a throw. The lines under this say what happened; without
+	# the square they happened on, an outcome like "Fire covers 4 squares" is a
+	# report the player cannot check against the board they aimed at.
+	if _verb == "throw" and _target is Vector2i:
+		_body.add_child(_muted("Thrown at column %d, row %d." % [
+			(_target as Vector2i).x, (_target as Vector2i).y + 1]))
 
 	# The effect, line by line. A piece whose ops all no-opped (a charge into a pack
 	# with nothing chargeable, an Amnesia with nothing to forget) reports that

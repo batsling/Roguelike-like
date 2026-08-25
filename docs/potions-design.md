@@ -959,9 +959,27 @@ scroll is identified either way (§4.5).
    extracted** — one level (stats + the character's reward, no condition) is
    `GameState.grant_level_up` now, and `Overworld2` keeps the condition and the
    bonus-level chain, which are the parts about EARNING one.
-5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
+5. ~~**The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
    picker generalisation, the second button — and the Landmine's damage trigger
-   (§4.7), which is the one piece of this step that is not potion code.
+   (§4.7), which is the one piece of this step that is not potion code.~~
+   **DONE.** `GameLoop2.area_cells` / `area_instances`, `max_health` on every
+   board entry (seeded, serialized, re-seeded on a Scramble, and drawn as `❤2/3`
+   where it differs), `PotionSystem.throw_potion` with the six throw ops and
+   §8.2's `AREA_LADDER`, `BattlefieldView.aim_cells` widened to take an aim
+   REQUEST, a second button in `LootUseModal`, and `damaged:` in the tile/unit
+   effect DSL with the Landmine authoring it.
+
+   Three things the build settled that the plan had left open. **The `damaged:`
+   list runs with the unit still standing on the cell**, not after it has been
+   taken off: `detonate` goes back through `detonate_unit`, which is what spends
+   the unit and carries the bomb modifiers, and which refuses a cell with nothing
+   on it — §4.7's ordering argument was about the fire a detonation lays, which
+   `detonate_unit` already handles. **A throw is refused while the drop screen is
+   up**, because that screen owns the whole window and a picker armed under it
+   lights squares nobody can reach; the bottle is not spent, so the modal says so
+   and the player quaffs it or carries it out. And **arming a throw closes the
+   loot window and the info card**, which float over the board for the same
+   reason.
 6. **`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.
 7. **The income switch** to a three-way split (§8) — last, so the run is not paying
    out a kind that is only half built.
@@ -976,17 +994,16 @@ letting steps 1 and 2 sprawl.
 
 ## 12. Open questions
 
-- **A throw during the report step.** §4.5 says a throw at an empty board is fine
-  (it is ground, and Fire ahead of the stack is the point). Spending mid-report is
-  allowed — only *moving* the pack is not (spec §4.3) — so a throw should be too. Worth
-  confirming that arming a board picker while the report checklist is up is not a
-  way to click something the report has locked.
+- ~~**A throw during the report step.**~~ **Answered: it works, and it is fine.**
+  The picker is drawn on the board's own arrow layer and nowhere else, so the
+  checklist beside it keeps its own rules and nothing the report has locked
+  becomes clickable. Verified on screen mid-report.
 - **Fysh Oil's two clauses under Sacred Bark.** The Bark doubles *named fields per
   op*, so a two-clause potion doubles both clauses — 2 Strength and 2 Dexterity.
   Correct, but worth eyeballing against the one-clause rows once it is in.
-- **Does `area` doubling leave a `cell` alone?** §8.2 says yes — a radius of zero
-  doubles to zero, so a Barked Block Potion still shields one body. The alternative
-  (`cell` → `3x3`) makes every single-target throw a blast under the Bark, which
-  reads as a different relic.
+- ~~**Does `area` doubling leave a `cell` alone?**~~ **Built as §8.2 says: yes.**
+  A radius of zero doubles to zero, so a Barked Block Potion still shields one
+  body. The alternative (`cell` → `3x3`) makes every single-target throw a blast
+  under the Bark, which reads as a different relic.
 - **Lucky Foot's reach** — pills-only for now (§8). Sacred Bark and Echo Chamber
   already cover all three kinds.

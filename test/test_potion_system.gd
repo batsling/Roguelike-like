@@ -325,3 +325,485 @@ func test_the_kind_blind_payout_is_still_the_old_coin() -> void:
 		GameState.add_loot("loot", 1)
 		assert_eq(GameState.loot_potions().size(), 0,
 			"no potion arrives from the per-game payout yet")
+
+# ===========================================================================
+# The THROW (§11 step 5) — §4.2 to §4.7
+# ===========================================================================
+
+# The board helpers this half needs. Everything above this line is deliberately
+# ignorant of what a cell is; everything below it is about nothing else.
+
+# A synthetic goal-enemy with known numbers, so nothing here moves when the
+# enemies2.0 sheet does. test_tiles_units.gd's helper, for the same reason.
+func _enemy(health: int = 3, boss: bool = false) -> GoalEnemyData:
+	var e := GoalEnemyData.new()
+	e.id = &"synthetic"
+	e.display_name = "Synthetic"
+	e.goal = "Beat it"
+	e.damage = 1
+	e.health = health
+	e.boss = boss
+	e.difficulty = GoalEnemyData.Difficulty.LOW
+	return e
+
+# Choose a game and take its ESCORT straight back off the board, so a stranger
+# from the authored roster is never inside these assertions.
+func _solo(enemy: GoalEnemyData) -> int:
+	var inst: int = GameLoop2.choose_game(enemy)
+	if GameLoop2.escort_instance() > 0:
+		GameLoop2.despawn(GameLoop2.escort_instance())
+	return inst
+
+# Stand the only body on the board at a known cell.
+func _park(instance: int, cell: Vector2i) -> Dictionary:
+	var entry: Dictionary = GameLoop2.entry_for(instance)
+	entry["col"] = cell.x
+	entry["row"] = cell.y
+	return entry
+
+func _throw(id: StringName, cell: Vector2i) -> Dictionary:
+	return PotionSystem.throw_potion({"type": "potion", "id": id},
+		{"rng": _rng(), "target": cell})
+
+# --- The shapes (§4.3) -----------------------------------------------------
+
+func test_a_bare_cell_is_one_square_and_an_unknown_word_is_too() -> void:
+	var cell := Vector2i(2, 1)
+	assert_eq(GameLoop2.area_cells(cell, "cell"), [cell])
+	assert_eq(GameLoop2.area_cells(cell), [cell], "cell is the default")
+	assert_eq(GameLoop2.area_cells(cell, "banana"), [cell],
+		"a typo covers one square rather than the board")
+
+func test_a_row_and_a_column_are_the_boards_own_width_and_height() -> void:
+	var cell := Vector2i(2, 1)
+	var row: Array = GameLoop2.area_cells(cell, "row")
+	assert_eq(row.size(), GameLoop2.grid_cols())
+	for c in row:
+		assert_eq(c.y, cell.y, "every square of that row")
+	var col: Array = GameLoop2.area_cells(cell, "col")
+	assert_eq(col.size(), GameLoop2.grid_rows())
+	for c in col:
+		assert_eq(c.x, cell.x, "every square of that column")
+
+func test_a_row_grows_with_the_board_rather_than_being_four() -> void:
+	# A relic that widens the battlefield widens an Ampoule with it — the shape is
+	# the board's, not a number the potion wrote down.
+	var was: int = GameLoop2.grid_cols()
+	var item: ItemData = Data.get_item2(&"mine_r_construction")
+	assert_not_null(item, "items2.0 has the board-growing relic")
+	GameState.add_item(item)
+	GameLoop2.sync_grid_bounds()
+	assert_ne(GameLoop2.grid_cols(), was, "the board really did move")
+	assert_eq(GameLoop2.area_cells(Vector2i(1, 0), "row").size(), GameLoop2.grid_cols())
+
+func test_a_3x3_clips_at_the_edge_and_never_wraps() -> void:
+	# A 3x3 centred on a corner is four squares, and that is a real cost of aiming
+	# at the edge rather than something refunded on the far side (§4.3).
+	var corner := Vector2i(1, 0)
+	var cells: Array = GameLoop2.area_cells(corner, "3x3")
+	assert_eq(cells.size(), 4, "four squares in the corner of the board")
+	for c in cells:
+		assert_true(c.x >= 1 and c.x <= GameLoop2.grid_cols())
+		assert_true(c.y >= 0 and c.y < GameLoop2.grid_rows())
+	# And nine in the middle of a board big enough to hold one.
+	var mid := Vector2i(2, 1)
+	assert_eq(GameLoop2.area_cells(mid, "3x3").size(),
+		mini(3, GameLoop2.grid_cols()) * mini(3, GameLoop2.grid_rows()))
+
+func test_an_aimed_cell_off_the_board_covers_nothing() -> void:
+	assert_eq(GameLoop2.area_cells(Vector2i(99, 0), "3x3"), [])
+	assert_eq(GameLoop2.area_cells(Vector2i(1, 99), "board"), [])
+
+func test_board_is_every_square_and_the_cross_is_a_row_and_a_column() -> void:
+	var cell := Vector2i(2, 1)
+	assert_eq(GameLoop2.area_cells(cell, "board").size(),
+		GameLoop2.grid_cols() * GameLoop2.grid_rows())
+	var cross: Array = GameLoop2.area_cells(cell, "cross")
+	assert_eq(cross.size(),
+		GameLoop2.grid_cols() + GameLoop2.grid_rows() - 1,
+		"the row and the column, sharing one square")
+
+func test_a_wide_body_under_a_wide_throw_is_hit_ONCE() -> void:
+	# Decision #26. A 2x2 standing under a 3x3 takes the clause once, not four
+	# times — that follows the bomb rather than the tile, and the difference is the
+	# difference between a thing that happens once and ground that keeps happening.
+	var e: GoalEnemyData = _enemy(9)
+	e.shape_rows = 2
+	e.shape_cols = 2
+	var inst: int = _solo(e)
+	_park(inst, Vector2i(2, 0))
+	var covered: Array = GameLoop2.entry_cells(GameLoop2.entry_for(inst))
+	assert_true(covered.size() > 1, "the body really is wide")
+	var hit: Array = GameLoop2.area_instances(GameLoop2.area_cells(Vector2i(2, 0), "3x3"))
+	assert_eq(hit.size(), 1, "one body, however many of its squares the area covers")
+
+# --- max_health on a body (§4.6) -------------------------------------------
+
+func test_a_body_arrives_knowing_what_it_started_with() -> void:
+	var inst: int = _solo(_enemy(3))
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.entry_max_health(entry), int(entry["health"]),
+		"seeded from the Health it walked on with")
+
+func test_a_body_from_before_the_field_existed_reads_its_own_health() -> void:
+	# An old save, or a hand-built body. The ceiling falls back to the Health it is
+	# holding, which is the honest answer for something nothing has ever grown.
+	assert_eq(GameLoop2.entry_max_health({"health": 4}), 4)
+	assert_eq(GameLoop2.entry_max_health({}), 1)
+
+func test_healing_a_body_stops_at_its_ceiling_and_says_when_it_did_nothing() -> void:
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	var out: Dictionary = _throw(&"potion_of_healing", Vector2i(2, 1))
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "already whole")
+	assert_true(String((out["logs"] as Array)[0]).contains("already whole"),
+		"and the screen says so — a wasted potion that reported nothing would read "
+		+ "as a bottle that had missed")
+
+func test_healing_a_chipped_body_stops_at_the_ceiling_it_started_with() -> void:
+	var inst: int = _solo(_enemy(3))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	entry["health"] = 1
+	_throw(&"potion_of_extra_healing", Vector2i(2, 1))   # heals 5
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "up to the ceiling, no further")
+
+func test_fruit_juice_raises_the_ceiling_and_the_pool_together() -> void:
+	var inst: int = _solo(_enemy(1))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	_throw(&"fruit_juice", Vector2i(2, 1))
+	entry = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.entry_max_health(entry), 3, "a 1-Health goblin is a 3-Health goblin")
+	assert_eq(int(entry["health"]), 3, "a full body stays full")
+
+func test_fruit_juice_on_a_damaged_body_keeps_the_damage_it_has_taken() -> void:
+	var inst: int = _solo(_enemy(3))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	entry["health"] = 1
+	_throw(&"fruit_juice", Vector2i(2, 1))
+	entry = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.entry_max_health(entry), 5, "the ceiling went up by 2")
+	assert_eq(int(entry["health"]), 3, "and so did the pool — the 2 it was down is still down")
+
+func test_the_ceiling_survives_a_save_and_a_load() -> void:
+	# A REAL enemy out of the catalog, not the synthetic one every other test on
+	# this page uses: a save names its bodies by id, and _deserialize_entry drops
+	# one the catalog has never heard of.
+	var real: GoalEnemyData = Data.all_goal_enemies()[0]
+	var inst: int = _solo(real)
+	var started: int = GameLoop2.entry_max_health(GameLoop2.entry_for(inst))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"fruit_juice", Vector2i(2, 1))
+	var blob: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.entry_max_health(GameLoop2.entry_for(inst)), started + 2)
+
+# --- A throw is not a bomb (§4.4) ------------------------------------------
+
+func test_a_thrown_ampoule_damages_what_it_covers() -> void:
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	var out: Dictionary = _throw(&"explosive_ampoule", Vector2i(1, 1))   # area=row
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 2, "one damage down that row")
+	assert_false((out["logs"] as Array).is_empty())
+
+func test_a_thrown_potion_fires_NO_bomb_trigger() -> void:
+	# Blood Bombs pays +1 Health per bomb used, and a bottle is not a bomb (§4.4):
+	# a relic that a potion paid would make the Ampoule a Bomb charge you can carry.
+	GameState.add_item(Data.get_item2(&"blood_bombs"))
+	GameState.max_hp = 40
+	GameState.hp = 10
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"explosive_ampoule", Vector2i(1, 1))
+	assert_eq(GameState.hp, 10, "no bomb was used, so nothing paid")
+
+func test_brimstone_does_not_widen_a_bottle() -> void:
+	# The potion's own area= is its whole geometry. Brimstone turns a BOMB's blast
+	# into a cross; an Ampoule thrown at a row still covers that row.
+	GameState.add_item(Data.get_item2(&"brimstone_bombs"))
+	assert_true(GameState.bombs_cardinal(), "the relic really is on")
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	# A body one row up and one column across: in the cross of (1,1), not in its row.
+	var other: GoalEnemyData = _enemy(3)
+	other.id = &"synthetic_two"
+	GameLoop2.spawn_to_stack(other)
+	var second: int = 0
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", 0)) != inst:
+			second = int(entry.get("instance", 0))
+	assert_true(second > 0, "there is a second body to miss")
+	_park(second, Vector2i(1, 0))
+	_throw(&"explosive_ampoule", Vector2i(1, 1))
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 2, "the row was hit")
+	assert_eq(int(GameLoop2.entry_for(second)["health"]), 3,
+		"and the column was not — a bottle is not widened by a bomb relic")
+
+func test_a_boss_shrugs_off_a_thrown_bottle() -> void:
+	# §7.1's rule, and the reason it is a rule: a Rare bottle that one-shot a
+	# boss's Health would make that section a suggestion.
+	var inst: int = _solo(_enemy(3, true))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))   # deal_damage 3 area=cell
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "bosses take no damage from one")
+
+func test_a_body_killed_by_a_bottle_is_destroyed_not_defeated() -> void:
+	var inst: int = _solo(_enemy(1))
+	_park(inst, Vector2i(2, 1))
+	var gold: int = GameState.gold
+	var defeated: int = GameLoop2.defeated_count
+	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "the body is gone")
+	assert_eq(GameState.gold, gold, "no gold")
+	assert_eq(GameLoop2.defeated_count, defeated, "and it counts as no defeat")
+
+# --- Tiles and statuses on the throw side ----------------------------------
+
+func test_fire_potion_covers_the_whole_3x3_with_all_three_clauses() -> void:
+	# Decision #11, stated as loudly as the roster can state it: nine squares of
+	# burning ground, 1 damage and +3 Burn on everything standing in them.
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"fire_potion", Vector2i(2, 1))
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_not_null(GameLoop2.tile_at(Vector2i(2, 1)), "the ground is alight")
+	assert_not_null(GameLoop2.tile_at(Vector2i(1, 0)), "and so are its neighbours")
+	assert_true(int(entry["health"]) < 3, "the body took the damage")
+	assert_true(GameLoop2.entry_status_stacks(entry, &"burn") > 0, "and the Burn")
+
+func test_a_thrown_speed_potion_borrows_its_stacks_for_one_game() -> void:
+	# The timed layer takes `games` straight through — there is no second path for
+	# a thrown clock (§5.4).
+	var inst: int = _solo(_enemy(9))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"speed_potion", Vector2i(2, 1))
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"dexterity"), 5)
+	assert_eq(GameLoop2.entry_status_games_left(entry, &"dexterity"), 1, "with a clock on it")
+	GameLoop2.beat_game(false)
+	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(inst), &"dexterity"), 0,
+		"and gone after one game")
+
+func test_a_thrown_block_potion_hands_a_body_shields() -> void:
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	_throw(&"block_potion", Vector2i(2, 1))
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2)
+
+# --- Fizzles (§4.5) --------------------------------------------------------
+
+func test_a_throw_at_empty_ground_still_identifies_the_bottle() -> void:
+	GameLoop2.reset()
+	var out: Dictionary = _throw(&"explosive_ampoule", Vector2i(2, 1))
+	assert_true(PotionSystem.is_identified(&"explosive_ampoule"),
+		"the gamble pays its information out even when the effect lands on nothing")
+	assert_true(String((out["logs"] as Array)[0]).contains("empty ground"))
+
+func test_throwing_the_potion_with_no_throw_fizzles_and_still_identifies_it() -> void:
+	var level: int = GameState.player_level
+	var out: Dictionary = _throw(&"potion_of_raise_level", Vector2i(2, 1))
+	assert_true(PotionSystem.is_identified(&"potion_of_raise_level"))
+	assert_eq(GameState.player_level, level, "and it certainly did not level anybody")
+	assert_false((out["logs"] as Array).is_empty(), "it says the bottle smashed")
+
+func test_throwing_identifies_the_QUAFF_side_too() -> void:
+	# One bottle, one fact (§6.5, decision #22): learning it from a throw teaches
+	# what drinking it would do, because the alternative is thirty facts instead of
+	# fifteen and a research task where a choice should be.
+	PotionSystem.ensure_colors()
+	_throw(&"fire_potion", Vector2i(2, 1))
+	var entry := {"type": "potion", "id": &"fire_potion"}
+	assert_true(PotionSystem.description(entry).contains("Quaff:"))
+	assert_true(PotionSystem.description(entry).contains("Throw:"))
+
+func test_a_potion_with_no_cell_in_hand_fizzles_rather_than_no_opping() -> void:
+	var out: Dictionary = PotionSystem.throw_potion(
+		{"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
+	assert_true(PotionSystem.is_identified(&"fire_potion"), "still spent, still learned")
+	assert_false((out["logs"] as Array).is_empty())
+
+# --- Which button is offered (§4.5) ----------------------------------------
+
+func test_the_throw_button_is_offered_on_every_UNKNOWN_bottle() -> void:
+	# Including the one that turns out to have no throw. Hiding it for unknowns
+	# would leak which bottles have no throw, which is the fact being sold.
+	for id in [&"fire_potion", &"potion_of_raise_level", &"potion_of_uselessness"]:
+		assert_true(LootSystem.can_throw({"type": "potion", "id": id}),
+			"%s can be thrown while unknown" % id)
+
+func test_a_KNOWN_potion_with_no_throw_is_not_offered_one() -> void:
+	PotionSystem.identify(&"potion_of_raise_level")
+	assert_false(LootSystem.can_throw({"type": "potion", "id": &"potion_of_raise_level"}),
+		"there is nothing to aim")
+	PotionSystem.identify(&"fire_potion")
+	assert_true(LootSystem.can_throw({"type": "potion", "id": &"fire_potion"}))
+
+func test_nothing_but_a_potion_can_be_thrown() -> void:
+	assert_false(LootSystem.can_throw({"type": "scroll", "id": &"scroll_of_fire"}))
+	assert_false(LootSystem.can_throw({"type": "pill", "id": &"telepills"}))
+
+# --- The verb rides in ctx (§4.2) ------------------------------------------
+
+func test_the_loot_path_routes_on_the_verb() -> void:
+	GameState.add_potion_loot(&"block_potion")
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	var before: int = GameState.bonus_shields
+	LootSystem.use_loot(0, {"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+	assert_eq(GameState.bonus_shields, before, "the drinker got nothing")
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2, "the body did")
+	assert_eq(GameState.loot_items.size(), 0, "and the piece is spent either way")
+
+func test_an_echoed_potion_lands_on_the_same_cell() -> void:
+	# The player aimed once; the copies land where the original did, which is both
+	# the simple rule and the one that reads correctly (§4.2).
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	assert_true(GameState.loot_echo_depth() > 0, "the relic really is on")
+	var inst: int = _solo(_enemy(9))
+	_park(inst, Vector2i(2, 1))
+	# One use to fill the echo memory, then a second that replays it.
+	LootSystem.use_entry({"type": "potion", "id": &"block_potion"},
+		{"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2)
+	LootSystem.use_entry({"type": "potion", "id": &"block_potion"},
+		{"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 6,
+		"the throw and its echo both landed on the body that was aimed at")
+
+# --- Sacred Bark's area ladder (§8.2) --------------------------------------
+
+func _bark() -> void:
+	GameState.add_item(Data.get_item2(&"sacred_bark"))
+	assert_eq(GameState.loot_multiplier(), 2, "the relic really is on")
+
+func test_the_bark_leaves_a_single_square_alone() -> void:
+	# A radius of zero doubles to zero. A Bark that turned every single-target
+	# throw into a nine-cell blast would make the aiming pointless, which is not
+	# what doubling a potion should mean.
+	_bark()
+	var inst: int = _solo(_enemy(3))
+	_park(inst, Vector2i(2, 1))
+	var neighbour: GoalEnemyData = _enemy(3)
+	neighbour.id = &"synthetic_two"
+	GameLoop2.spawn_to_stack(neighbour)
+	var second: int = 0
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", 0)) != inst:
+			second = int(entry.get("instance", 0))
+	_park(second, Vector2i(1, 1))
+	_throw(&"block_potion", Vector2i(2, 1))   # area=cell
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 4, "doubled in VALUE")
+	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(second)), 0,
+		"and not in reach — the square beside it is still not the square you aimed at")
+
+func test_the_bark_widens_a_3x3_to_a_5x5_and_a_row_to_the_cross() -> void:
+	_bark()
+	var cell := Vector2i(2, 1)
+	assert_eq(PotionSystem.AREA_LADDER["3x3"], "5x5")
+	assert_eq(PotionSystem.AREA_LADDER["row"], "cross")
+	assert_eq(PotionSystem.AREA_LADDER["cell"], "cell")
+	assert_eq(PotionSystem._scaled_area({"area": "3x3"}), "5x5")
+	assert_eq(PotionSystem._scaled_area({"area": "row"}), "cross")
+	assert_eq(PotionSystem._scaled_area({"area": "cell"}), "cell")
+	# And the shape it widens to really is bigger on this board.
+	assert_true(GameLoop2.area_cells(cell, "5x5").size()
+		>= GameLoop2.area_cells(cell, "3x3").size())
+
+func test_a_barked_ampoule_covers_the_cross_and_hits_the_column_too() -> void:
+	_bark()
+	var inst: int = _solo(_enemy(9))
+	_park(inst, Vector2i(2, 1))
+	var other: GoalEnemyData = _enemy(9)
+	other.id = &"synthetic_two"
+	GameLoop2.spawn_to_stack(other)
+	var second: int = 0
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", 0)) != inst:
+			second = int(entry.get("instance", 0))
+	_park(second, Vector2i(1, 0))
+	_throw(&"explosive_ampoule", Vector2i(1, 1))
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 7, "2 damage down the row")
+	assert_eq(int(GameLoop2.entry_for(second)["health"]), 7,
+		"and down the column the cross added")
+
+func test_the_bark_doubles_a_thrown_healing_potion_too() -> void:
+	_bark()
+	var inst: int = _solo(_enemy(9))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	entry["health"] = 1
+	_throw(&"potion_of_healing", Vector2i(2, 1))   # heals 2, doubled to 4
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 5)
+
+# --- What a throw sets off (§4.7) ------------------------------------------
+
+func test_a_thrown_bottle_sets_off_a_mine_it_covers() -> void:
+	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
+	var out: Dictionary = _throw(&"potion_of_self_mutilation", Vector2i(2, 1))
+	assert_null(GameLoop2.unit_at(Vector2i(2, 1)), "the mine went up")
+	assert_false((out["logs"] as Array).is_empty(), "and the outcome says so")
+
+func test_the_mines_blast_is_a_BOMB_even_though_the_bottle_was_not() -> void:
+	# The blast is the MINE's, and that is exactly what a proxy bomb is for: a
+	# potion that sets one off DOES reach the pack's bomb upgrades — through the
+	# mine. What stays un-upgraded is the potion's own damage.
+	GameState.add_item(Data.get_item2(&"blood_bombs"))
+	GameState.max_hp = 40
+	GameState.hp = 10
+	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
+	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))
+	assert_eq(GameState.hp, 11, "the MINE paid Blood Bombs")
+
+func test_a_3x3_of_mines_chains_to_a_stop() -> void:
+	# A Fire Potion over a minefield is a big, terminating chain: every mine the
+	# 3x3 covers is set off, by the tile that lands on it or by the damage clause
+	# behind it, and each detonation spends the unit that caused it. What stops it
+	# is that spending, with MAX_CHAIN as the belt to the brace.
+	var area: Array = GameLoop2.area_cells(Vector2i(2, 1), "3x3")
+	var laid: int = 0
+	for cell in area:
+		if GameLoop2.apply_unit(cell, &"landmine"):
+			laid += 1
+	assert_true(laid >= 4, "a real minefield was laid")
+	_throw(&"fire_potion", Vector2i(2, 1))
+	for cell in area:
+		assert_null(GameLoop2.unit_at(cell), "the mine at %s went up" % cell)
+
+func test_a_bomb_blast_sets_off_a_mine_it_covers() -> void:
+	# "…or in anything else that ever damages ground" (§4.7). A mine has Health 1,
+	# and a Health nothing can damage is a number carried for decoration.
+	var inst: int = _solo(_enemy(9))
+	_park(inst, Vector2i(3, 1))
+	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
+	GameState.bombs = 1
+	GameLoop2.bomb_cell(Vector2i(2, 1))
+	assert_null(GameLoop2.unit_at(Vector2i(2, 1)), "the blast took the mine with it")
+
+func test_a_unit_only_goes_off_once_its_Health_is_spent() -> void:
+	# The trigger says WHAT happens; the Health column says HOW MUCH IT TAKES. A
+	# 1-Health mine goes on the first blow, and a tougher one would not.
+	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
+	GameLoop2.units[Vector2i(2, 1)]["health"] = 3
+	assert_false(GameLoop2.damage_unit(Vector2i(2, 1), 1), "still standing")
+	assert_eq(int(GameLoop2.units[Vector2i(2, 1)]["health"]), 2)
+	assert_true(GameLoop2.damage_unit(Vector2i(2, 1), 2), "spent on the second blow")
+	assert_null(GameLoop2.unit_at(Vector2i(2, 1)))
+
+func test_the_landmine_authors_the_third_trigger() -> void:
+	var mine: UnitData = Data.get_unit(&"landmine")
+	assert_not_null(mine)
+	assert_true(mine.has_trigger(GameLoop2.ON_DAMAGED),
+		"units2.0 says `damaged: detonate`")
+	assert_true(mine.has_trigger(GameLoop2.ON_ENTER), "and it still says the first one")
+
+# --- The picker's rule (§4.2) ----------------------------------------------
+
+func test_a_bottle_may_be_aimed_at_every_square_of_the_board() -> void:
+	# Red Candle's rule (§17.3), and right here for the same reason: a Fire Potion
+	# thrown at empty ground two columns in front of the stack is one of the best
+	# things you can do with one, so the picker lights GROUND and not bodies.
+	var board := BattlefieldView.new()
+	var cells: Array = board.aim_cells(board.throw_request())
+	assert_eq(cells.size(), GameLoop2.grid_cols() * GameLoop2.grid_rows(),
+		"every square, with no fence")
+	board.free()

@@ -2657,6 +2657,76 @@ func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
 	if _board != null and is_instance_valid(_board):
 		_board.refresh()
 
+# --- throwing a potion at the board (docs/potions-design.md §4.2) -----------
+
+# The use modal armed a THROW. The picker goes up on the board, the modal takes
+# itself off screen, and the click on a square brings it back — so the overworld
+# only has to hold the waiting screen and hand it the cell.
+#
+# Returns false when there is no board to aim at, which the modal turns into a
+# fizzle rather than a refusal: a Use button that will not press teaches the
+# player the piece is broken (§4.5).
+var _throw_modal: Node = null
+
+func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
+	if _board == null or not is_instance_valid(_board):
+		return false
+	# NOT FROM UNDERNEATH THE DROP SCREEN. A drop is a question with a deadline —
+	# take it, use it, or leave it — and it owns the whole screen while it is being
+	# answered (§4.3). A picker armed under it would light up squares the player
+	# cannot reach, and the offer would sit unanswered while they tried. The bottle
+	# is not spent, so the answer is "quaff it here or carry it out", and the modal
+	# says which.
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return false
+	if not _board.begin_loot_throw(entry, index):
+		return false
+	_throw_modal = modal
+	# GET OFF THE BOARD. The loot window is a panel that floats OVER the
+	# battlefield (§4.3) and the info card is full-screen — a picker armed behind
+	# either of them lights up squares the player cannot reach. They are put away
+	# rather than left open, which is also the honest reading of what is happening:
+	# the pack is closed, the bottle is in your hand, and the next click is where
+	# it lands.
+	if _loot_window != null:
+		_loot_window.open = false
+		refresh_loot_window()
+	_close_item_card()
+	Notifications.notify("Click a square to throw %s." % LootSystem.display_name(entry),
+		UITheme.ACCENT)
+	return true
+
+# The board handing back a thrown piece and the square it landed on. The modal
+# that armed it does the spending — it is the screen holding the slot index, the
+# echo names and the Health it is about to report against — so this only routes.
+#
+# A throw with NO modal waiting (a dev grant, a reload mid-aim) is still resolved
+# here rather than dropped: the piece was aimed and the player clicked, and the
+# only thing missing is somewhere to print the outcome.
+func _on_loot_thrown_at_cell(entry: Dictionary, index: int, cell: Vector2i) -> void:
+	var modal: Node = _throw_modal
+	_throw_modal = null
+	if modal != null and is_instance_valid(modal) and modal.has_method("resolve_throw"):
+		modal.resolve_throw(cell)
+	else:
+		var ctx := {"verb": "throw", "target": cell}
+		var res: Dictionary = LootSystem.use_entry(entry, ctx) if index < 0 \
+			else LootSystem.use_loot(index, ctx)
+		for line in res.get("logs", []):
+			GameLog.add(String(line), LootSystem.LOOT_COLOR)
+	_refresh()
+	if _board != null and is_instance_valid(_board):
+		_board.refresh()
+
+# The throw was put away without landing. Nothing was spent, so the modal comes
+# back to where it was — the player is choosing again, not being told their bottle
+# has gone missing.
+func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
+	var modal: Node = _throw_modal
+	_throw_modal = null
+	if modal != null and is_instance_valid(modal) and modal.has_method("throw_cancelled"):
+		modal.throw_cancelled()
+
 # Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
 # the run — it is never offered again — and REFILL its slot from the same pool the
 # offering is drawn from, i.e. another game connected to where the player is
@@ -4567,6 +4637,8 @@ func _build_ui() -> void:
 	_board.bomb_cell_requested.connect(bomb_cell)
 	_board.item_aimed.connect(_on_item_aimed)
 	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
+	_board.loot_thrown_at_cell.connect(_on_loot_thrown_at_cell)
+	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	_board.drop_clicked.connect(collect_floor_drop)
 	# The board points back at the checklist: hovering a body lights the goal row

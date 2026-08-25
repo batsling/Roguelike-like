@@ -650,6 +650,10 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"enemy": String(enemy.id),
 		"boss": enemy.is_boss(),
 		"health": int(entry.get("health", 1)),
+		# What this body STARTED with (docs/potions-design.md §4.6). Stored rather
+		# than recomputed from `effective_health`, because a Fruit Juice thrown at
+		# it has since raised the ceiling and the sheet knows nothing about that.
+		"max_health": entry_max_health(entry),
 		"stun": int(entry.get("stun", 0)),
 		# Shield points still unspent (§13.4). Written separately from the statuses
 		# that granted them because it is a POOL, not a reading of the stack count:
@@ -678,6 +682,9 @@ func _deserialize_entry(raw) -> Dictionary:
 		"instance": int(d.get("instance", 0)),
 		"enemy": enemy,
 		"health": maxi(1, int(d.get("health", 1))),
+		# Absent from a save written before §4.6: the body's current Health is the
+		# honest ceiling to restore it at, since nothing had ever raised one.
+		"max_health": maxi(1, int(d.get("max_health", maxi(1, int(d.get("health", 1)))))),
 		"stun": int(d.get("stun", 0)),
 		"shield": maxi(0, int(d.get("shield", 0))),
 		"col": int(d.get("col", offgrid_col())),
@@ -1733,6 +1740,12 @@ func _explode(origin: Array, direct_instance: int = 0,
 		# Survived the blast — Sticky Bombs makes that cost it its next turn.
 		if stuns:
 			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
+	# THE GROUND TAKES THE BLAST TOO (docs/potions-design.md §4.7). A mine in the
+	# cross is a thing with Health standing in an explosion, and a Health nothing
+	# can damage is a number carried for decoration. After the bodies for the
+	# ordering reason above; BEFORE Hot Bombs' fire, so the mine has already gone
+	# up under its own steam rather than being lit by the tile this blast leaves.
+	damage_ground(cells, BOMB_HIT)
 	# HOT BOMBS (§17): the ground the blast covered is left carrying a tile effect.
 	# After the damage, so a body the blast killed is already gone and the fire is
 	# laid for whatever walks in next rather than burning a corpse — and last,
@@ -1848,6 +1861,17 @@ func _blast_instances(cells: Array, always: int = 0) -> Array:
 # words, so a cell reads the same in the .tres and here).
 const ON_ENTER := &"enemy_enters"
 const ON_TURN_START := &"enemy_turn_start"
+# The third word (docs/potions-design.md §4.7, decision #24): the thing standing
+# on the cell has taken enough damage to spend its Health. A Landmine authors
+# `damaged: detonate`, so a mine caught in a thrown Ampoule's row — or in a bomb
+# blast, or in anything else that ever damages ground — goes up, instead of only
+# ever going off under somebody who stepped on it.
+#
+# It is a TRIGGER rather than a rule hardcoded to "0 Health runs your detonate"
+# because the next unit will want to react to damage differently: a barrel that
+# simply breaks, a totem that fires something off when shot. The trigger says
+# WHAT happens; the Health column says HOW MUCH IT TAKES.
+const ON_DAMAGED := &"damaged"
 
 # How deep a chain of detonations may run before it is cut off. A chain is already
 # finite — every detonation spends the unit that caused it, and there are finitely
@@ -2138,6 +2162,77 @@ func target_cells(target: String) -> Array:
 		_:
 			return []
 
+# THE SHAPE AN `area=` TOKEN NAMES, resolved relative to an AIMED cell
+# (docs/potions-design.md §4.3). A thrown potion picks a square and its clauses
+# say how far out from that square they reach; this is the whole of what those
+# words mean, and it lives here for `target_cells`' reason — the board owns what
+# a shape is, exactly as it owns what `front` means.
+#
+#   cell    the square that was clicked (the default, and what an unknown word
+#           falls back to — a typo that blanketed the board would be expensive)
+#   row     every column of that square's row
+#   col     every row of that square's column
+#   3x3     the square and its eight neighbours
+#   5x5     the same, two out — Sacred Bark's widening of a 3x3 (§8.2)
+#   cross   that row AND that column — the Bark's widening of a row or a column,
+#           and deliberately the shape Brimstone already gives a bomb
+#   board   every square
+#
+# CLIPPED, NEVER WRAPPED. A 3x3 centred on the corner of a 4x4 board is four
+# squares, and that is a real cost of aiming at the edge rather than something to
+# be quietly refunded on the far side. An aimed cell that is off the board covers
+# nothing at all.
+func area_cells(cell: Vector2i, area: String = "cell") -> Array:
+	if not _on_board(cell.x, cell.y):
+		return []
+	match area.to_lower():
+		"row":
+			var out: Array = []
+			for col in range(1, grid_cols() + 1):
+				out.append(Vector2i(col, cell.y))
+			return out
+		"col", "column":
+			return column_cells(cell.x)
+		"cross":
+			var cross: Array = []
+			for col in range(1, grid_cols() + 1):
+				for row in range(grid_rows()):
+					if row == cell.y or col == cell.x:
+						cross.append(Vector2i(col, row))
+			return cross
+		"3x3":
+			return _square_cells(cell, 1)
+		"5x5":
+			return _square_cells(cell, 2)
+		"board", "all":
+			return target_cells("all")
+		_:
+			return [cell]
+
+# The clipped square of `radius` around `cell`, in the board's own column-major
+# order so two areas of the same shape always list their cells the same way.
+func _square_cells(cell: Vector2i, radius: int) -> Array:
+	var out: Array = []
+	for col in range(cell.x - radius, cell.x + radius + 1):
+		for row in range(cell.y - radius, cell.y + radius + 1):
+			if _on_board(col, row):
+				out.append(Vector2i(col, row))
+	return out
+
+# THE BODIES AN AREA COVERS, deduped — the second half of §4.3's rule that an area
+# resolves TWICE and the two lists are not the same. The tile clauses want cells;
+# anything aimed at a body wants instances, ONCE EACH however many of the squares
+# that body is standing on (decision #26). A 2x2 under a 3x3 throw takes 1 damage
+# and +3 Burn, not 4 and 12.
+#
+# That follows the BOMB rather than the tile, and the difference between them is
+# the difference between a thing that happens once and ground that keeps
+# happening: `_blast_instances` dedupes, a fire tile bills per cell every turn
+# (§17.2). A thrown potion is the first kind — and the fire it leaves behind is
+# still the second, so a wide body pays for being wide on the clock instead.
+func area_instances(cells: Array) -> Array:
+	return _blast_instances(cells)
+
 # The cells nothing at all is on: no body's footprint, no unit, and no tile
 # effect. This is "a random empty Tile" in the Landmines item's own words, and it
 # is deliberately the strictest reading — a mine dropped onto burning ground would
@@ -2209,6 +2304,57 @@ func detonate_unit(cell: Vector2i) -> bool:
 	_chain_depth -= 1
 	loop_changed.emit()
 	return true
+
+# DAMAGE THE THING STANDING ON `cell` (§4.7). Its Health comes down, and when that
+# runs out its `damaged:` list runs and it comes off the board. Returns true when
+# this is the blow that spent it.
+#
+# THE LIST RUNS WITH THE UNIT STILL STANDING THERE, and it is taken off afterwards
+# only if the list left it there. `detonate` in the list puts it back through
+# `detonate_unit` — which is where the spend, the chain guard and every bomb
+# modifier live, and which refuses a cell with nothing on it — so a mine erased
+# ahead of its own trigger would quietly fail to go off. What comes back is the
+# MINE's blast, carrying Brimstone, Sticky, Hot Bombs and `bomb_used`, while the
+# damage that set it off stays the potion's own and un-upgraded.
+#
+# NOBODY TRIGGERED IT, so the effects run with no instance: a `damaged:
+# apply_status` has no body to put a status on and lands on nothing, which is the
+# honest answer rather than a guess at who was nearby.
+func damage_unit(cell: Vector2i, amount: int = 1) -> bool:
+	var held = units.get(cell)
+	if held == null or amount <= 0:
+		return false
+	var unit: UnitData = unit_at(cell)
+	var left: int = int(held.get("health", 1)) - amount
+	if left > 0:
+		held["health"] = left
+		loop_changed.emit()
+		return false
+	if unit != null:
+		for effect in unit.effects_for(ON_DAMAGED):
+			_run_cell_effect(effect, cell, 0)
+	# Spent either way. A unit whose Health ran out and whose list did NOT take it
+	# off the board is still destroyed — the Health column is what it takes to
+	# break the thing, and a `damaged:` list is what breaking it sets off.
+	units.erase(cell)
+	loop_changed.emit()
+	return true
+
+# The same blow across a list of cells — what a thrown potion's `deal_damage` and
+# a bomb blast both do to the GROUND they cover, after they have finished with the
+# bodies standing on it. Returns how many units it spent.
+#
+# ORDER MATTERS and it is the caller's (§4.7): bodies first, ground second, the
+# same ordering `_explode` already uses when it lays Hot Bombs' fire after its
+# damage — so a body killed by the bottle is gone before the mine's blast looks
+# for targets. The cells are snapshotted because a detonation moves the board out
+# from under the walk.
+func damage_ground(cells: Array, amount: int = 1) -> int:
+	var spent: int = 0
+	for cell in cells.duplicate():
+		if damage_unit(cell, amount):
+			spent += 1
+	return spent
 
 # Fire whatever is on `cells` at the body `entry` — the one place a tile effect or
 # a unit acts on somebody. `trigger` is ON_ENTER or ON_TURN_START.
@@ -2557,6 +2703,10 @@ func reroll_enemies() -> int:
 			continue
 		entry["enemy"] = fresh
 		entry["health"] = effective_health(fresh)
+		# The ceiling goes with the Health for the same reason: the goals changed,
+		# so a Fruit Juice thrown at the body that used to stand in this slot is
+		# not a fact about the one standing in it now.
+		entry["max_health"] = maxi(1, int(entry["health"]))
 		swapped += 1
 	if swapped > 0:
 		# A re-rolled body can be a different SHAPE (a 2x2 where a 1x1 stood), so
@@ -3384,6 +3534,82 @@ func enemy_damage(entry: Dictionary) -> int:
 func enemy_shield(entry: Dictionary) -> int:
 	return maxi(0, int(entry.get("shield", 0)))
 
+# WHAT THIS BODY STARTED WITH (docs/potions-design.md §4.6). An entry from before
+# the field existed — an old save, a hand-built test body — falls back to the
+# Health it is holding, which is the honest answer for a body nothing has ever
+# healed or grown.
+func entry_max_health(entry: Dictionary) -> int:
+	return maxi(1, int(entry.get("max_health", maxi(1, int(entry.get("health", 1))))))
+
+# HEAL a body, capped at its own ceiling (Potion of Healing, thrown). Returns how
+# much actually went in — 0 on a body that is already whole, which is a wasted
+# potion and a line the outcome screen has to be able to say (§4.5).
+func grant_enemy_health(instance: int, amount: int) -> int:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or amount <= 0:
+		return 0
+	var ceiling: int = entry_max_health(entry)
+	var healed: int = mini(amount, ceiling - int(entry.get("health", 1)))
+	if healed <= 0:
+		return 0
+	entry["health"] = int(entry.get("health", 1)) + healed
+	loop_changed.emit()
+	return healed
+
+# RAISE a body's ceiling and its current pool together (Fruit Juice, thrown). A
+# full-Health body stays full and a damaged one keeps the damage it has taken —
+# a 1-Health goblin becomes a 3-Health goblin, which is three bombs instead of
+# one and the price of a misthrown Rare bottle (§4.6).
+func grant_enemy_max_health(instance: int, amount: int) -> int:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or amount <= 0:
+		return 0
+	entry["max_health"] = entry_max_health(entry) + amount
+	entry["health"] = int(entry.get("health", 1)) + amount
+	loop_changed.emit()
+	return amount
+
+# HAND a body shield points, into the same pool Dexterity fills (§13.4) — spent
+# absorbing hits and never given back. Straight onto the entry rather than through
+# `_grant_shield_for`, which converts a STATUS's stacks into points; a thrown
+# Block Potion is the points themselves, with no stack behind them to expire.
+func grant_enemy_shield(instance: int, amount: int) -> int:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or amount <= 0:
+		return 0
+	entry["shield"] = enemy_shield(entry) + amount
+	loop_changed.emit()
+	return amount
+
+# DEAL `amount` damage to one body by instance, as a THROWN POTION does and NOT as
+# a bomb does (§4.4). It goes through `_damage_enemy` — the one place a hit on an
+# enemy lands — rather than through `_explode`, and three things follow, all of
+# them wanted: no `bomb_used` fires, so Blood Bombs is not paid by a bottle;
+# Brimstone does not widen it and Sticky does not stun through it, because the
+# potion's own `area=` is its whole geometry; and it costs no Bomb charge, because
+# it costs a bottle.
+#
+# What it DOES inherit is the fairness half of the bomb rules: a body killed this
+# way is DESTROYED, not defeated — no drop, no gold (§4) — and A BOSS TAKES NO
+# DAMAGE, the same shrug it gives a bomb (§7.1). A Rare bottle that one-shot a
+# boss's Health would make that section a suggestion.
+#
+# Returns true when the body was destroyed.
+func damage_enemy_instance(instance: int, amount: int) -> bool:
+	var idx: int = _index_of(instance)
+	if idx < 0 or amount <= 0:
+		return false
+	var enemy: GoalEnemyData = stack[idx].get("enemy")
+	if enemy != null and enemy.is_boss():
+		return false
+	var killed: bool = _damage_enemy(idx, amount)
+	if killed:
+		# Clearing a body can open the space a waiting enemy needs to walk on —
+		# the same tidy-up `_explode` does after its own kills.
+		_admit_offgrid()
+	loop_changed.emit()
+	return killed
+
 # Extra columns `entry` closes per step — 0 for anything without Speed.
 func enemy_tile_move(entry: Dictionary) -> int:
 	return maxi(0, int(enemy_combat(entry)["tile_move"]))
@@ -3784,9 +4010,13 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	# Statuses ride the BODY, not the board slot: a status hung on the current
 	# game's enemy has to still be on it when it walks on as a follower, or every
 	# enemy-side status would evaporate the moment it mattered.
+	# `max_health` is seeded HERE, from what the body walks on with (§4.6). It is
+	# the number the enemy health bar has been drawing a fraction against without
+	# ever being told, and it is what `grant_health` heals up to and
+	# `grant_max_health` raises.
 	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
-		"health": health, "shield": 0, "col": offgrid_col(), "row": 0,
-		"statuses": {}}
+		"health": health, "max_health": maxi(1, health), "shield": 0,
+		"col": offgrid_col(), "row": 0, "statuses": {}}
 	stack.append(entry)
 	# Statuses go on THROUGH _add_status_to rather than being copied into the
 	# entry, so a body that walks on already carrying Dexterity is granted the
