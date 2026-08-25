@@ -538,15 +538,19 @@ func test_the_pack_holds_nine() -> void:
 	assert_true(GameState.loot_is_full())
 	assert_eq(GameState.loot_space(), 0)
 
-func test_a_kind_blind_grant_rolls_between_the_two() -> void:
+func test_a_kind_blind_grant_rolls_between_all_three() -> void:
+	# THREE now, not two (docs/potions-design.md §8, decision #4). Same income,
+	# one more kind, so scrolls and pills each got rarer — which is the intended
+	# cost of a third alphabet rather than a side effect of one.
 	var kinds := {}
-	for _i in range(60):
+	for _i in range(90):
 		GameState.loot_items.clear()
 		GameState.add_loot("loot", 1)
 		if not GameState.loot_items.is_empty():
 			kinds[String(GameState.loot_items[0].get("type", ""))] = true
 	assert_true(kinds.has("scroll"), "scrolls come up")
 	assert_true(kinds.has("pill"), "and so do pills")
+	assert_true(kinds.has("potion"), "and so do potions")
 
 func test_a_rolled_drop_is_sometimes_a_horse_pill() -> void:
 	var rng := RandomNumberGenerator.new()

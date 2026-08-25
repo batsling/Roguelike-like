@@ -2992,16 +2992,33 @@ func _recompute_item_bonuses() -> void:
 # piece of loot and one relic pays four at once, so without a ceiling the window
 # that draws them is a list of unbounded height and the drop stops being a
 # decision. Nine is a 3x3 grid, which is the shape the window is.
+#
+# IT IS THE BASE, NOT THE ANSWER (docs/potions-design.md §8.1). Three alphabets now
+# share those nine slots and the squeeze is the point — a third kind is what makes
+# "leave it" a harder answer — but a relic that hands the run a bigger bag would
+# otherwise have to unpick every surface that reads a const. Ask `loot_capacity()`.
 const LOOT_CAPACITY := 9
 
+# How much the pack holds RIGHT NOW: the base plus whatever the inventory adds,
+# the shape `GameLoop2.grid_cols()` already uses for the board.
+#
+# NOTHING ADDS TO IT YET, and that is deliberate (§8.1, decision #15). This is the
+# seam, not the feature: it is cheap now and expensive later, because the loot
+# window is fitted to a 720p canvas with about five pixels to spare and a fourth
+# row is a fit test away from failing. Whoever authors the bigger bag inherits
+# that problem knowingly rather than discovering it — and they add the term here,
+# not at the twelve call sites that used to read the const.
+func loot_capacity() -> int:
+	return LOOT_CAPACITY
+
 func loot_is_full() -> bool:
-	return loot_items.size() >= LOOT_CAPACITY
+	return loot_items.size() >= loot_capacity()
 
 # How many more pieces will fit. The drop modal asks with this rather than
 # refusing after the fact — "you can't carry this" is an answer the player should
 # get before they take it, not a grant that silently evaporates.
 func loot_space() -> int:
-	return maxi(0, LOOT_CAPACITY - loot_items.size())
+	return maxi(0, loot_capacity() - loot_items.size())
 
 func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
@@ -3026,13 +3043,13 @@ func add_loot(kind: String, amount: int = 1) -> void:
 				_drop_loot_of_type(kind, -amount)
 		"loot":
 			# The KIND-BLIND grant: beating a game pays "1 loot", and which kind it
-			# is a straight 50/50 (§4.3). Rolled per unit, so +2 loot is two coins
-			# rather than two of one thing.
+			# is comes off `roll_loot_kind()`. Rolled per unit, so +2 loot is two
+			# coins rather than two of one thing.
 			if amount > 0:
 				for _i in range(amount):
 					if loot_is_full():
 						break
-					add_loot("scroll" if randi() % 2 == 0 else "pill", 1)
+					add_loot(roll_loot_kind(), 1)
 				return
 			_drop_loot_of_type("scroll", -amount)
 		_:
@@ -3083,14 +3100,33 @@ func _add_random_potion_loot() -> void:
 	if not entry.is_empty():
 		loot_items.append(entry)
 
+# WHICH ALPHABET A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight
+# three-way split (docs/potions-design.md §8, decision #4).
+#
+# ONE ROLL, IN ONE PLACE. Two callers ask this question — the grant above and
+# `roll_loot_entry` below — and both used to spell `randi() % 2` out for
+# themselves, which is two places for the odds to drift apart the day one of them
+# is tuned. Potions are the day: same income, one more kind, so scrolls and pills
+# each get rarer, and that is the intended cost of a third alphabet rather than an
+# accident of where the coin was flipped.
+#
+# AND THE PER-GAME PAYOUT IS THE ONLY TAP (decision #14). No shop shelf slot, no
+# enemy drop, no boss bonus: a kind that arrives from four directions at once is a
+# kind nobody can balance the first time. The one-in-three is a number that can be turned;
+# four sources are four numbers that have to be turned together.
+const LOOT_KINDS := ["scroll", "pill", "potion"]
+
+func roll_loot_kind() -> String:
+	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
+
 # Roll one piece of loot WITHOUT granting it. The per-game drop (§4.3) asks before
 # it hands anything over — the pack holds nine and the answer is sometimes no — so
 # the roll and the taking are two steps rather than one.
-#   kind: "scroll" | "pill" | "loot" (the kind-blind 50/50)
+#   kind: "scroll" | "pill" | "potion" | "loot" (the kind-blind three-way split)
 func roll_loot_entry(kind: String = "loot") -> Dictionary:
 	var want: String = kind
 	if want == "loot":
-		want = "scroll" if randi() % 2 == 0 else "pill"
+		want = roll_loot_kind()
 	if want == "pill":
 		return PillSystem.roll_pill_loot()
 	if want == "potion":
@@ -3151,7 +3187,7 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 		return false
 	var layout: Array = loot_layout()
 	var where: int = slot
-	if where < 0 or where >= LOOT_CAPACITY or layout[where] != -1:
+	if where < 0 or where >= loot_capacity() or layout[where] != -1:
 		where = layout.find(-1)
 	if where < 0:
 		return false
@@ -3209,13 +3245,13 @@ func add_potion_loot(id: StringName) -> void:
 # the pack it always saw.
 func loot_layout() -> Array:
 	var layout: Array = []
-	layout.resize(LOOT_CAPACITY)
+	layout.resize(loot_capacity())
 	layout.fill(-1)
 	var homeless: Array = []
 	for i in range(loot_items.size()):
 		var entry = loot_items[i]
 		var slot: int = int(entry.get("pack_slot", -1)) if entry is Dictionary else -1
-		if slot >= 0 and slot < LOOT_CAPACITY and layout[slot] == -1:
+		if slot >= 0 and slot < loot_capacity() and layout[slot] == -1:
 			layout[slot] = i
 		else:
 			homeless.append(i)
@@ -3228,7 +3264,7 @@ func loot_layout() -> Array:
 
 # Which piece is in a slot (index into `loot_items`), or -1 if it is empty.
 func loot_index_at_slot(slot: int) -> int:
-	if slot < 0 or slot >= LOOT_CAPACITY:
+	if slot < 0 or slot >= loot_capacity():
 		return -1
 	return int(loot_layout()[slot])
 
@@ -3256,7 +3292,7 @@ func _freeze_loot_layout(layout: Array) -> void:
 # Returns whether anything actually moved, so a drag onto a piece's own slot is a
 # no-op rather than a redraw.
 func move_loot(from: int, to: int) -> bool:
-	if from < 0 or from >= LOOT_CAPACITY or to < 0 or to >= LOOT_CAPACITY or from == to:
+	if from < 0 or from >= loot_capacity() or to < 0 or to >= loot_capacity() or from == to:
 		return false
 	var layout: Array = loot_layout()
 	var moving: int = int(layout[from])

@@ -317,14 +317,38 @@ func test_a_granted_potion_is_rolled_by_rarity() -> void:
 	assert_eq(GameState.loot_potions().size(), 1)
 	assert_ne(String(GameState.loot_items[0].get("rarity", "")), "")
 
-func test_the_kind_blind_payout_is_still_the_old_coin() -> void:
-	# The three-way split is §11 step 7. Until then "loot" is the scroll/pill coin
-	# it always was, so a run does not start paying out a kind that is half built.
-	for _i in range(20):
+func test_the_per_game_payout_is_a_THREE_way_split_now() -> void:
+	# §11 step 7, and the last thing the kind needed: beating a game pays "1 loot"
+	# and a potion is one of the three things that can be. Same income, one more
+	# kind — the ⅓ is a number that can be turned, which is why the payout stays
+	# the only tap (decision #14).
+	var kinds := {}
+	for _i in range(90):
 		GameState.loot_items.clear()
 		GameState.add_loot("loot", 1)
-		assert_eq(GameState.loot_potions().size(), 0,
-			"no potion arrives from the per-game payout yet")
+		if not GameState.loot_items.is_empty():
+			kinds[String(GameState.loot_items[0].get("type", ""))] = true
+	assert_true(kinds.has("potion"), "potions arrive from the per-game payout")
+	assert_true(kinds.has("scroll"), "and scrolls still do")
+	assert_true(kinds.has("pill"), "and so do pills")
+
+func test_the_two_kind_blind_callers_roll_the_same_odds() -> void:
+	# The grant and `roll_loot_entry` both used to spell `randi() % 2` out for
+	# themselves. One roll in one place now, which is what stops them drifting the
+	# day the split is tuned.
+	var kinds := {}
+	for _i in range(90):
+		kinds[String(GameState.roll_loot_entry("loot").get("type", ""))] = true
+	assert_eq(kinds.keys().size(), 3, "the same three kinds, off the same roll")
+
+func test_the_pack_asks_a_function_how_big_it_is() -> void:
+	# §8.1: the cap is nine and stays nine (decision #15), but a relic that hands
+	# the run a bigger bag should not have to unpick every surface that reads it.
+	assert_eq(GameState.loot_capacity(), 9)
+	GameState.add_loot("potion", 20)
+	assert_eq(GameState.loot_items.size(), GameState.loot_capacity())
+	assert_true(GameState.loot_is_full())
+	assert_eq(GameState.loot_space(), 0)
 
 # ===========================================================================
 # The THROW (§11 step 5) — §4.2 to §4.7
