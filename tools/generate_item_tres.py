@@ -348,14 +348,21 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # the Max Health split an item opts INTO. It has to be listed here or the
     # bare-verb fallthrough at the bottom swallows its amount and emits a silent
     # `{"type": "gain_empty_max_hp"}` worth nothing.
-    # `gain_pill` / `gain_scroll` / `gain_loot` are the three loot grants (§4.3):
-    # a named kind, or the kind-blind one that rolls 50/50 between them. Listed
-    # here for the same reason gain_empty_max_hp is — the bare-verb fallthrough
-    # would swallow the count and emit a grant of nothing.
+    # `gain_pill` / `gain_scroll` / `gain_potion` / `gain_loot` are the loot
+    # grants (§4.3): a named kind, or the kind-blind one that rolls a three-way
+    # split between them (docs/potions-design.md §8). Listed here for the same
+    # reason gain_empty_max_hp is — the bare-verb fallthrough would swallow the
+    # count and emit a grant of nothing.
+    #
+    # NOTHING AUTHORS `gain_potion` YET and that is the point of listing it: the
+    # handler has been registered on EffectSystem since potions shipped, and a
+    # verb the runtime answers but the generator cannot parse is a verb the sheet
+    # can write and silently get nothing from — which is the exact failure
+    # `rarity` sat in for two kinds before §10 caught it.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block",
-              "gain_pill", "gain_scroll", "gain_loot"}
+              "gain_pill", "gain_scroll", "gain_potion", "gain_loot"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -437,18 +444,28 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         return {"type": "random_item_choice", "count": nums[0] if nums else 3,
                 "destroy_self": "destroy_self" in low}
 
-    # apply_status <status_id> [N] [target=player|current|all|random]
+    # apply_status <status_id> [N] [target=player|current|all|random] [games=N]
     # Statuses 2.0 (docs/games-first-redesign.md §13) — how an item reaches the
     # run's goals. Target defaults to the player, the side a pickup usually lands
     # on; `target=all` is how a location blankets the board.
+    #
+    # `games=N` BORROWS the stacks for N games instead of granting them for good
+    # (docs/potions-design.md §5.1). The timed layer was built for potions and is
+    # not theirs: an item or a location that wants to lend a buff says so with the
+    # same token, and omitting it means what every apply_status written before
+    # potions already meant. Emitted only when authored, so no existing .tres
+    # gains a key it never had.
     if verb == "apply_status":
         rest, kv = _kv(toks[1:])
         words = [t for t in rest if not re.match(r"^-?\d+$", t)]
         nums = [int(t) for t in rest if re.match(r"^-?\d+$", t)]
-        return {"type": "apply_status",
-                "status": words[0].lower() if words else "",
-                "value": nums[0] if nums else 1,
-                "target": kv.get("target", "player").lower()}
+        eff = {"type": "apply_status",
+               "status": words[0].lower() if words else "",
+               "value": nums[0] if nums else 1,
+               "target": kv.get("target", "player").lower()}
+        if "games" in kv:
+            eff["games"] = int(kv["games"])
+        return eff
 
     # apply_tile <tile_id> [target=tile|front|all] [cols=A-B]
     # Tile effects 2.0 (docs/games-first-redesign.md §17) — how an item reaches

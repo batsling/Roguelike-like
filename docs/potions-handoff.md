@@ -16,7 +16,7 @@ if the two ever disagree, the plan is right and this file is stale.
 - **Steps 1–4 are on `main`** (PRs #204 and #205). **Steps 5–8 are on
   `claude/potions-design-44t17j`**, branched off `806bd11`. Pushed; no PR, none
   was asked for.
-- **Suite:** green. `Scripts 33, Tests 1662, Passing 1662, Orphans 3` in ~545s.
+- **Suite:** green. `Scripts 33, Tests 1665, Passing 1665, Orphans 3` in ~530s.
   The 3 orphans and the leaked-RID warnings at the end of a run are pre-existing
   UI-test noise; a **Risky / "Did not assert" is not** (see CLAUDE.md). The ASSERT
   count moves between runs because several tests walk a random graph — the test
@@ -55,7 +55,7 @@ GameLoop2.area_cells(cell, "3x3")                   # the shapes an area= names
 GameState.loot_capacity()                           # never LOOT_CAPACITY
 ```
 
-**Tests:** `test_potion_system.gd` (77), `test_timed_statuses.gd` (26), the
+**Tests:** `test_potion_system.gd` (80), `test_timed_statuses.gd` (26), the
 *Potions2.0* section of `test_redesign2.gd` (15), the step-2 additions in
 `test_scroll_system2.gd` (17).
 
@@ -63,9 +63,20 @@ GameState.loot_capacity()                           # never LOOT_CAPACITY
 
 None of these is a loose end; each is a decision the plan made and wrote down.
 
-- **No relic pays out a potion.** `EffectSystem.gain_potion` is registered and
-  nothing in `items2.0` authors it (§8). The sheet can grow one the day somebody
-  wants it.
+- **No relic pays out a potion.** `EffectSystem.gain_potion` is registered AND
+  `generate_item_tres.py` parses it, so an `items2.0` cell saying `gain_potion 1`
+  works — nothing authors one yet (§8). Both halves matter: a handler the
+  generator cannot parse is a verb the sheet can write and silently get nothing
+  from, which is the `rarity` failure §10 caught.
+- **No `deal_damage` or `gain_level` on `EffectSystem`**, though §9.2 listed them
+  beside `gain_potion`. The potion path dispatches through `PotionSystem`'s own
+  table rather than that one, and an item-side `deal_damage` needs a target/area
+  vocabulary on `items2.0` that nothing is asking for. Register them — with the
+  parser, per the row above — the day a sheet cell wants one.
+- **`games=` on `apply_status` is authorable from `items2.0` now** and nothing
+  authors it either. The timed layer was built for potions and is not theirs; an
+  item or a location that wants to lend a buff for a game says so with the same
+  token.
 - **No bigger bag.** `loot_capacity()` is base 9 with nothing adding to it
   (§8.1, decision #15). Whoever authors the relic adds the term in that one
   function — and inherits the 720p fit problem knowingly, which is the whole
@@ -114,6 +125,13 @@ Each of these is load-bearing, and none of them was in the plan:
   which are the parts about EARNING a level.
 - **Identify's candidates are carried ENTRIES, deduped per type**, and the picker
   names a scroll while leaving a pill or a potion as its art.
+- **`LootDiscoveries` is NOT kind-blind and cannot be made so cheaply.** It walks
+  each catalog and asks that system whether a row is identified, so a third
+  alphabet is a third walk, a third row and a second *unlearned* count. Worth
+  knowing before adding a fourth: it looks like the sort of thing `LootSystem`
+  should answer, and the reason it isn't is that the two masked kinds count their
+  spares in different units — a pill is a COLOUR out of 13, a potion a BOTTLE out
+  of 37, and one summed number is useless for either.
 - **`BattlefieldView.aim_cells` takes an aim REQUEST**, not just an `ItemData`:
   `{target_kind, col_min, col_max}`, which both an item and a thrown bottle can
   produce. One highlight rule and one accepted-click rule is the whole reason that

@@ -378,6 +378,18 @@ func _solo(enemy: GoalEnemyData) -> int:
 		GameLoop2.despawn(GameLoop2.escort_instance())
 	return inst
 
+# A 2x2 body. THE MASK HAS TO BE CLEARED as well as the box set:
+# `GoalEnemyData.shape_mask` defaults to `[1]` — one solid cell on row 0 — and
+# `occupies` only falls back to "the whole row is solid" for rows the mask does
+# NOT cover. A bounding box alone gives a three-cell L, which is a perfectly good
+# footprint and not the square these tests are about.
+func _wide(health: int = 9) -> GoalEnemyData:
+	var e: GoalEnemyData = _enemy(health)
+	e.shape_rows = 2
+	e.shape_cols = 2
+	e.shape_mask = PackedInt32Array()
+	return e
+
 # Stand the only body on the board at a known cell.
 func _park(instance: int, cell: Vector2i) -> Dictionary:
 	var entry: Dictionary = GameLoop2.entry_for(instance)
@@ -451,15 +463,55 @@ func test_a_wide_body_under_a_wide_throw_is_hit_ONCE() -> void:
 	# Decision #26. A 2x2 standing under a 3x3 takes the clause once, not four
 	# times — that follows the bomb rather than the tile, and the difference is the
 	# difference between a thing that happens once and ground that keeps happening.
-	var e: GoalEnemyData = _enemy(9)
-	e.shape_rows = 2
-	e.shape_cols = 2
+	var e: GoalEnemyData = _wide(9)
 	var inst: int = _solo(e)
 	_park(inst, Vector2i(2, 0))
 	var covered: Array = GameLoop2.entry_cells(GameLoop2.entry_for(inst))
-	assert_true(covered.size() > 1, "the body really is wide")
+	assert_eq(covered.size(), 4, "the body really is a 2x2")
 	var hit: Array = GameLoop2.area_instances(GameLoop2.area_cells(Vector2i(2, 0), "3x3"))
 	assert_eq(hit.size(), 1, "one body, however many of its squares the area covers")
+
+func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
+	# The other half of decision #26, and the half that is about the difference
+	# between a thing that happens once and ground that keeps happening. The throw
+	# bills the 2x2 ONCE; the fire it leaves behind bills every cell of that
+	# footprint, every turn, for three games.
+	#
+	# The DAMAGE is what proves the first half behaviourally — Burn cannot, because
+	# its authored ceiling is 3 and it would clamp 12 and 3 to the same number.
+	var wide: int = _solo(_wide(9))
+	_park(wide, Vector2i(2, 0))
+	_throw(&"fire_potion", Vector2i(2, 1))
+	assert_eq(int(GameLoop2.entry_for(wide)["health"]), 8,
+		"1 damage, not 4 — the clause lands on the BODY, once")
+	var covered: Array = GameLoop2.entry_cells(GameLoop2.entry_for(wide))
+	assert_eq(covered.size(), 4, "the body really does cover four squares")
+	for cell in covered:
+		assert_not_null(GameLoop2.tile_at(cell), "and all four of them are alight")
+
+	# Now the ground, per cell and per turn. A 1x1 standing in the same fire is the
+	# control: it pays for one square, the 2x2 pays for four — capped at Burn's own
+	# ceiling of 3, so read the 3 below as "more than one", not as "three cells".
+	var small: GoalEnemyData = _enemy(9)
+	small.id = &"synthetic_small"
+	GameLoop2.spawn_to_stack(small)
+	var narrow: int = 0
+	for entry in GameLoop2.stack:
+		if int(entry.get("instance", 0)) != wide:
+			narrow = int(entry.get("instance", 0))
+	assert_true(narrow > 0, "there is a second body")
+	_park(narrow, Vector2i(1, 2))
+	GameLoop2.apply_tile(Vector2i(1, 2), &"fire")
+	# Both start the turn from nothing, so what they gain is the turn's own bill.
+	GameLoop2.entry_for(wide)["statuses"] = {}
+	GameLoop2.entry_for(narrow)["statuses"] = {}
+	GameLoop2.attempt_turn()
+	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(narrow), &"burn"), 1,
+		"one square, one stack")
+	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(wide), &"burn"),
+		Data.get_status(&"burn").max_stacks,
+		"and being wide costs more, every turn — which is where a big body pays "
+		+ "for being big, rather than on the impact")
 
 # --- max_health on a body (§4.6) -------------------------------------------
 
@@ -831,3 +883,32 @@ func test_a_bottle_may_be_aimed_at_every_square_of_the_board() -> void:
 	assert_eq(cells.size(), GameLoop2.grid_cols() * GameLoop2.grid_rows(),
 		"every square, with no fence")
 	board.free()
+
+# --- "Known this run" (spec §4.3) ------------------------------------------
+
+func test_an_identified_potion_joins_the_run_record() -> void:
+	# The record is where an identification minigame keeps its own notes: a player
+	# who learned on game three what the swirly bottle was has to be able to check
+	# on game eleven. A third alphabet that never appeared there would be a third
+	# of the minigame with nowhere to go and look.
+	PotionSystem.ensure_colors()
+	assert_true(LootDiscoveries.known_potions().is_empty(), "nothing learned yet")
+	PotionSystem.identify(&"fire_potion")
+	var ids: Array = []
+	for entry in LootDiscoveries.known_potions():
+		ids.append(StringName(entry.get("id", "")))
+	assert_true(ids.has(&"fire_potion"), "what was learned is listed")
+	assert_false(ids.has(&"fruit_juice"),
+		"and what was not is never named — the 22 spare vials only stop deduction "
+		+ "while the record keeps its mouth shut")
+
+func test_a_learned_bottle_is_listed_by_its_OWN_name_not_its_colour() -> void:
+	# The whole difference from a pill. A pill stays anonymous in this record
+	# forever because its name IS the colour the run dealt; a potion's colour was
+	# only ever the wrapper, and once the bottle is known the record says what is
+	# in it.
+	PotionSystem.ensure_colors()
+	PotionSystem.identify(&"fire_potion")
+	var entry: Dictionary = LootDiscoveries.known_potions()[0]
+	assert_eq(LootSystem.display_name(entry), "Fire Potion")
+	assert_false(LootSystem.display_name(entry).contains("Potion Potion"))
