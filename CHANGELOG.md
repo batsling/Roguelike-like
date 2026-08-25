@@ -11,6 +11,65 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **You can drink a potion. You still cannot throw one.**
+
+  Step 4 of `docs/potions-design.md` §11 — `PotionSystem`, autoload #23, and the
+  first of the two verbs. A potion is now a piece of loot in every way the pack
+  knows about: it drops, it draws, it drags, it bins, it echoes, and drinking it
+  resolves. What it does not do is land on a square, which is step 5.
+
+  **The run deals 15 of 37 vials and leaves 22 meaning nothing.** That spare pile
+  is most of the bag, and it is what makes the fifteenth potion undeducible: knowing
+  fourteen colours tells you nothing, because the last one may well be one of the
+  twenty-two that never drop. **The deal is by colour NAME rather than by file**,
+  which the design did not foresee — Golden and Magenta each ship twice (NetHack
+  and Shattered Pixel Dungeon), and since an unknown bottle introduces itself by
+  its colour (decision #18), two potions both answering *"Golden Potion"* would
+  make the run log ambiguous about the exact mystery the player is being asked to
+  track. Both files stay in the pool; at most one of each pair is ever dealt.
+
+  **An unknown bottle says its colour out loud**, which is the one place potions
+  deliberately depart from pills: a pill's capsule is never spelled out, because
+  writing "green is Bad Trip" hands back the deduction the spare capsules exist to
+  prevent. Naming a colour is not naming what is in it, 37 vials cannot be told
+  apart in a run log any other way, and *"you drink the swirly potion"* is the
+  genre's own voice. The vial's game is credited beside it until the bottle is
+  known, and then the potion's own reference takes over.
+
+  **Identification covers both verbs at once.** Drink an unknown swirly bottle,
+  learn it was Fire Potion, and the card shows what throwing a swirly one does from
+  then on. The alternative is thirty facts instead of fifteen, and a quaff-or-throw
+  choice that turns into a research task — you would throw bottles you had already
+  drunk purely to fill in the other half of the page.
+
+  **A quaffed buff is borrowed, and the layer to borrow it was already there.**
+  Speed Potion's +5 Dexterity passes `games` straight through to the timed-status
+  layer built three entries ago, and dies at the next `beat_game` with a permanent
+  Dexterity underneath it untouched. That layer shipped before anything could apply
+  one precisely so this commit could not turn out to be a clock bug. Fire Potion's
+  Burn carries no clock, because Burn is a debt.
+
+  **`gain_level` needed the level-up path to come out of the overworld.** Potion of
+  Raise Level pays the character's ordinary level — the same stats, the same reward
+  — with the condition simply not consulted, so `GameState.grant_level_up` is now
+  where one level lives and `Overworld2` keeps only the two things that are about
+  EARNING one: the condition, and the bonus-level chain. A run with no character
+  cannot level, so the potion reads the counter rather than trusting the call and
+  fizzles in words when nothing moved.
+
+  Everything kind-blind widened by adding `"potion"` in one place, exactly as the
+  scroll-deltas commit set up: Amnesia forgets a potion, Identify offers one, the
+  pack draws one with a 🧪 on it. `DevTools` grants one (with the vial in the
+  detail column, and without identifying it — a debug grant that gave the answer
+  away could not be used to test the finding out), and `EffectSystem.gain_potion`
+  exists for whoever authors the first potion relic. **The per-game payout is still
+  the old scroll/pill coin**: the three-way split is step 7, and a test pins that,
+  so the run does not start paying out a kind that is half built.
+
+  33 tests in `test_potion_system.gd`, including the colour-list check run in BOTH
+  directions — art that ships without being listed is art no run can ever show,
+  which is the one gap `test_pill_system.gd` has.
+
 - **Fifteen potions exist as content, and none of them can be spent yet.**
 
   Step 3 of `docs/potions-design.md` §11 — the data layer, deliberately ahead of

@@ -9,7 +9,7 @@ Content source: the **`potions2.0`** sheet of `tools/Roguelikes.xlsx` (15 rows) 
 the art in `images2.0/potions_identified/` (9 bottles) +
 `images2.0/potions_unidentified/` (37 coloured vials).
 
-Status: **decisions locked; steps 1-3 of §11 are BUILT.** The timed-status
+Status: **decisions locked; steps 1-4 of §11 are BUILT.** The timed-status
 layer, its expiry, its wording and the shield claw-back shipped (§5, and the
 CHANGELOG entry that opens with *"Statuses can be borrowed"*), with
 `test/test_timed_statuses.gd` covering them — 26 tests. The scroll deltas (§10,
@@ -17,9 +17,10 @@ CHANGELOG entry that opens with *"Statuses can be borrowed"*), with
 kind-blind `forget`, `identify_loot` and `remove_curse` with its picker. Then the
 data: `PotionData`, `tools/generate_potion2_tres.py`, **§7.3's 30 effect cells
 written into the sheet** (decision #30) and `Data.roll_potion`, so all 15 potions
-now load as content. Nothing SPENDS one yet — `PotionSystem` and the two verbs are
-steps 4 and 5, and a surprising amount of the plumbing for them is already there:
-§9.1 is the list.
+now load as content. Then `PotionSystem` (autoload #23) and the QUAFF verb: the
+vial deal, identification, art, `quaff_potion`, and the potion arm on every
+kind-blind surface. **The THROW is the whole of what is left** — step 5, plus the
+three smaller steps after it. §9.1 is the plumbing that already exists for them.
 
 Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
 the branch, the state of the suite, the next step in order, and the repo-specific
@@ -949,8 +950,15 @@ scroll is identified either way (§4.5).
    different enough that the generator parses them in two dialects, refusing a
    quaff verb in a throw cell and vice versa, which is what caught the difference
    in the first place.
-4. **`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
-   At this point a potion is a pill with better art and it is fully playable.
+4. ~~**`PotionSystem`**: the deal, identification, art, `quaff_potion`. Quaff only.
+   At this point a potion is a pill with better art and it is fully playable.~~
+   **DONE.** Two things the build turned up. **The deal has to be by colour NAME,
+   not by file**: Golden and Magenta each ship in both art sets, and two bottles
+   answering "Golden Potion" break decision #18's whole point, so the bag is drawn
+   from one vial per distinct name. And **`gain_level` needed the level-up path
+   extracted** — one level (stats + the character's reward, no condition) is
+   `GameState.grant_level_up` now, and `Overworld2` keeps the condition and the
+   bonus-level chain, which are the parts about EARNING one.
 5. **The throw**: `area_cells`, `max_health` on an entry, the four new ops, the
    picker generalisation, the second button — and the Landmine's damage trigger
    (§4.7), which is the one piece of this step that is not potion code.

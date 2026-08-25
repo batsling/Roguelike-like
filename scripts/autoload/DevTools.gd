@@ -31,9 +31,9 @@ const TABS := ["grant", "run", "board", "flow", "events"]
 const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
-const GRANT_KINDS := ["items", "scrolls", "pills", "statuses"]
+const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
-	"statuses": "Statuses"}
+	"potions": "Potions", "statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -351,6 +351,8 @@ func _build_grant_tab() -> void:
 			_list_scrolls()
 		"pills":
 			_list_pills()
+		"potions":
+			_list_potions()
 		"statuses":
 			_list_statuses()
 		_:
@@ -429,6 +431,30 @@ func _list_pills() -> void:
 				_say("Added %spill: %s (%s)" % [
 					"horse " if _grant_horse else "", pill.display_name, color],
 					Color(0.45, 0.78, 0.55))})
+	_emit_rows(rows)
+
+# Every potion, with the VIAL this run dealt it in the detail column — the same
+# thing the pill list says and the same reason the game will not (§6). Granting one
+# does not identify it: the point of a potion is finding out, and a debug grant
+# that gave the answer away could not be used to test the finding out.
+func _list_potions() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for p in Data.all_potions():
+		if not (p is PotionData):
+			continue
+		var label: String = String(p.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var potion: PotionData = p
+		var vial: String = PotionSystem.color_name(PotionSystem.color_for(potion.id))
+		var known: String = "known" if PotionSystem.is_identified(potion.id) else "unknown"
+		rows.append({"label": label, "detail": "%s · %s · %s · %s" % [
+			potion.rarity, potion.preference, vial, known],
+			"press": func() -> void:
+				GameState.add_potion_loot(potion.id)
+				_say("Added potion: %s (%s)" % [potion.display_name, vial],
+					Color(0.62, 0.55, 0.86))})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

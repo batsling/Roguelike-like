@@ -85,6 +85,11 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 			return ScrollSystem.read_scroll(scroll, ctx)
 		"pill":
 			return PillSystem.take_pill(entry, ctx)
+		"potion":
+			# Quaff only, for now. The THROW verb needs a cell in hand before it can
+			# resolve anything (potions-design §4.2), so it arrives with the board
+			# picker in step 5 and reads ctx.verb / ctx.target here.
+			return PotionSystem.quaff_potion(entry, ctx)
 	return {}
 
 # The copies Echo Chamber fires this use: the last N remembered, newest first, so
@@ -130,6 +135,8 @@ func display_name(entry: Dictionary) -> String:
 			return ScrollSystem.display_name(Data.get_scroll(StringName(entry.get("id", ""))))
 		"pill":
 			return PillSystem.display_name(entry)
+		"potion":
+			return PotionSystem.display_name(entry)
 	return "Loot"
 
 func art_texture(entry: Dictionary) -> Texture2D:
@@ -138,6 +145,8 @@ func art_texture(entry: Dictionary) -> Texture2D:
 			return ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
 		"pill":
 			return PillSystem.art_texture(entry)
+		"potion":
+			return PotionSystem.art_texture(entry)
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -156,7 +165,12 @@ func art_tex(entry: Dictionary, base: int) -> TextureRect:
 
 # The glyph a kind wears in the log and on its tile.
 func glyph(entry: Dictionary) -> String:
-	return "💊" if String(entry.get("type", "")) == "pill" else "📜"
+	match String(entry.get("type", "")):
+		"pill":
+			return "💊"
+		"potion":
+			return "🧪"
+	return "📜"
 
 # ===========================================================================
 # Knowledge — what the run has learned, across every alphabet at once
@@ -175,6 +189,8 @@ func identified_types(kind: String = "loot") -> Array:
 		out.append_array(GameState.identified_scroll_types)
 	if kind == "pill" or kind == "loot":
 		out.append_array(GameState.identified_pill_types)
+	if kind == "potion" or kind == "loot":
+		out.append_array(GameState.identified_potion_types)
 	return out
 
 # Unidentify one type id, whichever alphabet it belongs to. A pill and a scroll
@@ -185,6 +201,8 @@ func unidentify(id: StringName) -> void:
 		ScrollSystem.unidentify(id)
 	if GameState.identified_pill_types.has(id):
 		PillSystem.unidentify(id)
+	if GameState.identified_potion_types.has(id):
+		PotionSystem.unidentify(id)
 
 # Forget `count` (-1 = all) random identified types of `kind`; returns how many.
 #
@@ -215,6 +233,8 @@ func is_identified(entry: Dictionary) -> bool:
 			return ScrollSystem.is_identified(id)
 		"pill":
 			return PillSystem.is_identified(id)
+		"potion":
+			return PotionSystem.is_identified(id)
 	return false
 
 # Learn what a carried piece is, whichever alphabet it belongs to — Identify's
@@ -226,6 +246,8 @@ func identify(entry: Dictionary) -> bool:
 			return ScrollSystem.identify(id)
 		"pill":
 			return PillSystem.identify(id)
+		"potion":
+			return PotionSystem.identify(id)
 	return false
 
 # One representative carried entry per unidentified TYPE in the pack — the
@@ -284,6 +306,8 @@ func description(entry: Dictionary) -> String:
 			return ScrollSystem.scroll_text(s)
 		"pill":
 			return PillSystem.description(entry)
+		"potion":
+			return PotionSystem.description(entry)
 	return ""
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -295,6 +319,8 @@ func preference(entry: Dictionary) -> String:
 			return s.preference if s != null and ScrollSystem.is_identified(s.id) else ""
 		"pill":
 			return PillSystem.preference(entry)
+		"potion":
+			return PotionSystem.preference(entry)
 	return ""
 
 # What KIND of thing this is, in the words the player sees: Scroll, Pill, or the
@@ -302,7 +328,12 @@ func preference(entry: Dictionary) -> String:
 func kind_name(entry: Dictionary) -> String:
 	if bool(entry.get("horse", false)):
 		return "Horse Pill"
-	return "Pill" if String(entry.get("type", "")) == "pill" else "Scroll"
+	match String(entry.get("type", "")):
+		"pill":
+			return "Pill"
+		"potion":
+			return "Potion"
+	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
 # uses (HoverCard). It lives here rather than on the loot window because four
