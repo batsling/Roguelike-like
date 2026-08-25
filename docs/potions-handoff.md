@@ -13,9 +13,10 @@ if the two ever disagree, the plan is right and this file is stale.
 
 ## 1. Where things are
 
-- **Steps 1–4 are on `main`** (PRs #204 and #205). **Steps 5–8 are on
-  `claude/potions-design-44t17j`**, branched off `806bd11`. Pushed; no PR, none
-  was asked for.
+- **Steps 1–4 are on `main`** (PRs #204 and #205). **Steps 5–8 are
+  [PR #206](https://github.com/batsling/Roguelike-like/pull/206)**, on
+  `claude/potions-design-44t17j` off `806bd11`. If it has landed by the time you
+  read this, a fresh clone has all of it and there is nothing to check out.
 - **Suite:** green. `Scripts 33, Tests 1665, Passing 1665, Orphans 3` in ~530s.
   The 3 orphans and the leaked-RID warnings at the end of a run are pre-existing
   UI-test noise; a **Risky / "Did not assert" is not** (see CLAUDE.md). The ASSERT
