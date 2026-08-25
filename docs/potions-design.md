@@ -980,15 +980,24 @@ scroll is identified either way (§4.5).
    and the player quaffs it or carries it out. And **arming a throw closes the
    loot window and the info card**, which float over the board for the same
    reason.
-6. **`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.
-7. **The income switch** to a three-way split (§8) — last, so the run is not paying
-   out a kind that is only half built.
-8. **README + CHANGELOG**, and `gain_potion` for whoever authors the first potion
-   relic.
+6. ~~**`loot_capacity()`** (§8.1) — the seam for a bigger bag, no relic.~~
+   **DONE.** The const is the BASE now and `GameState.loot_capacity()` is what
+   every surface reads; `LootGrid` derives its columns from it rather than from a
+   literal 3.
+7. ~~**The income switch** to a three-way split (§8) — last, so the run is not
+   paying out a kind that is only half built.~~ **DONE.**
+   `GameState.roll_loot_kind()` is the one roll both kind-blind callers ask, which
+   is the half of this the plan was really about: the two of them each spelled
+   `randi() % 2` out for themselves, and that is two places for the odds to drift
+   the day one is tuned.
+8. ~~**README + CHANGELOG**, and `gain_potion` for whoever authors the first potion
+   relic.~~ **DONE**, plus the Collection's third sub-tab — and `gain_potion` was
+   already registered on `EffectSystem`, written in step 4 and never called.
 
-Step 1 is the risky one. Steps 3–4 are mostly transcription from `PillSystem`, and
-step 5 is where the new gameplay actually is — which is a good argument for not
-letting steps 1 and 2 sprawl.
+**All eight steps are built.** Step 1 was the risky one and step 5 is where the
+new gameplay turned out to be, exactly as this list guessed. What is left is
+tuning rather than construction: see §12 for the two questions the build could not
+answer by itself.
 
 ---
 
