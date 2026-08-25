@@ -102,7 +102,9 @@ const LOOT_SCALED_FIELDS := {
 	"apply_status": ["value"],
 	"forget": ["count"],
 	"spawn_enemy": ["count"],
+	"identify_loot": ["count"],
 	"identify_scrolls": ["count"],
+	"remove_curse": ["count"],
 	"stun_enemies": ["count"],
 }
 
@@ -149,16 +151,24 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# room, which is why it is authored as its own clause.
 			_apply_tile(effect, out)
 		"forget":
-			# Amnesia — forget (unidentify) random known scrolls (§4.1).
-			_forget_scrolls(int(effect.get("count", 1)), rng, out)
+			# Amnesia — forget (unidentify) random known loot, any kind (§4.1, §10).
+			_forget(String(effect.get("kind", "loot")).to_lower(),
+				int(effect.get("count", 1)), rng, out)
 		"spawn_enemy":
 			# Create Monster — conjure a random enemy at the run's current tier that
 			# starts following the player (§4.1).
 			_spawn_enemy(String(effect.get("difficulty", "current")),
 				int(effect.get("count", 1)), out)
-		"identify_scrolls":
-			# Identify — the player chooses which carried scroll(s) to reveal.
-			_identify_scrolls(String(effect.get("mode", "choose")),
+		"identify_loot", "identify_scrolls":
+			# Identify — the player chooses which carried piece(s) to reveal (§10).
+			# `identify_scrolls` is the pre-widening spelling: the generator already
+			# rewrites it, and it is matched here too so a .tres generated before
+			# that still resolves rather than warning about an unknown op.
+			_identify_loot(String(effect.get("mode", "choose")),
+				int(effect.get("count", 1)), rng, out)
+		"remove_curse":
+			# Remove Curse — the player chooses a curse GOAL to be rid of (§10.1).
+			_remove_curse(String(effect.get("mode", "choose")),
 				int(effect.get("count", 1)), rng, out)
 		"stun_enemies":
 			# Scare Monster — the player chooses a following enemy to Stun (§7.2).
@@ -187,6 +197,71 @@ func tile_effect_text(effect: Dictionary) -> String:
 		"all": "every tile on the board",
 	}.get(String(effect.get("target", "front")).to_lower(), "the front column")
 	return "Lay the %s tile over %s." % [tile.display_name, where]
+
+# What a scroll DOES, in one line — the authored sentence where the sheet wrote
+# one, and the ops assembled into words where it did not.
+#
+# AUTHORED WORDS BEAT GENERATED ONES, and Amnesia is why. Its op is
+# `forget loot 1` and its Description is "Forget 1 random Identified Loot." — the
+# op knows the kind is `loot`, but only the sentence knows that "loot" is worth
+# naming as a category the player recognises. Assembling from ops is the floor,
+# not the ceiling.
+#
+# It lives here, and not on either of the two screens that used to own a copy of
+# it, for the reason status_effect_text does: the pack's hover (LootSystem) and
+# the catalog's cell (Collection) describe the same scroll to the same player,
+# and two assemblers are two chances to say something slightly different about it.
+func scroll_text(scroll: ScrollData) -> String:
+	if scroll == null:
+		return ""
+	if scroll.description != "":
+		return scroll.description
+	return assembled_text(scroll)
+
+# The fallback half of scroll_text: the op list turned into sentences.
+func assembled_text(scroll: ScrollData) -> String:
+	var parts: Array = []
+	for e in scroll.effect:
+		if not (e is Dictionary):
+			continue
+		var line: String = op_text(e)
+		if line != "":
+			parts.append(line)
+	return " ".join(parts)
+
+# One op in words. Every op the DSL can produce answers here or answers "", and
+# an op that answers "" is one this function has not been taught yet rather than
+# one that does nothing.
+func op_text(effect: Dictionary) -> String:
+	match String(effect.get("op", "")):
+		"apply_status":
+			return status_effect_text(effect)
+		"apply_tile":
+			return tile_effect_text(effect)
+		"forget":
+			# A count of -1 is `all`, which has to read as a word rather than as the
+			# sentinel: "Forget -1 random scrolls" is the shape this line would take
+			# on the day somebody authors a wide forget without a Description.
+			var count: int = int(effect.get("count", 1))
+			var what: String = "piece(s) of loot" \
+				if String(effect.get("kind", "loot")) == "loot" else "scroll(s)"
+			if count < 0:
+				return "Forget every identified %s." % what
+			return "Forget %d random identified %s." % [count, what]
+		"spawn_enemy":
+			return "Spawn a random enemy at the current difficulty that follows you."
+		"identify_loot", "identify_scrolls":
+			return "Choose %d carried piece(s) of loot to identify." % int(effect.get("count", 1))
+		"remove_curse":
+			var curses: int = int(effect.get("count", 1))
+			if curses < 0:
+				return "Lift every curse on you."
+			return "Choose %d curse%s to lift." % [curses, "" if curses == 1 else "s"]
+		"stun_enemies":
+			return "Choose %d following enemy to Stun." % int(effect.get("count", 1))
+		"teleport":
+			return "Teleport ~the same distance from the Amulet."
+	return ""
 
 # --- apply_status (Scroll of Aggravate Monsters) ---------------------------
 
@@ -269,27 +344,25 @@ func _apply_tile(effect: Dictionary, out: Dictionary) -> void:
 		tile.display_name, landed, "tile" if landed == 1 else "tiles"])
 
 # --- forget (Scroll of Amnesia) --------------------------------------------
-func _forget_scrolls(count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
-	var known: Array = GameState.identified_scroll_types.duplicate()
-	if known.is_empty():
-		out["logs"].append("You have no scroll knowledge to forget.")
+# Amnesia — forget (unidentify) random KNOWN LOOT, of whatever kind (§10).
+#
+# The cell used to say `forget scroll 1` while the Description beside it said
+# "Forget 1 random Identified Loot", and this function could only do the narrow
+# thing the cell asked for. Both now say loot, and the forgetting itself belongs to
+# LootSystem, which is the layer that knows there is more than one alphabet — the
+# pills' horse Amnesia has been asking for `forget loot all` since it shipped and
+# had its own implementation of it.
+#
+# WHAT IT DOES NOT DO IS REDEAL THE COLOURS. The capsule and the bottle still mean
+# what they meant; you have merely stopped knowing, and using one is how you find
+# out again.
+func _forget(kind: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+	var forgot: int = LootSystem.forget_identified(kind, count, rng)
+	if forgot <= 0:
+		out["logs"].append("You have no loot knowledge to forget.")
 		return
-	_forget_from(known, count, rng, func(id): unidentify(id))
-	out["logs"].append("You forget what %s scroll%s do%s." % [
-		"a" if count == 1 else "some", "" if count == 1 else "s", "es" if count == 1 else ""])
-
-# Forget `count` (-1 = all) random ids from `pool`, invoking `forget_fn` on each.
-# The forget_fn does the actual removal, so we snapshot the targets first.
-func _forget_from(pool: Array, count: int, rng: RandomNumberGenerator, forget_fn: Callable) -> void:
-	var work: Array = pool.duplicate()
-	var n: int = work.size() if count < 0 else mini(count, work.size())
-	for _i in range(n):
-		if work.is_empty():
-			break
-		var idx: int = rng.randi_range(0, work.size() - 1)
-		var id = work[idx]
-		work.remove_at(idx)
-		forget_fn.call(id)
+	out["logs"].append("You forget what %d %s do%s." % [
+		forgot, "thing" if forgot == 1 else "things", "es" if forgot == 1 else ""])
 
 # --- spawn_enemy (Scroll of Create Monster) --------------------------------
 func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
@@ -312,44 +385,95 @@ func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
 		"appears" if names.size() == 1 else "appear",
 		"s" if names.size() == 1 else ""])
 
-# --- identify_scrolls (Scroll of Identify) ---------------------------------
-func _identify_scrolls(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
-	var unknown := _carried_unidentified_scroll_ids()
+# --- identify_loot (Scroll of Identify) ------------------------------------
+#
+# WIDENED FROM SCROLLS TO EVERYTHING CARRIED (§10, decision #13). The op offered
+# scrolls alone while the Description beside it said "Choose 1 Loot to Identify",
+# and with three alphabets sharing one nine-slot pack a scroll-only Identify is
+# dead weight most of the time it is drawn. It is the exact mirror of the Amnesia
+# change above: one verb that forgets loot, one that learns it.
+#
+# The candidate list is LootSystem's, so this reads as "the unidentified things you
+# are carrying" and does not have to know how many kinds that is.
+func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+	var unknown: Array = LootSystem.carried_unidentified()
+	if unknown.is_empty():
+		out["logs"].append("You have nothing unidentified to identify.")
+		return
 	if mode == "all":
-		for id in unknown:
-			identify(id)
-		out["logs"].append("All carried scrolls identified.")
+		for entry in unknown:
+			LootSystem.identify(entry)
+		out["logs"].append("Everything you are carrying is identified.")
 	elif mode == "random":
 		# NAMED, not counted. A random identify used to resolve in silence, which on a
 		# scroll whose entire subject is *what is this* left the reader knowing
-		# something new and with no way to find out what.
+		# something new and with no way to find out what. The name is read AFTER the
+		# identify, so it is the thing's real name rather than its mask.
 		var learned: Array = []
 		for _i in range(count):
 			if unknown.is_empty():
 				break
 			var idx: int = rng.randi_range(0, unknown.size() - 1)
-			identify(unknown[idx])
-			var s: ScrollData = Data.get_scroll(unknown[idx])
-			learned.append(s.display_name if s != null else String(unknown[idx]))
+			LootSystem.identify(unknown[idx])
+			learned.append(LootSystem.display_name(unknown[idx]))
 			unknown.remove_at(idx)
-		out["logs"].append("You identify %s." % ", ".join(PackedStringArray(learned))
-			if not learned.is_empty() else "No unidentified scrolls to identify.")
+		out["logs"].append("You identify %s." % ", ".join(PackedStringArray(learned)))
 	else: # choose
-		if unknown.is_empty():
-			out["logs"].append("No unidentified scrolls to identify.")
-			return
-		out["requests"].append({"kind": "identify_scrolls", "count": count, "candidates": unknown})
+		out["requests"].append({"kind": "identify_loot", "count": count, "candidates": unknown})
 
-# Distinct scroll ids the player is carrying that aren't identified yet.
-func _carried_unidentified_scroll_ids() -> Array:
-	var seen := {}
-	var ids: Array = []
-	for l in GameState.loot_scrolls():
-		var id: StringName = l.get("id", &"")
-		if id != &"" and not is_identified(id) and not seen.has(id):
-			seen[id] = true
-			ids.append(id)
-	return ids
+# --- remove_curse (Scroll of Remove Curse) ---------------------------------
+#
+# CURSE GOALS, NOT CURSE CARDS (§10.1). The cards are shelved (spec §5); the goals
+# are live content — three authored rows, handed out by events, by the Amnesia pill
+# and by the Calling Bell, and drawn on the checklist every game as the things you
+# are trying not to do. Lifting one is a real effect, not a placeholder.
+func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+	if GameState.curse_goals.is_empty():
+		out["logs"].append("Nothing is weighing on you.")
+		return
+	if mode == "all":
+		var lifted: Array = []
+		for i in range(GameState.curse_goals.size() - 1, -1, -1):
+			lifted.push_front(curse_name(GameState.remove_curse_goal(i)))
+		out["logs"].append(_lifted_line(lifted))
+	elif mode == "random":
+		var pool: Array = range(GameState.curse_goals.size())
+		var picked: Array = []
+		for _i in range(count):
+			if pool.is_empty():
+				break
+			picked.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+		out["logs"].append(_lifted_line(_remove_indices(picked)))
+	else: # choose
+		out["requests"].append({"kind": "remove_curse", "count": count})
+
+# Remove several curse rows by index at once. DESCENDING, because every removal
+# shifts the indices above it — the one bug this op can have that the player would
+# see as "it lifted the wrong curse".
+func _remove_indices(indices: Array) -> Array:
+	var work: Array = indices.duplicate()
+	work.sort()
+	work.reverse()
+	var names: Array = []
+	for i in work:
+		var row: Dictionary = GameState.remove_curse_goal(int(i))
+		if not row.is_empty():
+			names.push_front(curse_name(row))
+	return names
+
+func _lifted_line(names: Array) -> String:
+	if names.is_empty():
+		return "Nothing is weighing on you."
+	return "%s %s lifted." % [", ".join(PackedStringArray(names)),
+		"is" if names.size() == 1 else "are"]
+
+# What a held curse row is called, for the picker and for the line that says it
+# went. The catalog's name, falling back to the id so a row whose curse has been
+# removed from the sheet still reads as something.
+func curse_name(row: Dictionary) -> String:
+	var id := StringName(row.get("curse", &""))
+	var cd: CurseData2 = Data.get_curse2(id)
+	return cd.display_name if cd != null else String(id)
 
 # --- stun_enemies (Scroll of Scare Monster) --------------------------------
 func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
@@ -388,12 +512,17 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
 # its logs before the picker has been drawn, so a fulfilment that stayed silent
 # left the reader with a scroll that reported nothing at all — see
 # LootUseModal._show_outcome, which is where these lines land.
-func identify_scrolls_chosen(ids: Array) -> String:
+func remove_curse_chosen(indices: Array) -> String:
+	return _lifted_line(_remove_indices(indices))
+
+func identify_loot_chosen(entries: Array) -> String:
 	var names: Array = []
-	for id in ids:
-		identify(id)
-		var s: ScrollData = Data.get_scroll(StringName(id))
-		names.append(s.display_name if s != null else String(id))
+	for entry in entries:
+		if not (entry is Dictionary):
+			continue
+		LootSystem.identify(entry)
+		# After the identify, so the line names the thing rather than its mask.
+		names.append(LootSystem.display_name(entry))
 	if names.is_empty():
 		return "You identify nothing."
 	return "You identify %s." % ", ".join(PackedStringArray(names))

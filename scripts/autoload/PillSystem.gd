@@ -445,37 +445,24 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 # the dose that erases the run's knowledge erases its own name with it. So the
 # horse dose can never leave itself known — its colour is learned from the NORMAL
 # dose, which forgets a curse's worth of other things and not this.
+#
+# THE FORGETTING ITSELF IS LootSystem's, shared with the scroll Amnesia, which now
+# asks for the same `forget loot` this dose always did (§10). One difference the
+# move corrects: a `loot` forget used to run the count against EACH alphabet in
+# turn, so "forget 1" forgot one scroll AND one pill. It forgets one thing now,
+# drawn from everything known — which is what the sheet's "1 random Identified
+# Loot" says, and what a horse `all` meant either way.
 func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
 	var kind: String = String(op.get("kind", "loot")).to_lower()
 	var count: int = int(op.get("count", 1))
 	if count > 0:
 		count = _scaled_value(op, "count", 1)
-	var forgot: int = 0
-	if kind == "scroll" or kind == "loot":
-		forgot += _forget_from(GameState.identified_scroll_types.duplicate(), count, rng,
-			func(id): ScrollSystem.unidentify(id))
-	if kind == "pill" or kind == "loot":
-		forgot += _forget_from(GameState.identified_pill_types.duplicate(), count, rng,
-			func(id): unidentify(id))
+	var forgot: int = LootSystem.forget_identified(kind, count, rng)
 	if forgot <= 0:
 		out["logs"].append("You have no loot knowledge to forget.")
 		return
 	out["logs"].append("You forget what %d %s do%s." % [
 		forgot, "thing" if forgot == 1 else "things", "es" if forgot == 1 else ""])
-
-# Forget `count` (-1 = all) random ids from `pool`, invoking `forget_fn` on each.
-# Returns how many were actually forgotten. The targets are snapshotted first,
-# since forget_fn is what removes them.
-func _forget_from(pool: Array, count: int, rng: RandomNumberGenerator, forget_fn: Callable) -> int:
-	var work: Array = pool.duplicate()
-	var n: int = work.size() if count < 0 else mini(count, work.size())
-	for _i in range(n):
-		if work.is_empty():
-			break
-		var idx: int = rng.randi_range(0, work.size() - 1)
-		forget_fn.call(work[idx])
-		work.remove_at(idx)
-	return n
 
 # --- charge (48 Hour Energy) ------------------------------------------------
 # Three SEPARATE charges, each landing on a random chargeable relic — so two can

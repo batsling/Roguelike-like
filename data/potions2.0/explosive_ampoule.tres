@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_explosive_ampoule"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"explosive_ampoule"
+display_name = "Explosive Ampoule"
+rarity = "Common"
+preference = "Negative"
+reference = "Slay the Spire"
+quaff_text = "Take 3 Damage"
+throw_text = "Deal 1 Damage everything on this tile and it's row"
+quaff = [{"op": "take_damage", "value": 3}]
+throw = [{"op": "deal_damage", "value": 1, "area": "row"}]
+file = "ExplosiveAmpoule"

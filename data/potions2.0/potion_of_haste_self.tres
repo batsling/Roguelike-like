@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_potion_of_haste_self"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"potion_of_haste_self"
+display_name = "Potion of Haste Self"
+rarity = "Uncommon"
+preference = "Positive"
+reference = "Rogue"
+quaff_text = "Gain +2 Speed until the end of the next combat"
+throw_text = "Apply +2 Speed until the end of the next combat"
+quaff = [{"op": "apply_status", "status": "speed", "value": 2, "target": "player", "games": 1}]
+throw = [{"op": "apply_status", "status": "speed", "value": 2, "area": "cell", "games": 1}]
+file = ""

@@ -81,6 +81,7 @@ func _register_defaults() -> void:
 	register("heal_full", _h_heal_full)
 	register("gain_scroll", _h_gain_scroll)
 	register("gain_pill", _h_gain_pill)
+	register("gain_potion", _h_gain_potion)
 	register("gain_loot", _h_gain_loot)
 	register("none", _h_none)
 	register("if_hp", _h_if_hp)
@@ -187,8 +188,8 @@ func _h_heal_full(_effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.set_hp(GameState.max_hp)
 
 # LOOT is a category, not a synonym for scroll — and since pills arrived (§4.3)
-# the difference is real: `gain_scroll` and `gain_pill` name a kind, `gain_loot`
-# is the kind-BLIND grant that rolls 50/50 per unit. That last one is what beating
+# the difference is real: `gain_scroll`, `gain_pill` and `gain_potion` name a
+# kind, `gain_loot` is the kind-BLIND grant that rolls per unit. That last one is what beating
 # a game pays, and it is why the widening this comment promised is a rolled coin
 # rather than a rename.
 func _h_gain_scroll(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -196,6 +197,9 @@ func _h_gain_scroll(effect: Dictionary, _ctx: Dictionary) -> void:
 
 func _h_gain_pill(effect: Dictionary, _ctx: Dictionary) -> void:
 	_grant_loot("pill", int(effect.get("value", 1)))
+
+func _h_gain_potion(effect: Dictionary, _ctx: Dictionary) -> void:
+	_grant_loot("potion", int(effect.get("value", 1)))
 
 func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
 	_grant_loot("loot", int(effect.get("value", 1)))

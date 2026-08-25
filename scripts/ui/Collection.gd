@@ -1659,28 +1659,12 @@ func _preference_color(pref: String) -> Color:
 		"negative": return Color(0.9, 0.35, 0.3)
 		_: return Color(0.55, 0.66, 0.85)
 
-# Plain-language summary of a 2.0 scroll's authored effect ops.
+# Plain-language summary of a 2.0 scroll: the sheet's authored Description where
+# there is one, the assembled ops where there is not. The catalog used to keep its
+# own copy of that assembly, one wording adrift from the pack's — it is
+# ScrollSystem.scroll_text for both surfaces now.
 func _scroll_effect_text(s: ScrollData) -> String:
-	var parts: Array = []
-	for e in s.effect:
-		if not (e is Dictionary):
-			continue
-		match String(e.get("op", "")):
-			"apply_status":
-				parts.append(ScrollSystem.status_effect_text(e))
-			"apply_tile":
-				parts.append(ScrollSystem.tile_effect_text(e))
-			"forget":
-				parts.append("Forget %d random scroll(s)." % int(e.get("count", 1)))
-			"spawn_enemy":
-				parts.append("Spawn a random enemy at the current difficulty.")
-			"identify_scrolls":
-				parts.append("Choose %d scroll(s) to identify." % int(e.get("count", 1)))
-			"stun_enemies":
-				parts.append("Choose %d following enemy to Stun." % int(e.get("count", 1)))
-			"teleport":
-				parts.append("Teleport ~the same distance from the Amulet.")
-	return " ".join(parts)
+	return ScrollSystem.scroll_text(s)
 
 func _populate_pills() -> void:
 	_clear_children(_grid)

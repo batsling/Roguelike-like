@@ -3423,23 +3423,11 @@ func _apply_level_up() -> void:
 		return
 	var bonus_levels: int = 0
 	while true:
-		GameState.player_level += 1
-		GameState.apply_level_up_stats(ch.level_up_stats)
-		match String(ch.level_up_reward_type):
-			"item", "chest":
-				# A sized chest (Zagreus' Large -> 3) carries its own choice
-				# count; an unsized one passes 0 and takes the screen's default.
-				GameState.grant_chest(maxi(1, ch.level_up_reward_amount),
-					maxi(0, ch.level_up_reward_chest_choices))
-			"random_sized_chest":
-				# Vampire Survivors characters: the chest's SIZE is rolled
-				# (Data.CHEST_SIZE_CHOICES) instead of fixed — Small..Huge on the
-				# same odds as every other rarity draw.
-				GameState.grant_chest(maxi(1, ch.level_up_reward_amount), Data.roll_chest_size_choices(_rng))
-			"scroll":
-				GameState.add_loot("scroll", maxi(1, ch.level_up_reward_amount))
-			_:
-				pass
+		# One level, stats and reward — GameState.grant_level_up. What is left here
+		# is the two things that are about EARNING one rather than about what one is
+		# worth: the condition checked above, and the bonus-level chain below.
+		# Potion of Raise Level calls the same function with neither.
+		GameState.grant_level_up(_rng)
 		if bonus_levels >= 10 or not _roll_bonus_level_up():
 			break
 		bonus_levels += 1

@@ -21,18 +21,36 @@ extends Resource
 @export var reference: String = ""
 # "Positive" | "Negative" | "Neutral" — the identification gamble's flavour.
 @export var preference: String = "Neutral"
+# The sheet's Description column: the scroll's effect in the author's own words.
+# ScrollSystem.scroll_text prefers this over the line it assembles from the ops,
+# because an authored sentence is allowed to say things the op list cannot —
+# Amnesia's "Identified Loot" covers three kinds that its single `forget` op can
+# only name one of. Blank falls back to the assembled line, so a scroll authored
+# without one still describes itself.
+@export var description: String = ""
 # Art base name under res://images2.0/scrolls/ (the sheet's File column). Identified
 # art is scrolls/<file>.png; unidentified scrolls — and identified scrolls whose
 # File art is missing — fall back to scrolls/Unidentified.png (see ScrollSystem).
 @export var file: String = ""
 
+# How likely this scroll is to be the one drawn OUT OF ITS RARITY BUCKET — the
+# sheet's Notes column, where Identify says "Has a +25% find rate", read as 1.25.
+#
+# A WEIGHT INSIDE THE BUCKET, NOT A SHARE OF ALL DROPS (potions-design §10,
+# decision #20). The 75/20/5 ladder picks the rarity first and this only decides
+# which member of that rarity comes up, so a find rate can never quietly promote a
+# Common past an Uncommon — rarity keeps meaning what it means. 1.0 is "like
+# everything else at this rarity", which is what an unannotated scroll gets.
+@export var find_weight: float = 1.0
+
 # The scroll's structured effect: a list of ops (each a Dictionary with an "op"
 # plus op-specific keys) applied by ScrollSystem.read_scroll — e.g.
 #   {"op": "apply_status", "status": "strength", "value": 1,
 #    "target": "all"}                                        (Aggravate Monsters)
-#   {"op": "forget", "kind": "scroll", "count": 1}           (Amnesia)
+#   {"op": "forget", "kind": "loot", "count": 1}             (Amnesia)
 #   {"op": "spawn_enemy", "difficulty": "current"}           (Create Monster)
-#   {"op": "identify_scrolls", "mode": "choose", "count": 1} (Identify)
+#   {"op": "identify_loot", "mode": "choose", "count": 1}    (Identify)
+#   {"op": "remove_curse", "mode": "choose", "count": 1}     (Remove Curse)
 #   {"op": "stun_enemies", "mode": "choose", "count": 1}     (Scare Monster)
 #   {"op": "teleport", "dir": "same", "spread": 1}           (Teleportation)
 @export var effect: Array = []

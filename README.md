@@ -85,6 +85,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
 │   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
 │   │                     #   (the horse dose is a 5% roll on the drop, §4.3)
+│   ├── potions2.0/       #   PotionData — identify-by-using potions, two VERBS
+│   │                     #   each: quaff it, or throw it at a cell
+│   │                     #   (docs/potions-design.md)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4)
 │   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
@@ -104,7 +107,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── fonts/                 # ★ Subsetted Noto symbol fonts (OFL) — the ~70 glyphs the UI
 │                          #   draws, shipped so they don't cost a host font search each
 │                          #   time a Label is made. Built by tools/build_glyph_font.py
-├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters, scrolls
+├── images2.0/             # ★ Games-first art — covers, items, enemies, bosses, characters,
+│                          #   scrolls, pills, and 37 potion vials + 9 identified bottles
 ├── images/                #   Surviving pre-2.0 art (legacy items / events / encounters)
 ├── addons/gut/            # GUT — the GDScript unit-test framework
 ├── test/                  # GUT test suites (test_*.gd)
@@ -124,6 +128,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_character2_tres.py #   data/characters2.0
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
 │   ├── generate_pill2_tres.py      #   data/pills2.0
+│   ├── generate_potion2_tres.py    #   data/potions2.0
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -226,6 +231,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
+| `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and `quaff_potion`. The THROW verb is not built yet. |
 | `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
@@ -596,6 +602,7 @@ editing the sheet, then review the diff):
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
+| `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions2.0` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles2.0` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units2.0` sheet — imports the parsers above rather than restating them |

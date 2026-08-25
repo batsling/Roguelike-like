@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_potion_of_uselessness"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"potion_of_uselessness"
+display_name = "Potion of Uselessness"
+rarity = "Uncommon"
+preference = "Neutral"
+reference = "Ancient Domains of Mystery"
+quaff_text = "Do nothing"
+throw_text = "Do nothing"
+quaff = []
+throw = []
+file = ""

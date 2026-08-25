@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PotionData" load_steps=2 format=3 uid="uid://potion2_strength_potion"]
+
+[ext_resource type="Script" path="res://scripts/resources/PotionData.gd" id="1_potion"]
+
+[resource]
+script = ExtResource("1_potion")
+id = &"strength_potion"
+display_name = "Strength Potion"
+rarity = "Common"
+preference = "Positive"
+reference = "Slay the Spire"
+quaff_text = "Gain +2 Strength until the end of the next combat"
+throw_text = "Apply +1 Strength until the end of the next combat"
+quaff = [{"op": "apply_status", "status": "strength", "value": 2, "target": "player", "games": 1}]
+throw = [{"op": "apply_status", "status": "strength", "value": 1, "area": "cell", "games": 1}]
+file = "StrengthPotion"

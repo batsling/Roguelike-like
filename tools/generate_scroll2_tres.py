@@ -11,7 +11,13 @@ writes only the 2.0 fields; the legacy generate_scroll_tres.py + data/scrolls
 stay intact for the still-present combat scroll code until the ScrollSystem
 rewrite + combat cut land together.
 
-  scrolls2.0: Scrolls | Game | Preference | Description | File | Effect
+  scrolls2.0: Scrolls | Game | Preference | Rarity | Description | Effect |
+              File | Notes
+
+Rarity feeds ScrollData.rarity_index(), which Data.roll_scroll weights the drop
+by. Description is the author's own sentence and beats the line the UI assembles
+from the ops (ScrollSystem.scroll_text). Notes is prose, and the one thing read
+out of it is a "+N% find rate" phrase -> ScrollData.find_weight.
 
 Effect token DSL (semicolons separate clauses; most scrolls are one):
   apply_status <status> N player|current|all|random|front
@@ -21,9 +27,12 @@ Effect token DSL (semicolons separate clauses; most scrolls are one):
                                         Strength now, §13.4 — kept so an old
                                         cell still parses)
   apply_tile <tile> front|all|back   -> {op:apply_tile, tile, target}
-  forget scroll|potion|spell N       -> {op:forget, kind, count:N}
+  forget scroll|pill|potion|loot N   -> {op:forget, kind, count:N}
   spawn_enemy current|low|medium|high-> {op:spawn_enemy, difficulty}
-  identify_scrolls choose|random|all N -> {op:identify_scrolls, mode, count:N}
+  identify_loot choose|random|all N  -> {op:identify_loot, mode, count:N}
+                                        (identify_scrolls is the old spelling and
+                                        still parses, to the same op)
+  remove_curse choose|random|all N   -> {op:remove_curse, mode, count:N}
   stun_enemies choose|random|all N   -> {op:stun_enemies, mode, count:N}
   teleport same|closer|farther N     -> {op:teleport, dir, spread:N}
 
@@ -77,6 +86,22 @@ STATUS_TARGETS = ("player", "current", "all", "random", "front")
 # stand on the grid, which is exactly why a tile effect is a way to threaten
 # ground rather than a way to hurt yourself.
 TILE_TARGETS = ("front", "all", "back")
+
+
+# "Has a +25% find rate" -> 1.25. The find rate is authored as PROSE in the Notes
+# column rather than as a column of its own, because it is the only note of its
+# kind and a column for one scroll is seven other rows of nothing. This reads
+# it rather than hardcoding Identify's number, so re-tuning it is a sheet edit —
+# and test_redesign2 asserts the value it produces, so a note that stops matching
+# this pattern fails a test instead of silently reverting the weight to 1.0.
+_FIND_RATE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%\s*find\s*rate", re.I)
+
+
+def parse_find_weight(notes) -> float:
+    m = _FIND_RATE.search(_clean(notes))
+    if not m:
+        return 1.0
+    return round(1.0 + float(m.group(1)) / 100.0, 4)
 
 
 def parse_effect(raw):
@@ -141,14 +166,24 @@ def parse_clause(s):
                  "tile": rest[0].lower(),
                  "target": targets[0].lower() if targets else "front"}]
     if verb == "forget":
-        kind = rest[0].lower() if rest and not rest[0].isdigit() else "scroll"
+        # `forget scroll|pill|potion|loot N`. The kind was always meant to mean
+        # something — the pills' horse Amnesia has authored `forget loot all` since
+        # it shipped — but the scroll's own cell said `scroll` while its Description
+        # said "Identified Loot". It says `loot` now, and ScrollSystem forgets
+        # across every alphabet the run knows.
+        kind = rest[0].lower() if rest and not rest[0].isdigit() else "loot"
         return [{"op": "forget", "kind": kind, "count": nums[0] if nums else 1}]
     if verb == "spawn_enemy":
         diff = rest[0].lower() if rest else "current"
         return [{"op": "spawn_enemy", "difficulty": diff}]
-    if verb in ("identify_scrolls", "stun_enemies"):
+    if verb in ("identify_loot", "identify_scrolls", "remove_curse", "stun_enemies"):
+        # `identify_scrolls` is the old spelling of `identify_loot` and resolves to
+        # it, so a cell written before Identify widened to all three alphabets
+        # still parses — and parses to the WIDE op, because that is what the scroll
+        # does now regardless of which word the sheet used to ask for it.
+        op = "identify_loot" if verb == "identify_scrolls" else verb
         mode = rest[0].lower() if rest and not rest[0].isdigit() else "choose"
-        return [{"op": verb, "mode": mode, "count": nums[0] if nums else 1}]
+        return [{"op": op, "mode": mode, "count": nums[0] if nums else 1}]
     if verb == "teleport":
         direction = rest[0].lower() if rest and not rest[0].isdigit() else "same"
         return [{"op": "teleport", "dir": direction, "spread": nums[0] if nums else 1}]
@@ -184,6 +219,9 @@ def scroll_tres(row) -> tuple:
     name = str(row["Scrolls"]).strip()
     sid = slugify(name)
     preference = _clean(row.get("Preference")) or "Neutral"
+    rarity = _clean(row.get("Rarity")) or "Common"
+    description = _clean(row.get("Description"))
+    find_weight = parse_find_weight(row.get("Notes"))
     file = _clean(row.get("File"))
     effect = parse_effect(row.get("Effect"))
 
@@ -199,8 +237,15 @@ def scroll_tres(row) -> tuple:
     lines.append('id = &"%s"' % sid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('reference = "%s"' % gd_str(_clean(row.get("Game"))))
+    # The sheet has carried a Rarity column since the scrolls were re-authored and
+    # this generator never wrote it, so every scroll landed on disk as Common and
+    # Data.roll_scroll's rarity weighting had nothing to weight. Writing it is the
+    # whole fix — the roller was already asking for rarity_index().
+    lines.append('rarity = "%s"' % gd_str(rarity))
     lines.append('preference = "%s"' % gd_str(preference))
+    lines.append('description = "%s"' % gd_str(description))
     lines.append('file = "%s"' % gd_str(file))
+    lines.append("find_weight = %s" % gd_value(find_weight))
     lines.append("effect = %s" % gd_value(effect))
     return sid, "\n".join(lines) + "\n"
 

@@ -15,6 +15,7 @@ var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept — §5)
 var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
 var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
+var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions-design)
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
@@ -43,6 +44,7 @@ func _ready() -> void:
 	_load_dir("res://data/bosses2.0/", _bosses)
 	_load_dir("res://data/scrolls2.0/", _scrolls)
 	_load_dir("res://data/pills2.0/", _pills)
+	_load_dir("res://data/potions2.0/", _potions)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
@@ -105,6 +107,13 @@ func get_pill(id: StringName) -> PillData:
 
 func all_pills() -> Array:
 	return _pills.values()
+
+# --- Potions (2.0, docs/potions-design.md) ---------------------------------
+func get_potion(id: StringName) -> PotionData:
+	return _potions.get(id)
+
+func all_potions() -> Array:
+	return _potions.values()
 
 # The pills a given PREFERENCE covers — Lucky Foot's reroll pool (§4.3) is every
 # Positive pill, including the ones whose colours are sitting out this run. It
@@ -269,6 +278,57 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 		r.randomize()
 	var target: int = roll_item_rarity(r)
 	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return _pick_by_find_weight(bucket, r)
+
+# One of `bucket`, drawn by find_weight (potions-design §10, decision #20).
+#
+# THE BUCKET IS ALREADY CHOSEN when this runs, which is the whole point: a find
+# rate decides which Common you met, never whether you met a Common. Identify's
+# 1.25 makes it 1.25 draws to every other Common's 1 — noticeably the one you see
+# most, and still unable to turn up in place of a Rare. Every scroll at 1.0 gives
+# exactly the uniform pick this replaced.
+func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollData:
+	var total: float = 0.0
+	for s: ScrollData in bucket:
+		total += maxf(0.0, s.find_weight)
+	if total <= 0.0:
+		# Every candidate authored a weight of 0 — a sheet mistake rather than a
+		# roster with nothing in it, so fall back to the uniform draw.
+		return bucket[rng.randi_range(0, bucket.size() - 1)]
+	var roll: float = rng.randf() * total
+	for s: ScrollData in bucket:
+		roll -= maxf(0.0, s.find_weight)
+		if roll < 0.0:
+			return s
+	# Float error only — the running total cannot fall short of `total` by more
+	# than a rounding step, so this is the last candidate rather than a fallback.
+	return bucket[bucket.size() - 1]
+
+# One random potion, weighted by rarity — roll_scroll's twin (potions-design §8).
+#
+# It goes through roll_item_rarity like everything else, which is what makes LUCK
+# ride a potion drop for free (§16) without this function mentioning Luck at all.
+# The roster is 9 Common / 3 Uncommon / 3 Rare, so every rung of the shared ladder
+# has something in it and the empty-bucket fallback is only reached by a Legendary
+# roll — nothing is authored at that rung, and a bottle from the whole pool is a
+# better answer there than nothing.
+#
+# NO find_weight HERE, unlike roll_scroll: `potions2.0` has no Notes column to
+# author one in, and a field nothing can write is exactly the mistake `rarity` was
+# making until step 2 caught it. It belongs here the day the sheet grows a place
+# to say it.
+func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
+	var pool: Array = _potions.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = roll_item_rarity(r)
+	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]

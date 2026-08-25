@@ -1608,6 +1608,44 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 		emit_signal("stats_changed")
 	return applied
 
+# ONE LEVEL, paid in full: the level counter, the character's stat block, and the
+# character's own reward type. Returns apply_level_up_stats' "+N Stat" strings.
+#
+# THE CONDITION IS NOT CONSULTED HERE. Whether a level was EARNED is the caller's
+# question — Overworld2 asks it when a game is reported, and Potion of Raise Level
+# does not ask it at all (potions-design §7.3, decision #7). That is the whole
+# point of the split: a Rare potion pays the run's biggest single reward by firing
+# the ordinary path rather than by inventing a payout of its own, and it can only
+# do that if the payout is reachable without the condition attached to it.
+#
+# It also does not roll a BONUS level. Chaining is Overworld2's rule about earning
+# several at once, not part of what one level is worth.
+func grant_level_up(rng: RandomNumberGenerator = null) -> Array:
+	var ch: CharacterData = Data.get_character2(character_id)
+	if ch == null:
+		return []
+	player_level += 1
+	var applied: Array = apply_level_up_stats(ch.level_up_stats)
+	match String(ch.level_up_reward_type):
+		"item", "chest":
+			# A sized chest (Zagreus' Large -> 3) carries its own choice count; an
+			# unsized one passes 0 and takes the screen's default.
+			grant_chest(maxi(1, ch.level_up_reward_amount),
+				maxi(0, ch.level_up_reward_chest_choices))
+		"random_sized_chest":
+			# Vampire Survivors characters: the chest's SIZE is rolled instead of
+			# fixed — Small..Huge on the same odds as every other rarity draw.
+			var r: RandomNumberGenerator = rng
+			if r == null:
+				r = RandomNumberGenerator.new()
+				r.randomize()
+			grant_chest(maxi(1, ch.level_up_reward_amount), Data.roll_chest_size_choices(r))
+		"scroll":
+			add_loot("scroll", maxi(1, ch.level_up_reward_amount))
+		_:
+			pass
+	return applied
+
 # A run verb's value WITHOUT the contribution owned items currently make to it.
 # This is what a save stores, exactly like max_hp: the load restores the base and
 # then _recompute_item_bonuses re-applies the item bonuses, so a passive in the pack
@@ -1947,6 +1985,29 @@ func trigger_curse_goal(index: int) -> Dictionary:
 		return {}
 	for eff in cd.penalty:
 		EffectSystem.apply(eff, {})
+	event_goals_changed.emit()
+	return entry
+
+# Lift a curse off the run early — Scroll of Remove Curse (potions-design §10.1).
+# Returns the row that came off, or {} when the index is stale.
+#
+# THE LIST HAD NO WAY OFF IT BUT THE CLOCK. add / has / trigger / tick were the
+# whole API, and `trigger` is the opposite of this one: it pays the bill and leaves
+# the curse standing, because meeting a curse's condition is not how you are rid of
+# it. Removal is a thing an effect does TO the list, and nothing could do it.
+#
+# Its best target is the one row that never leaves on its own: Curse of the Bell's
+# Timer is N/A, which add_curse_goal stores as games_left = -1. Everything else
+# clears itself in three games, and a scroll that hurries that along is a fair Rare;
+# a scroll that can lift the permanent one is the reason it exists.
+#
+# NOT remove_active_curse (above) — that is the shelved curse CARD system and it
+# operates on a different list. Same word, different thing (CurseData2).
+func remove_curse_goal(index: int) -> Dictionary:
+	if index < 0 or index >= curse_goals.size():
+		return {}
+	var entry: Dictionary = curse_goals[index]
+	curse_goals.remove_at(index)
 	event_goals_changed.emit()
 	return entry
 
@@ -2946,18 +3007,21 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll", "pill":
-			# Each unit becomes a concrete entry (gained unidentified; ScrollSystem
-			# / PillSystem resolve identity on use). A negative amount drops that
-			# many of the kind instead.
+		"scroll", "pill", "potion":
+			# Each unit becomes a concrete entry (gained unidentified; the owning
+			# system resolves identity on use). A negative amount drops that many
+			# of the kind instead.
 			if amount > 0:
 				for _i in range(amount):
 					if loot_is_full():
 						break
-					if kind == "scroll":
-						_add_random_scroll_loot()
-					else:
-						_add_random_pill_loot()
+					match kind:
+						"scroll":
+							_add_random_scroll_loot()
+						"pill":
+							_add_random_pill_loot()
+						_:
+							_add_random_potion_loot()
 			else:
 				_drop_loot_of_type(kind, -amount)
 		"loot":
@@ -2980,7 +3044,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
-		"scroll", "pill":
+		"scroll", "pill", "potion":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
@@ -3001,11 +3065,21 @@ func loot_scrolls() -> Array:
 func loot_pills() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "pill")
 
+# And for potions. No per-entry roll of any kind: a potion's rarity is authored
+# and its colour belongs to the run, so the entry carries only what it is.
+func loot_potions() -> Array:
+	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "potion")
+
 func _add_random_scroll_loot() -> void:
 	loot_items.append(roll_loot_entry("scroll"))
 
 func _add_random_pill_loot() -> void:
 	var entry: Dictionary = PillSystem.roll_pill_loot()
+	if not entry.is_empty():
+		loot_items.append(entry)
+
+func _add_random_potion_loot() -> void:
+	var entry: Dictionary = PotionSystem.roll_potion_loot()
 	if not entry.is_empty():
 		loot_items.append(entry)
 
@@ -3019,6 +3093,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		want = "scroll" if randi() % 2 == 0 else "pill"
 	if want == "pill":
 		return PillSystem.roll_pill_loot()
+	if want == "potion":
+		return PotionSystem.roll_potion_loot()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -3102,6 +3178,16 @@ func add_pill_loot(id: StringName, horse: bool = false) -> void:
 	if p == null:
 		return
 	loot_items.append({"type": "pill", "id": p.id, "horse": horse})
+	emit_signal("inventory_changed")
+
+# And a SPECIFIC potion id, uncapped for the same reason. `ensure_colors` first,
+# so a granted bottle has a vial to wear even in a run that has never seen one.
+func add_potion_loot(id: StringName) -> void:
+	var p: PotionData = Data.get_potion(id)
+	if p == null:
+		return
+	PotionSystem.ensure_colors()
+	loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
 	emit_signal("inventory_changed")
 
 # ---------------------------------------------------------------------------

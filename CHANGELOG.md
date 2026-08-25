@@ -11,6 +11,178 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **You can drink a potion. You still cannot throw one.**
+
+  Step 4 of `docs/potions-design.md` §11 — `PotionSystem`, autoload #23, and the
+  first of the two verbs. A potion is now a piece of loot in every way the pack
+  knows about: it drops, it draws, it drags, it bins, it echoes, and drinking it
+  resolves. What it does not do is land on a square, which is step 5.
+
+  **The run deals 15 of 37 vials and leaves 22 meaning nothing.** That spare pile
+  is most of the bag, and it is what makes the fifteenth potion undeducible: knowing
+  fourteen colours tells you nothing, because the last one may well be one of the
+  twenty-two that never drop. **The deal is by colour NAME rather than by file**,
+  which the design did not foresee — Golden and Magenta each ship twice (NetHack
+  and Shattered Pixel Dungeon), and since an unknown bottle introduces itself by
+  its colour (decision #18), two potions both answering *"Golden Potion"* would
+  make the run log ambiguous about the exact mystery the player is being asked to
+  track. Both files stay in the pool; at most one of each pair is ever dealt.
+
+  **An unknown bottle says its colour out loud**, which is the one place potions
+  deliberately depart from pills: a pill's capsule is never spelled out, because
+  writing "green is Bad Trip" hands back the deduction the spare capsules exist to
+  prevent. Naming a colour is not naming what is in it, 37 vials cannot be told
+  apart in a run log any other way, and *"you drink the swirly potion"* is the
+  genre's own voice. The vial's game is credited beside it until the bottle is
+  known, and then the potion's own reference takes over.
+
+  **Identification covers both verbs at once.** Drink an unknown swirly bottle,
+  learn it was Fire Potion, and the card shows what throwing a swirly one does from
+  then on. The alternative is thirty facts instead of fifteen, and a quaff-or-throw
+  choice that turns into a research task — you would throw bottles you had already
+  drunk purely to fill in the other half of the page.
+
+  **A quaffed buff is borrowed, and the layer to borrow it was already there.**
+  Speed Potion's +5 Dexterity passes `games` straight through to the timed-status
+  layer built three entries ago, and dies at the next `beat_game` with a permanent
+  Dexterity underneath it untouched. That layer shipped before anything could apply
+  one precisely so this commit could not turn out to be a clock bug. Fire Potion's
+  Burn carries no clock, because Burn is a debt.
+
+  **`gain_level` needed the level-up path to come out of the overworld.** Potion of
+  Raise Level pays the character's ordinary level — the same stats, the same reward
+  — with the condition simply not consulted, so `GameState.grant_level_up` is now
+  where one level lives and `Overworld2` keeps only the two things that are about
+  EARNING one: the condition, and the bonus-level chain. A run with no character
+  cannot level, so the potion reads the counter rather than trusting the call and
+  fizzles in words when nothing moved.
+
+  Everything kind-blind widened by adding `"potion"` in one place, exactly as the
+  scroll-deltas commit set up: Amnesia forgets a potion, Identify offers one, the
+  pack draws one with a 🧪 on it. `DevTools` grants one (with the vial in the
+  detail column, and without identifying it — a debug grant that gave the answer
+  away could not be used to test the finding out), and `EffectSystem.gain_potion`
+  exists for whoever authors the first potion relic. **The per-game payout is still
+  the old scroll/pill coin**: the three-way split is step 7, and a test pins that,
+  so the run does not start paying out a kind that is half built.
+
+  33 tests in `test_potion_system.gd`, including the colour-list check run in BOTH
+  directions — art that ships without being listed is art no run can ever show,
+  which is the one gap `test_pill_system.gd` has.
+
+- **Fifteen potions exist as content, and none of them can be spent yet.**
+
+  Step 3 of `docs/potions-design.md` §11 — the data layer, deliberately ahead of
+  anything that runs it. `PotionSystem` and the two verbs are steps 4 and 5; this
+  is the same discipline the timed-status layer shipped under, so a content bug
+  and a resolver bug can never turn out to be the same bug.
+
+  **A potion is the first piece of loot with two VERBS.** A scroll hides its name
+  behind one shared art and a pill hides its name behind a colour, and each is one
+  effect behind a mask. Every `potions2.0` row authors two: an `On Player` side and
+  an `On Tile` side, and the player chooses which they are buying at the moment
+  they spend it — **quaff** it, or **throw** it at a square of the board. So
+  `PotionData` carries `quaff` and `throw` rather than one `effect`, with
+  `ops(verb)` / `line(verb)` where the pill has `ops(horse)` / `line(horse)`. The
+  Preference describes the QUAFF and the throw is usually its mirror: Fire Potion
+  is Negative because drinking it costs 3 Health and sets you alight, and thrown it
+  is the strongest offensive piece of loot in the game. That is what keeps an
+  unidentified bottle a two-sided gamble rather than a one-sided one.
+
+  **The 30 effect cells are written** (`tools/_potions2_effect_cells.py`). Both
+  machine columns had been empty since the sheet was drafted, and decision #30
+  reserved them for a build session rather than for the design; they are §7.3's
+  first pass, verbatim. The loudest row is Fire Potion, whose throw puts all three
+  of its clauses over the same 3×3 — nine squares of burning ground, 1 damage and
+  +3 Burn on everything standing in them, off a **Common** bottle, and 3 damage and
+  3 Burn on you if you drink it not knowing what it is. `games=1` appears only on
+  the rows whose prose says *"until the end of the next combat"*: Fire Potion's Burn
+  carries no clock, because Burn is a debt and a debt that expires by itself is a
+  suggestion.
+
+  **The two columns parse in two dialects**, and the generator refuses a quaff verb
+  in a throw cell or the reverse. They diverge more than they look — a quaffed
+  status lands on the drinker (`target: "player"`) and a thrown one on every body
+  an `area=` covers, and neither side carries the other's word. That check is what
+  turned up the one thing the plan had wrong: Raise Level's `On Tile` **prose** cell
+  is the sheet's `N/A` as well as its effect cell, so one potion in fifteen has no
+  throw line at all, and whatever draws the card in step 4 has to read that blank
+  as *"this one cannot be thrown"* rather than as missing text. Uselessness is the
+  contrast — no throw ops, but prose that says *"Do nothing"*, because doing nothing
+  loudly is not the same as having no tile side.
+
+  `Data.roll_potion` is `roll_scroll`'s twin, rarity-weighted through
+  `roll_item_rarity` so **Luck rides a potion drop for free**. The roster is
+  9 Common / 3 Uncommon / 3 Rare, which sits on the shared 75/20/5 ladder with no
+  potion-specific weighting. It gets **no `find_weight`**, unlike a scroll:
+  `potions2.0` has no Notes column to author one in, and a field nothing can write
+  is the exact mistake `rarity` was making until the entry below caught it.
+
+  15 tests in `test_redesign2.gd`, including the sweep that every status and tile
+  the 30 cells name is content that actually exists — the generator parses words,
+  it does not look them up.
+
+- **Every scroll in the game was Common, and one verb at a time learned to mean
+  loot.**
+
+  Step 2 of `docs/potions-design.md` §11 — the scroll deltas potions would
+  otherwise inherit in their broken state, done before the potions rather than
+  alongside them.
+
+  **The roller was reading a field nobody wrote.** `ScrollData.rarity` has existed
+  since the scrolls were re-authored, `Data.roll_scroll` has weighted by
+  `rarity_index()` for just as long, and `generate_scroll2_tres.py` never carried
+  the sheet's Rarity column onto the resource — so all seven scrolls landed on disk
+  as Common and the weighting had nothing to weight. It reads it now, and the
+  roster is 3 Common / 4 Uncommon / 1 Rare. The generator also carries the sheet's
+  **Description**, and an authored sentence beats the one the UI assembles from the
+  ops: Amnesia's op can only name one kind, and only its sentence knows that
+  *"Identified Loot"* is the category the player recognises. The pack's hover and
+  the collection's cell had a copy of that assembly each, one wording adrift; both
+  go through `ScrollSystem.scroll_text` now, which prefers the authored line and
+  assembles only as a fallback.
+
+  **Scroll of Remove Curse ships with an effect.** It was added to the sheet as a
+  row with a Description and a blank Effect, which is why no `.tres` for it had
+  ever been generated. Its target is the one thing on the checklist that never
+  clears itself: `curse_goals` had `add`, `has`, `trigger` and `tick` and no way
+  off the list early, and `trigger` is the opposite of removal — meeting a curse's
+  condition pays its bill and leaves it standing. `GameState.remove_curse_goal`
+  takes a row off, the op offers a picker listing each curse by its condition and
+  how long it has left, and Curse of the Bell — Timer `N/A`, `games_left` of −1 —
+  is the row a Rare scroll exists to answer. (These are curse **goals**, the live
+  checklist rows, not the shelved curse **cards**; `remove_active_curse` is a
+  different list with the same word.)
+
+  **Amnesia forgets loot and Identify learns it.** Two verbs that had grown past
+  their implementations in the same direction: Amnesia's cell said
+  `forget scroll 1` under a Description promising Identified Loot, and Identify
+  offered carried scrolls under one promising Loot — dead weight two thirds of the
+  time, in a nine-slot pack that will soon hold three alphabets. Both are
+  kind-blind now, through `LootSystem`, which is the layer that knows there is more
+  than one alphabet: `identified_types` / `unidentify` / `forget_identified` /
+  `carried_unidentified` are the shared half, and the pills' horse Amnesia — which
+  has authored `forget loot all` since it shipped and carried its own
+  implementation of it — drops onto the same call. One correction fell out of the
+  merge: a `loot` forget used to run its count against *each* alphabet in turn, so
+  "forget 1" forgot one scroll **and** one pill. It forgets one thing now, drawn
+  from everything known. Identify's candidates are entries rather than scroll ids,
+  deduped per **type** — two capsules of the same unknown colour are one fact to
+  learn — and the picker names a scroll while leaving a pill as its capsule, since
+  a pill's mask *is* its colour and the run protects that everywhere else.
+  `identify_scrolls` still parses, to the wide op.
+
+  **A find rate that cannot break the rarity ladder.** Identify's sheet note says
+  *"Has a +25% find rate"*, which nothing implemented. It is a `find_weight` float
+  read out of that prose, applied as a weight **inside** the bucket the 75/20/5
+  roll already chose — so Identify is 1.25 draws to every other Common's 1 and can
+  never turn up in place of a Rare. A flat "25% of scroll drops are Identify" would
+  have made rarity mean something different for one scroll.
+
+  `test_scroll_system2.gd` grew 17 tests over the four verbs and
+  `test_redesign2.gd` four over the generator's output, including the one that
+  pins the find rate to the prose it is parsed from.
+
 - **Statuses can be borrowed: the first thing in this build with a clock on it.**
 
   Every status until now was a thing you had until you worked it off. Potions

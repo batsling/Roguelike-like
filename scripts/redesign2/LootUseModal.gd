@@ -241,8 +241,10 @@ func _process_next_request() -> void:
 		return
 	var req: Dictionary = _requests.pop_front()
 	match String(req.get("kind", "")):
-		"identify_scrolls":
+		"identify_loot":
 			_pick_identify(req)
+		"remove_curse":
+			_pick_remove_curse(req)
 		"stun_enemies":
 			_pick_stun(req)
 		"teleport":
@@ -250,26 +252,68 @@ func _process_next_request() -> void:
 		_:
 			_process_next_request()
 
-# --- Identify which scrolls (choose up to N) -------------------------------
+# --- Identify which carried piece (choose up to N) -------------------------
+#
+# The candidates are entries now rather than scroll ids, because Identify covers
+# every alphabet in the pack (§10). The rows are keyed by "type/id" — a pill and a
+# scroll could otherwise collide on a bare id, and the whole point of the widening
+# is that both are in the same list.
 func _pick_identify(req: Dictionary) -> void:
 	var candidates: Array = req.get("candidates", [])
 	var max_pick: int = int(req.get("count", 1))
-	var selected: Dictionary = {}
+	var selected: Dictionary = {}   # "type/id" -> entry
 	_rebuild_panel()
-	_body.add_child(_heading("Identify Scrolls", ACCENT, 20))
+	_body.add_child(_heading("Identify Loot", ACCENT, 20))
 	_body.add_child(_muted("Choose up to %d to identify." % max_pick))
-	for id in candidates:
-		var s: ScrollData = Data.get_scroll(id)
-		var nm: String = s.display_name if s != null else String(id)
+	for entry in candidates:
+		if not (entry is Dictionary):
+			continue
+		var key: String = "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
 		var btn := Button.new()
 		btn.toggle_mode = true
-		btn.text = "📜 " + nm
-		btn.toggled.connect(func(on): _toggle_select(selected, id, on, max_pick, btn))
+		btn.text = "%s %s" % [LootSystem.glyph(entry), LootSystem.pick_label(entry)]
+		btn.toggled.connect(func(on): _toggle_select(selected, key, on, max_pick, btn, entry))
 		_body.add_child(btn)
 	var confirm := UITheme.confirm_button("Identify Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		_report(ScrollSystem.identify_scrolls_chosen(selected.keys()))
+		_report(ScrollSystem.identify_loot_chosen(selected.values()))
+		_process_next_request())
+	_body.add_child(confirm)
+
+# --- Lift which curse (choose up to N) -------------------------------------
+#
+# The rows are the run's curse GOALS — the ones the checklist draws as things to
+# avoid doing — and each is listed by its name AND its condition, because a player
+# choosing which to be rid of is choosing between two conditions rather than
+# between two names. The permanent one says so: it is the row this scroll is for.
+func _pick_remove_curse(req: Dictionary) -> void:
+	var max_pick: int = int(req.get("count", 1))
+	var selected: Dictionary = {}   # index -> true
+	_rebuild_panel()
+	_body.add_child(_heading("Remove a Curse", ACCENT, 20))
+	if GameState.curse_goals.is_empty():
+		_body.add_child(_muted("Nothing is weighing on you."))
+		_report("Nothing is weighing on you.")
+		_body.add_child(_continue_button())
+		return
+	_body.add_child(_muted("Choose up to %d to lift." % max_pick))
+	for i in range(GameState.curse_goals.size()):
+		var row: Dictionary = GameState.curse_goals[i]
+		var cd: CurseData2 = Data.get_curse2(StringName(row.get("curse", &"")))
+		var left: int = int(row.get("games_left", 0))
+		var btn := Button.new()
+		btn.toggle_mode = true
+		btn.text = "%s — %s (%s)" % [
+			ScrollSystem.curse_name(row),
+			cd.condition if cd != null else "",
+			"permanent" if left < 0 else "%d game%s left" % [left, "" if left == 1 else "s"]]
+		btn.toggled.connect(func(on): _toggle_select(selected, i, on, max_pick, btn))
+		_body.add_child(btn)
+	var confirm := UITheme.confirm_button("Lift Selected", Vector2(180, 34))
+	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	confirm.pressed.connect(func():
+		_report(ScrollSystem.remove_curse_chosen(selected.keys()))
 		_process_next_request())
 	_body.add_child(confirm)
 
@@ -301,12 +345,16 @@ func _pick_stun(req: Dictionary) -> void:
 		_process_next_request())
 	_body.add_child(confirm)
 
-func _toggle_select(selected: Dictionary, key, on: bool, max_pick: int, btn: Button) -> void:
+# `value` is what the caller wants back out of `selected` — `true` where the key
+# is the answer (an enemy instance), the whole entry where the key is only a way
+# to tell two rows apart (a piece of loot, which is identified by type AND id).
+func _toggle_select(selected: Dictionary, key, on: bool, max_pick: int, btn: Button,
+		value = true) -> void:
 	if on:
 		if selected.size() >= max_pick:
 			btn.set_pressed_no_signal(false)
 			return
-		selected[key] = true
+		selected[key] = value
 	else:
 		selected.erase(key)
 

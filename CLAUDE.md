@@ -20,11 +20,11 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game. Every screen is built in code, so `.tscn` files hold a root node
   and a script and nothing else — don't go looking for UI in them.
-- **22 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **23 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 22.
+  README's "Autoload singletons" table covers all 23.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.
@@ -37,7 +37,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 31 scripts, ~1400 tests, ~5 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 33 scripts, ~1620 tests, ~7 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -107,6 +107,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 31 scripts, ~1400 t
   in a system-searching font — but it costs ~2 ms of host font search every time
   a Label carrying it is created, which is what shipping them was for.
   `test_display_settings.gd` fails if the source uses one the fonts don't have.
+  **Rebuilding is two steps**: run the script, then `godot --headless --editor --quit`
+  so Godot re-imports the changed `.ttf`s — until it does, the new glyph is on disk
+  and the test still fails, which reads exactly like the script not having worked.
+  It also needs `pip install fonttools brotli` and network access to fontsource.
   If you ever swap a font in there, its **vertical metrics must stay on the base
   font's em grid** (4096 upem, ascender 4378, descender 1200): Godot takes a
   font's height as the max over the whole fallback chain, so a taller subset makes
