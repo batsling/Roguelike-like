@@ -49,9 +49,9 @@ signal loot_throw_cancelled(entry: Dictionary, index: int)
 signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
-# A chest lying on the board was clicked (§8.2). The board knows where the thing
-# is; what is inside it and what taking it costs are the host's, so this carries
-# the square and nothing else.
+# Loot lying on the board was clicked (§8.2). The board knows where the thing is;
+# what taking it costs — a slot in a pack that holds nine — is the host's, so this
+# carries the square and nothing else.
 signal drop_clicked(cell: Vector2i)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
@@ -1223,11 +1223,11 @@ func _rebuild_ground() -> void:
 			_ground_layer.add_child(_unit_node(cell, unit))
 	for cell in furnished.keys():
 		_ground_layer.add_child(_ground_hover(cell))
-	# The chests LAST, so they take the press on a square that also has ground under
-	# them: tree order is input order here (see the header above), and a chest is the
+	# The drops LAST, so they take the press on a square that also has ground under
+	# them: tree order is input order here (see the header above), and loot is the
 	# one thing on bare floor that answers a click rather than a hover. Bodies are
 	# mounted in the layer above and would still win — which never comes up, because
-	# a body moving onto a chest shoves it aside (GameLoop2._move_entry).
+	# a body moving onto a piece shoves it aside (GameLoop2._move_entry).
 	for cell in GameLoop2.drop_cells():
 		_ground_layer.add_child(_drop_node(cell))
 
@@ -1270,34 +1270,46 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 		holder.add_child(art)
 	return holder
 
-# --- chests on the floor (§8.2) --------------------------------------------
+# --- loot on the floor (§8.2) -----------------------------------------------
 
-# The glyph a chest is drawn with, here and on the modal that opens it
-# (ItemDropModal's heading) — one symbol for the thing on the ground and the
-# question it asks, so a player who has seen one recognises the other.
+# The glyph the floor is drawn with when its art will not load, and the gold a
+# drop is ringed in. The ring stayed gold when the contents became loot: it is the
+# board saying "this is a thing you can pick up", and it is the same colour on the
+# haul screen's heading.
 const CHEST_GLYPH := "✦"
-# The chest's gold, and how much of the cell the token takes. Smaller than a body
-# for the reason a unit is: this is something LYING on the square, not standing
-# on it.
 const CHEST_GOLD := Color(1.0, 0.83, 0.36)
+# How much of the cell the token takes. Smaller than a body for the reason a unit
+# is: this is something LYING on the square, not standing on it.
 const CHEST_ART_FRACTION: float = 0.58
 
-# A chest lying on `cell`: a pressable token in the middle of the square. Pressing
-# it asks the host to open it (`drop_clicked`), which is the same modal the haul
-# screen would have asked with — the floor is a place a chest can be answered
+# Loot lying on `cell`: a pressable token in the middle of the square. Pressing it
+# asks the host to open it (`drop_clicked`), which is the same LootDropModal the
+# haul screen would have asked with — the floor is a place a piece can be answered
 # EARLIER, not a second kind of reward.
+#
+# IT WEARS ITS OWN ART (§8.2). What fell used to be a relic chest, and a chest is
+# a question the board is not allowed to answer, so the square could only show a
+# gold glyph. A scroll, a pill or a potion IS a thing: it is drawn as the picture
+# the pack and the loot window draw it as, so a piece is recognised across the
+# board — and an unidentified one still shows only the anonymous vial or capsule
+# it shows everywhere else, which is the whole of what the player is allowed to
+# know.
+#
+# THE HORSE DOSE COMES BACK BIGGER here too (LootSystem.art_box, §4.3): the token
+# takes its size from the art rather than from a constant, so the one tell that
+# distinguishes a horse pill survives being drawn on a battlefield. It still fits
+# inside the square — 0.58 of a cell at 1.3x is under three quarters of one.
 func _drop_node(cell: Vector2i) -> Control:
 	var held: Dictionary = GameLoop2.drop_at(cell)
-	var side: int = maxi(20, int(round(_cell * CHEST_ART_FRACTION)))
+	var entry = held.get("loot")
+	var loot: Dictionary = entry if entry is Dictionary else {}
+	var base: int = maxi(20, int(round(_cell * CHEST_ART_FRACTION)))
+	var side: int = maxi(base, LootSystem.art_box(loot, base)) if not loot.is_empty() else base
 	var btn := Button.new()
 	btn.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
 	btn.size = Vector2(side, side)
 	btn.custom_minimum_size = Vector2(side, side)
-	btn.text = CHEST_GLYPH
-	btn.add_theme_color_override("font_color", CHEST_GOLD)
-	btn.add_theme_color_override("font_hover_color", Color.WHITE)
-	btn.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
-	# A boss's chest is ringed thicker, the same way its body is: what fell there is
+	# A boss's drop is ringed thicker, the same way its body is: what fell there is
 	# worth crossing the board for.
 	var ring: int = 3 if bool(held.get("boss", false)) else 2
 	btn.add_theme_stylebox_override("normal",
@@ -1307,32 +1319,55 @@ func _drop_node(cell: Vector2i) -> Control:
 	btn.add_theme_stylebox_override("pressed",
 		UITheme.flat(Color(CHEST_GOLD, 0.58), 6, 0, ring, Color.WHITE))
 	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	var art: Texture2D = LootSystem.art_texture(loot) if not loot.is_empty() else null
+	if art != null:
+		# Inset by the ring so the picture sits inside the frame rather than under
+		# it, and mouse-transparent (crisp_tex already is) so the press belongs to
+		# the button underneath.
+		var pad: int = ring + 1
+		var tex: TextureRect = UITheme.crisp_tex(art, side - pad * 2)
+		tex.position = Vector2(pad, pad)
+		tex.size = Vector2(side - pad * 2, side - pad * 2)
+		btn.add_child(tex)
+	else:
+		# No art to draw — an empty square, or a kind whose picture is missing. The
+		# glyph is what the floor wore before loot landed on it, and it still says
+		# "something is here" rather than leaving a bare ring.
+		btn.text = CHEST_GLYPH
+		btn.add_theme_color_override("font_color", CHEST_GOLD)
+		btn.add_theme_color_override("font_hover_color", Color.WHITE)
+		btn.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
 	HoverCard.attach(btn, drop_hover(cell))
 	btn.pressed.connect(func(): drop_clicked.emit(cell))
 	return btn
 
-# What a chest on the floor says when you point at it. It does NOT list what is
-# inside: a chest is a "take one of these" question and reading the answer off a
-# tooltip would make opening it a formality. It says how big the question is, and
-# that leaving it is allowed — because leaving it is the interesting half of the
-# decision while a body is still walking toward you.
+# What loot on the floor says when you point at it: the SAME card the pack, the
+# loot window and the drop modal show for that piece (LootSystem.hover_card), plus
+# the two things that are only true of a piece lying on a battlefield — where it
+# is, and what happens to it if you leave it there.
+#
+# Which is the change of heart the floor's contents bought. A chest's card
+# deliberately said nothing about what was inside, because reading the answer off
+# a tooltip would have made opening it a formality; loot has no such secret to
+# keep. An unidentified piece still keeps its own — it reads "Unidentified Pill"
+# here exactly as it does in the pack.
 func drop_hover(cell: Vector2i) -> Dictionary:
 	var held: Dictionary = GameLoop2.drop_at(cell)
 	if held.is_empty():
 		return {}
-	var count: int = (held.get("items", []) as Array).size()
-	var lines: Array = [
-		"Click to open it: take one of %d, or leave it." % count,
-		"Left lying when you report the game, it goes to the haul screen with everything else.",
-	]
+	var entry = held.get("loot")
+	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+		return {}
+	var card: Dictionary = LootSystem.hover_card(entry)
+	card["subtitle"] = "%s  ·  on the floor, column %d, row %d" \
+		% [String(card.get("subtitle", "")), cell.x, cell.y + 1]
+	var lines: Array = (card.get("lines", []) as Array).duplicate()
+	lines.append("Click to pick it up — or use it, or bin it.")
+	lines.append("Left lying when you report the game, it goes to the haul screen with everything else.")
 	if bool(held.get("boss", false)):
 		lines.append("A boss left this.")
-	return {
-		"title": "%s Chest of %d" % [CHEST_GLYPH, count],
-		"subtitle": "On the floor, column %d, row %d" % [cell.x, cell.y + 1],
-		"lines": lines,
-		"accent": CHEST_GOLD,
-	}
+	card["lines"] = lines
+	return card
 
 # The invisible hover region that reads a furnished cell. One per cell, carrying
 # the same HoverCard an enemy, an item and a status get — the ground used to

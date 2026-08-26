@@ -391,7 +391,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	assert_eq(GameLoop2.stack_size(), 2, "a missed goal leaves a follower and its escort")
 	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
 	var hp_before: int = GameState.hp
-	var drops_before: int = _item_drops()
+	GameLoop2.drops.clear()
 	_ui.pick(0)                                  # play another game
 	# THREE rows: the old follower, and both bodies this game walked on. The
 	# advertised one used to be missing from this list — it had the Goal box
@@ -401,8 +401,11 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Ticked and CONFIRMED, so the follower is cleared on the spot (§2.1); the
 	# report below is the miss on the game in play and nothing else.
 	_tick(_ui._fulfil_checks[0]["check"])
+	# The drop is LOOT now, and it lands on the board the moment the row resolves
+	# (§8.2) rather than waiting for a report — which is the point of ticking early.
+	assert_false(GameLoop2.drop_cells().is_empty(),
+		"the fulfilled follower dropped its loot where it fell")
 	_ui.report(false)                            # miss current, but fulfil the follower
-	assert_eq(_item_drops(), drops_before + 1, "the fulfilled follower dropped an item")
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
 	assert_eq(GameLoop2.stack_size(), 2, "old follower gone; this game's enemy and escort stacked")
@@ -5028,8 +5031,13 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 	if payout == null:
 		return
 	var carried: int = GameState.loot_items.size()
+	# The table can hold more than the game's own piece now: every body defeated at
+	# this game left one on the floor too, and the report sweeps them here (§8.2).
+	var on_table: int = payout.remaining()
+	assert_gt(on_table, 0, "there is something to take")
 	payout.take()
-	assert_eq(GameState.loot_items.size(), carried + 1, "taking it fills a slot")
+	assert_eq(GameState.loot_items.size(), carried + on_table,
+		"taking it fills a slot per piece")
 	assert_eq(payout.remaining(), 0, "and clears the table")
 	# …AND THE SECTION STAYS. As a modal, the last piece leaving the table is the
 	# end of the question. Here it is the opposite: the piece has just gone into the
@@ -6015,86 +6023,214 @@ func test_the_start_panel_empties_the_controls_row_for_good() -> void:
 	_ui._render_controls()
 	assert_true(true, "and the row can be filled again without a stale guard")
 
-# --- chests on the floor (§8.2) --------------------------------------------
+# --- loot on the floor (§8.2) ----------------------------------------------
 #
-# A body cleared while you are still playing leaves its chest ON THE BOARD, on the
-# square it fell in. What the page owes that is three things: draw it, open it
-# when it is clicked, and sweep whatever is left when the game is handed in.
+# A body cleared while you are still playing leaves a piece of LOOT ON THE BOARD,
+# on the square it fell in. What the page owes that is three things: draw it as
+# itself, ask about it when it is clicked, and sweep whatever is left when the
+# game is handed in. (The relics it used to leave are the reward screen's now —
+# see the chest section below.)
 
-func _floor_chest(cell: Vector2i, ids: Array = [&"anchor"]) -> Vector2i:
-	return GameLoop2.place_drop(cell, ids)
+func _floor_loot(cell: Vector2i, id: StringName = &"whatever") -> Vector2i:
+	return GameLoop2.place_drop(cell, {"type": "scroll", "id": String(id), "rarity": "Common"})
 
-func test_a_chest_on_the_floor_is_drawn_as_a_pressable_token() -> void:
+# How many pieces of loot are waiting in the page's queue, across every batch.
+func _loot_pieces() -> int:
+	var n: int = 0
+	for d in _ui._drop_queue:
+		var loot = (d as Dictionary).get("loot")
+		if loot is Array:
+			n += (loot as Array).size()
+		elif loot is Dictionary:
+			n += 1
+	return n
+
+func test_loot_on_the_floor_is_drawn_as_a_pressable_token() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	var at: Vector2i = _floor_loot(Vector2i(2, 1))
 	_ui._board.refresh()
 	var tokens: Array = []
 	for c in _ui._board._ground_layer.get_children():
 		if c is Button:
 			tokens.append(c)
-	assert_eq(tokens.size(), 1, "one chest on the floor, one thing to press")
-	assert_eq((tokens[0] as Button).text, _ui._board.CHEST_GLYPH,
-		"and it wears the same mark the chest modal does")
+	assert_eq(tokens.size(), 1, "one piece on the floor, one thing to press")
 	assert_true(GameLoop2.has_drop(at), "drawing it did not take it off the floor")
 
-func test_the_floor_chest_says_what_it_is_without_saying_what_is_in_it() -> void:
+func test_the_token_wears_the_loot_s_own_art() -> void:
+	# The whole point of the floor paying loot rather than a relic: a scroll can be
+	# drawn as the picture it is, where a chest could only ever be a glyph standing
+	# in for an offer the board was not allowed to show (§8.2).
 	_pick_solo(0)
-	var at: Vector2i = _floor_chest(Vector2i(2, 1), [&"anchor", &"barricade"])
+	var entry: Dictionary = GameState.roll_loot_entry("loot")
+	if entry.is_empty() or LootSystem.art_texture(entry) == null:
+		# No art shipped for what came up — the glyph fallback is the correct draw,
+		# and the assertion below is what this test is really about either way.
+		assert_true(true, "nothing to draw it with")
+		return
+	var at: Vector2i = GameLoop2.place_drop(Vector2i(2, 1), entry)
+	_ui._board.refresh()
+	var token: Button = null
+	for c in _ui._board._ground_layer.get_children():
+		if c is Button:
+			token = c
+	assert_not_null(token, "the piece is on the board")
+	if token == null:
+		return
+	assert_eq(token.text, "", "no glyph standing in for it")
+	var art: TextureRect = null
+	for c in token.get_children():
+		if c is TextureRect:
+			art = c
+	assert_not_null(art, "the piece is drawn as itself")
+	if art != null:
+		assert_eq(art.texture, LootSystem.art_texture(GameLoop2.drop_at(at)["loot"]),
+			"with the same picture the pack draws it with")
+
+func test_the_floor_card_is_the_same_card_the_pack_shows() -> void:
+	_pick_solo(0)
+	var entry := {"type": "scroll", "id": "whatever", "rarity": "Common"}
+	var at: Vector2i = GameLoop2.place_drop(Vector2i(2, 1), entry)
 	var card: Dictionary = _ui._board.drop_hover(at)
-	assert_true(String(card.get("title", "")).contains("2"),
-		"it says how big the question is")
+	assert_eq(String(card.get("title", "")), LootSystem.display_name(entry),
+		"a piece of loot has no secret the board has to keep")
 	var lines: String = "\n".join(card.get("lines", []) as Array)
-	assert_true(lines.contains("leave it"), "and that walking past it is allowed")
-	assert_false(lines.to_lower().contains("anchor"),
-		"but not which relics are in it — that is what opening it is for")
+	assert_true(lines.contains("pick it up"), "it says what the click does")
+	assert_true(lines.contains("haul screen"), "and what leaving it there costs")
+	assert_true(String(card.get("subtitle", "")).contains("column"),
+		"plus the one thing only a piece on a battlefield knows: where it is")
 	assert_eq(_ui._board.drop_hover(Vector2i(4, 3)), {}, "bare ground says nothing")
 
-func test_clicking_a_floor_chest_asks_the_ordinary_chest_question() -> void:
+func test_clicking_floor_loot_asks_the_ordinary_loot_question() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	var at: Vector2i = _floor_loot(Vector2i(2, 1))
 	_ui._board.drop_clicked.emit(at)
-	assert_false(GameLoop2.has_drop(at), "the chest came off the floor with the press")
+	assert_false(GameLoop2.has_drop(at), "the piece came off the floor with the press")
 	await wait_frames(2)
 	assert_not_null(_ui._drop_modal, "and asked on the spot, mid-game")
+	assert_true(_ui._drop_modal is LootDropModal,
+		"on the same screen every other payout is answered on")
 	if _ui._drop_modal != null:
 		_ui._drop_modal.leave()
 	_ui._drop_queue.clear()
 
-func test_a_floor_chest_is_not_opened_twice() -> void:
+func test_floor_loot_is_not_picked_up_twice() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	var at: Vector2i = _floor_loot(Vector2i(2, 1))
 	_ui.collect_floor_drop(at)
 	await wait_frames(2)
-	var queued: int = _item_drops()
+	var queued: int = _loot_pieces()
 	_ui.collect_floor_drop(at)
-	assert_eq(_item_drops(), queued, "the square is empty; a second press finds nothing")
+	assert_eq(_loot_pieces(), queued, "the square is empty; a second press finds nothing")
 	if _ui._drop_modal != null:
 		_ui._drop_modal.leave()
 	_ui._drop_queue.clear()
 
 func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
 	_pick_solo(0)
-	_floor_chest(Vector2i(2, 1))
-	_floor_chest(Vector2i(3, 0), [&"barricade"])
+	_ui._drop_queue.clear()
+	_floor_loot(Vector2i(2, 1), &"one")
+	_floor_loot(Vector2i(3, 0), &"two")
 	_report_beat(_ui)
 	assert_true(GameLoop2.drop_cells().is_empty(),
 		"the floor belonged to the game that was just handed in")
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "and what was on it went where every haul goes")
-	assert_gt(_ui._post_screen._chest_sections.size(), 0)
+	assert_gt(_ui._post_screen._loot.size(), 1, "both pieces, on one table")
 	_leave_post_game()
 	_dismiss_event()
 
-func test_a_chest_the_player_took_mid_game_is_not_swept_again() -> void:
+func test_loot_the_player_took_mid_game_is_not_swept_again() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_chest(Vector2i(2, 1))
+	var at: Vector2i = _floor_loot(Vector2i(2, 1))
 	_ui.collect_floor_drop(at)
 	await wait_frames(2)
 	if _ui._drop_modal != null:
 		_ui._drop_modal.leave()
 	_ui._drop_queue.clear()
 	_ui._sweep_floor_into_the_queue()
-	assert_eq(_item_drops(), 0, "it was answered on the board; there is nothing left to ask")
+	assert_eq(_loot_pieces(), 0, "it was answered on the board; there is nothing left to ask")
+
+func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	GameLoop2.drops.clear()
+	var landed: Dictionary = GameLoop2.arrival()
+	if landed.is_empty():
+		return
+	var cell := Vector2i(int(landed.get("col", 2)), int(landed.get("row", 0)))
+	_ui._on_enemy_defeated(landed.get("enemy"), cell)
+	assert_eq(GameLoop2.drop_cells().size(), 1, "one body, one piece of loot")
+	var held: Dictionary = GameLoop2.drop_at(GameLoop2.drop_cells()[0])
+	assert_true((held.get("loot", {}) as Dictionary).has("type"),
+		"and what it left is a piece of loot, not a chest of relics")
+
+func test_a_body_that_fell_off_the_board_sends_its_loot_to_the_haul_screen() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	var landed: Dictionary = GameLoop2.arrival()
+	if landed.is_empty():
+		return
+	_ui._on_enemy_defeated(landed.get("enemy"), GameLoop2.OFF_FIELD)
+	assert_eq(_loot_pieces(), 1, "nowhere to lay it, so it goes where unclaimed loot goes")
+
+# --- the chest the report pays (§8.2) --------------------------------------
+#
+# The relics moved off the floor and onto the screen the game ends on, scaled by
+# how much was killed and how hard it was — and paid only for a game you beat.
+
+func test_beating_a_game_pays_a_chest_scaled_by_what_you_killed() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	GameLoop2.chest_points = 2      # one Medium body's worth
+	GameLoop2.boss_chests.clear()
+	_ui._queue_report_chests(true)
+	assert_eq(_item_drops(), 1, "one chest, not one per body")
+	var offer: Array = (_ui._drop_queue[0] as Dictionary).get("items", [])
+	assert_eq(offer.size(), int(Data.CHEST_SIZE_CHOICES[Data.ChestSize.LARGE]),
+		"1 for the win + 2 for the body is a Large chest")
+	_ui._drop_queue.clear()
+
+func test_a_heavy_evening_splits_into_a_second_chest() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	GameLoop2.chest_points = 9      # + 1 for the win = 10
+	GameLoop2.boss_chests.clear()
+	_ui._queue_report_chests(true)
+	assert_eq(_item_drops(), 3, "two Huge chests and a Medium, rather than one off the ladder")
+	_ui._drop_queue.clear()
+
+func test_a_game_you_did_not_beat_pays_no_chest() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	GameLoop2.chest_points = 6
+	GameLoop2.boss_chests.clear()
+	_ui._queue_report_chests(false)
+	assert_eq(_item_drops(), 0, "the kills keep their loot; the chest is what winning buys")
+	assert_eq(GameLoop2.chest_points, 0, "and the pool does not carry into the next game")
+
+func test_a_boss_chest_is_paid_either_way_and_stays_a_chest_of_its_own() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	GameLoop2.chest_points = 3
+	GameLoop2.boss_chests = [1]
+	_ui._queue_report_chests(false)
+	assert_eq(_item_drops(), 1, "the boss's chest, and only it")
+	var offer: Array = (_ui._drop_queue[0] as Dictionary).get("items", [])
+	assert_eq(offer.size(), int(Data.CHEST_SIZE_CHOICES[Data.ChestSize.SMALL]),
+		"worth its own point rather than the kill pool's")
+	_ui._drop_queue.clear()
+
+func test_the_report_s_chests_reach_the_haul_screen() -> void:
+	_pick_solo(0)
+	_ui._drop_queue.clear()
+	_report_beat(_ui)
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen)
+	if _ui._post_screen != null:
+		assert_gt(_ui._post_screen._chest_sections.size(), 0,
+			"a beaten game arrives with at least the Small chest the win is worth")
+	_leave_post_game()
+	_dismiss_event()
 
 # --- a tick is a confirm, and a confirm resolves NOW (§2.1) -----------------
 #
@@ -6130,7 +6266,7 @@ func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 		"the body came off the board while the game is still being played")
 	assert_true(GameLoop2.cleared_this_game.has(inst), "and the loop knows whose kill it was")
 	assert_false(GameLoop2.drop_cells().is_empty(),
-		"its chest is on the floor to go and pick up (§8.2)")
+		"its loot is on the floor to go and pick up (§8.2)")
 
 func test_a_confirmed_row_cannot_be_taken_back() -> void:
 	# The level-up row is the one that stays on the list whatever it resolves —

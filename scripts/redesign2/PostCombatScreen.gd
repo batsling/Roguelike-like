@@ -5,7 +5,8 @@ extends Control
 # with one way out (docs/games-first-redesign.md §4.3 / §8.2 / §14.4).
 #
 # Reporting a game used to fire six unrelated surfaces at the player, none of
-# which knew about the others: one ItemDropModal per defeated enemy, then the
+# which knew about the others: one ItemDropModal per defeated enemy (the drops
+# were relic chests then, one per body), then the
 # LootDropModal, then the event, then the shop appearing under the board, then
 # the boss notice, with the toasts running underneath all of it. Five popups in a
 # row on a boss round, each re-centring on the same spot, each with its own
@@ -27,8 +28,11 @@ extends Control
 #                   difficulty step if the board just grew. All of it comes out of
 #                   `beat_game`'s result, which until now was thrown away as soon
 #                   as the animation had played it.
-#   THE SPOILS    — the relic chests down the left and the loot payout down the
-#                   right, at the same time rather than one after another. Both
+#   THE SPOILS    — the relic chests down the left (what BEATING the game paid,
+#                   sized by the bodies that fell to it, §8.2) and the loot payout
+#                   down the right — the pieces the bodies themselves dropped on
+#                   the board, plus the game's own — at the same time rather than
+#                   one after another. Both
 #                   are the real modals embedded (`ItemDropModal.embed` /
 #                   `LootDropModal.embed`), so a chest and a pack behave here
 #                   exactly as they do anywhere else — same cards, same drag, same
@@ -411,7 +415,7 @@ func _left_column() -> Control:
 	# One heading over all the chests rather than one apiece: three bodies each
 	# leaving a single relic is three panels that would otherwise each announce "it
 	# dropped something" over the picture that already says it.
-	_chest_head = _line("✦  What fell off them", UITheme.TEXT_DIM, 12)
+	_chest_head = _line("✦  What the evening earned", UITheme.TEXT_DIM, 12)
 	_chest_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chest_head.visible = false
 	col.add_child(_chest_head)

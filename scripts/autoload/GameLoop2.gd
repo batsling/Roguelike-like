@@ -64,9 +64,9 @@ extends Node
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
-# A GoalEnemyData was defeated, and WHERE it fell (§8.2) — the cell its chest is
+# A GoalEnemyData was defeated, and WHERE it fell (§8.2) — the cell its loot is
 # to be laid on. OFF_FIELD for a body that was not standing anywhere (one waiting
-# in the off-grid queue), which sends its chest straight to the haul screen.
+# in the off-grid queue), which sends its loot straight to the haul screen.
 signal enemy_defeated(enemy, cell)
 signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolve
 # A try at the current game was logged or taken back. `cost` is "turn" — the one
@@ -235,20 +235,84 @@ var bashed: Array[StringName] = []
 # node, so a transmute sticks to the SPOT rather than to one offering.
 var transmuted: Dictionary = {}
 
-# THE FLOOR (§8.2). Cell -> the chest a defeated body left where it fell:
-#   {"items": [item_id, …], "boss": bool}
+# THE FLOOR (§8.2). Cell -> the loot a defeated body left where it fell:
+#   {"loot": {type, id, …}, "boss": bool}
 #
-# The loop owns WHERE a chest is, because the loop is the thing that walks bodies
-# over it — a body stepping onto a cell shoves the chest out of the way
-# (_displace_drop), and with nowhere left to shove it the chest goes OFF FIELD and
-# is banked for the screen the game ends on. The loop does not own what is IN one:
-# the offer is rolled by the overworld out of `Data` and stored here as ids, which
-# is what keeps this file scene-free and the save JSON-safe.
+# The loop owns WHERE a piece is, because the loop is the thing that walks bodies
+# over it — a body stepping onto a cell shoves the piece out of the way
+# (_displace_drop), and with nowhere left to shove it the piece goes OFF FIELD and
+# is banked for the screen the game ends on. The loop does not own what a piece
+# IS: the entry is rolled by the overworld through `GameState.roll_loot_entry` and
+# stored here whole, which is what keeps this file scene-free and the save
+# JSON-safe.
 var drops: Dictionary = {}
 
-# Where a chest goes when the board has no room left for it: not a cell, and not
+# Where a piece goes when the board has no room left for it: not a cell, and not
 # lost either — the overworld sweeps these onto the haul screen (§18).
 const OFF_FIELD := Vector2i(-1, -1)
+
+# --- THE CHEST THE REPORT OWES (§8.2) --------------------------------------
+#
+# Relics are not on the floor any more. A defeated body pays LOOT where it fell
+# and banks CHEST POINTS here, and the points are spent in one go on the screen
+# the game ends on — so the run's relic income scales with the whole evening's
+# fighting rather than arriving one Small chest at a time.
+#
+# WHAT A BODY IS WORTH is its own authored difficulty, not the tier the run has
+# climbed to: Low 1, Medium 2, High 3, Insane 4 (`chest_points_for`). A Low enemy
+# in an Insane run is still a Low enemy, and paying for the run's progress rather
+# than for the thing you actually fought would make the reward stop describing the
+# fight.
+#
+# Bosses are NOT in this pool. A boss has its own chest and always did (§7.1, and
+# There's Options buys points on it), so it banks one of its own below — otherwise
+# the boss round would pay for the boss twice and the ladder would swallow the
+# relic that only a boss drops.
+
+# Chest points from NON-BOSS bodies defeated since the last report. Spent, with
+# the base point a win is worth, by `claim_chests`.
+var chest_points: int = 0
+
+# One entry per BOSS chest banked since the last report, each the point value that
+# boss's chest is worth (1, plus There's Options). A list rather than a sum
+# because two bosses are two chests, and folding them together would quietly
+# promote a pair of Small ones into a Large.
+var boss_chests: Array = []
+
+# The point value one defeated body adds to the pool, off its own difficulty.
+# Low 1 / Medium 2 / High 3 / Insane 4 — the enum is 0-based, so it is the tier
+# plus one. A boss adds nothing here; see `boss_chests`.
+func chest_points_for(enemy: GoalEnemyData) -> int:
+	if enemy == null or enemy.is_boss():
+		return 0
+	return clampi(int(enemy.difficulty), 0, GoalEnemyData.Difficulty.INSANE) + 1
+
+# What the report owes, as one {points, boss} row per chest, and the pool emptied.
+#
+# `beaten` is the gate the kill pool sits behind, and only the kill pool: the
+# relics a game's fighting earned are paid for BEATING it, so a report that missed
+# the goal or walked away banks nothing from the bodies — the loot they already
+# dropped on the floor is what a lost evening keeps (§8.2). A BOSS chest is paid
+# either way, because it was never a reward for the game: it is the thing that
+# boss drops, and it dropped the moment the boss fell.
+#
+# THE WIN IS WORTH A POINT ON ITS OWN — one Small chest for a game beaten with
+# nothing standing on the board — and every body defeated makes that same chest
+# bigger, up the ladder and into a second one past Huge (`Data.chest_reward_sizes`
+# does the spending). Returns [] when there is nothing to pay.
+#
+# `boss` rides each row because the two chests are not rolled out of the same
+# pool: a boss relic is a thing only a boss drops (§7.1) and has no rarity ladder
+# to walk, so the caller has to know which chest it is filling.
+func claim_chests(beaten: bool) -> Array:
+	var out: Array = []
+	if beaten:
+		out.append({"points": 1 + chest_points, "boss": false})
+	for points in boss_chests:
+		out.append({"points": int(points), "boss": true})
+	chest_points = 0
+	boss_chests.clear()
+	return out
 
 var run_over: bool = false
 var won: bool = false
@@ -258,7 +322,7 @@ var games_beaten: int = 0
 # --- what the player has already ANSWERED FOR, this game (§2.1) -------------
 #
 # A goal ticked on the checklist is confirmed and resolves ON THE SPOT now: the
-# enemy takes its hit while you are still playing, its chest lands on the board,
+# enemy takes its hit while you are still playing, its loot lands on the board,
 # a reward is paid the moment it is earned. That is the whole change — the report
 # used to be the only moment anything could happen, which meant a kill you had
 # already made sat there unpaid for the rest of the evening.
@@ -401,6 +465,8 @@ func reset() -> void:
 	tiles.clear()
 	units.clear()
 	drops.clear()
+	chest_points = 0
+	boss_chests.clear()
 	_clear_attempts()
 	_clear_game_record()
 	last_attempt_turn = {}
@@ -506,6 +572,10 @@ func serialize() -> Dictionary:
 		"tiles": _serialize_cells(tiles, "games"),
 		"units": _serialize_cells(units, "health"),
 		"drops": _serialize_drops(),
+		# The chest the report owes (§8.2) — banked at the kill and paid at the
+		# report, so a run saved mid-game must come back still owing it.
+		"chest_points": chest_points,
+		"boss_chests": boss_chests.duplicate(),
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
 		"run_over": run_over,
@@ -578,6 +648,10 @@ func restore(data: Dictionary) -> void:
 	tiles = _deserialize_cells(data.get("tiles", []), "games", func(id): return Data.get_tile(id) != null)
 	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
 	_restore_drops(data.get("drops", []))
+	chest_points = int(data.get("chest_points", 0))
+	boss_chests.clear()
+	for points in data.get("boss_chests", []):
+		boss_chests.append(int(points))
 	bashed.clear()
 	for gid in data.get("bashed", []):
 		bashed.append(StringName(gid))
@@ -1164,6 +1238,10 @@ func _loop_snapshot() -> Dictionary:
 		"tiles": tiles.duplicate(true),
 		"units": units.duplicate(true),
 		"drops": drops.duplicate(true),
+		# Undoing a turn that killed something has to un-bank what it earned, or the
+		# undo would mint chest points out of a fight that no longer happened.
+		"chest_points": chest_points,
+		"boss_chests": boss_chests.duplicate(),
 		"bashed": bashed.duplicate(),
 		"transmuted": transmuted.duplicate(),
 		"run_over": run_over,
@@ -1196,6 +1274,8 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	tiles = (snap.get("tiles", {}) as Dictionary).duplicate(true)
 	units = (snap.get("units", {}) as Dictionary).duplicate(true)
 	drops = (snap.get("drops", {}) as Dictionary).duplicate(true)
+	chest_points = int(snap.get("chest_points", 0))
+	boss_chests = (snap.get("boss_chests", []) as Array).duplicate()
 	bashed = (snap.get("bashed", []) as Array).duplicate()
 	transmuted = (snap.get("transmuted", {}) as Dictionary).duplicate()
 	run_over = bool(snap.get("run_over", false))
@@ -1459,7 +1539,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		# one spends a shield instead of dying.
 		var e: GoalEnemyData = stack[idx]["enemy"]
 		# Where it is standing, read BEFORE the hit: a lethal one takes the body off
-		# the board, and the square it fell in is where its chest goes (§8.2).
+		# the board, and the square it fell in is where its loot goes (§8.2).
 		var fell: Vector2i = _drop_cell_of(stack[idx])
 		if _damage_enemy(idx, GOAL_HIT):
 			_defeat(e, true, res, fell)
@@ -1621,7 +1701,7 @@ func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) 
 #
 # THIS IS ALSO THE CHECKLIST'S PATH NOW (§2.1). A goal ticked and confirmed while
 # the game is still being played resolves here, on the spot — the enemy dies now
-# and its chest lands on the board now (§8.2) — rather than waiting for the
+# and its loot lands on the board now (§8.2) — rather than waiting for the
 # report. `record` is what makes the two ends agree afterwards: the body counts as
 # ENGAGED for the rest of the game (it holds its fire through every extra turn,
 # exactly as one cleared at the report would) and the game counts as one where a
@@ -1896,15 +1976,22 @@ func _drop_cell_of(entry: Dictionary) -> Vector2i:
 			best = cell
 	return best
 
-# --- the floor: chests lying where their body fell (§8.2) -------------------
+# --- the floor: loot lying where its body fell (§8.2) -----------------------
 #
-# A defeated body drops its chest ON THE SQUARE IT DIED IN, and it stays there
-# until the player picks it up or the game is reported. That is the whole of what
-# makes a kill worth making mid-game: the reward is on the table in front of you
-# rather than banked behind a screen you have not reached yet.
+# A defeated body drops A PIECE OF LOOT ON THE SQUARE IT DIED IN, and it stays
+# there until the player picks it up or the game is reported. That is the whole of
+# what makes a kill worth making mid-game: the reward is on the table in front of
+# you rather than banked behind a screen you have not reached yet.
 #
-# A chest never blocks anybody. `fits_at` does not consult this dictionary, so a
-# body walks onto the square and the chest is SHOVED OUT OF THE WAY instead
+# It is loot rather than a relic because a relic is a QUESTION and loot is a
+# THING. A scroll lying on the board can be drawn as itself — its own art, on its
+# own square — while a chest could only ever be a glyph standing in for an offer
+# the board is not allowed to show you (§8.2, "its card does not say what is
+# inside"). The relics moved to the reward screen, where the choosing belongs, and
+# the floor kept the half a board can actually depict.
+#
+# Loot never blocks anybody. `fits_at` does not consult this dictionary, so a
+# body walks onto the square and the piece is SHOVED OUT OF THE WAY instead
 # (_displace_drop, from _move_entry) — which is the rule that keeps the board's
 # movement honest: loot can be pushed around by the fight but never stops it.
 
@@ -1920,22 +2007,25 @@ func has_drop(cell: Vector2i) -> bool:
 func drop_cells() -> Array:
 	return drops.keys()
 
-# Put a chest on the board at `cell`. Something already lying there (or a cell
-# off the board) sends it looking for room the same way a body walking in would
-# (_free_drop_cell), and a board with no room at all sends it OFF FIELD. Returns
-# where it actually landed, or OFF_FIELD.
-func place_drop(cell: Vector2i, items: Array, from_boss: bool = false) -> Vector2i:
-	if items.is_empty():
+# Put a piece of loot on the board at `cell`. Something already lying there (or a
+# cell off the board) sends it looking for room the same way a body walking in
+# would (_free_drop_cell), and a board with no room at all sends it OFF FIELD.
+# Returns where it actually landed, or OFF_FIELD.
+#
+# `loot` is a loot ENTRY — the same {type, id, …} dictionary the pack, the
+# LootDropModal and `GameState.roll_loot_entry` all deal in. It is stored whole
+# rather than as an id because the roll on it has already happened (a pill's
+# colour, a horse dose), and a save that kept only the id would come back as a
+# different piece than the one lying on the board.
+func place_drop(cell: Vector2i, loot: Dictionary, from_boss: bool = false) -> Vector2i:
+	if loot.is_empty():
 		return OFF_FIELD
-	var ids: Array = []
-	for id in items:
-		ids.append(StringName(id))
 	var at: Vector2i = cell
 	if not _on_board(at.x, at.y) or drops.has(at):
 		at = _free_drop_cell(cell)
 	if at == OFF_FIELD:
 		return OFF_FIELD
-	drops[at] = {"items": ids, "boss": from_boss}
+	drops[at] = {"loot": loot.duplicate(true), "boss": from_boss}
 	loop_changed.emit()
 	return at
 
@@ -1963,7 +2053,7 @@ func sweep_drops() -> Array:
 # A body is moving onto `cell` and something is lying there: shove it to the
 # NEAREST FREE SQUARE, preferring one FURTHER FROM THE PLAYER when two are equally
 # close. Loot drifts back toward the wilds rather than into your lap, so a
-# contested board makes reaching a chest worth something. Returns where it went,
+# contested board makes reaching a piece worth something. Returns where it went,
 # or OFF_FIELD when the board has no room left for it.
 func _displace_drop(cell: Vector2i) -> Vector2i:
 	if not drops.has(cell):
@@ -2013,17 +2103,23 @@ func _key_before(a: Array, b: Array) -> bool:
 			return int(a[i]) < int(b[i])
 	return false
 
-# The floor as JSON-safe rows, and back. Item ids that the catalog no longer
-# serves are dropped on the way in, and a chest left with nothing in it goes with
-# them — the same rule a stale enemy id gets.
+# The floor as JSON-safe rows, and back. A loot entry is already JSON-safe (it is
+# what the pack itself is saved as), so it rides across whole — no catalogue
+# lookup on the way back in, because the roll it carries IS the piece. A row with
+# nothing on it is dropped, the same rule a stale enemy id gets.
+#
+# A save written while the floor still held RELIC CHESTS (`items`) is read as an
+# empty floor rather than as an error: those chests are the reward screen's now,
+# and there is no square on the new board that means the same thing.
 func _serialize_drops() -> Array:
 	var out: Array = []
 	for cell in drops.keys():
 		var held: Dictionary = drops[cell]
-		var ids: Array = []
-		for id in held.get("items", []):
-			ids.append(String(id))
-		out.append({"col": int(cell.x), "row": int(cell.y), "items": ids,
+		var loot = held.get("loot")
+		if not (loot is Dictionary) or (loot as Dictionary).is_empty():
+			continue
+		out.append({"col": int(cell.x), "row": int(cell.y),
+			"loot": (loot as Dictionary).duplicate(true),
 			"boss": bool(held.get("boss", false))})
 	return out
 
@@ -2037,14 +2133,11 @@ func _restore_drops(raw) -> void:
 		var cell := Vector2i(int(row.get("col", 0)), int(row.get("row", 0)))
 		if not _on_board(cell.x, cell.y):
 			continue
-		var ids: Array = []
-		for id in row.get("items", []):
-			var sid := StringName(id)
-			if Data.get_item2(sid) != null:
-				ids.append(sid)
-		if ids.is_empty():
+		var loot = row.get("loot")
+		if not (loot is Dictionary) or (loot as Dictionary).is_empty():
 			continue
-		drops[cell] = {"items": ids, "boss": bool(row.get("boss", false))}
+		drops[cell] = {"loot": (loot as Dictionary).duplicate(true),
+			"boss": bool(row.get("boss", false))}
 
 # --- the ground: tile effects and units (§17) -------------------------------
 
@@ -3035,13 +3128,24 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
 	if drop:
-		# Every defeated enemy drops an item (§8). On the grid battlefield the drop
-		# is presented INLINE — the enemy vanishes and its item appears on the field
-		# with Collect / Skip — which the overworld drives off enemy_defeated, so we
-		# no longer bank a RewardScreen chest here. We only tally the drop so this
-		# headless core stays scene-free and unit-testable.
+		# Every defeated enemy drops a piece of LOOT (§8.2). On the grid battlefield
+		# the drop is presented INLINE — the enemy vanishes and its scroll, pill or
+		# potion appears on the square it fell in, as itself — which the overworld
+		# drives off enemy_defeated. We only tally the drop so this headless core
+		# stays scene-free and unit-testable.
 		if res.has("drops"):
 			res["drops"] = int(res.get("drops", 0)) + 1
+		# …and the RELIC half is banked, not dropped: chest points, spent in one go
+		# on the screen the game ends on. A body is worth its own difficulty; a boss
+		# banks a chest of its own instead, on its own terms (see `boss_chests`).
+		#
+		# Banked HERE, under `drop`, for the same reason the gold is: a bombed body
+		# never reaches this function at all, so buying your way out of a goal must
+		# not buy a bigger chest either.
+		if enemy != null and enemy.is_boss():
+			boss_chests.append(1 + GameState.boss_chest_bonus())
+		else:
+			chest_points += chest_points_for(enemy)
 		# GOLD (§14) rides the DROP, which is why it is paid inside this branch
 		# rather than beside it.
 		#

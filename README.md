@@ -4,7 +4,8 @@ A roguelike **played on a graph of real video games**. Every node on the map is 
 actual game connected to others it influenced; each run is a journey from a
 randomly chosen **Start** game to a hidden **Amulet** game, and the "combat" is
 you going off and actually playing each game to clear its goal — reported back on
-the honour system, with defeated goal-enemies dropping relics.
+the honour system, with defeated goal-enemies dropping loot where they fall and
+paying out a chest of relics on the game you beat them in.
 
 This repository's **main project is the Godot 4.6 game at the repository root**.
 The original browser/JavaScript version has been retired to
@@ -76,7 +77,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── games/            #   GameData — the ~854 real games that form the map
 │   ├── atlas_layout*.tres#   BAKED star positions for the Atlas, one sky per game
 │   │                      #   filter: all / _owned / _downloaded (tools/bake_atlas.py)
-│   ├── items2.0/         #   ItemData — the relics that drop from a defeated enemy
+│   ├── items2.0/         #   ItemData — the relics a beaten game's chest offers
 │   │                      #   (Rating Boss / Event = a relic only a boss or an
 │   │                      #   event pays; never in a random pool)
 │   ├── enemies2.0/       #   GoalEnemyData — goal-enemies, one per game beaten
@@ -509,12 +510,16 @@ node and its script.
     arrive with a report has no haul screen to be part of. The shelf is
     **borrowed**, not moved — the same `ShopPanel2` node is handed back to the page
     on the way out, so §14's "a shop stays for the whole visit" still holds.
-- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). Ordinary
-  enemy drops don't open it: they land on the board, on the square the body fell
-  in (`GameLoop2.drops`, drawn as a pressable `✦` by `BattlefieldView._drop_node`
-  and opened mid-game by `Overworld2.collect_floor_drop`), and whatever is still
-  lying there when the game is reported is swept onto the post-combat screen
-  (above).
+- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). The chest a
+  report pays doesn't open it either: a beaten game banks 1 point plus each
+  defeated body's difficulty (Low 1 … Insane 4, bosses excluded — they bank a
+  chest of their own), and `Overworld2._queue_report_chests` spends that on the
+  size ladder and hands the chests to the post-combat screen (above). What a body
+  drops **on the board** is a piece of LOOT, on the square it fell in
+  (`GameLoop2.drops`, drawn wearing its own art by `BattlefieldView._drop_node`
+  and picked up mid-game by `Overworld2.collect_floor_drop`); whatever is still
+  lying there when the game is reported is swept onto the post-combat screen too,
+  win or lose.
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:
   it only ever opens from a **★ Rate** button (on the report panel while you're
   playing a game, and on the select screen for the game you last reported).
