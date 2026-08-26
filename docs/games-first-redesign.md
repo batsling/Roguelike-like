@@ -72,6 +72,24 @@ An enemy that is already dead cannot be un-killed and a relic already in the pac
 cannot be handed back. (The **Undo** beside the lost-run tracker is a different
 thing: it takes back a *turn*, which is the board's, not yours.)
 
+**And the list follows the board it is describing.** The goals can change while a
+game is being played — a **D10** re-rolls every non-boss body where it stands
+(§8), a **Scroll of Create Monster** conjures a new one onto the stack, a bomb
+takes one off — and the report step used to be built once, when the game was
+taken, and never look again. So a player who spent a charge escaping a goal they
+could not do went on being asked to tick that goal, off a list describing a board
+that no longer existed.
+
+`Overworld2._refresh` rebuilds it now, guarded by a signature of **what the rows
+say** (`ReportChecklist._play_panel_sig`). Two things about that guard are load-
+bearing. It is not the standing list's signature, close as the two are: that one
+counts `in_front`, so a lost run would rebuild the panel under the player once a
+turn for a list whose words had not changed. And rebuilding is *safe* only
+because a confirmed row is remembered by `GameLoop2.answered_rows` rather than by
+its checkbox — which is exactly what "there are no take-backs" is implemented as.
+A rebuild re-locks everything that was answered, and the only thing it can lose is
+a tick that was never confirmed, which the confirm rule means cannot exist.
+
 This exists because the report used to be the only moment anything could happen.
 That was fine while a game was one long wait for a single point. It is wrong now
 that the board moves whenever you *fail* (§3.2) and a kill is something you can go
@@ -2699,10 +2717,15 @@ has not finished taking is a screen in the way of a decision.
 a Large one under "what the evening earned", with nothing anywhere saying why it
 was Large rather than Small, so the one reward that scales with how hard you
 fought was also the one that could not be read as a consequence of your fighting.
-The rule is simple enough to show, so the screen shows it as a sum: a row of the
-faces that paid, each with what it was worth, `+` between them and the chest at
-the end — 🏆 +1 ✛ 👹 +2 ✛ 👺 +1 = **1 Large Chest**. One small row above the chest,
-wrapping rather than scrolling.
+The rule is simple enough to show, so the screen shows it as a sum under the
+heading **ITEM CHEST SIZE**: a row of the faces that paid, each with its value
+**under it**, `+` between them and the chest at the end. One small row above the
+chest, wrapping rather than scrolling. The values sit under the pictures rather
+than beside them because at 22px a number to the right of a face reads as part of
+the next face along; underneath, each is unmistakably the caption of the thing
+above it. The heading is there for the same reason a column needs one — a line of
+faces and numbers is arithmetic without a subject until something names the
+quantity it totals to.
 
 The terms are `GameLoop2.chest_point_breakdown()`, banked at each kill beside the
 points themselves and read *before* `claim_chests` empties the pool. They are

@@ -769,26 +769,40 @@ func _chest_sum_row() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG_DEEP, UITheme.BORDER, 6, 8, 1))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	wrap.add_child(col)
+	# WHAT THE SUM IS FOR, said before the sum. A row of faces and numbers is
+	# arithmetic without a subject until something names the quantity it totals to.
+	col.add_child(_line("ITEM CHEST SIZE", UITheme.TEXT_FAINT, 10))
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 5)
+	flow.add_theme_constant_override("h_separation", 6)
 	flow.add_theme_constant_override("v_separation", 3)
-	wrap.add_child(flow)
+	col.add_child(flow)
 	for i in range(terms.size()):
 		if i > 0:
 			flow.add_child(_sum_glyph("+"))
 		flow.add_child(_sum_term(terms[i]))
 	flow.add_child(_sum_glyph("="))
-	var result := _line(chest_result_text(), UITheme.GOLD, 12)
-	result.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The answer sits on the FACES' line, like the operators — centring it against a
+	# term that is now two rows tall would float it between the pictures and their
+	# values, which is the one place it does not belong.
+	var result := _line(chest_result_text(), UITheme.GOLD, 13)
+	result.custom_minimum_size = Vector2(0, REASON_FACE)
+	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	result.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	flow.add_child(result)
 	return wrap
 
-# One term: the enemy's face with its point value beside it, or the win's own
-# point, which has no face and says so in words instead.
+# One term, stacked: the face on top and what it was worth UNDER it. Side by side
+# the numbers read as part of the next picture along at this size; under them each
+# value is unmistakably the caption of the thing above it.
 func _sum_term(term: Dictionary) -> Control:
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	var enemy: GoalEnemyData = term.get("enemy")
+	var tip: String = ""
 	if enemy != null and enemy.image != null:
 		var art := TextureRect.new()
 		art.texture = enemy.image
@@ -797,24 +811,37 @@ func _sum_term(term: Dictionary) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		# The name is the tooltip rather than a caption: eight of these across a
 		# 600px column is a row of labels, and the picture is the point.
-		art.tooltip_text = "%s — %s, worth %d" % [enemy.display_name,
+		tip = "%s — %s, worth %d" % [enemy.display_name,
 			RunDifficulty.tier_name(enemy.tier_index()), int(term.get("points", 0))]
+		art.tooltip_text = tip
 		box.add_child(art)
 	else:
 		# The win's own point (§8.2): a game beaten with a clear board is still a
 		# Small chest, and the sum has to show where that came from.
-		var w := _line("🏆", UITheme.GOLD, 15)
-		w.tooltip_text = "Beating the game is worth 1 on its own."
-		w.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tip = "Beating the game is worth 1 on its own."
+		var w := _line("🏆", UITheme.GOLD, 16)
+		w.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		w.custom_minimum_size = Vector2(REASON_FACE, REASON_FACE)
+		w.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		w.tooltip_text = tip
 		box.add_child(w)
-	var pts := _line("+%d" % int(term.get("points", 0)), UITheme.TEXT, 12)
-	pts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var pts := _line("+%d" % int(term.get("points", 0)), UITheme.TEXT, 11)
+	pts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pts.custom_minimum_size = Vector2(REASON_FACE, 0)
+	# The same tooltip on both halves, so the number explains itself as readily as
+	# the picture does — they are one term and the mouse should not have to know
+	# which half of it carries the words.
+	pts.tooltip_text = tip
 	box.add_child(pts)
 	return box
 
+# The `+` and `=` between terms, lifted onto the faces' own line rather than
+# centred against a term that is now two rows tall.
 func _sum_glyph(text: String) -> Control:
 	var l := _line(text, UITheme.TEXT_FAINT, 12)
-	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	l.custom_minimum_size = Vector2(0, REASON_FACE)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	return l
 
 # A chest banked AFTER this screen opened — a level-up's reward, Unstable Genome,

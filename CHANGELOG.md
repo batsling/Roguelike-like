@@ -11,6 +11,39 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The report checklist follows the board when the board changes under it.**
+
+  A **D10** re-rolls every non-boss body where it stands, a **Scroll of Create
+  Monster** conjures one onto the stack, a bomb takes one off — and the report
+  step was built once, when the game was taken, and never looked again. So a
+  player who spent a charge to escape a goal they could not do went on being asked
+  to tick that goal, off a list describing a board that no longer existed.
+
+  It was a deliberate omission grown stale rather than an oversight:
+  `Overworld2._refresh` skips that panel on purpose, because it holds tick boxes
+  and a repaint that dropped them would be worse than a list one step behind. That
+  stopped being true when the rows learned to **resolve themselves** — a confirmed
+  row is recorded in `GameLoop2.answered_rows`, not in its checkbox (§2.1), so a
+  rebuild re-locks everything answered and can only lose a tick that was never
+  confirmed, which the confirm rule means cannot exist. Rebuilding was already
+  safe; what was missing was knowing when it was warranted.
+
+  So the panel gets a signature of **what its rows say**
+  (`ReportChecklist._play_panel_sig`), and `_refresh` rebuilds when that changes.
+  Deliberately *not* the standing list's signature, close as the two are: that one
+  counts `in_front`, so a lost run would have rebuilt the panel under the player
+  once a turn for a list whose words had not moved. It keys on the enemy's **id**
+  rather than its name, since a re-roll onto a different body with the same name
+  is still a different goal.
+
+- **The chest-size sum reads as a caption, not a formula.** The values sit **under**
+  the faces now, under an **ITEM CHEST SIZE** heading. At 22px a number to the
+  right of a face reads as belonging to the next face along; underneath, each is
+  unmistakably the caption of the thing above it — and a row of pictures and
+  numbers is arithmetic without a subject until something names the quantity it
+  totals to. The `+`, the `=` and the answer stay on the faces' own line rather
+  than centring against a term that is now two rows tall.
+
 - **The haul screen: rate the game where you just played it, see why the chest is
   the size it is, and leave by a button that names where it goes.**
 

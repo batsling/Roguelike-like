@@ -976,6 +976,68 @@ func test_the_checklist_lists_the_arrivals_among_the_followers() -> void:
 			listed = true
 	assert_true(listed, "what walked on with this game is one of them")
 
+# A D10 RE-ROLLS THE BOARD MID-GAME AND THE CHECKLIST FOLLOWS IT. The report step
+# is built once, when the game is taken, and `_refresh` deliberately leaves it
+# alone because it holds tick boxes — so the list went on asking about the bodies
+# that were standing there when the game began. A player who spent a charge to
+# escape a goal they could not do was still being asked to tick that goal.
+func test_the_checklist_follows_a_reroll_of_the_board() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	var before: String = _text_of(_ui._verify_box)
+	var names_before: Array = []
+	for entry in GameLoop2.stack:
+		names_before.append((entry["enemy"] as GoalEnemyData).display_name)
+	assert_false(names_before.is_empty(), "there is a body to re-roll")
+	var swapped: int = GameLoop2.reroll_enemies()
+	if swapped <= 0:
+		return                            # nothing else in the bucket to become
+	var after: String = _text_of(_ui._verify_box)
+	assert_ne(after, before, "the checklist is not describing the old board")
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		assert_string_contains(after, e.display_name,
+			"%s is on the board, so it is on the list" % e.display_name)
+	assert_eq(_ui._fulfil_checks.size(), GameLoop2.stack.size(),
+		"one tick box per body, still")
+
+# …and it does NOT rebuild for a board that merely moved. The panel holds tick
+# boxes, so rebuilding it is not free — the guard is a signature of what the rows
+# SAY, and a body advancing a column does not change a word of it. (This is why
+# the play panel has a signature of its own rather than borrowing the standing
+# list's, which counts `in_front`.)
+func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	assert_false(_ui._checklist.play_panel_stale(), "freshly built, it is current")
+	var boxes: Array = []
+	for f in _ui._fulfil_checks:
+		boxes.append(f["check"])
+	_ui.log_attempt()                     # a lost run: the board advances
+	assert_false(_ui._checklist.play_panel_stale(),
+		"a body walking a column nearer says nothing new about the goals")
+	_ui._refresh()
+	var same := true
+	for i in range(mini(boxes.size(), _ui._fulfil_checks.size())):
+		if _ui._fulfil_checks[i]["check"] != boxes[i]:
+			same = false
+	assert_true(same, "so the same boxes are still standing")
+
+# A body CONJURED onto the stack mid-game is the same story from the other end —
+# Scroll of Create Monster, and the list has to grow a row for it.
+func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	var rows_before: int = _ui._fulfil_checks.size()
+	var conjured: GoalEnemyData = GameLoop2.roll_conjured_enemy()
+	if conjured == null:
+		return
+	GameLoop2.spawn_to_stack(conjured)
+	_ui._refresh()
+	assert_eq(_ui._fulfil_checks.size(), rows_before + 1,
+		"what just walked on is something you can be asked about")
+	assert_string_contains(_text_of(_ui._verify_box), conjured.display_name)
+
 func test_there_is_no_emphasised_goal_row() -> void:
 	_ui.pick(0)
 	var text: String = _text_of(_ui._verify_box)
@@ -5013,6 +5075,10 @@ func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
 		"and the total names the chest the same function actually spent it on")
 	assert_string_contains(screen.chest_reason(), "=",
 		"the line reads as a sum: %s" % screen.chest_reason())
+	# And the row SAYS what it is totalling. A line of faces and numbers is
+	# arithmetic without a subject until something names the quantity.
+	assert_string_contains(_text_of(screen).to_upper(), "ITEM CHEST SIZE",
+		"the sum is labelled")
 	_leave_post_game()
 	_dismiss_event()
 

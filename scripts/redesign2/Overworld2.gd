@@ -3140,6 +3140,19 @@ func _refresh(_a = null) -> void:
 		# on the board is on the board (see the row's own comment).
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+		# …AND THE REPORT STEP, when the goals it lists have changed under it. A D10
+		# re-rolls every non-boss body mid-game and a Create Monster conjures a new
+		# one, and until now the checklist went on asking about the board as it
+		# stood when the game was taken — so a player who spent a charge escaping a
+		# goal was still being asked to tick it.
+		#
+		# GUARDED BY A SIGNATURE, not rebuilt on every repaint, which is what this
+		# branch has always deliberately avoided: the panel holds tick boxes. Safe
+		# because a confirmed row is remembered by GameLoop2 rather than by its box
+		# (ReportChecklist._play_panel_sig spells the whole argument out), so what a
+		# rebuild restores is everything that was actually answered.
+		if _checklist != null and _checklist.play_panel_stale():
+			_populate_play_panel()
 	_fit_canvas_to_page.call_deferred()
 
 # --- the page's own width --------------------------------------------------

@@ -56,6 +56,12 @@ var lit_instances: Dictionary = {}
 # "repaint guards" block in Overworld2, which explains all three of them.
 var _sig: String = ""
 
+# The REPORT step's own signature: what the tick-box list was built to say about
+# the board. The standing list's guard above stops it repainting when nothing
+# changed; this one does the opposite job — it is how the page notices that
+# something DID, while a game is in play (see play_panel_stale).
+var _play_sig: String = ""
+
 func _init(page: Node, box: VBoxContainer, launch: HBoxContainer) -> void:
 	_page = page
 	_box = box
@@ -84,6 +90,7 @@ func populate_play_panel() -> void:
 	if _page._chosen.is_empty():
 		return
 	_sig = ""
+	_play_sig = _play_panel_sig()
 	_page._clear(_launch)
 	_page._clear(_box)
 	reset_state()
@@ -754,6 +761,60 @@ func populate_standing() -> void:
 #
 # `_launch` is not represented because this function always leaves it empty —
 # only the report step (populate_play_panel) puts anything in it.
+# --- the report step going stale under the player -------------------------
+#
+# THE CHECKLIST IS A LIST OF GOALS, AND THE GOALS CAN CHANGE MID-GAME. A D10
+# re-rolls every non-boss body where it stands (GameLoop2.reroll_enemies), a
+# Scroll of Create Monster conjures one onto the stack, a bomb takes one off — and
+# the report step was built once, when the game was taken, and never looked again.
+# So a player who spent a die to escape a goal they could not do went on being
+# asked about that goal by a list describing a board that no longer existed.
+#
+# It was not an oversight so much as a deliberate omission grown stale:
+# `Overworld2._refresh` skips this panel on purpose, because it holds the player's
+# TICKS and a repaint that dropped them would be worse than a list a step behind.
+# That reasoning stopped applying when the rows learned to RESOLVE THEMSELVES —
+# a confirmed row is recorded in `GameLoop2.answered_rows`, not in its checkbox
+# (see the block above _lock_row), so a rebuild re-locks everything that was
+# answered and loses only ticks that never existed. Rebuilding is safe now; what
+# was missing was a way to know when it is warranted.
+#
+# Hence a signature of WHAT THE ROWS SAY. Deliberately not `_standing_checklist_sig`
+# itself, close as the two are: that one includes `in_front`, which changes every
+# time the board advances, so a lost run would rebuild the panel under the player
+# once a turn for a list whose words had not changed at all.
+func _play_panel_sig() -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch != null:
+		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
+	parts.append(str(GameState.event_goals))
+	parts.append(str(GameState.curse_goals))
+	for row in GameState.status_objectives():
+		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		# The enemy's ID, not only its name: a re-roll that landed on a different
+		# body with the same name is still a different goal, and the id is the only
+		# thing that cannot collide.
+		parts.append("%d:%s:%s" % [int(entry.get("instance", 0)),
+			String(e.id) if e != null else "", GameLoop2.goal_text_for(entry)])
+		for alt in GameLoop2.alternatives_for(entry):
+			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),
+				int(alt["stacks"])])
+		for bonus in GameLoop2.bonus_objectives_for(entry):
+			parts.append("+%s:%d" % [String((bonus["status"] as StatusData).id),
+				int(bonus["stacks"])])
+	return "|".join(parts)
+
+# Does the report step describe a board that has since changed? False when there
+# is no report step up — the standing list has its own guard and this must not
+# speak for it.
+func play_panel_stale() -> bool:
+	if _page == null or not is_instance_valid(_page) or _page._chosen.is_empty():
+		return false
+	return _play_sig != _play_panel_sig()
+
 func _standing_checklist_sig() -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
