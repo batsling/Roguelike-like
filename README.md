@@ -494,25 +494,36 @@ node and its script.
     haul is one screen now, and it opens when the board has stopped moving: the
     verdict, the fight in numbers (out of `beat_game`'s result, which used to be
     thrown away), **every** relic chest down the left and the loot payout down the
-    right at once, the hub's shelf, and the boss warning as a banner. All the
+    right at once, and the boss warning as a banner. All the
     chests together is the point: a queue hides what the *other* relics are, and
     there is often an order worth taking them in. A chest banked while the screen
     is up lands on it too (`add_chest`) rather than opening a `RewardScreen`
-    underneath it, and a section that raises its own card — the shelf's — is given
-    a layer that clears the screen. **The payout does not close on its last piece
+    underneath it. **The payout does not close on its last piece
     and has no Take/Leave buttons**: the piece has just gone into the pack, and the
     pack is the reason to still be looking.
-    **One button out**, which is the **event** when the node owes one — clicking it
-    is what opens the event — and "travel on" when it doesn't; it counts what it is
-    about to bin, because a Legendary left on the ground should be a decision and
-    not a side effect of pressing Continue. The sections are the **real modals,
-    embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
+    **★ Rate this game sits beside the cover**, and nowhere else in the run — it
+    was on the play panel's checklist, which offered the score while the game was
+    still in front of you. It saves and stays put rather than opening the
+    tier-list board over a haul nobody has finished taking.
+    **The chest shows the sum that sized it** (`chest_terms`): 🏆 +1, then a face
+    per body with its own difficulty as its value, `=` the chest. Read off
+    `GameLoop2.chest_point_breakdown()`, banked at each kill and claimed before
+    the pool is spent — *not* re-derived from the report's defeat list, which
+    misses a body a mine killed during a lost run.
+    **One button out, and it names where it goes**: "Go to Event" when the node
+    owes one (clicking it is what opens the event), "Go to Shop" at a hub that
+    owes no event, "Travel on" otherwise; the event wins when both are owed. It
+    counts what it is about to bin, because a Legendary left on the ground should
+    be a decision and not a side effect of pressing Continue. The sections are the
+    **real modals, embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
     `BossNoticeModal.embed`): same cards, same drag, same signals, minus the
     backdrop and the layer. The standalone modals stay, because
     `GameState.offer_loot` fires from `EffectSystem` and a payout that didn't
-    arrive with a report has no haul screen to be part of. The shelf is
-    **borrowed**, not moved — the same `ShopPanel2` node is handed back to the page
-    on the way out, so §14's "a shop stays for the whole visit" still holds.
+    arrive with a report has no haul screen to be part of. **The shelf is not
+    here** — it was briefly borrowed and handed back, which left four sections
+    fighting for a 720p canvas and an exit button pointing at something already on
+    screen; it stays under the board per §14, and this screen keeps only the hub's
+    id so its button can name it.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). The chest a
   report pays doesn't open it either: a beaten game banks 1 point plus each
   defeated body's difficulty (Low 1 … Insane 4, bosses excluded — they bank a

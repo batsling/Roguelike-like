@@ -100,14 +100,11 @@ func populate_play_panel() -> void:
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): game.launch())
 		_launch.add_child(play_btn)
-	# Manual "rate this game" entry point (the report step also auto-prompts after
-	# you press Completed Game).
-	var rate_btn := Button.new()
-	rate_btn.text = "★  Rate this game"
-	rate_btn.custom_minimum_size = Vector2(0, 38)
-	rate_btn.add_theme_color_override("font_color", UITheme.GOLD)
-	rate_btn.pressed.connect(func(): _page._prompt_rating(game))
-	_launch.add_child(rate_btn)
+	# NO ★ RATE BUTTON HERE ANY MORE. It sat under the Play button, which offered
+	# the score while the game was still in front of the player — the one moment
+	# they have not finished forming the opinion it is asking for. It lives on the
+	# haul screen now (PostCombatScreen._rate_button), beside the cover of the game
+	# that just ended, which is where there is finally something to say.
 
 	# One clean checklist of everything to verify this game. Tick what you actually
 	# did, then press "Completed Game" once (§2 / §3.1):

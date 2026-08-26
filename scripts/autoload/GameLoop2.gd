@@ -273,6 +273,20 @@ const OFF_FIELD := Vector2i(-1, -1)
 # the base point a win is worth, by `claim_chests`.
 var chest_points: int = 0
 
+# WHO PAID THOSE POINTS, oldest first: one {enemy, points} row per non-boss body
+# banked since the last report. The sum is `chest_points` and is kept in step with
+# it — both are filled in `_defeat` and both are emptied by `claim_chests`.
+#
+# It exists for the haul screen, which shows the player the arithmetic behind the
+# chest they were handed (PostCombatScreen's chest_reason): a row of the faces
+# that fell with what each was worth. That breakdown has to be the REAL one, and
+# `res["defeats"]` is not it — a body killed by a mine during a lost run is
+# defeated inside `attempt_turn`, so it lands in the ATTEMPT's result and never
+# appears in the report's, while its points sit in the pool all the same. A
+# screen that reconstructed the sum from the report's defeats would quietly
+# under-count exactly the bodies the player is proudest of.
+var chest_point_sources: Array = []
+
 # One entry per BOSS chest banked since the last report, each the point value that
 # boss's chest is worth (1, plus There's Options). A list rather than a sum
 # because two bosses are two chests, and folding them together would quietly
@@ -304,6 +318,12 @@ func chest_points_for(enemy: GoalEnemyData) -> int:
 # `boss` rides each row because the two chests are not rolled out of the same
 # pool: a boss relic is a thing only a boss drops (§7.1) and has no rarity ladder
 # to walk, so the caller has to know which chest it is filling.
+# The breakdown behind the kill pool, as {enemy, points} rows oldest first — what
+# the haul screen shows the player instead of asserting a chest size at them. Read
+# BEFORE claim_chests, which empties it along with the pool it explains.
+func chest_point_breakdown() -> Array:
+	return chest_point_sources.duplicate()
+
 func claim_chests(beaten: bool) -> Array:
 	var out: Array = []
 	if beaten:
@@ -311,6 +331,9 @@ func claim_chests(beaten: bool) -> Array:
 	for points in boss_chests:
 		out.append({"points": int(points), "boss": true})
 	chest_points = 0
+	# Emptied with the pool it explains — a breakdown that outlived its points
+	# would show the next report the faces that paid for the last one.
+	chest_point_sources.clear()
 	boss_chests.clear()
 	return out
 
@@ -466,6 +489,7 @@ func reset() -> void:
 	units.clear()
 	drops.clear()
 	chest_points = 0
+	chest_point_sources.clear()
 	boss_chests.clear()
 	_clear_attempts()
 	_clear_game_record()
@@ -575,6 +599,10 @@ func serialize() -> Dictionary:
 		# The chest the report owes (§8.2) — banked at the kill and paid at the
 		# report, so a run saved mid-game must come back still owing it.
 		"chest_points": chest_points,
+		# …and WHO paid them, as ids — the rows hold GoalEnemyData, which a save
+		# file cannot. Rehydrated on load; a row whose enemy has since left the
+		# sheet is dropped there rather than here (see the restore).
+		"chest_point_sources": _serialize_chest_sources(),
 		"boss_chests": boss_chests.duplicate(),
 		"bashed": bashed_ids,
 		"transmuted": _transmuted_ids(),
@@ -649,6 +677,7 @@ func restore(data: Dictionary) -> void:
 	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
 	_restore_drops(data.get("drops", []))
 	chest_points = int(data.get("chest_points", 0))
+	_restore_chest_sources(data.get("chest_point_sources", []))
 	boss_chests.clear()
 	for points in data.get("boss_chests", []):
 		boss_chests.append(int(points))
@@ -1239,8 +1268,12 @@ func _loop_snapshot() -> Dictionary:
 		"units": units.duplicate(true),
 		"drops": drops.duplicate(true),
 		# Undoing a turn that killed something has to un-bank what it earned, or the
-		# undo would mint chest points out of a fight that no longer happened.
+		# undo would mint chest points out of a fight that no longer happened. The
+		# breakdown rides along for the same reason and in the same breath: a face
+		# left in the list after its kill was taken back is a haul screen crediting
+		# a body that is standing on the board again.
 		"chest_points": chest_points,
+		"chest_point_sources": chest_point_sources.duplicate(),
 		"boss_chests": boss_chests.duplicate(),
 		"bashed": bashed.duplicate(),
 		"transmuted": transmuted.duplicate(),
@@ -1275,6 +1308,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	units = (snap.get("units", {}) as Dictionary).duplicate(true)
 	drops = (snap.get("drops", {}) as Dictionary).duplicate(true)
 	chest_points = int(snap.get("chest_points", 0))
+	chest_point_sources = (snap.get("chest_point_sources", []) as Array).duplicate()
 	boss_chests = (snap.get("boss_chests", []) as Array).duplicate()
 	bashed = (snap.get("bashed", []) as Array).duplicate()
 	transmuted = (snap.get("transmuted", {}) as Dictionary).duplicate()
@@ -2138,6 +2172,40 @@ func _restore_drops(raw) -> void:
 			continue
 		drops[cell] = {"loot": (loot as Dictionary).duplicate(true),
 			"boss": bool(row.get("boss", false))}
+
+# The chest-point breakdown, as ids rather than resources (see the payload). The
+# POINTS are written down rather than re-derived from the enemy on load: a row is
+# a record of what was actually banked, and re-reading it off a sheet that has
+# since been re-tuned would make a saved run's chest disagree with the faces
+# beside it.
+func _serialize_chest_sources() -> Array:
+	var out: Array = []
+	for row in chest_point_sources:
+		if not (row is Dictionary):
+			continue
+		var enemy: GoalEnemyData = (row as Dictionary).get("enemy")
+		if enemy == null:
+			continue
+		out.append({"enemy": String(enemy.id), "points": int(row.get("points", 0))})
+	return out
+
+# …and back. A row whose enemy is no longer in the catalog is DROPPED, and its
+# points with it — the pool it explains is restored from `chest_points` on its
+# own, so the arithmetic on the haul screen would stop adding up. Better a
+# breakdown that says nothing than one that says the wrong sum, and
+# PostCombatScreen.chest_reason falls back to plain words when the rows do not
+# account for the pool.
+func _restore_chest_sources(raw) -> void:
+	chest_point_sources.clear()
+	if not (raw is Array):
+		return
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(row.get("enemy", "")))
+		if enemy == null:
+			continue
+		chest_point_sources.append({"enemy": enemy, "points": int(row.get("points", 0))})
 
 # --- the ground: tile effects and units (§17) -------------------------------
 
@@ -3145,7 +3213,11 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		if enemy != null and enemy.is_boss():
 			boss_chests.append(1 + GameState.boss_chest_bonus())
 		else:
-			chest_points += chest_points_for(enemy)
+			var worth: int = chest_points_for(enemy)
+			chest_points += worth
+			# Kept in step with the sum above, never derived from it later — see
+			# chest_point_sources for why the report's own defeat list will not do.
+			chest_point_sources.append({"enemy": enemy, "points": worth})
 		# GOLD (§14) rides the DROP, which is why it is paid inside this branch
 		# rather than beside it.
 		#

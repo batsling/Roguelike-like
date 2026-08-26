@@ -11,6 +11,57 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The haul screen: rate the game where you just played it, see why the chest is
+  the size it is, and leave by a button that names where it goes.**
+
+  Three things about the screen a game ends on.
+
+  **★ Rate moved onto it, beside the cover.** It sat on the play panel's
+  checklist, under the Play button — offering the score *while the game was still
+  in front of the player*, which is the one moment they have not finished forming
+  the opinion it is asking for. It is beside the cover of the finished game now,
+  and it saves and stays put rather than opening the tier-list board the select
+  screen's own "★ Rate \<game\>" opens: that board over a haul nobody has finished
+  taking is a screen in the way of a decision. (It also has to be parented to the
+  haul screen rather than the page — the page's tree is under that CanvasLayer,
+  so a modal added there opens *behind* the button that asked for it.)
+
+  **The chest says why it is that size.** It arrived as an assertion: a Large one
+  under "what the evening earned", with nothing anywhere saying why it was Large
+  rather than Small — so the one reward that scales with how hard you fought was
+  also the one that could not be read as a consequence of your fighting. The rule
+  (§8.2) is simple enough to show, so now it is shown, as a sum: 🏆 +1, then a face
+  per body with its own difficulty as its value, `+` between them, `=` the chest.
+  One small wrapping row above the chest.
+
+  The terms are a new `GameLoop2.chest_point_breakdown()`, banked at each kill
+  beside the points themselves and read *before* `claim_chests` empties the pool.
+  **Recorded, not reconstructed** — a body a mine killed during a lost run is
+  defeated inside `attempt_turn`, so it never lands in the report's own defeat
+  list while its points do land in the pool, and a screen deriving the sum from
+  that list would under-count exactly the bodies the player is proudest of. The
+  new list rides the undo snapshot and the save with the points it explains, so a
+  taken-back kill takes its face back too.
+
+  **The way out names its destination.** "See what's here" describes a feeling
+  rather than a place; it is **"Go to Event"**, **"Go to Shop"** at a hub owing no
+  event, and "Travel on" otherwise, with the event winning when both are owed
+  because the event is what actually opens next.
+
+  Which meant **the shop had to come off the screen**. It was mounted into the
+  left column and handed back to the page on the way out — four sections fighting
+  for a 720p canvas, and a button reading "Go to Shop" beside a shelf the player
+  is already looking at names nothing. The shelf stays under the board per §14 and
+  the page's own chain mounts it after the event, exactly as it does when no haul
+  screen was involved; the screen keeps only the hub's id. `release_shop` and
+  `_adopt_shop` go with it.
+
+  One test went too, and deserves naming: `test_the_shelfs_item_card_opens_above_
+  the_haul_screen` set its hub up *after* `_report_beat`, which already builds the
+  screen in the same breath (§7.4) — so `screen._shop` was null and its own guard
+  returned early without asserting anything. It had not been testing its subject
+  for some time.
+
 - **An unread scroll has a name of its own, and it is a different one every run.**
 
   A scroll's mask used to be the string `"Unidentified Scroll"` — the same string

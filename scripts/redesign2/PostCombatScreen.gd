@@ -37,18 +37,18 @@ extends Control
 #                   `LootDropModal.embed`), so a chest and a pack behave here
 #                   exactly as they do anywhere else — same cards, same drag, same
 #                   bin, same "use it where you stand".
-#   THE SHOP      — a hub's shelf, if this game was one of the ten (§14). It is
-#                   mounted here and then HANDED BACK to the page on the way out
-#                   (`release_shop`), because §14's decision that a shop blocks
-#                   nothing and stays for the whole visit is still right; what was
-#                   missing was it being seen at the moment you arrive.
 #   THE WARNING   — the boss notice as a banner rather than a sixth popup, since
 #                   a boss round is announced between two games and this screen is
 #                   what is standing between them.
 #
-# And one button out. It is the EVENT when the node owes one — clicking it is what
-# opens the event, so the player leaves this screen into the next thing rather
-# than having the next thing dropped on them — and "travel on" when it doesn't.
+# THE SHOP IS NOT ONE OF ITS SECTIONS, and briefly was: a hub's shelf was mounted
+# into the left column and handed back to the page on the way out. It is off again
+# — see `shop_id` for why the button naming it is the reason.
+#
+# And one button out, which NAMES WHERE IT GOES: "Go to Event" when the node owes
+# one (clicking it is what opens the event, so the player leaves this screen into
+# the next thing rather than having the next thing dropped on them), "Go to Shop"
+# at a hub that owes no event, and "Travel on" when it owes neither.
 #
 # Built in code on its own CanvasLayer, BELOW the run's header bar (135) so Health
 # and Gold stay readable over it, and below the loot use modal (130) so spending a
@@ -61,12 +61,10 @@ signal finished
 
 const LAYER := 128
 # Where a card raised BY one of this screen's sections goes: above the screen and
-# still below the run's header bar (135). The shop's shelf is the one that needs
-# it — it opens an item's card on a layer of its own, and its default clears the
-# page rather than this.
+# still below the run's header bar (135). Nothing on the screen needs it since the
+# shelf came off, but a section that raises a card of its own will, and 131 is the
+# only value between this screen and the bar.
 const CARD_LAYER := 131
-# …and the default it goes back to once the shelf is under the board again.
-const SHOP_CARD_LAYER_ON_PAGE := 122
 const ACCENT := UITheme.ACCENT
 # The frame's inset from the room it is allowed. Small, because this screen is
 # the page for as long as it is up and the loot column alone wants 586 of the
@@ -77,6 +75,10 @@ const INSET_Y := 10.0
 # at this game all evening. Every row it gives back goes to the loot column, whose
 # 3x3 and bin are the tightest thing on the page.
 const COVER := Vector2(44, 58)
+# How wide the verdict's words are allowed to be before they wrap. It is what
+# keeps the ★ Rate button beside the game's name instead of out at the frame's
+# edge — see _header.
+const TITLE_W := 520
 # The gutter between the two columns, and the width the right one is pinned to —
 # the loot section's own, so the offer and the pack stay side by side (that drag
 # is what the section is for).
@@ -92,9 +94,9 @@ var _chests: Array = []
 var _loot: Array = []
 # Whether an event is queued behind this screen, which is what the way out says.
 var _event_pending: bool = false
-# The hub whose shelf belongs on this screen, and the panel once it is mounted.
+# The hub this screen's exit leads to, when the game was one of the ten. Only ever
+# read for the button's wording — the shelf itself is the page's (see `shop_id`).
 var _shop_id: StringName = &""
-var _shop: ShopPanel2 = null
 # The boss round this screen is warning about: the tier it steps to and the
 # bosses about to be on the table. Empty when the next round is an ordinary one.
 var _boss_tier: String = ""
@@ -107,8 +109,9 @@ var _layer: CanvasLayer = null
 var _done: bool = false
 var _chest_slot: VBoxContainer = null
 var _chest_head: Label = null
+# The one-row sum under that heading: why the chest is the size it is.
+var _chest_why: Control = null
 var _loot_slot: VBoxContainer = null
-var _shop_slot: VBoxContainer = null
 var _boss_slot: VBoxContainer = null
 var _exit_btn: Button = null
 # The chest sections on screen, one per chest the report dropped — ALL of them at
@@ -267,6 +270,63 @@ func step_line() -> String:
 func _tier_now() -> int:
 	return RunDifficulty.tier_for(GameState.games_played)
 
+# ---------------------------------------------------------------------------
+# Why the chest is the size it is
+# ---------------------------------------------------------------------------
+#
+# THE CHEST USED TO ARRIVE AS AN ASSERTION. A Large one turned up over the words
+# "what the evening earned" and nothing anywhere said why it was Large rather than
+# Small — so the one reward that scales with how hard you fought was also the one
+# the player had no way to read as a consequence of their fighting. The rule
+# (§8.2) is simple enough to show: beating the game is worth a point, every body
+# you cleared is worth its own difficulty (Low 1 … Insane 4), and the total is
+# spent up the size ladder.
+#
+# So the screen shows the SUM, with the faces in it: [win +1] + [face +2] +
+# [face +1] = Large Chest. Rows, not prose — a player who has just fought those
+# bodies recognises them faster than any sentence about them.
+#
+# `chest_sources` comes off the snapshot, read before the claim emptied the pool
+# (Overworld2.report). Returns [] when this report earned no kill chest — an
+# escape, a missed goal — and the section is not drawn at all.
+func chest_terms() -> Array:
+	if verdict() != "beaten":
+		return []
+	var out: Array = [{"label": "Beat the game", "points": 1, "enemy": null}]
+	for row in _snap.get("chest_sources", []):
+		if not (row is Dictionary):
+			continue
+		var enemy: GoalEnemyData = (row as Dictionary).get("enemy")
+		if enemy == null:
+			continue
+		out.append({"label": enemy.display_name,
+			"points": int((row as Dictionary).get("points", 0)), "enemy": enemy})
+	return out
+
+# The point total those terms come to, and the chest it buys — the right-hand side
+# of the sum. Read off Data.chest_reward_sizes, the same function that actually
+# spent the points, so the explanation and the payout can never disagree.
+func chest_total() -> int:
+	var sum: int = 0
+	for term in chest_terms():
+		sum += int(term.get("points", 0))
+	return sum
+
+func chest_result_text() -> String:
+	var total: int = chest_total()
+	return Data.chest_reward_text(total) if total > 0 else ""
+
+# The whole line in words, for a headless test and for anyone who would rather
+# read it than count the faces: "Beat the game +1, Leprechaun +2 = 1 Large Chest".
+func chest_reason() -> String:
+	var terms: Array = chest_terms()
+	if terms.is_empty():
+		return ""
+	var parts: Array = []
+	for term in terms:
+		parts.append("%s +%d" % [String(term.get("label", "")), int(term.get("points", 0))])
+	return "%s = %s" % [", ".join(PackedStringArray(parts)), chest_result_text()]
+
 # The chest currently being asked about, and the payout on the table — the two
 # embedded sections, named so a headless test can answer them the way a player
 # does (`take` / `leave`) rather than reaching into the layout for a button.
@@ -297,9 +357,22 @@ func chests_waiting() -> int:
 # What the way out says. The EVENT when the node owes one, because clicking it is
 # what opens the event — the player leaves this screen into the next thing rather
 # than having the next thing dropped on top of them.
+# IT NAMES THE PLACE IT GOES. It used to say "See what's here" for an event and
+# "Travel on" for nothing, and the first of those describes a feeling rather than
+# a destination — the player could not tell from it whether they were about to be
+# handed an event, dropped at a shop, or simply moved on.
+#
+# THE EVENT WINS WHEN BOTH ARE OWED, because the event is what happens next: the
+# page resumes the chain event-first (`finished`), and the shelf is still under
+# the board on the far side of it. A button promising the shop would be naming the
+# thing after the thing that actually opens.
 func exit_text() -> String:
 	var left: int = _unanswered()
-	var base: String = "⚑  See what's here" if _event_pending else "→  Travel on"
+	var base: String = "→  Travel on"
+	if _event_pending:
+		base = "⚑  Go to Event"
+	elif _shop_id != &"":
+		base = "🛒  Go to Shop"
 	if left <= 0:
 		return base
 	return "%s   (leaving %d behind)" % [base, left]
@@ -384,15 +457,74 @@ func _header() -> Control:
 
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 2)
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# SHRINK, not expand, so the rate button below sits BESIDE the name rather than
+	# being shoved to the far end of a 1200px row by a title block that grew to
+	# fill it. The spacer after the button is what takes the slack instead.
+	#
+	# WIDTH PINNED, because two of the three lines autowrap: with nothing to wrap
+	# AGAINST, a shrink-sized block reports the whole sentence on one line and
+	# pushes the button back out to the edge this is here to bring it in from.
+	# The subtitle and the difficulty step wrap at TITLE_W instead.
+	words.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	words.custom_minimum_size = Vector2(TITLE_W, 0)
 	row.add_child(words)
 	words.add_child(_line(headline(), _accent(), 22))
-	words.add_child(_line(subtitle(), UITheme.TEXT, 13, true))
+	words.add_child(_wrapped(subtitle(), UITheme.TEXT, 13))
 	var step: String = step_line()
 	if step != "":
-		words.add_child(_line(step, UITheme.GOLD, 12, true))
+		words.add_child(_wrapped(step, UITheme.GOLD, 12))
+
+	# ★ RATE, BESIDE THE COVER AND THE NAME, because this is the moment there is
+	# anything to say. It used to live on the play panel's checklist — offered
+	# while the game was still in front of you, which is the one time the player
+	# has not finished forming the opinion the button is asking for. Here the game
+	# is over, its cover is right there, and the score is the last thing the
+	# evening produces. (The select screen keeps its own "★ Rate <game>" for a
+	# game reported earlier; that one is about a different moment and stays.)
+	if g != null:
+		row.add_child(_rate_button(g))
+	# …and the slack goes here, past the button, so the header still spans the
+	# frame without pushing the score away from the game it is about.
+	var tail := Control.new()
+	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(tail)
 	return row
+
+# The rating entry point for this screen. It does NOT go through
+# Overworld2._prompt_rating: that one opens the tier-list board on submit, which
+# is the right follow-through from the select screen and the wrong one here — it
+# would drop a full-screen board over a haul the player has not finished taking.
+# So the score is saved and the screen stays put.
+#
+# Parented to THIS screen rather than to the page, because the page's tree is
+# under this CanvasLayer (128) and a modal added there opens behind the very
+# screen whose button asked for it.
+func _rate_button(g: GameData) -> Button:
+	var btn := Button.new()
+	var existing: Dictionary = TierList.get_rating(g.id)
+	btn.text = "★  Rated %d/10" % int(existing.get("score", 0)) \
+		if not existing.is_empty() else "★  Rate this game"
+	btn.tooltip_text = "Score %s out of 10 — optional, and you can change it later." \
+		% g.display_name
+	btn.custom_minimum_size = Vector2(150, 34)
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_color_override("font_color", UITheme.GOLD)
+	btn.pressed.connect(func(): _open_rating(g, btn))
+	return btn
+
+func _open_rating(g: GameData, btn: Button) -> void:
+	var modal := RateGameModal.new()
+	modal.setup(g.id, g)
+	modal.submitted.connect(func(score: int, notes: String):
+		TierList.set_rating(g.id, score, notes)
+		modal.queue_free()
+		# The button carries the score back, so pressing it again reads as an edit
+		# rather than as a rating that did not take.
+		if btn != null and is_instance_valid(btn):
+			btn.text = "★  Rated %d/10" % score)
+	modal.dismissed.connect(func(): modal.queue_free())
+	add_child(modal)
 
 # The left column: the numbers, the chests, the warning and the shelf, in the
 # order they answer "what just happened". It scrolls, because a boss round at a
@@ -420,6 +552,13 @@ func _left_column() -> Control:
 	_chest_head.visible = false
 	col.add_child(_chest_head)
 
+	# …and directly under it, the sum that produced the chest below (chest_terms).
+	# Hidden and shown with the heading, since it is describing the same thing.
+	_chest_why = _chest_sum_row()
+	if _chest_why != null:
+		_chest_why.visible = false
+		col.add_child(_chest_why)
+
 	_chest_slot = VBoxContainer.new()
 	_chest_slot.add_theme_constant_override("separation", 6)
 	_chest_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -429,9 +568,6 @@ func _left_column() -> Control:
 	_boss_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_boss_slot)
 
-	_shop_slot = VBoxContainer.new()
-	_shop_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_child(_shop_slot)
 	return scroller
 
 # Everything that goes INSIDE the columns, once the columns are on the screen.
@@ -440,7 +576,6 @@ func _left_column() -> Control:
 func _fill_sections() -> void:
 	if not _bosses.is_empty() or _boss_tier != "":
 		BossNoticeModal.embed(self, _boss_slot, _boss_tier, _bosses)
-	_mount_shop()
 	_fill_payout()
 	_build_chests()
 	_refresh_exit()
@@ -535,13 +670,20 @@ func _empty_note(text: String) -> Control:
 	wrap.add_child(l)
 	return wrap
 
+# The line beside the way out, which names the same destination the button does —
+# the two are read together and used to disagree once the button stopped saying
+# "see what's waiting".
+func _hint_text() -> String:
+	if _event_pending:
+		return "Take what you want, spend what you like — then on to the event."
+	if _shop_id != &"":
+		return "Take what you want — the shop is waiting under the board."
+	return "Take what you want, then pick where the run goes next."
+
 func _footer() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
-	var hint := _line(
-		"Take what you want, spend what you like — then see what's waiting."
-		if _event_pending else "Take what you want, then pick where the run goes next.",
-		UITheme.TEXT_FAINT, 12)
+	var hint := _line(_hint_text(), UITheme.TEXT_FAINT, 12)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(hint)
@@ -603,9 +745,77 @@ func _mount_chest(items: Array) -> void:
 # their own panels, so this is asked again after each answer (deferred, because
 # the freed panel is still a child on the frame it is answered).
 func _sync_chest_head() -> void:
-	if _chest_head == null or not is_instance_valid(_chest_head):
-		return
-	_chest_head.visible = not _live_chests().is_empty()
+	var showing: bool = not _live_chests().is_empty()
+	if _chest_head != null and is_instance_valid(_chest_head):
+		_chest_head.visible = showing
+	if _chest_why != null and is_instance_valid(_chest_why):
+		_chest_why.visible = showing
+
+# The sum, as one wrapping row of small chips: the win, then a face per body with
+# what it was worth, `+` between them, `=` and the chest at the end. Null when
+# this report earned no chest to explain.
+#
+# DELIBERATELY SMALL AND DELIBERATELY ONE ROW. The left column already scrolls,
+# and this is a footnote to the chest under it rather than a section of its own —
+# it earns its space by being read in a glance and not by being thorough. The
+# faces are 22px, the numbers ride on them, and the whole thing wraps rather than
+# growing a scrollbar when a big evening put eight bodies in it.
+const REASON_FACE := 22
+
+func _chest_sum_row() -> Control:
+	var terms: Array = chest_terms()
+	if terms.is_empty():
+		return null
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG_DEEP, UITheme.BORDER, 6, 8, 1))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 5)
+	flow.add_theme_constant_override("v_separation", 3)
+	wrap.add_child(flow)
+	for i in range(terms.size()):
+		if i > 0:
+			flow.add_child(_sum_glyph("+"))
+		flow.add_child(_sum_term(terms[i]))
+	flow.add_child(_sum_glyph("="))
+	var result := _line(chest_result_text(), UITheme.GOLD, 12)
+	result.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	flow.add_child(result)
+	return wrap
+
+# One term: the enemy's face with its point value beside it, or the win's own
+# point, which has no face and says so in words instead.
+func _sum_term(term: Dictionary) -> Control:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	var enemy: GoalEnemyData = term.get("enemy")
+	if enemy != null and enemy.image != null:
+		var art := TextureRect.new()
+		art.texture = enemy.image
+		art.custom_minimum_size = Vector2(REASON_FACE, REASON_FACE)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		# The name is the tooltip rather than a caption: eight of these across a
+		# 600px column is a row of labels, and the picture is the point.
+		art.tooltip_text = "%s — %s, worth %d" % [enemy.display_name,
+			RunDifficulty.tier_name(enemy.tier_index()), int(term.get("points", 0))]
+		box.add_child(art)
+	else:
+		# The win's own point (§8.2): a game beaten with a clear board is still a
+		# Small chest, and the sum has to show where that came from.
+		var w := _line("🏆", UITheme.GOLD, 15)
+		w.tooltip_text = "Beating the game is worth 1 on its own."
+		w.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(w)
+	var pts := _line("+%d" % int(term.get("points", 0)), UITheme.TEXT, 12)
+	pts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(pts)
+	return box
+
+func _sum_glyph(text: String) -> Control:
+	var l := _line(text, UITheme.TEXT_FAINT, 12)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return l
 
 # A chest banked AFTER this screen opened — a level-up's reward, Unstable Genome,
 # a status's payout — put on the screen rather than behind it. Without this it
@@ -640,39 +850,21 @@ func _on_loot_answered(taken: Array) -> void:
 # The shop
 # ---------------------------------------------------------------------------
 
-func _mount_shop() -> void:
-	if _shop_id == &"" or _shop_slot == null:
-		return
-	_shop = ShopPanel2.mount(_shop_slot, _shop_id)
-	if _shop == null:
-		return
-	# The shelf's own item card has to clear THIS screen. Its default layer (122)
-	# is under this one, so clicking a row opened a card nobody could see and then
-	# produced it the moment the player left. Put back to the panel's default when
-	# the shelf is handed over to the page (release_shop), where 122 is correct.
-	_shop.card_layer = CARD_LAYER
-	# The panel is handed back to the page on the way out (release_shop), so its
-	# `finished` is the page's to wire up — not this screen's, which is about to
-	# stop existing.
-	_shop.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-# Give the shelf back to the page, unparented and unfinished. §14's decision that
-# a shop blocks nothing and stays for the whole visit still holds — this screen
-# only borrowed it for the moment of arrival, which is the one moment it was
-# never seen. Returns null when this game had no shop.
-func release_shop() -> ShopPanel2:
-	var panel: ShopPanel2 = _shop
-	_shop = null
-	if panel == null or not is_instance_valid(panel):
-		return null
-	# A card left open belongs to a screen that is about to go, and its layer is
-	# this screen's rather than the page's — so it is closed and the panel goes
-	# back to the default it will need under the board.
-	panel.close_card()
-	panel.card_layer = SHOP_CARD_LAYER_ON_PAGE
-	if panel.get_parent() != null:
-		panel.get_parent().remove_child(panel)
-	return panel
+# THE SHELF IS NOT ON THIS SCREEN ANY MORE. It used to be mounted into the left
+# column and handed back to the page on the way out, on the reasoning that §14's
+# "a shop blocks nothing and stays for the whole visit" was right but that the
+# moment of ARRIVAL was never seen.
+#
+# What that produced was a screen with four sections competing for a 720p canvas
+# and a way out that could not honestly name where it went: the button now says
+# "Go to Shop", and a button pointing at a shelf the player is already looking at
+# is a button describing nothing. So the shelf stays where §14 put it — under the
+# board, for the rest of the visit — and this screen keeps only the id, to know
+# that is where its exit leads. The page never claims `_pending_shop` for this
+# screen now, so its own chain mounts the shelf after the event exactly as it
+# does when no haul screen was involved (Overworld2._open_pending_shop).
+func shop_id() -> StringName:
+	return _shop_id
 
 
 # ---------------------------------------------------------------------------
@@ -719,6 +911,14 @@ func abandon() -> void:
 	else:
 		queue_free()
 
+
+# A wrapping line pinned to TITLE_W. An autowrap Label reports its minimum size
+# by wrapping against `custom_minimum_size.x`, so setting that is what actually
+# makes it wrap inside a shrink-sized column rather than reporting one long line.
+func _wrapped(text: String, color: Color, size: int) -> Label:
+	var l := _line(text, color, size, true)
+	l.custom_minimum_size = Vector2(TITLE_W, 0)
+	return l
 
 func _line(text: String, color: Color, size: int, wrap: bool = false) -> Label:
 	var l := Label.new()

@@ -1679,6 +1679,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# how hard it was, paid only for a game you actually BEAT (§8.2). An escape is
 	# not a win: the player walked away, and the bodies they cleared on the way out
 	# keep their loot but buy no chest.
+	#
+	# THE ARITHMETIC IS READ FIRST, because claiming the chests is what empties it.
+	# It is the faces that paid for the chest and what each was worth, and the haul
+	# screen shows it above the chest instead of asserting a size at the player.
+	var chest_sources: Array = GameLoop2.chest_point_breakdown()
 	_queue_report_chests(beaten and not escaped)
 	# What a status charged for a game it went unanswered (§13, Burn). GameLoop2 is
 	# a model node and says nothing to the player, so the bite is announced here,
@@ -1853,6 +1858,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		"game": played_game, "beaten": beaten, "escaped": escaped,
 		"amulet": was_amulet, "res": res,
 		"tier_before": tier_before, "board_before": board_before,
+		# What bought the chest: {enemy, points} rows, read before the claim
+		# emptied the pool. Empty on a report that earned no chest at all.
+		"chest_sources": chest_sources,
 	}
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 
@@ -1977,52 +1985,39 @@ func _open_post_game() -> void:
 		for choice in _choices:
 			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 				bosses.append(choice.get("enemy"))
-	# THE SHELF, on the same terms _open_pending_shop mounts one: only where the
-	# player is actually STANDING. Claimed off `_pending_shop` when it is, so the
-	# chain behind this screen doesn't mount a second one; left there when it
-	# isn't, for that method to turn down for the same reason it always has.
+	# THE SHELF IS NOT CLAIMED, only NAMED. The haul screen used to borrow it —
+	# mount it in its own column and hand it back on the way out — and it doesn't
+	# any more (PostCombatScreen.shop_id): the id goes over purely so its exit
+	# button can say "Go to Shop", and `_pending_shop` stays set so the chain
+	# behind the screen mounts the shelf under the board exactly as it does when no
+	# haul screen was involved.
+	#
+	# Tested on the same terms _open_pending_shop mounts one — only where the
+	# player is actually STANDING — so the button never promises a shop that method
+	# is about to turn down.
 	var shop_id: StringName = _pending_shop
-	if shop_id != &"" and not GameLoop2.run_over and shop_id == _hub_underfoot():
-		_pending_shop = &""
-	else:
+	if shop_id == &"" or GameLoop2.run_over or shop_id != _hub_underfoot():
 		shop_id = &""
 	_post_screen = PostCombatScreen.open(self, snap, drops,
 		_pending_event != null, shop_id, boss_tier, bosses)
 	var screen: PostCombatScreen = _post_screen
 	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
 
-# The player is done with the haul: give the shelf back to the page and carry on
-# down the chain the report always ended in — the event, then the shop, then the
-# boss notice, then the detour question.
-func _on_post_game_finished(screen: PostCombatScreen) -> void:
+# The player is done with the haul: carry on down the chain the report always
+# ended in — the event, then the shop, then the boss notice, then the detour
+# question. The shelf needs no handover any more; the screen never borrowed it, so
+# `_pending_shop` is still set and `_open_pending_shop` mounts it in its turn.
+func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 	_post_screen = null
-	if screen != null and is_instance_valid(screen):
-		var shop: ShopPanel2 = screen.release_shop()
-		if shop != null:
-			_adopt_shop(shop)
 	_refresh()
 	autosave()
 	_open_pending_event()
 
-# Take the shelf the post-combat screen borrowed and put it back under the board,
-# where §14 says a shop lives for the rest of the visit. The panel is the same
-# node the player was just buying from — reparented rather than rebuilt, so a
-# card left open and the shelf's own scroll position survive the handover.
-func _adopt_shop(panel: ShopPanel2) -> void:
-	if _right_col == null:
-		panel.queue_free()
-		return
-	_clear_shop()
-	_right_col.add_child(panel)
-	_shop_panel = panel
-	panel.finished.connect(func():
-		_shop_panel = null
-		_sync_board_budget())
-	_sync_board_budget()
-	# Same two asks as _mount_shop: the panel has no height until the page has laid
-	# it out, so "is it on screen" is unanswerable until after that.
-	_update_shop_hint()
-	_update_shop_hint.call_deferred()
+# `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
+# reparented it under the board. Nothing borrows the shelf now — the screen knows
+# only the hub's id, so its exit button can name it — and `_mount_shop` builds the
+# panel in its own turn down the chain, which is what it always did on every path
+# that did not go through a haul screen.
 
 # Pull the screen off the wall for a reset. `abandon` rather than `dismiss`: the
 # player is not leaving the haul, the run is ending under it, and firing the way

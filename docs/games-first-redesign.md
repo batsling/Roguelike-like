@@ -2682,17 +2682,53 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 
 | Section | What it carries |
 |---|---|
-| **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
+| **The verdict** | the game's cover and name, which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) — and **★ Rate this game**, beside the cover |
 | **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
-| **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
-| **The shelf** | a hub's shop, if this game was one of the ten (§14) |
+| **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — **with the sum that sized it** — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
 
-And **one button out**. It is the **event** when the node owes one — clicking it
-is what opens the event, so the player leaves this screen *into* the next thing
-rather than having the next thing dropped on them — and "travel on" when it
-doesn't. It counts what it is about to bin (`exit_text`), because a Legendary left
-on the ground should be a decision and not a side effect of pressing Continue.
+**★ Rate is here and nowhere else in the run.** It used to sit on the play
+panel's checklist, under the Play button — offered while the game was still in
+front of the player, which is the one moment they have not finished forming the
+opinion it is asking for. Here the evening is over and its cover is right there.
+It saves the score and stays put rather than opening the tier-list board the way
+the select screen's own "★ Rate \<game\>" does: that board over a haul the player
+has not finished taking is a screen in the way of a decision.
+
+**The chest says why it is the size it is.** It used to arrive as an assertion —
+a Large one under "what the evening earned", with nothing anywhere saying why it
+was Large rather than Small, so the one reward that scales with how hard you
+fought was also the one that could not be read as a consequence of your fighting.
+The rule is simple enough to show, so the screen shows it as a sum: a row of the
+faces that paid, each with what it was worth, `+` between them and the chest at
+the end — 🏆 +1 ✛ 👹 +2 ✛ 👺 +1 = **1 Large Chest**. One small row above the chest,
+wrapping rather than scrolling.
+
+The terms are `GameLoop2.chest_point_breakdown()`, banked at each kill beside the
+points themselves and read *before* `claim_chests` empties the pool. They are
+recorded rather than reconstructed from the report's own defeat list, because a
+body a mine killed during a lost run is defeated inside `attempt_turn` and never
+appears there — its points do land in the pool, so a screen that re-derived the
+sum would under-count exactly the bodies the player is proudest of.
+
+And **one button out, which names where it goes**: **"Go to Event"** when the
+node owes one (clicking it is what opens the event, so the player leaves this
+screen *into* the next thing rather than having the next thing dropped on them),
+**"Go to Shop"** at a hub that owes no event, and **"Travel on"** when it owes
+neither. The event wins when both are owed, because the event is what actually
+opens next and the shelf is still under the board on the far side of it. It
+counts what it is about to bin (`exit_text`), because a Legendary left on the
+ground should be a decision and not a side effect of pressing Continue.
+
+**The shelf is not a section of this screen**, and briefly was: a hub's shop was
+mounted into the left column and handed back to the page on the way out, on the
+reasoning that §14's "a shop blocks nothing and stays for the whole visit" was
+right but the moment of *arrival* was never seen. What that produced was four
+sections competing for a 720p canvas and a way out that could not honestly name
+itself — a button reading "Go to Shop" beside a shelf the player is already
+looking at describes nothing. So the shelf stays where §14 put it, under the
+board, and this screen keeps only the hub's id to know that is where its exit
+leads (`PostCombatScreen.shop_id`).
 
 **The sections are the real modals, embedded.** `ItemDropModal.embed`,
 `LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the

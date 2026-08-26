@@ -4959,6 +4959,118 @@ func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
 	assert_eq(_haul().verdict(), "escaped", "walked away from it")
 	_leave_post_game()
 
+# ==========================================================================
+# Why the chest is the size it is (§8.2)
+#
+# The chest used to arrive as an assertion — a Large one over the words "what the
+# evening earned", with nothing anywhere saying why it was Large. The screen shows
+# the sum now: beating the game is a point, every body cleared is worth its own
+# difficulty, and the total is spent up the size ladder.
+# ==========================================================================
+
+# The floor of it: a game beaten with nothing cleared is one point and one Small
+# chest, and the sum says exactly that rather than leaving the term out.
+func test_the_chest_sum_starts_with_the_point_the_win_is_worth() -> void:
+	_clear_board()
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var terms: Array = screen.chest_terms()
+	assert_false(terms.is_empty(), "a beaten game has a sum to show")
+	assert_eq(String(terms[0].get("label", "")), "Beat the game",
+		"and it opens with the point the win is worth on its own")
+	assert_eq(int(terms[0].get("points", 0)), 1)
+	assert_null(terms[0].get("enemy"), "which has no face behind it")
+	_leave_post_game()
+	_dismiss_event()
+
+# Every body that paid appears, worth its own difficulty — and the terms ADD UP to
+# the chest the player was actually handed. That is the whole point of showing the
+# arithmetic: a breakdown that did not total the payout would be worse than none.
+func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
+	_ui.pick(0)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var sum: int = 0
+	for term in screen.chest_terms():
+		var points: int = int(term.get("points", 0))
+		assert_gt(points, 0, "every term is worth something")
+		var enemy: GoalEnemyData = term.get("enemy")
+		if enemy != null:
+			assert_eq(points, GameLoop2.chest_points_for(enemy),
+				"%s is worth its own difficulty" % enemy.display_name)
+		sum += points
+	assert_eq(sum, screen.chest_total(), "the terms are the total")
+	assert_eq(screen.chest_result_text(), Data.chest_reward_text(sum),
+		"and the total names the chest the same function actually spent it on")
+	assert_string_contains(screen.chest_reason(), "=",
+		"the line reads as a sum: %s" % screen.chest_reason())
+	_leave_post_game()
+	_dismiss_event()
+
+# No chest, no explanation. A missed goal and a walk-away bank nothing from the
+# bodies (§8.2), so there is no size to justify and the section is not drawn.
+func test_a_report_that_earns_no_chest_explains_nothing() -> void:
+	_ui.pick(0)
+	_ui.report(false)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	assert_true(screen.chest_terms().is_empty(), "a missed goal buys no chest")
+	assert_eq(screen.chest_reason(), "", "so it has nothing to explain")
+	_leave_post_game()
+	_dismiss_event()
+
+# ★ RATE MOVED HERE from the play panel's checklist, where it offered the score
+# while the game was still in front of the player. It sits beside the cover now.
+func test_the_haul_screen_carries_the_rate_button() -> void:
+	_ui.pick(0)
+	var played: GameData = _ui._chosen.get("game")
+	_report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var rate: Button = null
+	for btn in screen.find_children("*", "Button", true, false):
+		if String((btn as Button).text).contains("Rate"):
+			rate = btn
+	assert_not_null(rate, "the haul screen offers the score")
+	if rate != null and played != null:
+		assert_string_contains(rate.tooltip_text, played.display_name,
+			"for the game that just ended")
+	_leave_post_game()
+	_dismiss_event()
+
+# …and the play panel does NOT, which is the other half of the move. Asserted
+# while a game is in play and BEFORE any haul screen exists: the screen mounts its
+# CanvasLayer under the page, so a search of the page's tree with the haul up
+# would find the button this test is checking has gone.
+func test_the_play_panel_no_longer_asks_for_a_score_mid_game() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
+	assert_null(_ui._post_screen, "and no haul screen to borrow a button from")
+	# ReportChecklist is a RefCounted that builds into containers the PAGE owns —
+	# `_launch_row` is the strip the Play button and the old ★ Rate shared.
+	assert_not_null(_ui._launch_row, "the play panel's launch strip is up")
+	if _ui._launch_row == null:
+		return
+	for btn in _ui._launch_row.find_children("*", "Button", true, false):
+		assert_false(String((btn as Button).text).contains("Rate"),
+			"the checklist does not ask for a score while the game is still in "
+			+ "front of you — found %s" % (btn as Button).text)
+
 # The numbers out of beat_game's result, which used to be thrown away the moment
 # the animation had played them: what it cost you, and what is still on your tail.
 func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
@@ -4995,8 +5107,8 @@ func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
 	# The chain behind the screen is what OPENS the event, and it hangs off this
 	# signal — which _open_post_game normally wires. Built by hand, so wired by hand.
 	screen.finished.connect(func(): _ui._on_post_game_finished(screen))
-	assert_true(screen.exit_text().contains("what's here"),
-		"the button says an event is behind it: %s" % screen.exit_text())
+	assert_true(screen.exit_text().contains("Go to Event"),
+		"the button NAMES what is behind it: %s" % screen.exit_text())
 	assert_null(_ui._event_modal, "which has NOT been dropped on the player yet")
 	screen.dismiss()
 	assert_not_null(_ui._event_modal, "and pressing it is what opens the event")
@@ -5151,35 +5263,13 @@ func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 	assert_null(found, "no RewardScreen opened underneath it")
 	_leave_post_game()
 
-# The shelf's own item card has to clear this screen. Its default layer is under
-# it, so clicking a shelf row opened a card nobody could see and then produced it
-# the moment the player left.
-func test_the_shelfs_item_card_opens_above_the_haul_screen() -> void:
-	var hub: StringName = _a_hub()
-	if hub == &"":
-		return
-	_ui.pick(0)
-	_report_beat(_ui)
-	_ui._pending_shop = hub
-	GameState.current_game_id = hub
-	_ui._end_resolve()
-	var screen := _haul()
-	assert_not_null(screen)
-	if screen == null or screen._shop == null:
-		_leave_post_game()
-		return
-	assert_gt(screen._shop.card_layer, PostCombatScreen.LAYER,
-		"the shelf raises its card above the screen holding it")
-	screen._shop.open_card(0)
-	assert_not_null(screen._shop._card_layer, "and the card actually opened")
-	if screen._shop._card_layer != null:
-		assert_gt(screen._shop._card_layer.layer, PostCombatScreen.LAYER,
-			"on a layer that clears it")
-	screen.dismiss()
-	_ui._post_screen = null
-	assert_eq(_ui._shop_panel.card_layer, PostCombatScreen.SHOP_CARD_LAYER_ON_PAGE,
-		"and the panel goes back to the page's own layer with it")
-	_dismiss_event()
+# A test checking the shelf's item-card LAYER on the haul screen lived here. The
+# shelf is not on that screen any more (see
+# test_leaving_the_haul_screen_lands_the_shelf_under_the_board), so there is no
+# card of its own to raise — and the test was not earning its place anyway: it set
+# the hub up AFTER `_report_beat`, which already builds the screen in the same
+# breath (§7.4), so `screen._shop` was null and its own guard returned early
+# without asserting. Its subject is covered where the shelf actually lands now.
 
 # Loot granted WHILE the screen is up lands on it. A relic taken from one of its
 # own chests can pay out the instant it is picked up (Mom's Coin Purse is four
@@ -5231,13 +5321,13 @@ func test_a_queued_payout_survives_a_save_in_either_shape() -> void:
 	_ui._drop_queue.clear()
 
 # §14's decision still holds: a shop blocks nothing and stays for the whole visit.
-# The haul screen only BORROWS the shelf for the moment of arrival — the one
-# moment it was never seen — and hands the same panel back on the way out.
-func test_the_shelf_is_borrowed_and_handed_back_to_the_page() -> void:
+# LEAVING THE HAUL SCREEN IS WHAT PUTS IT THERE, down the page's own chain — the
+# screen names the hub on its way out and never touches the panel.
+func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
 		return
-	# Standing IN the hub with its shelf owed — the state _open_post_game claims a
+	# Standing IN the hub with its shelf owed — the state _open_post_game names a
 	# shelf in. The screen is opened directly rather than reported into: a report
 	# moves the run to the card it just played and builds the screen in the same
 	# breath now that the resolve can land instantly (§7.4), so there is no moment
@@ -5251,16 +5341,21 @@ func test_the_shelf_is_borrowed_and_handed_back_to_the_page() -> void:
 	assert_not_null(screen)
 	if screen == null:
 		return
-	var borrowed: ShopPanel2 = screen._shop
-	assert_not_null(borrowed, "the shelf is on the haul screen")
-	if borrowed == null:
-		return
-	assert_eq(borrowed.game_id(), hub, "and it is this hub's")
+	assert_eq(screen.shop_id(), hub, "the screen knows where its exit leads")
+	assert_string_contains(screen.exit_text(), "Go to Shop",
+		"and the way out NAMES it rather than saying 'see what's here'")
+	assert_eq(_ui._pending_shop, hub,
+		"the shelf is still the PAGE's to mount — the screen never claimed it")
+	assert_null(_ui._shop_panel, "and nothing is mounted while the haul is up")
+	# `dismiss` emits `finished`, which the page wired to _on_post_game_finished —
+	# so this is the real way out, not a nudge past it.
 	screen.dismiss()
 	_ui._post_screen = null
-	assert_eq(_ui._shop_panel, borrowed, "the SAME panel came back to the page")
-	assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
-		"under the board, where a shop lives for the rest of the visit")
+	assert_not_null(_ui._shop_panel, "leaving mounts the shelf")
+	if _ui._shop_panel != null:
+		assert_eq(_ui._shop_panel.game_id(), hub, "and it is this hub's")
+		assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
+			"under the board, where a shop lives for the rest of the visit")
 	_dismiss_event()
 
 # The boss warning is a banner on this screen rather than a sixth popup — a boss
