@@ -23,6 +23,144 @@ extends Node
 const SCROLL_COLOR := Color(0.61, 0.35, 0.71)
 
 # ===========================================================================
+# The run's alphabet: what an unread scroll calls itself
+# ===========================================================================
+#
+# THE SCROLL'S MASK IS ITS NAME, where a potion's is a bottle colour and a pill's
+# is a capsule (§4.1). Every unidentified scroll wears the same parchment — there
+# is no per-scroll mystery art and there should not be, because a scroll is a
+# sheet of paper with writing on it — so the writing is the tell. Until you read
+# one, a scroll is "ZELGO MER" or "ah bloto festr": a title that means nothing,
+# is the same title all run, and means something else entirely in the next run.
+#
+# This is the thing the pack was missing. Nine slots of "Unidentified Scroll" is
+# not an inventory, it is a row of identical unknowns, and the Identify picker
+# had to spoil the real names outright just to be a choice at all (see
+# LootSystem.pick_label). A dealt title makes the unknowns TELLABLE APART without
+# telling you a thing about any of them, which is the whole trick every roguelike
+# this one is built out of plays with its scrolls.
+#
+# The bag is data/scroll_names.tres, generated from the two right-hand columns of
+# the `scrolls2.0` sheet (tools/generate_scroll2_tres.py).
+const NAMES_PATH := "res://data/scroll_names.tres"
+
+# How many syllables an assembled label is built from, inclusive. The sheet's
+# parts are short — "ah", "zep", "snorf" — so two is already a name and five is
+# still readable in a pack slot.
+const PARTS_MIN := 2
+const PARTS_MAX := 5
+
+# Loaded once and shared. `load` rather than `preload` so a missing book is a
+# null to fall back from rather than a parse error taking the autoload down with
+# it — the generator has to have been run, and a checkout that hasn't run it
+# should still boot.
+var _names_book: ScrollNames = null
+
+func _name_book() -> ScrollNames:
+	if _names_book == null and ResourceLoader.exists(NAMES_PATH):
+		_names_book = load(NAMES_PATH)
+	return _names_book
+
+# Deal every scroll a distinct meaningless title, once per run.
+#
+# A COIN PER SCROLL, which is what the design asks for: half the roster wears one
+# of the sheet's authored whole names, half wears 2-5 syllables joined with
+# spaces. The two halves look alike in a pack slot and are meant to — the player
+# has no way to tell an authored label from an assembled one, so neither carries
+# information about the scroll behind it.
+#
+# EVERY LABEL IS DISTINCT, and that is load-bearing rather than tidy: two scrolls
+# both answering to "TEMOV" would make the run log ambiguous about the exact
+# mystery the player is being asked to track. Whole names come out of a shuffled
+# bag so they cannot repeat; an assembled label is rerolled if it collides, and
+# falls back to the other kind if it somehow cannot find a free one.
+#
+# Idempotent: a run reloaded from a save already has its titles and must keep
+# them, or the alphabet the player spent the run learning would be redealt
+# underneath them (the same rule PotionSystem.ensure_colors follows).
+func ensure_names() -> void:
+	if not GameState.scroll_name_map.is_empty():
+		return
+	var book: ScrollNames = _name_book()
+	if book == null or book.is_empty():
+		return
+	var scrolls: Array = Data.all_scrolls()
+	if scrolls.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	# The whole-name bag, shuffled and drawn from — never sampled with
+	# replacement, which is how a 35-name bag still manages to deal a duplicate.
+	var bag: Array = Array(book.names)
+	bag.shuffle()
+	var taken: Dictionary = {}
+	for scroll in scrolls:
+		if not (scroll is ScrollData):
+			continue
+		var label: String = ""
+		# The coin. Whole name on heads — if the bag still has one — assembled on
+		# tails. A bag that runs dry falls through to the assembled side rather
+		# than leaving a scroll nameless: the parts can always make one more.
+		if rng.randf() < 0.5 and not bag.is_empty():
+			label = String(bag.pop_back())
+		else:
+			label = _assemble_label(book, rng, taken)
+			# Nothing free came back from the syllables (a tiny parts list, or a
+			# very unlucky run of collisions) — take a whole name instead.
+			if label == "" and not bag.is_empty():
+				label = String(bag.pop_back())
+		if label == "" or taken.has(label):
+			continue
+		taken[label] = true
+		GameState.scroll_name_map[String(scroll.id)] = label
+
+# One assembled label: PARTS_MIN..PARTS_MAX syllables joined with spaces, drawn
+# WITHOUT replacement inside the one label so it doesn't read "foo foo zep".
+# Returns "" if it cannot find a label nothing else is already using.
+func _assemble_label(book: ScrollNames, rng: RandomNumberGenerator,
+		taken: Dictionary) -> String:
+	if book.parts.is_empty():
+		return ""
+	for _attempt in range(24):
+		var pool: Array = Array(book.parts)
+		pool.shuffle()
+		var count: int = mini(rng.randi_range(PARTS_MIN, PARTS_MAX), pool.size())
+		var label: String = " ".join(PackedStringArray(pool.slice(0, count)))
+		if not taken.has(label):
+			return label
+	return ""
+
+# The title a scroll wears this run, or "" if it was never dealt one (an empty or
+# missing name book — see display_name, which falls back to the flat wording).
+func name_for(id: StringName) -> String:
+	ensure_names()
+	return String(GameState.scroll_name_map.get(String(id), ""))
+
+# The scroll a title means this run, or null. The inverse of name_for, for the
+# same reason PotionSystem has potion_for_color: the label is what the player
+# talks about, so something has to be able to look one up.
+func scroll_for_name(label: String) -> ScrollData:
+	ensure_names()
+	for id in GameState.scroll_name_map.keys():
+		if String(GameState.scroll_name_map[id]) == label:
+			return Data.get_scroll(StringName(id))
+	return null
+
+# Where a dealt title came from — "NetHack", "Rogue", "WazHack" — for the card
+# that credits it, the way a potion's vial credits the game that named it. An
+# ASSEMBLED label is credited to whichever game authored its syllables, read off
+# the first one, since the sheet's parts are all one game's.
+func name_source(label: String) -> String:
+	var book: ScrollNames = _name_book()
+	if book == null or label == "":
+		return ""
+	var whole: String = book.source_for_name(label)
+	if whole != "":
+		return whole
+	var first: String = label.split(" ")[0]
+	return book.source_for_part(first)
+
+# ===========================================================================
 # Identification (mirrors PotionSystem)
 # ===========================================================================
 
@@ -34,10 +172,21 @@ func is_identified(id: StringName) -> bool:
 func identify(id: StringName) -> bool:
 	if id == &"" or GameState.identified_scroll_types.has(id):
 		return false
+	# The mask is read BEFORE the type goes on the identified list, because that
+	# append is what stops it being a mask.
+	var mask: String = name_for(id)
 	GameState.identified_scroll_types.append(id)
 	var s: ScrollData = Data.get_scroll(id)
 	var nm: String = s.display_name if s != null else String(id)
-	Notifications.notify("Identified: %s!" % nm, SCROLL_COLOR)
+	# NAMED AS THE ANSWER TO A QUESTION, where the run dealt one: "ZELGO MER is
+	# Scroll of Fire!" is the sentence the player has been waiting for, and it is
+	# also the one that teaches them to read the OTHER ZELGO MER in their pack.
+	# Without the mask half it says only what this piece was, which is the smaller
+	# fact — identification is of the type.
+	if mask != "":
+		Notifications.notify("%s is %s!" % [mask, nm], SCROLL_COLOR)
+	else:
+		Notifications.notify("Identified: %s!" % nm, SCROLL_COLOR)
 	return true
 
 func unidentify(id: StringName) -> void:
@@ -47,10 +196,35 @@ func unidentify(id: StringName) -> void:
 # Display: names, art
 # ===========================================================================
 
+# What a scroll is CALLED right now: its real name once read, and this run's
+# dealt title until then ("ZELGO MER", "ah bloto festr").
+#
+# The flat "Unidentified Scroll" survives as the fallback and only that: it is
+# what a scroll reads as when the name book is missing or empty (a checkout where
+# the generator has not been run). Every scroll answering to the same string is
+# the behaviour this replaced, so it is the last resort rather than a second
+# supported look.
 func display_name(scroll: ScrollData) -> String:
 	if scroll == null:
 		return "Scroll"
-	return scroll.display_name if is_identified(scroll.id) else "Unidentified Scroll"
+	if is_identified(scroll.id):
+		return scroll.display_name
+	var label: String = name_for(scroll.id)
+	return label if label != "" else "Unidentified Scroll"
+
+# The same title, but only ever the MASK — never the real name, whether or not
+# the scroll has been identified. `display_name` flips to the real name the moment
+# a scroll is read, and this is what still answers afterwards: the title it WAS
+# wearing. "" when the run never dealt one.
+#
+# The identify toast is the caller today ("ZELGO MER is Scroll of Fire!"). It is
+# also what a "known this run" fold would quote to list the pairs the player has
+# worked out — LootDiscoveries names identified scrolls outright and does not use
+# this yet.
+func mask_name(scroll: ScrollData) -> String:
+	if scroll == null:
+		return ""
+	return name_for(scroll.id)
 
 # The shared mystery-scroll art (§4.1/§10.1). preload (not a runtime load) so
 # Godot always imports it — it isn't referenced by any .tres, so a plain load

@@ -72,6 +72,24 @@ An enemy that is already dead cannot be un-killed and a relic already in the pac
 cannot be handed back. (The **Undo** beside the lost-run tracker is a different
 thing: it takes back a *turn*, which is the board's, not yours.)
 
+**And the list follows the board it is describing.** The goals can change while a
+game is being played — a **D10** re-rolls every non-boss body where it stands
+(§8), a **Scroll of Create Monster** conjures a new one onto the stack, a bomb
+takes one off — and the report step used to be built once, when the game was
+taken, and never look again. So a player who spent a charge escaping a goal they
+could not do went on being asked to tick that goal, off a list describing a board
+that no longer existed.
+
+`Overworld2._refresh` rebuilds it now, guarded by a signature of **what the rows
+say** (`ReportChecklist._play_panel_sig`). Two things about that guard are load-
+bearing. It is not the standing list's signature, close as the two are: that one
+counts `in_front`, so a lost run would rebuild the panel under the player once a
+turn for a list whose words had not changed. And rebuilding is *safe* only
+because a confirmed row is remembered by `GameLoop2.answered_rows` rather than by
+its checkbox — which is exactly what "there are no take-backs" is implemented as.
+A rebuild re-locks everything that was answered, and the only thing it can lose is
+a tick that was never confirmed, which the confirm rule means cannot exist.
+
 This exists because the report used to be the only moment anything could happen.
 That was fine while a game was one long wait for a single point. It is wrong now
 that the board moves whenever you *fail* (§3.2) and a kill is something you can go
@@ -361,9 +379,36 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 
 - A scroll type starts **unidentified**: it shows the generic **Unidentified**
   art and a masked name, and reading it is the Preference gamble.
+- **THE MASKED NAME IS A TITLE DEALT PER RUN**, not a flat "Unidentified Scroll".
+  A potion's mask is a bottle colour and a pill's is a capsule; a scroll's is the
+  writing on it, because a scroll is a sheet of paper and there is nothing else
+  about one to vary. So every scroll is dealt a meaningless title at the start of
+  a run — **"ZELGO MER"**, **"ah bloto festr"** — which it keeps all run and which
+  means something else entirely in the next one.
+
+  The bag is two authored columns of the `scrolls2.0` sheet, generated into
+  `data/scroll_names.tres` (a `ScrollNames` resource) and dealt by
+  `ScrollSystem.ensure_names`. **A coin per scroll:** half wear one of the 35
+  whole authored names, half wear **2-5 syllables joined with spaces** off the
+  39-part list. The two look alike in a pack slot and are meant to — the player
+  cannot tell an authored label from an assembled one, so neither says anything
+  about the scroll underneath. **Every title in a run is distinct**, for the reason
+  two potions never share a colour word: two scrolls answering to "TEMOV" make the
+  run log ambiguous about the very mystery the player is tracking.
+
+  Without this the pack was nine slots of the identical string, and the Identify
+  picker had to **spoil the real names outright** just to be a choice at all
+  (`LootSystem.pick_label` returned `ScrollData.display_name`, so opening Scroll of
+  Identify answered its own question). Titles make the unknowns tellable apart
+  while telling you nothing, which is the trick every roguelike this one is built
+  out of plays with its scrolls. The flat "Unidentified Scroll" survives only as
+  the fallback for a checkout where the generator has not been run.
 - It becomes **identified** by reading one (learn-by-use) or via **Scroll of
-  Identify**; from then on that type shows its real name and art. **Amnesia** can
-  re-hide (`unidentify`) a known scroll.
+  Identify**; from then on that type shows its real name and art, and the toast
+  names both halves — *"ZELGO MER is Scroll of Fire!"* — because the answer worth
+  having is the one that also teaches you to read the other ZELGO MER in the pack.
+  **Amnesia** can re-hide (`unidentify`) a known scroll, which puts back **the same
+  title**: the writing on the page never changed, you merely stopped knowing.
 - **The `File` column is the identified art** — it resolves to
   `images2.0/scrolls/<File>.png` (§10.1). Unidentified scrolls always show the
   shared Unidentified art, so a scroll only reveals its `File` art once learned.
@@ -630,21 +675,43 @@ risk. Scrolls were held back further still, by an overworld-only rule of their o
 (`GameState.can_use_scrolls`), on the reasoning that Teleportation only makes sense
 on the map.
 
-**So the answer is a fizzle, not a refusal.** A Use button that will not press is a
+**So the answer is never a refusal.** A Use button that will not press is a
 worse thing than an effect that lands on nothing: it teaches the player the piece
-is unusable rather than that this *moment* is wrong for it. Only one op in either
-roster genuinely needs the map — a **teleport** — and `Overworld2.loot_teleport`
-returns nothing while `Phase.PLAYING`, so the use screen says the thing it already
-knew how to say: *it fizzles, you do not move*. Every other scroll op lands
+is unusable rather than that this *moment* is wrong for it. Every scroll op lands
 perfectly well mid-game: `apply_status` and `apply_tile` reach a board that is
 standing right there, `spawn_enemy` and `stun_enemies` act on the stack about to
 resolve, and `forget` and `identify_scrolls` never needed a map at all.
 
+**A teleport mid-game ESCAPES the game and then moves you.** This is the one op
+in either roster that genuinely needs the map, and `Overworld2.loot_teleport` used
+to answer it with *it fizzles, you do not move* on the grounds that shifting the
+run while a game is in play is not a thing the loop can mean. It is — the loop has
+had a word for it since it shipped, and walking out of a game that will not go down
+is the single most useful moment a teleport will ever have. So the op takes the way
+out on the player's behalf (`escape_game(true)`) and *then* lands them somewhere
+else.
+
+It **forces the exit past `can_escape()`**, which ordinarily wants the game to have
+drawn blood first. That gate asks whether the game has hurt you enough to deserve a
+way out; spending a piece of loot on the door is a different answer to the same
+question. What it does **not** do is discount the price: the goal-enemy still walks
+on and follows you, the board still takes the turns finishing a game owes (§7.4),
+and the game is still not credited — an escape is not a win. You are buying the
+exit, not a pardon. Both consumables that teleport (Scroll of Teleportation and the
+Telepill) come through the one function, so both escape; one rule for moving the run
+off a game.
+
+Two dead ends survive, and both say so in full. If the escape is what kills you —
+the turns it hands over are real — the run is over and there is nowhere to land. If
+the graph has nowhere to put you, the game was still walked out of and still charged
+for, so the line carries both halves rather than reading as "nothing happened".
+
 **And the piece is identified either way.** Both `ScrollSystem.read_scroll` and
-`PillSystem.take_pill` identify *before* they apply anything, so a fizzle still
-teaches you what the thing was — the gamble paid off even where the effect did not.
-That is the whole reason a fizzle is an acceptable answer here and a refusal was
-not: the player spent the piece and got the information they spent it for.
+`PillSystem.take_pill` identify *before* they apply anything, so even a landing that
+fizzles still teaches you what the thing was — the gamble paid off even where the
+effect did not. That is the whole reason a fizzle is an acceptable answer where one
+is left and a refusal was not: the player spent the piece and got the information
+they spent it for.
 
 `GameState.can_use_scrolls` survives under its old name and now means only what it
 always meant underneath: is there a map here to move on.
@@ -2633,17 +2700,58 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 
 | Section | What it carries |
 |---|---|
-| **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
+| **The verdict** | the game's cover and name, which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) — and **★ Rate this game**, beside the cover |
 | **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
-| **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
-| **The shelf** | a hub's shop, if this game was one of the ten (§14) |
+| **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — **with the sum that sized it** — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
 
-And **one button out**. It is the **event** when the node owes one — clicking it
-is what opens the event, so the player leaves this screen *into* the next thing
-rather than having the next thing dropped on them — and "travel on" when it
-doesn't. It counts what it is about to bin (`exit_text`), because a Legendary left
-on the ground should be a decision and not a side effect of pressing Continue.
+**★ Rate is here and nowhere else in the run.** It used to sit on the play
+panel's checklist, under the Play button — offered while the game was still in
+front of the player, which is the one moment they have not finished forming the
+opinion it is asking for. Here the evening is over and its cover is right there.
+It saves the score and stays put rather than opening the tier-list board the way
+the select screen's own "★ Rate \<game\>" does: that board over a haul the player
+has not finished taking is a screen in the way of a decision.
+
+**The chest says why it is the size it is.** It used to arrive as an assertion —
+a Large one under "what the evening earned", with nothing anywhere saying why it
+was Large rather than Small, so the one reward that scales with how hard you
+fought was also the one that could not be read as a consequence of your fighting.
+The rule is simple enough to show, so the screen shows it as a sum under the
+heading **ITEM CHEST SIZE**: a row of the faces that paid, each with its value
+**under it**, `+` between them and the chest at the end. One small row above the
+chest, wrapping rather than scrolling. The values sit under the pictures rather
+than beside them because at 22px a number to the right of a face reads as part of
+the next face along; underneath, each is unmistakably the caption of the thing
+above it. The heading is there for the same reason a column needs one — a line of
+faces and numbers is arithmetic without a subject until something names the
+quantity it totals to.
+
+The terms are `GameLoop2.chest_point_breakdown()`, banked at each kill beside the
+points themselves and read *before* `claim_chests` empties the pool. They are
+recorded rather than reconstructed from the report's own defeat list, because a
+body a mine killed during a lost run is defeated inside `attempt_turn` and never
+appears there — its points do land in the pool, so a screen that re-derived the
+sum would under-count exactly the bodies the player is proudest of.
+
+And **one button out, which names where it goes**: **"Go to Event"** when the
+node owes one (clicking it is what opens the event, so the player leaves this
+screen *into* the next thing rather than having the next thing dropped on them),
+**"Go to Shop"** at a hub that owes no event, and **"Travel on"** when it owes
+neither. The event wins when both are owed, because the event is what actually
+opens next and the shelf is still under the board on the far side of it. It
+counts what it is about to bin (`exit_text`), because a Legendary left on the
+ground should be a decision and not a side effect of pressing Continue.
+
+**The shelf is not a section of this screen**, and briefly was: a hub's shop was
+mounted into the left column and handed back to the page on the way out, on the
+reasoning that §14's "a shop blocks nothing and stays for the whole visit" was
+right but the moment of *arrival* was never seen. What that produced was four
+sections competing for a 720p canvas and a way out that could not honestly name
+itself — a button reading "Go to Shop" beside a shelf the player is already
+looking at describes nothing. So the shelf stays where §14 put it, under the
+board, and this screen keeps only the hub's id to know that is where its exit
+leads (`PostCombatScreen.shop_id`).
 
 **The sections are the real modals, embedded.** `ItemDropModal.embed`,
 `LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the

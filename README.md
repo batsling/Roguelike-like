@@ -84,6 +84,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── scroll_names.tres #   ScrollNames — the bag of meaningless titles an
+│   │                     #   unread scroll wears ("ZELGO MER", "ah bloto festr");
+│   │                     #   a run deals one per scroll and redeals every run
 │   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
 │   │                     #   (the horse dose is a 5% roll on the drop, §4.3)
 │   ├── potions2.0/       #   PotionData — identify-by-using potions, two VERBS
@@ -491,25 +494,36 @@ node and its script.
     haul is one screen now, and it opens when the board has stopped moving: the
     verdict, the fight in numbers (out of `beat_game`'s result, which used to be
     thrown away), **every** relic chest down the left and the loot payout down the
-    right at once, the hub's shelf, and the boss warning as a banner. All the
+    right at once, and the boss warning as a banner. All the
     chests together is the point: a queue hides what the *other* relics are, and
     there is often an order worth taking them in. A chest banked while the screen
     is up lands on it too (`add_chest`) rather than opening a `RewardScreen`
-    underneath it, and a section that raises its own card — the shelf's — is given
-    a layer that clears the screen. **The payout does not close on its last piece
+    underneath it. **The payout does not close on its last piece
     and has no Take/Leave buttons**: the piece has just gone into the pack, and the
     pack is the reason to still be looking.
-    **One button out**, which is the **event** when the node owes one — clicking it
-    is what opens the event — and "travel on" when it doesn't; it counts what it is
-    about to bin, because a Legendary left on the ground should be a decision and
-    not a side effect of pressing Continue. The sections are the **real modals,
-    embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
+    **★ Rate this game sits beside the cover**, and nowhere else in the run — it
+    was on the play panel's checklist, which offered the score while the game was
+    still in front of you. It saves and stays put rather than opening the
+    tier-list board over a haul nobody has finished taking.
+    **The chest shows the sum that sized it** (`chest_terms`): 🏆 +1, then a face
+    per body with its own difficulty as its value, `=` the chest. Read off
+    `GameLoop2.chest_point_breakdown()`, banked at each kill and claimed before
+    the pool is spent — *not* re-derived from the report's defeat list, which
+    misses a body a mine killed during a lost run.
+    **One button out, and it names where it goes**: "Go to Event" when the node
+    owes one (clicking it is what opens the event), "Go to Shop" at a hub that
+    owes no event, "Travel on" otherwise; the event wins when both are owed. It
+    counts what it is about to bin, because a Legendary left on the ground should
+    be a decision and not a side effect of pressing Continue. The sections are the
+    **real modals, embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
     `BossNoticeModal.embed`): same cards, same drag, same signals, minus the
     backdrop and the layer. The standalone modals stay, because
     `GameState.offer_loot` fires from `EffectSystem` and a payout that didn't
-    arrive with a report has no haul screen to be part of. The shelf is
-    **borrowed**, not moved — the same `ShopPanel2` node is handed back to the page
-    on the way out, so §14's "a shop stays for the whole visit" still holds.
+    arrive with a report has no haul screen to be part of. **The shelf is not
+    here** — it was briefly borrowed and handed back, which left four sections
+    fighting for a 720p canvas and an exit button pointing at something already on
+    screen; it stays under the board per §14, and this screen keeps only the hub's
+    id so its button can name it.
 - **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). The chest a
   report pays doesn't open it either: a beaten game banks 1 point plus each
   defeated body's difficulty (Low 1 … Insane 4, bosses excluded — they bank a
@@ -618,7 +632,7 @@ editing the sheet, then review the diff):
 | `generate_goal_enemy_tres.py` | `data/enemies2.0/*.tres` from the goal-enemy sheet |
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
-| `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet — **and `data/scroll_names.tres`**, the bag of meaningless titles an unread scroll wears, off the same sheet's two right-hand columns (`Random Scroll Name` / `Random Scroll Part`) |
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions2.0` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
@@ -774,7 +788,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `take_damage N` | Damage rather than a bill: it resolves through `GameLoop2.damage_player`, so a Shield (§3) stops the whole instance and the player's own statuses scale it. `lose_hp` goes straight to Health past both. Burn's "or take 3 Damage" is what it was added for. |
 | `gain_gold N` / `lose_gold N` / `lose_gold all` | Gold. `all` empties the purse — the one amount settled when the choice is taken rather than when the `.tres` is written. |
 | `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
-| `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
+| `gain_loot N` | A loot drop, rolled across every loot type there is — it widened on its own as pills and then potions arrived, with no row ever touched. `gain_scroll N`, `gain_pill N` and `gain_potion N` name one alphabet instead, for a row that is *about* that kind of thing (the Battleworn Dummy pays a potion because the dummy it is translated from does). |
 | `apply_status <status> N` | A `statuses2.0` status on the player. On an **item** an optional `target=` says who instead: `current` / `all` / `random` name bodies by rule, and **`target=enemy` means one the player POINTS AT** — `ItemData.wants_target()` reads it, so the overworld arms the board and the click fires the item (Staff of Flame). A **scroll** takes the same words plus `player` and `front` (everything touching the front column — Scroll of Fire burns you and them at once). |
 | `apply_tile <tile> …` | A `tiles2.0` TILE EFFECT on the GROUND (§17). On a **scroll**, `front` / `back` / `all` name a strip of the board (Scroll of Fire lights the front column). On an **item**, `target=tile` means a CELL the player POINTS AT — `ItemData.target_kind()` reads it, so the board arms a cell picker instead of lighting up the stack — and `cols=A-B` fences how far it reaches (Red Candle's columns 2-3). |
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |

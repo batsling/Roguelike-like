@@ -6,7 +6,7 @@
 script = ExtResource("1_scroll")
 id = &"scroll_of_amnesia"
 display_name = "Scroll of Amnesia"
-reference = "Hack"
+reference = "Rogue"
 rarity = "Uncommon"
 preference = "Negative"
 description = "Forget 1 random Identified Loot."

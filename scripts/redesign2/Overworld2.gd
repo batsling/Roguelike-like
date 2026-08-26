@@ -1184,8 +1184,19 @@ func beaten_this_run() -> bool:
 # a follower's goal you did clear, a level-up you did earn — because those are
 # separate honour-system claims; escaping only answers the main goal, and it
 # answers no.
-func escape_game() -> void:
-	if not can_escape():
+#
+# `force` skips the gate and nothing else. It is for the exits that are PAID FOR
+# rather than earned — a teleport off the game (loot_teleport) is the only one
+# today — so the price below is charged in full either way. The gate answers "has
+# this game hurt you enough to deserve a way out"; a spent piece of loot is a
+# different answer to the same question, not a way around the bill.
+func escape_game(force: bool = false) -> void:
+	if not force and not can_escape():
+		return
+	# Even forced, there has to BE a game in play to walk out of; report() would
+	# refuse below anyway, and this keeps the log from announcing an escape that
+	# never happened.
+	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
@@ -1483,23 +1494,57 @@ func read_scroll(idx: int) -> void:
 # what lets the use modal's outcome screen report a Telepill at all: without it,
 # the one piece of loot that moves you was also the one that said nothing about
 # what it just did (see LootUseModal._do_teleport). "" means it never fired.
+# The teleport had nowhere to put you. One sentence, and which one depends on
+# whether an escape was bought on the way in: a fizzle after an escape is not a
+# no-op, and a player told only "nothing happened" over a board that just took
+# its turns has been told the wrong thing.
+func _nowhere_to_go(escaped_out: bool) -> String:
+	if escaped_out:
+		return "You walk out of the game — but the teleport fizzles, and you stay put."
+	return "The teleport fizzles — nowhere to go."
+
 func loot_teleport(req: Dictionary) -> String:
-	# NOT WHILE A GAME IS IN PLAY. A pill can be swallowed at any moment now,
-	# the report step included (§4.3) — but moving the run to another game while
-	# the player is halfway through this one is not a thing the loop can mean, and
-	# the honest answer is the one the use screen already knows how to say: it
-	# fizzles. The colour was learned the moment the capsule was opened
-	# (PillSystem.take_pill identifies before it applies anything), so the gamble
-	# still paid off even though the effect did not land.
+	# A GAME IN PLAY IS ESCAPED, NOT A REASON TO FIZZLE. This used to return ""
+	# mid-game on the grounds that moving the run while the player is halfway
+	# through a game is not a thing the loop can mean. It is — it is called
+	# escaping, the loop has had a word for it since it shipped, and walking out
+	# of a game you cannot beat is the most useful moment a teleport will ever
+	# have. So the teleport takes the way out on the player's behalf and then
+	# moves them.
+	#
+	# IT FORCES THE ESCAPE PAST can_escape(). The ordinary gate wants the game to
+	# have drawn blood first, so the exit is earned rather than free; a teleport
+	# IS what earns it — the run spent a piece of loot on the door. What it does
+	# NOT do is discount the escape's price: the goal-enemy still walks on and
+	# follows you, the board still takes the turns finishing a game owes (§7.4),
+	# and the game is still not credited. You are buying the exit, not a pardon.
+	#
+	# Both consumables that teleport come through here (Scroll of Teleportation
+	# and the Telepill), so both escape. One rule for moving the run off a game.
+	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
-		return ""
+		var leaving: GameData = _chosen.get("game")
+		escape_game(true)
+		# escape_game refuses on an empty _chosen; only claim the escape if the
+		# phase actually moved, or a fizzle below would report one that never was.
+		escaped_out = _phase != Phase.PLAYING
+		# The way out can be the thing that kills you: escaping resolves the board,
+		# and the turns it hands over are real. A run that ended on the way out has
+		# nowhere to be teleported to, and the escape's own line is the last word.
+		if GameLoop2.run_over or _phase == Phase.OVER:
+			return "You escape %s — but you do not get out." % (
+				leaving.display_name if leaving != null else "the game")
+	# THE TWO "NO MAP TO MOVE ON" EXITS ALSO HAVE TO CARRY THE ESCAPE. "" is this
+	# function's word for "it never fired", and the use screen turns it into "it
+	# fizzles — you do not move" — which after an escape is a lie by omission: the
+	# game WAS walked out of and the board took its turns for it.
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
-		return ""
+		return _nowhere_to_go(escaped_out)
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	var cur: StringName = GameState.current_game_id
 	if not dist.has(cur):
-		return ""
+		return _nowhere_to_go(escaped_out)
 	var to_amulet: bool = String(req.get("dir", "same")) == "amulet"
 	var spread: int = int(req.get("spread", 1))
 	var near: int = int(req.get("min", 1))
@@ -1519,7 +1564,7 @@ func loot_teleport(req: Dictionary) -> String:
 			band.append(gid)
 	var pool: Array = band if not band.is_empty() else any
 	if pool.is_empty():
-		var fizzle := "The teleport fizzles — nowhere to go."
+		var fizzle: String = _nowhere_to_go(escaped_out)
 		GameLog.add(fizzle, Color(0.61, 0.35, 0.71))
 		return fizzle
 	var dest: StringName = pool[_rng.randi() % pool.size()]
@@ -1532,6 +1577,12 @@ func loot_teleport(req: Dictionary) -> String:
 	var landed := "Teleported to %s — %d step%s from the Amulet." % [
 		g.display_name if g != null else String(dest),
 		int(dist.get(dest, 0)), "" if int(dist.get(dest, 0)) == 1 else "s"]
+	# Said on the outcome screen as well as in the log, because escaping is the
+	# expensive half of what just happened and the modal only ever shows this
+	# string. escape_game's own line went to the log and the notification toast;
+	# this is the reader's copy of it, on the screen they are actually looking at.
+	if escaped_out:
+		landed = "You walk out of the game. " + landed
 	GameLog.add(landed, Color(0.61, 0.35, 0.71))
 	_dash_mode = false
 	_build_choices()
@@ -1628,6 +1679,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# how hard it was, paid only for a game you actually BEAT (§8.2). An escape is
 	# not a win: the player walked away, and the bodies they cleared on the way out
 	# keep their loot but buy no chest.
+	#
+	# THE ARITHMETIC IS READ FIRST, because claiming the chests is what empties it.
+	# It is the faces that paid for the chest and what each was worth, and the haul
+	# screen shows it above the chest instead of asserting a size at the player.
+	var chest_sources: Array = GameLoop2.chest_point_breakdown()
 	_queue_report_chests(beaten and not escaped)
 	# What a status charged for a game it went unanswered (§13, Burn). GameLoop2 is
 	# a model node and says nothing to the player, so the bite is announced here,
@@ -1802,6 +1858,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		"game": played_game, "beaten": beaten, "escaped": escaped,
 		"amulet": was_amulet, "res": res,
 		"tier_before": tier_before, "board_before": board_before,
+		# What bought the chest: {enemy, points} rows, read before the claim
+		# emptied the pool. Empty on a report that earned no chest at all.
+		"chest_sources": chest_sources,
 	}
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
 
@@ -1926,52 +1985,39 @@ func _open_post_game() -> void:
 		for choice in _choices:
 			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 				bosses.append(choice.get("enemy"))
-	# THE SHELF, on the same terms _open_pending_shop mounts one: only where the
-	# player is actually STANDING. Claimed off `_pending_shop` when it is, so the
-	# chain behind this screen doesn't mount a second one; left there when it
-	# isn't, for that method to turn down for the same reason it always has.
+	# THE SHELF IS NOT CLAIMED, only NAMED. The haul screen used to borrow it —
+	# mount it in its own column and hand it back on the way out — and it doesn't
+	# any more (PostCombatScreen.shop_id): the id goes over purely so its exit
+	# button can say "Go to Shop", and `_pending_shop` stays set so the chain
+	# behind the screen mounts the shelf under the board exactly as it does when no
+	# haul screen was involved.
+	#
+	# Tested on the same terms _open_pending_shop mounts one — only where the
+	# player is actually STANDING — so the button never promises a shop that method
+	# is about to turn down.
 	var shop_id: StringName = _pending_shop
-	if shop_id != &"" and not GameLoop2.run_over and shop_id == _hub_underfoot():
-		_pending_shop = &""
-	else:
+	if shop_id == &"" or GameLoop2.run_over or shop_id != _hub_underfoot():
 		shop_id = &""
 	_post_screen = PostCombatScreen.open(self, snap, drops,
 		_pending_event != null, shop_id, boss_tier, bosses)
 	var screen: PostCombatScreen = _post_screen
 	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
 
-# The player is done with the haul: give the shelf back to the page and carry on
-# down the chain the report always ended in — the event, then the shop, then the
-# boss notice, then the detour question.
-func _on_post_game_finished(screen: PostCombatScreen) -> void:
+# The player is done with the haul: carry on down the chain the report always
+# ended in — the event, then the shop, then the boss notice, then the detour
+# question. The shelf needs no handover any more; the screen never borrowed it, so
+# `_pending_shop` is still set and `_open_pending_shop` mounts it in its turn.
+func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 	_post_screen = null
-	if screen != null and is_instance_valid(screen):
-		var shop: ShopPanel2 = screen.release_shop()
-		if shop != null:
-			_adopt_shop(shop)
 	_refresh()
 	autosave()
 	_open_pending_event()
 
-# Take the shelf the post-combat screen borrowed and put it back under the board,
-# where §14 says a shop lives for the rest of the visit. The panel is the same
-# node the player was just buying from — reparented rather than rebuilt, so a
-# card left open and the shelf's own scroll position survive the handover.
-func _adopt_shop(panel: ShopPanel2) -> void:
-	if _right_col == null:
-		panel.queue_free()
-		return
-	_clear_shop()
-	_right_col.add_child(panel)
-	_shop_panel = panel
-	panel.finished.connect(func():
-		_shop_panel = null
-		_sync_board_budget())
-	_sync_board_budget()
-	# Same two asks as _mount_shop: the panel has no height until the page has laid
-	# it out, so "is it on screen" is unanswerable until after that.
-	_update_shop_hint()
-	_update_shop_hint.call_deferred()
+# `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
+# reparented it under the board. Nothing borrows the shelf now — the screen knows
+# only the hub's id, so its exit button can name it — and `_mount_shop` builds the
+# panel in its own turn down the chain, which is what it always did on every path
+# that did not go through a haul screen.
 
 # Pull the screen off the wall for a reset. `abandon` rather than `dismiss`: the
 # player is not leaving the haul, the run is ending under it, and firing the way
@@ -3094,6 +3140,19 @@ func _refresh(_a = null) -> void:
 		# on the board is on the board (see the row's own comment).
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+		# …AND THE REPORT STEP, when the goals it lists have changed under it. A D10
+		# re-rolls every non-boss body mid-game and a Create Monster conjures a new
+		# one, and until now the checklist went on asking about the board as it
+		# stood when the game was taken — so a player who spent a charge escaping a
+		# goal was still being asked to tick it.
+		#
+		# GUARDED BY A SIGNATURE, not rebuilt on every repaint, which is what this
+		# branch has always deliberately avoided: the panel holds tick boxes. Safe
+		# because a confirmed row is remembered by GameLoop2 rather than by its box
+		# (ReportChecklist._play_panel_sig spells the whole argument out), so what a
+		# rebuild restores is everything that was actually answered.
+		if _checklist != null and _checklist.play_panel_stale():
+			_populate_play_panel()
 	_fit_canvas_to_page.call_deferred()
 
 # --- the page's own width --------------------------------------------------

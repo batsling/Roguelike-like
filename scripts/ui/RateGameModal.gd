@@ -2,7 +2,8 @@ class_name RateGameModal
 extends Control
 
 # Opt-in game rating prompt. It NEVER opens itself: the only ways in are the
-# "★ Rate this game" button on the report panel and the "★ Rate <game>" button the
+# "★ Rate this game" button on the HAUL SCREEN — beside the cover of the game
+# that just ended (PostCombatScreen) — and the "★ Rate <game>" button the
 # select screen keeps for the game you last reported. The player picks a score
 # (1-10); notes are optional. When the game was rated on a previous run the
 # fields come in pre-filled so the player updates rather than starts over. A

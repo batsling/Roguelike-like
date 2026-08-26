@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ScrollNames" load_steps=2 format=3 uid="uid://scroll2_names"]
+
+[ext_resource type="Script" path="res://scripts/resources/ScrollNames.gd" id="1_names"]
+
+[resource]
+script = ExtResource("1_names")
+names = PackedStringArray("ANDOVA BEGARIN", "DAIYEN FOOELS", "DUAM XNAHT", "ELAM EBOW", "ELBIB YLOH", "FOOBIE BLETCH", "GARVEN DEH", "HACKEM MUCHE", "JUYED AWK YACC", "KERNOD WEL", "KIRJE", "LEP GEX VEN ZEA", "NR 9", "PRATYAVAYAH", "PRIRUTSENIE", "READ ME", "TEMOV", "THARR", "VE FORBRYDERNE", "VELOX NEB", "VENZAR BORGAVVE", "VERR YED HORRE", "XIXAXA XOXAXA XUXAXA", "YUM YUM", "ZELGO MER", "9 KR", "BAYOWOKI", "BITEME", "FIIK", "GA NI VEN ZEA", "HACHEM MUCHE", "PRIRUCHENIE", "RE ADME", "ROCH HOCH", "TIDDER ROF")
+name_sources = PackedStringArray("NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "NetHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack", "WazHack")
+parts = PackedStringArray("ah", "arek", "bahl", "bar", "barf", "behil", "blech", "blorp", "bloto", "caca", "coph", "druhl", "erp", "festr", "flem", "foo", "grit", "ichi", "ighr", "iky", "kini", "kona", "mep", "mihln", "ogr", "oh", "oo", "ooze", "poxi", "quo", "rech", "rot", "slie", "snorf", "swerr", "tims", "yuky", "zep", "zihr")
+part_sources = PackedStringArray("Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue", "Rogue")

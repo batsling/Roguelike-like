@@ -11,6 +11,166 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The report checklist follows the board when the board changes under it.**
+
+  A **D10** re-rolls every non-boss body where it stands, a **Scroll of Create
+  Monster** conjures one onto the stack, a bomb takes one off — and the report
+  step was built once, when the game was taken, and never looked again. So a
+  player who spent a charge to escape a goal they could not do went on being asked
+  to tick that goal, off a list describing a board that no longer existed.
+
+  It was a deliberate omission grown stale rather than an oversight:
+  `Overworld2._refresh` skips that panel on purpose, because it holds tick boxes
+  and a repaint that dropped them would be worse than a list one step behind. That
+  stopped being true when the rows learned to **resolve themselves** — a confirmed
+  row is recorded in `GameLoop2.answered_rows`, not in its checkbox (§2.1), so a
+  rebuild re-locks everything answered and can only lose a tick that was never
+  confirmed, which the confirm rule means cannot exist. Rebuilding was already
+  safe; what was missing was knowing when it was warranted.
+
+  So the panel gets a signature of **what its rows say**
+  (`ReportChecklist._play_panel_sig`), and `_refresh` rebuilds when that changes.
+  Deliberately *not* the standing list's signature, close as the two are: that one
+  counts `in_front`, so a lost run would have rebuilt the panel under the player
+  once a turn for a list whose words had not moved. It keys on the enemy's **id**
+  rather than its name, since a re-roll onto a different body with the same name
+  is still a different goal.
+
+- **The chest-size sum reads as a caption, not a formula.** The values sit **under**
+  the faces now, under an **ITEM CHEST SIZE** heading. At 22px a number to the
+  right of a face reads as belonging to the next face along; underneath, each is
+  unmistakably the caption of the thing above it — and a row of pictures and
+  numbers is arithmetic without a subject until something names the quantity it
+  totals to. The `+`, the `=` and the answer stay on the faces' own line rather
+  than centring against a term that is now two rows tall.
+
+- **The haul screen: rate the game where you just played it, see why the chest is
+  the size it is, and leave by a button that names where it goes.**
+
+  Three things about the screen a game ends on.
+
+  **★ Rate moved onto it, beside the cover.** It sat on the play panel's
+  checklist, under the Play button — offering the score *while the game was still
+  in front of the player*, which is the one moment they have not finished forming
+  the opinion it is asking for. It is beside the cover of the finished game now,
+  and it saves and stays put rather than opening the tier-list board the select
+  screen's own "★ Rate \<game\>" opens: that board over a haul nobody has finished
+  taking is a screen in the way of a decision. (It also has to be parented to the
+  haul screen rather than the page — the page's tree is under that CanvasLayer,
+  so a modal added there opens *behind* the button that asked for it.)
+
+  **The chest says why it is that size.** It arrived as an assertion: a Large one
+  under "what the evening earned", with nothing anywhere saying why it was Large
+  rather than Small — so the one reward that scales with how hard you fought was
+  also the one that could not be read as a consequence of your fighting. The rule
+  (§8.2) is simple enough to show, so now it is shown, as a sum: 🏆 +1, then a face
+  per body with its own difficulty as its value, `+` between them, `=` the chest.
+  One small wrapping row above the chest.
+
+  The terms are a new `GameLoop2.chest_point_breakdown()`, banked at each kill
+  beside the points themselves and read *before* `claim_chests` empties the pool.
+  **Recorded, not reconstructed** — a body a mine killed during a lost run is
+  defeated inside `attempt_turn`, so it never lands in the report's own defeat
+  list while its points do land in the pool, and a screen deriving the sum from
+  that list would under-count exactly the bodies the player is proudest of. The
+  new list rides the undo snapshot and the save with the points it explains, so a
+  taken-back kill takes its face back too.
+
+  **The way out names its destination.** "See what's here" describes a feeling
+  rather than a place; it is **"Go to Event"**, **"Go to Shop"** at a hub owing no
+  event, and "Travel on" otherwise, with the event winning when both are owed
+  because the event is what actually opens next.
+
+  Which meant **the shop had to come off the screen**. It was mounted into the
+  left column and handed back to the page on the way out — four sections fighting
+  for a 720p canvas, and a button reading "Go to Shop" beside a shelf the player
+  is already looking at names nothing. The shelf stays under the board per §14 and
+  the page's own chain mounts it after the event, exactly as it does when no haul
+  screen was involved; the screen keeps only the hub's id. `release_shop` and
+  `_adopt_shop` go with it.
+
+  One test went too, and deserves naming: `test_the_shelfs_item_card_opens_above_
+  the_haul_screen` set its hub up *after* `_report_beat`, which already builds the
+  screen in the same breath (§7.4) — so `screen._shop` was null and its own guard
+  returned early without asserting anything. It had not been testing its subject
+  for some time.
+
+- **An unread scroll has a name of its own, and it is a different one every run.**
+
+  A scroll's mask used to be the string `"Unidentified Scroll"` — the same string
+  for all eight of them. A potion masks as a bottle colour and a pill as a capsule;
+  a scroll is a sheet of paper, so **the writing on it is the only thing there is to
+  vary**, and nothing was varying. Nine pack slots of one repeated label is not an
+  inventory, it is a row of identical unknowns.
+
+  It also made **Scroll of Identify answer its own question.** `LootSystem.pick_label`
+  handed the picker `ScrollData.display_name` — the *real* name — because with
+  nothing else to tell two rows apart a masked list was not a choice either. So the
+  screen whose entire job is "which of these do you want to learn" opened with
+  "Scroll of Fire, Scroll of Amnesia, Scroll of Remove Curse" already written on it,
+  and choosing was a formality.
+
+  Both halves are one fix. Every run now **deals each scroll a meaningless title** —
+  `ZELGO MER`, `ah bloto festr` — which it wears until read and which means something
+  else entirely next run. A coin per scroll: half wear one of **35 authored whole
+  names**, half wear **2-5 syllables** off a **39-part list**, joined with spaces. The
+  two kinds look alike in a slot and are meant to; the player cannot tell an authored
+  label from an assembled one, so neither leaks anything about what is underneath.
+  **Every title in a run is distinct**, for the reason no two potions share a colour
+  word — two scrolls both answering to `TEMOV` make the run log ambiguous about the
+  very mystery the player is tracking. (The sheet credits `TEMOV` to both NetHack and
+  WazHack; the generator drops the duplicate, 36 rows becoming 35 labels.)
+
+  The picker now shows the mask **for every kind**, `pick_label` collapsing to
+  `display_name`, because all three alphabets finally have one worth showing.
+  Identifying reports both halves — *"ZELGO MER is Scroll of Fire!"* — since the fact
+  worth having is the one that also teaches you to read the other ZELGO MER in your
+  pack. Amnesia puts back **the same** title: the page never changed, you stopped
+  knowing.
+
+  Content, so it lives in `data/`. The bag is two right-hand columns of the
+  `scrolls2.0` sheet, generated into `data/scroll_names.tres` (a new `ScrollNames`
+  resource) by `generate_scroll2_tres.py` and loaded by path the way `AtlasView`
+  loads `atlas_layout.tres`. `PillSystem.COLORS` and `PotionSystem.COLORS` stay
+  `const` arrays because those are matched to a *folder of art*; these are authored
+  words with a source game credited against each, like every other row in the
+  project. The deal is `GameState.scroll_name_map`, persisted — a reloaded run that
+  redealt would wipe out everything the player had worked out.
+
+- **A teleport read mid-game escapes the game instead of fizzling on it.**
+
+  `Overworld2.loot_teleport` returned `""` while a game was in play, on the grounds
+  that moving the run halfway through a game is not a thing the loop can mean. It is:
+  it is called **escaping**, the loop has had a word for it since it shipped, and
+  walking out of a game that will not go down is the most useful moment a teleport
+  will ever have.
+
+  So it calls `escape_game(true)` and then moves you. The `force` flag skips
+  `can_escape()` — which ordinarily wants the game to have drawn blood first — and
+  **skips nothing else**: the goal-enemy still walks on and follows you, the board
+  still takes the turns finishing a game owes (§7.4), and the game is still not
+  credited. The gate asks whether the game has hurt you enough to deserve a way out;
+  spending a piece of loot on the door is a different answer to the same question.
+  You are buying the exit, not a pardon.
+
+  Both consumables that teleport come through the one function, so the **Telepill**
+  escapes too — one rule for moving the run off a game. Two dead ends say so in full
+  rather than reading as "nothing happened": an escape that kills you ends there, and
+  a graph with nowhere to put you still charged you for the game you walked out of.
+
+- **The Battleworn Dummy's Setting 1 pays a potion.** Slay the Spire 2's dummy
+  procures a potion, which is what the row's own comment has said its label means
+  since it was authored; it paid `gain_scroll 1` only because scrolls were the whole
+  pack at the time. The shared reward-token parser in `generate_status_tres.py` knew
+  `gain_scroll` and the category `gain_loot` but not the other two named kinds, so
+  `gain_pill` and `gain_potion` were taught to it in the same commit — `EffectSystem`
+  has registered all three since potions landed, and a sheet cell asking for a potion
+  would otherwise have raised "unknown reward verb" for a payout the runtime could
+  already make.
+
+- **Four more games owned** — For The Warp, Gatekeeper, Node Farm and West of Dead —
+  regenerated from the workbook, which also moves the owned/downloaded atlas layouts.
+
 - **Pick loot up by picking it up — the pack shows for as long as you hold it.**
 
   Taking a piece off the battlefield floor was five steps: click the square, wait

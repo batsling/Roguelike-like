@@ -609,14 +609,25 @@ def parse_reward_clause(clause):
         return {"type": "heal_full"}, "Heal to full"
 
     # `gain_loot` is a CATEGORY, not a synonym for gain_scroll: it resolves to
-    # whatever loot types exist, which today is scrolls alone. Authoring it means
-    # an event row widens on its own as more are added (§5).
-    if verb in ("gain_loot", "gain_scroll"):
+    # whatever loot types exist — three alphabets now — and rolls per unit.
+    # Authoring it means an event row widens on its own as more are added (§5).
+    #
+    # THE THREE NAMED KINDS ARE ITS SIBLINGS, not its subsets: `gain_scroll`,
+    # `gain_pill` and `gain_potion` each pay in one alphabet and nothing else.
+    # EffectSystem has registered all three since potions landed; only this parser
+    # was still scroll-and-category, so a sheet cell asking for a potion raised
+    # "unknown reward verb" for a payout the runtime could already make.
+    LOOT_KINDS = {
+        "gain_loot": ("Loot", "Loot"),
+        "gain_scroll": ("Scroll", "Scrolls"),
+        "gain_pill": ("Pill", "Pills"),
+        "gain_potion": ("Potion", "Potions"),
+    }
+    if verb in LOOT_KINDS:
         amount = rest[0] if rest else "1"
         eff = {"type": verb}
         put(eff, "value", amount)
-        one = "Loot" if verb == "gain_loot" else "Scroll"
-        many = one if verb == "gain_loot" else "Scrolls"
+        one, many = LOOT_KINDS[verb]
         return eff, "+%s %s" % (_amount_word(amount), _plural(amount, one, many))
 
     if verb == "obtain_item":

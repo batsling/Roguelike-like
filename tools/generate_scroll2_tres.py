@@ -13,6 +13,13 @@ rewrite + combat cut land together.
 
   scrolls2.0: Scrolls | Game | Preference | Rarity | Description | Effect |
               File | Notes
+              …then, off to the right and independent of the rows above:
+              Random Scroll Name | Game    (36 whole labels)
+              Random Scroll Part | Game    (39 syllables)
+
+Those last two columns are the bag a run deals its UNIDENTIFIED scroll labels
+from, and they are written to data/scroll_names.tres (a ScrollNames resource, one
+singleton row) rather than to a per-scroll file. See names_tres below.
 
 Rarity feeds ScrollData.rarity_index(), which Data.roll_scroll weights the drop
 by. Description is the author's own sentence and beats the line the UI assembles
@@ -55,6 +62,11 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.environ.get(
     "CARDS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "scrolls2.0")
+# The unidentified-name book (see names_tres). At the data root rather than inside
+# scrolls2.0/, because Data._load_dir keys everything in that folder by its `id`
+# and this is one singleton row, not a scroll — it is loaded by path, the way
+# AtlasView loads data/atlas_layout.tres.
+NAMES_PATH = os.path.join(PROJECT_ROOT, "data", "scroll_names.tres")
 
 
 def slugify(name: str) -> str:
@@ -258,15 +270,88 @@ def rows(sheet):
         yield dict(zip(headers, r))
 
 
+# --- the unidentified-name book --------------------------------------------
+#
+# The same sheet carries two more columns off to the right — `Random Scroll Name`
+# and `Random Scroll Part`, each with a `Game` beside it crediting the roguelike
+# it was lifted from. They are the bag a run deals its unidentified scroll labels
+# out of (ScrollSystem.ensure_names).
+#
+# READ BY POSITION, NOT BY `rows()`. Two reasons, and both would silently produce
+# a short list: the header row has three columns literally called `Game`, so a
+# dict keyed by header name keeps only the last one; and these columns are LONGER
+# than the scroll list beside them — 36 names and 39 parts against 8 scrolls — so
+# `rows()`, which stops at a blank column A, would never see most of them.
+NAME_COL = "Random Scroll Name"
+PART_COL = "Random Scroll Part"
+
+
+def _column_pairs(sheet, header):
+    """The (value, source) pairs under `header` and the `Game` column beside it.
+
+    DUPLICATES ARE DROPPED, first occurrence winning. The name column genuinely
+    has one — TEMOV is credited to both NetHack and WazHack — and two scrolls
+    answering to the same label would make the run log ambiguous about the exact
+    mystery the player is being asked to track. That is PotionSystem's rule for
+    the two vials that share a colour word, for the same reason. 36 rows, 35
+    distinct labels.
+    """
+    headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
+    if header not in headers:
+        raise SystemExit(
+            "scrolls2.0 has no %r column — the unidentified-name book is generated "
+            "from it, so a renamed column would ship an empty bag" % header)
+    col = headers.index(header)
+    src = col + 1 if col + 1 < len(headers) and headers[col + 1] == "Game" else -1
+    pairs, seen = [], set()
+    for r in sheet.iter_rows(min_row=2, values_only=True):
+        if col >= len(r):
+            continue
+        value = _clean(r[col])
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        source = _clean(r[src]) if 0 <= src < len(r) else ""
+        pairs.append((value, source))
+    return pairs
+
+
+def names_tres(sheet):
+    """-> (the .tres text, how many whole names, how many syllables)."""
+    names = _column_pairs(sheet, NAME_COL)
+    parts = _column_pairs(sheet, PART_COL)
+    if not names and not parts:
+        raise SystemExit("scrolls2.0 has both name columns but no rows under either")
+
+    def packed(values):
+        return "PackedStringArray(%s)" % ", ".join('"%s"' % gd_str(v) for v in values)
+
+    lines = []
+    lines.append('[gd_resource type="Resource" script_class="ScrollNames" load_steps=2 '
+                 'format=3 uid="uid://scroll2_names"]')
+    lines.append("")
+    lines.append('[ext_resource type="Script" '
+                 'path="res://scripts/resources/ScrollNames.gd" id="1_names"]')
+    lines.append("")
+    lines.append("[resource]")
+    lines.append('script = ExtResource("1_names")')
+    lines.append("names = %s" % packed([n for n, _ in names]))
+    lines.append("name_sources = %s" % packed([s for _, s in names]))
+    lines.append("parts = %s" % packed([p for p, _ in parts]))
+    lines.append("part_sources = %s" % packed([s for _, s in parts]))
+    return "\n".join(lines) + "\n", len(names), len(parts)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true", help="print, do not write")
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
+    sheet = wb["scrolls2.0"]
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["scrolls2.0"]):
+    for row in rows(sheet):
         sid, text = scroll_tres(row)
         if args.list:
             print("=== %s ===\n%s" % (sid, text))
@@ -274,10 +359,24 @@ def main():
         with open(os.path.join(OUT_DIR, sid + ".tres"), "w", encoding="utf-8") as f:
             f.write(text)
         written.append(sid)
+
+    # The name book rides along with the scrolls rather than living in a generator
+    # of its own: it comes out of the same sheet, and a run that deals labels for
+    # scrolls that no longer exist (or misses one that just arrived) is the exact
+    # drift regenerating the two together prevents.
+    book, n_names, n_parts = names_tres(sheet)
+    if args.list:
+        print("=== scroll_names ===\n%s" % book)
+    else:
+        with open(NAMES_PATH, "w", encoding="utf-8") as f:
+            f.write(book)
+
     if not args.list:
         print("Wrote %d scroll2.0 .tres to %s" % (len(written), OUT_DIR))
         for s in written:
             print("  -", s)
+        print("Wrote the unidentified-name book to %s (%d whole names, %d parts)"
+              % (NAMES_PATH, n_names, n_parts))
 
 
 if __name__ == "__main__":
