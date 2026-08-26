@@ -63,11 +63,24 @@ For how the project is laid out and how its systems fit together, see
   undo, rather than on the panel: the rule is "the thing following the cursor is the
   thing on top", and the panel is not the only thing that can arrive mid-drag.
 
-- **Abyssal Baths opens at −2 Health rather than −3.**
+- **Abyssal Baths runs 2, 3, 4, 5 rather than 3, 4, 5, 6.**
 
-  Immerse is the gate on the whole event — Linger and Exit Baths are both behind it
-  — and at 3 Health for +1 Max Health it was a door most runs could not afford to
-  open. Sheet-side (`events2.0!Q2`), regenerated.
+  The whole ladder moved down a rung, not just its first step: Immerse costs 2 and
+  Linger's hole is `{3+X}`. Immerse is the gate on the entire event — Linger and
+  Exit Baths are both behind it — so a first dip nobody can afford is an event
+  nobody sees past the prompt. Sheet-side (`events2.0!Q2` and `!U2`), regenerated.
+
+- **The undo beside the lost-run tracker is gone.**
+
+  It was there because the tracker is hand-driven and a mis-click ought to be
+  reversible, and it never earned the space: its snapshots are runtime-only, so a
+  reloaded run could not use it at all and the button spent half its life greyed
+  out wearing a tooltip explaining why. `GameLoop2.undo_attempt` and its snapshots
+  stay — they are what makes a lost run a restore rather than a refund (§3) — they
+  simply have no button, and the tracker is a one-way press. How to Play says so.
+
+- **The main menu is titled Roguelike-like, with *The Search for the Amulet of
+  Nivlac* as its subtitle.** The name and the pitch were one 36px line.
 
 - **A body that takes its goal and lives is STAGGERED — it stops walking, not just
   swinging.**

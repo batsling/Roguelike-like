@@ -53,9 +53,15 @@ func _style_menu() -> void:
 		bg.color = UITheme.BG_DEEP
 	# A subtle warm vignette panel behind the button column reads better than a
 	# flat page; add it under the centre content if not already present.
-	var title := get_node_or_null("Center/Panel/Title")
+	# The name in gold, the old title under it as a subtitle in the dim text
+	# colour — one is what the game is called, the other is what it is about, and
+	# they were the same 36px line until now.
+	var title := get_node_or_null("Center/Panel/TitleBox/Title")
 	if title is Label:
 		title.add_theme_color_override("font_color", UITheme.GOLD)
+	var subtitle := get_node_or_null("Center/Panel/TitleBox/Subtitle")
+	if subtitle is Label:
+		subtitle.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	# Make the primary action stand out.
 	var start := get_node_or_null("Center/Panel/Buttons/StartRunBtn")
 	if start is Button:
@@ -95,7 +101,7 @@ func _build_profile_row() -> void:
 	row.add_child(switch_btn)
 
 	panel.add_child(row)
-	var title := panel.get_node_or_null("Title")
+	var title := panel.get_node_or_null("TitleBox")
 	panel.move_child(row, (title.get_index() + 1) if title != null else 0)
 	_refresh_profile_row()
 

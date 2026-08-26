@@ -250,9 +250,9 @@ static func _ch_playing() -> Dictionary:
 				+ "report from there. That is the tension the whole run is built "
 				+ "on: your Health is only ever in danger when you are already "
 				+ "having a bad time."),
-			_note("Mis-clicked the tracker? Undo takes the tick back and puts the "
-				+ "whole board back where it was — the swings, the steps, all of "
-				+ "it. (Not after reloading the run: the undo is not saved.)")
+			_note("There is no undo on the tracker. A tick hands the enemies a "
+				+ "turn and the turn stands — press it when you have actually "
+				+ "lost a run, not to see what happens.")
 			,
 			_h("The checklist"),
 			_p("The left column is everything you are trying to do inside the real "
@@ -277,9 +277,7 @@ static func _ch_playing() -> Dictionary:
 				+ "something for the rest of the evening rather than sitting there "
 				+ "waiting for you to press a button."),
 			_note("There are no take-backs. The confirm is the safeguard — an "
-				+ "enemy that is already dead cannot be un-killed. (Undo, beside "
-				+ "the lost-run tracker, is a different thing: it takes back a "
-				+ "TURN, which is the board's, not yours.)"),
+				+ "enemy that is already dead cannot be un-killed."),
 			_h("Reporting"),
 			_p("Press Completed Game when you are done with the game — done, not "
 				+ "necessarily victorious. Two different things are being claimed, "

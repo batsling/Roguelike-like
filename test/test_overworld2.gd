@@ -914,15 +914,19 @@ func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> 
 	assert_false(GameLoop2.last_attempt_turn.is_empty(),
 		"and the turn it bought is left where the board can replay it")
 
+# The undo has no BUTTON any more — it was grey half the time, because the
+# snapshots it restores from are runtime-only and a reloaded run has none — but
+# the loop's take-back is still there and still a restore rather than a refund.
 func test_undoing_an_attempt_takes_the_turn_back() -> void:
 	_ui.pick(0)
 	var shields: int = GameState.shields
 	_ui.log_attempt()
 	_ui._end_resolve()
-	assert_eq(_ui.undo_attempt(), "turn")
+	assert_eq(GameLoop2.undo_attempt(), "turn")
+	_ui._refresh()
 	assert_eq(GameState.shields, shields, "the shields were never in it")
 	assert_eq(GameLoop2.attempts(), 0)
-	assert_true(_ui._attempt_undo.disabled, "nothing left to take back")
+	assert_false(GameLoop2.can_undo_attempt(), "nothing left to take back")
 
 func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
@@ -4531,7 +4535,8 @@ func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
 	_pick_an_unplayed_game()
 	_bleed_at_the_game_in_play()
 	assert_true(_ui.can_escape())
-	_ui.undo_attempt()
+	GameLoop2.undo_attempt()
+	_ui._refresh()
 	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
 	assert_false(_ui._escape_btn.visible, "and the button goes with it")

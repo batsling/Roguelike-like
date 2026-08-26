@@ -327,7 +327,6 @@ var _attempt_count: Label
 var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
-var _attempt_undo: Button
 var _escape_btn: Button           # hidden until the game in play draws blood (can_escape)
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
@@ -1213,29 +1212,6 @@ func escape_game(force: bool = false) -> void:
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
-
-# Take back the last tick — the tracker is hand-driven, so a mis-click has to be
-# reversible. Puts the whole board the turn moved back where it was
-# (GameLoop2._run_snapshot).
-func undo_attempt() -> String:
-	var cost: String = GameLoop2.undo_attempt()
-	if cost == "":
-		return ""
-	# "shield" / "bonus" only come back from a save written when a try spent one
-	# (GameLoop2.undo_attempt); a tick logged by this build always undoes a turn.
-	var what: String = "the enemies' turn"
-	if cost == "shield":
-		what = GameState.temp_shields_text(1)
-	elif cost == "bonus":
-		what = GameState.shields_text(1)
-	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
-	# The board is a different board now — bodies walked back, the ground it
-	# burned is unburnt — so it is rebuilt rather than repainted in place.
-	if cost == "turn" and _board != null:
-		_board.clear_fx()
-		_board.refresh()
-	_refresh()
-	return cost
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
 # game so the player can move to any of them. Spends one dash charge on the pick.
@@ -5111,12 +5087,6 @@ func _build_attempt_strip() -> Control:
 	_attempt_btn.pressed.connect(log_attempt)
 	row.add_child(_attempt_btn)
 
-	_attempt_undo = Button.new()
-	_attempt_undo.text = "Undo"
-	_attempt_undo.custom_minimum_size = Vector2(56, 30)
-	_attempt_undo.pressed.connect(undo_attempt)
-	row.add_child(_attempt_undo)
-
 	_attempt_count = Label.new()
 	_attempt_count.add_theme_font_size_override("font_size", 13)
 	row.add_child(_attempt_count)
@@ -5162,17 +5132,13 @@ func _refresh_attempts() -> void:
 	_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
-	# A TURN CAN ONLY BE TAKEN BACK BY THE SESSION THAT PLAYED IT (§3): its undo is
-	# a snapshot of the board, and a save carries the run rather than its undo
-	# history. The button says which of the two it is rather than going grey with
-	# no explanation.
-	var can_undo: bool = live and attempts > 0 and not _resolving and GameLoop2.can_undo_attempt()
-	_attempt_undo.disabled = not can_undo
-	# NOTHING when the button works — "Take back the last attempt" is the word
-	# `Undo` with more letters. The only thing worth saying here is why it is grey
-	# when it is grey for a reason the player cannot see.
-	_attempt_undo.tooltip_text = ("" if can_undo or attempts == 0 or _resolving
-		else "The enemies' turn was taken before this run was reloaded — it can't be taken back.")
+	# THERE IS NO UNDO BESIDE THE TRACKER any more. It was there because the
+	# tracker is hand-driven and a mis-click ought to be reversible, and it was
+	# never worth what it cost to explain: it could only take back a turn played by
+	# THIS session (the snapshots are runtime-only — a save carries the run, not its
+	# undo history), so half the time it was a grey button with a paragraph saying
+	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
+	# turn a restore rather than a refund (§3) — they simply have no button.
 	# The escape hatch is up from the first second on a game the player has been
 	# through before, and otherwise only once they have lost enough runs to have
 	# earned it — where it goes away again if they undo back under the line. The
