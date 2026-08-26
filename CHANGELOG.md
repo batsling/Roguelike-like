@@ -11,6 +11,75 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A body that takes its goal and lives is STAGGERED — it stops walking, not just
+  swinging.**
+
+  Meeting a goal deals **one** hit, and one hit does not always finish it: an
+  Alien-Baby-buffed body has 2 Health, a Dexterity one spends a shield instead.
+  Until now the only thing that changed about a survivor was that it held its
+  fire. It went on *walking* — a column a turn, closing on the player it had
+  already been answered for. You did the thing the board asked and watched the
+  board advance anyway, which reads exactly like the goal not having counted.
+
+  It counts. A survivor of its own goal neither strikes nor steps for the rest of
+  that game, however the turns arrive — the Amulet's pull (§7.4), a run you lost
+  (§3.2) — and whether the goal was ticked mid-game or claimed at the report. Only
+  the *game* is bought: the body is still there, still owed, still carrying its
+  goal into the next one, which is what its remaining Health means.
+
+  On the board it is the art **darkened** with `STAGGERED` across it and its threat
+  colour drained toward grey; its hover and its full card say why. No new art and
+  no new symbol — the picture going dim *is* the state.
+
+  `GameLoop2.staggered_this_game` is the record and `is_staggered()` the question.
+  It replaced the `hit_this_game` dictionary the turn resolver used to be handed,
+  which was the same set assembled by hand at each of its two call sites: the
+  movement code needs to read it too now, and three copies of "who has been
+  answered for" is three places to get it wrong.
+
+- **Every enemy's portrait rides its checklist row, not just a boss's.**
+
+  The board draws every body as a **picture** and the checklist drew every body as
+  a **name**, so pairing a row with the enemy it belongs to meant reading a proper
+  noun off one and matching it to art on the other. The lit-pair highlight covered
+  the one row the mouse was on; the other four were still a name-matching
+  exercise. Both lists carry the art now, in both states, and the boss keeps what
+  was actually its own — the orange frame and the "Boss" label on it.
+
+- **The difficulty tier stopped being decoration.**
+
+  `_pick_by_type_tier` fell from "type + tier" straight to "type, **any** tier", and
+  the top of the ladder is thinly stocked — nothing at all is authored at Insane,
+  and Traditional has one body per rung. So a run that had climbed to High or
+  Insane dropped into the type's whole roster and drew Low bodies about as often
+  as anything else. A run at Hard that keeps meeting easy enemies is a run whose
+  difficulty is a label.
+
+  The widening walks **down the tier ladder within the type** now, one rung at a
+  time, never up or sideways — the rule `roll_conjured_enemy` already used, for the
+  same reason. A type with a body at the run's tier always spawns one; a type
+  without steps down rather than reaching for another genre's goal, because the
+  goal is written against the genre and a deckbuilder goal on an action game is
+  not a goal at all. An Insane run draws High. Only once a type is exhausted at
+  *and below* the tier does the type give way, which nothing on today's roster
+  reaches.
+
+- **The Wand of Wishing gets the room it was asking for.**
+
+  Reaching into the whole catalogue was drawn as the same screen as opening a
+  chest: a fixed 820×460 panel, a 270px window onto it, and the chest's own
+  230×250 cards. Three items visible at a time out of fifty — the rarest item in
+  the game presented as a keyhole you scroll a wall past. You cannot compare two
+  relics you cannot see at once, and comparing is the entire decision.
+
+  So the wand has its own layout: the panel takes the viewport less a margin, the
+  cards shrink to art, name and class with the description moved into the hover
+  card (where every other item grid in this build already keeps its long text),
+  and a **search** filters on name *and* description — "bomb" finds the relics
+  that do something with bombs as well as the ones called one. Rarest first, and
+  alphabetical within a rarity, because a wand is spent on the thing you could not
+  otherwise have. Around thirty on screen at 720p instead of three.
+
 - **The report checklist follows the board when the board changes under it.**
 
   A **D10** re-rolls every non-boss body where it stands, a **Scroll of Create

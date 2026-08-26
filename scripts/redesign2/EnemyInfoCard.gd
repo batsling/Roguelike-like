@@ -153,6 +153,17 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 			worth += ", or %d of the %d turns reporting a game buys them" % [
 				mini(stun, extra), extra]
 		stat_col.add_child(_stat_row("❄", "Frozen", worth, Color(0.6, 0.8, 1.0)))
+	# STAGGERED (GameLoop2.staggered_this_game): the goal was met and the hit wasn't
+	# enough to finish it, so it is out of the game — no strike, no step. A row of
+	# its own rather than a note on the damage line, because the damage line is
+	# still true of it NEXT game, which is exactly the distinction that matters.
+	if GameLoop2.is_staggered(int(entry.get("instance", 0))):
+		# ⛔ and not a new symbol: the shipped glyph fonts are a subset built from
+		# what the source already draws (tools/build_glyph_font.py), so a fresh one
+		# would need the font rebuilt to avoid costing a host font search per Label.
+		stat_col.add_child(_stat_row("⛔", "Staggered",
+			"its goal was met this game — it won't move or attack again until the next one",
+			Color(0.72, 0.72, 0.78)))
 	top.add_child(stat_col)
 	inner.add_child(top)
 

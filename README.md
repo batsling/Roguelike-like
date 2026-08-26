@@ -524,7 +524,12 @@ node and its script.
     fighting for a 720p canvas and an exit button pointing at something already on
     screen; it stays under the board per §14, and this screen keeps only the hub's
     id so its button can name it.
-- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). The chest a
+- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). **The wand
+  is its own layout**: reaching into the whole catalogue is a different decision
+  from picking one of three cards, so `setup_obtain` takes the viewport (less a
+  margin), shrinks the cards to art-name-and-class chips with the description in
+  the hover card, and adds a search over both name and description — around thirty
+  items on screen at 720p instead of three, rarest first. The chest a
   report pays doesn't open it either: a beaten game banks 1 point plus each
   defeated body's difficulty (Low 1 … Insane 4, bosses excluded — they bank a
   chest of their own), and `Overworld2._queue_report_chests` spends that on the

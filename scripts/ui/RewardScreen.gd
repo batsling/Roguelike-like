@@ -54,6 +54,14 @@ var _reroll_btn: Button
 var _play_btn: Button
 var _title_line: Label
 var _gold_line: Label
+# The obtain-any screen's own furniture: the panel it has to grow (see
+# _widen_for_obtain), the "Choose an item:" line it retitles, the search field it
+# adds, and what has been typed into it.
+var _panel: PanelContainer
+var _scroll: ScrollContainer
+var _pick_line: Label
+var _search: LineEdit
+var _filter: String = ""
 
 # gold: the amount to grant (Main computes it from the difficulty tier).
 # game: the real game this section represented; when it has a launch target a
@@ -132,6 +140,8 @@ func _begin() -> void:
 	# Reroll only makes sense for a rarity-rolled chest, not an obtain-any pick.
 	if _reroll_btn != null:
 		_reroll_btn.visible = _explicit_pool.is_empty()
+	if not _explicit_pool.is_empty():
+		_widen_for_obtain()
 	# Gold is granted immediately (HTML awards it on victory, not on click).
 	if _gold > 0:
 		GameState.change_gold(_gold)
@@ -150,6 +160,56 @@ func _begin() -> void:
 # UI
 # ------------------------------------------------------------------
 
+# The ordinary chest panel: two or three big cards and a couple of buttons.
+const PANEL_SIZE := Vector2(820, 460)
+
+# --- the obtain-any screen (Wand of Wishing) --------------------------------
+#
+# THE WHOLE CATALOG IS A DIFFERENT SCREEN FROM A CHEST, and it used to be drawn as
+# the same one: a fixed 820x460 panel, a 270px window onto it, and the chest's own
+# 230x250 cards. That is three items visible at a time out of fifty — the rarest
+# item in the game, the one that lets you reach into the catalog and take anything
+# at all, presented as a keyhole you scroll a wall of cards past. You cannot
+# compare two relics you cannot see at once, and comparing is the entire decision.
+#
+# So the wand gets the room it needs: the panel takes the viewport (less a margin),
+# the cards shrink to a chip that is art, name and class, and the description moves
+# into the hover card — which is where the long text on every other item grid in
+# this build already lives. That is around thirty on screen at once instead of
+# three, on a 720p window, with the rest one short scroll away rather than fifteen.
+#
+# And a SEARCH, because fifty is past the number a person scans. It filters on the
+# name and on the description, so "bomb" finds the relics that do something with
+# bombs as well as the ones called one.
+const OBTAIN_MARGIN := Vector2(72.0, 56.0)     # what the panel leaves around itself
+const OBTAIN_TILE_W := 152                      # a catalog chip's width
+const OBTAIN_ART := 46                          # …and its art
+const OBTAIN_MIN_LIST := 320                    # the shortest the catalog window gets
+
+# Give the obtain-any pick the screen. Run from _begin rather than from _build_ui
+# because the caller says which screen this is AFTER adding the node (setup_obtain),
+# by which time _build_ui has already been and gone.
+func _widen_for_obtain() -> void:
+	if _panel == null:
+		return
+	var want: Vector2 = (get_viewport_rect().size - OBTAIN_MARGIN).max(PANEL_SIZE)
+	_panel.custom_minimum_size = want
+	_panel.size = want
+	_panel.position = (get_viewport_rect().size - want) / 2.0
+	if _scroll != null:
+		# Whatever the panel has left once the title, the search and the button row
+		# have taken theirs — never less than a couple of rows of chips.
+		_scroll.custom_minimum_size = Vector2(0, maxf(OBTAIN_MIN_LIST, want.y - 210.0))
+	if _search != null:
+		_search.visible = true
+		# Focused on open: this screen exists to find one item out of fifty, so the
+		# first keystroke should already be narrowing the list.
+		if _search.is_inside_tree():
+			_search.grab_focus()
+	if _pick_line != null:
+		_pick_line.text = "Wish for any item in the game — hover for what it does."
+		_pick_line.add_theme_color_override("font_color", Color(0.85, 0.80, 0.98))
+
 func _build_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
@@ -158,10 +218,11 @@ func _build_ui() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(820, 460)
-	panel.position = (get_viewport_rect().size - Vector2(820, 460)) / 2.0
-	add_child(panel)
+	_panel = PanelContainer.new()
+	_panel.custom_minimum_size = PANEL_SIZE
+	_panel.position = (get_viewport_rect().size - PANEL_SIZE) / 2.0
+	add_child(_panel)
+	var panel := _panel
 
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 14)
@@ -192,24 +253,38 @@ func _build_ui() -> void:
 	_play_btn.pressed.connect(_on_play_real)
 	root.add_child(_play_btn)
 
-	var pick_lbl := Label.new()
-	pick_lbl.text = "Choose an item:"
-	pick_lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
-	pick_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(pick_lbl)
+	_pick_line = Label.new()
+	_pick_line.text = "Choose an item:"
+	_pick_line.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
+	_pick_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_pick_line)
+
+	# The obtain-any search. Built here and hidden, because _build_ui runs on
+	# _ready — before the caller has said which kind of screen this is — and a field
+	# added later would land under the scroll instead of above it.
+	_search = LineEdit.new()
+	_search.placeholder_text = "Search the catalog…"
+	_search.clear_button_enabled = true
+	_search.custom_minimum_size = Vector2(320, 0)
+	_search.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_search.visible = false
+	_search.text_changed.connect(func(text: String):
+		_filter = text.strip_edges().to_lower()
+		_refresh())
+	root.add_child(_search)
 
 	# A scroll-wrapped flow so a Large chest / the full obtain-any catalog wrap
 	# and scroll instead of overflowing the panel.
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 270)
-	root.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.custom_minimum_size = Vector2(0, 270)
+	root.add_child(_scroll)
 	_choices_box = HFlowContainer.new()
 	_choices_box.add_theme_constant_override("h_separation", 12)
 	_choices_box.add_theme_constant_override("v_separation", 12)
 	_choices_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_choices_box)
+	_scroll.add_child(_choices_box)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 12)
@@ -231,7 +306,11 @@ func _refresh() -> void:
 		return
 	if _gold_line != null:
 		_gold_line.text = "+%d gold" % _gold
+	# remove_child BEFORE queue_free: queue_free only marks a node, leaving it a
+	# child until the frame ends — and the search box can refresh this list twice in
+	# one frame, which would otherwise draw the old tiles under the new ones.
 	for c in _choices_box.get_children():
+		_choices_box.remove_child(c)
 		c.queue_free()
 	# The reroll button is labelled and sized HERE, before the multi-chest path
 	# returns — leaving it to the tail meant a multi-chest screen showed it as an
@@ -243,8 +322,101 @@ func _refresh() -> void:
 	if not _chest_sizes.is_empty():
 		_refresh_multi()
 		return
+	if not _explicit_pool.is_empty():
+		_refresh_obtain()
+		return
 	for item in _choices:
 		_choices_box.add_child(_build_choice_tile(item))
+
+# The catalog, rarest first and alphabetical within a rarity, narrowed by whatever
+# is in the search box. Rarest first because that is the order the decision is
+# made in: a wand is spent on the thing you could not otherwise have, and the
+# Commons at the bottom are the ones you will be offered again by any chest.
+func _refresh_obtain() -> void:
+	var shown: Array = []
+	for item in _choices:
+		if item is ItemData and _matches_filter(item):
+			shown.append(item)
+	shown.sort_custom(func(a: ItemData, b: ItemData) -> bool:
+		if int(a.rarity) != int(b.rarity):
+			return int(a.rarity) > int(b.rarity)
+		return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	if shown.is_empty():
+		var none := Label.new()
+		none.text = "Nothing in the catalog matches “%s”." % _filter
+		none.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+		_choices_box.add_child(none)
+		return
+	for item in shown:
+		_choices_box.add_child(_build_catalog_tile(item))
+
+# Does `item` answer what has been typed? Name AND description, so a search for
+# what a relic DOES finds it as readily as a search for what it is called.
+func _matches_filter(item: ItemData) -> bool:
+	if _filter == "":
+		return true
+	return item.display_name.to_lower().contains(_filter) \
+		or String(item.description).to_lower().contains(_filter)
+
+# One catalog chip: art, name, and the one-line class under it. No description and
+# no Take button — the whole chip is the button, and the description is the hover
+# card, which is how every other item grid in this build reads.
+func _build_catalog_tile(item: ItemData) -> Control:
+	var tile := HoverPanel.new()
+	tile.custom_minimum_size = Vector2(OBTAIN_TILE_W, 0)
+	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 8))
+	HoverCard.attach(tile, {
+		"title": item.display_name,
+		"subtitle": _catalog_kind_line(item),
+		"accent": RarityStyle.color(int(item.rarity)),
+		"art": item.image,
+		"lines": [item.description if String(item.description) != "" else "No description."],
+		"note": "Click to wish for it.",
+	})
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	tile.add_child(col)
+
+	var art := UITheme.crisp_tex(item.image, OBTAIN_ART)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(art)
+
+	var rarity_idx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
+	var name_lbl := Label.new()
+	name_lbl.text = item.display_name
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
+	col.add_child(name_lbl)
+
+	var kind_lbl := Label.new()
+	kind_lbl.text = _catalog_kind_line(item)
+	kind_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kind_lbl.add_theme_font_size_override("font_size", 10)
+	kind_lbl.add_theme_color_override("font_color", Color(0.62, 0.62, 0.66))
+	col.add_child(kind_lbl)
+
+	tile.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_on_take(item))
+	return tile
+
+# What a chip says under the name: its rarity and how it is used, in one short
+# line. It is the fact a passive and an active are told apart by, and on a grid
+# this dense it has to fit on one line — so it is deliberately terser than the
+# sentence the hover card's subtitle would otherwise carry.
+func _catalog_kind_line(item: ItemData) -> String:
+	var rarity: String = RARITY_NAMES[clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)]
+	match item.kind:
+		ItemData.ItemKind.USABLE:
+			return "%s · active" % rarity
+		ItemData.ItemKind.TRIGGERED:
+			return "%s · triggered" % rarity
+		_:
+			return "%s · charged" % rarity if item.is_charged() else "%s · passive" % rarity
 
 # One column per chest, each headed and each answered on its own. A chest that
 # has been taken from collapses to its answer, so the screen keeps showing what

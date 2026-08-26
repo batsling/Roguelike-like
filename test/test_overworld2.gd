@@ -2432,9 +2432,10 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 		"the follower's outstanding goal is listed: %s" % listed)
 	assert_false(listed.contains("Nothing is following you"), "and the empty note is gone")
 
-# A boss is the difficulty gate the run is standing in front of, and on a list of
-# goals it used to be one more line of text. Its portrait rides beside its name
-# in both checklists, so which of these is the boss is answered by looking.
+# EVERY body's portrait rides its row, in both checklists. The board beside this
+# list draws each enemy as a picture; drawing them here as names alone made
+# pairing a row with a body a name-matching exercise. The boss keeps what was
+# actually its own — the orange frame and the "Boss" tooltip on it.
 func _texture_rects_under(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
@@ -2460,14 +2461,33 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"and it keeps its portrait on the standing list it moves to")
 
-func test_an_ordinary_follower_gets_no_portrait() -> void:
+func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_pick_solo(0)
-	if _ui._chosen["enemy"].is_boss():
-		return
-	_ui.report(false)
+	var e: GoalEnemyData = _ui._chosen["enemy"]
+	if e.is_boss() or e.image == null:
+		return                                # the boss case, and art-less content
+	# The escort left the board a moment ago (_pick_solo) and the panel is rebuilt
+	# on a later frame, so it is rebuilt here rather than counted a body stale.
+	_ui._populate_play_panel()
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+		"the report step shows the body beside the goal it is asking about")
+	_ui.report(false)                         # miss it: now it follows you
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
-	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
-		"only the boss is called out — a portrait on every row calls out nothing")
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+		"and it keeps its portrait on the standing list it moves to")
+
+# The frame around the portrait is what still separates a boss from anything else,
+# and it is a TOOLTIP rather than a badge — the picture is already the loud part.
+func test_only_a_boss_portrait_says_boss() -> void:
+	_pick_solo(0)
+	var e: GoalEnemyData = _ui._chosen["enemy"]
+	if e.is_boss() or e.image == null:
+		return
+	_ui._populate_play_panel()
+	for rect in _texture_rects_under(_ui._verify_box):
+		var frame: Control = (rect as Node).get_parent()
+		assert_false(String(frame.tooltip_text).begins_with("Boss"),
+			"an ordinary follower's portrait is labelled with its name, not Boss")
 
 func test_the_standing_checklist_has_no_tick_boxes() -> void:
 	# Nothing is reportable until a game is in play, so the standing list is rows.

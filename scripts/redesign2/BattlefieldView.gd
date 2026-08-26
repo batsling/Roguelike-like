@@ -1791,6 +1791,13 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	if stun > 0:
 		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
 	var inst: int = int(entry.get("instance", 0))
+	# STAGGERED: goal met, hit taken, still standing — and out of this game (see
+	# GameLoop2.staggered_this_game). It reads as a body gone quiet: the threat
+	# colour drains toward grey, because whatever column it is in it is not a threat
+	# until the next game, and the art dims under it (see below).
+	var staggered: bool = GameLoop2.is_staggered(inst)
+	if staggered:
+		accent = accent.lerp(STAGGER_GREY, 0.6)
 	var selected: bool = inst > 0 and inst == selected_instance
 
 	# The node covers the bounding box, but only answers the mouse over the cells
@@ -1880,6 +1887,12 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		art.modulate = accent
+	# A staggered body is DARKENED rather than given a symbol of its own. There is
+	# no art for the state and there does not need to be: the picture going dim is
+	# the state, read at a glance across a whole board without anything printed over
+	# the enemy you are trying to recognise. The word itself sits under it, below.
+	if staggered:
+		art.modulate = art.modulate * STAGGER_DIM
 	holder.add_child(art)
 
 	# Badges go on the layer above every body, but stay pinned to the cells this
@@ -1987,6 +2000,19 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 			Control.PRESET_MODE_MINSIZE, -STATUS_STRIP_DROP)
 		holder.add_child(strip)
 
+	# STAGGERED, said in the one place a word can go: across the middle of the body,
+	# over art that has already been darkened to make room for it. The rule against
+	# printing over the top of the box (see above) is about covering the part of the
+	# picture that IDENTIFIES the enemy — and identifying a staggered body is exactly
+	# what the player no longer has to do this game. Centred, so it overhangs a
+	# narrow cell evenly rather than running off one side; on the badge layer, so it
+	# stays legible where it overhangs.
+	if GameLoop2.is_staggered(int(entry.get("instance", 0))):
+		var out := _corner_badge("STAGGERED", Color(0.82, 0.82, 0.86), STAGGER_FONT)
+		out.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		out.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+		holder.add_child(out)
+
 	if stun > 0:
 		var frozen := _corner_badge("❄", Color(0.6, 0.8, 1.0))
 		frozen.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 2)
@@ -2029,7 +2055,13 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	var strikes: int = GameLoop2.attacks_in_turns(entry)
 	var away: int = GameLoop2.lost_runs_until_strike(entry)
 	var timing: String = ""
-	if strikes > 0:
+	# STAGGERED first, because it overrides every other answer this line could give:
+	# a body in the front column that has been answered for this game is not going to
+	# swing, and quoting its damage at the player would be the card contradicting the
+	# board.
+	if GameLoop2.is_staggered(int(entry.get("instance", 0))):
+		timing = "Staggered — its goal was met this game. It won't move or attack again until the next one."
+	elif strikes > 0:
 		timing = "Strikes %d time%s per lost run — %d damage." % [
 			strikes, "" if strikes == 1 else "s", strikes * GameLoop2.enemy_damage(entry)]
 	elif away > 0:
@@ -2129,6 +2161,17 @@ const STATUS_PIP_ENEMY := 16
 const STAT_BADGE_DROP := 7
 const STAT_BADGE_FONT := 10
 const STATUS_STRIP_DROP := 20
+
+# --- staggered (GameLoop2.staggered_this_game) ------------------------------
+#
+# What a body out of the game looks like. There is no art for it and it needs
+# none: the picture going dark IS the state, and the word says which state it is.
+# The two are deliberately understated — a staggered body is still there, still
+# owed, and still on the checklist with its goal on it; what it has stopped doing
+# is only this game's worth of striking and stepping.
+const STAGGER_DIM := Color(0.55, 0.55, 0.60, 1.0)   # multiplied into the art
+const STAGGER_GREY := Color(0.55, 0.55, 0.58)       # what its threat colour drains toward
+const STAGGER_FONT := 9
 
 # One status chip: the art (or the name's first letter when art is missing) with
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and
@@ -2265,6 +2308,10 @@ func _offgrid_token(entry: Dictionary) -> Control:
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		else:
 			art.modulate = accent
+		# Dimmed here for the same reason it is on the board: a body staggered while
+		# it was still queued is out of the game too, and walks on no sooner for it.
+		if GameLoop2.is_staggered(inst):
+			art.modulate = art.modulate * STAGGER_DIM
 		holder.add_child(art)
 		# No "NOW PLAYING" tag. A body waiting in the overflow lane is a body
 		# waiting in the overflow lane, whichever game walked it on.
