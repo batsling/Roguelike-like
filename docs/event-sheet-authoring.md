@@ -504,7 +504,7 @@ to kill you; here the button can just say so, and no column is needed for it.
 `MAX_HP`, `HP`, `GOLD`, `GAMES` — which is what lets a cost be a **fraction of
 the player** rather than a number. The Golden Idol (§12) charges 25% of Max
 Health as `lose_hp {max(1,round(0.25*MAX_HP))}`, and the same machinery that
-prints "-5 Health" for a `{4+X}` hole prints "-3 Health" for this one. Two
+prints "-5 Health" for a `{3+X}` hole prints "-3 Health" for this one. Two
 authoring notes fall out of it:
 
 - **Round in the hole, not in your head.** The effect rounds the number it
@@ -603,8 +603,8 @@ exercises every column here:
 
 | | Offered when | `Repeat` | `Effect` |
 |---|---|---|---|
-| **Immerse** | you're still dry | `Stay` | `gain_max_hp 1; lose_hp 3` |
-| **Linger** | you're in the water | `Again` | `needs Immerse > 0; gain_max_hp 1; lose_hp {4+X}` |
+| **Immerse** | you're still dry | `Stay` | `gain_max_hp 1; lose_hp 2` |
+| **Linger** | you're in the water | `Again` | `needs Immerse > 0; gain_max_hp 1; lose_hp {3+X}` |
 | **Abstain** | you're still dry | `End` | `needs Immerse = 0; gain_hp 3` |
 | **Exit Baths** | you're in the water | `End` | `needs Immerse > 0; nothing` |
 
@@ -614,9 +614,9 @@ Three things fall out of that, and each one is a column earning its place:
   is a *different button*. That is the whole of the staging, and it costs no
   stage column — a `Stay` choice removes itself, so what is on offer afterwards
   is necessarily different.
-- **`{4+X}` is the escalation, exactly.** Slay the Spire 2's Lingers cost 4, then
-  5, then 6, climbing by one; X counts Lingers already taken, so one authored
-  group reproduces the whole ladder.
+- **`{3+X}` is the escalation, exactly.** Slay the Spire 2's Lingers climb by one
+  a dip; X counts Lingers already taken, so one authored group reproduces the
+  whole ladder. It starts a rung lower than the original's 4 — see below.
 - **The two exits are gated against each other, and that gate is load-bearing.**
   Abstain's heal is available *only* to someone who never got in. Without it the
   optimal line is "bathe until nearly dead, then heal", which is precisely
@@ -629,26 +629,18 @@ Health in this game is **5–10, not 75**, so Slay the Spire 2's numbers cannot 
 come across. The **gains** have been brought down to this game's scale: +1 Max
 Health a dip rather than +2, and Abstain heals 3 rather than 10.
 
-The **costs have not moved with them** — Immerse is still 3 and Linger still
-climbs 4, 5, 6. What the player actually feels is now **one lower than each of
-those**, because a `gain_max_hp` arrives with the Health to fill it (§5): the
-first dip nets -2 and the Lingers net 3, 4, 5. That is a real softening of an
-event that was already a bad trade, and it did not come from this cell — it came
-from the rule changing under it.
+The **costs have come down one rung** — Immerse is 2 and Linger climbs 3, 4, 5, 6
+— because at 3 the door was one most runs could not afford to open, and Immerse
+gates the whole event: Linger and Exit Baths are both behind it, so a first dip
+nobody takes is an event nobody sees past its prompt. What the player actually
+feels is **one lower again**, because a `gain_max_hp` arrives with the Health to
+fill it (§5): the first dip nets -1 and the Lingers net 2, 3, 4.
 
-At a 5–10 Health pool the water is still a bad trade at every depth: the first
-dip nets a fifth of a character for +1 Max Health, and nobody who has done the
-arithmetic gets in. If the event plays as a dead option, this is the cell to look
-at, and the scaled costs would read:
-
-```
-Immerse   gain_max_hp 1; lose_hp 1
-Linger    needs Immerse > 0; gain_max_hp 1; lose_hp {2+X}
-```
-
-— 1, then 2, then 3, cumulative 10 by the fourth dip, so a full-health character
-really does die in there, which is the point of the event. **It is two cells, and
-it is a tuning call, which is why it is in the sheet and not in code.**
+At a 5–10 Health pool that is still a real price at every depth — four dips is a
+whole character — and the ladder reaches the fatal rung the prose promises. If the
+event plays as a dead option again, **these are the two cells to look at**; the
+gains (+1 Max Health a dip, Abstain's 3) are the other half of the same tuning
+call, which is why all of it lives in the sheet and not in code.
 
 `Where: Dead End` is doing real work here, and not only because of §1 — an event
 that can kill you is one you must have *chosen* to walk toward. Hanging it off a
@@ -672,7 +664,7 @@ with a hotter line and finishes on a warning:
 | 4+ | *If you bathe any longer you will die.* |
 
 The fourth rung is last, so it stands for every press after it. That is the
-event's whole voice working the way its numbers already did: `{4+X}` says the
+event's whole voice working the way its numbers already did: `{3+X}` says the
 dip costs one more, and the ladder says the water is one degree hotter, from the
 same single authored group. Exit Baths gets its one line — *"The heat finally
 gets to you, and you hop out of the bath."* — because a choice that closes the
@@ -955,6 +947,19 @@ different sentence: "☠ This might kill you." The two never fire together, and
 the certain warning wins when the certain cost is already fatal. Nothing in the
 sheet gambles with Health yet (every `chance` payload authored so far is a
 reward), so this is the warning waiting for the first one that does.
+
+**Red is reserved for death.** Nothing else on a choice reddens, however
+expensive it is: the cost line under a −3 that leaves you at 7 is the ordinary
+dim text. It did not always work that way — the line warmed through pink as the
+Health left ran down, and there was a second warning ("⚠ You can die here")
+one press before the fatal one — and both fired on so much of the game's own
+content that they trained the player to read past the colour that mattered.
+
+**And a red button asks again.** Clicking one raises an "Are you sure?"
+(`EventSystem.confirm_deadly`) naming the cost and the Health you are holding,
+with the press itself behind a second click. That is what replaced the early
+warning: a death here is the run, and a run is hours of somebody actually
+playing real games.
 
 Taking that press ENDS THE RUN, on the same verdict screen an enemy's blow
 would raise. Health reaching 0 ends a run wherever the 0 came from — the loop

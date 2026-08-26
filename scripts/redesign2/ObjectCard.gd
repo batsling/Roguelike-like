@@ -209,7 +209,11 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
 		btn.add_theme_stylebox_override("hover",
 			UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
-	btn.pressed.connect(func(): take(index))
+	# A red lever asks again before it is pulled — the same catch an event's fatal
+	# choice wears (EventSystem.confirm_deadly). The Blood Donation Machine is not
+	# gated on having Health to spare, so this is the last thing between a stray
+	# click and the end of the run.
+	btn.pressed.connect(func(): _confirm_then_take(index))
 	col.add_child(btn)
 
 	var line: String = EventSystem.describe_choice(choice, taken)
@@ -240,6 +244,17 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		col.add_child(warn)
 	return col
 
+
+# The click path: a press that can end the run is asked about first. `take` stays
+# the direct entry, for the tests and anything else pressing a lever in code.
+func _confirm_then_take(index: int) -> void:
+	if _data == null or index < 0 or index >= _data.choices.size():
+		return
+	var choice: Dictionary = _data.choices[index]
+	var taken: int = int((_inst.get("picks", {}) as Dictionary).get(String(choice.get("id", "")), 0))
+	if EventSystem.confirm_deadly(self, choice, taken, func(): take(index)):
+		return
+	take(index)
 
 # Public so a headless test can press a button without a click.
 func take(index: int) -> void:

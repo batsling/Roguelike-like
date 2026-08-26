@@ -474,7 +474,12 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 			UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
 		btn.add_theme_stylebox_override("hover",
 			UITheme.flat(UITheme.PANEL_HI, 6, 6, 2, UITheme.ACCENT))
-	btn.pressed.connect(func(): _take(index))
+	# A RED BUTTON ASKS AGAIN. The press goes through `_confirm_then_take` rather
+	# than straight to `_take`, so a click on the one option that can end the run
+	# gets a "Are you sure?" in front of it. `take()` — the public entry the tests
+	# and any scripted press use — still goes directly: the catch is for a mouse,
+	# not for the loop.
+	btn.pressed.connect(func(): _confirm_then_take(index))
 	col.add_child(btn)
 
 	var line: String = EventSystem.describe_choice(choice, taken)
@@ -507,6 +512,18 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 
 # Public so a test can answer without a click.
 func take(index: int) -> void:
+	_take(index)
+
+# The click path: ask first when the press can kill, then take it. Hung off the
+# modal's own CanvasLayer's parent — this Control — so the question goes away with
+# the event if the event goes away underneath it.
+func _confirm_then_take(index: int) -> void:
+	if _done or index < 0 or index >= _event.choices.size():
+		return
+	var choice: Dictionary = _event.choices[index]
+	var taken: int = int(_picks.get(String(choice.get("id", "")), 0))
+	if EventSystem.confirm_deadly(self, choice, taken, func(): _take(index)):
+		return
 	_take(index)
 
 

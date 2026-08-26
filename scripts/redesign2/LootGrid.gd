@@ -63,6 +63,9 @@ const ACCENT := Color(0.72, 0.62, 0.86)
 # The grid is three wide while the pack holds nine, and `grid_columns()` is what
 # keeps those two facts one fact (docs/potions-design.md §8.1).
 const COLS := 3
+# The z the piece in your hand is drawn at — see `preview_cell`. Well clear of
+# anything the page sets on itself, and under the 4096 ceiling Godot allows.
+const DRAG_Z := 500
 
 # Pieces already in the pack can be dragged between slots.
 var allow_reorder: bool = false
@@ -250,6 +253,19 @@ func drag_preview(slot: LootSlot) -> Control:
 # already look like one.
 static func preview_cell(entry: Dictionary) -> Control:
 	var holder := Control.new()
+	# ABOVE WHATEVER THE DRAG SUMMONED. Godot parents the drag preview to the
+	# topmost Control over the one the drag started on and moves it to the front of
+	# that node's children — and then DRAG_BEGIN reaches the page, which hangs the
+	# transient pack (`DragPackPanel`) off the very same node, AFTER it. Child order
+	# is draw order, so the piece in your hand went behind the panel it was being
+	# carried into: you dragged a loot cell at the pack and it vanished under it.
+	#
+	# Fixed on the preview rather than on the panel, because the panel is not the
+	# only thing that can arrive mid-drag and the rule is the same for all of them:
+	# the thing following the cursor is the thing on top. z_index outranks child
+	# order within the canvas layer, and the cell's own children are relative to the
+	# holder, so one write covers the whole preview.
+	holder.z_index = DRAG_Z
 	var cell := PanelContainer.new()
 	cell.add_theme_stylebox_override("panel", _filled_box(entry, true))
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE

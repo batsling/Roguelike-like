@@ -1390,8 +1390,9 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 
 # Whether the last logged try can be taken back. A turn can only be taken back by
 # the session that played it: its snapshot is runtime-only (see
-# `_attempt_snapshots`), so a run reloaded mid-game answers false here and the
-# undo button goes grey rather than half-undoing something.
+# `_attempt_snapshots`), so a run reloaded mid-game answers false here rather than
+# half-undoing something. Nothing on the page offers the take-back any more — the
+# overworld's undo button is gone (§3) — so this is the loop's own guard.
 #
 # An OLD save may carry ticks that cost a shield, from when a try spent one. Those
 # are refundable without a snapshot, and undo_attempt still hands the shield back.

@@ -914,15 +914,19 @@ func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> 
 	assert_false(GameLoop2.last_attempt_turn.is_empty(),
 		"and the turn it bought is left where the board can replay it")
 
+# The undo has no BUTTON any more — it was grey half the time, because the
+# snapshots it restores from are runtime-only and a reloaded run has none — but
+# the loop's take-back is still there and still a restore rather than a refund.
 func test_undoing_an_attempt_takes_the_turn_back() -> void:
 	_ui.pick(0)
 	var shields: int = GameState.shields
 	_ui.log_attempt()
 	_ui._end_resolve()
-	assert_eq(_ui.undo_attempt(), "turn")
+	assert_eq(GameLoop2.undo_attempt(), "turn")
+	_ui._refresh()
 	assert_eq(GameState.shields, shields, "the shields were never in it")
 	assert_eq(GameLoop2.attempts(), 0)
-	assert_true(_ui._attempt_undo.disabled, "nothing left to take back")
+	assert_false(GameLoop2.can_undo_attempt(), "nothing left to take back")
 
 func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
@@ -2687,24 +2691,24 @@ func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "playing: it stays there")
 	assert_true(_ui._inv_wrap.visible)
 
-# The count on the board's heading is the BODIES ON THE BOARD, and nothing else.
-# A missed goal leaves two of them now — the game's enemy and the escort that
-# spawned with it (§7.5) — so this is also the test that would catch the heading
-# going back to counting the game in play twice.
-func test_the_summary_line_counts_the_followers() -> void:
+# WHAT IS FOLLOWING YOU IS THE STACK, and the board draws it. There is no summary
+# line over the board any more — it said "2 closing in" above a picture of two
+# bodies on two squares — so what these two guard is the count itself, which is
+# what the line was ever quoting.
+#
+# A missed goal leaves two of them: the game's enemy and the escort that spawned
+# with it (§7.5).
+func test_a_missed_goal_leaves_both_bodies_following() -> void:
 	_ui.pick(0)
 	_ui.report(false)                    # a missed goal leaves the pair following
-	assert_eq(GameLoop2.stack.size(), 2)
-	assert_true(_ui._stack.text.contains("2 closing in"),
-		"the board's own heading says what's out there: %s" % _ui._stack.text)
+	assert_eq(GameLoop2.stack.size(), 2, "the enemy and its escort are both out there")
 
 # ...and while a game is being PLAYED, the enemy standing on the board for it is
-# one body on that list, not two.
-func test_the_summary_line_does_not_count_the_game_in_play_twice() -> void:
+# one body on that list, not two: it has stood in the stack with everything else
+# since §7.2, so nothing gets to count it a second time.
+func test_the_game_in_play_puts_one_body_on_the_board_not_two() -> void:
 	_pick_solo(0)
 	assert_eq(GameLoop2.stack.size(), 1, "the game in play put one body out there")
-	assert_true(_ui._stack.text.contains("1 closing in"),
-		"and the heading says one: %s" % _ui._stack.text)
 
 # --- rating is a button, never a pop-up -----------------------------------
 
@@ -4531,7 +4535,8 @@ func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
 	_pick_an_unplayed_game()
 	_bleed_at_the_game_in_play()
 	assert_true(_ui.can_escape())
-	_ui.undo_attempt()
+	GameLoop2.undo_attempt()
+	_ui._refresh()
 	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
 	assert_false(_ui._escape_btn.visible, "and the button goes with it")
@@ -5718,6 +5723,59 @@ func test_a_fatal_press_is_painted_as_one() -> void:
 		assert_ne(safe.get_theme_stylebox("normal").border_color, UITheme.DANGER,
 			"while walking away looks nothing like it")
 
+# --- the second press -------------------------------------------------------
+#
+# A press that can end the run asks again. The prose warning one press EARLY is
+# gone (it fired on most of the costly buttons in the game and taught the player
+# to scroll past it); what replaces it is a catch on the click itself, so death
+# costs a deliberate second answer rather than a paragraph nobody read.
+
+func _deadly_confirm(host: Node) -> ConfirmPanel:
+	for node in host.find_children("*", "ConfirmPanel", true, false):
+		return node
+	return null
+
+func test_a_fatal_press_asks_before_it_is_taken() -> void:
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	var idx: int = _lethal_choice_index(modal)
+	assert_gt(idx, -1, "on 1 Health, reaching into the ooze is fatal")
+	modal._confirm_then_take(idx)
+	await get_tree().process_frame
+	assert_not_null(_deadly_confirm(modal), "the click raises an Are you sure?")
+	assert_eq(GameState.hp, 1, "…and nothing has been spent while it stands")
+	assert_false(GameLoop2.run_over, "the run is still going")
+
+func test_saying_yes_takes_the_press() -> void:
+	GameState.set_hp(1)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	modal._confirm_then_take(_lethal_choice_index(modal))
+	await get_tree().process_frame
+	var panel: ConfirmPanel = _deadly_confirm(modal)
+	assert_not_null(panel)
+	(panel.find_child("OkBtn", true, false) as Button).pressed.emit()
+	await get_tree().process_frame
+	assert_eq(GameState.hp, 0, "the press went through")
+	assert_true(GameLoop2.run_over, "which was the whole warning")
+
+func test_a_survivable_press_is_never_asked_about() -> void:
+	# The catch is for death and nothing else. A steep cost you can walk away from
+	# goes straight through — an event that asked twice about every -3 would be the
+	# old "you can die here" line wearing a button.
+	GameState.set_hp(GameState.max_hp)
+	_ui.open_event(Data.get_event2(&"scrap_ooze"))
+	var modal = _ui._event_modal
+	var before: int = GameState.hp
+	for i in range(modal._event.choices.size()):
+		if EventSystem.health_cost(modal._event.choices[i], 0) > 0:
+			modal._confirm_then_take(i)
+			await get_tree().process_frame
+			assert_null(_deadly_confirm(modal), "nothing to ask about")
+			assert_lt(GameState.hp, before, "the press simply happened")
+			return
+
 # --- where the illustration goes --------------------------------------------
 #
 # Two columns are for an event with a page of prose in it. A WORDLESS one — the
@@ -6175,6 +6233,39 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	_leave_post_game()
 	_dismiss_event()
 
+# RIDE THE BUS DOES THE SAME. It moves the run and it used to do it by hand —
+# `travel_to_game` set the phase back to SELECT and that was that — so a player
+# halfway through a game could ride out of it for free: no goal-enemy following,
+# no turns for the board, no report. Every teleport pays the same fare now.
+func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	var played: GameData = _ui._chosen.get("game")
+	assert_not_null(played)
+	assert_false(_ui.can_escape(), "the ordinary exit is shut — nothing has drawn blood")
+	# The bus needs somewhere to go, or it says so and moves nobody — asserted
+	# rather than skipped over, so this test is never quietly about nothing.
+	var type_key: StringName = GameLoop2.game_type_key(played)
+	var elsewhere: int = 0
+	for g in Data.all_games():
+		if g is GameData and g.id != GameState.current_game_id \
+				and not GameLoop2.is_bashed(g.id) and GameLoop2.game_type_key(g) == type_key:
+			elsewhere += 1
+	assert_gt(elsewhere, 0, "there is another %s game to ride to" % type_key)
+	var following: int = GameLoop2.stack.size()
+	_ui.teleport_to_type(type_key)
+	# Either it moved the run or the escape it paid for ended it; what it must not
+	# do is leave the player standing in a game they never finished.
+	assert_ne(_ui._phase, OVERWORLD.Phase.PLAYING,
+		"the game in play was walked out of rather than abandoned")
+	if not GameLoop2.run_over:
+		assert_gte(GameLoop2.stack.size(), following,
+			"and its enemy came with you, the same as any other escape")
+		assert_false(GameState.has_beaten_game(played.id), "an escape banks no beat")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
 # The identification half, which the escape above does not change: both systems
 # learn the piece before they ask the overworld for anything, so what the move
 # does or doesn't do never decides whether the gamble paid off.
@@ -6388,6 +6479,22 @@ func test_the_pack_sits_to_the_left_of_the_board() -> void:
 	var board: Rect2 = _ui._stage_panel.get_global_rect()
 	assert_lte(pack.position.x + pack.size.x, board.position.x + 1.0,
 		"it ends where the board begins, so it covers no square the drag needs")
+	_ui._notification(Control.NOTIFICATION_DRAG_END)
+
+# THE PIECE IN YOUR HAND IS DRAWN ON TOP OF THE PACK IT IS BEING CARRIED INTO.
+# Godot parents the drag preview to the page and moves it to the front of the
+# page's children — and then DRAG_BEGIN reaches the page, which hangs the pack off
+# that same node, AFTER it. Child order is draw order, so the cell following the
+# cursor disappeared under the panel it was aimed at. The preview outranks it by
+# z_index instead, which no later sibling can undo.
+func test_the_piece_being_dragged_draws_over_the_pack_that_arrives_for_it() -> void:
+	_pick_solo(0)
+	_floor_loot(Vector2i(2, 1))
+	_ui._mount_drag_pack()
+	var preview: Control = LootGrid.preview_cell({"type": "scroll", "id": &"scroll_of_teleportation"})
+	assert_gt(preview.z_index, _ui._drag_pack.z_index,
+		"the thing following the cursor is the thing on top")
+	preview.free()
 	_ui._notification(Control.NOTIFICATION_DRAG_END)
 
 func test_dropping_a_piece_in_a_free_slot_takes_it() -> void:

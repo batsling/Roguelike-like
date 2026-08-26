@@ -228,8 +228,11 @@ of a game.
   Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
   resources before it resolves and `undo_attempt` puts the whole thing back.
   Those snapshots are **runtime-only** — a save carries the run, not its undo
-  history — so a turn taken before a reload cannot be taken back, which
-  `can_undo_attempt` answers and the undo button reads off.
+  history — so a turn taken before a reload cannot be taken back, which is what
+  `can_undo_attempt` answers. **There is no undo button**: it spent half its life
+  greyed out for exactly that reason, wearing a tooltip to explain itself, and a
+  safeguard that is unavailable half the time is not one. The restore stays as the
+  loop's own take-back; the tracker is a one-way press.
 
 **A SHIELD STOPS ONE INSTANCE OF DAMAGE.** The whole of it, whatever its size: a
 3-damage swing breaks one shield and lands for nothing, and so does a 1-damage
@@ -701,6 +704,14 @@ and the game is still not credited — an escape is not a win. You are buying th
 exit, not a pardon. Both consumables that teleport (Scroll of Teleportation and the
 Telepill) come through the one function, so both escape; one rule for moving the run
 off a game.
+
+**And so does every other teleport.** Ride the Bus (`teleport_to_type`) used to move
+the run by hand — `travel_to_game` set the phase back to SELECT and that was that —
+which walked the player out of a game in play for free: no goal-enemy following, no
+turns for the board, no report. The escape lives in `travel_to_game` now, so an item
+that moves you pays the same fare a scroll does. Its one exception is the return leg
+of a `play_game` detour (§10), which is not a teleport: that game has already been
+reported by the time the run heads home.
 
 Two dead ends survive, and both say so in full. If the escape is what kills you —
 the turns it hands over are real — the run is over and there is nowhere to land. If
@@ -1477,7 +1488,7 @@ previously name:
 
 | Token | What it is |
 |---|---|
-| `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and the swing a failed try bought count exactly as an enemy's swing at the end of a game does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` restores what the tick's turn moved — the purse it minted included, otherwise the undo button is a coin press. |
+| `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and the swing a failed try bought count exactly as an enemy's swing at the end of a game does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` restores what the tick's turn moved — the purse it minted included, otherwise the undo would be a coin press. |
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |

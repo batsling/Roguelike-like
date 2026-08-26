@@ -163,22 +163,30 @@ pushes *toward*: a relic beats a coin.
 
 **It is not gated on having Health to spare.** Isaac lets you kill yourself on
 one of these and so does this: the button stays live all the way down. What
-stands between the player and that is the warning, not a lock — the cost line
-reddens as the press gets closer to lethal, and says so outright when it is:
+stands between the player and that is the warning, not a lock:
 
 ```
 -1 Health · 93.3%: +1 Gold · 6.7%: +Blood Bag or IV Bag
-⚠  You can die here — this leaves you at 1 Health.
 ☠  This will kill you.
 ```
 
-The warning fires **one press early**, because a warning that only appears on
-the fatal press arrives after the decision that mattered. Both come from
-`EventSystem.danger_color` / `lethal_warning`, which read the choice's CERTAIN
-Health cost — a `chance` payload that might cost Health does not redden a
-button, or the colour stops being read. Events get the same treatment: Abyssal
-Baths' Linger climbs until it can kill, and the number goes red before the prose
-gets round to saying so.
+**Red means dead, and nothing else does.** The button, its cost line and the
+warning under it all fire on one condition — this press can end the run
+(`EventSystem.is_deadly` / `danger_color` / `lethal_warning`) — and a press you
+can walk away from is drawn exactly like a free one however steep it is. Two
+earlier versions of this are gone: the cost line used to warm through pink as
+the Health left ran down, and a second warning ("⚠ You can die here — this
+leaves you at 1 Health") fired one press early on anything that took you within
+one more of the same cost. Both fired on most of the costly buttons in the game,
+which taught the player to read past a colour and a line that were about to
+matter.
+
+What replaced the early warning is a **second press**: clicking a red button
+raises an "Are you sure?" (`EventSystem.confirm_deadly`) naming the cost and the
+Health you are holding. A death here is the run, and a run is hours of somebody
+actually playing real games — it is worth one more click. Events get the same
+treatment: Abyssal Baths' Linger climbs until it can kill, and the press that
+can is the one that turns red and asks.
 
 Bursting or bombing ends **that** machine. Another may still turn up.
 

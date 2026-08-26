@@ -11,6 +11,77 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A pass over the page for text nobody was reading.**
+
+  Four lines and two tooltips are gone, all of them the screen quoting something
+  already in front of the player. The board's heading — `Battlefield — 2 closing
+  in, 2 swings for 4 damage on every lost run` — sat above a picture of two bodies
+  standing on two squares with their reach drawn on them; the board is the summary.
+  The report panel's `Now playing: <game>` sat directly under that game's box art,
+  and the sentence naming what walked on with it sat above a checklist with a row
+  for each of them. `Lost a run` and `Undo` carried a paragraph each explaining a
+  verb the player presses a dozen times a run. What is left of the play panel's
+  line is the one thing nowhere else on the page: a rematch pays a Dash.
+
+  The header now reads **Roguelike-like** rather than *The Search for the Amulet*.
+
+- **Red means dead. Nothing else on a choice reddens, and a red button asks again.**
+
+  An event's cost line used to warm through pink as the Health left after the press
+  ran down, and a second warning — `⚠ You can die here — this leaves you at N
+  Health` — fired one press *before* the fatal one. Both fired on most of the
+  costly content in the game, which is what made them worthless: the player learns
+  to read past a colour and a line that are about to matter. The warning colour and
+  the warning words are now spent on one thing only, the press that can end the run
+  (`EventSystem.is_deadly`), and a survivable price is drawn exactly like a free one
+  however steep it is.
+
+  What replaced the early warning is a **second press**. Clicking a red option
+  raises an "Are you sure?" naming the cost and the Health you are holding
+  (`EventSystem.confirm_deadly`, on a layer above every modal that can draw a choice
+  button). A death here is the whole run, and a run is hours of somebody actually
+  playing real games — it is worth one more click. Objects' levers get it too: the
+  Blood Donation Machine has never been gated on having Health to spare.
+
+- **Every teleport escapes the game in play, not just the loot ones.**
+
+  A Scroll of Teleportation and a Telepill have walked the run out of a game and
+  *then* moved it since §8.2. Ride the Bus did not: `travel_to_game` set the phase
+  back to SELECT by hand, so an item that moved you mid-game abandoned it for free —
+  no goal-enemy following, no turns for the board, no report. The escape lives in
+  `travel_to_game` now, forced past `can_escape()` exactly as loot's is, so the item
+  buys the door rather than a pardon. The one exception is the return leg of a
+  `play_game` detour, which is not a teleport: that game has already been reported.
+
+- **The piece you are dragging is drawn over the pack it is being dragged into.**
+
+  Godot parents a drag preview to the page and moves it to the front of the page's
+  children — and *then* `NOTIFICATION_DRAG_BEGIN` reaches the page, which hangs the
+  transient pack (`DragPackPanel`) off that same node, after it. Child order is draw
+  order, so a loot cell lifted off the battlefield floor vanished under the panel it
+  was being carried to. Fixed on the preview with a `z_index` no later sibling can
+  undo, rather than on the panel: the rule is "the thing following the cursor is the
+  thing on top", and the panel is not the only thing that can arrive mid-drag.
+
+- **Abyssal Baths runs 2, 3, 4, 5 rather than 3, 4, 5, 6.**
+
+  The whole ladder moved down a rung, not just its first step: Immerse costs 2 and
+  Linger's hole is `{3+X}`. Immerse is the gate on the entire event — Linger and
+  Exit Baths are both behind it — so a first dip nobody can afford is an event
+  nobody sees past the prompt. Sheet-side (`events2.0!Q2` and `!U2`), regenerated.
+
+- **The undo beside the lost-run tracker is gone.**
+
+  It was there because the tracker is hand-driven and a mis-click ought to be
+  reversible, and it never earned the space: its snapshots are runtime-only, so a
+  reloaded run could not use it at all and the button spent half its life greyed
+  out wearing a tooltip explaining why. `GameLoop2.undo_attempt` and its snapshots
+  stay — they are what makes a lost run a restore rather than a refund (§3) — they
+  simply have no button, and the tracker is a one-way press. How to Play says so.
+
+- **The main menu is titled Roguelike-like, with *The Search for the Amulet of
+  Nivlac* as its subtitle.** The name and the pitch were one 36px line.
+
 - **A body that takes its goal and lives is STAGGERED — it stops walking, not just
   swinging.**
 

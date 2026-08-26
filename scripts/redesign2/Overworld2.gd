@@ -301,7 +301,6 @@ var _controls_sig: String = ""
 # The third signature lives with the section it guards, in ReportChecklist.
 
 var _controls_row: HBoxContainer
-var _stack: RichTextLabel           # battlefield summary line
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
 # once a game is in play, which is what frees the room for the stage below.
 var _select_box: VBoxContainer
@@ -314,7 +313,6 @@ var _left_col: VBoxContainer
 var _right_col: VBoxContainer
 var _report_panel: PanelContainer    # frames the checklist half (left)
 var _stage_panel: PanelContainer     # frames the board (right, under the pack strip)
-var _board_head: HBoxContainer       # the board's summary line + its verb chips
 var _inv_wrap: PanelContainer        # the carried items, in a strip above the board
 # The page's ScrollContainer. The stage is taller than a screen with the board on
 # top, so picking a game scrolls the report half into reach (the board is a scroll
@@ -329,7 +327,6 @@ var _attempt_count: Label
 var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
-var _attempt_undo: Button
 var _escape_btn: Button           # hidden until the game in play draws blood (can_escape)
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
@@ -1215,29 +1212,6 @@ func escape_game(force: bool = false) -> void:
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true)
-
-# Take back the last tick — the tracker is hand-driven, so a mis-click has to be
-# reversible. Puts the whole board the turn moved back where it was
-# (GameLoop2._run_snapshot).
-func undo_attempt() -> String:
-	var cost: String = GameLoop2.undo_attempt()
-	if cost == "":
-		return ""
-	# "shield" / "bonus" only come back from a save written when a try spent one
-	# (GameLoop2.undo_attempt); a tick logged by this build always undoes a turn.
-	var what: String = "the enemies' turn"
-	if cost == "shield":
-		what = GameState.temp_shields_text(1)
-	elif cost == "bonus":
-		what = GameState.shields_text(1)
-	GameLog.add("Took back an attempt (%s)." % what, UITheme.TEXT_DIM)
-	# The board is a different board now — bodies walked back, the ground it
-	# burned is unburnt — so it is rebuilt rather than repainted in place.
-	if cost == "turn" and _board != null:
-		_board.clear_fx()
-		_board.refresh()
-	_refresh()
-	return cost
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
 # game so the player can move to any of them. Spends one dash charge on the pick.
@@ -2440,17 +2414,43 @@ func teleport_to_type(type_key: StringName) -> void:
 			Color(0.8, 0.6, 0.4))
 		return
 	var dest: StringName = same_type[_rng.randi() % same_type.size()]
+	# THE FARE IS PAID BEFORE THE ARRIVAL IS ANNOUNCED. `travel_to_game` escapes a
+	# game in play on the player's behalf, and escaping resolves the board — which
+	# can end the run on the way out. Done here, ahead of the log line, so a bus
+	# that killed you does not first report you as having got off it somewhere.
+	if _phase == Phase.PLAYING:
+		escape_game(true)
+		if GameLoop2.run_over or _phase == Phase.OVER:
+			return
 	var g: GameData = Data.get_game(dest)
 	GameLog.add("Rode the bus to %s." % (g.display_name if g != null else String(dest)),
 		Color(0.5, 0.85, 1.0))
 	travel_to_game(dest)
 
 # Move the run to `game_id` outright and rebuild the offering around it — the
-# landing half of every teleport (Ride the Bus, and the dev panel's jump). Does
-# not resolve a game or touch the board; it only changes where you are standing.
-func travel_to_game(game_id: StringName) -> void:
+# landing half of every teleport (Ride the Bus, and the dev panel's jump).
+#
+# A GAME IN PLAY IS ESCAPED ON THE WAY OUT, the same as it is under a Scroll of
+# Teleportation (see loot_teleport, which argues the case at length). Ride the Bus
+# used to change where you were standing and set the phase back to SELECT by hand,
+# which walked out of the game without paying for it: the goal-enemy never
+# followed, the board never took the turns finishing a game owes (§7.4), and a
+# player mid-game could ride out of anything for free. One rule for moving the run
+# off a game, and `escape_game(true)` is it — a spent item IS what earns the exit,
+# and it buys the door rather than a pardon.
+#
+# `escape_first` is off only for the two returns from a play_game trip (§10),
+# which are not teleports: the game they came back from has already been reported.
+func travel_to_game(game_id: StringName, escape_first: bool = true) -> void:
 	if Data.get_game(game_id) == null:
 		return
+	if escape_first and _phase == Phase.PLAYING:
+		escape_game(true)
+		# The way out can be the thing that kills you — escaping resolves the board
+		# and the turns it hands over are real. A run that ended on the way out has
+		# nowhere left to be moved to; the win/lose screen owns the page now.
+		if GameLoop2.run_over or _phase == Phase.OVER:
+			return
 	_leave_node()
 	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
@@ -2557,7 +2557,9 @@ func _finish_play_game(beaten: bool) -> void:
 	var can_stay: bool = not RunGraph.is_off_map(here) and RunGraph.degree(here) > 0
 	if not can_stay:
 		if back != &"":
-			travel_to_game(back)
+			# Not a teleport: the detour has already been reported, so there is no
+			# game in play to escape out of on the way home.
+			travel_to_game(back, false)
 		return
 	_ask_stay_or_return(back)
 
@@ -2623,7 +2625,7 @@ func _take_return_choice(index: int) -> void:
 		_refresh()
 		autosave()
 		return
-	travel_to_game(back)
+	travel_to_game(back, false)   # coming home from a detour, not teleporting off a game
 	autosave()
 
 
@@ -3080,16 +3082,15 @@ func _on_vitals_changed(_hp: int = 0, _max_hp: int = 0) -> void:
 # stat_bonuses are folded in, item_acquired effects have already fired, a shield
 # grant is already spendable, and a Mine-r Construction has already grown the
 # board (GameLoop2.sync_grid_bounds hangs off this same signal). This used to
-# relist the pack and repaint the chips only, which left the shield pips, the
-# battlefield summary and the board itself quoting numbers from before the
-# pickup until the next report came along to refresh them.
+# relist the pack and repaint the chips only, which left the shield pips and the
+# board itself quoting numbers from before the pickup until the next report came
+# along to refresh them.
 func _on_inventory_changed() -> void:
-	if _stack == null:
+	if _board == null:
 		return
 	_refresh_items()
 	_refresh_stats()
 	_refresh_attempts()
-	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
 	_refresh_stage()
 	# The board is the one thing that has to wait. A repaint frees every body on
 	# it, and the resolve animation is sliding those bodies — so a pickup that
@@ -3102,12 +3103,11 @@ func _on_inventory_changed() -> void:
 	_board.refresh()
 
 func _refresh(_a = null) -> void:
-	if _stack == null:
+	if _board == null:
 		return
 	_refresh_stats()
 	_refresh_items()
 	_refresh_route_strip()
-	_stack.text = "[b]Battlefield[/b]  —  " + _stack_summary()
 	_board.refresh()
 	_refresh_attempts()
 	_refresh_stage()
@@ -3593,35 +3593,20 @@ func _roll_bonus_level_up() -> bool:
 	return false
 
 
-# The line beside the cover on the report panel: WHAT YOU ARE PLAYING, and what
-# taking it put on the board.
+# The line beside the cover on the report panel — and it is now ONLY the one
+# thing here the player cannot read off something else on the page.
 #
-# It used to print the whole enemy preview here — the enemy's name, its goal, its
-# stats — as though the game came with a boss attached. It doesn't
-# (GameLoop2.arrivals): what walked on is on the board and in the checklist with
-# everything else, so this says that it walked on and stops. The one thing that IS
-# a fact about the game keeps its line: a rematch pays a Dash.
+# It used to open with "Now playing: <game>" over the box art of that very game,
+# and follow it with a sentence naming the bodies that walked on when the card was
+# taken. Both were the page quoting itself: the cover directly above says which
+# game this is, and what walked on is standing on the board and written into the
+# checklist under it (GameLoop2.arrivals). What is left is the one fact that is
+# nowhere else — a rematch pays a Dash — so most of the time this is empty and the
+# cover stands on its own.
 func _now_playing_text() -> String:
-	if _chosen.is_empty():
+	if _chosen.is_empty() or not bool(_chosen.get("repeat", false)):
 		return ""
-	var out: String = "[b]Now playing:[/b] %s" % _chosen["game"].display_name
-	var arrived: Array = []
-	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and landed.get("enemy") != null:
-		arrived.append((landed["enemy"] as GoalEnemyData).display_name)
-	var escort: GoalEnemyData = GameLoop2.escort_enemy()
-	if escort != null:
-		arrived.append(escort.display_name)
-	if arrived.is_empty():
-		out += "\n[i]Nothing walked on with it.[/i]"
-	else:
-		out += "\n[color=#%s]%s walked onto the board — tick %s below if you clear %s.[/color]" % [
-			UITheme.DANGER.to_html(false), " and ".join(arrived),
-			"them" if arrived.size() > 1 else "it",
-			"their goals" if arrived.size() > 1 else "its goal"]
-	if bool(_chosen.get("repeat", false)):
-		out += "\n[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
-	return out
+	return "[color=#80d9ff]⚡ Already beaten this run — beating it again grants +%d Dash.[/color]" % REPEAT_BEAT_DASH
 
 # --- the run's numbers, where they are spent ------------------------------
 #
@@ -3962,36 +3947,6 @@ func open_loot_card(index: int) -> void:
 # implementation.
 func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> Dictionary:
 	return PackStrip.item_hover(item, active, ready, reporting)
-
-# One-line header above the follower cards: how many are on your tail and the
-# damage the stack lands on the next game beaten — which, once enemies take more
-# than one turn a game, includes the rank behind the front line, because it walks
-# into range and swings before the game is out (§7.4). Counting the swings rather
-# than the bodies is what keeps this line honest at three turns a game.
-#
-# The count is `stack` and nothing else. It used to add one for the game in play,
-# from the era when that enemy waited off the field and was not in the stack — it
-# has stood on the board with everything else since §7.2, so the extra 1 was
-# counting it twice, and the line said "3 closing in" over a board holding two.
-# Noticed because the escort (§7.5) makes every playing board a two-body board,
-# where an off-by-one reads as the escort having been counted rather than as the
-# old bug it is.
-func _stack_summary() -> String:
-	var following: int = GameLoop2.stack.size()
-	if following == 0:
-		return "clear  —  nothing following you"
-	# Priced in LOST RUNS (§3.2), because that is the threat the player is deciding
-	# against: reporting a game moves nobody out in the wilds, and what the strip
-	# has to answer is "what does it cost me to go and fail at this again".
-	var dmg: int = GameLoop2.damage_per_lost_run()
-	var swings: int = 0
-	for entry in GameLoop2.stack:
-		swings += GameLoop2.attacks_in_turns(entry)
-	if swings == 0:
-		return "%d closing in, none of them in reach yet" % following
-	return "%d closing in, %d swing%s for %d damage on every lost run" % [
-		following, swings, "" if swings == 1 else "s", dmg]
-
 
 # --- kill-drops (§8) -------------------------------------------------------
 
@@ -4629,7 +4584,7 @@ func _build_ui() -> void:
 	_route_strip.clip_contents = true
 	header.add_child(_route_strip)
 	var title := Label.new()
-	title.text = "The Search for the Amulet"
+	title.text = "Roguelike-like"
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -4849,20 +4804,12 @@ func _build_ui() -> void:
 	stage_box.add_theme_constant_override("separation", 8)
 	_stage_panel.add_child(stage_box)
 
-	# Board header: what the field is doing, on one line.
-	#
-	# There is no Tier / Push / Bombs row here, and there was briefly: the board
-	# DRAWS all three itself and always did. Its pressure bar ends in "▦ 4×4 · Low"
-	# — that "Low" is the tier — and its toolbar's two buttons are literally
-	# "⇤ Push (1)" and "✸ Bomb (3)". A second row saying the same numbers cost the
-	# page ~60px to repeat the board back at itself, which is exactly the mistake
-	# the HUD strip was making with Health.
-	_board_head = HBoxContainer.new()
-	_stack = _panel_label()
-	_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_board_head.add_child(_stack)
-	stage_box.add_child(_board_head)
-
+	# NO HEADER ROW OVER THE BOARD. There was a Tier / Push / Bombs row here once
+	# and then a one-line summary of the field ("Battlefield — 2 closing in, …"),
+	# and both were the page reading the board back to itself: the pressure bar
+	# ends in "▦ 4×4 · Low", the toolbar's buttons are literally "⇤ Push (1)" and
+	# "✸ Bomb (3)", and the bodies closing in are drawn as bodies, on squares,
+	# with their reach on them. The board is the summary.
 	_board = BattlefieldView.new()
 	_board.push_requested.connect(push_follower)
 	_board.bomb_requested.connect(bomb_follower)
@@ -5129,24 +5076,16 @@ func _build_attempt_strip() -> Control:
 	wrap.add_child(row)
 
 	_attempt_btn = Button.new()
+	# NO HOVER TEXT on either of these two. The button says what it does and the
+	# pips beside it say what the next press costs — a paragraph explaining a verb
+	# the player has already pressed a dozen times is a tooltip nobody reads twice.
 	_attempt_btn.text = "Lost a run  ⚔"
-	_attempt_btn.tooltip_text = ("Tick every run of this game you lose.\n"
-		+ "Each tick gives the enemies a turn — they swing and close in. It costs "
-		+ "you no shields: there is no limit on how many times you may fail, only "
-		+ "a board that is a turn closer every time you do.")
 	_attempt_btn.custom_minimum_size = Vector2(0, 30)
 	_attempt_btn.add_theme_font_size_override("font_size", 13)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
 	row.add_child(_attempt_btn)
-
-	_attempt_undo = Button.new()
-	_attempt_undo.text = "Undo"
-	_attempt_undo.tooltip_text = "Take back the last attempt."
-	_attempt_undo.custom_minimum_size = Vector2(56, 30)
-	_attempt_undo.pressed.connect(undo_attempt)
-	row.add_child(_attempt_undo)
 
 	_attempt_count = Label.new()
 	_attempt_count.add_theme_font_size_override("font_size", 13)
@@ -5193,15 +5132,13 @@ func _refresh_attempts() -> void:
 	_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
-	# A TURN CAN ONLY BE TAKEN BACK BY THE SESSION THAT PLAYED IT (§3): its undo is
-	# a snapshot of the board, and a save carries the run rather than its undo
-	# history. The button says which of the two it is rather than going grey with
-	# no explanation.
-	var can_undo: bool = live and attempts > 0 and not _resolving and GameLoop2.can_undo_attempt()
-	_attempt_undo.disabled = not can_undo
-	_attempt_undo.tooltip_text = ("Take back the last attempt."
-		if can_undo or attempts == 0 or _resolving
-		else "The enemies' turn was taken before this run was reloaded — it can't be taken back.")
+	# THERE IS NO UNDO BESIDE THE TRACKER any more. It was there because the
+	# tracker is hand-driven and a mis-click ought to be reversible, and it was
+	# never worth what it cost to explain: it could only take back a turn played by
+	# THIS session (the snapshots are runtime-only — a save carries the run, not its
+	# undo history), so half the time it was a grey button with a paragraph saying
+	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
+	# turn a restore rather than a refund (§3) — they simply have no button.
 	# The escape hatch is up from the first second on a game the player has been
 	# through before, and otherwise only once they have lost enough runs to have
 	# earned it — where it goes away again if they undo back under the line. The
