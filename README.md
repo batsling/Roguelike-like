@@ -516,10 +516,19 @@ node and its script.
   chest of their own), and `Overworld2._queue_report_chests` spends that on the
   size ladder and hands the chests to the post-combat screen (above). What a body
   drops **on the board** is a piece of LOOT, on the square it fell in
-  (`GameLoop2.drops`, drawn wearing its own art by `BattlefieldView._drop_node`
-  and picked up mid-game by `Overworld2.collect_floor_drop`); whatever is still
-  lying there when the game is reported is swept onto the post-combat screen too,
-  win or lose.
+  (`GameLoop2.drops`, drawn wearing its own art by `BattlefieldView._drop_node`);
+  whatever is still lying there when the game is reported is swept onto the
+  post-combat screen too, win or lose.
+- **`FloorLoot.gd` / `DragPackPanel.gd`** — how a piece leaves the floor. The
+  token is a drag **handle**, not a button: dragging it mounts the pack to the
+  left of the board for the length of the drag (`Overworld2._notification` on
+  `NOTIFICATION_DRAG_BEGIN` → `_mount_drag_pack`), and dropping it in a slot, on
+  the bin, or on nothing ends both. The grid is the same `LootGrid` every other
+  loot surface draws; the one rule it adds is that a floor piece may land on an
+  OCCUPIED slot, trading places with what was there — the evicted piece goes back
+  onto the square the new one came off, so a full pack is a decision rather than a
+  refusal. There is no click: it used to open a `LootDropModal` whose only job was
+  to put those nine cells on screen.
 - **`RateGameModal.gd`** — the 1-10 tier-list score for a game. Strictly opt-in:
   it only ever opens from a **★ Rate** button (on the report panel while you're
   playing a game, and on the select screen for the game you last reported).

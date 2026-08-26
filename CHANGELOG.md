@@ -11,6 +11,49 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Pick loot up by picking it up — the pack shows for as long as you hold it.**
+
+  Taking a piece off the battlefield floor was five steps: click the square, wait
+  for a `LootDropModal` to open over the board, find the pack inside it, drag the
+  piece into a slot, close the modal. **Four of those five exist to get the pack
+  onto the screen**, and the pack is nine cells that can simply BE on the screen
+  for as long as the player is carrying something.
+
+  So the token is a **drag handle** (`FloorLoot`) and the pack is **transient**
+  (`DragPackPanel`). Drag a piece off its square and the 3×3 appears **to the left
+  of the board** — the piece is on the board and the pack is where it is going, so
+  the drag runs right-to-left and the panel sits at the end of that run rather
+  than over the square it started on. Drop it in a slot, drop it on the bin, or
+  drop it on nothing; the carry and the panel end together. Nothing on the page
+  moves to make room for it.
+
+  It hangs off `NOTIFICATION_DRAG_BEGIN`, which reaches every Control the moment a
+  drag starts anywhere in the viewport — the one signal that means "the player's
+  hand is full" — and only when the payload carries a `floor` square, since a drag
+  inside the loot window already has a pack in front of it. The payload is the
+  pack's own `loot_take` plus that square, so `LootGrid` keys off the presence of
+  `floor` rather than a second payload kind and every rule about taking loot stays
+  in the one place that already holds them. `LootTrash` now arms itself on arrival
+  as well as on the notification: a bin built BY a drag never sees the drag begin.
+
+  **A full pack is a trade, not a wall.** A floor take is the only take with
+  somewhere to put what it evicts, so it is the only one allowed to land on an
+  occupied slot: the two swap, and the carried piece goes back onto the square the
+  new one came off (`GameState.swap_loot_entry_at`). The count never moves, the
+  square is never left empty, and a mistake costs a drag rather than a piece —
+  which is also the grammar the grid already spoke, since dropping onto a piece
+  has meant "swap these two" since the pack was allowed to have holes in it.
+
+  **The bin asks first**, on the same terms a carried piece binned in the loot
+  window does. Binning a floor piece is strictly worse than doing nothing — one
+  left lying is swept onto the haul screen and is still yours — so the one gesture
+  on the board that destroys something and gives nothing back is the one that gets
+  a question.
+
+  **A click now does nothing, deliberately.** A second way to take a piece would
+  be a second set of rules about a full pack, and the drag is the one with the
+  good answer. Reading a piece is still free: the hover card costs no gesture.
+
 - **A body drops loot on the board; the game you beat pays the relics.**
 
   The floor and the reward screen swapped halves (`docs/games-first-redesign.md`

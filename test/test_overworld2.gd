@@ -6045,16 +6045,31 @@ func _loot_pieces() -> int:
 			n += 1
 	return n
 
-func test_loot_on_the_floor_is_drawn_as_a_pressable_token() -> void:
+func test_loot_on_the_floor_is_drawn_as_a_draggable_token() -> void:
 	_pick_solo(0)
 	var at: Vector2i = _floor_loot(Vector2i(2, 1))
 	_ui._board.refresh()
-	var tokens: Array = []
-	for c in _ui._board._ground_layer.get_children():
-		if c is Button:
-			tokens.append(c)
-	assert_eq(tokens.size(), 1, "one piece on the floor, one thing to press")
+	var tokens: Array = _floor_tokens()
+	assert_eq(tokens.size(), 1, "one piece on the floor, one thing to pick up")
 	assert_true(GameLoop2.has_drop(at), "drawing it did not take it off the floor")
+	var token: FloorLoot = tokens[0]
+	assert_eq(token.cell, at, "and it knows which square it is lying on")
+	assert_eq(token.mouse_default_cursor_shape, Control.CURSOR_DRAG,
+		"the cursor says it is a thing you pick up")
+
+# The tokens the board has drawn on the floor, in tree order.
+func _floor_tokens() -> Array:
+	var out: Array = []
+	for c in _ui._board._ground_layer.get_children():
+		if c is FloorLoot:
+			out.append(c)
+	return out
+
+# The payload a floor token hands over when it is dragged, without an OS mouse to
+# move: _get_drag_data is called directly, exactly as the pack's own drag tests do.
+func _grab(token: FloorLoot) -> Dictionary:
+	var data = token._get_drag_data(Vector2.ZERO)
+	return data if data is Dictionary else {}
 
 func test_the_token_wears_the_loot_s_own_art() -> void:
 	# The whole point of the floor paying loot rather than a relic: a scroll can be
@@ -6069,14 +6084,13 @@ func test_the_token_wears_the_loot_s_own_art() -> void:
 		return
 	var at: Vector2i = GameLoop2.place_drop(Vector2i(2, 1), entry)
 	_ui._board.refresh()
-	var token: Button = null
+	var token: FloorLoot = null
 	for c in _ui._board._ground_layer.get_children():
-		if c is Button:
+		if c is FloorLoot:
 			token = c
 	assert_not_null(token, "the piece is on the board")
 	if token == null:
 		return
-	assert_eq(token.text, "", "no glyph standing in for it")
 	var art: TextureRect = null
 	for c in token.get_children():
 		if c is TextureRect:
@@ -6100,30 +6114,124 @@ func test_the_floor_card_is_the_same_card_the_pack_shows() -> void:
 		"plus the one thing only a piece on a battlefield knows: where it is")
 	assert_eq(_ui._board.drop_hover(Vector2i(4, 3)), {}, "bare ground says nothing")
 
-func test_clicking_floor_loot_asks_the_ordinary_loot_question() -> void:
-	_pick_solo(0)
-	var at: Vector2i = _floor_loot(Vector2i(2, 1))
-	_ui._board.drop_clicked.emit(at)
-	assert_false(GameLoop2.has_drop(at), "the piece came off the floor with the press")
-	await wait_frames(2)
-	assert_not_null(_ui._drop_modal, "and asked on the spot, mid-game")
-	assert_true(_ui._drop_modal is LootDropModal,
-		"on the same screen every other payout is answered on")
-	if _ui._drop_modal != null:
-		_ui._drop_modal.leave()
-	_ui._drop_queue.clear()
+# --- picking a piece up is a DRAG (§8.2) -----------------------------------
+#
+# No modal, no click: the token is a handle, the pack appears beside the board
+# while a piece is in the air, and letting go is the whole of the answer.
 
-func test_floor_loot_is_not_picked_up_twice() -> void:
+func test_the_grab_carries_the_piece_and_the_square_it_came_off() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_loot(Vector2i(2, 1))
-	_ui.collect_floor_drop(at)
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"grabbed")
+	_ui._board.refresh()
+	var data: Dictionary = _grab(_floor_tokens()[0])
+	assert_eq(String(data.get("kind", "")), "loot_take",
+		"the pack's own payload, so every rule about taking loot stays in one place")
+	assert_eq(data.get("floor"), at, "plus the square, which only a floor take has")
+	assert_eq(String((data.get("entry", {}) as Dictionary).get("id", "")), "grabbed")
+	assert_true(GameLoop2.has_drop(at), "picking it up has not moved it yet")
+
+func test_the_pack_appears_while_a_floor_piece_is_in_the_air() -> void:
+	_pick_solo(0)
+	_floor_loot(Vector2i(2, 1))
+	assert_null(_ui._drag_pack, "nothing on screen while nothing is being carried")
+	_ui._notification(Control.NOTIFICATION_DRAG_END)
+	# The page reads the live payload off the viewport, which a test has no way to
+	# put there — so the two halves are checked separately: the mount itself here,
+	# and the payload gate in the test below.
+	_ui._mount_drag_pack()
+	assert_not_null(_ui._drag_pack, "the pack is beside the board")
+	assert_not_null(_ui._drag_pack.grid, "with the same 3x3 every loot surface draws")
+	assert_true(_ui._drag_pack.grid.allow_floor_take)
+	assert_false(_ui._drag_pack.grid.show_use,
+		"and no Use buttons, since nothing can be clicked with the mouse down")
+	_ui._notification(Control.NOTIFICATION_DRAG_END)
+	assert_null(_ui._drag_pack, "letting go takes it away again")
+
+func test_the_pack_does_not_appear_for_a_drag_that_is_not_off_the_floor() -> void:
+	# Rearranging inside the loot window already has a pack in front of it.
+	_pick_solo(0)
+	_ui._notification(Control.NOTIFICATION_DRAG_BEGIN)
+	assert_null(_ui._drag_pack,
+		"a drag with no floor square behind it summons nothing")
+
+func test_the_pack_sits_to_the_left_of_the_board() -> void:
+	_pick_solo(0)
+	_floor_loot(Vector2i(2, 1))
+	_ui._mount_drag_pack()
 	await wait_frames(2)
-	var queued: int = _loot_pieces()
-	_ui.collect_floor_drop(at)
-	assert_eq(_loot_pieces(), queued, "the square is empty; a second press finds nothing")
-	if _ui._drop_modal != null:
-		_ui._drop_modal.leave()
-	_ui._drop_queue.clear()
+	_ui._place_drag_pack()
+	var pack: Rect2 = _ui._drag_pack.get_global_rect()
+	var board: Rect2 = _ui._stage_panel.get_global_rect()
+	assert_lte(pack.position.x + pack.size.x, board.position.x + 1.0,
+		"it ends where the board begins, so it covers no square the drag needs")
+	_ui._notification(Control.NOTIFICATION_DRAG_END)
+
+func test_dropping_a_piece_in_a_free_slot_takes_it() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"taken")
+	var entry: Dictionary = _ui._floor_loot(GameLoop2.drop_at(at))
+	_ui.take_floor_loot(entry, 0, at)
+	assert_eq(GameState.loot_items.size(), 1, "it is in the pack")
+	assert_eq(String(GameState.loot_items[0].get("id", "")), "taken")
+	assert_eq(int(GameState.loot_items[0].get("pack_slot", -1)), 0,
+		"in the slot it was dropped on, not at the end of the array")
+	assert_false(GameLoop2.has_drop(at), "and off the board")
+
+func test_dropping_a_piece_on_a_carried_one_trades_them() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	GameState.take_loot_entry({"type": "scroll", "id": "carried", "rarity": "Common"})
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"incoming")
+	var entry: Dictionary = _ui._floor_loot(GameLoop2.drop_at(at))
+	var slot: int = int(GameState.loot_items[0].get("pack_slot", 0))
+	_ui.take_floor_loot(entry, slot, at)
+	assert_eq(GameState.loot_items.size(), 1, "the pack's count did not move")
+	assert_eq(String(GameState.loot_items[0].get("id", "")), "incoming",
+		"the new piece is carried")
+	assert_true(GameLoop2.has_drop(at), "and the square is not left empty")
+	assert_eq(String((GameLoop2.drop_at(at)["loot"] as Dictionary).get("id", "")),
+		"carried", "the piece it displaced is lying where the new one came from")
+
+func test_a_full_pack_is_a_trade_rather_than_a_wall() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	for i in range(GameState.loot_capacity()):
+		GameState.take_loot_entry({"type": "scroll", "id": "held%d" % i, "rarity": "Common"})
+	assert_true(GameState.loot_is_full())
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"incoming")
+	var entry: Dictionary = _ui._floor_loot(GameLoop2.drop_at(at))
+	_ui.take_floor_loot(entry, 0, at)
+	assert_eq(GameState.loot_items.size(), GameState.loot_capacity(),
+		"still full, and no piece conjured or destroyed")
+	assert_eq(String(GameState.loot_items[int(GameState.loot_layout()[0])].get("id", "")),
+		"incoming", "the new piece took the slot it was dropped on")
+	assert_true(GameLoop2.has_drop(at), "and what it evicted is on the board")
+
+func test_a_grab_from_a_square_that_has_been_swept_takes_nothing() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"stale")
+	var entry: Dictionary = _ui._floor_loot(GameLoop2.drop_at(at))
+	GameLoop2.take_drop(at)
+	_ui.take_floor_loot(entry, 0, at)
+	assert_eq(GameState.loot_items.size(), 0,
+		"a payload whose square went out from under it mints nothing")
+
+func test_binning_a_floor_piece_asks_first() -> void:
+	_pick_solo(0)
+	var at: Vector2i = _floor_loot(Vector2i(2, 1), &"doomed")
+	_ui.bin_floor_loot(at)
+	await wait_frames(2)
+	assert_true(GameLoop2.has_drop(at),
+		"nothing is destroyed on the strength of a drag alone")
+	var panel: ConfirmPanel = _find_confirm(_ui)
+	assert_not_null(panel, "it asks — this is the one gesture that gives nothing back")
+	if panel == null:
+		return
+	panel._on_ok.call()
+	assert_false(GameLoop2.has_drop(at), "and on Yes the square is bare")
+	panel.dismiss()
 
 func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
 	_pick_solo(0)
@@ -6141,14 +6249,13 @@ func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
 
 func test_loot_the_player_took_mid_game_is_not_swept_again() -> void:
 	_pick_solo(0)
-	var at: Vector2i = _floor_loot(Vector2i(2, 1))
-	_ui.collect_floor_drop(at)
-	await wait_frames(2)
-	if _ui._drop_modal != null:
-		_ui._drop_modal.leave()
+	GameState.loot_items.clear()
 	_ui._drop_queue.clear()
+	var at: Vector2i = _floor_loot(Vector2i(2, 1))
+	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(at)), 0, at)
 	_ui._sweep_floor_into_the_queue()
-	assert_eq(_loot_pieces(), 0, "it was answered on the board; there is nothing left to ask")
+	assert_eq(_loot_pieces(), 0,
+		"it is in the pack; there is nothing left on the floor to ask about")
 
 func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 	_pick_solo(0)

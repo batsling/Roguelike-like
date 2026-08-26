@@ -49,6 +49,15 @@ signal discard_requested(index: int)
 # One of the pieces a drop modal is offering was dragged onto the bin — which is
 # the same answer as "Leave it", said with the hands.
 signal offer_discarded(offer: int)
+# A piece was dragged in OFF THE BATTLEFIELD FLOOR (§8.2). `cell` is the square it
+# was lying on, which the page needs to clear — and to put the displaced piece
+# back on, when the slot it landed in already had one. Separate from
+# `take_requested` for exactly that: a floor take is the only one with somewhere
+# to put what it evicts, so it is the only one that can land on a full pack.
+signal floor_take_requested(entry: Dictionary, slot: int, cell: Vector2i)
+# …and the same piece dragged onto the bin instead. Its square is emptied and the
+# piece is gone — unlike leaving it lying there, which keeps it for the haul.
+signal floor_discarded(cell: Vector2i)
 
 const ACCENT := Color(0.72, 0.62, 0.86)
 # The grid is three wide while the pack holds nine, and `grid_columns()` is what
@@ -59,6 +68,10 @@ const COLS := 3
 var allow_reorder: bool = false
 # Slots accept a piece from OUTSIDE the pack (a drop modal's offer).
 var allow_take: bool = false
+# Slots accept a piece dragged in OFF THE BOARD (§8.2, `FloorLoot`). Its own flag
+# rather than `allow_take`'s, because the two takes obey different rules about a
+# full pack — see `can_accept`.
+var allow_floor_take: bool = false
 # Each filled cell carries the button that spends it.
 var show_use: bool = false
 # The bin will take a piece from this grid (LootTrash).
@@ -152,8 +165,18 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 			# that a slot is a fact about the entry rather than its place in an array.
 			return allow_reorder and int(data.get("from", -1)) != slot.slot_index
 		"loot_take":
-			# INTO A FREE SLOT. "Put it here" onto an occupied one has no answer that
-			# isn't a guess about which of the two the player meant to move.
+			# OFF THE FLOOR: ANY SLOT. A free one takes it; a filled one SWAPS, and the
+			# piece that was there goes back to the square this one came off
+			# (Overworld2.take_floor_loot). That is the answer to a full pack the
+			# modal's take cannot give — the pack is full, the board is right there,
+			# and a trade is a decision rather than a wall. It is also the grammar the
+			# grid already speaks: dropping onto a piece has meant "swap these two"
+			# since the pack was allowed to have holes in it.
+			if data.has("floor"):
+				return allow_floor_take
+			# OFF A MODAL'S TABLE: INTO A FREE SLOT. "Put it here" onto an occupied one
+			# has no answer that isn't a guess about which of the two the player meant
+			# to move — there is nowhere to evict the loser TO.
 			return allow_take and not slot.is_filled() and not GameState.loot_is_full()
 	return false
 
@@ -170,8 +193,9 @@ func can_trash(data: Dictionary) -> bool:
 		"loot_move":
 			return int(data.get("index", -1)) >= 0
 		"loot_take":
-			# The offer, thrown away rather than taken. Always allowed — a full pack
-			# is exactly when you most want to say no to a piece with your hands.
+			# The offer — or the piece off the floor — thrown away rather than taken.
+			# Always allowed: a full pack is exactly when you most want to say no to a
+			# piece with your hands.
 			return true
 	return false
 
@@ -184,7 +208,10 @@ func trash(data: Dictionary) -> void:
 			# carries alongside the slot — `remove_loot_at` has never dealt in slots.
 			discard_requested.emit(int(data.get("index", -1)))
 		"loot_take":
-			offer_discarded.emit(int(data.get("offer", -1)))
+			if data.has("floor"):
+				floor_discarded.emit(data["floor"] as Vector2i)
+			else:
+				offer_discarded.emit(int(data.get("offer", -1)))
 
 func accept(slot: LootSlot, data: Dictionary) -> void:
 	match String(data.get("kind", "")):
@@ -192,7 +219,12 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 			moved.emit(int(data.get("from", -1)), slot.slot_index)
 		"loot_take":
 			var entry = data.get("entry", {})
-			if entry is Dictionary and not (entry as Dictionary).is_empty():
+			if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+				return
+			if data.has("floor"):
+				floor_take_requested.emit(entry, maxi(0, slot.slot_index),
+					data["floor"] as Vector2i)
+			else:
 				take_requested.emit(entry, maxi(0, slot.slot_index),
 					int(data.get("offer", -1)))
 
@@ -207,16 +239,26 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 # class's, and a LootSlot that named LootGrid back would be two class_names naming
 # each other — a cycle Godot resolves badly. The slot asks its grid for it instead.
 func drag_preview(slot: LootSlot) -> Control:
+	return preview_cell(slot.entry)
+
+# The same cell, for a drag that starts somewhere that is not a slot at all — a
+# piece picked up off the BATTLEFIELD FLOOR (§8.2, `FloorLoot`). Static, and the
+# reason it is worth sharing rather than letting the board draw its own: the
+# argument above is exactly as true there. A bare capsule dragged off a board
+# square onto a grid of bordered cells has nothing to line up with, and the thing
+# in your hand is on its way to being a cell in the pack — so it may as well
+# already look like one.
+static func preview_cell(entry: Dictionary) -> Control:
 	var holder := Control.new()
 	var cell := PanelContainer.new()
-	cell.add_theme_stylebox_override("panel", _filled_box(slot.entry, true))
+	cell.add_theme_stylebox_override("panel", _filled_box(entry, true))
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.size = Vector2(LootSlot.CELL_W, LootSlot.cell_height(false))
 	# Centred on the pointer, so the cell you are holding covers the slot you are
 	# pointing at rather than hanging off one corner of it.
 	cell.position = -cell.size * 0.5
 	cell.modulate = Color(1, 1, 1, 0.9)
-	cell.add_child(_cell_body(slot.entry, Callable(), false))
+	cell.add_child(_cell_body(entry, Callable(), false))
 	holder.add_child(cell)
 	return holder
 

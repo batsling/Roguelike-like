@@ -360,6 +360,10 @@ var _loot_window: LootWindow = null
 # The board rect the overlay was last placed against, so the frame hook can tell
 # "the page moved" from "nothing happened" without re-placing every frame.
 var _loot_anchor_rect: Rect2 = Rect2()
+# The pack, mounted to the LEFT of the board for the length of a drag off the
+# battlefield floor and nowhere near the page's layout (§8.2). Null the rest of
+# the time, which is almost all of it — see `_notification`.
+var _drag_pack: DragPackPanel = null
 # What the run still owes the player an answer about — one modal at a time, in the
 # order it landed (§8, _pump_drops). `_drop_modal` is the one in front of them
 # right now, or null when nothing is being asked.
@@ -3970,30 +3974,134 @@ func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 	if _board != null:
 		_board.refresh()
 
-# Loot lying on the board, picked up (§8.2). The board reports the click; this
-# takes the piece off the floor and asks the ordinary loot question about it, so a
-# scroll taken off the ground and one taken off the haul screen are offered,
-# spent, binned and logged by exactly the same path — which is what makes the
-# nine-piece cap answerable from the floor rather than a reason to leave a piece
-# lying there.
-func collect_floor_drop(cell: Vector2i) -> void:
+# --- picking a piece up off the floor (§8.2) -------------------------------
+#
+# THE GESTURE IS THE WHOLE INTERACTION. Dragging a token off a board square
+# (`FloorLoot`) puts the pack on screen beside the board for as long as the piece
+# is in the air (`DragPackPanel`), and letting go — in a slot, on the bin, or on
+# nothing at all — ends both.
+#
+# It replaces a click that opened the LootDropModal, whose entire contribution to
+# a one-piece decision was drawing the nine slots this drag now drops straight
+# into. The modal is still what a REPORT's handful is answered on; it is no longer
+# the toll on picking one thing up.
+
+# A piece dragged off the floor and into slot `slot` of the 3x3.
+#
+# TWO OUTCOMES, and which one it is depends on whether that slot was occupied:
+#   free   — the piece goes in and the square is cleared.
+#   filled — the two TRADE: the carried piece comes out and lands on the square
+#            this one came off, which is the answer to a full pack that only a
+#            floor take can give (LootGrid.can_accept). The square is never left
+#            empty by a swap, so a mistake costs a drag rather than a piece.
+func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
+	if GameLoop2.run_over or entry.is_empty():
+		return
 	var held: Dictionary = GameLoop2.drop_at(cell)
-	if held.is_empty() or GameLoop2.run_over:
+	# The square is what says the piece is still there to be taken. A payload from a
+	# drag whose square has since been swept (a report resolving underneath it) is
+	# refused rather than minting a second copy of the piece.
+	if held.is_empty() or _floor_loot(held) != entry:
 		return
-	if _drop_modal != null and is_instance_valid(_drop_modal):
+	var displaced: Dictionary = GameState.swap_loot_entry_at(entry, slot)
+	if displaced.is_empty() and not GameState.take_loot_entry_at(entry, slot):
 		return
-	var entry: Dictionary = _floor_loot(held)
 	GameLoop2.take_drop(cell)
-	if entry.is_empty():
-		return
+	if not displaced.is_empty():
+		# Back onto the square the new piece came off — and NOT as a boss's drop
+		# whatever was on that square before, because a piece out of your own pack
+		# was not left there by anything.
+		GameLoop2.place_drop(cell, displaced)
+		GameLog.add("Traded %s for %s." % [LootSystem.display_name(displaced),
+			LootSystem.display_name(entry)], Color(0.72, 0.62, 0.86))
+	else:
+		GameLog.add("Picked up %s." % LootSystem.display_name(entry),
+			Color(0.72, 0.62, 0.86))
 	if _board != null:
 		_board.refresh()
-	# To the FRONT of the queue and pumped, not opened outright: a piece picked up
-	# by hand is the most immediate question on the page, but a board mid-playback
-	# is still no place for a modal (see _pump_drops) — a lost run's turn can be
-	# sliding bodies past the very square that was clicked.
-	_drop_queue.push_front({"loot": [entry]})
-	_pump_drops()
+	refresh_loot_window()
+
+# A piece dragged off the floor and onto the bin. It ASKS FIRST, on the same terms
+# a carried piece binned in the loot window does (LootTrash.confirm): this is the
+# one gesture on the board that destroys something and gives nothing back, and it
+# is a strictly worse outcome than the thing that happens if you do nothing at all
+# — a piece left lying is swept onto the haul screen and is still yours.
+func bin_floor_loot(cell: Vector2i) -> void:
+	if GameLoop2.run_over:
+		return
+	var entry: Dictionary = _floor_loot(GameLoop2.drop_at(cell))
+	if entry.is_empty():
+		return
+	LootTrash.confirm(self, LootSystem.display_name(entry), func():
+		# Re-read on the way through: the confirmation is a screen the player spends
+		# time on, and the square may have been swept by a report behind it.
+		if _floor_loot(GameLoop2.drop_at(cell)) != entry:
+			return
+		GameLoop2.take_drop(cell)
+		GameLog.add("Threw away %s." % LootSystem.display_name(entry),
+			Color(0.8, 0.8, 0.8))
+		if _board != null:
+			_board.refresh())
+
+# THE PACK, MOUNTED FOR THE LENGTH OF A DRAG. `NOTIFICATION_DRAG_BEGIN` reaches
+# every Control in the tree the moment a drag starts anywhere in the viewport,
+# which is the one signal that means "the player's hand is full" — so the page
+# hangs the panel off it and takes it away again on DRAG_END.
+#
+# Only for a piece off the FLOOR. Dragging inside the loot window or the drop
+# modal already has a pack in front of it, and a second one arriving beside the
+# board would be the page answering a question nobody asked.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_DRAG_BEGIN:
+			var data = get_viewport().gui_get_drag_data() if get_viewport() != null else null
+			if data is Dictionary and (data as Dictionary).has("floor"):
+				_mount_drag_pack()
+		NOTIFICATION_DRAG_END:
+			_unmount_drag_pack()
+
+func _mount_drag_pack() -> void:
+	_unmount_drag_pack()
+	if GameLoop2.run_over:
+		return
+	_drag_pack = DragPackPanel.build(take_floor_loot, bin_floor_loot)
+	_drag_pack.top_level = true
+	add_child(_drag_pack)
+	_place_drag_pack()
+
+func _unmount_drag_pack() -> void:
+	if _drag_pack != null and is_instance_valid(_drag_pack):
+		_drag_pack.queue_free()
+	_drag_pack = null
+
+# TO THE LEFT OF THE BOARD, vertically centred on it. The piece is on the board
+# and the pack is where it is going, so the drag runs right-to-left across the
+# page and the panel sits at the end of that run rather than on top of where it
+# started — covering the square the piece came off, and the squares around it,
+# which is where a drag has to be able to end harmlessly.
+#
+# Placed once: the panel lives for the length of one drag, and the board does not
+# move during one. Clamped to the screen so a page that has been squeezed puts it
+# somewhere reachable rather than off an edge, and held below the header the way
+# every other floating surface is.
+func _place_drag_pack() -> void:
+	if _drag_pack == null or not is_instance_valid(_drag_pack):
+		return
+	var anchor: Control = _stage_panel if _stage_panel != null and is_instance_valid(_stage_panel) \
+		else _left_col
+	if anchor == null or not is_instance_valid(anchor):
+		return
+	_drag_pack.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_drag_pack.size = _drag_pack.get_combined_minimum_size()
+	var on: Rect2 = anchor.get_global_rect()
+	var size: Vector2 = _drag_pack.size
+	var screen: Vector2 = get_viewport_rect().size
+	var x: float = clampf(on.position.x - size.x - DragPackPanel.BOARD_GAP,
+		4.0, maxf(4.0, screen.x - size.x - 4.0))
+	var y: float = clampf(on.position.y + (on.size.y - size.y) * 0.5,
+		ModalScaffold.reserved_top + 4.0, maxf(ModalScaffold.reserved_top + 4.0,
+			screen.y - size.y - 4.0))
+	_drag_pack.global_position = Vector2(x, y)
 
 # One floor square's payload as the loot entry the modals deal in. The loop stores
 # the entry whole (it is scene-free and JSON-safe already), so this is only the
@@ -4705,7 +4813,6 @@ func _build_ui() -> void:
 	_board.loot_thrown_at_cell.connect(_on_loot_thrown_at_cell)
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.enemy_inspected.connect(_show_enemy_info)
-	_board.drop_clicked.connect(collect_floor_drop)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)

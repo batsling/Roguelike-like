@@ -49,10 +49,6 @@ signal loot_throw_cancelled(entry: Dictionary, index: int)
 signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
-# Loot lying on the board was clicked (§8.2). The board knows where the thing is;
-# what taking it costs — a slot in a pack that holds nine — is the host's, so this
-# carries the square and nothing else.
-signal drop_clicked(cell: Vector2i)
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -1283,9 +1279,13 @@ const CHEST_GOLD := Color(1.0, 0.83, 0.36)
 const CHEST_ART_FRACTION: float = 0.58
 
 # Loot lying on `cell`: a pressable token in the middle of the square. Pressing it
-# asks the host to open it (`drop_clicked`), which is the same LootDropModal the
-# haul screen would have asked with — the floor is a place a piece can be answered
-# EARLIER, not a second kind of reward.
+# YOU PICK IT UP BY PICKING IT UP (§8.2). The token is a drag HANDLE (`FloorLoot`)
+# and nothing else: drag it and the pack appears beside the board for as long as
+# the piece is in the air (`DragPackPanel`, mounted by the page off
+# NOTIFICATION_DRAG_BEGIN), drop it in a slot or the bin, and both the carry and
+# the panel end together. There is no click, deliberately — clicking used to open
+# a whole modal whose only job was to put the pack on screen so that this same drag
+# could happen inside it.
 #
 # IT WEARS ITS OWN ART (§8.2). What fell used to be a relic chest, and a chest is
 # a question the board is not allowed to answer, so the square could only show a
@@ -1305,41 +1305,41 @@ func _drop_node(cell: Vector2i) -> Control:
 	var loot: Dictionary = entry if entry is Dictionary else {}
 	var base: int = maxi(20, int(round(_cell * CHEST_ART_FRACTION)))
 	var side: int = maxi(base, LootSystem.art_box(loot, base)) if not loot.is_empty() else base
-	var btn := Button.new()
-	btn.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
-	btn.size = Vector2(side, side)
-	btn.custom_minimum_size = Vector2(side, side)
 	# A boss's drop is ringed thicker, the same way its body is: what fell there is
 	# worth crossing the board for.
 	var ring: int = 3 if bool(held.get("boss", false)) else 2
-	btn.add_theme_stylebox_override("normal",
-		UITheme.flat(Color(CHEST_GOLD, 0.16), 6, 0, ring, CHEST_GOLD))
-	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(Color(CHEST_GOLD, 0.40), 6, 0, ring, Color.WHITE))
-	btn.add_theme_stylebox_override("pressed",
-		UITheme.flat(Color(CHEST_GOLD, 0.58), 6, 0, ring, Color.WHITE))
-	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	var token := FloorLoot.new()
+	token.entry = loot
+	token.cell = cell
+	token.ring = ring
+	token.tint = CHEST_GOLD
+	token.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
+	token.size = Vector2(side, side)
+	token.custom_minimum_size = Vector2(side, side)
 	var art: Texture2D = LootSystem.art_texture(loot) if not loot.is_empty() else null
 	if art != null:
 		# Inset by the ring so the picture sits inside the frame rather than under
-		# it, and mouse-transparent (crisp_tex already is) so the press belongs to
-		# the button underneath.
+		# it, and mouse-transparent (crisp_tex already is) so the grab belongs to the
+		# token underneath.
 		var pad: int = ring + 1
 		var tex: TextureRect = UITheme.crisp_tex(art, side - pad * 2)
 		tex.position = Vector2(pad, pad)
 		tex.size = Vector2(side - pad * 2, side - pad * 2)
-		btn.add_child(tex)
+		token.add_child(tex)
 	else:
 		# No art to draw — an empty square, or a kind whose picture is missing. The
 		# glyph is what the floor wore before loot landed on it, and it still says
 		# "something is here" rather than leaving a bare ring.
-		btn.text = CHEST_GLYPH
-		btn.add_theme_color_override("font_color", CHEST_GOLD)
-		btn.add_theme_color_override("font_hover_color", Color.WHITE)
-		btn.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
-	HoverCard.attach(btn, drop_hover(cell))
-	btn.pressed.connect(func(): drop_clicked.emit(cell))
-	return btn
+		var mark := Label.new()
+		mark.text = CHEST_GLYPH
+		mark.add_theme_color_override("font_color", CHEST_GOLD)
+		mark.add_theme_font_size_override("font_size", maxi(12, int(side * 0.5)))
+		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		token.add_child(mark)
+	HoverCard.attach(token, drop_hover(cell))
+	return token
 
 # What loot on the floor says when you point at it: the SAME card the pack, the
 # loot window and the drop modal show for that piece (LootSystem.hover_card), plus

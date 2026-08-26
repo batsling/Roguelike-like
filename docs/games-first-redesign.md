@@ -1502,18 +1502,17 @@ still walking at you, and picked up without a question being asked first. So the
 floor kept the half a board can actually depict, and the relics moved to the
 reward screen where the choosing belongs.
 
-- **It wears its own art.** The board draws a pressable token carrying the same
-  picture the pack and the loot window draw (`BattlefieldView._drop_node` →
+- **It wears its own art.** The board draws a token carrying the same picture the
+  pack and the loot window draw (`BattlefieldView._drop_node` →
   `LootSystem.art_texture`), sized through `LootSystem.art_box` so the **horse
   dose still comes back bigger** here too. A kind with no art falls back to the ✦
   glyph the floor wore before. An **unidentified** piece shows only the anonymous
   vial or capsule it shows everywhere else — the whole point of taking one is
   finding out.
-- **Clicking it picks it up.** The press is reported (`drop_clicked` →
-  `Overworld2.collect_floor_drop`) and asks the same `LootDropModal` the haul
-  screen would have asked with — take it, use it where it stands, or bin it —
-  which is what makes the nine-piece cap answerable **from the floor** rather than
-  a reason to leave a piece lying there.
+- **You pick it up by picking it up.** The token is a drag HANDLE (`FloorLoot`)
+  and there is **no click**: drag it and the pack appears beside the board for as
+  long as the piece is in the air, drop it in a slot or the bin, and both the
+  carry and the panel end together. See "the drag" below.
 - **Its card is the card.** `LootSystem.hover_card`, the same one the pack, the
   loot window and the drop modal show, plus the two things only a piece on a
   battlefield knows: which square it is on, and what leaving it there costs.
@@ -1534,6 +1533,56 @@ reward screen where the choosing belongs.
   including whatever the bodies that very report cleared just dropped — goes onto
   the haul screen (§18) as **one table** rather than one question per square,
   rather than vanishing with the board the next game rebuilds.
+
+#### The drag — the pack shows up for as long as you are holding something
+
+Taking a piece off the floor used to be five steps: click the square, wait for a
+`LootDropModal` to open over the board, find the pack inside it, drag the piece
+into a slot, close the modal. **Four of those five exist to get the pack onto the
+screen** — and the pack is nine cells that can simply BE on the screen for as long
+as the player is carrying something.
+
+So the token is a **drag handle** (`FloorLoot`), and the pack is **transient**:
+
+- **`NOTIFICATION_DRAG_BEGIN`** reaches every Control the moment a drag starts
+  anywhere in the viewport, which is the one signal that means "the player's hand
+  is full". `Overworld2._notification` hangs a `DragPackPanel` off it — but only
+  when the payload carries a `floor` square, since a drag inside the loot window
+  or the drop modal already has a pack in front of it. `DRAG_END` takes it away.
+- **It mounts to the LEFT of the board**, vertically centred on it
+  (`_place_drag_pack`). The piece is on the board and the pack is where it is
+  going, so the drag runs right-to-left and the panel sits at the end of that run
+  rather than on top of where it started — covering the square the piece came off,
+  and the squares around it, which is where a drag has to be able to end
+  harmlessly when the answer is "not this one". It floats: **nothing on the page
+  moves** to make room for it.
+- **The grid is `LootGrid`**, the same class the loot window and the drop modal
+  draw, with the bin (`LootTrash`) under it. Two flags are off that the drop modal
+  sets — `show_use`, because nothing can be clicked with the mouse button down,
+  and `allow_take`, because there is no modal table here to take *from*. On
+  instead is **`allow_floor_take`**.
+- **The payload is the pack's own** `{"kind": "loot_take", …}`, plus the square:
+  `LootGrid.can_accept` keys off the presence of `floor` rather than off a second
+  payload kind, so every rule about taking loot stays in the one place that
+  already holds them.
+
+**A full pack is a TRADE, not a wall.** A floor take is the only one with
+somewhere to put what it evicts, so it is the only one allowed to land on an
+occupied slot: the two pieces swap, and the carried one goes back onto the square
+the new one came off (`GameState.swap_loot_entry_at` →
+`Overworld2.take_floor_loot`). The pack's count never moves, nothing is conjured
+or destroyed, and the square is never left empty — so a mistake costs a drag
+rather than a piece. It is also the grammar the grid already speaks: dropping onto
+a piece has meant "swap these two" since the pack was allowed to have holes in it.
+
+**The bin asks first** (`LootTrash.confirm`, as it does for a carried piece).
+Binning a floor piece is strictly worse than doing nothing — a piece left lying is
+swept onto the haul screen and is still yours — so the one gesture on the board
+that destroys something and gives nothing back is the one that gets a question.
+
+**A click does nothing, deliberately.** A second way to take a piece would be a
+second set of rules about a full pack, and the drag is the one with the good
+answer. Reading a piece is still free: the hover card costs no gesture at all.
 
 The floor is saved with the rest of the loop (`_serialize_drops`). A loot entry is
 already JSON-safe — it is what the pack itself is saved as — so it rides across
