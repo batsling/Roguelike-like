@@ -758,6 +758,95 @@ func test_fulfilling_old_goal_defeats_and_prevents_its_attack() -> void:
 	# Only the current (failed) enemy remains on the stack.
 	assert_eq(GameLoop2.stack_size(), 1)
 
+# --- staggered: the body that took its goal and lived ----------------------
+
+# A two-Health body survives the goal hit — and a survivor is STAGGERED, which is
+# the whole of this section: it holds its fire (which it always did) AND holds its
+# ground (which it did not).
+func _tough(dmg: int = 3) -> GoalEnemyData:
+	var e: GoalEnemyData = _enemy(dmg)
+	e.health = 2
+	return e
+
+func test_a_goal_met_mid_game_staggers_the_survivor() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	assert_false(GameLoop2.is_staggered(inst), "nothing has been ticked yet")
+	GameLoop2.fulfill(inst, true)
+	assert_eq(int(_entry(inst).get("health", -1)), 1, "it took the hit and lived")
+	assert_true(GameLoop2.is_staggered(inst), "so it is staggered")
+
+func test_a_goal_that_kills_staggers_nobody() -> void:
+	var inst: int = _choose_solo(_enemy(3)) ; _report()
+	GameLoop2.fulfill(inst, true)
+	assert_true(_entry(inst).is_empty(), "one Health, one hit, off the board")
+	assert_false(GameLoop2.is_staggered(inst), "a dead body is not a staggered one")
+
+func test_a_staggered_body_does_not_step() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	var before: int = _col_of(inst)
+	assert_gt(before, 1, "it starts behind the front column, with room to walk")
+	GameLoop2.fulfill(inst, true)
+	_turn()
+	_turn()
+	assert_eq(_col_of(inst), before, "staggered, it stays exactly where it was")
+
+func test_a_staggered_body_in_the_front_column_does_not_swing() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	_march_to_front(inst)
+	GameLoop2.fulfill(inst, true)
+	GameState.hp = 10
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	_turn()
+	assert_eq(GameState.hp, 10, "it was answered for this game, so it holds its fire")
+
+func test_the_stagger_lifts_when_the_next_game_is_chosen() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	var before: int = _col_of(inst)
+	GameLoop2.fulfill(inst, true)
+	assert_true(GameLoop2.is_staggered(inst))
+	# A new game is a new game: the debt is still owed, and the body walks again.
+	_report()
+	_choose_solo(_enemy(1))
+	assert_false(GameLoop2.is_staggered(inst), "the stagger was this game's")
+	_turn()
+	assert_lt(_col_of(inst), before, "and it is moving again")
+
+func test_a_goal_met_at_the_report_staggers_the_survivor_for_the_extra_turns() -> void:
+	# On the Amulet's doorstep the report itself buys the board turns (§7.4). A body
+	# whose goal was ticked ON that report has to be staggered in time for them.
+	#
+	# Asserted on what the turns DID rather than on `is_staggered` afterwards: the
+	# stagger belongs to the game, and beat_game clears the whole per-game record on
+	# its way out (_clear_game_record) — by the time it returns there is no game left
+	# for anything to be staggered in.
+	if not _stand_at_hops(1):
+		return
+	var inst: int = _choose_solo(_tough()) ; _report()
+	_march_to_front(inst)
+	var was: int = _col_of(inst)
+	assert_eq(was, 1, "it is standing in the front column, where it would swing")
+	GameState.hp = 10
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var res: Dictionary = GameLoop2.beat_game(false, [inst])
+	assert_eq(int(_entry(inst).get("health", -1)), 1, "it survived its goal at the report")
+	assert_gt(int(res.get("turns", 0)), 0, "and the doorstep bought the board turns")
+	assert_eq(GameState.hp, 10, "which bought it nothing")
+	assert_eq(_col_of(inst), was, "and moved it nowhere")
+	for a in res["attacks"]:
+		if int((a as Dictionary).get("instance", 0)) == inst:
+			assert_true((a as Dictionary).get("goal_hit", false),
+				"every extra turn is logged as held, not as a hit")
+
+func test_a_scroll_fired_goal_hit_does_not_stagger() -> void:
+	# `record` false is the scroll/effect path: it deals the hit and changes nothing
+	# about the game the player is in the middle of — including this.
+	var inst: int = _choose_solo(_tough()) ; _report()
+	GameLoop2.fulfill(inst, false)
+	assert_eq(int(_entry(inst).get("health", -1)), 1, "the hit still landed")
+	assert_false(GameLoop2.is_staggered(inst), "but nothing was reported, so nothing is held")
+
 # --- stun (§4.1 / §7.2) ---------------------------------------------------
 
 func test_stun_skips_the_next_attack_only() -> void:
@@ -1454,6 +1543,53 @@ func test_roll_enemy_widens_when_the_tier_is_empty() -> void:
 	var e: GoalEnemyData = GameLoop2.roll_enemy(&"traditional", GoalEnemyData.Difficulty.INSANE)
 	assert_not_null(e)
 	assert_eq(String(e.game_type), "traditional", "widens on tier before type")
+
+# --- the roll reflects the run's difficulty ---------------------------------
+#
+# The filter used to fall from "type + tier" straight to "type, ANY tier", which
+# made the ladder decorative: a run at High drew Low bodies as readily as High
+# ones the moment its type+tier bucket was thin. It steps DOWN the tiers now.
+
+func test_a_high_run_draws_high_enemies_of_every_type() -> void:
+	for typ in ["action", "deckbuilder", "strategy", "traditional"]:
+		# Every type has something authored at High today; this is what says so, and
+		# what says the roll actually reaches it.
+		var stocked: bool = false
+		for e in Data.all_goal_enemies():
+			if e is GoalEnemyData and String(e.game_type) == typ \
+					and e.tier_index() == GoalEnemyData.Difficulty.HIGH:
+				stocked = true
+				break
+		assert_true(stocked, "%s has a High-tier body authored" % typ)
+		for _i in range(25):
+			var got: GoalEnemyData = GameLoop2.roll_enemy(
+				StringName(typ), GoalEnemyData.Difficulty.HIGH)
+			assert_eq(got.tier_index(), GoalEnemyData.Difficulty.HIGH,
+				"a High run met %s at tier %d on a %s game" % [
+					got.id, got.tier_index(), typ])
+
+func test_an_insane_run_falls_to_high_not_to_low() -> void:
+	# Nothing at all is authored at Insane in the goal-enemy pool, and the overworld
+	# passes the run's own tier straight through — so Insane is the tier that used to
+	# dump the roll into the type's whole roster.
+	for _i in range(30):
+		var e: GoalEnemyData = GameLoop2.roll_enemy(&"action", GoalEnemyData.Difficulty.INSANE)
+		assert_eq(String(e.game_type), "action")
+		assert_eq(e.tier_index(), GoalEnemyData.Difficulty.HIGH,
+			"the nearest rung below Insane that has anything on it")
+
+func test_the_roll_never_climbs_above_the_tier_it_was_asked_for() -> void:
+	for _i in range(30):
+		var e: GoalEnemyData = GameLoop2.roll_enemy(&"action", GoalEnemyData.Difficulty.LOW)
+		assert_eq(e.tier_index(), GoalEnemyData.Difficulty.LOW,
+			"a Low run is not handed something heavier than it asked for")
+
+func test_the_escort_comes_out_of_the_tier_the_game_did() -> void:
+	# §7.5: the escort is another body that could have been waiting at that game —
+	# so it answers to the run's difficulty exactly as the game's own body does.
+	for _i in range(25):
+		var e: GoalEnemyData = GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.HIGH)
+		assert_eq(e.tier_index(), GoalEnemyData.Difficulty.HIGH)
 
 func test_roll_enemy_never_returns_a_boss() -> void:
 	# The normal-enemy pool must exclude bosses (they roll from a separate pool).

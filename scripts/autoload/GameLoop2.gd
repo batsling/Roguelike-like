@@ -365,6 +365,29 @@ var cleared_this_game: Dictionary = {}
 # yes; a completed goal, no — the enemy's own condition was never set.
 var instead_this_game: Dictionary = {}
 
+# --- STAGGERED: the body that took its goal and lived (instance -> true) -----
+#
+# A goal met deals ONE hit, and one hit is not always enough — an Alien-Baby-
+# buffed body has 2 Health, a Dexterity one spends a shield instead of Health. So
+# a goal can be beaten and the enemy still be standing there, and until now the
+# only thing that changed was that it held its fire: it went on WALKING, a column
+# a turn, closing on the player it had already been answered for. The player did
+# the thing the board asked and watched the board advance anyway, which reads as
+# the goal not having counted.
+#
+# It counts. A survivor of its own goal is STAGGERED for the rest of the game: it
+# neither strikes (_resolve_enemy_turn) nor steps (_advance_stack, _admit_offgrid).
+# The rest of the run is untouched — the body is still there, still owed, still
+# carrying its goal into the next game, which is what its remaining Health means.
+#
+# This is the same set the engagement checks were already assembling by hand out
+# of `cleared_this_game`, `instead_this_game` and the report's own survivors; it
+# is a set of its own now because it has to be read by the movement code too, and
+# three copies of "who has been answered for" is three places to get it wrong.
+# Populated wherever a goal hit lands and the body lives (`_stagger`), and cleared
+# with the rest of the game record.
+var staggered_this_game: Dictionary = {}
+
 # Player-side objectives already claimed this game, status id -> true. A `demand`
 # bites at the report for every game it went unanswered, and it must not bill a
 # player who answered it an hour ago (_resolve_status_demands).
@@ -616,9 +639,10 @@ func serialize() -> Dictionary:
 		# What the game in play has already been answered for (§2.1). Saved with
 		# the tracker and for the same reason: a run reloaded mid-game must not
 		# offer a goal the player already resolved, nor bill a demand they paid.
-		# JSON has no int keys, so the two instance sets go as lists.
+		# JSON has no int keys, so the instance sets go as lists.
 		"cleared_this_game": cleared_this_game.keys(),
 		"instead_this_game": instead_this_game.keys(),
+		"staggered_this_game": staggered_this_game.keys(),
 		"answered_this_game": _string_keys(answered_this_game),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": _string_keys(answered_rows),
@@ -725,6 +749,8 @@ func restore(data: Dictionary) -> void:
 		cleared_this_game[int(inst)] = true
 	for inst in data.get("instead_this_game", []):
 		instead_this_game[int(inst)] = true
+	for inst in data.get("staggered_this_game", []):
+		staggered_this_game[int(inst)] = true
 	for sid in data.get("answered_this_game", []):
 		answered_this_game[StringName(sid)] = true
 	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
@@ -884,7 +910,9 @@ func _deserialize_statuses(raw) -> Dictionary:
 # Rolls a goal-enemy for a game of `game_type` at `tier` (0 Low / 1 Med / 2 High;
 # -1 = the run's current tier). Filters Data's goal-enemy pool by type + tier and
 # widens the filter step-by-step so a roll always returns something while content
-# is thin (§7). Returns null only when no goal-enemies exist at all.
+# is thin (§7) — DOWN the tier ladder first, so the body a game advertises reflects
+# the difficulty the run has climbed to. See _pick_by_type_tier.
+# Returns null only when no goal-enemies exist at all.
 func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	var pool: Array = Data.all_goal_enemies()
 	if pool.is_empty():
@@ -961,39 +989,66 @@ func roll_escort(game_type: StringName = &"", tier: int = -1,
 		pick = _pick_by_type_tier(pool, typ, tier)
 	return pick
 
-# Picks one enemy from `pool` preferring an exact type+tier match, widening to
-# type-only, then tier-only, then anything — so a roll always returns something
-# while content is thin. Shared by roll_enemy + roll_boss + roll_escort.
+# Picks one enemy from `pool` preferring an exact type+tier match, and widening
+# from there so a roll always returns something while content is thin. Shared by
+# roll_enemy + roll_boss + roll_escort.
+#
+# THE TIER WIDENS DOWNWARD, NEVER UP OR SIDEWAYS. This used to fall from
+# "type+tier" straight to "type, ANY tier", which quietly made the difficulty
+# ladder stop meaning anything: the top of the ladder is thinly stocked (nothing
+# at all is authored at Insane, and Traditional has one body per tier), so a run
+# that had climbed to High or Insane dropped into the type's whole roster and
+# drew Low bodies about as often as anything else. A run at Hard that keeps
+# meeting easy enemies is a run whose difficulty is a label rather than a fact.
+#
+# So the walk is: this tier, then the nearest tier BELOW it that has anything
+# authored for the type — the same rule roll_conjured_enemy already used, and for
+# the same reason. That is what "unless the type doesn't have any" comes to: a
+# type with a body at the run's tier always spawns one, and a type without one
+# steps down rather than reaching for a stranger, because the GOAL is written
+# against the genre and a deckbuilder goal on an action game is not a goal at all.
+#
+# Only once the type is exhausted at and below the tier does the type itself give
+# way: whatever else that type has (bodies ABOVE the tier — a run that has not
+# earned them, but the type is what the goal needs), then the tier across every
+# type, then anything. Those last three are the "always returns something"
+# guarantee, and on today's roster nothing reaches them.
 #
 # `exclude` is dropped from every bucket, including the widest one, so a caller
 # asking for "something other than this" gets null rather than the thing it asked
 # not to have.
 func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 		exclude: GoalEnemyData = null) -> GoalEnemyData:
-	var by_type_tier: Array = []
-	var by_type: Array = []
-	var by_tier: Array = []
+	var by_type: Array = []            # right type, any tier
+	var by_tier: Array = []            # right tier, any type
 	var anything: Array = []
+	var type_tiers: Dictionary = {}    # right type, keyed by tier index
 	for e in pool:
 		if not (e is GoalEnemyData) or e == exclude:
 			continue
 		anything.append(e)
-		var type_ok: bool = typ == &"" or e.game_type == typ
-		var tier_ok: bool = e.tier_index() == tier
-		if type_ok and tier_ok:
-			by_type_tier.append(e)
-		if type_ok:
-			by_type.append(e)
-		if tier_ok:
+		var t: int = e.tier_index()
+		if t == tier:
 			by_tier.append(e)
-	var bucket: Array = by_type_tier
-	if bucket.is_empty():
-		bucket = by_type
-	if bucket.is_empty():
-		bucket = by_tier
-	if bucket.is_empty():
-		bucket = anything
-	return bucket[randi() % bucket.size()] if not bucket.is_empty() else null
+		if typ != &"" and e.game_type != typ:
+			continue
+		by_type.append(e)
+		var bucket: Array = type_tiers.get(t, [])
+		bucket.append(e)
+		type_tiers[t] = bucket
+	# The run's tier, then down the ladder one rung at a time.
+	for step in range(clampi(tier, 0, GoalEnemyData.Difficulty.INSANE), -1, -1):
+		var rung: Array = type_tiers.get(step, [])
+		if not rung.is_empty():
+			return rung[randi() % rung.size()]
+	# Nothing this type has is at or below the tier asked for. `by_type` holds only
+	# what is ABOVE it now, every rung at or below having just been looked at.
+	var fallback: Array = by_type
+	if fallback.is_empty():
+		fallback = by_tier
+	if fallback.is_empty():
+		fallback = anything
+	return fallback[randi() % fallback.size()] if not fallback.is_empty() else null
 
 # Rolls an enemy for a game of `game_type` at `tier` and chooses it in one step
 # (the common overworld path: pick a game -> its enemy spawns). Returns the
@@ -1188,10 +1243,10 @@ func log_attempt() -> String:
 # second place for Strength, stuns, fire tiles and the off-grid queue to be
 # handled differently.
 #
-# Nobody holds their fire: `hit_this_game` is the goals the player reported, and a
-# game in play has not been reported yet. So every body in the front column
-# swings — and the shields standing at that moment stop what they stop (§3),
-# exactly as they would at the end of a reported game.
+# Only the STAGGERED hold their fire, and only because the player already went and
+# did their goals this game. Every other body in the front column swings — and the
+# shields standing at that moment stop what they stop (§3), exactly as they would
+# at the end of a reported game.
 #
 # Public because the dev panel and the text harness want the same beat without
 # having to fake a tracker tick around it.
@@ -1201,20 +1256,15 @@ func attempt_turn() -> Dictionary:
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"turns": ATTEMPT_TURNS, "attempt": true,
 	}
-	# WHOEVER YOU HAVE ALREADY ANSWERED FOR HOLDS ITS FIRE (§2.1). "Its goal was
-	# engaged this game" is a fact about the GAME, not about the report — so a body
-	# you cleared an hour ago sits out the turns your lost runs hand the board just
-	# as it sits out the ones the report does. Empty until something is ticked,
-	# which is what it used to be unconditionally.
-	var engaged: Dictionary = {}
-	for inst in cleared_this_game:
-		engaged[int(inst)] = true
-	for inst in instead_this_game:
-		engaged[int(inst)] = true
+	# WHOEVER YOU HAVE ALREADY ANSWERED FOR IS STAGGERED (§2.1), and a staggered
+	# body neither swings nor walks. "Its goal was met this game" is a fact about
+	# the GAME, not about the report — so a body you cleared an hour ago sits out
+	# the turns your lost runs hand the board just as it sits out the ones the
+	# report does. `_resolve_enemy_turn` reads the set itself.
 	for turn in range(ATTEMPT_TURNS):
 		if run_over:
 			break
-		_resolve_enemy_turn(turn, engaged, res)
+		_resolve_enemy_turn(turn, res)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 	res["hp"] = GameState.hp
 	res["run_over"] = run_over
@@ -1289,6 +1339,7 @@ func _loop_snapshot() -> Dictionary:
 		# the record back alongside the board.
 		"cleared_this_game": cleared_this_game.duplicate(),
 		"instead_this_game": instead_this_game.duplicate(),
+		"staggered_this_game": staggered_this_game.duplicate(),
 		"answered_this_game": answered_this_game.duplicate(),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": answered_rows.duplicate(),
@@ -1326,6 +1377,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	hurt_this_game = bool(snap.get("hurt_this_game", false))
 	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
 	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
+	staggered_this_game = (snap.get("staggered_this_game", {}) as Dictionary).duplicate()
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
 	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
 	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
@@ -1401,6 +1453,7 @@ func _clear_attempts() -> void:
 func _clear_game_record() -> void:
 	cleared_this_game.clear()
 	instead_this_game.clear()
+	staggered_this_game.clear()
 	answered_this_game.clear()
 	goals_met_this_game = 0
 	answered_rows.clear()
@@ -1541,9 +1594,9 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# the goal, so it must not tick a player clause that rode it (step 3) and the
 	# caller must not bank it as a beat.
 	#
-	# What it IS is engagement: a survivor holds its fire this game exactly as one
-	# whose goal you did would (`hit_this_game`), because the player paid something
-	# real for the hit either way.
+	# What it IS is engagement: a survivor is STAGGERED this game exactly as one
+	# whose goal you did would be, because the player paid something real for the
+	# hit either way.
 	var instead_cleared: Array = _resolve_instead_claims(claims)
 	res["instead_cleared"] = instead_cleared
 	# A GOAL ALREADY ANSWERED FOR COUNTS (§2.1). Ticking one mid-game resolves it
@@ -1555,14 +1608,12 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
 
-	var hit_this_game: Dictionary = {}
-	# …and a survivor of one is ENGAGED for the whole game, not just for the turns
+	# …and a survivor of one is STAGGERED for the whole game, not just for the turns
 	# after the report. An Alien-Baby-buffed body you took a point off this morning
-	# holds its fire tonight exactly as it would have if you had waited to tick it.
-	for inst in cleared_this_game:
-		hit_this_game[int(inst)] = true
-	for inst in instead_this_game:
-		hit_this_game[int(inst)] = true
+	# holds its fire tonight exactly as it would have if you had waited to tick it —
+	# and holds its ground with it. Everything ticked mid-game is already in the set
+	# (`_stagger`); the loop below adds whatever survives its hit at the report, in
+	# time for the extra turns that follow.
 	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
@@ -1578,7 +1629,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		if _damage_enemy(idx, GOAL_HIT):
 			_defeat(e, true, res, fell)
 		else:
-			hit_this_game[int(inst)] = true
+			_stagger(int(inst))
 	# The game is over, so whatever arrived with it is released: those bodies
 	# survived the game they spawned at, and are now ordinary followers that the
 	# NEXT game's Scramble may not touch.
@@ -1595,7 +1646,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	for turn in range(turns):
 		if run_over:
 			break
-		_resolve_enemy_turn(turn, hit_this_game, res)
+		_resolve_enemy_turn(turn, res)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
@@ -1669,16 +1720,16 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 
 # ONE turn of the stack, the atomic unit `enemy_turns()` counts out. Every enemy
 # acts once: the ones touching the front column STRIKE, everything behind it
-# STEPS a column closer. `hit_this_game` holds the followers whose goals the
-# player fulfilled this game — they were engaged, so they hold their fire for the
-# WHOLE game (every turn of it), which is what keeps fulfilling a goal worth more
-# the closer you push rather than less.
+# STEPS a column closer. A STAGGERED body (`staggered_this_game`) does neither —
+# its goal was met this game and it survived the hit, which buys the rest of the
+# game off it, every turn of it. That is what keeps meeting a goal worth more the
+# closer you push rather than less.
 #
 # A stun, by contrast, costs exactly ONE turn: a stunned enemy neither strikes
 # nor steps, and one stun ticks off at the end of the turn. So a stun read at the
 # Amulet's doorstep buys a third of a game rather than all of it — the same
 # charge, worth what the pace of the board says it's worth.
-func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) -> void:
+func _resolve_enemy_turn(turn: int, res: Dictionary) -> void:
 	# a0. THE GROUND, before anything swings (§17). A body that has been parked on
 	#     a fire tile takes its stack of Burn now — so the halved damage is already
 	#     on it when it strikes this turn rather than a turn late — and this is
@@ -1698,7 +1749,7 @@ func _resolve_enemy_turn(turn: int, hit_this_game: Dictionary, res: Dictionary) 
 			continue
 		if not in_front(entry):
 			continue
-		if hit_this_game.has(int(entry["instance"])):
+		if is_staggered(int(entry["instance"])):
 			res["attacks"].append({"instance": entry["instance"], "turn": turn,
 				"goal_hit": true})
 			continue
@@ -1755,8 +1806,25 @@ func fulfill(instance: int, record: bool = false) -> bool:
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res, fell)
 		_admit_offgrid()
+	elif record:
+		# It took the hit and lived — so it is STAGGERED, and done moving and
+		# swinging for this game. Only on the reporting path: a scroll firing a goal
+		# hit off its own effect (`record` false) changes nothing about the game the
+		# player is in the middle of, and that includes this.
+		_stagger(instance)
 	loop_changed.emit()
 	return true
+
+# Mark a body STAGGERED: it took its goal's hit and lived, so it is out of this
+# game — no strike, no step (see `staggered_this_game`). Only ever called on a
+# survivor; a defeated body is off the board and has nothing left to hold still.
+func _stagger(instance: int) -> void:
+	staggered_this_game[instance] = true
+
+# Is this body staggered right now? The one question the board, the turn resolver
+# and the movement code all ask, so they cannot disagree about the answer.
+func is_staggered(instance: int) -> bool:
+	return staggered_this_game.has(instance)
 
 # The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
 # the alternative rather than the condition, so the body clears and is engaged, but
@@ -1775,6 +1843,8 @@ func fulfill_instead(instance: int, status_id: StringName) -> bool:
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res, fell)
 		_admit_offgrid()
+	else:
+		_stagger(instance)
 	loop_changed.emit()
 	return true
 
@@ -4228,6 +4298,10 @@ func _advance_stack() -> void:
 	for entry in movers:
 		if int(entry.get("stun", 0)) > 0:
 			continue
+		# STAGGERED: its goal was met this game and it lived through the hit, so it
+		# is done for the game — the fire it holds it holds standing still.
+		if is_staggered(int(entry.get("instance", 0))):
+			continue
 		# A body earlier in this same pass may have been taken off the board by
 		# something it walked into — a Landmine going off under it, or the blast
 		# from one that went off under somebody else (§17). `movers` is a snapshot,
@@ -4260,6 +4334,11 @@ func _admit_offgrid() -> void:
 	# one — off the stack while the loop is still holding them.
 	for entry in stack.duplicate():
 		if _index_of(int(entry.get("instance", 0))) < 0:
+			continue
+		# Walking on IS moving, so a body staggered while it was still queued waits
+		# out the game where it stands. The queue behind it is not held up: the loop
+		# simply goes on to the next one, and the cell it declined is theirs.
+		if is_staggered(int(entry.get("instance", 0))):
 			continue
 		if int(entry.get("col", offgrid_col())) > grid_cols():
 			_place_on_spawn(entry)

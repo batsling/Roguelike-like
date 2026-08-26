@@ -717,7 +717,7 @@ func populate_standing() -> void:
 		var inst: int = int(entry.get("instance", 0))
 		_box.add_child(_objective_row(
 			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
-			tint, _boss_icon(e), inst))
+			tint, _enemy_icon_rect(e, tint), inst))
 		# The way out of that goal, if something burned this body (§13) — read here
 		# rather than only on the report step, because it is a reason to play the
 		# next game differently and this list is what is read before choosing one.
@@ -927,9 +927,9 @@ func on_enemy_hovered(instance: int, hovered: bool) -> void:
 
 # One read-only checklist row: the same frame the tick-box rows use, without the
 # box, so the standing list and the report step read as the same list in two
-# states. `icon` is the boss portrait, when the row belongs to one (_boss_icon);
-# `instance` is the body on the board this goal belongs to, which is what pairs
-# the row with the enemy in both directions (bind_row_to_body).
+# states. `icon` is the enemy's portrait, when the row belongs to a body
+# (_enemy_icon_rect); `instance` is that body on the board, which is what pairs the
+# row with the enemy in both directions (bind_row_to_body).
 # The line a burned BOSS gets where an ordinary body would get a tick box: what
 # the status promises, and the one sentence saying why it is not on offer here.
 # Read-only on purpose — there is nothing to claim, and a box that could be ticked
@@ -942,7 +942,11 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 		UITheme.TEXT_FAINT, null, instance,
 		_status_mark(sd, stacks, StatusData.ENEMY, true))
 
-func _objective_row(text: String, color: Color, icon: Texture2D = null,
+# `icon` is the enemy's portrait chip when the row belongs to a body, built by the
+# caller (_enemy_icon_rect) rather than passed as a texture, because what it
+# carries — its frame colour, whether it says "Boss" — is a fact about the enemy
+# and not about the row.
+func _objective_row(text: String, color: Color, icon: Control = null,
 		instance: int = 0, mark: Control = null) -> Control:
 	var wrap := PanelContainer.new()
 	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
@@ -954,7 +958,7 @@ func _objective_row(text: String, color: Color, icon: Texture2D = null,
 	line.add_theme_constant_override("separation", 6)
 	wrap.add_child(line)
 	if icon != null:
-		line.add_child(_boss_icon_rect(icon))
+		line.add_child(icon)
 	if mark != null:
 		line.add_child(mark)
 	var l := Label.new()
@@ -971,24 +975,34 @@ func _objective_row(text: String, color: Color, icon: Texture2D = null,
 			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
 	return wrap
 
-# A BOSS is the one thing on the checklist that isn't just another line of text:
-# it's the difficulty gate the run is standing in front of (§7.1). Its portrait
-# rides beside its name in both checklists, so "which of these is the boss" is
-# answered by looking rather than by remembering the name.
-const BOSS_ICON_SIZE := 26
+# EVERY BODY'S PORTRAIT RIDES ITS ROW, not just a boss's.
+#
+# Only bosses used to get one, on the reasoning that a boss is the one thing on
+# this list that isn't just another line of text. True of a boss, and it turned
+# out to be the wrong conclusion: the board beside this list draws every enemy as
+# a PICTURE, and the list drew every enemy as a NAME, so pairing a row with the
+# body it belongs to meant reading a proper noun off one and matching it to art on
+# the other. The lit-pair highlight (bind_row_to_body) papered over that for the
+# one row the mouse is on; the other four were still a name-matching exercise. Now
+# the two halves say the same thing in the same way, and the boss keeps what was
+# actually its own — the orange frame and the "Boss" label on it.
+const PORTRAIT_SIZE := 26
 
-func _boss_icon(enemy: GoalEnemyData) -> Texture2D:
-	if enemy == null or not enemy.is_boss():
+# The portrait chip for one enemy, or null when there is no art to show (and the
+# row then reads exactly as it did before). A boss is framed in the board's own
+# boss orange and says so; everything else takes the row's tint, dimmed, so a
+# checklist of five bodies doesn't read as five alarms.
+func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT) -> Control:
+	if enemy == null or enemy.image == null:
 		return null
-	return enemy.image
-
-func _boss_icon_rect(icon: Texture2D) -> Control:
+	var boss: bool = enemy.is_boss()
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
-		UITheme.flat(UITheme.BG, 4, 2, 1, Color(0.95, 0.55, 0.2)))
+		UITheme.flat(UITheme.BG, 4, 2, 1,
+			Color(0.95, 0.55, 0.2) if boss else tint.lerp(UITheme.BORDER, 0.45)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	frame.tooltip_text = "Boss"
-	frame.add_child(UITheme.crisp_tex(icon, BOSS_ICON_SIZE))
+	frame.tooltip_text = ("Boss — %s" % enemy.display_name) if boss else enemy.display_name
+	frame.add_child(UITheme.crisp_tex(enemy.image, PORTRAIT_SIZE))
 	return frame
 
 # One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
@@ -1029,10 +1043,10 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
-	# A boss's own portrait, right where its name is about to be read.
-	var boss_art: Texture2D = _boss_icon(enemy)
-	if boss_art != null:
-		line.add_child(_boss_icon_rect(boss_art))
+	# The body's own portrait, right where its name is about to be read.
+	var portrait: Control = _enemy_icon_rect(enemy, color)
+	if portrait != null:
+		line.add_child(portrait)
 	if mark != null:
 		line.add_child(mark)
 	var cb := CheckBox.new()

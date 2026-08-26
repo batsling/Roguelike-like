@@ -103,9 +103,10 @@ repaint, so a tick that cannot be taken back must not be something a repaint can
 lose. `GameLoop2` keeps the per-game record and clears it when the game is chosen
 or handed in:
 
-- `cleared_this_game` / `instead_this_game` — bodies engaged mid-game. A survivor
-  among them **holds its fire for every turn of the report**, exactly as one
-  cleared at the report would.
+- `cleared_this_game` / `instead_this_game` — bodies engaged mid-game.
+- `staggered_this_game` — the engaged bodies that **survived** the hit, from
+  either path: a goal ticked mid-game, or one claimed at the report. A staggered
+  body is out of the game — see **Staggered** in §7.2.
 - `goals_met_this_game` — so a player clause riding a goal still ticks (§13) for a
   game whose goals were all answered hours earlier.
 - `answered_this_game` — player objectives already claimed, so a `demand` does not
@@ -947,6 +948,17 @@ more damage and (naturally) a better drop. One enemy is what the game *owns* —
 committing to it stands a second body from the same pool beside it (the escort,
 §7.5), which the game's own goal does not answer for.
 
+**The tier is not decoration** (`GameLoop2._pick_by_type_tier`). A thin bucket
+widens **down the tier ladder within the type**, one rung at a time, and never up
+or sideways: a run at High meets a High body of the right type whenever one is
+authored, and a type with nothing at that rung steps down rather than reaching for
+another genre's goal. Insane is empty in the goal-enemy pool, so an Insane run
+draws High. Only once a type is exhausted at *and below* the tier asked for does
+the type itself give way — which nothing on today's roster reaches. Everything
+conjured **by other means** (a curse's bill, a Scroll of Create Monster) rolls
+through `roll_conjured_enemy` instead, which is stricter still: the run's tier or
+the nearest rung below it, and nothing else.
+
 `enemies2.0` schema (actual columns):
 
 | Column | Meaning |
@@ -1071,11 +1083,26 @@ you are trying to survive.
 **Stun** (Scroll of Scare Monster, §4.1) costs the target **one turn** — it
 neither strikes nor steps, and one stack of stun ticks off with it. Out in the
 wilds that is the whole game; on the Amulet's doorstep it is a third of one (see
-§7.4). Old-goal **fulfilment** works the other way round: a follower you engaged
-this game holds its fire for **every** turn of it, so it grows *more* valuable
-as the pace rises. This grace window is why bombs, old-goal fulfilment, and Stun
-are all viable answers rather than needing to solve an enemy the instant it
-appears.
+§7.4).
+
+**Staggered** works the other way round, and is the whole game rather than one
+turn of it. A goal met deals **one** hit, and one hit does not always finish the
+job — an Alien-Baby-buffed body has 2 Health, a Dexterity one spends a shield
+instead. A body that takes its goal's hit and is still standing is **Staggered**:
+it neither strikes nor steps for the rest of that game, whether the goal was
+ticked mid-game or claimed at the report, and whether the turns come from the
+Amulet's pull (§7.4) or from a run you lost (§3.2). Only the game is bought — the
+body is still there, still owed, still carrying its goal into the next one, which
+is what its remaining Health means.
+
+It reads on the board as the art **darkened** with `STAGGERED` across it, in a
+threat colour drained toward grey; its hover and its full card say why. There is
+no art for the state and it needs none.
+
+`GameLoop2.staggered_this_game` is the record, `is_staggered()` the question, and
+it clears with the rest of the per-game record (see §2.1). This grace window is
+why bombs, old-goal fulfilment, and Stun are all viable answers rather than
+needing to solve an enemy the instant it appears.
 
 ### 7.3 The battlefield grid — footprints, rows, and blocking
 

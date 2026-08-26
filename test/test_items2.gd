@@ -808,3 +808,91 @@ func test_the_staffs_burn_stops_at_the_status_cap() -> void:
 	assert_true(GameState.use_item(staff, inst))
 	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"2 + 3 is still Max: 3")
+
+# --- the Wand of Wishing picker (RewardScreen.setup_obtain) -----------------
+#
+# Reaching into the whole catalogue is a different screen from opening a chest,
+# and it used to be drawn as the same one: three of fifty items visible at a time.
+# These are about the room it takes and the search that makes fifty scannable.
+
+func _obtain_screen() -> RewardScreen:
+	var screen := RewardScreen.new()
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child_autofree(screen)
+	screen.setup_obtain(Data.reward_item2_pool())
+	return screen
+
+func test_the_wand_offers_the_whole_catalog_at_once() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	assert_eq(screen._choices_box.get_child_count(), Data.reward_item2_pool().size(),
+		"every rollable item is on the screen, not a rolled handful")
+
+func test_the_wands_panel_takes_the_viewport() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chest(2)
+	assert_gt(screen._panel.custom_minimum_size.x, chest._panel.custom_minimum_size.x,
+		"the catalog is wider than a chest")
+	assert_gt(screen._panel.custom_minimum_size.y, chest._panel.custom_minimum_size.y,
+		"and taller")
+	# …and never past the edge of whatever it is being drawn in. Compared against
+	# the design size too, since that is the floor the widening will not go under.
+	var room: Vector2 = screen.get_viewport_rect().size.max(RewardScreen.PANEL_SIZE)
+	assert_lte(screen._panel.custom_minimum_size.x, room.x, "and still inside the window")
+	assert_lte(screen._panel.custom_minimum_size.y, room.y)
+
+func test_the_catalog_is_ordered_rarest_first() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	# The hover card seeds a plain tooltip of "<name>\n<first line>", so the first
+	# line of it is the item's name exactly — matched whole rather than by prefix,
+	# since one relic's name can be the start of another's.
+	var rarity_of: Dictionary = {}
+	for item in Data.reward_item2_pool():
+		rarity_of[item.display_name] = int(item.rarity)
+	var last: int = 99
+	for tile in screen._choices_box.get_children():
+		var named: String = String((tile as Control).tooltip_text).split("\n")[0]
+		assert_true(rarity_of.has(named), "every tile names an item: %s" % named)
+		var here: int = int(rarity_of.get(named, -1))
+		assert_true(here <= last, "rarity never climbs back up the list")
+		last = here
+
+func test_the_search_narrows_the_catalog_on_name_and_on_description() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	var whole: int = screen._choices_box.get_child_count()
+	screen._filter = "wand"
+	screen._refresh()
+	var narrowed: int = screen._choices_box.get_child_count()
+	assert_gt(narrowed, 0, "'wand' finds something")
+	assert_lt(narrowed, whole, "and it is fewer than everything")
+	# The description counts too: Wand of Wishing's own text says "Obtain any one
+	# item in the game" and carries the word "wand" nowhere but its name.
+	screen._filter = "obtain any one item"
+	screen._refresh()
+	assert_eq(screen._choices_box.get_child_count(), 1,
+		"a phrase out of a description finds the one relic that says it")
+
+func test_a_search_that_matches_nothing_says_so_rather_than_going_blank() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	screen._filter = "zzzznothing"
+	screen._refresh()
+	assert_eq(screen._choices_box.get_child_count(), 1, "one line, not an empty panel")
+	assert_true(screen._choices_box.get_child(0) is Label)
+
+func test_clicking_a_catalog_tile_takes_the_item() -> void:
+	var screen: RewardScreen = _obtain_screen()
+	var want: ItemData = Data.get_item2(&"anchor")
+	assert_not_null(want)
+	screen._on_take(want)
+	var ids: Array = GameState.inventory.map(func(it): return it.id)
+	assert_true(ids.has(&"anchor"), "the wish landed in the pack: %s" % str(ids))
+
+func test_a_chest_is_still_a_chest() -> void:
+	# The obtain-any layout must not leak into the ordinary reward screen.
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chest(2)
+	assert_eq(chest._panel.custom_minimum_size, RewardScreen.PANEL_SIZE)
+	assert_false(chest._search.visible, "no search over two rolled cards")
+	assert_eq(chest._choices_box.get_child_count(), 2, "two choices, as asked for")
