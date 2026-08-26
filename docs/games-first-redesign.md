@@ -98,6 +98,20 @@ evening, and the reward for it was behind a screen you had not reached. **Losing
 runs does not gate any of it** — a lost run is the enemies' turn, not a lock on
 the checklist.
 
+**A completed goal sinks.** Once a row is answered it is a record rather than a
+question, and left in place it is a line the player re-reads every time they scan
+for what is still to do — the list being longest exactly when they have done the
+most. So an answered level-up / status / event / curse row drops under everything
+still open (`ReportChecklist._add_row` / `_flush_sunk`).
+
+**The enemy rows do not sink**, and that is the exception the rule needs. A body
+with more Health than one goal completion can take (`effective_health` > 1, an
+Alien-Baby board) has been *answered* without being *finished*: it is still
+standing, still walking, still on the board beside the list. A body that did go
+down leaves the stack entirely and comes back as a ghost row, which sinks with
+the rest — so "cleared enemies at the bottom" falls out of the same rule without
+the enemy rows needing to know about it.
+
 **The loop remembers, not the boxes.** The page rebuilds this list on every
 repaint, so a tick that cannot be taken back must not be something a repaint can
 lose. `GameLoop2` keeps the per-game record and clears it when the game is chosen
@@ -111,8 +125,12 @@ or handed in:
   game whose goals were all answered hours earlier.
 - `answered_this_game` — player objectives already claimed, so a `demand` does not
   bill someone who answered it.
-- `answered_rows` — the rows the four above have no room for (a bonus, a curse, the
-  level-up), keyed by the checklist's own strings.
+- `answered_rows` — the rows the four above have no room for (a bonus, a curse, a
+  status goal, the level-up), keyed by the checklist's own strings.
+- `claimed_event_goals` — the display fields of the event goals claimed this game.
+  Claiming one takes it off the run, which used to take its row with it on the next
+  repaint: it was the one answered row that *vanished* rather than staying ticked,
+  and a player who had just ticked it was left wondering whether they had.
 - `_ghosts` — the entry a body defeated this game used to be. The report always
   resolved bonuses *before* goals so that "an enemy you failed can still pay its
   bonus" held; with the goal resolving when it is ticked the order is the
@@ -278,13 +296,29 @@ takes Health off you during it** (`GameLoop2.hurt_this_game`, set by `_take_hit`
 on the `enemy_attack` source alone). It is open from the first second on a game
 this run has **already beaten** — there is nothing left to prove at that one.
 
-- **The gate is the hit, not a count of tries.** It used to be five lost runs,
+- **The hit is the *first* gate, not the only one.** It used to be five lost runs,
   from when a lost run spent a shield and then Health: a counter standing in for
   "this game is hurting you" because nothing else measured it. The board measures
   it directly now — lose runs, the enemies take turns, a Temporary Shield stops
   the first swings outright, and the door opens on the swing that gets past them.
   The way out therefore arrives exactly when the game starts costing the one
-  thing you cannot make more of, and never merely because you were patient.
+  thing you cannot make more of.
+- **…and five lost runs is the floor under it** (`Overworld2.ESCAPE_AFTER_LOSSES`).
+  The hit is the honest measure, but it is one the player does not control: a board
+  of low-damage bodies behind a stack of Temporary Shields can take an evening and
+  never land a point of Health, and a player who cannot beat *that* game would be
+  held there by the rule written to let them out. Five losses is not a good way out
+  — the board has taken five turns to get there — and it is not meant to be. It is
+  a way out that always eventually arrives.
+- **The button is always on screen, darkened until one of them opens.** Hiding it
+  meant the one player who most needed to know there was a door — the one stuck —
+  was reading a panel that never mentioned it. Under the greyed button is the
+  price, as every route still to be paid: *"3 more losses, Clear Enemies, or Lose
+  Health"* (`Overworld2.escape_routes` / `escape_hint_text`). All of them at once
+  rather than the nearest, because which is cheapest is a fact about the player's
+  board that only the player can see — naming one would be advice, naming all
+  three is information. A route already open drops off the line, and an open door
+  says nothing at all.
 - **A swing only.** Burn's bill and an event's price cost real Health and do not
   open it: they are not the game in front of you refusing to go down.
 - **Per game.** Cleared when a game is chosen and when one is reported, saved

@@ -327,7 +327,8 @@ var _attempt_count: Label
 var _attempt_pips: Label
 var _attempt_hint: Label
 var _attempt_btn: Button
-var _escape_btn: Button           # hidden until the game in play draws blood (can_escape)
+var _escape_btn: Button           # always up; darkened until can_escape() opens it
+var _escape_hint: Label           # the small line under it: what would open it
 # The parts of the checklist panel that need a game in hand: the now-playing row,
 # the attempt strip and the Completed Game button. Hidden while you're choosing,
 # where the panel is the standing-goals list instead.
@@ -1158,10 +1159,53 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # board still takes the turns the road charges for finishing a game (§7.4, which
 # out in the wilds is none), and the game still isn't credited. Only the gate
 # moves.
+# THE FOURTH DOOR, and the one that cannot be locked: LOST RUNS. The hit gate
+# above is the honest measure of "this game is costing you", but it is a measure
+# the player does not control — a board of low-damage bodies behind a stack of
+# Temporary Shields can take an evening and never land a point of Health, and a
+# player who cannot beat that game is held there by a rule written to let them
+# out. Five lost runs is the floor under all of it: it is not a good way out (the
+# board has taken five turns to get there) and it is not meant to be, it is
+# simply a way out that always eventually arrives.
+const ESCAPE_AFTER_LOSSES := 5
+
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
-	return beaten_this_run() or GameLoop2.hurt_this_game or GameLoop2.stack.is_empty()
+	return beaten_this_run() or GameLoop2.hurt_this_game \
+		or GameLoop2.stack.is_empty() \
+		or GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES
+
+# What the player still has to do to open the door, as the routes that are not yet
+# open, in the order they are worth trying. Empty when the door is already open.
+#
+# EVERY ROUTE AT ONCE rather than only the nearest: they are genuinely different
+# prices — a turn of the board, the last body on it, a point of Health — and which
+# is cheapest is a fact about the player's board that only the player can see. A
+# hint that named one of them would be advice; naming all three is information.
+func escape_routes() -> Array:
+	if can_escape():
+		return []
+	var out: Array = []
+	var left: int = ESCAPE_AFTER_LOSSES - GameLoop2.attempts()
+	if left > 0:
+		out.append("%d more %s" % [left, "loss" if left == 1 else "losses"])
+	if not GameLoop2.stack.is_empty():
+		out.append("Clear Enemies")
+	if not GameLoop2.hurt_this_game:
+		out.append("Lose Health")
+	return out
+
+# Those routes as the line under the button: "3 more losses, Clear Enemies, or
+# Lose Health". Empty string when the door is open and the line has nothing to say.
+func escape_hint_text() -> String:
+	var routes: Array = escape_routes()
+	if routes.is_empty():
+		return ""
+	if routes.size() == 1:
+		return String(routes[0])
+	var head: Array = routes.slice(0, routes.size() - 1)
+	return "%s, or %s" % [", ".join(head), String(routes[-1])]
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -4898,10 +4942,15 @@ func _build_ui() -> void:
 	_play_panel.add_child(done)
 
 	# The way out, directly under the way through — they resolve the same step, so
-	# they belong together. Hidden until ESCAPE_AFTER_ATTEMPTS lost runs, and
-	# deliberately quieter than Completed Game: this is the concession, not the
-	# goal. Tinted like the attempt strip's damage rather than its success green,
-	# because the enemy still follows you out.
+	# they belong together. Deliberately quieter than Completed Game: this is the
+	# concession, not the goal. Tinted like the attempt strip's damage rather than
+	# its success green, because the enemy still follows you out.
+	#
+	# ALWAYS ON SCREEN, DARKENED UNTIL IT OPENS. It used to be hidden outright
+	# until can_escape(), which meant the one player who most needed to know there
+	# was a way out — the one stuck on a game they cannot beat — was looking at a
+	# panel that did not mention one. A greyed button with the price under it says
+	# both things at once: there is a door, and here is what opens it.
 	_escape_btn = Button.new()
 	_escape_btn.text = "🏃  Escape this game"
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
@@ -4912,8 +4961,23 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_stylebox_override("hover",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.6), 6, 8, 1, UITheme.ACCENT))
 	_escape_btn.add_theme_color_override("font_color", UITheme.ACCENT)
+	_escape_btn.add_theme_stylebox_override("disabled",
+		UITheme.flat(UITheme.BG.lerp(UITheme.ACCENT, 0.06), 6, 8, 1,
+			UITheme.ACCENT.lerp(UITheme.BG, 0.75)))
+	_escape_btn.add_theme_color_override("font_disabled_color",
+		UITheme.ACCENT.lerp(UITheme.BG, 0.55))
 	_escape_btn.pressed.connect(escape_game)
 	_play_panel.add_child(_escape_btn)
+
+	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
+	# up while the button is down; an open door needs no instructions.
+	_escape_hint = Label.new()
+	_escape_hint.add_theme_font_size_override("font_size", 11)
+	_escape_hint.add_theme_color_override("font_color",
+		UITheme.ACCENT.lerp(UITheme.BG, 0.45))
+	_escape_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_escape_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_play_panel.add_child(_escape_hint)
 
 	# What the last game did to you, at the foot of the panel that asked you about
 	# it. It had a full-width line of its own at the very bottom of the page — a
@@ -5145,17 +5209,29 @@ func _refresh_attempts() -> void:
 	# tooltip says WHICH rule is holding the door open, because "why can I leave
 	# this one and not that one" is the whole question the button raises.
 	if _escape_btn != null:
-		_escape_btn.visible = can_escape()
+		var open_now: bool = can_escape()
+		# Up whenever a game is in play, whether or not it will let you through: the
+		# concession has to be VISIBLE to be a concession.
+		_escape_btn.visible = live
+		_escape_btn.disabled = not open_now
 		var why: String = "Something on the board got through and took Health off you — that is enough."
 		if beaten_this_run():
 			why = "You already beat this one this run, so there is nothing to prove — leave whenever you like."
 		elif GameLoop2.stack.is_empty():
 			why = "Nothing is on the board to hold you here."
+		elif GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES:
+			why = "You have lost %d runs at this one — that is enough on its own." % GameLoop2.attempts()
+		elif not open_now:
+			why = "It is not open yet: %s." % escape_hint_text()
 		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
 			+ "when you took this game stays on the board and follows you, and every enemy "
 			+ "still takes its turns — escaping resolves the board exactly as an unticked "
 			+ "checklist does. What it does NOT do is credit the game: no drop, no event, "
 			+ "and it doesn't count as beaten.") % why
+	if _escape_hint != null:
+		var hint: String = escape_hint_text()
+		_escape_hint.text = hint
+		_escape_hint.visible = live and hint != ""
 
 func _section(text: String) -> Label:
 	var l := Label.new()

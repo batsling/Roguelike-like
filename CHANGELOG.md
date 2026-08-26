@@ -11,6 +11,51 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A completed goal drops to the bottom of the checklist.**
+
+  An answered row is a record, not a question. Left where it was, it is a line the
+  player re-reads every time they scan the list for what is still to do — and the
+  list is longest exactly when they have done the most. So an answered level-up,
+  status, event or curse row now sinks under everything still open, and the list
+  reads top-down as *what is left*.
+
+  **The enemy rows are the exception**, because a ticked enemy row does not always
+  mean a finished one: a body with more Health than one goal completion can take
+  (an Alien-Baby board) is answered without being finished — still standing, still
+  walking, still on the board beside the list. A body that *did* go down leaves the
+  stack and comes back as a ghost row, which sinks with the rest, so "cleared
+  enemies at the bottom" falls out of the same rule for free.
+
+  A claimed **event goal** used to be the one answered row that vanished outright —
+  claiming it takes it off the run, and the next repaint took its row with it. The
+  loop now keeps what the row said (`claimed_event_goals`) so it stays, ticked, at
+  the bottom until the game is handed in.
+
+  One real bug fell out of this. `_arm_row` locks a row by asking the loop whether
+  it was answered, and **the status rows were the only ones that never told it** —
+  so a repaint handed back an open box for a goal already claimed, and ticking it
+  again paid it again.
+
+- **The Escape button is always on screen, darkened, with the price under it — and
+  five lost runs open it again.**
+
+  The way out was hidden until `can_escape()`, which meant the one player who most
+  needed to know a door existed — the one stuck on a game they cannot beat — was
+  reading a panel that never mentioned one. It is up whenever a game is in play
+  now, greyed until it opens, with a small line under it naming every route still
+  to be paid: *"3 more losses, Clear Enemies, or Lose Health"*. All of them at once
+  rather than the nearest, because which is cheapest is a fact about the player's
+  board that only the player can see; naming one would be advice, naming all three
+  is information. A route already open drops off the line; an open door says
+  nothing at all.
+
+  And **five lost runs is a door again** (`ESCAPE_AFTER_LOSSES`). The hit gate is
+  the honest measure of "this game is costing you", but it is one the player does
+  not control: a board of low-damage bodies behind a stack of Temporary Shields can
+  take an evening and never land a point of Health. Five losses is not a good way
+  out — the board has taken five turns to get there — and it isn't meant to be. It
+  is a way out that always eventually arrives.
+
 - **A boss, an enemy, five potion-side items — and the two hooks two of them
   needed.**
 

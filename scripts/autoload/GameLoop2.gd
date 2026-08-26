@@ -418,6 +418,21 @@ var _ghosts: Dictionary = {}
 # the same reason.
 var answered_rows: Dictionary = {}
 
+# EVENT GOALS CLAIMED THIS GAME, as the handful of display fields their row is
+# drawn from: [{condition, effects_text, event}, …].
+#
+# Claiming an event goal takes it off the run (GameState.claim_event_goal) — it is
+# met, and it is done — which used to take its checklist row with it on the next
+# repaint. Every other answered row stays on the list, ticked, so the player can
+# see what they have already dealt with; an event goal vanishing was the one row
+# that left the player wondering whether they had imagined ticking it. So the
+# LOOP remembers what it looked like, for exactly as long as the game lasts.
+#
+# The display fields rather than the goal itself: nothing here is ever paid out
+# again, so what is kept is what a row needs to be drawn and nothing that could be
+# mistaken for live state.
+var claimed_event_goals: Array = []
+
 # The entry a body defeated THIS GAME used to be, or {} — what a checklist row
 # about it still reads (§2.1). Only for the game in play: the record goes when the
 # game is handed in.
@@ -432,6 +447,18 @@ func row_answered(key: String) -> bool:
 # Record one, once it has actually resolved.
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
+
+# Remember a claimed event goal so its row can stay on the checklist for the rest
+# of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
+# back and keeps only what the row is drawn from.
+func record_claimed_event_goal(goal: Dictionary) -> void:
+	if goal.is_empty():
+		return
+	claimed_event_goals.append({
+		"condition": String(goal.get("condition", "")),
+		"effects_text": String(goal.get("effects_text", "")),
+		"event": String(goal.get("event", "")),
+	})
 
 # The attempt tracker for the game currently being played (§3). One entry per try
 # the player has logged, in order, holding what that try spent: "shield", "bonus"
@@ -646,6 +673,7 @@ func serialize() -> Dictionary:
 		"answered_this_game": _string_keys(answered_this_game),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": _string_keys(answered_rows),
+		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"next_instance": _next_instance,
 	}
 
@@ -756,6 +784,9 @@ func restore(data: Dictionary) -> void:
 	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
 	for key in data.get("answered_rows", []):
 		answered_rows[String(key)] = true
+	for raw in data.get("claimed_event_goals", []):
+		if raw is Dictionary:
+			claimed_event_goals.append((raw as Dictionary).duplicate(true))
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -1350,6 +1381,7 @@ func _loop_snapshot() -> Dictionary:
 		"answered_this_game": answered_this_game.duplicate(),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": answered_rows.duplicate(),
+		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"ghosts": _ghosts.duplicate(true),
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
@@ -1388,6 +1420,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
 	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
 	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
+	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second
@@ -1465,6 +1498,7 @@ func _clear_game_record() -> void:
 	answered_this_game.clear()
 	goals_met_this_game = 0
 	answered_rows.clear()
+	claimed_event_goals.clear()
 	_ghosts.clear()
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for

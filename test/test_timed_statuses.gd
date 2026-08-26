@@ -370,3 +370,14 @@ func test_a_borrowed_row_survives_a_save_under_the_same_key() -> void:
 	GameState.restore_timed_statuses(blob)
 	assert_eq(String(GameState.status_objectives()[0]["key"]), key,
 		"a tick recorded before the reload still names the row it named")
+
+func test_a_claimed_row_is_remembered_so_a_repaint_cannot_pay_it_twice() -> void:
+	# `_arm_row` locks a checklist row by asking the loop whether it was answered,
+	# and the status rows were the only ones that never told it — so a repaint
+	# handed the player an open box for a goal they had already claimed.
+	GameState.apply_status(&"strength", 2)
+	var key: String = String(GameState.status_objectives()[0]["key"])
+	assert_false(GameLoop2.row_answered("status:%s" % key), "nothing ticked yet")
+	GameLoop2.mark_row_answered("status:%s" % key)
+	assert_true(GameLoop2.row_answered("status:%s" % key),
+		"and a rebuilt row draws itself locked from this")
