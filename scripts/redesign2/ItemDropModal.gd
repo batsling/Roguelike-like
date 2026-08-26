@@ -1,23 +1,28 @@
 class_name ItemDropModal
 extends Control
 
-# ItemDropModal — "you killed it, do you want what fell off it?" (§8).
+# ItemDropModal — "here is a chest, which one do you want out of it?" (§8).
 #
-# A defeated enemy's drop used to land in a LOOT TRAY beside the board and wait
-# there to be claimed. It waited too well: the tray is a quiet row on a busy page
-# and a relic could sit in it for three games without being noticed. So the drop
-# asks instead — one modal, the item at full size with everything it does, and
-# the two answers the tray had (Take it / Leave it) as buttons.
+# A relic reward used to land in a LOOT TRAY beside the board and wait there to be
+# claimed. It waited too well: the tray is a quiet row on a busy page and a relic
+# could sit in it for three games without being noticed. So the chest asks
+# instead — one modal, the item at full size with everything it does, and the two
+# answers the tray had (Take it / Leave it) as buttons.
 #
-# ONE DROP IS A CHEST, and its SIZE is how many things it offers (§8.2): a body
-# leaves a Small chest, which is "choose 1 of 1" and reads exactly as the single
-# item this modal has always shown. There's Options buys a boss's chest a rung up
-# the ladder, and at 2 or more the layout becomes a row of cards you pick from —
-# still one relic taken, still one "Leave it", because the answer to a chest is
-# which one and not how many.
+# A CHEST'S SIZE is how many things it offers (§8.2): a Small chest is "choose 1
+# of 1" and reads exactly as the single item this modal has always shown, and at
+# 2 or more the layout becomes a row of cards you pick from — still one relic
+# taken, still one "Leave it", because the answer to a chest is which one and not
+# how many.
 #
-# Overworld2 owns the queue behind it: several defeats in one report open one
-# modal each, in the order they fell (see _pump_drops there). This screen only
+# WHERE THE CHESTS COME FROM is the report (§8.2): a game you beat pays one point
+# plus each defeated body's difficulty, spent on the size ladder, so a heavy
+# evening is a bigger chest rather than a longer queue of Small ones. A boss adds
+# a chest of its own, and a level-up, a status or an event can hand one over at any
+# moment.
+#
+# Overworld2 owns the queue behind it: several chests at one report open one modal
+# each, in the order they were banked (see _pump_drops there). This screen only
 # ever knows about the one chest in front of it, and reports the answer back
 # through `answered`.
 #
@@ -242,12 +247,12 @@ func _item_art(item: ItemData, size: int) -> Control:
 	stand_in.add_child(glyph)
 	return stand_in
 
-# What this chest calls itself. A chest of one has always read as "it dropped
-# something"; more than one is the choice, and the count is the part the player
-# is deciding against.
+# What this chest calls itself. A chest of one has nothing to choose between, so
+# it names the thing rather than the choice; more than one IS the choice, and the
+# count is the part the player is deciding against.
 func _heading() -> String:
 	if _items.size() <= 1:
-		return "✦  It dropped something"
+		return "✦  A Small chest"
 	return "✦  A chest of %d — take one" % _items.size()
 
 # The frame the cards go in — the ONE thing the two modes disagree about, so it

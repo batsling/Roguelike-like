@@ -11,6 +11,104 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Pick loot up by picking it up — the pack shows for as long as you hold it.**
+
+  Taking a piece off the battlefield floor was five steps: click the square, wait
+  for a `LootDropModal` to open over the board, find the pack inside it, drag the
+  piece into a slot, close the modal. **Four of those five exist to get the pack
+  onto the screen**, and the pack is nine cells that can simply BE on the screen
+  for as long as the player is carrying something.
+
+  So the token is a **drag handle** (`FloorLoot`) and the pack is **transient**
+  (`DragPackPanel`). Drag a piece off its square and the 3×3 appears **to the left
+  of the board** — the piece is on the board and the pack is where it is going, so
+  the drag runs right-to-left and the panel sits at the end of that run rather
+  than over the square it started on. Drop it in a slot, drop it on the bin, or
+  drop it on nothing; the carry and the panel end together. Nothing on the page
+  moves to make room for it.
+
+  It hangs off `NOTIFICATION_DRAG_BEGIN`, which reaches every Control the moment a
+  drag starts anywhere in the viewport — the one signal that means "the player's
+  hand is full" — and only when the payload carries a `floor` square, since a drag
+  inside the loot window already has a pack in front of it. The payload is the
+  pack's own `loot_take` plus that square, so `LootGrid` keys off the presence of
+  `floor` rather than a second payload kind and every rule about taking loot stays
+  in the one place that already holds them. `LootTrash` now arms itself on arrival
+  as well as on the notification: a bin built BY a drag never sees the drag begin.
+
+  **A full pack is a trade, not a wall.** A floor take is the only take with
+  somewhere to put what it evicts, so it is the only one allowed to land on an
+  occupied slot: the two swap, and the carried piece goes back onto the square the
+  new one came off (`GameState.swap_loot_entry_at`). The count never moves, the
+  square is never left empty, and a mistake costs a drag rather than a piece —
+  which is also the grammar the grid already spoke, since dropping onto a piece
+  has meant "swap these two" since the pack was allowed to have holes in it.
+
+  **The bin asks first**, on the same terms a carried piece binned in the loot
+  window does. Binning a floor piece is strictly worse than doing nothing — one
+  left lying is swept onto the haul screen and is still yours — so the one gesture
+  on the board that destroys something and gives nothing back is the one that gets
+  a question.
+
+  **A click now does nothing, deliberately.** A second way to take a piece would
+  be a second set of rules about a full pack, and the drag is the one with the
+  good answer. Reading a piece is still free: the hover card costs no gesture.
+
+- **A body drops loot on the board; the game you beat pays the relics.**
+
+  The floor and the reward screen swapped halves (`docs/games-first-redesign.md`
+  §8.2). A defeated enemy used to leave a relic CHEST on the square it fell in,
+  and a chest is a question the board is not allowed to answer — its card
+  deliberately said nothing about what was inside, so what stood on the square was
+  a gold ✦ standing in for an offer you could only read by opening it. Three
+  bodies was three of those, three Small chests, three separate questions each
+  worth less than the last.
+
+  **The floor pays LOOT now**: one piece per body — a scroll, a pill or a potion,
+  on the same three-way split as a game's own payout, a boss included — laid on
+  the square it died in and **drawn as itself**. That is the point of the swap: a
+  piece of loot IS a thing, so the board can show it. The token wears the same art
+  the pack and the loot window draw (`LootSystem.art_texture`, sized through
+  `art_box`, so the **horse dose still comes back bigger** on a battlefield), an
+  unidentified piece still shows only its anonymous vial or capsule, and pointing
+  at one gives the same hover card every other surface gives — plus the two things
+  only a piece lying on a board knows: which square, and what leaving it costs.
+  Clicking it opens the ordinary `LootDropModal`, which is what makes the
+  nine-piece cap answerable **from the floor** rather than a reason to leave a
+  piece where it lies. It is swept onto the haul screen at the report **win or
+  lose**, as ONE table rather than one question per square: the kill is what
+  earned it, and that already happened.
+
+  **The relics are what beating the game buys.** A win is worth one chest point on
+  its own — a Small chest with nothing standing on the board — and every non-boss
+  body defeated since the last report adds its own difficulty on top: **Low 1,
+  Medium 2, High 3, Insane 4**. The total is spent on the ladder every scaling
+  payout in the game already walks (`Data.chest_reward_sizes`): the chest grows
+  Small → Medium → Large → Huge, and past a Huge it **splits into a second chest**
+  rather than running off the end. Three High kills on a game you beat is ten
+  points — two Huge chests and a Medium — arriving together on the post-combat
+  screen, where you can weigh what one chest is offering against the others.
+
+  The tier is the enemy's **own authored difficulty**, not the tier the run has
+  climbed to. That column is a *gate* — a Low enemy still turns up in an Insane run
+  — and paying for the run's progress rather than for the thing you actually
+  fought would make the reward stop describing the fight.
+
+  **Miss the goal and you get nothing from the pool.** `GameLoop2.claim_chests`
+  is where that gate lives: the points are banked at the kill (`_defeat`, under the
+  same `drop` branch the gold rides, so a **bombed** body still buys nothing) and
+  spent at the report, and a report that wasn't a win empties the pool without
+  paying it. A **boss** is the exception it always was — it banks a chest of its
+  own (1 point, plus There's Options), rolled from the boss pool, kept beside the
+  kill chest rather than folded into its points, and paid whether or not the game
+  went your way. Two bosses are two chests, never one bigger one.
+
+  The banked pool rides the save and the undo snapshot, so a run reloaded mid-game
+  still owes what it owed and taking back a lost turn can't mint points out of a
+  fight that no longer happened. A save written while the floor still held relic
+  chests reads back as a bare floor — no square on the new board means the same
+  thing.
+
 - **You can throw one now, at a square you pick.**
 
   Step 5 of `docs/potions-design.md` §11 — the half of the kind that is not a

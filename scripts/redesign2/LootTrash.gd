@@ -81,6 +81,12 @@ func _ready() -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
 	tooltip_text = "Destroy a piece of loot to make room.\nThis cannot be undone."
+	# ARMED ON ARRIVAL when the drag is already in the air. NOTIFICATION_DRAG_BEGIN
+	# only reaches Controls that were in the tree when the drag started, and the
+	# drag-time pack (`DragPackPanel`) is built BY that notification — so a bin that
+	# waited for one would spend its whole life as the quiet outline, on the one
+	# surface that exists for nothing but a drag.
+	_armed = get_viewport() != null and get_viewport().gui_is_dragging()
 	_repaint()
 
 func _notification(what: int) -> void:

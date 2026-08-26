@@ -241,7 +241,7 @@ func _add_ghost_rows(instance: int) -> void:
 	_add_bonus_rows(entry)
 
 # One enemy's goal row. Confirming it deals the goal's hit THERE AND THEN — the
-# body dies if that is enough, and its chest lands on the square it fell in (§8.2)
+# body dies if that is enough, and its loot lands on the square it fell in (§8.2)
 # for you to go and pick up while the game is still on.
 func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 	var name_of: String = enemy.display_name if enemy != null else "it"
@@ -259,7 +259,7 @@ func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 			if gone and at_game != null and enemy != null:
 				_page._record_defeat(at_game, enemy)
 			_announce(
-				("%s is down — its chest is on the board." % name_of if gone
+				("%s is down — its loot is on the board." % name_of if gone
 					else "%s took the hit, and is holding its fire." % name_of),
 				UITheme.SUCCESS if gone else UITheme.GOLD)
 			# The list itself changes shape when a body leaves it, so it is rebuilt
@@ -447,7 +447,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 				GameLoop2.mark_row_answered("instead:%d" % instance)
 				var gone: bool = GameLoop2.entry_for(instance).is_empty()
 				_announce(
-					("%s is down the other way — its chest is on the board." % alt_name
+					("%s is down the other way — its loot is on the board." % alt_name
 						if gone else "%s took the hit, and is holding its fire." % alt_name),
 					UITheme.SUCCESS if gone else UITheme.GOLD)
 				if gone and standing > GameLoop2.stack.size():
@@ -536,7 +536,7 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 # was fine while a game was one long wait for a single point; it is wrong now that
 # the board moves whenever you fail and a kill is something you can go and make.
 # So every box here asks once — "did you really?" — and on Yes the row RESOLVES on
-# the spot: the enemy takes its hit and drops its chest on the board (§8.2), the
+# the spot: the enemy takes its hit and drops its loot on the board (§8.2), the
 # reward is paid, the level is taken. Mid-game, while you are still playing.
 #
 # THERE ARE NO TAKE-BACKS. The confirm is the safeguard, and once past it the row
@@ -613,7 +613,7 @@ func _rebuild_soon() -> void:
 		_page.call_deferred("_populate_play_panel")
 
 # Everything a resolved row has in common on the page: say what happened, and
-# repaint the board, which may have just lost a body and gained a chest.
+# repaint the board, which may have just lost a body and gained a piece of loot.
 func _announce(line: String, color: Color) -> void:
 	GameLog.add(line, color)
 	Notifications.notify(line, color)

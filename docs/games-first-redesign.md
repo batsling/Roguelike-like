@@ -12,7 +12,7 @@ A roguelike where the "dungeon" is your backlog of **real roguelike games** and
 the app is the **Dungeon Master**. There is **no simulated combat.** You navigate
 the existing influence-graph of real games; each game carries a single **enemy =
 a goal** you must accomplish *while actually playing that game*. Beating the goal
-defeats the enemy and drops an item; beating the game *without* the goal lets the
+defeats the enemy and drops loot; beating the game *without* the goal lets the
 enemy hit your health. Reach and clear the **Amulet** game to win; hit 0 health
 to lose.
 
@@ -26,14 +26,15 @@ so every number must stay small and glanceable.
 
 1. **Choose a game** on the graph. Routing is the core decision (see §6).
 2. The game presents **one enemy** = one goal, plus its attack value and its
-   guaranteed item drop. Committing to it also spawns an **escort** (§7.5) — a
+   guaranteed loot drop. Committing to it also spawns an **escort** (§7.5) — a
    second enemy from the same pool, with a second goal, that beating the game
    does *not* answer for. Boss rounds are the exception and spawn solo.
 3. **Go play the real game. You must beat the game to advance to the next area.**
 4. Resolve:
-   - **Goal met → enemy defeated → item drops.**
+   - **Goal met → enemy defeated → loot drops where it fell, and its difficulty
+     is banked toward the chest the report pays (§8.2).**
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
-     No item drops. The enemy has been standing on the board since you chose its
+     No drop. The enemy has been standing on the board since you chose its
      game (§7.2) and simply keeps walking — from the back column it takes a game
      or more to reach you — and once it is in the front column it **attacks after
      each game you play**, for its `Damage`, until its goal is fulfilled. Unspent
@@ -41,7 +42,7 @@ so every number must stay small and glanceable.
      the stack, the more damage per game, ramping until you die or clear them.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
      during any later game **defeats it** (removing it from the stack and stopping
-     its per-game hits) and drops its item, exactly as if you'd beaten it on time.
+     its per-game hits) and drops its loot, exactly as if you'd beaten it on time.
    - **Enemies follow the player until beaten.** A following enemy **cannot be
      dashed/moved past** (moving to another game never drops it). It is removed by
      fulfilling its goal — or, for a **normal** enemy, by a **bomb** (bombs damage
@@ -58,7 +59,7 @@ row on the spot**, while the game is still being played:
 
 | Row | What Yes does, immediately |
 |---|---|
-| An enemy's goal | deals the goal's hit (`GameLoop2.fulfill(inst, true)`) — the body dies if that is enough, and its chest lands on the square it fell in (§8.2) |
+| An enemy's goal | deals the goal's hit (`GameLoop2.fulfill(inst, true)`) — the body dies if that is enough, and its loot lands on the square it fell in (§8.2) |
 | …or instead (Burn, §13) | the same hit, by the other route (`fulfill_instead`) — engagement, but no beat on the record |
 | An enemy's bonus objective | pays it (`claim_enemy_bonus`) |
 | A player status goal / `demand` | pays it, and answers the demand so it cannot bill you at the end of the game |
@@ -305,7 +306,7 @@ mean.
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). *(No 2.0 content grants keys yet — see open questions.)* |
-| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no item drops). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
+| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no loot, and no chest points). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
 | **Scroll** | Consumables with an identity that starts **unidentified** and a **Preference** (Positive / Negative / Neutral). See §4.1. |
 | **Pill** | The same gamble held by a **colour** rather than by a type, with an oversized **horse** dose behind a 5% roll. See §4.3. |
 
@@ -486,13 +487,20 @@ one pool that persists and one relic that fills it. That is a small buff — ban
 shields are used last too, where the old behaviour spent them first — and it is
 the right one: the relic is about the cover you *didn't need*.
 
-**Where pills come from.** **Beating a game pays 1 random piece of loot** — a
-straight 50/50 between a scroll and a pill, and the run's baseline loot income.
-It is paid for any game the player actually saw through: **walking away from a
-game pays nothing**, and it is **on top of** whatever the enemies defeated there
-dropped, not instead of it. It arrives the way a kill drop does — the same asked
-modal, one queued behind the other — rather than as a toast, because with a
-**nine-piece cap** on the pack, taking a piece of loot is a decision.
+**Where pills come from.** Two places, and they are the same roll.
+
+**Beating a game pays 1 random piece of loot** — a three-way split between a
+scroll, a pill and a potion, and the run's baseline loot income. It is paid for
+any game the player actually saw through: **walking away from a game pays
+nothing**. It arrives the way a kill drop does — the same asked modal, one queued
+behind the other — rather than as a toast, because with a **nine-piece cap** on
+the pack, taking a piece of loot is a decision.
+
+**And every body you defeat drops one** (§8.2), on the same split, on the square
+it fell in — the run's other loot income, and the one that scales with how much
+fighting the evening actually did. It is **on top of** the game's own piece, not
+instead of it, and it is kept whatever the report said: the kill is what earned
+it.
 
 Four relics move that number:
 
@@ -1220,7 +1228,8 @@ Health, and every existing answer to a follower works on it unchanged.
 
 ## 8. Items (`items2.0`)
 
-Every defeated enemy drops an item, so the item table *is* the reward economy.
+Every game you beat pays a chest of relics, scaled by the bodies that fell to it
+(§8.2), so the item table *is* the reward economy.
 Items are authored in `items2.0` with these columns: `Name | Rating | Type |
 Description | Effect | Reference | tags | pools | File | Sorting`.
 
@@ -1393,15 +1402,15 @@ A **chest** is the project's existing item-reward container
 (`GameState.grant_chest` → `RewardScreen`, `BASE_ITEM_CHOICES = 2`). Sizes map to
 the number of choices offered.
 
-**A dropped item IS a chest** — a Small one. That is not a rename: it is what
-lets There's Options exist without a second reward path. A defeated body's drop
-is one item and two buttons (`ItemDropModal`), which is exactly "choose 1 of 1"
-— asked as a section of the post-game screen (§18) when it fell to a report, and
-as its own modal when it did not;
-a boss holding There's Options drops a chest worth one point more, and a Medium
-chest is the same modal offering two cards to pick between. Points past a Huge
-overflow into a second chest — a second question, asked after the first — so a
-stack of copies keeps paying instead of running off the end of the ladder.
+**The chest is what BEATING A GAME pays**, and its size is what the evening's
+fighting was worth. It is asked as a section of the post-game screen (§18),
+one `ItemDropModal` per chest — "choose 1 of N" — so a Small chest is one card
+and two buttons and a Medium is the same modal offering two.
+
+A boss holding There's Options drops a chest worth one point more. Points past a
+Huge overflow into a second chest — a second question, beside the first — so a
+stack of copies, or a heavy evening, keeps paying instead of running off the end
+of the ladder.
 
 | Chest size | Choices |
 |---|---|
@@ -1420,6 +1429,41 @@ four greedily as Huge chests plus one remainder:
 | 2 | Medium | | 6 | Huge + Medium |
 | 3 | Large | | 7 | Huge + Large |
 | 4 | Huge | | 8 | 2 Huge |
+
+#### What a report owes (the kill scaling)
+
+A game **beaten** is worth **one chest point on its own** — a Small chest for a
+win with nothing standing on the board — and **every non-boss body defeated since
+the last report adds its own difficulty on top**:
+
+| Body defeated | Points |
+|---|---|
+| Low | +1 |
+| Medium | +2 |
+| High | +3 |
+| Insane | +4 |
+
+…spent on the ladder above, so three High kills on a game you beat is 10 points:
+two Huge chests and a Medium. The tier is the enemy's **own authored difficulty**
+(`GoalEnemyData.difficulty`), not the tier the run has climbed to — that column is
+a *gate*, and a Low enemy in an Insane run is still a Low enemy. Paying for the
+run's progress rather than for the thing you actually fought would make the reward
+stop describing the fight.
+
+**Only a win pays it.** A missed goal or a walk-away banks nothing from the bodies
+— the loot they already dropped on the floor is what a lost evening keeps. The
+points are banked at the kill (`GameLoop2.chest_points`, `_defeat`) and spent at
+the report (`GameLoop2.claim_chests` → `Overworld2._queue_report_chests`), which
+is also the gate: `claim_chests(false)` empties the pool and pays nothing out of
+it. A **bombed** body never reaches `_defeat` at all, so buying your way out of a
+goal buys no chest either.
+
+**A BOSS is not in that pool.** It banks a chest **of its own**
+(`GameLoop2.boss_chests`, 1 point plus There's Options), rolled from the boss pool,
+kept beside the kill chest rather than folded into its points, and **paid whether
+or not the game went your way** — it was never a reward for the game, it is the
+thing that boss drops, and it dropped the moment the boss fell. Two bosses are two
+chests, never one bigger one.
 
 It exists because every scaling payout in the game used to read "+X Small Chests",
 which grew into X separate one-item screens each worth less than the last. Spending
@@ -1440,43 +1484,112 @@ ladder as every other rarity draw in the game (`Data.roll_rarity_step` — 75% /
 / 5%, with the top step having a 10% chance to bump one further), so Small /
 Medium / Large / Huge come up at exactly those odds (`Data.CHEST_SIZE_CHOICES`).
 
-#### The floor — a chest lands where the body fell
+#### The floor — LOOT lands where the body fell
 
-A defeated body's chest is **put on the board, on the square it died in**
-(`GameLoop2.drops`, keyed by cell). It stays there until the player takes it or
-the game is reported. That is the whole point of clearing a goal *during* a
-game: the reward is on the table in front of you rather than banked behind a
-screen you have not reached yet.
+A defeated body's **loot** is **put on the board, on the square it died in**
+(`GameLoop2.drops`, keyed by cell): one piece, rolled on the same three-way
+scroll / pill / potion split as a game's own payout (§4.3, `roll_loot_entry`), a
+boss included. It stays there until the player takes it or the game is reported.
+That is the whole point of clearing a goal *during* a game: the reward is on the
+table in front of you rather than banked behind a screen you have not reached yet.
 
-- **Clicking it opens it.** The board draws a pressable ✦ token on the square
-  (`BattlefieldView._drop_node`) and reports the press
-  (`drop_clicked` → `Overworld2.collect_floor_drop`), which asks the same
-  `ItemDropModal` the haul screen would have asked with. The floor is a place a
-  chest can be answered **earlier**, not a second kind of reward.
-- **Its card does not say what is inside.** A chest is a "take one of these"
-  question, and reading the answer off a tooltip would make opening it a
-  formality. The card says how big the question is and that leaving it is
-  allowed — which is the interesting half of the decision while a body is still
-  walking toward you.
-- **A chest never blocks anybody.** `fits_at` does not consult the floor, so a
-  body walks onto the square and the chest is **shoved out of the way**
+**Why loot rather than a relic.** The floor used to hold the chest, and a chest is
+a question the board is not allowed to answer — its card deliberately said nothing
+about what was inside, so what stood on the square was a gold glyph standing in
+for an offer you could only read by opening it. A scroll, a pill or a potion **is
+a thing**: it can be drawn as itself, recognised across the board while a body is
+still walking at you, and picked up without a question being asked first. So the
+floor kept the half a board can actually depict, and the relics moved to the
+reward screen where the choosing belongs.
+
+- **It wears its own art.** The board draws a token carrying the same picture the
+  pack and the loot window draw (`BattlefieldView._drop_node` →
+  `LootSystem.art_texture`), sized through `LootSystem.art_box` so the **horse
+  dose still comes back bigger** here too. A kind with no art falls back to the ✦
+  glyph the floor wore before. An **unidentified** piece shows only the anonymous
+  vial or capsule it shows everywhere else — the whole point of taking one is
+  finding out.
+- **You pick it up by picking it up.** The token is a drag HANDLE (`FloorLoot`)
+  and there is **no click**: drag it and the pack appears beside the board for as
+  long as the piece is in the air, drop it in a slot or the bin, and both the
+  carry and the panel end together. See "the drag" below.
+- **Its card is the card.** `LootSystem.hover_card`, the same one the pack, the
+  loot window and the drop modal show, plus the two things only a piece on a
+  battlefield knows: which square it is on, and what leaving it there costs.
+- **Loot never blocks anybody.** `fits_at` does not consult the floor, so a
+  body walks onto the square and the piece is **shoved out of the way**
   (`_displace_drop`, from `_move_entry`): to the nearest free square, measured in
   squares walked, with ties broken **away from the player** — loot drifts back
   toward the wilds rather than into your lap. A board with no room left for it
   sends it **off field**, where it waits on the haul screen like any unclaimed
-  chest.
-- **A body that was not standing anywhere leaves no chest on the floor.** One
+  piece.
+- **A body that was not standing anywhere leaves nothing on the floor.** One
   waiting in the off-grid queue has no square to fall in
-  (`_drop_cell_of` → `OFF_FIELD`), so its chest goes straight to the haul screen.
+  (`_drop_cell_of` → `OFF_FIELD`), so its loot goes straight to the haul screen.
 - **Reporting the game sweeps the floor** (`sweep_drops`, called from
-  `Overworld2.report` the moment `beat_game` returns). The floor belongs to the
-  game being played; what nobody stopped to pick up — including whatever the
-  bodies that very report cleared just dropped — goes onto the haul screen (§18)
+  `Overworld2.report` the moment `beat_game` returns), **whatever the report
+  said** — the loot was earned by the kill, which already happened, and only the
+  relic chest is a reward for beating the game. What nobody stopped to pick up —
+  including whatever the bodies that very report cleared just dropped — goes onto
+  the haul screen (§18) as **one table** rather than one question per square,
   rather than vanishing with the board the next game rebuilds.
 
-The floor is saved with the rest of the loop (`_serialize_drops`), and an item id
-the catalog no longer serves is dropped on the way back in — a chest left with
-nothing in it goes with it.
+#### The drag — the pack shows up for as long as you are holding something
+
+Taking a piece off the floor used to be five steps: click the square, wait for a
+`LootDropModal` to open over the board, find the pack inside it, drag the piece
+into a slot, close the modal. **Four of those five exist to get the pack onto the
+screen** — and the pack is nine cells that can simply BE on the screen for as long
+as the player is carrying something.
+
+So the token is a **drag handle** (`FloorLoot`), and the pack is **transient**:
+
+- **`NOTIFICATION_DRAG_BEGIN`** reaches every Control the moment a drag starts
+  anywhere in the viewport, which is the one signal that means "the player's hand
+  is full". `Overworld2._notification` hangs a `DragPackPanel` off it — but only
+  when the payload carries a `floor` square, since a drag inside the loot window
+  or the drop modal already has a pack in front of it. `DRAG_END` takes it away.
+- **It mounts to the LEFT of the board**, vertically centred on it
+  (`_place_drag_pack`). The piece is on the board and the pack is where it is
+  going, so the drag runs right-to-left and the panel sits at the end of that run
+  rather than on top of where it started — covering the square the piece came off,
+  and the squares around it, which is where a drag has to be able to end
+  harmlessly when the answer is "not this one". It floats: **nothing on the page
+  moves** to make room for it.
+- **The grid is `LootGrid`**, the same class the loot window and the drop modal
+  draw, with the bin (`LootTrash`) under it. Two flags are off that the drop modal
+  sets — `show_use`, because nothing can be clicked with the mouse button down,
+  and `allow_take`, because there is no modal table here to take *from*. On
+  instead is **`allow_floor_take`**.
+- **The payload is the pack's own** `{"kind": "loot_take", …}`, plus the square:
+  `LootGrid.can_accept` keys off the presence of `floor` rather than off a second
+  payload kind, so every rule about taking loot stays in the one place that
+  already holds them.
+
+**A full pack is a TRADE, not a wall.** A floor take is the only one with
+somewhere to put what it evicts, so it is the only one allowed to land on an
+occupied slot: the two pieces swap, and the carried one goes back onto the square
+the new one came off (`GameState.swap_loot_entry_at` →
+`Overworld2.take_floor_loot`). The pack's count never moves, nothing is conjured
+or destroyed, and the square is never left empty — so a mistake costs a drag
+rather than a piece. It is also the grammar the grid already speaks: dropping onto
+a piece has meant "swap these two" since the pack was allowed to have holes in it.
+
+**The bin asks first** (`LootTrash.confirm`, as it does for a carried piece).
+Binning a floor piece is strictly worse than doing nothing — a piece left lying is
+swept onto the haul screen and is still yours — so the one gesture on the board
+that destroys something and gives nothing back is the one that gets a question.
+
+**A click does nothing, deliberately.** A second way to take a piece would be a
+second set of rules about a full pack, and the drag is the one with the good
+answer. Reading a piece is still free: the hover card costs no gesture at all.
+
+The floor is saved with the rest of the loop (`_serialize_drops`). A loot entry is
+already JSON-safe — it is what the pack itself is saved as — so it rides across
+whole rather than as an id to look up again: the roll it carries (a pill's colour,
+a horse dose) already happened. A save written while the floor still held relic
+chests reads back as a **bare floor**, since no square on the new board means the
+same thing.
 
 ---
 
@@ -2502,7 +2615,8 @@ five-abreast chest cards, which have no room.
 ## 18. The end of a game — one screen (`PostCombatScreen`)
 
 A report used to fire **six independent surfaces**, none of which knew about the
-others: one `ItemDropModal` per defeated body, then the `LootDropModal`, then the
+others: one `ItemDropModal` per defeated body (the drops were relic chests then,
+one Small chest per kill), then the `LootDropModal`, then the
 event, then the shop appearing under the board, then the boss notice, with the
 toasts running underneath all of it. On a boss round at a hub that is five popups
 in a row, each re-centring on the same spot, each with its own Take/Leave, and
@@ -2521,7 +2635,7 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 |---|---|
 | **The verdict** | the game's cover and name, and which of the three reports this was — beaten, goal missed, or walked away (they are three different things; see §2) |
 | **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
-| **The spoils** | every relic chest down the left and the loot payout down the right, **all of it at once** rather than one question after another |
+| **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
 | **The shelf** | a hub's shop, if this game was one of the ten (§14) |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
 

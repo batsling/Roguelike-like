@@ -3198,6 +3198,38 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 	emit_signal("inventory_changed")
 	return true
 
+# TRADE a piece into an OCCUPIED slot, handing back the one it evicts (§8.2).
+#
+# The one take that can land on a full pack, and the reason it is allowed to is
+# that its caller has somewhere to put the loser: a piece dragged in off the
+# battlefield floor comes from a square, and the piece it displaces goes back onto
+# that square (Overworld2.take_floor_loot). Nothing is destroyed and nothing is
+# conjured — the pack's count does not move, which is what makes this a trade
+# rather than a hole in the cap.
+#
+# Replaced IN PLACE rather than removed and appended, so every other piece keeps
+# its index (`use_loot` is addressed by them) and its slot.
+#
+# Returns the evicted piece, or {} when the slot was empty or out of range — an
+# empty slot is `take_loot_entry_at`'s job, and the caller falls through to it.
+func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
+	if entry.is_empty() or slot < 0 or slot >= loot_capacity():
+		return {}
+	var layout: Array = loot_layout()
+	var index: int = int(layout[slot])
+	if index < 0:
+		return {}
+	_freeze_loot_layout(layout)
+	var out: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
+	# The slot belongs to the pack, not to the piece leaving it: a traded-out piece
+	# lying on the board must not remember a cell of a grid it is no longer in.
+	out.erase("pack_slot")
+	var taken: Dictionary = entry.duplicate(true)
+	taken["pack_slot"] = slot
+	loot_items[index] = taken
+	emit_signal("inventory_changed")
+	return out
+
 # Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
 func add_scroll_loot(id: StringName) -> void:
 	var s: ScrollData = Data.get_scroll(id)

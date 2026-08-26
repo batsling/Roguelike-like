@@ -102,9 +102,11 @@ static func _ch_start() -> Dictionary:
 			_step(5, "Come back and press Completed Game, and tick whichever "
 				+ "goals you actually did on the way. Nobody is checking. That is "
 				+ "the honour system and it is load-bearing."),
-			_step(6, "A goal you ticked: that enemy dies, drops an item, pays a "
-				+ "gold. One you left unticked: it survives, follows you, and "
-				+ "starts hitting you after every game you play from now on."),
+			_step(6, "A goal you ticked: that enemy dies, drops a piece of loot on "
+				+ "the board, pays a gold, and makes the chest waiting on the "
+				+ "reward screen bigger. One you left unticked: it survives, "
+				+ "follows you, and starts hitting you after every game you play "
+				+ "from now on."),
 			_step(7, "You are offered a new set of games, connected to where you "
 				+ "stand. Choose one. Go to 3."),
 			_p("The run ends when you reach and clear the AMULET game — that is "
@@ -268,7 +270,7 @@ static func _ch_playing() -> Dictionary:
 			_h("A tick happens NOW"),
 			_p("Tick a row the moment you do the thing. It asks you to confirm, "
 				+ "and then it RESOLVES — mid-game, while you are still playing. "
-				+ "The enemy dies and drops its chest onto the board. The reward "
+				+ "The enemy dies and drops its loot onto the board. The reward "
 				+ "is paid. The level is taken."),
 			_p("You do not have to finish the game first, and losing runs does "
 				+ "not stop you: a goal you cleared in the first hour is worth "
@@ -337,7 +339,7 @@ static func _ch_enemies() -> Dictionary:
 				+ "it alone — the escort keeps its own goal, and clearing that is "
 				+ "a job for a later game."),
 			_b("So a missed goal now costs you two followers rather than one, and "
-				+ "the escort's item and gold are still there to be collected "
+				+ "the escort's loot and gold are still there to be collected "
 				+ "whenever you get round to its goal."),
 			_b("A BOSS spawns alone. The tier change is the step up on its own."),
 			_b("Scramble rerolls the pair. The escort came with the enemy you "
@@ -370,7 +372,7 @@ static func _ch_enemies() -> Dictionary:
 				+ "actually end."),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
-				+ "and the follower dies right there, drops its item and pays its "
+				+ "and the follower dies right there, drops its loot and pays its "
 				+ "gold, exactly as though you had beaten it on time."),
 			_p("This is the single most useful thing to know. Three followers with "
 				+ "goals like defeat an enemy that splits are three goals you can "
@@ -383,9 +385,29 @@ static func _ch_enemies() -> Dictionary:
 				+ "old-goal clearing worth MORE the closer you are to the Amulet, "
 				+ "which is the opposite of everything else on the pressure ladder."),
 			_h("Other ways to be rid of one"),
-			_b("A BOMB kills a normal enemy outright — they have 1 Health. No item "
-				+ "and no gold, though: a bomb is an escape from a goal, not a way "
-				+ "to farm one."),
+			_b("A BOMB kills a normal enemy outright — they have 1 Health. No loot, "
+				+ "no gold and no chest points, though: a bomb is an escape from a "
+				+ "goal, not a way to farm one."),
+			_h("What a body is worth"),
+			_p("Two things, and they arrive at different moments. The LOOT drops "
+				+ "on the square it died in, straight away, yours whatever the "
+				+ "evening does afterwards. The RELICS are banked as chest points "
+				+ "and paid on the reward screen — but only if you BEAT the game."),
+			_p("Beating a game is worth one point on its own: a Small chest even "
+				+ "if nothing was standing. Every body you clear makes that same "
+				+ "chest bigger, by its own tier."),
+			_row(["Body defeated", "Chest points"], true),
+			_row(["Low", "+1"]),
+			_row(["Medium", "+2"]),
+			_row(["High", "+3"]),
+			_row(["Insane", "+4"]),
+			_p("Points climb the chest ladder — 1 Small, 2 Medium, 3 Large, 4 Huge "
+				+ "— and past a Huge they split into a second chest rather than "
+				+ "running off the end. Three High bodies on a game you beat is ten "
+				+ "points: two Huge chests and a Medium."),
+			_note("Bosses are not in that pool. A boss drops a chest of its own, "
+				+ "on its own terms, and it is paid whether or not the game went "
+				+ "your way."),
 			_b("A BOSS takes no bomb damage at all and can only be removed by its "
 				+ "goal."),
 			_b("You cannot outrun anything. Moving to another game never drops a "
@@ -451,17 +473,26 @@ static func _ch_board() -> Dictionary:
 				+ "Forward is legal too, and that is your business."),
 			_note("Clicking any body opens its card: its goal, its damage, its "
 				+ "tier, and the verbs aimed at it."),
-			_h("✦ Chests on the floor"),
-			_p("A body you clear drops its chest on the square it died in, and it "
-				+ "lies there for the rest of the game. Click it to open it — "
-				+ "same question as always, take one or leave it — without "
-				+ "waiting for the reward screen."),
-			_p("A body walking onto a chest SHOVES it: to the nearest free "
+			_h("✦ Loot on the floor"),
+			_p("A body you clear drops a piece of loot on the square it died in — "
+				+ "a scroll, a pill or a potion, drawn as itself so you can see "
+				+ "what it is from across the board — and it lies there for the "
+				+ "rest of the game."),
+			_p("DRAG IT to pick it up. Your pack appears beside the board while "
+				+ "you are holding a piece, and goes away when you let go: drop it "
+				+ "in a slot to carry it, or on the bin to throw it away. Clicking "
+				+ "does nothing — hover it instead to read what it is."),
+			_note("Pack full? Drop the piece onto one you are already carrying and "
+				+ "the two TRADE: the new one goes in your pack and the old one "
+				+ "lands on the square you took it from. Nothing is lost either "
+				+ "way."),
+			_p("A body walking onto a piece SHOVES it: to the nearest free "
 				+ "square, and away from you when it has the choice. A board with "
 				+ "no room left pushes it off the field."),
 			_note("Nothing is ever lost by leaving one. Everything still on the "
 				+ "floor when you report the game goes to the reward screen with "
-				+ "the rest of the haul."),
+				+ "the rest of the haul — win or lose, since the kill is what "
+				+ "earned it."),
 		],
 	}
 
@@ -569,7 +600,7 @@ static func _ch_gold() -> Dictionary:
 		"id": &"gold", "icon": "🛒", "title": "Gold and shops",
 		"blurb": "The one reward you choose what to do with.",
 		"blocks": [
-			_p("Everything else the run pays you is a thing arriving — an item off "
+			_p("Everything else the run pays you is a thing arriving — loot off "
 				+ "a corpse, a chest off a level-up — and your only say is take it "
 				+ "or leave it. Gold banks the decision instead."),
 			_row(["Where gold comes from", "How much"], true),
