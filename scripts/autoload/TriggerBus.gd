@@ -56,6 +56,16 @@ signal health_lost(ctx: Dictionary)         # ctx.amount — the PLAYER's Health
                                             # taken and no Health lost, and Piggy Bank
                                             # must not pay for it. Run-scope and
                                             # scene-less.
+signal run_lost(ctx: Dictionary)            # ctx.attempt, ctx.goals_met — the player
+                                            # pressed the button that logs a LOST RUN
+                                            # at the game in play (§3). Emitted once
+                                            # per tick by GameLoop2.log_attempt, before
+                                            # the turn it costs is resolved, so what an
+                                            # item grants here is standing when the
+                                            # board swings. `goals_met` is how many
+                                            # goals have been ticked off at this game
+                                            # so far, which is what `if_goals=0` reads
+                                            # (Ripple Basin). Run-scope and scene-less.
 signal attack_landed(ctx: Dictionary)       # ctx.source, ctx.target — a melee/ranged
                                             # attack connected (block counts, miss/dodge
                                             # don't). Dead Eye's streak grows here.

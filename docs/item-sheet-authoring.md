@@ -23,7 +23,8 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `combat_start[ed]` / `combat_end[ed]` | `triggers[{on}]` | `combat_start: +10 block (self)` |
 | `<signal>` | `triggers[{on}]` | `enemy_killed: 50% chance +2 hp` |
 | `potion_used` | `triggers[{on:potion_used}]` (run-scope, scene-less; fires once per potion use) | `potion_used: gain_hp 5` (Toy Ornithopter) |
-| `<signal> if_turn=N` / `if_type=X` | trigger + gate | `turn_started if_turn=3: +18 block (self)` |
+| `run_lost` | `triggers[{on:run_lost}]` (run-scope; once per logged lost run, ctx carries `goals_met`) | `run_lost if_goals=0: gain_stat shields 1` (Ripple Basin) |
+| `<signal> if_turn=N` / `if_type=X` / `if_goals=N` | trigger + gate | `turn_started if_turn=3: +18 block (self)` |
 | `card_played if_type=X` | `triggers[{on:card_played, if_card_type}]` | `card_played if_type=attack: counter key=attacks_total every=10 -> gain_energy 1` |
 | `card_grant if_tag=X [if_type=Y]` | `card_grants` | `card_grant if_tag=strike: +1 bruise (enemy)` |
 | `scaling` | `scaling` | `scaling: +1 strength per 20 max_hp` |

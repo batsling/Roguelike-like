@@ -295,3 +295,78 @@ func test_a_row_naming_a_status_the_catalog_lost_is_dropped() -> void:
 	assert_eq(GameState.timed_statuses.size(), 1,
 		"a status the catalog cannot describe is dropped, like the permanent ones")
 	assert_eq(GameState.status_stacks(&"dexterity"), 1)
+
+# ---------------------------------------------------------------------------
+# 5. EVERY BORROWED APPLICATION IS ITS OWN INSTANCE (§5.4)
+#
+# The rule the checklist reads: a temporary status never merges — not with another
+# temporary one, and not with the stacks the run owns. `strength` throughout here
+# rather than `dexterity`, because these are about the GOAL a status hangs off and
+# strength's player side is the claimable one.
+# ---------------------------------------------------------------------------
+
+func test_two_borrowed_applications_are_two_rows_with_two_clocks() -> void:
+	GameState.apply_status(&"strength", 3, 1)
+	GameState.apply_status(&"strength", 3, 2)
+	assert_eq(GameState.timed_statuses.size(), 2,
+		"Reptile Trinket firing twice is two borrowed Strengths, not one of six")
+	assert_eq(GameState.status_stacks(&"strength"), 6,
+		"but what they DO is still felt as a total")
+	_resolve_a_game()
+	assert_eq(GameState.status_stacks(&"strength"), 3,
+		"and the one-game row runs out on its own")
+
+func test_every_instance_is_numbered_and_no_number_comes_round_twice() -> void:
+	GameState.apply_status(&"strength", 1, 1)
+	GameState.apply_status(&"strength", 1, 1)
+	var first: int = int(GameState.timed_statuses[0]["instance"])
+	var second: int = int(GameState.timed_statuses[1]["instance"])
+	assert_ne(first, second, "the number is what holds two rows of one status apart")
+	_resolve_a_game()                                   # both expire
+	GameState.apply_status(&"strength", 1, 1)
+	assert_ne(int(GameState.timed_statuses[0]["instance"]), first,
+		"a fresh row never inherits a dead row's number")
+
+func test_the_checklist_offers_the_owned_stacks_and_each_loan_separately() -> void:
+	GameState.apply_status(&"strength", 1)              # owned
+	GameState.apply_status(&"strength", 3, 1)           # borrowed
+	var rows: Array = GameState.status_objectives()
+	assert_eq(rows.size(), 2, "two offers with two deadlines, so two rows")
+	assert_eq(int(rows[0]["stacks"]), 1, "the stacks the run owns")
+	assert_eq(int(rows[0]["games"]), 0, "and they are not going anywhere")
+	assert_eq(String(rows[0]["key"]), "strength",
+		"the permanent bucket answers to the bare id, as it always did")
+	assert_eq(int(rows[1]["stacks"]), 3, "the loan, on its own row")
+	assert_eq(int(rows[1]["games"]), 1, "with its own clock on it")
+	assert_true(String(rows[1]["key"]).begins_with("strength#"))
+
+func test_the_hud_still_reads_them_as_one_chip() -> void:
+	GameState.apply_status(&"strength", 1)
+	GameState.apply_status(&"strength", 3, 1)
+	var shown: Array = GameState.status_list()
+	assert_eq(shown.size(), 1, "one icon on the player, whatever the goals do")
+	assert_eq(int(shown[0]["stacks"]), 4, "and one number: what a stack does is a total")
+
+func test_claiming_a_borrowed_row_pays_for_the_stacks_behind_that_row() -> void:
+	GameState.apply_status(&"strength", 1)
+	GameState.apply_status(&"strength", 3, 1)
+	var rows: Array = GameState.status_objectives()
+	assert_true(GameLoop2.claim_player_objective(String(rows[1]["key"])),
+		"the borrowed row is claimable in its own right")
+	assert_true(GameLoop2.claim_player_objective(String(rows[0]["key"])),
+		"and the owned one is still there to claim after it")
+
+func test_a_stale_key_from_an_expired_loan_pays_nothing() -> void:
+	GameState.apply_status(&"strength", 3, 1)
+	var key: String = String(GameState.status_objectives()[0]["key"])
+	_resolve_a_game()
+	assert_false(GameLoop2.claim_player_objective(key),
+		"the row it named is gone, so there is nothing behind it to pay")
+
+func test_a_borrowed_row_survives_a_save_under_the_same_key() -> void:
+	GameState.apply_status(&"strength", 2, 2)
+	var key: String = String(GameState.status_objectives()[0]["key"])
+	var blob: Array = GameState.serialize_timed_statuses()
+	GameState.restore_timed_statuses(blob)
+	assert_eq(String(GameState.status_objectives()[0]["key"]), key,
+		"a tick recorded before the reload still names the row it named")

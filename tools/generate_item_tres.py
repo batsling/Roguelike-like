@@ -21,6 +21,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   enemy_killed: 50% chance +2 hp
                   card_played if_type=attack: counter key=attacks_total every=10 -> gain_energy 1
                   turn_started if_turn=3: +18 block (self)
+                  run_lost if_goals=0: gain_stat shields 1
   card grant:     card_grant if_tag=strike: +1 bruise (enemy)
   scaling:        scaling: +1 strength per 20 max_hp
   weapon:         weapon: barrel; verify: <question> => <increment effects>
@@ -113,13 +114,18 @@ TRIGGER_SIGNALS = {
     # absorb first, so a hit can be damage taken and cost no Health at all.
     # Piggy Bank pays on the Health (§8.1).
     "health_lost": "health_lost",
+    # "when the player logs a lost run at the game in play" (§3) — the tracker
+    # tick, fired once per press of the button by GameLoop2.log_attempt. Ripple
+    # Basin's shield rides in on this, gated to a game where nothing has been
+    # ticked off yet (`if_goals=0`).
+    "run_lost": "run_lost",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
 # its grants (gain_hp / gain_stat / …) target the player.
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "item_acquired", "game_beaten", "game_selected",
-                         "bomb_used", "health_lost")
+                         "bomb_used", "health_lost", "run_lost", "potion_used")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and
@@ -988,6 +994,12 @@ def _gates(head_lower):
         g["if_card_type"] = m.group(1)
     for m in re.finditer(r"if_tag\s*=\s*([a-z_]+)", head_lower):
         g["if_card_tag"] = m.group(1)
+    # "only when this many goals have been ticked off at the game in play" —
+    # Ripple Basin's `if_goals=0`. Read against the count the firing hook puts in
+    # its context (`goals_met`); a hook that carries no such count never matches,
+    # which is what a gate about goals should do outside a game.
+    for m in re.finditer(r"if_goals\s*=\s*(\d+)", head_lower):
+        g["if_goals_met"] = int(m.group(1))
     return g
 
 

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_ripple_basin"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/RippleBasin.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"ripple_basin"
+display_name = "Ripple Basin"
+kind = 1
+rarity = 1
+description = "If you lose a run before completing any goals, Gain +1 Temporary Shield"
+triggers = [{"on": "run_lost", "if_goals_met": 0, "effects": [{"type": "gain_stat", "stat": "shields", "value": 1}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire 2"
+tags = PackedStringArray()
+image = ExtResource("2_img")

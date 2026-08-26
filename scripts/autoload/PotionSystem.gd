@@ -280,6 +280,17 @@ func roll_potion_loot(rng: RandomNumberGenerator = null) -> Dictionary:
 # Quaffing one
 # ===========================================================================
 
+# THE SINGLE CHOKE POINT for "a potion was spent" (TriggerBus.potion_used), hit
+# once by the quaff side and once by the throw side and by nothing else. Drinking
+# and throwing are one event for an item's purposes — Reptile Trinket's wording is
+# "whenever you drink OR throw a potion" (§8.1) — and a bottle that fizzled was
+# still spent, so this fires for a Potion of Uselessness and for a throw that
+# smashed on empty ground exactly as it does for one that landed.
+func notify_used(potion: PotionData) -> void:
+	if potion == null:
+		return
+	TriggerBus.potion_used.emit({"potion": potion.id})
+
 # Drink `entry` ({type, id}): identify the bottle, then apply its quaff side.
 # Returns { "logs": Array[String], "requests": Array[Dictionary] } — the same
 # contract ScrollSystem.read_scroll and PillSystem.take_pill answer with, so one
@@ -300,6 +311,7 @@ func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		rng.randomize()
 
 	identify(potion.id)
+	notify_used(potion)
 
 	var ops: Array = potion.quaff
 	if ops.is_empty():
@@ -468,6 +480,7 @@ func throw_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		return out
 
 	identify(potion.id)
+	notify_used(potion)
 
 	var target = ctx.get("target")
 	if not (target is Vector2i):

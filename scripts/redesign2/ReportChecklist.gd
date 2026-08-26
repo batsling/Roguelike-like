@@ -38,7 +38,11 @@ var fulfil_checks: Array = []        # [{check: CheckBox, instance: int}]
 # burned enemy grows, each a second way to clear that body. All three are read into
 # beat_game's `claims` on report; the required clauses (enemy buffs, player
 # clauses) need no boxes of their own because they are folded into the goal line.
-var status_goal_checks: Array = []   # [{check: CheckBox, status: StringName}]
+# `status` here is an OBJECTIVE KEY, not a bare status id: a status held both for
+# good and on loan has one row per instance (GameState.status_objectives), and the
+# key is what tells the claim which of them was ticked. For the permanent bucket
+# the key IS the bare id, so the name still reads true for the common case.
+var status_goal_checks: Array = []   # [{check: CheckBox, status: String}]
 var bonus_checks: Array = []         # [{check: CheckBox, instance: int, status: StringName}]
 var instead_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 # Bindings for the two event-borne sections, cleared with the rest in reset_state.
@@ -151,6 +155,11 @@ func populate_play_panel() -> void:
 		# (docs/potions-design.md §5.3): this is the line the player reads to decide
 		# what to chase, and one that expires tonight is a different offer.
 		var games: int = int(row.get("games", 0))
+		# ONE ROW PER INSTANCE (§5.4): the stacks the run owns and every borrowed
+		# application beside them, each with its own clock, its own tick and its own
+		# payout. `key` is what holds two rows of the same status apart everywhere
+		# downstream — the tick, the claim, the demand's bill.
+		var key: String = String(row["key"])
 		var srow := verify_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
 				sd.objective_text(StatusData.PLAYER, stacks),
@@ -158,14 +167,14 @@ func populate_play_panel() -> void:
 			_status_row_tint(sd), false, null, null, 0,
 			_status_mark(sd, stacks, StatusData.PLAYER, false, games))
 		_box.add_child(srow["row"])
-		status_goal_checks.append({"check": srow["check"], "status": sd.id})
+		status_goal_checks.append({"check": srow["check"], "status": key})
 		# A `demand` is the one row where confirming buys something other than a
 		# reward: it is what stops the bill at the end of the game (§13), and it
 		# stops it whether it was answered now or at the report.
-		_arm_row(srow["check"], "status:%s" % sd.id,
+		_arm_row(srow["check"], "status:%s" % key,
 			"You met %s." % sd.display_name,
 			func() -> void:
-				if GameLoop2.claim_player_objective(sd.id):
+				if GameLoop2.claim_player_objective(key):
 					_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 				else:
 					_announce("%s is answered for this game." % sd.display_name,
@@ -791,7 +800,10 @@ func _play_panel_sig() -> String:
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	for row in GameState.status_objectives():
-		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+		# The KEY, not the id: two rows of the same status differ only by instance,
+		# and a signature that could not see the difference would leave the panel
+		# showing one of them after the other expired.
+		parts.append("%s:%d" % [String(row["key"]), int(row["stacks"])])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		# The enemy's ID, not only its name: a re-roll that landed on a different
@@ -823,7 +835,10 @@ func _standing_checklist_sig() -> String:
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	for row in GameState.status_objectives():
-		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+		# The KEY, not the id: two rows of the same status differ only by instance,
+		# and a signature that could not see the difference would leave the panel
+		# showing one of them after the other expired.
+		parts.append("%s:%d" % [String(row["key"]), int(row["stacks"])])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),

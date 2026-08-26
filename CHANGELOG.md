@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A boss, an enemy, five potion-side items — and the two hooks two of them
+  needed.**
+
+  New content off the sheet: **Khidr** (Rogue Legacy, a 2x2 boss whose feat is
+  *poke an eye*) and **Doomvas** (*destroy a painting*), plus five items — Cauldron
+  (+5 Potions), Old Coin (+6 Gold), White Beast Statue (+1 Potion at the end of a
+  game), **Reptile Trinket** (+3 Strength until the end of the next combat whenever
+  you drink or throw a potion) and **Ripple Basin** (+1 Temporary Shield for a lost
+  run logged before anything has been ticked off).
+
+  Two of them had nowhere to hang. `potion_used` had been declared on `TriggerBus`
+  since the potion work and emitted by *nothing*; `PotionSystem.notify_used` is now
+  the choke point the signal's own comment always claimed it was, hit once by a
+  quaff and once by a throw — "drink or throw" is one event as far as an item is
+  concerned, and a bottle that fizzled was still spent. `run_lost` is new: the
+  tracker tick (§3), fired once per press of the button, carrying how many goals the
+  game has paid out so far. That count is what Ripple Basin's `if_goals=0` reads —
+  the first **gate** on a run-scope trigger, and it refuses a hook that carries no
+  count at all, because a gate is a narrowing and "can't answer that" is not a free
+  pass. The grant lands inside the snapshot `undo_attempt` restores, so an undone
+  try takes its shield back with it.
+
+  `data/bosses2.0/hickory.tres` also came back 1x1 rather than 1x2 in the same
+  regeneration: the sheet says 1x1 and the sheet is upstream.
+
+- **A borrowed status is its own thing on the checklist, and one chip on the HUD.**
+
+  Every temporary application already had its own row and its own clock in
+  `timed_statuses`. What it did *not* have was its own **goal**: `status_objectives`
+  summed the whole layer with the permanent stacks and offered one merged row, so a
+  run holding a Strength both for good and on loan could only tick, claim and be
+  billed for it once. Reptile Trinket is what made that impossible to leave — it
+  fires per potion, so three potions are three borrowed Strengths with three
+  deadlines.
+
+  So the rows are split. Each timed row carries an `instance` number, and every
+  claimable row now has a `key`: the bare status id for the stacks the run **owns**,
+  `"<id>#<N>"` for one loan. That key is what the tick box, `answered_this_game`,
+  the report's `claims.status_goals` and `claim_player_objective` pass around — and
+  the permanent bucket keeping the bare id is what lets a save or a report written
+  before any of this still land. A decay on a claimed row sheds from *that* row
+  (`remove_status_instance`), where `remove_status` would have spent a borrowed
+  stack for a permanent claim. A missed `demand` is billed per row for the same
+  reason.
+
+  **The HUD is deliberately the other way round.** `status_list` still merges: one
+  icon, one number. What a stack *does* is felt as a total — a permanent 1 under a
+  borrowed 3 hits like 4, so it reads like 4. Only the goals split.
+
 - **A pass over the page for text nobody was reading.**
 
   Four lines and two tooltips are gone, all of them the screen quoting something
