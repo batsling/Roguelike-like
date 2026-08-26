@@ -11,6 +11,100 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A completed goal drops to the bottom of the checklist.**
+
+  An answered row is a record, not a question. Left where it was, it is a line the
+  player re-reads every time they scan the list for what is still to do — and the
+  list is longest exactly when they have done the most. So an answered level-up,
+  status, event or curse row now sinks under everything still open, and the list
+  reads top-down as *what is left*.
+
+  **The enemy rows are the exception**, because a ticked enemy row does not always
+  mean a finished one: a body with more Health than one goal completion can take
+  (an Alien-Baby board) is answered without being finished — still standing, still
+  walking, still on the board beside the list. A body that *did* go down leaves the
+  stack and comes back as a ghost row, which sinks with the rest, so "cleared
+  enemies at the bottom" falls out of the same rule for free.
+
+  A claimed **event goal** used to be the one answered row that vanished outright —
+  claiming it takes it off the run, and the next repaint took its row with it. The
+  loop now keeps what the row said (`claimed_event_goals`) so it stays, ticked, at
+  the bottom until the game is handed in.
+
+  One real bug fell out of this. `_arm_row` locks a row by asking the loop whether
+  it was answered, and **the status rows were the only ones that never told it** —
+  so a repaint handed back an open box for a goal already claimed, and ticking it
+  again paid it again.
+
+- **The Escape button is always on screen, darkened, with the price under it — and
+  five lost runs open it again.**
+
+  The way out was hidden until `can_escape()`, which meant the one player who most
+  needed to know a door existed — the one stuck on a game they cannot beat — was
+  reading a panel that never mentioned one. It is up whenever a game is in play
+  now, greyed until it opens, with a small line under it naming every route still
+  to be paid: *"3 more losses, Clear Enemies, or Lose Health"*. All of them at once
+  rather than the nearest, because which is cheapest is a fact about the player's
+  board that only the player can see; naming one would be advice, naming all three
+  is information. A route already open drops off the line; an open door says
+  nothing at all.
+
+  And **five lost runs is a door again** (`ESCAPE_AFTER_LOSSES`). The hit gate is
+  the honest measure of "this game is costing you", but it is one the player does
+  not control: a board of low-damage bodies behind a stack of Temporary Shields can
+  take an evening and never land a point of Health. Five losses is not a good way
+  out — the board has taken five turns to get there — and it isn't meant to be. It
+  is a way out that always eventually arrives.
+
+- **A boss, an enemy, five potion-side items — and the two hooks two of them
+  needed.**
+
+  New content off the sheet: **Khidr** (Rogue Legacy, a 2x2 boss whose feat is
+  *poke an eye*) and **Doomvas** (*destroy a painting*), plus five items — Cauldron
+  (+5 Potions), Old Coin (+6 Gold), White Beast Statue (+1 Potion at the end of a
+  game), **Reptile Trinket** (+3 Strength until the end of the next combat whenever
+  you drink or throw a potion) and **Ripple Basin** (+1 Temporary Shield for a lost
+  run logged before anything has been ticked off).
+
+  Two of them had nowhere to hang. `potion_used` had been declared on `TriggerBus`
+  since the potion work and emitted by *nothing*; `PotionSystem.notify_used` is now
+  the choke point the signal's own comment always claimed it was, hit once by a
+  quaff and once by a throw — "drink or throw" is one event as far as an item is
+  concerned, and a bottle that fizzled was still spent. `run_lost` is new: the
+  tracker tick (§3), fired once per press of the button, carrying how many goals the
+  game has paid out so far. That count is what Ripple Basin's `if_goals=0` reads —
+  the first **gate** on a run-scope trigger, and it refuses a hook that carries no
+  count at all, because a gate is a narrowing and "can't answer that" is not a free
+  pass. The grant lands inside the snapshot `undo_attempt` restores, so an undone
+  try takes its shield back with it.
+
+  `data/bosses2.0/hickory.tres` also came back 1x1 rather than 1x2 in the same
+  regeneration: the sheet says 1x1 and the sheet is upstream.
+
+- **A borrowed status is its own thing on the checklist, and one chip on the HUD.**
+
+  Every temporary application already had its own row and its own clock in
+  `timed_statuses`. What it did *not* have was its own **goal**: `status_objectives`
+  summed the whole layer with the permanent stacks and offered one merged row, so a
+  run holding a Strength both for good and on loan could only tick, claim and be
+  billed for it once. Reptile Trinket is what made that impossible to leave — it
+  fires per potion, so three potions are three borrowed Strengths with three
+  deadlines.
+
+  So the rows are split. Each timed row carries an `instance` number, and every
+  claimable row now has a `key`: the bare status id for the stacks the run **owns**,
+  `"<id>#<N>"` for one loan. That key is what the tick box, `answered_this_game`,
+  the report's `claims.status_goals` and `claim_player_objective` pass around — and
+  the permanent bucket keeping the bare id is what lets a save or a report written
+  before any of this still land. A decay on a claimed row sheds from *that* row
+  (`remove_status_instance`), where `remove_status` would have spent a borrowed
+  stack for a permanent claim. A missed `demand` is billed per row for the same
+  reason.
+
+  **The HUD is deliberately the other way round.** `status_list` still merges: one
+  icon, one number. What a stack *does* is felt as a total — a permanent 1 under a
+  borrowed 3 hits like 4, so it reads like 4. Only the goals split.
+
 - **A pass over the page for text nobody was reading.**
 
   Four lines and two tooltips are gone, all of them the screen quoting something

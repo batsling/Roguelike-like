@@ -418,6 +418,21 @@ var _ghosts: Dictionary = {}
 # the same reason.
 var answered_rows: Dictionary = {}
 
+# EVENT GOALS CLAIMED THIS GAME, as the handful of display fields their row is
+# drawn from: [{condition, effects_text, event}, …].
+#
+# Claiming an event goal takes it off the run (GameState.claim_event_goal) — it is
+# met, and it is done — which used to take its checklist row with it on the next
+# repaint. Every other answered row stays on the list, ticked, so the player can
+# see what they have already dealt with; an event goal vanishing was the one row
+# that left the player wondering whether they had imagined ticking it. So the
+# LOOP remembers what it looked like, for exactly as long as the game lasts.
+#
+# The display fields rather than the goal itself: nothing here is ever paid out
+# again, so what is kept is what a row needs to be drawn and nothing that could be
+# mistaken for live state.
+var claimed_event_goals: Array = []
+
 # The entry a body defeated THIS GAME used to be, or {} — what a checklist row
 # about it still reads (§2.1). Only for the game in play: the record goes when the
 # game is handed in.
@@ -432,6 +447,18 @@ func row_answered(key: String) -> bool:
 # Record one, once it has actually resolved.
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
+
+# Remember a claimed event goal so its row can stay on the checklist for the rest
+# of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
+# back and keeps only what the row is drawn from.
+func record_claimed_event_goal(goal: Dictionary) -> void:
+	if goal.is_empty():
+		return
+	claimed_event_goals.append({
+		"condition": String(goal.get("condition", "")),
+		"effects_text": String(goal.get("effects_text", "")),
+		"event": String(goal.get("event", "")),
+	})
 
 # The attempt tracker for the game currently being played (§3). One entry per try
 # the player has logged, in order, holding what that try spent: "shield", "bonus"
@@ -646,6 +673,7 @@ func serialize() -> Dictionary:
 		"answered_this_game": _string_keys(answered_this_game),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": _string_keys(answered_rows),
+		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"next_instance": _next_instance,
 	}
 
@@ -756,6 +784,9 @@ func restore(data: Dictionary) -> void:
 	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
 	for key in data.get("answered_rows", []):
 		answered_rows[String(key)] = true
+	for raw in data.get("claimed_event_goals", []):
+		if raw is Dictionary:
+			claimed_event_goals.append((raw as Dictionary).duplicate(true))
 	# Never hand out an instance handle something on the board already holds.
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -1233,6 +1264,13 @@ func log_attempt() -> String:
 	# restores. Kept in step all the same, and an old save's payouts are still
 	# read back into it.
 	_attempt_payouts.append(0)
+	# THE ITEM HOOK, before the board takes its turn: what an item hands out for a
+	# lost run (Ripple Basin's Temporary Shield) is armour against the swing this
+	# very tick is about to buy, not a consolation after it. Inside the snapshot
+	# taken above, so an undone try takes the grant back with it.
+	TriggerBus.run_lost.emit({
+		"attempt": attempt_costs.size(), "goals_met": goals_met_this_game,
+	})
 	attempt_logged.emit("turn", false)
 	loop_changed.emit()
 	return "turn"
@@ -1343,6 +1381,7 @@ func _loop_snapshot() -> Dictionary:
 		"answered_this_game": answered_this_game.duplicate(),
 		"goals_met_this_game": goals_met_this_game,
 		"answered_rows": answered_rows.duplicate(),
+		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"ghosts": _ghosts.duplicate(true),
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
@@ -1381,6 +1420,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
 	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
 	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
+	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second
@@ -1458,6 +1498,7 @@ func _clear_game_record() -> void:
 	answered_this_game.clear()
 	goals_met_this_game = 0
 	answered_rows.clear()
+	claimed_event_goals.clear()
 	_ghosts.clear()
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
@@ -1515,7 +1556,10 @@ func _board_snapshot() -> Dictionary:
 # game or ten ago (§2). `claims` carries the STATUS side of
 # the same self-report (§13), and is optional so every pre-status call site still
 # reads correctly:
-#   {"status_goals": [status_id, ...],                       player buffs met
+#   {"status_goals": [objective_key, ...],                   player buffs met
+#                                        one key per ROW ticked, which is a status
+#                                        id for the permanent bucket and "id#N" for
+#                                        one borrowed application of it (§5.4)
 #    "bonuses": [{"instance": int, "status": status_id}, …]   enemy bonuses claimed
 #    "instead": [{"instance": int, "status": status_id}, …]}  goals met the OTHER
 #                                                            way (§13, Burn)
@@ -3908,14 +3952,23 @@ func _pay_status_reward(status: StatusData, which: StringName, stacks: int) -> v
 # a stack if that side decays. A `goal` on a buff typically does not — it IS the
 # reward, and a timer would only make it a worse item — but that is the sheet's
 # call now, not a rule baked in here.
-func claim_player_objective(status_id: StringName) -> bool:
+func claim_player_objective(key: String) -> bool:
 	# ANSWERED FIRST, and whatever else happens (§2.1). Both callers of this are
 	# "the player ticked this row", and what a `demand` charges at the end of the
 	# game is decided by whether the row was ticked — not by whether ticking it
 	# also paid out. The report reads its own ticks the same way
 	# (_resolve_status_demands); this is where the mid-game ones are recorded.
-	answered_this_game[status_id] = true
-	var stacks: int = GameState.status_stacks(status_id)
+	#
+	# `key` names ONE ROW, not one status (GameState.status_objectives): the
+	# permanent bucket, or one borrowed application of it. A run holding a status
+	# both ways has two rows to tick, each paying for the stacks behind it — and a
+	# bare status id is still the permanent bucket's key, so a report or a save
+	# written before the split still means what it said.
+	answered_this_game[StringName(key)] = true
+	var parts: Array = GameState.split_objective_key(key)
+	var status_id: StringName = parts[0]
+	var instance: int = int(parts[1])
+	var stacks: int = GameState.objective_stacks(status_id, instance)
 	if stacks <= 0:
 		return false
 	var status: StatusData = Data.get_status(status_id)
@@ -3923,7 +3976,10 @@ func claim_player_objective(status_id: StringName) -> bool:
 		return false
 	_pay_status_reward(status, StatusData.PLAYER, stacks)
 	if status.decays(StatusData.PLAYER):
-		GameState.remove_status(status_id, 1)
+		# The stack comes off THE ROW THAT PAID. `remove_status` spends the timed
+		# rows first — right for a decay that names no row, wrong here, where a
+		# claimed permanent stack would otherwise be taken out of a borrowed one.
+		GameState.remove_status_instance(status_id, instance, 1)
 	return true
 
 # An enemy's bonus objective was claimed on `instance`: pay it, then shed a stack
@@ -4015,9 +4071,12 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 	# billing it here would charge a player for the one thing they did do.
 	for sid in answered_this_game:
 		answered[StringName(sid)] = true
-	for row in GameState.status_list():
+	# ONE BILL PER ROW (§5.4), the same rows the checklist offered: a demand held
+	# permanently and a borrowed one on top of it are two obligations, each ticked
+	# — or missed — on its own. Merging them would let one tick pay off both.
+	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
-		if not sd.is_demand(StatusData.PLAYER) or answered.has(sd.id):
+		if not sd.is_demand(StatusData.PLAYER) or answered.has(StringName(row["key"])):
 			continue
 		var stacks: int = int(row["stacks"])
 		for eff in sd.penalty_effects(StatusData.PLAYER, stacks):
@@ -4044,7 +4103,7 @@ func _resolve_status_claims(claims: Dictionary) -> int:
 		return 0
 	var paid: int = 0
 	for raw in claims.get("status_goals", []):
-		if claim_player_objective(StringName(raw)):
+		if claim_player_objective(String(raw)):
 			paid += 1
 	for raw in claims.get("bonuses", []):
 		if not (raw is Dictionary):

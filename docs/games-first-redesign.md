@@ -98,6 +98,20 @@ evening, and the reward for it was behind a screen you had not reached. **Losing
 runs does not gate any of it** — a lost run is the enemies' turn, not a lock on
 the checklist.
 
+**A completed goal sinks.** Once a row is answered it is a record rather than a
+question, and left in place it is a line the player re-reads every time they scan
+for what is still to do — the list being longest exactly when they have done the
+most. So an answered level-up / status / event / curse row drops under everything
+still open (`ReportChecklist._add_row` / `_flush_sunk`).
+
+**The enemy rows do not sink**, and that is the exception the rule needs. A body
+with more Health than one goal completion can take (`effective_health` > 1, an
+Alien-Baby board) has been *answered* without being *finished*: it is still
+standing, still walking, still on the board beside the list. A body that did go
+down leaves the stack entirely and comes back as a ghost row, which sinks with
+the rest — so "cleared enemies at the bottom" falls out of the same rule without
+the enemy rows needing to know about it.
+
 **The loop remembers, not the boxes.** The page rebuilds this list on every
 repaint, so a tick that cannot be taken back must not be something a repaint can
 lose. `GameLoop2` keeps the per-game record and clears it when the game is chosen
@@ -111,8 +125,12 @@ or handed in:
   game whose goals were all answered hours earlier.
 - `answered_this_game` — player objectives already claimed, so a `demand` does not
   bill someone who answered it.
-- `answered_rows` — the rows the four above have no room for (a bonus, a curse, the
-  level-up), keyed by the checklist's own strings.
+- `answered_rows` — the rows the four above have no room for (a bonus, a curse, a
+  status goal, the level-up), keyed by the checklist's own strings.
+- `claimed_event_goals` — the display fields of the event goals claimed this game.
+  Claiming one takes it off the run, which used to take its row with it on the next
+  repaint: it was the one answered row that *vanished* rather than staying ticked,
+  and a player who had just ticked it was left wondering whether they had.
 - `_ghosts` — the entry a body defeated this game used to be. The report always
   resolved bonuses *before* goals so that "an enemy you failed can still pay its
   bonus" held; with the goal resolving when it is ticked the order is the
@@ -278,13 +296,29 @@ takes Health off you during it** (`GameLoop2.hurt_this_game`, set by `_take_hit`
 on the `enemy_attack` source alone). It is open from the first second on a game
 this run has **already beaten** — there is nothing left to prove at that one.
 
-- **The gate is the hit, not a count of tries.** It used to be five lost runs,
+- **The hit is the *first* gate, not the only one.** It used to be five lost runs,
   from when a lost run spent a shield and then Health: a counter standing in for
   "this game is hurting you" because nothing else measured it. The board measures
   it directly now — lose runs, the enemies take turns, a Temporary Shield stops
   the first swings outright, and the door opens on the swing that gets past them.
   The way out therefore arrives exactly when the game starts costing the one
-  thing you cannot make more of, and never merely because you were patient.
+  thing you cannot make more of.
+- **…and five lost runs is the floor under it** (`Overworld2.ESCAPE_AFTER_LOSSES`).
+  The hit is the honest measure, but it is one the player does not control: a board
+  of low-damage bodies behind a stack of Temporary Shields can take an evening and
+  never land a point of Health, and a player who cannot beat *that* game would be
+  held there by the rule written to let them out. Five losses is not a good way out
+  — the board has taken five turns to get there — and it is not meant to be. It is
+  a way out that always eventually arrives.
+- **The button is always on screen, darkened until one of them opens.** Hiding it
+  meant the one player who most needed to know there was a door — the one stuck —
+  was reading a panel that never mentioned it. Under the greyed button is the
+  price, as every route still to be paid: *"3 more losses, Clear Enemies, or Lose
+  Health"* (`Overworld2.escape_routes` / `escape_hint_text`). All of them at once
+  rather than the nearest, because which is cheapest is a fact about the player's
+  board that only the player can see — naming one would be advice, naming all
+  three is information. A route already open drops off the line, and an open door
+  says nothing at all.
 - **A swing only.** Burn's bill and an event's price cost real Health and do not
   open it: they are not the game in front of you refusing to go down.
 - **Per game.** Cleared when a game is chosen and when one is reported, saved
@@ -1461,6 +1495,17 @@ event's bill, or a curse's drain — is not an attack and breaks nothing either.
 brought nothing with it: +2 Bashes on pickup, the same `gain_stat` The Mark pays
 one of.
 
+**The potion five** are the Slay the Spire side of the shelf, and two of them
+brought a hook each:
+
+| Relic | | Brought with it |
+|---|---|---|
+| **Cauldron** | Rare, `shop` | Nothing new: +5 Potions on pickup, `gain_potion` through the loot grant. |
+| **Old Coin** | Rare | Nothing new: +6 Gold on pickup. |
+| **White Beast Statue** | Uncommon | Nothing new: +1 Potion on `game_beaten`, which is every game seen through, win or lose. |
+| **Reptile Trinket** | Uncommon | The **`potion_used`** hook, declared since the potion work and emitted by nothing until this item wanted it. +3 Strength *borrowed for one game* — the first item to hand out a timed status, and what made one row per instance necessary (docs/potions-design.md §5.4). |
+| **Ripple Basin** | Uncommon | The **`run_lost`** hook and **`if_goals=`**, the first gate on a run-scope trigger: +1 Temporary Shield for a lost run logged while the game is still blank. |
+
 ### 8.1 Effect DSL — reuse the existing item grammar
 
 The `items2.0.Effect` column is authored in the **same grammar the project already
@@ -1489,6 +1534,9 @@ previously name:
 | Token | What it is |
 |---|---|
 | `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and the swing a failed try bought count exactly as an enemy's swing at the end of a game does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` restores what the tick's turn moved — the purse it minted included, otherwise the undo would be a coin press. |
+| `run_lost:` | A trigger prefix — the player pressed the button that logs a **lost run** at the game in play (§3). Fired once per press by `GameLoop2.log_attempt`, *before* the turn the tick costs is resolved, so what an item hands out here is standing when the board swings. The context carries `goals_met`, how many goals this game has paid out so far, which is what `if_goals=` reads. Inside the snapshot `undo_attempt` restores, like everything else the tick moved. **Ripple Basin** is the item. |
+| `potion_used:` | A trigger prefix — a potion was **drunk or thrown**. One event for both, because that is how the wording reads (**Reptile Trinket**: "whenever you drink *or throw* a potion"), and a bottle that fizzled on empty ground was still spent. Emitted once per use by `PotionSystem.notify_used`, the choke point both sides go through. |
+| `if_goals=N` | A **gate** on the trigger before it, not a trigger of its own: the hook fires, and the item's effects only run when the context's `goals_met` is exactly N. Ripple Basin's `if_goals=0` is "before completing any goals". A hook that carries no goal count at all **refuses** a gated trigger rather than passing it — a gate is a narrowing, and "this hook can't answer that" is not a free pass. |
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
@@ -2111,8 +2159,10 @@ spawns while it is owned.
 ### 13.3 Where they live at runtime
 
 - **On the player** — `GameState.player_statuses` (id → stacks), with
-  `apply_status` / `remove_status` / `status_objectives` (the claimable rows) /
-  `status_clauses` (the taxes). Run-scope: cleared by `reset_run`, saved under
+  `apply_status` / `remove_status` / `status_objectives` (the claimable rows —
+  **one per instance**, the owned stacks and each borrowed application separately;
+  see docs/potions-design.md §5.4) / `status_clauses` (the taxes, which stay
+  summed). Run-scope: cleared by `reset_run`, saved under
   `player_statuses`.
 - **On an enemy** — a `statuses` dict on the **GameLoop2 stack entry**, so a status
   rides the *body* and survives the current enemy walking onto the board. Saved

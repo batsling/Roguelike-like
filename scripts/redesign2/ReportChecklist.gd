@@ -38,7 +38,11 @@ var fulfil_checks: Array = []        # [{check: CheckBox, instance: int}]
 # burned enemy grows, each a second way to clear that body. All three are read into
 # beat_game's `claims` on report; the required clauses (enemy buffs, player
 # clauses) need no boxes of their own because they are folded into the goal line.
-var status_goal_checks: Array = []   # [{check: CheckBox, status: StringName}]
+# `status` here is an OBJECTIVE KEY, not a bare status id: a status held both for
+# good and on loan has one row per instance (GameState.status_objectives), and the
+# key is what tells the claim which of them was ticked. For the permanent bucket
+# the key IS the bare id, so the name still reads true for the common case.
+var status_goal_checks: Array = []   # [{check: CheckBox, status: String}]
 var bonus_checks: Array = []         # [{check: CheckBox, instance: int, status: StringName}]
 var instead_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 # Bindings for the two event-borne sections, cleared with the rest in reset_state.
@@ -151,25 +155,40 @@ func populate_play_panel() -> void:
 		# (docs/potions-design.md §5.3): this is the line the player reads to decide
 		# what to chase, and one that expires tonight is a different offer.
 		var games: int = int(row.get("games", 0))
+		# ONE ROW PER INSTANCE (§5.4): the stacks the run owns and every borrowed
+		# application beside them, each with its own clock, its own tick and its own
+		# payout. `key` is what holds two rows of the same status apart everywhere
+		# downstream — the tick, the claim, the demand's bill.
+		var key: String = String(row["key"])
 		var srow := verify_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
 				sd.objective_text(StatusData.PLAYER, stacks),
 				StatusData.clock_suffix(games)],
 			_status_row_tint(sd), false, null, null, 0,
 			_status_mark(sd, stacks, StatusData.PLAYER, false, games))
-		_box.add_child(srow["row"])
-		status_goal_checks.append({"check": srow["check"], "status": sd.id})
+		_add_row(srow["row"], GameLoop2.row_answered("status:%s" % key))
+		status_goal_checks.append({"check": srow["check"], "status": key})
 		# A `demand` is the one row where confirming buys something other than a
 		# reward: it is what stops the bill at the end of the game (§13), and it
 		# stops it whether it was answered now or at the report.
-		_arm_row(srow["check"], "status:%s" % sd.id,
+		_arm_row(srow["check"], "status:%s" % key,
 			"You met %s." % sd.display_name,
 			func() -> void:
-				if GameLoop2.claim_player_objective(sd.id):
+				# RECORDED THE WAY EVERY OTHER ROW IS, and it was the only one that
+				# wasn't. `_arm_row` locks a row by asking GameLoop2 whether it was
+				# answered, so a status row that never told it came back OPEN on the
+				# next repaint — and ticking it again paid it again.
+				GameLoop2.mark_row_answered("status:%s" % key)
+				if GameLoop2.claim_player_objective(key):
 					_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 				else:
 					_announce("%s is answered for this game." % sd.display_name,
-						UITheme.TEXT_DIM))
+						UITheme.TEXT_DIM)
+				# The row has just become a record, so the list is rebuilt to put it
+				# where records go. Deferred, like every other rebuild a tick asks
+				# for — the box being locked a line above is one of the children it
+				# is about to free.
+				_rebuild_soon())
 
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
 	# with its reward shown inline so the payoff reads at a glance. It carries its
@@ -182,7 +201,7 @@ func populate_play_panel() -> void:
 			lu_text += "   → %s" % ch.level_up_reward
 		var lu_row := verify_row(lu_text, UITheme.GOLD, false, null, ch)
 		levelup_check = lu_row["check"]
-		_box.add_child(lu_row["row"])
+		_add_row(lu_row["row"], GameLoop2.row_answered(LEVELUP_KEY))
 		var game_now: GameData = _page._chosen.get("game")
 		_arm_row(lu_row["check"], LEVELUP_KEY,
 			"You met %s's level-up condition." % ch.display_name,
@@ -191,7 +210,8 @@ func populate_play_panel() -> void:
 				_page._apply_level_up()
 				if game_now != null:
 					GameStats.record_level_up(game_now.id, GameState.character_id)
-				_announce("Levelled up — %s." % ch.level_up_condition, UITheme.GOLD))
+				_announce("Levelled up — %s." % ch.level_up_condition, UITheme.GOLD)
+				_rebuild_soon())
 
 	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
 	# sections, deliberately: the checklist now carries three kinds of objective
@@ -214,7 +234,10 @@ func populate_play_panel() -> void:
 		var e: GoalEnemyData = entry["enemy"]
 		var row := verify_row("Cleared: %s — %s" % [
 			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
-		_box.add_child(row["row"])
+		# NEVER SUNK, even when it has been ticked: a body still on the stack after
+		# its goal was met is one with Health left over (effective_health > 1), and
+		# it is still standing on the board beside this list.
+		_add_row(row["row"])
 		fulfil_checks.append({"check": row["check"], "instance": inst})
 		_arm_goal_row(row["check"], inst, e)
 		_add_instead_rows(entry)
@@ -227,6 +250,8 @@ func populate_play_panel() -> void:
 	for inst in GameLoop2.cleared_this_game.keys():
 		if GameLoop2.entry_for(int(inst)).is_empty():
 			_add_ghost_rows(int(inst))
+	# …and everything finished, under everything still to do.
+	_flush_sunk()
 
 # The rows a body defeated MID-GAME leaves behind: its own, ticked and locked, and
 # whatever bonus objectives it was carrying, still open.
@@ -240,9 +265,12 @@ func _add_ghost_rows(instance: int) -> void:
 	var row := verify_row("Cleared: %s — %s" % [
 		GameLoop2.goal_text_for(entry), e.display_name],
 		UITheme.TEXT, false, e, null, 0)
-	_box.add_child(row["row"])
+	# A body that went down is a finished goal, so its row sinks with the other
+	# finished ones — and its still-open bonus goes with it rather than being left
+	# behind on its own, because a bonus with no body above it names nothing.
+	_add_row(row["row"], true)
 	_lock_row(row["check"])
-	_add_bonus_rows(entry)
+	_add_bonus_rows(entry, true)
 
 # One enemy's goal row. Confirming it deals the goal's hit THERE AND THEN — the
 # body dies if that is enough, and its loot lands on the square it fell in (§8.2)
@@ -285,7 +313,7 @@ func _add_event_goal_rows() -> void:
 			goal.get("condition", ""), goal.get("effects_text", ""),
 			left, "game" if left == 1 else "games"]
 		var row := verify_row(text, UITheme.ACCENT, false)
-		_box.add_child(row["row"])
+		_add_row(row["row"])
 		event_goal_checks.append({"check": row["check"], "index": i})
 		# CLAIMED ON THE SPOT, and claiming it takes it off GameState's list — which
 		# is why there is no row key for it: the row is simply not built again. The
@@ -302,11 +330,30 @@ func _add_event_goal_rows() -> void:
 				var claimed: Dictionary = GameState.claim_event_goal(at)
 				if claimed.is_empty():
 					return
+				# The goal is off the run now, so the LOOP keeps what the row was
+				# drawn from — otherwise the rebuild below would take the row away
+				# with it, and a claimed goal is the one thing on this list the
+				# player has most reason to want to still see (§2.1).
+				GameLoop2.record_claimed_event_goal(claimed)
 				var src: EventData2 = Data.get_event2(StringName(claimed.get("event", &"")))
 				var line: String = src.goal_met if src != null and src.goal_met != "" \
 					else "Event goal met — %s." % claimed.get("effects_text", "")
 				_announce(line, UITheme.ACCENT)
 				_rebuild_soon())
+
+	# The ones already CLAIMED this game, ticked and locked and on their way to the
+	# bottom (§2.1). They are off the run — GameState.claim_event_goal took them —
+	# so they are drawn from the loop's record of what they said rather than from a
+	# live goal, and there is nothing to arm: a claim resolves once.
+	for claimed in GameLoop2.claimed_event_goals:
+		if not (claimed is Dictionary):
+			continue
+		var done_row := verify_row("Event goal — %s   → %s   (claimed)" % [
+			(claimed as Dictionary).get("condition", ""),
+			(claimed as Dictionary).get("effects_text", "")],
+			UITheme.ACCENT, false)
+		_add_row(done_row["row"], true)
+		_lock_row(done_row["check"])
 
 	for i in range(GameState.curse_goals.size()):
 		var entry: Dictionary = GameState.curse_goals[i]
@@ -325,21 +372,22 @@ func _add_event_goal_rows() -> void:
 		var text: String = "%s — %s   if failed, %s   (%s)" % [
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)]
+		var curse_key: String = "curse:%d:%s" % [i, cd.id]
 		var row := verify_row(text, UITheme.CURSE, false)
-		_box.add_child(row["row"])
+		_add_row(row["row"], GameLoop2.row_answered(curse_key))
 		curse_goal_checks.append({"check": row["check"], "index": i})
 		# THE ONE ROW WITH NOTHING TO RESOLVE. A curse pays no reward for being
 		# followed; what ticking it buys is the penalty NOT firing at the end of the
 		# game, and that is settled at the report either way (resolve_event_goals).
 		# It still confirms and still locks, because it is still a claim about what
 		# you did, and this list does not take those back.
-		var curse_key: String = "curse:%d:%s" % [i, cd.id]
 		_arm_row(row["check"], curse_key,
 			"You followed %s: %s." % [cd.display_name, cd.goal_text()],
 			func() -> void:
 				GameLoop2.mark_row_answered(curse_key)
 				_announce("%s followed — it will not bite this game." % cd.display_name,
-					UITheme.CURSE))
+					UITheme.CURSE)
+				_rebuild_soon())
 
 
 # Pay out whatever the player ticked in those two sections. Claims are resolved
@@ -435,7 +483,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 			StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
 			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
-		_box.add_child(irow["row"])
+		_add_row(irow["row"])
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
 		# CLEARS THE BODY, so it resolves like the goal row it stands in for — the
@@ -464,7 +512,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 	for row in GameLoop2.nullified_alternatives_for(entry):
 		_box.add_child(_nullified_row(row))
 
-func _add_bonus_rows(entry: Dictionary) -> void:
+func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
 		return
 	var instance: int = int(entry.get("instance", 0))
@@ -478,7 +526,7 @@ func _add_bonus_rows(entry: Dictionary) -> void:
 				StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
 			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
-		_box.add_child(brow["row"])
+		_add_row(brow["row"], sunk)
 		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
 		var key: String = "bonus:%d:%s" % [instance, sd.id]
 		_arm_row(brow["check"], key,
@@ -612,6 +660,43 @@ func enemy_name_of(instance: int) -> String:
 # whose object has gone, and the page is a Node whose lifetime the engine tracks —
 # while this is a RefCounted the page holds, which can be released between the
 # call being queued and the frame ending. That is what the crash was.
+# --- a completed goal sinks (§2.1) -----------------------------------------
+#
+# The rows held back for the bottom of the list, in the order they were built.
+# Filled during populate_play_panel and emptied by _flush_sunk at the end of it,
+# so nothing outlives one build.
+var _sunk: Array = []
+
+# Add one checklist row — or hold it back for the bottom.
+#
+# ONCE A ROW IS ANSWERED IT IS A RECORD, NOT A QUESTION. Left where it was, it is
+# a line the player re-reads every time they scan the list for what is still to
+# do, and the list is longest exactly when they have done the most. So an answered
+# level-up / status / event / curse row drops under everything still open.
+#
+# THE ENEMIES DO NOT SINK, and that is the exception the rule needs rather than an
+# oversight. A body with more Health than one goal completion can take
+# (GameLoop2.effective_health — an Alien-Baby board is the case) has been ANSWERED
+# without being FINISHED: it is still standing, still walking, still on the board
+# beside the list, and its row is about something the player can still see. A body
+# that DID go down leaves the stack entirely and comes back as a ghost row, which
+# sinks with the rest — so "cleared enemies at the bottom" falls out of the same
+# rule without the enemy rows needing to know about it.
+func _add_row(node: Control, sunk: bool = false) -> void:
+	if node == null:
+		return
+	if sunk:
+		_sunk.append(node)
+	else:
+		_box.add_child(node)
+
+# Everything held back, under everything else, in build order.
+func _flush_sunk() -> void:
+	for node in _sunk:
+		if node != null and is_instance_valid(node):
+			_box.add_child(node)
+	_sunk.clear()
+
 func _rebuild_soon() -> void:
 	if _page != null and is_instance_valid(_page):
 		_page.call_deferred("_populate_play_panel")
@@ -641,6 +726,9 @@ func reset_state() -> void:
 	instead_checks.clear()
 	event_goal_checks.clear()
 	curse_goal_checks.clear()
+	# Rows held back for the bottom belong to ONE build. A build that never reached
+	# its flush must not hand its leftovers to the next one.
+	_sunk.clear()
 	levelup_check = null
 
 # The checklist while you're CHOOSING: the goals already on you — the character's
@@ -791,7 +879,10 @@ func _play_panel_sig() -> String:
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	for row in GameState.status_objectives():
-		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+		# The KEY, not the id: two rows of the same status differ only by instance,
+		# and a signature that could not see the difference would leave the panel
+		# showing one of them after the other expired.
+		parts.append("%s:%d" % [String(row["key"]), int(row["stacks"])])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		# The enemy's ID, not only its name: a re-roll that landed on a different
@@ -823,7 +914,10 @@ func _standing_checklist_sig() -> String:
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	for row in GameState.status_objectives():
-		parts.append("%s:%d" % [String((row["status"] as StatusData).id), int(row["stacks"])])
+		# The KEY, not the id: two rows of the same status differ only by instance,
+		# and a signature that could not see the difference would leave the panel
+		# showing one of them after the other expired.
+		parts.append("%s:%d" % [String(row["key"]), int(row["stacks"])])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),

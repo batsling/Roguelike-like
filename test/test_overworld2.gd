@@ -755,6 +755,70 @@ func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	assert_true([1, 2, 3, 5].has(choices),
 		"chest SIZE is rolled: Small=1 / Medium=2 / Large=3 / Huge=5, got %d" % choices)
 
+# --- a completed goal sinks (§2.1) ------------------------------------------
+#
+# An answered row is a record, not a question. It drops under everything still
+# open so the list reads top-down as "what is left", however much has been done.
+
+# Where a row's text sits in the checklist, or -1. Matched on a prefix, since the
+# rows carry the goal and the name after it.
+func _row_index(prefix: String) -> int:
+	var labels: Array = _labels_under(_ui._verify_box)
+	for i in range(labels.size()):
+		if String(labels[i]).begins_with(prefix):
+			return i
+	return -1
+
+func _last_row_index(prefix: String) -> int:
+	var labels: Array = _labels_under(_ui._verify_box)
+	var found: int = -1
+	for i in range(labels.size()):
+		if String(labels[i]).begins_with(prefix):
+			found = i
+	return found
+
+func test_a_ticked_level_up_drops_below_the_enemies() -> void:
+	_reboot(&"isaac")
+	_ui.pick(0)
+	assert_gt(_row_index("Cleared:"), _row_index("Leveled up"),
+		"it starts above them, where the open goals are")
+	_tick(_ui._levelup_check)
+	_ui._populate_play_panel()
+	assert_gt(_row_index("Leveled up"), _last_row_index("Cleared:"),
+		"and lands under every enemy row once it is answered")
+
+func test_a_ticked_status_goal_drops_below_the_enemies() -> void:
+	_reboot(&"isaac")
+	GameState.apply_status(&"strength", 1)
+	_ui.pick(0)
+	assert_false(_ui._status_goal_checks.is_empty(), "the status put a row on the list")
+	var check: CheckBox = _ui._status_goal_checks[0]["check"]
+	var row_text: String = check.text
+	assert_gt(_row_index("Cleared:"), _row_index(row_text),
+		"it starts above the board, with the other open goals")
+	_tick(check)
+	_ui._populate_play_panel()
+	assert_gt(_row_index(row_text), _last_row_index("Cleared:"),
+		"and sinks under every enemy row once it is answered")
+
+func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
+	# The exception. A body with more Health than one goal completion can take is
+	# ANSWERED without being FINISHED — it is still standing on the board beside
+	# the list, so its row stays in board order rather than sinking.
+	_reboot(&"isaac")
+	_ui.pick(0)
+	if GameLoop2.stack.size() < 2:
+		return
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	entry["health"] = 3
+	var was: int = _row_index("Cleared:")
+	GameLoop2.fulfill(inst, true)
+	_ui._populate_play_panel()
+	assert_false(GameLoop2.entry_for(inst).is_empty(), "it is still on the board")
+	assert_eq(_row_index("Cleared:"), was,
+		"and its row has not moved out from under the board it belongs to")
+
 func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	GameState.dash_charges = 1
 	_ui._build_choices()
@@ -4369,7 +4433,8 @@ func test_escape_is_locked_until_something_gets_through() -> void:
 	_lose_runs(3)
 	assert_eq(GameState.hp, 99, "the shields stopped every swing")
 	assert_false(_ui.can_escape(), "so nothing has hurt you and the door is shut")
-	assert_false(_ui._escape_btn.visible, "and the button stays hidden")
+	assert_true(_ui._escape_btn.visible, "the button is on screen either way")
+	assert_true(_ui._escape_btn.disabled, "but darkened, because the door is shut")
 
 func test_escape_unlocks_the_moment_a_swing_takes_health() -> void:
 	_pick_an_unplayed_game()
@@ -4377,6 +4442,7 @@ func test_escape_unlocks_the_moment_a_swing_takes_health() -> void:
 	assert_true(GameLoop2.hurt_this_game, "the loop recorded the hit")
 	assert_true(_ui.can_escape(), "a swing that got through earns the way out")
 	assert_true(_ui._escape_btn.visible, "and the button is there to press")
+	assert_false(_ui._escape_btn.disabled, "lit rather than darkened")
 
 func test_a_status_bill_is_not_the_hit_that_opens_the_door() -> void:
 	# The gate is an ENEMY'S ATTACK. Burn's "or take 3 Damage" resolves through the
@@ -4408,6 +4474,7 @@ func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
 	assert_true(_ui.can_escape(), "the door is open from the first second")
 	_ui._refresh()
 	assert_true(_ui._escape_btn.visible, "and the button is up to press")
+	assert_false(_ui._escape_btn.disabled, "and lit")
 
 func test_the_free_escape_still_costs_you_the_enemy() -> void:
 	# "Escape at any time" changes the GATE, not the price: the board resolves
@@ -4539,7 +4606,7 @@ func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
 	_ui._refresh()
 	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
-	assert_false(_ui._escape_btn.visible, "and the button goes with it")
+	assert_true(_ui._escape_btn.disabled, "and the button darkens again with it")
 
 func test_an_empty_board_is_a_way_out_on_its_own() -> void:
 	# Nothing on the board is nothing that can ever hurt you, so the hit gate could
@@ -4555,6 +4622,65 @@ func test_an_empty_board_is_a_way_out_on_its_own() -> void:
 	assert_true(_ui._escape_btn.visible, "and the button is up")
 	assert_true(_ui._escape_btn.tooltip_text.contains("Nothing is on the board"),
 		"saying which door it is: %s" % _ui._escape_btn.tooltip_text)
+
+# --- the fourth door: five lost runs, and the line that counts them down -----
+#
+# The floor under the other three. A board that cannot land a hit and cannot be
+# cleared would otherwise hold a player on a game forever, so patience is a way
+# out again — an expensive one, since every loss is a turn the board took.
+
+func test_five_lost_runs_open_the_door_on_their_own() -> void:
+	_pick_an_unplayed_game()
+	# Shielded to the eyeballs and everything out of reach, so nothing can land the
+	# hit that would open the OTHER door and make this test about the wrong rule.
+	GameState.shields = 99
+	GameState.bonus_shields = 0
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_LOSSES - 1)
+	assert_false(GameLoop2.hurt_this_game, "no swing got through")
+	assert_false(_ui.can_escape(), "four is not five")
+	_lose_runs(1)
+	assert_true(_ui.can_escape(), "and the fifth opens it whatever the board did")
+	_ui._refresh()
+	assert_false(_ui._escape_btn.disabled, "the button lights up with it")
+
+func test_the_hint_counts_the_losses_down_and_names_the_other_doors() -> void:
+	_pick_an_unplayed_game()
+	GameState.shields = 99
+	GameState.bonus_shields = 0
+	_ui._refresh()
+	var hint: String = _ui.escape_hint_text()
+	assert_true(hint.contains("%d more losses" % OVERWORLD.ESCAPE_AFTER_LOSSES),
+		"the countdown starts at the full price: %s" % hint)
+	assert_true(hint.contains("Clear Enemies"), "and the board is a door too: %s" % hint)
+	assert_true(hint.contains("Lose Health"), "as is a hit: %s" % hint)
+	assert_true(hint.contains(" or "), "read as one line of alternatives: %s" % hint)
+	assert_eq(_ui._escape_hint.text, hint, "which is what the line under the button says")
+	assert_true(_ui._escape_hint.visible, "and it is up while the door is shut")
+
+func test_the_countdown_falls_as_runs_are_lost() -> void:
+	_pick_an_unplayed_game()
+	GameState.shields = 99
+	GameState.bonus_shields = 0
+	_lose_runs(OVERWORLD.ESCAPE_AFTER_LOSSES - 1)
+	assert_true(_ui.escape_hint_text().begins_with("1 more loss,"),
+		"singular on the last one: %s" % _ui.escape_hint_text())
+
+func test_an_open_door_says_nothing_at_all() -> void:
+	_pick_an_unplayed_game()
+	_bleed_at_the_game_in_play()
+	assert_eq(_ui.escape_hint_text(), "", "there is nothing left to earn")
+	_ui._refresh()
+	assert_false(_ui._escape_hint.visible, "so the line goes away")
+
+func test_an_empty_board_leaves_nothing_to_count_down_to() -> void:
+	# The hit landed, so "Lose Health" is not something still to do — and neither is
+	# anything else, because that hit opened the door. The interesting half is the
+	# board: clear it and the enemies stop being a route to name.
+	_pick_an_unplayed_game()
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry["instance"]))
+	assert_eq(_ui.escape_hint_text(), "",
+		"an empty board IS the way out, so there is nothing to count down to")
 
 func test_escaping_still_owes_the_road_its_extra_turns() -> void:
 	# Walking away is FINISHING a game as far as the Amulet is concerned: the extra

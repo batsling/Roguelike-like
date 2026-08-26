@@ -421,12 +421,12 @@ the same shape. A stack count has no room for an expiry, so the clock rides besi
 it as a **timed layer** rather than inside it:
 
 ```gdscript
-GameState.timed_statuses: Array   # [{id, stacks, games}, …]
+GameState.timed_statuses: Array   # [{id, stacks, games, shield, instance}, …]
 entry["timed_statuses"]: Array    # the same, per body
 ```
 
-summed into the existing reads (`status_stacks`, `status_objectives`,
-`status_clauses`, `GameLoop2.enemy_combat`) rather than stored in them. The
+summed into the existing reads (`status_stacks`, `status_clauses`,
+`GameLoop2.enemy_combat`) rather than stored in them. The
 alternative — a parallel `{id: games_left}` dict — cannot describe a status that is
 half permanent and half borrowed, which is exactly what a run holding a permanent
 Dexterity and then drinking a Speed Potion has. A layer expires **whole**: two
@@ -439,7 +439,32 @@ It saves as one more array beside `player_statuses` in `SaveSystem`, and inside
 One ordering rule while we are here: a status that decays on completion (§13.1)
 sheds its stack from the **timed** row first, since that row is leaving anyway.
 Nothing in the potion roster applies a decaying status, so this costs nothing today
-and stops the first one that does from quietly eating a permanent stack.
+and stops the first one that does from quietly eating a permanent stack. A decay
+that DOES name a row — a claimed checklist row, below — sheds from that row instead
+(`GameState.remove_status_instance`), because "this objective paid out" is a fact
+about one row and not about the status.
+
+#### The checklist is one row per instance; the HUD is one chip
+
+`status_objectives()` is the one read that does **not** sum the layers. Every
+temporary application is its own instance — Reptile Trinket fires on each potion,
+so three potions are three borrowed Strengths, each with its own clock — and each
+gets its own row on the checklist, beside a row for the stacks the run **owns**.
+They are separate offers with separate deadlines and separate payouts, and a merged
+row could only ever quote one of them. The same split runs through the bill: a
+`demand` held permanently and a borrowed one on top of it are two obligations, each
+missed on its own.
+
+Every such row carries a `key` — the bare status id for the permanent bucket,
+`"<id>#<instance>"` for a borrowed one — and that key is what the tick box, the
+`answered_this_game` record, the report's `claims.status_goals` and
+`claim_player_objective` all pass around. The permanent bucket keeping the bare id
+is what lets a save or a report written before instances existed still land.
+
+**The HUD is deliberately the other way round.** `status_list()` still merges
+everything into one icon and one number, because what a stack *does* is felt as a
+total: a permanent Strength 1 under a borrowed Strength 3 hits like 4, so it reads
+like 4. Only the goals split.
 
 ### 5.5 A timed Dexterity takes its shields back
 
@@ -783,7 +808,10 @@ bearing in the best way — **the save format already has potions in it**:
 - **`TriggerBus.potion_used`** — declared, and `GameState._on_potion_used` already
   forwards it to `fire_run_item_triggers("potion_used", ctx)`. A relic hanging off
   `potion_used` works the day a potion is used (`data/items/toy_ornithopter.tres`
-  is one, from the old build).
+  is one, from the old build). *Since resolved:* the signal was declared and
+  emitted by nothing — `PotionSystem.notify_used` is now the choke point, hit once
+  by `quaff_potion` and once by `throw_potion`, and Reptile Trinket is the 2.0 item
+  on the other end of it.
 - **`GameState.loot_items`'s schema comment** already documents
   `potion: {"type": "potion", "id": StringName, "rarity": String}` as an entry kind.
 - **`LootSystem`** dispatches on `entry.type` in six places — every one of them a

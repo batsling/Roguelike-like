@@ -530,6 +530,17 @@ var player_statuses: Dictionary = {}
 # one. The field is on both holders' rows so the two layers stay one shape.
 var timed_statuses: Array = []
 
+# The instance counter the timed rows are numbered from. EVERY TEMPORARY
+# APPLICATION IS ITS OWN THING (§5.4): drinking two potions under Reptile Trinket
+# is two borrowed Strengths, not one of six — they each keep their own clock, and
+# each is its own row on the checklist, paying its own reward. The number is what
+# holds them apart, because the status id cannot: it is the same status twice.
+#
+# Run-scope, and SAVED with the rows so a claim key written before a reload still
+# names the row it named. Never reused within a run — a fresh number per row, so a
+# stale key from an expired instance can never land on a new one.
+var _next_timed_instance: int = 1
+
 # ---------------------------------------------------------------------------
 # Event goals and curse goals (docs/event-sheet-authoring.md §5)
 #
@@ -676,6 +687,10 @@ func _connect_lifecycle_hooks() -> void:
 		TriggerBus.enemy_killed.connect(_on_enemy_killed)
 	if not TriggerBus.health_lost.is_connected(_on_health_lost):
 		TriggerBus.health_lost.connect(_on_health_lost)
+	# A logged lost run (§3) is the same shape of hook: no scene, one press of the
+	# button, and Ripple Basin's shield on the other end of it.
+	if not TriggerBus.run_lost.is_connected(_on_run_lost):
+		TriggerBus.run_lost.connect(_on_run_lost)
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
@@ -729,6 +744,9 @@ func _on_bomb_used(ctx: Dictionary) -> void:
 func _on_enemy_killed(ctx: Dictionary) -> void:
 	fire_run_item_triggers("enemy_killed", ctx)
 
+func _on_run_lost(ctx: Dictionary) -> void:
+	fire_run_item_triggers("run_lost", ctx)
+
 func _on_health_lost(ctx: Dictionary) -> void:
 	fire_run_item_triggers("health_lost", ctx)
 	# Fortune Necklace and friends shatter here rather than in _take_hit, so the
@@ -767,6 +785,8 @@ func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -
 		for trig in item.triggers:
 			if String(trig.get("on", "")) != trigger_name:
 				continue
+			if not _trigger_gates_pass(trig, ctx_extras):
+				continue
 			if not bool(trig.get("silent", false)):
 				GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
 			for effect in trig.get("effects", []):
@@ -777,6 +797,22 @@ func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -
 					# Genome's destroy_self) find and remove itself.
 					"item": item,
 				})
+
+# The gates a run-scope trigger can carry, read against the context the hook was
+# fired with. Only `if_goals_met` today (Ripple Basin's `if_goals=0`, §3): the item
+# pays out at a game where nothing has been ticked off yet, and not at one where
+# the player already has a beat in the bag.
+#
+# A GATE WHOSE CONTEXT KEY IS ABSENT REFUSES. A gate is a narrowing, so the safe
+# reading of "this hook can't answer that question" is "not now" — the alternative
+# would have every gated trigger fire freely from any hook that forgot to say.
+func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
+	if trig.has("if_goals_met"):
+		if not ctx.has("goals_met"):
+			return false
+		if int(ctx["goals_met"]) != int(trig["if_goals_met"]):
+			return false
+	return true
 
 # --- Curse / curse-card tallies -------------------------------------------
 # A "curse" (active_curses) and a "curse card" (a CURSE-type card in the deck)
@@ -1059,6 +1095,7 @@ func reset_run() -> void:
 	temp_status_stacks.clear()
 	player_statuses.clear()
 	timed_statuses.clear()
+	_next_timed_instance = 1
 	event_goals.clear()
 	curse_goals.clear()
 	events_fired.clear()
@@ -1763,6 +1800,7 @@ func apply_status(status_id: StringName, stacks: int = 1, games: int = 0) -> int
 	if games > 0 and stacks > 0:
 		timed_statuses.append({
 			"id": status_id, "stacks": stacks, "games": games, "shield": 0,
+			"instance": _alloc_timed_instance(),
 		})
 		player_statuses_changed.emit()
 		return status_stacks(status_id)
@@ -1907,12 +1945,88 @@ func status_list() -> Array:
 # are the extra checklist rows, each paying its own reward when ticked. Selected on
 # the side's MODE, not on Buff/Debuff: what a side does is what the sheet says it
 # does, and nothing stops a debuff from offering the player a way to earn.
+#
+# ONE ROW PER INSTANCE, not one per status (§5.4): the stacks the run OWNS are one
+# objective, and every BORROWED application is another beside it. A permanent
+# Strength 1 with a Reptile Trinket's +3 on top is two rows — "Strength 1" that is
+# not going anywhere, and "Strength 3, this game only" — because they are two
+# offers with two deadlines and two payouts, and one merged row could only quote
+# one of them. The HUD is the other way round and stays that way: on the player
+# they are one icon with one number (status_list), since what a stack DOES is felt
+# as a total.
+#
+# Each row carries a `key` that names it for the whole claim path — the checklist
+# row, `answered_this_game`, the report's `claims.status_goals`. The permanent
+# bucket's key is the bare status id, so a save written before instances existed
+# reads back as the permanent row it meant.
 func status_objectives() -> Array:
 	var out: Array = []
-	for row in status_list():
-		if (row["status"] as StatusData).is_claimable(StatusData.PLAYER):
-			out.append(row)
+	for s in Data.all_statuses():
+		var sd: StatusData = s
+		if not sd.is_claimable(StatusData.PLAYER):
+			continue
+		var permanent: int = int(player_statuses.get(sd.id, 0))
+		if permanent > 0:
+			out.append({"status": sd, "stacks": permanent, "games": 0,
+				"instance": 0, "key": String(sd.id)})
+		for row in timed_statuses:
+			if StringName(row.get("id", &"")) != sd.id:
+				continue
+			var inst: int = int(row.get("instance", 0))
+			out.append({"status": sd, "stacks": int(row.get("stacks", 0)),
+				"games": int(row.get("games", 0)), "instance": inst,
+				"key": objective_key(sd.id, inst)})
 	return out
+
+# The name one claimable row answers to. `instance` 0 is the permanent bucket, and
+# its key is the bare id — which is exactly what every caller passed before the
+# rows were split, so an old save's ticks still land.
+static func objective_key(status_id: StringName, instance: int) -> String:
+	return String(status_id) if instance <= 0 else "%s#%d" % [status_id, instance]
+
+# The other direction: a key back to [status_id, instance].
+static func split_objective_key(key: String) -> Array:
+	var cut: int = key.find("#")
+	if cut < 0:
+		return [StringName(key), 0]
+	return [StringName(key.substr(0, cut)), int(key.substr(cut + 1))]
+
+# The stacks standing behind one objective row — the permanent bucket, or the one
+# borrowed row `instance` names. 0 when that row has since expired, which is the
+# answer that stops a stale tick paying out.
+func objective_stacks(status_id: StringName, instance: int) -> int:
+	if instance <= 0:
+		return int(player_statuses.get(status_id, 0))
+	for row in timed_statuses:
+		if int(row.get("instance", 0)) == instance \
+				and StringName(row.get("id", &"")) == status_id:
+			return int(row.get("stacks", 0))
+	return 0
+
+# Shed `stacks` from ONE objective row. A decay belongs to the row that was
+# claimed: paying out a borrowed Strength must not take the stack the run owns,
+# and vice versa — which is the one thing `remove_status` (which spends the timed
+# rows first, deliberately, for a decay that names no row) cannot express.
+func remove_status_instance(status_id: StringName, instance: int,
+		stacks: int = 1) -> int:
+	if instance <= 0:
+		return apply_status(status_id, -absi(stacks))
+	for row in timed_statuses:
+		if int(row.get("instance", 0)) != instance \
+				or StringName(row.get("id", &"")) != status_id:
+			continue
+		row["stacks"] = maxi(0, int(row.get("stacks", 0)) - absi(stacks))
+		_prune_timed()
+		player_statuses_changed.emit()
+		break
+	return status_stacks(status_id)
+
+# The next unused instance number, and a run that has loaded a save carries on
+# past the highest number that save wrote.
+func _alloc_timed_instance() -> int:
+	var n: int = _next_timed_instance
+	_next_timed_instance += 1
+	return n
 
 # What the player's statuses add up to IN COMBAT (§13.4) — the other half of the
 # status mechanic, the half that moves a number instead of a goal.
@@ -2144,11 +2258,16 @@ func serialize_timed_statuses() -> Array:
 			"stacks": int(row.get("stacks", 0)),
 			"games": int(row.get("games", 0)),
 			"shield": int(row.get("shield", 0)),
+			"instance": int(row.get("instance", 0)),
 		})
 	return out
 
 func restore_timed_statuses(rows) -> void:
 	timed_statuses.clear()
+	# The counter is NEVER WOUND BACK by a restore, only forward: an undone try puts
+	# an older set of rows back (see restore_run_resources), and a number this run
+	# has already handed out must not be handed out again to a different row.
+	# reset_run is the one place it starts over, because that is a different run.
 	if not (rows is Array):
 		return
 	for raw in rows:
@@ -2159,9 +2278,17 @@ func restore_timed_statuses(rows) -> void:
 		var games: int = int(raw.get("games", 0))
 		if stacks <= 0 or games <= 0 or Data.get_status(id) == null:
 			continue
+		# A row from a save written before instances existed gets a fresh number
+		# here rather than a 0 shared with every other one of them: the checklist
+		# needs them told apart, and a save is restored once.
+		var inst: int = int(raw.get("instance", 0))
+		if inst <= 0:
+			inst = _alloc_timed_instance()
+		else:
+			_next_timed_instance = maxi(_next_timed_instance, inst + 1)
 		timed_statuses.append({
 			"id": id, "stacks": stacks, "games": games,
-			"shield": int(raw.get("shield", 0)),
+			"shield": int(raw.get("shield", 0)), "instance": inst,
 		})
 	player_statuses_changed.emit()
 
@@ -2195,6 +2322,11 @@ func snapshot_run_resources() -> Dictionary:
 		"pending_chests": pending_chests,
 		"pending_chest_choices": pending_chest_choices.duplicate(),
 		"statuses": serialize_statuses(),
+		# The BORROWED stacks too, not only the owned ones: a turn can hand out a
+		# timed status (a fire tile, a body's swing) as readily as a permanent one,
+		# and an undo that put half the layer back would leave the run holding a
+		# clock nothing granted.
+		"timed_statuses": serialize_timed_statuses(),
 		"inventory": inventory.duplicate(),
 	}
 
@@ -2217,6 +2349,8 @@ func restore_run_resources(snap: Dictionary) -> void:
 	for choices in snap.get("pending_chest_choices", []):
 		pending_chest_choices.append(int(choices))
 	restore_statuses(snap.get("statuses", {}))
+	if snap.has("timed_statuses"):
+		restore_timed_statuses(snap["timed_statuses"])
 	inventory = (snap.get("inventory", inventory) as Array).duplicate()
 	# The bonuses the pack contributes are DERIVED, never stored, so they are
 	# re-derived rather than snapshotted: a broken trinket that comes back has to
