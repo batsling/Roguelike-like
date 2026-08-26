@@ -157,13 +157,17 @@ func test_the_fatal_press_says_it_is_fatal() -> void:
 	assert_true(EventSystem.is_lethal(give, 0), "1 Health against a 1 Health cost")
 
 
-func test_the_press_before_the_fatal_one_warns_too() -> void:
-	# A warning that only appears on the fatal press arrives after the decision
-	# that mattered.
+func test_the_press_before_the_fatal_one_says_nothing() -> void:
+	# It used to warn one press early — "you can die here" on anything that left
+	# you within one more of the same cost — and that fired on most of the costly
+	# buttons in the game. A warning the player reads every other event is
+	# furniture. Nothing is claimed until the press can actually end the run, and
+	# then the button turns red and asks again on the click.
 	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.hp = 2
 	assert_false(EventSystem.is_lethal(give, 0), "not fatal yet")
-	assert_string_contains(EventSystem.lethal_warning(give, 0), "can die")
+	assert_eq(EventSystem.lethal_warning(give, 0), "", "…so nothing is said yet")
+	assert_false(EventSystem.is_deadly(give, 0), "and the button stays plain")
 
 
 func test_a_comfortable_press_says_nothing() -> void:
@@ -173,16 +177,19 @@ func test_a_comfortable_press_says_nothing() -> void:
 		"no warning while the price is nowhere near the run")
 
 
-func test_the_cost_line_reddens_as_the_trade_gets_dangerous() -> void:
+func test_the_cost_line_reddens_only_when_the_trade_can_kill() -> void:
+	# RED MEANS DEAD. The line used to warm through pink as the Health left ran
+	# down, which taught the player to read a colour as "expensive" and left the
+	# one red that means the run ends here competing with it.
 	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.hp = 40
-	var safe: Color = EventSystem.danger_color(give, 0)
+	assert_eq(EventSystem.danger_color(give, 0), UITheme.TEXT_DIM, "a cheap press is plain")
 	GameState.hp = 3
-	var risky: Color = EventSystem.danger_color(give, 0)
+	assert_eq(EventSystem.danger_color(give, 0), UITheme.TEXT_DIM,
+		"and so is a steep one you can still walk away from")
 	GameState.hp = 1
-	var fatal: Color = EventSystem.danger_color(give, 0)
-	assert_gt(risky.r - risky.b, safe.r - safe.b, "redder as the Health runs out")
-	assert_almost_eq(fatal.r, UITheme.DANGER.r, 0.001, "and fully red when it kills")
+	assert_almost_eq(EventSystem.danger_color(give, 0).r, UITheme.DANGER.r, 0.001,
+		"only the fatal one is red")
 
 
 func test_a_free_choice_is_never_coloured_as_dangerous() -> void:

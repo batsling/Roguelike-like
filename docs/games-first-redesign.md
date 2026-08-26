@@ -702,6 +702,14 @@ exit, not a pardon. Both consumables that teleport (Scroll of Teleportation and 
 Telepill) come through the one function, so both escape; one rule for moving the run
 off a game.
 
+**And so does every other teleport.** Ride the Bus (`teleport_to_type`) used to move
+the run by hand — `travel_to_game` set the phase back to SELECT and that was that —
+which walked the player out of a game in play for free: no goal-enemy following, no
+turns for the board, no report. The escape lives in `travel_to_game` now, so an item
+that moves you pays the same fare a scroll does. Its one exception is the return leg
+of a `play_game` detour (§10), which is not a teleport: that game has already been
+reported by the time the run heads home.
+
 Two dead ends survive, and both say so in full. If the escape is what kills you —
 the turns it hands over are real — the run is over and there is nowhere to land. If
 the graph has nowhere to put you, the game was still walked out of and still charged

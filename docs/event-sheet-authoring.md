@@ -956,6 +956,19 @@ the certain warning wins when the certain cost is already fatal. Nothing in the
 sheet gambles with Health yet (every `chance` payload authored so far is a
 reward), so this is the warning waiting for the first one that does.
 
+**Red is reserved for death.** Nothing else on a choice reddens, however
+expensive it is: the cost line under a −3 that leaves you at 7 is the ordinary
+dim text. It did not always work that way — the line warmed through pink as the
+Health left ran down, and there was a second warning ("⚠ You can die here")
+one press before the fatal one — and both fired on so much of the game's own
+content that they trained the player to read past the colour that mattered.
+
+**And a red button asks again.** Clicking one raises an "Are you sure?"
+(`EventSystem.confirm_deadly`) naming the cost and the Health you are holding,
+with the press itself behind a second click. That is what replaced the early
+warning: a death here is the run, and a run is hours of somebody actually
+playing real games.
+
 Taking that press ENDS THE RUN, on the same verdict screen an enemy's blow
 would raise. Health reaching 0 ends a run wherever the 0 came from — the loop
 watches `GameState.hp_changed` rather than checking only the hits it deals

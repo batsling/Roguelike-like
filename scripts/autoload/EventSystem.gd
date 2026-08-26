@@ -567,22 +567,28 @@ func lethal_warning(choice: Dictionary, taken: int) -> String:
 	# the cost line right above this.
 	if is_possibly_lethal(choice, taken):
 		return "☠  This might kill you."
-	var cost: int = health_cost(choice, taken)
-	if cost <= 0:
-		return ""
-	var left: int = GameState.hp - cost
-	# One press from the end. Said before it is true, because a warning that only
-	# appears on the fatal press arrives after the decision that mattered.
-	if left <= cost:
-		return "⚠  You can die here — this leaves you at %d Health." % left
+	# AND NOTHING ELSE. There used to be a third line here — "⚠ You can die here —
+	# this leaves you at N Health" — on any press that took you within one more of
+	# the same press. It fired on most of the costly buttons in the game, which is
+	# what made it worthless: a warning the player reads on every second event is
+	# furniture, and it was drowning the two above it, which are the ones that mean
+	# something. The number it was quoting is already on the cost line. Death now
+	# announces itself once, on the press that can actually cause it, and asks
+	# again when that press is clicked (the views' "Are you sure?").
 	return ""
 
 
-# How red the cost line runs. TEXT_DIM while the price is comfortable, walking to
-# DANGER as the Health left after the press runs out, and fully there when the
-# press is fatal. A gradient rather than a flag because the thing the player is
-# actually judging is "how many more of these do I have in me", and that is a
-# slope, not a switch.
+# How red the cost line runs. RED ONLY WHEN THE PRESS CAN END THE RUN — flat
+# DANGER when death is certain, a shade off it when death is on the table, and
+# the ordinary dim text for every other price however steep.
+#
+# It used to be a gradient, warming from TEXT_DIM as the Health left after the
+# press ran down, on the theory that "how many more of these do I have in me" is
+# a slope rather than a switch. It is, but the colour was answering a question
+# the player had not asked: a -3 that leaves you at 7 is a normal event cost, and
+# painting it half-red taught the player to read pink as "expensive" — which left
+# the actual red, the one that means the run ends here, competing with it. Red
+# means dead now, and nothing else does.
 func danger_color(choice: Dictionary, taken: int) -> Color:
 	if is_lethal(choice, taken):
 		return UITheme.DANGER
@@ -591,13 +597,56 @@ func danger_color(choice: Dictionary, taken: int) -> Color:
 	# gets, since it is a weaker claim.
 	if is_possibly_lethal(choice, taken):
 		return UITheme.DANGER.lerp(UITheme.TEXT_DIM, 0.25)
-	var cost: int = health_cost(choice, taken)
-	if cost <= 0:
-		return UITheme.TEXT_DIM
-	# Presses left at this price, capped where the colour stops being useful.
-	var presses: float = float(GameState.hp) / float(maxi(1, cost))
-	var heat: float = clampf(1.0 - (presses - 1.0) / 5.0, 0.0, 1.0)
-	return UITheme.TEXT_DIM.lerp(UITheme.DANGER, heat)
+	return UITheme.TEXT_DIM
+
+
+# --- the second press ------------------------------------------------------
+
+# Above every modal that can draw a choice button (an event is 123, a machine's
+# card 122, the choice modal 124), for the same reason LootTrash's confirmation
+# has a layer of its own: the thing being asked about is itself a floating panel,
+# and a question parented into it draws underneath it or gets freed by its next
+# rebuild.
+const CONFIRM_LAYER := 141
+
+# "Are you sure?" in front of a press that can end the run.
+#
+# THE RED BUTTON IS THE WARNING AND THIS IS THE SAFETY CATCH. Events used to hedge
+# in prose one press early — "⚠ You can die here" under anything that took you
+# within one more of the same cost — which meant the game cried wolf on most of
+# its own content and the player learned to scroll past the line that mattered.
+# The trade is the other way round now: nothing is said until the press really can
+# kill you, and then it is said twice — once in red on the button, once here, with
+# a click needed to get past it. A death in this game is the run, and the run is
+# hours of somebody actually playing real games; it is worth one extra click.
+#
+# `host` is the node the layer hangs off, `on_yes` the press itself. Returns true
+# when the question was asked (so the caller knows to stop and wait), false when
+# there was nothing to ask about and the caller should just go.
+func confirm_deadly(host: Node, choice: Dictionary, taken: int, on_yes: Callable) -> bool:
+	if host == null or not is_instance_valid(host) or not host.is_inside_tree():
+		return false
+	if not is_deadly(choice, taken):
+		return false
+	# WILL or MIGHT, said the same way the button says it — a gamble that could
+	# take the last of your Health is not the same claim as a cost that certainly
+	# will, and the question the player is answering has to be the right one.
+	var body: String = ""
+	if is_lethal(choice, taken):
+		body = ("%s costs %d Health and you are holding %d. Taking it ends the run."
+			% [String(choice.get("text", "This")), health_cost(choice, taken), GameState.hp])
+	else:
+		body = ("%s can cost up to %d Health and you are holding %d. If it goes badly, the run ends here."
+			% [String(choice.get("text", "This")), possible_health_cost(choice, taken), GameState.hp])
+	var layer := CanvasLayer.new()
+	layer.layer = CONFIRM_LAYER
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	host.add_child(layer)
+	var panel := ConfirmPanel.ask(layer, "Are you sure?", body, "Do it anyway", on_yes)
+	panel.tree_exited.connect(func():
+		if is_instance_valid(layer):
+			layer.queue_free())
+	return true
 
 
 # --- resolving a choice -----------------------------------------------------
