@@ -278,19 +278,26 @@ func carried_unidentified() -> Array:
 # How a candidate reads in an identify picker, where the player is choosing
 # between things they have not learned yet.
 #
-# THE TWO KINDS MASK DIFFERENTLY AND THE LABEL FOLLOWS THE MASK. Every
-# unidentified scroll wears the same art, so the picker has named them outright
-# since it shipped — with nothing else to tell two of them apart, a list of
-# identical rows is not a choice. A pill's mask IS its colour, which the art in the
-# row already shows and which the run protects everywhere else (spec §4.3: the
-# "Known this run" fold never writes a colour down), so naming one would hand back
-# the deduction the three spare capsules exist to prevent. Scrolls name themselves;
-# pills show their capsule and stay anonymous.
+# IT IS THE MASK, ALWAYS, FOR EVERY KIND. This function used to hand back the
+# scroll's REAL name — `s.display_name`, straight off the resource — and that made
+# Scroll of Identify self-defeating: the picker it opened listed "Scroll of Fire,
+# Scroll of Amnesia, Scroll of Remove Curse" and the player had their answer
+# before they had chosen anything. Identifying one of them afterwards was a
+# formality.
+#
+# The reason it did that was real at the time: every unidentified scroll wore the
+# same parchment and the same words, so a picker that masked them was a list of
+# identical rows, which is not a choice either. Both halves of that are fixed by
+# the run dealing each scroll a title of its own (ScrollSystem.ensure_names) —
+# "ZELGO MER" and "ah bloto festr" are as distinguishable as two names get and
+# say nothing whatever about what is written underneath.
+#
+# So every kind now masks the same way, and `display_name` is already the mask
+# for all three: a scroll's dealt title, a potion's colour, a pill's silence
+# beside the capsule its row already draws (spec §4.3 — the "Known this run" fold
+# never writes a colour down, and naming one here would hand back the deduction
+# the three spare capsules exist to prevent).
 func pick_label(entry: Dictionary) -> String:
-	if String(entry.get("type", "")) == "scroll":
-		var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
-		if s != null:
-			return s.display_name
 	return display_name(entry)
 
 # What the piece does, in one line, or the "you don't know yet" line when it is

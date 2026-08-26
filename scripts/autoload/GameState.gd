@@ -252,9 +252,22 @@ var identified_potion_types: Array[StringName] = []
 # Sibling of identified_potion_types for SCROLLS. Reading a scroll (or a Scroll
 # of Identify) reveals every copy of that type for the rest of the run; Scroll of
 # Amnesia can un-identify them. Unidentified scrolls all share one mystery art
-# (scrolls/Unidentified.png) — no per-run colour map like potions. See
+# (scrolls/Unidentified.png) — the art is the same for every scroll, and it is
+# the NAME that tells two unknown scrolls apart (scroll_name_map, below). See
 # ScrollSystem. Persisted with the save.
 var identified_scroll_types: Array[StringName] = []
+
+# Per-run label assignment for UNIDENTIFIED scrolls: scroll id (String) -> the
+# meaningless title it introduces itself by this run ("ZELGO MER", "ah bloto
+# festr"). Built lazily by ScrollSystem.ensure_names off data/scroll_names.tres,
+# which the `scrolls2.0` sheet generates.
+#
+# THIS IS THE SCROLL'S WHOLE MASK, where a potion's is a bottle colour and a
+# pill's is a capsule. Every unidentified scroll wears the same parchment, so
+# without a per-run name the pack showed a row of identical "Unidentified Scroll"
+# entries and the only way to tell them apart was to read one. Persisted, so a
+# reloaded run keeps the labels the player has been learning.
+var scroll_name_map: Dictionary = {}
 
 # Per-run bottle-colour assignment for UNIDENTIFIED potions: potion id (String)
 # -> an "Unidentified_<Color>" art base. Built lazily by PotionSystem so an
@@ -998,6 +1011,9 @@ func reset_run() -> void:
 	identified_pill_types.clear()
 	loot_used_memory.clear()
 	potion_color_map.clear()
+	# …and so are the scrolls' titles, for the same reason: ZELGO MER meant Fire
+	# last run and means nothing at all in this one.
+	scroll_name_map.clear()
 	# The run's pill alphabet is dealt fresh (§4.3) — the same ten pills wear
 	# different capsules next run, which is the whole reason learning one is worth
 	# anything.

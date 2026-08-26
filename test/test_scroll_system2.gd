@@ -57,9 +57,150 @@ func test_identify_is_global_per_type() -> void:
 
 func test_display_name_hides_unidentified() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
-	assert_eq(ScrollSystem.display_name(s), "Unidentified Scroll")
+	var masked: String = ScrollSystem.display_name(s)
+	assert_ne(masked, s.display_name,
+		"an unread scroll does not introduce itself by its real name")
+	assert_ne(masked, "", "it introduces itself by SOMETHING")
 	ScrollSystem.identify(s.id)
 	assert_eq(ScrollSystem.display_name(s), s.display_name)
+
+# ===========================================================================
+# The run's alphabet: the meaningless title an unread scroll wears
+# ===========================================================================
+
+func test_every_scroll_is_dealt_a_title_and_no_two_share_one() -> void:
+	ScrollSystem.ensure_names()
+	var seen: Dictionary = {}
+	for id in SCROLL_IDS:
+		var label: String = ScrollSystem.name_for(StringName(id))
+		assert_ne(label, "", "%s was dealt a title" % id)
+		assert_false(seen.has(label),
+			"%s got '%s', which another scroll is already using — two scrolls "
+			% [id, label] + "answering to one name makes the run log ambiguous")
+		seen[label] = true
+	assert_eq(seen.size(), SCROLL_IDS.size(), "one distinct title per scroll")
+
+# The two shapes the coin lands on. A title is either a whole authored name off
+# the sheet's list, or 2-5 of its syllables joined with spaces — and nothing else.
+func test_a_title_is_either_a_whole_name_or_two_to_five_parts() -> void:
+	var book: ScrollNames = load(ScrollSystem.NAMES_PATH)
+	assert_not_null(book, "the name book is generated into data/")
+	ScrollSystem.ensure_names()
+	for id in SCROLL_IDS:
+		var label: String = ScrollSystem.name_for(StringName(id))
+		if book.names.has(label):
+			continue                      # a whole authored name — nothing to check
+		var pieces: PackedStringArray = label.split(" ")
+		assert_between(pieces.size(), ScrollSystem.PARTS_MIN, ScrollSystem.PARTS_MAX,
+			"'%s' is assembled, so it is 2-5 parts" % label)
+		for piece in pieces:
+			assert_true(book.parts.has(piece),
+				"'%s' in '%s' is one of the sheet's syllables" % [piece, label])
+
+# Both shapes have to actually turn up. A coin that always landed the same way
+# would pass every test above and still be the wrong game — so this deals many
+# runs and asserts it saw each kind. Not per-run: eight scrolls can legitimately
+# come up all-whole or all-assembled, and a test that demanded both every time
+# would be the flaky kind CLAUDE.md warns about.
+func test_both_kinds_of_title_are_dealt_over_many_runs() -> void:
+	var book: ScrollNames = load(ScrollSystem.NAMES_PATH)
+	var whole: int = 0
+	var assembled: int = 0
+	for _run in range(40):
+		GameState.scroll_name_map.clear()
+		ScrollSystem.ensure_names()
+		for id in SCROLL_IDS:
+			var label: String = ScrollSystem.name_for(StringName(id))
+			if book.names.has(label):
+				whole += 1
+			else:
+				assembled += 1
+	assert_gt(whole, 0, "some scrolls wear an authored name")
+	assert_gt(assembled, 0, "and some wear syllables")
+	# 320 coin flips: a 50/50 that landed outside this band is a broken coin, not
+	# an unlucky run. (The bag can run dry and push a flip to the assembled side,
+	# which is why the band is generous rather than tight around half.)
+	assert_between(whole, 80, 240,
+		"the split is a coin per scroll, not a landslide either way")
+
+func test_the_titles_are_dealt_once_and_survive_a_reload() -> void:
+	ScrollSystem.ensure_names()
+	var first: Dictionary = GameState.scroll_name_map.duplicate()
+	ScrollSystem.ensure_names()
+	assert_eq(GameState.scroll_name_map, first,
+		"ensure_names is idempotent — a reloaded run keeps the alphabet the "
+		+ "player has been learning")
+
+func test_a_new_run_deals_new_titles() -> void:
+	ScrollSystem.ensure_names()
+	var before: Dictionary = GameState.scroll_name_map.duplicate()
+	GameState.reset_run()
+	ScrollSystem.ensure_names()
+	assert_ne(GameState.scroll_name_map, before,
+		"ZELGO MER meant something last run and means nothing in this one")
+
+# Identifying flips the name over, and the title stays readable behind it —
+# that is what lets the collection say "ZELGO MER was Scroll of Fire".
+func test_identifying_replaces_the_title_with_the_real_name() -> void:
+	var s: ScrollData = Data.get_scroll(&"scroll_of_fire")
+	var mask: String = ScrollSystem.mask_name(s)
+	assert_ne(mask, "")
+	assert_eq(ScrollSystem.display_name(s), mask, "unread, it is the title")
+	ScrollSystem.identify(s.id)
+	assert_eq(ScrollSystem.display_name(s), s.display_name, "read, it is the name")
+	assert_eq(ScrollSystem.mask_name(s), mask,
+		"and the title it wore is still on the record")
+
+func test_a_title_looks_its_scroll_back_up() -> void:
+	ScrollSystem.ensure_names()
+	for id in SCROLL_IDS:
+		var label: String = ScrollSystem.name_for(StringName(id))
+		var found: ScrollData = ScrollSystem.scroll_for_name(label)
+		assert_not_null(found, "'%s' resolves" % label)
+		if found != null:
+			assert_eq(String(found.id), id)
+
+# The sheet credits every label to the roguelike it was lifted from, the way a
+# potion's vial credits the game that named it.
+func test_a_title_credits_the_game_it_came_from() -> void:
+	ScrollSystem.ensure_names()
+	for id in SCROLL_IDS:
+		var label: String = ScrollSystem.name_for(StringName(id))
+		assert_ne(ScrollSystem.name_source(label), "",
+			"'%s' names the game that authored it" % label)
+
+# THE IDENTIFY PICKER MUST NOT ANSWER ITS OWN QUESTION. This is the regression
+# the whole feature exists to close: pick_label handed back the scroll's REAL
+# name, so opening Scroll of Identify listed "Scroll of Fire, Scroll of Amnesia,
+# …" and the choice was over before it was offered.
+func test_the_identify_picker_never_shows_an_unread_scrolls_real_name() -> void:
+	ScrollSystem.ensure_names()
+	for id in SCROLL_IDS:
+		var s: ScrollData = Data.get_scroll(StringName(id))
+		var entry := {"type": "scroll", "id": s.id}
+		assert_ne(LootSystem.pick_label(entry), s.display_name,
+			"the picker row for %s spoils it" % id)
+		assert_eq(LootSystem.pick_label(entry), ScrollSystem.name_for(s.id),
+			"it shows the run's title instead")
+
+# …and once it IS read, the picker is welcome to say so — an identified scroll is
+# not a candidate for identifying, but the label function is shared and should
+# stay honest either way.
+func test_the_picker_names_a_scroll_once_it_is_known() -> void:
+	var s: ScrollData = Data.get_scroll(&"scroll_of_amnesia")
+	ScrollSystem.identify(s.id)
+	assert_eq(LootSystem.pick_label({"type": "scroll", "id": s.id}), s.display_name)
+
+# Forgetting a scroll (Amnesia) puts the MASK back — and the same mask, because
+# the run's alphabet is not redealt by forgetting. You have stopped knowing; the
+# writing on the page has not changed.
+func test_forgetting_restores_the_same_title() -> void:
+	var s: ScrollData = Data.get_scroll(&"scroll_of_identify")
+	var mask: String = ScrollSystem.mask_name(s)
+	ScrollSystem.identify(s.id)
+	ScrollSystem.unidentify(s.id)
+	assert_eq(ScrollSystem.display_name(s), mask,
+		"the capsule still means what it meant; you merely stopped knowing")
 
 func test_reading_learns_by_use() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_teleportation")

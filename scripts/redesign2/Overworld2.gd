@@ -1184,8 +1184,19 @@ func beaten_this_run() -> bool:
 # a follower's goal you did clear, a level-up you did earn — because those are
 # separate honour-system claims; escaping only answers the main goal, and it
 # answers no.
-func escape_game() -> void:
-	if not can_escape():
+#
+# `force` skips the gate and nothing else. It is for the exits that are PAID FOR
+# rather than earned — a teleport off the game (loot_teleport) is the only one
+# today — so the price below is charged in full either way. The gate answers "has
+# this game hurt you enough to deserve a way out"; a spent piece of loot is a
+# different answer to the same question, not a way around the bill.
+func escape_game(force: bool = false) -> void:
+	if not force and not can_escape():
+		return
+	# Even forced, there has to BE a game in play to walk out of; report() would
+	# refuse below anyway, and this keeps the log from announcing an escape that
+	# never happened.
+	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
@@ -1483,23 +1494,57 @@ func read_scroll(idx: int) -> void:
 # what lets the use modal's outcome screen report a Telepill at all: without it,
 # the one piece of loot that moves you was also the one that said nothing about
 # what it just did (see LootUseModal._do_teleport). "" means it never fired.
+# The teleport had nowhere to put you. One sentence, and which one depends on
+# whether an escape was bought on the way in: a fizzle after an escape is not a
+# no-op, and a player told only "nothing happened" over a board that just took
+# its turns has been told the wrong thing.
+func _nowhere_to_go(escaped_out: bool) -> String:
+	if escaped_out:
+		return "You walk out of the game — but the teleport fizzles, and you stay put."
+	return "The teleport fizzles — nowhere to go."
+
 func loot_teleport(req: Dictionary) -> String:
-	# NOT WHILE A GAME IS IN PLAY. A pill can be swallowed at any moment now,
-	# the report step included (§4.3) — but moving the run to another game while
-	# the player is halfway through this one is not a thing the loop can mean, and
-	# the honest answer is the one the use screen already knows how to say: it
-	# fizzles. The colour was learned the moment the capsule was opened
-	# (PillSystem.take_pill identifies before it applies anything), so the gamble
-	# still paid off even though the effect did not land.
+	# A GAME IN PLAY IS ESCAPED, NOT A REASON TO FIZZLE. This used to return ""
+	# mid-game on the grounds that moving the run while the player is halfway
+	# through a game is not a thing the loop can mean. It is — it is called
+	# escaping, the loop has had a word for it since it shipped, and walking out
+	# of a game you cannot beat is the most useful moment a teleport will ever
+	# have. So the teleport takes the way out on the player's behalf and then
+	# moves them.
+	#
+	# IT FORCES THE ESCAPE PAST can_escape(). The ordinary gate wants the game to
+	# have drawn blood first, so the exit is earned rather than free; a teleport
+	# IS what earns it — the run spent a piece of loot on the door. What it does
+	# NOT do is discount the escape's price: the goal-enemy still walks on and
+	# follows you, the board still takes the turns finishing a game owes (§7.4),
+	# and the game is still not credited. You are buying the exit, not a pardon.
+	#
+	# Both consumables that teleport come through here (Scroll of Teleportation
+	# and the Telepill), so both escape. One rule for moving the run off a game.
+	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
-		return ""
+		var leaving: GameData = _chosen.get("game")
+		escape_game(true)
+		# escape_game refuses on an empty _chosen; only claim the escape if the
+		# phase actually moved, or a fizzle below would report one that never was.
+		escaped_out = _phase != Phase.PLAYING
+		# The way out can be the thing that kills you: escaping resolves the board,
+		# and the turns it hands over are real. A run that ended on the way out has
+		# nowhere to be teleported to, and the escape's own line is the last word.
+		if GameLoop2.run_over or _phase == Phase.OVER:
+			return "You escape %s — but you do not get out." % (
+				leaving.display_name if leaving != null else "the game")
+	# THE TWO "NO MAP TO MOVE ON" EXITS ALSO HAVE TO CARRY THE ESCAPE. "" is this
+	# function's word for "it never fired", and the use screen turns it into "it
+	# fizzles — you do not move" — which after an escape is a lie by omission: the
+	# game WAS walked out of and the board took its turns for it.
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"":
-		return ""
+		return _nowhere_to_go(escaped_out)
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	var cur: StringName = GameState.current_game_id
 	if not dist.has(cur):
-		return ""
+		return _nowhere_to_go(escaped_out)
 	var to_amulet: bool = String(req.get("dir", "same")) == "amulet"
 	var spread: int = int(req.get("spread", 1))
 	var near: int = int(req.get("min", 1))
@@ -1519,7 +1564,7 @@ func loot_teleport(req: Dictionary) -> String:
 			band.append(gid)
 	var pool: Array = band if not band.is_empty() else any
 	if pool.is_empty():
-		var fizzle := "The teleport fizzles — nowhere to go."
+		var fizzle: String = _nowhere_to_go(escaped_out)
 		GameLog.add(fizzle, Color(0.61, 0.35, 0.71))
 		return fizzle
 	var dest: StringName = pool[_rng.randi() % pool.size()]
@@ -1532,6 +1577,12 @@ func loot_teleport(req: Dictionary) -> String:
 	var landed := "Teleported to %s — %d step%s from the Amulet." % [
 		g.display_name if g != null else String(dest),
 		int(dist.get(dest, 0)), "" if int(dist.get(dest, 0)) == 1 else "s"]
+	# Said on the outcome screen as well as in the log, because escaping is the
+	# expensive half of what just happened and the modal only ever shows this
+	# string. escape_game's own line went to the log and the notification toast;
+	# this is the reader's copy of it, on the screen they are actually looking at.
+	if escaped_out:
+		landed = "You walk out of the game. " + landed
 	GameLog.add(landed, Color(0.61, 0.35, 0.71))
 	_dash_mode = false
 	_build_choices()

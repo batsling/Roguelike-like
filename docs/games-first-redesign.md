@@ -361,9 +361,36 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 
 - A scroll type starts **unidentified**: it shows the generic **Unidentified**
   art and a masked name, and reading it is the Preference gamble.
+- **THE MASKED NAME IS A TITLE DEALT PER RUN**, not a flat "Unidentified Scroll".
+  A potion's mask is a bottle colour and a pill's is a capsule; a scroll's is the
+  writing on it, because a scroll is a sheet of paper and there is nothing else
+  about one to vary. So every scroll is dealt a meaningless title at the start of
+  a run — **"ZELGO MER"**, **"ah bloto festr"** — which it keeps all run and which
+  means something else entirely in the next one.
+
+  The bag is two authored columns of the `scrolls2.0` sheet, generated into
+  `data/scroll_names.tres` (a `ScrollNames` resource) and dealt by
+  `ScrollSystem.ensure_names`. **A coin per scroll:** half wear one of the 35
+  whole authored names, half wear **2-5 syllables joined with spaces** off the
+  39-part list. The two look alike in a pack slot and are meant to — the player
+  cannot tell an authored label from an assembled one, so neither says anything
+  about the scroll underneath. **Every title in a run is distinct**, for the reason
+  two potions never share a colour word: two scrolls answering to "TEMOV" make the
+  run log ambiguous about the very mystery the player is tracking.
+
+  Without this the pack was nine slots of the identical string, and the Identify
+  picker had to **spoil the real names outright** just to be a choice at all
+  (`LootSystem.pick_label` returned `ScrollData.display_name`, so opening Scroll of
+  Identify answered its own question). Titles make the unknowns tellable apart
+  while telling you nothing, which is the trick every roguelike this one is built
+  out of plays with its scrolls. The flat "Unidentified Scroll" survives only as
+  the fallback for a checkout where the generator has not been run.
 - It becomes **identified** by reading one (learn-by-use) or via **Scroll of
-  Identify**; from then on that type shows its real name and art. **Amnesia** can
-  re-hide (`unidentify`) a known scroll.
+  Identify**; from then on that type shows its real name and art, and the toast
+  names both halves — *"ZELGO MER is Scroll of Fire!"* — because the answer worth
+  having is the one that also teaches you to read the other ZELGO MER in the pack.
+  **Amnesia** can re-hide (`unidentify`) a known scroll, which puts back **the same
+  title**: the writing on the page never changed, you merely stopped knowing.
 - **The `File` column is the identified art** — it resolves to
   `images2.0/scrolls/<File>.png` (§10.1). Unidentified scrolls always show the
   shared Unidentified art, so a scroll only reveals its `File` art once learned.
@@ -630,21 +657,43 @@ risk. Scrolls were held back further still, by an overworld-only rule of their o
 (`GameState.can_use_scrolls`), on the reasoning that Teleportation only makes sense
 on the map.
 
-**So the answer is a fizzle, not a refusal.** A Use button that will not press is a
+**So the answer is never a refusal.** A Use button that will not press is a
 worse thing than an effect that lands on nothing: it teaches the player the piece
-is unusable rather than that this *moment* is wrong for it. Only one op in either
-roster genuinely needs the map — a **teleport** — and `Overworld2.loot_teleport`
-returns nothing while `Phase.PLAYING`, so the use screen says the thing it already
-knew how to say: *it fizzles, you do not move*. Every other scroll op lands
+is unusable rather than that this *moment* is wrong for it. Every scroll op lands
 perfectly well mid-game: `apply_status` and `apply_tile` reach a board that is
 standing right there, `spawn_enemy` and `stun_enemies` act on the stack about to
 resolve, and `forget` and `identify_scrolls` never needed a map at all.
 
+**A teleport mid-game ESCAPES the game and then moves you.** This is the one op
+in either roster that genuinely needs the map, and `Overworld2.loot_teleport` used
+to answer it with *it fizzles, you do not move* on the grounds that shifting the
+run while a game is in play is not a thing the loop can mean. It is — the loop has
+had a word for it since it shipped, and walking out of a game that will not go down
+is the single most useful moment a teleport will ever have. So the op takes the way
+out on the player's behalf (`escape_game(true)`) and *then* lands them somewhere
+else.
+
+It **forces the exit past `can_escape()`**, which ordinarily wants the game to have
+drawn blood first. That gate asks whether the game has hurt you enough to deserve a
+way out; spending a piece of loot on the door is a different answer to the same
+question. What it does **not** do is discount the price: the goal-enemy still walks
+on and follows you, the board still takes the turns finishing a game owes (§7.4),
+and the game is still not credited — an escape is not a win. You are buying the
+exit, not a pardon. Both consumables that teleport (Scroll of Teleportation and the
+Telepill) come through the one function, so both escape; one rule for moving the run
+off a game.
+
+Two dead ends survive, and both say so in full. If the escape is what kills you —
+the turns it hands over are real — the run is over and there is nowhere to land. If
+the graph has nowhere to put you, the game was still walked out of and still charged
+for, so the line carries both halves rather than reading as "nothing happened".
+
 **And the piece is identified either way.** Both `ScrollSystem.read_scroll` and
-`PillSystem.take_pill` identify *before* they apply anything, so a fizzle still
-teaches you what the thing was — the gamble paid off even where the effect did not.
-That is the whole reason a fizzle is an acceptable answer here and a refusal was
-not: the player spent the piece and got the information they spent it for.
+`PillSystem.take_pill` identify *before* they apply anything, so even a landing that
+fizzles still teaches you what the thing was — the gamble paid off even where the
+effect did not. That is the whole reason a fizzle is an acceptable answer where one
+is left and a refusal was not: the player spent the piece and got the information
+they spent it for.
 
 `GameState.can_use_scrolls` survives under its old name and now means only what it
 always meant underneath: is there a map here to move on.

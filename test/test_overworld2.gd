@@ -3239,6 +3239,23 @@ func test_carried_items_survive_a_save_load_without_compounding() -> void:
 	assert_eq(GameState.bash, expect_bash, "Bash is what it was — not doubled by the reload")
 	assert_eq(GameState.max_hp, expect_max_hp, "and neither is Max Health")
 
+# The run's SCROLL ALPHABET has to survive the same trip, for the reason the pill
+# and potion colour maps do: a reload that redealt the titles would wipe out
+# everything the player had worked out about them, which is the only thing an
+# identification minigame is made of.
+func test_a_reload_keeps_the_scroll_titles_the_run_dealt() -> void:
+	ScrollSystem.ensure_names()
+	var dealt: Dictionary = GameState.scroll_name_map.duplicate()
+	assert_false(dealt.is_empty(), "the run dealt an alphabet to begin with")
+	assert_true(SaveSystem.save_named("titles"))
+	GameState.reset_run()
+	GameLoop2.reset()
+	GameState.set_overworld_context(_ui)
+	assert_true(SaveSystem.load_named("titles"))
+	ScrollSystem.ensure_names()          # must be a no-op, not a fresh deal
+	assert_eq(GameState.scroll_name_map, dealt,
+		"ZELGO MER is still ZELGO MER after the reload")
+
 func test_reporting_a_game_keeps_the_run_recoverable() -> void:
 	_ui.pick(0)
 	_ui.report(false)
@@ -5942,24 +5959,53 @@ func test_the_mid_report_lock_stops_moving_but_never_spending() -> void:
 	assert_eq(live, GameState.loot_items.size(),
 		"but every carried piece can still be spent, scroll and pill alike")
 
-# …and one whose effect cannot land FIZZLES rather than being refused. Neither
-# Teleportation nor Telepills moves a run halfway through a game — but the piece
-# is identified either way, because both systems identify before they apply
-# anything, so the gamble still paid off.
-func test_a_teleport_fizzles_mid_game_and_the_piece_is_still_learned() -> void:
+# …and the one op that needs the map ESCAPES the game rather than fizzling on it.
+# Teleportation and Telepills come through the one function, so both walk the run
+# out of the game in play and then move it — and the piece is identified either
+# way, because both systems identify before they apply anything.
+func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	PillSystem.ensure_colors()
 	PillSystem.unidentify(&"telepills")
 	ScrollSystem.unidentify(&"scroll_of_teleportation")
 	_ui.pick(0)                                  # a game is now in play
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
-	assert_eq(_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2}), "",
-		"the run does not move mid-game — the use screen says it fizzles")
+	# The game actually IN PLAY, read off _chosen — `pick` moves the run onto it, so
+	# the id standing before the pick is the node it came from and not what this
+	# teleport is walking out of.
+	var played: GameData = _ui._chosen.get("game")
+	assert_not_null(played, "a game is in play to walk out of")
+	var here: StringName = GameState.current_game_id
+	# Nothing has hurt the player and the game has never been beaten, so the
+	# ORDINARY exit is shut. The teleport opens it anyway — that is the whole point
+	# of the force: the loot is what pays for the door.
+	assert_false(_ui.can_escape(),
+		"the ordinary escape gate is shut — nothing has drawn blood yet")
+	var line: String = _ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
+	assert_string_contains(line, "walk out of the game",
+		"the outcome screen says the expensive half out loud")
+	assert_ne(_ui._phase, OVERWORLD.Phase.PLAYING,
+		"the game in play was escaped, not left standing")
+	assert_ne(GameState.current_game_id, here, "and the run actually moved")
+	# An escape is not a win, however it was bought.
+	if played != null:
+		assert_false(GameState.has_beaten_game(played.id),
+			"walking out on the loot's ticket still banks no beat")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
 
+# The identification half, which the escape above does not change: both systems
+# learn the piece before they ask the overworld for anything, so what the move
+# does or doesn't do never decides whether the gamble paid off.
+func test_a_teleport_piece_is_learned_before_the_overworld_is_asked() -> void:
+	PillSystem.ensure_colors()
+	PillSystem.unidentify(&"telepills")
+	ScrollSystem.unidentify(&"scroll_of_teleportation")
 	var pill: Dictionary = PillSystem.take_pill({"type": "pill", "id": &"telepills",
 		"horse": false})
 	assert_true(PillSystem.is_identified(&"telepills"), "the colour is learned")
 	assert_false((pill.get("requests", []) as Array).is_empty(),
-		"the move was asked for; it is the overworld that declines it")
+		"the move is ASKED for; it is the overworld that carries it out")
 
 	var scroll: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
 	assert_not_null(scroll)
@@ -5968,15 +6014,12 @@ func test_a_teleport_fizzles_mid_game_and_the_piece_is_still_learned() -> void:
 		assert_true(ScrollSystem.is_identified(&"scroll_of_teleportation"),
 			"and so is the scroll, on exactly the same terms")
 		assert_false((read.get("requests", []) as Array).is_empty(),
-			"which also asks for a move it will not get")
-	_ui.report(false)
-	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+			"which asks for the same move through the same request")
 
-# Every other scroll op DOES land mid-game, which is why the gate went: only a
-# teleport needs the map. If a new op is authored that cannot work here, it needs
-# a fizzle of its own rather than the whole pack being locked again.
+# Every other scroll op lands mid-game where it stands, which is why the gate
+# went: only a teleport needs the map, and it now buys its way onto one by
+# escaping. If a new op is authored that cannot work here, it needs an answer of
+# its own rather than the whole pack being locked again.
 func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
 	var map_only := ["teleport"]
 	var seen: Array = []

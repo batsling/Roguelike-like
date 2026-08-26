@@ -69,6 +69,16 @@ None of these is a loose end; each is a decision the plan made and wrote down.
   works — nothing authors one yet (§8). Both halves matter: a handler the
   generator cannot parse is a verb the sheet can write and silently get nothing
   from, which is the `rarity` failure §10 caught.
+
+  **An EVENT does, now.** The shared reward-token parser in
+  `generate_status_tres.py` — the one `events2.0`, `objects2.0` and the status
+  sheets all go through — knew `gain_scroll` and the category `gain_loot` and
+  neither of the other two named kinds, so this exact trap was still open on that
+  side: `EffectSystem` would have handled an event's `gain_potion` and the
+  generator would have refused to parse the cell. `gain_pill` and `gain_potion`
+  were added there alongside them, and the **Battleworn Dummy**'s Setting 1 is the
+  first row to spend one (it pays the potion Slay the Spire 2's own dummy
+  procures). Relics remain unauthored.
 - **No `deal_damage` or `gain_level` on `EffectSystem`**, though §9.2 listed them
   beside `gain_potion`. The potion path dispatches through `PotionSystem`'s own
   table rather than that one, and an item-side `deal_damage` needs a target/area

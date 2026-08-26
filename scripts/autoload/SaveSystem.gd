@@ -232,6 +232,11 @@ func _build_payload() -> Dictionary:
 		"identified_potion_types": _stringnames_to_strings(GameState.identified_potion_types),
 		"identified_scroll_types": _stringnames_to_strings(GameState.identified_scroll_types),
 		"potion_color_map": GameState.potion_color_map.duplicate(),
+		# …and the scrolls' half of the same idea: which meaningless title each
+		# scroll wears this run. Saved for the reason the colour maps are — a
+		# reloaded run that redealt the labels would wipe out everything the player
+		# had worked out about them.
+		"scroll_name_map": GameState.scroll_name_map.duplicate(),
 		# Pills (§4.3): the colours learned, and THE RUN'S ALPHABET — which capsule
 		# means which pill. The map has to persist or a reloaded run would redeal
 		# the colours underneath a player who had spent the run learning them.
@@ -436,6 +441,13 @@ func _apply_save_data(data: Dictionary) -> void:
 	var cm: Dictionary = data.get("potion_color_map", {})
 	for k in cm.keys():
 		GameState.potion_color_map[String(k)] = String(cm[k])
+	# A save written before the scrolls had titles has no map, and leaving it empty
+	# is exactly right: ScrollSystem.ensure_names deals one on the next read, and
+	# an older run picks up labels rather than breaking.
+	GameState.scroll_name_map = {}
+	var nm: Dictionary = data.get("scroll_name_map", {})
+	for k in nm.keys():
+		GameState.scroll_name_map[String(k)] = String(nm[k])
 	var pident: Array[StringName] = []
 	for s2 in data.get("identified_pill_types", []):
 		pident.append(StringName(s2))

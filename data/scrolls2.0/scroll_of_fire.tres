@@ -6,7 +6,7 @@
 script = ExtResource("1_scroll")
 id = &"scroll_of_fire"
 display_name = "Scroll of Fire"
-reference = "Hack"
+reference = "Rogue"
 rarity = "Uncommon"
 preference = "Negative"
 description = "Gain +3 Burn, Apply the Fire Tile and +3 Burn to all everything in the first column"

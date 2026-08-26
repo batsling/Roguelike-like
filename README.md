@@ -84,6 +84,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── bosses2.0/        #   GoalEnemyData — the difficulty-gate bosses
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
+│   ├── scroll_names.tres #   ScrollNames — the bag of meaningless titles an
+│   │                     #   unread scroll wears ("ZELGO MER", "ah bloto festr");
+│   │                     #   a run deals one per scroll and redeals every run
 │   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
 │   │                     #   (the horse dose is a 5% roll on the drop, §4.3)
 │   ├── potions2.0/       #   PotionData — identify-by-using potions, two VERBS
@@ -618,7 +621,7 @@ editing the sheet, then review the diff):
 | `generate_goal_enemy_tres.py` | `data/enemies2.0/*.tres` from the goal-enemy sheet |
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
-| `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet |
+| `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet — **and `data/scroll_names.tres`**, the bag of meaningless titles an unread scroll wears, off the same sheet's two right-hand columns (`Random Scroll Name` / `Random Scroll Part`) |
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions2.0` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
@@ -774,7 +777,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `take_damage N` | Damage rather than a bill: it resolves through `GameLoop2.damage_player`, so a Shield (§3) stops the whole instance and the player's own statuses scale it. `lose_hp` goes straight to Health past both. Burn's "or take 3 Damage" is what it was added for. |
 | `gain_gold N` / `lose_gold N` / `lose_gold all` | Gold. `all` empties the purse — the one amount settled when the choice is taken rather than when the `.tres` is written. |
 | `gain_stat <verb> N` / `lose_stat <verb> N` | `bash`, `dash`, `push`, `transmute`, `scramble`, `bombs`, `keys`, `shields`. |
-| `gain_loot N` | A loot drop — a scroll today, and widens on its own as more loot types exist. `gain_scroll N` names the scroll directly. |
+| `gain_loot N` | A loot drop, rolled across every loot type there is — it widened on its own as pills and then potions arrived, with no row ever touched. `gain_scroll N`, `gain_pill N` and `gain_potion N` name one alphabet instead, for a row that is *about* that kind of thing (the Battleworn Dummy pays a potion because the dummy it is translated from does). |
 | `apply_status <status> N` | A `statuses2.0` status on the player. On an **item** an optional `target=` says who instead: `current` / `all` / `random` name bodies by rule, and **`target=enemy` means one the player POINTS AT** — `ItemData.wants_target()` reads it, so the overworld arms the board and the click fires the item (Staff of Flame). A **scroll** takes the same words plus `player` and `front` (everything touching the front column — Scroll of Fire burns you and them at once). |
 | `apply_tile <tile> …` | A `tiles2.0` TILE EFFECT on the GROUND (§17). On a **scroll**, `front` / `back` / `all` name a strip of the board (Scroll of Fire lights the front column). On an **item**, `target=tile` means a CELL the player POINTS AT — `ItemData.target_kind()` reads it, so the board arms a cell picker instead of lighting up the stack — and `cols=A-B` fences how far it reaches (Red Candle's columns 2-3). |
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |

@@ -331,9 +331,16 @@ deliberate:
   25/25 and there is nowhere else for it to go. An emptied container on top of
   the cost the event already charged is two punishments for one choice.
 
-`gain_loot` is a **category**, not a synonym: it resolves to a scroll today,
-because scrolls are the only loot type there is, and widens on its own as more
-are added — no event row ever gets touched for it.
+`gain_loot` is a **category**, not a synonym: it rolls across every loot type
+there is — scrolls, pills and potions — and widened on its own as each arrived,
+without an event row ever being touched for it.
+
+Its three **named siblings** are `gain_scroll N`, `gain_pill N` and
+`gain_potion N`, each of which pays in one alphabet and nothing else. Write one
+of those only where the event is *about* that kind of thing — the Battleworn
+Dummy's Setting 1 pays a potion because the dummy it is translated from procures
+a potion (§8). Where the payout is just "some loot", `gain_loot` is the better
+cell: it keeps widening for free.
 
 There is **no `kill` / `end_run` token and there should not be one**: a `lose_hp`
 that empties Health ends the run through the rule that already exists (§2), which
@@ -698,11 +705,11 @@ shape — **pick your own difficulty, then go and prove it, on a clock**:
 |---|---|
 | a 75 / 150 / 300 HP dummy | beat a game in **5 / 3 / 1 attempt(s)** |
 | three turns to do it | **three games** to do it (`for 3 games`) |
-| potion / 2 upgrades / relic | scroll / small chest / large chest |
+| potion / 2 upgrades / relic | potion / small chest / large chest |
 | fail and get nothing | the goal expires and pays nothing |
 
 ```
-Setting 1   add_goal "beat a game in 5 attempts or fewer" for 3 games -> gain_scroll 1
+Setting 1   add_goal "beat a game in 5 attempts or fewer" for 3 games -> gain_potion 1
 Setting 2   add_goal "beat a game in 3 attempts or fewer" for 3 games -> gain_chest small 1
 Setting 3   add_goal "beat a game in 1 attempt"           for 3 games -> gain_chest large 1
 ```
@@ -727,17 +734,20 @@ why they sit at event level (§3).
 `Setting N` keeps its in-game button name. The rest of each in-game label —
 "Fight a 75 HP dummy. Procure 1 random Potion." — is Slay the Spire 2's
 *mechanical* line rather than its dialogue, and the modal renders ours off the
-`Effect` instead: "Beat a game in 5 attempts or fewer. Gain 1 Scroll." The
+`Effect` instead: "Beat a game in 5 attempts or fewer. Gain 1 Potion." The
 dialogue is exact; the mechanics are the abstraction.
 
-Reward mapping: a potion is this game's **scroll** (§4.1, the consumable you
-gamble on), "upgrade 2 cards" has no counterpart at all so it becomes the
-middle rung of the chest ladder, and a relic is a **large chest** — three items
-to choose from, which is unambiguously the best of the three and matches Setting
-3 being the hardest ask. `gain_scroll` is the one tier-C token here (§5); the
-rest already exist. (Punch Off, §10, spends its scroll through `gain_loot`
-instead — the Dummy names the scroll directly because *that* is what it pays,
-where Punch Off's "standard combat reward" is whatever loot happens to be.)
+Reward mapping: a potion is **a potion** — this game has had one since the third
+alphabet landed (docs/potions-design.md), so Setting 1 no longer has to
+translate. It paid a `gain_scroll` for as long as scrolls were the only
+consumable in the pack, and that was the abstraction standing in for a bottle
+rather than a mapping worth keeping. "Upgrade 2 cards" has no counterpart at all
+so it becomes the middle rung of the chest ladder, and a relic is a **large
+chest** — three items to choose from, which is unambiguously the best of the
+three and matches Setting 3 being the hardest ask. (Punch Off, §10, spends its
+reward through `gain_loot` instead — the Dummy names the potion directly because
+*that* is what it pays, where Punch Off's "standard combat reward" is whatever
+loot happens to be.)
 
 ---
 
@@ -843,9 +853,9 @@ up being about routing, which is the right place for this game's events to land.
 
 Reward mapping: a relic is a **small chest**, and relic + potion + standard
 combat reward is **2 small chests + 1 loot**. `gain_loot` is authored as a
-category rather than as `gain_scroll` — it resolves to a scroll today, since
-scrolls are the only loot type there is, and widens on its own as more are added
-without any event row being touched.
+category rather than as `gain_scroll` — a "standard combat reward" is whatever
+loot happens to be, so the cell rolls across all three alphabets and widened on
+its own as each arrived, without any event row being touched.
 
 `Requirement: games >= 6` carries the original's "Floor 6 or later" — depth,
 which this run measures in games played rather than floors.

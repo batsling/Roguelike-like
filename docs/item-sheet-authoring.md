@@ -149,7 +149,7 @@ does not:
 
 | Cell | Means |
 | --- | --- |
-| `gain_pill N` | `gain_scroll`'s sibling for the second loot type. `gain_loot N` is the kind-BLIND grant beside them — it rolls 50/50 per unit, and it is what beating a game pays (§4.3). |
+| `gain_pill N` / `gain_potion N` | `gain_scroll`'s siblings, one per loot type. `gain_loot N` is the kind-BLIND grant beside them — it rolls per unit across every alphabet there is, and it is what beating a game pays (§4.3). Reach for a named kind only where the row is *about* that kind of thing; `gain_loot` keeps widening for free. |
 | `pills_positive` | Lucky Foot's rule flag: a Negative pill taken while it is held rerolls into a random Positive one. The colour still identifies as what it actually is. |
 | `echo_loot N` | Echo Chamber's memory depth. A count rather than a bool, in the shape `boss_chest_bonus: N` has. |
 

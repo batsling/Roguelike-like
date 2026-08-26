@@ -418,14 +418,19 @@ EVENTS = [
         # The settings keep their in-game names. The rest of each in-game label
         # ("Fight a 75 HP dummy. Procure 1 random Potion.") is Slay the Spire 2's
         # MECHANICAL line, not its dialogue, and the modal renders ours off the
-        # Effect instead — "Beat a game in 5 attempts or fewer. Gain 1 Scroll."
+        # Effect instead — "Beat a game in 5 attempts or fewer. Gain 1 Potion."
         # Result cells are blank because picking a setting there starts a fight
         # rather than printing prose; here it hands over the goal and the
         # checklist takes it from there.
+        #
+        # SETTING 1 PAYS A POTION, and that is the source game's own payout: the
+        # dummy's easiest rung procures a potion in Slay the Spire 2. It was a
+        # scroll here only because scrolls were the sole alphabet when this row was
+        # written; potions exist now, so the rung says what it always meant.
         "choices": [
             ("Setting 1", "", "",
              'add_goal "beat a game in 5 attempts or fewer" for 3 games'
-             ' -> gain_scroll 1'),
+             ' -> gain_potion 1'),
             ("Setting 2", "", "",
              'add_goal "beat a game in 3 attempts or fewer" for 3 games'
              ' -> gain_chest small 1'),

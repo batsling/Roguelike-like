@@ -657,7 +657,12 @@ func test_a_pill_echoing_a_scroll_fires_the_scrolls_own_effect() -> void:
 
 func test_loot_names_and_art_come_back_for_both_kinds() -> void:
 	var scroll := {"type": "scroll", "id": &"scroll_of_identify", "rarity": "Common"}
-	assert_eq(LootSystem.display_name(scroll), "Unidentified Scroll")
+	# An unread scroll wears the meaningless title this run dealt it — "ZELGO MER",
+	# "ah bloto festr" — rather than the flat "Unidentified Scroll" every scroll used
+	# to share (ScrollSystem.ensure_names). What matters here is that it is not the
+	# real name; which title it is belongs to test_scroll_system2.gd.
+	assert_eq(LootSystem.display_name(scroll), ScrollSystem.name_for(&"scroll_of_identify"))
+	assert_ne(LootSystem.display_name(scroll), "Scroll of Identify")
 	assert_eq(LootSystem.glyph(scroll), "📜")
 	assert_eq(LootSystem.display_name(_entry(&"luck_up", true)), "Unidentified Horse Pill")
 	assert_eq(LootSystem.glyph(_entry(&"luck_up")), "💊")
