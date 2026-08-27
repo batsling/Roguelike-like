@@ -102,6 +102,13 @@ var _fx_gen: int = 0
 # the game in" is one symbol with one meaning wherever it appears. That is also
 # what let the attempt strip's captioned pip column go: the board says it.
 var _hero_shields: HBoxContainer
+# What the shield row is SHOWING while a resolve plays back: (temporary,
+# permanent), or (-1, -1) the rest of the time, when it draws the run's real
+# pools. The same trick `_hp_shown` plays on the Health line and for the same
+# reason — the run's state has already moved on by the time the animation starts,
+# so without this the shields are simply gone before the blow that broke them is
+# drawn, and the one thing a shield exists to do is never seen happening.
+var _shields_shown := Vector2i(-1, -1)
 var _field: Control                  # fixed-size board the two layers stack inside
 var _cell_layer: Control             # the static backdrop of empty cells
 # The board dimensions the backdrop was last drawn at. The grid can GROW mid-run
@@ -1987,9 +1994,12 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 # (how many games of walking a body that can't reach you yet still owes) used to
 # sit across the head of the art, and between them they covered the part of the
 # picture that identifies the enemy — on a 7x7 board's 46px cells, most of it.
-# Neither fact is lost: a boss is already drawn in the boss's own orange
-# (threat_color) and carries its portrait beside its name on the checklist, and
-# the walking still owed is the timing line of the body's own hover (enemy_hover).
+# Neither fact is lost, and neither is worth a badge: a boss is already drawn in
+# the boss's own orange (threat_color) and carries its portrait beside its name on
+# the checklist, and the walking still owed is the body's COLUMN — the thing the
+# player is looking straight at. (The hover used to say it in words as well. It
+# doesn't; a sentence counting the squares between two things on screen is the
+# board reading itself back.)
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		_accent: Color, selected: bool) -> void:
 	var stun: int = int(entry.get("stun", 0))
@@ -2123,24 +2133,13 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # you are being asked to go and do. Everything else — the full stat block, the
 # position, the verbs — is a click away and stays there.
 func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
-	var strikes: int = GameLoop2.attacks_in_turns(entry)
-	var away: int = GameLoop2.lost_runs_until_strike(entry)
-	var timing: String = ""
-	# STAGGERED first, because it overrides every other answer this line could give:
-	# a body in the front column that has been answered for this game is not going to
-	# swing, and quoting its damage at the player would be the card contradicting the
-	# board.
-	if GameLoop2.is_staggered(int(entry.get("instance", 0))):
-		timing = "Staggered — its goal was met this game. It won't move or attack again until the next one."
-	elif strikes > 0:
-		timing = "Strikes %d time%s per lost run — %d damage." % [
-			strikes, "" if strikes == 1 else "s", strikes * GameLoop2.enemy_damage(entry)]
-	elif away > 0:
-		timing = "%d lost run%s of walking from its first strike." % [
-			away, "" if away == 1 else "s"]
-	else:
-		timing = "Waiting off the field — it can't reach you yet."
-
+	# THERE IS NO TIMING LINE HERE any more. It used to answer "when does this
+	# swing" in one of four ways, and three of them were the board read back to
+	# itself: how far a body is from its first strike is its COLUMN, which the
+	# player is looking straight at, and "waiting off the field" is said by the
+	# lane the token is standing in and the words "off field" over it. The one
+	# state worth a sentence — what it does when it reaches you — is on the badge
+	# under the body (⚔) and spelled out in full on the card a click away.
 	var pips: Array = []
 	for row in GameLoop2.enemy_statuses(entry):
 		var status: StatusData = row["status"]
@@ -2163,7 +2162,7 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		"accent": threat_color(int(entry.get("col", GameLoop2.spawn_col())), e.is_boss()),
 		"art": e.image,
 		"pips": pips,
-		"lines": [e.goal, timing],
+		"lines": [e.goal],
 		"note": "Click for the full card.",
 	}
 
@@ -2218,8 +2217,8 @@ func _fill_shields() -> void:
 	for child in _hero_shields.get_children():
 		_hero_shields.remove_child(child)
 		child.queue_free()
-	var left: int = GameState.shields
-	var bonus: int = GameState.bonus_shields
+	var left: int = _shields_shown.x if _shields_shown.x >= 0 else GameState.shields
+	var bonus: int = _shields_shown.y if _shields_shown.y >= 0 else GameState.bonus_shields
 	for _i in range(bonus):
 		_hero_shields.add_child(UITheme.timed_art(UITheme.SHIELD_ART, SHIELD_PIP, false))
 	for _i in range(left):
@@ -2514,12 +2513,69 @@ func _drop_shown_hp(amount: int) -> void:
 	t.tween_property(_hero_hp, "modulate", Color.WHITE, 0.3)
 
 # The playback is over (or was cut short): the label goes back to the run's real
-# Health, which by now includes anything that healed after the resolve.
+# Health, which by now includes anything that healed after the resolve — and the
+# shield row with it, since a reported game takes every Temporary Shield with it
+# whether or not anything broke one.
 func _end_hp_playback() -> void:
-	if _hp_shown < 0:
+	if _hp_shown < 0 and _shields_shown.x < 0 and _shields_shown.y < 0:
 		return
 	_hp_shown = -1
+	_shields_shown = Vector2i(-1, -1)
 	_paint_hp()
+	_fill_shields()
+
+# ONE SHIELD BREAKS, in time with the blow that broke it. Called from the strike
+# beat for every attack the loop marked `blocked`, which is one whole hit stopped
+# dead (§3) — so it is one shield, whatever the damage was.
+#
+# The TEMPORARY pool goes first, which is also the far end of the row (§4.3), so
+# "take the last one" is the whole of the ordering. The sprite is not merely
+# removed: it flares white, swells and fades where it stood, because a shield
+# quietly ceasing to be drawn is indistinguishable from a repaint.
+const SHIELD_BREAK_TIME: float = 0.34
+
+# The shields still standing over the hero: the row's sprites, minus any that is
+# mid-break. The count the player is reading, in other words — a shield fading out
+# of the row is one they no longer have.
+func standing_shields() -> Array:
+	var out: Array = []
+	if _hero_shields == null:
+		return out
+	for child in _hero_shields.get_children():
+		if not child.has_meta(&"breaking"):
+			out.append(child)
+	return out
+
+func _break_one_shield() -> void:
+	if _hero_shields == null or _hero_shields.get_child_count() == 0:
+		return
+	if _shields_shown.x > 0:
+		_shields_shown.x -= 1
+	elif _shields_shown.y > 0:
+		_shields_shown.y -= 1
+	else:
+		return
+	var node: Control = _hero_shields.get_child(_hero_shields.get_child_count() - 1)
+	if node == null or not is_instance_valid(node):
+		return
+	# ANIMATED WHERE IT STANDS, still inside the row. Re-parenting it onto the FX
+	# layer would let the survivors close up immediately, but the position it would
+	# have to be dropped at is the one the container has not worked out yet: a
+	# resolve rebuilds this row and breaks its first shield in the SAME frame, and
+	# a child sorted no later than the end of that frame still reads as (0, 0). A
+	# scale is a draw transform and moves nobody, so the row simply holds its shape
+	# for the third of a second the break takes and closes up when the node goes.
+	node.pivot_offset = node.size * 0.5
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Marked, so "how much armour is standing" can be answered while one is still
+	# on its way out (standing_shields).
+	node.set_meta(&"breaking", true)
+	var t := node.create_tween()
+	t.set_parallel(true)
+	t.tween_property(node, "scale", Vector2(1.7, 1.7), SHIELD_BREAK_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "modulate", Color(1, 1, 1, 0), SHIELD_BREAK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.set_parallel(false)
+	t.tween_callback(node.queue_free)
 
 func clear_fx() -> void:
 	# A playback cut short must not leave a body invisible behind a ghost that
@@ -2553,7 +2609,8 @@ func _reveal_hidden() -> void:
 # Returns HOW LONG the playback runs, in seconds (0.0 when there was nothing to
 # show). The end-of-run screen waits that long before landing — a killing blow
 # the verdict wipes off mid-flight may as well not exist.
-func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -> float:
+func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
+		shields_before: Vector2i = Vector2i(-1, -1)) -> float:
 	if _fx_layer == null or not is_inside_tree():
 		return 0.0
 	clear_fx()
@@ -2561,6 +2618,15 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 	var after: Dictionary = capture_positions()
 	_hp_shown = hp_before if hp_before >= 0 else GameState.hp + _health_damage_in(res)
 	_paint_hp()
+	# `shields_before` is (temporary, permanent) as they stood before the resolve —
+	# NOT reconstructable from what is left, the way Health is: reporting a game
+	# expires every Temporary Shield whether or not a blow touched it, so adding
+	# the blocked hits back onto the current pools would draw armour that was
+	# already spent. A caller that didn't snapshot simply gets the old behaviour
+	# (the row is the run's, and it has already moved on).
+	_shields_shown = shields_before
+	if _shields_shown.x >= 0 or _shields_shown.y >= 0:
+		_fill_shields()
 
 	# One playback per TURN (§7.4). Each turn is the same beat the board has
 	# always played — the front line strikes, then the field closes up — and the
@@ -2689,12 +2755,19 @@ func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
 		# What this one blow actually cost in Health — the rest of it was eaten by a
 		# shield, and the hero's number shouldn't move for the part that was.
 		var to_health: int = maxi(0, int(a["damage"]) - int(a.get("blocked", 0)))
+		# A blocked blow is a shield gone, and it goes HERE — on the frame the strike
+		# lands, beside the damage number, rather than silently before the playback
+		# started.
+		var blocked: bool = int(a.get("blocked", 0)) > 0
 		var gen: int = _fx_gen
 		_after(delay, func():
 			_spawn_strike_flash(from)
 			_spawn_damage_number(int(a["damage"]), from, hero_rect)
-			if gen == _fx_gen:
-				_drop_shown_hp(to_health))
+			if gen != _fx_gen:
+				return
+			_drop_shown_hp(to_health)
+			if blocked:
+				_break_one_shield())
 	if struck:
 		_after(delay, _punch_hero)
 	return struck

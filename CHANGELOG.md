@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Shields break where you can see it, bosses stop arriving alone, and the hover
+  stops narrating the board.**
+
+  Four things, all of them the same complaint in different clothes: the screen was
+  saying things it had already shown, and not showing the one thing that mattered.
+
+  **The shields break on screen.** The run spends them before the board draws a
+  single frame of the resolve, so the row over the hero simply emptied between the
+  press and the animation — the one thing a shield exists to do was the one thing
+  never seen happening. For the length of a playback the row is now the
+  *playback's* (`_shields_shown`, exactly the trick the Health line has always
+  played), and each blow the loop marked `blocked` swells and fades one sprite as
+  its damage number lands, Temporary ones first. The counts come from the caller,
+  snapshotted before the resolve: reporting a game expires every Temporary Shield
+  whether or not anything broke one, so what is left afterwards says nothing about
+  what was standing when the blows arrived.
+
+  **The header's shields are shields.** They were a `◈` on the end of the Health
+  string — the one pool a player meets with no board on screen, drawn as the one
+  shape nothing had taught them. Same sprite as the board's now, no clock (these
+  never expire), hidden entirely at zero, with the pool's own tooltip on it rather
+  than Health's.
+
+  **A boss round gets an escort.** It was the one game that spawned solo, on the
+  grounds that a tier change is difficulty enough by itself. What that produced was
+  the run's biggest round on its emptiest board — one body, where the ordinary game
+  before it had two — so the capstone read as a *quieter* game with a bigger enemy
+  on it. The escort is an ordinary body out of the round's own type and tier:
+  bombable, ordinary gold, one chest tier. Everything that is the boss's stays the
+  boss's.
+
+  **The enemy hover stopped counting squares.** "2 lost runs of walking from its
+  first strike" and "Waiting off the field" are the board read back to itself —
+  the distance IS the column the player is looking straight at, and the lane is
+  labelled "off field". The whole timing line is gone; who it is, what is riding
+  it and its goal remain, and the full stat block is a click away as it always was.
+
 - **A clock on everything that expires, shields drawn as shields, and the report
   panel put on a diet.**
 

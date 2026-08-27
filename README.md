@@ -386,7 +386,14 @@ node and its script.
     each wearing the **clock badge** (`Timer.png`) — and status pips between.
     The clock is the run's one mark for "this is going away": every status pip
     drawn from a borrowed stack carries it too, on the board, on the enemy card
-    and on the checklist (`UITheme.timed_art`).
+    and on the checklist (`UITheme.timed_art`). The **shields that stay** are the
+    exception that proves it — they also ride the header's Health chip, as the
+    same sprite with no clock on it, because that pool is gained off the board and
+    has to be readable with no board on screen.
+    A shield **breaks on screen**: during a resolve the row is the playback's
+    rather than the run's (`_shields_shown`), and each blow the loop marked
+    `blocked` swells and fades one sprite as its damage number lands — the
+    Temporary ones first, which is the far end of the row.
   - **the board's verbs** are on the **board's own bars**: its pressure bar ends
     `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
     `✸ Bomb (3)`.

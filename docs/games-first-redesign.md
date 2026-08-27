@@ -299,6 +299,13 @@ one (`GameLoop2._take_hit`).
 - **The ones gained off the board are just SHIELDS, and stay** (§4.3) — a pill's,
   a banked game's. A hit breaks a Temporary Shield first, since those are the ones
   about to expire anyway.
+- **A shield breaks ON SCREEN.** The run's pools have already been spent by the
+  time the board starts drawing the resolve, so for the length of a playback the
+  row over the hero is the PLAYBACK's rather than the run's
+  (`BattlefieldView._shields_shown`, the same trick the Health line plays) and one
+  sprite swells and fades as each blocked blow lands. Without it the armour was
+  simply gone before the swing that broke it was drawn — the one thing a shield
+  exists to do was the one thing never shown happening.
 
 **ESCAPE OPENS ON THE HIT.** A game you cannot beat is not a run-ender: you may
 walk away from the one in play, and the door opens **the moment an enemy's attack
@@ -575,7 +582,10 @@ Shield expires with the game it came from, and a Shield does not.
 - They are drawn **closest to the player** — at the head of the shield row,
   nearest the portrait on the board's hero, and beside the always-visible Health
   chip in the header, because a pool gained on the overworld has to be readable
-  when no board is on screen. Position is one half of the reading: the further
+  when no board is on screen. The header draws them as the **same shield sprite**
+  the board does (with no clock, since these never expire); it used to be a `◈`
+  glyph, which made the one pool a player meets away from the board the one pool
+  nothing had taught them to recognise. Position is one half of the reading: the further
   from the portrait a shield is, the sooner it goes. The **clock badge** is the
   other half — a Temporary Shield wears one and a Shield does not, the same mark
   a borrowed status pip wears (`UITheme.timed_art`), so "expires" is one symbol
@@ -1364,12 +1374,19 @@ item and gold when that goal is cleared.
 - Both are on the report checklist: the game's enemy as the top **Goal** row, the
   escort as an *Also cleared* row alongside every other follower.
 
-**Two rules carve out of it**, both for the same reason — the escort must not
-stack on top of a difficulty rule that was meant to be felt on its own:
+**A BOSS ROUND GETS ONE TOO.** It used to be the one carve-out: a tier change
+already swaps in the heavier, bomb-immune pool at triple gold (§7.1), and doubling
+the bodies on that round looked like merging two difficulty steps into one wall.
+What it actually produced was the run's biggest round on its **emptiest board** —
+one body, where the ordinary game before it had two — so the capstone read as a
+quieter game with a bigger enemy on it. The boss now arrives with an ordinary
+escort out of the round's own type and tier (`choose_boss` hands both on, and the
+roll widens downward from there, since a boss may be authored at a tier the
+goal-enemy roster does not reach). It is a normal body: bombable, worth ordinary
+gold, one chest-point tier. Every rule that is the *boss's* stays the boss's.
 
-- **A boss spawns solo.** A tier change already swaps in the heavier, bomb-immune
-  pool at triple gold (§7.1); doubling the bodies on that round as well would
-  merge the two steps into one wall.
+**One rule still carves out of it**, so the escort cannot be farmed:
+
 - **Scramble rerolls the pair.** `choose_game` supersedes the game in play, and
   the escort came with the enemy being rejected, so it leaves with it
   (`GameLoop2.current_escort` is what makes that possible). Otherwise a D6 charge

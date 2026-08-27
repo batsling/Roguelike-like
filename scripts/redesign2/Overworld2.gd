@@ -150,6 +150,10 @@ var _curse_goal_checks: Array:
 	get: return _checklist.curse_goal_checks if _checklist != null else []
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
+# The shields that stay, beside Health in the same chip: the sprite and its count
+# (see _paint_health_chip). Both hidden while the pool is empty.
+var _shield_chip: Label = null
+var _shield_chip_art: TextureRect = null
 var _gold_chip: Label = null
 # The character's token, immediately left of Health (see _build_character_chip),
 # and the frame around it — held so the pair can be hidden together when the
@@ -1120,6 +1124,9 @@ func log_attempt() -> String:
 		return ""
 	var before: Dictionary = _board.capture_positions() if _board != null else {}
 	var hp_before: int = GameState.hp
+	# …and the armour standing in front of it, so a blow the playback shows being
+	# blocked can show the shield breaking (BattlefieldView.animate_resolve).
+	var shields_before := Vector2i(GameState.shields, GameState.bonus_shields)
 	_resolving = true
 	_attempt_resolve = true
 	var cost: String = GameLoop2.log_attempt()
@@ -1136,7 +1143,7 @@ func log_attempt() -> String:
 	# Repaint first, then replay: the board is already in the state the turn left
 	# it in, and the animation is how it got there (the same order report() uses).
 	if _board != null:
-		_hold_for_resolve(_board.animate_resolve(before, GameLoop2.last_attempt_turn, hp_before))
+		_hold_for_resolve(_board.animate_resolve(before, GameLoop2.last_attempt_turn, hp_before, shields_before))
 	else:
 		_resolving = false
 		_attempt_resolve = false
@@ -1769,6 +1776,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# …and how much Health was standing before any of them swung, so the board can
 	# take it down one strike at a time instead of showing the total up front.
 	var hp_before: int = GameState.hp
+	# …and the shields standing in front of that Health. Snapshotted rather than
+	# derived: handing the game in expires every Temporary Shield whether or not
+	# anything broke one, so what is left after the resolve says nothing about what
+	# was there when the blows landed.
+	var shields_before := Vector2i(GameState.shields, GameState.bonus_shields)
 	# And what tier / board this game was fought on, so the step into the next one
 	# can be announced rather than just silently happening (§7.3).
 	var tier_before: int = _current_tier()
@@ -1944,7 +1956,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# Repaint first, then replay the strike + advance from the snapshot: the
 		# board is already in its final state, the animation just shows how it got
 		# there. The end-of-run screen waits for it to land (_end_resolve).
-		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
+		_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 		return
 	if was_amulet:
 		# REACHING the Amulet game and playing it IS the run. It used to also
@@ -1958,7 +1970,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# Winning ends the run through GameLoop2 (-> _on_run_won), and the last
 		# advance still deserves to be seen before the win screen.
 		GameLoop2.clear_amulet()
-		_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
+		_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 		return
 	_phase = Phase.SELECT
 	_build_choices()
@@ -1984,7 +1996,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# emptied the pool. Empty on a report that earned no chest at all.
 		"chest_sources": chest_sources,
 	}
-	_hold_for_resolve(_board.animate_resolve(before, res, hp_before))
+	_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -3847,11 +3859,27 @@ func _build_health_chip() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(Color(0.18, 0.06, 0.06, 0.85), 8, 8, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	wrap.add_child(row)
 	_health_chip = Label.new()
 	_health_chip.add_theme_font_size_override("font_size", 18)
 	_health_chip.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 	_health_chip.tooltip_text = "Health. At zero the run ends."
-	wrap.add_child(_health_chip)
+	row.add_child(_health_chip)
+	# The shields that stay, as SHIELDS — the same sprite the board draws over the
+	# hero, so the pool a player learns to recognise on the board is the one they
+	# are looking at up here. It was a `◈` glyph on the end of the Health string,
+	# which is the one place in the run those shields are ever mentioned while no
+	# board is on screen and the one shape nothing else taught. Hidden outright at
+	# zero: an empty shield chip reads as armour you have.
+	_shield_chip_art = UITheme.crisp_tex(UITheme.SHIELD_ART, 18)
+	_shield_chip_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_shield_chip_art)
+	_shield_chip = Label.new()
+	_shield_chip.add_theme_font_size_override("font_size", 18)
+	_shield_chip.add_theme_color_override("font_color", BattlefieldView.SHIELD_BLUE)
+	row.add_child(_shield_chip)
 	_paint_health_chip()
 	return wrap
 
@@ -3895,14 +3923,23 @@ func _paint_health_chip() -> void:
 	# have to be readable when no board is on screen, and the number they matter
 	# most beside is the one they are standing in front of.
 	_health_chip.text = "♥  %d / %d" % [GameState.hp, GameState.max_hp]
-	if GameState.bonus_shields > 0:
-		_health_chip.text += "   ◈ %d" % GameState.bonus_shields
-		_health_chip.tooltip_text = ("Health. At zero the run ends."
-			+ "\n\n◈ %s — gained off the board, used after the game's own Temporary"
-			+ " Shields are gone, and they never expire.") % GameState.shields_text(
-				GameState.bonus_shields)
-	else:
-		_health_chip.tooltip_text = "Health. At zero the run ends."
+	_health_chip.tooltip_text = "Health. At zero the run ends."
+	if _shield_chip != null and is_instance_valid(_shield_chip):
+		var shields: int = GameState.bonus_shields
+		_shield_chip.text = str(shields)
+		_shield_chip.visible = shields > 0
+		_shield_chip_art.visible = shields > 0
+		# The tooltip goes on the pair rather than on Health: they are two readings
+		# in one chip, and hovering the shield to be told about your Health is the
+		# chip answering the wrong question.
+		var tip: String = ("%s — gained off the board, used after the game's own "
+			+ "Temporary Shields are gone, and they never expire. No clock on "
+			+ "these.") % GameState.shields_text(shields)
+		_shield_chip.tooltip_text = tip
+		_shield_chip_art.tooltip_text = tip
+		# A TextureRect ignores the mouse by default (UITheme.crisp_tex), and a
+		# tooltip nothing can hover is not a tooltip.
+		_shield_chip_art.mouse_filter = Control.MOUSE_FILTER_STOP
 	# It goes white-hot at a quarter left, because the number people miss is the
 	# one that stopped being comfortable rather than the one that hit zero.
 	var frac: float = float(GameState.hp) / maxf(1.0, float(GameState.max_hp))

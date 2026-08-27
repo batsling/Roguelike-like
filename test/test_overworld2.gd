@@ -1319,11 +1319,10 @@ func test_a_body_on_the_board_carries_a_hover_card() -> void:
 	assert_eq(card.get("art"), e.image, "with its own art")
 	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
 	assert_string_contains(lines, e.goal, "the goal you'd be playing for")
-	# One of the three shapes the timing line takes — which one depends on where
-	# the body happens to have walked to, so all three count.
-	var timing: String = lines.to_lower()
-	assert_true(timing.contains("strike") or timing.contains("walking")
-		or timing.contains("off the field"), "and when it next swings: %s" % lines)
+	# …and NOTHING about when it swings. That was a sentence counting the squares
+	# between two things the player is looking straight at.
+	assert_false(lines.to_lower().contains("walking"),
+		"no distance narrated on the hover: %s" % lines)
 
 # The statuses ride as PIPS rather than as three more lines of prose.
 func test_a_bodys_statuses_ride_its_hover_card_as_pips() -> void:
@@ -1440,11 +1439,41 @@ func test_the_players_own_state_is_drawn_on_the_board() -> void:
 		"the hero carries the health: %s" % _ui._board._hero_hp.text)
 	# One SHIELD SPRITE per shield, both pools, permanent first — and only the
 	# temporary ones carry the clock that says they go with this game.
-	var shields: Array = _ui._board._hero_shields.get_children()
+	var shields: Array = _ui._board.standing_shields()
 	assert_eq(shields.size(), 3, "one sprite per shield, both pools")
 	assert_eq(_timers_on(shields[0]), 0, "the permanent one wears no clock")
 	assert_eq(_timers_on(shields[1]), 1, "the temporary ones do")
 	assert_eq(_timers_on(shields[2]), 1, "both of them")
+
+# The shields that STAY are the one pool readable with no board on screen, and
+# they read as the same armour the board draws rather than as a glyph of their own.
+func test_the_header_shows_the_lasting_shields_as_shields() -> void:
+	GameState.bonus_shields = 0
+	_ui._refresh_stats()
+	assert_false(_ui._shield_chip_art.visible, "no chip while there are none")
+	GameState.bonus_shields = 2
+	_ui._refresh_stats()
+	assert_true(_ui._shield_chip_art.visible, "the sprite comes up with the pool")
+	assert_eq(_ui._shield_chip_art.texture, UITheme.SHIELD_ART,
+		"and it is the board's own shield art")
+	assert_eq(_ui._shield_chip.text, "2", "with the count beside it")
+	assert_false(_ui._health_chip.text.contains("2"),
+		"and Health is left saying only Health: %s" % _ui._health_chip.text)
+
+# The board says where a body is by DRAWING it there. A hover that also counts the
+# squares in words is the board reading itself back, so the timing line is gone.
+func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
+	_ui.pick(0)
+	assert_false(GameLoop2.stack.is_empty(), "something walked on")
+	if GameLoop2.stack.is_empty():
+		return
+	var entry: Dictionary = GameLoop2.stack[0]
+	var card: Dictionary = _ui._board.enemy_hover(entry, entry["enemy"])
+	for line in card.get("lines", []):
+		assert_false(String(line).contains("lost run"),
+			"no lost-run countdown on the hover: %s" % line)
+		assert_false(String(line).contains("Waiting off the field"),
+			"and nothing about being out of range: %s" % line)
 
 # The other half of the same rule: a status the run OWNS is drawn bare, and one
 # it has only BORROWED (docs/potions-design.md §5.3) wears the clock — the same
@@ -2740,10 +2769,17 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 	assert_true(boss.is_boss(), "the boss round spawned a boss")
 	if boss.image == null:
 		return                                # this boss ships without art
-	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+	# One portrait per body carrying art — a boss round stands its own escort
+	# beside the boss now, so this is not "the boss and nothing else".
+	var with_art: int = 0
+	for entry in GameLoop2.stack:
+		var body: GoalEnemyData = entry["enemy"]
+		if body != null and body.image != null:
+			with_art += 1
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"the report step shows the boss beside the goal it is asking about")
 	_ui.report(false)                         # miss it: now it follows you
-	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"and it keeps its portrait on the standing list it moves to")
 
 func test_an_ordinary_follower_wears_its_portrait_too() -> void:
@@ -4490,6 +4526,83 @@ func test_a_blow_a_shield_swallowed_moves_no_health() -> void:
 		{"instance": inst, "turn": 0, "damage": 3, "blocked": 3}]}, hp_before)
 	assert_eq(_ui._board.shown_hp(), hp_before,
 		"the shield took it, so the Health line doesn't flinch")
+
+# --- and the shields break WITH them ---------------------------------------
+#
+# Same disease as the Health line had: the run has already spent the shield by the
+# time the first strike is drawn, so a row wired straight to GameState is empty
+# before the blow that emptied it lands. The one thing a shield exists to do was
+# the one thing never shown happening.
+
+func test_the_shield_row_opens_on_the_armour_that_was_standing() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 2
+	_ui._refresh()
+	var held := Vector2i(GameState.shields, GameState.bonus_shields)
+	GameState.shields = 0                    # as the resolve already would have
+	_ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 3, "blocked": 3}]}, GameState.hp, held)
+	# One blocked blow fires immediately, so one of the two is gone and one is left.
+	assert_eq(_ui._board.standing_shields().size(), 1,
+		"the playback opens on the two that were standing and breaks one on the blow")
+
+func test_an_unblocked_blow_breaks_no_shield() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 2
+	_ui._refresh()
+	var held := Vector2i(GameState.shields, GameState.bonus_shields)
+	_ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 3}]}, GameState.hp, held)
+	assert_eq(_ui._board.standing_shields().size(), 2,
+		"a blow nothing stopped costs no armour")
+
+func test_the_temporary_shields_break_before_the_ones_that_stay() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 1
+	GameState.bonus_shields = 1
+	_ui._refresh()
+	var held := Vector2i(GameState.shields, GameState.bonus_shields)
+	_ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 2, "blocked": 2}]}, GameState.hp, held)
+	var left: Array = _ui._board.standing_shields()
+	assert_eq(left.size(), 1, "one of the two is gone")
+	if left.is_empty():
+		return
+	assert_eq(_timers_on(left[0]), 0,
+		"and it is the TEMPORARY one that broke — what is left wears no clock")
+
+func test_the_playback_hands_the_shield_row_back_when_it_ends() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 3
+	_ui._refresh()
+	var held := Vector2i(GameState.shields, GameState.bonus_shields)
+	GameState.shields = 0                    # the game was reported: they expired
+	var secs: float = _ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 1, "blocked": 1}]}, GameState.hp, held)
+	await wait_seconds(secs + 0.4)
+	assert_eq(_ui._board.standing_shields().size(), 0,
+		"the row is the run's own again — and the run has none")
+
+func test_a_cut_short_playback_hands_the_shield_row_back() -> void:
+	_ui.pick(0)
+	var before: Dictionary = _ui._board.capture_positions()
+	var inst: int = int(before.keys()[0])
+	GameState.shields = 2
+	_ui._refresh()
+	_ui._board.animate_resolve(before, {"attacks": [
+		{"instance": inst, "turn": 0, "damage": 1, "blocked": 1}]}, GameState.hp,
+		Vector2i(4, 0))
+	_ui._board.clear_fx()
+	assert_eq(_ui._board.standing_shields().size(), 2,
+		"a playback wiped mid-flight leaves no stale armour behind")
 
 func test_a_cut_short_playback_hands_the_health_line_back() -> void:
 	_ui.pick(0)

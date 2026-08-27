@@ -211,12 +211,19 @@ func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 	assert_eq(GameLoop2.escort_instance(), 0,
 		"but it is an ordinary follower now, not this game's escort")
 
-# A BOSS round spawns solo — the tier change is the step up on its own (§7.1).
-func test_a_boss_spawns_without_an_escort() -> void:
-	GameLoop2.choose_game(_enemy(3, true))
-	assert_eq(GameLoop2.stack_size(), 1, "the boss stands alone")
-	assert_eq(GameLoop2.escort_instance(), 0)
-	assert_null(GameLoop2.escort_enemy())
+# A BOSS ROUND GETS AN ESCORT TOO, and an ordinary one. It used to stand alone —
+# the tier change being the step up on its own — which made the run's biggest
+# round its emptiest board: one body, where the game before it had two.
+func test_a_boss_arrives_with_an_escort_like_any_other_game() -> void:
+	var boss: int = GameLoop2.choose_game(_enemy(3, true))
+	assert_eq(GameLoop2.stack_size(), 2, "the boss AND a body beside it")
+	assert_gt(GameLoop2.escort_instance(), 0, "which is a real escort")
+	assert_ne(GameLoop2.escort_instance(), boss, "and not the boss counted twice")
+	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	assert_not_null(escort)
+	if escort != null:
+		assert_false(escort.is_boss(),
+			"an ordinary enemy — the boss's own rules stay the boss's: %s" % escort.display_name)
 
 # Superseding the game takes the PAIR off, not just the enemy. Otherwise every
 # Scramble charge would be a way to buy a body.

@@ -918,8 +918,10 @@ static func _ch_screen() -> Dictionary:
 				+ "owns it, which takes a moment to learn and then never gets in "
 				+ "the way."),
 			_kv("Health, shields, statuses", "On the hero, on the left of the "
-				+ "board. Hearts under the portrait, shield pips over it — ◆ for "
-				+ "the Temporary ones, ◈ for the ones that stay."),
+				+ "board. Hearts under the portrait, one shield over it per shield "
+				+ "you have — the ones that stay nearest your face, the Temporary "
+				+ "ones after them with a clock on them. Anything wearing that "
+				+ "clock is going away, statuses included."),
 			_kv("Gold", "A chip in the top bar."),
 			_kv("Board size and tier", "The right-hand end of the board's pressure "
 				+ "bar."),
