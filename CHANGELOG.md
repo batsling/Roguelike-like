@@ -11,6 +11,114 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Bash and Transmute are buttons you aim, not paragraphs pointing somewhere else.**
+
+  Both verbs need a target — one specific card out of the offering — and that had
+  always been the reason they had no button. The chips under the offering counted
+  the charges and their tooltips sent the player off to find the verb elsewhere:
+  *"spent from a game's card: click one and press Bash."* So the one surface that
+  showed you had a Bash could not spend it, and the surface that could was
+  `GameChoiceModal` — the popup for deciding whether to **travel** somewhere, which
+  is opened dozens of times a run by players who never meant to spend anything, and
+  which carried two destructive buttons beside its Travel one every single time.
+
+  Dash already had the shape of the answer. Bash and Transmute arm the same way
+  now: press the chip and it lights, the row above the offering says what the
+  offering has become (`⛏ Bash — click the game you want destroyed:`) with a Cancel
+  beside it, and every card is redrawn in the verb's colour as a target. The click
+  on a card is what spends the charge. Arming is free and cancelling costs nothing,
+  pressing the chip again puts it down, and redrawing the offering for any reason
+  drops the aim with it — an aim is taken on a table, and it does not outlive one.
+
+  A **refused** aim keeps the verb up. Bashing the Amulet would end the run's goal
+  and bashing the last connected card would leave nowhere to go; both were already
+  refused with a line saying why, and `bash_choice` / `transmute_choice` return
+  whether they fired so the player who aimed at the wrong card is not also charged
+  a re-arm. The Amulet's cover is left in its gold frame under an armed Bash rather
+  than lighting up as a target that then argues back.
+
+  The chips also stopped looking like the readouts they are sitting next to: a live
+  one is a real button now — filled body, a rim in the verb's own colour, a hand
+  cursor — because a row where some rectangles are pressable and the rest are
+  labels teaches the player that none of them are.
+
+- **The board holds still long enough to be watched before the verdict lands.**
+
+  `BattlefieldView.animate_resolve` handed back the moment its last tween was
+  *scheduled*, and `Overworld2._hold_for_resolve` takes that number literally — it
+  opens the end-of-run screen the instant it elapses. Two things were still moving
+  at that point. A damage number's tween is sequential (rise, then fade), so it
+  lives about **1.7×** the strike beat the schedule budgeted for it, and a killing
+  blow is exactly the case with no slide afterwards to cover the difference: the
+  number that ended the run was wiped mid-float by the verdict screen. And even
+  with the arithmetic right, cutting on the same frame as the last pixel of motion
+  reads as a dropped frame rather than as an ending. The playback is now held for
+  the longest thing it actually started, plus a short breath to land on
+  (`FX_NUMBER_TAIL` / `FX_END_BREATH`). A board where nothing moved still resolves
+  instantly — there was never anything to watch.
+
+- **The character is on screen: the full figure by the board, the token in the header.**
+
+  The board drew the character's `icon` beside the grid — the small round avatar
+  the combat build stood on a tile — which is a token standing in for a portrait.
+  It draws `portrait`, the full figure, and the frame is shaped for it
+  (`HERO_ASPECT`): the same width the board's row always gave it, half again in
+  height, into room the board already had. The icon is still the fallback for a
+  character authored without a full image.
+
+  And the token now rides the **header**, immediately left of Health. The board is
+  one panel among several and is covered by every modal the run raises, so for most
+  of a run the header was the only thing on screen and it never said whose run this
+  was. The report checklist's **level-up row** gets the same token for the same
+  reason every other row on that list carries a picture — an enemy's face on a
+  Cleared row, the status symbol on a status row — and the level-up row is the one
+  row there that belongs to the player rather than to something on the board.
+
+- **The lost-run button says what pressing it costs.**
+
+  It used to say `Lost a run  ⚔`, with the consequence in a sentence off to the
+  right: *"Every lost run gives the enemies a turn — your shields stay."* That is a
+  rule stated once beside a button pressed forty times, and it reads as page
+  furniture within a game or two. The cost is on the button now, on a second line —
+  **`+1 Enemy Turn`** — because what a press does is not a footnote to the press.
+  The shield pips beside it, which were an unlabelled row of glyphs, are captioned
+  **Shields**, and the half of the rule the button cannot say (a lost run does not
+  spend one) moved onto that caption's hover.
+
+- **Clicking a piece of loot in the pack opens its card again.**
+
+  The loot window is mounted as a `top_level` child of the page, and `top_level`
+  frees a Control from its parent's *transform*, not from its parent's *draw
+  order*. The reading card was added to the page after it and so drew above it —
+  until the next `refresh_loot_window()`, which unmounts and re-mounts the panel
+  and lands it back on top. Clicking a pill does exactly that: the click opened the
+  card **and** repainted the window over it, so the card was drawn, immediately
+  buried, and the gesture read as doing nothing. Both reading cards (loot and
+  relic) go on their own `CanvasLayer` now, which is what `LootDropModal` already
+  did when it opened the same card from the post-combat screen — so the two paths
+  agree instead of one of them being the lucky one.
+
+- **"Go to Event   (leaving 2 behind)" counts what is actually still on the ground.**
+
+  The post-combat screen's way out warns about loot it is about to bin, and it
+  listened only to `LootDropModal.answered` — which fires once, on the way out,
+  after the button has stopped mattering. So the count was drawn when the screen
+  was built and never again: take every piece on the table and the button still
+  warned about pieces already in your pack. The section emits `changed` on every
+  take, leave, use and bin now, and the button repaints off it.
+
+- **The IV Bag is usable.**
+
+  It is a `USABLE` with unlimited uses — spend 1 Health, take 1 Gold, as often as
+  you like — and it sat in the pack with a Use button that would not press.
+  `can_fire_item` gated an ordinary usable behind `can_use_items()`, which means
+  *combat scene or open event*, and in the games-first build there is no combat
+  scene: the rule had nothing on the other side of it, so the relic was firable
+  only during the seconds an event happened to be up. A plain usable now fires
+  wherever the player is standing. `overworld_usable` still means what it meant —
+  the marker for an active whose *effect* needs the map (a jump, a teleport, an
+  obtain) and would no-op anywhere else — and is still answered strictly.
+
 - **A completed goal drops to the bottom of the checklist.**
 
   An answered row is a record, not a question. Left where it was, it is a line the

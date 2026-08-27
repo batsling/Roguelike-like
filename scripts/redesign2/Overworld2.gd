@@ -63,6 +63,13 @@ const REPEAT_BEAT_DASH := 1
 # The Dash verb's colour, shared by its hint, its offering label, and the
 # repeat-beat announcement so all three read as the same mechanic.
 const DASH_BLUE := Color(0.5, 0.85, 1.0)
+# The Bash verb's, on the same rule and for the same reason it matters more now:
+# arming a Bash colours THREE things at once — its chip, the prompt above the
+# offering, and the frame of every card that has become a target — and three
+# near-oranges would read as three mechanics. It is deliberately not UITheme.DANGER,
+# which the page spends on damage and on the run ending; a bash is destruction you
+# chose. It was written out as a literal in eight places before it had a name.
+const BASH_ORANGE := Color(1.0, 0.72, 0.4)
 # The clover's own green — deliberately not the shop's, which is a place you can
 # walk into, where this is a property of every roll.
 const LUCK_GREEN := Color(0.55, 0.9, 0.55)
@@ -144,6 +151,11 @@ var _curse_goal_checks: Array:
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
 var _gold_chip: Label = null
+# The character's token, immediately left of Health (see _build_character_chip),
+# and the frame around it — held so the pair can be hidden together when the
+# character has no art to draw.
+var _character_chip: TextureRect = null
+var _character_wrap: Control = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
 var _route_strip: HBoxContainer = null
@@ -265,6 +277,27 @@ var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 # Dash is not silently cancelled by the charge that paid for the trip.
 var _dashed_here: bool = false
 
+# THE ARMED VERB (§4): &"bash", &"transmute", or &"" for none.
+#
+# Bash and Transmute both need a TARGET — one specific card out of the offering —
+# and for a long time that was the reason they had no button. The chips under the
+# offering counted the charges and their tooltips pointed at the card's own popup:
+# "spent from a game's card: click one and press Bash". Two problems with that.
+# The player had to already know the verb existed to go looking for it, since the
+# chip they were reading was not pressable; and the popup it sent them to is the
+# screen for deciding whether to TRAVEL somewhere, which then had two destructive
+# buttons beside the Travel one on every single opening.
+#
+# Dash already solved the shape of this: press the chip, the offering changes to
+# say what it is now asking, click a card, the charge is spent. So Bash and
+# Transmute arm the same way — the difference being that they leave the offering
+# exactly as it is (they act ON these cards rather than replacing them with a
+# wider set), and a click that would have opened a card fires the verb instead.
+#
+# One at a time, and never alongside a Dash: they are three answers to the same
+# question, and arming any of them disarms the others (see `_arm_verb`).
+var _armed_verb: StringName = &""
+
 # --- repaint guards ---------------------------------------------------------
 #
 # THREE SECTIONS OF THE PAGE ARE REBUILT FROM SCRATCH ON EVERY LOOP SIGNAL, and
@@ -325,7 +358,9 @@ var _scroll: ScrollContainer
 # Attempt tracker (§3) — the runs of the game in play you have lost.
 var _attempt_count: Label
 var _attempt_pips: Label
-var _attempt_hint: Label
+# The caption over those pips. Held only so the strip is inspectable from a test
+# the way every other label on it is.
+var _attempt_shield_head: Label
 var _attempt_btn: Button
 var _escape_btn: Button           # always up; darkened until can_escape() opens it
 var _escape_hint: Label           # the small line under it: what would open it
@@ -936,20 +971,42 @@ func prompt_save(after_save: Callable = Callable()) -> void:
 # Open the offered game at `index` for inspection (§4). Clicking a card no longer
 # commits to it: it raises GameChoiceModal, which shows the optimal path from that
 # game drawn as the real route ladder, what is waiting there, what it costs, and
-# the three buttons that answer the card — travel, bash, transmute.
+# the button that answers the card — travel.
+#
+# UNLESS A VERB IS ARMED, in which case this click is the AIM and not the read: a
+# card clicked with Bash up is bashed, and no popup opens. That is the whole of
+# what arming buys — the offering stops being a row of things to inspect and
+# becomes a row of targets — and it is why the verbs could move off the popup's
+# action row: the gesture that spends them is now the same one that picks them
+# out, rather than a button buried two clicks deep on a screen about travelling.
 #
 # The modal decides nothing itself. Every answer comes straight back out to the
 # public verb it was always spelled as (pick / bash_choice / transmute_choice), so
 # the modal is a way of ASKING and nothing more, and a headless test can still
 # drive the run by calling those verbs directly.
 #
-# Returns the modal (or null when there's nothing to open), so a test can answer
-# it without a click.
+# Returns the modal (or null when there's nothing to open — an armed click is one
+# of those), so a test can answer it without a click.
 func open_choice(index: int) -> GameChoiceModal:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return null
 	if _choice_modal != null and is_instance_valid(_choice_modal):
 		return _choice_modal
+	# THE AIM. Taken before anything else this function does, because an armed click
+	# is not an inspection at all — `bash_choice` and `transmute_choice` do their own
+	# refusing (the Amulet, a slot with nothing left to connect to) and say so on
+	# screen, so a refused aim leaves the verb up to be pointed somewhere else.
+	if _armed_verb != &"" and not _asking_return():
+		var verb: StringName = _armed_verb
+		# Refused, and it said why on screen? Nothing was spent, so the verb stays up:
+		# the player aimed at the wrong card, not at the wrong verb.
+		if bash_choice(index) if verb == &"bash" else transmute_choice(index):
+			_armed_verb = &""
+		# One more pass either way. Both verbs rebuild the offering and refresh on
+		# their own, and they did it while this was still marked armed, so the chips
+		# and the prompt need a repaint to come back down.
+		_refresh()
+		return null
 	var choice: Dictionary = _choices[index]
 	var notes: Dictionary = {
 		"route": route_note(choice),
@@ -1264,6 +1321,9 @@ func dash() -> void:
 		return
 	if _phase != Phase.SELECT or GameState.dash_charges <= 0 or _dash_mode:
 		return
+	# A Dash and an armed verb are three answers to the same question, so opening
+	# one puts the others down.
+	_armed_verb = &""
 	_dash_mode = true
 	_build_choices()
 	_refresh()
@@ -1274,6 +1334,54 @@ func cancel_dash() -> void:
 	_dash_mode = false
 	_build_choices()
 	_refresh()
+
+# --- Bash and Transmute, armed and aimed (§4) --------------------------------
+#
+# The verbs the offering's chips fire. Arming is free and cancelling costs
+# nothing: the charge is spent by the CLICK ON A CARD (see `open_choice`), not by
+# pressing the chip, so a player who arms Bash to see what it would do and then
+# changes their mind is out nothing at all.
+
+# Arm `verb` (&"bash" / &"transmute"), or disarm it if it is already the one up —
+# pressing the chip a second time is the obvious way to put it down, and it is
+# what the player will try before finding Cancel.
+func _arm_verb(verb: StringName, charges: int) -> void:
+	if _asking_return() or _phase != Phase.SELECT:
+		return
+	if charges <= 0 or _choices.is_empty():
+		return
+	# A verb and a Dash cannot both be up; arming either lowers the other. Lowering
+	# a Dash means REDRAWING the offering, not just clearing the flag — a dash is
+	# showing every connected game, and aiming a Bash at that wider set would let a
+	# card be destroyed that was never on the table. The rebuild is what puts the
+	# ordinary three back, and it clears `_armed_verb` on the way through
+	# (_build_choices), so the arming happens after it.
+	var want: StringName = &"" if _armed_verb == verb else verb
+	if _dash_mode:
+		_dash_mode = false
+		_build_choices()
+	_armed_verb = want
+	_refresh()
+
+func arm_bash() -> void:
+	_arm_verb(&"bash", GameState.bash)
+
+func arm_transmute() -> void:
+	_arm_verb(&"transmute", GameState.transmute)
+
+# Public, because three different things put an armed verb down: its own Cancel
+# button, arming something else, and the offering changing under it (a scramble,
+# a report, a pick) — an aim held over a card that is no longer on the table is
+# an aim at nothing.
+func cancel_verb() -> void:
+	if _armed_verb == &"":
+		return
+	_armed_verb = &""
+	_refresh()
+
+# Which verb is aiming right now, for the offering and for a test. &"" when none.
+func armed_verb() -> StringName:
+	return _armed_verb
 
 # Scramble (§4, granted by the D6): spend a charge to REROLL THE OFFERING — the
 # games filling the three (or more, with a game_choices bonus) slots are drawn
@@ -2742,7 +2850,7 @@ func _on_item_aimed(item: ItemData, instance: int) -> void:
 	var enemy: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if enemy != null:
 		GameLog.add("%s is aimed at %s." % [item.display_name, enemy.display_name],
-			Color(1.0, 0.72, 0.4))
+			BASH_ORANGE)
 	_refresh_items()
 	if _board != null and is_instance_valid(_board):
 		_board.refresh()
@@ -2758,7 +2866,7 @@ func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
 	if not GameState.use_item(item, cell):
 		return
 	GameLog.add("%s is aimed at column %d, row %d." % [
-		item.display_name, cell.x, cell.y + 1], Color(1.0, 0.72, 0.4))
+		item.display_name, cell.x, cell.y + 1], BASH_ORANGE)
 	_refresh_items()
 	if _board != null and is_instance_valid(_board):
 		_board.refresh()
@@ -2847,11 +2955,15 @@ func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
 #
 # Allowed on a boss round — the boss is tied to the difficulty gate, not the game,
 # so whatever backfills the slot still spawns a boss.
-func bash_choice(index: int) -> void:
+# Returns whether the bash actually happened, so an AIM that was refused can stay
+# armed and be pointed at another card (see `open_choice`) — the player has spent
+# nothing, and disarming them for aiming at the Amulet would make a warning feel
+# like a punishment.
+func bash_choice(index: int) -> bool:
 	if _asking_return():
-		return
+		return false
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
-		return
+		return false
 	var choice: Dictionary = _choices[index]
 	var slot: StringName = choice["slot"]
 	var game: GameData = choice["game"]
@@ -2859,16 +2971,16 @@ func bash_choice(index: int) -> void:
 		var amulet_msg: String = "%s holds the Amulet — bashing it would end the run's goal." % game.display_name
 		GameLog.add(amulet_msg, UITheme.DANGER)
 		Notifications.notify(amulet_msg, UITheme.DANGER)
-		return
+		return false
 	# Resolved BEFORE the bash, while the slot is still on the board.
 	var replacement: StringName = _backfill_id_for(slot)
 	if replacement == &"" and _choices.size() <= 1:
 		var stuck_msg: String = "Nothing else connects to here — bashing %s would leave nowhere to go." % game.display_name
 		GameLog.add(stuck_msg, UITheme.DANGER)
 		Notifications.notify(stuck_msg, UITheme.DANGER)
-		return
+		return false
 	if not GameLoop2.bash_game(slot):
-		return
+		return false
 	# A transmute on the destroyed slot dies with it, and so does its cached enemy.
 	GameLoop2.transmuted.erase(slot)
 	_slot_enemies.erase("%s>%s" % [String(slot), String(game.id)])
@@ -2878,33 +2990,38 @@ func bash_choice(index: int) -> void:
 		var repl: GameData = Data.get_game(replacement)
 		var repl_name: String = repl.display_name if repl != null else String(replacement)
 		GameLog.add("Bashed %s — %s takes its place." % [game.display_name, repl_name],
-			Color(1.0, 0.72, 0.4))
+			BASH_ORANGE)
 		Notifications.notify("Bashed %s → %s" % [game.display_name, repl_name],
-			Color(1.0, 0.72, 0.4))
+			BASH_ORANGE)
 	else:
 		GameLog.add("Bashed %s — nothing else connects here, so the slot goes with it." % game.display_name,
-			Color(1.0, 0.72, 0.4))
+			BASH_ORANGE)
+	return true
 
 # Transmute the offered game at `index` (§4): swap it for a random off-graph game
 # of the same type — or, for a Traditional game, of any OTHER type, since trading
 # one long haul for another is no relief. Allowed on a boss round — the
 # replacement game still spawns a boss, because boss-ness follows the difficulty
 # gate rather than the game.
-func transmute_choice(index: int) -> void:
+# Returns whether the swap happened, for the same reason bash_choice does: a
+# refused aim keeps the charge and keeps the verb up.
+func transmute_choice(index: int) -> bool:
 	if _asking_return():
-		return
+		return false
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
-		return
+		return false
 	var slot: StringName = _choices[index]["slot"]
 	var on_map: Array = []
 	for c in _choices:
 		on_map.append(c["slot"])
 	var repl: GameData = GameLoop2.transmute_game(slot, on_map)
-	if repl != null:
-		# GameLoop2 records the paste against the NODE, so it survives moving on,
-		# scrambling, and saving — the spot plays that game for the rest of the run.
-		_build_choices()
-		_refresh()
+	if repl == null:
+		return false
+	# GameLoop2 records the paste against the NODE, so it survives moving on,
+	# scrambling, and saving — the spot plays that game for the rest of the run.
+	_build_choices()
+	_refresh()
+	return true
 
 # Push a following enemy one space (Manager's verb, §7.2): spend a Push charge to
 # shove it back (delaying its next attack by a game), forward, or across into
@@ -2933,7 +3050,7 @@ func bomb_cell(cell: Vector2i) -> void:
 	if not GameLoop2.bomb_cell(cell):
 		return
 	GameLog.add("A bomb goes off at column %d, row %d." % [cell.x, cell.y + 1],
-		Color(1.0, 0.72, 0.4))
+		BASH_ORANGE)
 	_refresh()
 
 # --- enemy info card ------------------------------------------------------
@@ -3080,6 +3197,12 @@ func _offer_seed() -> String:
 	return "%s|%d|%d|" % [String(cur), _scramble_salt, int(_visits.get(cur, 0))]
 
 func _build_choices() -> void:
+	# AN AIM DOES NOT SURVIVE THE TABLE IT WAS TAKEN ON. Every path that redraws the
+	# offering comes through here — a scramble, a pick, a report, a bash refilling a
+	# slot — and an armed Bash still up afterwards would be pointed at whatever card
+	# happened to land in that position, which is not the card the player was aiming
+	# at. Nothing has been spent, so this costs them only the second press.
+	_armed_verb = &""
 	_choices.clear()
 	# The distances the route badges quote are re-read with the offering rather
 	# than cached for the run — the amulet and the game filter both outlive a
@@ -3410,7 +3533,8 @@ func _render_controls() -> void:
 	# Three inputs, and the row is empty for most of a run — so the guard is on the
 	# signature alone rather than on the signature plus a child count, since "no
 	# children" is a legitimate thing for it to have last drawn.
-	var sig: String = "%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
+	var sig: String = "%s|%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
+		String(_armed_verb),
 		String(_last_played_game.id) if _last_played_game != null else ""]
 	if sig == _controls_sig:
 		return
@@ -3428,6 +3552,18 @@ func _render_controls() -> void:
 		hint.add_theme_color_override("font_color", DASH_BLUE)
 		_controls_row.add_child(hint)
 		_controls_row.add_child(_mini_button("Cancel", cancel_dash))
+	# An armed Bash or Transmute is a MODE the offering is in, exactly as a Dash is,
+	# and it says so in the same place for the same reason: the cards below have
+	# stopped opening when clicked, and that has to be stated where the cards are.
+	if _armed_verb != &"":
+		var bashing: bool = _armed_verb == &"bash"
+		var armed_hint := Label.new()
+		armed_hint.text = ("⛏ Bash — click the game you want destroyed:" if bashing
+			else "⚗ Transmute — click the game you want swapped:")
+		armed_hint.add_theme_color_override("font_color",
+			BASH_ORANGE if bashing else UITheme.ACCENT)
+		_controls_row.add_child(armed_hint)
+		_controls_row.add_child(_mini_button("Cancel", cancel_verb))
 	# Rating is opt-in and lives on a button (it never pops itself up): the game you
 	# last reported on stays scorable from here until you report another.
 	if _last_played_game != null:
@@ -3671,6 +3807,45 @@ func _now_playing_text() -> String:
 # strip so that nothing — no modal, no reward screen, no scroll position — can
 # put it out of sight. Repainted from _refresh_stats, which every hp_changed and
 # stats_changed already routes through.
+# The character's token, at the head of the header. Repainted from
+# _refresh_stats like the two chips beside it — a run can only change character
+# by starting over, but the header is built once and start_run() does not rebuild
+# it, so the art has to be able to follow the id.
+const CHARACTER_CHIP := 26
+
+func _build_character_chip() -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.PANEL, 8, 5, 1, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4)))
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
+	# The token answers a hover with who it is — the name is not written out,
+	# because the header's job here is the picture and a name would cost the route
+	# strip beside it the width it is drawn in.
+	_character_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	wrap.add_child(_character_chip)
+	_character_wrap = wrap
+	_paint_character_chip()
+	return wrap
+
+func _paint_character_chip() -> void:
+	if _character_chip == null or not is_instance_valid(_character_chip):
+		return
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	# The ICON here, and the full portrait on the board: a 26px box is a token's
+	# size, and a full figure shrunk into one is a smudge.
+	var tex: Texture2D = null
+	if ch != null:
+		tex = ch.icon if ch.icon != null else ch.portrait
+	_character_chip.texture = tex
+	UITheme.apply_crisp(_character_chip, tex)
+	# Nothing to draw — no character, or one authored without art — so the frame
+	# goes too rather than leaving an empty box in front of the Health.
+	if _character_wrap != null and is_instance_valid(_character_wrap):
+		_character_wrap.visible = tex != null
+	if ch != null:
+		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
+
 func _build_health_chip() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
@@ -3744,6 +3919,7 @@ func _on_gold_changed(_amount: int = 0) -> void:
 
 
 func _refresh_stats(_a = null) -> void:
+	_paint_character_chip()
 	_paint_health_chip()
 	_paint_gold_chip()
 	_refresh_select_stats()
@@ -3768,16 +3944,36 @@ const STAT_FONT := 13
 # readout, and its tooltip says where it actually gets spent, so a charge is never
 # a number with no visible way to use it.
 func _stat_chip(text: String, count: int, tint: Color, tip: String,
-		fire: Callable = Callable()) -> Control:
+		fire: Callable = Callable(), armed: bool = false) -> Control:
 	var live: bool = count > 0
 	if fire.is_valid() and live:
 		var b := Button.new()
-		b.text = text
+		# ARMED reads as armed. The offering below has become a row of targets and
+		# there is a Cancel above it saying so, but the chip the player pressed is
+		# where they will look to find out whether the press took — so it lights: the
+		# verb's colour at full strength, a white rim, and a ✓ on the label. Pressing
+		# it again is the second way out (`_arm_verb`).
+		b.text = ("✓  " + text) if armed else text
 		b.tooltip_text = tip
 		b.add_theme_font_size_override("font_size", STAT_FONT)
-		b.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 8, 1, tint.lerp(UITheme.BG, 0.4)))
-		b.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.58), 6, 8, 1, tint))
-		b.add_theme_color_override("font_color", tint)
+		# A PRESSABLE CHIP HAS TO LOOK PRESSABLE. These sat in a row with the readouts
+		# and wore the same flat rectangle, only a shade brighter — and a row where
+		# some rectangles are buttons and the rest are labels teaches the player that
+		# none of them are. So the live ones are drawn as buttons: a heavier rim in the
+		# verb's own colour, a filled body rather than a wash of the background, room
+		# around the text, and a hand cursor.
+		b.custom_minimum_size = Vector2(0, 30)
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var idle: StyleBox = UITheme.flat(tint.lerp(UITheme.BG, 0.3 if armed else 0.62),
+			6, 10, 2, Color.WHITE if armed else tint.lerp(UITheme.BG, 0.15))
+		var over: StyleBox = UITheme.flat(tint.lerp(UITheme.BG, 0.22 if armed else 0.42),
+			6, 10, 2, Color.WHITE if armed else tint)
+		b.add_theme_stylebox_override("normal", idle)
+		b.add_theme_stylebox_override("hover", over)
+		b.add_theme_stylebox_override("pressed", over)
+		b.add_theme_stylebox_override("focus", over)
+		b.add_theme_color_override("font_color", Color.WHITE if armed else tint.lerp(Color.WHITE, 0.35))
+		b.add_theme_color_override("font_hover_color", Color.WHITE)
 		b.pressed.connect(fire)
 		return b
 	var color: Color = tint if live else UITheme.TEXT_FAINT
@@ -3797,27 +3993,36 @@ func _stat_chip(text: String, count: int, tint: Color, tip: String,
 func _refresh_select_stats() -> void:
 	if _select_stats == null:
 		return
-	# Everything drawn below is one of these six, so the signature is the whole of
-	# what a rebuild could possibly change: the four verb counts, Luck (its own
-	# chip, and the odds quoted in that chip's tooltip), and _dash_mode, which
-	# decides whether Dash is a live button or a readout.
+	# Everything drawn below is one of these, so the signature is the whole of what a
+	# rebuild could possibly change: the four verb counts, Luck (its own chip, and
+	# the odds quoted in that chip's tooltip), `_dash_mode`, which decides whether
+	# Dash is a live button or a readout, and `_armed_verb`, which decides which chip
+	# is lit.
 	var luck: int = Stats.get_value(&"luck")
-	var sig: String = "%d|%d|%d|%d|%d|%s" % [GameState.bash, GameState.dash_charges,
-		GameState.transmute, GameState.scramble, luck, str(_dash_mode)]
+	var sig: String = "%d|%d|%d|%d|%d|%s|%s" % [GameState.bash, GameState.dash_charges,
+		GameState.transmute, GameState.scramble, luck, str(_dash_mode), String(_armed_verb)]
 	if sig == _select_stats_sig and _select_stats.get_child_count() > 0:
 		return
 	_select_stats_sig = sig
 	_clear(_select_stats)
+	# BASH AND TRANSMUTE ARE BUTTONS NOW. They were readouts, with a tooltip pointing
+	# at the game card's action row — "spent from a game's card: click one and press
+	# Bash" — which meant the one surface counting the charge could not spend it, and
+	# the surface that could was a popup about travelling somewhere. They arm here
+	# and aim at a card, like the Dash beside them, so a charge and the way to use it
+	# are finally the same object.
 	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
-		Color(1.0, 0.72, 0.4),
-		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nSpent from a game's card: click one and press Bash."))
+		BASH_ORANGE,
+		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nClick, then click the game you want gone.",
+		arm_bash, _armed_verb == &"bash"))
 	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
 		GameState.dash_charges, DASH_BLUE,
 		"Ignore the offering and travel to ANY connected game.\nClick to pick your destination.",
 		dash if not _dash_mode else Callable()))
 	_select_stats.add_child(_stat_chip("⚗ Transmute %d" % GameState.transmute, GameState.transmute,
 		UITheme.ACCENT,
-		"Swap an offered game for a random off-graph game of the same type.\nSpent from a game's card: click one and press Transmute."))
+		"Swap an offered game for a random off-graph game of the same type.\nClick, then click the game you want swapped.",
+		arm_transmute, _armed_verb == &"transmute"))
 	_select_stats.add_child(_stat_chip("🎲 Scramble %d" % GameState.scramble, GameState.scramble,
 		UITheme.GOLD,
 		"Redraw the whole offering — new games in the slots, each with a fresh goal-enemy.",
@@ -3954,10 +4159,46 @@ func open_item_card(item: ItemData) -> void:
 		and PackStrip.fires_while_reporting(item, _phase == Phase.PLAYING)
 	var card := ItemInfoCard.new()
 	card.use_requested.connect(use_item)
-	card.closed.connect(func(): _item_card = null)
-	add_child(card)
-	_item_card = card
+	_mount_reading_card(card)
 	card.setup(item, usable)
+
+# THE READING CARD GETS ITS OWN LAYER, and this is the whole of why: the loot
+# window is mounted as a `top_level` child of this page (mount_loot_overlay), and
+# `top_level` frees a Control from its parent's TRANSFORM, not from its parent's
+# DRAW ORDER. A card added to the page afterwards is a later sibling and so draws
+# above the window — until the next `refresh_loot_window()`, which unmounts and
+# re-mounts the panel and lands it back on top. Clicking a pill in the pack does
+# exactly that: the click opens the card AND repaints the window behind it, so the
+# card was drawn, immediately buried under the window's own opaque panel, and the
+# gesture read as doing nothing at all.
+#
+# A CanvasLayer is the only thing a page-child overlay cannot climb back over, and
+# LootDropModal already opens the same card this way from the post-combat screen —
+# so the two paths now agree instead of one of them being the lucky one.
+#
+# USE_LAYER (130) is the value that class picked: above the loot window and every
+# gameplay modal, below the run's header bar (135), which stays readable over
+# everything by design.
+const READING_CARD_LAYER := 130
+
+func _mount_reading_card(card: Control) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = READING_CARD_LAYER
+	# The card outlives a paused tree the same way the use modal does: a reward
+	# screen can be holding the tree still while the player reads what they picked
+	# up, and a card that cannot take its own Close button is a soft lock.
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	layer.add_child(card)
+	_item_card = card
+	# The layer is the card's, so it goes when the card does — and only then, since
+	# `close` is what emits `closed` whether it came from the ✕, the scrim, or the
+	# page closing the card to open another one.
+	card.closed.connect(func():
+		if _item_card == card:
+			_item_card = null
+		if is_instance_valid(layer):
+			layer.queue_free())
 
 func _close_item_card() -> void:
 	if _item_card != null and is_instance_valid(_item_card):
@@ -3978,9 +4219,7 @@ func open_loot_card(index: int) -> void:
 	_close_item_card()
 	var card := LootInfoCard.new()
 	card.use_requested.connect(use_loot)
-	card.closed.connect(func(): _item_card = null)
-	add_child(card)
-	_item_card = card
+	_mount_reading_card(card)
 	# ALWAYS SPENDABLE (§4.3). The mid-report lock holds the pack still; it does
 	# not stop a piece being used, and a piece whose effect cannot land right now
 	# fizzles rather than being refused.
@@ -4619,6 +4858,14 @@ func _build_ui() -> void:
 	# so nothing is ever hidden underneath it.
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
+	# WHO the Health belongs to, immediately left of it. The board grew the full
+	# character portrait at its head (BattlefieldView._hero_texture), and that is the
+	# right place for the figure — but the board is one panel among several, and it
+	# is covered by every modal the run raises, so for most of a run the header was
+	# the only thing on screen and it never said whose run this was. The icon is the
+	# token art, which is exactly what a 22px chip wants, and it rides the header for
+	# the same reason Health does: nothing can put it out of sight.
+	header.add_child(_build_character_chip())
 	header.add_child(_build_health_chip())
 	header.add_child(_build_gold_chip())
 	_route_strip = HBoxContainer.new()
@@ -5143,8 +5390,15 @@ func _build_attempt_strip() -> Control:
 	# NO HOVER TEXT on either of these two. The button says what it does and the
 	# pips beside it say what the next press costs — a paragraph explaining a verb
 	# the player has already pressed a dozen times is a tooltip nobody reads twice.
-	_attempt_btn.text = "Lost a run  ⚔"
-	_attempt_btn.custom_minimum_size = Vector2(0, 30)
+	#
+	# THE COST IS ON THE BUTTON, in a second line under the verb. It used to be a
+	# sentence off to the right — "Every lost run gives the enemies a turn — your
+	# shields stay" — which is a rule stated once, next to a button pressed forty
+	# times, and it read as page furniture within a game or two. What the press
+	# actually does is not a footnote to the press: it is what the button IS, so it
+	# is written on it, in the terms the board is in, in the colour the board uses
+	# for a turn going against you.
+	_attempt_btn.text = "Lost a run  ⚔\n+1 Enemy Turn"
 	_attempt_btn.add_theme_font_size_override("font_size", 13)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
@@ -5155,16 +5409,33 @@ func _build_attempt_strip() -> Control:
 	_attempt_count.add_theme_font_size_override("font_size", 13)
 	row.add_child(_attempt_count)
 
+	# THE PIPS GET A WORD OVER THEM. "◈◆◆" is a shape, and a shape beside a row of
+	# other numbers is only a reading once you already know what it is — the board
+	# draws the same pips over the hero's head, where the portrait under them says
+	# whose they are, and here they had nothing at all. So the column is captioned,
+	# and the caption is the plain noun rather than a glyph key.
+	var shield_col := VBoxContainer.new()
+	shield_col.add_theme_constant_override("separation", 0)
+	shield_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_attempt_shield_head = Label.new()
+	_attempt_shield_head.text = "Shields"
+	_attempt_shield_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_attempt_shield_head.add_theme_font_size_override("font_size", 11)
+	_attempt_shield_head.add_theme_color_override("font_color", SHIELD_BLUE.lerp(UITheme.TEXT_DIM, 0.35))
+	shield_col.add_child(_attempt_shield_head)
+
 	_attempt_pips = Label.new()
+	_attempt_pips.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_attempt_pips.add_theme_font_size_override("font_size", 16)
 	_attempt_pips.add_theme_color_override("font_color", SHIELD_BLUE)
-	row.add_child(_attempt_pips)
+	shield_col.add_child(_attempt_pips)
+	row.add_child(shield_col)
 
-	_attempt_hint = Label.new()
-	_attempt_hint.add_theme_font_size_override("font_size", 12)
-	_attempt_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_attempt_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	row.add_child(_attempt_hint)
+	# The strip still ends in a stretch, so the escape hint and the tracker keep the
+	# widths they had — the sentence that used to fill it has moved onto the button.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
 	return wrap
 
 # Repaint the attempt strip: how many runs have been lost, the shields still
@@ -5188,12 +5459,11 @@ func _refresh_attempts() -> void:
 	if bonus > 0:
 		_attempt_pips.tooltip_text += ("\n◈ %s — used after those, and they stay.") % (
 			GameState.shields_text(bonus))
-	# What the next press ACTUALLY does, in the terms the board is in: not a
-	# number off the corner of the screen but a move by everything standing on it.
-	# Said before it happens, because it is the reason to stop playing this game
-	# and report it (§3).
-	_attempt_hint.text = "Every lost run gives the enemies a turn — your shields stay."
-	_attempt_hint.add_theme_color_override("font_color", UITheme.DANGER)
+	# The caption carries what the sentence beside the strip used to: a lost run
+	# does NOT spend one of these. That is the half of the rule the button's own
+	# "+1 Enemy Turn" cannot say, and the pips are what it is about.
+	_attempt_shield_head.tooltip_text = ("These do not go when you lose a run — only "
+		+ "a hit takes one.\nHover the pips for what each is worth.")
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
 	# THERE IS NO UNDO BESIDE THE TRACKER any more. It was there because the

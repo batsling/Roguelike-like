@@ -2564,11 +2564,23 @@ func can_fire_item(item: ItemData) -> bool:
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
 		# Overworld actives (Winged Boots) fire only on the map — never in combat,
-		# where their effect would no-op and waste a use. Ordinary USABLE items are
-		# the inverse: combat/event only.
+		# where their effect would no-op and waste a use.
 		if item.overworld_usable:
 			return overworld_scene != null
-		return can_use_items()
+		# An ordinary USABLE used to be the inverse — combat/event ONLY — and in the
+		# games-first build that is a rule with nothing on the other side of it.
+		# There is no combat scene any more, so `can_use_items` is really asking "is
+		# an event open", and a relic like the IV Bag (spend 1 Health, take 1 Gold,
+		# unlimited uses) sat in the pack with a Use button that would not press
+		# except during the seconds an event happened to be up. Its whole point is
+		# that you can pump it whenever you want the gold.
+		#
+		# `overworld_usable` still means something — it is the marker for an active
+		# whose EFFECT needs the map (a jump, a teleport, an obtain) and would no-op
+		# anywhere else, which is why it is checked first and answered strictly. A
+		# plain usable needs nothing in particular, so it fires wherever the player
+		# is standing.
+		return can_use_items() or overworld_scene != null
 	return false
 
 # Whether the OVERWORLD is mounted and able to act on a loot effect that needs it.

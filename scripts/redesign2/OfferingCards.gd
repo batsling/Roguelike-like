@@ -304,12 +304,45 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# them is the noisiest possible way to say it. The cards are for scanning.
 	var btn := Button.new()
 	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.GOLD if amulet else UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
+	# A CARD UNDER AN ARMED VERB IS A TARGET, and it is drawn as one. Bash and
+	# Transmute are aimed from the chips below the offering (Overworld2._armed_verb),
+	# and while one is up a click on this cover fires it instead of opening the card
+	# — so the cards cannot look the way they do when a click means "tell me about
+	# this". They wear the verb's own colour at rest, not only on hover.
+	#
+	# The Amulet is the exception under a Bash, because bashing it is refused (it
+	# would destroy the run's goal): it keeps its gold frame and says why on the
+	# hover, rather than lighting up as a target that then argues back.
+	# Never on the stay-or-return pair (§10): those two cards MOVE the run rather
+	# than offering it a game, there is no slot to reshape, and `open_choice` refuses
+	# an armed click there — so lighting them as targets would be a promise the click
+	# does not keep.
+	var armed: StringName = &"" if _page._asking_return() else _page.armed_verb()
+	var aimable: bool = armed != &"" and not (armed == &"bash" and amulet)
+	# The verb's OWN colour, the one its chip and its prompt are already wearing
+	# (Overworld2.BASH_ORANGE / UITheme.ACCENT) — three near-matches would read as
+	# three mechanics rather than as one verb pointing at these cards.
+	var aim_tint: Color = _page.BASH_ORANGE if armed == &"bash" else UITheme.ACCENT
+	var rest_border: Color = UITheme.GOLD if amulet else UITheme.BORDER
+	if aimable:
+		rest_border = aim_tint
+	var frame_n := UITheme.flat(
+		aim_tint.lerp(UITheme.BG, 0.82) if aimable else UITheme.BG,
+		8, 4, 2 if aimable else 1, rest_border)
+	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, aim_tint if aimable else accent)
 	btn.add_theme_stylebox_override("normal", frame_n)
 	btn.add_theme_stylebox_override("hover", frame_h)
 	btn.add_theme_stylebox_override("pressed", frame_h)
 	btn.add_theme_stylebox_override("focus", frame_h)
+	# The one place the offering carries a tooltip (see the note above about why it
+	# normally does not): while a verb is armed the click means something other than
+	# it usually does, and that is worth saying on the thing being clicked.
+	if armed == &"bash":
+		btn.tooltip_text = ("%s holds the Amulet — it cannot be bashed." % game.display_name
+			) if amulet else ("⛏ Bash %s — it leaves the pool for the rest of the run."
+			% game.display_name)
+	elif armed == &"transmute":
+		btn.tooltip_text = "⚗ Transmute %s — this spot plays a different game instead." % game.display_name
 	btn.pressed.connect(func(): _page.open_choice(index))
 	btn.mouse_entered.connect(func(): show_preview(index))
 	btn.mouse_exited.connect(clear_hover_grant)
