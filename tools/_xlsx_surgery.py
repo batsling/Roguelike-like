@@ -2,10 +2,11 @@
 """Edit one sheet of tools/Roguelikes.xlsx without destroying the rest of it.
 
 openpyxl cannot round-trip this workbook: loading and saving it silently drops
-the seven charts on `Map Analysis` and anything else openpyxl does not model. So
+the eight charts on `Map Analysis` and anything else openpyxl does not model. So
 the sheet-editing one-shots here read the .xlsx as the zip it is, rewrite only
-the two parts that describe one sheet (`xl/worksheets/sheetN.xml` and its
-`xl/tables/tableN.xml`), and copy every other entry through byte-for-byte.
+the parts that describe one sheet (`xl/worksheets/sheetN.xml` and, where the
+sheet has exactly one, its `xl/tables/tableN.xml`), and copy every other entry
+through byte-for-byte.
 
 Usable ONLY on sheets that are plain value grids — no formulas, no per-cell
 styles — because `write_grid` regenerates the whole `<sheetData>` from values.
@@ -14,12 +15,20 @@ becoming a silent data loss the next time someone points this at `Map Calc`.
 
     from _xlsx_surgery import Workbook
     with Workbook("tools/Roguelikes.xlsx") as wb:
-        grid = wb.read_grid("items2.0")
+        grid = wb.read_grid("items")
         grid.append(["Oddly Smooth Stone", "Common", ...])
-        wb.write_grid("items2.0", grid)
+        wb.write_grid("items", grid)
 
 Nothing is written until the context manager exits cleanly, so a parse error
 part-way through leaves the workbook untouched.
+
+A SHEET CAN CARRY MORE THAN ONE TABLE, and `scrolls` does — three, in three
+column blocks. Resizing is only meaningful when one table spans the sheet, so a
+multi-table sheet keeps every table exactly as it is and refuses a grid that
+would change its shape. `audit()` (also `python3 tools/_xlsx_surgery.py`) checks
+every table in a workbook against the rules Excel enforces on open; run it after
+a one-shot, because Excel reports a broken table as "Removed Part" days later
+and names only a tableN.xml.
 """
 
 import os
@@ -28,6 +37,10 @@ import shutil
 import zipfile
 
 _NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+# Stands in for a `name=` match that isn't there, so a malformed tableColumn reads
+# as unnamed (and gets a name) rather than raising out of a list comprehension.
+_BLANK = re.match(r"()", "")
 
 
 def col_name(idx: int) -> str:
@@ -86,12 +99,21 @@ class Workbook:
     # --- locating a sheet -------------------------------------------------
 
     def sheet_parts(self, sheet_name: str):
-        """(worksheet part, table part or None) for a sheet, resolved BY NAME.
+        """(worksheet part, [table parts]) for a sheet, resolved BY NAME.
 
         The rId in workbook.xml is not the number in the sheetN.xml filename —
-        `items2.0` is rId4 but lives in sheet4.xml only by coincidence, and
+        `items` is rId4 but lives in sheet4.xml only by coincidence, and
         guessing that mapping is how you edit the wrong sheet. Always resolve
         through the rels.
+
+        ALL of the sheet's tables, not the first one. A sheet may carry several
+        side-by-side — `scrolls` has three (the roster at A1:H9, the whole-name
+        bag at J1:K37, the syllables at M1:N40) — and taking `re.search`'s first
+        match gave whichever the rels happened to list first, which is how one
+        edit to the roster resized the SYLLABLE table to span the whole sheet and
+        handed Excel a table with three columns called "Game" and two called
+        nothing. Excel deletes a table part it cannot repair, so the damage does
+        not show up until someone opens the workbook.
         """
         wb = self._by_name["xl/workbook.xml"].decode("utf-8")
         m = re.search(r'<sheet name="%s"[^>]*r:id="(rId\d+)"' % re.escape(sheet_name), wb)
@@ -100,15 +122,14 @@ class Workbook:
         rels = self._by_name["xl/_rels/workbook.xml.rels"].decode("utf-8")
         target = dict(re.findall(r'Id="(rId\d+)"[^>]*Target="([^"]+)"', rels))[m.group(1)]
         part = "xl/" + target.lstrip("/")
-        table = None
+        tables = []
         rel_path = "xl/worksheets/_rels/%s.rels" % os.path.basename(part)
         if rel_path in self._by_name:
             raw = self._by_name[rel_path].decode("utf-8")
-            tm = re.search(r'Target="([^"]*tables/[^"]+)"', raw)
-            if tm:
-                table = "xl/" + os.path.normpath(
-                    os.path.join("worksheets", tm.group(1))).replace(os.sep, "/")
-        return part, table
+            for tm in re.findall(r'Target="([^"]*tables/[^"]+)"', raw):
+                tables.append("xl/" + os.path.normpath(
+                    os.path.join("worksheets", tm)).replace(os.sep, "/"))
+        return part, sorted(tables)
 
     # --- creating a sheet -------------------------------------------------
 
@@ -190,7 +211,7 @@ class Workbook:
     def read_grid(self, sheet_name: str) -> list:
         """The sheet as a list of row lists, header row first. Values are str,
         int or float; blank cells are ''. Refuses a sheet containing formulas."""
-        part, _ = self.sheet_parts(sheet_name)
+        part, _tables = self.sheet_parts(sheet_name)
         xml = self._by_name[part].decode("utf-8")
         if "<f>" in xml or "<f " in xml:
             raise ValueError(
@@ -222,16 +243,34 @@ class Workbook:
 
         Strings are written as inline strings, so nothing has to be appended to
         sharedStrings and no other sheet's indices can shift. The `<dimension>`,
-        each row's `spans`, and the sheet's table (its ref, autofilter and column
-        list) are all resized to match.
+        each row's `spans`, and — on a sheet with exactly ONE table — that table
+        (its ref, autofilter and column list) are all resized to match.
+
+        A SHEET WITH SEVERAL TABLES KEEPS ALL OF THEM EXACTLY AS THEY ARE, and a
+        grid that would change such a sheet's shape is refused outright. `last`
+        below is computed from the whole grid, which is the right answer only when
+        one table spans the sheet; on `scrolls`, where three tables sit side by
+        side in three column blocks, there is no way to tell from a grid of values
+        which block gained a row. So a value edit (the common case, and all this
+        module is for) goes through untouched, and anything structural stops here
+        with a message rather than silently rewriting one table over the top of
+        the other two.
         """
-        part, table = self.sheet_parts(sheet_name)
+        part, tables = self.sheet_parts(sheet_name)
         xml = self._by_name[part].decode("utf-8")
         rows = len(grid)
         cols = max((len(r) for r in grid), default=0)
         if rows == 0 or cols == 0:
             raise ValueError("refusing to write an empty grid to %s" % sheet_name)
         last = "%s%d" % (col_name(cols - 1), rows)
+        if len(tables) > 1:
+            was = re.search(r'<dimension ref="A1:([A-Z]+\d+)"/>', xml)
+            if was is None or was.group(1) != last:
+                raise ValueError(
+                    "%s carries %d tables in separate column blocks, so this module "
+                    "cannot resize them (A1:%s -> A1:%s). Edit values only here, or "
+                    "fix the table refs by hand in Excel."
+                    % (sheet_name, len(tables), was.group(1) if was else "?", last))
 
         body = []
         for i, row in enumerate(grid, start=1):
@@ -253,23 +292,111 @@ class Workbook:
         xml = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:%s"/>' % last, xml)
         self._dirty[part] = xml.encode("utf-8")
 
-        if table is not None:
-            self._write_table(table, grid[0], last)
+        if len(tables) == 1:
+            self._write_table(tables[0], grid[0], last)
 
     def _write_table(self, table_part: str, headers: list, last_ref: str) -> None:
         xml = self._by_name[table_part].decode("utf-8")
+        elements = re.findall(r"<tableColumn\b[^>]*/>", xml)
+        old = [(re.search(r'\bname="([^"]*)"', e) or _BLANK).group(1) for e in elements]
         xml = re.sub(r'(<table[^>]*\sref=")[^"]*(")', r"\g<1>A1:%s\g<2>" % last_ref, xml)
         xml = re.sub(r'(<autoFilter[^>]*\sref=")[^"]*(")', r"\g<1>A1:%s\g<2>" % last_ref, xml)
-        # Rebuilt wholesale: a renamed or added column has to keep the ids
-        # contiguous, and Excel rejects a tableColumns count that disagrees with
-        # its children. The xr3:uid attributes are optional and dropped.
-        columns = "".join('<tableColumn id="%d" name="%s"/>' % (i + 1, _esc(str(h)))
-                          for i, h in enumerate(headers))
+        # Rebuilt, but not from scratch: a renamed or added column has to keep the
+        # ids contiguous, and Excel rejects a tableColumns count that disagrees
+        # with its children. A column whose name has NOT changed is copied through
+        # as the element it already was, so its xr3:uid and any dataDxfId survive —
+        # this module's whole promise is that it changes what you asked for and
+        # nothing else, and re-running a one-shot on an unchanged sheet should come
+        # out byte-identical rather than quietly shedding attributes each pass.
+        names = _table_column_names(headers, old)
+        parts = []
+        for i, n in enumerate(names):
+            if i < len(elements) and old[i] == n:
+                parts.append(re.sub(r'\bid="\d+"', 'id="%d"' % (i + 1), elements[i], count=1))
+            else:
+                parts.append('<tableColumn id="%d" name="%s"/>' % (i + 1, _esc(n)))
+        columns = "".join(parts)
         xml = re.sub(r"<tableColumns[^>]*>.*?</tableColumns>",
                      lambda _m: '<tableColumns count="%d">%s</tableColumns>' % (
-                         len(headers), columns),
+                         len(names), columns),
                      xml, flags=re.S)
         self._dirty[table_part] = xml.encode("utf-8")
+
+
+def audit(path: str) -> list:
+    """Every table part in `path` that Excel would refuse to open cleanly.
+
+    Excel reports a broken table only as "Removed Part" / "Repaired Records" the
+    next time somebody opens the file, which is days after the edit that did it
+    and names an `xl/tables/tableN.xml` nobody can map back to a sheet. This says
+    the same thing in the same breath as the edit, and names the sheet.
+
+    The three rules it knows are the three a `tableColumns` block has to keep:
+    every name non-empty, every name unique within its table (case-insensitively),
+    and the declared `count` equal to the number of children.
+
+    Run it after any one-shot: `python3 tools/_xlsx_surgery.py tools/Roguelikes.xlsx`
+    """
+    problems = []
+    with Workbook(path) as wb:
+        wbx = wb._by_name["xl/workbook.xml"].decode("utf-8")
+        for sm in re.finditer(r'<sheet name="([^"]+)"', wbx):
+            sheet = _unescape(sm.group(1))
+            try:
+                _part, tables = wb.sheet_parts(sheet)
+            except KeyError:
+                continue
+            for t in tables:
+                xml = wb._by_name[t].decode("utf-8")
+                names = re.findall(r'<tableColumn\b[^>]*\bname="([^"]*)"', xml)
+                count = re.search(r'<tableColumns[^>]*\bcount="(\d+)"', xml)
+                ref = re.search(r'<table\b[^>]*\sref="([^"]*)"', xml)
+                where = "%s / %s (%s)" % (sheet, os.path.basename(t),
+                                          ref.group(1) if ref else "?")
+                seen = {}
+                for i, n in enumerate(names):
+                    if not n.strip():
+                        problems.append("%s: column %d has no name" % (where, i + 1))
+                    key = n.strip().lower()
+                    if key and key in seen:
+                        problems.append("%s: columns %d and %d are both named %r"
+                                        % (where, seen[key] + 1, i + 1, n))
+                    seen.setdefault(key, i)
+                if count and int(count.group(1)) != len(names):
+                    problems.append("%s: count=%s but %d columns"
+                                    % (where, count.group(1), len(names)))
+    return problems
+
+
+def _table_column_names(headers: list, old: list) -> list:
+    """Header row -> table column names Excel will actually accept.
+
+    A `tableColumn` name must be NON-EMPTY and UNIQUE within its table; Excel
+    deletes a table that breaks either rule and tells you so on open, long after
+    the edit that did it. A header row is under no such obligation — it is only
+    text in cells — so the two cannot be copied across verbatim.
+
+    Renames still follow the header, because that is what the rebuild is for. A
+    blank header keeps whatever the workbook already called that column and falls
+    back to Excel's own "ColumnN"; a duplicate gets Excel's own suffix ("Game",
+    "Game2", "Game3"). Compared case-insensitively, which is the comparison Excel
+    itself makes.
+    """
+    used = set()
+    out = []
+    for i, h in enumerate(headers):
+        base = str(h).strip()
+        if not base:
+            base = str(old[i]).strip() if i < len(old) and str(old[i]).strip() \
+                else "Column%d" % (i + 1)
+        name = base
+        n = 1
+        while name.lower() in used:
+            n += 1
+            name = "%s%d" % (base, n)
+        used.add(name.lower())
+        out.append(name)
+    return out
 
 
 def _col_index(letters: str) -> int:
@@ -312,3 +439,14 @@ def _cell_xml(ref: str, value) -> str:
         return '<c r="%s"><v>%s</v></c>' % (ref, value)
     return '<c r="%s" t="inlineStr"><is><t xml:space="preserve">%s</t></is></c>' % (
         ref, _esc(str(value)))
+
+
+if __name__ == "__main__":
+    import sys
+    target = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "Roguelikes.xlsx")
+    found = audit(target)
+    for line in found:
+        print(line)
+    print("%s: %d table problem(s)" % (os.path.basename(target), len(found)))
+    sys.exit(1 if found else 0)
