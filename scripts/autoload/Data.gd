@@ -26,6 +26,7 @@ var _bosses: Dictionary = {}            # StringName -> GoalEnemyData (boss=true
 var _statuses: Dictionary = {}          # StringName -> StatusData (§13)
 var _tiles: Dictionary = {}             # StringName -> TileEffectData (§17)
 var _units: Dictionary = {}             # StringName -> UnitData (§17)
+var _abilities: Dictionary = {}         # StringName -> AbilityData (§7.6)
 var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
 var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
@@ -48,6 +49,7 @@ func _ready() -> void:
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
+	_load_dir("res://data/abilities2.0/", _abilities)
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
@@ -55,10 +57,10 @@ func _ready() -> void:
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d statuses, %d tiles, %d units, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
 		_scrolls.size(), _pills.size(), _statuses.size(), _tiles.size(), _units.size(),
-		_events2.size(), _curses2.size(), _objects2.size()
+		_abilities.size(), _events2.size(), _curses2.size(), _objects2.size()
 	])
 
 func _load_dir(path: String, target: Dictionary) -> void:
@@ -358,6 +360,15 @@ func get_character2(id: StringName) -> CharacterData:
 func get_item2(id: StringName) -> ItemData:
 	return _items2.get(id)
 
+# An item by id from EITHER set, 2.0 first. For the places that hold an id taken
+# off a relic the player was actually carrying and have to find it again — a
+# Theft's haul coming back off a dead thief (§7.6), and anything else that has to
+# round-trip an inventory entry through a save. `get_item` alone is the pre-2.0
+# table and would quietly fail to give back every relic in the current build.
+func get_item_any(id: StringName) -> ItemData:
+	var found: ItemData = _items2.get(id)
+	return found if found != null else _items.get(id)
+
 func get_goal_enemy(id: StringName) -> GoalEnemyData:
 	return _goal_enemies.get(id)
 
@@ -496,6 +507,27 @@ func get_unit(id: StringName) -> UnitData:
 
 func all_units() -> Array:
 	return _units.values()
+
+# --- enemy abilities (§7.6) ------------------------------------------------
+#
+# The CATALOGUE only: an ability's name, its type, how many arguments it takes and
+# the sentence it prints. Which enemy has which is GoalEnemyData.abilities, and
+# what one DOES is GameLoop2 — see AbilityData for why that split exists.
+
+func get_ability(id: StringName) -> AbilityData:
+	return _abilities.get(id)
+
+func all_abilities() -> Array:
+	return _abilities.values()
+
+# The ability's authored name, falling back to a title-cased slug so a UI that
+# meets an id the catalogue has never heard of still prints something a human can
+# read rather than an empty chip.
+func ability_name(id: StringName) -> String:
+	var a: AbilityData = get_ability(id)
+	if a != null:
+		return a.display_name
+	return String(id).replace("_", " ").capitalize()
 
 func all_items() -> Array:
 	return _items.values()

@@ -125,6 +125,20 @@ func _pick_solo(index: int) -> void:
 	_ui.pick(index)
 	if GameLoop2.escort_instance() > 0:
 		GameLoop2.despawn(GameLoop2.escort_instance())
+	_disarm_board()
+
+# Strip the abilities (§7.6) off everything standing on the board.
+#
+# The offering rolls a RANDOM enemy, and an ability changes what a turn of the
+# board does: a Carcass lays a body, an Obscura makes two, a Cultist spends its
+# turn stacking Strength instead of swinging. A screen test that counted bodies or
+# expected a hit was therefore only USUALLY true — passing on the forty-odd
+# ordinary enemies and failing on the handful that have one, which reads exactly
+# like a flake and is not one. This file is about the SCREEN; the abilities have
+# their own file (test_enemy_abilities.gd) where they are the subject.
+func _disarm_board() -> void:
+	for entry in GameLoop2.stack:
+		entry["abilities"] = []
 
 # Wait for the board's resolve playback to hand the screen back, however long it
 # runs. NOT a fixed sleep: a playback is one beat per TURN (§7.4) and a beat is
@@ -4740,11 +4754,17 @@ func _bleed_at_the_game_in_play() -> void:
 	GameState.hp = 99
 	GameState.shields = 0
 	GameState.bonus_shields = 0
-	for entry in GameLoop2.stack:
-		entry["col"] = 1
+	_front_line()
 	var before: int = GameState.hp
 	_lose_runs(1)
 	assert_lt(GameState.hp, before, "something on the board got through")
+
+# Stand every body in the front column and disarm it, so one turn of the board is
+# one swing from each of them. See _disarm_board for why the second half matters.
+func _front_line() -> void:
+	_disarm_board()
+	for entry in GameLoop2.stack:
+		entry["col"] = 1
 
 # Mark the game in play as already beaten THIS RUN, the way a real clear does.
 func _mark_beaten_this_run(game: GameData) -> void:
@@ -5039,8 +5059,7 @@ func test_escaping_still_owes_the_road_its_extra_turns() -> void:
 	GameState.hp = 40
 	GameState.shields = 0
 	GameState.bonus_shields = 0
-	for entry in GameLoop2.stack:
-		entry["col"] = 1                       # in reach, so the turns are swings
+	_front_line()                              # in reach, so the turns are swings
 	var swingers: int = GameLoop2.stack.size()
 	var dmg: int = 0
 	for entry in GameLoop2.stack:

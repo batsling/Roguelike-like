@@ -57,7 +57,7 @@ XLSX_PATH = dsl.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "events2.0")
 IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "events")
 IMG_RES_PREFIX = "res://images2.0/events/"
-SHEET = "events2.0"
+SHEET = "events"
 # Six `Choice N | Repeat N | Result N | Effect N` groups. It was four until the
 # Golden Idol needed five: Take and Leave, then the three ways out from under the
 # boulder, which are gated behind Take rather than replacing it. A blank Choice N
@@ -412,7 +412,7 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
             cid = m.group(1).lower()
             if cid not in curse_ids:
                 raise ValueError("events2.0 %s: add_curse names unknown curse %r "
-                                 "(curses2.0 has: %s)"
+                                 "(the curses sheet has: %s)"
                                  % (where, cid, ", ".join(sorted(curse_ids)) or "none"))
             # games 0 = "use the curse's own Timer", so a re-tuned curse retunes
             # every event that hands it out.
@@ -616,11 +616,11 @@ def cross_sheet_ids(wb):
     the same grammar and so has the same three things to check.
     """
     curse_ids = set()
-    if "curses2.0" in wb.sheetnames:
-        curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses2.0"])}
+    if "curses" in wb.sheetnames:
+        curse_ids = {dsl.slugify(r["Curse"]) for r in dsl.rows(wb["curses"])}
     item_ids = set()
-    if "items2.0" in wb.sheetnames:
-        for r in dsl.rows(wb["items2.0"]):
+    if "items" in wb.sheetnames:
+        for r in dsl.rows(wb["items"]):
             name = str(r["Name"]).strip()
             item_ids.add(dsl.slugify(name))
             # So a reward line can print the item's real name rather than a
@@ -629,8 +629,8 @@ def cross_sheet_ids(wb):
     # `spawn_enemy tag=` against the goal-enemy sheet's Tag column, which is a
     # comma list per row ("cat, robot").
     enemy_tags = set()
-    if "enemies2.0" in wb.sheetnames:
-        for r in dsl.rows(wb["enemies2.0"]):
+    if "enemies" in wb.sheetnames:
+        for r in dsl.rows(wb["enemies"]):
             for t in dsl._clean(r.get("Tag")).split(","):
                 if t.strip():
                     enemy_tags.add(t.strip().lower())

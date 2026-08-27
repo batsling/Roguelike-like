@@ -897,6 +897,19 @@ func _booted():
 		GameLoop2.despawn(GameLoop2.escort_instance())
 	return ui
 
+# Strip the abilities (§7.6) off everything on the board.
+#
+# The offering rolls a RANDOM enemy, and an ability can spend a body's whole turn
+# on something other than you — a Cultist's Ritual, a Revola's Defensive Stance, a
+# Carcass laying a fly. A test that assumed a turn of the board was a swing was
+# therefore only USUALLY true: it passed on the forty-odd ordinary enemies and
+# failed on the handful with a first-turn intent, which reads exactly like a flake
+# and is not one. These tests are about STATUSES; the abilities have their own
+# file (test_enemy_abilities.gd).
+func _disarm_board() -> void:
+	for entry in GameLoop2.stack:
+		entry["abilities"] = []
+
 func test_the_hero_strip_shows_the_players_statuses() -> void:
 	var ui = _booted()
 	assert_false(ui._board._hero_statuses.visible, "hidden while nothing is on you")
@@ -1081,12 +1094,11 @@ func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var node: Control = ui._board._enemy_nodes.get(inst)
 	assert_not_null(node, "the body has a node on the board")
 	var badges: Control = node.get_meta("badges")
-	# The strip is the one badge child that is a container of pips rather than a
-	# label, and it hangs BELOW the box (a negative bottom offset).
-	var strip: Control = null
-	for child in badges.get_children():
-		if child is HBoxContainer:
-			strip = child
+	# BY NAME. It used to be "the last HBoxContainer under the badges", which was an
+	# identity only while there were two of them — the ⚠ corner row (§7.6) is a
+	# third, and it is added last, so the old finder silently started asserting
+	# about the wrong node.
+	var strip: Control = badges.get_node_or_null(BattlefieldView.STATUS_STRIP_NAME)
 	assert_not_null(strip, "a status strip was added")
 	assert_eq(strip.get_child_count(), 1, "one pip for the one status")
 	# Pinned to the box's BOTTOM edge and pushed outward from it — the two halves
@@ -1330,6 +1342,10 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	# this needs a bigger pool than a top-up would give it.
 	GameState.max_hp = 40
 	GameState.hp = 40
+	# An ability can spend a body's whole turn on something other than you (§7.6)
+	# and the offering rolls a RANDOM enemy, so "two turns is two swings" was only
+	# usually true. This test is about MARKED.
+	_disarm_board()
 	var swing: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
 	# Two turns of the board, bought outright: reporting a game hands out only the
 	# Amulet's extra turns (§7.4) and this run's distance is whatever the random
@@ -1362,6 +1378,7 @@ func test_an_unmarked_player_still_blocks_with_shields_first() -> void:
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
+	_disarm_board()
 	GameState.shields = 10
 	GameState.bonus_shields = 0
 	var before: int = GameState.hp

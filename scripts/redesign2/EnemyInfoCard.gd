@@ -105,7 +105,9 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	var art_frame := PanelContainer.new()
 	art_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 10, 8, 1, accent.lerp(UITheme.BG, 0.4)))
 	art_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var art := UITheme.crisp_tex(e.image, 132)
+	# THE PHASE'S portrait (§7.6) — a multi-phase boss is several pictures of one
+	# sheet row, and the card has to show the body actually standing there.
+	var art := UITheme.crisp_tex(GameLoop2.entry_image(entry), 132)
 	art_frame.add_child(art)
 	top.add_child(art_frame)
 
@@ -141,6 +143,17 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		position_note if position_note != "" else _position_text(entry, col), accent))
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
+	# WHICH BODY OF ITSELF THIS IS (§7.6). Only for a boss authored with phases —
+	# every other enemy has exactly one, and a "phase 1 of 1" row on all of them is
+	# a line of noise per card.
+	var phase: String = GameLoop2.phase_note(entry)
+	if phase != "":
+		# ↻ and not a fresh symbol: the shipped glyph subsets carry what the source
+		# already draws (tools/build_glyph_font.py), this file already uses it, and
+		# "it comes back round" is what a phase is.
+		stat_col.add_child(_stat_row("↻", "Phase",
+			"%s — each one carries its own goal, and Undying brings the next" % phase,
+			Color(0.86, 0.66, 1.0)))
 	var stun: int = int(entry.get("stun", 0))
 	if stun > 0:
 		# A stun costs one TURN, and a turn is what a lost run buys the board (§3.2)
@@ -178,6 +191,33 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		chips.add_child(_chip(String(e.tag), UITheme.TEXT_DIM))
 	inner.add_child(chips)
 
+	# THE ABILITIES (§7.6), spelled out. The board's ⚠ says a body has one and its
+	# hover names them in a line each; this is the place a player has already
+	# stopped to read, so each gets its own row with the sentence the sheet wrote,
+	# arguments filled in.
+	#
+	# Off the ENTRY and not the resource, which is the whole reason this reads
+	# correctly for a summoned body: the Illusion an Obscura hands its copies was
+	# never authored on them, and a card built from the sheet would show an
+	# ordinary enemy carrying an ordinary goal — exactly the thing the player must
+	# not be allowed to believe about an illusion.
+	var abilities: Array = GameLoop2.ability_lines(entry)
+	if not abilities.is_empty():
+		var wrap := PanelContainer.new()
+		wrap.add_theme_stylebox_override("panel", UITheme.flat(
+			UITheme.BG, 8, 10, 1, ABILITY_TINT.lerp(UITheme.BG, 0.55)))
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 6)
+		var hdr := Label.new()
+		hdr.text = "ABILITIES"
+		hdr.add_theme_font_size_override("font_size", 11)
+		hdr.add_theme_color_override("font_color", ABILITY_TINT)
+		box.add_child(hdr)
+		for row in abilities:
+			box.add_child(_ability_row(row))
+		wrap.add_child(box)
+		inner.add_child(wrap)
+
 	# Statuses riding this body (§13) — art, name and stack count, on their own row
 	# rather than crammed into the chip strip, because the card is where a player
 	# comes to actually READ what is on an enemy. Tinted by what their ENEMY side
@@ -203,13 +243,13 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		inner.add_child(strip)
 
 	# The goal — the thing you actually have to do — gets its own panel.
-	if e.goal != "":
+	if GameLoop2.entry_goal(entry) != "":
 		var goal_wrap := PanelContainer.new()
 		goal_wrap.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 12, 1, UITheme.GOLD.lerp(UITheme.BG, 0.55)))
 		var goal_box := VBoxContainer.new()
 		goal_box.add_theme_constant_override("separation", 3)
 		var goal_hdr := Label.new()
-		goal_hdr.text = "GOAL  (%s)" % String(e.goal_type).capitalize()
+		goal_hdr.text = "GOAL  (%s)" % String(GameLoop2.entry_goal_type(entry)).capitalize()
 		goal_hdr.add_theme_font_size_override("font_size", 11)
 		goal_hdr.add_theme_color_override("font_color", UITheme.GOLD)
 		goal_box.add_child(goal_hdr)
@@ -322,6 +362,41 @@ func _stat_row(icon: String, label: String, value: String, color: Color) -> Cont
 	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(val)
 	return row
+
+# One ability: its name, and the sentence it prints with its arguments filled in.
+# The type ("Attack", "Death", "Movement") rides along as a small chip, because it
+# is the one thing about an ability a player can generalise from — a `death`
+# ability is something that happens if you kill it, which is a different kind of
+# planning from an `attack` one.
+const ABILITY_TINT := Color(1.0, 0.78, 0.28)
+
+func _ability_row(row: Dictionary) -> Control:
+	var ad: AbilityData = row["ability"]
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	var mark := Label.new()
+	mark.text = "⚠"
+	mark.add_theme_font_size_override("font_size", 13)
+	mark.add_theme_color_override("font_color", ABILITY_TINT)
+	head.add_child(mark)
+	var name_lbl := Label.new()
+	name_lbl.text = String(row["name"])
+	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_color_override("font_color", ABILITY_TINT.lerp(Color.WHITE, 0.35))
+	head.add_child(name_lbl)
+	if String(ad.kind) != "":
+		head.add_child(_chip(String(ad.kind).capitalize(), UITheme.TEXT_DIM))
+	col.add_child(head)
+	var what := Label.new()
+	what.text = String(row["text"])
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size = Vector2(440, 0)
+	what.add_theme_font_size_override("font_size", 12)
+	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(what)
+	return col
 
 func _chip(text: String, color: Color) -> Control:
 	var wrap := PanelContainer.new()

@@ -903,7 +903,7 @@ func populate_standing() -> void:
 		var inst: int = int(entry.get("instance", 0))
 		_box.add_child(_objective_row(
 			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
-			tint, _enemy_icon_rect(e, tint), inst))
+			tint, _enemy_icon_rect(e, tint, GameLoop2.entry_image(entry)), inst))
 		# The way out of that goal, if something burned this body (§13) — read here
 		# rather than only on the report step, because it is a reason to play the
 		# next game differently and this list is what is read before choosing one.
@@ -1184,8 +1184,13 @@ const PORTRAIT_SIZE := 26
 # row then reads exactly as it did before). A boss is framed in the board's own
 # boss orange and says so; everything else takes the row's tint, dimmed, so a
 # checklist of five bodies doesn't read as five alarms.
-func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT) -> Control:
-	if enemy == null or enemy.image == null:
+# `art` overrides the sheet's picture, for a multi-phase boss (§7.6): the body
+# standing there is on its second or third phase and wears a different portrait,
+# and this chip sits right beside the phase's goal.
+func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
+		art: Texture2D = null) -> Control:
+	var picture: Texture2D = art if art != null else (enemy.image if enemy != null else null)
+	if enemy == null or picture == null:
 		return null
 	var boss: bool = enemy.is_boss()
 	var frame := PanelContainer.new()
@@ -1194,7 +1199,7 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT) -> Contr
 			Color(0.95, 0.55, 0.2) if boss else tint.lerp(UITheme.BORDER, 0.45)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	frame.tooltip_text = ("Boss — %s" % enemy.display_name) if boss else enemy.display_name
-	frame.add_child(UITheme.crisp_tex(enemy.image, PORTRAIT_SIZE))
+	frame.add_child(UITheme.crisp_tex(picture, PORTRAIT_SIZE))
 	return frame
 
 # The same portrait for the LEVEL-UP row, because the same reasoning applies to
@@ -1273,7 +1278,11 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	# CHARACTER's, on the level-up row, which is the one row here whose owner is the
 	# player. The two are mutually exclusive: `verify_row` is handed an enemy or a
 	# character, never both.
-	var portrait: Control = _enemy_icon_rect(enemy, color)
+	# The phase's picture when this row is about a body on the board (§7.6) — the
+	# instance is what makes that lookup possible, and a row with none (an offered
+	# boss on the notice, a level-up row) falls back to the sheet's own art.
+	var portrait: Control = _enemy_icon_rect(enemy, color,
+		GameLoop2.entry_image(GameLoop2.entry_for(instance)) if instance > 0 else null)
 	if portrait == null:
 		portrait = _character_icon_rect(character, color)
 	if portrait != null:

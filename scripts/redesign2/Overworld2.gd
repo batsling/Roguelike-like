@@ -376,6 +376,7 @@ var _done_btn: Button
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
+var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
@@ -3080,6 +3081,24 @@ func _close_enemy_info() -> void:
 		_info_popup.close()
 	_info_popup = null
 
+# --- the fallen (§7.6) ----------------------------------------------------
+
+# THE GRAVEYARD PANEL: every enemy this run has put down, clickable, with a note
+# box on each. Opened here rather than inside the board for the same reason the
+# enemy card is — it dims the whole screen, and the board lives inside a
+# scrolling page that cannot cover it.
+#
+# Public so a headless test can open it without a click.
+func show_graveyard() -> GraveyardPanel:
+	if _graveyard_popup != null and is_instance_valid(_graveyard_popup):
+		return _graveyard_popup
+	var panel := GraveyardPanel.new()
+	panel.closed.connect(func(): _graveyard_popup = null)
+	_graveyard_popup = panel
+	add_child(panel)
+	panel.setup()
+	return panel
+
 # --- offering construction ------------------------------------------------
 
 # Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
@@ -5143,6 +5162,7 @@ func _build_ui() -> void:
 	_board.loot_thrown_at_cell.connect(_on_loot_thrown_at_cell)
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.enemy_inspected.connect(_show_enemy_info)
+	_board.graveyard_requested.connect(show_graveyard)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)

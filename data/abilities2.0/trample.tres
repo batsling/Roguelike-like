@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_trample"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"trample"
+display_name = "Trample"
+kind = &"movement"
+variables = ""
+params = PackedStringArray()
+description = "When moving forward, it wil push other units to the side or behind it to go forward"
+file = "Trample"

@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Generate Godot GoalEnemyData .tres from the `enemies2.0` sheet of
+Generate Godot GoalEnemyData .tres from the `enemies` sheet of
 tools/Roguelikes.xlsx into data/enemies2.0/.
 
 The games-first redesign's goal-enemies (docs/games-first-redesign.md §7) are a
 distinct resource from the combat EnemyData — one enemy per game, carrying a
 single GOAL (not a stat block). This generator is a pure sheet -> .tres pass.
 
-  enemies2.0: Name | Type | Difficulty | Size | Game | Health | Damage |
-              Goal Type | Goal | Ability | File | Tag
+  enemies: Name | Type | Difficulty | Size | Game | Health | Damage |
+           Goal Type | Goal | Ability | File | Tag
+  bosses:  …the same, plus Phases
 
 Art resolves from File -> res://images2.0/enemies/<File>.png (§10.1); a missing
 PNG just leaves the image unset (a placeholder is used at runtime).
@@ -17,6 +18,18 @@ Size is the battlefield footprint, written rows-first ("2x1" is two cells tall,
 "1x2" two cells wide), optionally followed by a shape letter and a rotation:
 "2x3 L 90 CC" is an L turned a quarter turn counter-clockwise. See parse_size.
 
+Ability is a comma list of names from the `abilities` sheet, each optionally
+carrying arguments in brackets — "Ranged (2), Fireproof, Infliction (1, Burn)".
+The grammar and the catalogue it is checked against live in
+generate_ability_tres.py (§7.6).
+
+Phases (bosses only) is how many bodies deep a boss is: Guillatina's 3 means it
+carries three goals and three pictures, stepping to the next each time Undying
+brings it back. Goal Type / Goal / File are then read as PHASE LISTS — "/" for
+the two goal columns, "," for the art — and phase 1 is what the plain
+`goal_type` / `goal` / `file` fields hold, so nothing that doesn't know about
+phases has to change.
+
   python3 tools/generate_goal_enemy_tres.py            # regenerate every enemy
   python3 tools/generate_goal_enemy_tres.py --list      # print, write nothing
 """
@@ -24,8 +37,12 @@ Size is the battlefield footprint, written rows-first ("2x1" is two cells tall,
 import argparse
 import os
 import re
+import sys
 
 import openpyxl
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generate_ability_tres as abil  # noqa: E402  (the shared ability grammar)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -34,10 +51,14 @@ XLSX_PATH = os.environ.get(
 # Source sheet / output / art are module-level so the boss variant
 # (tools/generate_boss_tres.py) can reuse this whole generator by repointing them
 # and flipping IS_BOSS before calling main().
-SHEET_NAME = "enemies2.0"
+SHEET_NAME = "enemies"
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "enemies2.0")
 ENEMY_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "enemies")
 IMG_RES_PREFIX = "res://images2.0/enemies/"
+# Extra (folder, res:// prefix) pairs searched after ENEMY_IMG_DIR. A boss's
+# later phases live in images2.0/boss_variants/ rather than beside its first
+# picture, and the File column names them without saying where they are.
+EXTRA_IMG_DIRS = []
 UID_PREFIX = "goalenemy"
 IS_BOSS = False
 
@@ -164,31 +185,72 @@ def mask_art(rows, cols, mask):
 
 
 def _enemy_image_map():
-    cache = _enemy_image_map.__dict__.setdefault("cache", None)
-    if cache is None:
-        cache = {}
-        if os.path.isdir(ENEMY_IMG_DIR):
-            for fn in os.listdir(ENEMY_IMG_DIR):
-                if fn.lower().endswith(".png"):
-                    cache[fn[:-4].lower()] = fn[:-4]
-        _enemy_image_map.cache = cache
-    return cache
+    """{lowercased art stem: (real stem, res:// prefix)} over every art folder."""
+    key = (ENEMY_IMG_DIR, tuple(EXTRA_IMG_DIRS))
+    cache = _enemy_image_map.__dict__.setdefault("cache", {})
+    if key not in cache:
+        found = {}
+        for folder, prefix in [(ENEMY_IMG_DIR, IMG_RES_PREFIX)] + list(EXTRA_IMG_DIRS):
+            if not os.path.isdir(folder):
+                continue
+            for fn in os.listdir(folder):
+                # First folder wins: a stem in both places is the one that sits
+                # beside the rest of the pool's art.
+                if fn.lower().endswith(".png") and fn[:-4].lower() not in found:
+                    found[fn[:-4].lower()] = (fn[:-4], prefix)
+        cache[key] = found
+    return cache[key]
+
+
+def _art_for(file: str):
+    """A File token -> its res:// path, or None when no PNG matches."""
+    hit = _enemy_image_map().get(file.lower())
+    return None if hit is None else "%s%s.png" % (hit[1], hit[0])
+
+
+def _phase_list(raw, sep: str, phases: int, name: str, what: str) -> list:
+    """A phase column split into exactly `phases` entries.
+
+    Short lists REPEAT their last entry rather than leaving a blank: a boss with
+    three pictures and one goal is a legitimate thing to author, and a phase with
+    an empty goal would be a body that can never be cleared.
+    """
+    parts = [p.strip() for p in str(_clean(raw)).split(sep)]
+    parts = [p for p in parts if p != ""]
+    if not parts:
+        return [""] * phases
+    if len(parts) > phases:
+        print("  ! %s: %d %s for %d phase(s), ignoring the extras"
+              % (name, len(parts), what, phases))
+        parts = parts[:phases]
+    while len(parts) < phases:
+        parts.append(parts[-1])
+    return parts
 
 
 def enemy_tres(row) -> tuple:
     name = str(row["Name"]).strip()
     eid = slugify(name)
-    file = _clean(row.get("File")) or name.replace(" ", "").replace("'", "")
 
-    img_res = None
-    stem = _enemy_image_map().get(file.lower())
-    if stem is not None:
-        img_res = "%s%s.png" % (IMG_RES_PREFIX, stem)
+    # PHASES (§7.6). One for everything but a multi-phase boss, and everything
+    # below then reads the same whether or not the sheet said so — phase 1 is the
+    # enemy's plain goal / art, and the extra phases hang off it.
+    phases = max(1, _int(row.get("Phases"), 1))
+    fallback_file = name.replace(" ", "").replace("'", "")
+    files = _phase_list(row.get("File") or fallback_file, ",", phases, name, "art files")
+    goal_types = _phase_list(row.get("Goal Type"), "/", phases, name, "goal types")
+    goals = _phase_list(row.get("Goal"), "/", phases, name, "goals")
+    file = files[0] or fallback_file
+
+    arts = [_art_for(f) for f in files]
 
     ext = ['[ext_resource type="Script" '
            'path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]']
-    if img_res:
-        ext.append('[ext_resource type="Texture2D" path="%s" id="2_img"]' % img_res)
+    art_ids = []
+    for art in arts:
+        # One ExtResource per DISTINCT picture: a boss that reuses its first art
+        # for a later phase must not declare the same texture twice.
+        art_ids.append(None if art is None else _ext_for(ext, art))
 
     lines = []
     lines.append(
@@ -208,11 +270,15 @@ def enemy_tres(row) -> tuple:
     lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))
     lines.append("health = %d" % _int(row.get("Health"), 1))
     lines.append("damage = %d" % _int(row.get("Damage"), 1))
-    lines.append('goal_type = &"%s"' % _clean(row.get("Goal Type")).lower())
-    lines.append('goal = "%s"' % gd_str(_clean(row.get("Goal"))))
-    ability = _clean(row.get("Ability"))
-    if ability:
-        lines.append('ability = &"%s"' % slugify(ability))
+    lines.append('goal_type = &"%s"' % goal_types[0].lower())
+    lines.append('goal = "%s"' % gd_str(goals[0]))
+    # ABILITIES (§7.6) — the whole cell, parsed against the abilities sheet. The
+    # raw text rides along as `ability_text` so the collection screen can show what
+    # was authored without re-assembling it out of the parse.
+    abilities = abil.parse_column(row.get("Ability"), _abilities(), name)
+    if abilities:
+        lines.append("abilities = %s" % abil.gd_array(abilities))
+        lines.append('ability_text = "%s"' % gd_str(_clean(row.get("Ability"))))
     tag = _clean(row.get("Tag"))
     if tag:
         lines.append('tag = &"%s"' % tag.lower())
@@ -222,9 +288,48 @@ def enemy_tres(row) -> tuple:
     lines.append("shape_cols = %d" % shape_cols)
     lines.append("shape_mask = PackedInt32Array(%s)" % ", ".join(str(m) for m in mask))
     lines.append('file = "%s"' % gd_str(file))
-    if img_res:
-        lines.append('image = ExtResource("2_img")')
+    if art_ids[0] is not None:
+        lines.append('image = ExtResource("%s")' % art_ids[0])
+    if phases > 1:
+        lines.append("phases = %d" % phases)
+        lines.append("phase_goal_types = PackedStringArray(%s)"
+                     % ", ".join('"%s"' % g.lower() for g in goal_types))
+        lines.append("phase_goals = PackedStringArray(%s)"
+                     % ", ".join('"%s"' % gd_str(g) for g in goals))
+        lines.append("phase_files = PackedStringArray(%s)"
+                     % ", ".join('"%s"' % gd_str(f) for f in files))
+        lines.append("phase_images = [%s]" % ", ".join(
+            "null" if i is None else 'ExtResource("%s")' % i for i in art_ids))
     return eid, "\n".join(lines) + "\n"
+
+
+def art_ids_seen(ext: list) -> list:
+    """[(res path, ext id)] already declared in `ext`, oldest first."""
+    out = []
+    for line in ext:
+        m = re.search(r'type="Texture2D" path="([^"]+)" id="([^"]+)"', line)
+        if m:
+            out.append((m.group(1), m.group(2)))
+    return out
+
+
+def _ext_for(ext: list, path: str) -> str:
+    """The ExtResource id for `path`, declaring it in `ext` if it's new."""
+    for existing, eid in art_ids_seen(ext):
+        if existing == path:
+            return eid
+    eid = "%d_img" % (len(art_ids_seen(ext)) + 2)
+    ext.append('[ext_resource type="Texture2D" path="%s" id="%s"]' % (path, eid))
+    return eid
+
+
+def _abilities() -> dict:
+    """The abilities catalogue, read once per run of the generator."""
+    cache = _abilities.__dict__.setdefault("cache", None)
+    if cache is None:
+        cache = abil.catalog(openpyxl.load_workbook(XLSX_PATH, data_only=True))
+        _abilities.cache = cache
+    return cache
 
 
 def rows(sheet):

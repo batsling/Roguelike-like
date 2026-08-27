@@ -253,7 +253,7 @@ def split_tags(raw):
 
 def read_rows():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    ws = wb["encounters"]
+    ws = wb["encountersold"]
     rows = list(ws.iter_rows(values_only=True))
     header = [str(c).strip() if c is not None else "" for c in rows[0]]
     out = []

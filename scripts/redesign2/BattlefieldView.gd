@@ -49,6 +49,12 @@ signal loot_throw_cancelled(entry: Dictionary, index: int)
 signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
+
+# The player asked to see THE FALLEN — every enemy this run has put down (§7.6).
+# A signal rather than a panel opened here for the same reason enemy_inspected is
+# one: the panel dims the whole screen and this board lives inside a scrolling
+# page, so the host is the only thing that can mount it.
+signal graveyard_requested
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -151,6 +157,7 @@ var _hero_tex: Texture2D = null
 var selected_instance: int = 0       # clicked enemy the combat verbs target (0 = none)
 var push_btn: Button
 var bomb_btn: Button
+var graveyard_btn: Button            # ☠ The Fallen — only once something has
 var aim_btn: Button                  # only on screen while an item is aiming
 var _target_label: Label
 var _hint_label: Label
@@ -645,6 +652,21 @@ func _build_battle_toolbar() -> Control:
 	bomb_btn.pressed.connect(toggle_bomb_mode)
 	bar.add_child(bomb_btn)
 
+	# THE FALLEN (§7.6) — beside the verbs, because it is read at the same moment
+	# they are: what has died is what a Necromancer on the board is about to raise,
+	# and that changes which body you spend a Bomb on.
+	#
+	# Hidden until something HAS died, and hidden while a verb is aiming, for the
+	# reason the Cancel button below is: this is an HFlowContainer inside a board
+	# that fits its page to about ten spare pixels, and a permanent fourth button
+	# wraps the toolbar onto a second row and pushes the bottom of the board off
+	# the window. An empty graveyard is most of the first game of every run.
+	graveyard_btn = Button.new()
+	graveyard_btn.add_theme_font_size_override("font_size", 13)
+	graveyard_btn.visible = false
+	graveyard_btn.pressed.connect(func(): graveyard_requested.emit())
+	bar.add_child(graveyard_btn)
+
 	# The armed ITEM's way out. Hidden the rest of the time rather than greyed:
 	# this toolbar is an HFlowContainer inside a board that fits its page to about
 	# ten spare pixels (see refresh_toolbar), and a fourth permanent button wraps
@@ -978,6 +1000,13 @@ func refresh_toolbar() -> void:
 				% LootSystem.display_name(throwing_loot)
 	push_btn.visible = not armed_aside
 	bomb_btn.visible = not armed_aside
+	if graveyard_btn != null:
+		var dead: int = GameLoop2.graveyard.size()
+		graveyard_btn.visible = not armed_aside and dead > 0
+		graveyard_btn.text = "☠  Fallen (%d)" % dead
+		graveyard_btn.tooltip_text = ("Everything you have put down this run. "
+			+ "Click one to read its card, or leave yourself a note on it.\n"
+			+ "A Necromancer raises from this list.")
 
 	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
 	push_btn.disabled = not push_mode and GameState.push <= 0
@@ -1236,6 +1265,13 @@ func refresh() -> void:
 
 	var placed: Array = []
 	for entry in GameLoop2.stack:
+		# INVISIBLE (§7.6) — the board does not draw it, does not badge it and does
+		# not answer the mouse for it. It is standing there all the same: it blocks
+		# the lane, it walks, and a bomb or a thrown bottle aimed at that SQUARE
+		# still finds it (the ground layer takes those clicks, not the body). The
+		# only thing it costs the player is knowing where it is.
+		if GameLoop2.entry_hidden(entry):
+			continue
 		if int(entry.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols():
 			placed.append(entry)
 	placed.sort_custom(func(a, b): return _draw_order_key(a) < _draw_order_key(b))
@@ -1246,6 +1282,8 @@ func refresh() -> void:
 	# which the current game's enemy can be one of when the back of the board is
 	# already full.
 	for entry in GameLoop2.stack:
+		if GameLoop2.entry_hidden(entry):
+			continue
 		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
 			_offgrid_box.add_child(_offgrid_token(entry))
 
@@ -1548,6 +1586,13 @@ func _is_lit(instance: int) -> bool:
 #
 # Repaints only the bodies whose state actually changed, so a mouse dragged down
 # a checklist doesn't restyle the whole board on every row.
+#
+# AN INVISIBLE BODY (§7.6) IS NEVER LIT, and it takes no code here to keep that
+# true: a hidden body registers no repaint callable because it is never drawn, so
+# asking for it lights nothing. That is the rule the ability needs — its goal is
+# on the checklist, and hovering that row must not point at the square it is
+# standing on — and it holds by construction rather than by a check that could be
+# forgotten on the next caller.
 func highlight(instances: Array = []) -> void:
 	var want: Dictionary = {}
 	for inst in instances:
@@ -1959,9 +2004,12 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if e.image != null:
-		art.texture = e.image
-		if e.image.get_width() < _cell or e.image.get_height() < _cell:
+	# THE PHASE'S picture (§7.6): a boss on its second body is a different portrait
+	# of the same sheet row, and the board is where that is seen.
+	var portrait: Texture2D = GameLoop2.entry_image(entry)
+	if portrait != null:
+		art.texture = portrait
+		if portrait.get_width() < _cell or portrait.get_height() < _cell:
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		art.modulate = accent
@@ -2043,7 +2091,11 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# whatever is left over, damage takes the right — identical to the old corners
 	# whenever both fit, and when they don't they sit side by side and overhang
 	# the box together instead of one erasing the other.
+	# NAMED, like the other two containers below. They are all HBoxContainers on the
+	# same holder, so "the last HBoxContainer" is not an identity — it silently
+	# became the wrong node the moment a third one was added.
 	var stat_row := HBoxContainer.new()
+	stat_row.name = "StatRow"
 	stat_row.add_theme_constant_override("separation", 2)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_row.add_child(hp_lbl)
@@ -2073,6 +2125,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	if not statuses.is_empty():
 		var strip := HBoxContainer.new()
+		strip.name = STATUS_STRIP_NAME
 		strip.alignment = BoxContainer.ALIGNMENT_CENTER
 		strip.add_theme_constant_override("separation", 2)
 		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
@@ -2099,12 +2152,41 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		frozen.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(frozen)
 
-	# A selected enemy carries a marker so it's obvious which one the Push / Bomb
-	# buttons on the toolbar are aimed at.
+	# THE TOP-RIGHT CORNER, and there are two things that want it: the ⚠ that says
+	# this body has an ability (§7.6) and the ▸ that says the toolbar's verbs are
+	# aimed at it. They go in ONE ROW rather than both anchored to the same corner,
+	# for the same reason the health and damage badges do — two labels anchored to
+	# one corner draw over each other, and the one that loses is whichever the
+	# player was reading.
+	#
+	# The corner is deliberately the OPPOSITE one from ❄, and deliberately not over
+	# the middle of the art: the rule this file keeps is that nothing covers the
+	# part of the picture that identifies the enemy.
+	# The badges are built FIRST and the row only exists if there is one to put in
+	# it. Building the container up front and discarding it when empty leaks a
+	# Control per body per repaint — which on a board redrawn on every hover is
+	# thousands of orphans across a test run.
+	var marks: Array = []
 	if selected:
-		var pin := _corner_badge("▸", UITheme.ACCENT)
-		pin.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
-		holder.add_child(pin)
+		marks.append(_corner_badge("▸", UITheme.ACCENT))
+	# A PLAIN EXCLAMATION MARK on the body itself, and ⚠ everywhere the mark gets a
+	# line of its own (the hover, the card's section header, the Fallen panel).
+	# Same colour, same meaning; the difference is size. This corner is 11px on a
+	# 46px cell at the widest board, where a triangle with a stroke inside it is a
+	# smudge and a bare "!" is still legible — and being ASCII it asks nothing of
+	# the shipped glyph subsets at all.
+	if GameLoop2.entry_has_abilities(entry):
+		marks.append(_corner_badge("!", ABILITY_MARK, ABILITY_FONT))
+	if not marks.is_empty():
+		var corner := HBoxContainer.new()
+		corner.name = "CornerMarks"
+		corner.add_theme_constant_override("separation", 2)
+		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for m in marks:
+			corner.add_child(m)
+		corner.set_anchors_and_offsets_preset(
+			Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+		holder.add_child(corner)
 
 # The ⚔ badge: damage per swing, with the count appended when one turn of the
 # board gives this body more than one. One swing needs no "x1" — that's the
@@ -2155,14 +2237,34 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		pips.append({"text": "❄ %d" % stun, "good": true})
 
 	var sub: String = "☠ boss" if e.is_boss() else ""
+	# A multi-phase boss says which body of itself this is (§7.6) — the goal below
+	# is the PHASE's goal, and "why is it asking for something else now" needs its
+	# answer where the goal is read.
+	var phase: String = GameLoop2.phase_note(entry)
+	if phase != "":
+		sub = phase if sub == "" else "%s · %s" % [sub, phase]
+
+	# THE ABILITIES, in full (§7.6). The ⚠ on the board says there is something to
+	# know; this is where it gets said, because a hover is what the player reaches
+	# for before deciding and an ability changes that decision more than any number
+	# on the body does — how far it can reach, what its swing drags along, what
+	# happens on the square when it dies.
+	#
+	# Read off the ENTRY, so an Illusion granted at runtime is named here exactly
+	# like an ability the sheet authored. That is the whole point of naming them:
+	# an illusion that reads like an ordinary enemy is a goal the player will go
+	# and spend a real evening on.
+	var lines: Array = [GameLoop2.entry_goal(entry)]
+	for row in GameLoop2.ability_lines(entry):
+		lines.append("⚠  %s — %s" % [row["name"], row["text"]])
 
 	return {
 		"title": e.display_name,
 		"subtitle": sub,
 		"accent": threat_color(int(entry.get("col", GameLoop2.spawn_col())), e.is_boss()),
-		"art": e.image,
+		"art": GameLoop2.entry_image(entry),
 		"pips": pips,
-		"lines": [e.goal],
+		"lines": lines,
 		"note": "Click for the full card.",
 	}
 
@@ -2249,9 +2351,18 @@ const STATUS_PIP_ENEMY := 16
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
 # badges straddle the border and the statuses clear it entirely — the art keeps
 # the whole cell to itself.
+# The ⚠ that marks a body with an ability (§7.6). A warning colour rather than an
+# accent one: an ability is always something the player has to account for, and
+# the mark's whole job is to say "read this one before you decide".
+const ABILITY_MARK := Color(1.0, 0.78, 0.28)
+const ABILITY_FONT := 11
+
 const STAT_BADGE_DROP := 7
 const STAT_BADGE_FONT := 10
 const STATUS_STRIP_DROP := 20
+# The status strip's node name on an enemy's badge layer. A const because it is an
+# identity two files agree on: the board builds it and the tests look it up.
+const STATUS_STRIP_NAME := "StatusStrip"
 
 # --- staggered (GameLoop2.staggered_this_game) ------------------------------
 #
@@ -2398,8 +2509,11 @@ func _offgrid_token(entry: Dictionary) -> Control:
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if e.image != null:
-			art.texture = e.image
+		# The PHASE's picture, like the board's own bodies (§7.6) — a body waiting
+		# off the field is the same body it will be when it walks on.
+		var portrait: Texture2D = GameLoop2.entry_image(entry)
+		if portrait != null:
+			art.texture = portrait
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		else:
 			art.modulate = accent
@@ -2641,6 +2755,9 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	# round: its single turn is the tick's, not the Amulet's. Read off the result
 	# rather than the frame count, which a run that ended mid-playback cuts short.
 	var base_turns: int = maxi(0, int(res.get("turns", turns)) - int(res.get("extra_turns", 0)))
+	# Whether the resolve ended on a hunt (§7.6) — the turn Predatory Scent buys is
+	# appended after the road's, so it is the last one when there is one at all.
+	var hunted: bool = not (res.get("predators", []) as Array).is_empty()
 	var elapsed: float = 0.0
 	# When the last damage number thrown by any turn finally finishes fading. It
 	# outlives the strike beat the schedule counts (see FX_NUMBER_TAIL), and on the
@@ -2662,8 +2779,13 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 			# The counter only earns its place when there is more than one turn to
 			# count; at one turn a game it would be noise over every single report.
 			if turns > 1:
+				# PREDATORY SCENT'S turn is the last one and is not the road's
+				# (§7.6): a handful of bodies get a free swing for a status goal the
+				# player left unmet. Counting it as "EXTRA TURN 3 / 2" would be the
+				# board contradicting its own ladder, so it is named instead.
 				_spawn_turn_counter(turn + 1, turns, base_turns,
-					int(res.get("extra_turns", 0)), elapsed)
+					int(res.get("extra_turns", 0)), elapsed,
+					hunted and turn == turns - 1)
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
@@ -2803,16 +2925,17 @@ func _after(delay: float, fn: Callable) -> void:
 # last `extra` of the run, and a player watching the board move after handing a
 # game in is owed the reason why.
 func _spawn_turn_counter(turn: int, turns: int, base: int, extra_turns: int,
-		delay: float) -> void:
+		delay: float, hunt: bool = false) -> void:
 	if _field == null:
 		return
-	var band: Color = RunDifficulty.band_color(extra_turns)
+	var band: Color = ABILITY_MARK if hunt else RunDifficulty.band_color(extra_turns)
 	var rect: Rect2 = _local_rect(_field)
 	var extra: int = turn - base                 # 1-based index into the extra turns
 	_after(delay, func():
 		var lbl := Label.new()
-		lbl.text = ("EXTRA TURN %d / %d" % [extra, extra_turns] if extra > 0
-			else "TURN %d / %d" % [turn, turns])
+		lbl.text = ("⚠ PREDATORY SCENT" if hunt
+			else ("EXTRA TURN %d / %d" % [extra, extra_turns] if extra > 0
+			else "TURN %d / %d" % [turn, turns]))
 		lbl.add_theme_font_size_override("font_size", 28)
 		lbl.add_theme_color_override("font_color", band)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
@@ -2937,8 +3060,9 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2,
 	ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if e != null and e.image != null:
-		ghost.texture = e.image
+	var portrait: Texture2D = GameLoop2.entry_image(entry) if not entry.is_empty() else null
+	if e != null and portrait != null:
+		ghost.texture = portrait
 		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ghost.size = from_rect.size
 	_fx_layer.add_child(ghost)

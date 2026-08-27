@@ -33,7 +33,7 @@ XLSX_PATH = dsl.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "curses2.0")
 IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "curses")
 IMG_RES_PREFIX = "res://images2.0/curses/"
-SHEET = "curses2.0"
+SHEET = "curses"
 
 DEFAULT_TIMER = 3
 

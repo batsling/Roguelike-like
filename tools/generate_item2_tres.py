@@ -21,7 +21,7 @@ import generate_item_tres as base
 PROJECT_ROOT = base.PROJECT_ROOT
 
 # Repoint the base generator at the 2.0 content + parallel data/images folders.
-base.SHEET_NAME = "items2.0"
+base.SHEET_NAME = "items"
 base.OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items2.0")
 base.ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "items")
 base.IMG_RES_PREFIX = "res://images2.0/items/"

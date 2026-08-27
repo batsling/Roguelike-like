@@ -205,7 +205,7 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["pills2.0"]):
+    for row in rows(wb["pills"]):
         pid, text = pill_tres(row)
         if args.list:
             print("=== %s ===\n%s" % (pid, text))

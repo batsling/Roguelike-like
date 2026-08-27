@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_degradation"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"degradation"
+display_name = "Degradation"
+kind = &"attack"
+variables = "Amount"
+params = PackedStringArray("amount")
+description = "When this Enemy attacks and deals damage, it will Destroy X amount of random obtained Loot"
+file = "Degradation"

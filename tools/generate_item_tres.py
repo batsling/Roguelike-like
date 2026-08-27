@@ -62,7 +62,7 @@ XLSX_PATH = os.environ.get(
 # (tools/generate_item2_tres.py, the games-first 2.0 items) can reuse this whole
 # DSL by repointing these before calling the emit functions. The base run keeps
 # the legacy items sheet + data/items + images/items.
-SHEET_NAME = "items"
+SHEET_NAME = "itemsold"
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items")
 ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
 IMG_RES_PREFIX = "res://images/items/"

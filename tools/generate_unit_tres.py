@@ -87,7 +87,7 @@ def unit_tres(row: dict):
 
 
 def main():
-    base.generate("units2.0", OUT_DIR,
+    base.generate("units", OUT_DIR,
                   ("Name", "Type", "Description", "Effect", "Interactions",
                    "Health", "Img"),
                   unit_tres, "units2.0")

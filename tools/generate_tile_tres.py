@@ -318,7 +318,7 @@ def generate(sheet_name: str, out_dir: str, required: tuple, build, label: str) 
 
 
 def main():
-    generate("tiles2.0", OUT_DIR,
+    generate("tiles", OUT_DIR,
              ("Name", "Description", "Effect", "Interactions", "Decay", "Img"),
              tile_tres, "tiles2.0")
 

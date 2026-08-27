@@ -1407,6 +1407,137 @@ second body makes the stack the baseline rather than the punishment, and it does
 it without touching a single number: no enemy hits harder, nothing has more
 Health, and every existing answer to a follower works on it unchanged.
 
+### 7.6 Abilities — the second half of what an enemy is
+
+Health, Damage, Size and a goal say what a body is *worth* and how much board it
+takes. **Abilities say what it DOES**: how far it can strike from, what rides its
+swing, what it spends a turn on instead of you, and what it leaves behind when it
+dies. They are authored in the **`abilities`** sheet and hung on enemies through
+the `Ability` column of `enemies` / `bosses`.
+
+**The catalogue is data; the behaviour is code.** This is the one place in the
+project where those come apart, and deliberately. `data/abilities2.0/*.tres`
+(`AbilityData`) owns each ability's **name, type, argument shape and sentence** —
+generated from the sheet like everything else, so the wording a player reads is
+upstream content. What an ability *does* is written once in `GameLoop2`, keyed by
+id, because an ability reaches into the turn resolver, the mover, the spawner and
+the death path at once, which is more than the per-row effect string `tiles2.0`
+and `units2.0` use could express.
+
+The consequence is a rule with teeth: **a row added to the sheet does nothing on
+the board until `GameLoop2` learns the id**, and
+`test_enemy_abilities.gd::test_every_authored_ability_is_one_the_loop_implements`
+fails the suite rather than letting it ship as a promise on an enemy card that
+the board never keeps. The reverse assertion is there too.
+
+**The `Ability` column's grammar** is a comma list of names, each optionally
+carrying bracketed arguments: `Ranged (2), Fireproof, Infliction (1, Burn)` is
+three abilities, while `Split (2, slime tag)` is one with two arguments — so the
+split is **paren-aware**, and a plain `split(",")` gets both cases wrong in
+opposite directions. The sheet's `Variables` column says how many arguments a
+name takes and what they mean, so the parse is checked against the catalogue at
+generation time and an unknown name is reported rather than written out.
+
+Each parsed ability is one dictionary on `GoalEnemyData.abilities`:
+
+```
+{"id": &"infliction", "amount": 2, "arg": &"burn", "text": "Burn"}
+```
+
+`amount` is the numeric argument, `arg` the second one normalised for code, and
+`text` the sheet's own wording for it — which is what the cards print, so a
+description reads the way it was written. An **omitted count is 1** (a bare
+`Hexer` is one curse) but an **omitted or `N/A` grid range is 0, meaning
+unlimited**: opposite defaults for the same empty cell, which is why the slot is
+read rather than the blank.
+
+An `Enemy Type` argument names a **pool**, and the prefix says which kind:
+`tag:slime` (anything with that tag), `tier:medium` (anything at that tier),
+`enemy:spider` (that one, by name), `self` (another copy of the summoner).
+
+**Abilities are read off the BODY, never off the sheet row.** `entry["abilities"]`
+starts as a copy of the enemy's and can be added to at runtime — an Illusionist
+hands `illusion` to what it summons, and a save writes the runtime list, because a
+reload that rebuilt from the sheet would resurrect the copies as ordinary enemies
+that outlive their maker.
+
+#### The roster, and the rules that are not obvious
+
+**One action per turn**, for abilities as much as for ordinary bodies. An intent
+spends the whole turn; so does a strike. A **Ranged** body that shoots from four
+columns back does *not* also close — before this the mover ran over everything
+that had not reached column 1, which would have let a sniper arrive twice as fast
+as §7.4's ladder says anything can.
+
+| Ability | The rule, where it isn't obvious |
+|---|---|
+| **Ranged (X)** | X is the **gap** it shoots across, so `Ranged (2)` strikes from column 3. `N/A` is the whole lane — dangerous from the moment it spawns. It shortens `_turns_owed`, so the threat colours and the ⚔ badge agree with the resolver. |
+| **Devour Whole** | The hit **ends the run**, whatever your Health. A shield stops the whole instance and therefore stops this — cover is the only answer, and past one nothing else matters. |
+| **Tanky (X)** | Health here is **goal completions**, so Transient's `Tanky (8)` is nine goals. That is the joke: you are not meant to kill it, and its `Fading (3)` is the answer. |
+| **Bolster (X, Y)** | A **live aura**, not stacks handed out: while it stands, every *other* body carries the status, including ones that walk on later, and killing it takes it off the whole board at once. Derived inside `entry_statuses_effective`, so damage, shields, movement and pips all account for it without knowing it exists. |
+| **Theft (X, Y)** | What it takes is **real** — gold leaves the purse, a relic leaves the inventory and stops working. Then it **turns and runs for the back edge**; off the board it goes with the haul. Kill it and everything lands on the square it fell in. |
+| **Agile** | Diagonal **only when straight ahead is blocked** — the one exception to §7.3's "enemies never change lanes", and deliberately the smallest one. It exists for the two thieves, so a getaway can get round a wall. |
+| **Trample** | Shoves a blocker aside or back **for free** and walks in, using the same geometry the player's Push verb does. A blocker with nowhere to go stays, and the trampler stalls like anything else. |
+| **Ruthless** | Only when it **cannot reach you**. With Devour Whole (the two bodies that have it carry both) it clears the lane outright. |
+| **Invisibility** | The board draws **nothing** — no node, no badge, no hover, and hovering its checklist row lights no square. Its **goal is still on the checklist**: you were told what walked on, not where. It blocks a lane, it walks, and a bomb aimed at that *square* still finds it. It gives itself away the moment it swings. |
+| **Predatory Scent** | An extra turn only when the player **had a status goal and met none of them**. Both halves are the ability. Runs as a turn of its own rather than by bumping the count — it is a free swing for two or three bodies, not the board's pace changing. |
+| **Necromancy (X)** | Raises from **this run's graveyard** — the same list the board's ☠ Fallen panel shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
+| **Ritual** | Only the **first** turn is spent. Every turn after, the +1 Strength rides a turn the body also walks or swings on — a Ritual that spent every turn stacking would never attack, and the Strength it piled up would never be spent on anything. |
+| **Fireproof** | Refused inside `_add_status_to`, so every route a Burn can arrive by is covered at once — a fire tile, a Scroll of Fire, another enemy's Infliction, a Bolster aura lending it. |
+| **Fading (X)** | A combat is a **game**, so it ticks with the tiles and the borrowed statuses at the end of a report. Running out is a **death**: its own Aftermath fires and its face joins the graveyard. It pays nothing, because nobody did its goal. |
+
+**A SUMMONED BODY IS AN ORDINARY BODY.** Illusionist, Necromancy, Nested Spawner
+and Split all put real enemies on the board: they carry goals, and clearing one
+pays its loot, its gold and its chest point like anything else. That is the trade
+a spawner offers — it is printing threats *and* rewards, and which of those it
+turns out to be depends entirely on whether you keep up with the goals.
+
+**A BODY KILLED BY ANOTHER BODY PAYS NOTHING**, which is the same rule a bomb
+follows (§4): a Ruthless boss eating your stack is a mercy, not a farm. So is an
+illusion popping because you killed its maker.
+
+**The death hook hangs off the DAMAGE RESOLVER, not off `_defeat`.** `_defeat` is
+the drop path and a bombed body never reaches it — but a bombed Guillatina still
+owes the board its next phase and a bombed Spike Slime still splits. Aftermath,
+Split, Undying, the Illusion cascade and the graveyard row all fire for every
+death however it happened.
+
+#### Phases (`bosses` only)
+
+A boss can be **several bodies deep**. The `Phases` column says how many;
+`Goal Type` and `Goal` are then read as `/`-separated lists and `File` as a
+comma-separated one, so one sheet row carries three goals and three pictures.
+**Undying is what steps between them**: each revive brings the boss back at the
+rightmost column at the start of the *next* game, one phase on, with its own goal
+and its own portrait. A whole game of respite is the only thing separating a
+three-phase boss from a body with three times the Health.
+
+`goal_type` / `goal` / `image` hold **phase 1**, so everything written before
+phases still reads correctly; `GameLoop2.entry_goal` / `entry_goal_type` /
+`entry_image` are what the screens ask, and they answer for the body actually
+standing there.
+
+#### Where the player sees all of it
+
+- **An exclamation mark in the top-right corner** of any body on the grid that
+  has an ability, in the same row as the ▸ selection marker — two labels anchored
+  to one corner draw over each other, and the one that loses is whichever the
+  player was reading. A bare `!` rather than the ⚠ used everywhere the mark gets a
+  line of its own: this corner is 11px on a 46px cell at the widest board, where a
+  triangle with a stroke inside it is a smudge. Nothing goes over the middle of
+  the art; identifying the enemy is the picture's job.
+- **The hover names every ability and what it does**, in a line each, under the
+  goal. This is where an **Illusion** is named — an illusion that reads like an
+  ordinary enemy is a goal the player will go and spend a real evening on.
+- **The card spells them out** in an ABILITIES panel: name, type chip, and the
+  sheet's sentence with its arguments filled in.
+- **☠ Fallen**, beside Push and Bomb above the grid: every enemy this run has put
+  down, newest first. Click one for its card; write a note on one and it is filed
+  against the (game, enemy) pair in `GameStats.enemy_log` — the same store the
+  Atlas's per-game notes use, so it is one fact written once and read in both
+  places. The button is hidden until something has died, because the toolbar fits
+  its page to about ten spare pixels and a fourth permanent button wraps it.
+
 ---
 
 ## 8. Items (`items2.0`)
