@@ -1136,6 +1136,64 @@ func test_the_hover_line_previews_the_games_grant() -> void:
 	assert_false(_ui._preview.text.to_lower().contains("shield"),
 		"it can't advertise a game you're not pointing at: %s" % _ui._preview.text)
 
+# …and it does NOT open by naming the game. The mouse is sitting on that game's
+# cover with its title printed underneath — the line is one line wide, the goal is
+# the half that gets cut off, and the name was being paid for out of it.
+func test_the_hover_line_does_not_repeat_the_games_own_name() -> void:
+	for i in _ui._choices.size():
+		_ui._show_preview(i)
+		var game: GameData = _ui._choices[i]["game"]
+		assert_false(_ui._preview.text.contains("[b]%s[/b]" % game.display_name),
+			"the hover leads with what is WAITING there, not with the cover's own name: %s"
+			% _ui._preview.text)
+
+# HOW FAR THE AMULET IS, on every card, over the art. The distance was on the
+# start cards and then nowhere: after the first choice the offering said which
+# WAY a card went (and only once it was opened) but never how far there was left
+# to go, which is the number the whole run is counting down.
+func test_every_offered_card_says_how_far_the_amulet_is() -> void:
+	_ui._render_choices()
+	for i in _ui._choices.size():
+		var card: Node = _ui._choices_row.get_child(i)
+		var hops: int = _ui.steps_to_amulet(StringName(_ui._choices[i].get("slot", &"")))
+		var text: String = _text_of(card)
+		if hops > 0:
+			assert_string_contains(text,
+				"%d game%s away from the Amulet" % [hops, "" if hops == 1 else "s"],
+				"the card counts the road left: %s" % text)
+		elif hops == 0:
+			assert_string_contains(text, "THE AMULET",
+				"the run's last card says so instead of counting zero: %s" % text)
+		else:
+			assert_string_contains(text, "No route to the Amulet",
+				"and a card nothing connects says that: %s" % text)
+
+# It rides ABOVE THE COVER, with the flag it belongs beside — the offering is a
+# row of covers being scanned, and a fact read during the scan cannot be under
+# the thing being scanned.
+func test_the_distance_sits_over_the_cover_and_under_the_flag() -> void:
+	_ui._render_choices()
+	# The card that is NOT the Amulet — on the Amulet's own the row is blank, since
+	# the flag above it has already said the only thing there is to say.
+	var card: Node = null
+	for i in _ui._choices.size():
+		if not bool(_ui._choices[i].get("amulet", false)):
+			card = _ui._choices_row.get_child(i)
+			break
+	assert_not_null(card, "the offering has a card that isn't the Amulet")
+	if card == null:
+		return
+	var dist: int = -1
+	var cover: int = -1
+	for c in card.get_children():
+		if c is Label and String((c as Label).text).contains("Amulet") and dist < 0:
+			dist = c.get_index()
+		if c is Button and not String((c as Button).text).contains("Map") and cover < 0:
+			cover = c.get_index()
+	assert_gt(dist, -1, "the card carries the distance line")
+	assert_gt(cover, -1, "and the cover is a button")
+	assert_lt(dist, cover, "the distance is read before the art, not after it")
+
 # The pack panel carries no heading. A bordered strip of relic and scroll tiles
 # does not need to be told it is the inventory — the tokens are the label, and
 # the row it was spending is worth more to the board under it.

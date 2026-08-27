@@ -136,6 +136,50 @@ func test_bosses_tab_shows_only_bosses() -> void:
 		col._show_enemy_detail(Data.all_bosses()[0])
 		assert_gt(col._detail_box.get_child_count(), 1, "boss detail populated")
 
+# SORT BY ABILITY. "Which of these has a trick" is the question the roster is
+# browsed with — it is the one thing about a body that isn't a number — and the
+# tab could sort by every number it has and not by that. Bodies carrying more
+# abilities come first; the plain ones fall to the bottom, in A-Z as ever.
+func test_enemies_can_be_sorted_by_whether_they_have_an_ability() -> void:
+	for tab in [Collection.Tab.ENEMIES, Collection.Tab.BOSSES]:
+		var col := _new_collection()
+		col._set_tab(tab)
+		col._enemies_sort = "ability"
+		col._populate_enemies()
+		var source: Array = col._enemy_source()
+		if source.is_empty():
+			continue
+		# Read the order back off the grid by name, and check it never climbs.
+		var counts: Array = []
+		var by_name: Dictionary = {}
+		for e in source:
+			by_name[(e as GoalEnemyData).display_name] = (e as GoalEnemyData).abilities.size()
+		for cell in col._grid.get_children():
+			# A boss cell wears a ☠ in front of its name (Collection._enemy_cell).
+			var label: String = _first_label_text(cell).replace("☠ ", "").strip_edges()
+			if by_name.has(label):
+				counts.append(int(by_name[label]))
+		assert_gt(counts.size(), 0, "the grid is showing the roster")
+		var ok := true
+		for i in range(1, counts.size()):
+			if counts[i] > counts[i - 1]:
+				ok = false
+		assert_true(ok, "everything with an ability sorts above everything without: %s"
+			% str(counts.slice(0, 12)))
+
+# The first piece of text inside a grid cell — the cell is a card of art and
+# labels and the name is the first of them.
+func _first_label_text(node: Node) -> String:
+	if node is Label:
+		return (node as Label).text
+	if node is Button:
+		return (node as Button).text
+	for c in node.get_children():
+		var found: String = _first_label_text(c)
+		if found != "":
+			return found
+	return ""
+
 func test_enemies_search_filters_on_goal_text() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.ENEMIES)

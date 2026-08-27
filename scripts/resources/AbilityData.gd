@@ -92,6 +92,14 @@ func needs_damage() -> bool:
 # stays true until it doesn't.
 func describe(amount: int = 0, arg_text: String = "") -> String:
 	var out: String = description
+	# RANGED (N/A) IS UNLIMITED, and the sentence has to say so. The sheet writes
+	# `N/A` where a Psychic Horf or a Host fires down the whole lane, which parses
+	# to 0 (GameLoop2.strike_range reads the same 0 and hands back the width of the
+	# board) — so the plain substitution produced "Can Attack from 0 tiles away",
+	# which reads as the exact opposite of the rule: no reach at all, rather than
+	# every column of it.
+	if id == &"ranged" and amount <= 0:
+		return "Can Attack from any range — no square on the board is out of reach"
 	if takes_amount():
 		out = _sub(out, "X", str(amount))
 	if arg_text != "":

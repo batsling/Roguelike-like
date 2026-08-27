@@ -203,6 +203,11 @@ const HOVER_ART := 30.0
 # the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
+# The distance line is a point smaller than the badges above it, and for a
+# measured reason rather than a stylistic one — see _make_choice_card: at
+# BADGE_FONT its longest sentence is 172px against a 160px card and wraps to a
+# second line the page has no room for. At 10 it is 156px and stays on one.
+const DIST_FONT := 10
 # The game's NAME keeps a readable size, in its own fixed box, so a card whose
 # title wraps to three lines doesn't sit a line taller than its neighbours.
 const NAME_FONT := 13
@@ -255,6 +260,20 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# The SHOP badge (§14) is the row's other tenant. Its colour is deliberately
 	# not a gold — see UITheme.SHOP_GREEN — because a gold badge sitting in the
 	# Amulet's own slot is the one confusion this row cannot afford.
+	#
+	# IT SHARES ITS LINE WITH THE ⚡ DASH BADGE below. They were two stacked rows of
+	# BADGE_LINE, both blank on most cards, and the page cannot afford a third: the
+	# overworld fits a 720p canvas with about two spare pixels on its worst page
+	# (a hub's shop under the board — test_overworld2's `_assert_fits`), so the
+	# distance line under them had to be paid for out of the badges' own space.
+	# Side by side they are 139px of the card's 160 at their widest
+	# (`🏆 THE AMULET` + `⚡ +1 DASH`), which is the case that decided this.
+	var badge_row := HBoxContainer.new()
+	badge_row.add_theme_constant_override("separation", 4)
+	badge_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	badge_row.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	card.add_child(badge_row)
+
 	var flag := Label.new()
 	if amulet:
 		flag.text = "🏆 THE AMULET"
@@ -269,20 +288,20 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
 	flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	flag.custom_minimum_size = Vector2(0, BADGE_LINE)
 	flag.add_theme_font_size_override("font_size", BADGE_FONT)
-	card.add_child(flag)
+	badge_row.add_child(flag)
 
 	# THE SECOND THING that has to be legible without opening anything: a game you
 	# have already played this run pays a Dash for going back and beating it
 	# (_page.REPEAT_BEAT_DASH). It is the offering's only recurring free charge, and it
 	# was only ever stated inside the popup — so the one card on the table that is
 	# worth revisiting looked exactly like the ones that aren't. It rides ABOVE the
-	# cover, next to the Amulet's flag, because it is a reason to open a card and
-	# reasons to open a card belong where the card is being scanned.
+	# cover, ON the Amulet's flag's own line, because it is a reason to open a card
+	# and reasons to open a card belong where the card is being scanned.
 	#
-	# Like the flag, the row is mounted on EVERY card and left blank off a repeat,
-	# so one +1 in the offering doesn't knock the other covers out of line.
+	# Like the flag, it is mounted on EVERY card and left blank off a repeat, so one
+	# +1 in the offering doesn't knock the other covers out of line.
 	var dash_flag := Label.new()
 	if bool(choice.get("repeat", false)):
 		dash_flag.text = "⚡ +%d DASH" % _page.REPEAT_BEAT_DASH
@@ -292,10 +311,34 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		dash_flag.text = ""
 	dash_flag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dash_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dash_flag.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+	dash_flag.custom_minimum_size = Vector2(0, BADGE_LINE)
 	dash_flag.add_theme_font_size_override("font_size", BADGE_FONT)
 	dash_flag.add_theme_color_override("font_color", _page.DASH_BLUE)
-	card.add_child(dash_flag)
+	badge_row.add_child(dash_flag)
+
+	# HOW FAR THAT GAME IS FROM THE AMULET — under the badges, over the art.
+	#
+	# The start cards have always carried the distance; the cards after them
+	# carried only the DIRECTION, and only inside the popup they open
+	# (Overworld2.route_note), so the number the whole run is counting down was the
+	# one thing the offering never showed. It rides here because it is read while
+	# the row of covers is being SCANNED, not after one has been opened.
+	#
+	# ONE LINE, at DIST_FONT rather than BADGE_FONT: the sentence is 156px at its
+	# longest ("20 games away from the Amulet") against a card 160 wide, and at
+	# BADGE_FONT it wraps to two — which is 16 more pixels than the page's worst
+	# case has to give (see the badge row above). Blank on the Amulet's own card,
+	# where the flag a line up has already said it.
+	var dist := Label.new()
+	dist.text = _page.amulet_distance_text(_page.steps_to_amulet(StringName(choice.get("slot", &""))))
+	dist.tooltip_text = "%s is the Amulet — the game this run ends on." % _page.amulet_name()
+	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dist.custom_minimum_size = Vector2(0, BADGE_LINE)
+	dist.add_theme_font_size_override("font_size", DIST_FONT)
+	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+	card.add_child(dist)
 
 	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
 	# hover card: the enemy's portrait and its goal are already written on the
@@ -555,6 +598,13 @@ func escort_note(choice: Dictionary) -> String:
 # the HUD that previewed on hover; the HUD has gone, and this is the line that was
 # already answering "what is that card" — so the number rides here instead of
 # being the last thing keeping a panel alive.
+#
+# IT DOES NOT REPEAT THE GAME'S NAME. It used to open "Spelunky  →  …", which is
+# the one thing on the line the player already has: their mouse is on that game's
+# cover, with its title printed under it. The line is one line wide and the goal
+# is the half that gets truncated, so the name was being paid for out of the only
+# fact here that isn't already on screen. The stay-or-return pair is the exception
+# below — there the game IS the answer, so those two keep their names.
 func _hover_line(choice: Dictionary) -> String:
 	var game: GameData = choice["game"]
 	var e: GoalEnemyData = choice.get("enemy")
@@ -566,7 +616,7 @@ func _hover_line(choice: Dictionary) -> String:
 		_page.SHIELD_BLUE.to_html(false),
 		GameState.temp_shields_text(_hover_grant)] if _hover_grant >= 0 else ""
 	if e == null:
-		return "[b]%s[/b]  ·  [i]no enemy — free game[/i]%s" % [game.display_name, tries]
+		return "[i]no enemy — free game[/i]%s" % tries
 	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how
 	# many bodies arrive is not part of what it was bought to hide.
 	var escort: String = "  ·  [color=#%s]%s[/color]" % [
@@ -574,11 +624,10 @@ func _hover_line(choice: Dictionary) -> String:
 	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
 	# so hiding the name and quoting the goal would give the whole thing away.
 	if enemy_hidden(choice):
-		return "[b]%s[/b]  →  [i]%s[/i]%s%s" % [
-			game.display_name, HIDDEN_ENEMY_TEXT, escort, tries]
+		return "[i]%s[/i]%s%s" % [HIDDEN_ENEMY_TEXT, escort, tries]
 	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
-	return "[b]%s[/b]  →  %s%s  ·  %s%s%s" % [
-		game.display_name, kind, e.display_name,
+	return "%s[b]%s[/b]  ·  %s%s%s" % [
+		kind, e.display_name,
 		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
 
 # The board entry to read a `choice`'s goal line off (§13). Once the card has been
