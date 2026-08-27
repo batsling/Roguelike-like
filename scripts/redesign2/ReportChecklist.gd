@@ -751,10 +751,26 @@ func populate_standing() -> void:
 
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
-		var lu_text: String = "Level up — %s" % ch.level_up_condition
+		# THE CONDITION ONLY, on this list. The report step's version of this row
+		# quotes the reward inline (`→ Gain +1 Small Chest and +1 Scramble`) because
+		# that is the moment you decide whether to tick it. Here the heading is "What
+		# you need to do", and the reward is not part of the doing — it is a payoff
+		# you read once a run and then remember. It cost a WRAPPED LINE on the one
+		# page the overworld has the least room on: the left column is 612px of a
+		# 625px window (test_overworld2's _assert_fits), and both halves of this row
+		# on one line pushed the condition onto a second.
+		#
+		# The character's face takes that room instead, leading the row the way an
+		# enemy's leads a follower's and a status symbol leads a status's — this is
+		# their standing challenge, and it is the one row on either list that belongs
+		# to the player rather than to something on the board. The reward is still
+		# one hover away, on the portrait.
+		var lu_row: Control = _objective_row("Level up — %s" % ch.level_up_condition,
+			UITheme.GOLD, _character_icon_rect(ch, UITheme.GOLD))
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			lu_text += "   → %s" % ch.level_up_reward
-		_box.add_child(_objective_row(lu_text, UITheme.GOLD))
+			lu_row.tooltip_text = "%s — level up here and it pays %s." % [
+				ch.display_name, ch.level_up_reward]
+		_box.add_child(lu_row)
 
 	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
 	# have to be here and not only on the report step: an event fires the moment a
@@ -1099,6 +1115,40 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT) -> Contr
 	frame.add_child(UITheme.crisp_tex(enemy.image, PORTRAIT_SIZE))
 	return frame
 
+# The same portrait for the LEVEL-UP row, because the same reasoning applies to
+# it. Every other row on this list leads with a picture of whose goal it is — the
+# enemy's face on a Cleared row, the status symbol on a status row — and the
+# level-up row led with nothing, even though it is the one row on the list that
+# belongs to the player rather than to something on the board. It read as a loose
+# clause floating above the enemies, when it is the character's standing challenge
+# and the character is exactly as identifiable by their face as an enemy is.
+#
+# The ICON rather than the full portrait — the full figure lives at the head of
+# the board, where it has the room — and at STATUS_ICON_SIZE rather than at an
+# enemy's PORTRAIT_SIZE. It is the size of the status marks it shares these lists
+# with, which is the right company for it: a status and a level-up condition are
+# both standing clauses ON THE PLAYER, where an enemy portrait is a body on the
+# board. It also costs the page four fewer pixels than an enemy's would, and the
+# overworld's left column has thirteen to give (test_overworld2's _assert_fits).
+func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) -> Control:
+	if character == null:
+		return null
+	var tex: Texture2D = character.icon if character.icon != null else character.portrait
+	if tex == null:
+		return null
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.45)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.tooltip_text = "%s — your character. This is their standing challenge." % character.display_name
+	# Marked, so "how many BODIES are on this list" stays an answerable question.
+	# Both checklists count their portraits by walking for TextureRects, and the
+	# player's face is not one of the board's — see test_overworld2's
+	# _texture_rects_under.
+	frame.set_meta(&"character_portrait", true)
+	frame.add_child(UITheme.crisp_tex(tex, STATUS_ICON_SIZE))
+	return frame
+
 # One checklist row: a bordered CheckBox tinted `color`; `emphasise` gives the
 # main-goal row a heavier border so it reads as the primary question. Kept to a
 # single tight line each — the stage above it is the board, and the checklist has
@@ -1137,8 +1187,13 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	wrap.add_child(line)
-	# The body's own portrait, right where its name is about to be read.
+	# The body's own portrait, right where its name is about to be read — or the
+	# CHARACTER's, on the level-up row, which is the one row here whose owner is the
+	# player. The two are mutually exclusive: `verify_row` is handed an enemy or a
+	# character, never both.
 	var portrait: Control = _enemy_icon_rect(enemy, color)
+	if portrait == null:
+		portrait = _character_icon_rect(character, color)
 	if portrait != null:
 		line.add_child(portrait)
 	if mark != null:

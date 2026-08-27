@@ -5,9 +5,16 @@ extends GutTest
 # Clicking an offered game used to commit to it on the spot, which meant every
 # fact the decision needed had to be printed on the cover. Now the click ASKS:
 # the popup shows the optimal path from that game drawn as the real route ladder,
-# what is waiting there, what it costs, and the three buttons that answer the
-# card. It decides nothing itself — every answer comes straight back out to the
-# overworld's public verbs, which is what these tests check.
+# what is waiting there, what it costs, and the button that answers the card. It
+# decides nothing itself — every answer comes straight back out to the overworld's
+# public verbs, which is what these tests check.
+#
+# BASH AND TRANSMUTE ARE NO LONGER BUTTONS HERE. They were, on the same action
+# row, and they are armed from the offering's own chips and aimed at a card now
+# (see test_overworld2's arming tests). The `bashed` / `transmuted` signals and
+# the `bash()` / `transmute()` verbs stay on this class — the overworld routes
+# both through the same public entry points either way — so the two tests below
+# that answer the modal directly still describe the wiring they always did.
 
 const SCENE := preload("res://scenes/redesign2/Overworld2.tscn")
 
@@ -200,32 +207,39 @@ func test_transmute_from_the_popup_swaps_the_game() -> void:
 	assert_eq(GameState.transmute, 0, "the charge was spent")
 	assert_ne(_ui._choices[0]["game"].id, before, "the slot plays a different game now")
 
-func test_the_verbs_are_only_offered_when_there_is_a_charge() -> void:
-	GameState.bash = 0
-	GameState.transmute = 0
-	var quiet: String = _text_of(_ui.open_choice(0))
-	assert_false(quiet.contains("Bash"), "no charge, no button: %s" % quiet)
-	assert_false(quiet.contains("Transmute"), "same for Transmute: %s" % quiet)
-	_ui._choice_modal._close()
-
-	GameState.bash = 1
-	GameState.transmute = 1
+# THE POPUP CARRIES NO VERB BUTTONS, with a charge or without one. This screen is
+# opened dozens of times a run to answer "do I go here", and two destructive
+# buttons beside the Travel one made that a three-way every single time — while
+# the chips that COUNT the charges could not spend them, and pointed here instead.
+# They arm from those chips now (test_overworld2).
+func test_the_popup_offers_no_verbs_even_with_charges_in_hand() -> void:
+	GameState.bash = 3
+	GameState.transmute = 3
 	var idx: int = _first_bashable()
 	if idx < 0:
 		idx = 0
-	var loud: String = _text_of(_ui.open_choice(idx))
-	assert_true(loud.contains("Transmute"), "a charge puts the verb on the card: %s" % loud)
+	var text: String = _text_of(_ui.open_choice(idx))
+	assert_false(text.contains("⛏  Bash"),
+		"no Bash button on the card, charge or no charge: %s" % text)
+	assert_false(text.contains("⚗  Transmute"),
+		"and none for Transmute either: %s" % text)
+	assert_true(text.contains("Travel") or text.contains("Stay") or text.contains("Head back"),
+		"the one thing the card still answers is the way in: %s" % text)
 
-func test_the_amulets_card_never_offers_a_bash() -> void:
-	# Destroying the game the run is a search for would end it, so the popup
-	# refuses rather than offering a button that argues back.
+func test_the_amulet_cannot_be_bashed_however_it_is_asked() -> void:
+	# Destroying the game the run is a search for would end it, so the verb refuses
+	# — and refusing keeps the charge, since nothing was spent.
 	GameState.bash = 3
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
 			continue
-		var text: String = _text_of(_ui.open_choice(i))
-		assert_false(text.contains("⛏  Bash"),
-			"the Amulet's card has no Bash button: %s" % text)
+		assert_false(_ui.bash_choice(i), "the Amulet's slot refuses the bash")
+		assert_eq(GameState.bash, 3, "and the charge stays in hand")
+		var still_offered: bool = false
+		for c in _ui._choices:
+			if bool(c["amulet"]):
+				still_offered = true
+		assert_true(still_offered, "the Amulet is still on the table")
 		return
 	pass_test("the Amulet isn't on this offering — nothing to check")
 

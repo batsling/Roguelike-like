@@ -846,6 +846,99 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 	assert_eq(GameState.dash_charges, 1, "cancel didn't spend a charge")
 	assert_eq(_ui._choices.size(), capped, "offering back to the capped set")
 
+# --- Bash and Transmute, armed and aimed (§4) ------------------------------
+#
+# Both verbs need a target, and for a long time that was the reason they had no
+# button: the chips under the offering counted the charges and their tooltips
+# pointed at a game card's popup. So the surface showing you had a Bash could not
+# spend it. They arm from those chips now and the click on a card is the aim.
+
+func _first_bashable_index() -> int:
+	for i in range(_ui._choices.size()):
+		if not bool(_ui._choices[i].get("amulet", false)):
+			return i
+	return -1
+
+func test_arming_bash_spends_nothing_and_aiming_at_a_card_destroys_it() -> void:
+	GameState.bash = 1
+	_ui._build_choices()
+	var idx: int = _first_bashable_index()
+	if idx < 0 or _ui._choices.size() <= 1:
+		pass_test("nothing on this offering can legally be bashed")
+		return
+	var game: GameData = _ui._choices[idx]["game"]
+	_ui.arm_bash()
+	assert_eq(_ui.armed_verb(), &"bash", "the chip armed the verb")
+	assert_eq(GameState.bash, 1, "arming is free — the charge is spent by the aim")
+	# THE CLICK ON A CARD IS THE AIM, not an inspection: no popup opens.
+	assert_null(_ui.open_choice(idx), "an armed click fires the verb instead of opening the card")
+	assert_eq(_ui.armed_verb(), &"", "and the verb comes down once it has fired")
+	assert_eq(GameState.bash, 0, "the charge went with the aim")
+	for c in _ui._choices:
+		assert_ne(c["game"].id, game.id, "%s is off the table" % game.display_name)
+
+func test_arming_transmute_and_aiming_swaps_the_slots_game() -> void:
+	GameState.transmute = 1
+	_ui._build_choices()
+	var before: StringName = _ui._choices[0]["game"].id
+	_ui.arm_transmute()
+	assert_eq(_ui.armed_verb(), &"transmute")
+	assert_null(_ui.open_choice(0), "the click aims rather than opening the card")
+	assert_eq(GameState.transmute, 0, "the charge was spent")
+	assert_ne(_ui._choices[0]["game"].id, before, "the slot plays a different game now")
+
+func test_an_armed_verb_can_be_put_down_without_spending_it() -> void:
+	GameState.bash = 1
+	_ui.arm_bash()
+	# Pressing the chip again is the obvious way out, and it is the one a player
+	# tries before finding Cancel.
+	_ui.arm_bash()
+	assert_eq(_ui.armed_verb(), &"", "a second press lowers it")
+	_ui.arm_bash()
+	_ui.cancel_verb()
+	assert_eq(_ui.armed_verb(), &"", "and so does Cancel")
+	assert_eq(GameState.bash, 1, "neither way out costs anything")
+
+func test_a_refused_aim_keeps_the_charge_and_stays_armed() -> void:
+	# Bashing the Amulet would end the run's goal. It says so and refuses — and the
+	# player aimed at the wrong card, not at the wrong verb, so the verb stays up.
+	GameState.bash = 1
+	_ui._build_choices()
+	for i in range(_ui._choices.size()):
+		if not bool(_ui._choices[i]["amulet"]):
+			continue
+		_ui.arm_bash()
+		assert_null(_ui.open_choice(i), "the click is still an aim, not an inspection")
+		assert_eq(GameState.bash, 1, "a refused aim spends nothing")
+		assert_eq(_ui.armed_verb(), &"bash", "and leaves the verb up to be re-aimed")
+		return
+	pass_test("the Amulet isn't on this offering — nothing to check")
+
+func test_an_aim_does_not_outlive_the_table_it_was_taken_on() -> void:
+	GameState.bash = 1
+	GameState.scramble = 1
+	_ui.arm_bash()
+	_ui.scramble()
+	assert_eq(_ui.armed_verb(), &"",
+		"a redrawn offering is a different table — the aim goes with the old one")
+	assert_eq(GameState.bash, 1, "and nothing was spent")
+
+func test_a_dash_and_an_armed_verb_are_never_both_up() -> void:
+	GameState.dash_charges = 1
+	GameState.bash = 1
+	_ui._build_choices()
+	var capped: int = _ui._choices.size()
+	_ui.dash()
+	_ui.arm_bash()
+	assert_false(_ui._dash_mode, "arming a verb lowers the dash")
+	assert_eq(_ui.armed_verb(), &"bash")
+	# …and lowering it REDRAWS the offering, so the aim cannot land on a card the
+	# dash's wider set put there.
+	assert_eq(_ui._choices.size(), capped, "the ordinary offering is back")
+	assert_eq(GameState.dash_charges, 1, "the dash was not spent")
+	_ui.dash()
+	assert_eq(_ui.armed_verb(), &"", "and a dash lowers the verb the other way round")
+
 # --- offering size + scramble (§4/§7) --------------------------------------
 
 # The offering is three cards (or every neighbour, when a node has fewer).
@@ -973,8 +1066,12 @@ func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> 
 		"the strip counts the lost run: %s" % _ui._attempt_count.text)
 	assert_false(_ui._attempt_pips.text.contains("◇"),
 		"and nothing goes hollow — the pips are armour, not tries: %s" % _ui._attempt_pips.text)
-	assert_true(_ui._attempt_hint.text.contains("turn"),
-		"the strip says what a tick does: %s" % _ui._attempt_hint.text)
+	# What the press costs is written ON the button rather than in a sentence
+	# beside it, and the pips it does NOT cost are captioned.
+	assert_true(_ui._attempt_btn.text.contains("Enemy Turn"),
+		"the button says what a tick does: %s" % _ui._attempt_btn.text)
+	assert_eq(_ui._attempt_shield_head.text, "Shields",
+		"and the pips beside it say what they are")
 	assert_false(GameLoop2.last_attempt_turn.is_empty(),
 		"and the turn it bought is left where the board can replay it")
 
@@ -2504,9 +2601,17 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 # list draws each enemy as a picture; drawing them here as names alone made
 # pairing a row with a body a name-matching exercise. The boss keeps what was
 # actually its own — the orange frame and the "Boss" tooltip on it.
+#
+# The CHARACTER's own portrait rides the level-up row for exactly the same reason
+# (it is the one row on either list that belongs to the player rather than to
+# something on the board), and it is skipped here: these counts are about bodies.
+# Its frame carries the `character_portrait` meta so it can be told apart without
+# this walk having to know what art the run's character ships.
 func _texture_rects_under(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
+		if child.has_meta(&"character_portrait"):
+			continue
 		if child is TextureRect and (child as TextureRect).texture != null:
 			out.append(child)
 		out.append_array(_texture_rects_under(child))
@@ -3696,8 +3801,15 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 	var inst: int = int(before.keys()[0])
 	var secs: float = _ui._board.animate_resolve(before,
 		{"attacks": [{"instance": inst, "damage": 3}]})
-	assert_almost_eq(secs, _ui._board.FX_ATTACK_TIME, 0.001,
-		"a strike is what the host waits on")
+	# A STRIKE PLUS ITS TAIL. The number the host waits on is not the beat the
+	# strike is scheduled over — a damage number's tween is sequential (rise, then
+	# fade) and outlives that beat, and on the blow that ends a run there is no
+	# slide afterwards to cover the difference — plus the breath the finished board
+	# is held on, so the end screen does not cut on the same frame as the last
+	# pixel of motion. See BattlefieldView.FX_NUMBER_TAIL / FX_END_BREATH.
+	assert_almost_eq(secs, _ui._board.FX_ATTACK_TIME + _ui._board.FX_NUMBER_TAIL
+		+ _ui._board.FX_END_BREATH, 0.001,
+		"a strike, what its damage number outlives it by, and the breath after")
 
 # The offering does NOT wait for the board: it comes straight back beside it, and
 # the resolve plays out on the board next to the cards. There is no Continue step
@@ -4197,7 +4309,11 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 			{"instance": inst, "turn": 0, "damage": 3},
 			{"instance": inst, "turn": 1, "damage": 3},
 			{"instance": inst, "turn": 2, "damage": 3}]})
-	assert_almost_eq(three, one * 3.0, 0.001,
+	# ONE BEAT PER TURN, which is a statement about the DIFFERENCE and not about the
+	# ratio: the tail (a damage number outliving its beat, plus the breath the board
+	# is held on at the end) is paid once for the whole playback, not once per turn,
+	# so three turns cost two extra strikes rather than three times everything.
+	assert_almost_eq(three - one, _ui._board.FX_ATTACK_TIME * 2.0, 0.001,
 		"the host holds the screen for every turn, not just the first")
 
 # --- the Health comes down WITH the blows -----------------------------------
@@ -4282,7 +4398,8 @@ func test_a_resolve_from_before_the_ladder_still_plays() -> void:
 	var inst: int = int(before.keys()[0])
 	assert_almost_eq(_ui._board.animate_resolve(before,
 			{"attacks": [{"instance": inst, "damage": 1}]}),
-		_ui._board.FX_ATTACK_TIME, 0.001, "an untagged attack belongs to turn one")
+		_ui._board.FX_ATTACK_TIME + _ui._board.FX_NUMBER_TAIL + _ui._board.FX_END_BREATH,
+		0.001, "an untagged attack belongs to turn one")
 
 # --- the hub rule (HUB_CONNECTIONS / ONWARD_CONNECTIONS) --------------------
 #

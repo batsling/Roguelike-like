@@ -62,6 +62,19 @@ extends Control
 # up in the pack, in the order they were placed — the page logs them and refreshes.
 signal answered(taken: Array)
 
+# Emitted every time the table changes while the section is still open — a piece
+# dragged into the pack, one left, one spent where it stands, one binned. It is
+# what `answered` is NOT: that fires once, on the way out, which is too late for
+# anything that has to describe the table WHILE the player is working it.
+#
+# The post-combat screen's way out is exactly that: its button counts what is
+# still on the ground ("Go to Event   (leaving 2 behind)"), and with only
+# `answered` to listen to it drew that count once, when the screen was built, and
+# then never again. Taking every piece on the table left the button still warning
+# about pieces that were already in the pack — the one number on the screen whose
+# whole job is to be current.
+signal changed
+
 # The pieces still on the table. Resolving one takes it out of here; empty closes
 # the screen.
 var _offers: Array = []
@@ -616,6 +629,10 @@ func _after_change() -> void:
 	var page: Node = _page()
 	if page != null and page.has_method("_refresh_items"):
 		page._refresh_items()
+	# Before the rebuild, not after: `_rebuild` can close an emptied section
+	# outright, and a listener told about the change only afterwards would be
+	# reading a section that has already emitted `answered` and gone.
+	changed.emit()
 	_rebuild()
 
 # Size the scrolling body to its own contents, and cap it at what the screen has

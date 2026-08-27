@@ -20,7 +20,13 @@ extends Control
 #   • the GAME — its cover, its type and year, the Temporary Shields it grants,
 #     the pace it puts the board on, whether you've beaten it before;
 #   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
-#   • and the three things you can DO about it: travel, bash, transmute.
+#   • and the one thing you can DO about it: travel.
+#
+# BASH AND TRANSMUTE USED TO BE ON THAT LAST ROW and are not any more — see
+# `_build_actions` for why. They are armed from the chips under the offering now
+# and aimed at a card, the way Dash is. The `bashed` / `transmuted` signals and
+# the `bash()` / `transmute()` verbs stay: the overworld routes both through the
+# same public entry points either way.
 #
 # It reports the answer back through `chose` / `bashed` / `transmuted` rather
 # than reaching into the overworld, so the overworld's public verbs (pick,
@@ -733,27 +739,28 @@ func _set_zoom(z: float) -> void:
 
 # --- the answer ------------------------------------------------------------
 
-# The three things this card can become, on one row: the way in, and the two
-# verbs that make it something else. Travel is the loud one; Bash and Transmute
-# only appear when there is a charge to spend, and the Amulet's card refuses the
-# bash outright rather than offering a button that argues back.
+# What this card can become: the way in, and nothing else.
+#
+# BASH AND TRANSMUTE ARE NOT ON THIS ROW ANY MORE. They were, and they were in the
+# wrong place twice over. This card is what opens when you click a game, and what
+# it is FOR is the decision "do I go here" — the route, the enemy, the shields.
+# Two destructive verbs parked beside the Travel button made that decision a
+# three-way, and they made it a three-way on a screen the player opens dozens of
+# times a run without ever meaning to spend a charge.
+#
+# The other half is that the verbs could only ever be found this way. The chips
+# under the offering counted them and then pointed HERE — "spent from a game's
+# card: click one and press Bash" — so a charge was a number with a paragraph
+# where its button should be. They are real buttons on that row now, and pressing
+# one arms it and lights the offering to be clicked, the same bargain Dash has
+# always made (Overworld2.bash / transmute / _armed_verb).
+#
+# `bashed` and `transmuted` stay on this class, and so do `bash()` and
+# `transmute()`: the overworld still routes both verbs through the same public
+# entry points, and the tests answer them here.
 func _build_actions(game: GameData, accent: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-
-	# `no_verbs` is the start picker (Overworld2.open_start_choice): a real game
-	# with a real enemy, so everything above this row stands — but Bash and
-	# Transmute reshape an OFFERING, and three roads out of one run is not one.
-	var move_only: bool = bool(_notes.get("move_only", false)) or bool(_notes.get("no_verbs", false))
-	if not move_only and GameState.bash > 0 and not bool(_choice.get("amulet", false)):
-		row.add_child(_verb_button("⛏  Bash", UITheme.DANGER,
-			"Destroy %s outright — it leaves the pool for good and another connected game takes the slot."
-				% game.display_name,
-			func(): _answer(bashed)))
-	if not move_only and GameState.transmute > 0:
-		row.add_child(_verb_button("⚗  Transmute", UITheme.ACCENT,
-			"Swap %s for a random off-graph game of the same type." % game.display_name,
-			func(): _answer(transmuted)))
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -783,18 +790,6 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	# focus to grab.
 	go.grab_focus.call_deferred()
 	return row
-
-func _verb_button(text: String, tint: Color, tip: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.tooltip_text = tip
-	b.custom_minimum_size = Vector2(0, 44)
-	b.add_theme_font_size_override("font_size", 13)
-	b.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 10, 1, tint.lerp(UITheme.BG, 0.45)))
-	b.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.6), 6, 10, 1, tint))
-	b.add_theme_color_override("font_color", tint)
-	b.pressed.connect(cb)
-	return b
 
 # Public so a test can answer without a click.
 func travel() -> void:

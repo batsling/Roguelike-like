@@ -386,9 +386,13 @@ node and its script.
     `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
     `✸ Bomb (3)`.
   - **the choosing verbs** — **Bash / Dash / Transmute / Scramble** — are chips on
-    a row under the offering, since all four change what is on the table. Dash and
-    Scramble are buttons; Bash and Transmute need a target, so they are readouts
-    pressed inside a game's popup.
+    a row under the offering, since all four change what is on the table. **All
+    four are buttons.** Dash and Scramble act on the offering as a whole and fire
+    on the press; Bash and Transmute need a target, so pressing one *arms* it —
+    the offering becomes a row of targets, drawn in the verb's colour, and the
+    click on a card is what spends the charge (`Overworld2._armed_verb`). Arming
+    is free and cancelling costs nothing; a refused aim (bashing the Amulet) says
+    why and stays armed.
   - **the shields a game grants** ride the offering's one-line hover, which also
     carries the enemy's **portrait** — sized by the line rather than setting its
     height, so it costs the page nothing (`Overworld2.HOVER_ART`).
@@ -410,11 +414,14 @@ node and its script.
     cover, the name and the Amulet's flag; everything else about the decision
     lives here — the **optimal path from that game drawn as the real route
     ladder**, the enemy waiting there and its goal, the shields the game grants, the
-    pace it puts the board on, your record in it — over the three buttons that
-    answer it: **Travel**, **Bash**, **Transmute**. The cover is drawn small on
-    purpose: it is the one thing you have already seen (it is what you clicked),
-    and the room it gives back goes to the enemy and its goal. It decides nothing itself;
-    each button calls the overworld's `pick` / `bash_choice` / `transmute_choice`.
+    pace it puts the board on, your record in it — over the one button that
+    answers it: **Travel**. (Bash and Transmute used to stand beside it and are
+    armed from the offering's chips instead — this screen is about whether to go
+    somewhere, not the place to bury two destructive verbs.) The cover is drawn
+    small on purpose: it is the one thing you have already seen (it is what you
+    clicked), and the room it gives back goes to the enemy and its goal. It decides
+    nothing itself; every answer calls the overworld's `pick` / `bash_choice` /
+    `transmute_choice`.
   - **`RouteLadder.gd`** — the shortest-path DAG as a top-to-bottom ladder of
     boxes with green arrows between them, colour-coded by role. Shared: the 🗺 map
     window (`RunMapModal`) and `GameChoiceModal` draw the same graph from it.

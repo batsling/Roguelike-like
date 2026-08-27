@@ -206,6 +206,18 @@ func _ready() -> void:
 
 # The current character's board portrait. Cached against the character id so a
 # repaint doesn't re-resolve the CharacterData every time.
+#
+# THE FULL IMAGE, not the icon. `icon` is a token — the small round avatar the
+# combat build stood on a tile — and it is what this drew, because the hero was a
+# 64px square beside the grid. It is the wrong art for the job now: this is the
+# one picture of WHO the run is, standing at the head of the board with the
+# shields over it and the Health under it, and a token there reads as a
+# placeholder for a portrait rather than as the character. `portrait` is the full
+# figure (images2.0/characters/Full), and the frame is shaped for it (HERO_ASPECT).
+#
+# The icon is still the fallback, for a character authored without a full image,
+# and it is still what the header's small chip uses (Overworld2._build_character_chip)
+# — a token IS the right art in a 26px box, where a full figure would be a smudge.
 func _hero_texture() -> Texture2D:
 	var id: StringName = GameState.character_id
 	if id != _hero_id:
@@ -213,7 +225,7 @@ func _hero_texture() -> Texture2D:
 		var ch: CharacterData = Data.get_character2(id)
 		_hero_tex = null
 		if ch != null:
-			_hero_tex = ch.icon if ch.icon != null else ch.portrait
+			_hero_tex = ch.portrait if ch.portrait != null else ch.icon
 	return _hero_tex
 
 # The grid cell edge, in px. It is NOT a constant, because the board is not a
@@ -383,6 +395,18 @@ func _pulse_new_ground(cells: Array, settled: StyleBox) -> void:
 				cell.modulate.a = 1.0
 				cell.add_theme_stylebox_override("panel", settled))
 
+# How much taller than it is wide the hero's frame stands. The board used to draw
+# the character's ICON here — a square token, made for the round in-world avatar
+# the combat build put on a tile — and squeezing the FULL portrait into that box
+# letterboxes it down to a stamp with air above and below.
+#
+# So the frame takes the portrait's shape instead: the same width it always had,
+# and half again in height. The width is the constrained axis (it is the board's
+# row, shared with grid_cols() cells and the off-field lane) and the height is
+# free — the board is taller than the hero either way, so the column grows into
+# room the row already had rather than pushing the page down.
+const HERO_ASPECT: float = 1.5
+
 # The hero rides the same scale as the cells: on a wide board the portrait is the
 # other thing eating the row's width, and a 96px hero beside 48px cells reads as
 # a mistake rather than as scale. Floored well above the cell so the character
@@ -391,7 +415,7 @@ func _scale_hero() -> void:
 	if _hero_icon == null:
 		return
 	var side: int = maxi(_cell, 64)
-	_hero_icon.custom_minimum_size = Vector2(side, side)
+	_hero_icon.custom_minimum_size = Vector2(side, roundi(side * HERO_ASPECT))
 
 # Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
 func _cell_pos(row: int, col: int) -> Vector2:
@@ -2321,6 +2345,23 @@ func _offgrid_token(entry: Dictionary) -> Control:
 
 const FX_ATTACK_TIME: float = 0.55   # how long the front-line strike phase runs
 const FX_SLIDE_TIME: float = 0.34    # how long the advance slide takes
+# THE TAIL: the beat the playback is held open for after its last move lands.
+#
+# `animate_resolve` used to hand back the moment the last tween was scheduled to
+# START finishing, and the host takes that number literally — `_hold_for_resolve`
+# opens the end-of-run screen the instant it elapses. Two things were still on
+# screen at that point. A damage number's own tween is SEQUENTIAL (rise, then
+# fade, each FX_ATTACK_TIME * 0.85), so it lives roughly 1.7x the strike beat the
+# schedule budgeted for it — and a killing blow is exactly the case where nothing
+# slides afterwards to cover the difference, so the number that ended the run was
+# wiped mid-float by the verdict. And even with the arithmetic right, a cut on the
+# same frame as the last pixel of motion reads as a dropped frame rather than as
+# an ending.
+#
+# So the playback is held for the longest thing it started (a strike's full number
+# life beyond the beat already counted) plus a short breath to land on.
+const FX_NUMBER_TAIL: float = FX_ATTACK_TIME * 0.7  # what a damage number outlives its beat by
+const FX_END_BREATH: float = 0.45    # the pause on the finished board before the screen changes
 
 # A node's rect in the FX LAYER'S OWN SPACE rather than in global coordinates.
 #
@@ -2463,6 +2504,10 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 	# rather than the frame count, which a run that ended mid-playback cuts short.
 	var base_turns: int = maxi(0, int(res.get("turns", turns)) - int(res.get("extra_turns", 0)))
 	var elapsed: float = 0.0
+	# When the last damage number thrown by any turn finally finishes fading. It
+	# outlives the strike beat the schedule counts (see FX_NUMBER_TAIL), and on the
+	# blow that ends a run there is no slide afterwards to cover for that.
+	var numbers_end: float = 0.0
 	for turn in range(turns):
 		var from_frame: Dictionary = frames[turn]
 		var to_frame: Dictionary = frames[turn + 1]
@@ -2470,6 +2515,8 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 		# The slide waits for its own turn's strike to land, and only for that:
 		# a turn where nothing attacked starts moving immediately.
 		var slide_at: float = elapsed + (FX_ATTACK_TIME if struck else 0.0)
+		if struck:
+			numbers_end = maxf(numbers_end, slide_at + FX_NUMBER_TAIL)
 		var slid: bool = _play_turn_slides(from_frame, to_frame, slide_at)
 		# A turn nobody acted on costs no time — an empty board resolves as
 		# instantly as it always did.
@@ -2493,7 +2540,12 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1) -
 	else:
 		_reveal_hidden()
 		_end_hp_playback()
-	return elapsed
+	# A board where nothing moved still resolves instantly — there was never
+	# anything to watch, so there is nothing to hold open. Otherwise the answer is
+	# the last thing that is actually still on screen, plus the breath to land on.
+	if elapsed <= 0.0 and numbers_end <= 0.0:
+		return 0.0
+	return maxf(elapsed, numbers_end) + FX_END_BREATH
 
 # How much HEALTH a resolve cost, as opposed to how much damage was thrown at it:
 # shields eat the difference, and a hit a shield swallowed moves no Health.

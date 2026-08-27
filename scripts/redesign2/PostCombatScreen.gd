@@ -621,6 +621,11 @@ func _fill_payout() -> void:
 		_loot_slot.add_child(_empty_note("Nothing dropped for your pack."))
 		return
 	_loot_section = LootDropModal.embed(_page, self, _loot_slot, _loot, true)
+	# THE WAY OUT COUNTS WHAT IS STILL ON THE GROUND, so it has to hear about every
+	# piece the player takes, leaves, spends or bins — not just about the section
+	# finishing. `answered` fires once, on the way out, which is after the button
+	# has stopped mattering; `changed` is the live one.
+	_loot_section.changed.connect(_refresh_exit)
 	# The section stays put once its table is clear (it says so itself) and reports
 	# only when the screen goes, so this fires on the way out and is the log of what
 	# the player ended up keeping.

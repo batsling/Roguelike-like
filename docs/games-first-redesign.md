@@ -342,7 +342,10 @@ already having a bad time, not to one who isn't.
 These replace card-play as the way you manipulate the board. All are small
 integer counts, and each is drawn **once, by whatever owns it** — there is no HUD
 strip. **Bash, Dash, Transmute and Scramble** are chips under the offering, since
-all four change what is on the table. **Push and Bombs** need no row of their
+all four change what is on the table — and all four are **buttons**. Dash and
+Scramble act on the offering as a whole and fire on the press; Bash and Transmute
+need a target, so the press ARMS them and the click on an offered card is what
+spends the charge. **Push and Bombs** need no row of their
 own: the board's toolbar buttons already read `⇤ Push (1)` / `✸ Bomb (3)`, just
 as its pressure bar already ends in the run's tier and its hero already carries
 Health, the shield pips and the player's statuses. **Keys are not drawn at all** —
@@ -488,9 +491,17 @@ The popup is where the decision is actually made. It carries:
 - the **enemy waiting there**: portrait, name, and the goal as it would actually
   be played — the player's own status clauses included (§13) — plus which enemies
   on the board have already been beaten *at this game*;
-- and the three things that can be done about the card: **Travel**, **Bash**,
-  **Transmute**. Bash and Transmute only appear when there is a charge, and the
-  Amulet's card never offers a Bash (§4).
+- and the one thing that can be done about the card: **Travel**.
+
+**Bash and Transmute are not on this screen.** They were, on the same action row,
+and it was the wrong place for them twice over: this card is opened dozens of
+times a run to answer "do I go here", and two destructive verbs beside the Travel
+button made that a three-way every time — while the chips that COUNT the charges
+could not spend them, and pointed here instead. They are armed from those chips
+now and aimed at a card (§4): press ⛏ Bash, the offering becomes a row of targets
+in the verb's colour, click the game you want gone. Arming is free; the click is
+what spends the charge. The Amulet still refuses a Bash, and refusing leaves the
+verb armed rather than eating it.
 
 ### 4.3 Pills (`pills2.0`)
 
