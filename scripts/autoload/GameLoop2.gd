@@ -1109,7 +1109,12 @@ func roll_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	var boss: GoalEnemyData = roll_boss(game_type, tier)
 	if boss != null:
-		choose_game(boss)
+		# The round's own type and tier are handed on for the escort, exactly as
+		# choose_game_of_type hands on the game's: a boss may be authored at a tier
+		# the goal-enemy roster does not reach, and the escort roll widens DOWNWARD
+		# from what it is asked for (_pick_by_type_tier) rather than out of whatever
+		# bucket the boss itself came from.
+		choose_game(boss, game_type, tier)
 	return boss
 
 # Stands the enemy the chosen game advertised ON THE BOARD (§7.2) at the back
@@ -1154,14 +1159,17 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	return inst
 
 # Stand the escort (§7.5) next to the enemy of the game just chosen. Returns its
-# instance handle, or 0 when the game gets none:
+# instance handle, or 0 when there is nothing to roll — an empty goal-enemy
+# roster, where the game still gets its own enemy.
 #
-#   * A BOSS ROUND spawns solo. A tier change is already the run's step up — the
-#     boss pool is heavier, bomb-immune and paid for at triple gold — and adding a
-#     body to it would stack the two difficulty rules that were meant to be felt
-#     one at a time.
-#   * An empty goal-enemy roster has nothing to roll, and the game still gets its
-#     own enemy.
+# A BOSS ROUND GETS ONE TOO. It used to spawn solo, on the grounds that a tier
+# change is already the run's step up and stacking the two difficulty rules would
+# blur which one was being felt. In play that made the run's biggest round its
+# EMPTIEST board — one body, where the ordinary game before it had two — so the
+# capstone read as a quieter game with a bigger enemy on it. The escort is rolled
+# the same way here as anywhere: an ordinary goal-enemy out of the round's own
+# type and tier bucket, bombable and worth ordinary gold. The boss keeps every
+# rule that is the boss's (§7.1); what it stops having is an escort exemption.
 #
 # The escort is a body like any other from the moment it lands: it walks, strikes,
 # takes a bomb, carries its own goal, and drops its own item when that goal is
@@ -1169,7 +1177,7 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 # named one alone, which is what makes the pair harder than one enemy of twice
 # the size.
 func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> int:
-	if primary == null or primary.is_boss():
+	if primary == null:
 		return 0
 	var typ: StringName = game_type if game_type != &"" else primary.game_type
 	var t: int = tier if tier >= 0 else primary.tier_index()

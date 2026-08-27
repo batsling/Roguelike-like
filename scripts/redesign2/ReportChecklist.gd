@@ -211,7 +211,8 @@ func populate_play_panel() -> void:
 				if game_now != null:
 					GameStats.record_level_up(game_now.id, GameState.character_id)
 				_announce("Levelled up — %s." % ch.level_up_condition, UITheme.GOLD)
-				_rebuild_soon())
+				_rebuild_soon(),
+			_level_up_note_hooks(ch))
 
 	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
 	# sections, deliberately: the checklist now carries three kinds of objective
@@ -299,7 +300,35 @@ func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 			# DEFERRED, because the box being locked a line above is one of the
 			# children the rebuild frees.
 			if gone and standing > GameLoop2.stack.size():
-				_rebuild_soon())
+				_rebuild_soon(),
+		_enemy_note_hooks(enemy))
+
+# The (game, enemy) note the confirm writes, as the {read, write, placeholder}
+# _arm_row wants — or {} when there is no pair to write about. The same accessors
+# EnemyNoteModal uses, so a note taken at a tick and one written from the Atlas
+# are the same note.
+func _enemy_note_hooks(enemy: GoalEnemyData) -> Dictionary:
+	var game: GameData = _page._chosen.get("game")
+	if game == null or enemy == null:
+		return {}
+	return {
+		"read": func(): return GameStats.enemy_note(game.id, enemy.id),
+		"write": func(text): GameStats.set_enemy_note(game.id, enemy.id, text),
+		"placeholder": "Build, route, what nearly killed you…",
+	}
+
+# The same, for the (game, character) LEVEL-UP note. A standing condition reads
+# completely differently game to game, which is why the note belongs to the pair
+# rather than to the character.
+func _level_up_note_hooks(character: CharacterData) -> Dictionary:
+	var game: GameData = _page._chosen.get("game")
+	if game == null or character == null:
+		return {}
+	return {
+		"read": func(): return GameStats.level_up_note(game.id, character.id),
+		"write": func(text): GameStats.set_level_up_note(game.id, character.id, text),
+		"placeholder": "What made the level-up possible here…",
+	}
 
 # The two event-borne sections of the checklist. Both count down in games, and
 # both show how long is left — an objective with a clock on it is a different
@@ -575,7 +604,10 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	frame.add_child(UITheme.crisp_tex(status.image, STATUS_ICON_SIZE))
+	# Timed rows carry the clock, like the board's pips do — the row's text says how
+	# many games are left (clock_suffix) and the badge is what makes it findable
+	# without reading the sentence.
+	frame.add_child(UITheme.timed_art(status.image, STATUS_ICON_SIZE, games > 0))
 	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games))
 	return frame
 
@@ -616,7 +648,12 @@ func _lock_row(cb: CheckBox) -> void:
 # Wire one row's box to the confirm. `key` is what GameLoop2 remembers it by (see
 # row_answered); `what` is the sentence the confirm asks about; `on_yes` is what
 # resolving it actually does, and runs exactly once.
-func _arm_row(cb: CheckBox, key: String, what: String, on_yes: Callable) -> void:
+# `note` is the optional write-up the confirm also asks for: {read, write,
+# placeholder}, the same accessors EnemyNoteModal is built on. Given one, the
+# panel carries an editor under the question and saves it on Yes — a No throws it
+# away with the panel, exactly as a No throws away the tick.
+func _arm_row(cb: CheckBox, key: String, what: String, on_yes: Callable,
+		note: Dictionary = {}) -> void:
 	if cb == null:
 		return
 	if GameLoop2.row_answered(key):
@@ -625,15 +662,60 @@ func _arm_row(cb: CheckBox, key: String, what: String, on_yes: Callable) -> void
 	cb.toggled.connect(func(on: bool) -> void:
 		if not on or cb.disabled:
 			return
+		var editor: TextEdit = _note_editor(note) if not note.is_empty() else null
+		# The two answers are named rather than written inline: `ask` takes the
+		# note block AFTER them, and GDScript cannot parse an ordinary argument
+		# following a multi-line lambda.
+		var on_confirm := func() -> void:
+			if not is_instance_valid(cb) or cb.disabled:
+				return
+			# The note is saved BEFORE the row resolves: `on_yes` can take the body
+			# off the board and rebuild this list, and the editor is a child of a
+			# panel the rebuild may take with it. And only when it CHANGED — a write
+			# saves the whole stats file and fires `changed`, and most ticks are
+			# confirmed without a word being typed.
+			if editor != null and is_instance_valid(editor) \
+					and editor.text != String(editor.get_meta("was", "")):
+				var write: Callable = note["write"]
+				write.call(editor.text)
+			on_yes.call()
+			_lock_row(cb)
+		var on_no := func() -> void:
+			if is_instance_valid(cb) and not cb.disabled:
+				cb.button_pressed = false
 		ConfirmPanel.ask(_page, "Confirm this", CONFIRM_BODY % what, "Yes, I did it",
-			func() -> void:
-				if not is_instance_valid(cb) or cb.disabled:
-					return
-				on_yes.call()
-				_lock_row(cb),
-			func() -> void:
-				if is_instance_valid(cb) and not cb.disabled:
-					cb.button_pressed = false))
+			on_confirm, on_no, _note_block(editor)))
+
+# The note field inside a confirm, pre-loaded with whatever was already written
+# about this pair — a row confirmed once is locked, but the same enemy at the same
+# game comes round again in a later run and the note is the run's memory of it.
+const NOTE_EDITOR_H := 92
+
+func _note_editor(note: Dictionary) -> TextEdit:
+	var edit := TextEdit.new()
+	var read: Callable = note["read"]
+	edit.text = String(read.call())
+	edit.set_meta("was", edit.text)
+	edit.placeholder_text = String(note.get("placeholder", ""))
+	edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	edit.custom_minimum_size = Vector2(0, NOTE_EDITOR_H)
+	return edit
+
+# The editor with its caption, or null when there is nothing to caption. Says
+# OPTIONAL in as many words: the confirm is about the tick, and a field with no
+# label above a Yes button reads like something that has to be filled in first.
+func _note_block(editor: TextEdit) -> Control:
+	if editor == null:
+		return null
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	var head := Label.new()
+	head.text = "🗒  Notes — how did you pull it off? (optional)"
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(head)
+	box.add_child(editor)
+	return box
 
 # One wording for all of them, because it is one promise. Says what is about to
 # happen AND that it is final — a player who has to guess which half of that is
@@ -1153,9 +1235,9 @@ func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) 
 # main-goal row a heavier border so it reads as the primary question. Kept to a
 # single tight line each — the stage above it is the board, and the checklist has
 # to stay a glanceable list rather than a stack of cards.
-# One checklist line. When `enemy` is given the row also carries a Notes button
-# on the right, for writing down how this enemy was actually beaten AT this game
-# — the note belongs to the pair, and the Atlas surfaces it on the game later.
+# One checklist line. When `enemy` is given the row leads with that body's
+# portrait; the write-up of how it was beaten AT this game is asked for by the
+# tick's own confirm (_arm_row) rather than by a button on the line.
 # `mark` is a chip the row leads with instead of a word — today the status symbol
 # (_status_mark), handed in built rather than as a texture because what it carries
 # (its frame, its hover card) is the caller's fact, not the row's.
@@ -1217,44 +1299,16 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		cb.add_theme_color_override("font_color",
 			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
 	line.add_child(cb)
-	var game: GameData = _page._chosen.get("game")
-	if game != null:
-		if enemy != null:
-			line.add_child(_notes_button(game, enemy))
-		elif character != null:
-			line.add_child(_levelup_notes_button(game, character))
+	# NO NOTES BUTTON ON THE ROW. Every enemy row and the level-up row used to end
+	# in one, which is a second control on every line of a list whose lines are
+	# already a portrait, a symbol, a box and a wrapped sentence — and it was a
+	# button pressed at the same moment as the box beside it, since what you have
+	# to say about a kill is freshest the second you tick it. The editor is IN THE
+	# CONFIRM now (_arm_goal_row): one press, both answers, and the row keeps the
+	# width the button was taking.
 	# Bound last: the hover covers what is IN the row, so the row has to be in it.
 	bind_row_to_body(wrap, instance, paint)
 	return {"row": wrap, "check": cb}
-
-# The per-row Notes button. Shows a filled glyph once something is written, so a
-# game you've already annotated reads at a glance.
-func _notes_button(game: GameData, enemy: GoalEnemyData) -> Button:
-	return _note_button_for(
-		"Write down how you beat %s here" % enemy.display_name,
-		func(): return GameStats.enemy_note(game.id, enemy.id),
-		func(refresh): EnemyNoteModal.open(_page, game, enemy, refresh))
-
-# The same button for the level-up row, writing the (game, character) note.
-func _levelup_notes_button(game: GameData, character: CharacterData) -> Button:
-	return _note_button_for(
-		"Write down how you hit %s's level-up here" % character.display_name,
-		func(): return GameStats.level_up_note(game.id, character.id),
-		func(refresh): EnemyNoteModal.open_level_up(_page, game, character, refresh))
-
-# Shared shape for both: `read` answers the current text (so the glyph can say
-# whether there is one) and `open` is handed the refresh to call on save.
-func _note_button_for(tip: String, read: Callable, open: Callable) -> Button:
-	var b := Button.new()
-	b.add_theme_font_size_override("font_size", 11)
-	b.tooltip_text = tip
-	var refresh := func():
-		var has: bool = String(read.call()).strip_edges() != ""
-		b.text = "🗒 Notes ✎" if has else "🗒 Notes"
-		b.add_theme_color_override("font_color", UITheme.GOLD if has else UITheme.TEXT_DIM)
-	refresh.call()
-	b.pressed.connect(func(): open.call(refresh))
-	return b
 
 func _verify_head(text: String) -> Label:
 	var l := Label.new()

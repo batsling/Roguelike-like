@@ -21,14 +21,22 @@ const PANEL_W := 460
 # question was raised by a control that has already changed state. A checklist box
 # ticks itself the moment it is clicked (§2.1); saying No has to put it back, and
 # only the panel knows when No happened.
+#
+# `extra` is a control mounted between the body and the buttons — the panel's one
+# extension point, for a question that has something to FILL IN as well as answer.
+# The checklist's ticks use it for the note about what you just did (§2.1): the
+# moment you confirm a kill is the moment you remember how it went, and asking for
+# both in one place is what let the goal rows drop their own Notes button.
 static func ask(parent: Node, title: String, body: String, ok_text: String,
-		on_ok: Callable, on_cancel: Callable = Callable()) -> ConfirmPanel:
+		on_ok: Callable, on_cancel: Callable = Callable(),
+		extra: Control = null) -> ConfirmPanel:
 	var panel := ConfirmPanel.new()
 	panel._title = title
 	panel._body = body
 	panel._ok_text = ok_text
 	panel._on_ok = on_ok
 	panel._on_cancel = on_cancel
+	panel._extra = extra
 	parent.add_child(panel)
 	return panel
 
@@ -37,6 +45,9 @@ var _body: String = ""
 var _ok_text: String = "OK"
 var _on_ok: Callable = Callable()
 var _on_cancel: Callable = Callable()
+# The caller's own control, mounted under the body. Held rather than added at
+# `ask` time because the panel has no tree until _ready builds one.
+var _extra: Control = null
 # Set the instant Yes is pressed, so the tear-down below knows not to also call
 # the No handler for the same question.
 var _answered: bool = false
@@ -108,6 +119,10 @@ func _build() -> void:
 	text.add_theme_font_size_override("font_size", 14)
 	text.add_theme_color_override("font_color", Color(0.86, 0.86, 0.9))
 	vbox.add_child(text)
+
+	# The caller's own control, between what is being asked and the answer to it.
+	if _extra != null and is_instance_valid(_extra):
+		vbox.add_child(_extra)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)

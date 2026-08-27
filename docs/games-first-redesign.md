@@ -98,6 +98,16 @@ evening, and the reward for it was behind a screen you had not reached. **Losing
 runs does not gate any of it** — a lost run is the enemies' turn, not a lock on
 the checklist.
 
+**The confirm is also where the note is written.** Ticking an enemy goal or the
+level-up row raises the confirm, and the confirm carries the write-up field for
+the pair the row is about — (game, enemy) or (game, character), the same note
+`EnemyNoteModal` edits from the Atlas and the Collection, saved on Yes and thrown
+away with the panel on No (`ReportChecklist._arm_row`'s `note` hooks). It is asked
+for *there* because the moment you confirm a kill is the moment you remember how
+it went, and because the alternative was a `🗒 Notes` button on every line of a
+list whose lines are already a portrait, a symbol, a wrapped sentence and a box.
+The rows carry no such button now, and the width it was taking is the checklist's.
+
 **A completed goal sinks.** Once a row is answered it is a record rather than a
 question, and left in place it is a line the player re-reads every time they scan
 for what is still to do — the list being longest exactly when they have done the
@@ -289,6 +299,13 @@ one (`GameLoop2._take_hit`).
 - **The ones gained off the board are just SHIELDS, and stay** (§4.3) — a pill's,
   a banked game's. A hit breaks a Temporary Shield first, since those are the ones
   about to expire anyway.
+- **A shield breaks ON SCREEN.** The run's pools have already been spent by the
+  time the board starts drawing the resolve, so for the length of a playback the
+  row over the hero is the PLAYBACK's rather than the run's
+  (`BattlefieldView._shields_shown`, the same trick the Health line plays) and one
+  sprite swells and fades as each blocked blow lands. Without it the armour was
+  simply gone before the swing that broke it was drawn — the one thing a shield
+  exists to do was the one thing never shown happening.
 
 **ESCAPE OPENS ON THE HIT.** A game you cannot beat is not a run-ender: you may
 walk away from the one in play, and the door opens **the moment an enemy's attack
@@ -562,11 +579,20 @@ than the pill, which is why two colours can both claim to be Full Health.
 **Temporary Shields** a game grants (§3.2). The name is the rule: a Temporary
 Shield expires with the game it came from, and a Shield does not.
 
-- They are drawn **closest to the player** — `◈` at the head of the pip row,
+- They are drawn **closest to the player** — at the head of the shield row,
   nearest the portrait on the board's hero, and beside the always-visible Health
   chip in the header, because a pool gained on the overworld has to be readable
-  when no board is on screen. Position is the reading: the further from the
-  portrait a pip is, the sooner it goes.
+  when no board is on screen. The header draws them as the **same shield sprite**
+  the board does (with no clock, since these never expire); it used to be a `◈`
+  glyph, which made the one pool a player meets away from the board the one pool
+  nothing had taught them to recognise. Position is one half of the reading: the further
+  from the portrait a shield is, the sooner it goes. The **clock badge** is the
+  other half — a Temporary Shield wears one and a Shield does not, the same mark
+  a borrowed status pip wears (`UITheme.timed_art`), so "expires" is one symbol
+  across the whole UI rather than a glyph per surface. There is **no shield
+  count in the checklist panel**: the board draws armour as armour, beside the
+  character it is protecting, and a captioned copy of it in the paperwork was
+  room the checklist wanted.
 - They are **used last**: a hit breaks a Temporary Shield first and only reaches
   these once those are gone (§3.2). A lost run breaks neither — it costs a turn
   of the board and nothing else.
@@ -1348,12 +1374,19 @@ item and gold when that goal is cleared.
 - Both are on the report checklist: the game's enemy as the top **Goal** row, the
   escort as an *Also cleared* row alongside every other follower.
 
-**Two rules carve out of it**, both for the same reason — the escort must not
-stack on top of a difficulty rule that was meant to be felt on its own:
+**A BOSS ROUND GETS ONE TOO.** It used to be the one carve-out: a tier change
+already swaps in the heavier, bomb-immune pool at triple gold (§7.1), and doubling
+the bodies on that round looked like merging two difficulty steps into one wall.
+What it actually produced was the run's biggest round on its **emptiest board** —
+one body, where the ordinary game before it had two — so the capstone read as a
+quieter game with a bigger enemy on it. The boss now arrives with an ordinary
+escort out of the round's own type and tier (`choose_boss` hands both on, and the
+roll widens downward from there, since a boss may be authored at a tier the
+goal-enemy roster does not reach). It is a normal body: bombable, worth ordinary
+gold, one chest-point tier. Every rule that is the *boss's* stays the boss's.
 
-- **A boss spawns solo.** A tier change already swaps in the heavier, bomb-immune
-  pool at triple gold (§7.1); doubling the bodies on that round as well would
-  merge the two steps into one wall.
+**One rule still carves out of it**, so the escort cannot be farmed:
+
 - **Scramble rerolls the pair.** `choose_game` supersedes the game in play, and
   the escort came with the enemy being rejected, so it leaves with it
   (`GameLoop2.current_escort` is what makes that possible). Otherwise a D6 charge
@@ -2121,8 +2154,8 @@ Its two sides bite in opposite directions, which is the point:
   trash 4-X items/upgrades", and doing that clears the body — same hit, same
   drop, same gold. What it does *not* do is go on the record. The enemy's own
   condition was never set, so nothing is banked against the game it happened at:
-  no "beaten in \<game\>" tally, no note (the row carries no Notes button at
-  all), and no player `clause` ticks off it either, since a goal nobody met
+  no "beaten in \<game\>" tally, no note (its confirm does not ask for one, the
+  way a goal row's does), and no player `clause` ticks off it either, since a goal nobody met
   carried nothing to satisfy. **Never on a boss** — a boss's goal is the whole of
   what the boss is (§7.1), so `GameLoop2.alternatives_for` refuses one and
   `claim_enemy_alternative` refuses the claim behind it too.
