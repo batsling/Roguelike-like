@@ -1064,14 +1064,15 @@ func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> 
 	assert_eq(GameState.shields, shields, "a lost run costs no shields at all")
 	assert_true(_ui._attempt_count.text.contains("1"),
 		"the strip counts the lost run: %s" % _ui._attempt_count.text)
-	assert_false(_ui._attempt_pips.text.contains("◇"),
-		"and nothing goes hollow — the pips are armour, not tries: %s" % _ui._attempt_pips.text)
 	# What the press costs is written ON the button rather than in a sentence
-	# beside it, and the pips it does NOT cost are captioned.
+	# beside it. The shields it does NOT cost are not on this strip at all any
+	# more — the board draws them as armour over the hero — so what the strip owes
+	# that rule is a line on the count the press does move.
 	assert_true(_ui._attempt_btn.text.contains("Enemy Turn"),
 		"the button says what a tick does: %s" % _ui._attempt_btn.text)
-	assert_eq(_ui._attempt_shield_head.text, "Shields",
-		"and the pips beside it say what they are")
+	assert_true(_ui._attempt_count.tooltip_text.contains("do not go when you lose a run"),
+		"and the count says a lost run leaves the shields alone: %s"
+			% _ui._attempt_count.tooltip_text)
 	assert_false(GameLoop2.last_attempt_turn.is_empty(),
 		"and the turn it bought is left where the board can replay it")
 
@@ -1202,6 +1203,67 @@ func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 	assert_eq(_ui._fulfil_checks.size(), rows_before + 1,
 		"what just walked on is something you can be asked about")
 	assert_string_contains(_text_of(_ui._verify_box), conjured.display_name)
+
+# --- the note is asked for by the tick, not by a button on the row ----------
+#
+# Every enemy row used to end in a "🗒 Notes" button — a second control on a line
+# that is already a portrait, a symbol, a wrapped sentence and a box, pressed at
+# the same moment as the box beside it. The confirm asks for both at once now.
+
+func test_a_goal_row_carries_no_notes_button() -> void:
+	_ui.pick(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var row: Control = _ui._fulfil_checks[0]["check"].get_parent()
+	for btn in row.find_children("*", "Button", true, false):
+		assert_false(String((btn as Button).text).contains("Notes"),
+			"no Notes button on the row: %s" % (btn as Button).text)
+
+func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
+	_ui.pick(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var game_id: StringName = _ui._chosen["game"].id
+	var inst: int = int(_ui._fulfil_checks[0]["instance"])
+	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
+	assert_not_null(enemy, "the row is about a body")
+	if enemy == null:
+		return
+	_ui._fulfil_checks[0]["check"].button_pressed = true
+	var confirm: ConfirmPanel = _find_confirm(_ui)
+	assert_not_null(confirm, "the tick asks first")
+	if confirm == null:
+		return
+	var edits: Array = confirm.find_children("*", "TextEdit", true, false)
+	assert_eq(edits.size(), 1, "and the question comes with somewhere to write it down")
+	if edits.is_empty():
+		return
+	(edits[0] as TextEdit).text = "Killed it with the starting pistol."
+	_say_yes(_ui)
+	assert_eq(GameStats.enemy_note(game_id, enemy.id),
+		"Killed it with the starting pistol.",
+		"saying yes banks the note against the pair, where the Atlas reads it")
+
+func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
+	_ui.pick(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var game_id: StringName = _ui._chosen["game"].id
+	var inst: int = int(_ui._fulfil_checks[0]["instance"])
+	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
+	if enemy == null:
+		return
+	_ui._fulfil_checks[0]["check"].button_pressed = true
+	var confirm: ConfirmPanel = _find_confirm(_ui)
+	if confirm == null:
+		return
+	var edits: Array = confirm.find_children("*", "TextEdit", true, false)
+	if edits.is_empty():
+		return
+	(edits[0] as TextEdit).text = "typed, then thought better of it"
+	_say_no(_ui)
+	assert_eq(GameStats.enemy_note(game_id, enemy.id), "",
+		"a No is a No about the whole thing — the row and the note")
 
 func test_there_is_no_emphasised_goal_row() -> void:
 	_ui.pick(0)
@@ -1372,11 +1434,46 @@ func test_the_popup_shows_the_shields_the_game_grants() -> void:
 func test_the_players_own_state_is_drawn_on_the_board() -> void:
 	GameState.hp = 4
 	GameState.shields = 2
+	GameState.bonus_shields = 1
 	_ui._refresh()
 	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [GameState.hp, GameState.max_hp]),
 		"the hero carries the health: %s" % _ui._board._hero_hp.text)
-	assert_true(_ui._board._hero_shields.text.begins_with("◆◆"),
-		"and the shield pips: %s" % _ui._board._hero_shields.text)
+	# One SHIELD SPRITE per shield, both pools, permanent first — and only the
+	# temporary ones carry the clock that says they go with this game.
+	var shields: Array = _ui._board._hero_shields.get_children()
+	assert_eq(shields.size(), 3, "one sprite per shield, both pools")
+	assert_eq(_timers_on(shields[0]), 0, "the permanent one wears no clock")
+	assert_eq(_timers_on(shields[1]), 1, "the temporary ones do")
+	assert_eq(_timers_on(shields[2]), 1, "both of them")
+
+# The other half of the same rule: a status the run OWNS is drawn bare, and one
+# it has only BORROWED (docs/potions-design.md §5.3) wears the clock — the same
+# badge, in the same corner, as the shields that go with this game.
+func test_a_borrowed_status_wears_the_clock_and_an_owned_one_does_not() -> void:
+	GameState.apply_status(&"strength", 1)
+	_ui._refresh()
+	var pips: Array = _ui._board._hero_statuses.get_children()
+	assert_eq(pips.size(), 1, "one pip on the player")
+	if pips.is_empty():
+		return
+	assert_eq(_timers_on(pips[0]), 0, "nothing is going anywhere, so no clock")
+	GameState.remove_status(&"strength", 1)
+	GameState.apply_status(&"strength", 2, 1)
+	_ui._refresh()
+	pips = _ui._board._hero_statuses.get_children()
+	assert_eq(pips.size(), 1, "still one pip")
+	if pips.is_empty():
+		return
+	assert_eq(_timers_on(pips[0]), 1, "and it says it is on loan")
+
+# How many clock badges are drawn inside `node` — the mark UITheme.timed_art puts
+# on anything that expires.
+func _timers_on(node: Node) -> int:
+	var found: int = 0
+	for tr in node.find_children("*", "TextureRect", true, false):
+		if (tr as TextureRect).texture == UITheme.TIMER_ART:
+			found += 1
+	return found
 
 func test_the_choosing_verbs_sit_under_the_offering() -> void:
 	GameState.bash = 2
@@ -2304,6 +2401,21 @@ func test_the_playing_screen_fits_one_window() -> void:
 	_ui.pick(0)
 	_ui._refresh()
 	_assert_fits("the report screen")
+
+# The two verbs sit BESIDE the cover rather than stacked under it. Four
+# full-width bands — art, line, Play, Lost a run — above a checklist that is the
+# reason the panel exists is the checklist paying for the paperwork; beside the
+# art the pair costs the panel nothing but the height the cover already had.
+func test_the_play_verbs_sit_beside_the_cover() -> void:
+	_ui.pick(0)
+	_ui._refresh()
+	await get_tree().process_frame
+	var cover: Control = _ui._now_playing_cover
+	for btn: Button in [_ui._attempt_btn]:
+		assert_gt(btn.global_position.x, cover.get_global_rect().end.x - 1.0,
+			"%s is to the right of the cover" % btn.text.split("\n")[0])
+		assert_lt(btn.global_position.y, cover.get_global_rect().end.y,
+			"and beside it rather than under it")
 
 func test_the_biggest_board_still_fits_one_window() -> void:
 	# The board gains a column AND a row per difficulty step; the top of the

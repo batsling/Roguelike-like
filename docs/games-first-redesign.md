@@ -98,6 +98,16 @@ evening, and the reward for it was behind a screen you had not reached. **Losing
 runs does not gate any of it** — a lost run is the enemies' turn, not a lock on
 the checklist.
 
+**The confirm is also where the note is written.** Ticking an enemy goal or the
+level-up row raises the confirm, and the confirm carries the write-up field for
+the pair the row is about — (game, enemy) or (game, character), the same note
+`EnemyNoteModal` edits from the Atlas and the Collection, saved on Yes and thrown
+away with the panel on No (`ReportChecklist._arm_row`'s `note` hooks). It is asked
+for *there* because the moment you confirm a kill is the moment you remember how
+it went, and because the alternative was a `🗒 Notes` button on every line of a
+list whose lines are already a portrait, a symbol, a wrapped sentence and a box.
+The rows carry no such button now, and the width it was taking is the checklist's.
+
 **A completed goal sinks.** Once a row is answered it is a record rather than a
 question, and left in place it is a line the player re-reads every time they scan
 for what is still to do — the list being longest exactly when they have done the
@@ -562,11 +572,17 @@ than the pill, which is why two colours can both claim to be Full Health.
 **Temporary Shields** a game grants (§3.2). The name is the rule: a Temporary
 Shield expires with the game it came from, and a Shield does not.
 
-- They are drawn **closest to the player** — `◈` at the head of the pip row,
+- They are drawn **closest to the player** — at the head of the shield row,
   nearest the portrait on the board's hero, and beside the always-visible Health
   chip in the header, because a pool gained on the overworld has to be readable
-  when no board is on screen. Position is the reading: the further from the
-  portrait a pip is, the sooner it goes.
+  when no board is on screen. Position is one half of the reading: the further
+  from the portrait a shield is, the sooner it goes. The **clock badge** is the
+  other half — a Temporary Shield wears one and a Shield does not, the same mark
+  a borrowed status pip wears (`UITheme.timed_art`), so "expires" is one symbol
+  across the whole UI rather than a glyph per surface. There is **no shield
+  count in the checklist panel**: the board draws armour as armour, beside the
+  character it is protecting, and a captioned copy of it in the paperwork was
+  room the checklist wanted.
 - They are **used last**: a hit breaks a Temporary Shield first and only reaches
   these once those are gone (§3.2). A lost run breaks neither — it costs a turn
   of the board and nothing else.
@@ -2121,8 +2137,8 @@ Its two sides bite in opposite directions, which is the point:
   trash 4-X items/upgrades", and doing that clears the body — same hit, same
   drop, same gold. What it does *not* do is go on the record. The enemy's own
   condition was never set, so nothing is banked against the game it happened at:
-  no "beaten in \<game\>" tally, no note (the row carries no Notes button at
-  all), and no player `clause` ticks off it either, since a goal nobody met
+  no "beaten in \<game\>" tally, no note (its confirm does not ask for one, the
+  way a goal row's does), and no player `clause` ticks off it either, since a goal nobody met
   carried nothing to satisfy. **Never on a boss** — a boss's goal is the whole of
   what the boss is (§7.1), so `GameLoop2.alternatives_for` refuses one and
   `claim_enemy_alternative` refuses the claim behind it too.

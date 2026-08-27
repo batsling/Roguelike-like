@@ -234,6 +234,61 @@ static func chip(text: String, color: Color, font_size: int = 11) -> Control:
 	wrap.add_child(l)
 	return wrap
 
+# --- General art -----------------------------------------------------------
+#
+# images2.0/general/ is the art that belongs to no one piece of content: symbols
+# the UI itself is written in, used wherever the rule they stand for applies.
+# Preloaded rather than looked up per call — they are two small sprites drawn
+# dozens of times a repaint, and a `load()` on each would be a disk hit per pip.
+
+# The armour a game grants (§3). One sprite per point, over the hero.
+const SHIELD_ART: Texture2D = preload("res://images2.0/general/Shield.png")
+
+# THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status
+# borrowed for a game or two (docs/potions-design.md §5.3), a shield that expires
+# when this game is reported. It is one badge with one meaning: what it is on is
+# going away, and the tooltip says when.
+const TIMER_ART: Texture2D = preload("res://images2.0/general/Timer.png")
+
+# How much of the icon the clock takes, the floor it never goes under, and how
+# far it hangs off the corner.
+#
+# THE FLOOR IS THE POINT. The badge is a stopwatch — a ring, a face and two hands
+# — and at half of a 16px enemy pip it stopped being any of those and became a
+# pale smudge in the corner. Below about 14px there is no drawing that survives,
+# so the small pips get a badge that is large RELATIVE to them and overhangs
+# further, which is the trade a corner badge is for: the art it sits on is still
+# recognisable with a bite out of one corner, and an unreadable badge is worth
+# nothing at any size.
+const TIMER_FRACTION: float = 0.5
+const TIMER_MIN: int = 14
+const TIMER_OVERHANG: float = 0.3
+
+# `tex` at `size`, with the clock in its corner when `timed`. Returns the plain
+# TextureRect otherwise, so an untimed icon costs exactly what it did before this
+# badge existed.
+static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
+	var art := crisp_tex(tex, size)
+	if not timed:
+		return art
+	var wrap := Control.new()
+	wrap.custom_minimum_size = Vector2(size, size)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wrap.add_child(art)
+	var badge := crisp_tex(TIMER_ART, maxi(TIMER_MIN, int(round(size * TIMER_FRACTION))))
+	var edge: float = badge.custom_minimum_size.x
+	# Bottom-right, hanging off by TIMER_OVERHANG of its own edge. Anchored rather
+	# than laid out: the clock is drawn OVER the art, and a container would push the
+	# art aside to make room for it.
+	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	badge.offset_left = -edge + edge * TIMER_OVERHANG
+	badge.offset_top = -edge + edge * TIMER_OVERHANG
+	badge.offset_right = edge * TIMER_OVERHANG
+	badge.offset_bottom = edge * TIMER_OVERHANG
+	wrap.add_child(badge)
+	return wrap
+
 # --- Texture helpers -------------------------------------------------------
 
 # A TextureRect that draws `tex` inside a `size` x `size` box, aspect preserved,

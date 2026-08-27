@@ -11,6 +11,50 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A clock on everything that expires, shields drawn as shields, and the report
+  panel put on a diet.**
+
+  `images2.0/general/` is a new folder for art that belongs to no one piece of
+  content — symbols the UI itself is written in — and its first two are `Shield`
+  and `Timer`. The clock is the run's single mark for *this is going away*: it
+  rides the bottom-right corner of every status pip drawn from a borrowed stack
+  (the board's hero strip, an enemy's strip, the enemy card, the checklist's row
+  marks) and of every Temporary Shield. One symbol, one meaning, every surface —
+  `UITheme.timed_art` is the whole of it, and nothing that does not expire wears
+  one.
+
+  The hero's shields were glyphs, `◈◈◆◆◆` in a Label, and the difference between
+  the pool that stays and the pool that goes was the shape of a character the
+  player had to have learnt. They are armour sprites now, permanent ones nearest
+  the portrait and bare, temporary ones after them wearing the clock — so position
+  and badge say the same thing twice.
+
+  That is what let the **shield column come off the attempt strip**. It was there
+  to caption the glyphs; a picture of a shield beside the character it is
+  protecting needs no captioned copy in the paperwork, and what the strip still
+  owed the player — that a lost run does *not* spend one — moved onto the lost-run
+  count itself.
+
+  With that gone, the play panel's **cover and its two verbs are one row**: art on
+  the left, and beside it the now-playing line, `▶ Play <game>` and `Lost a run`.
+  They were four full-width bands above a checklist that is the reason the panel
+  exists, and beside the art they cost the panel nothing but the height the cover
+  already had.
+
+  The **goal rows lost their `🗒 Notes` button** the same way. A note about how you
+  beat something is written at the moment you tick it, not through a second control
+  on a line that is already a portrait, a symbol, a wrapped sentence and a box — so
+  the tick's own confirm carries the editor (`ConfirmPanel.ask`'s new `extra`
+  slot), saves on Yes and throws it away on No. It is the same (game, enemy) /
+  (game, character) note the Atlas and the Collection edit.
+
+  All of which is width and height the left column was holding and no longer needs,
+  so the board takes it: `CELL_MAX` 84 → 90, the height budget 360 → 384 and the
+  width budget 410 → 470, and the hero portrait is 1.3× a cell (floored at 100)
+  rather than exactly one. The grid draws bigger at every tier, the character is a
+  character rather than a token, and the page still fits a 720p window with the
+  fit tests unchanged.
+
 - **Bash and Transmute are buttons you aim, not paragraphs pointing somewhere else.**
 
   Both verbs need a target — one specific card out of the offering — and that had

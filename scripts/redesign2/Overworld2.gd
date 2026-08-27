@@ -357,10 +357,6 @@ var _scroll: ScrollContainer
 # line reads.
 # Attempt tracker (§3) — the runs of the game in play you have lost.
 var _attempt_count: Label
-var _attempt_pips: Label
-# The caption over those pips. Held only so the strip is inspectable from a test
-# the way every other label on it is.
-var _attempt_shield_head: Label
 var _attempt_btn: Button
 var _escape_btn: Button           # always up; darkened until can_escape() opens it
 var _escape_hint: Label           # the small line under it: what would open it
@@ -5128,41 +5124,56 @@ func _build_ui() -> void:
 	# where every other body is — on the board, to the right. Showing it here said
 	# the game owned it.
 	#
-	# The cover takes the space back and is CENTRED in the row, because a lone
-	# frame hard against the left edge of a panel reads as the first of two things
-	# with the second one missing.
-	# A COLUMN, and the cover centred at the top of it. As a row with the portrait
-	# gone the cover was left hard against the left edge with the text beside it,
-	# which reads as the first of two things with the second one missing — the
-	# shape the old pair left behind. Stacked, the box art is the heading of the
-	# panel and the line about what walked on sits under it.
+	# THE COVER AND THE TWO VERBS ARE ONE ROW, art on the left and the buttons
+	# beside it. They were a stack — cover, then the line, then the Play button,
+	# then the attempt strip, each of them full width — which is four bands of the
+	# panel spent on two buttons and a picture, above a checklist that is the
+	# reason the panel exists and was being pushed off the bottom of it on any game
+	# carrying more than a few bodies.
+	#
+	# Beside the art they cost the panel the HEIGHT OF THE COVER and nothing more:
+	# the cover was always the tallest thing in the block, and the column next to it
+	# was empty space. Everything that height buys goes to the checklist.
 	_np_box = VBoxContainer.new()
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", 8)
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 10)
+	np_box.add_child(head_row)
 	_now_playing_cover = TextureRect.new()
 	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()
 	cover_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, UITheme.BORDER))
-	cover_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# TOP-ALIGNED, not centred: the column beside it starts at the top, and a cover
+	# floating in the middle of two buttons reads as neither of them being about it.
+	cover_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	cover_frame.add_child(_now_playing_cover)
-	np_box.add_child(cover_frame)
+	head_row.add_child(cover_frame)
+
+	# What you are doing with the game, and the two things you press while you do
+	# it: OPEN it, and — every time it beats you — say so.
+	var verbs := VBoxContainer.new()
+	verbs.add_theme_constant_override("separation", 6)
+	verbs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	verbs.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	head_row.add_child(verbs)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	np_box.add_child(_now_playing)
-	_play_panel.add_child(np_box)
+	verbs.add_child(_now_playing)
 
 	# Launch-the-real-game row (populated per game — only games with a launch
 	# target gets a button) + the opt-in Rate button.
 	_launch_row = HBoxContainer.new()
 	_launch_row.add_theme_constant_override("separation", 6)
-	_play_panel.add_child(_launch_row)
+	verbs.add_child(_launch_row)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
 	_attempt_wrap = _build_attempt_strip()
-	_play_panel.add_child(_attempt_wrap)
+	verbs.add_child(_attempt_wrap)
+	_play_panel.add_child(np_box)
 
 	# Verification checklist (populated per game): the main goal, the character's
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
@@ -5409,27 +5420,14 @@ func _build_attempt_strip() -> Control:
 	_attempt_count.add_theme_font_size_override("font_size", 13)
 	row.add_child(_attempt_count)
 
-	# THE PIPS GET A WORD OVER THEM. "◈◆◆" is a shape, and a shape beside a row of
-	# other numbers is only a reading once you already know what it is — the board
-	# draws the same pips over the hero's head, where the portrait under them says
-	# whose they are, and here they had nothing at all. So the column is captioned,
-	# and the caption is the plain noun rather than a glyph key.
-	var shield_col := VBoxContainer.new()
-	shield_col.add_theme_constant_override("separation", 0)
-	shield_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_attempt_shield_head = Label.new()
-	_attempt_shield_head.text = "Shields"
-	_attempt_shield_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_attempt_shield_head.add_theme_font_size_override("font_size", 11)
-	_attempt_shield_head.add_theme_color_override("font_color", SHIELD_BLUE.lerp(UITheme.TEXT_DIM, 0.35))
-	shield_col.add_child(_attempt_shield_head)
-
-	_attempt_pips = Label.new()
-	_attempt_pips.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_attempt_pips.add_theme_font_size_override("font_size", 16)
-	_attempt_pips.add_theme_color_override("font_color", SHIELD_BLUE)
-	shield_col.add_child(_attempt_pips)
-	row.add_child(shield_col)
+	# THERE ARE NO SHIELD PIPS ON THIS STRIP any more, and no "Shields" caption over
+	# them. They were here because the glyph row over the hero was a shape nobody
+	# had been taught to read, and a captioned copy in the panel was the teaching.
+	# The board draws shields as SHIELDS now (BattlefieldView._fill_shields) —
+	# armour art, with a clock on the ones that expire — and a picture of a shield
+	# beside the portrait it is protecting needs no second copy in the paperwork.
+	# Dropping it is what buys this panel the room to put the two verbs beside the
+	# cover instead of under it.
 
 	# The strip still ends in a stretch, so the escape hint and the tracker keep the
 	# widths they had — the sentence that used to fill it has moved onto the button.
@@ -5450,20 +5448,13 @@ func _refresh_attempts() -> void:
 	_attempt_count.text = "Lost runs  %d" % attempts
 	_attempt_count.add_theme_color_override("font_color",
 		UITheme.TEXT if attempts == 0 else UITheme.ACCENT)
-	# The shields, and nothing hollow beside them: a lost run doesn't spend one, so
-	# there is no "already used" state to draw. The pool that STAYS leads the row in
-	# its own glyph, the way the board's hero draws them (§4.3).
-	_attempt_pips.text = "◈".repeat(bonus) + "◆".repeat(left)
-	_attempt_pips.tooltip_text = ("◆ %s — each one stops a single hit outright, "
-		+ "however big it is, and they go when you report the game.") % GameState.temp_shields_text(left)
-	if bonus > 0:
-		_attempt_pips.tooltip_text += ("\n◈ %s — used after those, and they stay.") % (
-			GameState.shields_text(bonus))
-	# The caption carries what the sentence beside the strip used to: a lost run
-	# does NOT spend one of these. That is the half of the rule the button's own
-	# "+1 Enemy Turn" cannot say, and the pips are what it is about.
-	_attempt_shield_head.tooltip_text = ("These do not go when you lose a run — only "
-		+ "a hit takes one.\nHover the pips for what each is worth.")
+	# The shields are the BOARD's to draw (BattlefieldView._fill_shields). What the
+	# strip still owes the player is the half of the rule the button's "+1 Enemy
+	# Turn" cannot say — that a lost run does not spend one — and that rides the
+	# count, which is the thing a lost run does move.
+	_attempt_count.tooltip_text = ("Your shields do not go when you lose a run — only "
+		+ "a hit takes one.\nThey are drawn over your character on the board: %s, and %s.") % [
+			GameState.temp_shields_text(left), GameState.shields_text(bonus)]
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
 	# THERE IS NO UNDO BESIDE THE TRACKER any more. It was there because the

@@ -351,7 +351,10 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 	row.add_theme_constant_override("separation", 7)
 	wrap.add_child(row)
 	if status.image != null:
-		var art := UITheme.crisp_tex(status.image, STATUS_ART)
+		# The clock in the corner for a borrowed status, exactly as the board's pips
+		# draw it — the card and the pip are the same status and must not disagree
+		# about whether it is going away.
+		var art := UITheme.timed_art(status.image, STATUS_ART, games > 0)
 		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(art)
 	var col := VBoxContainer.new()

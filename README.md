@@ -380,8 +380,13 @@ node and its script.
   **Where the numbers are.** There is **no HUD strip** — every number is drawn
   once, by whatever owns it:
   - **the player** (Health, Shields, statuses) is on the **board's hero**:
-    `♥ hp/max` under the portrait, the shield pips over it (`◆` the Temporary
-    Shields this game granted, `◈` the ones that stay), status pips between.
+    `♥ hp/max` under the portrait, the shields over it — one **shield sprite**
+    each (`images2.0/general/Shield.png`), the ones that stay nearest the
+    portrait and bare, the Temporary Shields this game granted after them and
+    each wearing the **clock badge** (`Timer.png`) — and status pips between.
+    The clock is the run's one mark for "this is going away": every status pip
+    drawn from a borrowed stack carries it too, on the board, on the enemy card
+    and on the checklist (`UITheme.timed_art`).
   - **the board's verbs** are on the **board's own bars**: its pressure bar ends
     `▦ 4×4 · Low` (that's the tier) and its toolbar buttons read `⇤ Push (1)` /
     `✸ Bomb (3)`.
