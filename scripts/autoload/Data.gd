@@ -287,10 +287,13 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 # One of `bucket`, drawn by find_weight (potions-design §10, decision #20).
 #
 # THE BUCKET IS ALREADY CHOSEN when this runs, which is the whole point: a find
-# rate decides which Common you met, never whether you met a Common. Identify's
-# 1.25 makes it 1.25 draws to every other Common's 1 — noticeably the one you see
-# most, and still unable to turn up in place of a Rare. Every scroll at 1.0 gives
-# exactly the uniform pick this replaced.
+# rate decides which Common you met, never whether you met a Common. Every scroll
+# at 1.0 gives exactly the uniform pick this replaced.
+#
+# A WEIGHT OF 0 MEANS NEVER, and is load-bearing rather than degenerate: Identify
+# authors one because it does not arrive this way at all any more — it is a flat
+# tenth of every drop, taken off the top by GameState.roll_loot_entry, and leaving
+# it in the Common bucket as well would make that tenth an eighth.
 func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollData:
 	var total: float = 0.0
 	for s: ScrollData in bucket:
@@ -300,13 +303,19 @@ func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollDa
 		# roster with nothing in it, so fall back to the uniform draw.
 		return bucket[rng.randi_range(0, bucket.size() - 1)]
 	var roll: float = rng.randf() * total
+	var last: ScrollData = null
 	for s: ScrollData in bucket:
-		roll -= maxf(0.0, s.find_weight)
+		if s.find_weight <= 0.0:
+			continue
+		last = s
+		roll -= s.find_weight
 		if roll < 0.0:
 			return s
-	# Float error only — the running total cannot fall short of `total` by more
-	# than a rounding step, so this is the last candidate rather than a fallback.
-	return bucket[bucket.size() - 1]
+	# Float error only — the running total cannot fall short of `total` by more than
+	# a rounding step. The last WEIGHTED candidate rather than the last one in the
+	# array, so a zero-weight scroll sitting at the end of the bucket can't be handed
+	# back by the one path that doesn't consult its weight.
+	return last
 
 # One random potion, weighted by rarity — roll_scroll's twin (potions-design §8).
 #

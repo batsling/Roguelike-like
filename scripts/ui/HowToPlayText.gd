@@ -713,7 +713,9 @@ static func _ch_pack() -> Dictionary:
 				+ "has a leaning, positive, negative or neutral, and reading a "
 				+ "mystery one is a real gamble."),
 			_b("Reading one identifies that type forever. So does a Scroll of "
-				+ "Identify. Amnesia can make you forget one again."),
+				+ "Identify — and one drop in ten is a Scroll of Identify, so the "
+				+ "way out of not knowing is the most common thing you find. "
+				+ "Amnesia can make you forget one again."),
 			_b("The good ones stun an enemy for a turn, or teleport you across the "
 				+ "map. The bad ones spawn an enemy, or hand every enemy on the "
 				+ "board a permanent +1 Strength. Scroll of Fire is the one that "
@@ -755,7 +757,10 @@ static func _ch_pack() -> Dictionary:
 				+ "cheaper. It stacks no higher than 3. On an ENEMY the same deal "
 				+ "runs the other way: its goal grows a way out that costs 4 minus "
 				+ "its stacks, so a badly burned enemy is the cheapest one to be "
-				+ "rid of. Burn is bad for whoever is carrying it."),
+				+ "rid of. Burn is bad for whoever is carrying it. And it burns "
+				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
+				+ "that one random scroll in your pack goes up with it. Pills "
+				+ "and potions are safe."),
 			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
 				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
 				+ "hit you take and goes straight past the shields you were "

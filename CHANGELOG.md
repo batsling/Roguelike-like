@@ -11,6 +11,50 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four balance and legibility passes: Identify's drop rate, the ability mark,
+  Anchor's wording, and Burn eating your scrolls.**
+
+  **Identify is a flat 10% of every drop, and is out of the scroll pool.** It was
+  an ordinary Common carrying a `find_weight` of 1.25 (potions-design decision
+  #20) — 1.25 draws to every other Common's 1. Behind the three-way kind split and
+  the rarity ladder that came out at roughly one drop in forty, which is far too
+  rare for the scroll whose entire job is telling you what the *other* two
+  alphabets are: a run that never finds one plays the pill and potion layers
+  blind. `GameState.roll_loot_entry` now takes the tenth off the top before the
+  kind is chosen, and Identify authors a `find_weight` of **0** — which
+  `Data._pick_by_find_weight` reads as *never*, so the ordinary roll cannot also
+  produce it and turn the tenth into an eighth. The sheet says so in prose ("Not
+  rolled with the other scrolls: 10% of every loot drop is this one instead") and
+  `generate_scroll2_tres.parse_find_weight` reads the 0 out of it, the same way it
+  used to read the 1.25. An explicit `pill` or `potion` grant is untouched: "10%
+  of drops" is about what the run *finds*, and an item that promises four pills
+  still pays four pills.
+
+  **The ability mark is red, and bigger.** The `!` on a body with an ability
+  (§7.6) was 11px in the same warm amber as the ❤ and ⚔ badges it shares a corner
+  with, which made it read as one more number on a corner full of them rather than
+  as the warning it is. It is now red at 15px — a `!` is one stroke wide, so it can
+  carry the points the stat badges could not. The "⚠ PREDATORY SCENT" turn banner
+  kept the amber under its own `HUNT_BAND` const rather than borrowing this one.
+
+  **Anchor says "At the start of combat".** Its `game_selected` trigger already
+  fires at the moment you commit to the game you are about to go and play, which
+  is this game's start of combat (§3.2) — the card's words were describing the
+  menu action instead. Wording only; the trigger is unchanged.
+
+  **Burn eats the paper you are carrying.** Every Burn that actually lands on the
+  player now has a **25% chance to destroy one random carried scroll**
+  (`GameState._burn_a_carried_scroll`, spec §13.1). Rolled once per application
+  rather than once per stack — Scroll of Fire's `+3 Burn` is one fire, not three
+  chances at one — on the gain only, and only on a gain that moved the number, so
+  a decay and a fourth stack the `Max: 3` ceiling eats both set nothing alight.
+  Scrolls and not loot generally on purpose: a pill is a capsule and a potion is a
+  bottle, and this is the first rule that tells the three alphabets sharing one
+  nine-slot pack apart while they are still *in* the pack. It gives Burn a cost
+  felt the moment it lands rather than only at the next checklist. The toast names
+  the scroll by the mask the pack draws, so an unread one burns as "ZELGO MER" and
+  you are left one mystery lighter with no idea which one it was.
+
 - **Enemies get abilities: 28 of them, a ⚠ on the board, and a boss that comes
   back twice.**
 

@@ -108,9 +108,19 @@ TILE_TARGETS = ("front", "all", "back")
 # this pattern fails a test instead of silently reverting the weight to 1.0.
 _FIND_RATE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%\s*find\s*rate", re.I)
 
+# "Not rolled with the other scrolls" -> 0.0, which Data._pick_by_find_weight
+# reads as NEVER. Identify is the one row that says it: it no longer arrives out
+# of the scroll pool at all, it is a flat 10% of every loot drop taken off the top
+# by GameState.roll_loot_entry, and a weight of 0 is how the pool is told to stop
+# offering it as well.
+_NOT_ROLLED = re.compile(r"n(?:ot|ever)\s+rolled", re.I)
+
 
 def parse_find_weight(notes) -> float:
-    m = _FIND_RATE.search(_clean(notes))
+    text = _clean(notes)
+    if _NOT_ROLLED.search(text):
+        return 0.0
+    m = _FIND_RATE.search(text)
     if not m:
         return 1.0
     return round(1.0 + float(m.group(1)) / 100.0, 4)

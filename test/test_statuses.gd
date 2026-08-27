@@ -34,6 +34,14 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 	Data._statuses.erase(CLAUSE_ID)
+	# THE GLOBAL SEED IS PROCESS-WIDE, and the Burn-burns-a-scroll tests below pin
+	# it with `seed()` to drive a 25% coin deterministically. Left pinned, every
+	# later test in the whole suite — in this script and in the ones that run after
+	# it — draws the same "random" enemies, escorts and swings, which is how a
+	# seeded test three hundred lines up turns into four failures somewhere else.
+	# Unpinned here rather than at the end of each of those tests, so a test that
+	# fails part-way through still hands the run back its randomness.
+	randomize()
 
 # A synthetic goal-enemy with a known goal, so the clause assertions don't move
 # when the enemies2.0 sheet does.
@@ -502,6 +510,92 @@ func test_burn_stops_climbing_at_its_authored_cap() -> void:
 	GameLoop2.apply_status_to(inst, &"burn", 9)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 3,
 		"and on a body")
+
+# --- Burn eats the paper you are carrying (§13.1) ---------------------------
+#
+# One in four every time Burn LANDS on the player, a random carried scroll goes
+# up with it. These drive the coin through `seed()` rather than asserting on a
+# quarter of a sample: GameState rolls on the global RNG (the same one
+# `roll_loot_kind` uses), so a seeded run is deterministic and the test is about
+# the RULE rather than about the odds.
+
+func _pack_scrolls(n: int) -> void:
+	for _i in range(n):
+		GameState.add_scroll_loot(&"scroll_of_teleportation")
+
+# The first seed in each pair burns, the second does not — found by running the
+# loop below, and asserted so a change to the roll order fails here loudly rather
+# than turning one of these tests into a tautology.
+func _seed_that_burns() -> int:
+	for s in range(1, 400):
+		seed(s)
+		if randf() < GameState.BURN_SCROLL_CHANCE:
+			return s
+	return -1
+
+func _seed_that_spares() -> int:
+	for s in range(1, 400):
+		seed(s)
+		if randf() >= GameState.BURN_SCROLL_CHANCE:
+			return s
+	return -1
+
+func test_a_burn_that_lands_can_take_a_carried_scroll_with_it() -> void:
+	_pack_scrolls(3)
+	seed(_seed_that_burns())
+	GameState.apply_status(&"burn", 1)
+	assert_eq(GameState.loot_scrolls().size(), 2,
+		"one scroll in the pack went up with the fire")
+
+func test_a_burn_usually_leaves_the_pack_alone() -> void:
+	_pack_scrolls(3)
+	seed(_seed_that_spares())
+	GameState.apply_status(&"burn", 1)
+	assert_eq(GameState.loot_scrolls().size(), 3, "three in four, nothing burns")
+
+func test_only_scrolls_burn() -> void:
+	# Paper burns; a capsule and a bottle do not. This is the first thing that
+	# tells the three alphabets apart while they are still in the pack.
+	GameState.add_pill_loot(&"health_up")
+	_pack_scrolls(1)
+	seed(_seed_that_burns())
+	GameState.apply_status(&"burn", 3)
+	assert_eq(GameState.loot_scrolls().size(), 0, "the scroll went")
+	assert_eq(GameState.loot_pills().size(), 1, "the pill did not")
+
+func test_a_burn_that_the_cap_eats_sets_nothing_alight() -> void:
+	# Burn stops at 3, and a fourth stack that never lands is not a fourth fire.
+	GameState.apply_status(&"burn", 3)
+	_pack_scrolls(2)
+	seed(_seed_that_burns())
+	GameState.apply_status(&"burn", 1)
+	assert_eq(GameState.loot_scrolls().size(), 2, "nothing was applied, so nothing burns")
+
+func test_burn_ticking_down_burns_nothing() -> void:
+	# A decay is `apply_status(id, -1)`, and losing a stack must not cost a scroll.
+	GameState.apply_status(&"burn", 2)
+	_pack_scrolls(2)
+	seed(_seed_that_burns())
+	GameState.remove_status(&"burn", 1)
+	assert_eq(GameState.loot_scrolls().size(), 2)
+
+func test_only_burn_burns_scrolls() -> void:
+	_pack_scrolls(2)
+	seed(_seed_that_burns())
+	GameState.apply_status(&"strength", 1)
+	assert_eq(GameState.loot_scrolls().size(), 2, "Strength is not on fire")
+
+func test_an_empty_pack_survives_a_burn() -> void:
+	seed(_seed_that_burns())
+	GameState.apply_status(&"burn", 1)
+	assert_eq(GameState.status_stacks(&"burn"), 1, "the Burn still lands")
+
+func test_a_timed_burn_burns_a_scroll_too() -> void:
+	# A borrowed stack is still a fire — the timed layer takes the same clause.
+	_pack_scrolls(2)
+	seed(_seed_that_burns())
+	GameState.apply_status(&"burn", 1, 2)
+	assert_eq(GameState.loot_scrolls().size(), 1)
 
 func test_an_uncapped_status_still_climbs_forever() -> void:
 	assert_eq(Data.get_status(&"strength").max_stacks, 0, "no ceiling authored")

@@ -2171,12 +2171,21 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		marks.append(_corner_badge("▸", UITheme.ACCENT))
 	# A PLAIN EXCLAMATION MARK on the body itself, and ⚠ everywhere the mark gets a
 	# line of its own (the hover, the card's section header, the Fallen panel).
-	# Same colour, same meaning; the difference is size. This corner is 11px on a
-	# 46px cell at the widest board, where a triangle with a stroke inside it is a
-	# smudge and a bare "!" is still legible — and being ASCII it asks nothing of
-	# the shipped glyph subsets at all.
+	# Same colour, same meaning; the difference is size. This corner is ABILITY_FONT
+	# px on a 46px cell at the widest board, where a triangle with a stroke inside it
+	# is a smudge and a bare "!" is still legible — and being ASCII it asks nothing
+	# of the shipped glyph subsets at all. A "!" is one stroke wide, so it can carry
+	# the extra points the ❤/⚔ badges beside it could not.
 	if GameLoop2.entry_has_abilities(entry):
-		marks.append(_corner_badge("!", ABILITY_MARK, ABILITY_FONT))
+		var mark := _corner_badge("!", ABILITY_MARK, ABILITY_FONT)
+		# Painted, not merely named. _corner_badge draws every badge white for
+		# legibility over the art (see it for why), and the ability mark is one of
+		# the two exceptions: it is the only corner badge that is a WARNING rather
+		# than a number, and white is what made it read as one more stat. The black
+		# outline the badge already carries is what keeps a red glyph legible over
+		# a red enemy.
+		mark.add_theme_color_override("font_color", ABILITY_MARK)
+		marks.append(mark)
 	if not marks.is_empty():
 		var corner := HBoxContainer.new()
 		corner.name = "CornerMarks"
@@ -2351,11 +2360,19 @@ const STATUS_PIP_ENEMY := 16
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
 # badges straddle the border and the statuses clear it entirely — the art keeps
 # the whole cell to itself.
-# The ⚠ that marks a body with an ability (§7.6). A warning colour rather than an
-# accent one: an ability is always something the player has to account for, and
-# the mark's whole job is to say "read this one before you decide".
-const ABILITY_MARK := Color(1.0, 0.78, 0.28)
-const ABILITY_FONT := 11
+# The ⚠ that marks a body with an ability (§7.6). RED rather than the amber it
+# started as, and a size up from the stat badges beside it: an ability is always
+# something the player has to account for, the mark's whole job is to say "read
+# this one before you decide", and at 11px in the same warm amber as ❤ and ⚔ it
+# read as one more number on a corner full of them rather than as a warning.
+const ABILITY_MARK := Color(1.0, 0.29, 0.25)
+const ABILITY_FONT := 15
+
+# The band the "⚠ PREDATORY SCENT" turn counter is drawn in. It used to borrow
+# ABILITY_MARK for its amber and now has its own copy of it — the two are
+# different warnings on different surfaces, and the hunt banner is a full-width
+# 28px line that does not need the small mark's shout.
+const HUNT_BAND := Color(1.0, 0.78, 0.28)
 
 const STAT_BADGE_DROP := 7
 const STAT_BADGE_FONT := 10
@@ -2451,6 +2468,15 @@ func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
 	strip.visible = not rows.is_empty()
 	return rows.size()
 
+# WHITE ON A BLACK OUTLINE, whatever `color` says — and `color` says a lot: every
+# caller passes the shade its badge is nominally in (❤ pink, ⚔ gold, ◆ blue, the
+# ability mark's red). None of them have ever been drawn in it. That is not a bug
+# to fix wholesale: a badge sits ON the enemy art, over whatever colours the
+# picture happens to be, and white-with-an-outline is the only pairing that stays
+# legible over all 800-odd of them. The argument survives as what the badge MEANS
+# rather than what it is painted, and the two badges that genuinely need their
+# colour on screen — the multi-swing ⚔ and the ability ! — override it themselves
+# at the call site, where the reason is written down.
 func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -2928,7 +2954,7 @@ func _spawn_turn_counter(turn: int, turns: int, base: int, extra_turns: int,
 		delay: float, hunt: bool = false) -> void:
 	if _field == null:
 		return
-	var band: Color = ABILITY_MARK if hunt else RunDifficulty.band_color(extra_turns)
+	var band: Color = HUNT_BAND if hunt else RunDifficulty.band_color(extra_turns)
 	var rect: Rect2 = _local_rect(_field)
 	var extra: int = turn - base                 # 1-based index into the extra turns
 	_after(delay, func():

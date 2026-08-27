@@ -1779,6 +1779,15 @@ func grant_run_stat(stat: String, value: int) -> void:
 # catalog can't describe would show up on the checklist as a blank goal.
 # ---------------------------------------------------------------------------
 
+# The one status this file knows by name, because it does something to the PACK
+# and not only to the checklist — see `_burn_a_carried_scroll`.
+const BURN := &"burn"
+
+# How often a Burn that lands takes a scroll with it (§13.1). A quarter, rolled
+# once per application rather than once per stack: Scroll of Fire's "+3 Burn" is
+# one fire, not three chances at one.
+const BURN_SCROLL_CHANCE := 0.25
+
 # Add `stacks` of `status_id` to the player. Returns the new stack count (0 when
 # the id is unknown). A negative `stacks` ticks it down, same as remove_status.
 #
@@ -1787,6 +1796,27 @@ func grant_run_stat(stat: String, value: int) -> void:
 # after that many games are resolved. The default of 0 is permanent, so every
 # existing caller means exactly what it always meant.
 func apply_status(status_id: StringName, stacks: int = 1, games: int = 0) -> int:
+	# FIRE EATS PAPER (§13.1). Every time Burn actually LANDS on the player there is
+	# a one-in-four chance that one scroll in the pack goes up with it — see
+	# `_burn_a_carried_scroll`. It hangs here rather than on any of the things that
+	# deal Burn (Scroll of Fire, the Fire tile, a burning enemy's clause) because
+	# there is nothing special about where the fire came from: this is what being on
+	# fire does to the paper you are carrying.
+	#
+	# ON THE GAIN ONLY, and only on a gain that moved the number. A decay is
+	# `apply_status(id, -1)` and must not set anything alight, and Burn caps at 3
+	# (§13) — a fourth stack that the ceiling eats is not a fourth fire.
+	var burning: bool = stacks > 0 and status_id == BURN
+	var burn_before: int = status_stacks(status_id) if burning else 0
+	var after: int = _apply_status_stacks(status_id, stacks, games)
+	if burning and after > burn_before:
+		_burn_a_carried_scroll()
+	return after
+
+# The application itself. Split out of `apply_status` so the Burn clause above has
+# a single "what the stacks ended up at" to test against, whichever of the two
+# paths (timed row / permanent count) the call took.
+func _apply_status_stacks(status_id: StringName, stacks: int, games: int) -> int:
 	if stacks == 0:
 		return status_stacks(status_id)
 	var status: StatusData = Data.get_status(status_id)
@@ -1817,6 +1847,36 @@ func apply_status(status_id: StringName, stacks: int = 1, games: int = 0) -> int
 		player_statuses[status_id] = total
 	player_statuses_changed.emit()
 	return status_stacks(status_id)
+
+# One-in-four: the fire takes a random SCROLL out of the pack (§13.1).
+#
+# SCROLLS AND NOT LOOT GENERALLY, which is the whole point of it. A pill is a
+# capsule and a potion is a bottle; a scroll is a sheet of paper, and the run's
+# three alphabets sitting in one nine-slot pack (§4.3) have until now been
+# interchangeable in every way except what they do. This is the first thing that
+# tells them apart while they are still in the bag, and it gives Burn a cost that
+# is felt the moment it lands rather than only at the next checklist.
+#
+# It is silent when there is nothing to burn — a run carrying no scrolls is not
+# owed a toast about a fire that found no fuel — and NAMED when there is, using
+# the same mask the pack draws (LootSystem.display_name), so an unread scroll
+# burns as "ZELGO MER" and the player is left with exactly the knowledge they had
+# before: one fewer mystery and no idea which one it was.
+func _burn_a_carried_scroll() -> void:
+	if randf() >= BURN_SCROLL_CHANCE:
+		return
+	var candidates: Array = []
+	for i in range(loot_items.size()):
+		if loot_items[i] is Dictionary and String(loot_items[i].get("type", "")) == "scroll":
+			candidates.append(i)
+	if candidates.is_empty():
+		return
+	var index: int = int(candidates[randi() % candidates.size()])
+	# Named BEFORE it is removed, for the reason ScrollSystem.stun_enemies_chosen
+	# reads its names first: the entry is gone by the time the line is shown.
+	var burned: String = LootSystem.display_name(loot_items[index])
+	remove_loot_at(index)
+	Notifications.notify("%s burns to ash!" % burned, ScrollSystem.SCROLL_COLOR)
 
 # Tick `stacks` off a player status (default 1), removing it at zero. Returns what
 # is left. This is the decay path for a decaying side completed this game.
@@ -3281,15 +3341,47 @@ const LOOT_KINDS := ["scroll", "pill", "potion"]
 func roll_loot_kind() -> String:
 	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
 
+# IDENTIFY IS A FLAT TENTH OF EVERY DROP, and is not in the scroll pool at all.
+#
+# It used to be an ordinary Common with a `find_weight` of 1.25 (potions-design
+# decision #20), which made it 1.25 draws to every other Common's 1 — and, once the
+# three-way kind split and the rarity ladder had both taken their cut, about one
+# drop in forty. The scroll that exists to tell you what the other two alphabets
+# ARE cannot be the rarest thing in the pack: a run that never finds one plays the
+# whole pill and potion layer blind, which is a worse game than a run that finds
+# two.
+#
+# So the odds are stated where a player can feel them — one drop in ten, before
+# anything else is rolled — rather than buried three multiplications deep. Identify
+# authors a find_weight of 0 so the ordinary scroll roll can never ALSO produce it,
+# which is what keeps the tenth an actual tenth.
+const IDENTIFY_SCROLL := &"scroll_of_identify"
+const IDENTIFY_DROP_CHANCE := 0.10
+
+# Whether this drop is the Identify. False when the catalog has no such scroll —
+# a checkout whose generator has not been run gets the ordinary roll rather than
+# an entry naming a scroll nothing can look up.
+func _rolls_identify() -> bool:
+	return Data.get_scroll(IDENTIFY_SCROLL) != null and randf() < IDENTIFY_DROP_CHANCE
+
 # Roll one piece of loot WITHOUT granting it. The per-game drop (§4.3) asks before
 # it hands anything over — the pack holds nine and the answer is sometimes no — so
 # the roll and the taking are two steps rather than one.
 #   kind: "scroll" | "pill" | "potion" | "loot" (the kind-blind three-way split)
+#
+# The Identify tenth is taken off the top of both the kind-blind drop and an
+# explicit scroll one, and off neither of the explicit pill/potion ones: "10% of
+# drops" is a statement about what the run FINDS, and an item that promises four
+# pills has to pay four pills.
 func roll_loot_entry(kind: String = "loot") -> Dictionary:
 	var want: String = kind
+	if (want == "loot" or want == "scroll") and _rolls_identify():
+		return {"type": "scroll", "id": IDENTIFY_SCROLL,
+			"rarity": Data.get_scroll(IDENTIFY_SCROLL).rarity}
 	if want == "loot":
 		want = roll_loot_kind()
 	if want == "pill":
+
 		return PillSystem.roll_pill_loot()
 	if want == "potion":
 		return PotionSystem.roll_potion_loot()

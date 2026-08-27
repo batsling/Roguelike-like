@@ -203,6 +203,10 @@ func test_each_choice_has_a_game_and_a_previewable_enemy() -> void:
 func test_pick_then_report_advances_the_loop() -> void:
 	var target: StringName = _ui._choices[0]["game"].id
 	_ui.pick(0)
+	# Disarmed: this counts BODIES, and since §7.6 a spawner ability can add one on
+	# the board's own turn. "The enemy and its escort" is a claim about what the
+	# loop leaves behind, not about what an ability did while it ran.
+	_disarm_board()
 	assert_true(GameLoop2.has_arrivals(), "picking spawns the enemy")
 	assert_eq(GameState.current_game_id, target, "player travelled to the picked game")
 	var gp_before: int = GameState.games_played
@@ -216,6 +220,10 @@ func test_pick_then_report_advances_the_loop() -> void:
 # the game's OWN enemy, and the escort's goal is a debt for a later game.
 func test_report_goal_met_defeats_and_drops() -> void:
 	_ui.pick(0)
+	# Disarmed: the count is the subject, and a spawner adding a body — or a Split
+	# leaving two where the defeated one stood — makes it 2 for a reason this test
+	# is not about.
+	_disarm_board()
 	_report_beat(_ui)              # met -> defeat + a drop to be asked about
 	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
 	# The drop is already ON the haul screen: the resolve lands instantly out in
@@ -656,6 +664,10 @@ func test_the_click_fires_the_bomb_and_disarms_it() -> void:
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
 	var before: int = GameLoop2.stack.size()
+	# Disarmed AFTER `before` is taken, because Split hangs off DEATH: bombing a
+	# slime leaves two of it, and the count this asserts on then goes up rather
+	# than down. The subject here is the click spending the charge.
+	_disarm_board()
 	_ui._board.begin_bomb()
 	assert_eq(GameState.bombs, 1, "still nothing spent")
 	_ui._board.click_enemy(inst, entry, int(entry.get("col", 1)))
@@ -1189,6 +1201,14 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 	_ui.pick(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	# DISARMED, because "the board only moves" is the premise and an ability is how
+	# it does something else. A body with Infliction hands the player or another
+	# body a status on its turn, and the play panel's signature counts each body's
+	# alternatives and bonus objectives (_play_panel_sig) — so a Burn landing
+	# mid-turn changes what the rows SAY, the guard correctly rebuilds them, and
+	# this test fails having watched the feature work. It failed on roughly one run
+	# in five on any tree for exactly that reason, since §7.6 shipped abilities.
+	_disarm_board()
 	assert_false(_ui._checklist.play_panel_stale(), "freshly built, it is current")
 	var boxes: Array = []
 	for f in _ui._fulfil_checks:
@@ -1292,6 +1312,9 @@ func test_there_is_no_emphasised_goal_row() -> void:
 # bodies.
 func test_beating_the_game_clears_nothing_by_itself() -> void:
 	_ui.pick(0)
+	# Disarmed for the reason above: a spawner adds a body during the report, and
+	# "none of them was ticked" is a claim about ticking, not about spawning.
+	_disarm_board()
 	var before: int = GameLoop2.stack.size()
 	assert_gt(before, 0, "something walked on")
 	_ui.report(true)                      # completed, ticked nothing
@@ -1306,6 +1329,9 @@ func test_ticking_an_arrival_is_what_clears_it() -> void:
 	if landed.is_empty():
 		return
 	var inst: int = int(landed["instance"])
+	# Disarmed: a ticked body that dies with Split leaves two behind, so the count
+	# grows where this test is about the tick landing at all.
+	_disarm_board()
 	var before: int = GameLoop2.stack.size()
 	_ui.report(true, [inst])
 	assert_lt(GameLoop2.stack.size(), before, "the ticked body took its hit")

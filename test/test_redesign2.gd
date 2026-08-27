@@ -554,29 +554,51 @@ func test_scrolls_carry_the_sheets_description() -> void:
 		"Choose 1 Loot to Identify.")
 
 func test_identify_carries_its_find_rate_off_the_notes_column() -> void:
-	# The sheet says "Has a +25% find rate" in prose; the generator reads the
-	# number out of it. If that note is ever reworded past the pattern, this fails
-	# rather than the weight silently reverting to 1.0.
-	assert_almost_eq(Data.get_scroll2(&"scroll_of_identify").find_weight, 1.25, 0.001)
+	# The sheet says "Not rolled with the other scrolls" in prose; the generator
+	# reads a weight of 0 out of it. If that note is ever reworded past the pattern
+	# this fails, rather than Identify silently rejoining the Common bucket on top
+	# of the flat tenth it already gets.
+	assert_almost_eq(Data.get_scroll2(&"scroll_of_identify").find_weight, 0.0, 0.001)
 	assert_almost_eq(Data.get_scroll2(&"scroll_of_fire").find_weight, 1.0, 0.001,
 		"a scroll with no such note weighs the same as everything at its rarity")
 
-func test_the_find_rate_skews_the_draw_inside_its_own_rarity() -> void:
-	# Three Commons, one of them at 1.25 — so Identify should come up about a
-	# quarter more often than either of the others, and NEVER in place of a Rare.
+func test_a_zero_find_rate_is_never_drawn_from_the_pool() -> void:
+	# Identify arrives as a flat 10% of every DROP (GameState.roll_loot_entry) and
+	# so must not also be reachable through the scroll roll — that would make the
+	# tenth an eighth. Every other Common is still drawn.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260823
 	var seen: Dictionary = {}
 	for _i in range(3000):
 		var s: ScrollData = Data.roll_scroll(rng)
 		seen[s.id] = int(seen.get(s.id, 0)) + 1
-	var identify: int = int(seen.get(&"scroll_of_identify", 0))
+	assert_eq(int(seen.get(&"scroll_of_identify", 0)), 0,
+		"a find_weight of 0 means never")
 	for id in [&"scroll_of_aggravate_monsters", &"scroll_of_teleportation"]:
-		assert_gt(identify, int(seen.get(id, 0)),
-			"Identify outdraws the other Commons (%d vs %s at %d)"
-			% [identify, id, int(seen.get(id, 0))])
-	assert_lt(int(seen.get(&"scroll_of_remove_curse", 0)), identify,
-		"and a find rate never promotes a Common past the Rare ladder")
+		assert_gt(int(seen.get(id, 0)), 0, "%s is still drawn" % id)
+
+func test_identify_is_a_flat_tenth_of_every_drop() -> void:
+	# Not a scroll you roll and not a rarity you climb to: one drop in ten, taken
+	# off the top before the kind is chosen (GameState.roll_loot_entry). A wide
+	# band, because this is 4000 samples of a 10% coin on the global RNG — the
+	# assertion is "about a tenth", not "exactly 400".
+	var identify: int = 0
+	for _i in range(4000):
+		var entry: Dictionary = GameState.roll_loot_entry("loot")
+		if StringName(entry.get("id", &"")) == GameState.IDENTIFY_SCROLL:
+			identify += 1
+	assert_between(identify, 300, 500,
+		"about a tenth of kind-blind drops are Identify (got %d/4000)" % identify)
+
+func test_an_explicit_pill_or_potion_drop_is_never_identify() -> void:
+	# "10% of drops" is about what the run FINDS. An item that promises four pills
+	# still pays four pills.
+	var kinds: Dictionary = {}
+	for _i in range(400):
+		kinds[String(GameState.roll_loot_entry("pill").get("type", ""))] = true
+		kinds[String(GameState.roll_loot_entry("potion").get("type", ""))] = true
+	assert_eq(kinds.keys().size(), 2, "only the two kinds asked for")
+	assert_true(kinds.has("pill") and kinds.has("potion"), "and both of them")
 
 func test_aggravate_scroll_is_negative_buff() -> void:
 	var s: ScrollData = Data.get_scroll2(&"scroll_of_aggravate_monsters")

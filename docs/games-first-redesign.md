@@ -425,6 +425,20 @@ thing the identification minigame cannot afford. The multiplier is applied to
 scroll's `spread` is how far the landing may vary, and doubling that is not twice
 the scroll, it is a worse one.
 
+**Identify is a flat 10% of every loot drop, and is not in the scroll pool at
+all.** It used to be an ordinary Common carrying a `find_weight` of 1.25
+(potions-design decision #20) — 1.25 draws to every other Common's 1 — which,
+after the three-way kind split (§4.3) and the rarity ladder had each taken their
+cut, worked out at roughly one drop in forty. The scroll whose whole job is
+telling you what the other two alphabets *are* cannot be the rarest thing in the
+pack: a run that never finds one plays the pill and potion layers blind. So the
+odds are now stated where a player can feel them — `GameState.roll_loot_entry`
+takes the tenth off the top before the kind is even chosen — and Identify authors
+a `find_weight` of **0**, which `Data._pick_by_find_weight` reads as *never*, so
+the ordinary scroll roll cannot also produce it and make the tenth an eighth. The
+tenth is taken off the kind-blind drop and off an explicit `scroll` one; an
+explicit `pill` or `potion` grant still pays what it promised.
+
 This introduces two new enemy-state mechanics: **Stun** (Scare Monster) and
 **spawning** enemies (Create Monster). **Stun makes the enemy skip its next
 attack** — it pushes the enemy's attack one game later in the timing model (§7.2),
@@ -2056,7 +2070,9 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   it; what is gained off the board **stays** (§4.3). This replaced the earlier
   "Block carries over between games, no cap" rule. **Anchor** moved to the
   **`game_selected`** trigger so its +1 Temporary Shield arrives before you go and
-  play rather than as a reward after the fact.
+  play rather than as a reward after the fact, and its wording now says so in the
+  player's terms — "At the start of combat" rather than "When a game is selected",
+  which was describing the menu action instead of the moment.
 - **Level Up = the current project's mechanic** (per-game `level_up_condition`
   Yes/No → stats + reward, repeats each game). The stats left of the `Level Up`
   column are the character's **starting stats** (§3.1).
@@ -2199,6 +2215,19 @@ application raises X"; `Max: 3` is that with a cap, enforced on the way up in
 `GameState.apply_status` and `GameLoop2._add_status_to`. Burn is the status that
 needed it: on the player its condition costs X items, so an uncapped Burn would
 eventually ask for more than any game has to give.
+
+**Burn eats the paper you are carrying.** Every time Burn actually lands on the
+player there is a **25% chance a random carried scroll is destroyed**
+(`GameState._burn_a_carried_scroll`). Rolled once per application rather than
+once per stack — Scroll of Fire's `+3 Burn` is one fire, not three chances at one
+— on the gain only, and only on a gain that moved the number, so a decay and a
+fourth stack the `Max: 3` ceiling eats both set nothing alight. It is scrolls and
+not loot generally on purpose: a pill is a capsule and a potion is a bottle, and
+this is the first rule that tells the three alphabets sharing one pack (§4.3)
+apart while they are still *in* the pack. It gives Burn a cost that is felt the
+moment it lands rather than only at the next checklist. The scroll is named in
+the toast by the mask the pack draws, so an unread one burns as "ZELGO MER" and
+the player is left one mystery lighter with no idea which one it was.
 
 **Reward token DSL** (compiled by `tools/generate_status_tres.py` into
 `EffectSystem` effect dicts, so a chest a status grants is the same chest an item
