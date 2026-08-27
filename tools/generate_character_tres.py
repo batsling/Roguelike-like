@@ -227,7 +227,7 @@ def main():
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["characters"]):
+    for row in rows(wb["charactersold"]):
         cid = slugify(str(row["Name"]).strip())
         if only:
             if cid not in only:

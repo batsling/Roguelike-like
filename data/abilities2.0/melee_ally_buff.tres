@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_melee_ally_buff"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"melee_ally_buff"
+display_name = "Melee Ally Buff"
+kind = &"intent"
+variables = "Amount, Status Type"
+params = PackedStringArray("amount", "status")
+description = "If there is an Enemy present, this Enemy will use it's turn and movement to move towards the nearest Enemy and if in contact, will X amount of Y Status to them"
+file = "MeleeAllyBuff"

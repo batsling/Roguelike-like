@@ -348,7 +348,7 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    sheet = wb["scrolls2.0"]
+    sheet = wb["scrolls"]
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(sheet):

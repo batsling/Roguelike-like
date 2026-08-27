@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_aftermath"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"aftermath"
+display_name = "Aftermath"
+kind = &"death"
+variables = "Tile Effect"
+params = PackedStringArray("tile")
+description = "On Death, will Add X Tile Effect to the Tile it died on"
+file = "Aftermath"

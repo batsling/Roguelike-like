@@ -98,6 +98,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                     #   and bites whatever walks in (§17)
 │   ├── units2.0/         #   UnitData — the player's own bodies on the board
 │   │                     #   (the Landmine), which layer on top of a tile (§17)
+│   ├── abilities2.0/     #   AbilityData — the CATALOGUE of enemy abilities: name,
+│   │                     #   type, argument shape and sentence (§7.6). What each
+│   │                     #   one DOES is GameLoop2, not a .tres
 │   ├── events2.0/        #   EventData2 — one fires after every game played
 │   ├── objects2.0/       #   ObjectData — the machines you stand in front of (§15)
 │   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
@@ -136,6 +139,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
+│   ├── generate_ability_tres.py    #   data/abilities2.0 (owns the Ability-column grammar)
 │   ├── generate_event2_tres.py     #   data/events2.0
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
@@ -231,7 +235,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
-| `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5); boss rounds spawn solo. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. |
+| `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
@@ -649,6 +653,16 @@ common/uncommon/rare, with a 10% bump from rare to legendary.
 Python scripts in `tools/` regenerate Godot resources from it (re-run after
 editing the sheet, then review the diff):
 
+**The sheets lost their `2.0` suffixes.** `enemies2.0` is now `enemies`,
+`items2.0` is `items`, and so on for characters, bosses, statuses, tiles, units,
+scrolls, pills, potions, events, curses and objects; the pre-2.0 sheets they
+displaced gained `old` (`itemsold`, `eventsold`, `charactersold`,
+`encountersold`, `cursesold2`). The **output folders did not move** — the
+generators still write `data/enemies2.0/` — so only the `SHEET_NAME` at the top
+of each script changed. If a generator ever reports zero rows, this is the first
+thing to check: openpyxl raises on a missing sheet, but a *renamed* one that
+still exists under an old name silently generates the wrong content.
+
 | Script | Generates |
 |---|---|
 | `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
@@ -657,25 +671,27 @@ editing the sheet, then review the diff):
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |
 | `generate_character2_tres.py` | `data/characters2.0/*.tres` from the characters sheet |
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet — **and `data/scroll_names.tres`**, the bag of meaningless titles an unread scroll wears, off the same sheet's two right-hand columns (`Random Scroll Name` / `Random Scroll Part`) |
-| `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills2.0` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
-| `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions2.0` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
-| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses2.0` sheet |
-| `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles2.0` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
-| `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units2.0` sheet — imports the parsers above rather than restating them |
-| `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events2.0` sheet — see [Authoring an event](#authoring-an-event) |
-| `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses2.0` sheet |
+| `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
+| `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
+| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet |
+| `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
+| `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units` sheet — imports the parsers above rather than restating them |
+| `generate_ability_tres.py` | `data/abilities2.0/*.tres` from the `abilities` sheet — and owns the **grammar of the enemy `Ability` column** (`Ranged (2), Fireproof, Infliction (1, Burn)`), which the goal-enemy generator imports rather than restating (§7.6) |
+| `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events` sheet — see [Authoring an event](#authoring-an-event) |
+| `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses` sheet |
 | `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
-| `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesnew` sheet |
+| `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesold2` sheet |
 | `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
-| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encounters` sheet |
+| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encountersold` sheet |
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
-| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's seven charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_statuses2_burn_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
+| `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
+| `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's eight charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_statuses2_burn_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`, `_abilities_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
 header row down and re-author the rows they hold in Python. Once you are editing
@@ -818,7 +834,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
-| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies2.0` Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
+| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |

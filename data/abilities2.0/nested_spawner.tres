@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_nested_spawner"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"nested_spawner"
+display_name = "Nested Spawner"
+kind = &"summoner"
+variables = "Amount, Enemy Type"
+params = PackedStringArray("amount", "enemy")
+description = "Will not move, but each turn will Summon X number of Y type enemies in the row in front of them in that lane if there is space"
+file = "NestedSpawner"

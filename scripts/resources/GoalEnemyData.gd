@@ -53,9 +53,100 @@ enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 # The challenge text shown to the player and the OBS viewer (§9).
 @export var goal: String = ""
 
-# Optional special ability id — all "N/A" in the current roster; reserved for a
-# later specials pass (§12.3). Empty when absent.
-@export var ability: StringName = &""
+# === Abilities (§7.6) =====================================================
+#
+# What this enemy does BEYOND walking and swinging: how far it can strike from,
+# what rides its hits, what it leaves behind when it dies. Authored in the sheet's
+# `Ability` column as a comma list with optional arguments — "Ranged (2),
+# Fireproof, Infliction (1, Burn)" — and parsed by
+# tools/generate_ability_tres.py into one dictionary per ability:
+#
+#   {"id": &"infliction", "amount": 2, "arg": &"burn", "text": "Burn"}
+#
+# `amount` is the numeric argument (a count, a stack size, or a grid range; 0
+# where the ability takes none, and 0 on Ranged specifically means UNLIMITED).
+# `arg` is the second argument normalised for code — a statuses2.0 id, a tiles2.0
+# id, `gold`/`item`/`loot`, or a pool selector (`tag:slime`, `tier:medium`,
+# `enemy:spider`, `self`). `text` is the sheet's own wording for it, which is what
+# the cards print so the description reads the way it was written.
+#
+# The CATALOGUE is AbilityData (data/abilities2.0), which owns the name, the type
+# and the sentence; this array is only which of them this enemy has and with what
+# arguments. GameLoop2 owns what each one DOES.
+#
+# It is an untyped Array rather than Array[Dictionary] because a .tres literal of
+# typed dictionaries does not round-trip cleanly through Godot's resource parser.
+@export var abilities: Array = []
+
+# The sheet's `Ability` cell verbatim ("Ruthless, Devour Whole"), for the places
+# that want to show what was authored rather than re-assemble it from the parse.
+@export var ability_text: String = ""
+
+# Whether this enemy is authored with `id` (ignoring any argument).
+func has_ability(id: StringName) -> bool:
+	for a in abilities:
+		if StringName(a.get("id", &"")) == id:
+			return true
+	return false
+
+# The whole row for `id`, or {} when it doesn't carry it.
+func ability_row(id: StringName) -> Dictionary:
+	for a in abilities:
+		if StringName(a.get("id", &"")) == id:
+			return a
+	return {}
+
+# The numeric argument on `id`, or `fallback` when the enemy doesn't carry it.
+# Note the difference from a zero: Ranged's 0 is "unlimited" and is a real answer,
+# so a caller that needs to tell "no Ranged" from "unlimited Ranged" asks
+# has_ability first.
+func ability_amount(id: StringName, fallback: int = 0) -> int:
+	var row: Dictionary = ability_row(id)
+	return int(row.get("amount", fallback)) if not row.is_empty() else fallback
+
+# The named argument on `id` — a status id, a tile id, a goods kind or a pool
+# selector — or &"" when there is none.
+func ability_arg(id: StringName) -> StringName:
+	return StringName(ability_row(id).get("arg", &""))
+
+# Every ability id this enemy is authored with, in sheet order.
+func ability_ids() -> Array:
+	var out: Array = []
+	for a in abilities:
+		out.append(StringName(a.get("id", &"")))
+	return out
+
+# === Phases (§7.6, bosses only) ===========================================
+#
+# How many bodies deep this enemy is. One for everything but a multi-phase boss:
+# Guillatina's 3 means three goals and three pictures, and each time Undying
+# brings it back it steps to the next of both. `goal_type` / `goal` / `image` hold
+# PHASE 1, so everything that predates phases still reads correctly.
+@export var phases: int = 1
+@export var phase_goal_types: PackedStringArray = PackedStringArray()
+@export var phase_goals: PackedStringArray = PackedStringArray()
+@export var phase_files: PackedStringArray = PackedStringArray()
+@export var phase_images: Array = []
+
+func phase_count() -> int:
+	return maxi(1, phases)
+
+# The goal text for phase `n` (0-based), falling back to the plain `goal` for an
+# enemy with no phase list — which is every enemy but the one boss.
+func goal_at(n: int) -> String:
+	if n >= 0 and n < phase_goals.size():
+		return phase_goals[n]
+	return goal
+
+func goal_type_at(n: int) -> StringName:
+	if n >= 0 and n < phase_goal_types.size():
+		return StringName(phase_goal_types[n])
+	return goal_type
+
+func image_at(n: int) -> Texture2D:
+	if n >= 0 and n < phase_images.size() and phase_images[n] != null:
+		return phase_images[n]
+	return image
 
 # Synergy tag linking the enemy to items/goals sharing it (e.g. `alien` ties the
 # Baby Alien enemy to the Alien Baby item and an "defeat an alien" bounty, §7).

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_agile"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"agile"
+display_name = "Agile"
+kind = &"movement"
+variables = ""
+params = PackedStringArray()
+description = "Can move diagonally if necessary"
+file = "Agile"

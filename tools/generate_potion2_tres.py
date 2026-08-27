@@ -262,7 +262,7 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["potions2.0"]):
+    for row in rows(wb["potions"]):
         pid, text = potion_tres(row)
         if args.list:
             print("=== %s ===\n%s" % (pid, text))

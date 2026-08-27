@@ -33,7 +33,7 @@ XLSX_PATH = dsl.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "objects2.0")
 IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "objects")
 IMG_RES_PREFIX = "res://images2.0/objects/"
-SHEET = "objects2.0"
+SHEET = "objects"
 
 TRUTHY = ("yes", "y", "true", "1")
 

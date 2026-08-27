@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_theft"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"theft"
+display_name = "Theft"
+kind = &"intent"
+variables = "Amount, Goods"
+params = PackedStringArray("amount", "goods")
+description = "While attacking and dealing damage, it will steal X amount of Y(Gold, Items, Loot) until defeated in which it will drop stolen goods on the battlefield, and then will start moving to the right and if they reach the last column they disappear"
+file = "Theft"

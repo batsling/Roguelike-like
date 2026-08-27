@@ -196,7 +196,13 @@ func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 	GameLoop2.choose_game(_enemy(2))
 	var entry: Dictionary = _entry(GameLoop2.escort_instance())
 	assert_false(entry.is_empty(), "it is on the stack")
-	assert_eq(int(entry.get("col", -1)), GameLoop2.spawn_col(), "at the back column")
+	# `spawn_col_for` and not the bare `spawn_col`, because "the back column" means
+	# a body's RIGHTMOST cell lands there (§7.3): a two-wide escort starts on
+	# column 3 of a 4-wide board with its leading edge already one column in. The
+	# escort is rolled at random, so asserting the bare column was only true while
+	# the roll happened to come up 1x1 — most of the time, and not always.
+	assert_eq(int(entry.get("col", -1)),
+		GameLoop2.spawn_col_for(entry.get("enemy")), "at the back column")
 
 # The game's goal answers for the game's OWN enemy. The escort keeps its goal, so
 # a perfectly played game still leaves one body on the board — which is the whole

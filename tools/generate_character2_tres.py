@@ -251,7 +251,7 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
-    for row in rows(wb["characters2.0"]):
+    for row in rows(wb["characters"]):
         cid, text = character_tres(row)
         if args.list:
             print("=== %s ===\n%s" % (cid, text))

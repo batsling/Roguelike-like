@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_necromancy"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"necromancy"
+display_name = "Necromancy"
+kind = &"summoner"
+variables = "Amount"
+params = PackedStringArray("amount")
+description = "Will not move, but each turn will Summon X Enemies that was previously defeated in the row in front of them in that lane if there is space and gives the Undead type to Enemies Summoned"
+file = "Necromancy"

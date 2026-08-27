@@ -1544,6 +1544,30 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 	if String(e.tag) != "":
 		_detail_box.add_child(_detail_section("Synergy Tag"))
 		_detail_box.add_child(_label(String(e.tag), Color(0.73, 0.55, 0.78), 11, false, true))
+	# ABILITIES (§7.6) — the second half of what this enemy is, and the half a
+	# player looking it up in the encyclopedia is most likely to be looking it up
+	# FOR. Straight off the resource here, not off a board entry: this screen is
+	# about the roster and there is no body standing anywhere.
+	if not e.abilities.is_empty():
+		_detail_box.add_child(_detail_section("⚠ Abilities"))
+		for row in e.abilities:
+			var ad: AbilityData = Data.get_ability(StringName(row.get("id", &"")))
+			if ad == null:
+				continue
+			_detail_box.add_child(_label("%s  (%s)" % [
+				ad.display_name, String(ad.kind).capitalize()],
+				Color(1.0, 0.78, 0.28), 12, true, true))
+			_detail_box.add_child(_label(
+				ad.describe(int(row.get("amount", 0)), String(row.get("text", ""))),
+				Color(0.72, 0.74, 0.8), 11, false, true))
+	# PHASES (§7.6) — a boss several bodies deep asks for something different each
+	# time Undying brings it back, so the goal above is only the first of them.
+	if e.phase_count() > 1:
+		_detail_box.add_child(_detail_section("↻ Phases (%d)" % e.phase_count()))
+		for i in range(e.phase_count()):
+			_detail_box.add_child(_label("%d. %s  (%s)" % [
+				i + 1, e.goal_at(i), String(e.goal_type_at(i)).capitalize()],
+				Color(0.86, 0.66, 1.0), 11, false, true))
 
 # ------------------------------------------------------------------
 # Scrolls tab (2.0 catalog — revealed reference)

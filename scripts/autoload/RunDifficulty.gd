@@ -161,6 +161,21 @@ static func tier_name(tier: int) -> String:
 		Tier.INSANE: return "Insane"
 		_: return "?"
 
+# The inverse of tier_name: "medium" -> Tier.MEDIUM. Case-insensitive, and it
+# accepts the sheet's tiered spelling ("2-Medium") as well as the bare label,
+# because an ability's `Random Medium` argument (§7.6) and a sheet's Difficulty
+# column are the same four words written two ways. An unrecognised name is LOW,
+# which is the same floor every other tier lookup here falls back to.
+static func tier_from_name(name: String) -> int:
+	var s: String = name.strip_edges().to_lower()
+	if "-" in s:
+		s = s.split("-", true, 1)[1].strip_edges()
+	match s:
+		"medium": return Tier.MEDIUM
+		"high": return Tier.HIGH
+		"insane": return Tier.INSANE
+		_: return Tier.LOW
+
 # Convenience: the current run's tier, read straight off GameState.
 static func current_tier() -> int:
 	return tier_for(GameState.games_played)

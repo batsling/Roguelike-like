@@ -11,6 +11,101 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Enemies get abilities: 28 of them, a ⚠ on the board, and a boss that comes
+  back twice.**
+
+  Health, Damage, Size and a goal say what a body is *worth* and how much board it
+  takes up. None of them say what it **does**. Every enemy on the roster walked one
+  column a turn and hit you when it arrived, and the whole of §7.3's footprint
+  machinery and §7.4's turn ladder was aimed at bodies that were all the same body
+  with different pictures on them.
+
+  The new `abilities` sheet is 28 rows and the `Ability` column on `enemies` /
+  `bosses` hangs them on the roster. **Full spec: `docs/games-first-redesign.md`
+  §7.6.**
+
+  **The catalogue is data and the behaviour is code**, which is the one place in
+  this project those come apart. `data/abilities2.0` (`AbilityData`) owns each
+  ability's name, type, argument shape and sentence, generated off the sheet like
+  everything else, so the wording a player reads stays upstream. What one *does*
+  is written once in `GameLoop2`, because an ability reaches into the turn
+  resolver, the mover, the spawner and the death path at once — more than the
+  per-row effect string `tiles2.0` uses could carry. The seam that keeps that
+  honest is a test: a row added to the sheet with no implementation fails the
+  suite rather than shipping as a promise on a card the board never keeps.
+
+  **The column's grammar is paren-aware.** `Ranged (2), Fireproof, Infliction (1,
+  Burn)` is three abilities and `Split (2, slime tag)` is one with two arguments —
+  a plain comma split gets both wrong in opposite directions. An omitted count is
+  1 (a bare `Hexer` is one curse); an omitted grid range is 0, which means
+  *unlimited*. Opposite defaults for the same empty cell, which is why the slot is
+  read rather than the blank.
+
+  **One action per turn, and now that applies to the abilities too.** A Ranged
+  body that shoots from four columns back does not also close — the mover used to
+  run over everything that had not reached column 1, which would have let a sniper
+  arrive at twice the rate the ladder says anything can. Intents (Ritual,
+  Defensive Stance, Illusionist, the two spawners, Melee Ally Buff, a thief's
+  getaway) spend the whole turn as well.
+
+  **Things worth knowing before they happen to you.** *Devour Whole* ends the run
+  on a hit that lands — a shield stops the instance and therefore stops that,
+  which is the only answer and past one nothing else matters. *Bolster* is a live
+  aura rather than stacks handed out, so killing the Bishop strips the whole board
+  at once. *Theft* takes something real — gold leaves the purse, a relic leaves the
+  inventory and stops working — then turns and **runs for the back edge**, and off
+  the board it goes with the haul unless you put it down first; both thieves got a
+  new **Agile** ability so a getaway can slip a lane, which is the one exception to
+  §7.3's rule that enemies never change lanes. *Invisibility* draws nothing at all:
+  no body, no badge, no hover, and its checklist row lights no square — the goal is
+  on the list because you were told what walked on, not where.
+
+  **A summoned body is an ordinary body**, goal and payout included, so a spawner
+  is printing threats and rewards at the same time and which it turns out to be is
+  down to whether you keep up. **A body killed by another body pays nothing**,
+  which is the bomb's rule: a Ruthless boss eating your stack is a mercy, not a
+  farm.
+
+  **The death hook hangs off the damage resolver, not off `_defeat`.** `_defeat` is
+  the drop path and a bombed body never reaches it — but a bombed Guillatina still
+  owes the board its next phase, and a bombed Spike Slime still splits.
+
+  **Bosses can be several bodies deep.** The boss sheet's `Notes` column became
+  `Phases`: `Goal Type` and `Goal` are read as `/`-separated lists and `File` as a
+  comma-separated one, so one row carries three goals and three portraits.
+  Undying steps between them, bringing the boss back at the rightmost column at
+  the start of the *next* game — a whole game of respite, which is the only thing
+  separating a three-phase boss from a body with three times the Health.
+  Guillatina is the first, and its art resolves at all now: the `File` column
+  spelled it `Guillatina*` for pictures that are on disk as `Guillotina*`, so that
+  boss had been generating with no image.
+
+  **On screen.** An **exclamation mark in the top-right corner** of any body that
+  has one, sharing its row with the ▸ selection marker rather than fighting it for
+  the corner (a bare `!` there, ⚠ everywhere the mark gets a line of its own — at
+  11px on a 46px cell a warning triangle is a smudge). The
+  **hover names every ability and what it does** — which is where an *Illusion*
+  gets named, because an illusion that reads like an ordinary enemy is a goal
+  somebody will go and spend a real evening on. The **card spells them out** in an
+  ABILITIES panel. And **☠ Fallen**, beside Push and Bomb: everything you have put
+  down this run, click one for its card, write a note on one and it files against
+  the (game, enemy) pair in the same store the Atlas's notes use. It is the same
+  list a Necromancer raises from, so it is a forecast as much as a scrapbook.
+
+  **The spreadsheet's sheets lost their `2.0` suffixes** (`enemies2.0` →
+  `enemies`, and so on across the board; the pre-2.0 sheets they displaced gained
+  `old`). Every generator was repointed in the same commit. The output folders did
+  not move.
+
+  **Two long-standing test flakes went with it**, both the same shape and both
+  found by this change rather than caused by it: `test_gameloop2`'s escort test
+  asserted the bare spawn column, which is only where a **1x1** escort lands
+  (§7.3 puts a body's *rightmost* cell on the back column, so a two-wide one
+  starts a column in), and several `test_overworld2` / `test_statuses` tests stood
+  a randomly-rolled body in the front column and assumed it would swing. Both were
+  only *usually* true. See CLAUDE.md's note about varying failures — this is
+  exactly that, twice.
+
 - **Shields break where you can see it, bosses stop arriving alone, and the hover
   stops narrating the board.**
 

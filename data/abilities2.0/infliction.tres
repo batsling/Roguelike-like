@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_infliction"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"infliction"
+display_name = "Infliction"
+kind = &"attack"
+variables = "Amount, Status Type"
+params = PackedStringArray("amount", "status")
+description = "When this Enemy attacks and deals damage, it will Apply X amount of Y Status to the Player"
+file = "Infliction"

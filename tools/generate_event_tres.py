@@ -26,7 +26,7 @@ from xml.etree import ElementTree as ET
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
 XLSX_PATH = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
 OUT_DIR = os.path.join(ROOT, "data", "events")
-EVENTS_SHEET = "events"
+EVENTS_SHEET = "eventsold"
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 
 

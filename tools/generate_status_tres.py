@@ -981,7 +981,7 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    sheet = wb["statuses2.0"]
+    sheet = wb["statuses"]
     headers = [str(c.value).strip() if c.value is not None else "" for c in sheet[1]]
     for needed, setup in (("On Player Effect", "_statuses_sheet_setup.py"),
                           ("On Enemy Effect", "_statuses_sheet_setup.py"),

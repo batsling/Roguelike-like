@@ -33,6 +33,11 @@ the honour system.
   regenerate; don't hand-edit generated `.tres` in bulk. If you change the shape
   a `.tres` is written in, **update the generator in the same commit** or the next
   regeneration silently reverts you.
+  **Never edit the workbook with openpyxl** — a round-trip drops its eight charts.
+  `tools/_xlsx_surgery.py` rewrites one sheet's XML and copies every other zip
+  entry through byte-for-byte; the `_*_setup.py` one-shots beside it are the
+  worked examples. Note the sheet names lost their `2.0` suffixes (`enemies2.0` →
+  `enemies`, and so on); the output folders did not move.
 
 ## Working here
 
@@ -57,6 +62,13 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 33 scripts, ~1620 t
   *other* branch — the fit bottoming out at the legibility floor — rather than
   asserting nothing. If a Risky turns up, it is a new one; find out which case
   stopped being reachable rather than assuming it is noise.
+- **A test that stands a body on the front line and expects a swing is a flake
+  waiting to happen.** The offering rolls a RANDOM enemy, and since §7.6 an
+  ability can spend a body's whole turn on something other than you (Ritual,
+  Defensive Stance, either spawner, a thief's getaway) or add a body to the board
+  mid-turn. `test_overworld2` has `_disarm_board()` / `_front_line()` for exactly
+  this, and `test_statuses` does it inline. Tests about the SCREEN should disarm;
+  `test_enemy_abilities.gd` is where abilities are the subject.
 - **The same goes for a FAILURE that comes and goes.** `test_atlas.gd::test_the_route_set_is_rebuilt_when_the_run_moves`
   failed on roughly one run in four, on any tree, because it asserted that
   `AtlasView.route_stars()` DIFFERS after the run moves. It doesn't always:
