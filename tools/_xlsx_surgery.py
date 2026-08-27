@@ -96,6 +96,26 @@ class Workbook:
             out.append(_unescape("".join(re.findall(r"<t[^>]*>(.*?)</t>", si, re.S))))
         return out
 
+    # --- parts -------------------------------------------------------------
+
+    def part(self, name: str) -> str:
+        """One zip entry's text, for a part this module has no verb for."""
+        return self._by_name[name].decode("utf-8")
+
+    def set_part(self, name: str, text: str) -> None:
+        """Replace one zip entry's text; everything else still copies through.
+
+        The escape hatch, for the parts `write_grid` does not model — a table's
+        `ref`, a sortState, a style. It is deliberately blunt: the caller owns the
+        XML it hands over, and `audit()` is what checks the result. Use a verb
+        above where one exists.
+        """
+        if name not in self._by_name:
+            raise KeyError("no part named %r in %s" % (name, self.path))
+        data = text.encode("utf-8")
+        self._dirty[name] = data
+        self._by_name[name] = data
+
     # --- locating a sheet -------------------------------------------------
 
     def sheet_parts(self, sheet_name: str):

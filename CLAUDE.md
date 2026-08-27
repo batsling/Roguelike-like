@@ -39,9 +39,7 @@ the honour system.
   worked examples. **Run `python3 tools/_xlsx_surgery.py` after any one-shot**: a
   table part Excel rejects is reported only as "Removed Part" the next time a
   human opens the file, naming a `tableN.xml` nobody can map back to a sheet, so
-  the damage surfaces days later and somewhere else. It currently reports one
-  known, pre-existing problem — `enemies / table5.xml` has an unnamed 13th column
-  over an empty column M — which is why it is a report rather than a hard gate.
+  the damage surfaces days later and somewhere else. It should report nothing.
   Note a sheet may carry SEVERAL tables (`scrolls` has three, in three column
   blocks); those sheets are value-edit-only, and `write_grid` refuses to reshape
   them rather than resizing one table over the top of the others. Note the sheet names lost their `2.0` suffixes (`enemies2.0` →
