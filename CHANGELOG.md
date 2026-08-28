@@ -11,6 +11,66 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Six passes over what the screens say: the distance on every card, the hover
+  line, Ranged (N/A), the Fallen panel's wheel, sorting by ability, and one
+  door fewer onto the Atlas.**
+
+  **Every offered card says how far the Amulet is.** The distance was on the
+  *start* cards and then nowhere: from the second choice on, a card said which
+  **way** it went (`route_note`, and only once it had been opened) but never how
+  far there was left to go — the number the whole run is counting down.
+  `OfferingCards._make_choice_card` now carries "*N* games away from the Amulet"
+  in its own row, under the 🏆/🛒 flag and above the cover, because it is read
+  while the row of covers is being scanned and not after one has been opened. It
+  says "the Amulet" rather than naming the game (`Overworld2.amulet_distance_text`)
+  — the card is 150px wide and the tooltip names it — and the row is blank on the
+  Amulet's own card, where the flag a line above has already said it.
+
+  It is **paid for out of the badges above it**, not out of the page: the 🏆/🛒
+  flag and the ⚡ `+1 DASH` badge were two stacked rows of `BADGE_LINE`, both blank
+  on most cards, and they share one line now. The overworld fits its 720p canvas
+  with about two spare pixels on its worst page (a hub's shop under the board), so
+  a third row would have gone straight through `_assert_fits` — and did, by 28px,
+  before the badges were merged. Side by side the two badges are 139px of the
+  card's 160 at their widest, and the distance line is one line at 10px rather
+  than the badges' 11 because at 11 its longest sentence (172px) wraps and takes
+  the saving straight back.
+
+  **The hover line under the offering stopped repeating the game's name.** It
+  opened "`Spelunky  →  …`", which is the one thing on that line the player
+  already has: their mouse is on that cover with its title printed underneath.
+  The line is one line wide and the goal is the half that gets truncated, so the
+  name was being paid for out of the only fact there that isn't already on
+  screen. The stay-or-return pair (§10) keeps its names — there the game *is* the
+  answer.
+
+  **Ranged (N/A) says "any range".** The sheet writes `N/A` where a Psychic Horf
+  or a Host fires down the whole lane, and the generator stores that as `0`
+  (`GameLoop2.strike_range` reads the same `0` and hands back the width of the
+  board). `AbilityData.describe` substituted it into "Can Attack from X tiles
+  away" and printed **"Can Attack from 0 tiles away"** — the rule inverted, a
+  sniper claiming it could not reach anything. It now returns "Can Attack from
+  any range — no square on the board is out of reach" for that case, and a
+  bracketed range still quotes its number.
+
+  **Scrolling the Fallen is not dismissing it.** `GraveyardPanel` closes on a
+  click on its dimmer — and a mouse *wheel* is an `InputEventMouseButton` too. So
+  once the list stopped scrolling (the bottom of a long graveyard) the wheel fell
+  through to the dimmer and shut the panel under the player mid-read. Only the
+  three real buttons dismiss it now.
+
+  **The Collection sorts enemies and bosses by ability.** An ability is the one
+  thing about a body that isn't a number, and "which of these has a trick" is the
+  question the roster is browsed with — the tab could sort by every number it has
+  and not by that. The new **Ability** sort puts bodies carrying more of them
+  first and leaves the plain ones at the bottom in A-Z.
+
+  **The main menu's Atlas button is gone.** The star chart is still opened from
+  the two places that need it — the Collection's Games tab draws the catalog as
+  its constellation, and Run History lays each route over the sky. A third door
+  onto the same screen, in the menu column directly beside the Collection that
+  already contains it, was a row of buttons for no more game.
+
 - **Four balance and legibility passes: Identify's drop rate, the ability mark,
   Anchor's wording, and Burn eating your scrolls.**
 

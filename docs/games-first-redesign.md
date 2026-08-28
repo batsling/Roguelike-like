@@ -507,8 +507,18 @@ across two places to keep the old shape would be worse than moving it.
 
 The offering is a **routing decision**, and a routing decision cannot be made off
 a cover. Clicking an offered card therefore **opens it** rather than taking it,
-and the card is only the **cover art, the game's name, and the Amulet's flag**
-when it is the game the run is a search for.
+and the card is only the **cover art, the game's name, the Amulet's flag** when
+it is the game the run is a search for — and **how far that game stands from the
+Amulet**, in its own row under the flag and over the art ("*N* games away from
+the Amulet"). That last one is the number the whole run is counting down: the
+card says which *way* it goes only once it has been opened, so without it the
+offering could be scanned without ever showing how much road was left. It is
+blank on the Amulet's own card, where the flag above it has already said it.
+
+The **hover line** under the cards names what is *waiting* — the enemy, its goal,
+the shields the game grants — and deliberately **not the game**, whose cover the
+mouse is on and whose title is printed under it. The line is one line wide and
+the goal is the half that gets truncated.
 
 The popup is where the decision is actually made. It carries:
 
@@ -1485,7 +1495,7 @@ as §7.4's ladder says anything can.
 
 | Ability | The rule, where it isn't obvious |
 |---|---|
-| **Ranged (X)** | X is the **gap** it shoots across, so `Ranged (2)` strikes from column 3. `N/A` is the whole lane — dangerous from the moment it spawns. It shortens `_turns_owed`, so the threat colours and the ⚔ badge agree with the resolver. |
+| **Ranged (X)** | X is the **gap** it shoots across, so `Ranged (2)` strikes from column 3. `N/A` is the whole lane — dangerous from the moment it spawns, and the card says so in words ("Can Attack from any range") rather than substituting the `0` it is stored as. It shortens `_turns_owed`, so the threat colours and the ⚔ badge agree with the resolver. |
 | **Devour Whole** | The hit **ends the run**, whatever your Health. A shield stops the whole instance and therefore stops this — cover is the only answer, and past one nothing else matters. |
 | **Tanky (X)** | Health here is **goal completions**, so Transient's `Tanky (8)` is nine goals. That is the joke: you are not meant to kill it, and its `Fading (3)` is the answer. |
 | **Bolster (X, Y)** | A **live aura**, not stacks handed out: while it stands, every *other* body carries the status, including ones that walk on later, and killing it takes it off the whole board at once. Derived inside `entry_statuses_effective`, so damage, shields, movement and pips all account for it without knowing it exists. |
@@ -1550,7 +1560,13 @@ standing there.
   against the (game, enemy) pair in `GameStats.enemy_log` — the same store the
   Atlas's per-game notes use, so it is one fact written once and read in both
   places. The button is hidden until something has died, because the toolbar fits
-  its page to about ten spare pixels and a fourth permanent button wraps it.
+  its page to about ten spare pixels and a fourth permanent button wraps it. The
+  panel closes on a click on its dimmer and **only on a click** — a mouse wheel is
+  an `InputEventMouseButton` too, so once the list stopped scrolling the wheel
+  fell through and shut the panel under a player reading to the bottom of it.
+- **The Collection sorts the Enemies and Bosses tabs by ability**, alongside A-Z,
+  Tier and Damage: an ability is the one thing about a body that isn't a number,
+  and it is what the roster is browsed for.
 
 ---
 

@@ -1381,6 +1381,7 @@ func _build_enemies() -> void:
 	row.add_child(_sort_button("A-Z", _enemies_sort == "name", func(): _enemies_sort = "name"; _refresh()))
 	row.add_child(_sort_button("Tier", _enemies_sort == "tier", func(): _enemies_sort = "tier"; _refresh()))
 	row.add_child(_sort_button("Damage", _enemies_sort == "damage", func(): _enemies_sort = "damage"; _refresh()))
+	row.add_child(_sort_button("Ability", _enemies_sort == "ability", func(): _enemies_sort = "ability"; _refresh()))
 	row.add_child(VSeparator.new())
 	var type_opt := OptionButton.new()
 	type_opt.add_item("All Types")
@@ -1419,6 +1420,18 @@ func _populate_enemies() -> void:
 			list.sort_custom(func(a, b): return a.tier_index() < b.tier_index() if a.tier_index() != b.tier_index() else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		"damage":
 			list.sort_custom(func(a, b): return a.damage > b.damage if a.damage != b.damage else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"ability":
+			# EVERYTHING THAT DOES SOMETHING, FIRST. An ability is the one thing about
+			# a body that isn't a number — "which of these has a trick" is the question
+			# the roster is browsed with, and it was the one cut of it the tab couldn't
+			# make. Bodies carrying MORE of them sort above bodies carrying one, and
+			# the plain ones fall to the bottom in A-Z as they always were.
+			list.sort_custom(func(a, b):
+				var ca: int = a.abilities.size()
+				var cb: int = b.abilities.size()
+				if ca != cb:
+					return ca > cb
+				return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		_:
 			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	for e in list:

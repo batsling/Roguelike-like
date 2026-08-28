@@ -3660,6 +3660,26 @@ func amulet_name() -> String:
 func _start_distance_text(hops: int) -> String:
 	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
 
+# The same fact on an ORDINARY offered card, where it used to be missing: how far
+# that game stands from the Amulet. The distance was on the start cards and then
+# nowhere — every card after the first said which way it went (route_note, inside
+# the popup) but never how far there was left to go, which is the number the whole
+# run is counting down.
+#
+# It says "the Amulet" rather than naming the game, unlike _start_distance_text:
+# the card is 150px wide and a title like "Guild of Dungeoneering" spends the row
+# on a name the header and the popup are both already saying. The tooltip names
+# it, so the card stays scannable and the fact is still one hover away.
+#
+# Empty ON the Amulet itself — the card's flag row is already saying 🏆 THE AMULET
+# a line above, and "0 games away" under it would be noise.
+func amulet_distance_text(hops: int) -> String:
+	if hops < 0:
+		return "⛔ No route to the Amulet"
+	if hops == 0:
+		return ""
+	return "%d game%s away from the Amulet" % [hops, "" if hops == 1 else "s"]
+
 # --- the report checklist ---------------------------------------------------
 #
 # The left column in both its states — the standing list while you're choosing,

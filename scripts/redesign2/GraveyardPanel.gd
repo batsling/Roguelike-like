@@ -45,8 +45,13 @@ func setup() -> void:
 	dim.color = Color(0, 0, 0, 0.62)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
+	# Clicking the dimmer closes — but ONLY a click. A mouse WHEEL is an
+	# InputEventMouseButton too, and the list above scrolls: once it hit the
+	# bottom the ScrollContainer stopped consuming the wheel, the event fell
+	# through to this handler, and reading to the end of a long graveyard shut
+	# the panel by itself. Scrolling is not a dismissal.
 	gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed:
+		if ev is InputEventMouseButton and ev.pressed and _dismissing_button(ev.button_index):
 			close())
 
 	var center := CenterContainer.new()
@@ -228,6 +233,12 @@ func inspect(enemy: GoalEnemyData) -> EnemyInfoCard:
 		"abilities": enemy.abilities.duplicate(true),
 	}, GameLoop2.offgrid_col(), "defeated — this one is already off the board")
 	return card
+
+# Which mouse buttons mean "I am done with this panel". The three real buttons,
+# and none of the four wheel directions — see the gui_input handler in setup().
+# Public-ish (a plain func) so a test can ask the question the panel asks.
+func _dismissing_button(button: int) -> bool:
+	return button in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
 
 # Dismiss the panel. Safe to call twice — the second call is a no-op.
 func close() -> void:

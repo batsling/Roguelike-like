@@ -271,7 +271,13 @@ node and its script.
   picker, the Collection and the Atlas, live and clickable through their own
   backdrops. The corner is mounted under the modal layer now.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects. **Loot is one tab with two sub-tabs** —
+    Bosses, **Loot**, Events, Objects. It is also **the only door onto the Atlas
+    that is always open** — the Games tab's *✦ Show constellation* draws the same
+    catalog as the star chart, which is why the main menu no longer carries an
+    Atlas button of its own (Run History still lays its routes over the sky).
+    Enemies and Bosses sort by A-Z, Tier, Damage and **Ability** — an ability is
+    the one thing about a body that isn't a number, and it is what the roster is
+    browsed for. **Loot is one tab with two sub-tabs** —
     Scrolls, Pills and Potions — because they are one thing to the run: one
     three-way payout, one nine-piece pack, one window, and three top-level tabs
     would say the opposite. **A potion's cell shows its identified art and both
@@ -340,6 +346,23 @@ node and its script.
   see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.
+
+  **And every card after the first says how far it is.** The distance used to be
+  on the start cards and then nowhere: from the second choice on, a card said
+  which *way* it went — the route badge, and only inside the popup it opened —
+  but never how far there was left to go, which is the number the run is counting
+  down. Each offered card now carries `N games away from the Amulet` in its own
+  row, under the 🏆/🛒 flag and over the art, from
+  `Overworld2.amulet_distance_text`; it says "the Amulet" rather than naming the
+  game (the card is 150px wide, and the tooltip names it) and is blank on the
+  Amulet's own card, where the flag a line above has already said it. The row is
+  **paid for by merging the 🏆/🛒 flag and the ⚡ `+1 DASH` badge onto one line** —
+  two stacked rows both blank on most cards — because the page's worst case (a
+  hub's shop under the board) has about two spare pixels and a third row does not
+  fit in them. The **hover
+  line under the cards** names what is *waiting* there and not the game itself —
+  the mouse is on that cover with its title printed under it, the line is one line
+  wide, and the goal is the half that was getting truncated to pay for the repeat.
 
   **The header is the road you have walked, and it never leaves the screen.**
   Across the top, between the health and gold chips and the `☰ Menu`: the games

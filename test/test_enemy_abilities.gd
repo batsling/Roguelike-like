@@ -118,6 +118,19 @@ func test_a_description_fills_its_arguments_in() -> void:
 	assert_true(text.contains("2 amount of Burn"), "X and Y are substituted: %s" % text)
 	assert_false(text.contains(" X "), "and no placeholder survives")
 
+# RANGED (N/A) SAYS "ANY RANGE", not "0 tiles away". The sheet writes N/A where a
+# body fires down the whole lane and the generator stores it as 0, so the plain
+# substitution printed the rule inverted — a Psychic Horf's card claimed it could
+# not reach anything, when in fact nothing is out of its reach.
+func test_an_unlimited_range_describes_itself_as_unlimited() -> void:
+	var ranged: AbilityData = Data.get_ability(&"ranged")
+	var text: String = ranged.describe(0)
+	assert_true(text.to_lower().contains("any range"),
+		"Ranged (N/A) reads as unlimited: %s" % text)
+	assert_false(text.contains("0"), "and never quotes a range of zero: %s" % text)
+	assert_eq(ranged.describe(2), "Can Attack from 2 tiles away",
+		"a bracketed range still says the number")
+
 # Every rider in the roster is worded "attacks and deals damage", and that wording
 # IS the rule (see _attack_riders). Read off the sentence rather than a list of
 # ids, so this is what would catch a new rider authored without it.
@@ -624,6 +637,33 @@ func test_the_board_marks_a_body_that_has_an_ability() -> void:
 		"⚠ goes on this one")
 	assert_false(GameLoop2.entry_has_abilities(_put(_enemy(), Vector2i(1, 1))),
 		"and not on this one")
+
+# SCROLLING THE FALLEN IS NOT DISMISSING IT. The panel closes on a click on its
+# dimmer, and a mouse WHEEL is an InputEventMouseButton too — so once the list
+# stopped scrolling (the bottom of a long graveyard, or a short one that never
+# scrolled at all) the wheel fell through to the dimmer and shut the panel under
+# the player mid-read.
+func test_the_fallen_panel_does_not_close_when_you_scroll_to_the_bottom() -> void:
+	var goal: Dictionary = _put(_a_real_enemy(), Vector2i(1, 0))
+	GameLoop2.fulfill(int(goal["instance"]))
+	var panel := GraveyardPanel.new()
+	add_child_autofree(panel)
+	panel.setup()
+	await wait_frames(1)
+
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	panel.gui_input.emit(wheel)
+	await wait_frames(1)
+	assert_true(is_instance_valid(panel), "the wheel left the panel standing")
+
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	panel.gui_input.emit(click)
+	await wait_frames(2)
+	assert_false(is_instance_valid(panel), "and a real click still closes it")
 
 func test_the_hover_and_the_card_read_the_abilities_off_the_body() -> void:
 	var entry: Dictionary = _put(_enemy([_ability(&"ranged", 3)]))
