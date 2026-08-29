@@ -11,6 +11,130 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The bus runs on the roads, the teleports work with a game in play, and the
+  arrival card says outright that you were moved.**
+
+  **Ride the Bus only stops at games ON THE MAP.** `teleport_to_type` drew from
+  `Data.all_games()` — all 854 of them, the entire catalogue. The run's map is one
+  connected component (`RunGraph._prune_to_main_component`), and everything else is
+  a game this run cannot walk to: landing on one left the player on a node with no
+  edges, in a game whose offering is empty and whose only way on is another
+  teleport. Transmute is the verb for reaching off-map games, and it reaches them
+  from a slot that stays on the route. `RunGraph.is_off_map` is the bus's whole
+  filter now — the same question the Scroll of Teleportation asks by taking its
+  pool off the Amulet's BFS — and "no *type* game on the map to reach" is said out
+  loud rather than no-opping.
+
+  **Every teleport works with a game in play.** Loot always could — `LootGrid.locked`
+  holds the pack still, it does not stop a spend — but an ITEM could not:
+  `PackStrip.fires_while_reporting` held every non-charged active back until the
+  game was reported. Right for an ordinary Usable, which wants an event around it;
+  wrong for an **overworld active**, where `overworld_usable` marks an item whose
+  effect needs the map (Ride the Bus moves the run, the Wand of Wishing hands you
+  any item in the game) and the map is mounted for the whole of a game being
+  played. The one item in the pack that can get you off a game you cannot beat was
+  refused for exactly as long as you were stuck on it, with *"finish reporting this
+  game first"* as the reason. Both fire from any screen now, and that tooltip is
+  only shown when the report is genuinely what is holding an item back.
+
+  **The arrival card says you were teleported.** It carried a small gold line under
+  the title, which sat between a title and a cover and read as flavour — and the
+  card is otherwise identical to the one the offering opens, same cover, same
+  enemy, same route, so a player who reads it after a scroll had no way to tell
+  they had been moved at all. It is a bordered banner across the top of the card
+  now, in the teleport's own purple, saying it twice over: the headline that you
+  have been teleported and that this is the game you are playing now, then the
+  teleport's own sentence underneath. Ride the Bus's line carries the escape half
+  too ("You walk out of the game. Rode the bus to…"), which only the scroll used
+  to say.
+
+  **Three latent test flakes, surfaced and fixed.** Adding tests shifts every
+  later random draw in the file, and three assertions turned out to be only
+  *usually* true. `test_a_strength_stack_is_felt_on_the_players_health` and
+  `test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved` both stood a body
+  on the front line and expected a swing or a step — which since §7.6 an ability
+  can spend the whole turn instead of; both disarm now, and the Strength one sums
+  every body that will swing rather than only `stack[0]`, since a report can walk
+  an escort on beside the goal-enemy. `test_saying_no_to_the_tick_throws_the_note_away_with_it`
+  asserted an enemy note was empty afterwards without checking it was empty
+  before: `GameStats` is a cross-run file store that `after_each` does not wipe,
+  so the test above it could bank a note against the same (game, enemy) pair
+  whenever the random offering handed both tests the same one.
+
+---
+
+- **A teleport lands you in the game, the escape gate counts kills, the header
+  says what level you are and carries the map, and Rodney's level pays loot.**
+
+  **A teleport puts you IN the game it drops you on.** It used to land the run in
+  `Phase.SELECT`: a fresh offering was drawn around the new node and the game you
+  had been dropped onto was one more card you were free to walk past, which made
+  every teleport a free re-roll of the offering rather than a move.
+  `Overworld2.arrive_at_game` commits instead, exactly as `pick` does — the
+  destination's enemy is rolled (a boss if it is a boss round; a scroll is not a
+  way to skip one), the escort comes with it, the selection shields are granted,
+  and the phase goes to `PLAYING`. Every teleport goes through it: the Scroll of
+  Teleportation and the Telepill (`loot_teleport`) and Ride the Bus
+  (`teleport_to_type`). `travel_to_game`, which still lands in `SELECT`, is left
+  with the two moves that are about position rather than about a game — the
+  returns from a `play_game` detour, and the dev panel's jump.
+
+  **With the card on top of it.** Committing without a word drops the player onto
+  a board with a body already walking at them and no idea what game they are
+  looking at, so the arrival raises the same `GameChoiceModal` the offering opens
+  — cover, type, the enemy and its goal, the shields, the road on from here — in a
+  new `arrival` mode: a gold line saying how you got here ("Teleported to X — 4
+  steps from the Amulet"), no *Back* button, and one button that only takes the
+  card down. **The commit happens first and the card is a briefing, not a
+  question**, because a dismissible question would leave the run standing on a
+  game nobody committed to with no offering drawn. It sits on layer 121, under
+  everything the game you left still owes — the `PostCombatScreen` (128), its event
+  and a boss notice (123) — so those are read first and the arrival is the last
+  thing on screen when they are done: the closing words of one game, then the
+  opening words of the next.
+
+  **The escape gate counts BODIES instead of clearing the board.** The third door
+  out of a game you cannot beat used to be an empty stack, on the grounds that
+  nothing left on the board means nothing that can ever open the hit gate. True,
+  but it asked for the wrong thing: on a stack of six it is unreachable and on a
+  stack of one it is a single goal, so the same door cost anywhere between one kill
+  and a whole board depending on something the player never chose — and a board
+  emptied with BOMBS opened it having beaten nothing at all. It is three defeated
+  bodies now (`Overworld2.ESCAPE_AFTER_DEFEATS`, counted per game by the new
+  `GameLoop2.defeated_this_game`): a fixed price, reachable on any board including
+  the one that will not stop growing, and one a bomb cannot pay because a bombed
+  body never reaches `_defeat`. It rides the save and the attempt undo like the hit
+  gate does, and the line under the button reads "*Beat 3 Enemies*", counting down
+  to "*2 more*" as they fall.
+
+  **The header says what level the character is.** Everything a level pays is
+  spread across the board, the pack and the verb chips — the level itself was the
+  only thing that could say *you have grown* in one glance, and the run screen never
+  wrote it down anywhere. "Lv. 1" now rides the character chip beside the token,
+  which is what makes it read as the character's level rather than a number adrift
+  in the header. A character authored without art keeps the chip for it now instead
+  of losing the whole frame.
+
+  **…and carries the Map, immediately left of the menu.** There was a 🗺 button on
+  the offering panel and it stays there — it is the one the mouse is nearest when a
+  routing decision is open. What it could not do is answer the question from inside
+  a game: the offering panel is put away the moment you commit, and *where does this
+  game leave me* is worth asking hardest while standing on the board deciding
+  whether to keep grinding or take the door out. The header's copy rides the same
+  layer Health does, so no modal and no scroll position can put it away, and it
+  flags no offered cards while there is no offering to flag.
+
+  **Rodney's level-up pays LOOT.** The sheet wrote it as "+1 Scroll", which is
+  narrower than a piece of loot was ever meant to be: loot here is three things,
+  and every other place a run hands you one rolls which of them it is. Naming the
+  scroll made the one character whose level pays loot the one who could never be
+  paid a pill. The `characters` sheet cell, `data/characters2.0/rodney.tres`,
+  `GameState.grant_level_up` and `generate_character_tres.parse_reward` all say
+  `loot` now — the kind-blind grant `add_loot` already implemented — with
+  `tools/_characters_rodney_loot_setup.py` as the sheet surgery that did it.
+
+---
+
 - **Six passes over what the screens say: the distance on every card, the hover
   line, Ranged (N/A), the Fallen panel's wheel, sorting by ability, and one
   door fewer onto the Atlas.**

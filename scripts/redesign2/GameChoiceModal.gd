@@ -59,6 +59,11 @@ const COVER := Vector2(132, 176)
 const LADDER_MIN_W := 360.0
 const LADDER_MIN_H := 300.0
 
+# The teleport's own colour — the purple `Overworld2.loot_teleport` writes its log
+# line in, so the banner on the arrival card and the line in the log are visibly
+# the same event.
+const TELEPORT := Color(0.61, 0.35, 0.71)
+
 var _index: int = -1
 var _choice: Dictionary = {}
 var _notes: Dictionary = {}          # {route, pace, shields, beatable} from the overworld
@@ -87,7 +92,12 @@ static func open(host: Node, index: int, choice: Dictionary, notes: Dictionary =
 	modal._choice = choice
 	modal._notes = notes
 	modal._layer = CanvasLayer.new()
-	modal._layer.layer = 124
+	# 124 by default: over the event (123) and the boss notice, so a card opened
+	# from the offering is never buried. An ARRIVAL asks for a lower one — it is the
+	# last word of a move whose first words are the haul and the event from the game
+	# you were teleported out of, and those should be read first (see
+	# Overworld2._open_arrival_card).
+	modal._layer.layer = int(notes.get("layer", 124))
 	modal._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(modal._layer)
 	modal._layer.add_child(modal)
@@ -114,6 +124,22 @@ func _build() -> void:
 	margin.add_child(root)
 
 	root.add_child(_build_header(game, accent))
+
+	# HOW YOU GOT HERE, on an arrival only.
+	#
+	# The card answers "what is this game and what is waiting on it"; the one thing
+	# it cannot know is that you did not CHOOSE it. Without this the screen is
+	# indistinguishable from the card the offering opens — same cover, same enemy,
+	# same route — and a player who is shown that after reading a scroll has no way
+	# to tell they have been moved at all.
+	#
+	# So it is a BANNER, not a line: a bordered strip across the top of the card
+	# saying it twice over — the headline that you were teleported and that this is
+	# now the game you are playing, then the sentence with where you landed and how
+	# far out it put you. It was one small gold line, which sat between a title and
+	# a cover and read as flavour.
+	if bool(_notes.get("arrival", false)):
+		root.add_child(_build_arrival_banner(String(_notes.get("arrival_note", ""))))
 
 	# There WAS an event row here — "✦ An event fires here once the game is
 	# played." It was the last survivor of the era when placement was hashed onto
@@ -261,6 +287,40 @@ func _accent() -> Color:
 		return UITheme.DANGER
 	return UITheme.type_color(int(game.type)) if game != null else UITheme.ACCENT
 
+# --- the arrival banner ----------------------------------------------------
+
+# "You have been TELEPORTED here", and under it the sentence the teleport itself
+# wrote (where you landed, how far that is from the Amulet, and whether a game was
+# walked out of on the way). See the note at its call site for why it is a framed
+# strip rather than a line of text.
+#
+# `→` rather than a new arrow glyph: the UI's symbols are shipped as subsetted
+# fonts (tools/build_glyph_font.py) and this one is already in them.
+func _build_arrival_banner(detail: String) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(TELEPORT.lerp(UITheme.BG, 0.78), 10, 8, 2, TELEPORT))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	wrap.add_child(col)
+	var head := Label.new()
+	head.text = "→  You have been teleported here — this is the game you are playing now."
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_theme_font_size_override("font_size", 16)
+	head.add_theme_color_override("font_color", TELEPORT.lerp(Color.WHITE, 0.5))
+	col.add_child(head)
+	# The detail is the teleport's own sentence and there is not always one (a dev
+	# jump, or a caller that had nothing to add), so the strip stands without it
+	# rather than leaving an empty row.
+	if detail != "":
+		var line := Label.new()
+		line.text = detail
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.add_theme_font_size_override("font_size", 13)
+		line.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		col.add_child(line)
+	return wrap
+
 # --- header ----------------------------------------------------------------
 
 func _build_header(game: GameData, accent: Color) -> Control:
@@ -278,7 +338,8 @@ func _build_header(game: GameData, accent: Color) -> Control:
 
 	var close := Button.new()
 	close.text = "✕"
-	close.tooltip_text = "Back to the offering — nothing is chosen."
+	close.tooltip_text = ("Onto the board — you are already here." if bool(_notes.get("arrival", false))
+		else "Back to the offering — nothing is chosen.")
 	close.custom_minimum_size = Vector2(38, 0)
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(_close)
@@ -766,11 +827,18 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(110, 44)
-	back.pressed.connect(_close)
-	row.add_child(back)
+	# NO WAY BACK ON AN ARRIVAL. A teleport has already put you here and already
+	# spawned what is waiting (Overworld2.arrive_at_game): this screen is the
+	# briefing, not the question. A "Back" on it would offer a choice that does not
+	# exist, and the one thing worse than being dropped into a game unannounced is
+	# being announced into one and shown a door that goes nowhere.
+	var arrival: bool = bool(_notes.get("arrival", false))
+	if not arrival:
+		var back := Button.new()
+		back.text = "Back"
+		back.custom_minimum_size = Vector2(110, 44)
+		back.pressed.connect(_close)
+		row.add_child(back)
 
 	var go := Button.new()
 	go.text = String(_notes.get("action_text", "▶  Travel to %s" % game.display_name))
@@ -784,7 +852,10 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	go.add_theme_stylebox_override("hover", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))
 	go.add_theme_stylebox_override("focus", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))
 	go.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.5))
-	go.pressed.connect(func(): _answer(chose))
+	# An arrival's button only takes the screen down — the commit already happened,
+	# so there is nothing left for `chose` to do and firing it would run the pick a
+	# second time.
+	go.pressed.connect(_close if arrival else func(): _answer(chose))
 	row.add_child(go)
 	# Deferred: `row` isn't mounted yet, and a Control outside the tree has no
 	# focus to grab.

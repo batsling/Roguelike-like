@@ -23,11 +23,11 @@ start_random = 2
 starting_items = Array[StringName]([])
 starting_weapon = &""
 level_up_condition = "Beat a game without meta progression"
-level_up_reward = "Gain +1 Max Health, +1 Health, and +1 Scroll"
+level_up_reward = "Gain +1 Max Health, +1 Health, and +1 Loot"
 level_up_stats = {
 "max_hp": 1
 }
-level_up_reward_type = &"scroll"
+level_up_reward_type = &"loot"
 level_up_reward_amount = 1
 file = "Rodney"
 portrait = ExtResource("2_portrait")

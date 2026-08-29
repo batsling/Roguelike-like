@@ -16,7 +16,9 @@ sheet's characters section is meant to be read:
   Level Up / Reward          -> level_up_condition + parsed reward
                                 ("50 Gold" -> gold/50, "1 Small Chest" -> item,
                                  "1 <Class> Card Reward" -> card + class tag,
-                                 "1 Scroll and 1 Potion" -> scroll_and_potion)
+                                 "1 Scroll and 1 Potion" -> scroll_and_potion,
+                                 "1 Loot" -> loot/1, the kind-blind grant that
+                                 rolls a scroll, pill or potion)
   Strikes / Defends          -> N generic &"strike" / &"defend" entries (each
                                 resolves to the character's variant at deck
                                 build time -- see Data.variant_card_id)
@@ -104,6 +106,16 @@ def parse_reward(raw):
         return "item", 0, ""
     if re.search(r"scroll\s+and\s+.*potion", s, re.I):
         return "scroll_and_potion", 0, ""
+    # Loot and scrolls are written INSIDE the reward sentence rather than as the
+    # whole of it ("Gain +1 Max Health, +1 Health, and +1 Loot"), so these search
+    # instead of matching. LOOT FIRST, and it is the kind-blind grant: one of
+    # scroll/pill/potion rolled on use (GameState.add_loot), not one of them named.
+    m = re.search(r"\+?(\d+)\s+Loot\b", s, re.I)
+    if m:
+        return "loot", int(m.group(1)), ""
+    m = re.search(r"\+?(\d+)\s+Scrolls?\b", s, re.I)
+    if m:
+        return "scroll", int(m.group(1)), ""
     if re.search(r"spell", s, re.I):
         return "spell", 0, ""
     m = re.search(r"1\s+(\w+)\s+Card\s+Reward", s, re.I)

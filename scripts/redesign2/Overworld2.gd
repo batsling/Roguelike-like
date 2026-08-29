@@ -160,6 +160,9 @@ var _gold_chip: Label = null
 # character has no art to draw.
 var _character_chip: TextureRect = null
 var _character_wrap: Control = null
+# The character's LEVEL, in the same chip as the token ("Lv. 1"). See
+# _build_character_chip for why it rides the header rather than a panel.
+var _level_chip: Label = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
 var _route_strip: HBoxContainer = null
@@ -167,6 +170,9 @@ var _route_strip: HBoxContainer = null
 # the title / the menu, pinned to the top of the SCREEN rather than of the page —
 # see _mount_header.
 var _header: HBoxContainer = null
+# The header's Map button, left of the menu — the one way to read the road from
+# inside a game (see _build_map_button). Held so a test can press it.
+var _header_map_btn: Button = null
 var _header_bar: PanelContainer = null
 var _header_layer: CanvasLayer = null
 # The transient-toast stack, held so it can be pushed clear of the header bar.
@@ -1210,11 +1216,18 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # on the one card the run cannot make interesting, so that door is open from the
 # first second.
 #
-# AN EMPTY BOARD is the door that keeps the first one honest. Nothing on the
-# board means nothing that can ever hurt you, so the hit gate could never open —
-# a player standing on a game they cannot beat with a clear stack would be held
-# there by a rule that was written to let them out. It costs them the same as any
-# escape; there is simply nobody left for it to cost anything else.
+# THREE BODIES DOWN is the door that keeps the first one honest, and it is the
+# one the player drives. It used to be an EMPTY BOARD — nothing left on the stack
+# means nothing that can ever hurt you, so the hit gate could never open, and a
+# player standing on a game they cannot beat with a clear stack would be held
+# there by a rule written to let them out. True, but it asked for the wrong thing:
+# on a stack of six it is unreachable, and on a stack of one it is a single goal,
+# so the same door cost anywhere between one kill and a whole board depending on
+# something the player never chose. A COUNT is the same argument with a fixed
+# price — you have shown the game three answered goals, whatever else the board
+# still holds — and it is reachable on every board, including the one that will
+# not stop growing. It is per-GAME (GameLoop2.defeated_this_game), like the hit
+# gate: what the last game cost you is not a fact about this one.
 #
 # It is the same escape however you got in: the goal-enemy still follows you, the
 # board still takes the turns the road charges for finishing a game (§7.4, which
@@ -1230,18 +1243,22 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # simply a way out that always eventually arrives.
 const ESCAPE_AFTER_LOSSES := 5
 
+# How many bodies this game has to have cost the board before the door opens on
+# kills alone (see the "THREE BODIES DOWN" note above).
+const ESCAPE_AFTER_DEFEATS := 3
+
 func can_escape() -> bool:
 	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return false
 	return beaten_this_run() or GameLoop2.hurt_this_game \
-		or GameLoop2.stack.is_empty() \
+		or GameLoop2.defeated_this_game >= ESCAPE_AFTER_DEFEATS \
 		or GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES
 
 # What the player still has to do to open the door, as the routes that are not yet
 # open, in the order they are worth trying. Empty when the door is already open.
 #
 # EVERY ROUTE AT ONCE rather than only the nearest: they are genuinely different
-# prices — a turn of the board, the last body on it, a point of Health — and which
+# prices — a turn of the board, three bodies off it, a point of Health — and which
 # is cheapest is a fact about the player's board that only the player can see. A
 # hint that named one of them would be advice; naming all three is information.
 func escape_routes() -> Array:
@@ -1251,13 +1268,19 @@ func escape_routes() -> Array:
 	var left: int = ESCAPE_AFTER_LOSSES - GameLoop2.attempts()
 	if left > 0:
 		out.append("%d more %s" % [left, "loss" if left == 1 else "losses"])
-	if not GameLoop2.stack.is_empty():
-		out.append("Clear Enemies")
+	# "Beat 3 Enemies" until one is down, and "2 more" after that: the count is the
+	# thing being asked for, and repeating the whole price to a player who has
+	# already paid part of it is the version that reads as no progress.
+	var kills: int = ESCAPE_AFTER_DEFEATS - GameLoop2.defeated_this_game
+	if kills > 0:
+		var noun: String = "Enemy" if kills == 1 else "Enemies"
+		out.append(("Beat %d %s" if GameLoop2.defeated_this_game == 0
+			else "Beat %d more %s") % [kills, noun])
 	if not GameLoop2.hurt_this_game:
 		out.append("Lose Health")
 	return out
 
-# Those routes as the line under the button: "3 more losses, Clear Enemies, or
+# Those routes as the line under the button: "3 more losses, Beat 3 Enemies, or
 # Lose Health". Empty string when the door is open and the line has nothing to say.
 func escape_hint_text() -> String:
 	var routes: Array = escape_routes()
@@ -1422,8 +1445,13 @@ func scramble() -> bool:
 # currently on offer flagged.
 func open_map() -> Node:
 	var choice_ids: Array = []
-	for c in _choices:
-		choice_ids.append(c["slot"])
+	# ONLY WHILE THE OFFERING IS UP. `_choices` is not cleared when a game is
+	# committed to — the play panel is built off it — so flagging it unconditionally
+	# would have the header's mid-game map star three games that are no longer on
+	# offer, on a screen whose whole question is where you go NEXT.
+	if _phase == Phase.SELECT:
+		for c in _choices:
+			choice_ids.append(c["slot"])
 	return _open_route_map(GameState.current_game_id, choice_ids, {})
 
 # The same map for a game you have NOT taken: the optimal road to the Amulet as
@@ -1698,7 +1726,6 @@ func loot_teleport(req: Dictionary) -> String:
 		GameLog.add(fizzle, Color(0.61, 0.35, 0.71))
 		return fizzle
 	var dest: StringName = pool[_rng.randi() % pool.size()]
-	GameState.set_current_game(dest)
 	var g: GameData = Data.get_game(dest)
 	# HOW FAR OUT IT PUT YOU, not only where. Distance from the Amulet is the fact
 	# the whole op is about — `spread` keeps you about where you were and `amulet`
@@ -1714,9 +1741,11 @@ func loot_teleport(req: Dictionary) -> String:
 	if escaped_out:
 		landed = "You walk out of the game. " + landed
 	GameLog.add(landed, Color(0.61, 0.35, 0.71))
-	_dash_mode = false
-	_build_choices()
-	_refresh()
+	# AND YOU ARE PLAYING IT. A teleport puts you somewhere, and being somewhere
+	# means the game that is there — it is not a free re-roll of the offering (see
+	# arrive_at_game). The line above rides onto the card that opens over the board,
+	# so the player reads where they landed before they meet what is on it.
+	arrive_at_game(dest, landed)
 	return landed
 
 # Report the outcome of actually playing the chosen game (the honour-system
@@ -2559,46 +2588,183 @@ func _hand_chests_to_post_game() -> void:
 
 # --- overworld item actions (routed here by EffectSystem, §8) --------------
 
-# Ride the Bus: teleport to a random game of `type_key` currently reachable on
-# the map (falls back to any game of that type in the pool). Rebuilds the
-# offering from the new position.
+# Ride the Bus: teleport to a random game of `type_key` that is ON THE MAP.
+#
+# It used to draw from `Data.all_games()` outright — all 854 of them, the entire
+# catalog — which is not what a bus is. The run's map is one connected component
+# (RunGraph._prune_to_main_component); everything else is a game this run cannot
+# walk to at all, and dropping the player onto one puts them on a node with no
+# edges, standing in a game whose offering is empty and whose only way on is
+# another teleport. Transmute is the verb for reaching off-map games, and it
+# reaches them by playing one from a slot that stays on the route. So the bus goes
+# where the roads go: `RunGraph.is_off_map` is the whole filter, and it is the same
+# question the Scroll of Teleportation asks by taking its pool off the Amulet's BFS.
+#
+# Nothing to reach says so and spends nothing further — the item is already spent,
+# but a bus with no route is not a move, and a silent no-op reads as a bug.
 func teleport_to_type(type_key: StringName) -> void:
 	var cur: StringName = GameState.current_game_id
 	var same_type: Array = []
 	for g in Data.all_games():
 		if not (g is GameData) or g.id == cur or GameLoop2.is_bashed(g.id):
 			continue
+		if RunGraph.is_off_map(g.id):
+			continue
 		if GameLoop2.game_type_key(g) == type_key:
 			same_type.append(g.id)
 	if same_type.is_empty():
-		GameLog.add("Ride the Bus finds no %s game to reach." % String(type_key),
-			Color(0.8, 0.6, 0.4))
+		var none := "Ride the Bus finds no %s game on the map to reach." % String(type_key)
+		GameLog.add(none, Color(0.8, 0.6, 0.4))
+		Notifications.notify(none, Color(0.8, 0.6, 0.4))
 		return
 	var dest: StringName = same_type[_rng.randi() % same_type.size()]
 	# THE FARE IS PAID BEFORE THE ARRIVAL IS ANNOUNCED. `travel_to_game` escapes a
 	# game in play on the player's behalf, and escaping resolves the board — which
 	# can end the run on the way out. Done here, ahead of the log line, so a bus
 	# that killed you does not first report you as having got off it somewhere.
+	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
 		escape_game(true)
+		escaped_out = _phase != Phase.PLAYING
 		if GameLoop2.run_over or _phase == Phase.OVER:
 			return
 	var g: GameData = Data.get_game(dest)
-	GameLog.add("Rode the bus to %s." % (g.display_name if g != null else String(dest)),
-		Color(0.5, 0.85, 1.0))
-	travel_to_game(dest)
+	var landed: String = "Rode the bus to %s — a %s game." % [
+		g.display_name if g != null else String(dest), String(type_key)]
+	# The expensive half said out loud, exactly as the scroll says it (loot_teleport):
+	# the board took its turns for the game you were on, and the arrival card is the
+	# only screen that sentence reaches.
+	if escaped_out:
+		landed = "You walk out of the game. " + landed
+	GameLog.add(landed, Color(0.5, 0.85, 1.0))
+	# Off the bus is ON the game, like every other teleport (see arrive_at_game):
+	# the fare bought a move, not a look at somewhere else's offering.
+	arrive_at_game(dest, landed)
 
-# Move the run to `game_id` outright and rebuild the offering around it — the
-# landing half of every teleport (Ride the Bus, and the dev panel's jump).
+# --- arriving somewhere you did not choose ---------------------------------
 #
-# A GAME IN PLAY IS ESCAPED ON THE WAY OUT, the same as it is under a Scroll of
-# Teleportation (see loot_teleport, which argues the case at length). Ride the Bus
-# used to change where you were standing and set the phase back to SELECT by hand,
-# which walked out of the game without paying for it: the goal-enemy never
-# followed, the board never took the turns finishing a game owes (§7.4), and a
-# player mid-game could ride out of anything for free. One rule for moving the run
-# off a game, and `escape_game(true)` is it — a spent item IS what earns the exit,
-# and it buys the door rather than a pardon.
+# A TELEPORT LANDS YOU IN THE GAME, not next to it.
+#
+# It used to land you in Phase.SELECT: the run moved, a fresh offering was drawn
+# around the new node, and the game you had been dropped onto was simply one more
+# card — one you were free to walk past. Which made every teleport a free re-roll
+# of the offering rather than a move, and left the thing the player had just spent
+# a scroll on saying nothing about where they were. "Teleport to a random space"
+# means you are somewhere now, and being somewhere in this game means playing the
+# game that is there.
+#
+# So an arrival commits, exactly as `pick` does — the destination's enemy is
+# rolled, the escort comes with it, the selection shields are granted, and the
+# phase goes to PLAYING — and then it puts THE CARD on top of the board: the same
+# GameChoiceModal the offering opens, with the cover, the enemy and its goal, the
+# shields, and the road on from here. The commit happens first and the card is a
+# briefing rather than a question (see `arrival` in GameChoiceModal), because the
+# alternative is a modal the player can dismiss into a state where the run is
+# standing on a game nobody committed to and no offering is drawn.
+#
+# `announce` is the line the teleport itself wants said at the top of the card —
+# "Teleported to X — 4 steps from the Amulet" — since the card cannot know how you
+# got here and the log line alone is the one nobody reads.
+func arrive_at_game(dest: StringName, announce: String = "") -> void:
+	var game: GameData = Data.get_game(dest)
+	if game == null or GameLoop2.run_over or _phase == Phase.OVER:
+		return
+	# The run is being posted off wherever it stood, so anything standing at that
+	# node goes with it — the same first move `travel_to_game` and a detour make.
+	_leave_node()
+	GameState.set_current_game(dest)
+	var type_key: StringName = GameLoop2.game_type_key(game)
+	var tier: int = _current_tier()
+	# A boss round is a fact about the RUN, not about how you got to the game, so a
+	# teleport that lands on one still meets a boss. Anything else would make the
+	# scroll a way of skipping them.
+	_boss_round = _is_boss_round()
+	var enemy: GoalEnemyData = GameLoop2.roll_boss(type_key, tier) if _boss_round \
+		else GameLoop2.roll_enemy(type_key, tier)
+	_chosen = {
+		"game": game, "enemy": enemy, "slot": dest,
+		"boss": _boss_round, "amulet": dest == GameState.amulet_game_id,
+		"repeat": GameState.has_played_game(game.id),
+	}
+	GameLoop2.choose_game(enemy, type_key, tier)
+	_log_escort()
+	var granted: int = GameLoop2.grant_selection_shields(game)
+	GameLog.add("%s — %s, one hit stopped each." % [
+		game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+	# You did not spend a Dash to get here, so there is nothing for the return-trip
+	# refund to give back (see `_dashed_here`).
+	_dash_mode = false
+	_dashed_here = false
+	if _offering != null:
+		_offering.reset_hover_grant()
+	if _board != null:
+		_board.cancel_push()
+		_board.cancel_bomb()
+		_board.cancel_item_aim()
+	_phase = Phase.PLAYING
+	_populate_play_panel()
+	_refresh()
+	_scroll_to_top()
+	_open_arrival_card(announce)
+	autosave()
+
+# The briefing over the board. Same screen the offering's cards open, in the mode
+# that has no "Back" and whose one button only takes it down (`arrival`).
+#
+# It opens UNDER everything the game you left still owes — the haul screen (128),
+# its event and a boss notice (123) — on layer 121, so those are read first and
+# this is the last thing on the screen when they are done. One is the closing words
+# of the game that just ended, the other the opening words of the one that has just
+# begun, and that is the order they belong in.
+func _open_arrival_card(announce: String = "") -> GameChoiceModal:
+	if _chosen.is_empty():
+		return null
+	var game: GameData = _chosen.get("game")
+	if game == null:
+		return null
+	if _choice_modal != null and is_instance_valid(_choice_modal):
+		return _choice_modal
+	var notes: Dictionary = {
+		"route": route_note(_chosen),
+		"pace": turn_note(_chosen),
+		"shields": GameLoop2.shields_for_game(game),
+		"beatable": _beatable_row(_chosen),
+		"enemy_hidden": _enemy_hidden(_chosen),
+		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
+		"escort": _escort_note(_chosen),
+		"arrival": true,
+		"arrival_note": announce,
+		# UNDER everything the game you just left still owes: the haul screen (128),
+		# its event (123) and a boss notice (123). Those are the closing words of the
+		# game the teleport walked out of, and this is the opening words of the next
+		# one — read in that order, the move tells itself as a story; read the other
+		# way round, the player is briefed on a game and then handed three screens
+		# about a different one.
+		"layer": 121,
+		"action_text": "▶  Play %s" % game.display_name,
+		"action_tip": "You are already here — go and play it for real, then report back.",
+	}
+	var modal := GameChoiceModal.open(self, -1, _chosen, notes)
+	_choice_modal = modal
+	modal.finished.connect(func(): _choice_modal = null)
+	return modal
+
+# Move the run to `game_id` outright and rebuild the OFFERING around it: you end
+# up standing at the node with a fresh set of cards, having played nothing.
+#
+# This is no longer how a teleport lands — `arrive_at_game` is, and it commits you
+# to the game you were dropped on. What is left here is the two moves that are
+# genuinely about position rather than about a game: the returns from a play_game
+# detour (§10), where the game has already been reported, and the dev panel's
+# jump, which is a debugging tool and has no business rolling an enemy.
+#
+# A GAME IN PLAY IS ESCAPED ON THE WAY OUT. Ride the Bus used to change where you
+# were standing and set the phase back to SELECT by hand, which walked out of the
+# game without paying for it: the goal-enemy never followed, the board never took
+# the turns finishing a game owes (§7.4), and a player mid-game could ride out of
+# anything for free. One rule for moving the run off a game, and `escape_game(true)`
+# is it — a spent item IS what earns the exit, and it buys the door rather than a
+# pardon.
 #
 # `escape_first` is off only for the two returns from a play_game trip (§10),
 # which are not teleports: the game they came back from has already been reported.
@@ -3865,12 +4031,27 @@ func _build_character_chip() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.PANEL, 8, 5, 1, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	wrap.add_child(row)
 	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
 	# The token answers a hover with who it is — the name is not written out,
 	# because the header's job here is the picture and a name would cost the route
 	# strip beside it the width it is drawn in.
 	_character_chip.mouse_filter = Control.MOUSE_FILTER_STOP
-	wrap.add_child(_character_chip)
+	row.add_child(_character_chip)
+	# THE LEVEL, against the token. It is the one number about the character that
+	# CHANGES during a run — the stats a level pays are spread across the board, the
+	# pack and the verb chips, so the level itself was the only thing that could say
+	# "you have grown" in one glance, and it was written down nowhere on the run
+	# screen at all. Four characters wide at most ("Lv. 9"), which is what lets it
+	# ride the header beside the token rather than costing the route strip a name's
+	# worth of room.
+	_level_chip = Label.new()
+	_level_chip.add_theme_font_size_override("font_size", 13)
+	_level_chip.add_theme_color_override("font_color", UITheme.GOLD)
+	_level_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_level_chip)
 	_character_wrap = wrap
 	_paint_character_chip()
 	return wrap
@@ -3886,10 +4067,19 @@ func _paint_character_chip() -> void:
 		tex = ch.icon if ch.icon != null else ch.portrait
 	_character_chip.texture = tex
 	UITheme.apply_crisp(_character_chip, tex)
-	# Nothing to draw — no character, or one authored without art — so the frame
-	# goes too rather than leaving an empty box in front of the Health.
+	# A character authored without art loses the TOKEN, not the whole chip: the
+	# level beside it is a number about the run and it has to be readable whether
+	# or not there is a picture to hang it on. The frame only goes when there is no
+	# character at all, which is the case where it really would be an empty box.
+	_character_chip.visible = tex != null
 	if _character_wrap != null and is_instance_valid(_character_wrap):
-		_character_wrap.visible = tex != null
+		_character_wrap.visible = ch != null
+	if _level_chip != null and is_instance_valid(_level_chip):
+		_level_chip.text = "Lv. %d" % maxi(1, GameState.player_level)
+		if ch != null:
+			_level_chip.tooltip_text = ("Character level. %s levels up by: %s." % [
+				ch.display_name, ch.level_up_condition]) if ch.level_up_condition != "" \
+				else "Character level."
 	if ch != null:
 		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
 
@@ -4954,6 +5144,16 @@ func _build_ui() -> void:
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.size_flags_horizontal = Control.SIZE_SHRINK_END
 	header.add_child(title)
+	# THE MAP, immediately left of the menu. There is a Map button on the offering
+	# panel already, and it stays there — it is the one the mouse is nearest when a
+	# routing decision is actually open. What it could not do is answer the question
+	# from INSIDE a game: the offering panel is put away the moment you commit
+	# (Phase.PLAYING), and with it went the only way to look at the road while
+	# standing on the board — which is exactly when "where does this game leave me"
+	# is worth asking, because the answer decides whether to keep grinding it or
+	# take the door out. On the header it rides the same layer Health does, so no
+	# modal and no scroll position can put it away.
+	header.add_child(_build_map_button())
 	header.add_child(_build_menu_button())
 	_header = header
 	_mount_header(header)
@@ -5555,8 +5755,8 @@ func _refresh_attempts() -> void:
 		var why: String = "Something on the board got through and took Health off you — that is enough."
 		if beaten_this_run():
 			why = "You already beat this one this run, so there is nothing to prove — leave whenever you like."
-		elif GameLoop2.stack.is_empty():
-			why = "Nothing is on the board to hold you here."
+		elif GameLoop2.defeated_this_game >= ESCAPE_AFTER_DEFEATS:
+			why = "You have put %d enemies down on this one — that is enough on its own." % GameLoop2.defeated_this_game
 		elif GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES:
 			why = "You have lost %d runs at this one — that is enough on its own." % GameLoop2.attempts()
 		elif not open_now:
@@ -5599,6 +5799,18 @@ func _clear(box: Control) -> void:
 # menu were three buttons parked across the top of the page for the whole run,
 # and none of them is pressed while a decision is open — so they fold into the
 # menu they were already standing next to.
+# The header's own Map button (see the note where it is mounted). It opens the
+# same window the offering's does — `open_map`, from wherever the run stands — so
+# the two can never show different roads.
+func _build_map_button() -> Button:
+	var b := Button.new()
+	b.text = "🗺  Map"
+	b.tooltip_text = ("The whole road ahead: every shortest path from here to the Amulet. "
+		+ "Open from anywhere, including mid-game.")
+	b.pressed.connect(open_map)
+	_header_map_btn = b
+	return b
+
 enum MenuItem { SAVE, NEW_RUN, MAIN_MENU, EXIT_GAME }
 
 func _build_menu_button() -> MenuButton:

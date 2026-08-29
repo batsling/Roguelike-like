@@ -424,6 +424,14 @@ var answered_this_game: Dictionary = {}
 # include the ones already resolved.
 var goals_met_this_game: int = 0
 
+# How many bodies were DEFEATED during this game — the count the escape gate reads
+# (Overworld2.can_escape, §3.2). It is a count of KILLS, not of goals: a body that
+# took its goal hit and lived is not on it, and a body finished off by a mine or a
+# bottle is. What it deliberately does NOT count is a BOMB, which takes the body
+# off the board through `_take_off_board` without ever reaching `_defeat` — buying
+# a goal away must not also buy the door out of the game.
+var defeated_this_game: int = 0
+
 # Bodies DEFEATED this game, instance -> the entry they were, so their optional
 # bonus objectives can still be claimed afterwards. The report always resolved
 # bonuses BEFORE goals for this reason ("an enemy you failed can still pay its
@@ -700,6 +708,7 @@ func serialize() -> Dictionary:
 		"staggered_this_game": staggered_this_game.keys(),
 		"answered_this_game": _string_keys(answered_this_game),
 		"goals_met_this_game": goals_met_this_game,
+		"defeated_this_game": defeated_this_game,
 		"answered_rows": _string_keys(answered_rows),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		# THIS RUN'S DEAD and what Undying still owes (§7.6). Both as ids — the rows
@@ -857,6 +866,9 @@ func restore(data: Dictionary) -> void:
 	for sid in data.get("answered_this_game", []):
 		answered_this_game[StringName(sid)] = true
 	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
+	# Absent from a save written before the kill gate existed, which loads as "no
+	# bodies down yet" — the same safe direction the hit gate above takes.
+	defeated_this_game = maxi(0, int(data.get("defeated_this_game", 0)))
 	for key in data.get("answered_rows", []):
 		answered_rows[String(key)] = true
 	for raw in data.get("claimed_event_goals", []):
@@ -1541,6 +1553,7 @@ func _loop_snapshot() -> Dictionary:
 		"staggered_this_game": staggered_this_game.duplicate(),
 		"answered_this_game": answered_this_game.duplicate(),
 		"goals_met_this_game": goals_met_this_game,
+		"defeated_this_game": defeated_this_game,
 		"answered_rows": answered_rows.duplicate(),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"ghosts": _ghosts.duplicate(true),
@@ -1585,6 +1598,9 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	staggered_this_game = (snap.get("staggered_this_game", {}) as Dictionary).duplicate()
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
 	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
+	# …and the kill gate with it: undoing the turn that felled the third body has to
+	# close the door again, exactly as it closes the hit gate above.
+	defeated_this_game = int(snap.get("defeated_this_game", 0))
 	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
 	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
@@ -1665,6 +1681,7 @@ func _clear_game_record() -> void:
 	staggered_this_game.clear()
 	answered_this_game.clear()
 	goals_met_this_game = 0
+	defeated_this_game = 0
 	answered_rows.clear()
 	claimed_event_goals.clear()
 	_ghosts.clear()
@@ -3575,6 +3592,8 @@ func escort_enemy() -> GoalEnemyData:
 func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		fell: Vector2i = OFF_FIELD) -> void:
 	defeated_count += 1
+	# The per-game half of the same tally — what the escape gate counts (§3.2).
+	defeated_this_game += 1
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
 	if drop:
