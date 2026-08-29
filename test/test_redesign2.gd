@@ -148,11 +148,34 @@ func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	assert_eq(antonio.level_up_reward_amount, 1)
 	assert_eq(antonio.level_up_condition, "Kill an enemy with a whip")
 
-func test_rodney_reward_parses_maxhp_and_scroll() -> void:
+# Rodney's level pays LOOT, not a scroll. The sheet used to name the scroll, which
+# is narrower than "a piece of loot" was ever meant to be: loot in this game is
+# three things, and every other place a run hands you one rolls which. Naming the
+# scroll made the one character whose level pays loot the one who can never be
+# paid a pill.
+func test_rodney_reward_parses_maxhp_and_loot() -> void:
 	var rodney: CharacterData = Data.get_character2(&"rodney")
 	assert_eq(int(rodney.level_up_stats.get("max_hp", 0)), 1, "+1 Max Health -> max_hp stat")
-	assert_eq(String(rodney.level_up_reward_type), "scroll", "+1 Scroll -> scroll reward")
+	assert_eq(String(rodney.level_up_reward_type), "loot", "+1 Loot -> the kind-blind reward")
+	assert_eq(rodney.level_up_reward_amount, 1, "one piece of it")
 	assert_eq(rodney.base_max_hp, 5, "Rogue Health 5")
+
+func test_rodneys_level_pays_a_piece_of_loot_of_any_kind() -> void:
+	var rodney: CharacterData = Data.get_character2(&"rodney")
+	assert_not_null(rodney)
+	# Enough levels that a reward locked to one kind would show as one kind.
+	GameLoop2.start_run(rodney)
+	var kinds: Dictionary = {}
+	for _i in range(30):
+		GameState.loot_items.clear()
+		GameState.grant_level_up()
+		assert_eq(GameState.loot_items.size(), 1, "one piece per level")
+		if GameState.loot_items.size() == 1:
+			kinds[String((GameState.loot_items[0] as Dictionary).get("type", ""))] = true
+	for kind in kinds.keys():
+		assert_true(["scroll", "pill", "potion"].has(kind),
+			"every piece is one of the three kinds of loot, not %s" % kind)
+	assert_gt(kinds.size(), 1, "and over thirty levels it is not always the same one")
 
 # --- Chest sizing (Random Sized Chest, §8.2) --------------------------------
 # The same 75/20/5-with-10%-top-step-bump ladder every other rarity roll uses

@@ -320,6 +320,17 @@ this run has **already beaten** — there is nothing left to prove at that one.
   the first swings outright, and the door opens on the swing that gets past them.
   The way out therefore arrives exactly when the game starts costing the one
   thing you cannot make more of.
+- **…and THREE BODIES DOWN is the door the player drives**
+  (`Overworld2.ESCAPE_AFTER_DEFEATS`, counted per game by
+  `GameLoop2.defeated_this_game`). It used to be an EMPTY BOARD, on the grounds
+  that nothing left on the stack means nothing that can ever open the hit gate.
+  True, but it asked for the wrong thing: on a stack of six it is unreachable and
+  on a stack of one it is a single goal, so the same door cost anywhere between
+  one kill and a whole board depending on something the player never chose. A
+  fixed count is the same argument at a fixed price, reachable on every board
+  including the one that will not stop growing. A BOMBED body does not count —
+  it never reaches `GameLoop2._defeat` — so buying a goal away does not also buy
+  the door.
 - **…and five lost runs is the floor under it** (`Overworld2.ESCAPE_AFTER_LOSSES`).
   The hit is the honest measure, but it is one the player does not control: a board
   of low-damage bodies behind a stack of Temporary Shields can take an evening and
@@ -330,7 +341,7 @@ this run has **already beaten** — there is nothing left to prove at that one.
 - **The button is always on screen, darkened until one of them opens.** Hiding it
   meant the one player who most needed to know there was a door — the one stuck —
   was reading a panel that never mentioned it. Under the greyed button is the
-  price, as every route still to be paid: *"3 more losses, Clear Enemies, or Lose
+  price, as every route still to be paid: *"3 more losses, Beat 3 Enemies, or Lose
   Health"* (`Overworld2.escape_routes` / `escape_hint_text`). All of them at once
   rather than the nearest, because which is cheapest is a fact about the player's
   board that only the player can see — naming one would be advice, naming all
@@ -803,10 +814,37 @@ off a game.
 **And so does every other teleport.** Ride the Bus (`teleport_to_type`) used to move
 the run by hand — `travel_to_game` set the phase back to SELECT and that was that —
 which walked the player out of a game in play for free: no goal-enemy following, no
-turns for the board, no report. The escape lives in `travel_to_game` now, so an item
-that moves you pays the same fare a scroll does. Its one exception is the return leg
-of a `play_game` detour (§10), which is not a teleport: that game has already been
-reported by the time the run heads home.
+turns for the board, no report. It escapes first and arrives second now, exactly as
+the scroll does, so an item that moves you pays the same fare. Its one exception is
+the return leg of a `play_game` detour (§10), which is not a teleport: that game has
+already been reported by the time the run heads home.
+
+**AND IT LANDS YOU IN THE GAME, not next to it** (`Overworld2.arrive_at_game`). A
+teleport used to leave the run in `Phase.SELECT`: a fresh offering was drawn
+around the new node, and the game you had been dropped onto was one more card you
+were free to walk past — which made every teleport a free re-roll of the offering
+rather than a move. "Teleport to a random space" means you are *somewhere* now,
+and being somewhere in this game means playing the game that is there. So an
+arrival commits exactly as `pick` does: the destination's enemy is rolled (a boss
+if it is a boss round — a scroll is not a way to skip one), the escort comes with
+it, the selection shields are granted, and the phase goes to `PLAYING`.
+
+**With the card on top of it.** Committing without a word would drop the player
+onto a board with a body already walking at them and no idea what game they are
+even looking at, so the arrival raises the same `GameChoiceModal` the offering
+opens — cover, type, the enemy and its goal, the shields, and the road on from
+here — in `arrival` mode: a line saying how you got here, no *Back* button, and
+one button that only takes it down. **The commit happens first and the card is a
+briefing, not a question**, because a dismissible question leaves the run standing
+on a game nobody committed to with no offering drawn. It opens on **layer 121**,
+under everything the game you left still owes — the `PostCombatScreen` (128), its
+event and a boss notice (123) — so those are read first and the arrival is the last
+thing on the screen when they are done: the closing words of one game, then the
+opening words of the next.
+
+`travel_to_game` — which does land you in `SELECT` — is now only the two moves
+that are genuinely about position rather than about a game: the returns from a
+`play_game` detour, and the dev panel's jump.
 
 Two dead ends survive, and both say so in full. If the escape is what kills you —
 the turns it hands over are real — the run is over and there is nowhere to land. If

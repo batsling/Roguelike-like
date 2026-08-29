@@ -1558,6 +1558,24 @@ func test_the_header_shows_the_lasting_shields_as_shields() -> void:
 	assert_false(_ui._health_chip.text.contains("2"),
 		"and Health is left saying only Health: %s" % _ui._health_chip.text)
 
+# The character's LEVEL, against the token in the header. Everything a level pays
+# is spread across the board, the pack and the verb chips — the level itself was
+# the only thing that could say "you have grown" in one glance, and the run screen
+# never wrote it down anywhere.
+func test_the_header_says_what_level_the_character_is() -> void:
+	GameState.player_level = 1
+	_ui._refresh_stats()
+	assert_eq(_ui._level_chip.text, "Lv. 1", "it starts at one")
+	assert_true(_ui._level_chip.visible, "and it is up from the first screen")
+	GameState.player_level = 4
+	_ui._refresh_stats()
+	assert_eq(_ui._level_chip.text, "Lv. 4", "and it follows the level up")
+	# It rides the character chip, so it is beside the token rather than adrift in
+	# the header — which is what makes it read as the CHARACTER's level.
+	assert_true(_ui._character_wrap.is_ancestor_of(_ui._level_chip),
+		"in the same chip as the token")
+	assert_true(_ui._character_wrap.is_ancestor_of(_ui._character_chip))
+
 # The board says where a body is by DRAWING it there. A hover that also counts the
 # squares in words is the board reading itself back, so the timing line is gone.
 func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
@@ -2432,6 +2450,37 @@ func test_the_map_button_belongs_to_the_offering() -> void:
 				if b is Button and String((b as Button).text).contains("Map"):
 					found = b
 	assert_not_null(found, "the map opens from the panel it is a map of")
+
+# …AND FROM THE HEADER, which is the only one of the two that is up mid-game: the
+# offering panel is put away the moment you commit, and "where does this game
+# leave me" is worth asking hardest while you are standing on the board.
+func test_the_map_opens_from_the_header_while_a_game_is_in_play() -> void:
+	assert_not_null(_ui._header_map_btn, "the header carries a Map button")
+	var kids: Array = _ui._header.get_children()
+	var map_at: int = kids.find(_ui._header_map_btn)
+	var menu_at: int = -1
+	for i in range(kids.size()):
+		if kids[i] is MenuButton:
+			menu_at = i
+	assert_gt(map_at, -1, "it is in the header row")
+	assert_eq(map_at, menu_at - 1, "immediately left of the menu")
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
+	assert_true(_ui._header_map_btn.visible, "and the button is still there")
+	var modal = _ui.open_map()
+	assert_not_null(modal, "which opens the map from inside the game")
+	_leave_post_game()
+
+# The header's mid-game map must not star the last offering's cards: those three
+# games are not on offer any more, and the map's whole job is where you go NEXT.
+func test_the_mid_game_map_stars_nothing() -> void:
+	_ui.pick(0)
+	var modal = _ui.open_map()
+	assert_not_null(modal)
+	if modal != null:
+		assert_true((modal._choice_ids as Dictionary).is_empty(),
+			"no card is flagged while there is no offering: %s" % str(modal._choice_ids))
+	_leave_post_game()
 
 func test_the_menu_holds_the_runs_admin() -> void:
 	# Save / New run / Main menu were three buttons parked across the top for the
@@ -5054,20 +5103,53 @@ func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
 	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
 	assert_true(_ui._escape_btn.disabled, "and the button darkens again with it")
 
-func test_an_empty_board_is_a_way_out_on_its_own() -> void:
-	# Nothing on the board is nothing that can ever hurt you, so the hit gate could
-	# never open — a player standing on a game they cannot beat with a clear stack
-	# would be held there by the rule written to let them out (§3.2).
+func test_three_bodies_down_is_a_way_out_on_its_own() -> void:
+	# The door the player drives: a fixed price in kills, reachable on any board,
+	# rather than the old "clear the whole stack" that cost one goal on a stack of
+	# one and was unreachable on a stack of six (§3.2).
 	_pick_an_unplayed_game()
-	assert_false(_ui.can_escape(), "a board with bodies on it holds you until one lands a hit")
+	assert_false(_ui.can_escape(), "an untouched board holds you until one lands a hit")
+	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS - 1
+	_ui._refresh()
+	assert_false(_ui.can_escape(), "two is not three")
+	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
+	_ui._refresh()
+	assert_true(_ui.can_escape(), "the third opens the door")
+	assert_true(_ui._escape_btn.visible, "and the button is up")
+	assert_true(_ui._escape_btn.tooltip_text.contains("enemies down"),
+		"saying which door it is: %s" % _ui._escape_btn.tooltip_text)
+
+func test_an_empty_board_is_not_a_way_out_by_itself() -> void:
+	# The clause it replaced. A board emptied by BOMBS is the case that made the
+	# old rule wrong — nothing was beaten, and the door opened anyway.
+	_pick_an_unplayed_game()
 	for entry in GameLoop2.stack.duplicate():
 		GameLoop2.despawn(int(entry["instance"]))
 	assert_true(GameLoop2.stack.is_empty(), "the board is clear")
 	_ui._refresh()
-	assert_true(_ui.can_escape(), "so the door is open")
-	assert_true(_ui._escape_btn.visible, "and the button is up")
-	assert_true(_ui._escape_btn.tooltip_text.contains("Nothing is on the board"),
-		"saying which door it is: %s" % _ui._escape_btn.tooltip_text)
+	assert_false(_ui.can_escape(), "but nobody was beaten, so nothing was paid")
+
+func test_the_kill_count_is_per_game() -> void:
+	# Like the hit gate: what the last game cost the board is not a fact about this
+	# one, so choosing a game resets the count and shuts the door again.
+	_pick_an_unplayed_game()
+	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
+	assert_true(_ui.can_escape(), "the door is open on this one")
+	_ui.report(false)
+	# The offering is random, so the second card can be the Amulet — playing which
+	# IS the run, whatever the goal did. Nothing left to choose then, and nothing
+	# for this test to be about.
+	if GameLoop2.run_over or _ui._phase != OVERWORLD.Phase.SELECT:
+		assert_eq(GameLoop2.defeated_this_game, 0,
+			"the count still went with the game that was handed in")
+		return
+	_ui.pick(0)
+	assert_eq(GameLoop2.defeated_this_game, 0, "the next game starts the count over")
+	# …and with the count back at zero the kill door is shut. Only the kill door:
+	# a game this run has already beaten is escapable from the first second on its
+	# own terms, which is a different rule and has its own test.
+	if not _ui.beaten_this_run():
+		assert_false(_ui.can_escape(), "so the door is shut again")
 
 # --- the fourth door: five lost runs, and the line that counts them down -----
 #
@@ -5097,7 +5179,8 @@ func test_the_hint_counts_the_losses_down_and_names_the_other_doors() -> void:
 	var hint: String = _ui.escape_hint_text()
 	assert_true(hint.contains("%d more losses" % OVERWORLD.ESCAPE_AFTER_LOSSES),
 		"the countdown starts at the full price: %s" % hint)
-	assert_true(hint.contains("Clear Enemies"), "and the board is a door too: %s" % hint)
+	assert_true(hint.contains("Beat %d Enemies" % OVERWORLD.ESCAPE_AFTER_DEFEATS),
+		"and the kill count is a door too: %s" % hint)
 	assert_true(hint.contains("Lose Health"), "as is a hit: %s" % hint)
 	assert_true(hint.contains(" or "), "read as one line of alternatives: %s" % hint)
 	assert_eq(_ui._escape_hint.text, hint, "which is what the line under the button says")
@@ -5118,15 +5201,16 @@ func test_an_open_door_says_nothing_at_all() -> void:
 	_ui._refresh()
 	assert_false(_ui._escape_hint.visible, "so the line goes away")
 
-func test_an_empty_board_leaves_nothing_to_count_down_to() -> void:
-	# The hit landed, so "Lose Health" is not something still to do — and neither is
-	# anything else, because that hit opened the door. The interesting half is the
-	# board: clear it and the enemies stop being a route to name.
+func test_a_route_already_paid_drops_off_the_line() -> void:
+	# The line names what is still OWED, so a door already open stops being a route
+	# to count down to. Three bodies down is the one the player can drive, and it is
+	# also the one that opens the whole gate — so paying it empties the line.
 	_pick_an_unplayed_game()
-	for entry in GameLoop2.stack.duplicate():
-		GameLoop2.despawn(int(entry["instance"]))
+	assert_string_contains(_ui.escape_hint_text(), "Beat 3 Enemies",
+		"the kill count is on the line while it is unpaid")
+	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
 	assert_eq(_ui.escape_hint_text(), "",
-		"an empty board IS the way out, so there is nothing to count down to")
+		"and once it is paid the door is open, so the line has nothing left to say")
 
 func test_escaping_still_owes_the_road_its_extra_turns() -> void:
 	# Walking away is FINISHING a game as far as the Amulet is concerned: the extra
@@ -6793,9 +6877,16 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	var line: String = _ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 	assert_string_contains(line, "walk out of the game",
 		"the outcome screen says the expensive half out loud")
-	assert_ne(_ui._phase, OVERWORLD.Phase.PLAYING,
-		"the game in play was escaped, not left standing")
 	assert_ne(GameState.current_game_id, here, "and the run actually moved")
+	# It did NOT leave you standing at the new node picking again: a teleport lands
+	# you IN the game it dropped you on (arrive_at_game).
+	if not GameLoop2.run_over:
+		assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING,
+			"you are playing where you landed, not choosing again")
+		var landed_on: GameData = _ui._chosen.get("game")
+		assert_not_null(landed_on, "with a game committed to")
+		if landed_on != null and played != null:
+			assert_ne(landed_on.id, played.id, "and it is not the one you walked out of")
 	# An escape is not a win, however it was bought.
 	if played != null:
 		assert_false(GameState.has_beaten_game(played.id),
@@ -6825,16 +6916,86 @@ func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
 	assert_gt(elsewhere, 0, "there is another %s game to ride to" % type_key)
 	var following: int = GameLoop2.stack.size()
 	_ui.teleport_to_type(type_key)
-	# Either it moved the run or the escape it paid for ended it; what it must not
-	# do is leave the player standing in a game they never finished.
-	assert_ne(_ui._phase, OVERWORLD.Phase.PLAYING,
-		"the game in play was walked out of rather than abandoned")
+	# Either it moved the run onto another game or the escape it paid for ended the
+	# run; what it must not do is leave the game it walked out of standing in play.
 	if not GameLoop2.run_over:
+		assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING,
+			"off the bus is ON the game it stops at")
+		var landed_on: GameData = _ui._chosen.get("game")
+		assert_not_null(landed_on)
+		if landed_on != null:
+			assert_ne(landed_on.id, played.id, "and it is a different game to the one left")
 		assert_gte(GameLoop2.stack.size(), following,
-			"and its enemy came with you, the same as any other escape")
+			"and the old game's enemy came with you, the same as any other escape")
 		assert_false(GameState.has_beaten_game(played.id), "an escape banks no beat")
 	_ui._end_resolve()
 	_leave_post_game()
+
+# THE BRIEFING. A teleport commits you, so the one thing the player has lost is
+# the screen they get when they choose a game for themselves — and being dropped
+# straight onto a board with an enemy already on it, with no idea what game it
+# even is, is the version of this that reads as a bug. So the card opens over it.
+func test_an_arrival_opens_the_games_card_over_the_board() -> void:
+	_ui.pick(0)
+	var played: GameData = _ui._chosen.get("game")
+	var here: StringName = GameState.current_game_id
+	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
+	# True however the teleport went, and asserted before the guard below so this
+	# test always says something: the game walked out of is never credited.
+	assert_false(GameState.has_beaten_game(played.id) if played != null else false,
+		"the game left behind banks no beat")
+	# The escape can end the run and the graph can have nowhere to put you; neither
+	# is what this test is about, and both are covered elsewhere.
+	if GameLoop2.run_over or GameState.current_game_id == here:
+		return
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "committed to where you landed")
+	var card: GameChoiceModal = _ui._choice_modal
+	assert_not_null(card, "and the card is up over the board")
+	if card == null:
+		return
+	var landed_on: GameData = _ui._chosen.get("game")
+	assert_eq(card._choice.get("game"), landed_on, "showing the game you are now on")
+	assert_true(bool(card._notes.get("arrival", false)),
+		"in arrival mode — a briefing, not a question")
+	assert_string_contains(String(card._notes.get("arrival_note", "")), "Teleported to",
+		"and it says how you got here")
+	# Closing it is the whole of what it does. The commit already happened, so the
+	# game is still in play on the other side of it.
+	card._close()
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "closing the card changes nothing")
+	assert_eq(_ui._chosen.get("game"), landed_on, "the same game is still in play")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+# An arrival card has NO WAY BACK, because there is nowhere to go back to: the
+# teleport already moved the run and already spawned what is waiting.
+func test_the_arrival_card_offers_no_way_back() -> void:
+	_ui.pick(0)
+	var here: StringName = GameState.current_game_id
+	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
+	# Asserted before the guard so the test always says something (see above).
+	assert_true(GameState.current_game_id != here or _ui._phase != OVERWORLD.Phase.PLAYING,
+		"either the run moved or the game it was in was walked out of")
+	if GameLoop2.run_over or GameState.current_game_id == here:
+		return
+	var card: GameChoiceModal = _ui._choice_modal
+	assert_not_null(card)
+	if card == null:
+		return
+	var labels: Array = []
+	for btn in card.find_children("*", "Button", true, false):
+		labels.append((btn as Button).text)
+	assert_false(labels.has("Back"), "no Back button: %s" % str(labels))
+	var plays: int = 0
+	for label in labels:
+		if String(label).begins_with("▶  Play "):
+			plays += 1
+	assert_eq(plays, 1, "one button, and it only takes the card down: %s" % str(labels))
+	card._close()
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
 	_dismiss_event()
 
 # The identification half, which the escape above does not change: both systems

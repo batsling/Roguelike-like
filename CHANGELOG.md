@@ -11,6 +11,78 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A teleport lands you in the game, the escape gate counts kills, the header
+  says what level you are and carries the map, and Rodney's level pays loot.**
+
+  **A teleport puts you IN the game it drops you on.** It used to land the run in
+  `Phase.SELECT`: a fresh offering was drawn around the new node and the game you
+  had been dropped onto was one more card you were free to walk past, which made
+  every teleport a free re-roll of the offering rather than a move.
+  `Overworld2.arrive_at_game` commits instead, exactly as `pick` does — the
+  destination's enemy is rolled (a boss if it is a boss round; a scroll is not a
+  way to skip one), the escort comes with it, the selection shields are granted,
+  and the phase goes to `PLAYING`. Every teleport goes through it: the Scroll of
+  Teleportation and the Telepill (`loot_teleport`) and Ride the Bus
+  (`teleport_to_type`). `travel_to_game`, which still lands in `SELECT`, is left
+  with the two moves that are about position rather than about a game — the
+  returns from a `play_game` detour, and the dev panel's jump.
+
+  **With the card on top of it.** Committing without a word drops the player onto
+  a board with a body already walking at them and no idea what game they are
+  looking at, so the arrival raises the same `GameChoiceModal` the offering opens
+  — cover, type, the enemy and its goal, the shields, the road on from here — in a
+  new `arrival` mode: a gold line saying how you got here ("Teleported to X — 4
+  steps from the Amulet"), no *Back* button, and one button that only takes the
+  card down. **The commit happens first and the card is a briefing, not a
+  question**, because a dismissible question would leave the run standing on a
+  game nobody committed to with no offering drawn. It sits on layer 121, under
+  everything the game you left still owes — the `PostCombatScreen` (128), its event
+  and a boss notice (123) — so those are read first and the arrival is the last
+  thing on screen when they are done: the closing words of one game, then the
+  opening words of the next.
+
+  **The escape gate counts BODIES instead of clearing the board.** The third door
+  out of a game you cannot beat used to be an empty stack, on the grounds that
+  nothing left on the board means nothing that can ever open the hit gate. True,
+  but it asked for the wrong thing: on a stack of six it is unreachable and on a
+  stack of one it is a single goal, so the same door cost anywhere between one kill
+  and a whole board depending on something the player never chose — and a board
+  emptied with BOMBS opened it having beaten nothing at all. It is three defeated
+  bodies now (`Overworld2.ESCAPE_AFTER_DEFEATS`, counted per game by the new
+  `GameLoop2.defeated_this_game`): a fixed price, reachable on any board including
+  the one that will not stop growing, and one a bomb cannot pay because a bombed
+  body never reaches `_defeat`. It rides the save and the attempt undo like the hit
+  gate does, and the line under the button reads "*Beat 3 Enemies*", counting down
+  to "*2 more*" as they fall.
+
+  **The header says what level the character is.** Everything a level pays is
+  spread across the board, the pack and the verb chips — the level itself was the
+  only thing that could say *you have grown* in one glance, and the run screen never
+  wrote it down anywhere. "Lv. 1" now rides the character chip beside the token,
+  which is what makes it read as the character's level rather than a number adrift
+  in the header. A character authored without art keeps the chip for it now instead
+  of losing the whole frame.
+
+  **…and carries the Map, immediately left of the menu.** There was a 🗺 button on
+  the offering panel and it stays there — it is the one the mouse is nearest when a
+  routing decision is open. What it could not do is answer the question from inside
+  a game: the offering panel is put away the moment you commit, and *where does this
+  game leave me* is worth asking hardest while standing on the board deciding
+  whether to keep grinding or take the door out. The header's copy rides the same
+  layer Health does, so no modal and no scroll position can put it away, and it
+  flags no offered cards while there is no offering to flag.
+
+  **Rodney's level-up pays LOOT.** The sheet wrote it as "+1 Scroll", which is
+  narrower than a piece of loot was ever meant to be: loot here is three things,
+  and every other place a run hands you one rolls which of them it is. Naming the
+  scroll made the one character whose level pays loot the one who could never be
+  paid a pill. The `characters` sheet cell, `data/characters2.0/rodney.tres`,
+  `GameState.grant_level_up` and `generate_character_tres.parse_reward` all say
+  `loot` now — the kind-blind grant `add_loot` already implemented — with
+  `tools/_characters_rodney_loot_setup.py` as the sheet surgery that did it.
+
+---
+
 - **Six passes over what the screens say: the distance on every card, the hover
   line, Ranged (N/A), the Fallen panel's wheel, sorting by ability, and one
   door fewer onto the Atlas.**

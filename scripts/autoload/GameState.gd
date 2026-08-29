@@ -1695,6 +1695,13 @@ func grant_level_up(rng: RandomNumberGenerator = null) -> Array:
 			grant_chest(maxi(1, ch.level_up_reward_amount), Data.roll_chest_size_choices(r))
 		"scroll":
 			add_loot("scroll", maxi(1, ch.level_up_reward_amount))
+		"loot":
+			# The KIND-BLIND payout: a piece of loot, and which kind it is comes off
+			# the same roll a defeated body's drop takes (roll_loot_kind) — scroll,
+			# pill or potion. Rodney's level used to name a SCROLL specifically,
+			# which is a narrower reward than the sheet ever meant: "1 Loot" is one
+			# of the three, not one of the one.
+			add_loot("loot", maxi(1, ch.level_up_reward_amount))
 		_:
 			pass
 	return applied

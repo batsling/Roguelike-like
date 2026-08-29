@@ -302,7 +302,9 @@ static func _ch_playing() -> Dictionary:
 			_p("If a game is going nowhere you can leave it — ONCE IT HAS DRAWN "
 				+ "BLOOD. Escape is offered the moment an enemy's attack takes "
 				+ "Health off you during this game, and immediately if this run has "
-				+ "already beaten that game before."),
+				+ "already beaten that game before. Putting THREE enemies down on "
+				+ "the game you are playing opens it too — that is a price you can "
+				+ "pay on purpose rather than one the board has to hand you."),
 			_p("So the way out arrives when the board proves it is the problem: "
 				+ "lose runs, the enemies take turns, your shields stop what they "
 				+ "stop — and the swing that gets past them opens the door. Its "

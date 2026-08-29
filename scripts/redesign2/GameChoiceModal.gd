@@ -87,7 +87,12 @@ static func open(host: Node, index: int, choice: Dictionary, notes: Dictionary =
 	modal._choice = choice
 	modal._notes = notes
 	modal._layer = CanvasLayer.new()
-	modal._layer.layer = 124
+	# 124 by default: over the event (123) and the boss notice, so a card opened
+	# from the offering is never buried. An ARRIVAL asks for a lower one — it is the
+	# last word of a move whose first words are the haul and the event from the game
+	# you were teleported out of, and those should be read first (see
+	# Overworld2._open_arrival_card).
+	modal._layer.layer = int(notes.get("layer", 124))
 	modal._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(modal._layer)
 	modal._layer.add_child(modal)
@@ -114,6 +119,19 @@ func _build() -> void:
 	margin.add_child(root)
 
 	root.add_child(_build_header(game, accent))
+
+	# HOW YOU GOT HERE, on an arrival only. The card answers "what is this game and
+	# what is waiting on it"; what it cannot know is that you did not choose it —
+	# and a player who reads a game card without being told a scroll put them on it
+	# has been shown the right facts about the wrong screen.
+	var arrival_note: String = String(_notes.get("arrival_note", ""))
+	if arrival_note != "":
+		var landed := Label.new()
+		landed.text = arrival_note
+		landed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		landed.add_theme_font_size_override("font_size", 15)
+		landed.add_theme_color_override("font_color", UITheme.GOLD)
+		root.add_child(landed)
 
 	# There WAS an event row here — "✦ An event fires here once the game is
 	# played." It was the last survivor of the era when placement was hashed onto
@@ -278,7 +296,8 @@ func _build_header(game: GameData, accent: Color) -> Control:
 
 	var close := Button.new()
 	close.text = "✕"
-	close.tooltip_text = "Back to the offering — nothing is chosen."
+	close.tooltip_text = ("Onto the board — you are already here." if bool(_notes.get("arrival", false))
+		else "Back to the offering — nothing is chosen.")
 	close.custom_minimum_size = Vector2(38, 0)
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(_close)
@@ -766,11 +785,18 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(110, 44)
-	back.pressed.connect(_close)
-	row.add_child(back)
+	# NO WAY BACK ON AN ARRIVAL. A teleport has already put you here and already
+	# spawned what is waiting (Overworld2.arrive_at_game): this screen is the
+	# briefing, not the question. A "Back" on it would offer a choice that does not
+	# exist, and the one thing worse than being dropped into a game unannounced is
+	# being announced into one and shown a door that goes nowhere.
+	var arrival: bool = bool(_notes.get("arrival", false))
+	if not arrival:
+		var back := Button.new()
+		back.text = "Back"
+		back.custom_minimum_size = Vector2(110, 44)
+		back.pressed.connect(_close)
+		row.add_child(back)
 
 	var go := Button.new()
 	go.text = String(_notes.get("action_text", "▶  Travel to %s" % game.display_name))
@@ -784,7 +810,10 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	go.add_theme_stylebox_override("hover", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))
 	go.add_theme_stylebox_override("focus", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))
 	go.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.5))
-	go.pressed.connect(func(): _answer(chose))
+	# An arrival's button only takes the screen down — the commit already happened,
+	# so there is nothing left for `chose` to do and firing it would run the pick a
+	# second time.
+	go.pressed.connect(_close if arrival else func(): _answer(chose))
 	row.add_child(go)
 	# Deferred: `row` isn't mounted yet, and a Control outside the tree has no
 	# focus to grab.
