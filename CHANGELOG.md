@@ -11,6 +11,58 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The bus runs on the roads, the teleports work with a game in play, and the
+  arrival card says outright that you were moved.**
+
+  **Ride the Bus only stops at games ON THE MAP.** `teleport_to_type` drew from
+  `Data.all_games()` — all 854 of them, the entire catalogue. The run's map is one
+  connected component (`RunGraph._prune_to_main_component`), and everything else is
+  a game this run cannot walk to: landing on one left the player on a node with no
+  edges, in a game whose offering is empty and whose only way on is another
+  teleport. Transmute is the verb for reaching off-map games, and it reaches them
+  from a slot that stays on the route. `RunGraph.is_off_map` is the bus's whole
+  filter now — the same question the Scroll of Teleportation asks by taking its
+  pool off the Amulet's BFS — and "no *type* game on the map to reach" is said out
+  loud rather than no-opping.
+
+  **Every teleport works with a game in play.** Loot always could — `LootGrid.locked`
+  holds the pack still, it does not stop a spend — but an ITEM could not:
+  `PackStrip.fires_while_reporting` held every non-charged active back until the
+  game was reported. Right for an ordinary Usable, which wants an event around it;
+  wrong for an **overworld active**, where `overworld_usable` marks an item whose
+  effect needs the map (Ride the Bus moves the run, the Wand of Wishing hands you
+  any item in the game) and the map is mounted for the whole of a game being
+  played. The one item in the pack that can get you off a game you cannot beat was
+  refused for exactly as long as you were stuck on it, with *"finish reporting this
+  game first"* as the reason. Both fire from any screen now, and that tooltip is
+  only shown when the report is genuinely what is holding an item back.
+
+  **The arrival card says you were teleported.** It carried a small gold line under
+  the title, which sat between a title and a cover and read as flavour — and the
+  card is otherwise identical to the one the offering opens, same cover, same
+  enemy, same route, so a player who reads it after a scroll had no way to tell
+  they had been moved at all. It is a bordered banner across the top of the card
+  now, in the teleport's own purple, saying it twice over: the headline that you
+  have been teleported and that this is the game you are playing now, then the
+  teleport's own sentence underneath. Ride the Bus's line carries the escape half
+  too ("You walk out of the game. Rode the bus to…"), which only the scroll used
+  to say.
+
+  **Three latent test flakes, surfaced and fixed.** Adding tests shifts every
+  later random draw in the file, and three assertions turned out to be only
+  *usually* true. `test_a_strength_stack_is_felt_on_the_players_health` and
+  `test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved` both stood a body
+  on the front line and expected a swing or a step — which since §7.6 an ability
+  can spend the whole turn instead of; both disarm now, and the Strength one sums
+  every body that will swing rather than only `stack[0]`, since a report can walk
+  an escort on beside the goal-enemy. `test_saying_no_to_the_tick_throws_the_note_away_with_it`
+  asserted an enemy note was empty afterwards without checking it was empty
+  before: `GameStats` is a cross-run file store that `after_each` does not wipe,
+  so the test above it could bank a note against the same (game, enemy) pair
+  whenever the random offering handed both tests the same one.
+
+---
+
 - **A teleport lands you in the game, the escape gate counts kills, the header
   says what level you are and carries the map, and Rodney's level pays loot.**
 

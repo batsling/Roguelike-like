@@ -1345,6 +1345,14 @@ func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
 	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
 	if enemy == null:
 		return
+	# GameStats is a CROSS-RUN store backed by a real file, like the tier list — it
+	# is not wiped by after_each, so the pair this test happens to roll may already
+	# be carrying a note the test above banked against it. Cleared here, because
+	# "the note is empty afterwards" is only evidence of a No if it was empty
+	# before: without this the test passes or fails on whether the random offering
+	# handed two tests in a row the same game and enemy.
+	GameStats.clear_enemy_note(game_id, enemy.id)
+	assert_eq(GameStats.enemy_note(game_id, enemy.id), "", "nothing written down yet")
 	_ui._fulfil_checks[0]["check"].button_pressed = true
 	var confirm: ConfirmPanel = _find_confirm(_ui)
 	if confirm == null:
@@ -4235,6 +4243,11 @@ func test_a_new_run_clears_the_last_ones_verdict() -> void:
 # playback asks where it is.
 func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
 	_ui.pick(0)
+	# DISARMED, because this test is about the SCREEN. Since §7.6 an ability can
+	# spend a body's whole turn on something other than stepping — a Defensive
+	# Stance, a Ritual, a spawner — and a body that legitimately stood still would
+	# read here as the board failing to redraw it.
+	_disarm_board()
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	assert_true(before.has(inst), "picking the game stood its enemy on the board")
@@ -6807,11 +6820,43 @@ func test_a_charged_active_fires_while_a_game_is_in_play() -> void:
 		assert_true(PackStrip.fires_while_reporting(template, true),
 			"%s fires with a full bar mid-report" % id)
 
+# AN OVERWORLD ACTIVE FIRES MID-GAME TOO, and for the same reason a charged one
+# does. `overworld_usable` marks an item whose effect needs the MAP — Ride the Bus
+# moves the run, the Wand of Wishing hands you any item in the game — and the map
+# is mounted for the whole of a game being played. Holding them back meant the one
+# item that can get you off a game you cannot beat was refused for exactly as long
+# as you were stuck on it.
+func test_an_overworld_active_fires_while_a_game_is_in_play() -> void:
+	for id in [&"ride_the_bus", &"wand_of_wishing"]:
+		var template: ItemData = Data.get_item2(id)
+		assert_not_null(template, "%s is authored" % id)
+		if template == null:
+			continue
+		assert_true(template.overworld_usable, "%s is an overworld active" % id)
+		assert_true(PackStrip.fires_while_reporting(template, true),
+			"%s fires while a game is in play" % id)
+
+func test_riding_the_bus_is_pressable_with_a_game_in_play() -> void:
+	# The rule above, as the player meets it: the Use button under the tile, live,
+	# on the screen where the board is.
+	var bus: ItemData = GameState.add_item(Data.get_item2(&"ride_the_bus"))
+	assert_not_null(bus)
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
+	_ui._refresh_items()
+	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
+	var control: Button = column.get_child(0) as Button
+	assert_not_null(control, "the bus wears a Use button")
+	if control != null:
+		assert_false(control.disabled, "and it presses mid-game rather than greying out")
+	_leave_post_game()
+
 func test_a_usable_consumable_still_waits_for_the_report() -> void:
 	var usable: ItemData = null
 	for item in Data.all_items2():
 		if item is ItemData and not item.is_charged() \
-				and item.kind == ItemData.ItemKind.USABLE:
+				and item.kind == ItemData.ItemKind.USABLE \
+				and not item.overworld_usable:
 			usable = item
 			break
 	if usable == null:
@@ -6928,8 +6973,48 @@ func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
 		assert_gte(GameLoop2.stack.size(), following,
 			"and the old game's enemy came with you, the same as any other escape")
 		assert_false(GameState.has_beaten_game(played.id), "an escape banks no beat")
+		assert_false(RunGraph.is_off_map(GameState.current_game_id),
+			"and the bus only stops at games that are ON the map")
 	_ui._end_resolve()
 	_leave_post_game()
+
+# THE BUS RUNS ON THE ROADS. It used to draw from the whole 854-game catalogue,
+# which is not what a bus is: everything off the run's connected component is a
+# game this run cannot walk to, and landing there puts the player on a node with
+# no edges — an empty offering whose only way on is another teleport. Transmute is
+# the verb for reaching off-map games, and it reaches them from a slot that stays
+# on the route.
+func test_the_bus_only_stops_at_games_on_the_map() -> void:
+	# Asserted over the whole catalogue rather than over one ride: the destination
+	# is random, so a single trip proves nothing about the pool it came from.
+	var off_map: Array = RunGraph.off_map_ids()
+	assert_gt(off_map.size(), 0, "there are off-map games for it to have to skip")
+	var type_key: StringName = &""
+	for gid in off_map:
+		var g: GameData = Data.get_game(gid)
+		if g != null:
+			type_key = GameLoop2.game_type_key(g)
+			break
+	assert_ne(type_key, &"", "and one of them has a type to ride to")
+	# Ride to that type twenty times over. Every landing has to be on the map, and
+	# the off-map game of the same type is never one of them.
+	for _i in range(20):
+		var before: StringName = GameState.current_game_id
+		_ui.teleport_to_type(type_key)
+		if GameLoop2.run_over:
+			break
+		assert_false(RunGraph.is_off_map(GameState.current_game_id),
+			"the bus stopped on the map")
+		if GameState.current_game_id != before:
+			_ui._end_resolve()
+			_close_arrival_card()
+	_leave_post_game()
+
+# Close the card an arrival raises, so the next thing a test does is not blocked
+# behind it. Harmless when there is none.
+func _close_arrival_card() -> void:
+	if _ui._choice_modal != null and is_instance_valid(_ui._choice_modal):
+		_ui._choice_modal._close()
 
 # THE BRIEFING. A teleport commits you, so the one thing the player has lost is
 # the screen they get when they choose a game for themselves — and being dropped
@@ -6959,6 +7044,16 @@ func test_an_arrival_opens_the_games_card_over_the_board() -> void:
 		"in arrival mode — a briefing, not a question")
 	assert_string_contains(String(card._notes.get("arrival_note", "")), "Teleported to",
 		"and it says how you got here")
+	# SAID ON THE SCREEN, not only in the notes: the banner is what distinguishes
+	# this card from the one the offering opens, which is otherwise identical.
+	var banner: String = ""
+	for label in card.find_children("*", "Label", true, false):
+		if String((label as Label).text).contains("teleported"):
+			banner = String((label as Label).text)
+	assert_string_contains(banner, "teleported here",
+		"the card says outright that you were moved: %s" % banner)
+	assert_string_contains(banner, "playing now",
+		"and that this is the game you are now on")
 	# Closing it is the whole of what it does. The commit already happened, so the
 	# game is still in play on the other side of it.
 	card._close()

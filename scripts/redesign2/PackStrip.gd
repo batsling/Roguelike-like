@@ -158,8 +158,18 @@ func _counter_badge(item: ItemData) -> Control:
 #
 # So a full bar means ready, on every screen. Nothing about the charge economy
 # changes: it still empties on firing and refills on the same hooks.
+#
+# AND IT WAS WRONG FOR AN OVERWORLD ACTIVE for the same reason. `overworld_usable`
+# marks an item whose effect needs the MAP — Ride the Bus moves the run, the Wand
+# of Wishing hands you any item in the game — and the map is mounted throughout a
+# game being played. Holding those back until the game was reported meant the one
+# item in the pack that can get you OFF a game you cannot beat was refused for
+# exactly as long as you were stuck on it, with "finish reporting this game first"
+# as the reason. A teleport out of a game in play is a real move now
+# (Overworld2.arrive_at_game escapes the game and lands you in the next one), and
+# the Wand is most wanted while the board is closing, so both fire from here.
 static func fires_while_reporting(item: ItemData, reporting: bool) -> bool:
-	return item.is_charged() or not reporting
+	return item.is_charged() or item.overworld_usable or not reporting
 
 # The control above an active item's tile. Full charge (or a Usable item, which
 # has none) reads "Use" and fires; a partial charge is the battery, showing how
@@ -246,7 +256,10 @@ static func item_hover(item: ItemData, active: bool, ready: bool, reporting: boo
 			note = "▸ Click the tile above to use it."
 		elif item.is_charged():
 			note = "▸ Charging."
-		elif reporting:
+		elif reporting and not fires_while_reporting(item, reporting):
+			# Only when the REPORT is what is holding it. An overworld active fires
+			# mid-game now, so a Ride the Bus that cannot press is being refused for
+			# some other reason and must not blame the game in play for it.
 			note = "▸ Report this game first."
 	var lines: Array = [String(item.description)]
 	# ECHO CHAMBER NAMES WHAT IT IS HOLDING (§4.3). Its description says "the last

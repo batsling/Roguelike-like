@@ -2588,33 +2588,54 @@ func _hand_chests_to_post_game() -> void:
 
 # --- overworld item actions (routed here by EffectSystem, §8) --------------
 
-# Ride the Bus: teleport to a random game of `type_key` currently reachable on
-# the map (falls back to any game of that type in the pool). Rebuilds the
-# offering from the new position.
+# Ride the Bus: teleport to a random game of `type_key` that is ON THE MAP.
+#
+# It used to draw from `Data.all_games()` outright — all 854 of them, the entire
+# catalog — which is not what a bus is. The run's map is one connected component
+# (RunGraph._prune_to_main_component); everything else is a game this run cannot
+# walk to at all, and dropping the player onto one puts them on a node with no
+# edges, standing in a game whose offering is empty and whose only way on is
+# another teleport. Transmute is the verb for reaching off-map games, and it
+# reaches them by playing one from a slot that stays on the route. So the bus goes
+# where the roads go: `RunGraph.is_off_map` is the whole filter, and it is the same
+# question the Scroll of Teleportation asks by taking its pool off the Amulet's BFS.
+#
+# Nothing to reach says so and spends nothing further — the item is already spent,
+# but a bus with no route is not a move, and a silent no-op reads as a bug.
 func teleport_to_type(type_key: StringName) -> void:
 	var cur: StringName = GameState.current_game_id
 	var same_type: Array = []
 	for g in Data.all_games():
 		if not (g is GameData) or g.id == cur or GameLoop2.is_bashed(g.id):
 			continue
+		if RunGraph.is_off_map(g.id):
+			continue
 		if GameLoop2.game_type_key(g) == type_key:
 			same_type.append(g.id)
 	if same_type.is_empty():
-		GameLog.add("Ride the Bus finds no %s game to reach." % String(type_key),
-			Color(0.8, 0.6, 0.4))
+		var none := "Ride the Bus finds no %s game on the map to reach." % String(type_key)
+		GameLog.add(none, Color(0.8, 0.6, 0.4))
+		Notifications.notify(none, Color(0.8, 0.6, 0.4))
 		return
 	var dest: StringName = same_type[_rng.randi() % same_type.size()]
 	# THE FARE IS PAID BEFORE THE ARRIVAL IS ANNOUNCED. `travel_to_game` escapes a
 	# game in play on the player's behalf, and escaping resolves the board — which
 	# can end the run on the way out. Done here, ahead of the log line, so a bus
 	# that killed you does not first report you as having got off it somewhere.
+	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
 		escape_game(true)
+		escaped_out = _phase != Phase.PLAYING
 		if GameLoop2.run_over or _phase == Phase.OVER:
 			return
 	var g: GameData = Data.get_game(dest)
 	var landed: String = "Rode the bus to %s — a %s game." % [
 		g.display_name if g != null else String(dest), String(type_key)]
+	# The expensive half said out loud, exactly as the scroll says it (loot_teleport):
+	# the board took its turns for the game you were on, and the arrival card is the
+	# only screen that sentence reaches.
+	if escaped_out:
+		landed = "You walk out of the game. " + landed
 	GameLog.add(landed, Color(0.5, 0.85, 1.0))
 	# Off the bus is ON the game, like every other teleport (see arrive_at_game):
 	# the fare bought a move, not a look at somewhere else's offering.

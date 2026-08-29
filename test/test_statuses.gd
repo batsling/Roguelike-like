@@ -1309,11 +1309,20 @@ func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 	ui.report(false)                       # it walks onto the board and starts closing
 	GameState.shields = 0                  # no tries left, so every point lands on Health
 	GameLoop2.apply_enemy_status(&"strength", 3, "all")
-	# Walk it into the front column so it actually swings this game.
+	# Walk it into the front column so it actually swings this game — and DISARM it
+	# while doing so. Since §7.6 an ability can spend a body's whole turn on
+	# something other than you (a Ritual, a Defensive Stance, a spawner), and a body
+	# that legitimately did something else reads here as Strength not having landed.
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
+		entry["abilities"] = []
 	var before: int = GameState.hp
-	var enemy_dmg: int = GameLoop2.enemy_damage(GameLoop2.stack[0])
+	# EVERY body that will swing, not just the first: the report may have walked an
+	# escort on beside the goal-enemy (§7.5), and they are all standing in the front
+	# column now.
+	var enemy_dmg: int = 0
+	for entry in GameLoop2.stack:
+		enemy_dmg += GameLoop2.enemy_damage(entry)
 	# One turn, bought outright: what a report hands the board is the Amulet's
 	# ladder (§7.4) and a random graph puts this run anywhere on it.
 	GameLoop2.attempt_turn()

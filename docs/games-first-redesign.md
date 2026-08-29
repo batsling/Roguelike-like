@@ -819,6 +819,27 @@ the scroll does, so an item that moves you pays the same fare. Its one exception
 the return leg of a `play_game` detour (§10), which is not a teleport: that game has
 already been reported by the time the run heads home.
 
+**And the bus runs on the ROADS.** `teleport_to_type` used to draw from
+`Data.all_games()` — all 854, the entire catalogue. The run's map is one connected
+component (`RunGraph._prune_to_main_component`); everything else is a game this run
+cannot walk to, and landing on one leaves the player on a node with no edges, in a
+game whose offering is empty and whose only way on is another teleport. Transmute is
+the verb for reaching off-map games, and it reaches them from a slot that stays on
+the route. So `RunGraph.is_off_map` is the bus's whole filter — the same question the
+Scroll of Teleportation asks by taking its pool off the Amulet's BFS — and no route
+of that type says so out loud rather than no-opping.
+
+**All of it works with a game in play.** Loot could always be spent mid-game
+(`LootGrid.locked` holds the pack still, it does not stop a spend), but an ITEM
+could not: `PackStrip.fires_while_reporting` held every non-charged active back
+until the game was reported. That is right for an ordinary Usable, which wants an
+event around it, and wrong for an **overworld active** — `overworld_usable` marks
+an item whose effect needs the map (Ride the Bus moves the run, the Wand of Wishing
+hands you any item), and the map is mounted for the whole of a game being played.
+The one item that can get you off a game you cannot beat was being refused for
+exactly as long as you were stuck on it, with *"finish reporting this game first"*
+as the reason. Both fire from any screen now.
+
 **AND IT LANDS YOU IN THE GAME, not next to it** (`Overworld2.arrive_at_game`). A
 teleport used to leave the run in `Phase.SELECT`: a fresh offering was drawn
 around the new node, and the game you had been dropped onto was one more card you
@@ -833,8 +854,14 @@ it, the selection shields are granted, and the phase goes to `PLAYING`.
 onto a board with a body already walking at them and no idea what game they are
 even looking at, so the arrival raises the same `GameChoiceModal` the offering
 opens — cover, type, the enemy and its goal, the shields, and the road on from
-here — in `arrival` mode: a line saying how you got here, no *Back* button, and
-one button that only takes it down. **The commit happens first and the card is a
+here — in `arrival` mode: no *Back* button, one button that only takes it down,
+and a **banner across the top saying you were moved**. The banner is the only
+thing separating this screen from the card the offering opens, which is otherwise
+identical, so it says it twice over: the headline that you have been teleported
+and that this is the game you are playing now, then the teleport's own sentence
+underneath — where you landed, how far that is from the Amulet, and whether a game
+was walked out of on the way. It was one small gold line, which sat between a
+title and a cover and read as flavour. **The commit happens first and the card is a
 briefing, not a question**, because a dismissible question leaves the run standing
 on a game nobody committed to with no offering drawn. It opens on **layer 121**,
 under everything the game you left still owes — the `PostCombatScreen` (128), its

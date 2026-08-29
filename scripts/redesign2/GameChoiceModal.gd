@@ -59,6 +59,11 @@ const COVER := Vector2(132, 176)
 const LADDER_MIN_W := 360.0
 const LADDER_MIN_H := 300.0
 
+# The teleport's own colour — the purple `Overworld2.loot_teleport` writes its log
+# line in, so the banner on the arrival card and the line in the log are visibly
+# the same event.
+const TELEPORT := Color(0.61, 0.35, 0.71)
+
 var _index: int = -1
 var _choice: Dictionary = {}
 var _notes: Dictionary = {}          # {route, pace, shields, beatable} from the overworld
@@ -120,18 +125,21 @@ func _build() -> void:
 
 	root.add_child(_build_header(game, accent))
 
-	# HOW YOU GOT HERE, on an arrival only. The card answers "what is this game and
-	# what is waiting on it"; what it cannot know is that you did not choose it —
-	# and a player who reads a game card without being told a scroll put them on it
-	# has been shown the right facts about the wrong screen.
-	var arrival_note: String = String(_notes.get("arrival_note", ""))
-	if arrival_note != "":
-		var landed := Label.new()
-		landed.text = arrival_note
-		landed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		landed.add_theme_font_size_override("font_size", 15)
-		landed.add_theme_color_override("font_color", UITheme.GOLD)
-		root.add_child(landed)
+	# HOW YOU GOT HERE, on an arrival only.
+	#
+	# The card answers "what is this game and what is waiting on it"; the one thing
+	# it cannot know is that you did not CHOOSE it. Without this the screen is
+	# indistinguishable from the card the offering opens — same cover, same enemy,
+	# same route — and a player who is shown that after reading a scroll has no way
+	# to tell they have been moved at all.
+	#
+	# So it is a BANNER, not a line: a bordered strip across the top of the card
+	# saying it twice over — the headline that you were teleported and that this is
+	# now the game you are playing, then the sentence with where you landed and how
+	# far out it put you. It was one small gold line, which sat between a title and
+	# a cover and read as flavour.
+	if bool(_notes.get("arrival", false)):
+		root.add_child(_build_arrival_banner(String(_notes.get("arrival_note", ""))))
 
 	# There WAS an event row here — "✦ An event fires here once the game is
 	# played." It was the last survivor of the era when placement was hashed onto
@@ -278,6 +286,40 @@ func _accent() -> Color:
 	if bool(_choice.get("boss", false)):
 		return UITheme.DANGER
 	return UITheme.type_color(int(game.type)) if game != null else UITheme.ACCENT
+
+# --- the arrival banner ----------------------------------------------------
+
+# "You have been TELEPORTED here", and under it the sentence the teleport itself
+# wrote (where you landed, how far that is from the Amulet, and whether a game was
+# walked out of on the way). See the note at its call site for why it is a framed
+# strip rather than a line of text.
+#
+# `→` rather than a new arrow glyph: the UI's symbols are shipped as subsetted
+# fonts (tools/build_glyph_font.py) and this one is already in them.
+func _build_arrival_banner(detail: String) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(TELEPORT.lerp(UITheme.BG, 0.78), 10, 8, 2, TELEPORT))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	wrap.add_child(col)
+	var head := Label.new()
+	head.text = "→  You have been teleported here — this is the game you are playing now."
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_theme_font_size_override("font_size", 16)
+	head.add_theme_color_override("font_color", TELEPORT.lerp(Color.WHITE, 0.5))
+	col.add_child(head)
+	# The detail is the teleport's own sentence and there is not always one (a dev
+	# jump, or a caller that had nothing to add), so the strip stands without it
+	# rather than leaving an empty row.
+	if detail != "":
+		var line := Label.new()
+		line.text = detail
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.add_theme_font_size_override("font_size", 13)
+		line.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		col.add_child(line)
+	return wrap
 
 # --- header ----------------------------------------------------------------
 
