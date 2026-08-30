@@ -91,14 +91,24 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~1920 t
     One extra wrapped line overflows it. Fixing it means giving the page back some
     room (the checklist, the offering rows, the panel's own chrome), not widening
     the assertion, which is measuring something true.
-  - `test_enemy_abilities.gd`'s **spawner** tests (`test_a_spawner_puts_a_body_in_front_of_it_and_never_moves`,
-    `test_a_summoned_body_is_an_ordinary_body_and_pays_out`) drop one or the other
-    depending on the seed — the spawn rolls a destination and sometimes lays
-    nothing. Run this script alone and it fails deterministically, on the baseline
-    too, because nothing has consumed the global stream ahead of it; run it inside
-    a full suite and it usually passes. This file is where abilities ARE the
-    subject, so `_disarm_board()` is not the answer here — the spawn's own
-    "nowhere to lay it" case is.
+  - `test_enemy_abilities.gd` drops **one test, and which one depends on the
+    seed** — three have been seen (`test_a_spawner_puts_a_body_in_front_of_it_and_never_moves`,
+    `test_a_summoned_body_is_an_ordinary_body_and_pays_out`,
+    `test_an_illusionist_makes_copies_that_die_with_it`). Run this script alone
+    and it fails deterministically — on the baseline too, because nothing has
+    consumed the global stream ahead of it; run it inside a full suite and it
+    usually passes.
+    **The cause is the FOOTPRINT, not the board being full.** All three author
+    their ability as `tier:low`, so `GameLoop2.roll_ability_enemy` draws a RANDOM
+    low-tier body — and `_brood_cell` asks `fits_at`, which is about the body's
+    footprint (§7.3). A rolled body wider than one cell does not fit the single
+    square in front of the spawner, `_brood_cell` answers OFF_FIELD, and nothing
+    is laid. That is correct behaviour ("a spawner with no space simply does not
+    spawn this turn") and an assertion that is only *usually* true.
+    The fix is to name the body — `enemy:<id>` on a known 1x1 — in the tests whose
+    subject is the PAYOUT rather than the roll, and to assert the "nowhere to lay
+    it" case in its own test. `_disarm_board()` is not the answer here: this file
+    is where abilities ARE the subject.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

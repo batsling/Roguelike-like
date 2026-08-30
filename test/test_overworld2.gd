@@ -2952,6 +2952,10 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 
 func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_pick_solo(0)
+	# Disarmed for the reason its boss-side twin above is: the portrait count is
+	# taken either side of a report, and a body's turn can put another body on the
+	# board. This test is about the SCREEN.
+	_disarm_board()
 	var e: GoalEnemyData = _ui._chosen["enemy"]
 	if e.is_boss() or e.image == null:
 		return                                # the boss case, and art-less content
@@ -3185,6 +3189,11 @@ func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 # with it (§7.5).
 func test_a_missed_goal_leaves_both_bodies_following() -> void:
 	_ui.pick(0)
+	# DISARMED, because this counts BODIES either side of a report and this test is
+	# about the loop rather than about abilities (CLAUDE.md). Since §7.6 a body's
+	# turn can add a body to the board — a spawner taking its turn during the
+	# report makes the count 3 and reads exactly like the escort rule being wrong.
+	_disarm_board()
 	_ui.report(false)                    # a missed goal leaves the pair following
 	assert_eq(GameLoop2.stack.size(), 2, "the enemy and its escort are both out there")
 
@@ -6763,6 +6772,60 @@ func test_a_machine_that_blows_itself_up_leaves_the_room_it_was_in() -> void:
 	modal._close()
 	ObjectSystem.clear()
 
+# AN EVENT DRAWS ITS OWN MACHINES AND NOBODY ELSE'S. The modal used to draw
+# `ObjectSystem.live` outright, which was the same list for as long as an event was
+# the only thing that could put a machine in front of you. A card's machine is
+# still standing when that game's event opens, and Whispering Hollow — a hollow of
+# dead trees — was drawing two Blood Donation Machines inside it.
+func test_an_event_draws_only_the_machines_it_spawned_itself() -> void:
+	# The card's machine, standing here first.
+	GameState.add_card_loot(&"xiv_temperance")
+	LootSystem.use_loot(GameState.loot_items.size() - 1)
+	await get_tree().process_frame
+	assert_eq(ObjectSystem.live.size(), 1, "one machine, from the card")
+
+	# An event that spawns nothing must show nothing.
+	var quiet: EventData2 = _event_that_spawns_nothing()
+	assert_not_null(quiet, "the catalogue has an event with no spawn_object in it")
+	if quiet != null and _ui.open_event(quiet):
+		var modal = _ui._event_modal
+		await get_tree().process_frame
+		assert_eq(_event_cards(modal), 0,
+			"an event that spawns no machines draws no machines")
+		modal._close()
+		await get_tree().process_frame
+
+	# And the arcade shows its own cabinets, still not the card's.
+	assert_eq(ObjectSystem.live.size(), 1, "the card's machine outlived the event")
+	assert_true(_ui.open_event(Data.get_event2(&"arcade_room")))
+	var arcade = _ui._event_modal
+	ObjectSystem.spawn_by_tag(&"arcade", 2, 2)
+	await get_tree().process_frame
+	assert_eq(_event_cards(arcade), ObjectSystem.live.size() - 1,
+		"the room draws what it spawned, and the card's machine is not in it")
+	arcade._close()
+	await get_tree().process_frame
+	assert_eq(ObjectSystem.live.size(), 1,
+		"walking out takes the cabinets and leaves what was standing here")
+	assert_not_null(_ui._object_panel, "which has its under-board panel back")
+	ObjectSystem.clear()
+	await get_tree().process_frame
+
+# The first event in the catalogue whose choices never spawn an object. Searched
+# rather than named, so this stays true if the sheet renames one.
+func _event_that_spawns_nothing() -> EventData2:
+	for e in Data.all_events2():
+		if not (e is EventData2) or String((e as EventData2).id) == "arcade_room":
+			continue
+		var spawns: bool = false
+		for choice in (e as EventData2).choices:
+			if str(choice).contains("spawn_object"):
+				spawns = true
+				break
+		if not spawns:
+			return e
+	return null
+
 func test_leaving_the_arcade_takes_the_cabinets_with_it() -> void:
 	# A machine already standing at this game before the event opened.
 	ObjectSystem.spawn(&"donation_machine", false)
@@ -7403,6 +7466,53 @@ func test_a_card_on_the_floor_wears_its_deck_and_the_pack_wears_its_face() -> vo
 # A SCROLL, deliberately named rather than rolled: three of the four kinds keep no
 # secret on the floor, and this is the test for that half. The card's half is the
 # test directly above.
+# A HOVER CARD'S THUMBNAIL OBEYS THE SAME CRISP RULE AS EVERY OTHER SURFACE.
+# `HoverCard` built its TextureRect by hand and skipped `UITheme.apply_crisp`, so
+# it was the one place in the game where art drawn LARGER than its own pixels got
+# linear filtering and turned to mush. Pills and potions were quietly wearing it;
+# the card faces (14x18 in a 44px box, a 2.9x upscale) are where it became
+# impossible to miss.
+#
+# Asserted over every kind, because the rule is not about cards — it is about any
+# small art the hover blows up.
+func test_a_hover_thumbnail_is_drawn_crisp_when_it_is_blown_up() -> void:
+	var entries: Array = [
+		{"type": "card", "id": &"xiv_temperance", "rarity": "Common"},
+		PillSystem.roll_pill_loot(),
+		PotionSystem.roll_potion_loot(),
+		GameState.roll_loot_entry("scroll"),
+	]
+	var checked: int = 0
+	for entry in entries:
+		if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+			continue
+		var art: Texture2D = LootSystem.art_texture(entry)
+		if art == null:
+			continue
+		var box: Control = HoverCard.build(LootSystem.hover_card(entry))
+		var tex: TextureRect = _first_texture_rect(box)
+		assert_not_null(tex, "the hover draws the piece")
+		if tex == null:
+			box.free()
+			continue
+		var blown_up: bool = art.get_width() < int(HoverCard.ART) 			or art.get_height() < int(HoverCard.ART)
+		if blown_up:
+			assert_eq(tex.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+				"%s is %dx%d in a %d box — nearest, or it smears"
+				% [entry.get("id", ""), art.get_width(), art.get_height(), int(HoverCard.ART)])
+			checked += 1
+		box.free()
+	assert_gt(checked, 0, "at least one kind ships art small enough to be blown up")
+
+func _first_texture_rect(node: Node) -> TextureRect:
+	for child in node.get_children():
+		if child is TextureRect:
+			return child
+		var found: TextureRect = _first_texture_rect(child)
+		if found != null:
+			return found
+	return null
+
 func test_the_floor_card_is_the_same_card_the_pack_shows() -> void:
 	_pick_solo(0)
 	var entry := {"type": "scroll", "id": "whatever", "rarity": "Common"}

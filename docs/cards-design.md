@@ -233,12 +233,19 @@ Three properties fall out of using that path rather than a new one:
   for it, exactly as it does for a shop.
 - **It goes when you travel on.** `_leave_node` → `ObjectSystem.clear()`, which is
   what an object's lifetime has always been.
-- **An event does not eat it.** One repair was needed here: an event modal owns the
-  screen while it is up, so `_sync_object_panel` takes the panel down when
-  `objects_changed` fires during one — and the modal's own cleanup
-  (`clear_spawned_since`) is such a fire. Nothing emitted afterwards, so a machine
-  that was standing at the game *before* the event kept living in `ObjectSystem`
-  with no panel to press it on. `_on_event_finished` now asks once more.
+- **An event does not eat it, and does not adopt it either.** Two repairs, both
+  places where "every live machine" and "this event's machines" had been the same
+  list because nothing could put a machine at a game outside an event:
+  - `EventModal2` **drew `ObjectSystem.live` outright**, so a card's machine
+    turned up *inside* the next event's modal — Whispering Hollow, a hollow of
+    dead trees, came with two Blood Donation Machines in it. The modal already
+    recorded `_objects_before` for its teardown; `_event_objects()` now subtracts
+    it on the way in too, by reference, the same test `clear_spawned_since` uses.
+  - An event modal owns the screen while it is up, so `_sync_object_panel` takes
+    the under-board panel down when `objects_changed` fires during one — and the
+    modal's own cleanup is such a fire. Nothing emitted afterwards, so a machine
+    standing at the game *before* the event kept living in `ObjectSystem` with no
+    panel to press it on. `_on_event_finished` now asks once more.
 
 ### 5.4 The three twos
 

@@ -372,9 +372,39 @@ func _on_objects_changed() -> void:
 	_render_objects()
 
 
-# The machines standing in this event, if it spawned any. Rebuilt only when the
-# SET changed — each card repaints itself off objects_changed, and tearing them
-# down every render would throw away the one the player is mid-click on.
+# THE MACHINES THIS EVENT SPAWNED, and only those — `live` minus whatever was
+# already standing at the game when the modal opened.
+#
+# This used to draw `ObjectSystem.live` outright, and the filter existed only on
+# the way OUT (`clear_spawned_since`). That was correct for as long as an event was
+# the one thing that could put a machine in front of you: `_objects_before` was
+# always empty, so "everything live" and "everything this event spawned" were the
+# same list. The Temperance card makes them different — a Blood Donation Machine
+# spawned during a game is still standing when the game's event opens — and the
+# room then drew a cabinet nobody put in it. Whispering Hollow is a hollow of dead
+# trees; it does not come with two blood machines in it.
+#
+# The exclusion is by REFERENCE (is_same), the same test `clear_spawned_since`
+# uses and for the same reason: two untouched copies of one cabinet are equal
+# dictionaries and are still two cabinets.
+func _event_objects() -> Array:
+	if _objects_before.is_empty():
+		return ObjectSystem.live
+	var out: Array = []
+	for inst in ObjectSystem.live:
+		var was_here: bool = false
+		for old in _objects_before:
+			if is_same(old, inst):
+				was_here = true
+				break
+		if not was_here:
+			out.append(inst)
+	return out
+
+
+# Draw them. Rebuilt only when the SET changed — each card repaints itself off
+# objects_changed, and tearing them down every render would throw away the one the
+# player is mid-click on.
 #
 # The set is compared by the INSTANCES drawn, not by how many cards are up: a
 # machine that bursts in the same beat another spawns leaves the count untouched
@@ -382,9 +412,10 @@ func _on_objects_changed() -> void:
 func _render_objects() -> void:
 	if _objects_box == null:
 		return
-	if _same_objects(_objects_drawn, ObjectSystem.live):
+	var mine: Array = _event_objects()
+	if _same_objects(_objects_drawn, mine):
 		return
-	_objects_drawn = ObjectSystem.live.duplicate()
+	_objects_drawn = mine.duplicate()
 	for child in _objects_box.get_children():
 		_objects_box.remove_child(child)
 		child.queue_free()

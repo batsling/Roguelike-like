@@ -70,6 +70,16 @@ is an arcade.
 - spawned by **anything else** → under the board, in the space a hub's shop
   takes (`ObjectPanel2`). Nothing is blocked, and travelling on clears it.
 
+**An event shows the machines IT spawned and no others.** That reads as a
+tautology and was not one: `EventModal2` drew `ObjectSystem.live` outright, which
+is the same list right up until something other than an event puts a machine at a
+game. The Temperance card ([`cards-design.md`](cards-design.md) §5.3) does, and a
+machine spawned during a game is still standing when that game's event opens — so
+an event with no `spawn_object` in it was drawing a cabinet nobody put in the
+room. The modal subtracts what was already standing (`_event_objects`, by
+reference) on the way in, which is the same test `clear_spawned_since` already
+used on the way out.
+
 The two places draw the machine at different sizes, and the reason is arithmetic
 rather than taste. An event's modal is a screen of its own and shows the full
 `ObjectCard` — art, prompt, every button with its cost line and its ☠ warning,

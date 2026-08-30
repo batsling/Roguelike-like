@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **An event stops drawing machines it did not spawn, and a hover stops smearing
+  small art.**
+
+  Two things the cards work turned up. **`EventModal2` drew `ObjectSystem.live`
+  outright** — every machine standing at the game, not just the ones the event put
+  there. The filter existed, but only on the way out (`clear_spawned_since`), and
+  that was indistinguishable from correct for as long as an event was the one
+  thing that could put a machine in front of you: `_objects_before` was always
+  empty. Temperance breaks the tie — a Blood Donation Machine spawned during a game
+  is still standing when that game's event opens — and Whispering Hollow, a hollow
+  of dead trees, was drawing two blood machines inside it. `_event_objects()` is
+  `live` minus what was already here, by reference, the same test the teardown
+  uses.
+
+  **`HoverCard` built its thumbnail by hand** with the same three properties
+  `UITheme.crisp_tex` sets and one it doesn't: `apply_crisp`, which switches a
+  texture drawn LARGER than its own pixels to nearest-neighbour. So the hover was
+  the single place in the game where small art got linear filtering. Pills and
+  potions had been quietly wearing it; the card faces are 14x18 in a 44px box — a
+  2.9x upscale — which is where it stopped being subtle. One call, and every hover
+  in the game gets the rule the rest of the UI has always had.
+
 - **Cards — the loot you can read.**
 
   A fourth consumable, and the first one that is **not a gamble**. A scroll, a
@@ -91,16 +113,23 @@ For how the project is laid out and how its systems fit together, see
   commit, and now written up in CLAUDE.md): the 720p fit test with three machines
   under the board has nine pixels of headroom and loses them when the run's
   checklist wraps a line, and `test_enemy_abilities`'s spawner pair drops one or
-  the other depending on where the global RNG stream has got to. Neither is a card.
+  the other depending on where the global RNG stream has got to (three of its
+  tests have been seen to drop, all of them abilities that need a free square).
+  Neither is a card.
 
-  The two that were fixed are both of the kind CLAUDE.md warns about. `test_the_token_wears_the_loot_s_own_art` rolls a random piece of loot and
+  Four were fixed, all of the kind CLAUDE.md warns about.
+  `test_the_token_wears_the_loot_s_own_art` rolls a random piece of loot and
   asserted the floor token drew *the pack's* picture — true for three kinds and
   deliberately false for the fourth, so it failed on about one run in four once
   cards were in the pool; it asserts the FLOOR's picture now, which is what it was
-  ever about, and a card-specific twin covers the mask. And
-  `test_a_boss_wears_its_portrait_on_both_checklists` counted portraits either side
-  of a report without disarming the board, so a spawner taking its turn in between
-  made the second count a body the first could not have known about.
+  ever about, and a card-specific twin covers the mask. The other three
+  (`test_a_boss_wears_its_portrait_on_both_checklists`,
+  `test_an_ordinary_follower_wears_its_portrait_too`,
+  `test_a_missed_goal_leaves_both_bodies_following`) all count bodies or portraits
+  either side of a report without disarming the board, so a spawner taking its turn
+  in between makes the second count something the first could not have known about.
+  All three are about the SCREEN and the loop rather than about abilities, which is
+  exactly when `_disarm_board()` is the answer.
 
   New: `scripts/resources/CardData.gd`, `scripts/autoload/CardSystem.gd` (autoload
   #24), `tools/generate_card2_tres.py`, `data/cards2.0/`, `docs/cards-design.md`.
