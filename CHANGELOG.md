@@ -11,6 +11,121 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Strength and Dexterity ask for as much as the game in front of you allows.**
+
+  Both hang a number on whichever game the run likes, and plenty of real games
+  cannot supply it. **Strength** wanted the difficulty raised X times, which is
+  not a thing you can do in a game with no difficulty selector — it now reads
+  *"the difficulty is increased X times **or as much as possible**"*, on both
+  sides. **Dexterity** already had the equivalent escape, added a moment ago as
+  *"or all the game's bosses, whichever is fewer"*, and that was the longest
+  clause on a checklist row that has to stay glanceable: it says the same thing
+  in three words now, *"X or all bosses without getting hit"*, because the
+  "whichever is fewer" is what the *or* already means. The plural fork
+  (`[boss was|bosses were]`) goes with it — "X or all bosses" is plural at every
+  stack count. Strength's prose also loses the typo it has carried from the start
+  ("difficuly").
+
+  Edited in the `statuses` sheet via
+  `tools/_statuses_as_far_as_the_game_allows_setup.py` and regenerated, prose and
+  effect columns together.
+
+- **The goal's add-ons are coloured rows, the source rides beside the cover, and
+  Rodney's level-up stops promising the same Health twice.**
+
+  **What a status adds to a goal is a row of its own, in red or green.** The goal
+  line read *"Defeat 10+ bugs and you must beat 2 bosses without getting hit or
+  instead skip or trash 3 items/upgrades"* — three different things joined by two
+  conjunctions, in one colour, saying nothing about which of them makes the goal
+  harder. `GameLoop2.goal_addons_for` now hands the parts over separately
+  (`{status, stacks, games, kind, source, required, joiner, text}`), and
+  `UITheme.addon_row` draws one: indented under the goal, led by the status's own
+  symbol with its clock badge, RED when it is a condition **added** to the goal
+  (a buff on the body, a clause on you) and GREEN when it is **offered** — the way
+  out a Burn opens, the optional bonus hanging off an enemy. The game-choice modal
+  and the enemy card both draw the rows; the offering's hover line has only the
+  one line, so it tints the same words in place. `goal_text_for` is written from
+  that same list now, so the sentence and the rows cannot drift. On the enemy card
+  this also ends a duplication: the goal line already carried the way out, and the
+  card then repeated it underneath — in gold, the colour it uses for the goal
+  itself, so the one line saying the goal need not be done at all read like part
+  of it.
+
+  **The source sits beside the cover.** It was a band of its own under the game's
+  facts, four lines deep in a column that has none to spare, while the cover — the
+  one thing on the popup the player has already seen — stood in the middle of the
+  column with dead space either side. They are one row now, art on the left and
+  the evidence beside it, so the source costs the column the height of the cover
+  and nothing more. The cover shrinks to 112x150 to pay for the width, the type
+  sizes in the block step down to match, and the address elides harder (34 chars,
+  the whole of it on the hover and behind the button). A game with no art in the
+  sheet still gets the band.
+
+  **Rodney's level-up says "+1 Max Health and +1 Loot".** It read "+1 Max Health,
+  +1 Health, and +1 Loot", which lists the same point of Health twice:
+  `GameState.apply_level_up_stats` heals a `max_hp` gain by the amount it granted,
+  so raising the cap already hands the Health over. Edited in the `characters`
+  sheet via `tools/_characters_rodney_maxhealth_setup.py`.
+
+  **And the generator that writes him was quietly wrong.** `parse_reward` in
+  `tools/generate_character2_tres.py` had no `Loot` branch, so regenerating
+  characters rewrote his `level_up_reward_type` from `&"loot"` to `&"none"` — a
+  level-up paying a stat and nothing else. The .tres in the repo was right and the
+  generator that is supposed to produce it was not, which is exactly the failure
+  CLAUDE.md warns about. It reads `+N Loot` now, before the chest and scroll
+  branches so a reward naming both cannot be filed as the narrower one.
+
+  **One flake fixed on the way past.** `test_fulfilling_a_follower_goal_defeats_and_drops_it`
+  counts bodies across two reports without disarming the board, so a spawner
+  ability (Carcass lays one, Obscura makes two) put a third body on the stack and
+  failed it on the handful of enemies that have one.
+
+- **The run keeps a record of what it has done, Dexterity stops asking for bosses
+  a game does not have, and the card says who inspired whom.**
+
+  **A ✓ button at the head of the checklist opens everything the run has
+  completed.** The checklist is a list of what is still *owed*: an answered row
+  locks, sinks under the open ones, and goes entirely when the game is handed in
+  (`GameLoop2._clear_game_record`). That is right for a list read to decide what
+  to play for, and it left a run eight games deep with no record at all of the
+  work behind it — the panel saying "three things to do" and nothing about the
+  twenty already done. On a game played entirely on the honour system, being able
+  to show its working is not a decoration. Every confirm now also appends to
+  `GameLoop2.completed_goals` (`{kind, text, game}` — the row's finished sentence,
+  because the status may have expired and the body may be off the board by the
+  time anyone reads it), which lives for the RUN, rides the save, and goes back
+  with a turn's snapshot the way `answered_rows` does. The new
+  `CompletedGoalsPanel` is the graveyard's twin: grouped by the game each line was
+  done at, newest first, tinted by kind, and read-only, since everything in it has
+  already resolved. The button carries the count, because "17 done" is worth
+  pressing and "0 done" answers itself — and it is styled down to the caption's own
+  line, since the overworld's left column had three pixels of slack and a default
+  Button wanted ten.
+
+  **Dexterity takes all of a game's bosses when the game has fewer than X.** Its
+  goal asked for *"X bosses beaten without getting hit"* — a fine ask on a game
+  with a boss rush and an impossible one on a game with two bosses in it, and the
+  player has no say in which game the run hangs the status on. At three stacks it
+  was simply dead on most of the library. Both sides now read *"…or all the game's
+  bosses, whichever is fewer"*, which is true at every stack count including one.
+  Edited in `statuses` via `tools/_statuses_dexterity_bosses_setup.py` and
+  regenerated, prose and effect columns together.
+
+  **The evidence for a connection is on the card you are deciding from.** The map
+  is a claim — this game influenced that one — and the sheet has carried the
+  source for every edge all along (`GameData.influence_sources`). It could only be
+  read in the Atlas, by opening the star chart, finding the right line and clicking
+  it: three deliberate steps away from the one moment the claim is interesting,
+  which is while looking at a game and deciding whether to walk to it.
+  `GameChoiceModal` now ends its game column with a **SOURCE** section for the ONE
+  edge the choice would travel — who inspired whom in the direction the sheet
+  authored it, the sequel / same-developers flag when there is one, and the
+  evidence itself: a link gets a button with the address under it, a note like
+  *"game credits"* is shown as written. It names the **map's** games, not the
+  card's, so a transmute cannot credit its replacement with somebody else's
+  influence, and the section is absent rather than empty when there is no edge to
+  describe.
+
 - **The bus runs on the roads, the teleports work with a game in play, and the
   arrival card says outright that you were moved.**
 

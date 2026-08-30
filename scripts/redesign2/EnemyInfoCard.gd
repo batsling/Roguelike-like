@@ -254,42 +254,25 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		goal_hdr.add_theme_color_override("font_color", UITheme.GOLD)
 		goal_box.add_child(goal_hdr)
 		var goal_txt := Label.new()
-		# The LIVE goal line, not the authored stem: a buff on this enemy or a
-		# clause on the player has been ANDed onto what actually has to be done
-		# (§13), and this card is where a player comes to read exactly that.
-		goal_txt.text = GameLoop2.goal_text_for(entry)
+		# THE GOAL'S OWN SENTENCE. It used to be the LIVE line — every clause a
+		# status had ANDed onto it, run together in one colour — with the way out
+		# repeated underneath as its own row. Every part of that is now a row
+		# (below), so the line above them is the goal and only the goal: a sentence
+		# that carried its own add-ons and then listed some of them again was saying
+		# the same thing twice and colouring neither.
+		goal_txt.text = GameLoop2.entry_goal(entry)
 		goal_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		goal_txt.custom_minimum_size = Vector2(460, 0)
 		goal_txt.add_theme_font_size_override("font_size", 14)
 		goal_box.add_child(goal_txt)
-		# The WAY OUT, if something burned this body (§13): the goal line above
-		# already carries it, and this repeats it as its own line for the same
-		# reason a bonus gets one — it is a separate decision from the goal, and the
-		# one line on this card that says the goal need not be done at all.
-		for row in GameLoop2.alternatives_for(entry):
-			var asd: StatusData = row["status"]
-			var alt := Label.new()
-			# ↻ rather than ↺: the shipped glyph subsets carry what the source
-			# already uses (see tools/build_glyph_font.py) and this one is in them.
-			alt.text = "↻  Or instead: %s" % asd.alternative_text(
-				StatusData.ENEMY, int(row["stacks"]))
-			alt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			alt.custom_minimum_size = Vector2(460, 0)
-			alt.add_theme_font_size_override("font_size", 12)
-			alt.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.3))
-			goal_box.add_child(alt)
-		# Optional bonus objectives hanging off this enemy (§13) — inside the goal
-		# panel, since they are read at the same moment, but visibly a separate
-		# line because skipping one costs nothing (§13).
-		for row in GameLoop2.bonus_objectives_for(entry):
-			var sd: StatusData = row["status"]
-			var bonus := Label.new()
-			bonus.text = "+  %s" % sd.objective_text(StatusData.ENEMY, int(row["stacks"]))
-			bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			bonus.custom_minimum_size = Vector2(460, 0)
-			bonus.add_theme_font_size_override("font_size", 12)
-			bonus.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.3))
-			goal_box.add_child(bonus)
+		# WHAT THE STATUSES ADDED, one row each and coloured by which way it cuts
+		# (§13, UITheme.addon_row): red for a condition added to the goal — a buff on
+		# this body, a clause on the player — and green for one offered, which is the
+		# way out a Burn opens and the optional bonus hanging off it. Both were gold
+		# before, which is the colour this card uses for the goal itself, so the one
+		# line saying the goal need not be done at all read like part of it.
+		for addon in GameLoop2.goal_addons_for(entry):
+			goal_box.add_child(UITheme.addon_row(addon, 460.0))
 		goal_wrap.add_child(goal_box)
 		inner.add_child(goal_wrap)
 

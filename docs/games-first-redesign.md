@@ -151,6 +151,28 @@ The report then only deals with what is still **outstanding**: `ticked_fulfilmen
 and `ticked_status_claims` skip any row that is pressed *and* locked, which in
 practice is all of them.
 
+**…and the RUN remembers what the game forgets.** Everything above is scoped to
+one game and cleared when it is handed in (`_clear_game_record`), which is right
+for a list read to decide what to play for and leaves the run with no record at
+all of the work behind it: eight games in, the checklist says "three things to
+do" and nothing whatsoever about the twenty already done. On a game that is
+played entirely on the honour system, being able to show its working is not a
+decoration.
+
+So every confirm also appends to `GameLoop2.completed_goals` — `{kind, text,
+game}`, oldest first, cleared only by `reset()` and carried by both the save and
+the turn snapshot (an undone turn is an undone resolution). What it keeps is the
+row's **finished sentence**, not the objective it was rendered from: the status
+may have expired, the body may be off the board, an event goal is off the run the
+moment it is claimed, so a record that had to look any of them up again would be
+a record that rots.
+
+The **✓ *N* done** button at the head of either checklist state
+(`ReportChecklist._verify_head_row`) opens it as `CompletedGoalsPanel` — the
+graveyard's twin, grouped by the game each line was done at, newest first, tinted
+by kind. It is a scoreboard and not a control: every line in it is already
+resolved, so nothing there can be claimed, unclaimed or edited.
+
 ---
 
 ## 3. Health & shield model
@@ -205,7 +227,7 @@ it grants.
 
 | Character | Level Up objective (per game) | Reward |
 |---|---|---|
-| Rodney | Beat a game without meta progression | +1 Max Health, +1 Health, +1 Scroll |
+| Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
 | Isaac | Unlock a new Item | +1 Small Chest |
 | Zoe | Perfect a Game | +1 Dash |
 | Minä | Craft or combine a spell or weapon | +1 Transmute |
@@ -2272,10 +2294,10 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
-| Strength | `goal "the difficulty is increased {X} times" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times"` |
+| Strength | `goal "the difficulty is increased {X} times or as much as possible" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times or as much as possible"` |
 | Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
 | Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
-| Dexterity | `goal "{X} bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit"` |
+| Dexterity | `goal "{X} or all bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} or all bosses without getting hit"` |
 | Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
 
 **One arrow per cell**, and which arrow it is says whether the payload is earned
@@ -2351,9 +2373,9 @@ would only make it a worse item.
 
 | Status | Type | From | Condition | Reward | In combat |
 |---|---|---|---|---|---|
-| **Strength** | Buff | Slay the Spire | the difficulty is increased X times | [chest reward X], +1 Bash | deals +X damage |
+| **Strength** | Buff | Slay the Spire | the difficulty is increased X times or as much as possible | [chest reward X], +1 Bash | deals +X damage |
 | **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
-| **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit | [chest reward X] | +X Shields |
+| **Dexterity** | Buff | Slay the Spire | X or all bosses were beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 
@@ -2465,6 +2487,22 @@ spawns while it is owned.
   `PlaySession2` driver all go through it. (Catalog views — Collection, the Atlas,
   the note modal — keep showing the authored goal, since they describe the enemy
   rather than the run.)
+- **…and `GameLoop2.goal_addons_for(entry)` is the same thing as ROWS.** The
+  sentence form runs every clause together — *"Defeat 10+ bugs and you must beat
+  2 bosses without getting hit or instead skip or trash 3 items/upgrades"* — which
+  is three different things joined by two conjunctions, in one colour, saying
+  nothing about which of them makes the goal **harder**. So the parts are also
+  available separately: `{status, stacks, games, kind, source, required, joiner,
+  text}`, where `kind` is `clause` / `instead` / `bonus` and `required` is the bit
+  the screens colour on. A **clause is a condition added** to the goal and reads
+  RED; an **`instead` or a `bonus` is offered** — a way out, a free reward — and
+  reads GREEN. `UITheme.addon_row` draws one, indented under the goal and led by
+  the status's own symbol (clock badge included, so a borrowed clause still says
+  how long it lasts); `UITheme.addon_color` is the rule on its own, for the
+  offering's hover line, which has only the one line and so tints the words in
+  place instead. `goal_text_for` is written from the same list, minus the
+  `bonus` rows — optional was never part of the sentence of what is asked — so
+  the row form and the sentence form cannot word an add-on differently.
 - **Applying one** — the `apply_status` effect (`apply_status <id> [N]
   [target=player|current|all|random]` in the item Effect DSL). `player` is the
   default; `current` / `all` / `random` route through

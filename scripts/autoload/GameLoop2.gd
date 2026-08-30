@@ -225,6 +225,26 @@ var stack: Array = []
 # a reward for how it happened.
 var graveyard: Array = []
 
+# EVERY GOAL THIS RUN HAS ANSWERED, oldest first:
+# [{"kind": String, "text": String, "game": StringName}].
+#
+# The checklist beside the board is a list of what is still OWED — an answered row
+# locks, sinks to the bottom, and then goes entirely when the game is handed in
+# (_clear_game_record). That is right for the panel and wrong for the run: a
+# player eight games deep has no way at all to see what they have actually done,
+# and the honour system is exactly the game that ought to be able to show its
+# working. So every confirm writes a line here as well, and it lasts the run.
+#
+# WHAT IT KEEPS IS WHAT THE ROW SAID — the finished sentence, not the live
+# objective it was rendered from. The status behind it may have expired, the body
+# may be off the board, the event goal is off the run the moment it is claimed:
+# a record that had to look any of those up again would be a record that rots.
+# `kind` is only what the panel tints and groups by; `game` is where it was done.
+#
+# Written by ReportChecklist (record_completed_goal) at the moment a row resolves,
+# because that is the one place every kind of row passes through.
+var completed_goals: Array = []
+
 # Bodies Undying owes the board, paid at the START of the next game (§7.6). Each
 # is {"enemy": GoalEnemyData, "phase": int, "revives": int, "statuses": {}} — a
 # body that died this game does not come back inside it.
@@ -482,6 +502,22 @@ func row_answered(key: String) -> bool:
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
 
+# Write one answered row into the run's ledger (see `completed_goals`). Called as
+# a row RESOLVES, so it records the thing that happened rather than a tick that
+# might still be taken back — there are no take-backs on this list, and the one
+# thing that does undo a resolution (a turn's snapshot) carries the ledger with it.
+#
+# `text` is the row's own finished sentence. Blank text records nothing: a line
+# with no words in it is a line the panel cannot say anything with.
+func record_completed_goal(kind: String, text: String) -> void:
+	if text.strip_edges() == "":
+		return
+	completed_goals.append({
+		"kind": kind,
+		"text": text,
+		"game": GameState.current_game_id,
+	})
+
 # Remember a claimed event goal so its row can stay on the checklist for the rest
 # of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
 # back and keeps only what the row is drawn from.
@@ -570,6 +606,9 @@ func reset() -> void:
 	arrivals.clear()
 	stack.clear()
 	graveyard.clear()
+	# The ledger is the RUN's, not the game's, so it is dropped here and nowhere
+	# else — _clear_game_record deliberately leaves it alone.
+	completed_goals.clear()
 	pending_revivals.clear()
 	tiles.clear()
 	units.clear()
@@ -716,8 +755,37 @@ func serialize() -> Dictionary:
 		# dropping anything whose enemy has since left the sheet.
 		"graveyard": _serialize_graveyard(),
 		"pending_revivals": _serialize_revivals(),
+		# WHAT THE RUN HAS DONE (see `completed_goals`). Plain strings all the way
+		# down — it is a record of sentences, not of live content — so it rides the
+		# save as it stands, and a reloaded run can still show its working.
+		"completed_goals": _serialize_completed_goals(),
 		"next_instance": _next_instance,
 	}
+
+func _serialize_completed_goals() -> Array:
+	var out: Array = []
+	for row in completed_goals:
+		if not (row is Dictionary):
+			continue
+		out.append({
+			"kind": String((row as Dictionary).get("kind", "")),
+			"text": String((row as Dictionary).get("text", "")),
+			"game": String((row as Dictionary).get("game", &"")),
+		})
+	return out
+
+func _restore_completed_goals(raw) -> void:
+	completed_goals.clear()
+	if not (raw is Array):
+		return
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		completed_goals.append({
+			"kind": String((row as Dictionary).get("kind", "")),
+			"text": String((row as Dictionary).get("text", "")),
+			"game": StringName((row as Dictionary).get("game", "")),
+		})
 
 func _serialize_graveyard() -> Array:
 	var out: Array = []
@@ -876,6 +944,7 @@ func restore(data: Dictionary) -> void:
 			claimed_event_goals.append((raw as Dictionary).duplicate(true))
 	# Never hand out an instance handle something on the board already holds.
 	_restore_graveyard(data.get("graveyard", []))
+	_restore_completed_goals(data.get("completed_goals", []))
 	_restore_revivals(data.get("pending_revivals", []))
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -1562,6 +1631,10 @@ func _loop_snapshot() -> Dictionary:
 		# away again, or the undone kill would still be raisable by a Necromancer.
 		"graveyard": graveyard.duplicate(),
 		"pending_revivals": pending_revivals.duplicate(true),
+		# The ledger goes back with `answered_rows`, for the same reason: a turn
+		# undone is a resolution undone, and a line about a goal the run no longer
+		# holds as met would be the panel telling the player something untrue.
+		"completed_goals": completed_goals.duplicate(true),
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
 	}
@@ -1605,6 +1678,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	graveyard = (snap.get("graveyard", []) as Array).duplicate()
+	completed_goals = (snap.get("completed_goals", []) as Array).duplicate(true)
 	pending_revivals = (snap.get("pending_revivals", []) as Array).duplicate(true)
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second
@@ -4080,20 +4154,78 @@ func goal_text_for(entry: Dictionary) -> String:
 	# second body is asking for a different thing than it asked for on its first,
 	# and this is the line every screen quotes.
 	var text: String = entry_goal(entry)
+	for addon in goal_addons_for(entry):
+		# The BONUS add-ons are deliberately not here: they are optional, so they
+		# were never part of the sentence describing what has to be done. They are on
+		# `goal_addons_for` because the screens that draw the add-ons as rows draw all
+		# three kinds, and the difference between them is what the colour is FOR.
+		if String(addon["kind"]) == "bonus":
+			continue
+		text += " %s %s" % [addon["joiner"], addon["text"]]
+	return text
+
+# --- a goal's ADD-ONS, as rows rather than as a sentence --------------------
+#
+# A goal picks up clauses. A status on the body tightens it, a status on the
+# PLAYER tightens every body's, a Burn opens a second way out of one, and an
+# enemy bonus hangs a free objective off it. `goal_text_for` reads all of that as
+# one run-on sentence — "Defeat 10+ bugs and you must beat 2 bosses without
+# getting hit or instead skip or trash 3 items/upgrades" — which is exactly as
+# readable as it looks, and says nothing about which half of it HURTS.
+#
+# So the parts are also available as rows. Each is:
+#
+#   {status, stacks, games, kind, source, required, joiner, text}
+#
+# `kind` is &"clause" / &"instead" / &"bonus"; `required` is the one bit the
+# screens colour on — a clause is a condition ADDED to the goal (red: the goal got
+# harder), an `instead` or a `bonus` is something OFFERED (green: a way out, or a
+# free reward). `joiner` is the word the sentence form uses, so a screen drawing
+# rows and a screen drawing the sentence cannot word the same add-on differently.
+#
+# `text` is the finished phrase for that side, clock suffix included — a borrowed
+# clause says how long it lasts right where it is read (docs/potions-design.md
+# §5.3), because a player who cannot tell a thrown potion's tax from a permanent
+# one will route around a tax that is about to lift.
+func goal_addons_for(entry: Dictionary) -> Array:
+	var out: Array = []
 	for clause in required_clauses_for(entry):
 		var sd: StatusData = clause["status"]
 		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
 			else StatusData.ENEMY
-		# A BORROWED clause says so, right where it is read (§5.3 of
-		# docs/potions-design.md). A player who cannot tell a thrown potion's clause
-		# from a permanent one will route around a tax that is about to lift.
-		text += " and %s%s" % [sd.clause_text(which, int(clause["stacks"])),
-			StatusData.clock_suffix(int(clause.get("games", 0)))]
+		out.append({
+			"status": sd, "stacks": int(clause["stacks"]),
+			"games": int(clause.get("games", 0)),
+			"kind": "clause", "source": String(clause["source"]), "required": true,
+			"joiner": "and",
+			"text": "%s%s" % [sd.clause_text(which, int(clause["stacks"])),
+				StatusData.clock_suffix(int(clause.get("games", 0)))],
+		})
 	for alt in alternatives_for(entry):
 		var asd: StatusData = alt["status"]
-		text += " or instead %s" % asd.alternative_text(
-			StatusData.ENEMY, int(alt["stacks"]))
-	return text
+		out.append({
+			"status": asd, "stacks": int(alt["stacks"]),
+			"games": int(alt.get("games", 0)),
+			"kind": "instead", "source": "enemy", "required": false,
+			"joiner": "or instead",
+			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"])),
+				StatusData.clock_suffix(int(alt.get("games", 0)))],
+		})
+	for bonus in bonus_objectives_for(entry):
+		var bsd: StatusData = bonus["status"]
+		out.append({
+			"status": bsd, "stacks": int(bonus["stacks"]),
+			"games": int(bonus.get("games", 0)),
+			"kind": "bonus", "source": "enemy", "required": false,
+			# NO JOINER. A bonus's own wording already opens with one —
+			# `objective_text` writes "and if you get 2 achievements, gain +1 Medium
+			# Chest", because a row that pays has to advertise what skipping it
+			# forfeits — so a joiner here would say "and if" twice.
+			"joiner": "",
+			"text": "%s%s" % [bsd.objective_text(StatusData.ENEMY, int(bonus["stacks"])),
+				StatusData.clock_suffix(int(bonus.get("games", 0)))],
+		})
+	return out
 
 # --- statuses in combat (§13.4) -------------------------------------------
 #
