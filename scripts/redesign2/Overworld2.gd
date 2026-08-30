@@ -383,6 +383,7 @@ var _done_btn: Button
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
 var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or null
+var _completed_popup: CompletedGoalsPanel  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
@@ -3261,6 +3262,22 @@ func show_graveyard() -> GraveyardPanel:
 	var panel := GraveyardPanel.new()
 	panel.closed.connect(func(): _graveyard_popup = null)
 	_graveyard_popup = panel
+	add_child(panel)
+	panel.setup()
+	return panel
+
+# THE COMPLETED PANEL: every goal this run has already answered, opened off the
+# head of the checklist (ReportChecklist._verify_head). The graveyard's twin, and
+# opened the same way and for the same reason — it dims the whole screen, and the
+# checklist lives inside a scrolling page that cannot cover it.
+#
+# Public so a headless test can open it without a click.
+func show_completed_goals() -> CompletedGoalsPanel:
+	if _completed_popup != null and is_instance_valid(_completed_popup):
+		return _completed_popup
+	var panel := CompletedGoalsPanel.new()
+	panel.closed.connect(func(): _completed_popup = null)
+	_completed_popup = panel
 	add_child(panel)
 	panel.setup()
 	return panel

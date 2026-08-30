@@ -11,6 +11,52 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run keeps a record of what it has done, Dexterity stops asking for bosses
+  a game does not have, and the card says who inspired whom.**
+
+  **A ✓ button at the head of the checklist opens everything the run has
+  completed.** The checklist is a list of what is still *owed*: an answered row
+  locks, sinks under the open ones, and goes entirely when the game is handed in
+  (`GameLoop2._clear_game_record`). That is right for a list read to decide what
+  to play for, and it left a run eight games deep with no record at all of the
+  work behind it — the panel saying "three things to do" and nothing about the
+  twenty already done. On a game played entirely on the honour system, being able
+  to show its working is not a decoration. Every confirm now also appends to
+  `GameLoop2.completed_goals` (`{kind, text, game}` — the row's finished sentence,
+  because the status may have expired and the body may be off the board by the
+  time anyone reads it), which lives for the RUN, rides the save, and goes back
+  with a turn's snapshot the way `answered_rows` does. The new
+  `CompletedGoalsPanel` is the graveyard's twin: grouped by the game each line was
+  done at, newest first, tinted by kind, and read-only, since everything in it has
+  already resolved. The button carries the count, because "17 done" is worth
+  pressing and "0 done" answers itself — and it is styled down to the caption's own
+  line, since the overworld's left column had three pixels of slack and a default
+  Button wanted ten.
+
+  **Dexterity takes all of a game's bosses when the game has fewer than X.** Its
+  goal asked for *"X bosses beaten without getting hit"* — a fine ask on a game
+  with a boss rush and an impossible one on a game with two bosses in it, and the
+  player has no say in which game the run hangs the status on. At three stacks it
+  was simply dead on most of the library. Both sides now read *"…or all the game's
+  bosses, whichever is fewer"*, which is true at every stack count including one.
+  Edited in `statuses` via `tools/_statuses_dexterity_bosses_setup.py` and
+  regenerated, prose and effect columns together.
+
+  **The evidence for a connection is on the card you are deciding from.** The map
+  is a claim — this game influenced that one — and the sheet has carried the
+  source for every edge all along (`GameData.influence_sources`). It could only be
+  read in the Atlas, by opening the star chart, finding the right line and clicking
+  it: three deliberate steps away from the one moment the claim is interesting,
+  which is while looking at a game and deciding whether to walk to it.
+  `GameChoiceModal` now ends its game column with a **SOURCE** section for the ONE
+  edge the choice would travel — who inspired whom in the direction the sheet
+  authored it, the sequel / same-developers flag when there is one, and the
+  evidence itself: a link gets a button with the address under it, a note like
+  *"game credits"* is shown as written. It names the **map's** games, not the
+  card's, so a transmute cannot credit its replacement with somebody else's
+  influence, and the section is absent rather than empty when there is no edge to
+  describe.
+
 - **The bus runs on the roads, the teleports work with a game in play, and the
   arrival card says outright that you were moved.**
 

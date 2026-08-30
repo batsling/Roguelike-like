@@ -130,7 +130,7 @@ func populate_play_panel() -> void:
 	# (GameLoop2.arrivals): a body that walked on this game and a body you have
 	# owed since three games ago are the same kind of debt, and asking about them
 	# in two different places said they were not.
-	_box.add_child(_verify_head("Tick what you did this game:"))
+	_box.add_child(_verify_head_row("Tick what you did this game:"))
 
 	# On the Amulet, playing the game is the win — not any goal on this list (see
 	# report()). Said at the top, because a checklist is otherwise exactly where a
@@ -160,6 +160,12 @@ func populate_play_panel() -> void:
 		# payout. `key` is what holds two rows of the same status apart everywhere
 		# downstream — the tick, the claim, the demand's bill.
 		var key: String = String(row["key"])
+		# THE LEDGER'S OWN WORDING, spelled out. The row leads with the status's
+		# SYMBOL and a bare "×3" (_status_prefix), which reads because the art is
+		# right beside it; the record is a line of text on another screen, so it
+		# says which status in as many words.
+		var stext: String = "%s ×%d — %s" % [sd.display_name, stacks,
+			sd.objective_text(StatusData.PLAYER, stacks)]
 		var srow := verify_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
 				sd.objective_text(StatusData.PLAYER, stacks),
@@ -179,6 +185,7 @@ func populate_play_panel() -> void:
 				# answered, so a status row that never told it came back OPEN on the
 				# next repaint — and ticking it again paid it again.
 				GameLoop2.mark_row_answered("status:%s" % key)
+				GameLoop2.record_completed_goal("status", stext)
 				if GameLoop2.claim_player_objective(key):
 					_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 				else:
@@ -207,6 +214,8 @@ func populate_play_panel() -> void:
 			"You met %s's level-up condition." % ch.display_name,
 			func() -> void:
 				GameLoop2.mark_row_answered(LEVELUP_KEY)
+				GameLoop2.record_completed_goal("levelup",
+					"Levelled up — %s" % ch.level_up_condition)
 				_page._apply_level_up()
 				if game_now != null:
 					GameStats.record_level_up(game_now.id, GameState.character_id)
@@ -283,6 +292,10 @@ func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 		func() -> void:
 			var standing: int = GameLoop2.stack.size()
 			var at_game: GameData = _page._chosen.get("game")
+			# Recorded from the entry as it stands, BEFORE the hit: `fulfill` can
+			# take the body off the board, and the goal it was carrying goes with it.
+			GameLoop2.record_completed_goal("enemy", "Cleared: %s — %s" % [
+				GameLoop2.goal_text_for(GameLoop2.entry_for(instance)), name_of])
 			GameLoop2.fulfill(instance, true)
 			var gone: bool = GameLoop2.entry_for(instance).is_empty()
 			# Banked here rather than at the report, because the report can no
@@ -364,6 +377,8 @@ func _add_event_goal_rows() -> void:
 				# with it, and a claimed goal is the one thing on this list the
 				# player has most reason to want to still see (§2.1).
 				GameLoop2.record_claimed_event_goal(claimed)
+				GameLoop2.record_completed_goal("event",
+					"Event goal — %s" % claimed.get("condition", ""))
 				var src: EventData2 = Data.get_event2(StringName(claimed.get("event", &"")))
 				var line: String = src.goal_met if src != null and src.goal_met != "" \
 					else "Event goal met — %s." % claimed.get("effects_text", "")
@@ -414,6 +429,8 @@ func _add_event_goal_rows() -> void:
 			"You followed %s: %s." % [cd.display_name, cd.goal_text()],
 			func() -> void:
 				GameLoop2.mark_row_answered(curse_key)
+				GameLoop2.record_completed_goal("curse",
+					"%s followed — %s" % [cd.display_name, cd.goal_text()])
 				_announce("%s followed — it will not bite this game." % cd.display_name,
 					UITheme.CURSE)
 				_rebuild_soon())
@@ -437,6 +454,11 @@ func resolve_event_goals() -> void:
 		var goal: Dictionary = GameState.claim_event_goal(idx)
 		if goal.is_empty():
 			continue
+		# Into the run's ledger, exactly as a claim made mid-game is (§2.1) — the
+		# report is simply the last moment a row can resolve, not a different kind
+		# of resolution.
+		GameLoop2.record_completed_goal("event",
+			"Event goal — %s" % goal.get("condition", ""))
 		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
 		var line: String = src.goal_met if src != null and src.goal_met != "" else \
 			"Event goal met — %s." % goal.get("effects_text", "")
@@ -524,6 +546,8 @@ func _add_instead_rows(entry: Dictionary) -> void:
 			"You cleared %s the other way." % alt_name,
 			func() -> void:
 				var standing: int = GameLoop2.stack.size()
+				GameLoop2.record_completed_goal("enemy", "Cleared the other way: %s — %s" % [
+					sd.alternative_text(StatusData.ENEMY, stacks), alt_name])
 				GameLoop2.fulfill_instead(instance, sd.id)
 				GameLoop2.mark_row_answered("instead:%d" % instance)
 				var gone: bool = GameLoop2.entry_for(instance).is_empty()
@@ -563,6 +587,9 @@ func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 			func() -> void:
 				if GameLoop2.claim_enemy_bonus(instance, sd.id):
 					GameLoop2.mark_row_answered(key)
+					GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
+						sd.objective_text(StatusData.ENEMY, stacks),
+						enemy_name_of(instance)])
 					_announce("%s paid out." % sd.display_name, UITheme.GOLD))
 
 # What colour a player-side status row reads in. GOLD is the checklist's colour
@@ -829,7 +856,7 @@ func populate_standing() -> void:
 	_page._clear(_launch)
 	_page._clear(_box)
 	reset_state()
-	_box.add_child(_verify_head("What you need to do:"))
+	_box.add_child(_verify_head_row("What you need to do:"))
 
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
@@ -976,6 +1003,10 @@ func _play_panel_sig() -> String:
 		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
+	# The ✓ button at the head of the list wears the count, so a goal ticked into
+	# the ledger has to be a reason to repaint — otherwise the guard holds a "3
+	# done" button over a run that has done four.
+	parts.append("done:%d" % GameLoop2.completed_goals.size())
 	for row in GameState.status_objectives():
 		# The KEY, not the id: two rows of the same status differ only by instance,
 		# and a signature that could not see the difference would leave the panel
@@ -1011,6 +1042,10 @@ func _standing_checklist_sig() -> String:
 		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
+	# The ✓ button at the head of the list wears the count, so a goal ticked into
+	# the ledger has to be a reason to repaint — otherwise the guard holds a "3
+	# done" button over a run that has done four.
+	parts.append("done:%d" % GameLoop2.completed_goals.size())
 	for row in GameState.status_objectives():
 		# The KEY, not the id: two rows of the same status differ only by instance,
 		# and a signature that could not see the difference would leave the panel
@@ -1325,6 +1360,58 @@ func _verify_head(text: String) -> Label:
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
+
+# The HEAD OF EITHER LIST: the caption, and the way to what is already done.
+#
+# Both states of this panel say what is still owed and nothing about the rest of
+# the run (see GameLoop2.completed_goals), so the record needs a door and this is
+# where it belongs: the line the player is already reading to find out what this
+# column is a list OF. The count is on the button because it is the whole reason
+# to press it — "17 done" is worth opening, "0 done" answers itself.
+#
+# ONE ROW, not a band of its own: the left column is 612px of a 625px window
+# (test_overworld2's _assert_fits) and the caption was leaving the whole width to
+# the right of it empty. The button costs the checklist no height at all.
+func _verify_head_row(text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var head := _verify_head(text)
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(head)
+	row.add_child(completed_button())
+	return row
+
+# The ✓ button itself. Public so a headless test can press it the way a player
+# would, rather than calling the page's opener directly and proving nothing about
+# the checklist.
+func completed_button() -> Button:
+	var done: int = GameLoop2.completed_goals.size()
+	var btn := Button.new()
+	btn.text = "✓  %d done" % done
+	btn.tooltip_text = ("Everything you have ticked this run, under the game you "
+		+ "did it at. This list is only what is still owed.")
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# COSTS THE COLUMN NO HEIGHT. A default Button is a good ten pixels taller than
+	# the caption beside it, and the overworld's left column has three to give
+	# (test_overworld2's _assert_fits, which caught exactly this at 628 of 625). A
+	# 2px content margin puts it back on the caption's own line.
+	for state in ["normal", "hover", "pressed", "focus"]:
+		btn.add_theme_stylebox_override(state, UITheme.flat(
+			CompletedGoalsPanel.DONE.lerp(UITheme.BG, 0.86 if state == "hover" else 0.94),
+			4, 2, 1, CompletedGoalsPanel.DONE.lerp(UITheme.BORDER, 0.45)))
+	# Quiet by default and lit once there is something in it: an empty ledger is
+	# still worth a button — it is where the record LIVES, and a control that
+	# appears out of nowhere on the second game is a control nobody finds.
+	btn.add_theme_color_override("font_color",
+		CompletedGoalsPanel.DONE.lerp(Color.WHITE, 0.35) if done > 0 else UITheme.TEXT_FAINT)
+	btn.set_meta(&"completed_button", true)
+	btn.pressed.connect(func() -> void:
+		if _page != null and is_instance_valid(_page):
+			_page.show_completed_goals())
+	return btn
 
 # A ROW ALREADY RESOLVED IS NOT A CLAIM (§2.1). Every box on this list is a
 # confirm, and confirming one resolves and LOCKS it, so a pressed-and-locked row

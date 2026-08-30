@@ -52,6 +52,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     LootDiscoveries — "Known this run", on both too
 │   │                      #     LootInfoCard    — click-to-inspect loot card
 │   │                      #     ReportChecklist — its left column, both states
+│   │                      #     CompletedGoalsPanel — the ✓ record that column opens
 │   │                      #     OfferingCards   — its choice cards + hover line
 │   │                      #     BattlefieldView — the grid the enemies close in on
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card

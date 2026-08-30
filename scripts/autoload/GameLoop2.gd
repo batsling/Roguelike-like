@@ -225,6 +225,26 @@ var stack: Array = []
 # a reward for how it happened.
 var graveyard: Array = []
 
+# EVERY GOAL THIS RUN HAS ANSWERED, oldest first:
+# [{"kind": String, "text": String, "game": StringName}].
+#
+# The checklist beside the board is a list of what is still OWED — an answered row
+# locks, sinks to the bottom, and then goes entirely when the game is handed in
+# (_clear_game_record). That is right for the panel and wrong for the run: a
+# player eight games deep has no way at all to see what they have actually done,
+# and the honour system is exactly the game that ought to be able to show its
+# working. So every confirm writes a line here as well, and it lasts the run.
+#
+# WHAT IT KEEPS IS WHAT THE ROW SAID — the finished sentence, not the live
+# objective it was rendered from. The status behind it may have expired, the body
+# may be off the board, the event goal is off the run the moment it is claimed:
+# a record that had to look any of those up again would be a record that rots.
+# `kind` is only what the panel tints and groups by; `game` is where it was done.
+#
+# Written by ReportChecklist (record_completed_goal) at the moment a row resolves,
+# because that is the one place every kind of row passes through.
+var completed_goals: Array = []
+
 # Bodies Undying owes the board, paid at the START of the next game (§7.6). Each
 # is {"enemy": GoalEnemyData, "phase": int, "revives": int, "statuses": {}} — a
 # body that died this game does not come back inside it.
@@ -482,6 +502,22 @@ func row_answered(key: String) -> bool:
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
 
+# Write one answered row into the run's ledger (see `completed_goals`). Called as
+# a row RESOLVES, so it records the thing that happened rather than a tick that
+# might still be taken back — there are no take-backs on this list, and the one
+# thing that does undo a resolution (a turn's snapshot) carries the ledger with it.
+#
+# `text` is the row's own finished sentence. Blank text records nothing: a line
+# with no words in it is a line the panel cannot say anything with.
+func record_completed_goal(kind: String, text: String) -> void:
+	if text.strip_edges() == "":
+		return
+	completed_goals.append({
+		"kind": kind,
+		"text": text,
+		"game": GameState.current_game_id,
+	})
+
 # Remember a claimed event goal so its row can stay on the checklist for the rest
 # of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
 # back and keeps only what the row is drawn from.
@@ -570,6 +606,9 @@ func reset() -> void:
 	arrivals.clear()
 	stack.clear()
 	graveyard.clear()
+	# The ledger is the RUN's, not the game's, so it is dropped here and nowhere
+	# else — _clear_game_record deliberately leaves it alone.
+	completed_goals.clear()
 	pending_revivals.clear()
 	tiles.clear()
 	units.clear()
@@ -716,8 +755,37 @@ func serialize() -> Dictionary:
 		# dropping anything whose enemy has since left the sheet.
 		"graveyard": _serialize_graveyard(),
 		"pending_revivals": _serialize_revivals(),
+		# WHAT THE RUN HAS DONE (see `completed_goals`). Plain strings all the way
+		# down — it is a record of sentences, not of live content — so it rides the
+		# save as it stands, and a reloaded run can still show its working.
+		"completed_goals": _serialize_completed_goals(),
 		"next_instance": _next_instance,
 	}
+
+func _serialize_completed_goals() -> Array:
+	var out: Array = []
+	for row in completed_goals:
+		if not (row is Dictionary):
+			continue
+		out.append({
+			"kind": String((row as Dictionary).get("kind", "")),
+			"text": String((row as Dictionary).get("text", "")),
+			"game": String((row as Dictionary).get("game", &"")),
+		})
+	return out
+
+func _restore_completed_goals(raw) -> void:
+	completed_goals.clear()
+	if not (raw is Array):
+		return
+	for row in raw:
+		if not (row is Dictionary):
+			continue
+		completed_goals.append({
+			"kind": String((row as Dictionary).get("kind", "")),
+			"text": String((row as Dictionary).get("text", "")),
+			"game": StringName((row as Dictionary).get("game", "")),
+		})
 
 func _serialize_graveyard() -> Array:
 	var out: Array = []
@@ -876,6 +944,7 @@ func restore(data: Dictionary) -> void:
 			claimed_event_goals.append((raw as Dictionary).duplicate(true))
 	# Never hand out an instance handle something on the board already holds.
 	_restore_graveyard(data.get("graveyard", []))
+	_restore_completed_goals(data.get("completed_goals", []))
 	_restore_revivals(data.get("pending_revivals", []))
 	_next_instance = maxi(1, int(data.get("next_instance", 1)))
 	for entry in stack:
@@ -1562,6 +1631,10 @@ func _loop_snapshot() -> Dictionary:
 		# away again, or the undone kill would still be raisable by a Necromancer.
 		"graveyard": graveyard.duplicate(),
 		"pending_revivals": pending_revivals.duplicate(true),
+		# The ledger goes back with `answered_rows`, for the same reason: a turn
+		# undone is a resolution undone, and a line about a goal the run no longer
+		# holds as met would be the panel telling the player something untrue.
+		"completed_goals": completed_goals.duplicate(true),
 		"next_instance": _next_instance,
 		"last_result": last_result.duplicate(true),
 	}
@@ -1605,6 +1678,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	graveyard = (snap.get("graveyard", []) as Array).duplicate()
+	completed_goals = (snap.get("completed_goals", []) as Array).duplicate(true)
 	pending_revivals = (snap.get("pending_revivals", []) as Array).duplicate(true)
 	# The instance counter goes back too: a body defeated by the turn is about to
 	# stand on the board again, and an id handed out since would then be a second

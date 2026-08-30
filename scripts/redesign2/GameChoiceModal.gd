@@ -20,6 +20,8 @@ extends Control
 #   • the GAME — its cover, its type and year, the Temporary Shields it grants,
 #     the pace it puts the board on, whether you've beaten it before;
 #   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
+#   • the SOURCE behind the connection you'd be walking (_build_source_block) —
+#     who inspired whom, and the evidence the sheet records for it;
 #   • and the one thing you can DO about it: travel.
 #
 # BASH AND TRANSMUTE USED TO BE ON THAT LAST ROW and are not any more — see
@@ -445,9 +447,142 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		col.add_child(_fact_line("⚔ Beaten %d time%s" % [beaten, "" if beaten == 1 else "s"],
 			UITheme.GOLD, "Your lifetime record in %s." % game.display_name))
 
+	# WHY THIS GAME IS ON THE MAP FROM HERE — above the enemy and not under it.
+	# The enemy block is the tallest thing in this column (a goal, its clauses, the
+	# statuses riding on it), so anything after it is below the fold on the games
+	# that have most to say, and the source would then be visible exactly where it
+	# is least interesting. Here it sits under the game's own facts and above what
+	# is waiting, which is also the order the decision is read in: what this is,
+	# how it connects to where I am, what I would be fighting.
+	var source_block: Control = _build_source_block()
+	if source_block != null:
+		col.add_child(HSeparator.new())
+		col.add_child(source_block)
+
 	col.add_child(HSeparator.new())
 	col.add_child(_build_enemy_block(game))
 	return scroll
+
+# --- the connection you would be walking, and what backs it ----------------
+
+# The whole map is a claim — "this game influenced that one" — and the evidence
+# for every edge of it has been in the sheet all along (GameData.influence_sources).
+# Until now the only place it could be read was the Atlas, by opening the star
+# chart, finding the right line and clicking it: three deliberate steps away from
+# the one moment the claim is actually interesting, which is when the player is
+# looking at a game and deciding whether to walk to it.
+#
+# So the card carries it. Not the whole graph's worth — the ONE edge this choice
+# would travel, from where the run stands to the game on this card — because that
+# is the connection the player is standing on and the only one the decision is
+# about. `describe_influence` answers in the direction the sheet authored, so the
+# line says which game inspired which rather than pretending influence is mutual.
+#
+# Null when there is no edge to describe: the first pick of a run has nowhere to
+# have come FROM, and a teleport can land the run somewhere its card is not a
+# neighbour of. A section reading "no connection" on those would be a fact about
+# the UI rather than about the game.
+#
+# THE MAP'S GAMES, not the card's: a transmute pastes one game over another's
+# SPOT and leaves the graph alone (`_build_game_column` says so a few rows up), so
+# the connection being walked is still the original pair's and naming the
+# replacement here would credit it with somebody else's influence.
+func _build_source_block() -> Control:
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var there: GameData = Data.get_game(StringName(_choice.get("slot", &"")))
+	if here == null or there == null or here.id == there.id:
+		return null
+	var found: Dictionary = GameData.describe_influence(here, there)
+	if found.is_empty():
+		return null
+	var influencer: GameData = found["from"]
+	var influenced: GameData = found["to"]
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+
+	var head := Label.new()
+	head.text = "🔗  SOURCE"
+	head.add_theme_font_size_override("font_size", 11)
+	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	box.add_child(head)
+
+	var claim := Label.new()
+	claim.text = "%s inspired %s" % [influencer.display_name, influenced.display_name]
+	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	claim.add_theme_font_size_override("font_size", 13)
+	claim.add_theme_color_override("font_color", UITheme.TEXT)
+	box.add_child(claim)
+
+	# The sheet flags roughly 110 links as a sequel or the same studio rather than
+	# one game merely inspiring another. That is a stronger claim, so it is said —
+	# in the same words the Atlas's connection card says it in.
+	if String(found.get("relation", "")).strip_edges() != "":
+		var chip := Label.new()
+		chip.text = "SEQUEL / SAME DEVELOPERS"
+		chip.add_theme_font_size_override("font_size", 10)
+		chip.add_theme_color_override("font_color", UITheme.GOLD)
+		box.add_child(chip)
+
+	var source: String = String(found.get("source", "")).strip_edges()
+	if source == "":
+		box.add_child(_source_note("No source recorded for this connection yet."))
+	elif GameData.is_openable_source(source):
+		# The URL under the button, as the Atlas does it: the button is the verb and
+		# the address is the evidence, and a player who wants to know WHERE a claim
+		# comes from should not have to open a browser to find out.
+		var open_btn := Button.new()
+		open_btn.text = "🔗  Open source"
+		open_btn.tooltip_text = source
+		open_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		open_btn.add_theme_font_size_override("font_size", 11)
+		open_btn.pressed.connect(func(): OS.shell_open(source))
+		box.add_child(open_btn)
+		var url := Label.new()
+		url.text = short_source(source)
+		url.tooltip_text = source
+		url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		url.add_theme_font_size_override("font_size", 10)
+		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		box.add_child(url)
+	else:
+		# Notes like "check folder" or "game credits" point at evidence kept
+		# somewhere else — shown as written rather than dressed up as a link.
+		box.add_child(_source_note(source))
+	return box
+
+# A URL short enough to read at a glance: the scheme dropped and the tail elided.
+#
+# The Atlas prints these in full, on a card that exists to hold one connection. On
+# THIS card the column is 200-odd pixels wide and the decision it is serving is
+# about the game, so a deep-linked forum permalink wrapped to four lines and
+# pushed the enemy off the bottom to say something nobody reads character by
+# character. What the line is for is "who says so" — the host and the first step
+# of the path answers that — and the whole address is one hover (and one click)
+# away, which is what the button is.
+#
+# Static and public so a test can check the elision without walking Labels.
+const SOURCE_CHARS := 52
+
+static func short_source(url: String) -> String:
+	var short: String = url.strip_edges()
+	for scheme in ["https://", "http://"]:
+		if short.to_lower().begins_with(scheme):
+			short = short.substr(scheme.length())
+			break
+	if short.begins_with("www."):
+		short = short.substr(4)
+	if short.length() > SOURCE_CHARS:
+		short = short.substr(0, SOURCE_CHARS - 1) + "…"
+	return short
+
+func _source_note(text: String) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return l
 
 # The enemy standing at this card: its portrait, its name, and the goal you would
 # actually be playing for — clauses from your own statuses included (§13).

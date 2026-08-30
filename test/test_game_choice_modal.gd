@@ -317,6 +317,61 @@ func test_a_bashed_neighbour_stops_counting_as_a_connection() -> void:
 	assert_eq(int(GameChoiceModal.connection_counts(slot)["total"]), before - 1,
 		"a destroyed game is a door that no longer opens")
 
+# --- the source behind the connection --------------------------------------
+#
+# The map is a claim, and the evidence for it was only ever readable in the
+# Atlas. The card carries it now, for the ONE edge the choice would walk.
+
+func test_the_popup_names_who_inspired_whom() -> void:
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	var there: GameData = Data.get_game(slot)
+	var found: Dictionary = GameData.describe_influence(here, there)
+	var modal = _ui.open_choice(0)
+	var text: String = _text_of(modal)
+	if found.is_empty():
+		# An offered card is a neighbour, so this is all but unreachable — and if it
+		# ever is reached, the section says nothing rather than inventing a claim.
+		assert_false(text.contains("SOURCE"),
+			"no edge, no source section: %s" % text)
+		modal._close()
+		return
+	assert_true(text.contains("SOURCE"), "the section is on the card: %s" % text)
+	assert_true(text.contains("%s inspired %s" % [
+		(found["from"] as GameData).display_name,
+		(found["to"] as GameData).display_name]),
+		"and it says which way the influence ran: %s" % text)
+	modal._close()
+
+func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	var found: Dictionary = GameData.describe_influence(here, Data.get_game(slot))
+	if found.is_empty():
+		pass_test("nothing connects these two — covered by the test above")
+		return
+	var modal = _ui.open_choice(0)
+	var text: String = _text_of(modal)
+	var source: String = String(found.get("source", "")).strip_edges()
+	if source == "":
+		assert_true(text.contains("No source recorded"),
+			"an edge with no evidence says so plainly: %s" % text)
+	elif GameData.is_openable_source(source):
+		# The URL under the button, so the address itself is readable without
+		# opening a browser — the same pair the Atlas's connection card draws.
+		assert_true(text.contains("Open source"), "a link gets a button: %s" % text)
+		# The address under it, SHORTENED — this column is 200-odd pixels wide and a
+		# deep permalink printed in full wraps to four lines. The whole of it is on
+		# the hover and behind the button.
+		assert_true(text.contains(GameChoiceModal.short_source(source)),
+			"with the address under it: %s" % text)
+		assert_lt(GameChoiceModal.short_source(source).length(),
+			GameChoiceModal.SOURCE_CHARS + 1, "and it is short enough to read")
+	else:
+		assert_true(text.contains(source),
+			"a note like 'game credits' is shown as written: %s" % text)
+	modal._close()
+
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):

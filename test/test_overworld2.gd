@@ -7633,3 +7633,90 @@ func test_the_answered_rows_go_with_the_game() -> void:
 	_ui._end_resolve()
 	_leave_post_game()
 	_dismiss_event()
+
+# --- the run's ledger of what is DONE ---------------------------------------
+#
+# The checklist is a list of what is still owed: an answered row locks, sinks,
+# and goes entirely when the game is handed in. That leaves a run eight games
+# deep with no record at all of the work behind it, which on an honour-system
+# game is the one thing it ought to be able to show. So every confirm also
+# writes a line into GameLoop2.completed_goals, and the ✓ button at the head of
+# the checklist opens it.
+
+# The ✓ button on whichever state of the checklist is up.
+func _completed_button() -> Button:
+	for node in _ui._verify_box.find_children("*", "Button", true, false):
+		if (node as Button).has_meta(&"completed_button"):
+			return node
+	return null
+
+func test_a_confirmed_goal_is_written_into_the_runs_ledger() -> void:
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	var inst: int = int(_ui._fulfil_checks[0]["instance"])
+	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
+	if enemy == null:
+		return
+	var before: int = GameLoop2.completed_goals.size()
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_eq(GameLoop2.completed_goals.size(), before + 1, "the tick left a line")
+	var row: Dictionary = GameLoop2.completed_goals.back()
+	assert_string_contains(String(row["text"]), enemy.display_name,
+		"which says whose goal it was")
+	assert_eq(StringName(row["game"]), GameState.current_game_id,
+		"and where it was done")
+
+func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
+	_pick_solo(0)
+	if _ui._levelup_check == null:
+		return
+	_tick(_ui._levelup_check)
+	var done: int = GameLoop2.completed_goals.size()
+	assert_gt(done, 0, "the level-up is on the ledger")
+	_report_beat(_ui)
+	assert_false(GameLoop2.row_answered("levelup"),
+		"the game's answered rows go with the game")
+	assert_eq(GameLoop2.completed_goals.size(), done,
+		"…and the record of them does not — it is the RUN's")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_the_checklist_head_carries_the_count_and_opens_the_panel() -> void:
+	var btn: Button = _completed_button()
+	assert_not_null(btn, "the standing list has the button too — the record is the run's")
+	if btn == null:
+		return
+	assert_string_contains(btn.text, "%d done" % GameLoop2.completed_goals.size(),
+		"the count is on the button, since it is the reason to press it")
+	btn.pressed.emit()
+	var panel = _ui._completed_popup
+	assert_not_null(panel, "pressing it opens the record")
+	if panel != null:
+		panel.close()
+
+func test_the_panel_groups_what_was_done_under_the_game_it_was_done_at() -> void:
+	_pick_solo(0)
+	if _ui._fulfil_checks.is_empty():
+		return
+	_tick(_ui._fulfil_checks[0]["check"])
+	var panel = _ui.show_completed_goals()
+	assert_not_null(panel)
+	if panel == null:
+		return
+	var groups: Array = panel.groups()
+	assert_gt(groups.size(), 0, "there is something to show")
+	assert_eq(StringName(groups[0]["game"]), GameState.current_game_id,
+		"newest game first — which is the one being played")
+	panel.close()
+
+func test_nothing_ticked_is_an_empty_panel_rather_than_no_panel() -> void:
+	# The button is there from the first screen of the run: a control that appears
+	# out of nowhere on the second game is a control nobody finds.
+	assert_eq(GameLoop2.completed_goals.size(), 0, "a fresh run has done nothing")
+	var panel = _ui.show_completed_goals()
+	assert_not_null(panel, "it still opens")
+	if panel != null:
+		assert_eq(panel.groups().size(), 0, "with nothing in it")
+		panel.close()
