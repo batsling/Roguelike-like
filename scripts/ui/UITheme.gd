@@ -289,6 +289,77 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	wrap.add_child(badge)
 	return wrap
 
+# --- goal ADD-ON rows (§13) ------------------------------------------------
+#
+# A goal picks up clauses (GameLoop2.goal_addons_for), and until now every screen
+# read them as one run-on sentence: "Defeat 10+ bugs and you must beat 2 bosses
+# without getting hit or instead skip or trash 3 items/upgrades". Three different
+# things joined by two conjunctions, in one colour, on one line — and the one
+# question the player is asking of that line is which half of it makes the goal
+# HARDER.
+#
+# So an add-on is drawn as its own indented row instead: the status's own symbol,
+# then the phrase, in RED when the add-on is a condition added to the goal and
+# GREEN when it is something offered (a second way out, or a free bonus). The
+# colour is the whole point — it is the difference between "this is now also
+# required of you" and "here is a way through" — so it lives here, once, rather
+# than being decided by each screen that draws one.
+#
+# Both halves are static so the three screens that draw these (the game-choice
+# modal, the enemy card, and the offering's hover line, which colours the words
+# in place because it has only the one line) cannot disagree about which is which.
+const ADDON_ICON: int = 18
+const ADDON_INDENT: int = 14
+
+static func addon_color(required: bool) -> Color:
+	return DANGER if required else SUCCESS
+
+# One add-on as a row. `addon` is a `GameLoop2.goal_addons_for` entry; `width` is
+# the row's minimum, since these live in narrow columns and the phrase wraps.
+static func addon_row(addon: Dictionary, width: float = 0.0,
+		font_size: int = 12) -> Control:
+	var tint: Color = addon_color(bool(addon.get("required", false)))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	# The indent is a spacer rather than a margin on the label: the icon has to be
+	# indented with the words, or the row reads as a second goal rather than as
+	# something hanging off the one above it.
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(ADDON_INDENT, 0)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(gap)
+	var status: StatusData = addon.get("status")
+	if status != null and status.image != null:
+		# The same chip the board's pips and the checklist's rows use, clock badge
+		# and all — a borrowed clause is a different offer from a permanent one.
+		var frame := PanelContainer.new()
+		frame.add_theme_stylebox_override("panel",
+			flat(BG, 4, 2, 1, tint.lerp(BORDER, 0.35)))
+		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		frame.add_child(timed_art(status.image, ADDON_ICON,
+			int(addon.get("games", 0)) > 0))
+		row.add_child(frame)
+	var l := Label.new()
+	# The joiner leads the phrase — "and", "or instead" — because it is what says
+	# how this row relates to the goal above it, and a row that starts straight in
+	# on the condition reads like a second goal. A bonus carries its own lead in its
+	# wording and so has none here, which is why this joins rather than formats.
+	l.text = ("%s %s" % [String(addon.get("joiner", "")),
+		String(addon.get("text", ""))]).strip_edges()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", tint)
+	if width > 0.0:
+		l.custom_minimum_size = Vector2(width - ADDON_INDENT - ADDON_ICON - 12, 0)
+	row.add_child(l)
+	if status != null:
+		row.tooltip_text = "%s — %s" % [status.display_name,
+			("this is required of you as well" if bool(addon.get("required", false))
+				else "this is offered, not required")]
+	return row
+
 # --- Texture helpers -------------------------------------------------------
 
 # A TextureRect that draws `tex` inside a `size` x `size` box, aspect preserved,

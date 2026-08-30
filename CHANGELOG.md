@@ -11,6 +11,56 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The goal's add-ons are coloured rows, the source rides beside the cover, and
+  Rodney's level-up stops promising the same Health twice.**
+
+  **What a status adds to a goal is a row of its own, in red or green.** The goal
+  line read *"Defeat 10+ bugs and you must beat 2 bosses without getting hit or
+  instead skip or trash 3 items/upgrades"* — three different things joined by two
+  conjunctions, in one colour, saying nothing about which of them makes the goal
+  harder. `GameLoop2.goal_addons_for` now hands the parts over separately
+  (`{status, stacks, games, kind, source, required, joiner, text}`), and
+  `UITheme.addon_row` draws one: indented under the goal, led by the status's own
+  symbol with its clock badge, RED when it is a condition **added** to the goal
+  (a buff on the body, a clause on you) and GREEN when it is **offered** — the way
+  out a Burn opens, the optional bonus hanging off an enemy. The game-choice modal
+  and the enemy card both draw the rows; the offering's hover line has only the
+  one line, so it tints the same words in place. `goal_text_for` is written from
+  that same list now, so the sentence and the rows cannot drift. On the enemy card
+  this also ends a duplication: the goal line already carried the way out, and the
+  card then repeated it underneath — in gold, the colour it uses for the goal
+  itself, so the one line saying the goal need not be done at all read like part
+  of it.
+
+  **The source sits beside the cover.** It was a band of its own under the game's
+  facts, four lines deep in a column that has none to spare, while the cover — the
+  one thing on the popup the player has already seen — stood in the middle of the
+  column with dead space either side. They are one row now, art on the left and
+  the evidence beside it, so the source costs the column the height of the cover
+  and nothing more. The cover shrinks to 112x150 to pay for the width, the type
+  sizes in the block step down to match, and the address elides harder (34 chars,
+  the whole of it on the hover and behind the button). A game with no art in the
+  sheet still gets the band.
+
+  **Rodney's level-up says "+1 Max Health and +1 Loot".** It read "+1 Max Health,
+  +1 Health, and +1 Loot", which lists the same point of Health twice:
+  `GameState.apply_level_up_stats` heals a `max_hp` gain by the amount it granted,
+  so raising the cap already hands the Health over. Edited in the `characters`
+  sheet via `tools/_characters_rodney_maxhealth_setup.py`.
+
+  **And the generator that writes him was quietly wrong.** `parse_reward` in
+  `tools/generate_character2_tres.py` had no `Loot` branch, so regenerating
+  characters rewrote his `level_up_reward_type` from `&"loot"` to `&"none"` — a
+  level-up paying a stat and nothing else. The .tres in the repo was right and the
+  generator that is supposed to produce it was not, which is exactly the failure
+  CLAUDE.md warns about. It reads `+N Loot` now, before the chest and scroll
+  branches so a reward naming both cannot be filed as the narrower one.
+
+  **One flake fixed on the way past.** `test_fulfilling_a_follower_goal_defeats_and_drops_it`
+  counts bodies across two reports without disarming the board, so a spawner
+  ability (Carcass lays one, Obscura makes two) put a third body on the stack and
+  failed it on the handful of enemies that have one.
+
 - **The run keeps a record of what it has done, Dexterity stops asking for bosses
   a game does not have, and the card says who inspired whom.**
 

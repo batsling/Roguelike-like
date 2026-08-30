@@ -55,7 +55,16 @@ const VIEW_MARGIN := Vector2(48, 56)
 # enemy, its goal and the statuses riding on it down under a scrollbar. The cover
 # is now an identifier, not the exhibit, and the room it gives back goes to the
 # thing you opened the popup to read.
-const COVER := Vector2(132, 176)
+#
+# Smaller again now that the SOURCE sits beside it (_build_game_column): the two
+# share the row, and the width the source needs to say "X inspired Y" without
+# wrapping every second word comes out of the half that is already the least
+# informative.
+const COVER := Vector2(112, 150)
+# The column beside the cover. Not a hard width — the source block expands into
+# whatever the row has — but the floor the game column is sized to hold, so the
+# pair never has to wrap at the modal's narrowest.
+const SOURCE_MIN_W := 158.0
 # The ladder's own column. Wide enough for a rung (RouteLadder.BOX.x = 150) plus
 # its padding, so a single-file route never has to shrink to fit.
 const LADDER_MIN_W := 360.0
@@ -353,7 +362,7 @@ func _build_header(game: GameData, accent: Color) -> Control:
 func _build_game_column(game: GameData, accent: Color) -> Control:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(COVER.x + 66.0, 0)
+	scroll.custom_minimum_size = Vector2(COVER.x + SOURCE_MIN_W + 26.0, 0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# Shares the width with the route rather than being pinned to the cover: a
 	# ladder needs about a third of the panel and the goal text is the thing that
@@ -362,7 +371,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	scroll.size_flags_stretch_ratio = 0.62
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
-	col.custom_minimum_size = Vector2(COVER.x + 40.0, 0)
+	col.custom_minimum_size = Vector2(COVER.x + SOURCE_MIN_W + 12.0, 0)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
 
@@ -380,6 +389,17 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
 	col.add_child(conn)
 
+	# THE COVER AND THE SOURCE ARE ONE ROW, art on the left and the evidence beside
+	# it. The source was a band of its own under the game's facts, which is four
+	# lines of a column that has none to spare — and the cover was always the
+	# tallest thing here with dead space either side of it. Beside the art the
+	# source costs the column the height of the cover and nothing more, and the
+	# room it gives back goes to the enemy block under it.
+	#
+	# The cover shrinks a little to pay for the width (see COVER): it is the one
+	# thing on this popup the player has already seen — it is what they clicked —
+	# so it is the identifier, not the exhibit.
+	var source_block: Control = _build_source_block()
 	if game.cover_image != null:
 		var art := TextureRect.new()
 		art.texture = game.cover_image
@@ -389,8 +409,23 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
 		frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		frame.add_child(art)
-		col.add_child(frame)
+		if source_block == null:
+			col.add_child(frame)
+		else:
+			# CENTRED AS A PAIR, not each half in the middle of the column: the two
+			# read as one block that way, and a lone cover keeps the centring it has
+			# always had (the branch above).
+			var cover_row := HBoxContainer.new()
+			cover_row.add_theme_constant_override("separation", 10)
+			cover_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			cover_row.add_child(frame)
+			source_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			source_block.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			cover_row.add_child(source_block)
+			col.add_child(cover_row)
+			source_block = null      # placed; the block below has nothing left to do
 
 	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
 	# else on the card already speaks for the REPLACEMENT — its cover, its type,
@@ -447,14 +482,11 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		col.add_child(_fact_line("⚔ Beaten %d time%s" % [beaten, "" if beaten == 1 else "s"],
 			UITheme.GOLD, "Your lifetime record in %s." % game.display_name))
 
-	# WHY THIS GAME IS ON THE MAP FROM HERE — above the enemy and not under it.
-	# The enemy block is the tallest thing in this column (a goal, its clauses, the
-	# statuses riding on it), so anything after it is below the fold on the games
-	# that have most to say, and the source would then be visible exactly where it
-	# is least interesting. Here it sits under the game's own facts and above what
-	# is waiting, which is also the order the decision is read in: what this is,
-	# how it connects to where I am, what I would be fighting.
-	var source_block: Control = _build_source_block()
+	# THE COVERLESS CASE. The source rides beside the art (above), and a game with
+	# no art in the sheet has no art to ride: it falls back to a band of its own,
+	# above the enemy block rather than under it, because the enemy block is the
+	# tallest thing in this column and anything after it is below the fold on the
+	# games with most to say.
 	if source_block != null:
 		col.add_child(HSeparator.new())
 		col.add_child(source_block)
@@ -498,19 +530,23 @@ func _build_source_block() -> Control:
 	var influencer: GameData = found["from"]
 	var influenced: GameData = found["to"]
 
+	# SIZED FOR THE SLOT BESIDE THE COVER, which is a narrow one: the type sizes
+	# here are a step down from the rest of the column because two game names and a
+	# URL have to fit in ~160px next to a 150px-tall picture.
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 3)
+	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
 
 	var head := Label.new()
 	head.text = "🔗  SOURCE"
-	head.add_theme_font_size_override("font_size", 11)
+	head.add_theme_font_size_override("font_size", 10)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
 
 	var claim := Label.new()
 	claim.text = "%s inspired %s" % [influencer.display_name, influenced.display_name]
 	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	claim.add_theme_font_size_override("font_size", 13)
+	claim.add_theme_font_size_override("font_size", 12)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(claim)
 
@@ -520,7 +556,8 @@ func _build_source_block() -> Control:
 	if String(found.get("relation", "")).strip_edges() != "":
 		var chip := Label.new()
 		chip.text = "SEQUEL / SAME DEVELOPERS"
-		chip.add_theme_font_size_override("font_size", 10)
+		chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		chip.add_theme_font_size_override("font_size", 9)
 		chip.add_theme_color_override("font_color", UITheme.GOLD)
 		box.add_child(chip)
 
@@ -535,14 +572,14 @@ func _build_source_block() -> Control:
 		open_btn.text = "🔗  Open source"
 		open_btn.tooltip_text = source
 		open_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		open_btn.add_theme_font_size_override("font_size", 11)
+		open_btn.add_theme_font_size_override("font_size", 10)
 		open_btn.pressed.connect(func(): OS.shell_open(source))
 		box.add_child(open_btn)
 		var url := Label.new()
 		url.text = short_source(source)
 		url.tooltip_text = source
 		url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-		url.add_theme_font_size_override("font_size", 10)
+		url.add_theme_font_size_override("font_size", 9)
 		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		box.add_child(url)
 	else:
@@ -562,7 +599,7 @@ func _build_source_block() -> Control:
 # away, which is what the button is.
 #
 # Static and public so a test can check the elision without walking Labels.
-const SOURCE_CHARS := 52
+const SOURCE_CHARS := 34
 
 static func short_source(url: String) -> String:
 	var short: String = url.strip_edges()
@@ -580,7 +617,7 @@ func _source_note(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", 10)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
 
@@ -663,6 +700,13 @@ func _build_enemy_block(game: GameData) -> Control:
 		UITheme.DANGER if bool(_choice.get("boss", false)) else UITheme.TEXT)
 	row.add_child(name_lbl)
 
+	# THE GOAL'S OWN SENTENCE, and nothing bolted onto it. What a status adds is
+	# drawn under it as its own row (§13, UITheme.addon_row): the goal line used to
+	# run "Defeat 10+ bugs and you must beat 2 bosses without getting hit or instead
+	# skip or trash 3 items/upgrades" in one colour, which is three different things
+	# joined by two conjunctions, and says nothing about which of them makes the
+	# goal harder.
+	var entry: Dictionary = {"enemy": enemy, "statuses": {}}
 	var hp: int = GameLoop2.effective_health(enemy)
 	var goal := RichTextLabel.new()
 	goal.bbcode_enabled = true
@@ -672,11 +716,19 @@ func _build_enemy_block(game: GameData) -> Control:
 	goal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	goal.text = "[b]GOAL (%s):[/b] %s\n[i]%s / %s / %d goal%s to beat / dmg %d[/i]" % [
 		String(enemy.goal_type).capitalize(),
-		GameLoop2.goal_text_for({"enemy": enemy, "statuses": {}}),
+		GameLoop2.entry_goal(entry),
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
 		hp, "" if hp == 1 else "s", enemy.damage,
 	]
 	box.add_child(goal)
+
+	# …and the add-ons under it, indented, red for a condition ADDED to the goal
+	# and green for one OFFERED. On this card the clauses are almost always the
+	# player's own — no body has been rolled onto the board yet — which is exactly
+	# what makes them worth colouring here: they are the tax this card will charge,
+	# and reading them is part of deciding whether to take it.
+	for addon in GameLoop2.goal_addons_for(entry):
+		box.add_child(UITheme.addon_row(addon))
 
 	# What ELSE this card puts on the board (§7.5). Under the goal rather than
 	# beside the name, because it is not another fact about this enemy — it is a

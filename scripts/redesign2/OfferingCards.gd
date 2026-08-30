@@ -627,8 +627,28 @@ func _hover_line(choice: Dictionary) -> String:
 		return "[i]%s[/i]%s%s" % [HIDDEN_ENEMY_TEXT, escort, tries]
 	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
 	return "%s[b]%s[/b]  ·  %s%s%s" % [
-		kind, e.display_name,
-		GameLoop2.goal_text_for(_preview_entry(choice)), escort, tries]
+		kind, e.display_name, _goal_line(_preview_entry(choice)), escort, tries]
+
+# The goal with its ADD-ONS COLOURED IN PLACE (§13) — red for a condition a status
+# added to it, green for one offered (a way out, a bonus).
+#
+# The other two screens that draw these give each add-on an indented row of its own
+# (UITheme.addon_row); this one cannot, because it is one line under a cover and
+# the goal is already the half of it that gets truncated. So it keeps the sentence
+# `goal_text_for` writes and tints the clauses inside it, which is the same
+# distinction in the room there is to draw it: the words that make the goal harder
+# are red wherever the player meets them.
+func _goal_line(entry: Dictionary) -> String:
+	var line: String = GameLoop2.entry_goal(entry)
+	for addon in GameLoop2.goal_addons_for(entry):
+		# The bonus stays off this line, as it always has — `goal_text_for` never
+		# carried it, because it is not part of what the goal asks.
+		if String(addon["kind"]) == "bonus":
+			continue
+		line += "  [color=#%s]%s %s[/color]" % [
+			UITheme.addon_color(bool(addon["required"])).to_html(false),
+			addon["joiner"], addon["text"]]
+	return line
 
 # The board entry to read a `choice`'s goal line off (§13). Once the card has been
 # taken, that is the live body it put on the board, statuses and all. For an

@@ -4154,20 +4154,78 @@ func goal_text_for(entry: Dictionary) -> String:
 	# second body is asking for a different thing than it asked for on its first,
 	# and this is the line every screen quotes.
 	var text: String = entry_goal(entry)
+	for addon in goal_addons_for(entry):
+		# The BONUS add-ons are deliberately not here: they are optional, so they
+		# were never part of the sentence describing what has to be done. They are on
+		# `goal_addons_for` because the screens that draw the add-ons as rows draw all
+		# three kinds, and the difference between them is what the colour is FOR.
+		if String(addon["kind"]) == "bonus":
+			continue
+		text += " %s %s" % [addon["joiner"], addon["text"]]
+	return text
+
+# --- a goal's ADD-ONS, as rows rather than as a sentence --------------------
+#
+# A goal picks up clauses. A status on the body tightens it, a status on the
+# PLAYER tightens every body's, a Burn opens a second way out of one, and an
+# enemy bonus hangs a free objective off it. `goal_text_for` reads all of that as
+# one run-on sentence — "Defeat 10+ bugs and you must beat 2 bosses without
+# getting hit or instead skip or trash 3 items/upgrades" — which is exactly as
+# readable as it looks, and says nothing about which half of it HURTS.
+#
+# So the parts are also available as rows. Each is:
+#
+#   {status, stacks, games, kind, source, required, joiner, text}
+#
+# `kind` is &"clause" / &"instead" / &"bonus"; `required` is the one bit the
+# screens colour on — a clause is a condition ADDED to the goal (red: the goal got
+# harder), an `instead` or a `bonus` is something OFFERED (green: a way out, or a
+# free reward). `joiner` is the word the sentence form uses, so a screen drawing
+# rows and a screen drawing the sentence cannot word the same add-on differently.
+#
+# `text` is the finished phrase for that side, clock suffix included — a borrowed
+# clause says how long it lasts right where it is read (docs/potions-design.md
+# §5.3), because a player who cannot tell a thrown potion's tax from a permanent
+# one will route around a tax that is about to lift.
+func goal_addons_for(entry: Dictionary) -> Array:
+	var out: Array = []
 	for clause in required_clauses_for(entry):
 		var sd: StatusData = clause["status"]
 		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
 			else StatusData.ENEMY
-		# A BORROWED clause says so, right where it is read (§5.3 of
-		# docs/potions-design.md). A player who cannot tell a thrown potion's clause
-		# from a permanent one will route around a tax that is about to lift.
-		text += " and %s%s" % [sd.clause_text(which, int(clause["stacks"])),
-			StatusData.clock_suffix(int(clause.get("games", 0)))]
+		out.append({
+			"status": sd, "stacks": int(clause["stacks"]),
+			"games": int(clause.get("games", 0)),
+			"kind": "clause", "source": String(clause["source"]), "required": true,
+			"joiner": "and",
+			"text": "%s%s" % [sd.clause_text(which, int(clause["stacks"])),
+				StatusData.clock_suffix(int(clause.get("games", 0)))],
+		})
 	for alt in alternatives_for(entry):
 		var asd: StatusData = alt["status"]
-		text += " or instead %s" % asd.alternative_text(
-			StatusData.ENEMY, int(alt["stacks"]))
-	return text
+		out.append({
+			"status": asd, "stacks": int(alt["stacks"]),
+			"games": int(alt.get("games", 0)),
+			"kind": "instead", "source": "enemy", "required": false,
+			"joiner": "or instead",
+			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"])),
+				StatusData.clock_suffix(int(alt.get("games", 0)))],
+		})
+	for bonus in bonus_objectives_for(entry):
+		var bsd: StatusData = bonus["status"]
+		out.append({
+			"status": bsd, "stacks": int(bonus["stacks"]),
+			"games": int(bonus.get("games", 0)),
+			"kind": "bonus", "source": "enemy", "required": false,
+			# NO JOINER. A bonus's own wording already opens with one —
+			# `objective_text` writes "and if you get 2 achievements, gain +1 Medium
+			# Chest", because a row that pays has to advertise what skipping it
+			# forfeits — so a joiner here would say "and if" twice.
+			"joiner": "",
+			"text": "%s%s" % [bsd.objective_text(StatusData.ENEMY, int(bonus["stacks"])),
+				StatusData.clock_suffix(int(bonus.get("games", 0)))],
+		})
+	return out
 
 # --- statuses in combat (§13.4) -------------------------------------------
 #

@@ -1551,3 +1551,72 @@ func test_the_tooltip_says_when_a_buff_is_enemies_only() -> void:
 	# something and a tooltip that never mentions it doesn't.
 	var tip: String = Data.get_status(&"strength").tooltip_for(StatusData.PLAYER, 2)
 	assert_true(tip.to_lower().contains("enemies only"))
+
+# --- a goal's ADD-ONS, as rows rather than as a sentence (§13) ---------------
+#
+# The goal line used to run every clause together in one colour, which says
+# nothing about which half of it makes the goal harder. The parts are available
+# as rows now, each carrying the one bit the screens colour on.
+
+func test_the_addons_split_the_goal_line_into_its_parts() -> void:
+	_register_player_clause()
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	GameState.apply_status(CLAUSE_ID, 2)
+	var addons: Array = GameLoop2.goal_addons_for(GameLoop2.arrival())
+	assert_eq(addons.size(), 2, "the player's clause and the way out")
+	assert_eq(String(addons[0]["kind"]), "clause", "clauses first")
+	assert_eq(String(addons[1]["kind"]), "instead",
+		"and the way out last — it replaces the goal AND its clauses")
+
+func test_a_required_addon_is_red_and_an_offered_one_is_green() -> void:
+	# The whole point of the split: a clause is a condition ADDED to the goal, an
+	# `instead` or a `bonus` is something OFFERED.
+	_register_player_clause()
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	GameLoop2.apply_enemy_status(&"marked", 2, "current")
+	GameState.apply_status(CLAUSE_ID, 2)
+	var kinds: Dictionary = {}
+	for addon in GameLoop2.goal_addons_for(GameLoop2.arrival()):
+		kinds[String(addon["kind"])] = bool(addon["required"])
+	assert_true(bool(kinds.get("clause", false)), "a clause is required of you")
+	assert_false(bool(kinds.get("instead", true)), "a way out is offered")
+	assert_false(bool(kinds.get("bonus", true)), "and so is a bonus")
+	assert_eq(UITheme.addon_color(true), UITheme.DANGER, "required reads as a threat")
+	assert_eq(UITheme.addon_color(false), UITheme.SUCCESS, "offered reads as a gift")
+
+func test_the_goal_sentence_is_still_written_from_the_same_parts() -> void:
+	# The sentence form is `goal_addons_for` joined up, so a screen drawing rows
+	# and a screen drawing the line cannot word the same add-on differently — and
+	# the bonus stays off the sentence, because it is not part of what is asked.
+	_register_player_clause()
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	GameLoop2.apply_enemy_status(&"marked", 2, "current")
+	GameState.apply_status(CLAUSE_ID, 2)
+	var entry: Dictionary = GameLoop2.arrival()
+	assert_eq(GameLoop2.goal_text_for(entry),
+		"Beat it and you must get 2 achievements"
+		+ " or instead skip or trash 3 items/upgrades")
+	for addon in GameLoop2.goal_addons_for(entry):
+		if String(addon["kind"]) == "bonus":
+			assert_false(GameLoop2.goal_text_for(entry).contains(String(addon["text"])),
+				"a bonus is optional, so it is not in the sentence of what is asked")
+
+func test_an_addon_row_leads_with_its_status_symbol() -> void:
+	_choose_solo(_enemy("Beat it"))
+	GameLoop2.apply_enemy_status(&"burn", 1, "current")
+	var addons: Array = GameLoop2.goal_addons_for(GameLoop2.arrival())
+	assert_eq(addons.size(), 1)
+	var row: Control = UITheme.addon_row(addons[0])
+	add_child_autofree(row)
+	var art: Array = row.find_children("*", "TextureRect", true, false)
+	var burn: StatusData = Data.get_status(&"burn")
+	if burn != null and burn.image != null:
+		assert_gt(art.size(), 0, "the status's own symbol leads the row")
+	var text: String = ""
+	for node in row.find_children("*", "Label", true, false):
+		text += (node as Label).text
+	assert_string_contains(text, "or instead",
+		"and the joiner says how the row hangs off the goal")

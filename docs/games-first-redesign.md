@@ -227,7 +227,7 @@ it grants.
 
 | Character | Level Up objective (per game) | Reward |
 |---|---|---|
-| Rodney | Beat a game without meta progression | +1 Max Health, +1 Health, +1 Scroll |
+| Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
 | Isaac | Unlock a new Item | +1 Small Chest |
 | Zoe | Perfect a Game | +1 Dash |
 | Minä | Craft or combine a spell or weapon | +1 Transmute |
@@ -2487,6 +2487,22 @@ spawns while it is owned.
   `PlaySession2` driver all go through it. (Catalog views — Collection, the Atlas,
   the note modal — keep showing the authored goal, since they describe the enemy
   rather than the run.)
+- **…and `GameLoop2.goal_addons_for(entry)` is the same thing as ROWS.** The
+  sentence form runs every clause together — *"Defeat 10+ bugs and you must beat
+  2 bosses without getting hit or instead skip or trash 3 items/upgrades"* — which
+  is three different things joined by two conjunctions, in one colour, saying
+  nothing about which of them makes the goal **harder**. So the parts are also
+  available separately: `{status, stacks, games, kind, source, required, joiner,
+  text}`, where `kind` is `clause` / `instead` / `bonus` and `required` is the bit
+  the screens colour on. A **clause is a condition added** to the goal and reads
+  RED; an **`instead` or a `bonus` is offered** — a way out, a free reward — and
+  reads GREEN. `UITheme.addon_row` draws one, indented under the goal and led by
+  the status's own symbol (clock badge included, so a borrowed clause still says
+  how long it lasts); `UITheme.addon_color` is the rule on its own, for the
+  offering's hover line, which has only the one line and so tints the words in
+  place instead. `goal_text_for` is written from the same list, minus the
+  `bonus` rows — optional was never part of the sentence of what is asked — so
+  the row form and the sentence form cannot word an add-on differently.
 - **Applying one** — the `apply_status` effect (`apply_status <id> [N]
   [target=player|current|all|random]` in the item Effect DSL). `player` is the
   default; `current` / `all` / `random` route through

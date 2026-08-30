@@ -136,6 +136,20 @@ def parse_reward(raw):
         n = _find_amt(s, verb + r"\b")
         if n:
             stats[key] = n
+    # LOOT FIRST, before the chest and scroll branches. It is the KIND-BLIND
+    # payout — a piece of loot whose kind (scroll / pill / potion) is rolled on
+    # use, GameState.add_loot("loot") — and it has to be read before `Scroll`
+    # so a reward naming both cannot be filed as the narrower one.
+    #
+    # WITHOUT THIS BRANCH the generator quietly downgrades Rodney: his sheet cell
+    # reads "+1 Loot", nothing here matched it, and a regeneration rewrote his
+    # `level_up_reward_type` from &"loot" to &"none" — a level-up that pays a
+    # stat and nothing else. The .tres in the repo was right and the generator
+    # that is supposed to produce it was not, which is the exact failure mode
+    # CLAUDE.md warns about: the next regeneration silently reverts you.
+    loot = _find_amt(s, r"Loot")
+    if loot:
+        return stats, "loot", loot, 0
     random_chest = _find_amt(s, r"Random Sized Chest")
     if random_chest:
         return stats, "random_sized_chest", random_chest, 0

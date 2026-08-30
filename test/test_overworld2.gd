@@ -406,6 +406,12 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
 	# checkbox: it should be defeated (and drop) before it can hit (§2).
 	_ui.pick(0)
+	# DISARMED BEFORE THE MISS. This test counts bodies on the board across two
+	# reports, and a report is the enemies' turn: a spawner ability (Carcass lays
+	# one, Obscura makes two) puts a THIRD body on the stack and the counts below
+	# are then wrong on the handful of enemies that have one — which reads exactly
+	# like a flake and is not one. Abilities are test_enemy_abilities.gd's subject.
+	_disarm_board()
 	_ui.report(false)
 	# Two followers: the game's own enemy and its escort (§7.5). The escort is taken
 	# off so this test is about ONE follower being fulfilled, which is what it is
@@ -415,6 +421,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	var hp_before: int = GameState.hp
 	GameLoop2.drops.clear()
 	_ui.pick(0)                                  # play another game
+	_disarm_board()
 	# THREE rows: the old follower, and both bodies this game walked on. The
 	# advertised one used to be missing from this list — it had the Goal box
 	# instead — and it is an ordinary row now (GameLoop2.arrivals).
