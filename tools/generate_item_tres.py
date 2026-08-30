@@ -31,7 +31,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   stat_mirror:, stat_floor:, stat_gain_bonus:, negate_lethal:,
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
-                  charged (charge_cost N), bank_shields, bomb_stun,
+                  charged (charge_cost N), bomb_stun,
                   bomb_cardinal, bomb_tile <tile>, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
@@ -863,11 +863,6 @@ def parse_item(row):
         elif kl0 == "carries_leftover_energy":
             fields["carries_leftover_energy"] = True
             last_trigger = None
-        elif kl0 == "bank_shields":
-            # Barricade: what a resolved game left standing becomes Bonus Shields
-            # (§4.3) instead of expiring with the game that granted it.
-            fields["bank_shields"] = True
-            last_trigger = None
         elif kl0 == "pills_positive":
             # Lucky Foot: a Negative pill taken while this is held rerolls into a
             # random Positive one. Neutral pills are untouched, and the colour
@@ -1175,7 +1170,6 @@ def item_tres(row):
         ("perfect_effects", lambda v: gd_value(v)),
         ("perfect_save_chance", lambda v: str(v)),
         ("bonus_level_up_chance", lambda v: str(v)),
-        ("bank_shields", lambda v: "true"),
         ("pills_positive", lambda v: "true"),
         ("echo_loot", lambda v: str(v)),
         ("bomb_stun", lambda v: "true"),

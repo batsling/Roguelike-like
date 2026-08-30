@@ -202,7 +202,7 @@ Current roster:
 
 **THE TWO POOLS ARE NAMED FOR WHETHER THEY SURVIVE THE GAME.** What a game
 grants are **Temporary Shields** — they expire when it is reported. What is
-gained off the board (a pill, Barricade banking a resolved game) are plain
+gained off the board (a pill, the Barricade card banking a resolved game) are plain
 **Shields** — they stay until something breaks one, and are used only once the
 temporary ones are gone (§4.3).
 
@@ -316,8 +316,9 @@ one (`GameLoop2._take_hit`).
   something hits for more.
 - **The ones a game grants are TEMPORARY, and expire when you report it.** They
   never bank into the next game on their own: an easy game cleared first try does
-  not arm you for the next. **Barricade** (§4.3) is the exception, and it banks
-  the survivors into the pool that stays rather than stopping the expiry.
+  not arm you for the next. The **Barricade card** ([`cards-design.md`](cards-design.md)
+  §5.1) is the exception, and it banks the survivors into the pool that stays
+  rather than stopping the expiry — for the next game only, because it is one use.
 - **The ones gained off the board are just SHIELDS, and stay** (§4.3) — a pill's,
   a banked game's. A hit breaks a Temporary Shield first, since those are the ones
   about to expire anyway.
@@ -657,17 +658,24 @@ Shield expires with the game it came from, and a Shield does not.
   Shield stays until something breaks it, which is what makes it worth carrying
   toward a game you expect to hurt.
 
-**Barricade banks into that pool.** The relic used to stop the temporary shields
+**Barricade banks into that pool.** It used to stop the temporary shields
 expiring, which quietly made them a second non-expiring pool with its own rules.
 It now **converts what a resolved game left standing into Shields**, so there is
-one pool that persists and one relic that fills it. That is a small buff — banked
+one pool that persists and one thing that fills it. That is a small buff — banked
 shields are used last too, where the old behaviour spent them first — and it is
-the right one: the relic is about the cover you *didn't need*.
+the right one: it is about the cover you *didn't need*.
+
+**And Barricade is a CARD now, not a relic** ([`cards-design.md`](cards-design.md)
+§5.1). The relic held this rule for every game, forever, from the moment it was
+picked up; the card arms it for the NEXT game and is spent. `GameState.banks_shields()`
+is still the only reader — it reads a run flag instead of the inventory — so
+nothing about the rule above changed except how long it lasts.
 
 **Where pills come from.** Two places, and they are the same roll.
 
-**Beating a game pays 1 random piece of loot** — a three-way split between a
-scroll, a pill and a potion, and the run's baseline loot income. It is paid for
+**Beating a game pays 1 random piece of loot** — an even FOUR-way split between a
+scroll, a pill, a potion and a **card** ([`cards-design.md`](cards-design.md) §4),
+and the run's baseline loot income. It is paid for
 any game the player actually saw through: **walking away from a game pays
 nothing**. It arrives the way a kill drop does — the same asked modal, one queued
 behind the other — rather than as a toast, because with a **nine-piece cap** on
@@ -1087,6 +1095,32 @@ the two compose rather than cancelling: one pill taken with both relics is two
 doses of it plus three echoes at two doses each. That is deliberately a lot —
 it is a Boss relic meeting a Rare one — and the Negative rows are doubled too, so
 the pile it makes is only good if the alphabet is already learned.
+
+### 4.4 Potions and Cards — the other two kinds
+
+Two more loot consumables share the pack described above, and each has a design
+doc of its own rather than a section here, because each is a system rather than a
+roster.
+
+**Potions** ([`potions-design.md`](potions-design.md)) are the third kind and the
+only one with **two verbs**: every row authors a quaff side and a throw side, and
+the player chooses which they are buying when they spend it. Identification is per
+type and covers both.
+
+**Cards** ([`cards-design.md`](cards-design.md)) are the fourth, and the one that
+breaks the pattern the other three share. **A card is not a gamble**: one use, no
+identification, no Preference, and what it does printed on it. Three variations on
+"spend it to find out what it was" is two more than a run needs, so the fourth kind
+is the other question — *when*, rather than *whether*.
+
+What a card withholds is **which card it is, and only on the floor**: lying on a
+battlefield square it draws its DECK'S icon (five icons over thirteen cards) and
+turns over for good when it is picked up (§8.2 above, and cards-design §3).
+
+**Beating a game therefore pays an even four-way split** — 25 / 25 / 25 / 25 across
+scroll, pill, potion and card (`GameState.LOOT_KINDS`). The Identify tenth is still
+taken off the top and did not move: the run that needs the scroll is the run holding
+four unknown capsules, and its odds should not depend on how many cards it drew.
 
 ---
 
@@ -1716,7 +1750,7 @@ the next shop you walk into, free (§14).
 | `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 *empty* Max Health; Mango: +4 Max Health, healed). |
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
 | `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; D10 → re-roll the board, 2; Staff of Flame → +3 Burn on a body you point at, 3). |
-| `Usable` | Active, player-triggered (Ride the Bus → teleport to a random Deckbuilder game). |
+| `Usable` | Active, player-triggered (Wand of Wishing → obtain any one item). Ride the Bus was this kind's example until it became a **card** ([`cards-design.md`](cards-design.md) §5.1). |
 | `Passive` | Always-on modifier (Mine-r Construction: grow the Grid). |
 | `Incremental` | A `Triggered` item whose payout is on the **Nth** time, not every time (Charm of the Vampire: every third defeated enemy is +1 Health). The count lives on the inventory slot (`ItemData.counter_value`), so two copies each keep their own — Slay the Spire's rule — and it is **drawn on the item's own art**, bottom-right, the way the Spire draws a relic counter. |
 
@@ -1932,9 +1966,11 @@ Medium / Large / Huge come up at exactly those odds (`Data.CHEST_SIZE_CHOICES`).
 #### The floor — LOOT lands where the body fell
 
 A defeated body's **loot** is **put on the board, on the square it died in**
-(`GameLoop2.drops`, keyed by cell): one piece, rolled on the same three-way
-scroll / pill / potion split as a game's own payout (§4.3, `roll_loot_entry`), a
-boss included. It stays there until the player takes it or the game is reported.
+(`GameLoop2.drops`, keyed by cell): one piece, rolled on the same four-way
+scroll / pill / potion / card split as a game's own payout (§4.3,
+`roll_loot_entry`), a boss included. A **card** lands there face down — it draws
+its deck's icon until it is picked up ([`cards-design.md`](cards-design.md) §3),
+which is the one thing on this board that is still a chest. It stays there until the player takes it or the game is reported.
 That is the whole point of clearing a goal *during* a game: the reward is on the
 table in front of you rather than banked behind a screen you have not reached yet.
 
@@ -1947,12 +1983,21 @@ still walking at you, and picked up without a question being asked first. So the
 floor kept the half a board can actually depict, and the relics moved to the
 reward screen where the choosing belongs.
 
+**A card is the one exception, and it is a deliberate one**
+([`cards-design.md`](cards-design.md) §3). It lies there FACE DOWN — the token
+draws its deck's icon and the hover names the deck and stops — so the square asks
+*"is a Major Arcana worth a slot"* rather than answering it. That is the chest's
+question back on the board, in the one form a board can depict, and it is paid for
+by the card being fully readable the instant it is picked up.
+
 - **It wears its own art.** The board draws a token carrying the same picture the
   pack and the loot window draw (`BattlefieldView._drop_node` →
   `LootSystem.art_texture`), sized through `LootSystem.art_box` so the **horse
   dose still comes back bigger** here too. A kind with no art falls back to the ✦
-  glyph the floor wore before. An **unidentified** piece shows only the anonymous
-  vial or capsule it shows everywhere else — the whole point of taking one is
+  glyph the floor wore before. A **card** is the one kind whose floor picture is
+  not its pack picture: it shows its deck's icon and turns over on pickup
+  (`art_texture(entry, face_up)`). An **unidentified** piece shows only the
+  anonymous vial or capsule it shows everywhere else — the whole point of taking one is
   finding out.
 - **You pick it up by picking it up.** The token is a drag HANDLE (`FloorLoot`)
   and there is **no click**: drag it and the pack appears beside the board for as
@@ -2325,9 +2370,9 @@ player there is a **25% chance a random carried scroll is destroyed**
 once per stack — Scroll of Fire's `+3 Burn` is one fire, not three chances at one
 — on the gain only, and only on a gain that moved the number, so a decay and a
 fourth stack the `Max: 3` ceiling eats both set nothing alight. It is scrolls and
-not loot generally on purpose: a pill is a capsule and a potion is a bottle, and
-this is the first rule that tells the three alphabets sharing one pack (§4.3)
-apart while they are still *in* the pack. It gives Burn a cost that is felt the
+not loot generally on purpose: a pill is a capsule, a potion is a bottle and a
+card is a card, and this is the first rule that tells the four kinds sharing one
+pack (§4.3) apart while they are still *in* the pack. It gives Burn a cost that is felt the
 moment it lands rather than only at the next checklist. The scroll is named in
 the toast by the mask the pack draws, so an unread one burns as "ZELGO MER" and
 the player is left one mystery lighter with no idea which one it was.

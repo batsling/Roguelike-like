@@ -96,13 +96,16 @@ static func build(cfg: Dictionary) -> Control:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
 	col.add_child(head)
+	# THROUGH `crisp_tex`, like every other surface that draws content art. This
+	# used to build the TextureRect by hand with the same three properties and one
+	# missing: `UITheme.apply_crisp`, which switches a texture being drawn LARGER
+	# than its own pixels to NEAREST filtering. Without it the hover was the one
+	# place in the game where small art was smeared — a 14x18 card face at 44px is
+	# a 2.9x upscale, and linear filtering turns it to mush. Pills and potions were
+	# quietly suffering the same thing; cards are just where it became obvious.
 	var art: Texture2D = cfg.get("art")
 	if art != null:
-		var tex := TextureRect.new()
-		tex.texture = art
-		tex.custom_minimum_size = Vector2(ART, ART)
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var tex: TextureRect = UITheme.crisp_tex(art, int(ART))
 		tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		head.add_child(tex)
 

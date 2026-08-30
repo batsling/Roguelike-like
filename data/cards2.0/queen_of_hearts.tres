@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_queen_of_hearts"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"queen_of_hearts"
+display_name = "Queen of Hearts"
+rarity = "Rare"
+source_game = "The Binding of Isaac"
+set_name = "Playing Cards"
+description = "Gain from +1 to +20 Health"
+effect = [{"op": "gain_hp", "min": 1, "max": 20}]
+file = "QueenOfHearts"
+icon = "Isaac_Playing_Cards"

@@ -2001,6 +2001,15 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		else:
 			res["shields_expired"] = GameState.shields
 			GameState.shields = 0
+	# AND THE CARD IS SPENT, whether or not there was anything to bank
+	# (docs/cards-design.md §5). Barricade promises the NEXT game, and a next game
+	# that ended with its cover already broken is a game the card was there for —
+	# disarming only on a successful bank would hold the promise open until a game
+	# happened to end with shields standing, which is a different card.
+	#
+	# Outside the `shields > 0` gate above for exactly that reason: that branch is
+	# not reached at all when the game resolved with nothing left over.
+	GameState.bank_shields_next = false
 	# The tracker went with it: `res` already carries the count for the log, and the
 	# board must not keep counting a finished game's lost runs. The escape gate is
 	# the same kind of per-game fact and goes at the same moment — the swings above

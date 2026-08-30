@@ -337,9 +337,13 @@ func test_the_two_kind_blind_callers_roll_the_same_odds() -> void:
 	# themselves. One roll in one place now, which is what stops them drifting the
 	# day the split is tuned.
 	var kinds := {}
-	for _i in range(90):
+	for _i in range(200):
 		kinds[String(GameState.roll_loot_entry("loot").get("type", ""))] = true
-	assert_eq(kinds.keys().size(), 3, "the same three kinds, off the same roll")
+	# FOUR since cards landed (docs/cards-design.md §4) — an even quarter each, and
+	# `GameState.LOOT_KINDS` rather than a literal, so the day a fifth kind arrives
+	# this test is about the roll rather than about the number 4.
+	assert_eq(kinds.keys().size(), GameState.LOOT_KINDS.size(),
+		"the same kinds, off the same roll")
 
 func test_the_pack_asks_a_function_how_big_it_is() -> void:
 	# §8.1: the cap is nine and stays nine (decision #15), but a relic that hands

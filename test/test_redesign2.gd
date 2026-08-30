@@ -173,8 +173,8 @@ func test_rodneys_level_pays_a_piece_of_loot_of_any_kind() -> void:
 		if GameState.loot_items.size() == 1:
 			kinds[String((GameState.loot_items[0] as Dictionary).get("type", ""))] = true
 	for kind in kinds.keys():
-		assert_true(["scroll", "pill", "potion"].has(kind),
-			"every piece is one of the three kinds of loot, not %s" % kind)
+		assert_true(GameState.LOOT_KINDS.has(kind),
+			"every piece is one of the kinds of loot, not %s" % kind)
 	assert_gt(kinds.size(), 1, "and over thirty levels it is not always the same one")
 
 # --- Chest sizing (Random Sized Chest, §8.2) --------------------------------
@@ -317,7 +317,6 @@ func test_bomb_rule_flags() -> void:
 	assert_true(Data.get_item2(&"sticky_bombs").bomb_stun, "Sticky Bombs stun")
 	assert_true(Data.get_item2(&"brimstone_bombs").bomb_cardinal,
 		"Brimstone Bombs blast the four cardinals")
-	assert_true(Data.get_item2(&"barricade").bank_shields, "Barricade banks shields")
 	assert_false(Data.get_item2(&"lunch").bomb_stun, "an ordinary item sets none of them")
 
 func test_bomb_rule_flags_read_off_the_inventory() -> void:

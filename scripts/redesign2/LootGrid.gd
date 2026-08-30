@@ -251,7 +251,7 @@ func drag_preview(slot: LootSlot) -> Control:
 # square onto a grid of bordered cells has nothing to line up with, and the thing
 # in your hand is on its way to being a cell in the pack — so it may as well
 # already look like one.
-static func preview_cell(entry: Dictionary) -> Control:
+static func preview_cell(entry: Dictionary, face_up: bool = true) -> Control:
 	var holder := Control.new()
 	# ABOVE WHATEVER THE DRAG SUMMONED. Godot parents the drag preview to the
 	# topmost Control over the one the drag started on and moves it to the front of
@@ -274,7 +274,13 @@ static func preview_cell(entry: Dictionary) -> Control:
 	# pointing at rather than hanging off one corner of it.
 	cell.position = -cell.size * 0.5
 	cell.modulate = Color(1, 1, 1, 0.9)
-	cell.add_child(_cell_body(entry, Callable(), false))
+	# FACE DOWN WHILE IT IS STILL A FLOOR PIECE (docs/cards-design.md §3). A card
+	# picked up off the board and then dropped back on it has to end where it
+	# started, and a preview that turned it face up would make drag-and-cancel a
+	# free look at every card on the board — the one thing the mask exists to
+	# prevent. It turns over when it lands in a slot, which is where "in the pack"
+	# begins.
+	cell.add_child(_cell_body(entry, Callable(), false, true, face_up))
 	holder.add_child(cell)
 	return holder
 
@@ -336,7 +342,7 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 # the name underneath at 18px, and the same words twice, 20 pixels apart, at two
 # sizes, reads as a mistake rather than as emphasis.
 static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
-		with_name: bool = true) -> Control:
+		with_name: bool = true, face_up: bool = true) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", LootSlot.GAP)
 
@@ -349,7 +355,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.add_child(centre)
-	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART)
+	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART, face_up)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	centre.add_child(art)
 
@@ -361,20 +367,25 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	# it used to be grey body text on every surface that showed it. An unknown piece
 	# gets "?" instead — the absence of a preference IS the gamble, so the badge says
 	# which of the two this is rather than going missing.
-	var badge := UITheme.chip(pref_glyph(entry) if known else "?",
-		UITheme.preference_color(LootSystem.preference(entry)) if known else UITheme.TEXT_FAINT,
-		9)
-	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	band.add_child(badge)
+	#
+	# A CARD GETS NO BADGE AT ALL (docs/cards-design.md §2). It has no Preference —
+	# there is no gamble for one to hint at — and the fallback "?" would say the one
+	# thing that is not true of it: that this is a piece you do not know yet.
+	if String(entry.get("type", "")) != "card":
+		var badge := UITheme.chip(pref_glyph(entry) if known else "?",
+			UITheme.preference_color(LootSystem.preference(entry)) if known else UITheme.TEXT_FAINT,
+			9)
+		badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		band.add_child(badge)
 	col.add_child(band)
 
 	if not with_name:
 		return col
 
 	var name := Label.new()
-	name.text = LootSystem.display_name(entry)
+	name.text = LootSystem.display_name(entry, face_up)
 	name.add_theme_font_size_override("font_size", 10)
 	name.add_theme_color_override("font_color", UITheme.TEXT if known else UITheme.TEXT_FAINT)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

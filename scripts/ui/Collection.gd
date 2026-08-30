@@ -31,6 +31,7 @@ enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS }
 const LOOT_SCROLLS := "scrolls"
 const LOOT_PILLS := "pills"
 const LOOT_POTIONS := "potions"
+const LOOT_CARDS := "cards"
 
 # The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
 # (PillData carries no image field): its picture is the COLOUR the run deals it
@@ -95,8 +96,8 @@ const GRID_META_FONT := 10
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
-	"potions": "", "games": "", "events": "", "objects": ""}
-# Which sub-tab the Loot tab is on: LOOT_SCROLLS / LOOT_PILLS / LOOT_POTIONS.
+	"potions": "", "cards": "", "games": "", "events": "", "objects": ""}
+# Which sub-tab the Loot tab is on: LOOT_SCROLLS / LOOT_PILLS / LOOT_POTIONS / LOOT_CARDS.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
 var _games_type: int = -1
@@ -1608,6 +1609,7 @@ func _build_loot() -> void:
 	subs.add_child(_loot_sub_button("💊  Pills (%d)" % Data.all_pills().size(), LOOT_PILLS))
 	subs.add_child(_loot_sub_button("🧪  Potions (%d)" % Data.all_potions().size(),
 		LOOT_POTIONS))
+	subs.add_child(_loot_sub_button("🃏  Cards (%d)" % Data.all_cards().size(), LOOT_CARDS))
 	# WHAT THE TAB IS, said once, where the difference between the three halves
 	# actually matters: a scroll hides behind a shared Unidentified art, a pill
 	# hides behind a colour, and a potion hides behind a bottle it does NOT own —
@@ -1646,6 +1648,15 @@ func _loot_note() -> String:
 		LOOT_POTIONS:
 			return ("Revealed reference — including both verbs. Every run deals these "
 				+ "a bottle out of 37, so the colour you'll be holding is not this one.")
+		LOOT_CARDS:
+			# THE ONE HALF OF THIS TAB THAT SPOILS NOTHING (docs/cards-design.md §2).
+			# The other three are a catalog of things a run hides from you; a card is
+			# readable the moment it is in the pack, so this page is a reference to
+			# what you will actually be shown rather than a peek behind anything. What
+			# a run does hide is which card is lying face down on a square, and the
+			# deck icon each cell wears is exactly what the board shows you of it.
+			return ("Revealed reference — and a card hides nothing in a run either. "
+				+ "Face down on the floor it shows only its deck, which is the icon here.")
 		_:
 			return "Revealed reference — a run hides all of this until you identify it."
 
@@ -1662,6 +1673,8 @@ func _populate_loot() -> void:
 			_populate_pills()
 		LOOT_POTIONS:
 			_populate_potions()
+		LOOT_CARDS:
+			_populate_cards()
 		_:
 			_populate_scrolls()
 
@@ -1812,6 +1825,62 @@ func _potion_card(p: PotionData) -> Control:
 	if p.reference != "":
 		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
 	return cell.panel
+
+func _populate_cards() -> void:
+	_clear_children(_grid)
+	var term: String = _search["cards"].to_lower()
+	var cards: Array = Data.all_cards()
+	cards.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for c in cards:
+		if not (c is CardData):
+			continue
+		if term != "" and not (term in c.display_name.to_lower()):
+			continue
+		_grid.add_child(_card_card(c))
+		shown += 1
+	_set_count(shown, Data.all_cards().size())
+
+# 2.0 card cell: BOTH SIDES, side by side, which is the only cell on this tab that
+# needs two pictures. A card's face is what the pack draws and its deck icon is
+# what the board draws while it is lying face down, and the whole of what the kind
+# withholds is the difference between them — so a page showing only the face would
+# leave out the half a player actually has to learn to read.
+#
+# No Preference row, because a card has none (docs/cards-design.md §2). The deck
+# and the source game take that line instead: they are what the icon means.
+func _card_card(c: CardData) -> Control:
+	var ccol := Color(0.86, 0.72, 0.44)
+	var cell := _cell(ccol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	var face: Texture2D = _card_art("cards", c.art_file())
+	if face != null:
+		top.add_child(_tex_rect(face, 48))
+	var back: Texture2D = _card_art("cards_icons", c.icon_file())
+	if back != null:
+		var icon: Control = _tex_rect(back, 28)
+		icon.modulate = Color(1, 1, 1, 0.75)
+		top.add_child(icon)
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(c.display_name, ccol, 14))
+	var deck: String = c.set_name if c.set_name != "" else "Card"
+	head.add_child(_label("%s  ·  %s" % [c.rarity, deck], Color(0.7, 0.7, 0.75), 11))
+	vb.add_child(_label(c.description, Color(0.85, 0.85, 0.88), 12, false, true))
+	if c.source_game != "":
+		vb.add_child(_label("from %s" % c.source_game, Color(0.55, 0.6, 0.7), 10))
+	return cell.panel
+
+func _card_art(folder: String, base: String) -> Texture2D:
+	if base == "":
+		return null
+	var path := "res://images2.0/%s/%s.png" % [folder, base]
+	return load(path) if ResourceLoader.exists(path) else null
 
 func _pill_dose(heading: String, text: String, color: Color) -> Control:
 	var box := VBoxContainer.new()

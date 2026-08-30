@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_ancient_recall"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"ancient_recall"
+display_name = "Ancient Recall"
+rarity = "Rare"
+source_game = "The Binding of Isaac"
+set_name = "MTG Cards"
+description = "Gain +3 Random Cards"
+effect = [{"op": "gain_loot", "kind": "card", "count": 3}]
+file = "AncientRecall"
+icon = "Isaac_MTG_Cards"

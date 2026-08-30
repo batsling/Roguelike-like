@@ -259,6 +259,11 @@ func _build_payload() -> Dictionary:
 		# once, by a pill or by Barricade banking a resolved game, and subtracting
 		# an item half would eat what was granted.
 		"bonus_shields": GameState.bonus_shields,
+		# Barricade, armed and not yet spent (docs/cards-design.md §5). A run flag
+		# rather than something in the pack — the card that armed it is already
+		# gone — so it has to be written down here or a reload would quietly cancel
+		# a card the player paid a loot slot for.
+		"bank_shields_next": GameState.bank_shields_next,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -383,6 +388,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.dash_charges = int(data.get("dash", 0))
 	GameState.shields = int(data.get("shields", 0))
 	GameState.bonus_shields = int(data.get("bonus_shields", 0))
+	GameState.bank_shields_next = bool(data.get("bank_shields_next", false))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))

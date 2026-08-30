@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_barricade"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"barricade"
+display_name = "Barricade"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Ironclad Rare"
+description = "When the next game resolves, unspent Temporary Shields become Shields"
+effect = [{"op": "bank_shields_next"}]
+file = "Barricade"
+icon = "Slay_the_Spire_Ironclad_Rare"

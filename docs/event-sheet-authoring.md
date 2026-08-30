@@ -846,8 +846,8 @@ up being about routing, which is the right place for this game's events to land.
 Reward mapping: a relic is a **small chest**, and relic + potion + standard
 combat reward is **2 small chests + 1 loot**. `gain_loot` is authored as a
 category rather than as `gain_scroll` — a "standard combat reward" is whatever
-loot happens to be, so the cell rolls across all three alphabets and widened on
-its own as each arrived, without any event row being touched.
+loot happens to be, so the cell rolls across all four kinds and widened on
+its own as each arrived — potions, then cards — without any event row being touched.
 
 `Requirement: games >= 6` carries the original's "Floor 6 or later" — depth,
 which this run measures in games played rather than floors.

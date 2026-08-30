@@ -69,6 +69,9 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	# the viewport is actually starting a drag, and this method is also called
 	# DIRECTLY by the tests, which have no OS mouse to move.
 	if get_viewport() != null and get_viewport().gui_is_dragging():
-		set_drag_preview(LootGrid.preview_cell(entry))
+		# FACE DOWN, because it is still on the floor until it lands (cards-design
+		# §3). A preview that turned the card over would make drag-and-cancel a free
+		# look at every card on the board.
+		set_drag_preview(LootGrid.preview_cell(entry, false))
 	return {"kind": "loot_take", "entry": entry.duplicate(true), "offer": -1,
 		"floor": cell}

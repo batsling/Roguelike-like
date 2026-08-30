@@ -463,6 +463,17 @@ var shields: int = 0
 # overworld has to be readable when no board is on screen.
 var bonus_shields: int = 0
 
+# BARRICADE, ARMED (docs/cards-design.md §5). The next game to resolve turns its
+# unspent Temporary Shields into Shields instead of letting them expire, and then
+# this goes back down — one game, because the card is one use.
+#
+# It is a RUN FLAG rather than a property of anything carried, which is the whole
+# difference between the card and the relic it replaces. The relic was read off the
+# inventory (`_any_item_flag`) and so banked every game forever, for as long as it
+# was in the pack; the card is spent, arms this, and is gone. `banks_shields()`
+# below is still the only reader, so GameLoop2 did not have to learn the difference.
+var bank_shields_next: bool = false
+
 # THE TWO POOLS' PLAYER-FACING NAMES (§3.2), in one place because they are told
 # apart by exactly one fact — whether they survive the game — and a screen that
 # invented its own word for either would be describing a third thing.
@@ -1079,6 +1090,7 @@ func reset_run() -> void:
 	# Games-first (2.0) resources.
 	shields = 0
 	bonus_shields = 0
+	bank_shields_next = false
 	bash = 0
 	push = 0
 	transmute = 0
@@ -1858,8 +1870,8 @@ func _apply_status_stacks(status_id: StringName, stacks: int, games: int) -> int
 # One-in-four: the fire takes a random SCROLL out of the pack (§13.1).
 #
 # SCROLLS AND NOT LOOT GENERALLY, which is the whole point of it. A pill is a
-# capsule and a potion is a bottle; a scroll is a sheet of paper, and the run's
-# three alphabets sitting in one nine-slot pack (§4.3) have until now been
+# capsule, a potion is a bottle and a card is a card; a scroll is a sheet of paper,
+# and the four kinds sitting in one nine-slot pack (§4.3) have until now been
 # interchangeable in every way except what they do. This is the first thing that
 # tells them apart while they are still in the bag, and it gives Burn a cost that
 # is felt the moment it lands rather than only at the next checklist.
@@ -2473,8 +2485,15 @@ func _any_item_flag(field: String) -> bool:
 # Barricade: the Temporary Shields a resolved game left standing become ordinary
 # Shields (§4.3) — the pool that stays — instead of expiring with the game that
 # granted them.
+#
+# ARMED BY A CARD, ONCE (docs/cards-design.md §5). This used to read an item flag
+# off the inventory, back when Barricade was a relic and the rule held for every
+# game the run played from the moment it was picked up. As a one-use card the rule
+# holds for the NEXT game and then stops, so the question is about the run's state
+# rather than about what is in the pack — but it is still asked in one place and
+# answered in one place, which is what kept GameLoop2 out of the change.
 func banks_shields() -> bool:
-	return _any_item_flag("bank_shields")
+	return bank_shields_next
 
 # Lucky Foot: a Negative pill rerolls into a random Positive one (§4.3).
 func pills_reroll_positive() -> bool:
@@ -3253,10 +3272,11 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll", "pill", "potion":
-			# Each unit becomes a concrete entry (gained unidentified; the owning
-			# system resolves identity on use). A negative amount drops that many
-			# of the kind instead.
+		"scroll", "pill", "potion", "card":
+			# Each unit becomes a concrete entry. Three of the four are gained
+			# UNIDENTIFIED and the owning system resolves identity on use; a card is
+			# never unidentified at all (docs/cards-design.md §2), so for that arm
+			# the entry is simply what it is.
 			if amount > 0:
 				for _i in range(amount):
 					if loot_is_full():
@@ -3266,6 +3286,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 							_add_random_scroll_loot()
 						"pill":
 							_add_random_pill_loot()
+						"card":
+							_add_random_card_loot()
 						_:
 							_add_random_potion_loot()
 			else:
@@ -3290,7 +3312,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
-		"scroll", "pill", "potion":
+		"scroll", "pill", "potion", "card":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
@@ -3316,6 +3338,11 @@ func loot_pills() -> Array:
 func loot_potions() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "potion")
 
+# And for cards. Nothing rides on the entry beyond what it is: a card has no dose,
+# no colour and no identity to withhold once it is in the pack.
+func loot_cards() -> Array:
+	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "card")
+
 func _add_random_scroll_loot() -> void:
 	loot_items.append(roll_loot_entry("scroll"))
 
@@ -3329,21 +3356,33 @@ func _add_random_potion_loot() -> void:
 	if not entry.is_empty():
 		loot_items.append(entry)
 
-# WHICH ALPHABET A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight
-# three-way split (docs/potions-design.md §8, decision #4).
+func _add_random_card_loot() -> void:
+	var entry: Dictionary = CardSystem.roll_card_loot()
+	if not entry.is_empty():
+		loot_items.append(entry)
+
+# WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight FOUR-way
+# split (docs/cards-design.md §4; docs/potions-design.md §8, decision #4).
 #
 # ONE ROLL, IN ONE PLACE. Two callers ask this question — the grant above and
 # `roll_loot_entry` below — and both used to spell `randi() % 2` out for
 # themselves, which is two places for the odds to drift apart the day one of them
-# is tuned. Potions are the day: same income, one more kind, so scrolls and pills
-# each get rarer, and that is the intended cost of a third alphabet rather than an
-# accident of where the coin was flipped.
+# is tuned. Potions were the first such day and cards are the second: same income,
+# one more kind, so every kind before it gets rarer, and that is the intended cost
+# of another alphabet rather than an accident of where the coin was flipped.
+#
+# AN EVEN QUARTER EACH, AND NOT A WEIGHTED SPLIT. Cards are the kind you can read
+# before you spend, which makes them the least dangerous of the four and the
+# obvious candidate for a smaller share — and a smaller share is exactly what
+# would make the run's one legible piece of loot the one it rarely sees. The four
+# are equals at the drop and unequal in what they ask of you, which is the trade
+# the kinds exist to offer.
 #
 # AND THE PER-GAME PAYOUT IS THE ONLY TAP (decision #14). No shop shelf slot, no
 # enemy drop, no boss bonus: a kind that arrives from four directions at once is a
-# kind nobody can balance the first time. The one-in-three is a number that can be turned;
-# four sources are four numbers that have to be turned together.
-const LOOT_KINDS := ["scroll", "pill", "potion"]
+# kind nobody can balance the first time. The one-in-four is a number that can be
+# turned; four sources are four numbers that have to be turned together.
+const LOOT_KINDS := ["scroll", "pill", "potion", "card"]
 
 func roll_loot_kind() -> String:
 	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
@@ -3352,11 +3391,16 @@ func roll_loot_kind() -> String:
 #
 # It used to be an ordinary Common with a `find_weight` of 1.25 (potions-design
 # decision #20), which made it 1.25 draws to every other Common's 1 — and, once the
-# three-way kind split and the rarity ladder had both taken their cut, about one
-# drop in forty. The scroll that exists to tell you what the other two alphabets
-# ARE cannot be the rarest thing in the pack: a run that never finds one plays the
-# whole pill and potion layer blind, which is a worse game than a run that finds
-# two.
+# kind split and the rarity ladder had both taken their cut, about one drop in
+# forty. The scroll that exists to tell you what the other alphabets ARE cannot be
+# the rarest thing in the pack: a run that never finds one plays the whole pill and
+# potion layer blind, which is a worse game than a run that finds two.
+#
+# CARDS DID NOT CHANGE THIS NUMBER, and could have argued for lowering it: a
+# quarter of every drop is now a kind Identify has nothing to say about, so the
+# scroll is worth marginally less than it was. It is worth the same to the run that
+# needs it, which is the run holding four unknown capsules — and that run's odds of
+# finding one should not depend on how many CARDS it happened to draw.
 #
 # So the odds are stated where a player can feel them — one drop in ten, before
 # anything else is rolled — rather than buried three multiplications deep. Identify
@@ -3374,12 +3418,12 @@ func _rolls_identify() -> bool:
 # Roll one piece of loot WITHOUT granting it. The per-game drop (§4.3) asks before
 # it hands anything over — the pack holds nine and the answer is sometimes no — so
 # the roll and the taking are two steps rather than one.
-#   kind: "scroll" | "pill" | "potion" | "loot" (the kind-blind three-way split)
+#   kind: "scroll" | "pill" | "potion" | "card" | "loot" (the kind-blind quarters)
 #
 # The Identify tenth is taken off the top of both the kind-blind drop and an
-# explicit scroll one, and off neither of the explicit pill/potion ones: "10% of
+# explicit scroll one, and off none of the explicit pill/potion/card ones: "10% of
 # drops" is a statement about what the run FINDS, and an item that promises four
-# pills has to pay four pills.
+# pills has to pay four pills — or, for Ancient Recall, three cards.
 func roll_loot_entry(kind: String = "loot") -> Dictionary:
 	var want: String = kind
 	if (want == "loot" or want == "scroll") and _rolls_identify():
@@ -3392,6 +3436,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		return PillSystem.roll_pill_loot()
 	if want == "potion":
 		return PotionSystem.roll_potion_loot()
+	if want == "card":
+		return CardSystem.roll_card_loot()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -3517,6 +3563,15 @@ func add_potion_loot(id: StringName) -> void:
 		return
 	PotionSystem.ensure_colors()
 	loot_items.append({"type": "potion", "id": p.id, "rarity": p.rarity})
+	emit_signal("inventory_changed")
+
+# The same for a named CARD. No `ensure_*` step, because there is no alphabet to
+# deal: a card is itself from the moment it exists (docs/cards-design.md §2).
+func add_card_loot(id: StringName) -> void:
+	var c: CardData = Data.get_card(id)
+	if c == null:
+		return
+	loot_items.append({"type": "card", "id": c.id, "rarity": c.rarity})
 	emit_signal("inventory_changed")
 
 # ---------------------------------------------------------------------------

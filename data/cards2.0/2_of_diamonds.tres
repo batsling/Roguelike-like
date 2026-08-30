@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_2_of_diamonds"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"2_of_diamonds"
+display_name = "2 of Diamonds"
+rarity = "Rare"
+source_game = "The Binding of Isaac"
+set_name = "Playing Cards"
+description = "Double your Gold, if you have no Gold Gain +2 Gold"
+effect = [{"op": "double_stat", "stat": "gold", "floor": 2}]
+file = "2OfDiamonds"
+icon = "Isaac_Playing_Cards"

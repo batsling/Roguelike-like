@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_xiv_temperance"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"xiv_temperance"
+display_name = "XIV - Temperance"
+rarity = "Common"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Spawn a Blood Donation Machine"
+effect = [{"op": "spawn_object", "object": "blood_donation_machine"}]
+file = "XIVTemperance"
+icon = "Isaac_Major_Arcana"

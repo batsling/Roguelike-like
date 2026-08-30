@@ -94,6 +94,11 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 			if is_throw(ctx):
 				return PotionSystem.throw_potion(entry, ctx)
 			return PotionSystem.quaff_potion(entry, ctx)
+		"card":
+			# The one kind with nothing to learn (docs/cards-design.md §2) — no
+			# identify step on the way in, because there was never anything hidden
+			# from a card in the pack.
+			return CardSystem.play_card(entry, ctx)
 	return {}
 
 # The copies Echo Chamber fires this use: the last N remembered, newest first, so
@@ -133,7 +138,10 @@ func _merge(into: Dictionary, from: Dictionary) -> void:
 # what a pill is called are two different rules — a scroll masks its name behind
 # one shared art, a pill's name follows the capsule and (for Bad Trip) the
 # player's own Health.
-func display_name(entry: Dictionary) -> String:
+# `face_up` is the CARD axis and is ignored by every other kind (see art_texture
+# below for what it means and why it lives on this signature rather than in the
+# entry).
+func display_name(entry: Dictionary, face_up: bool = true) -> String:
 	match String(entry.get("type", "")):
 		"scroll":
 			return ScrollSystem.display_name(Data.get_scroll(StringName(entry.get("id", ""))))
@@ -141,9 +149,24 @@ func display_name(entry: Dictionary) -> String:
 			return PillSystem.display_name(entry)
 		"potion":
 			return PotionSystem.display_name(entry)
+		"card":
+			return CardSystem.display_name(entry, face_up)
 	return "Loot"
 
-func art_texture(entry: Dictionary) -> Texture2D:
+# THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
+# two sides are told apart (docs/cards-design.md §3).
+#
+# `face_up` is FALSE on the floor and true everywhere else. A card lying on a
+# battlefield square shows its deck's icon and nothing more; in the pack it shows
+# its own face. Every other kind ignores the flag, because no other kind has a
+# second side — a scroll on the ground is the same parchment it is in the pack.
+#
+# IT IS A PARAMETER RATHER THAN A FIELD ON THE ENTRY, deliberately. "Face down" is
+# not a fact about the card, it is a fact about WHERE THE CARD IS, and an entry
+# carrying it would have to be flipped by whoever moved it — which is every drag,
+# every eviction, every swap, and one missed site is a card that stays face down
+# in the pack forever.
+func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 	match String(entry.get("type", "")):
 		"scroll":
 			return ScrollSystem.art_texture(Data.get_scroll(StringName(entry.get("id", ""))))
@@ -151,6 +174,8 @@ func art_texture(entry: Dictionary) -> Texture2D:
 			return PillSystem.art_texture(entry)
 		"potion":
 			return PotionSystem.art_texture(entry)
+		"card":
+			return CardSystem.art_texture(entry, face_up)
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -164,8 +189,8 @@ func art_box(entry: Dictionary, base: int) -> int:
 	return int(round(float(base) * PillSystem.art_scale(entry)))
 
 # The art, sized to this piece's own dose. The one call the UI actually wants.
-func art_tex(entry: Dictionary, base: int) -> TextureRect:
-	return UITheme.crisp_tex(art_texture(entry), art_box(entry, base))
+func art_tex(entry: Dictionary, base: int, face_up: bool = true) -> TextureRect:
+	return UITheme.crisp_tex(art_texture(entry, face_up), art_box(entry, base))
 
 # The glyph a kind wears in the log and on its tile.
 func glyph(entry: Dictionary) -> String:
@@ -174,6 +199,8 @@ func glyph(entry: Dictionary) -> String:
 			return "💊"
 		"potion":
 			return "🧪"
+		"card":
+			return "🃏"
 	return "📜"
 
 # ===========================================================================
@@ -239,6 +266,14 @@ func is_identified(entry: Dictionary) -> bool:
 			return PillSystem.is_identified(id)
 		"potion":
 			return PotionSystem.is_identified(id)
+		"card":
+			# A CARD IS ALWAYS KNOWN (docs/cards-design.md §2). Not "identified" —
+			# there is no such state for it and no way to reach one — but this is the
+			# question every kind-blind surface asks, and the honest answer is yes:
+			# nothing about a card in the pack is hidden. It is what keeps a card out
+			# of `carried_unidentified`, so Scroll of Identify never offers to tell
+			# you something you can already read.
+			return true
 	return false
 
 # Learn what a carried piece is, whichever alphabet it belongs to — Identify's
@@ -252,6 +287,10 @@ func identify(entry: Dictionary) -> bool:
 			return PillSystem.identify(id)
 		"potion":
 			return PotionSystem.identify(id)
+		"card":
+			# Nothing to learn, so nothing is news. Identify spending a count on a
+			# card is prevented upstream, by is_identified above.
+			return false
 	return false
 
 # One representative carried entry per unidentified TYPE in the pack — the
@@ -302,7 +341,7 @@ func pick_label(entry: Dictionary) -> String:
 
 # What the piece does, in one line, or the "you don't know yet" line when it is
 # unidentified. The loot window's hover and the drop modal both quote this.
-func description(entry: Dictionary) -> String:
+func description(entry: Dictionary, face_up: bool = true) -> String:
 	match String(entry.get("type", "")):
 		"scroll":
 			var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
@@ -319,6 +358,8 @@ func description(entry: Dictionary) -> String:
 			return PillSystem.description(entry)
 		"potion":
 			return PotionSystem.description(entry)
+		"card":
+			return CardSystem.description(entry, face_up)
 	return ""
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -332,6 +373,12 @@ func preference(entry: Dictionary) -> String:
 			return PillSystem.preference(entry)
 		"potion":
 			return PotionSystem.preference(entry)
+		"card":
+			# A card has no Preference and never will (docs/cards-design.md §2).
+			# Preference is the label a GAMBLE wears so an unknown piece can hint at
+			# its own risk; printing one over a line that already says "Gain +2
+			# Health" would be the same fact twice, in a vaguer word.
+			return ""
 	return ""
 
 # ===========================================================================
@@ -370,6 +417,8 @@ func use_verb(entry: Dictionary) -> String:
 			return "Take Pill"
 		"potion":
 			return "Quaff"
+		"card":
+			return "Play Card"
 	return "Read Scroll"
 
 # What KIND of thing this is, in the words the player sees: Scroll, Pill, or the
@@ -382,6 +431,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Pill"
 		"potion":
 			return "Potion"
+		"card":
+			return "Card"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
@@ -389,11 +440,29 @@ func kind_name(entry: Dictionary) -> String:
 # surfaces describe the same piece — the window's slots, the drop modal's offer,
 # the drop modal's grid and the info card — and a description that differed
 # between them would be four chances to say something slightly untrue.
-func hover_card(entry: Dictionary) -> Dictionary:
+func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 	var known: bool = is_identified(entry)
 	var sub: String = kind_name(entry)
 	if known and preference(entry) != "":
 		sub += "  ·  %s" % preference(entry)
+	# A FACE-DOWN CARD'S HOVER SAYS ITS DECK AND STOPS (docs/cards-design.md §3).
+	# The token on the square already draws the deck's icon, so the hover naming it
+	# is the picture in words — and the note is the one thing the player can act on:
+	# the way to read a card is to pick it up, which costs a slot and is the whole
+	# decision the floor is asking.
+	#
+	# It is the only masked hover in the project that a KNOWN piece gets, which is
+	# why it cannot ride on `known` — a card is known and face-down at the same time,
+	# and those are two different facts about it.
+	if not face_up and String(entry.get("type", "")) == "card":
+		return {
+			"title": display_name(entry, false),
+			"subtitle": "Card  ·  face down",
+			"accent": LOOT_COLOR,
+			"art": art_texture(entry, false),
+			"lines": [description(entry, false)],
+			"note": "▸ Pick it up to turn it over.",
+		}
 	return {
 		"title": display_name(entry),
 		"subtitle": sub,

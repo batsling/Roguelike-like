@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_ride_the_bus"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"ride_the_bus"
+display_name = "Ride the Bus"
+rarity = "Uncommon"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Teleport to a random Deckbuilder Game"
+effect = [{"op": "teleport_type", "game_type": "deckbuilder"}]
+file = "RideTheBus"
+icon = "Balatro_Playing_Cards"

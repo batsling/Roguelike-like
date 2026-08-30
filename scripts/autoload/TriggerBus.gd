@@ -105,6 +105,15 @@ signal potion_used(ctx: Dictionary)          # ctx.potion — a potion was drunk
                                             # choke point hit by every combat mode),
                                             # NOT once per affected target. Run-scope
                                             # and scene-less (Toy Ornithopter).
+signal card_used(ctx: Dictionary)            # ctx.card — a CARD (the loot kind,
+                                            # docs/cards-design.md) was played.
+                                            # Emitted once per use from
+                                            # CardSystem.notify_used, including
+                                            # for a card that fizzled — it was
+                                            # still spent. Not to be confused with
+                                            # card_played above, which belongs to
+                                            # the combat deck that no longer
+                                            # exists.
 signal curse_applied(ctx: Dictionary)        # ctx.curse — a curse was added to
                                             # active_curses (Vitality Orb).
 signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left
