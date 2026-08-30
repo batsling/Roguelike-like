@@ -137,11 +137,15 @@ func _show_intro() -> void:
 		# decision turns on and it was a line of grey body text — the same weight as
 		# the sentence under it, on a screen whose only question is "do you want this
 		# to happen to you".
-		_body.add_child(_chip_row([
-			UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR),
-			UITheme.chip(LootSystem.preference(_entry),
-				UITheme.preference_color(LootSystem.preference(_entry))),
-		]))
+		var chips: Array = [UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR)]
+		# A CARD HAS NO PREFERENCE and never had (docs/cards-design.md §2), so the
+		# second chip is conditional now. It used to be unconditional because every
+		# identified piece had one; an empty chip is a coloured blank next to the
+		# kind, which reads as a fact the screen forgot to fill in.
+		var pref: String = LootSystem.preference(_entry)
+		if pref != "":
+			chips.append(UITheme.chip(pref, UITheme.preference_color(pref)))
+		_body.add_child(_chip_row(chips))
 		_body.add_child(_muted(summary))
 		# The KEYWORD STRIP (§17), on the same terms an item card carries one: what
 		# a Scroll of Fire does is written in the names of three mechanics, and the
@@ -330,6 +334,10 @@ func _process_next_request() -> void:
 			_pick_stun(req)
 		"teleport":
 			_do_teleport(req)
+		"card_teleport":
+			_do_card_teleport(req)
+		"copy_item":
+			_pick_copy_item(req)
 		_:
 			_process_next_request()
 
@@ -458,6 +466,53 @@ func _do_teleport(req: Dictionary) -> void:
 		# an empty screen.
 		_report("It fizzles — you do not move.")
 	_process_next_request()
+
+# The three CARD teleports (docs/cards-design.md §5) — the bus, the hub, the
+# starting game. Separate from `_do_teleport` above because they are a different
+# question of the overworld: that one is measured in steps from the Amulet and
+# these name a destination outright. Same shape of answer, and the same reason it
+# has to come back from whoever moved you.
+func _do_card_teleport(req: Dictionary) -> void:
+	var landed: String = ""
+	if _overworld != null and _overworld.has_method("card_teleport"):
+		landed = String(_overworld.card_teleport(req))
+	# `card_teleport` writes its own log line for every outcome it has, the "nowhere
+	# to go" one included — so this only picks the sentence up, and the fallback is
+	# for having no map at all.
+	_report(landed if landed != "" else "It fizzles — you do not move.", false)
+	_process_next_request()
+
+# --- ? Card: copy a usable relic's effect ----------------------------------
+#
+# The candidates are USABLE relics, and copying one spends nothing of theirs
+# (CardSystem.copyable_items / copy_item). The rows carry each relic's own
+# description, because the player is choosing between EFFECTS here rather than
+# between names — a pack of five actives is five sentences, not five nouns.
+func _pick_copy_item(req: Dictionary) -> void:
+	var candidates: Array = req.get("candidates", [])
+	_rebuild_panel()
+	_body.add_child(_heading("Copy an Item", ACCENT, 20))
+	if candidates.is_empty():
+		_body.add_child(_muted("You are carrying nothing usable to copy."))
+		_report("There was nothing usable in the pack to copy.")
+		_body.add_child(_continue_button())
+		return
+	_body.add_child(_muted("Choose one — the card copies its effect and the item keeps its uses."))
+	for it in candidates:
+		if not (it is ItemData):
+			continue
+		var item: ItemData = it
+		var btn := Button.new()
+		btn.text = "%s — %s" % [item.display_name, item.description]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# ONE PRESS AND IT IS DONE, where the other pickers toggle and confirm. Those
+		# choose UP TO N and need a commit step for the count; this chooses exactly
+		# one, and a confirm button under a single selection is a second click that
+		# asks nothing.
+		btn.pressed.connect(func():
+			_report(CardSystem.copy_item(item))
+			_process_next_request())
+		_body.add_child(btn)
 
 # Add a line to what the outcome screen will say. `log_it` because every other line
 # on that screen came back through `use_loot` and was written to the run log in

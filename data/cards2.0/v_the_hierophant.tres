@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_v_the_hierophant"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"v_the_hierophant"
+display_name = "V - The Hierophant"
+rarity = "Common"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Gain +2 Shields"
+effect = [{"op": "gain_stat", "stat": "bonus_shields", "value": 2}]
+file = "VTheHierophant"
+icon = "Isaac_Major_Arcana"

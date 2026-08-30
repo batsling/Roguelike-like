@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_ix_the_hermit"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"ix_the_hermit"
+display_name = "IX - The Hermit"
+rarity = "Uncommon"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Teleport to the nearest Hub Game"
+effect = [{"op": "teleport_hub"}]
+file = "IXTheHermit"
+icon = "Isaac_Major_Arcana"

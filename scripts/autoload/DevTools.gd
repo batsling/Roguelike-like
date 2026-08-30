@@ -31,9 +31,9 @@ const TABS := ["grant", "run", "board", "flow", "events"]
 const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
-const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "statuses"]
+const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
-	"potions": "Potions", "statuses": "Statuses"}
+	"potions": "Potions", "cards": "Cards", "statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -353,6 +353,8 @@ func _build_grant_tab() -> void:
 			_list_pills()
 		"potions":
 			_list_potions()
+		"cards":
+			_list_cards()
 		"statuses":
 			_list_statuses()
 		_:
@@ -455,6 +457,28 @@ func _list_potions() -> void:
 				GameState.add_potion_loot(potion.id)
 				_say("Added potion: %s (%s)" % [potion.display_name, vial],
 					Color(0.62, 0.55, 0.86))})
+	_emit_rows(rows)
+
+# Every card, with what it does in the detail column — where the other three lists
+# withhold that on purpose. There is nothing here for a grant to give away: a card
+# is readable in the pack the moment it lands, so a list that hid its effect would
+# be hiding it from the developer alone.
+func _list_cards() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for c in Data.all_cards():
+		if not (c is CardData):
+			continue
+		var label: String = String(c.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var card: CardData = c
+		rows.append({"label": label, "detail": "%s · %s · %s" % [
+			card.rarity, card.set_name if card.set_name != "" else "Card",
+			card.description],
+			"press": func() -> void:
+				GameState.add_card_loot(card.id)
+				_say("Added card: %s" % card.display_name, CardSystem.CARD_COLOR)})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

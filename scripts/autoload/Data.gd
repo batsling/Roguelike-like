@@ -16,6 +16,7 @@ var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept
 var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
 var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
 var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions-design)
+var _cards: Dictionary = {}             # StringName -> CardData (2.0, docs/cards-design.md)
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
@@ -46,6 +47,7 @@ func _ready() -> void:
 	_load_dir("res://data/scrolls2.0/", _scrolls)
 	_load_dir("res://data/pills2.0/", _pills)
 	_load_dir("res://data/potions2.0/", _potions)
+	_load_dir("res://data/cards2.0/", _cards)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
@@ -57,9 +59,9 @@ func _ready() -> void:
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _pills.size(), _statuses.size(), _tiles.size(), _units.size(),
+		_scrolls.size(), _pills.size(), _cards.size(), _statuses.size(), _tiles.size(), _units.size(),
 		_abilities.size(), _events2.size(), _curses2.size(), _objects2.size()
 	])
 
@@ -116,6 +118,13 @@ func get_potion(id: StringName) -> PotionData:
 
 func all_potions() -> Array:
 	return _potions.values()
+
+# --- Cards (2.0, docs/cards-design.md) -------------------------------------
+func get_card(id: StringName) -> CardData:
+	return _cards.get(id)
+
+func all_cards() -> Array:
+	return _cards.values()
 
 # The pills a given PREFERENCE covers — Lucky Foot's reroll pool (§4.3) is every
 # Positive pill, including the ones whose colours are sitting out this run. It
@@ -340,6 +349,31 @@ func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
 		r.randomize()
 	var target: int = roll_item_rarity(r)
 	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[r.randi_range(0, bucket.size() - 1)]
+
+# One random card, weighted by rarity — roll_potion's twin (docs/cards-design.md §4).
+#
+# The same shared ladder, so Luck rides a card drop for free without this function
+# mentioning it, and no find_weight for the same reason potions have none: the
+# `cards` sheet has no column to author one in.
+#
+# THE ROSTER IS TOP-HEAVY — 3 Common, 4 Uncommon, 6 Rare — which is the opposite
+# shape to the other three kinds and is not an accident of authoring. A card is
+# one use and a known quantity, so the interesting ones can afford to be the good
+# ones; what stops that from being free is the ladder, which reaches the Rare rung
+# on about one card drop in twenty.
+func roll_card(rng: RandomNumberGenerator = null) -> CardData:
+	var pool: Array = _cards.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = roll_item_rarity(r)
+	var bucket: Array = pool.filter(func(c): return c is CardData and c.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]

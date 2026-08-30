@@ -2927,6 +2927,12 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
 		"nothing is following yet, so no portraits on the list")
 	_ui.pick(0)
+	# DISARMED, because this test is about the SCREEN and not about abilities
+	# (CLAUDE.md). `with_art` is counted before the report and asserted again
+	# after it, and since §7.6 a body's turn can ADD a body to the board — a
+	# spawner between the two assertions makes the second one count a portrait the
+	# first could not have known about. Seen: 3 where 2 was counted.
+	_disarm_board()
 	var boss: GoalEnemyData = _ui._chosen["enemy"]
 	assert_true(boss.is_boss(), "the boss round spawned a boss")
 	if boss.image == null:
@@ -5334,9 +5340,10 @@ func test_clicking_an_item_token_opens_its_card() -> void:
 	assert_null(_ui._item_card, "and closes cleanly")
 
 func test_an_active_item_grows_a_fire_control_above_its_tile() -> void:
-	# Ride the Bus is a plain Usable: its control is the Use button, and the token
-	# below it is the art tile.
-	GameState.add_item(Data.get_item2(&"ride_the_bus"))
+	# The Wand of Wishing is a plain Usable: its control is the Use button, and the
+	# token below it is the art tile. (This was Ride the Bus until the bus became a
+	# card — docs/cards-design.md §5.1.)
+	GameState.add_item(Data.get_item2(&"wand_of_wishing"))
 	_ui._refresh_items()
 	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
 	assert_eq(column.get_child_count(), 2, "fire control over art tile")
@@ -6628,6 +6635,109 @@ func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
 	assert_eq(BattlefieldView.fitted_cell(cols), full,
 		"…and springs back when the machines go, which is when you travel on")
 
+# --- the three card teleports (docs/cards-design.md §5.2) -------------------
+
+func test_the_hermit_lands_on_a_hub() -> void:
+	var landed: String = _ui.card_teleport({"dest": "hub"})
+	assert_ne(landed, "", "it says something either way")
+	if not landed.begins_with("There is no"):
+		assert_true(ShopSystem.is_hub(GameState.current_game_id),
+			"the nearest Hub Game is a hub: %s" % landed)
+	_ui._end_resolve()
+	_close_arrival_card()
+	_leave_post_game()
+
+func test_the_hermit_takes_the_nearest_hub_and_no_further() -> void:
+	# "Nearest" is measured in ROADS. Asserted over the pool rather than over one
+	# trip, because ties are drawn between and a single landing proves nothing.
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
+	var pool: Array = _ui._hub_pool()
+	if pool.is_empty():
+		# An empty pool is only legal when there is genuinely no hub to reach —
+		# asserted rather than returned on, so this test is never quietly about
+		# nothing (see CLAUDE.md on tests that stop being reachable).
+		for gid in ShopSystem.hub_games():
+			assert_false(gid != GameState.current_game_id and dist.has(gid)
+				and not GameLoop2.is_bashed(gid) and not RunGraph.is_off_map(gid),
+				"an empty pool means no hub was reachable, and %s was" % gid)
+		return
+	var best: int = int(dist.get(pool[0], 0))
+	for gid in pool:
+		assert_eq(int(dist.get(gid, -1)), best, "every candidate is equally near")
+	for gid in ShopSystem.hub_games():
+		if gid == GameState.current_game_id or not dist.has(gid):
+			continue
+		assert_gte(int(dist[gid]), best, "and nothing reachable is nearer")
+
+func test_the_fool_standing_on_the_start_says_so_rather_than_fizzling_vaguely() -> void:
+	# A card spent on a journey of nought steps. "There is no Starting Game to
+	# reach" would be a lie about a game you are standing on.
+	GameState.start_game_id = GameState.current_game_id
+	var said: String = _ui.card_teleport({"dest": "start"})
+	assert_string_contains(said, "already standing where the run started")
+	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "and it moved nobody")
+
+# --- a machine spawned by a CARD (docs/cards-design.md §5.3) ----------------
+#
+# The whole point of routing Temperance through ObjectSystem rather than through a
+# popup of its own: the machine lands where a hub's shop lands, and everything the
+# shop's place on the page already guarantees comes with it.
+
+func test_a_card_stands_its_machine_under_the_board() -> void:
+	GameState.add_card_loot(&"xiv_temperance")
+	LootSystem.use_loot(0)
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel,
+		"the machine mounts under the board, the way a shop does — not in a popup")
+	assert_eq(_machine_rows().size(), 1)
+	ObjectSystem.clear()
+	await get_tree().process_frame
+
+func test_a_card_can_stand_a_machine_up_with_a_game_in_play() -> void:
+	# "It should work during combat as well." The right column is built once rather
+	# than per phase, so the panel that mounts here survives the phase it mounted in
+	# — but a card is spendable mid-game (spec §4.3), so this is the case that has
+	# to hold rather than a fact about the column.
+	_ui.pick(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
+	GameState.add_card_loot(&"xiv_temperance")
+	LootSystem.use_loot(0)
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel, "the machine is on the page mid-game")
+	assert_eq(_machine_rows().size(), 1, "and it is pressable rather than drawn dead")
+	ObjectSystem.clear()
+	_leave_post_game()
+
+func test_the_cards_machine_is_left_behind_when_the_run_travels_on() -> void:
+	GameState.add_card_loot(&"xiv_temperance")
+	LootSystem.use_loot(0)
+	await get_tree().process_frame
+	assert_true(ObjectSystem.has_live())
+	_ui._leave_node()
+	await get_tree().process_frame
+	assert_false(ObjectSystem.has_live(),
+		"an object's lifetime is standing on this game")
+	assert_null(_ui._object_panel, "and the panel goes with it")
+
+func test_an_event_does_not_walk_off_with_a_machine_that_was_already_here() -> void:
+	# The repair the card exposed. An event modal owns the screen while it is up, so
+	# `objects_changed` firing during one takes the under-board panel DOWN — and the
+	# modal's own cleanup is such a fire, with nothing emitting afterwards. The
+	# machine kept living in ObjectSystem with no panel to press it on.
+	GameState.add_card_loot(&"xiv_temperance")
+	LootSystem.use_loot(0)
+	await get_tree().process_frame
+	assert_not_null(_ui._object_panel)
+	assert_true(_ui.open_event(Data.get_event2(&"arcade_room")))
+	var modal = _ui._event_modal
+	modal._close()
+	await get_tree().process_frame
+	assert_true(ObjectSystem.has_live(), "the card's machine is still standing here")
+	assert_not_null(_ui._object_panel,
+		"…and it has a panel to be pressed on again")
+	ObjectSystem.clear()
+	await get_tree().process_frame
+
 # --- the machines inside an event -------------------------------------------
 #
 # An event that spawns machines is a ROOM, and the two things a room has to get
@@ -6828,13 +6938,16 @@ func test_a_charged_active_fires_while_a_game_is_in_play() -> void:
 			"%s fires with a full bar mid-report" % id)
 
 # AN OVERWORLD ACTIVE FIRES MID-GAME TOO, and for the same reason a charged one
-# does. `overworld_usable` marks an item whose effect needs the MAP — Ride the Bus
-# moves the run, the Wand of Wishing hands you any item in the game — and the map
-# is mounted for the whole of a game being played. Holding them back meant the one
-# item that can get you off a game you cannot beat was refused for exactly as long
-# as you were stuck on it.
+# does. `overworld_usable` marks an item whose effect needs the MAP — the Wand of
+# Wishing hands you any item in the game — and the map is mounted for the whole of
+# a game being played. Holding them back meant the one item that can get you off a
+# game you cannot beat was refused for exactly as long as you were stuck on it.
+#
+# Ride the Bus was the other half of this list until it became a card
+# (docs/cards-design.md §5.1). The rule did not move with it: a card is loot, and
+# loot has always been spendable whenever the player wants it (spec §4.3).
 func test_an_overworld_active_fires_while_a_game_is_in_play() -> void:
-	for id in [&"ride_the_bus", &"wand_of_wishing"]:
+	for id in [&"wand_of_wishing"]:
 		var template: ItemData = Data.get_item2(id)
 		assert_not_null(template, "%s is authored" % id)
 		if template == null:
@@ -6843,17 +6956,17 @@ func test_an_overworld_active_fires_while_a_game_is_in_play() -> void:
 		assert_true(PackStrip.fires_while_reporting(template, true),
 			"%s fires while a game is in play" % id)
 
-func test_riding_the_bus_is_pressable_with_a_game_in_play() -> void:
+func test_an_overworld_active_is_pressable_with_a_game_in_play() -> void:
 	# The rule above, as the player meets it: the Use button under the tile, live,
 	# on the screen where the board is.
-	var bus: ItemData = GameState.add_item(Data.get_item2(&"ride_the_bus"))
-	assert_not_null(bus)
+	var wand: ItemData = GameState.add_item(Data.get_item2(&"wand_of_wishing"))
+	assert_not_null(wand)
 	_ui.pick(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	_ui._refresh_items()
 	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
 	var control: Button = column.get_child(0) as Button
-	assert_not_null(control, "the bus wears a Use button")
+	assert_not_null(control, "the wand wears a Use button")
 	if control != null:
 		assert_false(control.disabled, "and it presses mid-game rather than greying out")
 	_leave_post_game()
@@ -7224,9 +7337,17 @@ func test_the_token_wears_the_loot_s_own_art() -> void:
 	# The whole point of the floor paying loot rather than a relic: a scroll can be
 	# drawn as the picture it is, where a chest could only ever be a glyph standing
 	# in for an offer the board was not allowed to show (§8.2).
+	#
+	# ROLLED, so it is whichever kind came up — and the assertion is against
+	# `art_texture(entry, false)`, the FLOOR side, rather than against the pack's.
+	# Those are the same picture for three of the four kinds and deliberately
+	# different for a CARD, which lies there face down showing its deck's icon
+	# (docs/cards-design.md §3). Asserting the pack's picture here made this test
+	# fail on about one run in four, on the roll rather than on anything the board
+	# did — and it is the FLOOR's draw this test is about.
 	_pick_solo(0)
 	var entry: Dictionary = GameState.roll_loot_entry("loot")
-	if entry.is_empty() or LootSystem.art_texture(entry) == null:
+	if entry.is_empty() or LootSystem.art_texture(entry, false) == null:
 		# No art shipped for what came up — the glyph fallback is the correct draw,
 		# and the assertion below is what this test is really about either way.
 		assert_true(true, "nothing to draw it with")
@@ -7246,9 +7367,42 @@ func test_the_token_wears_the_loot_s_own_art() -> void:
 			art = c
 	assert_not_null(art, "the piece is drawn as itself")
 	if art != null:
-		assert_eq(art.texture, LootSystem.art_texture(GameLoop2.drop_at(at)["loot"]),
-			"with the same picture the pack draws it with")
+		assert_eq(art.texture, LootSystem.art_texture(GameLoop2.drop_at(at)["loot"], false),
+			"with the picture the floor draws it with")
 
+func test_a_card_on_the_floor_wears_its_deck_and_the_pack_wears_its_face() -> void:
+	# The one kind whose floor picture is NOT its pack picture, asserted on the
+	# board rather than in LootSystem (docs/cards-design.md §3): the token is where
+	# the mask either happens or does not.
+	_pick_solo(0)
+	var entry := {"type": "card", "id": &"xiv_temperance", "rarity": "Common"}
+	var at: Vector2i = GameLoop2.place_drop(Vector2i(2, 1), entry)
+	_ui._board.refresh()
+	var token: FloorLoot = null
+	for c in _ui._board._ground_layer.get_children():
+		if c is FloorLoot:
+			token = c
+	assert_not_null(token, "the card is on the board")
+	if token == null:
+		return
+	var art: TextureRect = null
+	for c in token.get_children():
+		if c is TextureRect:
+			art = c
+	assert_not_null(art)
+	if art == null:
+		return
+	assert_eq(art.texture, LootSystem.art_texture(entry, false), "the deck's icon")
+	assert_ne(art.texture, LootSystem.art_texture(entry, true),
+		"which is not the face the pack draws")
+	# And the hover keeps the same secret the token does.
+	var card: Dictionary = _ui._board.drop_hover(at)
+	assert_eq(String(card.get("title", "")), "Major Arcana",
+		"the floor names the deck, not the card")
+
+# A SCROLL, deliberately named rather than rolled: three of the four kinds keep no
+# secret on the floor, and this is the test for that half. The card's half is the
+# test directly above.
 func test_the_floor_card_is_the_same_card_the_pack_shows() -> void:
 	_pick_solo(0)
 	var entry := {"type": "scroll", "id": "whatever", "rarity": "Common"}

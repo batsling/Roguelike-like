@@ -2241,6 +2241,15 @@ func _on_event_finished(play_request: Dictionary) -> void:
 	# has already taken them away (EventModal2._end_objects) — precisely the ones
 	# it spawned, where this used to clear the board outright and take a machine
 	# that was standing at the game before the event with it.
+	#
+	# AND THE PANEL COMES BACK FOR ANYTHING THAT SURVIVED. The modal's own clearing
+	# emits `objects_changed` while it is still open, and `_sync_object_panel`
+	# answers that by taking the under-board panel DOWN — correctly, since an event
+	# owns the screen while it is up. Nothing emits again afterwards, so a machine
+	# that was standing at the game before the event (a card's Blood Donation
+	# Machine, say) would have kept living in ObjectSystem with no panel to press it
+	# on. Asked once here, now that the modal is gone.
+	_sync_object_panel()
 	_refresh()
 	autosave()
 	if not play_request.is_empty():
@@ -2587,7 +2596,33 @@ func _hand_chests_to_post_game() -> void:
 			_drop_queue.append({"items": offer})
 			_pump_drops()
 
-# --- overworld item actions (routed here by EffectSystem, §8) --------------
+# --- overworld card / item actions (routed here by CardSystem and EffectSystem) --
+
+# THE THREE CARD TELEPORTS, AND RIDE THE BUS, ARE ONE MOVE WITH THREE DESTINATIONS
+# (docs/cards-design.md §5). Each names a different pool — every Deckbuilder game
+# on the map, every hub, the game the run started on — and everything after that
+# is identical: escape whatever is in play, pick, log, land ON the game. Written
+# once, so the day the escape rule changes it changes for all four.
+#
+# `req.dest` is "type" (with `game_type`), "hub" or "start".
+func card_teleport(req: Dictionary) -> String:
+	match String(req.get("dest", "")):
+		"hub":
+			return _teleport_into(_hub_pool(), "hub",
+				"There is no Hub Game on the map to reach.")
+		"start":
+			# THE ONE FIZZLE THAT IS NOT AN EMPTY MAP. Playing The Fool where the run
+			# began is a card spent on a journey of nought steps, and "there is no
+			# Starting Game to reach" would be a lie about a game you are standing on.
+			return _teleport_into(_start_pool(), "start",
+				"You are already standing where the run started."
+				if GameState.start_game_id == GameState.current_game_id
+				else "The game the run started on is gone from the map.")
+		"type":
+			var key := StringName(String(req.get("game_type", "")).to_lower())
+			return _teleport_into(_type_pool(key), "type",
+				"There is no %s game on the map to reach." % String(key), String(key))
+	return ""
 
 # Ride the Bus: teleport to a random game of `type_key` that is ON THE MAP.
 #
@@ -2601,37 +2636,93 @@ func _hand_chests_to_post_game() -> void:
 # where the roads go: `RunGraph.is_off_map` is the whole filter, and it is the same
 # question the Scroll of Teleportation asks by taking its pool off the Amulet's BFS.
 #
-# Nothing to reach says so and spends nothing further — the item is already spent,
-# but a bus with no route is not a move, and a silent no-op reads as a bug.
-func teleport_to_type(type_key: StringName) -> void:
-	var cur: StringName = GameState.current_game_id
-	var same_type: Array = []
+# Kept as its own entry point because EffectSystem's `teleport_type` handler calls
+# it by name and the tests drive it directly; the work is card_teleport's.
+func teleport_to_type(type_key: StringName) -> String:
+	return card_teleport({"dest": "type", "game_type": String(type_key)})
+
+# Every reachable game of one type. `_reachable` is the shared filter — on the map,
+# not this one, not bashed — so the three pools differ only in what they add to it.
+func _type_pool(type_key: StringName) -> Array:
+	var out: Array = []
 	for g in Data.all_games():
-		if not (g is GameData) or g.id == cur or GameLoop2.is_bashed(g.id):
-			continue
-		if RunGraph.is_off_map(g.id):
+		if not (g is GameData) or not _reachable(g.id):
 			continue
 		if GameLoop2.game_type_key(g) == type_key:
-			same_type.append(g.id)
-	if same_type.is_empty():
-		var none := "Ride the Bus finds no %s game on the map to reach." % String(type_key)
-		GameLog.add(none, Color(0.8, 0.6, 0.4))
-		Notifications.notify(none, Color(0.8, 0.6, 0.4))
-		return
-	var dest: StringName = same_type[_rng.randi() % same_type.size()]
+			out.append(g.id)
+	return out
+
+# THE HERMIT GOES TO THE NEAREST HUB, and "nearest" is measured in ROADS rather
+# than in anything the map is drawn with: the hub the fewest steps from where you
+# are standing. Ties are left in the pool and drawn between, because two hubs two
+# steps away are two equally good answers and picking the first by array order
+# would make the card quietly deterministic.
+#
+# A hub is where the shops are (ShopSystem.is_hub), so this is the one teleport in
+# the game with a destination the player wants for a reason other than distance.
+func _hub_pool() -> Array:
+	var here: StringName = GameState.current_game_id
+	var dist: Dictionary = RunGraph.bfs_distances(here)
+	var best: int = -1
+	var out: Array = []
+	for gid in ShopSystem.hub_games():
+		if not _reachable(gid) or not dist.has(gid):
+			continue
+		var d: int = int(dist[gid])
+		if best < 0 or d < best:
+			best = d
+			out = [gid]
+		elif d == best:
+			out.append(gid)
+	return out
+
+# The Fool goes back to where the run began — one game, or none once it has been
+# bashed off the map.
+func _start_pool() -> Array:
+	var start: StringName = GameState.start_game_id
+	return [start] if _reachable(start) else []
+
+# On the map, reachable, and not the square you are already standing on. Every
+# teleport pool asks this and no teleport pool asks anything else about a node.
+func _reachable(gid: StringName) -> bool:
+	return gid != &"" and gid != GameState.current_game_id \
+		and not GameLoop2.is_bashed(gid) and not RunGraph.is_off_map(gid)
+
+# The move itself. Returns the sentence it wrote, for the loot use screen to quote
+# (see LootUseModal._do_teleport); "" is never returned, because every path here
+# has something to say.
+func _teleport_into(pool: Array, flavour: String, nowhere: String,
+		type_word: String = "") -> String:
+	if pool.is_empty():
+		# Nothing to reach says so and spends nothing further — the card is already
+		# spent, but a teleport with no route is not a move, and a silent no-op reads
+		# as a bug.
+		GameLog.add(nowhere, Color(0.8, 0.6, 0.4))
+		Notifications.notify(nowhere, Color(0.8, 0.6, 0.4))
+		return nowhere
+	var dest: StringName = pool[_rng.randi() % pool.size()]
 	# THE FARE IS PAID BEFORE THE ARRIVAL IS ANNOUNCED. `travel_to_game` escapes a
 	# game in play on the player's behalf, and escaping resolves the board — which
 	# can end the run on the way out. Done here, ahead of the log line, so a bus
 	# that killed you does not first report you as having got off it somewhere.
 	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
+		var leaving: GameData = _chosen.get("game")
 		escape_game(true)
 		escaped_out = _phase != Phase.PLAYING
 		if GameLoop2.run_over or _phase == Phase.OVER:
-			return
+			return "You escape %s — but you do not get out." % (
+				leaving.display_name if leaving != null else "the game")
 	var g: GameData = Data.get_game(dest)
-	var landed: String = "Rode the bus to %s — a %s game." % [
-		g.display_name if g != null else String(dest), String(type_key)]
+	var name: String = g.display_name if g != null else String(dest)
+	var landed: String = ""
+	match flavour:
+		"hub":
+			landed = "Walked the quiet road to %s — a Hub Game." % name
+		"start":
+			landed = "Back to where it started: %s." % name
+		_:
+			landed = "Rode the bus to %s — a %s game." % [name, type_word]
 	# The expensive half said out loud, exactly as the scroll says it (loot_teleport):
 	# the board took its turns for the game you were on, and the arrival card is the
 	# only screen that sentence reaches.
@@ -2641,6 +2732,7 @@ func teleport_to_type(type_key: StringName) -> void:
 	# Off the bus is ON the game, like every other teleport (see arrive_at_game):
 	# the fare bought a move, not a look at somewhere else's offering.
 	arrive_at_game(dest, landed)
+	return landed
 
 # --- arriving somewhere you did not choose ---------------------------------
 #
@@ -4524,8 +4616,8 @@ func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> D
 # relics moved to the reward screen where the choosing belongs
 # (GameLoop2.claim_chests, spent in _queue_report_chests).
 #
-# One piece per body, rolled on the same three-way scroll/pill/potion split as a
-# game's own payout (§4.3) — a boss included. What a body is worth in RELICS is
+# One piece per body, rolled on the same four-way scroll/pill/potion/card split as
+# a game's own payout (§4.3, docs/cards-design.md §4) — a boss included. What a body is worth in RELICS is
 # its difficulty, and that is banked rather than dropped (GameLoop2._defeat).
 func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 	if GameLoop2.run_over:

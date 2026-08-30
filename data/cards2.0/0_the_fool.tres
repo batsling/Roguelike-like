@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_0_the_fool"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"0_the_fool"
+display_name = "0 - The Fool"
+rarity = "Uncommon"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Teleport to the Starting Game"
+effect = [{"op": "teleport_start"}]
+file = "0TheFool"
+icon = "Isaac_Major_Arcana"

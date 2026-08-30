@@ -1411,6 +1411,13 @@ const CHEST_ART_FRACTION: float = 0.58
 # it shows everywhere else, which is the whole of what the player is allowed to
 # know.
 #
+# EXCEPT A CARD, WHICH IS FACE DOWN HERE (docs/cards-design.md §3). It is the one
+# kind whose floor picture is not its pack picture: on the square it wears its
+# DECK'S icon, and it turns over when it is picked up. So `face_up` is false at
+# this one call site and true at every other, which is the whole of the mechanism
+# — see LootSystem.art_texture for why the side is a property of where the card is
+# rather than a flag on the entry.
+#
 # THE HORSE DOSE COMES BACK BIGGER here too (LootSystem.art_box, §4.3): the token
 # takes its size from the art rather than from a constant, so the one tell that
 # distinguishes a horse pill survives being drawn on a battlefield. It still fits
@@ -1432,7 +1439,7 @@ func _drop_node(cell: Vector2i) -> Control:
 	token.position = _cell_pos(cell.y, cell.x) + Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
 	token.size = Vector2(side, side)
 	token.custom_minimum_size = Vector2(side, side)
-	var art: Texture2D = LootSystem.art_texture(loot) if not loot.is_empty() else null
+	var art: Texture2D = LootSystem.art_texture(loot, false) if not loot.is_empty() else null
 	if art != null:
 		# Inset by the ring so the picture sits inside the frame rather than under
 		# it, and mouse-transparent (crisp_tex already is) so the grab belongs to the
@@ -1467,6 +1474,10 @@ func _drop_node(cell: Vector2i) -> Control:
 # a tooltip would have made opening it a formality; loot has no such secret to
 # keep. An unidentified piece still keeps its own — it reads "Unidentified Pill"
 # here exactly as it does in the pack.
+#
+# A CARD IS THE ONE THING ON THIS BOARD THAT IS STILL A CHEST, in that narrow
+# sense: face down it names its deck and not itself, and reading it off this
+# tooltip is exactly the formality picking it up exists to prevent.
 func drop_hover(cell: Vector2i) -> Dictionary:
 	var held: Dictionary = GameLoop2.drop_at(cell)
 	if held.is_empty():
@@ -1474,7 +1485,7 @@ func drop_hover(cell: Vector2i) -> Dictionary:
 	var entry = held.get("loot")
 	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
 		return {}
-	var card: Dictionary = LootSystem.hover_card(entry)
+	var card: Dictionary = LootSystem.hover_card(entry, false)
 	card["subtitle"] = "%s  ·  on the floor, column %d, row %d" \
 		% [String(card.get("subtitle", "")), cell.x, cell.y + 1]
 	var lines: Array = (card.get("lines", []) as Array).duplicate()

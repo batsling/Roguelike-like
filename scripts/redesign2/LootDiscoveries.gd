@@ -21,6 +21,12 @@ extends RefCounted
 # potion is undeducible. The unlearned are counted here too — and what the record
 # never writes down for either kind is a COLOUR beside a name it has not learned.
 #
+# THREE ALPHABETS AND NOT FOUR, THOUGH THERE ARE FOUR KINDS. Cards are absent from
+# this fold on purpose (docs/cards-design.md §2): there is no such thing as an
+# identified card, so a run learns nothing about them and there is nothing here for
+# it to remember. A "Cards: 13 of 13" row would be a record of the player having
+# read the Collection.
+#
 # It is a class rather than a method on the loot window because BOTH surfaces that
 # draw the pack draw it: the window, and the reward screen, whose right-hand side
 # is the inventory and not a picture of one. `open` is static for the same reason

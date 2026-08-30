@@ -20,11 +20,11 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game. Every screen is built in code, so `.tscn` files hold a root node
   and a script and nothing else — don't go looking for UI in them.
-- **23 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **24 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 23.
+  README's "Autoload singletons" table covers all 24.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.
@@ -42,7 +42,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 33 scripts, ~1620 tests, ~7 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~1920 tests, ~8 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -53,7 +53,8 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 33 scripts, ~1620 t
   with "Could not find type X" — in hundreds of unrelated tests, because the
   script that referenced it failed to parse and its scene fell back to a bare
   Control. Run `godot --headless --editor --quit` once after adding one.
-- **A GUT run should be all green, with no Risky / "Did not assert".** It used to
+- **A GUT run should be all green, with no Risky / "Did not assert"** — with the
+  two known seed-dependent exceptions listed below. It used to
   report one or two, varying between runs, because a couple of tests early-
   `return`ed when the run's random graph didn't reach the case they were about.
   Both are fixed: `test_atlas.gd::test_path_taken_follows_the_order_the_games_were_visited`
@@ -78,6 +79,26 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 33 scripts, ~1620 t
   cache. It now checks the cache against a fresh build instead, which is what
   "rebuilt" meant and is true either way. Before blaming a random graph for a
   varying failure, work out which assertion is only *usually* true.
+- **TWO varying failures are currently UNFIXED, and both PREDATE the cards work**
+  — measured against a clean worktree of the same commit, not assumed. A full run
+  is all-green most of the time and drops one or two of these when the global RNG
+  stream lands badly, so a red run is worth re-running *once* before believing it.
+  - `test_overworld2.gd::test_the_page_still_fits_the_window_with_machines_standing_on_it`
+    is a **real thin margin, not a bad assertion**: the page with three machines
+    under the board measures **616px of the 625px a 720p window leaves**, so nine
+    pixels is the whole budget — and the left column's height rides on the run's
+    random offering and checklist, whose goal text wraps differently game to game.
+    One extra wrapped line overflows it. Fixing it means giving the page back some
+    room (the checklist, the offering rows, the panel's own chrome), not widening
+    the assertion, which is measuring something true.
+  - `test_enemy_abilities.gd`'s **spawner** tests (`test_a_spawner_puts_a_body_in_front_of_it_and_never_moves`,
+    `test_a_summoned_body_is_an_ordinary_body_and_pays_out`) drop one or the other
+    depending on the seed — the spawn rolls a destination and sometimes lays
+    nothing. Run this script alone and it fails deterministically, on the baseline
+    too, because nothing has consumed the global stream ahead of it; run it inside
+    a full suite and it usually passes. This file is where abilities ARE the
+    subject, so `_disarm_board()` is not the answer here — the spawn's own
+    "nowhere to lay it" case is.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

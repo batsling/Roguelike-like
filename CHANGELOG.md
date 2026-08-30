@@ -11,6 +11,103 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Cards — the loot you can read.**
+
+  A fourth consumable, and the first one that is **not a gamble**. A scroll, a
+  pill and a potion each sell the same thing — spend it to find out what it was —
+  and three variations on that question is two more than a run needs. A **card**
+  is one use, no identification, no Preference, and what it does is printed on it.
+  Thirteen of them, from the `cards` sheet, with faces in `images2.0/cards/`.
+
+  **What a card withholds is which card it is, and only on the floor.** Lying on a
+  battlefield square it is face down: it draws its **deck's icon** — Major Arcana,
+  Playing Cards, the Ironclad's rares — and its hover names the deck and stops.
+  Five icons over thirteen cards — two decks of five, three of one — so a face-down
+  arcanum or playing card narrows the guess to five without answering it, and the
+  three lonely decks name theirs, which `test_card_system.gd` pins on purpose. Pick it up and it turns over for good. That makes the
+  floor's question *"is a Major Arcana worth a slot"*, which is a real question
+  with three arcana doing three unrelated things, and it is the only place in the
+  build where a piece of loot is a chest again. The two sides are
+  `LootSystem.art_texture(entry, face_up)`, **false at exactly three call sites**
+  — the token, its hover, and the drag preview, that last one because without it
+  drag-and-cancel is a free look at every card on the board — and true everywhere
+  else. It is a parameter rather than a field on the entry: "face down" is a fact
+  about *where the card is*, and an entry carrying it would have to be flipped by
+  every drag, eviction and swap.
+
+  **Loot income is an even four-way split now**, 25/25/25/25. Cards are the least
+  dangerous kind, which is the obvious argument for a smaller share — and a smaller
+  share is exactly what would make the run's one legible piece of loot the one it
+  rarely sees. The Identify tenth did not move: a quarter of every drop is now a
+  kind Identify has nothing to say about, and the run that needs the scroll is the
+  run holding four unknown capsules, whose odds should not depend on how many cards
+  it happened to draw.
+
+  **Temperance stands a Blood Donation Machine under the board.** It names the
+  machine outright rather than rolling one off a tag — an arcade is a room full of
+  whatever cabinets it has, a tarot card is a promise about which one you get — and
+  it goes through `ObjectSystem` like every other spawn, so the machine mounts
+  **where a hub's shop mounts**: on the page, under the battlefield, blocking
+  nothing. Not a popup. That means it is pressable **while a game is in play** (the
+  right column is built once, not per phase) and it is gone when the run travels
+  on. One repair was needed: an event modal owns the screen while it is up, so
+  `_sync_object_panel` takes the panel down when `objects_changed` fires during
+  one — and the modal's own cleanup is such a fire, with nothing emitting
+  afterwards. A machine standing at the game *before* the event was left living in
+  `ObjectSystem` with no panel to press it on. `_on_event_finished` asks once more.
+
+  **Barricade and Ride the Bus stop being relics.** Both were tagged `card` in the
+  items sheet all along; their rows are deleted from `items` and their `.tres` from
+  `data/items2.0/`, and the `bank_shields` item keyword goes with them, Barricade
+  having been its only author. Barricade **changes meaning** in the move: the relic
+  banked every resolved game's leftover Temporary Shields forever, and the card
+  arms the **next** game's and is then spent. `GameState.banks_shields()` is still
+  the only reader — a run flag instead of the inventory — so `GameLoop2.beat_game`
+  gained one line, disarming the flag **outside** the `shields > 0` branch: a game
+  that ended with its cover already broken is a game the card was there for.
+
+  The rest of the roster: three teleports (**Ride the Bus** to a Deckbuilder,
+  **The Hermit** to the nearest hub with ties drawn between rather than resolved by
+  array order, **The Fool** back to where the run began), all three now one move
+  with three pools in `Overworld2.card_teleport`; the three **twos**, one
+  `double_stat` op with a `floor=` for "if you have none, gain 2 instead" — and no
+  floor on 2 of Hearts, because a run at 0 Health is a run that is over; **Queen of
+  Hearts**, whose +1-to-+20 rolls through `Stats.roll_range` so Luck reaches it and
+  whose line says what *landed* rather than what was rolled; **Ancient Recall**,
+  which *offers* three more cards rather than granting them into a pack that holds
+  nine; and **? Card**, which copies a USABLE relic's effect and spends none of its
+  uses — charged actives are deliberately not in the picker, since a charged
+  relic's cost IS its bar.
+
+  Cards go through `LootSystem.use_loot` like every other kind, so **Echo Chamber
+  replays them** and the used-memory remembers them. They are absent from the
+  discoveries fold on purpose: a run learns nothing about a card, and "Cards: 13 of
+  13" would be a record of the player having read the Collection. The Loot tab
+  gains a fourth sub-tab showing **both sides** of each card, the dev panel gains a
+  Cards grant, and `test/test_card_system.gd` covers the lot.
+
+  Two flaky tests were fixed on the way through, and two more were run down and
+  found to PREDATE this work (measured against a clean worktree of the same
+  commit, and now written up in CLAUDE.md): the 720p fit test with three machines
+  under the board has nine pixels of headroom and loses them when the run's
+  checklist wraps a line, and `test_enemy_abilities`'s spawner pair drops one or
+  the other depending on where the global RNG stream has got to. Neither is a card.
+
+  The two that were fixed are both of the kind CLAUDE.md warns about. `test_the_token_wears_the_loot_s_own_art` rolls a random piece of loot and
+  asserted the floor token drew *the pack's* picture — true for three kinds and
+  deliberately false for the fourth, so it failed on about one run in four once
+  cards were in the pool; it asserts the FLOOR's picture now, which is what it was
+  ever about, and a card-specific twin covers the mask. And
+  `test_a_boss_wears_its_portrait_on_both_checklists` counted portraits either side
+  of a report without disarming the board, so a spawner taking its turn in between
+  made the second count a body the first could not have known about.
+
+  New: `scripts/resources/CardData.gd`, `scripts/autoload/CardSystem.gd` (autoload
+  #24), `tools/generate_card2_tres.py`, `data/cards2.0/`, `docs/cards-design.md`.
+  Sheet work: `tools/_cards_effect_cells.py` (the 13 Effect cells, plus two `Image`
+  cells that named files not on disk — `VITheHierophant` → `VTheHierophant`, `?Card`
+  → `QuestionMarkCard`) and `tools/_items_drop_card_relics.py`.
+
 - **Strength and Dexterity ask for as much as the game in front of you allows.**
 
   Both hang a number on whichever game the run likes, and plenty of real games

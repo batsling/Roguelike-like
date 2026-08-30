@@ -241,6 +241,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
 | `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and the two verbs themselves: `quaff_potion` applies the sheet's `On Player` side to the drinker, `throw_potion` takes an aimed cell in `ctx.target` and applies the `On Tile` side around it. The shapes an `area=` token names are the BOARD's (`GameLoop2.area_cells`); Sacred Bark widens one by a rung of `AREA_LADDER` rather than by a multiplier, because a grid has no way to be exactly twice as big. |
+| `CardSystem` | Cards (`docs/cards-design.md`): the fourth loot consumable and the one that is **not a gamble** — no identification, no Preference, one use, what it does printed on it. What a card withholds is *which* card it is, and only while it is lying on a battlefield square: the floor draws its DECK'S icon (five icons over thirteen cards) and the hover names the deck and stops, and it turns over for good when it is picked up. That side is `LootSystem.art_texture(entry, face_up)`, false at three call sites and true everywhere else — "face down" is a fact about where the card is, not about the card. Owns the roster's ops too: the three teleports and the ? Card copy resolve as REQUESTS the overworld fulfils, and Temperance's `spawn_object` puts a named machine under the board through `ObjectSystem`. |
 | `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
@@ -278,13 +279,17 @@ node and its script.
     Atlas button of its own (Run History still lays its routes over the sky).
     Enemies and Bosses sort by A-Z, Tier, Damage and **Ability** — an ability is
     the one thing about a body that isn't a number, and it is what the roster is
-    browsed for. **Loot is one tab with two sub-tabs** —
-    Scrolls, Pills and Potions — because they are one thing to the run: one
-    three-way payout, one nine-piece pack, one window, and three top-level tabs
+    browsed for. **Loot is one tab with four sub-tabs** —
+    Scrolls, Pills, Potions and Cards — because they are one thing to the run: one
+    four-way payout, one nine-piece pack, one window, and four top-level tabs
     would say the opposite. **A potion's cell shows its identified art and both
     verbs**, which is the one place this tab does not draw a stand-in: a pill's
     picture is the colour the run deals it, but what a potion looks like once you
-    know it is a fact about the potion rather than a per-run secret.
+    know it is a fact about the potion rather than a per-run secret. **A card's
+    cell shows BOTH SIDES** — its face and its deck icon — because the difference
+    between them is the whole of what the kind withholds, and it is the one half of
+    this tab that spoils nothing: a card is readable in a run the moment it is in
+    the pack.
     Both halves are the **revealed reference**, which a run hides until you
     identify it. A pill cell wears a **stand-in capsule and says so**: a pill
     carries no art of its own (`PillData` has no image field) because its picture
@@ -1122,7 +1127,8 @@ cross-run tier list. What's still ahead:
   Devilish, Holy, Marked) that trigger when you land on a space
   (`game-statuses-data.js`).
 - **More map movement** — additional movement items, loot, and mechanics beyond
-  Dash / Ride the Bus / Scroll of Teleportation.
+  Dash / Scroll of Teleportation / the three teleport cards (Ride the Bus, The
+  Hermit, The Fool).
 - **Curses** — the combat-era `data/curses` cards are shelved on purpose (§5):
   the enemy-with-a-goal is the challenge mechanic. The 16 of them and their hooks
   stay in the repo in case they come back as an opt-in gambit layer. The live

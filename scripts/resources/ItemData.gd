@@ -435,13 +435,12 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # fired as effects, because they change a RULE rather than move a number. Each
 # has a GameState.has_* helper so the call sites stay a single bool.
 #
-# Barricade: the Temporary Shields a resolved game left standing are BANKED as
-# ordinary Shields (§4.3) — the pool that stays — rather than expiring with the
-# game that granted them. It used to simply stop them expiring, which quietly made
-# the temporary pool a second permanent one with its own spend order; now there is
-# one pool that persists and this is the relic that fills it. Read by
-# GameLoop2.beat_game via GameState.banks_shields.
-@export var bank_shields: bool = false
+# `bank_shields` USED TO BE HERE and is gone with the relic that authored it.
+# Barricade is a CARD now (docs/cards-design.md §5.1): what a resolved game left
+# standing is banked for the NEXT game only, armed by playing the card, and the
+# run flag it sets (GameState.bank_shields_next) is what GameLoop2.beat_game reads
+# through the same GameState.banks_shields it always did. A sheet keyword with no
+# author is a keyword that rots, so the vocabulary lost it too.
 
 # Lucky Foot: a NEGATIVE pill taken while this is held rerolls into a random
 # Positive one (§4.3). Neutral pills are untouched, and the colour still

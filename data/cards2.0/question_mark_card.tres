@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_question_mark_card"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"question_mark_card"
+display_name = "? Card"
+rarity = "Uncommon"
+source_game = "The Binding of Isaac"
+set_name = "Playing Cards"
+description = "Copy the effect of a selected Usable Item in your inventory"
+effect = [{"op": "copy_item"}]
+file = "QuestionMarkCard"
+icon = "Isaac_Playing_Cards"
