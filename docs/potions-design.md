@@ -364,10 +364,10 @@ rather than vanishing between one look at the HUD and the next.
 
 Decision #1, and it is the decision that makes this whole feature small. A status
 already has a player side (§13): it hands its holder a **standing goal**. Dexterity
-on you is *"if X bosses — or all the game's bosses, whichever is fewer — were
-beaten without getting hit, gain a chest reward"*;
-Strength is *"if the difficulty is increased X times, gain a chest reward and +1
-Bash"*; Speed is *"if beaten in ⟨time⟩ or less, gain a chest reward and +1 Dash"*.
+on you is *"if X or all bosses were beaten without getting hit, gain a chest
+reward"*; Strength is *"if the difficulty is increased X times or as much as
+possible, gain a chest reward and +1 Bash"*; Speed is *"if beaten in ⟨time⟩ or
+less, gain a chest reward and +1 Dash"*.
 **A potion grants that goal for one game.** The bottle contributes the clock, not a
 new meaning.
 

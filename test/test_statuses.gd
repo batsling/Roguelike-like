@@ -247,13 +247,13 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 	var objectives: Array = GameState.status_objectives()
 	assert_eq(objectives.size(), 1, "it shows up as a standing objective")
 	assert_eq((objectives[0]["status"] as StatusData).objective_text(StatusData.PLAYER, 2),
-		"If the difficulty is increased 2 times, gain +1 Medium Chest, +1 Bash")
+		"If the difficulty is increased 2 times or as much as possible, gain +1 Medium Chest, +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 	_choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
-		"Beat it and the difficulty must be increased 2 times")
+		"Beat it and the difficulty must be increased 2 times or as much as possible")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 	_register_player_clause()
@@ -282,7 +282,7 @@ func test_clauses_stack_enemy_first_then_player() -> void:
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
-		"Beat it and the difficulty must be increased 1 time"
+		"Beat it and the difficulty must be increased 1 time or as much as possible"
 		+ " and you must get 2 achievements",
 		"the enemy's own clause reads before the one every enemy carries")
 
@@ -348,7 +348,7 @@ func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
-		"Beat it and the difficulty must be increased 2 times")
+		"Beat it and the difficulty must be increased 2 times or as much as possible")
 
 # ---------------------------------------------------------------------------
 # 2b. Decay and payout

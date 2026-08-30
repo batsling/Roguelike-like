@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Strength and Dexterity ask for as much as the game in front of you allows.**
+
+  Both hang a number on whichever game the run likes, and plenty of real games
+  cannot supply it. **Strength** wanted the difficulty raised X times, which is
+  not a thing you can do in a game with no difficulty selector — it now reads
+  *"the difficulty is increased X times **or as much as possible**"*, on both
+  sides. **Dexterity** already had the equivalent escape, added a moment ago as
+  *"or all the game's bosses, whichever is fewer"*, and that was the longest
+  clause on a checklist row that has to stay glanceable: it says the same thing
+  in three words now, *"X or all bosses without getting hit"*, because the
+  "whichever is fewer" is what the *or* already means. The plural fork
+  (`[boss was|bosses were]`) goes with it — "X or all bosses" is plural at every
+  stack count. Strength's prose also loses the typo it has carried from the start
+  ("difficuly").
+
+  Edited in the `statuses` sheet via
+  `tools/_statuses_as_far_as_the_game_allows_setup.py` and regenerated, prose and
+  effect columns together.
+
 - **The goal's add-ons are coloured rows, the source rides beside the cover, and
   Rodney's level-up stops promising the same Health twice.**
 

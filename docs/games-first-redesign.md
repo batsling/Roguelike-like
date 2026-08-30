@@ -2294,10 +2294,10 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
-| Strength | `goal "the difficulty is increased {X} times" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times"` |
+| Strength | `goal "the difficulty is increased {X} times or as much as possible" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times or as much as possible"` |
 | Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
 | Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
-| Dexterity | `goal "{X} bosses were beaten without getting hit — or all the game's bosses, whichever is fewer" -> gain_chest reward {X}` | `clause "you must beat {X} bosses without getting hit — or all the game's bosses, whichever is fewer"` |
+| Dexterity | `goal "{X} or all bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} or all bosses without getting hit"` |
 | Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
 
 **One arrow per cell**, and which arrow it is says whether the payload is earned
@@ -2373,9 +2373,9 @@ would only make it a worse item.
 
 | Status | Type | From | Condition | Reward | In combat |
 |---|---|---|---|---|---|
-| **Strength** | Buff | Slay the Spire | the difficulty is increased X times | [chest reward X], +1 Bash | deals +X damage |
+| **Strength** | Buff | Slay the Spire | the difficulty is increased X times or as much as possible | [chest reward X], +1 Bash | deals +X damage |
 | **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
-| **Dexterity** | Buff | Slay the Spire | X bosses were beaten without getting hit — or all the game's bosses, whichever is fewer | [chest reward X] | +X Shields |
+| **Dexterity** | Buff | Slay the Spire | X or all bosses were beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 
