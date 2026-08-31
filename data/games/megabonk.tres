@@ -8,9 +8,9 @@ id = &"megabonk"
 display_name = "Megabonk"
 year = 2025
 type = 0
-games_influenced = Array[StringName]([])
-influence_sources = PackedStringArray()
-influence_relations = PackedStringArray()
+games_influenced = Array[StringName]([&"pengpong"])
+influence_sources = PackedStringArray("https://store.epicgames.com/news/pengpong-s-hockey-pinball-chaos-was-the-result-of-a-game-jam?lang=vi")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
