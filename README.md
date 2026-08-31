@@ -112,8 +112,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
 │   ├── items/            #   ItemData (pre-2.0 set, still loaded)
 │   ├── characters/       #   CharacterData (pre-2.0)
-│   ├── events/           #   EventData — the D20 events
-│   ├── encounters/       #   EncounterData — shops / deals / teleporters
 │   ├── curses/           #   CurseData (shelved, kept — §5)
 │   └── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │
@@ -151,8 +149,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
 │   ├── generate_item_tres.py, generate_character_tres.py,
-│   ├── generate_curse_tres.py, generate_event_tres.py,
-│   ├── generate_encounter_tres.py  #   the pre-2.0 sets
+│   ├── generate_curse_tres.py      #   the pre-2.0 sets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
 │
@@ -670,7 +667,7 @@ All game content is authored as typed Godot **Resources** (`.tres`) under `data/
 with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
-`StatusData`, `TileEffectData`, `UnitData`, `EventData`, `EncounterData`,
+`StatusData`, `TileEffectData`, `UnitData`,
 `CurseData`, `StatDefinition`.
 
 (`TileEffectData` rather than `TileData` because Godot ships a native `TileData`
@@ -721,8 +718,6 @@ still exists under an old name silently generates the wrong content.
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesold2` sheet |
-| `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
-| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encountersold` sheet |
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
@@ -1100,16 +1095,17 @@ cross-run tier list. What's still ahead:
   and the verb/consumable counts, reading the same autoloads the main window
   mutates. Deferred by decision until the mechanics lock; it is the largest
   unbuilt piece of the spec.
-- **Overworld encounters** — deals, teleporters, and challenge rifts are authored
-  (`data/encounters/*.tres`, `EncounterData`, its sheet + generator, and
-  `GameState.encounter_requirement_met`), but nothing on the games-first board
-  offers them yet. They need a place in the offering / between games. **Shops are
-  no longer on this list** — they landed as their own thing at the ten hub games
-  (§14), and what is left of the encounter sheet's two shopkeepers is flavour a
-  hub's shop can adopt once the roster is authored.
-- **The D20 events** — `EventModal` + `data/events` are built and tested, and are
-  likewise not reachable from the current overworld. Same question: when does a
-  run stop for an event?
+- **Overworld encounters** — deals, teleporters and challenge rifts are a design
+  with no code behind it any more. The seven-row `data/encounters` scaffold,
+  `EncounterData`, its generator and `GameState.encounter_requirement_met` were
+  **deleted**: they loaded on every boot, were read by nothing, and were guarded by
+  tests that made dead content look maintained. The `encountersold` sheet is still
+  in the workbook when they are picked back up. **Shops are not on this list** —
+  they landed as their own thing at the ten hub games (§14).
+- **The D20 events** — likewise deleted, for the same reason: `scripts/events/`
+  (`EventModal`, `D20DieView`), `EventData` and the four ported `data/events` rows
+  had no scene, no caller and no way to be reached. Events 2.0 (§12,
+  `docs/event-sheet-authoring.md`) is the event layer the run actually has.
 - **Run History** — saving and resuming a run is done (Save button, autosave,
   Continue list), but the menu's Run History is still a stub: nothing records a
   run once it's finished, so there's no post-mortem to read.

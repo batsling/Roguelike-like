@@ -474,6 +474,26 @@ var _ghosts: Dictionary = {}
 # the same reason.
 var answered_rows: Dictionary = {}
 
+# BONUS ROWS THE PLAYER HAS TICKED BUT THAT HAVE NOT PAID YET, as "instance:status"
+# -> true. The checklist's optional objectives hang off a BODY, and a body's own
+# row is the thing that says the body is done — so a bonus is *armed* by ticking
+# it and *claimed* when the enemy it belongs to is cleared, rather than paying out
+# the instant it is clicked.
+#
+# WHY THIS IS A HOLDING PEN RATHER THAN A CLAIM. A bonus is earned by something you
+# did in the real game, and the enemy's own row is where you say the enemy is
+# finished with. Paying the bonus first meant a player could bank every optional
+# reward on the board and then never tick a single enemy — and it meant the two
+# halves of one body resolved at two different moments, which is what made the
+# checklist read as a flat list of unrelated boxes.
+#
+# It is ARMED rather than answered, so it is takeable back: an armed row has done
+# nothing yet, and unticking it simply disarms it. `answered_rows` is the opposite
+# — that is what a row that has RESOLVED is remembered by, and those never come
+# back. Cleared with the rest of the per-game record, and saved for the reason
+# `answered_rows` is: a repaint must not lose a tick, and neither must a reload.
+var armed_bonuses: Dictionary = {}
+
 # EVENT GOALS CLAIMED THIS GAME, as the handful of display fields their row is
 # drawn from: [{condition, effects_text, event}, …].
 #
@@ -751,6 +771,7 @@ func serialize() -> Dictionary:
 		"goals_met_this_game": goals_met_this_game,
 		"defeated_this_game": defeated_this_game,
 		"answered_rows": _string_keys(answered_rows),
+		"armed_bonuses": _string_keys(armed_bonuses),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		# THIS RUN'S DEAD and what Undying still owes (§7.6). Both as ids — the rows
 		# hold GoalEnemyData, which a save file cannot — and both rehydrated on load,
@@ -941,6 +962,12 @@ func restore(data: Dictionary) -> void:
 	defeated_this_game = maxi(0, int(data.get("defeated_this_game", 0)))
 	for key in data.get("answered_rows", []):
 		answered_rows[String(key)] = true
+	# Absent from a save written before bonuses were armed rather than claimed,
+	# which loads as "nothing ticked yet" — the safe direction, since an armed row
+	# has not paid and the player can simply tick it again.
+	armed_bonuses.clear()
+	for key in data.get("armed_bonuses", []):
+		armed_bonuses[String(key)] = true
 	for raw in data.get("claimed_event_goals", []):
 		if raw is Dictionary:
 			claimed_event_goals.append((raw as Dictionary).duplicate(true))
@@ -1775,6 +1802,10 @@ func _clear_game_record() -> void:
 	goals_met_this_game = 0
 	defeated_this_game = 0
 	answered_rows.clear()
+	# ARMED BUT NEVER CLAIMED. A bonus ticked against a body whose own row was
+	# never ticked expires with the game, which is the point of arming rather than
+	# paying: the reward is for a body you finished with, and you did not.
+	armed_bonuses.clear()
 	claimed_event_goals.clear()
 	_ghosts.clear()
 
@@ -4619,6 +4650,63 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 		_add_status_to(entry, status_id, -1)
 	loop_changed.emit()
 	return true
+
+# --- arming a bonus, and cashing it when the body is done -------------------
+
+# IS THIS BODY FINISHED WITH THIS GAME? Either way of clearing one counts: its goal
+# was met (`cleared_this_game`, set by `fulfill`) or it was cleared the other way
+# (`instead_this_game`, set by `fulfill_instead`).
+#
+# It asks the LOOP rather than the checklist's `answered_rows`, and that distinction
+# is the whole of a bug this function exists to have fixed: a goal row is not
+# recorded in `answered_rows` at all — `_arm_row` locks it and `fulfill` records the
+# body — so a bonus that waited on "was the goal row ticked" waited forever on a
+# body that was already dead.
+func body_finished_this_game(instance: int) -> bool:
+	return cleared_this_game.has(instance) or instead_this_game.has(instance)
+
+func _bonus_key(instance: int, status_id: StringName) -> String:
+	return "%d:%s" % [instance, status_id]
+
+# The player ticked a bonus row. Nothing is paid: the row is held until the body
+# it hangs off is cleared (`claim_armed_bonuses`).
+func arm_bonus(instance: int, status_id: StringName) -> void:
+	armed_bonuses[_bonus_key(instance, status_id)] = true
+
+# They unticked it. An armed row has done nothing yet, so taking it back costs
+# nothing — which is the whole reason a bonus is armed rather than claimed.
+func disarm_bonus(instance: int, status_id: StringName) -> void:
+	armed_bonuses.erase(_bonus_key(instance, status_id))
+
+func bonus_armed(instance: int, status_id: StringName) -> bool:
+	return armed_bonuses.has(_bonus_key(instance, status_id))
+
+# THE BODY IS DONE, so everything armed against it pays now. Returns what actually
+# paid out as [{status: StringName, stacks: int}], so the checklist can say what the
+# tick just bought — the STACKS read before the claim, since claiming is what sheds
+# them and the sentence is about the objective that was met.
+#
+# Called from the two rows that finish a body: its goal row, and the `instead` row
+# that clears it the other way. Both are "the enemy's box got checked off", which
+# is the moment a bonus was waiting for.
+#
+# The key is cleared whether or not the claim was good for anything — a bonus that
+# could not pay (the status is gone, the stacks were shed) is spent all the same,
+# and leaving it armed would have it try again on the next repaint.
+func claim_armed_bonuses(instance: int) -> Array:
+	var paid: Array = []
+	for key in armed_bonuses.keys():
+		var parts: PackedStringArray = String(key).split(":")
+		if parts.size() != 2 or int(parts[0]) != instance:
+			continue
+		armed_bonuses.erase(key)
+		var sid := StringName(parts[1])
+		var stacks: int = entry_status_stacks(entry_for(instance), sid)
+		if stacks <= 0:
+			stacks = entry_status_stacks(_ghosts.get(instance, {}), sid)
+		if claim_enemy_bonus(instance, sid):
+			paid.append({"status": sid, "stacks": maxi(1, stacks)})
+	return paid
 
 # A body's goal was met THE OTHER WAY (§13): the player did the `instead` side's
 # condition — skipped the items Burn asked for — rather than the goal itself. Sheds

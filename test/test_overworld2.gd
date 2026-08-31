@@ -769,20 +769,38 @@ func test_level_up_not_applied_when_unchecked() -> void:
 	_report_beat(_ui)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
-func test_isaac_level_up_grants_a_chest() -> void:
+# A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THE HAUL SCREEN (§18). It
+# used to throw a RewardScreen over the checklist the instant the box was ticked —
+# on a list of five rows, four interruptions — so it is banked at the tick and
+# handed over when the report opens the screen every other reward lands on.
+#
+# Both halves are asserted, because either one alone would pass while the feature
+# was broken: banked-and-never-handed-over is a lost chest, and handed-over-without-
+# being-banked is the interruption coming back.
+func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	_reboot(&"isaac")                       # reward_type item -> Small Chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
+	assert_eq(GameState.pending_chests, chests_before + 1,
+		"Isaac's level-up banks a chest at the tick")
+	assert_null(_ui.get_node_or_null("RewardScreen"),
+		"and nothing is thrown over the checklist for it")
 	_ui.report(false)
-	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
+	# The resolve's playback is what hands the queue over (see the drop test above).
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
+	assert_eq(GameState.pending_chests, 0, "which took the whole queue")
+	assert_gt(_ui._post_screen._chest_sections.size(), 0,
+		"and the level-up's chest is on it")
+	_leave_post_game()
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
-	_ui.report(false)
+	# Read BEFORE the report, which is what now empties the queue onto the screen.
 	assert_eq(GameState.pending_chests, chests_before + 1, "Poe's level-up banks a chest")
 	var choices: int = GameState.pending_chest_choices.back()
 	assert_true([1, 2, 3, 5].has(choices),
@@ -5033,6 +5051,13 @@ func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
 	# Take the next game the same way, so a second resolve runs.
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
+	# DISARMED, because this test asserts that the body WALKED (§7.6). The offering
+	# rolls a random enemy, and an ability can spend a whole turn on something other
+	# than closing — a Ritual, a Defensive Stance, either spawner — so a body that
+	# happened to roll one walks one column fewer and the arithmetic below is off by
+	# exactly that. It is the flake CLAUDE.md describes, and it only ever showed up
+	# when an unrelated change shifted the global RNG stream far enough to roll one.
+	_disarm_board()
 	var owed: int = GameLoop2.enemy_turns()
 	_ui.escape_game()
 	var still: Dictionary = GameLoop2.entry_for(inst)
@@ -7997,3 +8022,103 @@ func test_nothing_ticked_is_an_empty_panel_rather_than_no_panel() -> void:
 	if panel != null:
 		assert_eq(panel.groups().size(), 0, "with nothing in it")
 		panel.close()
+
+# ---------------------------------------------------------------------------
+# The checklist's status rows: nested under their body, and ARMED not claimed
+# (docs/games-first-redesign.md §13)
+# ---------------------------------------------------------------------------
+#
+# A bonus objective belongs to a BODY, and the body's own row is what says the
+# body is finished with. Ticking a bonus used to pay it out on the spot, which
+# meant a player could bank every optional reward on the board without ticking a
+# single enemy — and it meant the two halves of one body resolved at two moments.
+
+# One follower carrying a bonus-side status, with the board disarmed and the rest
+# of the stack cleared away: these tests are about the ROWS, not about whichever
+# enemy the offering rolled.
+func _solo_with_bonus() -> int:
+	_ui.pick(0)
+	_disarm_board()
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_clear_board_except(inst)
+	# Stun's enemy side is a `bonus` — the sheet's own optional objective.
+	GameLoop2.apply_status_to(inst, &"stun", 1)
+	_ui._populate_play_panel()
+	return inst
+
+func test_a_bonus_row_is_offered_under_the_body_it_belongs_to() -> void:
+	var inst: int = _solo_with_bonus()
+	assert_eq(_ui._bonus_checks.size(), 1, "the bonus has a row")
+	assert_eq(int(_ui._bonus_checks[0]["instance"]), inst, "and it names its body")
+	# INDENTED, which is the whole of what says whose it is: the row is wrapped in
+	# a margin rather than sitting flush with the enemy rows above it.
+	var row: Control = _ui._bonus_checks[0]["check"]
+	var pad: Node = row
+	while pad != null and not (pad is MarginContainer) and pad != _ui._verify_box:
+		pad = pad.get_parent()
+	assert_true(pad is MarginContainer, "a bonus row is nested under its enemy")
+	assert_gt((pad as MarginContainer).get_theme_constant("margin_left"), 0,
+		"and the nesting is a real indent")
+
+func test_ticking_a_bonus_arms_it_and_pays_nothing_yet() -> void:
+	var inst: int = _solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	# NO CONFIRM: an armed row has done nothing, so there is nothing to be sure
+	# about. `_tick` answers a confirm if one is up; this asserts none was.
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_null(_ui.get_node_or_null("Confirm"),
+		"a row that can be unticked does not ask 'did you really?'")
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "it is armed")
+	assert_eq(GameState.pending_chests, chests_before, "and nothing has been paid")
+
+func test_unticking_a_bonus_disarms_it_at_no_cost() -> void:
+	var inst: int = _solo_with_bonus()
+	var cb: CheckBox = _ui._bonus_checks[0]["check"]
+	cb.button_pressed = true
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"))
+	cb.button_pressed = false
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"),
+		"taking it back costs nothing, because it had done nothing")
+
+func test_an_armed_bonus_pays_when_the_enemy_is_ticked() -> void:
+	var inst: int = _solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_eq(GameState.pending_chests, chests_before, "still waiting")
+	# The enemy's own row is the one that says the body is done — and the one that
+	# still asks for a confirm, because clearing a body cannot be taken back.
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_gt(GameState.pending_chests, chests_before,
+		"the bonus cashed with the body")
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"), "and is spent")
+
+func test_a_bonus_never_armed_pays_nothing_when_the_enemy_is_ticked() -> void:
+	_solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_eq(GameState.pending_chests, chests_before,
+		"an untouched bonus is a bonus you did not claim")
+
+func test_a_bonus_ticked_after_the_body_is_down_pays_at_once() -> void:
+	# A ghost has no enemy row left to wait for (§2.1) — that row was ticked, and
+	# this one is catching up.
+	var inst: int = _solo_with_bonus()
+	_tick(_ui._fulfil_checks[0]["check"])
+	_ui._populate_play_panel()
+	if _ui._bonus_checks.is_empty():
+		# The body survived its goal hit, so its row is still open — not the case
+		# this test is about.
+		return
+	var chests_before: int = GameState.pending_chests
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_gt(GameState.pending_chests, chests_before,
+		"nothing left to wait for, so it pays on the spot")
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"))
+
+func test_an_armed_bonus_survives_a_repaint() -> void:
+	var inst: int = _solo_with_bonus()
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	_ui._populate_play_panel()
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "the loop remembers, not the box")
+	assert_true(_ui._bonus_checks[0]["check"].button_pressed,
+		"and the rebuilt row comes back ticked")

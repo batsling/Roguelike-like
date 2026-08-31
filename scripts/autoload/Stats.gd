@@ -90,7 +90,7 @@ func event_roll_bonus(stat_id: StringName) -> int:
 	return get_value(stat_id)
 
 # ---------------------------------------------------------------------------
-# Luck-weighted rolls (EffectSystem chance procs, EventModal dice)
+# Luck-weighted rolls (EffectSystem chance procs, event dice)
 # ---------------------------------------------------------------------------
 
 # LUCK — one guaranteed reroll per point, and you keep the better result.
@@ -202,7 +202,7 @@ func roll_chance_with_luck(rng: RandomNumberGenerator, percent: int) -> bool:
 func roll_die_with_luck(rng: RandomNumberGenerator, sides: int) -> int:
 	return roll_range(rng, 1, sides, Favour.HIGH)
 
-# Decide whether this roll earns Luck advantage / disadvantage — the EventModal's
+# Decide whether this roll earns Luck advantage / disadvantage — the event modal's
 # d20, which shows its dice and so needs the mode named rather than folded in.
 # Now that a reroll is guaranteed, "advantage" is simply the sign of Luck; the
 # affliction still forces disadvantage over the top of it.

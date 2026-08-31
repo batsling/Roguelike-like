@@ -83,21 +83,6 @@ var player_level: int = 1
 # perfect-aware items / future systems. Transient — not saved.
 var last_game_perfected: bool = false
 
-# Curse bookkeeping for the most recently cleared game, set by the post-game
-# verification step (see Overworld._resolve_curse_penalties). Both count only
-# RESTRICTION curses (the kind that can be "triggered" by breaking their rule).
-# Read by overworld-encounter requirement gates (Deal with the Devil needs a
-# triggered curse last game; the Angel Room needs 2+ held and none triggered).
-# Transient — not saved.
-var last_game_curses_held: int = 0
-var last_game_curses_triggered: int = 0
-
-# Mid-encounter resume that has to survive a combat scene-swap: when an overworld
-# encounter launches a combat (the teleporter's "fight an elite first"), the
-# overworld is freed and rebuilt, so the unfinished tail (e.g. the pending
-# teleport) is stashed here and resumed when the fresh overworld re-opens.
-var pending_encounter: Dictionary = {}
-
 # === Player vitals ===
 var max_hp: int = 75
 var hp: int = 75
@@ -421,7 +406,7 @@ var event_block: int = 0
 # into the running fight. Empty when not in combat.
 var combat_scene = null
 var combat_player = null
-# True while an EventModal is open — the only non-combat place a pill may be
+# True while an event modal is open — the only non-combat place a pill may be
 # used (gates the backpack's Use button).
 var event_active: bool = false
 # Live overworld scene, registered while the player is on the map. Lets
@@ -658,7 +643,7 @@ var pending_fire_damage_all: int = 0
 
 # "A Note For Yourself" stores a card id here so the next encounter can hand it
 # back. Empty until the player stores one; the event seeds a default the first
-# time (see EventData note_for_yourself effect).
+# time (a combat-era event effect; the set it came from is gone).
 var note_for_yourself_card: StringName = &""
 
 # === Phase ===
@@ -858,41 +843,6 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 func curse_count() -> int:
 	return active_curses.size()
 
-# Evaluates an EncounterData.requirement_effect (an AND-list of comparison
-# Dictionaries {field, cmp, value}) against current run-state. Empty list = no
-# gate = always available. Unknown fields fail closed (the encounter won't spawn)
-# so a typo never silently passes. Field vocabulary mirrors the requirement DSL
-# the encounter generator parses.
-func encounter_requirement_met(conds: Array) -> bool:
-	for c in conds:
-		if not (c is Dictionary):
-			return false
-		var field: String = String(c.get("field", ""))
-		var want: int = int(c.get("value", 0))
-		var have: int
-		match field:
-			"last_game.curses_held":
-				have = last_game_curses_held
-			"last_game.curses_triggered":
-				have = last_game_curses_triggered
-			"curses_held":
-				have = curse_count()
-			_:
-				return false
-		if not _cmp_int(have, String(c.get("cmp", "==")), want):
-			return false
-	return true
-
-func _cmp_int(a: int, op: String, b: int) -> bool:
-	match op:
-		">=": return a >= b
-		"<=": return a <= b
-		">": return a > b
-		"<": return a < b
-		"==": return a == b
-		"!=": return a != b
-		_: return false
-
 # Saddles the player with a curse (skipping a game today; events / enemies
 # later). Records it in active_curses. The penalty card is NOT granted here — a
 # restriction curse drops its card only when the player admits on the
@@ -1049,9 +999,6 @@ func reset_run() -> void:
 	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false
-	last_game_curses_held = 0
-	last_game_curses_triggered = 0
-	pending_encounter = {}
 	max_hp = 75
 	hp = 75
 	max_energy = 3

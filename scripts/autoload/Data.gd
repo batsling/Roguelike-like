@@ -3,13 +3,19 @@ extends Node
 # Loads all .tres data files at startup and exposes lookups by id.
 # Post games-first cut (docs/games-first-redesign.md §11), the simulated-combat
 # content (cards, combat enemies, potions, action tunables) is gone; what remains
-# is the run-graph content (games, characters, items, events, encounters, curses)
-# plus the 2.0 games-first content (characters2.0, items2.0, enemies2.0, bosses2.0,
-# scrolls2.0). Scrolls are 2.0-only now, so get_scroll/all_scrolls resolve the
-# scrolls2.0 set directly.
+# is the run-graph content (games, characters, items, curses) plus the 2.0
+# games-first content (characters2.0, items2.0, enemies2.0, bosses2.0, scrolls2.0).
+# Scrolls are 2.0-only now, so get_scroll/all_scrolls resolve the scrolls2.0 set
+# directly.
+#
+# THE PRE-2.0 EVENT AND ENCOUNTER SETS ARE GONE. `data/events` was four ported
+# HTML-era events superseded by `data/events2.0` (docs/event-sheet-authoring.md),
+# and `data/encounters` was a seven-row scaffold for an overworld encounter node
+# that never landed — both loaded on every boot and were read by nothing. Deleted
+# with their schemas, their generator and their tests rather than left as content
+# the next reader has to work out is dead.
 
 var _items: Dictionary = {}             # StringName -> ItemData
-var _events: Dictionary = {}            # StringName -> EventData
 var _games: Dictionary = {}             # StringName -> GameData
 var _characters: Dictionary = {}        # StringName -> CharacterData
 var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept — §5)
@@ -18,7 +24,6 @@ var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
 var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions-design)
 var _cards: Dictionary = {}             # StringName -> CardData (2.0, docs/cards-design.md)
 var _wands: Dictionary = {}             # StringName -> WandData (2.0, docs/wands-design.md)
-var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
 var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roster)
@@ -35,11 +40,9 @@ var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklis
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
-	_load_dir("res://data/events/", _events)
 	_load_dir("res://data/games/", _games)
 	_load_dir("res://data/characters/", _characters)
 	_load_dir("res://data/curses/", _curses)
-	_load_dir("res://data/encounters/", _encounters)
 	# Games-first redesign (2.0) content.
 	_load_dir("res://data/characters2.0/", _characters2)
 	_load_dir("res://data/items2.0/", _items2)
@@ -57,9 +60,8 @@ func _ready() -> void:
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
-	print("[Data] Loaded %d items, %d events, %d games, %d characters, %d curses, %d encounters" % [
-		_items.size(), _events.size(), _games.size(), _characters.size(),
-		_curses.size(), _encounters.size()
+	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
+		_items.size(), _games.size(), _characters.size(), _curses.size()
 	])
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
@@ -413,17 +415,8 @@ func roll_wand(rng: RandomNumberGenerator = null) -> WandData:
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]
 
-func get_encounter(id: StringName) -> EncounterData:
-	return _encounters.get(id)
-
-func all_encounters() -> Array:
-	return _encounters.values()
-
 func get_item(id: StringName) -> ItemData:
 	return _items.get(id)
-
-func get_event(id: StringName) -> EventData:
-	return _events.get(id)
 
 func get_game(id: StringName) -> GameData:
 	return _games.get(id)
@@ -476,8 +469,8 @@ func all_bosses() -> Array:
 # hanging off it — so an unknown id returns null rather than warning, and callers
 # skip it.
 # --- Events & curses (2.0) -------------------------------------------------
-# `get_event`/`all_events` above serve the COMBAT-ERA data/events set, which the
-# games-first build does not use; these are the ones the run reads (§12).
+# The only event set there is. The combat-era `data/events` and its `get_event` /
+# `all_events` pair are gone — see the header.
 func get_event2(id: StringName) -> EventData2:
 	return _events2.get(id)
 
@@ -697,9 +690,6 @@ func random_item_by_tag(tag: StringName, rng: RandomNumberGenerator = null) -> I
 		return null
 	var idx: int = (rng.randi() if rng != null else randi()) % pool.size()
 	return pool[idx]
-
-func all_events() -> Array:
-	return _events.values()
 
 func all_games() -> Array:
 	return _games.values()

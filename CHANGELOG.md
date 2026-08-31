@@ -11,6 +11,54 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The checklist's status rows nest under their body, and a bonus is armed rather
+  than claimed.**
+
+  An optional objective hangs off a BODY, and it was drawn flush with the enemy
+  rows — so a bonus on the Maggot read as a top-level objective that happened to be
+  listed after it. The `instead` rows, the bonus rows and a boss's nullified
+  alternatives are **indented** under the enemy they belong to now.
+
+  And ticking one no longer pays. A bonus **arms** — it says "I did that" and waits
+  — and cashes when the enemy it hangs off is cleared, either way: its goal row, or
+  the `instead` that clears it the other way (`GameLoop2.arm_bonus` /
+  `claim_armed_bonuses`). Paying at the tick let a player bank every optional reward
+  on the board without ticking a single enemy, and split one body's two halves
+  across two moments. **So a bonus row asks for no confirmation**, which is the
+  other half of the same change: the "did you really?" is the safeguard on a row
+  that RESOLVES when answered, and an armed bonus has done nothing — unticking it
+  disarms it at no cost. The confirm comes back on the enemy's own row, where the
+  irreversible thing happens. One ticked against a body that is already down pays on
+  the spot, since there is nothing left to wait for.
+
+  The waiting question asks `GameLoop2.body_finished_this_game`, not the checklist's
+  `answered_rows` — a goal row is never recorded there (`_arm_row` locks it and
+  `fulfill` records the BODY), so a bonus that waited on the row would have waited
+  forever on an enemy that was already dead.
+
+- **Every chest a game earned shows up on the haul screen.**
+
+  The checklist can pay a chest at any tick — a goal cleared mid-game, a level-up
+  taken, a status objective answered — and each one threw a full-screen
+  `RewardScreen` over the list the player was working down. Five rows meant four
+  interruptions, each hiding the list behind the decision it was interrupting.
+  They are the same haul as the drop the game itself pays, so they wait for the
+  screen the rest of the haul lands on: `_redeem_pending_chests` holds the queue
+  while the phase is `PLAYING`, and `_open_post_game` hands it over on the way in.
+  Nothing is lost by waiting — `pending_chests` is run state and survives a save.
+
+- **The dead encounter and D20-event layers are deleted.**
+
+  Two content sets loaded on every boot and were read by nothing. `data/encounters`
+  (seven rows), `EncounterData`, its generator and `GameState.encounter_requirement_met`
+  were a scaffold for an overworld encounter node that never landed;
+  `scripts/events/` (`EventModal`, `D20DieView`), `EventData` and the four ported
+  `data/events` rows were the pre-2.0 event layer that Events 2.0 replaced, with no
+  scene and no caller. Their art (`images/events`, `images/encounters`) and their
+  two test scripts went with them — 25 tests that made dead content look maintained.
+  The `encountersold` sheet is still in the workbook if encounters are picked back
+  up.
+
 - **Wands — the loot that outlives its own use.**
 
   A **fifth** consumable, and the first one that is not spent in a single use.

@@ -2550,6 +2550,26 @@ more. The mode is still real and still implemented — `status_clauses` and
 synthetic status to exercise it, rather than borrowing whichever shipped status
 happens to be shaped that way this month.
 
+**A BONUS ROW IS ARMED, NOT CLAIMED.** An optional objective hangs off a BODY, and
+the body's own row is what says the body is finished with — so ticking a bonus says
+*"I did that"* and pays nothing yet, and the reward lands when the enemy it belongs
+to is cleared (either way: its goal row, or the `instead` that clears it the other
+way). `GameLoop2.arm_bonus` / `claim_armed_bonuses` are the holding pen, and
+`body_finished_this_game` is the question they wait on.
+
+Paying at the tick let a player bank every optional reward on the board without
+ticking a single enemy, and split one body's two halves across two moments. It also
+means **a bonus row asks for no confirmation**: `_arm_row`'s *"did you really?"* is
+the safeguard on a row that RESOLVES when answered — a body that cannot be
+un-killed — and an armed bonus has done nothing, so unticking it simply disarms it.
+The confirm comes back on the enemy's own row, where the irreversible thing happens.
+A bonus ticked against a body that is already down pays on the spot; there is
+nothing left for it to wait for.
+
+**The rows are indented under the body they belong to.** An `instead`, a bonus and
+a boss's nullified alternative are all one body's business, and drawn flush with the
+enemy rows they read as top-level objectives that happen to be listed nearby.
+
 **Two pieces of content hand Burn out**, one to each side of the board:
 
 - **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_tile fire front;
@@ -3242,6 +3262,20 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 | **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
 | **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — **with the sum that sized it** — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
+
+**AND EVERY CHEST THE GAME EARNED WHILE IT WAS STILL ON.** The checklist can pay a
+chest at any tick — a goal cleared mid-game, a level-up taken, a status objective
+answered — and each of those used to throw a full-screen `RewardScreen` over the
+list the player was working down. A run of five rows meant four interruptions, each
+one hiding the list behind the decision it was interrupting, and each one dropping
+the player back to find their place again.
+
+They are the same haul as the drop the game itself pays, so they wait for this
+screen. `Overworld2._redeem_pending_chests` holds the queue while the phase is
+`PLAYING` and `_open_post_game` hands it over on the way in — `pending_chests` is
+run state and survives a save, so nothing is lost by waiting. A chest banked while
+the haul screen is ALREADY up still lands on it, which is what that path always
+did.
 
 **★ Rate is here and nowhere else in the run.** It used to sit on the play
 panel's checklist, under the Play button — offered while the game was still in

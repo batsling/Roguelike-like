@@ -101,7 +101,13 @@ The card catalog is fully sheet-authored. Study these before starting:
 - **Expect** to do this incrementally (e.g. passive/stat items first, then
   triggered, then charged/weapon, then the custom-handler tail).
 
-## Target 3 — Events (medium; nested data)
+## Target 3 — Events (medium; nested data) — **DONE, differently**
+
+> **This target shipped as Events 2.0** ([`event-sheet-authoring.md`](event-sheet-authoring.md)),
+> which solved the nesting problem with NUMBERED COLUMN GROUPS rather than the
+> `eventsnew` sheet sketched below. The pre-2.0 generator, its `data/events` rows
+> and the `EventModal` that read them have all been deleted. What follows is the
+> handoff as it was written, kept for the reasoning.
 
 - **State:** `tools/generate_event_tres.py` already pulls event **metadata**
   from the `events` sheet, but the **narrative** (prompt + choices + per-outcome

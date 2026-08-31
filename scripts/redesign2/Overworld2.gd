@@ -2167,6 +2167,12 @@ func _open_post_game() -> void:
 		_pending_event != null, shop_id, boss_tier, bosses)
 	var screen: PostCombatScreen = _post_screen
 	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
+	# EVERYTHING THE GAME EARNED, ON THE ONE SCREEN. Chests banked while the game
+	# was still on were held rather than thrown over the checklist one at a time
+	# (see _redeem_pending_chests) — a goal ticked mid-game, a level-up taken, a
+	# status objective answered. This is the screen they were waiting for, so they
+	# go on it beside the kill chest and the loot the drop paid.
+	_hand_chests_to_post_game()
 
 # The player is done with the haul: carry on down the chain the report always
 # ended in — the event, then the shop, then the boss notice, then the detour
@@ -2545,6 +2551,22 @@ func _redeem_pending_chests() -> void:
 	# haul anyway, so it goes there as one more chest section.
 	if _post_screen != null and is_instance_valid(_post_screen):
 		_hand_chests_to_post_game()
+		return
+	# …AND A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THAT SCREEN (§18).
+	#
+	# Every tick on the report checklist can pay one: a goal cleared mid-game, a
+	# level-up taken, a status objective answered, a card or a wand spent between
+	# two of them. Each used to throw a full-screen RewardScreen over the checklist
+	# the instant it landed — so a player working down a list of five rows was
+	# interrupted four times, made to pick a relic with the list they were reading
+	# hidden behind it, and then dropped back to find their place again.
+	#
+	# They are the same haul as the drop the game itself pays. Holding them until
+	# the game is reported puts every relic the evening earned on one screen, in one
+	# decision, next to the loot and the chest the kills bought — which is what the
+	# haul screen is for. Nothing is lost by waiting: `pending_chests` is run state,
+	# it survives a save, and `report` hands the queue over the moment it opens.
+	if _phase == Phase.PLAYING:
 		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh
