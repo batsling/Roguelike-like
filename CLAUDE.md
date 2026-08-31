@@ -20,11 +20,11 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game. Every screen is built in code, so `.tscn` files hold a root node
   and a script and nothing else — don't go looking for UI in them.
-- **24 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **25 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 24.
+  README's "Autoload singletons" table covers all 25.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.

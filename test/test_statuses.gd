@@ -1534,7 +1534,7 @@ func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
-	entry["stun"] = 1
+	GameLoop2.apply_status_to(int(entry["instance"]), &"stun", 1)
 	var start: int = int(entry["col"])
 	GameLoop2.apply_status_to(int(entry["instance"]), &"speed", 3)
 	GameLoop2._advance_stack()
@@ -1620,3 +1620,147 @@ func test_an_addon_row_leads_with_its_status_symbol() -> void:
 		text += (node as Label).text
 	assert_string_contains(text, "or instead",
 		"and the joiner says how the row hangs off the goal")
+
+# ---------------------------------------------------------------------------
+# Bleed and Stun — the two statuses whose clock is the BOARD (§13.2)
+# ---------------------------------------------------------------------------
+#
+# Every status before these two depleted by having a SIDE completed, if it
+# depleted at all. Bleed and Stun deplete by the board doing something — a swing,
+# a turn — which is what the `On Trigger` and `Each Turn` values of the Decrease
+# column mean, and what `StatusData.wear` carries.
+#
+# ON THE PLAYER BOTH MEAN PER GAME, because the player neither swings nor takes
+# turns. That is one column carrying a rule for each end of the board, and it is
+# the thing most worth pinning down here: the two ends measure time differently,
+# and a status that "lasts three" has to mean three of whatever the holder counts.
+
+func test_the_two_new_statuses_loaded_with_both_sides_and_a_combat_side() -> void:
+	for id in [&"bleed", &"stun"]:
+		var sd: StatusData = Data.get_status(id)
+		assert_not_null(sd, "%s is in the catalog" % id)
+		if sd == null:
+			continue
+		assert_true(sd.is_debuff(), "%s is a debuff" % id)
+		assert_true(sd.is_demand(StatusData.PLAYER),
+			"%s bills the player for a missed row" % id)
+		assert_true(sd.is_bonus(StatusData.ENEMY),
+			"%s pays out on a body rather than taxing one" % id)
+		assert_true(sd.has_combat(), "%s does something on the board" % id)
+
+func test_the_new_decrease_modes_read_off_the_column() -> void:
+	var bleed: StatusData = Data.get_status(&"bleed")
+	assert_eq(bleed.decrease, "On Trigger")
+	assert_true(bleed.wears_on_attack(), "a stack goes when the body swings")
+	assert_false(bleed.wears_per_turn())
+	var stun: StatusData = Data.get_status(&"stun")
+	assert_eq(stun.decrease, "Each Turn")
+	assert_true(stun.wears_per_turn())
+	assert_false(stun.wears_on_attack())
+	# And BOTH are per-game at the player's end, which is the whole point of the
+	# column carrying one word for two clocks.
+	assert_true(bleed.wears_per_game() and stun.wears_per_game())
+
+func test_neither_new_status_sheds_by_completing_a_side() -> void:
+	# The older mode and the new ones are alternatives, not a stack: a cell that
+	# asked for both would be two clocks on one status.
+	for id in [&"bleed", &"stun"]:
+		var sd: StatusData = Data.get_status(id)
+		assert_false(sd.decays(StatusData.PLAYER), "%s: not On Completion" % id)
+		assert_false(sd.decays(StatusData.ENEMY), "%s: not On Completion" % id)
+
+# --- Bleed's recoil ---------------------------------------------------------
+
+func test_bleed_is_rolled_once_per_stack_rather_than_once_for_x() -> void:
+	var bleed: StatusData = Data.get_status(&"bleed")
+	assert_eq(bleed.recoil_damage(), 1, "one damage per roll, flat")
+	assert_eq(bleed.recoil_chance(), 50)
+	assert_eq(bleed.recoil_rolls(3), 3,
+		"three stacks is three coin flips for 1, not one flip for 3")
+	assert_eq(bleed.recoil_rolls(0), 0)
+
+func test_a_status_with_no_recoil_rolls_nothing() -> void:
+	var burn: StatusData = Data.get_status(&"burn")
+	assert_eq(burn.recoil_damage(), 0)
+	assert_eq(burn.recoil_rolls(5), 0, "no rolls at any stack count")
+
+func test_a_bleeding_body_hurts_itself_when_it_swings() -> void:
+	# Pinned so the 50% is a certainty rather than a coin. `after_each` unpins it.
+	seed(1)
+	var enemy: GoalEnemyData = _enemy()
+	enemy.health = 20
+	var inst: int = _choose_solo(enemy)
+	GameLoop2.apply_status_to(inst, &"bleed", 8)
+	var before: int = int(GameLoop2.entry_for(inst).get("health", 0))
+	# Walk it to the front line so the turn below is a swing rather than a step.
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["col"] = 1
+	GameLoop2.attempt_turn()
+	assert_lt(int(GameLoop2.entry_for(inst).get("health", 0)), before,
+		"eight rolls at even odds took something off it")
+
+func test_swinging_wears_a_bleed_stack_whether_or_not_the_roll_bit() -> void:
+	var enemy: GoalEnemyData = _enemy()
+	enemy.health = 20
+	var inst: int = _choose_solo(enemy)
+	GameLoop2.apply_status_to(inst, &"bleed", 3)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["col"] = 1
+	GameLoop2.attempt_turn()
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"bleed"), 2,
+		"swinging is the trigger — a Bleed that only wore off on a hit would last "
+		+ "twice as long as its card reads")
+
+func test_a_body_that_does_not_swing_keeps_its_bleed() -> void:
+	var enemy: GoalEnemyData = _enemy()
+	enemy.health = 20
+	var inst: int = _choose_solo(enemy)
+	GameLoop2.apply_status_to(inst, &"bleed", 3)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	# Parked out of reach: it steps this turn rather than striking.
+	entry["col"] = GameLoop2.grid_cols()
+	GameLoop2.attempt_turn()
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"bleed"), 3,
+		"a turn spent walking is not a trigger")
+
+# --- the player's end of both clocks ---------------------------------------
+
+func test_a_players_bleed_wears_off_a_stack_per_game() -> void:
+	GameState.apply_status(&"bleed", 3)
+	assert_eq(GameState.status_stacks(&"bleed"), 3)
+	_choose_solo(_enemy())
+	GameLoop2.beat_game()
+	assert_eq(GameState.status_stacks(&"bleed"), 2,
+		"the game is the unit the player counts in")
+
+func test_a_players_stun_wears_off_even_on_a_game_they_lost() -> void:
+	# Unconditional where a `clause` is not: a duration sheds by ELAPSING, and a
+	# game you failed still happened.
+	GameState.apply_status(&"stun", 2)
+	_choose_solo(_enemy())
+	# Resolved with NOTHING fulfilled, which is what a game you did not beat is:
+	# no goal met, so `_tick_player_clauses` sheds nothing, and the duration sheds
+	# anyway.
+	var res: Dictionary = GameLoop2.beat_game(false, [])
+	assert_eq(res.get("statuses_ticked", []), [],
+		"no goal was completed, so nothing ticked the old way")
+	assert_eq(GameState.status_stacks(&"stun"), 1,
+		"a missed game is still a game")
+
+func test_a_status_with_no_wear_survives_the_game() -> void:
+	GameState.apply_status(&"strength", 2)
+	_choose_solo(_enemy())
+	GameLoop2.beat_game()
+	assert_eq(GameState.status_stacks(&"strength"), 2,
+		"Strength's Decrease is N/A — nothing wears it away")
+
+# --- what the two say in words ---------------------------------------------
+
+func test_the_combat_line_says_the_rolls_rather_than_an_average() -> void:
+	var line: String = Data.get_status(&"bleed").combat_line(3)
+	assert_string_contains(line, "3 chances")
+	assert_string_contains(line, "50%")
+	assert_string_contains(line, "1 damage")
+
+func test_stuns_combat_line_says_it_loses_its_turn() -> void:
+	assert_string_contains(Data.get_status(&"stun").combat_line(1), "loses its turn")

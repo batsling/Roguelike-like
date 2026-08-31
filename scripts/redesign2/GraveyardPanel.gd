@@ -227,7 +227,7 @@ func inspect(enemy: GoalEnemyData) -> EnemyInfoCard:
 	var card := EnemyInfoCard.new()
 	add_child(card)
 	card.setup({
-		"instance": 0, "enemy": enemy, "stun": 0,
+		"instance": 0, "enemy": enemy,
 		"health": GameLoop2.effective_health(enemy),
 		"col": GameLoop2.offgrid_col(), "row": 0, "statuses": {},
 		"abilities": enemy.abilities.duplicate(true),

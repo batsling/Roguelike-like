@@ -297,6 +297,12 @@ func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 			GameLoop2.record_completed_goal("enemy", "Cleared: %s — %s" % [
 				GameLoop2.goal_text_for(GameLoop2.entry_for(instance)), name_of])
 			GameLoop2.fulfill(instance, true)
+			# THE BODY IS DONE, so whatever was armed against it pays now (§13). A
+			# bonus row ticks to say "I did that" and waits here for the row that
+			# says the enemy is finished with — which is this one. After `fulfill`,
+			# so a body that died to the hit is a GHOST by the time the bonus asks,
+			# and `claim_enemy_bonus` reads it off the ghost exactly as it always has.
+			_cash_armed(instance)
 			var gone: bool = GameLoop2.entry_for(instance).is_empty()
 			# Banked here rather than at the report, because the report can no
 			# longer see it: the body it would have looked up is already off the
@@ -534,7 +540,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 			StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
 			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
-		_add_row(irow["row"])
+		_add_row(irow["row"], false, true)
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
 		# CLEARS THE BODY, so it resolves like the goal row it stands in for — the
@@ -550,6 +556,9 @@ func _add_instead_rows(entry: Dictionary) -> void:
 					sd.alternative_text(StatusData.ENEMY, stacks), alt_name])
 				GameLoop2.fulfill_instead(instance, sd.id)
 				GameLoop2.mark_row_answered("instead:%d" % instance)
+				# CLEARING IT THE OTHER WAY IS STILL CLEARING IT, so the bonuses armed
+				# against this body cash here exactly as they do off its goal row.
+				_cash_armed(instance)
 				var gone: bool = GameLoop2.entry_for(instance).is_empty()
 				_announce(
 					("%s is down the other way — its loot is on the board." % alt_name
@@ -563,7 +572,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 	# failed to apply. A row with no tick box on it, in the dimmed colour the rest
 	# of the read-only lines use.
 	for row in GameLoop2.nullified_alternatives_for(entry):
-		_box.add_child(_nullified_row(row))
+		_add_row(_nullified_row(row), false, true)
 
 func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
@@ -579,18 +588,68 @@ func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 				StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
 			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
-		_add_row(brow["row"], sunk)
+		_add_row(brow["row"], sunk, true)
 		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
-		var key: String = "bonus:%d:%s" % [instance, sd.id]
-		_arm_row(brow["check"], key,
-			"You did %s's bonus objective." % enemy_name_of(instance),
-			func() -> void:
-				if GameLoop2.claim_enemy_bonus(instance, sd.id):
-					GameLoop2.mark_row_answered(key)
-					GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
-						sd.objective_text(StatusData.ENEMY, stacks),
-						enemy_name_of(instance)])
-					_announce("%s paid out." % sd.display_name, UITheme.GOLD))
+		_arm_bonus_row(brow["check"], instance, sd)
+
+# A BONUS ROW ARMS; IT DOES NOT PAY. Ticking it says "I did that" and nothing
+# happens yet; the reward lands when the ENEMY the bonus hangs off is cleared,
+# because that is the row that says the body is finished with (GameLoop2.arm_bonus
+# / claim_armed_bonuses).
+#
+# THERE IS NO CONFIRM ON IT, and that is the point of arming rather than claiming.
+# `_arm_row`'s "did you really?" is the safeguard on a row that RESOLVES the moment
+# you answer — an enemy that cannot be un-killed, a reward that cannot be handed
+# back. An armed bonus has done none of that: unticking it disarms it, at no cost,
+# so a question in front of it would be asking the player to confirm something they
+# can simply undo. The confirm comes back when the enemy's own row is ticked, which
+# is where the irreversible thing actually happens.
+#
+# ALREADY-CLEARED BODIES PAY ON THE SPOT. A bonus on a ghost (§2.1) has no enemy row
+# left to wait for — that row was ticked, and this one is being caught up.
+# The stack count is deliberately NOT a parameter: what the row PAYS is read at
+# claim time (claim_armed_bonuses), because a stack can be shed between the tick
+# and the cash, and the sentence should quote what was actually bought.
+func _arm_bonus_row(cb: CheckBox, instance: int, sd: StatusData) -> void:
+	if cb == null:
+		return
+	var key: String = "bonus:%d:%s" % [instance, sd.id]
+	if GameLoop2.row_answered(key):
+		_lock_row(cb)
+		return
+	if GameLoop2.bonus_armed(instance, sd.id):
+		# Ticked on an earlier repaint and still waiting. Shown as ticked without
+		# firing `toggled`, so a rebuild does not re-arm what is already armed.
+		cb.set_pressed_no_signal(true)
+	cb.toggled.connect(func(on: bool) -> void:
+		if cb.disabled:
+			return
+		if not on:
+			GameLoop2.disarm_bonus(instance, sd.id)
+			return
+		GameLoop2.arm_bonus(instance, sd.id)
+		# The body is already done, so there is nothing left to wait for — a bonus
+		# ticked against a ghost (§2.1) is catching up rather than waiting.
+		if GameLoop2.body_finished_this_game(instance):
+			_cash_armed(instance)
+			return
+		_announce("%s is ticked — it pays when %s is cleared." % [
+			sd.display_name, enemy_name_of(instance)], UITheme.TEXT_DIM))
+
+# Cash everything armed against `instance` and say what it bought. Called from the
+# two rows that finish a body — its goal, and the `instead` that clears it the
+# other way — and from a bonus ticked against a body that is already down.
+func _cash_armed(instance: int) -> void:
+	for row in GameLoop2.claim_armed_bonuses(instance):
+		var sid := StringName(row.get("status", &""))
+		var sd: StatusData = Data.get_status(sid)
+		if sd == null:
+			continue
+		GameLoop2.mark_row_answered("bonus:%d:%s" % [instance, sid])
+		GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
+			sd.objective_text(StatusData.ENEMY, int(row.get("stacks", 1))),
+			enemy_name_of(instance)])
+		_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 
 # What colour a player-side status row reads in. GOLD is the checklist's colour
 # for "something you can earn"; a `demand` is the one row where leaving the box
@@ -791,13 +850,30 @@ var _sunk: Array = []
 # that DID go down leaves the stack entirely and comes back as a ghost row, which
 # sinks with the rest — so "cleared enemies at the bottom" falls out of the same
 # rule without the enemy rows needing to know about it.
-func _add_row(node: Control, sunk: bool = false) -> void:
+# How far a row that belongs to the row above it is pushed in. Small on purpose:
+# it has to read as nesting without narrowing the row enough to wrap another line
+# out of the sentence in it — the left column is 612px of a 625px window
+# (test_overworld2's _assert_fits), and height is the budget that is actually tight.
+const NEST_INDENT := 18
+
+func _add_row(node: Control, sunk: bool = false, nested: bool = false) -> void:
 	if node == null:
 		return
+	# A NESTED ROW IS INDENTED UNDER THE ONE IT BELONGS TO. The status rows a body
+	# carries — its `instead`, its bonuses, the ones a boss voids — used to sit flush
+	# with the enemy rows, so a bonus hanging off the Maggot looked like a
+	# top-level objective that happened to be listed after it. The indent is the
+	# whole of what says "this one is the Maggot's".
+	var added: Control = node
+	if nested:
+		var pad := MarginContainer.new()
+		pad.add_theme_constant_override("margin_left", NEST_INDENT)
+		pad.add_child(node)
+		added = pad
 	if sunk:
-		_sunk.append(node)
+		_sunk.append(added)
 	else:
-		_box.add_child(node)
+		_box.add_child(added)
 
 # Everything held back, under everything else, in build order.
 func _flush_sunk() -> void:
@@ -938,26 +1014,28 @@ func populate_standing() -> void:
 			var asd: StatusData = alt["status"]
 			var astacks: int = int(alt["stacks"])
 			var agames: int = int(alt.get("games", 0))
-			_box.add_child(_objective_row("%s or instead: %s%s" % [
+			_add_row(_objective_row("%s or instead: %s%s" % [
 				_status_prefix(asd, astacks),
 				asd.alternative_text(StatusData.ENEMY, astacks),
 				StatusData.clock_suffix(agames)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-				_status_mark(asd, astacks, StatusData.ENEMY, false, agames)))
+				_status_mark(asd, astacks, StatusData.ENEMY, false, agames)),
+				false, true)
 		# …and the ones a boss is ignoring, said rather than left out (see
 		# _add_instead_rows, which draws the same line on the report step).
 		for dead in GameLoop2.nullified_alternatives_for(entry):
-			_box.add_child(_nullified_row(dead, inst))
+			_add_row(_nullified_row(dead, inst), false, true)
 		for bonus in GameLoop2.bonus_objectives_for(entry):
 			var sd: StatusData = bonus["status"]
 			var stacks: int = int(bonus["stacks"])
 			var bgames: int = int(bonus.get("games", 0))
-			_box.add_child(_objective_row(
+			_add_row(_objective_row(
 				"%s %s%s" % [_status_prefix(sd, stacks),
 					sd.objective_text(StatusData.ENEMY, stacks),
 					StatusData.clock_suffix(bgames)],
 				UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-				_status_mark(sd, stacks, StatusData.ENEMY, false, bgames)))
+				_status_mark(sd, stacks, StatusData.ENEMY, false, bgames)),
+				false, true)
 
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")

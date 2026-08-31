@@ -27,7 +27,8 @@ signal finished
 # cannot tell from `finished` alone.
 signal used
 
-# The entry being spent: {"type": "scroll"|"pill", "id": …, "horse": …}.
+# The entry being spent: {"type": "scroll"|"pill"|"potion"|"card"|"wand", "id": …,
+# "horse": …, "charges": …}.
 var _entry: Dictionary = {}
 # Which slot it is being spent OUT OF, or -1 for a LOOSE piece — the one a game has
 # just paid out, taken on the spot instead of carried (§4.3). The difference is
@@ -164,6 +165,16 @@ func _show_intro() -> void:
 			# thing being learned, so the gamble line says what is unknown rather than
 			# pretending the tile is a mystery.
 			_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
+		elif LootSystem.is_wand(_entry):
+			# A WAND'S GAMBLE LINE COUNTS ITS CHARGES (docs/wands-design.md §6.2).
+			# What is hidden is what the stick does; how many times it can do it is
+			# not part of the bet, and it is the number that decides whether the slot
+			# is worth holding for an unknown.
+			var bar: Array = LootSystem.charges(_entry)
+			_body.add_child(_muted(
+				("Unidentified — zapping it is a gamble. Its Preference could be "
+				+ "Positive, Negative, or Neutral. %d of %d charges left, whatever "
+				+ "it turns out to be.") % [int(bar[0]), int(bar[1])]))
 		else:
 			_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
 	if _echo_note() != "":
@@ -186,9 +197,15 @@ func _show_intro() -> void:
 	# The Throw button is offered on any UNKNOWN bottle and hidden only on a KNOWN
 	# one with nothing on its tile side, which is Raise Level and nothing else:
 	# hiding it for unknowns would leak which bottles have no throw.
+	# A WAND THAT MUST BE AIMED ARMS THE PICKER RATHER THAN RESOLVING (§4.2). It is
+	# the same button and the same word — Zap — because from the player's side it is
+	# the same act; what changes is that the board asks where before anything is
+	# spent. Nothing comes off the charge count until the square is clicked, so
+	# backing out of the picker costs nothing, exactly as cancelling a throw does.
+	var aiming: bool = LootSystem.must_aim(_entry)
 	var read_btn := UITheme.confirm_button(
 		"%s →" % LootSystem.use_verb(_entry), Vector2(170, 38), 15)
-	read_btn.pressed.connect(_on_read)
+	read_btn.pressed.connect(_arm_aim if aiming else _on_read)
 	actions.add_child(read_btn)
 	if LootSystem.can_throw(_entry):
 		# IN THE BOTTLE'S OWN VIOLET, not a second green. Both are affirmatives and
@@ -205,7 +222,10 @@ func _show_intro() -> void:
 # relic changes what SPENDING one piece of loot means, and a player who cannot see
 # the three copies coming cannot plan around them (§4.3).
 func _echo_note() -> String:
-	if GameState.loot_echo_depth() <= 0:
+	# A WAND FIRES NO COPIES AND JOINS NO MEMORY (docs/wands-design.md §4.4), so
+	# naming the three pieces Echo Chamber "will also use" would be the screen
+	# promising something the use is about to not do.
+	if LootSystem.is_wand(_entry) or GameState.loot_echo_depth() <= 0:
 		return ""
 	var names: Array = _echo_names()
 	if names.is_empty():
@@ -253,8 +273,19 @@ func _on_read() -> void:
 		ctx["target"] = _target
 	var result: Dictionary = LootSystem.use_entry(_entry, ctx) if _loot_index < 0 \
 		else LootSystem.use_loot(_loot_index, ctx)
+	# A WAND'S COUNT COMES BACK ON THE RESULT (docs/wands-design.md §4.1). `_entry`
+	# is this screen's own copy, and on the pack path it is the copy made BEFORE the
+	# charge came off — so reading it here would print the count as it stood a moment
+	# ago. Folded back in so everything downstream (the outcome screen, the log)
+	# reads one number.
+	if result.has("charges_left"):
+		_entry["charges"] = int(result["charges_left"])
 	used.emit()
-	if _verb == "throw":
+	if LootSystem.is_wand(_entry) and _target is Vector2i:
+		GameLog.add("You zap %s at column %d, row %d." % [
+			LootSystem.display_name(_entry),
+			(_target as Vector2i).x, (_target as Vector2i).y + 1], ACCENT)
+	elif _verb == "throw":
 		GameLog.add("You throw %s at column %d, row %d." % [
 			LootSystem.display_name(_entry),
 			(_target as Vector2i).x, (_target as Vector2i).y + 1], ACCENT)
@@ -298,6 +329,23 @@ func _arm_throw() -> void:
 	_verb = "throw"
 	visible = false
 
+# A WAND'S AIM, which is the throw's picker with a different word on it
+# (docs/wands-design.md §4.2). It is a separate entry point rather than a flag on
+# `_arm_throw` because the two are different acts wearing the same machinery: a
+# throw is one of a potion's TWO verbs and the player chose it, and an aim is the
+# only way a ray-shaped wand can be fired at all. Setting `_verb` here would be
+# wrong for exactly that reason — a wand has one verb, and it is Zap.
+#
+# Nothing is spent: the charge comes off in LootSystem when the square is clicked,
+# so backing out of the picker leaves the stick exactly as full as it was.
+func _arm_aim() -> void:
+	if _overworld == null or not _overworld.has_method("begin_loot_throw") \
+			or not _overworld.begin_loot_throw(self, _entry, _loot_index):
+		Notifications.notify("There is nowhere to point it right now.",
+			UITheme.TEXT_DIM)
+		return
+	visible = false
+
 # The board answered with a square. Come back and resolve, which from here on is
 # the ordinary spend path — the only difference is the two keys in `ctx`.
 func resolve_throw(cell: Vector2i) -> void:
@@ -305,8 +353,9 @@ func resolve_throw(cell: Vector2i) -> void:
 	visible = true
 	_on_read()
 
-# The picker was put away without landing. The bottle is still in the pack, so the
-# screen comes back to the same choice it offered before.
+# The picker was put away without landing. The piece is still in the pack — a
+# bottle unthrown, a wand unfired — so the screen comes back to the same choice it
+# offered before.
 func throw_cancelled() -> void:
 	_verb = "quaff"
 	_target = null
@@ -338,6 +387,8 @@ func _process_next_request() -> void:
 			_do_card_teleport(req)
 		"copy_item":
 			_pick_copy_item(req)
+		"obtain_item":
+			_do_obtain_item(req)
 		_:
 			_process_next_request()
 
@@ -514,6 +565,26 @@ func _pick_copy_item(req: Dictionary) -> void:
 			_process_next_request())
 		_body.add_child(btn)
 
+# --- Wand of Wishing: obtain any item in the game --------------------------
+#
+# The full-catalog picker, which is the overworld's own screen (obtain_any_item)
+# and was the relic's before the wand took the effect over. It is fulfilled rather
+# than drawn here for the reason the teleports are: the screen it opens is a
+# RewardScreen the size of the page, and this modal is a 440px panel sitting on top
+# of the very thing it would have to cover.
+#
+# THE OUTCOME SCREEN DOES NOT WAIT FOR IT. The picker closes on its own and hands
+# the item over through its own path, so this reports that the choice was offered
+# and moves on — a modal that blocked would leave the wand's summary sitting behind
+# a screen the player has already finished with.
+func _do_obtain_item(_req: Dictionary) -> void:
+	if _overworld != null and _overworld.has_method("obtain_any_item"):
+		_overworld.obtain_any_item()
+		_report("The wand grants a wish — take any item in the game.")
+	else:
+		_report("It fizzles — there is nowhere to make the wish.")
+	_process_next_request()
+
 # Add a line to what the outcome screen will say. `log_it` because every other line
 # on that screen came back through `use_loot` and was written to the run log in
 # `_on_read`, and a fulfilment's line has to reach both — except where whoever
@@ -578,9 +649,24 @@ func _show_outcome() -> void:
 	# WHERE IT LANDED, on a throw. The lines under this say what happened; without
 	# the square they happened on, an outcome like "Fire covers 4 squares" is a
 	# report the player cannot check against the board they aimed at.
-	if _verb == "throw" and _target is Vector2i:
-		_body.add_child(_muted("Thrown at column %d, row %d." % [
+	if _target is Vector2i:
+		_body.add_child(_muted("%s at column %d, row %d." % [
+			"Zapped" if LootSystem.is_wand(_entry) else "Thrown",
 			(_target as Vector2i).x, (_target as Vector2i).y + 1]))
+
+	# WHAT IS LEFT IN IT — the line only a wand gets, and the one thing this screen
+	# has to say that the other four kinds have no version of. Every other piece is
+	# gone by the time the outcome is read; a wand is usually still in the pack, and
+	# "5 charges left" is the answer to the question the player is actually asking,
+	# which is whether to do it again. `_entry` carries the count as it stood when
+	# the charge came off, so this is what remains rather than what there was.
+	if LootSystem.is_wand(_entry):
+		var bar: Array = LootSystem.charges(_entry)
+		var left: int = int(bar[0])
+		_body.add_child(_heading(
+			"The wand is spent." if left <= 0
+			else "%d of %d charges left." % [left, int(bar[1])],
+			UITheme.TEXT_DIM if left <= 0 else WandSystem.WAND_COLOR, 14))
 
 	# The effect, line by line. A piece whose ops all no-opped (a charge into a pack
 	# with nothing chargeable, an Amnesia with nothing to forget) reports that

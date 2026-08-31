@@ -465,17 +465,26 @@ func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> voi
 		forgot, "thing" if forgot == 1 else "things", "es" if forgot == 1 else ""])
 
 # --- charge (48 Hour Energy) ------------------------------------------------
-# Three SEPARATE charges, each landing on a random chargeable relic — so two can
+# Three SEPARATE charges, each landing on a random chargeable thing — so two can
 # land on the same one, and a run holding a single D6 gets its bar filled rather
 # than two of the three charges evaporating. The horse dose instead picks `count`
-# DISTINCT relics and tops each all the way up, which is why `full` walks a
+# DISTINCT things and tops each all the way up, which is why `full` walks a
 # without-replacement list.
+#
+# A "CHARGEABLE THING" IS A RELIC OR A WAND (docs/wands-design.md §7). A wand runs
+# on charges in exactly the sense a D6 does — a bar that empties as you spend it
+# and can be filled back up — so the op that fills bars fills those too, and the
+# pill's own card says "Items and Wands" rather than leaving the player to discover
+# it. The pool comes from GameState.chargeable_things so the two kinds are picked
+# between at the same odds, and each one is topped up through `charge_thing`, which
+# is the single place that knows a relic's bar lives on the relic and a wand's
+# lives on the pack entry.
 #
 # A pack with nothing chargeable in it says so. Reading it into an empty pack is a
 # wasted pill, and the log is the only place the player finds that out — the same
 # rule ScrollSystem follows for Aggravate Monsters in an empty room.
 func _charge(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
-	var pool: Array = GameState.chargeable_items()
+	var pool: Array = GameState.chargeable_things()
 	if pool.is_empty():
 		out["logs"].append("Nothing in the pack takes a charge.")
 		return
@@ -486,15 +495,18 @@ func _charge(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> voi
 		var bag: Array = pool.duplicate()
 		for _i in range(mini(count, bag.size())):
 			var idx: int = rng.randi_range(0, bag.size() - 1)
-			var it: ItemData = bag[idx]
+			var thing = bag[idx]
 			bag.remove_at(idx)
-			if GameState.charge_item(it, it.max_charge()) and not touched.has(it.display_name):
-				touched.append(it.display_name)
+			var room: int = GameState.charge_thing_room(thing)
+			var nm: String = GameState.charge_thing_name(thing)
+			if GameState.charge_thing(thing, maxi(1, room)) and not touched.has(nm):
+				touched.append(nm)
 	else:
 		for _i in range(count):
-			var it: ItemData = pool[rng.randi_range(0, pool.size() - 1)]
-			if GameState.charge_item(it, 1) and not touched.has(it.display_name):
-				touched.append(it.display_name)
+			var thing = pool[rng.randi_range(0, pool.size() - 1)]
+			var nm: String = GameState.charge_thing_name(thing)
+			if GameState.charge_thing(thing, 1) and not touched.has(nm):
+				touched.append(nm)
 	if touched.is_empty():
 		out["logs"].append("Everything in the pack is already charged.")
 		return

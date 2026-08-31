@@ -864,11 +864,15 @@ of that type says so out loud rather than no-opping.
 could not: `PackStrip.fires_while_reporting` held every non-charged active back
 until the game was reported. That is right for an ordinary Usable, which wants an
 event around it, and wrong for an **overworld active** — `overworld_usable` marks
-an item whose effect needs the map (Ride the Bus moves the run, the Wand of Wishing
-hands you any item), and the map is mounted for the whole of a game being played.
-The one item that can get you off a game you cannot beat was being refused for
-exactly as long as you were stuck on it, with *"finish reporting this game first"*
-as the reason. Both fire from any screen now.
+an item whose effect needs the map, and the map is mounted for the whole of a game
+being played. The one item that can get you off a game you cannot beat was being
+refused for exactly as long as you were stuck on it, with *"finish reporting this
+game first"* as the reason. It fires from any screen now.
+
+The two relics that made the case — Ride the Bus and the Wand of Wishing — have
+both since left the item roster to become **loot** (a card, §4.4, and a wand,
+§4.4), and loot was always spendable whenever the player wanted it. The flag and
+the rule stay, for the next relic whose effect needs the map.
 
 **AND IT LANDS YOU IN THE GAME, not next to it** (`Overworld2.arrive_at_game`). A
 teleport used to leave the run in `Phase.SELECT`: a fresh offering was drawn
@@ -1096,9 +1100,9 @@ doses of it plus three echoes at two doses each. That is deliberately a lot —
 it is a Boss relic meeting a Rare one — and the Negative rows are doubled too, so
 the pile it makes is only good if the alphabet is already learned.
 
-### 4.4 Potions and Cards — the other two kinds
+### 4.4 Potions, Cards and Wands — the other three kinds
 
-Two more loot consumables share the pack described above, and each has a design
+Three more loot consumables share the pack described above, and each has a design
 doc of its own rather than a section here, because each is a system rather than a
 roster.
 
@@ -1117,10 +1121,26 @@ What a card withholds is **which card it is, and only on the floor**: lying on a
 battlefield square it draws its DECK'S icon (five icons over thirteen cards) and
 turns over for good when it is picked up (§8.2 above, and cards-design §3).
 
-**Beating a game therefore pays an even four-way split** — 25 / 25 / 25 / 25 across
-scroll, pill, potion and card (`GameState.LOOT_KINDS`). The Identify tenth is still
-taken off the top and did not move: the run that needs the scroll is the run holding
-four unknown capsules, and its odds should not depend on how many cards it drew.
+**Wands** ([`wands-design.md`](wands-design.md)) are the fifth, and the only one
+that is **not spent in a single use**. Every row authors a charge count — four to
+six, one for the Legendary — and zapping one spends a charge rather than the slot.
+So a wand asks its question of the PACK rather than of the piece: nine slots, and a
+Wand of Fire is four Scrolls of Fire you have to carry all at once and cannot put
+half of down.
+
+It is a gamble like the first three — an unknown wand hides behind one of 28
+materials, 24 of which the run deals to nothing — and what you win is different in
+kind: identification covers **every charge**, so the first zap is the price of the
+other five. Two rules fall out of the charges and are written down in wands-design
+rather than here: a wand stands **outside Echo Chamber in both directions** (§4.4
+there), and **anything that charges items charges wands** while a beaten game
+charges only relics (§7 there).
+
+**Beating a game therefore pays an even five-way split** — 20 / 20 / 20 / 20 / 20
+across scroll, pill, potion, card and wand (`GameState.LOOT_KINDS`). The Identify
+tenth is still taken off the top and did not move: the run that needs the scroll is
+the run holding four unknown capsules, and its odds should not depend on how many
+cards or wands it drew.
 
 ---
 
@@ -1750,7 +1770,7 @@ the next shop you walk into, free (§14).
 | `Pickup` | One-time instant effect on acquire (e.g. Hollow Heart: +4 *empty* Max Health; Mango: +4 Max Health, healed). |
 | `Triggered` | Fires on a game event — usually **"after beating a game"** (Burning Blood +1 Health, Meat on the Bone conditional heal), or **"when a game is selected"** (Anchor +1 Shield, §3.2). |
 | `Charged, N` | Usable, recharges over N beats (D6 → +1 Scramble; D10 → re-roll the board, 2; Staff of Flame → +3 Burn on a body you point at, 3). |
-| `Usable` | Active, player-triggered (Wand of Wishing → obtain any one item). Ride the Bus was this kind's example until it became a **card** ([`cards-design.md`](cards-design.md) §5.1). |
+| `Usable` | Active, player-triggered. **No relic ships as one with an effect that needs the map any more**: Ride the Bus became a **card** ([`cards-design.md`](cards-design.md) §5.1) and the Wand of Wishing became a **wand** ([`wands-design.md`](wands-design.md) §5.2). The kind and the `overworld_usable` flag are both still real and still right for the next relic that wants them. |
 | `Passive` | Always-on modifier (Mine-r Construction: grow the Grid). |
 | `Incremental` | A `Triggered` item whose payout is on the **Nth** time, not every time (Charm of the Vampire: every third defeated enemy is +1 Health). The count lives on the inventory slot (`ItemData.counter_value`), so two copies each keep their own — Slay the Spire's rule — and it is **drawn on the item's own art**, bottom-right, the way the Spire draws a relic counter. |
 
@@ -2423,6 +2443,53 @@ would only make it a worse item.
 | **Dexterity** | Buff | Slay the Spire | X or all bosses were beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
+| **Bleed** | Debuff | Mewgenics | don't heal intentionally | *nothing* on the player — it charges 3 Damage for being missed; [chest reward X] on an enemy | X separate 50% rolls of 1 damage **to itself** when it attacks |
+| **Stun** | Debuff | Slay the Spire | beat a game twice in a row to set it as Completed | *nothing* on the player — it charges 5 Damage for being missed; [chest reward X] on an enemy | loses its turn |
+
+**Bleed and Stun are the first two statuses whose clock is the BOARD.** Every
+status above them either never depletes or depletes by having a side *completed*
+(`Decrease: On Completion`); these two deplete by something HAPPENING —
+`On Trigger` for Bleed, a stack per attack, and `Each Turn` for Stun, a stack per
+turn the body takes. That is `StatusData.wear`, and it is why the Decrease column
+is a table rather than a bool.
+
+**On the player both of them mean *per game*.** The player neither swings nor takes
+turns — the game *is* their turn — which is what "This lasts for X games" on both
+player sides is saying, and why one column can carry a rule for each end of the
+board. It is shed by *elapsing*, so a game you lost still spends a stack, where a
+`clause` is shed only by being satisfied.
+
+**Bleed rolls once per stack, not once for X.** Three Bleed is three coin flips for
+1 damage each rather than one flip for 3, which is `StatusData.recoil_rolls` and
+the reason `recoil` is the one additive combat field whose stack count is not in
+its expression. A debuff the player is supposed to want to shed should bite little
+and often; a single roll for X does nothing four games running and then takes a run.
+The damage goes through `_damage_enemy`, so a body that bleeds out pays out and
+fires its death abilities exactly as one killed by a bomb does.
+
+**EVERYTHING THAT STUNS ANYTHING IS THIS STATUS.** The board used to keep a bare
+`entry["stun"]` counter of its own — Stun the mechanic predated Stun the status by a
+long way — and the two then sat side by side doing the same thing under one name,
+with two countdowns, two save fields and two ways to be drawn. The counter is gone.
+`GameLoop2.stun(instance)` applies the status, `is_stunned` asks the `skip_turn`
+flag and nothing else, `Decrease: Each Turn` is the only countdown, and the ETA
+arithmetic (`_turns_owed`) reads the stacks. A save written before the change folds
+its counter in as stacks on load.
+
+Three things fall out of that, and each is worth knowing:
+
+- **A stunned body is drawn like any other status holder** — its own art in the
+  status strip under the token, no ❄ badge and no pip of its own. The token still
+  *cools toward blue*, because that is a property of the token rather than a second
+  listing of the same fact.
+- **Stunning a body hands it Stun's enemy side too**: the claimable bonus row "and
+  if you beat the game twice in a row, Gain a [chest reward]". So Scroll of Scare
+  Monster is now *skip its turn AND open a chest reward on it*, which is what the
+  sheet's Stun row says applied consistently.
+- **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
+  `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
+  `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.
+  A bomb stuns by laying Web now.
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,
 **2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
@@ -2482,6 +2549,26 @@ more. The mode is still real and still implemented — `status_clauses` and
 `_tick_player_clauses` are what it is — and `test_statuses.gd` registers a
 synthetic status to exercise it, rather than borrowing whichever shipped status
 happens to be shaped that way this month.
+
+**A BONUS ROW IS ARMED, NOT CLAIMED.** An optional objective hangs off a BODY, and
+the body's own row is what says the body is finished with — so ticking a bonus says
+*"I did that"* and pays nothing yet, and the reward lands when the enemy it belongs
+to is cleared (either way: its goal row, or the `instead` that clears it the other
+way). `GameLoop2.arm_bonus` / `claim_armed_bonuses` are the holding pen, and
+`body_finished_this_game` is the question they wait on.
+
+Paying at the tick let a player bank every optional reward on the board without
+ticking a single enemy, and split one body's two halves across two moments. It also
+means **a bonus row asks for no confirmation**: `_arm_row`'s *"did you really?"* is
+the safeguard on a row that RESOLVES when answered — a body that cannot be
+un-killed — and an armed bonus has done nothing, so unticking it simply disarms it.
+The confirm comes back on the enemy's own row, where the irreversible thing happens.
+A bonus ticked against a body that is already down pays on the spot; there is
+nothing left for it to wait for.
+
+**The rows are indented under the body they belong to.** An `instead`, a bonus and
+a boss's nullified alternative are all one body's business, and drawn flush with the
+enemy rows they read as top-level objectives that happen to be listed nearby.
 
 **Two pieces of content hand Burn out**, one to each side of the board:
 
@@ -3008,12 +3095,25 @@ time spent, not for the result.
 
 ### 17.2 The roster
 
-| | Fire (tile) | Landmine (unit) |
-|---|---|---|
-| From | Brutal Orchestra's burn | Brotato |
-| Does | +1 Burn to anything that enters or starts its turn on it | on contact with an enemy, destroys itself and explodes |
-| Lasts | 3 games | Health 1 — going off spends the whole of it |
-| Meeting the other | the mine goes off and the fire goes out | the mine goes off and the fire goes out |
+| | Fire (tile) | Web (tile) | Landmine (unit) |
+|---|---|---|---|
+| From | Brutal Orchestra's burn | *(spiders, everywhere)* | Brotato |
+| Does | +1 Burn to anything that enters or starts its turn on it | +1 Stun to anything that enters or starts its turn on it | on contact with an enemy, destroys itself and explodes |
+| Lasts | 3 games | **until it catches something** | Health 1 — going off spends the whole of it |
+| Meeting a Landmine | the mine goes off and the fire goes out | *(nothing authored)* | — |
+
+**WEB IS THE FIRST TILE WHOSE CLOCK IS MEASURED IN BITES**, and that is why
+`decay_on_trigger` is a field rather than "1 Game" written differently. A web
+nobody steps in is still there three games later; a fire nobody steps in is not.
+It goes out inside `_fire_cell_triggers`, the moment it fires, rather than in
+`_decay_tiles` where everything counted in games ticks.
+
+It is also where the **Stun status** meets the board (§13.2): the tile applies
+Stun, Stun's combat side is `skip_turn`, and its `Decrease: Each Turn` is what
+counts the stacks back down. **Sticky Bombs lays it** — the relic's card has said
+"Bombs Apply the Web Tile" since the sheet was rewritten, and the item does that
+now instead of setting a `bomb_stun` flag, so it reaches Stun through the tile
+layer like everything else. That flag no longer exists anywhere.
 
 **A body pays per cell.** A 2x2 standing on two fire tiles takes two stacks a
 turn — the same rule footprints follow everywhere else on this board (§7.3).
@@ -3022,8 +3122,10 @@ turn — the same rule footprints follow everywhere else on this board (§7.3).
 than a one-off trap.** It spends none of the player's Bombs, but everything that
 modifies a bomb modifies it, because there is one blast in `GameLoop2._explode`
 and both go through it: **Brimstone** widens it to the row and column,
-**Sticky** stuns what survives it, **Blood Bombs** pays its Health, **Hot Bombs**
-leaves Fire behind. A mine is worth exactly what the pack has made bombs worth.
+**Blood Bombs** pays its Health, and **Hot Bombs** and **Sticky Bombs** leave a
+tile behind — Fire and Web respectively, off the same `bomb_tile` field. (Sticky
+Bombs stunning survivors directly is gone with the counter it wrote to; the Web it
+lays does the same job through the status, §13.2.) A mine is worth exactly what the pack has made bombs worth.
 It also inherits the rest of a bomb's terms: a body destroyed by one is
 *destroyed, not defeated* — no drop, no gold — and a boss shrugs it off.
 
@@ -3160,6 +3262,20 @@ So the haul is **a screen**, and it opens when the board has stopped moving.
 | **The fight** | damage taken and blocked, goals cleared, what is still following, shields left over or banked, the difficulty tier, and the board's growth if it just stepped (§7.3) |
 | **The spoils** | every relic chest down the left — what *beating* the game paid, sized by the bodies that fell to it (§8.2) — **with the sum that sized it** — and the loot payout down the right: the game's own piece, plus everything the bodies dropped on the board and nobody stopped to pick up. **All of it at once** rather than one question after another |
 | **The warning** | the boss notice as a banner rather than a sixth popup (§7.1) |
+
+**AND EVERY CHEST THE GAME EARNED WHILE IT WAS STILL ON.** The checklist can pay a
+chest at any tick — a goal cleared mid-game, a level-up taken, a status objective
+answered — and each of those used to throw a full-screen `RewardScreen` over the
+list the player was working down. A run of five rows meant four interruptions, each
+one hiding the list behind the decision it was interrupting, and each one dropping
+the player back to find their place again.
+
+They are the same haul as the drop the game itself pays, so they wait for this
+screen. `Overworld2._redeem_pending_chests` holds the queue while the phase is
+`PLAYING` and `_open_post_game` hands it over on the way in — `pending_chests` is
+run state and survives a save, so nothing is lost by waiting. A chest banked while
+the haul screen is ALREADY up still lands on it, which is what that path always
+did.
 
 **★ Rate is here and nowhere else in the run.** It used to sit on the play
 panel's checklist, under the Play button — offered while the game was still in

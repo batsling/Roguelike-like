@@ -32,6 +32,7 @@ const LOOT_SCROLLS := "scrolls"
 const LOOT_PILLS := "pills"
 const LOOT_POTIONS := "potions"
 const LOOT_CARDS := "cards"
+const LOOT_WANDS := "wands"
 
 # The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
 # (PillData carries no image field): its picture is the COLOUR the run deals it
@@ -96,7 +97,7 @@ const GRID_META_FONT := 10
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
-	"potions": "", "cards": "", "games": "", "events": "", "objects": ""}
+	"potions": "", "cards": "", "wands": "", "games": "", "events": "", "objects": ""}
 # Which sub-tab the Loot tab is on: LOOT_SCROLLS / LOOT_PILLS / LOOT_POTIONS / LOOT_CARDS.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
@@ -1610,6 +1611,7 @@ func _build_loot() -> void:
 	subs.add_child(_loot_sub_button("🧪  Potions (%d)" % Data.all_potions().size(),
 		LOOT_POTIONS))
 	subs.add_child(_loot_sub_button("🃏  Cards (%d)" % Data.all_cards().size(), LOOT_CARDS))
+	subs.add_child(_loot_sub_button("🪄  Wands (%d)" % Data.all_wands().size(), LOOT_WANDS))
 	# WHAT THE TAB IS, said once, where the difference between the three halves
 	# actually matters: a scroll hides behind a shared Unidentified art, a pill
 	# hides behind a colour, and a potion hides behind a bottle it does NOT own —
@@ -1657,6 +1659,9 @@ func _loot_note() -> String:
 			# deck icon each cell wears is exactly what the board shows you of it.
 			return ("Revealed reference — and a card hides nothing in a run either. "
 				+ "Face down on the floor it shows only its deck, which is the icon here.")
+		LOOT_WANDS:
+			return ("Revealed reference — including the charges. Every run deals these "
+				+ "a material out of 28, so the stick you'll be holding is not this one.")
 		_:
 			return "Revealed reference — a run hides all of this until you identify it."
 
@@ -1675,6 +1680,8 @@ func _populate_loot() -> void:
 			_populate_potions()
 		LOOT_CARDS:
 			_populate_cards()
+		LOOT_WANDS:
+			_populate_wands()
 		_:
 			_populate_scrolls()
 
@@ -1875,6 +1882,57 @@ func _card_card(c: CardData) -> Control:
 	if c.source_game != "":
 		vb.add_child(_label("from %s" % c.source_game, Color(0.55, 0.6, 0.7), 10))
 	return cell.panel
+
+func _populate_wands() -> void:
+	_clear_children(_grid)
+	var term: String = _search["wands"].to_lower()
+	var wands: Array = Data.all_wands()
+	wands.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for w in wands:
+		if not (w is WandData):
+			continue
+		if term != "" and not (term in w.display_name.to_lower()):
+			continue
+		_grid.add_child(_wand_card(w))
+		shown += 1
+	_set_count(shown, Data.all_wands().size())
+
+# 2.0 wand cell: the potion cell plus the two facts only a wand has — how many
+# CHARGES it ships with, and what it wants pointed at it.
+#
+# NO ART, and that is the roster rather than a hole (docs/wands-design.md §6.3):
+# no wand has a picture of its own, so every one of them wears the material the run
+# dealt it forever. Drawing a stand-in stick here would be showing the player a
+# material that means nothing — the association is randomised every run, which is
+# the same reason a pill's capsule is not drawn on its cell either.
+func _wand_card(w: WandData) -> Control:
+	var wcol := _preference_color(w.preference)
+	var cell := _cell(wcol, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.add_child(_label(w.display_name, wcol, 14))
+	vb.add_child(_label("%s  ·  %s Preference" % [w.rarity, w.preference],
+		Color(0.7, 0.7, 0.75), 11))
+	vb.add_child(_label("%d charge%s  ·  %s" % [
+		w.starting_charges(), "" if w.starting_charges() == 1 else "s",
+		_wand_targeting_word(w.targeting)], Color(0.55, 0.74, 0.86), 11))
+	vb.add_child(_label(w.description, Color(0.85, 0.85, 0.88), 12, false, true))
+	if w.reference != "":
+		vb.add_child(_label("from %s" % w.reference, Color(0.55, 0.6, 0.7), 10))
+	return cell.panel
+
+# The Type column in the words a player meets rather than the sheet's. "Random" is
+# said out loud rather than hidden, because it IS the wand — a stick that asks for
+# a square one zap and not the next is the only tell Wand of Nothing has.
+func _wand_targeting_word(targeting: String) -> String:
+	match targeting:
+		"ray":
+			return "aimed at a square"
+		"random":
+			return "aimed, or not — it varies"
+		_:
+			return "fires where you stand"
 
 func _card_art(folder: String, base: String) -> Texture2D:
 	if base == "":

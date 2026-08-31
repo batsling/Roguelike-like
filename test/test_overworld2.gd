@@ -769,20 +769,38 @@ func test_level_up_not_applied_when_unchecked() -> void:
 	_report_beat(_ui)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
-func test_isaac_level_up_grants_a_chest() -> void:
+# A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THE HAUL SCREEN (§18). It
+# used to throw a RewardScreen over the checklist the instant the box was ticked —
+# on a list of five rows, four interruptions — so it is banked at the tick and
+# handed over when the report opens the screen every other reward lands on.
+#
+# Both halves are asserted, because either one alone would pass while the feature
+# was broken: banked-and-never-handed-over is a lost chest, and handed-over-without-
+# being-banked is the interruption coming back.
+func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	_reboot(&"isaac")                       # reward_type item -> Small Chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
+	assert_eq(GameState.pending_chests, chests_before + 1,
+		"Isaac's level-up banks a chest at the tick")
+	assert_null(_ui.get_node_or_null("RewardScreen"),
+		"and nothing is thrown over the checklist for it")
 	_ui.report(false)
-	assert_eq(GameState.pending_chests, chests_before + 1, "Isaac's level-up banks a chest")
+	# The resolve's playback is what hands the queue over (see the drop test above).
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
+	assert_eq(GameState.pending_chests, 0, "which took the whole queue")
+	assert_gt(_ui._post_screen._chest_sections.size(), 0,
+		"and the level-up's chest is on it")
+	_leave_post_game()
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
-	_ui.report(false)
+	# Read BEFORE the report, which is what now empties the queue onto the screen.
 	assert_eq(GameState.pending_chests, chests_before + 1, "Poe's level-up banks a chest")
 	var choices: int = GameState.pending_chest_choices.back()
 	assert_true([1, 2, 3, 5].has(choices),
@@ -5033,6 +5051,13 @@ func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
 	# Take the next game the same way, so a second resolve runs.
 	_ui.pick(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
+	# DISARMED, because this test asserts that the body WALKED (§7.6). The offering
+	# rolls a random enemy, and an ability can spend a whole turn on something other
+	# than closing — a Ritual, a Defensive Stance, either spawner — so a body that
+	# happened to roll one walks one column fewer and the arithmetic below is off by
+	# exactly that. It is the flake CLAUDE.md describes, and it only ever showed up
+	# when an unrelated change shifted the global RNG stream far enough to roll one.
+	_disarm_board()
 	var owed: int = GameLoop2.enemy_turns()
 	_ui.escape_game()
 	var still: Dictionary = GameLoop2.entry_for(inst)
@@ -5349,10 +5374,11 @@ func test_clicking_an_item_token_opens_its_card() -> void:
 	assert_null(_ui._item_card, "and closes cleanly")
 
 func test_an_active_item_grows_a_fire_control_above_its_tile() -> void:
-	# The Wand of Wishing is a plain Usable: its control is the Use button, and the
-	# token below it is the art tile. (This was Ride the Bus until the bus became a
-	# card — docs/cards-design.md §5.1.)
-	GameState.add_item(Data.get_item2(&"wand_of_wishing"))
+	# The IV Bag is a plain Usable: its control is the Use button, and the token
+	# below it is the art tile. (This was Ride the Bus until the bus became a card —
+	# docs/cards-design.md §5.1 — and then the Wand of Wishing until the wand became
+	# a WAND, docs/wands-design.md §5.2.)
+	GameState.add_item(Data.get_item2(&"iv_bag"))
 	_ui._refresh_items()
 	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
 	assert_eq(column.get_child_count(), 2, "fire control over art tile")
@@ -7001,37 +7027,42 @@ func test_a_charged_active_fires_while_a_game_is_in_play() -> void:
 			"%s fires with a full bar mid-report" % id)
 
 # AN OVERWORLD ACTIVE FIRES MID-GAME TOO, and for the same reason a charged one
-# does. `overworld_usable` marks an item whose effect needs the MAP — the Wand of
-# Wishing hands you any item in the game — and the map is mounted for the whole of
-# a game being played. Holding them back meant the one item that can get you off a
-# game you cannot beat was refused for exactly as long as you were stuck on it.
+# does. `overworld_usable` marks an item whose effect needs the MAP, and the map is
+# mounted for the whole of a game being played. Holding such an item back meant the
+# one thing that could get you off a game you cannot beat was refused for exactly as
+# long as you were stuck on it.
 #
-# Ride the Bus was the other half of this list until it became a card
-# (docs/cards-design.md §5.1). The rule did not move with it: a card is loot, and
-# loot has always been spendable whenever the player wants it (spec §4.3).
+# NO RELIC WEARS THE FLAG ANY MORE, and that is why this test is about the RULE
+# rather than about a roster row. Ride the Bus was the flag's example until it
+# became a card (docs/cards-design.md §5.1), and the Wand of Wishing until it became
+# a wand (docs/wands-design.md §5.2). The rule did not move with either of them:
+# loot has always been spendable whenever the player wants it (spec §4.3), which is
+# what both of them are now, and the flag is still here and still right for the next
+# relic that needs it.
 func test_an_overworld_active_fires_while_a_game_is_in_play() -> void:
-	for id in [&"wand_of_wishing"]:
-		var template: ItemData = Data.get_item2(id)
-		assert_not_null(template, "%s is authored" % id)
-		if template == null:
-			continue
-		assert_true(template.overworld_usable, "%s is an overworld active" % id)
-		assert_true(PackStrip.fires_while_reporting(template, true),
-			"%s fires while a game is in play" % id)
+	var template := ItemData.new()
+	template.id = &"test_overworld_active"
+	template.display_name = "Test Overworld Active"
+	template.kind = ItemData.ItemKind.USABLE
+	template.overworld_usable = true
+	template.max_uses = 1
+	assert_true(PackStrip.fires_while_reporting(template, true),
+		"an overworld active fires while a game is in play")
+	template.overworld_usable = false
+	assert_false(PackStrip.fires_while_reporting(template, true),
+		"and a plain Usable still waits for the report")
 
-func test_an_overworld_active_is_pressable_with_a_game_in_play() -> void:
-	# The rule above, as the player meets it: the Use button under the tile, live,
-	# on the screen where the board is.
-	var wand: ItemData = GameState.add_item(Data.get_item2(&"wand_of_wishing"))
-	assert_not_null(wand)
+func test_a_wand_in_the_pack_is_spendable_with_a_game_in_play() -> void:
+	# What replaced the relic, as the player meets it: loot is spendable whenever
+	# they want it, so the Zap button under a carried wand is live mid-game — which
+	# is the rule the `overworld_usable` flag existed to reproduce for relics.
+	GameState.add_wand_loot(&"wand_of_wishing")
 	_ui.pick(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
-	_ui._refresh_items()
-	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
-	var control: Button = column.get_child(0) as Button
-	assert_not_null(control, "the wand wears a Use button")
-	if control != null:
-		assert_false(control.disabled, "and it presses mid-game rather than greying out")
+	assert_eq(GameState.loot_items.size(), 1, "the wand is in the pack")
+	assert_false(LootSystem.is_wand(GameState.loot_items[0]) \
+		and GameState.loot_items[0].get("charges", 0) == 0,
+		"and it has something in it")
 	_leave_post_game()
 
 func test_a_usable_consumable_still_waits_for_the_report() -> void:
@@ -7991,3 +8022,103 @@ func test_nothing_ticked_is_an_empty_panel_rather_than_no_panel() -> void:
 	if panel != null:
 		assert_eq(panel.groups().size(), 0, "with nothing in it")
 		panel.close()
+
+# ---------------------------------------------------------------------------
+# The checklist's status rows: nested under their body, and ARMED not claimed
+# (docs/games-first-redesign.md §13)
+# ---------------------------------------------------------------------------
+#
+# A bonus objective belongs to a BODY, and the body's own row is what says the
+# body is finished with. Ticking a bonus used to pay it out on the spot, which
+# meant a player could bank every optional reward on the board without ticking a
+# single enemy — and it meant the two halves of one body resolved at two moments.
+
+# One follower carrying a bonus-side status, with the board disarmed and the rest
+# of the stack cleared away: these tests are about the ROWS, not about whichever
+# enemy the offering rolled.
+func _solo_with_bonus() -> int:
+	_ui.pick(0)
+	_disarm_board()
+	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_clear_board_except(inst)
+	# Stun's enemy side is a `bonus` — the sheet's own optional objective.
+	GameLoop2.apply_status_to(inst, &"stun", 1)
+	_ui._populate_play_panel()
+	return inst
+
+func test_a_bonus_row_is_offered_under_the_body_it_belongs_to() -> void:
+	var inst: int = _solo_with_bonus()
+	assert_eq(_ui._bonus_checks.size(), 1, "the bonus has a row")
+	assert_eq(int(_ui._bonus_checks[0]["instance"]), inst, "and it names its body")
+	# INDENTED, which is the whole of what says whose it is: the row is wrapped in
+	# a margin rather than sitting flush with the enemy rows above it.
+	var row: Control = _ui._bonus_checks[0]["check"]
+	var pad: Node = row
+	while pad != null and not (pad is MarginContainer) and pad != _ui._verify_box:
+		pad = pad.get_parent()
+	assert_true(pad is MarginContainer, "a bonus row is nested under its enemy")
+	assert_gt((pad as MarginContainer).get_theme_constant("margin_left"), 0,
+		"and the nesting is a real indent")
+
+func test_ticking_a_bonus_arms_it_and_pays_nothing_yet() -> void:
+	var inst: int = _solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	# NO CONFIRM: an armed row has done nothing, so there is nothing to be sure
+	# about. `_tick` answers a confirm if one is up; this asserts none was.
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_null(_ui.get_node_or_null("Confirm"),
+		"a row that can be unticked does not ask 'did you really?'")
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "it is armed")
+	assert_eq(GameState.pending_chests, chests_before, "and nothing has been paid")
+
+func test_unticking_a_bonus_disarms_it_at_no_cost() -> void:
+	var inst: int = _solo_with_bonus()
+	var cb: CheckBox = _ui._bonus_checks[0]["check"]
+	cb.button_pressed = true
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"))
+	cb.button_pressed = false
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"),
+		"taking it back costs nothing, because it had done nothing")
+
+func test_an_armed_bonus_pays_when_the_enemy_is_ticked() -> void:
+	var inst: int = _solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_eq(GameState.pending_chests, chests_before, "still waiting")
+	# The enemy's own row is the one that says the body is done — and the one that
+	# still asks for a confirm, because clearing a body cannot be taken back.
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_gt(GameState.pending_chests, chests_before,
+		"the bonus cashed with the body")
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"), "and is spent")
+
+func test_a_bonus_never_armed_pays_nothing_when_the_enemy_is_ticked() -> void:
+	_solo_with_bonus()
+	var chests_before: int = GameState.pending_chests
+	_tick(_ui._fulfil_checks[0]["check"])
+	assert_eq(GameState.pending_chests, chests_before,
+		"an untouched bonus is a bonus you did not claim")
+
+func test_a_bonus_ticked_after_the_body_is_down_pays_at_once() -> void:
+	# A ghost has no enemy row left to wait for (§2.1) — that row was ticked, and
+	# this one is catching up.
+	var inst: int = _solo_with_bonus()
+	_tick(_ui._fulfil_checks[0]["check"])
+	_ui._populate_play_panel()
+	if _ui._bonus_checks.is_empty():
+		# The body survived its goal hit, so its row is still open — not the case
+		# this test is about.
+		return
+	var chests_before: int = GameState.pending_chests
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	assert_gt(GameState.pending_chests, chests_before,
+		"nothing left to wait for, so it pays on the spot")
+	assert_false(GameLoop2.bonus_armed(inst, &"stun"))
+
+func test_an_armed_bonus_survives_a_repaint() -> void:
+	var inst: int = _solo_with_bonus()
+	_ui._bonus_checks[0]["check"].button_pressed = true
+	_ui._populate_play_panel()
+	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "the loop remembers, not the box")
+	assert_true(_ui._bonus_checks[0]["check"].button_pressed,
+		"and the rebuilt row comes back ticked")

@@ -11,6 +11,157 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The checklist's status rows nest under their body, and a bonus is armed rather
+  than claimed.**
+
+  An optional objective hangs off a BODY, and it was drawn flush with the enemy
+  rows — so a bonus on the Maggot read as a top-level objective that happened to be
+  listed after it. The `instead` rows, the bonus rows and a boss's nullified
+  alternatives are **indented** under the enemy they belong to now.
+
+  And ticking one no longer pays. A bonus **arms** — it says "I did that" and waits
+  — and cashes when the enemy it hangs off is cleared, either way: its goal row, or
+  the `instead` that clears it the other way (`GameLoop2.arm_bonus` /
+  `claim_armed_bonuses`). Paying at the tick let a player bank every optional reward
+  on the board without ticking a single enemy, and split one body's two halves
+  across two moments. **So a bonus row asks for no confirmation**, which is the
+  other half of the same change: the "did you really?" is the safeguard on a row
+  that RESOLVES when answered, and an armed bonus has done nothing — unticking it
+  disarms it at no cost. The confirm comes back on the enemy's own row, where the
+  irreversible thing happens. One ticked against a body that is already down pays on
+  the spot, since there is nothing left to wait for.
+
+  The waiting question asks `GameLoop2.body_finished_this_game`, not the checklist's
+  `answered_rows` — a goal row is never recorded there (`_arm_row` locks it and
+  `fulfill` records the BODY), so a bonus that waited on the row would have waited
+  forever on an enemy that was already dead.
+
+- **Every chest a game earned shows up on the haul screen.**
+
+  The checklist can pay a chest at any tick — a goal cleared mid-game, a level-up
+  taken, a status objective answered — and each one threw a full-screen
+  `RewardScreen` over the list the player was working down. Five rows meant four
+  interruptions, each hiding the list behind the decision it was interrupting.
+  They are the same haul as the drop the game itself pays, so they wait for the
+  screen the rest of the haul lands on: `_redeem_pending_chests` holds the queue
+  while the phase is `PLAYING`, and `_open_post_game` hands it over on the way in.
+  Nothing is lost by waiting — `pending_chests` is run state and survives a save.
+
+- **The dead encounter and D20-event layers are deleted.**
+
+  Two content sets loaded on every boot and were read by nothing. `data/encounters`
+  (seven rows), `EncounterData`, its generator and `GameState.encounter_requirement_met`
+  were a scaffold for an overworld encounter node that never landed;
+  `scripts/events/` (`EventModal`, `D20DieView`), `EventData` and the four ported
+  `data/events` rows were the pre-2.0 event layer that Events 2.0 replaced, with no
+  scene and no caller. Their art (`images/events`, `images/encounters`) and their
+  two test scripts went with them — 25 tests that made dead content look maintained.
+  The `encountersold` sheet is still in the workbook if encounters are picked back
+  up.
+
+- **Wands — the loot that outlives its own use.**
+
+  A **fifth** consumable, and the first one that is not spent in a single use.
+  Four rows from the new `wands` sheet, each with a **charge count**: zapping one
+  spends a charge and leaves the wand in its slot, and only the last charge takes
+  the wand with it. So a wand asks its question of the **pack** rather than of the
+  piece — nine slots, and a Wand of Fire is four Scrolls of Fire you have to carry
+  all at once and cannot put half of down. Full design in
+  [`docs/wands-design.md`](docs/wands-design.md).
+
+  **It is a gamble like the first three, and what you win is different in kind.**
+  An unknown wand hides behind one of the **28 materials** in
+  `images2.0/wands_unidentified/` — Oak, Iridium, Runed — and 24 of them are dealt
+  to nothing, which is six spares per wand and the widest pile in the project. It
+  has to be: with four wands and four materials the fourth would be free the moment
+  you knew the other three. And identification covers **every charge**, so the
+  first zap is the price of the other five, where learning a potion tells you about
+  a bottle you no longer have.
+
+  **The `Type` column is what it wants pointed at it** — `ray` takes an aimed
+  square (the thrown potion's picker, reused), `non_directional` fires where it
+  stands, and `random` rolls one of the two *afresh every zap*. Exactly one row
+  authors `random`, and it is Wand of Nothing: a do-nothing wand that behaved
+  identically twice running would give itself away, and a stick that asks for a
+  square one zap and not the next is one you cannot rule anything out about. **An
+  unidentified wand always asks for a square** whatever its type, or the aiming
+  step would leak which half of the roster it belongs to before anything was spent.
+
+  **A wand stands outside Echo Chamber in both directions**, and the two halves are
+  one rule — the relic copies pieces that were *consumed*. Echoed, a wand would be
+  four effects for one charge. Firing the memory *without* joining it would be
+  three free copies of your last pill, once per charge, for the price of one slot;
+  nothing else in the pack can pay a relic six times.
+
+  **The Wand of Wishing stops being a relic.** It was an `Usable, 1` item with the
+  same "obtain any item" effect, and having it in two kinds at once would have
+  meant a run could hold a relic and a piece of loot that are the same NetHack wand
+  under two different rules. The item row, the `.tres` and the art are gone; the
+  full-catalog picker it opened is untouched and the wand hands back a request that
+  lands on it. One consequence worth knowing: **no item is `overworld_usable` any
+  more** — the flag is still real and still right, and has simply run out of
+  content twice now, since Ride the Bus went the same way to become a card.
+
+  **Anything that charges items charges wands, and says so.** The `charge` op draws
+  from `GameState.chargeable_things()` — every charged relic plus every wand with
+  room in it — and 48 Hour Energy's card was reworded to "Chargeable **Items and
+  Wands**", because a pill that promised items while quietly topping up a wand is
+  the card lying. What does *not* reach them is the per-game `charge_all_items`
+  tick: a relic's bar refilling on its own is what makes it a relic, and a wand
+  that topped itself up every game would be an infinite one with no reason ever to
+  spend its last charge. The charge line also names an unknown wand by its
+  **material**, since charging it is not the gamble and should not identify it for
+  free.
+
+  Beating a game now pays an even **five-way split**. The Identify tenth did not
+  move.
+
+- **Bleed, Stun, and the Web tile — the two statuses whose clock is the board.**
+
+  Every status before these two either never depleted or depleted by having a side
+  *completed*. **Bleed** and **Stun** deplete by something *happening*, which is
+  what the Decrease column's two new values mean: `On Trigger` sheds a stack when
+  the body **attacks**, `Each Turn` sheds one at the end of every **turn** it takes.
+  On the player both mean **per game** — the player neither swings nor takes turns,
+  the game *is* their turn — so one column carries a rule for each end of the
+  board, and a duration is shed by *elapsing* where a `clause` is shed only by
+  being satisfied. A game you lost still spends a stack.
+
+  **Bleed rolls once per stack rather than once for X**: three Bleed is three coin
+  flips for 1 damage each when the body swings, not one flip for 3. A debuff the
+  player is meant to want to shed should bite little and often; a single roll for X
+  does nothing four games running and then takes a run. It goes through
+  `_damage_enemy`, so a body that bleeds out on its own swing pays out and fires its
+  death abilities exactly as one killed by a bomb does — and it swung first, which
+  is the honest ordering. The stack wears off whether or not the roll bit, because
+  **swinging is the trigger**, not the coin flip.
+
+  **Everything that stuns anything is this status now, and the board's own counter
+  is gone.** `entry["stun"]` had been "loses its next turn" since Scroll of Scare
+  Monster shipped, so Stun the mechanic and Stun the status sat side by side doing
+  one job under one name with two countdowns, two save fields and two ways to be
+  drawn. `GameLoop2.stun()` applies the status, `is_stunned` asks the `skip_turn`
+  flag and nothing else, `Decrease: Each Turn` is the only clock, and `_turns_owed`
+  reads the stacks; a save written before the change folds its counter in on load.
+  A stunned body is drawn like every other status holder — its own art in the strip
+  under the token, **no ❄ badge and no pip of its own** (the token still cools
+  toward blue, which is a property of the token rather than the same fact twice),
+  and the snowflake is out of the subsetted fonts with it. Two consequences worth
+  knowing: stunning a body now hands it Stun's **enemy side** as well, so Scroll of
+  Scare Monster is "skip its turn AND open a chest reward on it"; and Sticky Bombs'
+  `bomb_stun` is **deleted** rather than left unauthored — the field, the
+  `GameState.bombs_stun()` reader and the `_explode` branch are gone, and the item
+  generator refuses the token out loud pointing at `bomb_tile web`.
+
+  **The Web tile is the first whose clock is measured in bites.** +1 Stun to
+  anything that enters or starts its turn on it, and it goes out the moment it
+  catches something — `Until Triggered`, which is not "1 Game" written differently:
+  a web nobody steps in is still there three games later, and a fire nobody steps
+  in is not. **Sticky Bombs lays it**, which is what the item's own card has said
+  since the sheet was rewritten while its effect cell still set the ad-hoc
+  `bomb_stun` flag. It reaches Stun through the tile layer like everything else now,
+  and `bomb_stun` is gone entirely — see above.
+
 - **An event stops drawing machines it did not spawn, and a hover stops smearing
   small art.**
 

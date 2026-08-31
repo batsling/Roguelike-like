@@ -313,16 +313,27 @@ func test_blood_bombs_heals_on_bomb_used() -> void:
 	assert_eq(String(trig["effects"][0].get("type", "")), "gain_hp")
 	assert_eq(int(trig["effects"][0].get("value", 0)), 1)
 
+# STICKY BOMBS LAYS A TILE (§13.2, §17), where it used to set an ad-hoc `bomb_stun`
+# flag and add to a stun counter of the board's own. Web applies +1 Stun to whatever
+# enters or starts a turn on it, so the item does exactly what its card always
+# promised and reaches Stun through the tile layer like every other piece of content
+# that touches it — and `bomb_stun` is gone from ItemData, from GameState and from
+# the item generator, which refuses the token out loud rather than writing a
+# property nothing reads.
 func test_bomb_rule_flags() -> void:
-	assert_true(Data.get_item2(&"sticky_bombs").bomb_stun, "Sticky Bombs stun")
+	assert_eq(Data.get_item2(&"sticky_bombs").bomb_tile, &"web",
+		"Sticky Bombs lays Web, which is what stuns")
+	assert_eq(Data.get_item2(&"hot_bombs").bomb_tile, &"fire",
+		"and Hot Bombs lays Fire, off the same field")
 	assert_true(Data.get_item2(&"brimstone_bombs").bomb_cardinal,
 		"Brimstone Bombs blast the four cardinals")
-	assert_false(Data.get_item2(&"lunch").bomb_stun, "an ordinary item sets none of them")
+	assert_eq(Data.get_item2(&"lunch").bomb_tile, &"",
+		"an ordinary item sets none of them")
 
-func test_bomb_rule_flags_read_off_the_inventory() -> void:
-	assert_false(GameState.bombs_stun(), "no Sticky Bombs owned")
+func test_the_bomb_tile_rule_reads_off_the_inventory() -> void:
+	assert_eq(GameState.bomb_tile(), &"", "no tile-laying bombs owned")
 	GameState.add_item(Data.get_item2(&"sticky_bombs"))
-	assert_true(GameState.bombs_stun(), "owning it flips the rule")
+	assert_eq(GameState.bomb_tile(), &"web", "owning it flips the rule")
 	assert_false(GameState.bombs_cardinal(), "and only that rule")
 
 # --- Mine-r Construction (§7.3) -------------------------------------------

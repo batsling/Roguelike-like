@@ -453,11 +453,6 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # the sheet's to set. Read by LootSystem via GameState.loot_echo_depth.
 @export var echo_loot: int = 0
 
-# Sticky Bombs: everything a bomb HITS and does not destroy is stunned instead
-# (loses its next turn, §4.1 / §7.4) — which in practice means bosses, the only
-# things that survive a bomb. Read by GameLoop2.bomb via GameState.bombs_stun.
-@export var bomb_stun: bool = false
-
 # Brimstone Bombs: a bomb blasts along the battlefield's four cardinal
 # directions instead of hitting a single body — every enemy sharing the target's
 # row or column is hit too. Read by GameLoop2.bomb via GameState.bombs_cardinal.

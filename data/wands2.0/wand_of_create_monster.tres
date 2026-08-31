@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_create_monster"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_create_monster"
+display_name = "Wand of Create Monster"
+rarity = "Uncommon"
+preference = "Negative"
+reference = "NetHack"
+description = "Spawn 1 Random Enemy to the Board"
+charges = 6
+targeting = "non_directional"
+effect = [{"op": "spawn_enemy", "tier": "current", "value": 1}]
+file = ""

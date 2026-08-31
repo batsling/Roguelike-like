@@ -46,6 +46,15 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	# arithmetic below is ONE enemy's — see _pick_solo.
 	assert_eq(GameLoop2.stack_size(), 2, "the picked enemy, and the escort with it")
 	GameLoop2.despawn(GameLoop2.escort_instance())
+	# DISARMED, because the arithmetic below is about a body WALKING the length of
+	# the board and then striking once (§7.6). The pick rolls a RANDOM action enemy,
+	# and an ability changes both halves of that: Ranged strikes from two columns
+	# out, so the "no hit while closing in" assertion goes red, and an intent spends
+	# a turn on something other than closing. The flake CLAUDE.md describes, and it
+	# only surfaced when an unrelated change shifted the global RNG stream far
+	# enough to roll one.
+	for e in GameLoop2.stack:
+		e["abilities"] = []
 	var dmg: int = enemy.damage
 	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)

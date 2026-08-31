@@ -87,6 +87,24 @@ const ENEMY := &"enemy"
 # on this string — see decays().
 @export var decrease: String = "N/A"
 
+# HOW THE BOARD WEARS A STACK AWAY, when the goal side is not what depletes it —
+# the other half of the sheet's Decrease column. One of:
+#
+#   ""        never. `decrease` is N/A or On Completion, and `decays()` is the rule.
+#   "attack"  a stack goes when the body ATTACKS (Bleed, "On Trigger"). Swinging is
+#             the trigger, not the coin flip inside it: a Bleed that only wore off
+#             on a successful roll would last twice as long as it reads.
+#   "turn"    a stack goes at the end of every turn the body takes (Stun, "Each
+#             Turn"), which is what "lasts for X turns" means.
+#
+# ON THE PLAYER BOTH OF THEM MEAN "PER GAME" (`wears_per_game`). The player does
+# not attack and does not take turns — the game IS their turn — and that is what
+# "This lasts for X games" on Bleed's and Stun's player sides is saying. One column
+# carrying a rule for each end of the board is not a compromise: the two ends
+# measure time differently, and a status that lasts "three" has to mean three of
+# whatever the holder counts in.
+@export var wear: String = ""
+
 # THE TWO SIDES. Each is either {} (this side does nothing) or:
 #   {"mode": "goal"|"clause"|"bonus"|"demand"|"instead",
 #    "condition": String,        the challenge clause, with {expr} holes over X
@@ -110,6 +128,10 @@ const ENEMY := &"enemy"
 #   shield              String expr over X   shield points granted when it lands
 #   tile_move           String expr over X   extra columns closed per step
 #   pierce_shields      bool                 damage at this thing ignores shields
+#   recoil              String expr over X   damage this thing does to ITSELF when
+#                                            it attacks, PER ROLL — see recoil_rolls
+#   recoil_chance       int (percent)        the odds one roll of it bites
+#   skip_turn           bool                 this thing does not act on its turn
 #
 # The additive fields scale with the stack count; the MULTIPLIERS deliberately do
 # not. Marked doubles damage at one stack and at four — a doubling that compounded
@@ -479,6 +501,7 @@ const COMBAT_ZERO := {
 	"damage_dealt": 0, "damage_taken": 0,
 	"damage_dealt_mult": 1.0, "damage_taken_mult": 1.0,
 	"shield": 0, "tile_move": 0, "pierce_shields": false,
+	"skip_turn": false,
 }
 
 func has_combat() -> bool:
@@ -501,6 +524,53 @@ func combat_mult(field: StringName) -> float:
 
 func pierces_shields() -> bool:
 	return bool(combat.get("pierce_shields", false))
+
+# Does the holder lose its turn outright? Stun's whole combat side, and the same
+# effect the board's own `stun` counter has had since Scroll of Scare Monster
+# shipped — the two are read together by GameLoop2, deliberately, rather than one
+# replacing the other (§13.4).
+func skips_turn() -> bool:
+	return bool(combat.get("skip_turn", false))
+
+# --- recoil (Bleed) -------------------------------------------------------
+#
+# THE ONE COMBAT NUMBER WHOSE STACK COUNT IS NOT IN ITS EXPRESSION. `recoil` is
+# authored as a flat `+1` and rolled ONCE PER STACK, so three Bleed is three coin
+# flips for 1 damage each rather than one flip for 3.
+#
+# The curve is the reason. A single roll for X is a status that does nothing four
+# games running and then takes a run; three rolls for 1 is a steady tax you can
+# plan around, and a debuff the player is supposed to want to shed should bite
+# little and often rather than rarely and enormously.
+
+# Damage one roll deals. 0 when this status has no recoil at all.
+func recoil_damage() -> int:
+	return combat_bonus(&"recoil", 1)
+
+# How many rolls a holder at `stacks` makes — one each, which is the rule above.
+func recoil_rolls(stacks: int) -> int:
+	return maxi(0, stacks) if recoil_damage() > 0 else 0
+
+# The percentage odds one roll bites. 100 when unauthored, which is what every
+# other combat number already means: a clause with no `chance=` is certain.
+func recoil_chance() -> int:
+	return clampi(int(combat.get("recoil_chance", 100)), 0, 100)
+
+# --- how a stack is worn away ---------------------------------------------
+
+# Does a stack go when the holder ATTACKS? (`Decrease: On Trigger`.)
+func wears_on_attack() -> bool:
+	return wear == "attack"
+
+# Does a stack go at the end of every turn the holder takes? (`Decrease: Each Turn`.)
+func wears_per_turn() -> bool:
+	return wear == "turn"
+
+# Does a stack go at the end of every GAME, on the PLAYER? Both board modes read
+# this way at the player's end of the board, because the player has neither turns
+# nor attacks and the game is the unit they count in.
+func wears_per_game() -> bool:
+	return wear != ""
 
 # THE aggregator: what a whole collection of statuses does in combat. `held` is
 # the id -> stacks dict both holders keep (GameState.player_statuses and the
@@ -525,6 +595,7 @@ static func combat_totals(held: Dictionary, which: StringName) -> Dictionary:
 			out[field] = float(out[field]) * status.combat_mult(
 				StringName(String(field).trim_suffix("_mult")))
 		out["pierce_shields"] = bool(out["pierce_shields"]) or status.pierces_shields()
+		out["skip_turn"] = bool(out["skip_turn"]) or status.skips_turn()
 	return out
 
 # Apply one totals dict to a raw damage number: the bonus first, then the
@@ -560,6 +631,16 @@ func combat_line(stacks: int) -> String:
 		parts.append("moves %+d %s per turn" % [move, "tile" if absi(move) == 1 else "tiles"])
 	if pierces_shields():
 		parts.append("ignores Shields")
+	if skips_turn():
+		parts.append("loses its turn")
+	var hit: int = recoil_damage()
+	if hit > 0:
+		# SAID AS THE ROLLS IT ACTUALLY IS, not as an average. "3 chances in 2 of 1
+		# damage" is a sentence about dice a player can picture; "1.5 expected
+		# damage" is one they would have to trust.
+		var rolls: int = recoil_rolls(stacks)
+		parts.append("%d %s of %d damage when it attacks (%d%% each)" % [
+			rolls, "chance" if rolls == 1 else "chances", hit, recoil_chance()])
 	return ", ".join(parts)
 
 # --- the {expr} mini-language --------------------------------------------

@@ -8,9 +8,9 @@ id = &"cloverpit"
 display_name = "CloverPit"
 year = 2025
 type = 1
-games_influenced = Array[StringName]([&"don_t_let_it_starve"])
-influence_sources = PackedStringArray("check folder")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"don_t_let_it_starve", &"pengpong"])
+influence_sources = PackedStringArray("check folder", "https://store.epicgames.com/news/pengpong-s-hockey-pinball-chaos-was-the-result-of-a-game-jam?lang=vi")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray("casino")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

@@ -212,13 +212,21 @@ def parse_interactions(cell, what: str) -> dict:
 # --- the Decay column -----------------------------------------------------
 
 def parse_decay(cell, what: str):
-    """`Decay` -> (games, prose). Blank / N/A is a tile that never goes out."""
+    """`Decay` -> (games, one_shot, prose). Blank / N/A never goes out."""
     raw = _clean(cell)
     if not raw:
-        return 0, ""
+        return 0, False, ""
+    # UNTIL TRIGGERED is a clock measured in BITES rather than in games: the tile
+    # goes out the moment it does its thing. Web is the roster's first, and it is
+    # what makes a web a web rather than a second fire — you walk into it once.
+    # It is not "1 Game" with different words: a web nobody steps in is still there
+    # three games later, and a fire nobody steps in is not.
+    if raw.strip().lower() in ("until triggered", "on trigger", "once"):
+        return 0, True, raw.strip()
     m = re.match(r"^(\d+)\s*(game|games|turn|turns)?$", raw.strip().lower())
     if not m:
-        raise ValueError("%s: cannot read Decay %r — write `3 Games`" % (what, raw))
+        raise ValueError("%s: cannot read Decay %r — write `3 Games` or "
+                         "`Until Triggered`" % (what, raw))
     unit = m.group(2) or "games"
     if unit.startswith("turn"):
         raise ValueError(
@@ -226,7 +234,7 @@ def parse_decay(cell, what: str):
             "off the distance to the Amulet, so a tile authored in turns is worth "
             "three times as much out in the wilds as it is on the doorstep. Write "
             "it in games." % (what, raw))
-    return int(m.group(1)), raw.strip()
+    return int(m.group(1)), False, raw.strip()
 
 
 # --- emitting -------------------------------------------------------------
@@ -249,7 +257,7 @@ def tile_tres(row: dict):
         raise ValueError("%s: the Effect column is empty — a tile effect that "
                          "does nothing is not content" % what)
     interactions = parse_interactions(row.get("Interactions"), what)
-    decay_games, decay_text = parse_decay(row.get("Decay"), what)
+    decay_games, decay_once, decay_text = parse_decay(row.get("Decay"), what)
     file = _clean(row.get("Img"))
     img = image_path(file, IMG_DIR, IMG_RES_PREFIX)
 
@@ -269,6 +277,7 @@ def tile_tres(row: dict):
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('description = "%s"' % gd_str(_clean(row.get("Description"))))
     lines.append("decay_games = %d" % decay_games)
+    lines.append("decay_on_trigger = %s" % ("true" if decay_once else "false"))
     lines.append('decay_text = "%s"' % gd_str(decay_text))
     lines.append("triggers = %s" % gd_value(triggers))
     lines.append("interactions = %s" % gd_value(interactions))

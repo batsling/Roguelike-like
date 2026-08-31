@@ -125,9 +125,11 @@ than one packed cell.** An event is mostly prose, and prose needs a cell of its
 own — one you can widen, wrap, and read in the formula bar. Squeeze four choices
 into a single delimited `Choices` cell and the cell stops being editable, which
 is exactly how the old `events` sheet failed: catalogue metadata in the sheet,
-and every choice, outcome and effect hard-coded in an `AUTHORED` dict inside
-`tools/generate_event_tres.py`, because the sheet could not hold the part of an
-event that *is* the event. Numbered groups keep every string in its own cell
+and every choice, outcome and effect hard-coded in an `AUTHORED` dict inside its
+generator, because the sheet could not hold the part of an event that *is* the
+event. (That generator, its four `data/events` rows and the `EventModal` that read
+them have since been deleted — they were never reachable from the games-first
+build. This is the format that replaced them.) Numbered groups keep every string in its own cell
 *and* keep one event on one row.
 
 What that buys, beyond the row count: the sheet **sorts and filters like the

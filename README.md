@@ -93,8 +93,13 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── potions2.0/       #   PotionData — identify-by-using potions, two VERBS
 │   │                     #   each: quaff it, or throw it at a cell
 │   │                     #   (docs/potions-design.md)
+│   ├── wands2.0/         #   WandData — identify-by-zapping wands, and the one
+│   │                     #   kind that is NOT spent in one use: 4-6 charges each,
+│   │                     #   a slot held until it is empty (docs/wands-design.md)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
-│   │                     #   combat side they move numbers with (§13, §13.4)
+│   │                     #   combat side they move numbers with (§13, §13.4).
+│   │                     #   Stun lives here now: the board keeps no counter of
+│   │                     #   its own, so everything that stuns is one status
 │   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
 │   │                     #   and bites whatever walks in (§17)
 │   ├── units2.0/         #   UnitData — the player's own bodies on the board
@@ -107,8 +112,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── curses2.0/        #   CurseData2 — the checklist curses events hand out
 │   ├── items/            #   ItemData (pre-2.0 set, still loaded)
 │   ├── characters/       #   CharacterData (pre-2.0)
-│   ├── events/           #   EventData — the D20 events
-│   ├── encounters/       #   EncounterData — shops / deals / teleporters
 │   ├── curses/           #   CurseData (shelved, kept — §5)
 │   └── stats/            #   StatDefinition (the stat dispatcher's vocabulary)
 │
@@ -137,6 +140,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_scroll2_tres.py    #   data/scrolls2.0
 │   ├── generate_pill2_tres.py      #   data/pills2.0
 │   ├── generate_potion2_tres.py    #   data/potions2.0
+│   ├── generate_wand2_tres.py      #   data/wands2.0
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -145,8 +149,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
 │   ├── generate_item_tres.py, generate_character_tres.py,
-│   ├── generate_curse_tres.py, generate_event_tres.py,
-│   ├── generate_encounter_tres.py  #   the pre-2.0 sets
+│   ├── generate_curse_tres.py      #   the pre-2.0 sets
 │   ├── import-games-godot.py
 │   └── import-reference-godot.py
 │
@@ -242,7 +245,8 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
 | `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and the two verbs themselves: `quaff_potion` applies the sheet's `On Player` side to the drinker, `throw_potion` takes an aimed cell in `ctx.target` and applies the `On Tile` side around it. The shapes an `area=` token names are the BOARD's (`GameLoop2.area_cells`); Sacred Bark widens one by a rung of `AREA_LADDER` rather than by a multiplier, because a grid has no way to be exactly twice as big. |
 | `CardSystem` | Cards (`docs/cards-design.md`): the fourth loot consumable and the one that is **not a gamble** — no identification, no Preference, one use, what it does printed on it. What a card withholds is *which* card it is, and only while it is lying on a battlefield square: the floor draws its DECK'S icon (five icons over thirteen cards) and the hover names the deck and stops, and it turns over for good when it is picked up. That side is `LootSystem.art_texture(entry, face_up)`, false at three call sites and true everywhere else — "face down" is a fact about where the card is, not about the card. Owns the roster's ops too: the three teleports and the ? Card copy resolve as REQUESTS the overworld fulfils, and Temperance's `spawn_object` puts a named machine under the board through `ObjectSystem`. |
-| `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. |
+| `WandSystem` | Wands (`docs/wands-design.md`): the fifth loot consumable and the only one **not spent in a single use**. Every row authors 4-6 charges; zapping one spends a charge and leaves the wand in its slot, and only the last charge takes the wand with it. The per-run deal is 4 of 28 materials (24 mean nothing — six spares per wand, the widest pile in the project, which is what makes the fourth wand undeducible), and one zap identifies the type and **every charge behind it**. The `Type` column is what it wants pointed at it — `ray` takes an aimed cell in `ctx.target`, `non_directional` fires where it stands, and `random` rolls one of the two afresh every zap, which is Wand of Nothing's whole disguise. An UNIDENTIFIED wand always asks for a square whatever its type, or the aiming step would leak which half of the roster it is in. |
+| `LootSystem` | The one place a piece of carried loot is SPENT. Each kind owns its own resolution; what they share is everything around a use — consuming the entry, **Echo Chamber**'s copies of the last three used, and the memory they read (`GameState.loot_used_memory`). It belongs to neither system because an echo of a pill can be a scroll. Isaac's ordering: the copies fire off the memory as it stood *before* this use, so nothing echoes itself and no echo is remembered. **A wand is outside all of it in both directions**: it never joins the memory and zapping one fires no copies, because the relic copies pieces that were *consumed* and a wand that could pay it six times per slot would be worth more than the relic. |
 | `GameLog` | Verbose run-scope message log (teleports, pickups, item procs) — the written record behind the toasts. |
 | `Notifications` | Curated player-facing "important events" channel; the overworld mounts `NotificationToasts` to show them. |
 | `SaveSystem` | Save/load for a games-first run (`user://`): a named save per run plus the run's own autosave slot. Writes GameState, `GameLoop2`, and the overworld's on-screen state, and hands a loaded run back to the next `Overworld2` to boot. |
@@ -576,8 +580,9 @@ node and its script.
     fighting for a 720p canvas and an exit button pointing at something already on
     screen; it stays under the board per §14, and this screen keeps only the hub's
     id so its button can name it.
-- **`RewardScreen.gd`** — chest rewards (level-ups, Wand of Wishing). **The wand
-  is its own layout**: reaching into the whole catalogue is a different decision
+- **`RewardScreen.gd`** — chest rewards (level-ups, and the **Wand of Wishing**,
+  which is a piece of loot rather than a relic now — `docs/wands-design.md` §5.2).
+  **The obtain-any screen is its own layout**: reaching into the whole catalogue is a different decision
   from picking one of three cards, so `setup_obtain` takes the viewport (less a
   margin), shrinks the cards to art-name-and-class chips with the description in
   the hover card, and adds a search over both name and description — around thirty
@@ -662,7 +667,7 @@ All game content is authored as typed Godot **Resources** (`.tres`) under `data/
 with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
-`StatusData`, `TileEffectData`, `UnitData`, `EventData`, `EncounterData`,
+`StatusData`, `TileEffectData`, `UnitData`,
 `CurseData`, `StatDefinition`.
 
 (`TileEffectData` rather than `TileData` because Godot ships a native `TileData`
@@ -702,7 +707,8 @@ still exists under an old name silently generates the wrong content.
 | `generate_scroll2_tres.py` | `data/scrolls2.0/*.tres` from the scrolls sheet — **and `data/scroll_names.tres`**, the bag of meaningless titles an unread scroll wears, off the same sheet's two right-hand columns (`Random Scroll Name` / `Random Scroll Part`) |
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
-| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet |
+| `generate_wand2_tres.py` | `data/wands2.0/*.tres` from the `wands` sheet — one effect column, plus the two columns only a wand has: `Charges` (what a fresh one holds) and `Type` (what it wants pointed at it). `nothing` is a verb here, and every *other* empty Effect cell is refused — Wand of Nothing is the roster's authored blank and a hole must not be able to look like one |
+| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet — owns the reward-token DSL, and the `Decrease` column's table: `On Completion` sheds a stack when a SIDE is completed, while `On Trigger` and `Each Turn` are worn away by the BOARD (an attack, a turn) and mean *per game* on the player, who has neither |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units` sheet — imports the parsers above rather than restating them |
 | `generate_ability_tres.py` | `data/abilities2.0/*.tres` from the `abilities` sheet — and owns the **grammar of the enemy `Ability` column** (`Ranged (2), Fireproof, Infliction (1, Burn)`), which the goal-enemy generator imports rather than restating (§7.6) |
@@ -712,8 +718,6 @@ still exists under an old name silently generates the wrong content.
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesold2` sheet |
-| `generate_event_tres.py` | `data/events/*.tres` from authored Python dicts |
-| `generate_encounter_tres.py` | `data/encounters/*.tres` from the `encountersold` sheet |
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
@@ -865,7 +869,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
 | `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
-| `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker — much stronger than a chest, use deliberately. |
+| `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker (the WAND's, since the relic became one — `docs/wands-design.md` §5.2) — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
 
 And the event-only forms:
@@ -1091,16 +1095,17 @@ cross-run tier list. What's still ahead:
   and the verb/consumable counts, reading the same autoloads the main window
   mutates. Deferred by decision until the mechanics lock; it is the largest
   unbuilt piece of the spec.
-- **Overworld encounters** — deals, teleporters, and challenge rifts are authored
-  (`data/encounters/*.tres`, `EncounterData`, its sheet + generator, and
-  `GameState.encounter_requirement_met`), but nothing on the games-first board
-  offers them yet. They need a place in the offering / between games. **Shops are
-  no longer on this list** — they landed as their own thing at the ten hub games
-  (§14), and what is left of the encounter sheet's two shopkeepers is flavour a
-  hub's shop can adopt once the roster is authored.
-- **The D20 events** — `EventModal` + `data/events` are built and tested, and are
-  likewise not reachable from the current overworld. Same question: when does a
-  run stop for an event?
+- **Overworld encounters** — deals, teleporters and challenge rifts are a design
+  with no code behind it any more. The seven-row `data/encounters` scaffold,
+  `EncounterData`, its generator and `GameState.encounter_requirement_met` were
+  **deleted**: they loaded on every boot, were read by nothing, and were guarded by
+  tests that made dead content look maintained. The `encountersold` sheet is still
+  in the workbook when they are picked back up. **Shops are not on this list** —
+  they landed as their own thing at the ten hub games (§14).
+- **The D20 events** — likewise deleted, for the same reason: `scripts/events/`
+  (`EventModal`, `D20DieView`), `EventData` and the four ported `data/events` rows
+  had no scene, no caller and no way to be reached. Events 2.0 (§12,
+  `docs/event-sheet-authoring.md`) is the event layer the run actually has.
 - **Run History** — saving and resuming a run is done (Save button, autosave,
   Continue list), but the menu's Run History is still a stub: nothing records a
   run once it's finished, so there's no post-mortem to read.

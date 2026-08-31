@@ -83,21 +83,6 @@ var player_level: int = 1
 # perfect-aware items / future systems. Transient — not saved.
 var last_game_perfected: bool = false
 
-# Curse bookkeeping for the most recently cleared game, set by the post-game
-# verification step (see Overworld._resolve_curse_penalties). Both count only
-# RESTRICTION curses (the kind that can be "triggered" by breaking their rule).
-# Read by overworld-encounter requirement gates (Deal with the Devil needs a
-# triggered curse last game; the Angel Room needs 2+ held and none triggered).
-# Transient — not saved.
-var last_game_curses_held: int = 0
-var last_game_curses_triggered: int = 0
-
-# Mid-encounter resume that has to survive a combat scene-swap: when an overworld
-# encounter launches a combat (the teleporter's "fight an elite first"), the
-# overworld is freed and rebuilt, so the unfinished tail (e.g. the pending
-# teleport) is stashed here and resumed when the fresh overworld re-opens.
-var pending_encounter: Dictionary = {}
-
 # === Player vitals ===
 var max_hp: int = 75
 var hp: int = 75
@@ -275,6 +260,13 @@ var scroll_name_map: Dictionary = {}
 # different one next run). Persisted so a reloaded run keeps its colours.
 var potion_color_map: Dictionary = {}
 
+# Per-run MATERIAL assignment for UNIDENTIFIED wands: wand id (String) -> one of
+# WandSystem.MATERIALS ("Oak_NetHack"). The potions' rule at a wider ratio — 28
+# sticks over 4 wands, so 24 are dealt to nothing and knowing three tells you
+# nothing about the fourth. Built lazily by WandSystem and persisted, so a reloaded
+# run keeps the alphabet the player has been learning.
+var wand_material_map: Dictionary = {}
+
 # ECHO CHAMBER'S MEMORY (§4.3): the loot entries the player has USED, oldest
 # first. Run state rather than item state on purpose — the relic reads this, it
 # does not carry it, so two Echo Chambers see one history and picking one up
@@ -287,6 +279,13 @@ var loot_used_memory: Array = []
 # horse pill is the same capsule at a bigger size. Amnesia's horse dose clears
 # this. Persisted with the save.
 var identified_pill_types: Array[StringName] = []
+
+# Sibling of identified_potion_types for WANDS (docs/wands-design.md §6.5). One zap
+# reveals the type for the rest of the run and covers EVERY charge left in it —
+# which is what makes the first zap of an unknown stick worth taking, since the
+# five behind it are the reward. Amnesia can clear this like any other alphabet.
+# Persisted with the save.
+var identified_wand_types: Array[StringName] = []
 
 # THE RUN'S ALPHABET: pill id (String) -> the art base under images2.0/pills/
 # ("BlueCyan", whose horse dose is "BlueCyanHorse"). Dealt once per run by
@@ -407,7 +406,7 @@ var event_block: int = 0
 # into the running fight. Empty when not in combat.
 var combat_scene = null
 var combat_player = null
-# True while an EventModal is open — the only non-combat place a pill may be
+# True while an event modal is open — the only non-combat place a pill may be
 # used (gates the backpack's Use button).
 var event_active: bool = false
 # Live overworld scene, registered while the player is on the map. Lets
@@ -644,7 +643,7 @@ var pending_fire_damage_all: int = 0
 
 # "A Note For Yourself" stores a card id here so the next encounter can hand it
 # back. Empty until the player stores one; the event seeds a default the first
-# time (see EventData note_for_yourself effect).
+# time (a combat-era event effect; the set it came from is gone).
 var note_for_yourself_card: StringName = &""
 
 # === Phase ===
@@ -733,8 +732,17 @@ func _on_game_beaten(_ctx: Dictionary) -> void:
 	# runner — only scene-free effects (gain_hp / gain_max_hp / gain_chest /
 	# gain_stat) are valid here, which is exactly what the 2.0 items use.
 	fire_run_item_triggers("game_beaten", _ctx)
-	# Charged actives (D6, Wand of Wishing) "recharge over N beats" (§8) — with no
+	# Charged actives (D6, D10, Red Candle) "recharge over N beats" (§8) — with no
 	# combat scenes in the 2.0 loop, a beaten game is the recharge tick.
+	#
+	# WANDS ARE DELIBERATELY NOT IN THIS (docs/wands-design.md §7). A relic's bar
+	# refilling on its own is what makes it a relic — you own it for the run and the
+	# only question is how often it fires. A wand's charges are the whole of what
+	# you found, and a wand that topped itself up every game would be an infinite
+	# one: six Wands of Fire for the price of a slot, and no reason ever to spend
+	# the last charge. What DOES reach them is content that deliberately charges
+	# things — 48 Hour Energy and anything after it — because that is a cost the run
+	# paid for rather than a tick of the clock.
 	charge_all_items(1)
 
 func _on_curse_applied(ctx: Dictionary) -> void:
@@ -834,41 +842,6 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 # Number of active curses the player is currently saddled with.
 func curse_count() -> int:
 	return active_curses.size()
-
-# Evaluates an EncounterData.requirement_effect (an AND-list of comparison
-# Dictionaries {field, cmp, value}) against current run-state. Empty list = no
-# gate = always available. Unknown fields fail closed (the encounter won't spawn)
-# so a typo never silently passes. Field vocabulary mirrors the requirement DSL
-# the encounter generator parses.
-func encounter_requirement_met(conds: Array) -> bool:
-	for c in conds:
-		if not (c is Dictionary):
-			return false
-		var field: String = String(c.get("field", ""))
-		var want: int = int(c.get("value", 0))
-		var have: int
-		match field:
-			"last_game.curses_held":
-				have = last_game_curses_held
-			"last_game.curses_triggered":
-				have = last_game_curses_triggered
-			"curses_held":
-				have = curse_count()
-			_:
-				return false
-		if not _cmp_int(have, String(c.get("cmp", "==")), want):
-			return false
-	return true
-
-func _cmp_int(a: int, op: String, b: int) -> bool:
-	match op:
-		">=": return a >= b
-		"<=": return a <= b
-		">": return a > b
-		"<": return a < b
-		"==": return a == b
-		"!=": return a != b
-		_: return false
 
 # Saddles the player with a curse (skipping a game today; events / enemies
 # later). Records it in active_curses. The penalty card is NOT granted here — a
@@ -1026,9 +999,6 @@ func reset_run() -> void:
 	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false
-	last_game_curses_held = 0
-	last_game_curses_triggered = 0
-	pending_encounter = {}
 	max_hp = 75
 	hp = 75
 	max_energy = 3
@@ -1056,8 +1026,10 @@ func reset_run() -> void:
 	identified_potion_types.clear()
 	identified_scroll_types.clear()
 	identified_pill_types.clear()
+	identified_wand_types.clear()
 	loot_used_memory.clear()
 	potion_color_map.clear()
+	wand_material_map.clear()
 	# …and so are the scrolls' titles, for the same reason: ZELGO MER meant Fire
 	# last run and means nothing at all in this one.
 	scroll_name_map.clear()
@@ -2474,7 +2446,7 @@ func has_low_rarity_reroll() -> bool:
 	return false
 
 # True while any owned item sets the named ItemData bool. The games-first run-loop
-# flags (keep_shields / bomb_stun / bomb_cardinal) change a RULE rather than move
+# flags (keep_shields / bomb_cardinal) change a RULE rather than move
 # a number, so GameLoop2 reads them off the inventory instead of firing effects.
 func _any_item_flag(field: String) -> bool:
 	for it in inventory:
@@ -2509,10 +2481,6 @@ func loot_echo_depth() -> int:
 		if it is ItemData:
 			depth = maxi(depth, int(it.echo_loot))
 	return depth
-
-# Sticky Bombs: whatever a bomb hits and fails to destroy is stunned (§4.1).
-func bombs_stun() -> bool:
-	return _any_item_flag("bomb_stun")
 
 # Brimstone Bombs: a bomb blasts down the target's whole row and column (§4).
 func bombs_cardinal() -> bool:
@@ -2775,11 +2743,76 @@ func charge_item_by_id(id: StringName, amount: int = 1) -> void:
 				emit_signal("inventory_changed")
 			return
 
-# Every relic in the pack that runs on charges — 48 Hour Energy's targets (§4.3).
-# The carried copies, not the templates, since what a charge lands on is a bar
-# that exists.
+# Every relic in the pack that runs on charges. The carried copies, not the
+# templates, since what a charge lands on is a bar that exists.
 func chargeable_items() -> Array:
 	return inventory.filter(func(it): return it is ItemData and it.is_charged())
+
+# Every WAND in the pack with room in it (docs/wands-design.md §7). A wand runs on
+# charges exactly as a relic does, and a run holding one is holding something a
+# charge can land on — so anything that charges items charges these too, and the
+# content that does it says so on its card.
+#
+# THE FULL ONES ARE LEFT OUT, where `chargeable_items` includes them. A relic's
+# fullness is on the relic and `charge_item` reports whether the bar moved; a
+# wand's is on the pack ENTRY, so the caller needs the entry either way and
+# filtering here is what stops 48 Hour Energy spending all three of its charges on
+# the one full wand in the pack.
+func chargeable_wands() -> Array:
+	var out: Array = []
+	for entry in loot_items:
+		if not (entry is Dictionary) or String(entry.get("type", "")) != "wand":
+			continue
+		if WandSystem.charges_of(entry) < WandSystem.max_charges(entry):
+			out.append(entry)
+	return out
+
+# Everything in the pack a charge can land on, relics and wands together — the one
+# list the `charge` op draws from (PillSystem._charge). Wands are appended rather
+# than merged in some order, and nothing downstream reads the order: the op picks
+# at random, so a wand is exactly as likely to be topped up as a relic is.
+func chargeable_things() -> Array:
+	var out: Array = chargeable_items()
+	out.append_array(chargeable_wands())
+	return out
+
+# Top up one thing from `chargeable_things`, whichever kind it is, and report
+# whether its bar actually moved. The `charge` op is written against this rather
+# than against the two halves, so a relic and a wand can never drift on what
+# "charged it" means.
+func charge_thing(thing, amount: int) -> bool:
+	if thing is ItemData:
+		return charge_item(thing, amount)
+	if thing is Dictionary and String(thing.get("type", "")) == "wand":
+		# The entry in `loot_items` IS this dictionary (chargeable_wands hands back
+		# the live rows, not copies), so writing the count through WandSystem writes
+		# it into the pack. The signal is this function's to emit for the same reason
+		# `charge_item` emits its own: whoever moved the number owns telling the
+		# screen about it.
+		if WandSystem.add_charges(thing, amount):
+			emit_signal("inventory_changed")
+			return true
+	return false
+
+# What one chargeable thing is CALLED, for the line a charge effect writes. A
+# relic answers with its display name; a wand answers with whatever the run knows
+# it as, which is its material while it is still a mystery — a pill that charged
+# "Wand of Fire" would identify it for free, and the charge is not the gamble.
+func charge_thing_name(thing) -> String:
+	if thing is ItemData:
+		return thing.display_name
+	if thing is Dictionary:
+		return LootSystem.display_name(thing)
+	return ""
+
+# How full one is, and how full it can get — the pair `charge` needs to fill a bar
+# to the top without knowing which kind it is holding.
+func charge_thing_room(thing) -> int:
+	if thing is ItemData:
+		return maxi(0, thing.max_charge() - thing.current_charge)
+	if thing is Dictionary and String(thing.get("type", "")) == "wand":
+		return maxi(0, WandSystem.max_charges(thing) - WandSystem.charges_of(thing))
+	return 0
 
 # Public front for _charge_item: tops one relic's bar up by `amount` and reports
 # whether the bar actually moved, so a caller can tell "charged it" from "it was
@@ -3272,8 +3305,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll", "pill", "potion", "card":
-			# Each unit becomes a concrete entry. Three of the four are gained
+		"scroll", "pill", "potion", "card", "wand":
+			# Each unit becomes a concrete entry. Four of the five are gained
 			# UNIDENTIFIED and the owning system resolves identity on use; a card is
 			# never unidentified at all (docs/cards-design.md §2), so for that arm
 			# the entry is simply what it is.
@@ -3288,6 +3321,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 							_add_random_pill_loot()
 						"card":
 							_add_random_card_loot()
+						"wand":
+							_add_random_wand_loot()
 						_:
 							_add_random_potion_loot()
 			else:
@@ -3361,8 +3396,14 @@ func _add_random_card_loot() -> void:
 	if not entry.is_empty():
 		loot_items.append(entry)
 
-# WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight FOUR-way
-# split (docs/cards-design.md §4; docs/potions-design.md §8, decision #4).
+func _add_random_wand_loot() -> void:
+	var entry: Dictionary = WandSystem.roll_wand_loot()
+	if not entry.is_empty():
+		loot_items.append(entry)
+
+# WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight FIVE-way
+# split (docs/wands-design.md §4; docs/cards-design.md §4; docs/potions-design.md
+# §8, decision #4).
 #
 # ONE ROLL, IN ONE PLACE. Two callers ask this question — the grant above and
 # `roll_loot_entry` below — and both used to spell `randi() % 2` out for
@@ -3371,18 +3412,26 @@ func _add_random_card_loot() -> void:
 # one more kind, so every kind before it gets rarer, and that is the intended cost
 # of another alphabet rather than an accident of where the coin was flipped.
 #
-# AN EVEN QUARTER EACH, AND NOT A WEIGHTED SPLIT. Cards are the kind you can read
-# before you spend, which makes them the least dangerous of the four and the
+# AN EVEN FIFTH EACH, AND NOT A WEIGHTED SPLIT. Cards are the kind you can read
+# before you spend, which makes them the least dangerous of the five and the
 # obvious candidate for a smaller share — and a smaller share is exactly what
-# would make the run's one legible piece of loot the one it rarely sees. The four
+# would make the run's one legible piece of loot the one it rarely sees. The five
 # are equals at the drop and unequal in what they ask of you, which is the trade
 # the kinds exist to offer.
+#
+# WANDS DID NOT BUY THEIR EXTRA CHARGES WITH A SMALLER SLICE, and the argument is
+# the same one in reverse. A wand is worth more per drop than the other four —
+# four or six effects rather than one — so a fifth of every drop looks generous.
+# What it costs is the SLOT: the pack holds nine, and a wand sits in one of them
+# until it is empty, so a run swimming in wands is a run that cannot pick anything
+# up. The kind pays for itself in the place the player feels it, rather than in a
+# number they can only infer from how rarely it turns up.
 #
 # AND THE PER-GAME PAYOUT IS THE ONLY TAP (decision #14). No shop shelf slot, no
 # enemy drop, no boss bonus: a kind that arrives from four directions at once is a
 # kind nobody can balance the first time. The one-in-four is a number that can be
 # turned; four sources are four numbers that have to be turned together.
-const LOOT_KINDS := ["scroll", "pill", "potion", "card"]
+const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand"]
 
 func roll_loot_kind() -> String:
 	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
@@ -3418,7 +3467,7 @@ func _rolls_identify() -> bool:
 # Roll one piece of loot WITHOUT granting it. The per-game drop (§4.3) asks before
 # it hands anything over — the pack holds nine and the answer is sometimes no — so
 # the roll and the taking are two steps rather than one.
-#   kind: "scroll" | "pill" | "potion" | "card" | "loot" (the kind-blind quarters)
+#   kind: "scroll" | "pill" | "potion" | "card" | "wand" | "loot" (the kind-blind fifths)
 #
 # The Identify tenth is taken off the top of both the kind-blind drop and an
 # explicit scroll one, and off none of the explicit pill/potion/card ones: "10% of
@@ -3438,6 +3487,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		return PotionSystem.roll_potion_loot()
 	if want == "card":
 		return CardSystem.roll_card_loot()
+	if want == "wand":
+		return WandSystem.roll_wand_loot()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -3572,6 +3623,19 @@ func add_card_loot(id: StringName) -> void:
 	if c == null:
 		return
 	loot_items.append({"type": "card", "id": c.id, "rarity": c.rarity})
+	emit_signal("inventory_changed")
+
+# And a SPECIFIC wand, FULL. `ensure_materials` first, so a granted stick has a
+# material to wear even in a run that has never seen one — and the charge count
+# rides on the entry rather than the resource, which is the whole reason a wand
+# grant looks different from every other one here.
+func add_wand_loot(id: StringName) -> void:
+	var w: WandData = Data.get_wand(id)
+	if w == null:
+		return
+	WandSystem.ensure_materials()
+	loot_items.append({"type": "wand", "id": w.id, "rarity": w.rarity,
+		"charges": w.starting_charges()})
 	emit_signal("inventory_changed")
 
 # ---------------------------------------------------------------------------

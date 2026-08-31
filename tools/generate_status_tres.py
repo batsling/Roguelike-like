@@ -44,9 +44,21 @@ Because the verb says what the side DOES, Buff/Debuff drives no mechanic: it is
 the HUD tint and the collection filter, nothing more.
 
 `Decrease` says how a status DEPLETES, for the player and for the code at once:
-`N/A` never, `On Completion` sheds a stack each game a side of it is completed.
-It is the truth the sides' `decay` flags are checked against, so a status cannot
-say one thing in its own column and another inside a cell.
+
+  N/A            never.
+  On Completion  a stack goes each game a SIDE of it is completed. It is the truth
+                 the sides' `decay` flags are checked against, so a status cannot
+                 say one thing in its own column and another inside a cell.
+  On Trigger     a stack goes when the body ATTACKS — Bleed. Not when its roll
+                 bites: swinging is the trigger, and a Bleed that only wore off on
+                 a successful coin flip would last twice as long as it reads.
+  Each Turn      a stack goes at the end of every turn the body takes — Stun, which
+                 is what "lasts for X turns" means.
+
+The last two are facts about the COMBAT side rather than the goal side, so they set
+`wear` instead of the sides' `decay`. ON THE PLAYER BOTH MEAN "PER GAME": the player
+does not attack and does not take turns, the game is their turn, and that is what
+"This lasts for X games" on Bleed's and Stun's player sides is saying.
 
 `Stackable` says how a second application combines — `Intensity` raises X — and
 may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn
@@ -354,24 +366,44 @@ def parse_side(raw, where):
 # take maps to a DECAY answer per side, and an unknown one is refused rather than
 # read as "never" — a typo that silently made a status permanent is exactly the
 # kind of content bug a generator is here to catch.
+# Each value maps to (on_completion, wear) where:
+#
+#   on_completion  completing a SIDE sheds a stack — the `decay` flag the sides
+#                  carry, and the only mode that existed before Bleed and Stun.
+#   wear           how a stack is worn away by the BOARD instead, one of
+#                  "" (never), "attack" or "turn". See StatusData.wear.
+#
+# The two are not alternatives dressed up as one column, and the split is the
+# whole reason this is a table rather than a bool. `On Completion` is a fact about
+# the GOAL side: answer the row on the report and a stack goes. `On Trigger` and
+# `Each Turn` are facts about the COMBAT side: the body attacks, or the body takes
+# a turn, and a stack goes whether or not any goal was ever answered.
+#
+# ON THE PLAYER BOTH OF THE NEW MODES MEAN "PER GAME", because the player does not
+# attack and does not take turns — the game is their turn. That is what "This lasts
+# for X games" on Bleed's and Stun's player sides is saying, and it is why one
+# column can carry a rule for each end of the board.
 DECREASE_RULES = {
-    "": False,
-    "n/a": False,
-    "none": False,
-    "never": False,
-    "on completion": True,
+    "": (False, ""),
+    "n/a": (False, ""),
+    "none": (False, ""),
+    "never": (False, ""),
+    "on completion": (True, ""),
+    "on trigger": (False, "attack"),
+    "each turn": (False, "turn"),
 }
 
 
 def parse_decrease(raw, name):
-    """('On Completion', 'Burn') -> (prose, decays: bool)."""
+    """('On Completion', 'Burn') -> (prose, decays: bool, wear: str)."""
     prose = _clean(raw) or "N/A"
     key = prose.strip().lower()
     if key not in DECREASE_RULES:
         raise ValueError("statuses2.0 %s: unknown Decrease %r (known: %s)"
                          % (name, prose, ", ".join(sorted(
                              k for k in DECREASE_RULES if k))))
-    return prose, DECREASE_RULES[key]
+    decays, wear = DECREASE_RULES[key]
+    return prose, decays, wear
 
 
 # `Max: 3` anywhere in the Stackable cell caps the climb. Written as a search
@@ -423,13 +455,31 @@ COMBAT_ADD_FIELDS = {
     "shield",
     # Extra columns closed per step. Speed 2 walks three columns a turn.
     "tile_move",
+    # WHAT THIS THING DOES TO ITSELF WHEN IT SWINGS — Bleed's "50% chance to take 1
+    # Damage when attacking". The amount is PER ROLL and the roll happens ONCE PER
+    # STACK, which is why it is authored as a flat `+1` rather than as `+{X}`: three
+    # Bleed is three coin flips for 1 each, not one flip for 3. That makes it the
+    # one additive field whose stack count is not in the expression, and the reason
+    # is the curve — a single roll for X damage is a status that does nothing four
+    # times and then takes your run, where three rolls for 1 is a steady tax.
+    "recoil",
 }
 COMBAT_MULT_FIELDS = {"damage_taken", "damage_dealt"}
+# `key=value` options a clause may carry after its amount. One today.
+COMBAT_OPTIONS = {
+    # The percentage chance ONE roll of `recoil` actually bites. Absent means
+    # certain, which is what every other combat number already means.
+    "chance",
+}
 # Bare flags: a rule, not a number.
 COMBAT_FLAGS = {
     # Damage aimed at this thing ignores shields outright — it does not spend
     # them, it goes past them. Marked's second half.
     "pierce_shields",
+    # This thing does not act on its turn: no step, no swing. Stun's whole combat
+    # side, and the same effect the ad-hoc `entry["stun"]` counter has had since
+    # Scroll of Scare Monster shipped — see StatusData.skips_turn.
+    "skip_turn",
 }
 
 
@@ -447,6 +497,22 @@ def parse_combat(raw, where):
     for clause in [c.strip() for c in s.split(";") if c.strip()]:
         toks = clause.split()
         field = toks[0].lower()
+        # `key=value` options are split off first, so a clause carrying one still
+        # reads as `<field> <amount>` below rather than as a three-token error.
+        options = {}
+        rest = []
+        for t in toks[1:]:
+            if "=" in t:
+                k, _, v = t.partition("=")
+                k = k.strip().lower()
+                if k not in COMBAT_OPTIONS:
+                    raise ValueError("statuses2.0 %s: unknown combat option %r "
+                                     "(known: %s)"
+                                     % (where, k, ", ".join(sorted(COMBAT_OPTIONS))))
+                options[k] = v.strip()
+            else:
+                rest.append(t)
+        toks = [field] + rest
         if len(toks) == 1:
             if field not in COMBAT_FLAGS:
                 raise ValueError(
@@ -459,6 +525,12 @@ def parse_combat(raw, where):
             raise ValueError("statuses2.0 %s: cannot parse combat clause %r — "
                              "expected `<field> +<n>`, `<field> x<n>` or a flag"
                              % (where, clause))
+        for k, v in options.items():
+            try:
+                out["%s_%s" % (field, k)] = int(v)
+            except ValueError:
+                raise ValueError("statuses2.0 %s: %s=%r is not a whole number (%r)"
+                                 % (where, k, v, clause))
         amount = toks[1]
         if amount.startswith("x"):
             if field not in COMBAT_MULT_FIELDS:
@@ -913,7 +985,7 @@ def status_tres(row) -> tuple:
     # flags are checked against it rather than trusted alongside it. A cell that
     # asks to decay under an `N/A` column is a contradiction, and the older cells
     # that carry the flag (Marked's two) simply agree with their column.
-    decrease, decays = parse_decrease(row.get("Decrease"), name)
+    decrease, decays, wear = parse_decrease(row.get("Decrease"), name)
     for which, side in (("On Player Effect", on_player), ("On Enemy Effect", on_enemy)):
         if side.get("decay") and not decays:
             raise ValueError(
@@ -956,6 +1028,7 @@ def status_tres(row) -> tuple:
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
     lines.append("max_stacks = %d" % max_stacks)
     lines.append('decrease = "%s"' % gd_str(decrease))
+    lines.append('wear = "%s"' % gd_str(wear))
     lines.append('combat_text = "%s"' % gd_str(_clean(row.get("Combat"))))
     lines.append("enemy_only = %s" % gd_value(enemy_only))
     lines.append("on_player = %s" % gd_value(on_player))

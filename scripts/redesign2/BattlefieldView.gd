@@ -856,7 +856,8 @@ func is_aiming() -> bool:
 # Nothing belongs to a game any more (GameLoop2.arrivals), so nothing is exempt —
 # what walked on this game takes a bomb exactly like what has been chasing you
 # since the third. A boss is included too: the damage bounces off it, but that is
-# the only way to land Sticky Bombs' stun, and a push moves it like anything else.
+# the only way to leave Sticky Bombs' Web under it, and a push moves it like
+# anything else.
 func armed_targets() -> Array:
 	if not is_aiming():
 		return []
@@ -967,10 +968,16 @@ func refresh_toolbar() -> void:
 			# act on, and the lit bodies say everything else.
 			_hint_label.text = "%s:" % aiming_item.display_name
 		elif not throwing_loot.is_empty():
-			# The bottle's own name for the same reason — and for a potion it is
-			# doing a second job, since an UNKNOWN one is named by its colour and
-			# that colour is the thing the player is about to learn.
-			_hint_label.text = "🧪 Throw %s:" % LootSystem.display_name(throwing_loot)
+			# The piece's own name for the same reason — and for a potion or a wand
+			# it is doing a second job, since an UNKNOWN one is named by its colour
+			# or its material, and that word is the thing the player is about to
+			# learn. The VERB is the piece's own too (docs/wands-design.md §4.2): a
+			# wand is zapped and never thrown, and the picker is the only screen
+			# where the two look alike.
+			var wand: bool = LootSystem.is_wand(throwing_loot)
+			_hint_label.text = "%s %s %s:" % [
+				LootSystem.glyph(throwing_loot), "Zap" if wand else "Throw",
+				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = "Click an enemy:"
 		_hint_label.add_theme_color_override("font_color",
@@ -1023,7 +1030,7 @@ func refresh_toolbar() -> void:
 	# the button gates on having a charge rather than on having a target.
 	#
 	# A boss is a legal target even though the damage bounces off it — that is the
-	# only way to land Sticky Bombs' stun on one — and the tooltip carries the
+	# only way to leave Sticky Bombs' Web under one — and the tooltip carries the
 	# caveat for whichever body is currently selected.
 	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
 	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
@@ -1920,9 +1927,12 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	for off in cells:
 		front = mini(front, col + int(off.x))
 
-	var stun: int = int(entry.get("stun", 0))
 	var accent: Color = threat_color(front, e.is_boss(), GameLoop2.lost_runs_until_strike(entry))
-	if stun > 0:
+	# A STUNNED BODY COOLS TOWARD BLUE. The tint stays where the snowflake badge went
+	# (§13.2) — a colour is not a symbol, and losing a turn is the one status worth reading
+	# off the token at a glance rather than out of the strip under it. Asked as
+	# "does this act", so it follows the `skip_turn` flag rather than a status name.
+	if GameLoop2.is_stunned(entry):
 		accent = accent.lerp(Color(0.5, 0.7, 1.0), 0.5)
 	var inst: int = int(entry.get("instance", 0))
 	# STAGGERED: goal met, hit taken, still standing — and out of this game (see
@@ -2061,7 +2071,6 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 # board reading itself back.)
 func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		_accent: Color, selected: bool) -> void:
-	var stun: int = int(entry.get("stun", 0))
 	# What ONE LOST RUN would buy it (§3.2) — the live threat, since reporting a
 	# game hands the board nothing out in the wilds.
 	var strikes: int = GameLoop2.attacks_in_turns(entry)
@@ -2158,10 +2167,12 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		out.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 		holder.add_child(out)
 
-	if stun > 0:
-		var frozen := _corner_badge("❄", Color(0.6, 0.8, 1.0))
-		frozen.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 2)
-		holder.add_child(frozen)
+	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
+	# with a symbol of its own, and it is an ordinary status now — so it is drawn in the
+	# status strip under the body with its own art, beside Burn and Marked, and the
+	# board has one place statuses live instead of one place plus an exception. What
+	# stays is the cooled accent above: that is a property of the TOKEN rather than a
+	# second listing of the same fact.
 
 	# THE TOP-RIGHT CORNER, and there are two things that want it: the ⚠ that says
 	# this body has an ability (§7.6) and the ▸ that says the toolbar's verbs are
@@ -2170,9 +2181,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# one corner draw over each other, and the one that loses is whichever the
 	# player was reading.
 	#
-	# The corner is deliberately the OPPOSITE one from ❄, and deliberately not over
-	# the middle of the art: the rule this file keeps is that nothing covers the
-	# part of the picture that identifies the enemy.
+	# Deliberately not over the middle of the art: the rule this file keeps is that
+	# nothing covers the part of the picture that identifies the enemy.
 	# The badges are built FIRST and the row only exists if there is one to put in
 	# it. Building the container up front and discarding it when empty leaks a
 	# Control per body per repaint — which on a board redrawn on every hover is
@@ -2252,9 +2262,8 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 			"text": "%s %d" % [status.display_name, int(row["stacks"])],
 			"good": status.is_bonus(StatusData.ENEMY) or status.is_goal(StatusData.ENEMY),
 		})
-	var stun: int = int(entry.get("stun", 0))
-	if stun > 0:
-		pips.append({"text": "❄ %d" % stun, "good": true})
+	# Stun needs no pip of its own: the loop above draws every status the body is
+	# carrying, and Stun has been one of them since §13.2.
 
 	var sub: String = "☠ boss" if e.is_boss() else ""
 	# A multi-phase boss says which body of itself this is (§7.6) — the goal below

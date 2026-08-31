@@ -195,10 +195,12 @@ var _bounds_rows: int = BASE_GRID_ROWS
 var arrivals: Array[int] = []
 
 # Undefeated enemies following the player (§2). Each entry:
-#   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int,
-#    "col": int, "row": int}
+#   {"instance": int, "enemy": GoalEnemyData, "health": int,
+#    "col": int, "row": int, "statuses": {id: stacks}}
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
-# type stay distinct; bomb / stun / push / fulfil target by instance. `health` is
+# type stay distinct; bomb / stun / push / fulfil target by instance. THERE IS NO
+# `stun` FIELD: losing a turn is the Stun STATUS like everything else (§13.2), and
+# it lives in `statuses` with the rest. `health` is
 # the remaining goal completions needed to defeat it (Alien Baby raises it, §8).
 # `col` is the FRONT (leftmost) column of its footprint (1..grid_cols() on-grid,
 # offgrid_col() off-grid) and `row` the TOP row of its footprint (0-based).
@@ -471,6 +473,26 @@ var _ghosts: Dictionary = {}
 # never take back must not be something a repaint can lose. It rides the save for
 # the same reason.
 var answered_rows: Dictionary = {}
+
+# BONUS ROWS THE PLAYER HAS TICKED BUT THAT HAVE NOT PAID YET, as "instance:status"
+# -> true. The checklist's optional objectives hang off a BODY, and a body's own
+# row is the thing that says the body is done — so a bonus is *armed* by ticking
+# it and *claimed* when the enemy it belongs to is cleared, rather than paying out
+# the instant it is clicked.
+#
+# WHY THIS IS A HOLDING PEN RATHER THAN A CLAIM. A bonus is earned by something you
+# did in the real game, and the enemy's own row is where you say the enemy is
+# finished with. Paying the bonus first meant a player could bank every optional
+# reward on the board and then never tick a single enemy — and it meant the two
+# halves of one body resolved at two different moments, which is what made the
+# checklist read as a flat list of unrelated boxes.
+#
+# It is ARMED rather than answered, so it is takeable back: an armed row has done
+# nothing yet, and unticking it simply disarms it. `answered_rows` is the opposite
+# — that is what a row that has RESOLVED is remembered by, and those never come
+# back. Cleared with the rest of the per-game record, and saved for the reason
+# `answered_rows` is: a repaint must not lose a tick, and neither must a reload.
+var armed_bonuses: Dictionary = {}
 
 # EVENT GOALS CLAIMED THIS GAME, as the handful of display fields their row is
 # drawn from: [{condition, effects_text, event}, …].
@@ -749,6 +771,7 @@ func serialize() -> Dictionary:
 		"goals_met_this_game": goals_met_this_game,
 		"defeated_this_game": defeated_this_game,
 		"answered_rows": _string_keys(answered_rows),
+		"armed_bonuses": _string_keys(armed_bonuses),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		# THIS RUN'S DEAD and what Undying still owes (§7.6). Both as ids — the rows
 		# hold GoalEnemyData, which a save file cannot — and both rehydrated on load,
@@ -939,6 +962,12 @@ func restore(data: Dictionary) -> void:
 	defeated_this_game = maxi(0, int(data.get("defeated_this_game", 0)))
 	for key in data.get("answered_rows", []):
 		answered_rows[String(key)] = true
+	# Absent from a save written before bonuses were armed rather than claimed,
+	# which loads as "nothing ticked yet" — the safe direction, since an armed row
+	# has not paid and the player can simply tick it again.
+	armed_bonuses.clear()
+	for key in data.get("armed_bonuses", []):
+		armed_bonuses[String(key)] = true
 	for raw in data.get("claimed_event_goals", []):
 		if raw is Dictionary:
 			claimed_event_goals.append((raw as Dictionary).duplicate(true))
@@ -972,7 +1001,10 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		# than recomputed from `effective_health`, because a Fruit Juice thrown at
 		# it has since raised the ceiling and the sheet knows nothing about that.
 		"max_health": entry_max_health(entry),
-		"stun": int(entry.get("stun", 0)),
+		# NO `stun` FIELD ANY MORE (§13.2). It was the board's own counter and it is
+		# the Stun STATUS now, so it saves and loads inside `statuses` below like
+		# every other one. A save written before that still carries the field, and
+		# the loader folds it in — see `_deserialize_entry`.
 		# Shield points still unspent (§13.4). Written separately from the statuses
 		# that granted them because it is a POOL, not a reading of the stack count:
 		# a Dexterity 2 body that has already soaked one hit holds two stacks and
@@ -1055,11 +1087,14 @@ func _deserialize_entry(raw) -> Dictionary:
 		# Absent from a save written before §4.6: the body's current Health is the
 		# honest ceiling to restore it at, since nothing had ever raised one.
 		"max_health": maxi(1, int(d.get("max_health", maxi(1, int(d.get("health", 1)))))),
-		"stun": int(d.get("stun", 0)),
 		"shield": maxi(0, int(d.get("shield", 0))),
 		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
-		"statuses": _deserialize_statuses(d.get("statuses", {})),
+		# A LEGACY `stun` COUNTER IS FOLDED IN AS STACKS (§13.2). Saves written
+		# before Stun became a status carry the number in a field of its own, and a
+		# load that dropped it would hand the player back a board where the thing
+		# they had just scared is walking again.
+		"statuses": _restore_statuses(d),
 		"timed_statuses": _deserialize_timed(d.get("timed_statuses", [])),
 		# A save written before §7.6 has no ability list; the enemy's own is the
 		# right answer there, because nothing had ever granted one.
@@ -1153,6 +1188,16 @@ func _serialize_statuses(statuses) -> Dictionary:
 	for id in (statuses as Dictionary).keys():
 		out[String(id)] = int((statuses as Dictionary)[id])
 	return out
+
+# The status bag a saved body comes back with, plus whatever a pre-status save
+# recorded as a bare stun. Written as its own function rather than inline so the
+# migration has somewhere to be explained and somewhere to be deleted from.
+func _restore_statuses(d: Dictionary) -> Dictionary:
+	var held: Dictionary = _deserialize_statuses(d.get("statuses", {}))
+	var legacy: int = int(d.get("stun", 0))
+	if legacy > 0:
+		held[&"stun"] = int(held.get(&"stun", 0)) + legacy
+	return held
 
 func _deserialize_statuses(raw) -> Dictionary:
 	var out: Dictionary = {}
@@ -1757,6 +1802,10 @@ func _clear_game_record() -> void:
 	goals_met_this_game = 0
 	defeated_this_game = 0
 	answered_rows.clear()
+	# ARMED BUT NEVER CLAIMED. A bonus ticked against a body whose own row was
+	# never ticked expires with the game, which is the point of arming rather than
+	# paying: the reward is for a body you finished with, and you did not.
+	armed_bonuses.clear()
 	claimed_event_goals.clear()
 	_ghosts.clear()
 
@@ -1861,6 +1910,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		"attempts": attempts(), "stack_size": stack.size(),
 		"status_rewards": 0, "statuses_ticked": [],
 		"instead_cleared": [], "status_penalties": [], "tiles_expired": [],
+		"statuses_worn": [],
 		"statuses_expired": [],
 		# What the ABILITIES did with the turns below (§7.6), each in its own list
 		# so the resolve log can say it in the right words: `intents` is a body
@@ -2025,6 +2075,14 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    was never set either, so it carried nothing to satisfy.
 	res["statuses_ticked"] = _tick_player_clauses(goals_completed)
 
+	# 3b. AND THE ONES MEASURED IN GAMES WEAR OFF (§13.2), whatever happened in
+	#     them. Bleed and Stun say "This lasts for X games" on the player's side,
+	#     which is the SAME Decrease column that sheds a stack per attack or per
+	#     turn on a body — the player has neither, and the game is the unit they
+	#     count in. Unconditional where step 3 above is not: a `clause` sheds by
+	#     being SATISFIED, and a duration sheds by elapsing.
+	res["statuses_worn"] = _wear_player_statuses()
+
 	# 4. THE GROUND BURNS DOWN (§17). A tile effect is measured in GAMES, and this
 	#    is where one ends: beaten or missed, escaped or fought to a standstill,
 	#    the evening was spent and the fire is a game closer to going out. Last,
@@ -2110,7 +2168,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
 				"goal_hit": true})
 			spent[inst] = true
 			continue
-		if int(entry.get("stun", 0)) > 0:
+		if is_stunned(entry):
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"stunned": true})
 			spent[inst] = true
@@ -2148,6 +2206,13 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
 		res["attacks"].append({"instance": inst, "turn": turn,
 			"damage": int(hit["damage"]), "blocked": int(hit["blocked"])})
 		player_hit.emit(int(hit["damage"]), int(hit["blocked"]))
+		# WHAT SWINGING COSTS THE BODY ITSELF — Bleed (§13.2). Rolled after the hit
+		# has landed, so a body that bleeds out on its own swing has already dealt
+		# the damage it was swinging for, which is the honest ordering: it did
+		# attack. Then the attack-scoped stacks wear off, whether or not any roll
+		# bit — swinging is the trigger, not the coin flip.
+		_pay_recoil(entry, res)
+		_wear_statuses(entry, &"attack")
 		# …and everything that rides a hit that LANDED (§7.6): the curses, the
 		# statuses, the theft, and the one that ends the run. A swing a shield ate
 		# fires none of them, which is what makes cover an answer to a rider and
@@ -2165,8 +2230,11 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
 	#    it must not burn everybody else's stun down with it.
 	if only.is_empty():
 		for entry in stack:
-			if int(entry.get("stun", 0)) > 0:
-				entry["stun"] = int(entry["stun"]) - 1
+			# THE STATUS IS THE CLOCK (§13.2). `Decrease: Each Turn` and "it loses
+			# its next turn" are one sentence read from the sheet and from the board,
+			# so a Stun stack is worn off by the turn that elapsed — and this is the
+			# only place a stun ticks down, where it used to be two.
+			_wear_statuses(entry, &"turn")
 
 # Every body on the board EXCEPT `only`, as the spent-set `_advance_stack` reads.
 # A narrowed turn moves the bodies it named and nobody else.
@@ -2302,12 +2370,16 @@ func bomb_cell(cell: Vector2i) -> bool:
 # {hits, destroyed} for the caller's log.
 #
 # Everything that modifies a bomb is applied here and therefore applies to both:
-# Brimstone widens `origin` to the whole row and column, Sticky stuns what
-# survives, Hot Bombs leaves a tile effect on every cell the blast covered, and
-# the one `bomb_used` trigger at the end is what pays Blood Bombs.
+# Brimstone widens `origin` to the whole row and column, Hot Bombs and Sticky Bombs
+# leave a TILE on every cell the blast covered (Fire and Web — §17), and the one
+# `bomb_used` trigger at the end is what pays Blood Bombs.
+#
+# STICKY BOMBS USED TO STUN FROM HERE, off a `bomb_stun` flag and a counter of its
+# own. It lays Web instead, which stuns whatever is standing in it through the tile
+# layer and the Stun status (§13.2) — the same outcome by the route every other
+# piece of content takes, and one fewer way for a body to lose a turn.
 func _explode(origin: Array, direct_instance: int = 0,
 		target: GoalEnemyData = null) -> Dictionary:
-	var stuns: bool = GameState.bombs_stun()
 	var cells: Array = _blast_cells(origin)
 	var destroyed: Array = []
 	var hits: int = 0
@@ -2328,9 +2400,6 @@ func _explode(origin: Array, direct_instance: int = 0,
 			if _damage_enemy(i, BOMB_HIT):
 				destroyed.append(enemy)
 				continue
-		# Survived the blast — Sticky Bombs makes that cost it its next turn.
-		if stuns:
-			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
 	# THE GROUND TAKES THE BLAST TOO (docs/potions-design.md §4.7). A mine in the
 	# cross is a thing with Health standing in an explosion, and a Health nothing
 	# can damage is a number carried for decoration. After the bodies for the
@@ -2366,9 +2435,16 @@ func bomb_hint(enemy: GoalEnemyData) -> String:
 	var splash: String = (" The blast runs down its whole row and column."
 		if GameState.bombs_cardinal() else "")
 	if enemy.is_boss():
-		if GameState.bombs_stun():
-			return "%s is a boss — the blast can't hurt it, but Sticky Bombs will stun it.%s" % [
-				enemy.display_name, splash]
+		# WHAT THE BLAST LEAVES BEHIND IS STILL SOMETHING (§17). A boss is immune to
+		# the damage and not to the ground: Sticky Bombs lays Web under it, which
+		# stuns it, and Hot Bombs lays Fire, which burns it. Named by the TILE rather
+		# than by the item, so the hint keeps working for whatever lays what next —
+		# which is how this line survived Sticky Bombs changing what it does.
+		var leaves: StringName = GameState.bomb_tile()
+		var tile: TileEffectData = Data.get_tile(leaves) if leaves != &"" else null
+		if tile != null:
+			return "%s is a boss — the blast can't hurt it, but it leaves %s under it.%s" % [
+				enemy.display_name, tile.display_name, splash]
 		return "%s is a boss — bombs can't hurt it.%s" % [enemy.display_name, splash]
 	return "Deal 1 damage to %s (no drop if it dies).%s" % [enemy.display_name, splash]
 
@@ -3018,6 +3094,17 @@ func _fire_cell_triggers(entry: Dictionary, cells: Array, trigger: StringName) -
 		if tile != null:
 			for effect in tile.effects_for(trigger):
 				_run_cell_effect(effect, cell, instance)
+			# A ONE-SHOT TILE GOES OUT THE MOMENT IT CATCHES SOMETHING (§17). Web is
+			# the roster's first: you walk into it once. It is taken off HERE rather
+			# than in `_decay_tiles`, because its clock is measured in bites and not
+			# in games — a web nobody steps in is still there three games later,
+			# where a fire nobody steps in is not.
+			#
+			# The check is `tiles.has(cell)` rather than the tile it fired: an
+			# interaction may already have cleared the square (fire onto a mine), and
+			# clearing an empty cell twice is one wasted signal rather than a bug.
+			if tile.decay_on_trigger and tiles.has(cell):
+				remove_tile(cell)
 	return _index_of(instance) >= 0
 
 # One effect out of a tile's or a unit's authored list. Deliberately a short
@@ -3164,13 +3251,28 @@ func _prune_offboard_cells() -> void:
 # neither striking nor stepping, and the stun ticks off with it. That is a whole
 # game out in the wilds and a third of one on the Amulet's doorstep (§7.4).
 # Stacks additively. Returns true if the target is on the stack.
+#
+# IT IS THE STATUS, and there is nothing else (§13.2). This used to write its own
+# `entry["stun"]` counter, because Stun the mechanic predated Stun the status by a
+# long way — and the two then sat side by side doing the same thing under two
+# names, with two countdowns, two save fields and two ways to be drawn. Everything
+# that stuns anything now goes through here and here goes through `apply_status_to`,
+# so a body that has lost a turn has lost it for exactly one reason.
+#
+# What that buys beyond tidiness: the sheet's Stun row applies in full. Its
+# `Decrease: Each Turn` is the countdown, its `skip_turn` is the lost turn, and its
+# enemy side hangs a claimable bonus on the body — so a scared monster is a body
+# that is not acting AND a chest reward you can go and earn.
 func stun(instance: int) -> bool:
-	var idx: int = _index_of(instance)
-	if idx < 0:
+	if _index_of(instance) < 0:
 		return false
-	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
-	loop_changed.emit()
+	apply_status_to(instance, &"stun", 1)
 	return true
+
+# How many turns `entry` is going to sit out. The one place the number is read off
+# a body, so nothing has to know it is a status rather than a field.
+func stun_stacks(entry: Dictionary) -> int:
+	return entry_status_stacks(entry, &"stun")
 
 # --- push (§grid) ----------------------------------------------------------
 #
@@ -3598,7 +3700,7 @@ func _turns_owed(entry: Dictionary) -> int:
 	# that shoots down the whole lane owes none at all. Read here so the board's
 	# threat colours, the ⚔ badge and the resolver cannot disagree about when a
 	# ranged body becomes dangerous.
-	return maxi(0, _front_col(entry) - 1 - strike_range(entry)) + int(entry.get("stun", 0))
+	return maxi(0, _front_col(entry) - 1 - strike_range(entry)) + stun_stacks(entry)
 
 # How many LOST RUNS away this enemy's first strike is: 0 means it swings the very
 # next time you tick one, 1 means the tick after that. Off-grid bodies report -1 —
@@ -4256,6 +4358,93 @@ func goal_addons_for(entry: Dictionary) -> Array:
 func enemy_combat(entry: Dictionary) -> Dictionary:
 	return StatusData.combat_totals(entry_statuses_effective(entry), StatusData.ENEMY)
 
+# --- Stun (§13.2, §13.4) --------------------------------------------------
+
+# DOES THIS BODY ACT? One question, one answer, one place it comes from: the
+# `skip_turn` flag on the statuses it is carrying.
+#
+# It used to read two books — this flag AND a bare `entry["stun"]` counter the
+# board kept for itself — because the mechanic predated the status. They agreed
+# about everything a player could see and disagreed about everything else: two
+# countdowns, two save fields, two ways to be drawn, and a scroll whose stun looked
+# nothing like a tile's. The counter is gone, and `stun(instance)` now applies the
+# status like everything else does.
+#
+# It asks the FLAG rather than the Stun id, so a second status that skips a turn
+# would work the day it is authored — the question the board has is "does this act",
+# and the sheet's answer to it is a column rather than a name.
+func is_stunned(entry: Dictionary) -> bool:
+	return bool(enemy_combat(entry)["skip_turn"])
+
+# --- how a status is worn away by the board (§13.2) ------------------------
+
+# Tick one stack off every status on `entry` whose Decrease column says this is the
+# moment: `&"attack"` after it swings (Bleed), `&"turn"` at the end of a turn it
+# was on the board for (Stun).
+#
+# It reads the OWNED stacks through `_add_status_to`, which is the same path an
+# expiring timed stack takes, so a status that is half owned and half borrowed
+# wears the owned half and leaves the loan alone — a borrowed stack belongs to
+# whatever lent it and is not this body's to spend.
+func _wear_statuses(entry: Dictionary, when: StringName) -> void:
+	var held: Dictionary = entry.get("statuses", {})
+	if held.is_empty():
+		return
+	for id in held.keys():
+		var status: StatusData = Data.get_status(StringName(id))
+		if status == null or int(held[id]) <= 0:
+			continue
+		var due: bool = status.wears_on_attack() if when == &"attack" \
+			else status.wears_per_turn()
+		if due:
+			_add_status_to(entry, StringName(id), -1)
+
+# --- Bleed's recoil (§13.2) ------------------------------------------------
+
+# WHAT SWINGING COSTS THE BODY ITSELF. One roll per stack, each for the authored
+# damage at the authored odds — three Bleed is three coin flips for 1 rather than
+# one flip for 3, which is the curve the status wants (see StatusData.recoil_rolls).
+#
+# It goes through `_damage_enemy` rather than subtracting Health, so a body that
+# bleeds out pays out, drops its loot and fires its death abilities exactly as one
+# killed by a bomb does — a second way to die would be a second set of rules about
+# what dying means.
+func _pay_recoil(entry: Dictionary, res: Dictionary) -> void:
+	var held: Dictionary = entry_statuses_effective(entry)
+	if held.is_empty():
+		return
+	var inst: int = int(entry.get("instance", 0))
+	for id in held.keys():
+		var status: StatusData = Data.get_status(StringName(id))
+		if status == null or status.recoil_damage() <= 0:
+			continue
+		if not status.combat_applies(StatusData.ENEMY):
+			continue
+		var hit: int = status.recoil_damage()
+		var bled: int = 0
+		for _roll in range(status.recoil_rolls(int(held[id]))):
+			if randi() % 100 < status.recoil_chance():
+				bled += hit
+		if bled <= 0:
+			continue
+		var idx: int = _index_of(inst)
+		if idx < 0:
+			return
+		var name: String = _entry_name(entry)
+		var killed: bool = _damage_enemy(idx, bled)
+		_note(res, "recoil", {"instance": inst, "status": status.id,
+			"damage": bled, "killed": killed})
+		GameLog.add("%s takes %d damage from %s." % [name, bled, status.display_name],
+			UITheme.CURSE)
+		if killed:
+			return
+
+# The words a body answers to in a log line, falling back to the bare kind when a
+# hand-built entry has no enemy on it.
+func _entry_name(entry: Dictionary) -> String:
+	var enemy: GoalEnemyData = entry.get("enemy")
+	return enemy.display_name if enemy != null else "The enemy"
+
 # What one body's hit lands for: its authored damage plus what its statuses say.
 # Ask for this rather than `entry["enemy"].damage` anywhere a hit is dealt or
 # previewed — the bare stat is what the enemy was worth before anything happened
@@ -4462,6 +4651,63 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
+# --- arming a bonus, and cashing it when the body is done -------------------
+
+# IS THIS BODY FINISHED WITH THIS GAME? Either way of clearing one counts: its goal
+# was met (`cleared_this_game`, set by `fulfill`) or it was cleared the other way
+# (`instead_this_game`, set by `fulfill_instead`).
+#
+# It asks the LOOP rather than the checklist's `answered_rows`, and that distinction
+# is the whole of a bug this function exists to have fixed: a goal row is not
+# recorded in `answered_rows` at all — `_arm_row` locks it and `fulfill` records the
+# body — so a bonus that waited on "was the goal row ticked" waited forever on a
+# body that was already dead.
+func body_finished_this_game(instance: int) -> bool:
+	return cleared_this_game.has(instance) or instead_this_game.has(instance)
+
+func _bonus_key(instance: int, status_id: StringName) -> String:
+	return "%d:%s" % [instance, status_id]
+
+# The player ticked a bonus row. Nothing is paid: the row is held until the body
+# it hangs off is cleared (`claim_armed_bonuses`).
+func arm_bonus(instance: int, status_id: StringName) -> void:
+	armed_bonuses[_bonus_key(instance, status_id)] = true
+
+# They unticked it. An armed row has done nothing yet, so taking it back costs
+# nothing — which is the whole reason a bonus is armed rather than claimed.
+func disarm_bonus(instance: int, status_id: StringName) -> void:
+	armed_bonuses.erase(_bonus_key(instance, status_id))
+
+func bonus_armed(instance: int, status_id: StringName) -> bool:
+	return armed_bonuses.has(_bonus_key(instance, status_id))
+
+# THE BODY IS DONE, so everything armed against it pays now. Returns what actually
+# paid out as [{status: StringName, stacks: int}], so the checklist can say what the
+# tick just bought — the STACKS read before the claim, since claiming is what sheds
+# them and the sentence is about the objective that was met.
+#
+# Called from the two rows that finish a body: its goal row, and the `instead` row
+# that clears it the other way. Both are "the enemy's box got checked off", which
+# is the moment a bonus was waiting for.
+#
+# The key is cleared whether or not the claim was good for anything — a bonus that
+# could not pay (the status is gone, the stacks were shed) is spent all the same,
+# and leaving it armed would have it try again on the next repaint.
+func claim_armed_bonuses(instance: int) -> Array:
+	var paid: Array = []
+	for key in armed_bonuses.keys():
+		var parts: PackedStringArray = String(key).split(":")
+		if parts.size() != 2 or int(parts[0]) != instance:
+			continue
+		armed_bonuses.erase(key)
+		var sid := StringName(parts[1])
+		var stacks: int = entry_status_stacks(entry_for(instance), sid)
+		if stacks <= 0:
+			stacks = entry_status_stacks(_ghosts.get(instance, {}), sid)
+		if claim_enemy_bonus(instance, sid):
+			paid.append({"status": sid, "stacks": maxi(1, stacks)})
+	return paid
+
 # A body's goal was met THE OTHER WAY (§13): the player did the `instead` side's
 # condition — skipped the items Burn asked for — rather than the goal itself. Sheds
 # a stack if that side decays, and answers whether the claim was good for anything.
@@ -4574,6 +4820,24 @@ func _resolve_status_claims(claims: Dictionary) -> int:
 # checklist row asserted when it was ticked. Once per game, not once per goal: the
 # sheet's "decrease stack by 1 when completed" is a per-game count, and a game
 # where you cleared four followers would otherwise wipe the status whole.
+# ONE STACK OFF EVERY PLAYER STATUS WHOSE CLOCK IS THE GAME (§13.2). The board's
+# `_wear_statuses` at the player's end of it, and the same Decrease column read for
+# the holder that has neither turns nor attacks.
+#
+# It reads the OWNED stacks only, exactly as the board's does: a borrowed stack has
+# a clock of its own (`_expire_timed_statuses`, step 5) and wearing it here would
+# charge a potion's three-game buff twice for the same evening.
+func _wear_player_statuses() -> Array:
+	var worn: Array = []
+	for id in GameState.player_statuses.keys():
+		var sd: StatusData = Data.get_status(StringName(id))
+		if sd == null or not sd.wears_per_game() \
+				or int(GameState.player_statuses[id]) <= 0:
+			continue
+		GameState.remove_status(sd.id, 1)
+		worn.append(sd.id)
+	return worn
+
 func _tick_player_clauses(any_goal_completed: bool) -> Array:
 	var ticked: Array = []
 	if not any_goal_completed:
@@ -4779,7 +5043,7 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	# the number the enemy health bar has been drawing a fraction against without
 	# ever being told, and it is what `grant_health` heals up to and
 	# `grant_max_health` raises.
-	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
+	var entry := {"instance": instance, "enemy": enemy,
 		"health": health, "max_health": maxi(1, health), "shield": 0,
 		"col": offgrid_col(), "row": 0, "statuses": {}}
 	stack.append(entry)
@@ -4825,7 +5089,10 @@ func _advance_stack(spent: Dictionary = {}) -> void:
 		# intent. One action per turn, and it has had it.
 		if spent.has(inst):
 			continue
-		if int(entry.get("stun", 0)) > 0:
+		# A stunned body neither strikes nor steps (§13.2) — the same `skip_turn`
+		# the strike loop asks about, asked again here because a body can be
+		# stunned between the two.
+		if is_stunned(entry):
 			continue
 		# STAGGERED: its goal was met this game and it lived through the hit, so it
 		# is done for the game — the fire it holds it holds standing still.
