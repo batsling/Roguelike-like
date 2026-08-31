@@ -565,16 +565,18 @@ func test_a_stunned_body_loses_its_turn_and_the_stack_wears_off() -> void:
 	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 0)
 	assert_false(GameLoop2.is_stunned(entry), "and it acts again")
 
-func test_the_scrolls_own_stun_counter_still_stops_a_turn() -> void:
-	# The two routes to "this body does not act" are read together rather than one
-	# replacing the other (GameLoop2.is_stunned). Scroll of Scare Monster keeps the
-	# counter; the Web tile and everything after it uses the status.
+func test_the_scrolls_stun_is_the_same_status_the_web_applies() -> void:
+	# ONE BOOK (§13.2). `GameLoop2.stun` was the board's own counter and it applies
+	# the Stun status now, so a scared monster and a webbed one are the same body in
+	# the same state — and everything that reads a stun reads one number.
 	var inst: int = _choose_solo(_enemy())
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	GameLoop2.stun(inst)
-	assert_true(GameLoop2.is_stunned(entry), "the counter says no as loudly")
-	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 0,
-		"and it is not a status stack — the two are separate books")
+	assert_true(GameLoop2.is_stunned(entry), "it does not act")
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 1,
+		"and the reason is a stack of Stun, not a field of its own")
+	assert_eq(GameLoop2.stun_stacks(entry), 1)
+	assert_false(entry.has("stun"), "the counter is gone from the entry entirely")
 
 func test_sticky_bombs_lays_web_where_hot_bombs_lays_fire() -> void:
 	assert_eq(GameState.bomb_tile(), &"")

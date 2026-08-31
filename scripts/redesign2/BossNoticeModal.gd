@@ -234,7 +234,7 @@ func inspect_boss(boss: GoalEnemyData) -> EnemyInfoCard:
 	else:
 		add_child(card)
 	card.setup({
-		"instance": 0, "enemy": boss, "stun": 0,
+		"instance": 0, "enemy": boss,
 		"health": GameLoop2.effective_health(boss),
 		"col": GameLoop2.offgrid_col(), "row": 0, "statuses": {},
 	}, GameLoop2.offgrid_col(),

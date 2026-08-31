@@ -718,7 +718,8 @@ static func _ch_pack() -> Dictionary:
 				+ "Identify — and one drop in ten is a Scroll of Identify, so the "
 				+ "way out of not knowing is the most common thing you find. "
 				+ "Amnesia can make you forget one again."),
-			_b("The good ones stun an enemy for a turn, or teleport you across the "
+			_b("The good ones Stun an enemy — it loses that many turns — or "
+				+ "teleport you across the "
 				+ "map. The bad ones spawn an enemy, or hand every enemy on the "
 				+ "board a permanent +1 Strength. Scroll of Fire is the one that "
 				+ "cuts both ways: it sets the front column alight and you with "
@@ -784,9 +785,10 @@ static func _ch_pack() -> Dictionary:
 				+ "and Hot Bombs leaves it on every square a bomb went off over."),
 			_kv("Landmine (a unit)", "Steps on it, and it explodes: no Bomb of "
 				+ "yours is spent, but it counts as one, so every bomb relic in "
-				+ "your pack reads it — Brimstone widens the blast, Sticky stuns "
-				+ "what lives, Blood Bombs heals you, Hot Bombs leaves fire in the "
-				+ "crater. Like a bomb it destroys rather than defeats, so nothing "
+				+ "your pack reads it — Brimstone widens the blast, Blood Bombs "
+				+ "heals you, and Hot Bombs and Sticky Bombs leave a tile in the "
+				+ "crater (Fire, and Web that stuns whatever walks in). Like a bomb "
+				+ "it destroys rather than defeats, so nothing "
 				+ "drops. Landmines lays one after every game you finish."),
 			_kv("The two together", "Fire and a mine cannot share a square. "
 				+ "Whichever arrives second, the heat sets the mine off and the "
@@ -842,8 +844,8 @@ static func _ch_bosses() -> Dictionary:
 			_b("It drops a Boss relic, out of a pool nothing else can reach."),
 			_b("Bombs do it no damage at all. The goal is the only thing that "
 				+ "removes it. You can still throw one — it spends the charge and "
-				+ "does nothing, which is how a bomb that carries a stun on it "
-				+ "reaches a boss."),
+				+ "deals nothing, but what the blast LEAVES still lands, which is "
+				+ "how Hot Bombs burns a boss and Sticky Bombs webs one."),
 			_b("Bashing, transmuting or scrambling buys you a DIFFERENT boss, not "
 				+ "a way past this one."),
 			_note("A boss cannot be dashed past either. There is no route around a "

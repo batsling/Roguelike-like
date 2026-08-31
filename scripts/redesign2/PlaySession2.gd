@@ -123,7 +123,7 @@ func _stack_text() -> String:
 	var lines: Array = ["[b]Following enemies[/b] (%d per lost run):" % GameLoop2.damage_per_lost_run()]
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		var stun: int = int(entry.get("stun", 0))
+		var stun: int = GameLoop2.stun_stacks(entry)
 		lines.append("  • %s — dmg %d%s — goal: %s" % [
 			e.display_name, e.damage,
 			("  [stunned x%d]" % stun) if stun > 0 else "",

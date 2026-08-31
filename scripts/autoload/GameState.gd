@@ -2499,7 +2499,7 @@ func has_low_rarity_reroll() -> bool:
 	return false
 
 # True while any owned item sets the named ItemData bool. The games-first run-loop
-# flags (keep_shields / bomb_stun / bomb_cardinal) change a RULE rather than move
+# flags (keep_shields / bomb_cardinal) change a RULE rather than move
 # a number, so GameLoop2 reads them off the inventory instead of firing effects.
 func _any_item_flag(field: String) -> bool:
 	for it in inventory:
@@ -2534,10 +2534,6 @@ func loot_echo_depth() -> int:
 		if it is ItemData:
 			depth = maxi(depth, int(it.echo_loot))
 	return depth
-
-# Sticky Bombs: whatever a bomb hits and fails to destroy is stunned (§4.1).
-func bombs_stun() -> bool:
-	return _any_item_flag("bomb_stun")
 
 # Brimstone Bombs: a bomb blasts down the target's whole row and column (§4).
 func bombs_cardinal() -> bool:

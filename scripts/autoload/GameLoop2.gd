@@ -195,10 +195,12 @@ var _bounds_rows: int = BASE_GRID_ROWS
 var arrivals: Array[int] = []
 
 # Undefeated enemies following the player (§2). Each entry:
-#   {"instance": int, "enemy": GoalEnemyData, "stun": int, "health": int,
-#    "col": int, "row": int}
+#   {"instance": int, "enemy": GoalEnemyData, "health": int,
+#    "col": int, "row": int, "statuses": {id: stacks}}
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
-# type stay distinct; bomb / stun / push / fulfil target by instance. `health` is
+# type stay distinct; bomb / stun / push / fulfil target by instance. THERE IS NO
+# `stun` FIELD: losing a turn is the Stun STATUS like everything else (§13.2), and
+# it lives in `statuses` with the rest. `health` is
 # the remaining goal completions needed to defeat it (Alien Baby raises it, §8).
 # `col` is the FRONT (leftmost) column of its footprint (1..grid_cols() on-grid,
 # offgrid_col() off-grid) and `row` the TOP row of its footprint (0-based).
@@ -972,7 +974,10 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		# than recomputed from `effective_health`, because a Fruit Juice thrown at
 		# it has since raised the ceiling and the sheet knows nothing about that.
 		"max_health": entry_max_health(entry),
-		"stun": int(entry.get("stun", 0)),
+		# NO `stun` FIELD ANY MORE (§13.2). It was the board's own counter and it is
+		# the Stun STATUS now, so it saves and loads inside `statuses` below like
+		# every other one. A save written before that still carries the field, and
+		# the loader folds it in — see `_deserialize_entry`.
 		# Shield points still unspent (§13.4). Written separately from the statuses
 		# that granted them because it is a POOL, not a reading of the stack count:
 		# a Dexterity 2 body that has already soaked one hit holds two stacks and
@@ -1055,11 +1060,14 @@ func _deserialize_entry(raw) -> Dictionary:
 		# Absent from a save written before §4.6: the body's current Health is the
 		# honest ceiling to restore it at, since nothing had ever raised one.
 		"max_health": maxi(1, int(d.get("max_health", maxi(1, int(d.get("health", 1)))))),
-		"stun": int(d.get("stun", 0)),
 		"shield": maxi(0, int(d.get("shield", 0))),
 		"col": int(d.get("col", offgrid_col())),
 		"row": int(d.get("row", 0)),
-		"statuses": _deserialize_statuses(d.get("statuses", {})),
+		# A LEGACY `stun` COUNTER IS FOLDED IN AS STACKS (§13.2). Saves written
+		# before Stun became a status carry the number in a field of its own, and a
+		# load that dropped it would hand the player back a board where the thing
+		# they had just scared is walking again.
+		"statuses": _restore_statuses(d),
 		"timed_statuses": _deserialize_timed(d.get("timed_statuses", [])),
 		# A save written before §7.6 has no ability list; the enemy's own is the
 		# right answer there, because nothing had ever granted one.
@@ -1153,6 +1161,16 @@ func _serialize_statuses(statuses) -> Dictionary:
 	for id in (statuses as Dictionary).keys():
 		out[String(id)] = int((statuses as Dictionary)[id])
 	return out
+
+# The status bag a saved body comes back with, plus whatever a pre-status save
+# recorded as a bare stun. Written as its own function rather than inline so the
+# migration has somewhere to be explained and somewhere to be deleted from.
+func _restore_statuses(d: Dictionary) -> Dictionary:
+	var held: Dictionary = _deserialize_statuses(d.get("statuses", {}))
+	var legacy: int = int(d.get("stun", 0))
+	if legacy > 0:
+		held[&"stun"] = int(held.get(&"stun", 0)) + legacy
+	return held
 
 func _deserialize_statuses(raw) -> Dictionary:
 	var out: Dictionary = {}
@@ -2181,12 +2199,10 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
 	#    it must not burn everybody else's stun down with it.
 	if only.is_empty():
 		for entry in stack:
-			if int(entry.get("stun", 0)) > 0:
-				entry["stun"] = int(entry["stun"]) - 1
-			# …AND THE STATUS SIDE OF THE SAME CLOCK (§13.4). A Stun stack is worn
-			# off by the turn that elapsed exactly as the counter is, because
-			# `Decrease: Each Turn` and "it loses its next turn" are the same
-			# sentence read from the sheet and from the board.
+			# THE STATUS IS THE CLOCK (§13.2). `Decrease: Each Turn` and "it loses
+			# its next turn" are one sentence read from the sheet and from the board,
+			# so a Stun stack is worn off by the turn that elapsed — and this is the
+			# only place a stun ticks down, where it used to be two.
 			_wear_statuses(entry, &"turn")
 
 # Every body on the board EXCEPT `only`, as the spent-set `_advance_stack` reads.
@@ -2323,12 +2339,16 @@ func bomb_cell(cell: Vector2i) -> bool:
 # {hits, destroyed} for the caller's log.
 #
 # Everything that modifies a bomb is applied here and therefore applies to both:
-# Brimstone widens `origin` to the whole row and column, Sticky stuns what
-# survives, Hot Bombs leaves a tile effect on every cell the blast covered, and
-# the one `bomb_used` trigger at the end is what pays Blood Bombs.
+# Brimstone widens `origin` to the whole row and column, Hot Bombs and Sticky Bombs
+# leave a TILE on every cell the blast covered (Fire and Web — §17), and the one
+# `bomb_used` trigger at the end is what pays Blood Bombs.
+#
+# STICKY BOMBS USED TO STUN FROM HERE, off a `bomb_stun` flag and a counter of its
+# own. It lays Web instead, which stuns whatever is standing in it through the tile
+# layer and the Stun status (§13.2) — the same outcome by the route every other
+# piece of content takes, and one fewer way for a body to lose a turn.
 func _explode(origin: Array, direct_instance: int = 0,
 		target: GoalEnemyData = null) -> Dictionary:
-	var stuns: bool = GameState.bombs_stun()
 	var cells: Array = _blast_cells(origin)
 	var destroyed: Array = []
 	var hits: int = 0
@@ -2349,9 +2369,6 @@ func _explode(origin: Array, direct_instance: int = 0,
 			if _damage_enemy(i, BOMB_HIT):
 				destroyed.append(enemy)
 				continue
-		# Survived the blast — Sticky Bombs makes that cost it its next turn.
-		if stuns:
-			stack[i]["stun"] = int(stack[i].get("stun", 0)) + 1
 	# THE GROUND TAKES THE BLAST TOO (docs/potions-design.md §4.7). A mine in the
 	# cross is a thing with Health standing in an explosion, and a Health nothing
 	# can damage is a number carried for decoration. After the bodies for the
@@ -2387,13 +2404,11 @@ func bomb_hint(enemy: GoalEnemyData) -> String:
 	var splash: String = (" The blast runs down its whole row and column."
 		if GameState.bombs_cardinal() else "")
 	if enemy.is_boss():
-		if GameState.bombs_stun():
-			return "%s is a boss — the blast can't hurt it, but Sticky Bombs will stun it.%s" % [
-				enemy.display_name, splash]
 		# WHAT THE BLAST LEAVES BEHIND IS STILL SOMETHING (§17). A boss is immune to
 		# the damage and not to the ground: Sticky Bombs lays Web under it, which
 		# stuns it, and Hot Bombs lays Fire, which burns it. Named by the TILE rather
-		# than by the item, so the hint keeps working for whatever lays what next.
+		# than by the item, so the hint keeps working for whatever lays what next —
+		# which is how this line survived Sticky Bombs changing what it does.
 		var leaves: StringName = GameState.bomb_tile()
 		var tile: TileEffectData = Data.get_tile(leaves) if leaves != &"" else null
 		if tile != null:
@@ -3205,13 +3220,28 @@ func _prune_offboard_cells() -> void:
 # neither striking nor stepping, and the stun ticks off with it. That is a whole
 # game out in the wilds and a third of one on the Amulet's doorstep (§7.4).
 # Stacks additively. Returns true if the target is on the stack.
+#
+# IT IS THE STATUS, and there is nothing else (§13.2). This used to write its own
+# `entry["stun"]` counter, because Stun the mechanic predated Stun the status by a
+# long way — and the two then sat side by side doing the same thing under two
+# names, with two countdowns, two save fields and two ways to be drawn. Everything
+# that stuns anything now goes through here and here goes through `apply_status_to`,
+# so a body that has lost a turn has lost it for exactly one reason.
+#
+# What that buys beyond tidiness: the sheet's Stun row applies in full. Its
+# `Decrease: Each Turn` is the countdown, its `skip_turn` is the lost turn, and its
+# enemy side hangs a claimable bonus on the body — so a scared monster is a body
+# that is not acting AND a chest reward you can go and earn.
 func stun(instance: int) -> bool:
-	var idx: int = _index_of(instance)
-	if idx < 0:
+	if _index_of(instance) < 0:
 		return false
-	stack[idx]["stun"] = int(stack[idx].get("stun", 0)) + 1
-	loop_changed.emit()
+	apply_status_to(instance, &"stun", 1)
 	return true
+
+# How many turns `entry` is going to sit out. The one place the number is read off
+# a body, so nothing has to know it is a status rather than a field.
+func stun_stacks(entry: Dictionary) -> int:
+	return entry_status_stacks(entry, &"stun")
 
 # --- push (§grid) ----------------------------------------------------------
 #
@@ -3639,7 +3669,7 @@ func _turns_owed(entry: Dictionary) -> int:
 	# that shoots down the whole lane owes none at all. Read here so the board's
 	# threat colours, the ⚔ badge and the resolver cannot disagree about when a
 	# ranged body becomes dangerous.
-	return maxi(0, _front_col(entry) - 1 - strike_range(entry)) + int(entry.get("stun", 0))
+	return maxi(0, _front_col(entry) - 1 - strike_range(entry)) + stun_stacks(entry)
 
 # How many LOST RUNS away this enemy's first strike is: 0 means it swings the very
 # next time you tick one, 1 means the tick after that. Off-grid bodies report -1 —
@@ -4297,27 +4327,22 @@ func goal_addons_for(entry: Dictionary) -> Array:
 func enemy_combat(entry: Dictionary) -> Dictionary:
 	return StatusData.combat_totals(entry_statuses_effective(entry), StatusData.ENEMY)
 
-# --- Stun, from both directions (§13.2, §13.4) -----------------------------
+# --- Stun (§13.2, §13.4) --------------------------------------------------
+
+# DOES THIS BODY ACT? One question, one answer, one place it comes from: the
+# `skip_turn` flag on the statuses it is carrying.
 #
-# DOES THIS BODY ACT? Two things can say no, and they are the same rule arriving by
-# two routes:
+# It used to read two books — this flag AND a bare `entry["stun"]` counter the
+# board kept for itself — because the mechanic predated the status. They agreed
+# about everything a player could see and disagreed about everything else: two
+# countdowns, two save fields, two ways to be drawn, and a scroll whose stun looked
+# nothing like a tile's. The counter is gone, and `stun(instance)` now applies the
+# status like everything else does.
 #
-#   entry["stun"]   the board's own counter, ticked down one per turn. Scroll of
-#                   Scare Monster has spent it since long before Stun was a status,
-#                   and it is what `GameLoop2.stun(instance)` writes.
-#   the Stun STATUS the body is carrying, whose combat side is the `skip_turn`
-#                   flag and whose `Decrease: Each Turn` is the same countdown.
-#
-# THEY ARE READ TOGETHER RATHER THAN ONE REPLACING THE OTHER, and that is a
-# deliberate seam rather than an oversight. Folding the counter into the status
-# would mean rewriting ~25 call sites — the save format, the ETA arithmetic, three
-# screens — for a behaviour that is already identical from the player's side; the
-# cost of leaving them side by side is this one function, which nothing routes
-# around. The Web tile and anything else that reaches for Stun uses the STATUS; the
-# scroll keeps the counter.
+# It asks the FLAG rather than the Stun id, so a second status that skips a turn
+# would work the day it is authored — the question the board has is "does this act",
+# and the sheet's answer to it is a column rather than a name.
 func is_stunned(entry: Dictionary) -> bool:
-	if int(entry.get("stun", 0)) > 0:
-		return true
 	return bool(enemy_combat(entry)["skip_turn"])
 
 # --- how a status is worn away by the board (§13.2) ------------------------
@@ -4930,7 +4955,7 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	# the number the enemy health bar has been drawing a fraction against without
 	# ever being told, and it is what `grant_health` heals up to and
 	# `grant_max_health` raises.
-	var entry := {"instance": instance, "enemy": enemy, "stun": 0,
+	var entry := {"instance": instance, "enemy": enemy,
 		"health": health, "max_health": maxi(1, health), "shield": 0,
 		"col": offgrid_col(), "row": 0, "statuses": {}}
 	stack.append(entry)
@@ -4976,7 +5001,10 @@ func _advance_stack(spent: Dictionary = {}) -> void:
 		# intent. One action per turn, and it has had it.
 		if spent.has(inst):
 			continue
-		if int(entry.get("stun", 0)) > 0:
+		# A stunned body neither strikes nor steps (§13.2) — the same `skip_turn`
+		# the strike loop asks about, asked again here because a body can be
+		# stunned between the two.
+		if is_stunned(entry):
 			continue
 		# STAGGERED: its goal was met this game and it lived through the hit, so it
 		# is done for the game — the fire it holds it holds standing still.

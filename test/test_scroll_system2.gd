@@ -372,10 +372,16 @@ func test_the_fire_scrolls_wording_names_all_three_halves() -> void:
 
 # --- Fulfilment helpers ----------------------------------------------------
 
+# THE SCROLL'S STUN IS THE STUN STATUS (§13.2). It used to write a counter of the
+# board's own; everything that stuns anything goes through `GameLoop2.stun` and that
+# goes through `apply_status_to`, so what this asserts is a stack rather than a field.
 func test_stun_enemies_chosen_stuns_the_target() -> void:
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
 	ScrollSystem.stun_enemies_chosen([inst])
-	assert_eq(int(GameLoop2.stack[0]["stun"]), 1, "the chosen enemy is stunned")
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(GameLoop2.stun_stacks(entry), 1, "the chosen enemy is stunned")
+	assert_true(GameLoop2.is_stunned(entry), "which is a turn it does not get")
+	assert_false(entry.has("stun"), "and not through a counter of its own")
 
 # --- Every fulfilment answers in WORDS -------------------------------------
 #

@@ -154,18 +154,26 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		stat_col.add_child(_stat_row("↻", "Phase",
 			"%s — each one carries its own goal, and Undying brings the next" % phase,
 			Color(0.86, 0.66, 1.0)))
-	var stun: int = int(entry.get("stun", 0))
+	var stun: int = GameLoop2.stun_stacks(entry)
 	if stun > 0:
 		# A stun costs one TURN, and a turn is what a lost run buys the board (§3.2)
 		# — so a stun is a lost run this body sits out. Reporting a game adds the
 		# Amulet's extra turns on top (§7.4), and the card names those too when
 		# there are any, since they are turns the stun also eats.
+		#
+		# THE ROW SURVIVED STUN BECOMING A STATUS (§13.2) and its snowflake did not. The
+		# status strip above already says "Stun 2"; what it cannot say is what two
+		# stacks are WORTH against this board, which is the only reason this row is
+		# here. It wears the status's own art rather than a symbol of its own, so
+		# the two places Stun appears on this card are recognisably the same thing.
 		var extra: int = GameLoop2.enemy_turns()
 		var worth: String = "sits out your next %d lost run(s)" % stun
 		if extra > 0:
 			worth += ", or %d of the %d turns reporting a game buys them" % [
 				mini(stun, extra), extra]
-		stat_col.add_child(_stat_row("❄", "Frozen", worth, Color(0.6, 0.8, 1.0)))
+		var sd: StatusData = Data.get_status(&"stun")
+		stat_col.add_child(_stat_row_art(sd.image if sd != null else null,
+			sd.display_name if sd != null else "Stun", worth, Color(0.6, 0.8, 1.0)))
 	# STAGGERED (GameLoop2.staggered_this_game): the goal was met and the hit wasn't
 	# enough to finish it, so it is out of the game — no strike, no step. A row of
 	# its own rather than a note on the damage line, because the damage line is
@@ -303,8 +311,8 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 			push_requested.emit(instance)
 			close())
 		acts.add_child(pb)
-		# Bosses can be bombed too — they just take no damage from it (the reason
-		# to spend one is Sticky Bombs' stun). GameLoop2.bomb_hint says which.
+		# Bosses can be bombed too — they just take no damage from it (the reason to
+		# spend one is the tile a bomb leaves, §17). GameLoop2.bomb_hint says which.
 		var bb := Button.new()
 		bb.text = "✸  Bomb (%d)" % GameState.bombs
 		bb.disabled = GameState.bombs <= 0
@@ -324,6 +332,22 @@ func close() -> void:
 	queue_free()
 
 # One "icon — label — value" row in the info card's stat column.
+# `_stat_row` with a PICTURE in the icon slot rather than a glyph — the shape a row
+# takes when the thing it is about has art of its own (a status). Falls back to the
+# plain row when the art is missing, so a status that ships without a file is a row
+# with a blank gutter rather than a row that is not there.
+func _stat_row_art(art: Texture2D, label: String, value: String,
+		color: Color) -> Control:
+	var row: Control = _stat_row("", label, value, color)
+	if art != null:
+		var slot: Label = row.get_child(0) as Label
+		var pic: TextureRect = UITheme.crisp_tex(art, 16)
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(pic)
+		row.move_child(pic, 0)
+		slot.custom_minimum_size = Vector2(6, 0)
+	return row
+
 func _stat_row(icon: String, label: String, value: String, color: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)

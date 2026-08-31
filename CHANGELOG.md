@@ -88,13 +88,22 @@ For how the project is laid out and how its systems fit together, see
   is the honest ordering. The stack wears off whether or not the roll bit, because
   **swinging is the trigger**, not the coin flip.
 
-  **Stun is a status and a counter, read together.** `entry["stun"]` has been the
-  board's "loses its next turn" since Scroll of Scare Monster shipped; the status's
-  combat side is the same rule spelled `skip_turn`, with the same per-turn
-  countdown. `GameLoop2.is_stunned` reads both, deliberately: folding one into the
-  other would mean rewriting the save format, the ETA arithmetic and three screens
-  for a behaviour the player already cannot tell apart. The scroll keeps the
-  counter; everything new uses the status.
+  **Everything that stuns anything is this status now, and the board's own counter
+  is gone.** `entry["stun"]` had been "loses its next turn" since Scroll of Scare
+  Monster shipped, so Stun the mechanic and Stun the status sat side by side doing
+  one job under one name with two countdowns, two save fields and two ways to be
+  drawn. `GameLoop2.stun()` applies the status, `is_stunned` asks the `skip_turn`
+  flag and nothing else, `Decrease: Each Turn` is the only clock, and `_turns_owed`
+  reads the stacks; a save written before the change folds its counter in on load.
+  A stunned body is drawn like every other status holder — its own art in the strip
+  under the token, **no ❄ badge and no pip of its own** (the token still cools
+  toward blue, which is a property of the token rather than the same fact twice),
+  and the snowflake is out of the subsetted fonts with it. Two consequences worth
+  knowing: stunning a body now hands it Stun's **enemy side** as well, so Scroll of
+  Scare Monster is "skip its turn AND open a chest reward on it"; and Sticky Bombs'
+  `bomb_stun` is **deleted** rather than left unauthored — the field, the
+  `GameState.bombs_stun()` reader and the `_explode` branch are gone, and the item
+  generator refuses the token out loud pointing at `bomb_tile web`.
 
   **The Web tile is the first whose clock is measured in bites.** +1 Stun to
   anything that enters or starts its turn on it, and it goes out the moment it
@@ -103,7 +112,7 @@ For how the project is laid out and how its systems fit together, see
   in is not. **Sticky Bombs lays it**, which is what the item's own card has said
   since the sheet was rewritten while its effect cell still set the ad-hoc
   `bomb_stun` flag. It reaches Stun through the tile layer like everything else now,
-  and `bomb_stun` joins `overworld_usable` as a rule with no content authoring it.
+  and `bomb_stun` is gone entirely — see above.
 
 - **An event stops drawing machines it did not spawn, and a hover stops smearing
   small art.**

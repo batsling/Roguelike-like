@@ -1534,7 +1534,7 @@ func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
-	entry["stun"] = 1
+	GameLoop2.apply_status_to(int(entry["instance"]), &"stun", 1)
 	var start: int = int(entry["col"])
 	GameLoop2.apply_status_to(int(entry["instance"]), &"speed", 3)
 	GameLoop2._advance_stack()

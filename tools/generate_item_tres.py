@@ -31,7 +31,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   stat_mirror:, stat_floor:, stat_gain_bonus:, negate_lethal:,
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
-                  charged (charge_cost N), bomb_stun,
+                  charged (charge_cost N),
                   bomb_cardinal, bomb_tile <tile>, grid_grow, grid_length, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
@@ -876,9 +876,17 @@ def parse_item(row):
             fields["echo_loot"] = _int(re.search(r"\d+", clause).group(0), 3)
             last_trigger = None
         elif kl0 == "bomb_stun":
-            # Sticky Bombs: a bomb stuns whatever it fails to destroy.
-            fields["bomb_stun"] = True
-            last_trigger = None
+            # RETIRED (§13.2, §17). Sticky Bombs used to stun whatever a blast
+            # failed to destroy, off a flag of its own and a counter of its own;
+            # it lays the Web TILE now, which stuns through the Stun status like
+            # every other piece of content that touches it. `ItemData.bomb_stun`
+            # is gone, so a row that still asks for it would generate a .tres
+            # naming a property nothing reads — refused out loud rather than
+            # written and silently ignored.
+            raise ValueError(
+                "%s: `bomb_stun` is retired — write `bomb_tile web` instead, "
+                "which is how a bomb stuns now (docs/games-first-redesign.md "
+                "§13.2)" % name)
         elif kl0 == "bomb_cardinal":
             # Brimstone Bombs: the blast runs down the target's row and column.
             fields["bomb_cardinal"] = True

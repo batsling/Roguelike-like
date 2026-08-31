@@ -2467,14 +2467,29 @@ and often; a single roll for X does nothing four games running and then takes a 
 The damage goes through `_damage_enemy`, so a body that bleeds out pays out and
 fires its death abilities exactly as one killed by a bomb does.
 
-**Stun is a status AND a counter, and the two are read together.** `entry["stun"]`
-has been the board's own "loses its next turn" since Scroll of Scare Monster
-shipped, and the Stun status's combat side is the same rule spelled `skip_turn`
-with the same per-turn countdown. `GameLoop2.is_stunned` reads both; the scroll
-keeps the counter, and the Web tile and everything after it uses the status. Folding
-one into the other would mean rewriting the save format, the ETA arithmetic and
-three screens for a behaviour the player already cannot tell apart — see that
-function for the seam written down.
+**EVERYTHING THAT STUNS ANYTHING IS THIS STATUS.** The board used to keep a bare
+`entry["stun"]` counter of its own — Stun the mechanic predated Stun the status by a
+long way — and the two then sat side by side doing the same thing under one name,
+with two countdowns, two save fields and two ways to be drawn. The counter is gone.
+`GameLoop2.stun(instance)` applies the status, `is_stunned` asks the `skip_turn`
+flag and nothing else, `Decrease: Each Turn` is the only countdown, and the ETA
+arithmetic (`_turns_owed`) reads the stacks. A save written before the change folds
+its counter in as stacks on load.
+
+Three things fall out of that, and each is worth knowing:
+
+- **A stunned body is drawn like any other status holder** — its own art in the
+  status strip under the token, no ❄ badge and no pip of its own. The token still
+  *cools toward blue*, because that is a property of the token rather than a second
+  listing of the same fact.
+- **Stunning a body hands it Stun's enemy side too**: the claimable bonus row "and
+  if you beat the game twice in a row, Gain a [chest reward]". So Scroll of Scare
+  Monster is now *skip its turn AND open a chest reward on it*, which is what the
+  sheet's Stun row says applied consistently.
+- **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
+  `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
+  `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.
+  A bomb stuns by laying Web now.
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,
 **2 hours** at two, **1 hour 30 minutes** at three, **1 hour 15 minutes** at four.
@@ -3076,10 +3091,9 @@ It goes out inside `_fire_cell_triggers`, the moment it fires, rather than in
 It is also where the **Stun status** meets the board (§13.2): the tile applies
 Stun, Stun's combat side is `skip_turn`, and its `Decrease: Each Turn` is what
 counts the stacks back down. **Sticky Bombs lays it** — the relic's card has said
-"Bombs Apply the Web Tile" since the sheet was rewritten, and the item now does
-that instead of setting the ad-hoc `bomb_stun` flag, so it reaches Stun through
-the tile layer like everything else. `bomb_stun` and `GameState.bombs_stun()` are
-still real; nothing authors them any more.
+"Bombs Apply the Web Tile" since the sheet was rewritten, and the item does that
+now instead of setting a `bomb_stun` flag, so it reaches Stun through the tile
+layer like everything else. That flag no longer exists anywhere.
 
 **A body pays per cell.** A 2x2 standing on two fire tiles takes two stacks a
 turn — the same rule footprints follow everywhere else on this board (§7.3).
@@ -3089,7 +3103,9 @@ than a one-off trap.** It spends none of the player's Bombs, but everything that
 modifies a bomb modifies it, because there is one blast in `GameLoop2._explode`
 and both go through it: **Brimstone** widens it to the row and column,
 **Blood Bombs** pays its Health, and **Hot Bombs** and **Sticky Bombs** leave a
-tile behind — Fire and Web respectively, off the same `bomb_tile` field. A mine is worth exactly what the pack has made bombs worth.
+tile behind — Fire and Web respectively, off the same `bomb_tile` field. (Sticky
+Bombs stunning survivors directly is gone with the counter it wrote to; the Web it
+lays does the same job through the status, §13.2.) A mine is worth exactly what the pack has made bombs worth.
 It also inherits the rest of a bomb's terms: a body destroyed by one is
 *destroyed, not defeated* — no drop, no gold — and a boss shrugs it off.
 

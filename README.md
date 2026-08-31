@@ -97,7 +97,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                     #   kind that is NOT spent in one use: 4-6 charges each,
 │   │                     #   a slot held until it is empty (docs/wands-design.md)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
-│   │                     #   combat side they move numbers with (§13, §13.4)
+│   │                     #   combat side they move numbers with (§13, §13.4).
+│   │                     #   Stun lives here now: the board keeps no counter of
+│   │                     #   its own, so everything that stuns is one status
 │   ├── tiles2.0/         #   TileEffectData — what sits on one CELL of the board
 │   │                     #   and bites whatever walks in (§17)
 │   ├── units2.0/         #   UnitData — the player's own bodies on the board
@@ -709,7 +711,7 @@ still exists under an old name silently generates the wrong content.
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_wand2_tres.py` | `data/wands2.0/*.tres` from the `wands` sheet — one effect column, plus the two columns only a wand has: `Charges` (what a fresh one holds) and `Type` (what it wants pointed at it). `nothing` is a verb here, and every *other* empty Effect cell is refused — Wand of Nothing is the roster's authored blank and a hole must not be able to look like one |
-| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet |
+| `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet — owns the reward-token DSL, and the `Decrease` column's table: `On Completion` sheds a stack when a SIDE is completed, while `On Trigger` and `Each Turn` are worn away by the BOARD (an attack, a turn) and mean *per game* on the player, who has neither |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units` sheet — imports the parsers above rather than restating them |
 | `generate_ability_tres.py` | `data/abilities2.0/*.tres` from the `abilities` sheet — and owns the **grammar of the enemy `Ability` column** (`Ranged (2), Fireproof, Infliction (1, Burn)`), which the goal-enemy generator imports rather than restating (§7.6) |

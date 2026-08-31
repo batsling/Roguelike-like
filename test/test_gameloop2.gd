@@ -399,7 +399,7 @@ func test_spawns_pick_a_row_with_a_clear_path_to_the_player() -> void:
 	# Wall off every lane but one, at the front where nothing can get past.
 	var blocked: Array = [0, 1, 3]
 	for row in blocked:
-		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0), "stun": 0,
+		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0),
 			"health": 1, "col": 1, "row": row})
 	for i in range(12):
 		var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
@@ -411,7 +411,7 @@ func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 	# Every row walled at the front: there is no good answer, so the enemy still
 	# takes the board rather than stalling off-grid forever.
 	for row in range(GameLoop2.grid_rows()):
-		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0), "stun": 0,
+		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0),
 			"health": 1, "col": 1, "row": row})
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "it still finds somewhere to stand")
@@ -424,11 +424,11 @@ func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 func test_a_big_enemy_takes_the_lane_with_the_fewest_bodies_in_the_way() -> void:
 	GameLoop2.stack = [
 		# Row 0 column 3 — blocks a 2x2 from standing at row 0 at all.
-		{"instance": 951, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 3, "row": 0},
+		{"instance": 951, "enemy": _enemy(0), "health": 1, "col": 3, "row": 0},
 		# Row 2 column 2 — in the way of a 2x2 entering at row 1 OR row 2.
-		{"instance": 952, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 2, "row": 2},
+		{"instance": 952, "enemy": _enemy(0), "health": 1, "col": 2, "row": 2},
 		# Row 3 column 1 — only in the way of one entering at row 2.
-		{"instance": 953, "enemy": _enemy(0), "stun": 0, "health": 1, "col": 1, "row": 3},
+		{"instance": 953, "enemy": _enemy(0), "health": 1, "col": 1, "row": 3},
 	]
 	var big: GoalEnemyData = _shaped(3, 2, 2)
 	assert_eq(int(GameLoop2.path_blockers(big, 1, GameLoop2.grid_cols() - 1)["enemies"]), 1,
@@ -452,7 +452,7 @@ func test_equally_clear_lanes_are_still_chosen_at_random() -> void:
 # will pass through.
 func test_path_check_uses_the_whole_footprint() -> void:
 	# A 1x1 sitting at the front of row 1.
-	GameLoop2.stack = [{"instance": 901, "enemy": _enemy(0), "stun": 0, "health": 1,
+	GameLoop2.stack = [{"instance": 901, "enemy": _enemy(0), "health": 1,
 		"col": 1, "row": 1}]
 	var tall: GoalEnemyData = _shaped(0, 2, 1)      # two rows tall, one column wide
 	assert_false(GameLoop2.has_clear_path(tall, 0, GameLoop2.grid_cols()),
@@ -489,9 +489,9 @@ func test_full_front_column_stalls_the_queue() -> void:
 # walk through it — it stalls in the column behind and waits.
 func test_a_wide_enemy_blocks_a_smaller_one_behind_it() -> void:
 	# A 1x2 body parked at the front of row 0, and a 1x1 directly behind it.
-	var wall := {"instance": 91, "enemy": _shaped(0, 1, 2), "stun": 0, "health": 1,
+	var wall := {"instance": 91, "enemy": _shaped(0, 1, 2), "health": 1,
 		"col": 1, "row": 0}
-	var runt := {"instance": 92, "enemy": _enemy(0), "stun": 0, "health": 1,
+	var runt := {"instance": 92, "enemy": _enemy(0), "health": 1,
 		"col": 3, "row": 0}
 	GameLoop2.stack = [wall, runt]
 	_turn()
@@ -501,7 +501,7 @@ func test_a_wide_enemy_blocks_a_smaller_one_behind_it() -> void:
 # The L's notch is a real gap: a 1x1 fits into the empty corner of its bounding
 # box, but not into any cell the L actually fills.
 func test_the_l_shape_blocks_its_solid_cells_but_not_its_notch() -> void:
-	var bastion := {"instance": 81, "enemy": _bastion(3), "stun": 0, "health": 1,
+	var bastion := {"instance": 81, "enemy": _bastion(3), "health": 1,
 		"col": 1, "row": 0}
 	GameLoop2.stack = [bastion]
 	var runt: GoalEnemyData = _enemy(0)
@@ -516,10 +516,10 @@ func test_the_l_shape_blocks_its_solid_cells_but_not_its_notch() -> void:
 # An enemy only steps forward when its ENTIRE footprint clears, so the L cannot
 # slide over a body tucked into the lane its base needs.
 func test_a_shaped_enemy_needs_its_whole_footprint_clear_to_advance() -> void:
-	var bastion := {"instance": 81, "enemy": _bastion(0), "stun": 0, "health": 1,
+	var bastion := {"instance": 81, "enemy": _bastion(0), "health": 1,
 		"col": 2, "row": 0}
 	# A 1x1 sitting in row 1 column 1 — dead ahead of the L's base row.
-	var blocker := {"instance": 82, "enemy": _enemy(0), "stun": 0, "health": 1,
+	var blocker := {"instance": 82, "enemy": _enemy(0), "health": 1,
 		"col": 1, "row": 1}
 	GameLoop2.stack = [bastion, blocker]
 	_turn()
@@ -532,7 +532,7 @@ func test_a_shaped_enemy_needs_its_whole_footprint_clear_to_advance() -> void:
 # An enemy strikes as soon as ANY of its cells is in the front column — the
 # reason a long body hurts sooner than a compact one.
 func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
-	var wide := {"instance": 71, "enemy": _shaped(4, 1, 3), "stun": 0, "health": 1,
+	var wide := {"instance": 71, "enemy": _shaped(4, 1, 3), "health": 1,
 		"col": 1, "row": 0}
 	GameLoop2.stack = [wide]
 	assert_eq(GameLoop2.front_count(), 1, "its leading cell is in column 1")
@@ -1866,7 +1866,7 @@ func test_a_stun_costs_one_turn_not_the_whole_report() -> void:
 	GameState.bonus_shields = 0
 	GameLoop2.beat_game(false)
 	assert_eq(GameState.hp, 9, "the stun eats one of the two extra turns, not both")
-	assert_eq(int(_entry(inst).get("stun", -1)), 0, "and it ticks off with that turn")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 0, "and it ticks off with that turn")
 
 func test_a_stun_still_costs_a_whole_lost_run_out_in_the_wilds() -> void:
 	if not _stand_at_hops(6):
@@ -1909,9 +1909,9 @@ func test_attacks_in_turns_counts_walking_and_stun_against_the_turns() -> void:
 	# The default is ONE turn: what a lost run buys (§3.2), which is what the
 	# board's badges are read against now.
 	assert_eq(GameLoop2.attacks_in_turns(entry), 1, "on the front line it swings")
-	entry["stun"] = 1
+	GameLoop2.apply_status_to(inst, &"stun", 1)
 	assert_eq(GameLoop2.attacks_in_turns(entry), 0, "a stun spends the turn")
-	entry["stun"] = 0
+	GameLoop2.remove_enemy_status(inst, &"stun", 1)
 	entry["col"] = 3
 	assert_eq(GameLoop2.attacks_in_turns(entry), 0, "two columns back, the turn is walking")
 	# Across MORE turns the same maths keeps counting: the walking comes off first.
@@ -1945,7 +1945,7 @@ func test_lost_runs_until_strike_counts_the_walking() -> void:
 	entry["col"] = 1
 	assert_eq(GameLoop2.lost_runs_until_strike(entry), 0, "at the front it is already on you")
 	assert_eq(GameLoop2.attacks_in_turns(entry), 1)
-	entry["stun"] = 2
+	GameLoop2.apply_status_to(inst, &"stun", 2)
 	assert_eq(GameLoop2.lost_runs_until_strike(entry), 2, "a stun is walking by another name")
 
 # ---------------------------------------------------------------------------
