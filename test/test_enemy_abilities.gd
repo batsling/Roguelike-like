@@ -70,6 +70,28 @@ func _a_real_enemy() -> GoalEnemyData:
 			return e
 	return Data.all_goal_enemies()[0]
 
+# A selector that names ONE KNOWN ONE-CELL BODY, for the tests whose subject is
+# what happens AFTER something is laid.
+#
+# `tier:low` rolls a RANDOM low-tier body, and `_brood_cell` asks `fits_at`, which
+# is about the FOOTPRINT (§7.3): a rolled 1x2 does not fit the single square in
+# front of a spawner, so nothing is laid and the turn passes. That is correct
+# behaviour — "a spawner with no space simply does not spawn this turn" — but it
+# made every assertion here only USUALLY true, failing on roughly the seeds that
+# rolled a wide body. The roll itself is not the subject of those tests; the
+# payout is. The "nowhere to lay it" case gets its own test below.
+#
+# Picked out of the roster by shape rather than hardcoded, so a renamed body in
+# the sheet doesn't take these tests down with it. No abilities of its own, so a
+# sheet ability can never wander into an assertion about a spawned one.
+func _one_cell_selector() -> StringName:
+	for e in Data.all_goal_enemies():
+		var enemy: GoalEnemyData = e
+		if (enemy.footprint_rows() == 1 and enemy.footprint_cols() == 1
+				and enemy.abilities.is_empty()):
+			return StringName("enemy:" + String(enemy.id))
+	return &"tier:low"
+
 
 # === 1. the content =========================================================
 
@@ -409,10 +431,27 @@ func test_ritual_spends_its_first_turn_and_then_grows_while_it_walks() -> void:
 
 func test_a_spawner_puts_a_body_in_front_of_it_and_never_moves() -> void:
 	var carcass: Dictionary = _put(
-		_enemy([_ability(&"nested_spawner", 1, &"tier:low", "Random Low")]), Vector2i(3, 0))
+		_enemy([_ability(&"nested_spawner", 1, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 0))
 	_turn()
 	assert_eq(GameLoop2.stack_size(), 2, "one body laid")
 	assert_eq(int(carcass["col"]), 3, "and the spawner stayed where it was")
+
+# The other half of the same rule, asserted on purpose rather than met by accident
+# on the seeds that rolled a wide body: "in the row in front of it, IF THERE IS
+# SPACE". Here the square in front is already taken, so there is nowhere to lay
+# anything and the turn passes — the spawner still does not move, because the
+# intent spent it either way (§7.4).
+func test_a_spawner_with_nowhere_to_lay_a_body_lays_nothing() -> void:
+	# The blocker is Immobile so it is still standing in that square when the
+	# spawner takes its turn, whichever order the board walks the two bodies in.
+	_put(_enemy([_ability(&"immobile")]), Vector2i(2, 0))
+	var carcass: Dictionary = _put(
+		_enemy([_ability(&"nested_spawner", 1, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 0))
+	_turn()
+	assert_eq(GameLoop2.stack_size(), 2, "the square in front was taken, so nothing was laid")
+	assert_eq(int(carcass["col"]), 3, "and a spawner never moves")
 
 func test_necromancy_raises_this_runs_dead_and_marks_them_undead() -> void:
 	var victim: GoalEnemyData = _enemy()
@@ -439,7 +478,7 @@ func test_necromancy_on_an_empty_graveyard_does_nothing_at_all() -> void:
 
 func test_an_illusionist_makes_copies_that_die_with_it() -> void:
 	var obscura: Dictionary = _put(
-		_enemy([_ability(&"illusionist", 2, &"tier:low", "Random Low")]), Vector2i(3, 0))
+		_enemy([_ability(&"illusionist", 2, _one_cell_selector(), "One Cell")]), Vector2i(3, 0))
 	_turn()
 	assert_eq(GameLoop2.stack_size(), 3, "two illusions stood up")
 	for entry in GameLoop2.stack:
@@ -554,7 +593,8 @@ func test_nothing_is_hunted_when_the_player_has_no_status_goal_at_all() -> void:
 
 func test_a_summoned_body_is_an_ordinary_body_and_pays_out() -> void:
 	var spawner: Dictionary = _put(
-		_enemy([_ability(&"nested_spawner", 1, &"tier:low", "Random Low")]), Vector2i(3, 0))
+		_enemy([_ability(&"nested_spawner", 1, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 0))
 	_turn()
 	var brood: Dictionary = {}
 	for entry in GameLoop2.stack:
