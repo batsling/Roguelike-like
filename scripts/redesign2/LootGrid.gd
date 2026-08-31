@@ -379,6 +379,20 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
 		band.add_child(badge)
+	# A WAND WEARS ITS COUNT IN THE OTHER CORNER (docs/wands-design.md §6.4), and
+	# wears it whether or not the stick is known — how many zaps are left is never
+	# part of the gamble, and it is the number that decides whether the slot is
+	# still worth holding. Bottom-LEFT, because bottom-right is the Preference's and
+	# the two answer different questions: what this would do to you, and how much of
+	# it there is left.
+	if LootSystem.is_wand(entry):
+		var bar: Array = LootSystem.charges(entry)
+		var count := UITheme.chip("%d" % int(bar[0]), WandSystem.WAND_COLOR, 9)
+		count.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		count.grow_horizontal = Control.GROW_DIRECTION_END
+		count.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])]
+		band.add_child(count)
 	col.add_child(band)
 
 	if not with_name:
@@ -402,9 +416,15 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	col.add_child(name)
 
 	if use_cb.is_valid():
-		var use := UITheme.confirm_button("Use", Vector2(0, LootSlot.USE_H), 10)
+		# "Zap" ON A WAND AND "Use" ON EVERYTHING ELSE. The word is the one place a
+		# 40px tile can say that pressing this does not empty the slot — every other
+		# kind's button is a goodbye and a wand's usually is not.
+		var wand: bool = LootSystem.is_wand(entry)
+		var use := UITheme.confirm_button("Zap" if wand else "Use",
+			Vector2(0, LootSlot.USE_H), 10)
 		use.disabled = locked_now
-		use.tooltip_text = "Spend it — this is how an unknown one gets identified."
+		use.tooltip_text = "Spend a charge — this is how an unknown one gets identified." \
+			if wand else "Spend it — this is how an unknown one gets identified."
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col

@@ -14,6 +14,7 @@ on_enemy_text = "Gains \"and if you get X achivements, Gain a [chest reward]\""
 stackable = "Intensity"
 max_stacks = 0
 decrease = "On Completion"
+wear = ""
 combat_text = "Damage taken increased by x2. Ignores shields."
 enemy_only = false
 on_player = {"mode": "demand", "condition": "get {X} [achievement|achievements]", "reward": [], "reward_text": "", "penalty": [{"type": "take_damage", "value": 3}], "penalty_text": "take 3 Damage", "decay": true}

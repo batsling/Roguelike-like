@@ -242,6 +242,12 @@ func _build_payload() -> Dictionary:
 		# the colours underneath a player who had spent the run learning them.
 		"identified_pill_types": _stringnames_to_strings(GameState.identified_pill_types),
 		"pill_color_map": GameState.pill_color_map.duplicate(),
+		# Wands (docs/wands-design.md): the sticks learned, and this run's alphabet
+		# of materials. The CHARGES need nothing here — they ride on the entries in
+		# `loot_items` above, which is saved whole, so a half-spent Wand of Fire
+		# comes back half-spent for free.
+		"identified_wand_types": _stringnames_to_strings(GameState.identified_wand_types),
+		"wand_material_map": GameState.wand_material_map.duplicate(),
 		# Echo Chamber's memory of what has been used (§4.3). Saved with the run
 		# because the relic reads the RUN's history: a reload that came back with an
 		# empty memory would quietly cost the player their next three echoes.
@@ -462,6 +468,17 @@ func _apply_save_data(data: Dictionary) -> void:
 	var pm: Dictionary = data.get("pill_color_map", {})
 	for k in pm.keys():
 		GameState.pill_color_map[String(k)] = String(pm[k])
+	var wident: Array[StringName] = []
+	for s3 in data.get("identified_wand_types", []):
+		wident.append(StringName(s3))
+	GameState.identified_wand_types = wident
+	# A save written before wands existed has no map, and leaving it empty is right:
+	# WandSystem.ensure_materials deals one the first time a wand is looked at, so an
+	# older run picks the alphabet up rather than breaking on it.
+	GameState.wand_material_map = {}
+	var wm: Dictionary = data.get("wand_material_map", {})
+	for k in wm.keys():
+		GameState.wand_material_map[String(k)] = String(wm[k])
 	GameState.loot_used_memory.clear()
 	for e in data.get("loot_used_memory", []):
 		if e is Dictionary:

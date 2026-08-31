@@ -15,6 +15,13 @@ extends Node
 # `requests` are the follow-ups a caller has to fulfil (a teleport, a chooser).
 # Echoed copies contribute theirs too, so a doubled Telepills asks the overworld
 # to move you twice rather than silently dropping one.
+#
+# FIVE KINDS SHARE THE PACK NOW, and four of them behave identically here: they are
+# resolved, remembered, echoed and removed. The WAND is the one that does not, and
+# every exception it needs is in this file rather than in WandSystem — spending a
+# charge instead of a slot, and standing outside Echo Chamber in both directions —
+# because both are facts about what USING a piece means rather than about what a
+# wand does. See `use_loot` and `use_entry`.
 
 const LOOT_COLOR := Color(0.72, 0.62, 0.86)
 
@@ -45,11 +52,31 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	if not (entry is Dictionary):
 		return {"logs": [], "requests": []}
 	entry = (entry as Dictionary).duplicate(true)
+	# A WAND SPENDS A CHARGE RATHER THAN A SLOT, until the charge it spends is its
+	# last (docs/wands-design.md §4.1). That is the whole of what the kind changes
+	# about using loot, and it is one branch: everything below — resolving, the
+	# memory, the logs — is identical whichever way this went.
+	#
+	# THE SLOT IS SETTLED BEFORE THE EFFECT RESOLVES, exactly as every other kind's
+	# is, and for the same reason: an effect that grants loot (or one that ends the
+	# run) must not find the pack in a state that is about to change. So a wand's
+	# charge comes off and its slot is written back or emptied here, and only then
+	# does anything happen — the "3 / 6" the outcome screen reads is what is left,
+	# never what there was.
+	if is_wand(entry):
+		if WandSystem.spend_charge(entry) > 0:
+			# Written back so the slot keeps the same index and the same position — a
+			# wand does not move because it was fired.
+			GameState.loot_items[index] = entry.duplicate(true)
+			GameState.emit_signal("inventory_changed")
+		else:
+			GameState.remove_loot_at(index)
+		return _spend(entry, ctx)
 	# Consumed FIRST: an effect that grants loot (or one that ends the run) must not
 	# find the spent piece still sitting in the pack, and the nine-piece cap means a
 	# pill that pays out would otherwise be refused space it is about to free.
 	GameState.remove_loot_at(index)
-	return use_entry(entry, ctx)
+	return _spend(entry, ctx)
 
 # Spend a piece that is NOT IN THE PACK — the one a game has just paid out, taken
 # on the spot rather than carried (§4.3). Same resolution, same echoes, same
@@ -61,17 +88,55 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 # `use_loot` is this with a slot emptied first, so the two can never drift on what
 # using a piece MEANS.
 func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	# A LOOSE WAND SPENDS A CHARGE TOO. There is no slot to settle, but the charge
+	# is a fact about the piece rather than about the pack, and skipping it here
+	# would let a wand taken on the spot fire for free — and would have the outcome
+	# screen report a count that never moved. `entry` is mutated in place (a
+	# Dictionary is a reference), so the caller's copy is what the screen reads.
+	if is_wand(entry):
+		WandSystem.spend_charge(entry)
+	return _spend(entry, ctx)
+
+# Resolve one piece that has already had its slot and its charge settled: the
+# effect, Echo Chamber's copies, and the memory this use joins. Both public spend
+# paths end here, which is what keeps "what using a piece MEANS" in one place while
+# the two of them differ about the pack.
+func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	if entry.is_empty():
 		return out
 	var spent: Dictionary = entry.duplicate(true)
 	_merge(out, _resolve(spent, ctx))
-	for echo in _echo_queue():
-		var copy: Dictionary = _resolve(echo, ctx)
-		if not copy.is_empty():
-			_merge(out, copy)
-	_remember(spent)
+	# A WAND IS OUTSIDE ECHO CHAMBER IN BOTH DIRECTIONS (docs/wands-design.md §4.4),
+	# and the two halves are one rule: the relic copies pieces that were CONSUMED.
+	#
+	# It is never echoed, because a wand copied three times would be four effects
+	# for one charge — the relic would be worth more on the kind that already gets
+	# to fire six times. And zapping one fires no copies EITHER, which is the half
+	# that is easy to miss and the half that matters: a wand that replayed the
+	# memory without joining it would be three free copies of your last pill, once
+	# per charge, for the price of one slot. Nothing else in the pack can pay a
+	# relic six times.
+	if not is_wand(spent):
+		for echo in _echo_queue():
+			var copy: Dictionary = _resolve(echo, ctx)
+			if not copy.is_empty():
+				_merge(out, copy)
+		_remember(spent)
+	# WHAT IS LEFT IN IT, on the result rather than left for the caller to work out.
+	# The screen that reports a use holds its own copy of the entry, and for the
+	# PACK path that copy is the one made before the charge came off — so a modal
+	# reading its own `_entry` would print the count as it stood a moment ago.
+	# Absent for every other kind, which has nothing to count.
+	if is_wand(spent):
+		out["charges_left"] = WandSystem.charges_of(spent)
 	return out
+
+# Is this piece the one kind that spends charges rather than slots? One reading of
+# the type, here rather than at each call site, so the exceptions a wand needs can
+# never be spelled two ways.
+func is_wand(entry: Dictionary) -> bool:
+	return String(entry.get("type", "")) == "wand"
 
 # Resolve ONE entry through whichever system owns it. No consuming, no echoing —
 # which is exactly why an echoed copy can come back through here without costing
@@ -99,6 +164,11 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 			# identify step on the way in, because there was never anything hidden
 			# from a card in the pack.
 			return CardSystem.play_card(entry, ctx)
+		"wand":
+			# THE OTHER KIND WITH A CELL IN `ctx.target`, and it arrives the same way
+			# a thrown potion's does (docs/wands-design.md §4.2) — set once, by the
+			# caller that armed the picker. A wand with nothing to aim ignores it.
+			return WandSystem.zap_wand(entry, ctx)
 	return {}
 
 # The copies Echo Chamber fires this use: the last N remembered, newest first, so
@@ -151,6 +221,8 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 			return PotionSystem.display_name(entry)
 		"card":
 			return CardSystem.display_name(entry, face_up)
+		"wand":
+			return WandSystem.display_name(entry)
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
@@ -176,6 +248,8 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 			return PotionSystem.art_texture(entry)
 		"card":
 			return CardSystem.art_texture(entry, face_up)
+		"wand":
+			return WandSystem.art_texture(entry)
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -201,6 +275,8 @@ func glyph(entry: Dictionary) -> String:
 			return "🧪"
 		"card":
 			return "🃏"
+		"wand":
+			return "🪄"
 	return "📜"
 
 # ===========================================================================
@@ -210,10 +286,12 @@ func glyph(entry: Dictionary) -> String:
 # The identified type ids of one kind, or of every kind when `kind` is "loot".
 # Returned as a fresh Array, since the callers forget from what they are iterating.
 #
-# TWO ARMS TODAY, THREE WHEN POTIONS LAND. Every kind-blind verb — `forget loot`,
+# FOUR ARMS, ONE PER ALPHABET. Every kind-blind verb — `forget loot`,
 # `identify_loot` — reads through the functions in this section rather than through
-# GameState's per-kind lists, so widening them to potions is a line in each of
-# these and nothing at any call site.
+# GameState's per-kind lists, which is what made widening them to potions, and then
+# to wands, a line in each of these and nothing at any call site. Cards are the
+# fifth kind and appear in none of them, because there is nothing to learn about
+# one (docs/cards-design.md §2).
 func identified_types(kind: String = "loot") -> Array:
 	var out: Array = []
 	if kind == "scroll" or kind == "loot":
@@ -222,6 +300,8 @@ func identified_types(kind: String = "loot") -> Array:
 		out.append_array(GameState.identified_pill_types)
 	if kind == "potion" or kind == "loot":
 		out.append_array(GameState.identified_potion_types)
+	if kind == "wand" or kind == "loot":
+		out.append_array(GameState.identified_wand_types)
 	return out
 
 # Unidentify one type id, whichever alphabet it belongs to. A pill and a scroll
@@ -234,6 +314,8 @@ func unidentify(id: StringName) -> void:
 		PillSystem.unidentify(id)
 	if GameState.identified_potion_types.has(id):
 		PotionSystem.unidentify(id)
+	if GameState.identified_wand_types.has(id):
+		WandSystem.unidentify(id)
 
 # Forget `count` (-1 = all) random identified types of `kind`; returns how many.
 #
@@ -266,6 +348,8 @@ func is_identified(entry: Dictionary) -> bool:
 			return PillSystem.is_identified(id)
 		"potion":
 			return PotionSystem.is_identified(id)
+		"wand":
+			return WandSystem.is_identified(id)
 		"card":
 			# A CARD IS ALWAYS KNOWN (docs/cards-design.md §2). Not "identified" —
 			# there is no such state for it and no way to reach one — but this is the
@@ -287,6 +371,8 @@ func identify(entry: Dictionary) -> bool:
 			return PillSystem.identify(id)
 		"potion":
 			return PotionSystem.identify(id)
+		"wand":
+			return WandSystem.identify(id)
 		"card":
 			# Nothing to learn, so nothing is news. Identify spending a count on a
 			# card is prevented upstream, by is_identified above.
@@ -360,6 +446,8 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			return PotionSystem.description(entry)
 		"card":
 			return CardSystem.description(entry, face_up)
+		"wand":
+			return WandSystem.description(entry)
 	return ""
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -373,6 +461,8 @@ func preference(entry: Dictionary) -> String:
 			return PillSystem.preference(entry)
 		"potion":
 			return PotionSystem.preference(entry)
+		"wand":
+			return WandSystem.preference(entry)
 		"card":
 			# A card has no Preference and never will (docs/cards-design.md §2).
 			# Preference is the label a GAMBLE wears so an unknown piece can hint at
@@ -402,6 +492,34 @@ func can_throw(entry: Dictionary) -> bool:
 		return false
 	return p.has_throw() or not PotionSystem.is_identified(p.id)
 
+# ===========================================================================
+# Aiming, and the charges behind it (docs/wands-design.md §4.2)
+# ===========================================================================
+
+# Must this piece be pointed at a square before it can resolve? Two kinds reach the
+# board and they reach it differently, which is why this is not `can_throw`:
+#
+#   A POTION MAY BE AIMED. Throw is one of its two verbs and the player chooses;
+#   quaffing it is the other answer and needs no cell at all.
+#   A WAND MUST BE AIMED, or must not be, and the wand decides. There is no second
+#   verb to fall back on — a ray with no square is a charge spent on nothing.
+#
+# So the potion arm is a capability and the wand arm is a requirement, and the
+# modal reads them at different moments: one to decide whether to offer a button,
+# this one to decide whether to open the picker before the button does anything.
+func must_aim(entry: Dictionary) -> bool:
+	if not is_wand(entry):
+		return false
+	return WandSystem.needs_target(entry)
+
+# How many uses are left in this piece, and how many it can hold. `[0, 0]` for the
+# four kinds that have no such number — a scroll is one use in the sense that it is
+# gone afterwards, not in the sense that it is counting.
+func charges(entry: Dictionary) -> Array:
+	if not is_wand(entry):
+		return [0, 0]
+	return [WandSystem.charges_of(entry), WandSystem.max_charges(entry)]
+
 # Is this use context a throw? One reading of `ctx.verb`, here rather than at each
 # call site, so "throw" can never be spelled two ways.
 func is_throw(ctx: Dictionary) -> bool:
@@ -419,6 +537,10 @@ func use_verb(entry: Dictionary) -> String:
 			return "Quaff"
 		"card":
 			return "Play Card"
+		"wand":
+			# NOT "Use". A wand is ZAPPED, and the word is doing work: it is the one
+			# verb in the pack that does not mean the piece is gone afterwards.
+			return "Zap"
 	return "Read Scroll"
 
 # What KIND of thing this is, in the words the player sees: Scroll, Pill, or the
@@ -433,6 +555,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Potion"
 		"card":
 			return "Card"
+		"wand":
+			return "Wand"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
@@ -445,6 +569,14 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 	var sub: String = kind_name(entry)
 	if known and preference(entry) != "":
 		sub += "  ·  %s" % preference(entry)
+	# A WAND'S CHARGES ARE NEVER HIDDEN, known or not (docs/wands-design.md §6.4).
+	# How many times a stick can be fired is what the player is buying a slot for,
+	# and it is not part of the gamble: they can see the thing is nearly new. It
+	# rides the subtitle rather than the body, beside the Preference, because it is
+	# the same sort of fact — what this piece IS, rather than what it does.
+	if is_wand(entry):
+		var bar: Array = charges(entry)
+		sub += "  ·  %d / %d charges" % [int(bar[0]), int(bar[1])]
 	# A FACE-DOWN CARD'S HOVER SAYS ITS DECK AND STOPS (docs/cards-design.md §3).
 	# The token on the square already draws the deck's icon, so the hover naming it
 	# is the picture in words — and the note is the one thing the player can act on:

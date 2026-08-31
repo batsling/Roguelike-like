@@ -809,11 +809,16 @@ func test_the_staffs_burn_stops_at_the_status_cap() -> void:
 	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"2 + 3 is still Max: 3")
 
-# --- the Wand of Wishing picker (RewardScreen.setup_obtain) -----------------
+# --- the obtain-any picker (RewardScreen.setup_obtain) ---------------------
 #
 # Reaching into the whole catalogue is a different screen from opening a chest,
 # and it used to be drawn as the same one: three of fifty items visible at a time.
 # These are about the room it takes and the search that makes fifty scannable.
+#
+# THE SCREEN OUTLIVED THE RELIC THAT OPENED IT. This was the Wand of Wishing's
+# picker; the wand is a WAND now (docs/wands-design.md §5.2) and hands back an
+# `obtain_item` request that lands on this same screen. Nothing about the screen
+# moved, which is why these tests did not either — only the words around them.
 
 func _obtain_screen() -> RewardScreen:
 	var screen := RewardScreen.new()
@@ -822,12 +827,12 @@ func _obtain_screen() -> RewardScreen:
 	screen.setup_obtain(Data.reward_item2_pool())
 	return screen
 
-func test_the_wand_offers_the_whole_catalog_at_once() -> void:
+func test_the_picker_offers_the_whole_catalog_at_once() -> void:
 	var screen: RewardScreen = _obtain_screen()
 	assert_eq(screen._choices_box.get_child_count(), Data.reward_item2_pool().size(),
 		"every rollable item is on the screen, not a rolled handful")
 
-func test_the_wands_panel_takes_the_viewport() -> void:
+func test_the_pickers_panel_takes_the_viewport() -> void:
 	var screen: RewardScreen = _obtain_screen()
 	var chest := RewardScreen.new()
 	add_child_autofree(chest)
@@ -861,14 +866,14 @@ func test_the_catalog_is_ordered_rarest_first() -> void:
 func test_the_search_narrows_the_catalog_on_name_and_on_description() -> void:
 	var screen: RewardScreen = _obtain_screen()
 	var whole: int = screen._choices_box.get_child_count()
-	screen._filter = "wand"
+	screen._filter = "bomb"
 	screen._refresh()
 	var narrowed: int = screen._choices_box.get_child_count()
-	assert_gt(narrowed, 0, "'wand' finds something")
+	assert_gt(narrowed, 0, "'bomb' finds something")
 	assert_lt(narrowed, whole, "and it is fewer than everything")
-	# The description counts too: Wand of Wishing's own text says "Obtain any one
-	# item in the game" and carries the word "wand" nowhere but its name.
-	screen._filter = "obtain any one item"
+	# The description counts too: this phrase is in one relic's text and in no
+	# relic's name, so a hit can only have come from the description.
+	screen._filter = "reroll all non-boss enemies"
 	screen._refresh()
 	assert_eq(screen._choices_box.get_child_count(), 1,
 		"a phrase out of a description finds the one relic that says it")

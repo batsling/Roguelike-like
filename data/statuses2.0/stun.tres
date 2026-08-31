@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="StatusData" load_steps=3 format=3 uid="uid://status2_stun"]
+
+[ext_resource type="Script" path="res://scripts/resources/StatusData.gd" id="1_status"]
+[ext_resource type="Texture2D" path="res://images2.0/statuses/Stun.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_status")
+id = &"stun"
+display_name = "Stun"
+kind = &"debuff"
+source_game = "Slay the Spire"
+on_player_text = "Gain \"You must beat a game twice in a row to set it as Completed or take 5 Damage. This lasts for X games.\""
+on_enemy_text = "Gains \"and if you beat the game twice in a row, Gain a [chest reward]\""
+stackable = "Intensity"
+max_stacks = 0
+decrease = "Each Turn"
+wear = "turn"
+combat_text = "Skip their turn"
+enemy_only = true
+on_player = {"mode": "demand", "condition": "beat a game twice in a row to set it as Completed", "reward": [], "reward_text": "", "penalty": [{"type": "take_damage", "value": 5}], "penalty_text": "take 5 Damage", "decay": false}
+on_enemy = {"mode": "bonus", "condition": "you beat the game twice in a row", "reward": [{"type": "chest_reward", "scaled": {"value": "X"}}], "reward_text": "+{X:chests}", "penalty": [], "penalty_text": "", "decay": false}
+combat = {"skip_turn": true}
+file = "Stun"
+image = ExtResource("2_img")

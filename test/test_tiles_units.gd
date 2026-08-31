@@ -506,3 +506,78 @@ func test_every_keyword_can_describe_itself() -> void:
 		for entry in Keywords.found_in(text):
 			assert_ne(Keywords.describe(entry), "",
 				"%s says what it is" % entry["name"])
+
+# ---------------------------------------------------------------------------
+# 5. Web — the tile whose clock is measured in BITES (§17, §13.2)
+# ---------------------------------------------------------------------------
+#
+# Fire is the roster's tile that lasts N games; Web is the first that lasts until
+# it catches something. The pair is what makes `decay_on_trigger` a field rather
+# than "1 Game" with different words: a web nobody steps in is still there three
+# games later, and a fire nobody steps in is not.
+
+func test_web_is_authored_on_both_triggers_like_fire() -> void:
+	var web: TileEffectData = Data.get_tile(&"web")
+	assert_not_null(web, "the Web tile is in the catalog")
+	if web == null:
+		return
+	assert_true(web.has_trigger(&"enemy_enters"), "walking in webs you")
+	assert_true(web.has_trigger(&"enemy_turn_start"), "and so does standing in it")
+	assert_eq(String(web.effects_for(&"enemy_enters")[0].get("status", "")), "stun")
+
+func test_web_is_a_one_shot_and_fire_is_a_clock() -> void:
+	var web: TileEffectData = Data.get_tile(&"web")
+	assert_true(web.decay_on_trigger, "Until Triggered")
+	assert_eq(web.decay_games, 0, "and no game count beside it — one clock, not two")
+	var fire: TileEffectData = Data.get_tile(&"fire")
+	assert_false(fire.decay_on_trigger, "Fire counts games instead")
+	assert_gt(fire.decay_games, 0)
+
+func test_walking_into_a_web_stuns_and_clears_the_square() -> void:
+	var inst: int = _choose_solo(_enemy())
+	var cell := Vector2i(2, 0)
+	_park(inst, Vector2i(3, 0))
+	GameLoop2.apply_tile(cell, &"web")
+	assert_not_null(GameLoop2.tile_at(cell), "the web is laid")
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	GameLoop2._move_entry(entry, cell.y, cell.x)
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 1, "+1 Stun for stepping in")
+	assert_null(GameLoop2.tile_at(cell),
+		"and the web is gone — it caught something, which is its whole clock")
+
+func test_a_web_nobody_steps_in_outlives_a_game() -> void:
+	_choose_solo(_enemy())
+	var cell := Vector2i(4, 2)
+	GameLoop2.apply_tile(cell, &"web")
+	GameLoop2.beat_game()
+	assert_not_null(GameLoop2.tile_at(cell),
+		"a clock measured in bites does not tick with the calendar")
+
+func test_a_stunned_body_loses_its_turn_and_the_stack_wears_off() -> void:
+	var inst: int = _choose_solo(_enemy())
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	GameLoop2.apply_status_to(inst, &"stun", 2)
+	assert_true(GameLoop2.is_stunned(entry), "two stacks is two turns off")
+	GameLoop2.attempt_turn()
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 1,
+		"Each Turn — one stack per turn that elapsed")
+	GameLoop2.attempt_turn()
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 0)
+	assert_false(GameLoop2.is_stunned(entry), "and it acts again")
+
+func test_the_scrolls_own_stun_counter_still_stops_a_turn() -> void:
+	# The two routes to "this body does not act" are read together rather than one
+	# replacing the other (GameLoop2.is_stunned). Scroll of Scare Monster keeps the
+	# counter; the Web tile and everything after it uses the status.
+	var inst: int = _choose_solo(_enemy())
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	GameLoop2.stun(inst)
+	assert_true(GameLoop2.is_stunned(entry), "the counter says no as loudly")
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 0,
+		"and it is not a status stack — the two are separate books")
+
+func test_sticky_bombs_lays_web_where_hot_bombs_lays_fire() -> void:
+	assert_eq(GameState.bomb_tile(), &"")
+	_give(&"sticky_bombs")
+	assert_eq(GameState.bomb_tile(), &"web",
+		"the item does what its card says, through the tile layer")

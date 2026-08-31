@@ -313,16 +313,28 @@ func test_blood_bombs_heals_on_bomb_used() -> void:
 	assert_eq(String(trig["effects"][0].get("type", "")), "gain_hp")
 	assert_eq(int(trig["effects"][0].get("value", 0)), 1)
 
+# STICKY BOMBS LAYS A TILE NOW, where it used to set the ad-hoc `bomb_stun` flag
+# (§13.2, §17). Web applies +1 Stun to whatever enters or starts a turn on it, so
+# the item does exactly what its card always promised and reaches Stun through the
+# tile layer like every other piece of content that touches it.
+#
+# `bomb_stun` and `GameState.bombs_stun()` are still real and still work; nothing
+# authors them any more, which is the same place `overworld_usable` ended up when
+# its two relics became loot. That is why this test asserts the flag is OFF for
+# Sticky Bombs rather than not mentioning it: "no item sets it" is the fact.
 func test_bomb_rule_flags() -> void:
-	assert_true(Data.get_item2(&"sticky_bombs").bomb_stun, "Sticky Bombs stun")
+	assert_eq(Data.get_item2(&"sticky_bombs").bomb_tile, &"web",
+		"Sticky Bombs lays Web, which is what stuns")
+	assert_eq(Data.get_item2(&"hot_bombs").bomb_tile, &"fire",
+		"and Hot Bombs lays Fire, off the same field")
 	assert_true(Data.get_item2(&"brimstone_bombs").bomb_cardinal,
 		"Brimstone Bombs blast the four cardinals")
 	assert_false(Data.get_item2(&"lunch").bomb_stun, "an ordinary item sets none of them")
 
-func test_bomb_rule_flags_read_off_the_inventory() -> void:
-	assert_false(GameState.bombs_stun(), "no Sticky Bombs owned")
+func test_the_bomb_tile_rule_reads_off_the_inventory() -> void:
+	assert_eq(GameState.bomb_tile(), &"", "no tile-laying bombs owned")
 	GameState.add_item(Data.get_item2(&"sticky_bombs"))
-	assert_true(GameState.bombs_stun(), "owning it flips the rule")
+	assert_eq(GameState.bomb_tile(), &"web", "owning it flips the rule")
 	assert_false(GameState.bombs_cardinal(), "and only that rule")
 
 # --- Mine-r Construction (§7.3) -------------------------------------------

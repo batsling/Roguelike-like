@@ -14,6 +14,7 @@ on_enemy_text = "Gains \"and you must beat X or all bosses without getting hit\"
 stackable = "Intensity"
 max_stacks = 0
 decrease = "N/A"
+wear = ""
 combat_text = "Gain +X Shields"
 enemy_only = true
 on_player = {"mode": "goal", "condition": "{X} or all bosses were beaten without getting hit", "reward": [{"type": "chest_reward", "scaled": {"value": "X"}}], "reward_text": "+{X:chests}", "penalty": [], "penalty_text": "", "decay": false}

@@ -3174,8 +3174,9 @@ func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
 		_loot_window.open = false
 		refresh_loot_window()
 	_close_item_card()
-	Notifications.notify("Click a square to throw %s." % LootSystem.display_name(entry),
-		UITheme.ACCENT)
+	Notifications.notify("Click a square to %s %s." % [
+		"zap" if LootSystem.is_wand(entry) else "throw",
+		LootSystem.display_name(entry)], UITheme.ACCENT)
 	return true
 
 # The board handing back a thrown piece and the square it landed on. The modal

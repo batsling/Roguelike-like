@@ -31,9 +31,11 @@ const TABS := ["grant", "run", "board", "flow", "events"]
 const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
-const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "statuses"]
+const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "wands",
+	"statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
-	"potions": "Potions", "cards": "Cards", "statuses": "Statuses"}
+	"potions": "Potions", "cards": "Cards", "wands": "Wands",
+	"statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -355,6 +357,8 @@ func _build_grant_tab() -> void:
 			_list_potions()
 		"cards":
 			_list_cards()
+		"wands":
+			_list_wands()
 		"statuses":
 			_list_statuses()
 		_:
@@ -479,6 +483,28 @@ func _list_cards() -> void:
 			"press": func() -> void:
 				GameState.add_card_loot(card.id)
 				_say("Added card: %s" % card.display_name, CardSystem.CARD_COLOR)})
+	_emit_rows(rows)
+
+# Every wand, with its charge count and what it does. It gives away what a run
+# withholds, exactly as the cards list does and for a blunter reason: a grant panel
+# that made the developer zap six charges to find out which stick they had just
+# handed themselves would be a debug tool with a minigame in it.
+func _list_wands() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for w in Data.all_wands():
+		if not (w is WandData):
+			continue
+		var label: String = String(w.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var wand: WandData = w
+		rows.append({"label": label, "detail": "%s · %d charge%s · %s" % [
+			wand.rarity, wand.starting_charges(),
+			"" if wand.starting_charges() == 1 else "s", wand.description],
+			"press": func() -> void:
+				GameState.add_wand_loot(wand.id)
+				_say("Added wand: %s" % wand.display_name, WandSystem.WAND_COLOR)})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

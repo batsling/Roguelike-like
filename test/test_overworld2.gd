@@ -5349,10 +5349,11 @@ func test_clicking_an_item_token_opens_its_card() -> void:
 	assert_null(_ui._item_card, "and closes cleanly")
 
 func test_an_active_item_grows_a_fire_control_above_its_tile() -> void:
-	# The Wand of Wishing is a plain Usable: its control is the Use button, and the
-	# token below it is the art tile. (This was Ride the Bus until the bus became a
-	# card — docs/cards-design.md §5.1.)
-	GameState.add_item(Data.get_item2(&"wand_of_wishing"))
+	# The IV Bag is a plain Usable: its control is the Use button, and the token
+	# below it is the art tile. (This was Ride the Bus until the bus became a card —
+	# docs/cards-design.md §5.1 — and then the Wand of Wishing until the wand became
+	# a WAND, docs/wands-design.md §5.2.)
+	GameState.add_item(Data.get_item2(&"iv_bag"))
 	_ui._refresh_items()
 	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
 	assert_eq(column.get_child_count(), 2, "fire control over art tile")
@@ -7001,37 +7002,42 @@ func test_a_charged_active_fires_while_a_game_is_in_play() -> void:
 			"%s fires with a full bar mid-report" % id)
 
 # AN OVERWORLD ACTIVE FIRES MID-GAME TOO, and for the same reason a charged one
-# does. `overworld_usable` marks an item whose effect needs the MAP — the Wand of
-# Wishing hands you any item in the game — and the map is mounted for the whole of
-# a game being played. Holding them back meant the one item that can get you off a
-# game you cannot beat was refused for exactly as long as you were stuck on it.
+# does. `overworld_usable` marks an item whose effect needs the MAP, and the map is
+# mounted for the whole of a game being played. Holding such an item back meant the
+# one thing that could get you off a game you cannot beat was refused for exactly as
+# long as you were stuck on it.
 #
-# Ride the Bus was the other half of this list until it became a card
-# (docs/cards-design.md §5.1). The rule did not move with it: a card is loot, and
-# loot has always been spendable whenever the player wants it (spec §4.3).
+# NO RELIC WEARS THE FLAG ANY MORE, and that is why this test is about the RULE
+# rather than about a roster row. Ride the Bus was the flag's example until it
+# became a card (docs/cards-design.md §5.1), and the Wand of Wishing until it became
+# a wand (docs/wands-design.md §5.2). The rule did not move with either of them:
+# loot has always been spendable whenever the player wants it (spec §4.3), which is
+# what both of them are now, and the flag is still here and still right for the next
+# relic that needs it.
 func test_an_overworld_active_fires_while_a_game_is_in_play() -> void:
-	for id in [&"wand_of_wishing"]:
-		var template: ItemData = Data.get_item2(id)
-		assert_not_null(template, "%s is authored" % id)
-		if template == null:
-			continue
-		assert_true(template.overworld_usable, "%s is an overworld active" % id)
-		assert_true(PackStrip.fires_while_reporting(template, true),
-			"%s fires while a game is in play" % id)
+	var template := ItemData.new()
+	template.id = &"test_overworld_active"
+	template.display_name = "Test Overworld Active"
+	template.kind = ItemData.ItemKind.USABLE
+	template.overworld_usable = true
+	template.max_uses = 1
+	assert_true(PackStrip.fires_while_reporting(template, true),
+		"an overworld active fires while a game is in play")
+	template.overworld_usable = false
+	assert_false(PackStrip.fires_while_reporting(template, true),
+		"and a plain Usable still waits for the report")
 
-func test_an_overworld_active_is_pressable_with_a_game_in_play() -> void:
-	# The rule above, as the player meets it: the Use button under the tile, live,
-	# on the screen where the board is.
-	var wand: ItemData = GameState.add_item(Data.get_item2(&"wand_of_wishing"))
-	assert_not_null(wand)
+func test_a_wand_in_the_pack_is_spendable_with_a_game_in_play() -> void:
+	# What replaced the relic, as the player meets it: loot is spendable whenever
+	# they want it, so the Zap button under a carried wand is live mid-game — which
+	# is the rule the `overworld_usable` flag existed to reproduce for relics.
+	GameState.add_wand_loot(&"wand_of_wishing")
 	_ui.pick(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
-	_ui._refresh_items()
-	var column: Control = _ui._items_box.get_child(_ui._items_box.get_child_count() - 1)
-	var control: Button = column.get_child(0) as Button
-	assert_not_null(control, "the wand wears a Use button")
-	if control != null:
-		assert_false(control.disabled, "and it presses mid-game rather than greying out")
+	assert_eq(GameState.loot_items.size(), 1, "the wand is in the pack")
+	assert_false(LootSystem.is_wand(GameState.loot_items[0]) \
+		and GameState.loot_items[0].get("charges", 0) == 0,
+		"and it has something in it")
 	_leave_post_game()
 
 func test_a_usable_consumable_still_waits_for_the_report() -> void:

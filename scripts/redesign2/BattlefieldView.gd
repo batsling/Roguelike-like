@@ -967,10 +967,16 @@ func refresh_toolbar() -> void:
 			# act on, and the lit bodies say everything else.
 			_hint_label.text = "%s:" % aiming_item.display_name
 		elif not throwing_loot.is_empty():
-			# The bottle's own name for the same reason — and for a potion it is
-			# doing a second job, since an UNKNOWN one is named by its colour and
-			# that colour is the thing the player is about to learn.
-			_hint_label.text = "🧪 Throw %s:" % LootSystem.display_name(throwing_loot)
+			# The piece's own name for the same reason — and for a potion or a wand
+			# it is doing a second job, since an UNKNOWN one is named by its colour
+			# or its material, and that word is the thing the player is about to
+			# learn. The VERB is the piece's own too (docs/wands-design.md §4.2): a
+			# wand is zapped and never thrown, and the picker is the only screen
+			# where the two look alike.
+			var wand: bool = LootSystem.is_wand(throwing_loot)
+			_hint_label.text = "%s %s %s:" % [
+				LootSystem.glyph(throwing_loot), "Zap" if wand else "Throw",
+				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = "Click an enemy:"
 		_hint_label.add_theme_color_override("font_color",

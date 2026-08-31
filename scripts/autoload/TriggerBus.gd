@@ -114,6 +114,15 @@ signal card_used(ctx: Dictionary)            # ctx.card — a CARD (the loot kin
                                             # card_played above, which belongs to
                                             # the combat deck that no longer
                                             # exists.
+signal wand_used(ctx: Dictionary)            # ctx.wand — a WAND (the loot kind,
+                                            # docs/wands-design.md) was zapped.
+                                            # Emitted once per CHARGE from
+                                            # WandSystem.notify_used, including for
+                                            # a wand that fizzled — the charge was
+                                            # still spent. The only loot signal
+                                            # that can fire six times off one piece
+                                            # of loot, which is what an item
+                                            # watching it has to be priced against.
 signal curse_applied(ctx: Dictionary)        # ctx.curse — a curse was added to
                                             # active_curses (Vitality Orb).
 signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left

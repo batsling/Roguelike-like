@@ -147,12 +147,12 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 
 # --- The drop (§4) ---------------------------------------------------------
 
-func test_the_kind_split_is_four_even_quarters() -> void:
-	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card"])
+func test_the_kind_split_is_five_even_fifths() -> void:
+	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand"])
 	var seen: Dictionary = {}
-	for _i in range(400):
+	for _i in range(500):
 		seen[GameState.roll_loot_kind()] = true
-	assert_eq(seen.size(), 4, "all four kinds come up")
+	assert_eq(seen.size(), 5, "all five kinds come up")
 
 func test_a_kind_blind_drop_can_roll_a_card() -> void:
 	var found: bool = false
@@ -281,17 +281,20 @@ func test_the_question_card_offers_only_usable_relics() -> void:
 		assert_false(candidates.has(charged),
 			"a charged relic's cost IS its bar — copying one free would skip it")
 
+# A SYNTHETIC RELIC, not one off the sheet. This used to hunt the roster for a
+# USABLE with a finite `max_uses` and assert the roster HAD one — which made a test
+# about the ? Card fail the day the Wand of Wishing left the item roster to become
+# a wand (docs/wands-design.md §5). What the card owes is that copying spends
+# nothing of the item's; whether any shipped relic happens to be shaped that way is
+# the sheet's business, and asserting it here was one test guarding two facts.
 func test_copying_an_item_spends_none_of_its_uses() -> void:
-	var usable: ItemData = null
-	for it in Data.all_items2():
-		if it is ItemData and (it as ItemData).kind == ItemData.ItemKind.USABLE \
-				and not (it as ItemData).is_charged() and (it as ItemData).max_uses > 0:
-			usable = it
-			break
-	if usable == null:
-		# No finite-use relic in the roster is a fact about the sheet, not a pass.
-		assert_true(false, "the roster has a usable with a finite use count")
-		return
+	var usable := ItemData.new()
+	usable.id = &"test_finite_usable"
+	usable.display_name = "Test Finite Usable"
+	usable.kind = ItemData.ItemKind.USABLE
+	usable.max_uses = 2
+	usable.triggers = [{"on": "item_used",
+		"effects": [{"type": "gain_gold", "value": 1}]}]
 	var held: ItemData = GameState.add_item(usable)
 	var before: int = held.max_uses
 	CardSystem.copy_item(held)

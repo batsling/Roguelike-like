@@ -1145,13 +1145,20 @@ func test_bomb_fires_the_bomb_used_trigger_once() -> void:
 
 # --- bomb-modifying items (§8) --------------------------------------------
 
+# STICKY BOMBS STUNS THROUGH THE GROUND NOW (§13.2, §17). It used to set the
+# ad-hoc `bomb_stun` flag; its card says "Bombs Apply the Web Tile", and Web is
+# what applies Stun. The outcome the player sees is unchanged — a boss that
+# survives the blast loses its turn — and the route is the tile layer, which is
+# how every other piece of content reaches a status.
 func test_sticky_bombs_stun_what_the_blast_cannot_kill() -> void:
 	GameState.add_item(Data.get_item2(&"sticky_bombs"))
 	GameState.bombs = 1
 	var b: int = _choose_solo(_enemy(3, true)) ; GameLoop2.beat_game(false)
 	assert_true(GameLoop2.bomb(b))
-	assert_eq(int(_entry(b).get("stun", 0)), 1,
-		"the boss survives the blast and is stunned by it")
+	var entry: Dictionary = _entry(b)
+	assert_eq(GameLoop2.entry_status_stacks(entry, &"stun"), 1,
+		"the boss survives the blast and the Web under it stuns it")
+	assert_true(GameLoop2.is_stunned(entry), "which is a turn it does not get")
 
 # Park a 1x1 enemy on an exact cell, so a blast-shape assertion doesn't depend on
 # where the random spawn rows happened to put things.

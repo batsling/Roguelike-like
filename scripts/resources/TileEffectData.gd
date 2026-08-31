@@ -34,6 +34,14 @@ extends Resource
 # on the Amulet's doorstep — the same content, strongest where it is needed least.
 # Ticked once per game RESOLVED, beaten or not (GameLoop2.beat_game).
 @export var decay_games: int = 0
+# A CLOCK MEASURED IN BITES RATHER THAN IN GAMES (the sheet's `Until Triggered`).
+# The tile goes out the moment it fires on something, whenever that is. Web is the
+# roster's first and it is what makes a web a web rather than a slower fire: you
+# walk into it once, and a web nobody steps in is still there three games later
+# where a fire nobody steps in is not. Mutually exclusive with `decay_games` in
+# practice — a tile with both would be counting two clocks — but not enforced,
+# because a future tile that burns out EITHER way is a coherent thing to author.
+@export var decay_on_trigger: bool = false
 # The Decay column verbatim, for the dropdown — the prose the player reads, beside
 # the number the engine counts down.
 @export var decay_text: String = ""
@@ -103,7 +111,9 @@ func tooltip_for(games_left: int = -1) -> String:
 	var lines: Array = ["%s — tile effect" % display_name]
 	if description != "":
 		lines.append(description)
-	if games_left >= 0:
+	if decay_on_trigger:
+		lines.append("Goes out the moment it catches something.")
+	elif games_left >= 0:
 		lines.append("Burns out in %d more %s." % [
 			games_left, "game" if games_left == 1 else "games"])
 	elif decay_games > 0:
@@ -135,7 +145,9 @@ func hover_card(games_left: int = -1) -> Dictionary:
 	# board hands it: `tile_games_left` answers 0 both for a tile that has one game
 	# left and for one that never had a clock, and only the content knows which.
 	var clock: String = "⏱ never burns out"
-	if decay_games > 0:
+	if decay_on_trigger:
+		clock = "⏱ until it catches something"
+	elif decay_games > 0:
 		var left: int = games_left if games_left >= 0 else decay_games
 		clock = "⏱ %d %s%s" % [left, "game" if left == 1 else "games",
 			" left" if games_left >= 0 else ""]

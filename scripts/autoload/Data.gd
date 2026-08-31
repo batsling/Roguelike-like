@@ -17,6 +17,7 @@ var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
 var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
 var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions-design)
 var _cards: Dictionary = {}             # StringName -> CardData (2.0, docs/cards-design.md)
+var _wands: Dictionary = {}             # StringName -> WandData (2.0, docs/wands-design.md)
 var _encounters: Dictionary = {}        # StringName -> EncounterData
 
 # === Games-first redesign (2.0) content ===
@@ -48,6 +49,7 @@ func _ready() -> void:
 	_load_dir("res://data/pills2.0/", _pills)
 	_load_dir("res://data/potions2.0/", _potions)
 	_load_dir("res://data/cards2.0/", _cards)
+	_load_dir("res://data/wands2.0/", _wands)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
@@ -59,9 +61,10 @@ func _ready() -> void:
 		_items.size(), _events.size(), _games.size(), _characters.size(),
 		_curses.size(), _encounters.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
-		_scrolls.size(), _pills.size(), _cards.size(), _statuses.size(), _tiles.size(), _units.size(),
+		_scrolls.size(), _pills.size(), _cards.size(), _wands.size(),
+		_statuses.size(), _tiles.size(), _units.size(),
 		_abilities.size(), _events2.size(), _curses2.size(), _objects2.size()
 	])
 
@@ -374,6 +377,38 @@ func roll_card(rng: RandomNumberGenerator = null) -> CardData:
 		r.randomize()
 	var target: int = roll_item_rarity(r)
 	var bucket: Array = pool.filter(func(c): return c is CardData and c.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[r.randi_range(0, bucket.size() - 1)]
+
+# --- Wands (2.0, docs/wands-design.md) -------------------------------------
+func get_wand(id: StringName) -> WandData:
+	return _wands.get(id)
+
+func all_wands() -> Array:
+	return _wands.values()
+
+# One random wand, weighted by rarity — roll_card's twin (docs/wands-design.md §4).
+#
+# The same shared ladder, so Luck rides a wand drop for free without this function
+# mentioning it, and no find_weight for the reason potions and cards have none: the
+# `wands` sheet has no column to author one in.
+#
+# THE ROSTER IS ONE OF EACH RUNG — 1 Common, 1 Uncommon, 1 Rare, 1 Legendary —
+# which makes the shared ladder do all the work. At its 75/20/5 with the Rare rung's
+# 10% bump, that is Wand of Nothing on three drops in four, Create Monster on one in
+# five, Fire on about one in twenty-two and Wishing on about one in two hundred —
+# and none of that spread is authored anywhere but in the four rarity words.
+func roll_wand(rng: RandomNumberGenerator = null) -> WandData:
+	var pool: Array = _wands.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = roll_item_rarity(r)
+	var bucket: Array = pool.filter(func(w): return w is WandData and w.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]

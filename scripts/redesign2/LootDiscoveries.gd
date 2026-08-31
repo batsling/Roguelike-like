@@ -21,7 +21,12 @@ extends RefCounted
 # potion is undeducible. The unlearned are counted here too — and what the record
 # never writes down for either kind is a COLOUR beside a name it has not learned.
 #
-# THREE ALPHABETS AND NOT FOUR, THOUGH THERE ARE FOUR KINDS. Cards are absent from
+# FOUR ALPHABETS NOW (docs/wands-design.md). A wand is learned as a MATERIAL, on
+# exactly the potions' terms and at a wider ratio still: 4 of 28 sticks are dealt
+# and 24 mean nothing, so three learned wands say nothing whatever about the fourth.
+# Its unlearned are counted here too.
+#
+# FOUR ALPHABETS AND NOT FIVE, THOUGH THERE ARE FIVE KINDS. Cards are absent from
 # this fold on purpose (docs/cards-design.md §2): there is no such thing as an
 # identified card, so a run learns nothing about them and there is nothing here for
 # it to remember. A "Cards: 13 of 13" row would be a record of the player having
@@ -55,14 +60,15 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 	var pills: Array = known_pills()
 	var scrolls: Array = known_scrolls()
 	var potions: Array = known_potions()
-	var learned: int = pills.size() + scrolls.size() + potions.size()
+	var wands: Array = known_wands()
+	var learned: int = pills.size() + scrolls.size() + potions.size() + wands.size()
 
 	var toggle := UITheme.quiet_button(
 		"%s  Known this run — %d learned" % ["▾" if open else "▸", learned],
 		Vector2(0, 20), 11)
-	toggle.tooltip_text = "The pills, scrolls and potions this run has identified.\n" \
-		+ "A pill's name belongs to its colour, and a potion's to its bottle — " \
-		+ "both only until the run ends."
+	toggle.tooltip_text = "The pills, scrolls, potions and wands this run has identified.\n" \
+		+ "A pill's name belongs to its colour, a potion's to its bottle and a " \
+		+ "wand's to its material — all only until the run ends."
 	toggle.pressed.connect(func():
 		open = not open
 		if on_toggle.is_valid():
@@ -90,6 +96,8 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 		inner.add_child(_row("Scrolls", scrolls))
 	if not potions.is_empty():
 		inner.add_child(_row("Potions", potions))
+	if not wands.is_empty():
+		inner.add_child(_row("Wands", wands))
 	# What is left to learn, as a NUMBER rather than as a list of names — see the
 	# header: a row of blanks that could be counted would give the spares away.
 	#
@@ -105,6 +113,10 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 	if corked > 0:
 		inner.add_child(note("%d more bottle%s out there, unlearned." % [
 			corked, "" if corked == 1 else "s"]))
+	var sticks: int = maxi(0, Data.all_wands().size() - wands.size())
+	if sticks > 0:
+		inner.add_child(note("%d more wand%s out there, unlearned." % [
+			sticks, "" if sticks == 1 else "s"]))
 	return box
 
 static func _row(heading: String, entries: Array) -> Control:
@@ -176,6 +188,18 @@ static func known_potions() -> Array:
 	for potion in Data.all_potions():
 		if PotionSystem.is_identified(potion.id):
 			out.append({"type": "potion", "id": potion.id})
+	return out
+
+# Every wand this run has identified, FULL. The entries here are a record rather
+# than a pack — nobody zaps one out of this fold — so they carry a fresh charge
+# count instead of any particular carried stick's: this row is "you know what an
+# Oak Wand is", which is a fact about the type and not about the one in your bag.
+static func known_wands() -> Array:
+	var out: Array = []
+	for wand in Data.all_wands():
+		if WandSystem.is_identified(wand.id):
+			out.append({"type": "wand", "id": wand.id,
+				"charges": wand.starting_charges()})
 	return out
 
 static func note(text: String) -> Label:
