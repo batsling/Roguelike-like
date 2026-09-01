@@ -42,7 +42,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~1920 tests, ~8 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 tests, ~9 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -53,8 +53,8 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~1920 t
   with "Could not find type X" — in hundreds of unrelated tests, because the
   script that referenced it failed to parse and its scene fell back to a bare
   Control. Run `godot --headless --editor --quit` once after adding one.
-- **A GUT run should be all green, with no Risky / "Did not assert"** — with the
-  two known seed-dependent exceptions listed below. It used to
+- **A GUT run should be all green, with no Risky / "Did not assert"** — with no
+  known exceptions any more. It used to
   report one or two, varying between runs, because a couple of tests early-
   `return`ed when the run's random graph didn't reach the case they were about.
   Both are fixed: `test_atlas.gd::test_path_taken_follows_the_order_the_games_were_visited`
@@ -79,36 +79,32 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~1920 t
   cache. It now checks the cache against a fresh build instead, which is what
   "rebuilt" meant and is true either way. Before blaming a random graph for a
   varying failure, work out which assertion is only *usually* true.
-- **TWO varying failures are currently UNFIXED, and both PREDATE the cards work**
-  — measured against a clean worktree of the same commit, not assumed. A full run
-  is all-green most of the time and drops one or two of these when the global RNG
-  stream lands badly, so a red run is worth re-running *once* before believing it.
+- **The two varying failures that used to live here are FIXED.** Both were
+  assertions that were only *usually* true, and both are worth reading before
+  blaming a seed for a new one.
   - `test_overworld2.gd::test_the_page_still_fits_the_window_with_machines_standing_on_it`
-    is a **real thin margin, not a bad assertion**: the page with three machines
-    under the board measures **616px of the 625px a 720p window leaves**, so nine
-    pixels is the whole budget — and the left column's height rides on the run's
-    random offering and checklist, whose goal text wraps differently game to game.
-    One extra wrapped line overflows it. Fixing it means giving the page back some
-    room (the checklist, the offering rows, the panel's own chrome), not widening
-    the assertion, which is measuring something true.
-  - `test_enemy_abilities.gd` drops **one test, and which one depends on the
-    seed** — three have been seen (`test_a_spawner_puts_a_body_in_front_of_it_and_never_moves`,
-    `test_a_summoned_body_is_an_ordinary_body_and_pays_out`,
-    `test_an_illusionist_makes_copies_that_die_with_it`). Run this script alone
-    and it fails deterministically — on the baseline too, because nothing has
-    consumed the global stream ahead of it; run it inside a full suite and it
-    usually passes.
-    **The cause is the FOOTPRINT, not the board being full.** All three author
-    their ability as `tier:low`, so `GameLoop2.roll_ability_enemy` draws a RANDOM
+    was a **real thin margin, not a bad assertion**: the page with three machines
+    under the board measured 616px of the 625px a 720p window leaves, and the
+    left column's height rides on the run's random offering and checklist, whose
+    goal text wraps differently game to game — so one extra wrapped line
+    overflowed it. The page got 26px back out of its own CHROME (both left
+    panels' content margin 12->8, the gap between them 10->8, the four gaps
+    inside the select panel 8->6), which also widens their text so fewer lines
+    wrap at all. The left column now measures 590 and the binding column is the
+    RIGHT one at 594 — the board and the pack, which do not wrap.
+  - `test_enemy_abilities.gd` dropped **one test, and which one depended on the
+    seed** — the spawner, the illusionist and the summoned-body payout.
+    **The cause was the FOOTPRINT, not the board being full.** All three authored
+    their ability as `tier:low`, so `GameLoop2.roll_ability_enemy` drew a RANDOM
     low-tier body — and `_brood_cell` asks `fits_at`, which is about the body's
     footprint (§7.3). A rolled body wider than one cell does not fit the single
     square in front of the spawner, `_brood_cell` answers OFF_FIELD, and nothing
-    is laid. That is correct behaviour ("a spawner with no space simply does not
-    spawn this turn") and an assertion that is only *usually* true.
-    The fix is to name the body — `enemy:<id>` on a known 1x1 — in the tests whose
-    subject is the PAYOUT rather than the roll, and to assert the "nowhere to lay
-    it" case in its own test. `_disarm_board()` is not the answer here: this file
-    is where abilities ARE the subject.
+    is laid: correct behaviour ("a spawner with no space simply does not spawn
+    this turn"). Those three now name a one-cell body through `_one_cell_selector()`
+    (`enemy:<id>`, picked out of the roster by shape rather than hardcoded), and
+    `test_a_spawner_with_nowhere_to_lay_a_body_lays_nothing` asserts the other
+    half on purpose. If a spawner test starts varying again, look at what the
+    selector rolls before anything else.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

@@ -5311,10 +5311,27 @@ func _build_ui() -> void:
 	root.add_child(main_row)
 
 	# Left column: takes the room the board doesn't need.
+	#
+	# IT IS THE COLUMN THAT DECIDES WHETHER THE PAGE FITS, and by a margin that was
+	# too thin to survive the run's own content. With three machines mounted under
+	# the board the right column measures 594px of the 625 a 720p window leaves and
+	# the left measured 616 — nine pixels of budget, against a column whose height
+	# rides on how the offering's names and the checklist's goal lines happen to
+	# wrap for the games this run rolled. One extra wrapped line anywhere in it put
+	# the whole overworld behind a scrollbar, which is why
+	# `test_the_page_still_fits_the_window_with_machines_standing_on_it` failed on
+	# some seeds and passed on others.
+	#
+	# So the column gets ~26px back, all of it out of CHROME rather than out of
+	# anything it says: 4px off each of the two panels' padding (which also gives
+	# their text more width to wrap in, so there are fewer wrapped lines to pay
+	# for), 2px off the gap between them, and 2px off each of the four gaps inside
+	# the select panel. Nothing was cut; the page just stopped spending a third of
+	# its budget on air.
 	_left_col = VBoxContainer.new()
 	_left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_left_col.add_theme_constant_override("separation", 10)
+	_left_col.add_theme_constant_override("separation", 8)
 	main_row.add_child(_left_col)
 
 	# Everything that belongs to CHOOSING a game, in one box the phase toggles: the
@@ -5322,9 +5339,9 @@ func _build_ui() -> void:
 	# room they free goes to the checklist that replaces them.
 	var select_panel := PanelContainer.new()
 	select_panel.add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 8, 1))
 	_select_box = VBoxContainer.new()
-	_select_box.add_theme_constant_override("separation", 8)
+	_select_box.add_theme_constant_override("separation", 6)
 	select_panel.add_child(_select_box)
 	_select_box.set_meta("wrap", select_panel)
 	_left_col.add_child(select_panel)
@@ -5413,7 +5430,7 @@ func _build_ui() -> void:
 
 	_report_panel = PanelContainer.new()
 	_report_panel.add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 12, 1))
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 8, 1))
 	_left_col.add_child(_report_panel)
 	_play_panel = VBoxContainer.new()
 	_play_panel.add_theme_constant_override("separation", 6)
