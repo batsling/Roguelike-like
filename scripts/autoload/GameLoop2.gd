@@ -5555,9 +5555,13 @@ const ABILITY_IDS := [
 	&"defensive_stance", &"ritual", &"illusionist", &"melee_ally_buff", &"theft",
 	# summoners — spend the turn and never move
 	&"necromancy", &"nested_spawner",
+	# …and the one that spends only its FIRST turn, and walks like anything else
+	# afterwards. It is grouped with the summoners because that is what the sheet
+	# calls it, not because it behaves like a wall.
+	&"entry_summon",
 	# attack
 	&"ranged", &"ruthless", &"devour_whole", &"degradation", &"hexer",
-	&"infliction", &"lacerator",
+	&"infliction", &"lacerator", &"drain",
 	# movement
 	&"immobile", &"trample", &"agile", &"predatory_scent",
 	# death
@@ -5866,6 +5870,21 @@ func _take_intent(entry: Dictionary, res: Dictionary, taken: int) -> bool:
 		_summon_illusions(entry, res)
 		return true
 
+	# ENTRY SUMMON — "instead of moving or attacking on its first turn, it will
+	# Summon X amount of Y Enemies to a random adjacent tile". The Illusionist's
+	# shape (a one-turn intent, `taken == 0`) with the spawners' payload, and it is
+	# neither of them: a Nested Spawner is a wall that prints bodies forever, and
+	# this one pays its whole cost up front and then walks at you like anything
+	# else. What it buys is the ESCORT — a Gatekeeper is a body you have to reach
+	# through the skeletons it opened with.
+	#
+	# ADJACENT, not the row in front: `_brood_cell` is the spawners' single square
+	# and this one is authored to scatter, so a full lane in front of it does not
+	# stop it dead the way it stops a Nested Spawner.
+	if taken == 0 and entry_has_ability(entry, &"entry_summon"):
+		_summon_escort(entry, res)
+		return true
+
 	# NECROMANCY and NESTED SPAWNER — "will not move, but each turn will Summon…".
 	# Never anything else, ever: these two are walls that print bodies, and the
 	# whole reason they are worth walking up to is that they cannot walk to you.
@@ -5987,6 +6006,64 @@ func _spawn_brood(entry: Dictionary, res: Dictionary) -> void:
 		if born > 0:
 			made.append(born)
 	_note(res, "intents", {"instance": inst, "ability": &"nested_spawner",
+		"summoned": made})
+
+# THE CELLS AROUND A BODY that `enemy` could be laid in — the eight neighbours of
+# every square of its own footprint, minus its own squares and anything that does
+# not FIT (§7.3: a two-cell body needs two cells, and "adjacent" is about where its
+# leading square goes). Board order rather than ring order, so a list of candidates
+# is the same list every time and only the pick is random.
+func _adjacent_cells(entry: Dictionary, enemy: GoalEnemyData) -> Array:
+	var mine: Dictionary = {}
+	for cell in entry_cells(entry):
+		mine[cell] = true
+	if mine.is_empty():
+		return []
+	var seen: Dictionary = {}
+	var out: Array = []
+	for cell in mine.keys():
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				var at := Vector2i(int(cell.x) + dx, int(cell.y) + dy)
+				if mine.has(at) or seen.has(at):
+					continue
+				seen[at] = true
+				if at.x < 1 or at.x > grid_cols() or at.y < 0 or at.y >= grid_rows():
+					continue
+				if not fits_at(enemy, at.y, at.x, 0):
+					continue
+				out.append(at)
+	out.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.x < b.x if a.x != b.x else a.y < b.y)
+	return out
+
+# Entry Summon's one turn: X of the authored type, each on a random free square
+# next to the summoner.
+#
+# THE SQUARE IS ROLLED PER BODY and re-rolled from the board as it stands, not
+# picked once and counted off — the first escort takes a cell, and the second has
+# to be laid somewhere that is still free. A body with nowhere left to go is
+# simply not laid, exactly as a spawner with no room lays nothing; that is the
+# authored "if there is space" applied to a ring instead of to a single square.
+func _summon_escort(entry: Dictionary, res: Dictionary) -> void:
+	var inst: int = int(entry.get("instance", 0))
+	var source: GoalEnemyData = entry.get("enemy")
+	var selector: StringName = entry_ability_arg(entry, &"entry_summon")
+	var made: Array = []
+	for _i in range(maxi(1, entry_ability_amount(entry, &"entry_summon", 1))):
+		var escort: GoalEnemyData = roll_ability_enemy(selector, source)
+		if escort == null:
+			continue
+		# Re-read the entry: a body laid last time round moved the occupancy this
+		# is asking about, and `entry` is a copy of the summoner rather than the
+		# board.
+		var spots: Array = _adjacent_cells(entry_for(inst), escort)
+		if spots.is_empty():
+			break
+		var born: int = summon(escort, spots[randi() % spots.size()])
+		if born > 0:
+			made.append(born)
+	_note(res, "intents", {"instance": inst, "ability": &"entry_summon",
 		"summoned": made})
 
 # Melee Ally Buff: walk toward the nearest other body and, standing next to it,
@@ -6173,6 +6250,14 @@ func _attack_riders(entry: Dictionary, hit: Dictionary, res: Dictionary) -> void
 			fired.append(&"degradation")
 			res["loot_destroyed"] = int(res.get("loot_destroyed", 0)) + burned
 
+	# DRAIN — take X off one of the player's own numbers, permanently.
+	if entry_has_ability(entry, &"drain"):
+		var stat: StringName = entry_ability_arg(entry, &"drain")
+		var took: int = _drain_stat(stat, maxi(1, entry_ability_amount(entry, &"drain", 1)))
+		if took > 0:
+			fired.append(&"drain")
+			res["drained"] = {"stat": stat, "amount": took}
+
 	# THEFT — take X of the named goods and RUN.
 	if entry_has_ability(entry, &"theft"):
 		if _steal(entry, res):
@@ -6222,6 +6307,46 @@ func _destroy_loot(count: int) -> int:
 	if gone > 0:
 		GameState.emit_signal("inventory_changed")
 	return gone
+
+# --- DRAIN -----------------------------------------------------------------
+#
+# "When this Enemy attacks and deals damage, decrease by X the player's Y (Max
+# Health, Luck, Scramble, Bash, Dash, Transmute)."
+#
+# The one rider on the list that takes something the run cannot get back by
+# killing the body that took it. A thief holds its haul and gives it up when it
+# dies; Degradation burns loot, which the next chest replaces. Drain takes a POINT
+# — and a point of Max Health or of Bash is the run's floor moving, permanently.
+# That is what the ability is worth and why the sheet has it on one enemy.
+#
+# NOTHING GOES BELOW ZERO, and Max Health never goes below 1: the run is lost by
+# the player's Health reaching 0, not by their ceiling doing it, and a body that
+# could drain a run to a max of 0 would be killing the player with a rule that is
+# not the death rule. What is actually taken is returned, so a stat already at the
+# floor reports 0 and the rider does not claim to have fired — the same contract
+# `_destroy_loot` and `_steal` keep.
+func _drain_stat(stat: StringName, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	match String(stat):
+		"max_health":
+			# Through `set_max_hp`, which is what clamps current Health to the new
+			# ceiling and tells Stats the pool moved — a bare write to `max_hp` would
+			# leave a player standing on more Health than they have room for.
+			var before: int = GameState.max_hp
+			GameState.set_max_hp(maxi(1, before - amount))
+			return before - GameState.max_hp
+		"luck", "scramble", "bash", "dash", "transmute":
+			# `verb_value` reads through the same field map `grant_run_stat` writes
+			# through, so "dash" finds `dash_charges` and the two cannot disagree
+			# about where a verb lives.
+			var have: int = GameState.verb_value(String(stat))
+			var take: int = mini(maxi(0, have), amount)
+			if take > 0:
+				GameState.grant_run_stat(String(stat), -take)
+			return take
+	push_warning("GameLoop2: Drain names no stat this run has ('%s')" % stat)
+	return 0
 
 # --- THEFT -----------------------------------------------------------------
 #

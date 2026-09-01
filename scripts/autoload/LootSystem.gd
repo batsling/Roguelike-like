@@ -515,10 +515,28 @@ func must_aim(entry: Dictionary) -> bool:
 # How many uses are left in this piece, and how many it can hold. `[0, 0]` for the
 # four kinds that have no such number — a scroll is one use in the sense that it is
 # gone afterwards, not in the sense that it is counting.
+#
+# This is the MECHANICAL count and every caller gets it, identified or not — what
+# the pack is holding does not depend on what the player has worked out. Whether to
+# SHOW it is `charges_known` below, and no screen should read one for the other.
 func charges(entry: Dictionary) -> Array:
 	if not is_wand(entry):
 		return [0, 0]
 	return [WandSystem.charges_of(entry), WandSystem.max_charges(entry)]
+
+# MAY THE PLAYER SEE THE COUNT? Only once the stick's type is identified (§6.2).
+# The count used to be shown either way, on the argument that how many zaps are
+# left is not part of the gamble. It is: an unknown wand you can count is a wand
+# you can decide about on arithmetic instead of on the risk, and "one charge" is
+# also the tell that separates the two Legendaries from everything else on the
+# rarity ladder (§5). One zap answers both questions at once, which is what a zap
+# is for.
+#
+# Every surface that draws the number goes through this, so the pack tile, the
+# hover subtitle and the gamble line cannot come to different conclusions about
+# the same stick.
+func charges_known(entry: Dictionary) -> bool:
+	return is_wand(entry) and is_identified(entry)
 
 # Is this use context a throw? One reading of `ctx.verb`, here rather than at each
 # call site, so "throw" can never be spelled two ways.
@@ -569,12 +587,11 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 	var sub: String = kind_name(entry)
 	if known and preference(entry) != "":
 		sub += "  ·  %s" % preference(entry)
-	# A WAND'S CHARGES ARE NEVER HIDDEN, known or not (docs/wands-design.md §6.4).
-	# How many times a stick can be fired is what the player is buying a slot for,
-	# and it is not part of the gamble: they can see the thing is nearly new. It
+	# A WAND'S CHARGES, ONCE THE STICK IS KNOWN (docs/wands-design.md §6.2). It
 	# rides the subtitle rather than the body, beside the Preference, because it is
-	# the same sort of fact — what this piece IS, rather than what it does.
-	if is_wand(entry):
+	# the same sort of fact — what this piece IS, rather than what it does — and it
+	# is hidden for the same reason the Preference beside it is.
+	if charges_known(entry):
 		var bar: Array = charges(entry)
 		sub += "  ·  %d / %d charges" % [int(bar[0]), int(bar[1])]
 	# A FACE-DOWN CARD'S HOVER SAYS ITS DECK AND STOPS (docs/cards-design.md §3).

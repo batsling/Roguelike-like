@@ -84,15 +84,22 @@ func test_fire_decays_in_games_not_turns() -> void:
 	assert_eq(fire.decay_games, 3, "three GAMES")
 	assert_eq(fire.decay_text, "3 Games", "and it says so in the sheet's own words")
 
-func test_the_pairing_is_authored_from_both_ends() -> void:
-	# Fire meeting a mine and a mine meeting Fire are one event, and the player
-	# looks it up from whichever half they are holding.
+func test_the_pairing_is_authored_from_the_mines_end_only() -> void:
+	# Fire meeting a mine and a mine meeting Fire are one event, and `_settle_cell`
+	# UNIONS the two sides — so authoring it once is enough, and the half that
+	# carries it is the MINE. Fire deliberately says nothing: every authored
+	# pairing becomes a line on the tile's hover card, and a burning square has no
+	# business lecturing a player about a unit they may never own.
 	var fire: TileEffectData = Data.get_tile(&"fire")
 	var mine: UnitData = Data.get_unit(&"landmine")
-	assert_eq(fire.interaction_with(&"unit", &"landmine"),
-		["detonate_unit", "remove_tile"])
 	assert_eq(mine.interaction_with(&"tile", &"fire"),
 		["detonate_unit", "remove_tile"])
+	assert_eq(fire.interaction_with(&"unit", &"landmine"), [],
+		"and fire does not name the mine back")
+	assert_false(fire.tooltip_for().to_lower().contains("landmine"),
+		"so nothing about fire mentions it")
+	assert_false(str(fire.hover_card()["lines"]).to_lower().contains("landmine"),
+		"on the card either")
 
 func test_a_landmine_is_a_proxy_bomb_in_the_content() -> void:
 	var mine: UnitData = Data.get_unit(&"landmine")

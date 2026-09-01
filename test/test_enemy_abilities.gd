@@ -158,7 +158,7 @@ func test_an_unlimited_range_describes_itself_as_unlimited() -> void:
 # ids, so this is what would catch a new rider authored without it.
 func test_the_riders_all_require_the_hit_to_land() -> void:
 	for id in [&"infliction", &"hexer", &"lacerator", &"degradation", &"theft",
-			&"devour_whole"]:
+			&"devour_whole", &"drain"]:
 		var a: AbilityData = Data.get_ability(id)
 		assert_true(a.needs_damage(), "%s only fires on a hit that lands" % id)
 
@@ -302,6 +302,121 @@ func test_devour_whole_ends_the_run_and_a_shield_is_the_answer() -> void:
 	GameState.shields = 0
 	_turn()
 	assert_true(GameLoop2.run_over, "past one, no amount of Health matters")
+
+# --- drain -----------------------------------------------------------------
+#
+# The one rider that takes something killing the body does not give back.
+
+func test_drain_takes_a_verb_off_the_run_for_good() -> void:
+	GameState.bash = 3
+	_put(_enemy([_ability(&"drain", 2, &"bash", "Bash")]))
+	_turn()
+	assert_eq(GameState.bash, 1, "two points off, and no body to kill for them back")
+
+func test_drain_reaches_a_verb_that_does_not_live_under_its_own_name() -> void:
+	# "Dash" is `dash_charges` on GameState. The drain goes through the same field
+	# map the grants do, or it would take two off a field that isn't there.
+	GameState.dash_charges = 4
+	_put(_enemy([_ability(&"drain", 1, &"dash", "Dash")]))
+	_turn()
+	assert_eq(GameState.dash_charges, 3)
+
+func test_drain_on_max_health_moves_the_ceiling_and_the_floor_with_it() -> void:
+	GameState.max_hp = 20
+	GameState.hp = 20
+	_put(_enemy([_ability(&"drain", 5, &"max_health", "Max Health")]), Vector2i(1, 0))
+	_turn()
+	assert_eq(GameState.max_hp, 15, "the ceiling came down")
+	assert_lte(GameState.hp, 15, "and Health was clamped under it, not left hanging over")
+
+func test_drain_never_takes_a_run_below_the_floor() -> void:
+	# A stat already at 0 is drained for 0 — the rider reports nothing rather than
+	# writing a negative — and Max Health stops at 1, because the run is lost by
+	# Health reaching 0 and not by its ceiling doing it.
+	GameState.luck = 0
+	GameState.max_hp = 3
+	GameState.hp = 3
+	_put(_enemy([_ability(&"drain", 9, &"luck", "Luck")]), Vector2i(1, 0))
+	_turn()
+	assert_eq(GameState.luck, 0, "nothing to take, nothing taken")
+	GameLoop2.reset()
+	_put(_enemy([_ability(&"drain", 99, &"max_health", "Max Health")]), Vector2i(1, 0))
+	_turn()
+	assert_eq(GameState.max_hp, 1, "and Max Health bottoms out at one")
+
+func test_drain_only_fires_on_a_hit_that_lands() -> void:
+	# The same contract every other rider keeps — the sheet's wording is "attacks
+	# AND DEALS DAMAGE", and a shield means it dealt none.
+	GameState.shields = 5
+	GameState.bash = 3
+	_put(_enemy([_ability(&"drain", 2, &"bash", "Bash")]))
+	_turn()
+	assert_eq(GameState.bash, 3, "the swing was eaten, so nothing was drained")
+
+# --- entry summon -----------------------------------------------------------
+
+func test_entry_summon_lays_its_escort_on_its_first_turn_and_then_walks() -> void:
+	var gate: Dictionary = _put(
+		_enemy([_ability(&"entry_summon", 2, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 1))
+	var col: int = int(gate["col"])
+	_turn()
+	assert_eq(GameLoop2.stack_size(), 3, "two escorts, laid beside it")
+	assert_eq(int(GameLoop2.entry_for(int(gate["instance"]))["col"]), col,
+		"and the first turn was spent on them rather than on closing")
+	# …and the SECOND turn is an ordinary one: this is not a spawner, and it does
+	# not print a second escort or stand still forever.
+	var standing: int = GameLoop2.stack_size()
+	_turn()
+	assert_eq(GameLoop2.stack_size(), standing, "nothing more is summoned")
+
+# THE PLACEMENT RULE ON ITS OWN, asked of the chooser rather than of the board.
+#
+# Read off `_adjacent_cells` because by the time a turn has finished resolving, an
+# escort laid beside the summoner may already have taken a step of its own — it is
+# an ordinary body from the moment it lands, and the board's mover reaches it in
+# the same pass on some orders. That is correct, and it makes "is it still next to
+# the summoner?" a question about the mover rather than about this ability.
+func test_entry_summon_only_ever_offers_squares_next_to_the_summoner() -> void:
+	var escort: GoalEnemyData = _enemy()
+	var gate: Dictionary = _put(
+		_enemy([_ability(&"entry_summon", 1, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 1))
+	var at := Vector2i(int(gate["col"]), int(gate["row"]))
+	var spots: Array = GameLoop2._adjacent_cells(gate, escort)
+	assert_false(spots.is_empty(), "a body in open board has somewhere to lay one")
+	for cell in spots:
+		assert_lte(absi(int(cell.x) - at.x), 1, "within a column of the summoner")
+		assert_lte(absi(int(cell.y) - at.y), 1, "and within a row of it")
+		assert_ne(cell, at, "never the square it is standing on")
+		assert_true(GameLoop2.fits_at(escort, int(cell.y), int(cell.x), 0),
+			"and never one the body would not fit in")
+
+func test_entry_summon_will_not_lay_a_body_on_an_occupied_neighbour() -> void:
+	# "If there is space", one square at a time: the cell in front is taken, so it
+	# is not among the ones offered, and the escort goes somewhere else.
+	var escort: GoalEnemyData = _enemy()
+	_put(_enemy([_ability(&"immobile")]), Vector2i(2, 1))
+	var gate: Dictionary = _put(
+		_enemy([_ability(&"entry_summon", 1, _one_cell_selector(), "One Cell")]),
+		Vector2i(3, 1))
+	var spots: Array = GameLoop2._adjacent_cells(gate, escort)
+	assert_false(spots.has(Vector2i(2, 1)), "the taken square is not on offer")
+	assert_false(spots.is_empty(), "and the rest of the ring still is")
+
+func test_an_entry_summon_boxed_in_lays_what_it_can_and_no_more() -> void:
+	# "If there is space", applied to a ring rather than to a single square: a body
+	# in the back corner has three neighbours, so a summoner asked for five escorts
+	# lays three and stops. The turn is spent either way — the intent took it.
+	var gate: Dictionary = _put(
+		_enemy([_ability(&"entry_summon", 5, _one_cell_selector(), "One Cell")]),
+		Vector2i(GameLoop2.grid_cols(), 0))
+	var col: int = int(gate["col"])
+	_turn()
+	assert_lt(GameLoop2.stack_size(), 6, "the corner could not hold five")
+	assert_gt(GameLoop2.stack_size(), 1, "but it held some")
+	assert_eq(int(GameLoop2.entry_for(int(gate["instance"]))["col"]), col,
+		"and the turn went on them regardless")
 
 # --- theft -----------------------------------------------------------------
 

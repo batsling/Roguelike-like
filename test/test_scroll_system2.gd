@@ -344,8 +344,12 @@ func test_fire_read_into_an_empty_room_still_burns_you() -> void:
 	var out: Dictionary = ScrollSystem.read_scroll(
 		Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "you burn regardless")
-	assert_true(str(out["logs"]).contains("Nothing out there is listening"),
-		"and the log says the room was empty")
+	# And the log says NOTHING about the half that found nobody: it lists what
+	# landed, so an empty room reads as one line about you rather than as a line
+	# about you and a line of flavour about the room.
+	assert_true(str(out["logs"]).contains("Burn"), "the half that landed is quoted")
+	assert_false(str(out["logs"]).contains("listening"),
+		"and the empty room is not narrated")
 
 func test_a_second_reading_cannot_push_burn_past_its_cap() -> void:
 	GameState.apply_status(&"burn", 2)

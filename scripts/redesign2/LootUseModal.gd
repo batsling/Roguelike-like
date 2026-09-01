@@ -166,15 +166,14 @@ func _show_intro() -> void:
 			# pretending the tile is a mystery.
 			_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
 		elif LootSystem.is_wand(_entry):
-			# A WAND'S GAMBLE LINE COUNTS ITS CHARGES (docs/wands-design.md §6.2).
-			# What is hidden is what the stick does; how many times it can do it is
-			# not part of the bet, and it is the number that decides whether the slot
-			# is worth holding for an unknown.
-			var bar: Array = LootSystem.charges(_entry)
+			# A WAND'S GAMBLE LINE DOES NOT COUNT ITS CHARGES (docs/wands-design.md
+			# §6.2). How many zaps are in an unknown stick is part of the bet — the
+			# two Legendaries carry one each and the Commons three or four, so a
+			# count the player could read would be the rarity ladder read aloud.
 			_body.add_child(_muted(
-				("Unidentified — zapping it is a gamble. Its Preference could be "
-				+ "Positive, Negative, or Neutral. %d of %d charges left, whatever "
-				+ "it turns out to be.") % [int(bar[0]), int(bar[1])]))
+				"Unidentified — zapping it is a gamble. Its Preference could be "
+				+ "Positive, Negative, or Neutral, and there is no telling how many "
+				+ "zaps are in it. One is how you find out both."))
 		else:
 			_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
 	if _echo_note() != "":

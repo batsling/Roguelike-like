@@ -454,18 +454,36 @@ func test_a_wand_reads_as_a_wand_everywhere_the_pack_asks() -> void:
 	assert_eq(LootSystem.charges({"type": "pill", "id": &"x"}), [0, 0],
 		"no other kind is counting")
 
-func test_the_hover_says_the_charges_whether_or_not_the_stick_is_known() -> void:
+func test_the_hover_counts_the_charges_only_once_the_stick_is_known() -> void:
+	# §6.2: the count is the rarity ladder read a second way, so it is hidden with
+	# the Preference rather than shown beside it.
 	var entry: Dictionary = _entry(&"wand_of_fire")
-	assert_string_contains(String(LootSystem.hover_card(entry).get("subtitle", "")),
-		"3 / 3 charges")
+	assert_false(String(LootSystem.hover_card(entry).get("subtitle", "")).contains("charges"),
+		"an unknown stick is not counted")
 	WandSystem.identify(&"wand_of_fire")
 	assert_string_contains(String(LootSystem.hover_card(entry).get("subtitle", "")),
-		"3 / 3 charges")
+		"3 / 3 charges", "a known one is")
 
-func test_an_unknown_wand_still_counts_its_charges_in_words() -> void:
+func test_an_unknown_wand_does_not_count_its_charges_in_words() -> void:
 	var entry: Dictionary = _entry(&"wand_of_fire")
 	entry["charges"] = 2
-	assert_string_contains(LootSystem.description(entry), "2 charges left")
+	assert_false(LootSystem.description(entry).contains("2 charges left"),
+		"the gamble line says nothing about how much is in it")
+	WandSystem.identify(&"wand_of_fire")
+	assert_string_contains(LootSystem.description(entry), "2 charges left",
+		"and identifying it is what buys the number")
+
+func test_the_mechanical_count_is_unconditional() -> void:
+	# What the pack HOLDS does not depend on what the player has worked out —
+	# `charges_known` is the display gate and `charges` is not gated at all, or
+	# every rule that reads a count would break on an unidentified stick.
+	var entry: Dictionary = _entry(&"wand_of_fire")
+	assert_eq(LootSystem.charges(entry), [3, 3], "counted whether or not known")
+	assert_false(LootSystem.charges_known(entry), "but not shown")
+	WandSystem.identify(&"wand_of_fire")
+	assert_true(LootSystem.charges_known(entry))
+	assert_false(LootSystem.charges_known({"type": "pill", "id": &"x"}),
+		"and no other kind is counting at all")
 
 # --- Identify and Amnesia reach wands like every other alphabet (§10) -----
 

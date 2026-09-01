@@ -44,7 +44,14 @@ PARAMS = {
     "amount, status type": ["amount", "status"],
     "amount, enemy type": ["amount", "enemy"],
     "amount, goods": ["amount", "goods"],
+    "amount, stats": ["amount", "stat"],
 }
+
+# The `stat` slot's whole vocabulary — Drain's second argument. Checked here
+# rather than at runtime because a misspelled stat is a silent no-op on the board:
+# `GameLoop2._drain_stat` would find no field to take a point off and the enemy's
+# card would go on promising one. Slugified spellings, as `_argument` writes them.
+STATS = ("max_health", "luck", "scramble", "bash", "dash", "transmute")
 
 TIERS = ("low", "medium", "high", "insane")
 
@@ -144,10 +151,14 @@ def _enemy_selector(text: str) -> str:
     return "enemy:" + slugify(text)
 
 
-def _argument(slot: str, text: str) -> str:
+def _argument(slot: str, text: str, where: str = "?") -> str:
     if slot == "enemy":
         return _enemy_selector(text)
-    return slugify(text)
+    out = slugify(text)
+    if slot == "stat" and out not in STATS:
+        print("  ! %s: %r is not a drainable stat (%s)"
+              % (where, text, ", ".join(STATS)))
+    return out
 
 
 def parse_one(token: str, cat: dict, where: str) -> dict:
@@ -190,7 +201,7 @@ def parse_one(token: str, cat: dict, where: str) -> dict:
                 print("  ! %s: %s is missing its %s argument"
                       % (where, spec["name"], slot))
                 continue
-            out["arg"] = _argument(slot, text)
+            out["arg"] = _argument(slot, text, where)
             out["text"] = text
     return out
 

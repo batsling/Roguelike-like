@@ -11,6 +11,103 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The checklist says which half of a goal a buff put there.**
+
+  A status on a body — or on the *player*, which taxes every body's goal — adds a
+  clause: *"and you must get 3 achievements"*. `goal_text_for` joins those onto the
+  goal as one run-on sentence, and this list printed that sentence whole, in the
+  row's own grey. The one question a player asks of a goal line is which part of it
+  a buff put there, and the line answered it only by being read carefully.
+
+  So the enemy row carries the **goal and the name** now, and each add-on hangs
+  under it as its own indented row in the colour that says what kind it is: the
+  required clauses **red**, the ways out and the bonuses gold. That is the split
+  the game-choice modal and the enemy card have drawn with `UITheme.addon_row` for
+  as long as it has existed, in this list's own furniture. A clause row has no tick
+  box — it is not something you claim, it is part of what has to be true before the
+  row above it can be ticked.
+
+  It also **stops the list saying the same thing twice**: `goal_text_for` carries
+  the `instead` add-ons too, and `_add_instead_rows` has drawn those separately all
+  along, so an enemy with a way out had it in the sentence *and* under it.
+
+  The **record** is unchanged and still takes the full sentence — a line in the
+  completed-goals log has no rows beneath it to carry the clauses.
+
+- **A body's buffs ride its checklist portrait.**
+
+  The board draws a body's statuses as pips beneath it; this list drew them
+  nowhere. A clause only ever appears for a status whose goal-facing side does
+  something, so a Strength on the front-line body said *nothing at all* on the one
+  screen the player is looking at while deciding what to do about it.
+
+  The portrait grows a strip of its own, in the same place and order the board puts
+  it. Small (14px against the portrait's 26) and flowed to the portrait's own
+  width, so a body carrying six of them stacks tight lines under its picture rather
+  than shoving the goal text off the right of the column; past six the tail is a
+  `+N` chip, because the exact count of a long one is a question for the hover and
+  these rows have a 625px page to fit inside.
+
+  **The winning-run review got its pictures too.** The confirm behind "✓ Completed
+  Game" is the last screen before the claim is irreversible, and it was the one
+  place the leading symbol was dropped — so a status goal leads with its own
+  symbol there and the level-up row with the character's icon, exactly as they do
+  on the list behind the panel.
+
+- **A wand does not say how many charges it has until you know what it is.**
+
+  This reverses §6.2 of the wands design, which had the count shown either way on
+  the argument that how many zaps are left is what you are buying a slot for. It
+  is — and that is exactly why knowing it for free was worth too much. The charge
+  count is the rarity ladder read a second way: the two Legendaries carry one each
+  and the Commons three or four, so a readable count handed the player the rung
+  without a zap being spent, and let them decide about the slot on arithmetic
+  instead of on the risk. One zap answers both questions at once, which is what a
+  zap is for.
+
+  `LootSystem.charges_known` is the single gate the tile plate, the hover subtitle
+  and the gamble line all ask; the pack tile keeps its bottom-left plate and wears
+  a `?` in it, because a blank corner would say this stick has *no* charges rather
+  than that you have not counted them. `LootSystem.charges` stays unconditional —
+  what the pack holds does not depend on what the player has worked out — and the
+  outcome screen still counts unconditionally, since reaching it means the stick is
+  already identified.
+
+- **Two new enemy abilities, and the sheet rows behind them.**
+
+  **Entry Summon (X, Y)** is a summoner that is not a wall: it spends its *first*
+  turn laying X escorts and every turn after that walking and swinging like
+  anything else. The escorts go on random free squares **adjacent** to it rather
+  than in the single cell in front — the square a Nested Spawner uses, and what
+  makes a boxed-in one idle — so a full lane slows it rather than stopping it. Each
+  square is rolled against the board as it stands, so escort two goes somewhere
+  escort one left free and one with nowhere to go is simply not laid.
+
+  **Drain (X, Y)** is the one attack rider that takes something killing the body
+  does not give back. A thief holds its haul and drops it when it dies; Degradation
+  burns loot the next chest replaces; Drain takes a permanent point off Max Health,
+  Luck, Scramble, Bash, Dash or Transmute. Nothing goes below zero, and Max Health
+  stops at 1 — a run is lost by Health reaching 0, not by its ceiling doing it.
+
+  The Gatekeeper carries both. The generator learned the `Amount, Stats` variables
+  shape for Drain's second argument and **checks it against the six stat names**,
+  because a misspelled one is a silent no-op on the board with the enemy's card
+  still promising it.
+
+- **The Fire tile stops naming the Landmine, and the Scroll of Fire stops
+  narrating an empty room.**
+
+  Every authored interaction becomes a line on that thing's hover card, and a
+  burning square has no business teaching the player about a unit they may never
+  own. The pairing is unchanged — the Landmine still authors `tile fire` and
+  `_settle_cell` unions the two sides — so fire dropped on a mine and a mine
+  dropped in fire still annihilate each other. Only the half that *says* it moved.
+
+  The scroll's status clause said "Nothing out there is listening." when it found
+  nobody, which read as a fourth thing the scroll did rather than as the absence of
+  a third. The log is a list of what landed, and a clause that landed on nothing
+  belongs in it exactly as much as one that was never authored.
+
 - **"✓ Completed Game" asks, and what it asks with is the winning-run rows.**
 
   Every other row on the checklist raises its own "did you really?" the moment it

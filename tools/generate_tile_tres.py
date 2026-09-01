@@ -47,12 +47,15 @@ INTERACTIONS DSL — semicolon-separated, one pairing per `<kind> <id>:` header:
   detonate_unit  the unit standing on the cell goes off where it is
   remove_tile    the tile effect on the cell is cleared
 
-Parsed into {"unit:landmine": ["detonate_unit", "remove_tile"]}. BOTH SIDES of a
-pairing author the same outcome — Fire names the Landmine in `tiles2.0` and the
-Landmine names Fire in `units2.0` — because the two are one event and the player
-will look it up from whichever half they are holding. The runtime unions the two
-lists, so an interaction authored on one side only still resolves; authoring it on
-both is what keeps either sheet readable on its own.
+Parsed into {"unit:landmine": ["detonate_unit", "remove_tile"]}. EITHER SIDE of a
+pairing may author it and the runtime UNIONS the two lists, so an interaction
+written on one sheet only still resolves from both directions.
+
+Which side to write it on is a WORDING decision, not a mechanical one: every
+authored pairing becomes a line on that thing's hover card. The Fire/Landmine
+pairing lives on the Landmine alone for exactly that reason — a mine is worth
+explaining to whoever is holding one, and a burning square is not the place to
+teach a player about a unit they may never own.
 
 DECAY is read in GAMES ("3 Games"), never in turns. How many turns a game buys is
 read off the distance to the Amulet (§7.4), so a tile authored in turns would burn
