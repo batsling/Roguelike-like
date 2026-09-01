@@ -893,6 +893,78 @@ func test_a_ticked_status_goal_stays_where_it_is() -> void:
 	assert_true((_ui._status_goal_checks[0]["check"] as CheckBox).button_pressed,
 		"the tick survived the rebuild")
 
+# --- a buff on a body, said twice: in red words, and in pictures -----------
+
+func test_a_buffs_clause_is_its_own_red_row_under_the_goal() -> void:
+	# The goal row carries the GOAL. What a status added to it hangs under it in
+	# red, because the one question a player asks of a goal line is which half of
+	# it a buff put there.
+	_reboot(&"isaac")
+	_ui.pick(0)
+	GameLoop2.apply_enemy_status(&"strength", 1, "current")
+	_ui._populate_play_panel()
+	var entry: Dictionary = GameLoop2.arrival()
+	var clause: String = ""
+	for addon in GameLoop2.goal_addons_for(entry):
+		if String(addon["kind"]) == "clause":
+			clause = "%s %s" % [addon["joiner"], addon["text"]]
+	assert_ne(clause, "", "the Strength put a required clause on the goal")
+	var goal_row: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(entry))
+	assert_gt(goal_row, -1, "the goal row says the goal and the body's name")
+	var clause_row: int = _row_index("•  %s" % clause)
+	assert_gt(clause_row, goal_row, "and the clause is a row UNDER it")
+	# …and the goal row does not also carry it. This is the half that was said
+	# twice before the add-ons became rows.
+	for label in _labels_under(_ui._verify_box):
+		if String(label).begins_with("Cleared:"):
+			assert_false(String(label).contains(String(clause).substr(4)),
+				"the sentence form is not repeated on the row: %s" % label)
+
+func test_a_required_clause_row_is_drawn_in_the_danger_colour() -> void:
+	_reboot(&"isaac")
+	_ui.pick(0)
+	GameLoop2.apply_enemy_status(&"strength", 1, "current")
+	_ui._populate_play_panel()
+	var want: Color = UITheme.addon_color(true)
+	assert_eq(want, UITheme.DANGER, "required reads as a threat (§13)")
+	var found: bool = false
+	for label in _all_labels_under(_ui._verify_box):
+		if not String((label as Label).text).begins_with("•  and"):
+			continue
+		found = true
+		assert_eq((label as Label).get_theme_color("font_color"), want,
+			"the clause row is red: %s" % (label as Label).text)
+	assert_true(found, "a clause row was drawn at all")
+
+func test_a_buffed_body_wears_its_statuses_under_its_checklist_portrait() -> void:
+	# The board draws a body's statuses beneath it; so does its row here, so the
+	# two halves of the screen say the same thing in the same way.
+	_reboot(&"isaac")
+	_ui.pick(0)
+	assert_eq(_strips_under(_ui._verify_box).size(), 0,
+		"an unbuffed board puts no strip on any row")
+	GameLoop2.apply_enemy_status(&"strength", 1, "current")
+	_ui._populate_play_panel()
+	var strips: Array = _strips_under(_ui._verify_box)
+	assert_eq(strips.size(), 1, "the one buffed body grew one")
+	assert_gt((strips[0] as Control).get_child_count(), 0, "carrying a chip")
+
+func _all_labels_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Label:
+			out.append(child)
+		out.append_array(_all_labels_under(child))
+	return out
+
+func _strips_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child is Control and (child as Control).has_meta(&"buff_strip"):
+			out.append(child)
+		out.append_array(_strips_under(child))
+	return out
+
 func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
 	# The exception. A body with more Health than one goal completion can take is
 	# ANSWERED without being FINISHED — it is still standing on the board beside
@@ -2972,7 +3044,11 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 func _texture_rects_under(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
-		if child.has_meta(&"character_portrait"):
+		# Neither the player's own face nor a body's BUFF PIPS are bodies on the
+		# board, and this walk is how "how many bodies are on this list" is
+		# answered. Both mark themselves; the strip marks the whole subtree, since
+		# every chip in it is one of these.
+		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip"):
 			continue
 		if child is TextureRect and (child as TextureRect).texture != null:
 			out.append(child)
@@ -8074,6 +8150,45 @@ func test_the_review_note_is_dropped_on_no() -> void:
 	_say_no(_ui)
 	assert_eq(GameStats.level_up_note(game.id, GameState.character_id), "",
 		"a No throws the note away with the panel")
+
+# THE REVIEW LEADS EACH ROW WITH THE SAME PICTURE THE LIST BEHIND IT DOES: the
+# status's own symbol for a standing status goal, the character's icon for the
+# level-up. This is the last screen before the claim is irreversible, and it was
+# the one place they were dropped — a row reading "Bloodlust ×3 — …" here looked
+# like a different row from the one carrying the Bloodlust symbol behind it.
+func test_the_review_rows_carry_the_pictures_their_checklist_rows_do() -> void:
+	_reboot(&"isaac")                     # Isaac has a level-up condition
+	GameState.apply_status(&"strength", 1)  # …and this is a standing status goal
+	_ui.pick(0)
+	var review: Control = _ui._checklist.winning_run_review()
+	assert_not_null(review, "there is something to review")
+	if review == null:
+		return
+	# Every mirrored row leads with a picture, and both kinds are represented. The
+	# character's icon is counted separately because `_texture_rects_under` skips
+	# it on purpose — it is not a body on the board.
+	var rows: int = 0
+	var faces: int = 0
+	var symbols: int = 0
+	for line in review.get_children():
+		if not (line is HBoxContainer):
+			continue
+		rows += 1
+		symbols += _texture_rects_under(line).size()
+		faces += _character_icons_under(line).size()
+	assert_gt(rows, 1, "the level-up and the status goal are both mirrored")
+	assert_eq(symbols + faces, rows, "and each row leads with exactly one picture")
+	assert_eq(faces, 1, "the level-up row wears the character's own face")
+	assert_gt(symbols, 0, "and a status goal wears its status's symbol")
+
+func _character_icons_under(node: Node) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child.has_meta(&"character_portrait"):
+			out.append(child)
+			continue
+		out.append_array(_character_icons_under(child))
+	return out
 
 # A run with no status goals and a character with no level-up has nothing to
 # review, and the confirm is then just the question.

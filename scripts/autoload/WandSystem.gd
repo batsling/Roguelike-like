@@ -29,6 +29,12 @@ extends Node
 # decisions rather than five gambles — which is what makes the first zap worth
 # taking on a stick you know nothing about.
 #
+# THE COUNT IS PART OF WHAT IDENTIFYING BUYS (§6.2). An unknown stick does not say
+# how many zaps are in it, on any surface: the two Legendaries carry one charge
+# each and the Commons three or four, so a readable count would hand the player the
+# rarity ladder for free. `LootSystem.charges_known` is the one gate every screen
+# asks; `charges_of` stays the mechanical answer and does not care.
+#
 # Content lives in the `wands` sheet of tools/Roguelikes.xlsx, generated into
 # data/wands2.0/*.tres by tools/generate_wand2_tres.py.
 
@@ -563,19 +569,18 @@ func material_credit(entry: Dictionary) -> String:
 	return material_source(material_for(wand.id))
 
 # What the wand does, in words. The sheet's own prose once it is known, and the
-# gamble line before that — with the CHARGES said either way, because how many
-# times a stick can be fired is the one fact about it that is never hidden. It is
-# what the player is buying a slot for, and a mystery wand you cannot count is a
-# mystery about whether to carry it as well as about what it does.
+# gamble line before that — with the CHARGES said only on the known half. The count
+# used to be said either way; it is hidden now for the same reason the Preference
+# is (§6.2), and because "one charge" is the tell that would separate the two
+# Legendaries from the rest of the ladder without a zap being spent.
 func description(entry: Dictionary) -> String:
 	var wand: WandData = data_for(entry)
 	if wand == null:
 		return ""
-	var left: int = charges_of(entry)
-	var counted: String = "%d charge%s left." % [left, "" if left == 1 else "s"]
 	if not is_identified(wand.id):
-		return "You don't know what this one does. Zapping it is how you find out. %s" % counted
-	return "%s  %s" % [wand.description, counted]
+		return "You don't know what this one does, or how many zaps are in it. Zapping it is how you find out both."
+	var left: int = charges_of(entry)
+	return "%s  %d charge%s left." % [wand.description, left, "" if left == 1 else "s"]
 
 # The Preference, hidden until the stick is known — the gamble is only a gamble
 # because this is hidden, exactly as it is for a scroll and a potion.

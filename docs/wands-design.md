@@ -304,18 +304,34 @@ rung and its one charge are paying for.
 ### 6.1 In the pack
 
 The tile carries **two** corner plates. Bottom-right is the Preference badge every
-other kind wears (`?` while unknown); **bottom-left is the charge count**, and it
-is drawn whether or not the stick is known. The button under it says **Zap** rather
-than Use, which is the one place a 40px tile can say that pressing this does not
-empty the slot.
+other kind wears (`?` while unknown); **bottom-left is the charge count**, which
+wears a `?` of its own while unknown for the same reason — a blank corner would say
+this stick has no charges rather than that you have not counted them. The button
+under it says **Zap** rather than Use, which is the one place a 40px tile can say
+that pressing this does not empty the slot.
 
-### 6.2 Charges are never hidden
+### 6.2 Charges are hidden until the type is known
 
-How many zaps are left is not part of the gamble. It is what the player is buying a
-slot for, and a mystery wand you cannot count is a mystery about whether to carry
-it as well as about what it does. So the count appears on the tile, in the hover
-subtitle beside the Preference, in the description line, and on the outcome screen
-("5 of 6 charges left." / "The wand is spent.") — known or not.
+How many zaps are left **is** part of the gamble. The charge count is the rarity
+ladder read a second way (§5) — the two Legendaries carry one each and the Commons
+three or four — so a count the player could read on an unidentified stick would
+hand them the rung without a zap being spent, and let them decide about the slot on
+arithmetic instead of on the risk. One zap answers what it does and how much of it
+there is at the same time, which is what the zap is for.
+
+So the count appears on the tile, in the hover subtitle beside the Preference, and
+in the description line **only once the type is identified**. `LootSystem.charges_known`
+is the single gate all three ask; `LootSystem.charges` / `WandSystem.charges_of`
+stay the mechanical answer and are unconditional, because what the pack holds does
+not depend on what the player has worked out.
+
+The **outcome screen** is the exception that proves it: "5 of 6 charges left." /
+"The wand is spent." is drawn unconditionally, because reaching that screen means
+the zap has already landed and the stick is identified by the time it is read.
+
+This reverses the original decision (charges never hidden), which argued that the
+count is what the player is buying a slot for. It is — and that is exactly why
+knowing it for free was worth too much.
 
 ### 6.3 There is no identified wand art
 

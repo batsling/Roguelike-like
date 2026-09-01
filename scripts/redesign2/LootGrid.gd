@@ -379,19 +379,22 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
 		band.add_child(badge)
-	# A WAND WEARS ITS COUNT IN THE OTHER CORNER (docs/wands-design.md §6.4), and
-	# wears it whether or not the stick is known — how many zaps are left is never
-	# part of the gamble, and it is the number that decides whether the slot is
-	# still worth holding. Bottom-LEFT, because bottom-right is the Preference's and
-	# the two answer different questions: what this would do to you, and how much of
-	# it there is left.
+	# A WAND WEARS ITS COUNT IN THE OTHER CORNER (docs/wands-design.md §6.2).
+	# Bottom-LEFT, because bottom-right is the Preference's and the two answer
+	# different questions: what this would do to you, and how much of it there is
+	# left. An UNKNOWN stick wears a `?` in the same plate rather than nothing at
+	# all: the corner is how a tile reads as a wand at 40px, and a blank one would
+	# say this stick has no charges rather than that you have not counted them.
 	if LootSystem.is_wand(entry):
+		var counted: bool = LootSystem.charges_known(entry)
 		var bar: Array = LootSystem.charges(entry)
-		var count := UITheme.chip("%d" % int(bar[0]), WandSystem.WAND_COLOR, 9)
+		var count := UITheme.chip("%d" % int(bar[0]) if counted else "?",
+			WandSystem.WAND_COLOR if counted else UITheme.TEXT_FAINT, 9)
 		count.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 		count.grow_horizontal = Control.GROW_DIRECTION_END
 		count.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])]
+		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])] \
+			if counted else "Zap it to find out what it is — and how much of it is left."
 		band.add_child(count)
 	col.add_child(band)
 

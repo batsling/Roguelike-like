@@ -489,7 +489,11 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 		return
 	var landed: int = GameLoop2.apply_enemy_status(status_id, stacks, target)
 	if landed <= 0:
-		out["logs"].append("Nothing out there is listening.")
+		# NOTHING IS SAID when the clause found nobody. It used to append a line
+		# of flavour ("Nothing out there is listening."), which read as a fourth
+		# thing the scroll did rather than as the absence of a third: the log is
+		# a list of what LANDED, and a clause that landed on nothing belongs in
+		# it exactly as much as a clause that was never authored.
 		return
 	out["logs"].append("%d %s gain +%d %s." % [
 		landed, "enemy" if landed == 1 else "enemies", stacks, status.display_name])

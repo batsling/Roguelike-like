@@ -1647,12 +1647,14 @@ as §7.4's ladder says anything can.
 | **Invisibility** | The board draws **nothing** — no node, no badge, no hover, and hovering its checklist row lights no square. Its **goal is still on the checklist**: you were told what walked on, not where. It blocks a lane, it walks, and a bomb aimed at that *square* still finds it. It gives itself away the moment it swings. |
 | **Predatory Scent** | An extra turn only when the player **had a status goal and met none of them**. Both halves are the ability. Runs as a turn of its own rather than by bumping the count — it is a free swing for two or three bodies, not the board's pace changing. |
 | **Necromancy (X)** | Raises from **this run's graveyard** — the same list the board's ☠ Fallen panel shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
+| **Entry Summon (X, Y)** | A summoner that is **not a wall**: it spends its *first* turn laying X escorts and every turn after that walking and swinging like anything else. The escorts go on **random free squares adjacent to it** rather than in the single cell in front (which is what `_brood_cell` is, and what makes a boxed-in Nested Spawner idle) — so a full lane slows it down instead of stopping it. Each square is rolled against the board *as it stands*, so escort two goes somewhere escort one left free, and one with nowhere to go is simply not laid. |
+| **Drain (X, Y)** | The one rider that takes something **killing the body does not give back**. A thief holds its haul and drops it when it dies; Degradation burns loot the next chest replaces; Drain takes a permanent point off Max Health, Luck, Scramble, Bash, Dash or Transmute. Nothing goes below 0, and **Max Health stops at 1** — a run is lost by Health reaching 0, not by its ceiling doing it. It goes through `grant_run_stat`'s own field map, so `dash` finds `dash_charges`. |
 | **Ritual** | Only the **first** turn is spent. Every turn after, the +1 Strength rides a turn the body also walks or swings on — a Ritual that spent every turn stacking would never attack, and the Strength it piled up would never be spent on anything. |
 | **Fireproof** | Refused inside `_add_status_to`, so every route a Burn can arrive by is covered at once — a fire tile, a Scroll of Fire, another enemy's Infliction, a Bolster aura lending it. |
 | **Fading (X)** | A combat is a **game**, so it ticks with the tiles and the borrowed statuses at the end of a report. Running out is a **death**: its own Aftermath fires and its face joins the graveyard. It pays nothing, because nobody did its goal. |
 
-**A SUMMONED BODY IS AN ORDINARY BODY.** Illusionist, Necromancy, Nested Spawner
-and Split all put real enemies on the board: they carry goals, and clearing one
+**A SUMMONED BODY IS AN ORDINARY BODY.** Illusionist, Necromancy, Nested Spawner,
+Entry Summon and Split all put real enemies on the board: they carry goals, and clearing one
 pays its loot, its gold and its chest point like anything else. That is the trade
 a spawner offers — it is printing threats *and* rewards, and which of those it
 turns out to be depends entirely on whether you keep up with the goals.
@@ -2635,6 +2637,28 @@ spawns while it is owned.
   place instead. `goal_text_for` is written from the same list, minus the
   `bonus` rows — optional was never part of the sentence of what is asked — so
   the row form and the sentence form cannot word an add-on differently.
+- **The CHECKLIST draws rows too, in its own furniture.** Its enemy row carries
+  `GameLoop2.entry_goal` and the enemy's name and nothing else
+  (`ReportChecklist._goal_row_text`); each add-on hangs under it, indented, in the
+  colour for its kind — `_add_clause_rows` red, `_add_instead_rows` and
+  `_add_bonus_rows` gold. It used to print `goal_text_for` whole, which both left
+  the half that HURTS unmarked and said the `instead` twice, since the instead
+  rows have always been drawn separately. A clause row has **no tick box**: it is
+  not something you claim, it is part of what has to be true before the row above
+  it can be ticked. The **record** still takes the full sentence — a line in the
+  completed-goals log has no rows under it to carry the clauses.
+- **A body's statuses ride its checklist portrait**, as a strip of small chips
+  under the picture (`ReportChecklist._buff_strip`), in the same place the board
+  puts its pips. The clause rows only ever show a status whose goal-facing side
+  did something; a Strength on the front-line body changes no goal and so said
+  nothing on the one screen the player reads while deciding what to do about it.
+  Capped at `BUFF_STRIP_MAX` with a `+N` chip past that, and flowed to the
+  portrait's own width, because these rows have a 625px page to fit inside.
+- **The winning-run REVIEW mirrors those pictures too.** The confirm behind
+  "✓ Completed Game" is the last screen before the claim is irreversible, and it
+  used to be the one place the leading symbol was dropped — so each row now
+  carries a `mark` (which status at what stack, or which character), and
+  `_review_mark` builds a second chip from it rather than reparenting the list's.
 - **Applying one** — the `apply_status` effect (`apply_status <id> [N]
   [target=player|current|all|random]` in the item Effect DSL). `player` is the
   default; `current` / `all` / `random` route through

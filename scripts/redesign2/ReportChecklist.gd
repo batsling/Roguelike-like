@@ -190,9 +190,14 @@ func populate_play_panel() -> void:
 		_add_row(srow["row"], GameLoop2.row_answered("status:%s" % key), true)
 		status_goal_checks.append({"check": srow["check"], "status": key})
 		_arm_winning_row(srow["check"], "status:%s" % key)
+		# The mark is described rather than handed over: the confirm's review is
+		# built later and from a different frame, and a Control built here would
+		# either be reparented out of this list or be a freed node by then. So the
+		# row carries what it takes to build a SECOND one — see `_review_mark`.
 		winning_rows.append({"check": srow["check"],
 			"label": "%s ×%d — %s" % [sd.display_name, stacks,
 				sd.objective_text(StatusData.PLAYER, stacks)],
+			"mark": {"status": sd, "stacks": stacks, "games": games},
 			"note": _status_note_hooks(sd)})
 
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
@@ -212,7 +217,7 @@ func populate_play_panel() -> void:
 		_add_row(lu_row["row"], GameLoop2.row_answered(LEVELUP_KEY), true)
 		_arm_winning_row(lu_row["check"], LEVELUP_KEY)
 		winning_rows.append({"check": lu_row["check"], "label": lu_text,
-			"note": _level_up_note_hooks(ch)})
+			"mark": {"character": ch}, "note": _level_up_note_hooks(ch)})
 
 	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
 	# sections, deliberately: the checklist now carries three kinds of objective
@@ -233,14 +238,19 @@ func populate_play_panel() -> void:
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry["instance"])
 		var e: GoalEnemyData = entry["enemy"]
-		var row := verify_row("Cleared: %s — %s" % [
-			GameLoop2.goal_text_for(entry), e.display_name], UITheme.TEXT, false, e, null, inst)
+		var row := verify_row(_goal_row_text(entry), UITheme.TEXT, false, e, null, inst)
 		# NEVER SUNK, even when it has been ticked: a body still on the stack after
 		# its goal was met is one with Health left over (effective_health > 1), and
 		# it is still standing on the board beside this list.
 		_add_row(row["row"])
 		fulfil_checks.append({"check": row["check"], "instance": inst})
 		_arm_goal_row(row["check"], inst, e)
+		# The add-ons, each in the colour that says which kind it is: the required
+		# clauses in red first (they tighten the row above), then the ways out and
+		# the bonuses in gold. Order is the sentence's own — `goal_text_for` reads
+		# "…and you must X or instead Y", and a list that put the way out above the
+		# condition would be reading it backwards.
+		_add_clause_rows(entry)
 		_add_instead_rows(entry)
 		_add_bonus_rows(entry)
 	# A BODY YOU ALREADY KILLED THIS GAME still has a line on this list, and its
@@ -254,6 +264,19 @@ func populate_play_panel() -> void:
 	# …and everything finished, under everything still to do.
 	_flush_sunk()
 
+# THE WORDS ON A BODY'S GOAL ROW: the goal, and whose it is. NOT `goal_text_for`,
+# which joins the add-ons onto it as one run-on sentence — on this list each add-on
+# is a row of its own beneath this one, coloured for the kind it is
+# (_add_clause_rows / _add_instead_rows / _add_bonus_rows).
+#
+# The RECORD still takes the full sentence (`record_completed_goal` in
+# _arm_goal_row): a line in the completed-goals log has no rows under it to carry
+# the clauses, so dropping them there would be dropping half of what was done.
+func _goal_row_text(entry: Dictionary) -> String:
+	var e: GoalEnemyData = entry.get("enemy")
+	return "Cleared: %s — %s" % [GameLoop2.entry_goal(entry),
+		e.display_name if e != null else "it"]
+
 # The rows a body defeated MID-GAME leaves behind: its own, ticked and locked, and
 # whatever bonus objectives it was carrying, still open.
 func _add_ghost_rows(instance: int) -> void:
@@ -263,9 +286,7 @@ func _add_ghost_rows(instance: int) -> void:
 	var e: GoalEnemyData = entry.get("enemy")
 	if e == null:
 		return
-	var row := verify_row("Cleared: %s — %s" % [
-		GameLoop2.goal_text_for(entry), e.display_name],
-		UITheme.TEXT, false, e, null, 0)
+	var row := verify_row(_goal_row_text(entry), UITheme.TEXT, false, e, null, 0)
 	# A body that went down is a finished goal, so its row sinks with the other
 	# finished ones — and its still-open bonus goes with it rather than being left
 	# behind on its own, because a bonus with no body above it names nothing.
@@ -587,6 +608,53 @@ func _add_instead_rows(entry: Dictionary) -> void:
 	# of the read-only lines use.
 	for row in GameLoop2.nullified_alternatives_for(entry):
 		_add_row(_nullified_row(row), false, true)
+
+# THE REQUIRED CLAUSES, IN RED, UNDER THE GOAL THEY TIGHTEN (§13).
+#
+# A status on the body — or on the PLAYER, which taxes every body's goal — adds a
+# condition: "and you must get 3 achievements". `goal_text_for` joins those onto
+# the goal with "and" as one run-on sentence, and this list used to print that
+# sentence whole in the row's own colour. Two things were wrong with it:
+#
+#   * THE HALF THAT HURTS WAS NOT MARKED. The one question the player asks of a
+#     goal line is which part of it a buff put there, and a clause set in the same
+#     grey as the goal it hangs off answers that only by being read carefully.
+#   * IT WAS SAID TWICE. `goal_text_for` also carries the `instead` add-ons, and
+#     `_add_instead_rows` has drawn those as rows of their own for as long as it
+#     has existed — so an enemy with a way out had it in the sentence AND under it.
+#
+# So the goal row now carries the goal (`entry_goal`) and nothing else, and each
+# add-on is a row beneath it in the colour that says which kind it is: red here,
+# gold for the ways out and the bonuses. That is the same split the game-choice
+# modal and the enemy card already draw with `UITheme.addon_row`, in this list's
+# own row furniture.
+#
+# READ-ONLY, with no tick box. A clause is not something you claim — it is part of
+# what has to be true before the goal row above it can be ticked — and a box that
+# could be ticked and did nothing would say the opposite.
+func _add_clause_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	for addon in GameLoop2.goal_addons_for(entry):
+		if String(addon.get("kind", "")) != "clause":
+			continue
+		var sd: StatusData = addon.get("status")
+		var stacks: int = int(addon.get("stacks", 0))
+		var games: int = int(addon.get("games", 0))
+		# WHOSE STATUS IT IS decides which side the chip's hover quotes: a clause can
+		# come from the body (`enemy`) or from the PLAYER, whose own statuses tax
+		# every body's goal at once, and the two sides of a status say different
+		# things. `goal_addons_for` already carries the answer.
+		var which: StringName = StatusData.PLAYER \
+			if String(addon.get("source", "enemy")) == "player" else StatusData.ENEMY
+		# The joiner leads, exactly as it does in `UITheme.addon_row` and for the
+		# same reason: "and you must …" says how this row relates to the one above
+		# it, where a row opening on the condition reads as a second goal.
+		_add_row(_objective_row("%s %s" % [String(addon.get("joiner", "and")),
+			String(addon.get("text", ""))],
+			UITheme.addon_color(true), null, instance,
+			_status_mark(sd, stacks, which, false, games)), false, true)
 
 func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
@@ -937,12 +1005,44 @@ func winning_run_review() -> Control:
 		if cb == null or not is_instance_valid(cb):
 			continue
 		col.add_child(_review_row(cb, String(row.get("label", "")),
-			row.get("note", {})))
+			row.get("note", {}), row.get("mark", {})))
 	return col
 
-func _review_row(cb: CheckBox, label: String, note: Dictionary) -> Control:
+# THE PICTURE A REVIEW ROW LEADS WITH — the status's own symbol for a standing
+# status goal, the character's icon for the level-up.
+#
+# The rows behind this panel have led with one for as long as the checklist has
+# had portraits, and this panel — the last screen the player sees before the claim
+# is irreversible — was the one place they were dropped, so the row that says
+# "Bloodlust ×3 — …" here looked like a different row from the one carrying the
+# Bloodlust symbol on the list behind it. Matching them is the whole of what makes
+# the review readable as a mirror rather than as a fresh set of questions.
+#
+# A SECOND control rather than the list's own: the review is built when the confirm
+# opens, and a Control moved out of the checklist would be missing from the list
+# behind the panel and freed with the panel when it closes. `mark` carries the
+# facts (which status, at what stack, on what clock — or which character) so this
+# can build its own from them.
+func _review_mark(mark: Dictionary) -> Control:
+	if mark.is_empty():
+		return null
+	var ch: CharacterData = mark.get("character")
+	if ch != null:
+		return _character_icon_rect(ch)
+	var sd: StatusData = mark.get("status")
+	if sd == null:
+		return null
+	return _status_mark(sd, int(mark.get("stacks", 1)), StatusData.PLAYER,
+		false, int(mark.get("games", 0)))
+
+func _review_row(cb: CheckBox, label: String, note: Dictionary,
+		mark: Dictionary = {}) -> Control:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
+
+	var icon: Control = _review_mark(mark)
+	if icon != null:
+		line.add_child(icon)
 
 	var mirror := CheckBox.new()
 	mirror.text = label
@@ -1504,6 +1604,74 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
 	frame.add_child(UITheme.crisp_tex(picture, PORTRAIT_SIZE))
 	return frame
 
+# --- the buffs a body is carrying, UNDER ITS PICTURE (§13) ------------------
+#
+# The board draws a body's statuses as a strip of pips beneath it
+# (BattlefieldView's status strip), and this list drew them nowhere: a buffed
+# enemy's row differed from an unbuffed one only in the red clause hanging off it,
+# and a clause is only ever added by a status the goal-facing SIDE of which does
+# something. A Strength on the front-line body changes nothing about the goal and
+# so said nothing here, on the one screen the player is looking at while deciding
+# what to do about it.
+#
+# So the portrait grows a strip of its own, in the same place and the same order
+# the board puts it, and pairing a row with its body stays the glance it became
+# when the portraits arrived.
+#
+# SMALL, AND IT WRAPS WIDE RATHER THAN TALL. These are 12px against the portrait's
+# 26 — the board's pips are the readable copy and these are the reminder that there
+# ARE some.
+#
+# The strip is THREE CHIPS WIDE, not one portrait wide, and that is the whole
+# geometry decision. Capped to the portrait's own 26px it fits one chip per line,
+# so a body carrying three of them stood a 26px picture on top of three stacked
+# rows and made its checklist line half as tall again as the two lines of goal text
+# beside it. HEIGHT is the scarce thing on this page (the left column measures 590
+# of the 625 a 720p window leaves), width is not: three across costs the wrapped
+# text 26px and keeps the common case — one, two or three buffs — to a single line
+# under the picture, with six fitting in two.
+#
+# Past BUFF_STRIP_MAX the overflow is a "+N" chip rather than more rows: the exact
+# count of a long tail is a question for the body's hover.
+const BUFF_ICON_SIZE := 12
+const BUFF_STRIP_MAX := 6
+const BUFF_STRIP_W := 52
+
+func _buff_strip(entry: Dictionary) -> Control:
+	var rows: Array = GameLoop2.enemy_statuses(entry)
+	if rows.is_empty():
+		return null
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 2)
+	flow.add_theme_constant_override("v_separation", 2)
+	flow.custom_minimum_size = Vector2(BUFF_STRIP_W, 0)
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	# Marked so the page's fit and portrait-counting walks can tell these chips
+	# apart from the row's own picture — both checklists count bodies by walking for
+	# TextureRects, and a buff pip is not a body (see test_overworld2's
+	# _texture_rects_under, which reads the same meta the character icon carries).
+	flow.set_meta(&"buff_strip", true)
+	var shown: int = mini(rows.size(), BUFF_STRIP_MAX)
+	for i in range(shown):
+		var row: Dictionary = rows[i]
+		var sd: StatusData = row["status"]
+		if sd == null or sd.image == null:
+			continue
+		var chip := PanelContainer.new()
+		chip.add_theme_stylebox_override("panel",
+			UITheme.flat(UITheme.BG, 3, 1, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.35)))
+		chip.add_child(UITheme.timed_art(sd.image, BUFF_ICON_SIZE,
+			int(row.get("games", 0)) > 0))
+		HoverCard.attach(chip, sd.hover_card(StatusData.ENEMY, int(row["stacks"]),
+			false, int(row.get("games", 0))))
+		flow.add_child(chip)
+	if rows.size() > shown:
+		var more := UITheme.chip("+%d" % (rows.size() - shown), UITheme.TEXT_DIM, 9)
+		more.tooltip_text = "%d more on this body — hover it on the board for the lot." \
+			% (rows.size() - shown)
+		flow.add_child(more)
+	return null if flow.get_child_count() == 0 else flow
+
 # The same portrait for the LEVEL-UP row, because the same reasoning applies to
 # it. Every other row on this list leads with a picture of whose goal it is — the
 # enemy's face on a Cleared row, the status symbol on a status row — and the
@@ -1585,7 +1753,25 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	# boss on the notice, a level-up row) falls back to the sheet's own art.
 	var portrait: Control = _enemy_icon_rect(enemy, color,
 		GameLoop2.entry_image(GameLoop2.entry_for(instance)) if instance > 0 else null)
-	if portrait == null:
+	if portrait != null:
+		# …AND THE BUFFS IT IS CARRYING, under it (_buff_strip). A column rather than
+		# a wider row: the strip is capped to the portrait's own width, so it stacks
+		# under the picture exactly as the board's pips do and costs the row's text
+		# nothing horizontally.
+		var strip: Control = _buff_strip(GameLoop2.entry_for(instance)) if instance > 0 else null
+		if strip != null:
+			var col := VBoxContainer.new()
+			col.add_theme_constant_override("separation", 2)
+			col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			# The column is as wide as the STRIP (BUFF_STRIP_W), so the picture is
+			# centred over it rather than stretched to its width — a PanelContainer
+			# in a VBox fills it otherwise, and a 26px portrait blown to 52 is a
+			# different portrait from the ones on the rows above and below it.
+			portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			col.add_child(portrait)
+			col.add_child(strip)
+			portrait = col
+	else:
 		portrait = _character_icon_rect(character, color)
 	if portrait != null:
 		line.add_child(portrait)

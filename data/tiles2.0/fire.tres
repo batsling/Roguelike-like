@@ -12,6 +12,6 @@ decay_games = 3
 decay_on_trigger = false
 decay_text = "3 Games"
 triggers = {"enemy_enters": [{"op": "apply_status", "status": "burn", "value": 1}], "enemy_turn_start": [{"op": "apply_status", "status": "burn", "value": 1}]}
-interactions = {"unit:landmine": ["detonate_unit", "remove_tile"]}
+interactions = {}
 file = "Fire"
 image = ExtResource("2_img")
