@@ -36,6 +36,16 @@ by GameLoop2.area_cells — cell (the default), row, col, 3x3, 5x5, board:
     spawn_enemy <current|n> [tag=…]  -> {op:spawn_enemy, tier, value, tag?}
     gain_loot <kind> <n>             -> {op:gain_loot, kind, count}
 
+  …and six that aim at a UNIT — an enemy, a boss, or one of the player's own
+  bodies (spec §17). Each runs once per unit the area covers:
+
+    kill [area=…]                    -> {op:kill, area}
+    cancel_abilities [area=…]        -> {op:cancel_abilities, area}
+    split [area=…]                   -> {op:split, area}
+    polymorph [area=…]               -> {op:polymorph, area}
+    teleport [area=…]                -> {op:teleport, area}
+    grant_ability <id> [n] [area=…]  -> {op:grant_ability, ability, value, area}
+
 `nothing` IS A VERB, and every OTHER empty Effect cell is refused. Wand of
 Nothing is the roster's deliberate blank and an empty cell cannot be told apart
 from a row somebody has not filled in yet — so the sheet says the nothing out
@@ -202,6 +212,26 @@ def parse_clause(s: str, where: str):
     if verb == "gain_loot":
         kind = bare[0].lower() if bare else "loot"
         return [{"op": "gain_loot", "kind": kind, "count": nums[0] if nums else 1}]
+
+    # --- the six that aim at a UNIT -------------------------------------------
+    #
+    # A UNIT is anything standing on the square: an enemy, a boss, or one of the
+    # player's own bodies (spec §17). All six take an `area=` like every other
+    # clause and none takes anything else, because what they do to a unit is the
+    # whole of what they do — WandSystem resolves the aimed cell to the units on
+    # it and runs the verb once per unit found.
+    if verb in ("kill", "cancel_abilities", "split", "polymorph", "teleport"):
+        return [{"op": verb, "area": _area(rest, where)}]
+
+    if verb == "grant_ability":
+        # Hang an ability on the unit. `amount` is the ability's own argument
+        # (Ranged's range, Split's count); the roster's one row grants
+        # `invisibility`, which takes none, so it is written without a number.
+        if not bare:
+            raise ValueError("wands %s: grant_ability needs an ability in %r"
+                             % (where, s))
+        return [{"op": "grant_ability", "ability": bare[0].lower(),
+                 "value": nums[0] if nums else 0, "area": _area(rest, where)}]
 
     raise ValueError("wands %s: unknown verb %r in %r" % (where, verb, s))
 

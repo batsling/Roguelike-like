@@ -19,10 +19,10 @@ extends Node
 #     piece that was consumed: a wand that echoed itself would spend one charge for
 #     four effects, and a wand that only FIRED the memory would be three free
 #     replays of your last pill, six times over, for the price of one slot.
-#   * ITS ALPHABET IS 28 MATERIALS AND ITS ROSTER IS 4. Twenty-four are dealt to
-#     nothing — the same argument the potions' twenty-two spare vials make, at a
-#     ratio the small roster needs even more: with four wands and four materials,
-#     the fourth would be free.
+#   * ITS ALPHABET IS 28 MATERIALS AND ITS ROSTER IS 12. Sixteen are dealt to
+#     nothing — the same argument the potions' twenty-two spare vials make. The
+#     ratio matters more than the count: with twelve wands and twelve materials,
+#     the twelfth would be free.
 #
 # Identification is of the TYPE and covers every charge (§6.5). Zap an unknown
 # runed wand, learn it is Wand of Fire, and the five charges left are five
@@ -345,6 +345,8 @@ func _apply_one(op: Dictionary, cell, out: Dictionary,
 			return _zap_spawn(op, out, rng)
 		"gain_loot":
 			return _zap_loot(op, out)
+		"kill", "cancel_abilities", "grant_ability", "split", "polymorph", "teleport":
+			return _zap_unit(op, cell, out, rng)
 		_:
 			push_warning("WandSystem: unknown effect op '%s'" % String(op.get("op", "")))
 			return false
@@ -453,6 +455,76 @@ func _zap_spawn(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 		return false
 	out["logs"].append("%s answers the wand." % ", ".join(PackedStringArray(names)))
 	return true
+
+# ===========================================================================
+# The six verbs that aim at a UNIT (docs/wands-design.md §5.5)
+# ===========================================================================
+
+# A UNIT is anything standing on the square the bolt landed on: an enemy, a boss,
+# or one of the player's own bodies (§17). Eight of the twelve wands are written
+# about one, and all six of these verbs are the same shape — resolve the area to
+# the units in it, do the thing to each, and say how many it found. So they are
+# one function with a `match` in the middle rather than six that differ by a line.
+#
+# A BOSS IS A UNIT HERE, which is where these part company with the rest of the
+# board (a bomb and the D10 both refuse one). What keeps a boss a boss is the
+# floor in GameLoop2._damage_enemy — chip it all you like, its last point of
+# Health only comes off for its goal — and Wand of Death is the one authored
+# exception to that, which is what the Legendary rung and the single charge buy.
+#
+# ONE INSTANCE AT A TIME, RE-LOOKED-UP, because these verbs move the board under
+# themselves: a kill can split a body into two more, a split adds one, a teleport
+# frees the cell a queued body then walks into. `area_instances` is a snapshot
+# taken before any of that, and GameLoop2 answers "no such instance" for anything
+# that has since left.
+func _zap_unit(op: Dictionary, cell, out: Dictionary,
+		rng: RandomNumberGenerator) -> bool:
+	var verb := String(op.get("op", ""))
+	var landed: int = 0
+	var extra: int = 0
+	for inst in GameLoop2.area_instances(_cells_for(op, cell)):
+		var did: bool = false
+		match verb:
+			"kill":
+				did = GameLoop2.kill_instance(int(inst))
+			"cancel_abilities":
+				did = GameLoop2.cancel_abilities(int(inst))
+			"grant_ability":
+				did = GameLoop2.grant_ability(int(inst),
+					StringName(String(op.get("ability", ""))), int(op.get("value", 0)))
+			"split":
+				did = GameLoop2.split_unit(int(inst)) != 0
+			"polymorph":
+				var became: GoalEnemyData = GameLoop2.polymorph_instance(int(inst))
+				did = became != null
+				if did:
+					# NAMED, unlike the other five. What a body BECAME is the whole
+					# outcome of a polymorph and the player cannot read it off the
+					# board without knowing what was standing there a moment ago.
+					out["logs"].append("It becomes %s." % became.display_name)
+					extra += 1
+			"teleport":
+				did = GameLoop2.teleport_unit(int(inst), rng)
+		if did:
+			landed += 1
+	if landed <= 0:
+		return false
+	# The polymorph line above already said it, per body.
+	if extra < landed:
+		out["logs"].append(UNIT_LINES.get(verb, "%d unit%s felt it.") % [
+			landed, "" if landed == 1 else "s"])
+	return true
+
+# What each verb reports, in the shape the count is dropped into. Kept out of the
+# match above so the sentences read together — they are the wand's voice, and six
+# of them scattered through a switch is six places for one of them to drift.
+const UNIT_LINES := {
+	"kill": "%d unit%s dies where it stands.",
+	"cancel_abilities": "%d unit%s forgets what it knew how to do.",
+	"grant_ability": "%d unit%s is changed by it.",
+	"split": "%d unit%s comes apart into two.",
+	"teleport": "%d unit%s is somewhere else now.",
+}
 
 # More loot, OFFERED rather than granted — the pack holds nine and the run may be
 # carrying eight, and `offer_loot` is the call that asks instead of silently

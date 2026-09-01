@@ -20,6 +20,7 @@ extends Node
 #     "deck_wins": { "ironclad": ["Random", "Silent"], ... },
 #     "enemy_log": { "<game>": { "<enemy>": {"beaten": 2, "note": "…"} } },
 #     "levelup_log": { "<game>": { "<character>": {"levels": 1, "note": "…"} } },
+#     "status_goal_log": { "<game>": { "<status>": {"note": "…"} } },
 #     "character_enemy_log": { "<character>": { "<enemy>": {"beaten": 4} } } }
 # (Older files were the bare games dictionary; load_data migrates them, and a
 # file predating any of the three logs just starts that log empty.)
@@ -61,6 +62,18 @@ var enemy_log: Dictionary = {}
 # reads completely differently game to game, so how you satisfied it is a fact
 # about the (game, character) combination, not about the character alone.
 var levelup_log: Dictionary = {}
+
+# The player's notes on the WINNING-RUN STATUS GOALS, keyed game id -> status id
+# -> {"note": String}. `levelup_log` for the other half of that section of the
+# checklist (see ReportChecklist's winning-run block), and paired the same way and
+# for the same reason: "beat every boss without getting hit" is a standing
+# condition that reads completely differently game to game, so how you were
+# getting on with it is a fact about the (game, status) combination.
+#
+# NOTE ONLY, with no count beside it. A level-up is a thing that HAPPENS at a game
+# and is worth tallying; a status goal is a claim about the run, and how many
+# times it has been ticked at one game is not a fact anyone reads.
+var status_goal_log: Dictionary = {}
 
 # Which goal-enemies each CHARACTER has beaten, across every run and every game
 # they were beaten at. Keyed character id -> enemy id -> {"beaten": int}.
@@ -311,6 +324,25 @@ func clear_level_up_note(game_id, character_id) -> void:
 func level_up_note(game_id, character_id) -> String:
 	return String(levelup_log.get(String(game_id), {}).get(String(character_id), {}).get("note", ""))
 
+# ---------------------------------------------------------------------------
+# Winning-run status goals: the (game, status) pair, mirroring levelup_log
+# ---------------------------------------------------------------------------
+
+func set_status_goal_note(game_id, status_id, note: String) -> void:
+	var g := String(game_id)
+	var sid := String(status_id)
+	if g == "" or sid == "":
+		return
+	if not status_goal_log.has(g):
+		status_goal_log[g] = {}
+	status_goal_log[g][sid] = {"note": note}
+	save_data()
+	changed.emit()
+
+func status_goal_note(game_id, status_id) -> String:
+	return String(status_goal_log.get(String(game_id), {})
+		.get(String(status_id), {}).get("note", ""))
+
 func level_up_count(game_id, character_id) -> int:
 	return int(levelup_log.get(String(game_id), {}).get(String(character_id), {}).get("levels", 0))
 
@@ -392,6 +424,7 @@ func save_data() -> bool:
 	f.store_string(JSON.stringify(
 		{"games": stats, "deck_wins": deck_wins, "runs": runs,
 		 "enemy_log": enemy_log, "levelup_log": levelup_log,
+		 "status_goal_log": status_goal_log,
 		 "character_enemy_log": character_enemy_log,
 		 "donation_bank": donation_bank_total}, "  "))
 	return true
@@ -430,6 +463,7 @@ func load_data() -> void:
 	runs = []
 	enemy_log = {}
 	levelup_log = {}
+	status_goal_log = {}
 	character_enemy_log = {}
 	donation_bank_total = 0
 	if not FileAccess.file_exists(save_path()):
@@ -450,6 +484,8 @@ func load_data() -> void:
 	# neither key and starts them empty rather than migrating.
 	if json.data.has("levelup_log") and typeof(json.data["levelup_log"]) == TYPE_DICTIONARY:
 		levelup_log = json.data["levelup_log"]
+	if json.data.has("status_goal_log") and typeof(json.data["status_goal_log"]) == TYPE_DICTIONARY:
+		status_goal_log = json.data["status_goal_log"]
 	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
 		character_enemy_log = json.data["character_enemy_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))

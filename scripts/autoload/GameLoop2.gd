@@ -494,6 +494,24 @@ var answered_rows: Dictionary = {}
 # `answered_rows` is: a repaint must not lose a tick, and neither must a reload.
 var armed_bonuses: Dictionary = {}
 
+# THE WINNING-RUN ROWS THE PLAYER HAS TICKED, as the checklist's own row key ->
+# true. `armed_bonuses` for the other half of the list that arms instead of
+# resolving: the player's standing status goals (§13) and the character's
+# level-up, which since the winning-run rework wait for the report exactly as a
+# bonus waits for the body it hangs off.
+#
+# WHY THEY WAIT. What those rows ask for is not settled by the hour spent at the
+# game — "on a winning run, beat every boss without getting hit" is a claim about
+# a run, and the moment there is an answer to it is the moment the game is handed
+# in. So the box goes on and off freely while you play, like an enemy's bonus box,
+# and the report is what cashes it (_resolve_status_claims, and the `leveled`
+# branch in Overworld2's report). There is no confirm on one and nothing to take
+# back: an armed row has done nothing yet.
+#
+# Saved, and cleared with the rest of the per-game record, for `armed_bonuses`'
+# reasons — a repaint must not lose a tick, and neither must a reload.
+var armed_rows: Dictionary = {}
+
 # EVENT GOALS CLAIMED THIS GAME, as the handful of display fields their row is
 # drawn from: [{condition, effects_text, event}, …].
 #
@@ -772,6 +790,7 @@ func serialize() -> Dictionary:
 		"defeated_this_game": defeated_this_game,
 		"answered_rows": _string_keys(answered_rows),
 		"armed_bonuses": _string_keys(armed_bonuses),
+		"armed_rows": _string_keys(armed_rows),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		# THIS RUN'S DEAD and what Undying still owes (§7.6). Both as ids — the rows
 		# hold GoalEnemyData, which a save file cannot — and both rehydrated on load,
@@ -968,6 +987,9 @@ func restore(data: Dictionary) -> void:
 	armed_bonuses.clear()
 	for key in data.get("armed_bonuses", []):
 		armed_bonuses[String(key)] = true
+	armed_rows.clear()
+	for key in data.get("armed_rows", []):
+		armed_rows[String(key)] = true
 	for raw in data.get("claimed_event_goals", []):
 		if raw is Dictionary:
 			claimed_event_goals.append((raw as Dictionary).duplicate(true))
@@ -1669,6 +1691,7 @@ func _loop_snapshot() -> Dictionary:
 		"goals_met_this_game": goals_met_this_game,
 		"defeated_this_game": defeated_this_game,
 		"answered_rows": answered_rows.duplicate(),
+		"armed_rows": armed_rows.duplicate(),
 		"claimed_event_goals": claimed_event_goals.duplicate(true),
 		"ghosts": _ghosts.duplicate(true),
 		# A lost run's turn can kill a body, which puts a face in the graveyard and
@@ -1720,6 +1743,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	# close the door again, exactly as it closes the hit gate above.
 	defeated_this_game = int(snap.get("defeated_this_game", 0))
 	answered_rows = (snap.get("answered_rows", {}) as Dictionary).duplicate()
+	armed_rows = (snap.get("armed_rows", {}) as Dictionary).duplicate()
 	claimed_event_goals = (snap.get("claimed_event_goals", []) as Array).duplicate(true)
 	_ghosts = (snap.get("ghosts", {}) as Dictionary).duplicate(true)
 	graveyard = (snap.get("graveyard", []) as Array).duplicate()
@@ -1806,6 +1830,10 @@ func _clear_game_record() -> void:
 	# never ticked expires with the game, which is the point of arming rather than
 	# paying: the reward is for a body you finished with, and you did not.
 	armed_bonuses.clear()
+	# The winning-run rows go with them, and by the time this runs the report has
+	# already read and cashed whatever was armed (_resolve_status_claims). A tick
+	# is a claim about the game just handed in; the next game asks again.
+	armed_rows.clear()
 	claimed_event_goals.clear()
 	_ghosts.clear()
 
@@ -3365,12 +3393,27 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 # §4.1). Unlike choose_game it does not go on `arrivals` — nothing superseded it
 # onto the board, so a Scramble must not take it off again. Returns its unique
 # instance handle, or 0 if enemy is null.
+#
+# A CONJURED BODY DOES NOT QUEUE. `_add_to_grid` walks it onto the spawn column
+# like anything else, and a spawn column with a body already standing in every row
+# parks it off-grid to wait — which is right for an enemy that ARRIVED with a game
+# (it is queuing behind the crowd it came with) and wrong for one somebody
+# conjured: the scroll and the wand both say a monster is created, and a monster
+# that is created into a holding pen the player cannot see is a charge spent on
+# nothing. So a full spawn column falls back to the nearest square it fits in.
 func spawn_to_stack(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
+	var entry: Dictionary = entry_for(inst)
+	if not entry.is_empty() and int(entry.get("col", offgrid_col())) > grid_cols():
+		# Measured from where it WANTED to stand — the back of its own lane — so
+		# "closest" means closest to the way in rather than closest to the player.
+		var at: Vector2i = nearest_open_cell(enemy, Vector2i(spawn_col_for(enemy), 0), inst)
+		if at != OFF_FIELD:
+			_move_entry(entry, at.y, at.x)
 	loop_changed.emit()
 	return inst
 
@@ -3457,6 +3500,211 @@ func reroll_enemies() -> int:
 		_reseat_stack()
 		loop_changed.emit()
 	return swapped
+
+# ---------------------------------------------------------------------------
+# WAND VERBS ON A UNIT (docs/wands-design.md §5.5)
+#
+# A UNIT is anything standing on a cell of the battlefield: an enemy, a boss, or
+# one of the player's own bodies (§17). The word used to mean only the last of
+# those, which is why `units` below is the mine dictionary and not the stack —
+# but every wand in the roster aims at a "Unit", and a player reading "Target
+# Unit loses its ability" on a card is reading it about the thing they pointed
+# the stick at. So the wand verbs here take an ENEMY INSTANCE, `unit_kind_at`
+# says which of the two kinds a cell is holding, and the sheets, the cards and
+# the docs all say Unit.
+#
+# A BOSS IS A UNIT LIKE ANY OTHER, and these five reach one. That is a real
+# change from the rest of the board — a bomb and the D10 both refuse a boss — and
+# it is bought with the one rule that keeps a boss a boss: A BOSS NEVER LOSES ITS
+# LAST POINT OF HEALTH TO ANYTHING BUT ITS GOAL. `_damage_enemy` floors it at 1,
+# so Magic Missile and Fire chip a boss and stall there. The single exception is
+# Wand of Death, the Legendary with one charge, which is the only thing in the
+# game that takes a boss off the board without its goal being done.
+# ---------------------------------------------------------------------------
+
+# Every enemy instance the given cells hold — the enemy half of "the units on
+# this square". The unit half is `unit_at`, and `unit_kind_at` is how a caller
+# that wants either asks which it has.
+func unit_kind_at(cell: Vector2i) -> StringName:
+	for entry in stack:
+		if entry_cells(entry).has(cell):
+			return &"enemy"
+	return &"unit" if units.has(cell) else &""
+
+# CANCELLATION — the body forgets everything it knows how to do. Its runtime
+# ability list is emptied rather than filtered, so a granted Illusion goes with
+# the authored Ranged: "loses its ability" is the whole of it.
+#
+# The list is emptied on the ENTRY, which is why this survives at all — abilities
+# are read off the entry and never off the resource (see entry_abilities), so a
+# cancelled Spitter is one body rather than every Spitter in the run.
+func cancel_abilities(instance: int) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or entry_abilities(entry).is_empty():
+		return false
+	entry["abilities"] = []
+	loop_changed.emit()
+	return true
+
+# DEATH — off the board, now, whatever it is. Shields are drained rather than
+# spent one at a time: a Legendary wand with a single charge that a Dexterity pip
+# could eat would be a wand whose worth the player cannot read off its card.
+#
+# Through `_damage_enemy` WITHOUT the boss floor — the one call in the game that
+# leaves it off while aiming at a boss — so a killed body still runs its death
+# list: a Split still splits, an Aftermath still burns the square, an Undying
+# boss still owes the board its next phase. "Instantly killed" is a way of dying,
+# not a way of being deleted.
+#
+# It does NOT go through `_damage_enemy`, and that is deliberate rather than a
+# shortcut: that function scales what it is handed by the target's own modifiers,
+# and a Wand of Death that a damage-halving status could survive would be a
+# Legendary whose one charge is a coin flip. This kills, then runs the same tail —
+# where it fell, off the board, `_body_died` — so the death is the same event.
+func kill_instance(instance: int) -> bool:
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return false
+	var entry: Dictionary = stack[idx]
+	entry["shield"] = 0
+	entry["health"] = 0
+	var fell: Vector2i = _drop_cell_of(entry)
+	_take_off_board(idx)
+	_body_died(entry, fell)
+	_admit_offgrid()
+	loop_changed.emit()
+	return true
+
+# POLYMORPH — the same slot, a different body. What survives is the SQUARE and
+# the statuses hung on it; Health resets to the new enemy's own, exactly as the
+# D10's reroll does and for the same reason (Health here is goal completions, and
+# the goal just changed).
+#
+# "Of the same difficulty" is the TIER and nothing else — any game type, unlike
+# the D10, which re-rolls a body against itself. A wand aimed at one square is
+# not the die that rerolls the crowd, and the surprise is the point of it.
+#
+# Returns the body it became, or null when nothing else could be rolled.
+func polymorph_instance(instance: int) -> GoalEnemyData:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return null
+	var old: GoalEnemyData = entry.get("enemy")
+	if old == null:
+		return null
+	# BOSSES ARE OFF THE RESULT LIST, never off the target list. A wand may be
+	# pointed at a boss (see the block above), but a Rare stick that could TURN a
+	# body into one would be a piece of loot that loses runs by being used.
+	var pool: Array = Data.all_goal_enemies().filter(
+		func(e): return e is GoalEnemyData and not e.is_boss())
+	var fresh: GoalEnemyData = _pick_by_type_tier(pool, &"", old.tier_index(), old)
+	if fresh == null or fresh == old:
+		return null
+	entry["enemy"] = fresh
+	entry["health"] = effective_health(fresh)
+	entry["max_health"] = maxi(1, int(entry["health"]))
+	# The new body's OWN abilities, and only those: what it could do was a fact
+	# about the thing it used to be. Through the spawn path so a polymorphed body
+	# arrives as complete as one that walked on.
+	entry["abilities"] = []
+	_apply_spawn_abilities(entry)
+	# It may be a different SHAPE, so the board is re-seated rather than trusted —
+	# `_reseat_stack`'s own rule (anything no longer on legal, unoccupied ground
+	# goes back to the queue) is exactly what a footprint change needs.
+	_reseat_stack()
+	loop_changed.emit()
+	return fresh
+
+# PLENTY — one body becomes two of itself, each with half the Max Health of the
+# one that was standing there. The total is unchanged, which is what makes a
+# Neutral wand neutral: it buys you two easier goals for one hard one, and it
+# buys the board a second body to walk at you.
+#
+# "IF POSSIBLE" IS THE SHEET'S OWN WORDING and it is two conditions, both real:
+# a body already down to one point of Max Health has nothing to halve, and a
+# board with nowhere for the twin to stand has nowhere to put it. Either way
+# nothing happens and the charge reports the fizzle.
+#
+# Returns the twin's instance handle, or 0.
+func split_unit(instance: int) -> int:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return 0
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return 0
+	var half: int = int(entry.get("max_health", 1)) / 2
+	if half < 1:
+		return 0
+	var at: Vector2i = nearest_open_cell(enemy,
+		Vector2i(int(entry.get("col", spawn_col())), int(entry.get("row", 0))), instance)
+	if at == OFF_FIELD:
+		return 0
+	var twin: int = summon(enemy, at)
+	if twin == 0:
+		return 0
+	# BOTH halves, and the original SECOND — `summon` can set off the ground the
+	# twin lands on, and a body that took the original off the board with it
+	# leaves nothing here to halve.
+	var twin_entry: Dictionary = entry_for(twin)
+	if not twin_entry.is_empty():
+		twin_entry["max_health"] = half
+		twin_entry["health"] = mini(int(twin_entry.get("health", half)), half)
+	var still: Dictionary = entry_for(instance)
+	if not still.is_empty():
+		still["max_health"] = half
+		still["health"] = mini(int(still.get("health", half)), half)
+	loop_changed.emit()
+	return twin
+
+# TELEPORTATION — the body is somewhere else. A random square it FITS in, which
+# is the only constraint: forward is as legal as back, so this is a gamble rather
+# than a way to push, and a wide body simply has fewer places it can land.
+#
+# Through `_move_entry`, so arriving by teleport costs the ground exactly what
+# arriving on foot does (§17) — a body dropped onto a mine sets it off.
+func teleport_unit(instance: int, rng: RandomNumberGenerator = null) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
+		return false
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return false
+	var was := Vector2i(int(entry.get("col", spawn_col())), int(entry.get("row", 0)))
+	var spots: Array = []
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			if Vector2i(col, row) != was and fits_at(enemy, row, col, instance):
+				spots.append(Vector2i(col, row))
+	if spots.is_empty():
+		return false
+	var pick: Vector2i = spots[(rng.randi() if rng != null else randi()) % spots.size()]
+	_move_entry(entry, pick.y, pick.x)
+	# A body that left the front line can free the space a queued one was waiting
+	# for, exactly as a Push does.
+	_admit_offgrid()
+	loop_changed.emit()
+	return true
+
+# The nearest square `enemy` fits in, measured from `to` — Manhattan, because the
+# board is a grid and a body walks it in steps. OFF_FIELD when the board has no
+# room for this shape at all.
+#
+# TIES BREAK TOWARD THE BACK, the same way `place_drop` breaks its own: two cells
+# equally close to where a conjured body wanted to stand are not equally fair, and
+# the further one from the player is the one that gives them a turn to answer it.
+func nearest_open_cell(enemy: GoalEnemyData, to: Vector2i, exclude: int = 0) -> Vector2i:
+	var best: Vector2i = OFF_FIELD
+	var best_score := Vector2i(1 << 30, 1 << 30)
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			if not fits_at(enemy, row, col, exclude):
+				continue
+			var score := Vector2i(absi(col - to.x) + absi(row - to.y), -col)
+			if score.x < best_score.x or (score.x == best_score.x and score.y < best_score.y):
+				best_score = score
+				best = Vector2i(col, row)
+	return best
 
 # The player reached & played the Amulet game — win the run (§2). Called by the
 # overworld once that game has been reported.
@@ -4526,10 +4774,13 @@ func damage_enemy_instance(instance: int, amount: int) -> bool:
 	var idx: int = _index_of(instance)
 	if idx < 0 or amount <= 0:
 		return false
-	var enemy: GoalEnemyData = stack[idx].get("enemy")
-	if enemy != null and enemy.is_boss():
-		return false
-	var killed: bool = _damage_enemy(idx, amount)
+	# A BOSS USED TO REFUSE THE HIT ENTIRELY. It takes it now and stops at one
+	# point of Health (see `_damage_enemy`'s floor), which is what a Unit-targeting
+	# wand needs to mean something when it is pointed at the biggest Unit on the
+	# board — and it still cannot be finished off by anything but its goal, so what
+	# a boss is has not moved. `_explode` keeps its own, blunter refusal: a bomb is
+	# the thing a boss is famous for shrugging off (§7.1).
+	var killed: bool = _damage_enemy(idx, amount, true)
 	if killed:
 		# Clearing a body can open the space a waiting enemy needs to walk on —
 		# the same tidy-up `_explode` does after its own kills.
@@ -4552,7 +4803,14 @@ func enemy_tile_move(entry: Dictionary) -> int:
 # decided here: a met goal is a defeat that drops, a bomb kill leaves nothing
 # behind and never fires `_defeat` at all (§4). Three callers, three answers, one
 # damage rule.
-func _damage_enemy(idx: int, amount: int) -> bool:
+#
+# `boss_floor` stops a boss's Health going below 1 (§7.1). It is OPT-IN and off by
+# default, which is the important half: the goal hit resolves through this very
+# function, so a floor that defaulted on would make a boss unkillable by the one
+# thing that is supposed to kill it. Exactly one caller asks for it —
+# `damage_enemy_instance`, the outside-hit path a thrown potion and a zapped wand
+# both come in through — and Wand of Death is the one that comes in without it.
+func _damage_enemy(idx: int, amount: int, boss_floor: bool = false) -> bool:
 	if idx < 0 or idx >= stack.size() or amount <= 0:
 		return false
 	var entry: Dictionary = stack[idx]
@@ -4569,7 +4827,11 @@ func _damage_enemy(idx: int, amount: int) -> bool:
 	if not bool(totals["pierce_shields"]) and enemy_shield(entry) > 0:
 		entry["shield"] = enemy_shield(entry) - 1
 		return false
-	entry["health"] = int(entry.get("health", 1)) - dmg
+	# THE BOSS FLOOR. A boss takes the chip and keeps its last point: its goal is
+	# the only thing that finishes it, which is the whole of what §7.1 promises.
+	var floored: bool = boss_floor and (entry.get("enemy") as GoalEnemyData) != null \
+		and (entry.get("enemy") as GoalEnemyData).is_boss()
+	entry["health"] = maxi(1 if floored else -(1 << 30), int(entry.get("health", 1)) - dmg)
 	if int(entry["health"]) > 0:
 		return false
 	# WHERE IT FELL, read before it comes off the board — a Split's brood and an
@@ -4680,6 +4942,18 @@ func disarm_bonus(instance: int, status_id: StringName) -> void:
 
 func bonus_armed(instance: int, status_id: StringName) -> bool:
 	return armed_bonuses.has(_bonus_key(instance, status_id))
+
+# The same three, for a WINNING-RUN row (see `armed_rows`). Keyed by the
+# checklist's own row key, so one function serves the status rows and the
+# level-up without either needing a shape of its own.
+func arm_row(key: String) -> void:
+	armed_rows[key] = true
+
+func disarm_row(key: String) -> void:
+	armed_rows.erase(key)
+
+func row_armed(key: String) -> bool:
+	return armed_rows.has(key)
 
 # THE BODY IS DONE, so everything armed against it pays now. Returns what actually
 # paid out as [{status: StringName, stacks: int}], so the checklist can say what the
@@ -4804,6 +5078,15 @@ func _resolve_status_claims(claims: Dictionary) -> int:
 		return 0
 	var paid: int = 0
 	for raw in claims.get("status_goals", []):
+		# BANKED WHETHER OR NOT IT PAID. A ticked winning-run row is a thing the
+		# player says they did, and the run's ledger is the record of what was done
+		# — a `demand` answered buys no reward and is still the row that stopped the
+		# bill, so it belongs on the list beside the goals that paid.
+		#
+		# Recorded HERE and not on the checklist because the checklist no longer
+		# resolves these rows: they arm and wait for the report (§13, and see
+		# ReportChecklist._arm_winning_row), and this is the report.
+		_record_player_objective(String(raw))
 		if claim_player_objective(String(raw)):
 			paid += 1
 	for raw in claims.get("bonuses", []):
@@ -4813,6 +5096,23 @@ func _resolve_status_claims(claims: Dictionary) -> int:
 		if claim_enemy_bonus(int(d.get("instance", 0)), StringName(d.get("status", ""))):
 			paid += 1
 	return paid
+
+# One ticked winning-run row, in the wording the run's ledger keeps — the status's
+# name, the stacks behind it, and what it asked for. Built from the row rather
+# than from the checklist's label so the record reads the same whether the tick
+# came from the overworld or from a headless caller: the row on screen leads with
+# a SYMBOL, and the ledger is a line of text on another screen.
+func _record_player_objective(key: String) -> void:
+	var parts: Array = GameState.split_objective_key(key)
+	var status: StatusData = Data.get_status(parts[0])
+	if status == null:
+		return
+	var stacks: int = GameState.objective_stacks(parts[0], int(parts[1]))
+	if stacks <= 0:
+		return
+	record_completed_goal("status", "%s ×%d — On a winning run, %s" % [
+		status.display_name, stacks,
+		status.objective_text(StatusData.PLAYER, stacks)])
 
 # The player's decaying CLAUSES shed a stack for the game just resolved, when a
 # goal carrying one was actually completed. A player clause sits on EVERY enemy's

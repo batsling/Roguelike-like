@@ -2994,11 +2994,30 @@ Two things can be on a cell of the battlefield that are not a body:
 
 - a **tile effect** — something done to the **ground**, which stays where it was
   put and acts on whoever walks in;
-- a **unit** — something of the **player's** standing on it.
+- a **unit** — something standing on it.
 
 They **layer**: a unit stands on top of a tile effect, which is why they are two
 sheets and two resources rather than one with a flag. What happens when a
 particular pair meets is authored in the content, not in the code.
+
+**A UNIT IS ANYTHING STANDING ON A CELL — an enemy and a boss included.** The word
+used to mean only the player's own bodies, and `units2.0` is still the sheet of
+*those*: a Landmine is the only row it has, and the dictionary called `units` in
+`GameLoop2` is still that layer and not the stack. What changed is the **word**,
+because the content started using it. Every wand in the roster is written about a
+"Target Unit" (§5.5 of the wands design) and a player reading "Target Unit is
+instantly killed" off a card has just pointed a stick at the thing they mean. So:
+
+- **content and UI say Unit** when either kind will do, and say *enemy*, *boss* or
+  *the player's units* when they mean one of them in particular;
+- the wand verbs in `GameLoop2` (`kill_instance`, `cancel_abilities`,
+  `polymorph_instance`, `split_unit`, `teleport_unit`) take an **enemy instance**,
+  and `unit_kind_at` is how a caller holding a cell asks which kind is on it;
+- **a boss is a Unit like any other**, with the one rule that keeps it a boss:
+  nothing but its goal takes its last point of Health off it (§7.1). Damage from
+  outside — a thrown potion, a zapped wand — chips it and floors at 1. **Wand of
+  Death is the single authored exception**, which is what its Legendary rung and
+  its one charge are paying for. A bomb still refuses a boss outright.
 
 **Neither blocks a body.** An enemy walks into the cell and whatever is there
 *reacts*. That is the whole difference between this and the footprint rules of

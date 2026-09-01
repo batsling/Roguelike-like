@@ -50,6 +50,13 @@ var instead_checks: Array = []       # [{check: CheckBox, instance: int, status:
 var event_goal_checks: Array = []
 var curse_goal_checks: Array = []
 var levelup_check: CheckBox = null   # null when the character has no level-up
+# The WINNING-RUN rows as the "Completed Game" confirm needs them:
+# [{check: CheckBox, label: String, note: {read, write, placeholder}}], in the
+# order they were built. The checklist already holds the same boxes in
+# `status_goal_checks` and `levelup_check`; this is the one list that has them
+# TOGETHER with the words and the note accessors that go with each, which is what
+# the review block in front of the report is made of (winning_run_review).
+var winning_rows: Array = []
 # Checklist row -> board body (see bind_row_to_body). `row_paints` is instance ->
 # the paint callables of every row written about that body; `lit_instances` is
 # what is lit right now, from whichever end the mouse is on.
@@ -143,11 +150,21 @@ func populate_play_panel() -> void:
 		win_note.add_theme_color_override("font_color", UITheme.GOLD)
 		_box.add_child(win_note)
 
-	# The player's own standing rows (§13): challenges that pay out every game you
-	# satisfy them, and the `demand` rows that CHARGE for every game you don't — so
-	# they are on the report step of EVERY game rather than belonging to any one
-	# enemy. A demand is tinted like the threat it is: on this list an unticked box
-	# usually means a prize forgone, and on that one row it means a bill.
+	# THE WINNING-RUN SECTION. The player's own standing rows (§13) and the
+	# character's level-up sit under one header now, because they turned out to be
+	# the same kind of promise: neither is answered by anything that happens inside
+	# the hour you spend at the game, and both are claims about a run you took all
+	# the way to a win. The header says the shared condition once and the rows nest
+	# under it, exactly as an enemy's bonuses nest under the body they hang off.
+	# `_verify_head`, not `_verify_head_row`: that one carries the "N done" button,
+	# and one door into the record per panel is the whole of what it is for.
+	_box.add_child(_verify_head(WINNING_RUN_HEAD))
+
+	# Challenges that pay out every game you satisfy them, and the `demand` rows
+	# that CHARGE for every game you don't — so they are on the report step of
+	# EVERY game rather than belonging to any one enemy. A demand is tinted like
+	# the threat it is: on this list an unticked box usually means a prize forgone,
+	# and on that one row it means a bill.
 	for row in GameState.status_objectives():
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
@@ -164,43 +181,27 @@ func populate_play_panel() -> void:
 		# SYMBOL and a bare "×3" (_status_prefix), which reads because the art is
 		# right beside it; the record is a line of text on another screen, so it
 		# says which status in as many words.
-		var stext: String = "%s ×%d — %s" % [sd.display_name, stacks,
-			sd.objective_text(StatusData.PLAYER, stacks)]
 		var srow := verify_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
 				sd.objective_text(StatusData.PLAYER, stacks),
 				StatusData.clock_suffix(games)],
 			_status_row_tint(sd), false, null, null, 0,
 			_status_mark(sd, stacks, StatusData.PLAYER, false, games))
-		_add_row(srow["row"], GameLoop2.row_answered("status:%s" % key))
+		_add_row(srow["row"], GameLoop2.row_answered("status:%s" % key), true)
 		status_goal_checks.append({"check": srow["check"], "status": key})
-		# A `demand` is the one row where confirming buys something other than a
-		# reward: it is what stops the bill at the end of the game (§13), and it
-		# stops it whether it was answered now or at the report.
-		_arm_row(srow["check"], "status:%s" % key,
-			"You met %s." % sd.display_name,
-			func() -> void:
-				# RECORDED THE WAY EVERY OTHER ROW IS, and it was the only one that
-				# wasn't. `_arm_row` locks a row by asking GameLoop2 whether it was
-				# answered, so a status row that never told it came back OPEN on the
-				# next repaint — and ticking it again paid it again.
-				GameLoop2.mark_row_answered("status:%s" % key)
-				GameLoop2.record_completed_goal("status", stext)
-				if GameLoop2.claim_player_objective(key):
-					_announce("%s paid out." % sd.display_name, UITheme.GOLD)
-				else:
-					_announce("%s is answered for this game." % sd.display_name,
-						UITheme.TEXT_DIM)
-				# The row has just become a record, so the list is rebuilt to put it
-				# where records go. Deferred, like every other rebuild a tick asks
-				# for — the box being locked a line above is one of the children it
-				# is about to free.
-				_rebuild_soon())
+		_arm_winning_row(srow["check"], "status:%s" % key)
+		winning_rows.append({"check": srow["check"],
+			"label": "%s ×%d — %s" % [sd.display_name, stacks,
+				sd.objective_text(StatusData.PLAYER, stacks)],
+			"note": _status_note_hooks(sd)})
 
 	# Level-up challenge (§3.1): a per-game Yes/No for the character's condition,
-	# with its reward shown inline so the payoff reads at a glance. It carries its
-	# own Notes button for the same reason the goal rows do — the condition is a
-	# standing one, and how you satisfied it is a fact about THIS game.
+	# with its reward shown inline so the payoff reads at a glance.
+	#
+	# IT IS A WINNING-RUN ROW TOO, which is why it moved under this header and why
+	# its notes button went with the confirm that used to ask for one. A level-up is
+	# not something the hour at the game settles either: the condition is met over a
+	# run, and it is the run reaching a win that makes meeting it worth anything.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
 		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
@@ -208,20 +209,10 @@ func populate_play_panel() -> void:
 			lu_text += "   → %s" % ch.level_up_reward
 		var lu_row := verify_row(lu_text, UITheme.GOLD, false, null, ch)
 		levelup_check = lu_row["check"]
-		_add_row(lu_row["row"], GameLoop2.row_answered(LEVELUP_KEY))
-		var game_now: GameData = _page._chosen.get("game")
-		_arm_row(lu_row["check"], LEVELUP_KEY,
-			"You met %s's level-up condition." % ch.display_name,
-			func() -> void:
-				GameLoop2.mark_row_answered(LEVELUP_KEY)
-				GameLoop2.record_completed_goal("levelup",
-					"Levelled up — %s" % ch.level_up_condition)
-				_page._apply_level_up()
-				if game_now != null:
-					GameStats.record_level_up(game_now.id, GameState.character_id)
-				_announce("Levelled up — %s." % ch.level_up_condition, UITheme.GOLD)
-				_rebuild_soon(),
-			_level_up_note_hooks(ch))
+		_add_row(lu_row["row"], GameLoop2.row_answered(LEVELUP_KEY), true)
+		_arm_winning_row(lu_row["check"], LEVELUP_KEY)
+		winning_rows.append({"check": lu_row["check"], "label": lu_text,
+			"note": _level_up_note_hooks(ch)})
 
 	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
 	# sections, deliberately: the checklist now carries three kinds of objective
@@ -336,9 +327,18 @@ func _enemy_note_hooks(enemy: GoalEnemyData) -> Dictionary:
 		"placeholder": "Build, route, what nearly killed you…",
 	}
 
-# The same, for the (game, character) LEVEL-UP note. A standing condition reads
-# completely differently game to game, which is why the note belongs to the pair
-# rather than to the character.
+# The (game, character) LEVEL-UP note, as the {read, write, placeholder} block the
+# review in front of the report wants. A standing condition reads completely
+# differently game to game, which is why the note belongs to the pair rather than
+# to the character.
+#
+# IT MOVED, RATHER THAN GOING. It used to be asked for by the level-up row's own
+# confirm, and that row has no confirm any more — it arms and waits for the report
+# like every other winning-run row, and an editor inside a box you can simply
+# untick is a question with no moment attached to it. The moment is the report, so
+# the editor is on the "Completed Game" confirm now (winning_run_review), which is
+# also where the row is last askable. The same accessors EnemyNoteModal uses, so a
+# note taken at the report and one written from the Collection are one note.
 func _level_up_note_hooks(character: CharacterData) -> Dictionary:
 	var game: GameData = _page._chosen.get("game")
 	if game == null or character == null:
@@ -347,6 +347,20 @@ func _level_up_note_hooks(character: CharacterData) -> Dictionary:
 		"read": func(): return GameStats.level_up_note(game.id, character.id),
 		"write": func(text): GameStats.set_level_up_note(game.id, character.id, text),
 		"placeholder": "What made the level-up possible here…",
+	}
+
+# The same, for the (game, STATUS) note behind a winning-run status goal. Paired
+# the same way and for the same reason: "beat every boss without getting hit" is
+# one condition and how you are getting on with it at Hades is not how you are
+# getting on with it at Balatro.
+func _status_note_hooks(status: StatusData) -> Dictionary:
+	var game: GameData = _page._chosen.get("game")
+	if game == null or status == null:
+		return {}
+	return {
+		"read": func(): return GameStats.status_goal_note(game.id, status.id),
+		"write": func(text): GameStats.set_status_goal_note(game.id, status.id, text),
+		"placeholder": "How this one is going here…",
 	}
 
 # The two event-borne sections of the checklist. Both count down in games, and
@@ -814,6 +828,175 @@ const CONFIRM_BODY := ("%s\n\nThis resolves right now, while you are still "
 # in it to tell it apart from anything else.
 const LEVELUP_KEY := "levelup"
 
+# ===========================================================================
+# THE WINNING-RUN ROWS (§13, and the level-up in §3.1)
+#
+# The player's standing status goals and the character's level-up are the two
+# things on this list that the hour at the game does not settle. Every other row
+# is about the game in front of you — a body you cleared, an event goal you met, a
+# curse you followed — and resolves the second you confirm it. These two ask about
+# a RUN: "on a winning run, beat every boss without getting hit" is not answered
+# by anything that happens inside one game, and the moment there is an answer is
+# the moment the game is handed in.
+#
+# So they behave like an ENEMY'S BONUS ROW rather than like an enemy's goal row:
+#   * the box goes on and off freely, as many times as you like;
+#   * there is no confirm, because there is nothing yet to take back;
+#   * the report is what cashes it — GameLoop2._resolve_status_claims for the
+#     status rows, the `leveled` branch of Overworld2's report for the level-up —
+#     and an ESCAPE cashes them too, because an escape is a report.
+#
+# The tick itself lives in GameLoop2.armed_rows, so a repaint (this list is
+# rebuilt whenever anything else on it changes) and a reload both keep it.
+# ===========================================================================
+
+# The header the section nests under, and THE ONLY PLACE THE CONDITION IS SAID.
+# The rows under it carry their own sentence and nothing else: the prefix was on
+# every one of them for a while, which put "On a winning run" three times into
+# five lines of the narrowest column on the page and wrapped rows that had fitted.
+# The indent is what ties a row to this line — that is what an indent is for.
+const WINNING_RUN_HEAD := "On a winning run:"
+
+# THE LEDGER SAYS IT IN FULL, though (GameLoop2._record_player_objective and the
+# level-up's line in Overworld2.report). The record of what a run has done is a
+# flat list of sentences on another screen, with no header above them to inherit
+# the condition from, so each line there carries its own.
+
+# Wire one winning-run row. `key` is what GameLoop2 remembers the tick by — the
+# status row's objective key, or LEVELUP_KEY.
+func _arm_winning_row(cb: CheckBox, key: String) -> void:
+	if cb == null:
+		return
+	# ANSWERED UNDER THE OLD RULES. Before this rework these rows confirmed and
+	# resolved mid-game, so a run saved mid-game by an older build can carry one
+	# that already paid. It stays locked: it is a record, and re-arming it would
+	# hand the report a second claim for a reward already taken.
+	if GameLoop2.row_answered(key):
+		_lock_row(cb)
+		return
+	cb.toggled.connect(func(on: bool) -> void:
+		if cb.disabled:
+			return
+		if on:
+			GameLoop2.arm_row(key)
+		else:
+			GameLoop2.disarm_row(key))
+	# AFTER the connection, and through `button_pressed` rather than the no-signal
+	# setter, so a rebuilt list repaints the row's green wash (which hangs off
+	# `toggled`, see verify_row) instead of showing a ticked box in an untinted
+	# row. Re-arming an already-armed key is a no-op.
+	if GameLoop2.row_armed(key):
+		cb.button_pressed = true
+
+# ---------------------------------------------------------------------------
+# The review in front of the report
+#
+# "✓ Completed Game" raises a confirm now, and what that confirm carries is the
+# winning-run section again: every status goal and the level-up, with the box the
+# player has been ticking all game and a NOTES field beside each one.
+#
+# THIS IS WHERE THOSE ROWS ARE LAST ASKABLE, which is the whole argument for
+# putting them here. Everything else on the checklist resolves the moment it is
+# confirmed, so its question has already been asked and answered by the time this
+# button is pressed. The winning-run rows are the opposite: they have been armed
+# and disarmed all game and nothing has happened yet, and pressing this button is
+# the one irreversible thing about them. Asking "these are what you are claiming —
+# yes?" over the top of it is the same safeguard every other row got at its own
+# tick, arriving at the moment that is actually final for these.
+#
+# It is also the only place the NOTE can be asked for now. A note used to ride the
+# level-up row's confirm; that confirm went with the arming rework, and a note
+# field on a box you can untick is a question with no moment attached. This is the
+# moment.
+#
+# THE BOXES ARE MIRRORS, not a second source of truth. Each one writes straight
+# back to the checklist's own CheckBox, which is what `ticked_status_claims` and
+# the report's `leveled` read — so a change made here is a change made on the
+# list behind the panel, and cancelling leaves both exactly as they were.
+# ---------------------------------------------------------------------------
+
+const REVIEW_NOTE_W := 300
+const REVIEW_ROW_H := 58
+
+# The block, or null when this run has no winning-run rows at all — in which case
+# the confirm is just the question, with nothing to review.
+func winning_run_review() -> Control:
+	# One review is ever up, so whatever the last one was holding is stale.
+	_review_notes.clear()
+	if winning_rows.is_empty():
+		return null
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	var head := Label.new()
+	head.text = "%s  tick what you managed, and say how it went" % WINNING_RUN_HEAD
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(head)
+	for row in winning_rows:
+		var cb: CheckBox = row.get("check")
+		if cb == null or not is_instance_valid(cb):
+			continue
+		col.add_child(_review_row(cb, String(row.get("label", "")),
+			row.get("note", {})))
+	return col
+
+func _review_row(cb: CheckBox, label: String, note: Dictionary) -> Control:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+
+	var mirror := CheckBox.new()
+	mirror.text = label
+	mirror.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mirror.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mirror.add_theme_font_size_override("font_size", 13)
+	# A LOCKED row is shown and not offered: it resolved under the old rules (see
+	# _arm_winning_row) and this panel must not hand the report a second claim for
+	# a reward already taken.
+	mirror.set_pressed_no_signal(cb.button_pressed)
+	mirror.disabled = cb.disabled
+	mirror.toggled.connect(func(on: bool) -> void:
+		if is_instance_valid(cb) and not cb.disabled:
+			cb.button_pressed = on)
+	line.add_child(mirror)
+
+	# …and the note beside it, which is the half this panel exists to make
+	# reachable at all. A row with no game behind it (a headless caller, a run
+	# between games) has nothing to key a note on and simply gets no field.
+	if note.is_empty():
+		return line
+	var edit := TextEdit.new()
+	var read: Callable = note["read"]
+	edit.text = String(read.call())
+	edit.set_meta("was", edit.text)
+	edit.set_meta("write", note["write"])
+	edit.placeholder_text = String(note.get("placeholder", ""))
+	edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	edit.custom_minimum_size = Vector2(REVIEW_NOTE_W, REVIEW_ROW_H)
+	_review_notes.append(edit)
+	line.add_child(edit)
+	return line
+
+# The note editors the open review is holding, so `save_review_notes` can walk
+# them on Yes. Cleared when a review is built, since only one is ever up.
+var _review_notes: Array = []
+
+# Write back every note the player touched. ONLY the ones that CHANGED: a write
+# saves the whole stats file and fires `changed`, and most reports are confirmed
+# without a word being typed.
+func save_review_notes() -> void:
+	for edit in _review_notes:
+		if edit == null or not is_instance_valid(edit):
+			continue
+		if edit.text == String(edit.get_meta("was", "")):
+			continue
+		var write: Callable = edit.get_meta("write")
+		if write.is_valid():
+			write.call(edit.text)
+	_review_notes.clear()
+
+func drop_review_notes() -> void:
+	_review_notes.clear()
+
 # Whose body an instance is, for a confirm that has to name it. Reads the ghost
 # too, so a row about an enemy you already killed still says who it was.
 func enemy_name_of(instance: int) -> String:
@@ -907,6 +1090,7 @@ func reset_state() -> void:
 			_page._board.highlight([])
 	fulfil_checks.clear()
 	status_goal_checks.clear()
+	winning_rows.clear()
 	bonus_checks.clear()
 	instead_checks.clear()
 	event_goal_checks.clear()
@@ -934,29 +1118,6 @@ func populate_standing() -> void:
 	reset_state()
 	_box.add_child(_verify_head_row("What you need to do:"))
 
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
-	if ch != null and ch.level_up_condition != "":
-		# THE CONDITION ONLY, on this list. The report step's version of this row
-		# quotes the reward inline (`→ Gain +1 Small Chest and +1 Scramble`) because
-		# that is the moment you decide whether to tick it. Here the heading is "What
-		# you need to do", and the reward is not part of the doing — it is a payoff
-		# you read once a run and then remember. It cost a WRAPPED LINE on the one
-		# page the overworld has the least room on: the left column is 612px of a
-		# 625px window (test_overworld2's _assert_fits), and both halves of this row
-		# on one line pushed the condition onto a second.
-		#
-		# The character's face takes that room instead, leading the row the way an
-		# enemy's leads a follower's and a status symbol leads a status's — this is
-		# their standing challenge, and it is the one row on either list that belongs
-		# to the player rather than to something on the board. The reward is still
-		# one hover away, on the portrait.
-		var lu_row: Control = _objective_row("Level up — %s" % ch.level_up_condition,
-			UITheme.GOLD, _character_icon_rect(ch, UITheme.GOLD))
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			lu_row.tooltip_text = "%s — level up here and it pays %s." % [
-				ch.display_name, ch.level_up_reward]
-		_box.add_child(lu_row)
-
 	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
 	# have to be here and not only on the report step: an event fires the moment a
 	# game is beaten, and the goal it hands over lands while the player is still
@@ -980,18 +1141,46 @@ func populate_standing() -> void:
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)], UITheme.CURSE))
 
-	# The player's standing status buffs (§13) — goals that belong to no enemy and
-	# are available at whatever game gets picked next.
-	for row in GameState.status_objectives():
+	# THE WINNING-RUN SECTION, the same shape it takes on the report step: the
+	# player's standing status buffs (§13) and the character's level-up, under one
+	# header and nested under it. Both are goals that belong to no enemy and to no
+	# particular game — what they need is a run taken all the way to a win — and
+	# saying that once above them is how this list stops reading as a list of things
+	# the NEXT game could settle.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var winning: Array = GameState.status_objectives()
+	if not winning.is_empty() or (ch != null and ch.level_up_condition != ""):
+		_box.add_child(_verify_head(WINNING_RUN_HEAD))
+	for row in winning:
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
 		var pgames: int = int(row.get("games", 0))
-		_box.add_child(_objective_row(
+		_add_row(_objective_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
 				sd.objective_text(StatusData.PLAYER, stacks),
 				StatusData.clock_suffix(pgames)],
 			_status_row_tint(sd), null, 0,
-			_status_mark(sd, stacks, StatusData.PLAYER, false, pgames)))
+			_status_mark(sd, stacks, StatusData.PLAYER, false, pgames)), false, true)
+	if ch != null and ch.level_up_condition != "":
+		# THE CONDITION ONLY, on this list. The report step's version of this row
+		# quotes the reward inline (`→ Gain +1 Small Chest and +1 Scramble`) because
+		# that is the moment you decide whether to tick it. Here the heading is "What
+		# you need to do", and the reward is not part of the doing — it is a payoff
+		# you read once a run and then remember. It cost a WRAPPED LINE on the one
+		# page the overworld has the least room on: the left column is 612px of a
+		# 625px window (test_overworld2's _assert_fits), and both halves of this row
+		# on one line pushed the condition onto a second.
+		#
+		# The character's face takes that room instead, leading the row the way an
+		# enemy's leads a follower's and a status symbol leads a status's — this is
+		# their standing challenge. The reward is still one hover away, on the
+		# portrait.
+		var lu_row: Control = _objective_row("Level up — %s" % ch.level_up_condition,
+			UITheme.GOLD, _character_icon_rect(ch, UITheme.GOLD))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lu_row.tooltip_text = "%s — level up here and it pays %s." % [
+				ch.display_name, ch.level_up_reward]
+		_add_row(lu_row, false, true)
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.

@@ -5,8 +5,8 @@ extends GutTest
 # the sheet authors.
 #
 # WHAT THIS FILE IS REALLY ABOUT IS CHARGES, because that is the whole of what the
-# fifth kind adds. Four kinds are spent once and leave; a wand spends one of six
-# and stays, which touches the pack (LootSystem.use_loot), the relic that copies
+# fifth kind adds. Four kinds are spent once and leave; a wand spends one of
+# several and stays, which touches the pack (LootSystem.use_loot), the relic that copies
 # loot (Echo Chamber), and the pill that fills bars (48 Hour Energy). Each of those
 # seams has a test here rather than only in the file that owns the other side.
 #
@@ -37,7 +37,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_wand_loads_with_a_charge_count_and_a_target_mode() -> void:
 	var wands: Array = Data.all_wands()
-	assert_eq(wands.size(), 4, "the sheet's 4 rows all generated")
+	assert_eq(wands.size(), 12, "the sheet's 12 rows all generated")
 	for w in wands:
 		assert_true(w is WandData)
 		var wand: WandData = w
@@ -66,7 +66,8 @@ func test_the_roster_covers_every_rung_of_the_ladder() -> void:
 	for w in Data.all_wands():
 		rungs[(w as WandData).rarity_index()] = true
 	assert_eq(rungs.size(), 4,
-		"one wand per rarity — the ladder is what spreads the roster, not a weight")
+		"every rung of the ladder is occupied — the ladder is what spreads the "
+		+ "roster's drop rates, not a weight authored anywhere")
 
 # --- The material alphabet (§6) --------------------------------------------
 
@@ -97,8 +98,8 @@ func test_a_run_deals_every_wand_a_distinct_material_and_leaves_the_rest_spare()
 		assert_false(dealt.has(base), "no two wands wear the same stick")
 		dealt.append(base)
 	# THE FACT THE WHOLE IDENTIFICATION DESIGN RESTS ON, asserted rather than
-	# trusted to arithmetic: 24 spares over 4 wands means knowing three tells you
-	# nothing about the fourth.
+	# trusted to arithmetic: 16 spares over 12 wands means knowing eleven still
+	# tells you nothing about the twelfth.
 	assert_eq(WandSystem.unused_materials().size(),
 		WandSystem.MATERIALS.size() - Data.all_wands().size(),
 		"every material the run did not deal is spare")
@@ -138,8 +139,8 @@ func test_zapping_identifies_the_type_and_every_charge_behind_it() -> void:
 	assert_false(WandSystem.is_identified(&"wand_of_nothing"))
 	WandSystem.zap_wand(entry, {"rng": _rng()})
 	# EVEN THE ONE THAT DID NOTHING. The gamble pays its information out whatever
-	# the effect landed on — a wand you could spend six times without learning what
-	# it was would be six gambles for the price of one slot.
+	# the effect landed on — a wand you could spend four times without learning what
+	# it was would be four gambles for the price of one slot.
 	assert_true(WandSystem.is_identified(&"wand_of_nothing"),
 		"the fizzle still teaches you what it was")
 
@@ -153,29 +154,29 @@ func test_the_preference_is_hidden_until_the_wand_is_known() -> void:
 
 func test_a_fresh_wand_carries_what_the_sheet_authored() -> void:
 	var entry: Dictionary = _entry(&"wand_of_fire")
-	assert_eq(WandSystem.charges_of(entry), 4)
-	assert_eq(WandSystem.max_charges(entry), 4)
+	assert_eq(WandSystem.charges_of(entry), 3)
+	assert_eq(WandSystem.max_charges(entry), 3)
 
 # An entry with no `charges` key is a FRESH wand, never an empty one — an old save
 # or a hand-written entry should arrive usable rather than dead.
 func test_an_entry_with_no_count_reads_as_full() -> void:
 	var bare := {"type": "wand", "id": &"wand_of_fire"}
-	assert_eq(WandSystem.charges_of(bare), 4, "missing is not the same fact as spent")
+	assert_eq(WandSystem.charges_of(bare), 3, "missing is not the same fact as spent")
 
 func test_zapping_from_the_pack_spends_a_charge_and_keeps_the_slot() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
 	assert_eq(GameState.loot_items.size(), 1)
 	LootSystem.use_loot(0, {"rng": _rng()})
 	assert_eq(GameState.loot_items.size(), 1, "a wand with charges left stays put")
-	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 5,
-		"one charge off the six")
+	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 3,
+		"one charge off the four")
 
 func test_the_last_charge_takes_the_wand_with_it() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
-	for _i in range(6):
+	for _i in range(4):
 		LootSystem.use_loot(0, {"rng": _rng()})
 	assert_eq(GameState.loot_items.size(), 0,
-		"the sixth zap is the one that empties the slot")
+		"the fourth zap is the one that empties the slot")
 
 func test_a_one_charge_wand_leaves_on_its_first_zap() -> void:
 	GameState.add_wand_loot(&"wand_of_wishing")
@@ -194,10 +195,10 @@ func test_a_zapped_wand_does_not_move_out_of_its_slot() -> void:
 func test_charges_can_be_topped_up_but_never_past_the_top() -> void:
 	var entry: Dictionary = _entry(&"wand_of_fire")
 	entry["charges"] = 1
-	assert_true(WandSystem.add_charges(entry, 2))
-	assert_eq(WandSystem.charges_of(entry), 3)
+	assert_true(WandSystem.add_charges(entry, 1))
+	assert_eq(WandSystem.charges_of(entry), 2)
 	assert_true(WandSystem.add_charges(entry, 99))
-	assert_eq(WandSystem.charges_of(entry), 4, "clamped to what a fresh one holds")
+	assert_eq(WandSystem.charges_of(entry), 3, "clamped to what a fresh one holds")
 	assert_false(WandSystem.add_charges(entry, 1),
 		"a full wand reports that the bar did not move")
 
@@ -292,6 +293,134 @@ func test_the_wand_of_fire_burns_the_square_and_lights_the_ground() -> void:
 	assert_eq(StringName(GameLoop2.tile_at(cell).id), &"fire")
 	assert_true(str(out["logs"]).contains("Fire"), "and it says so: %s" % str(out["logs"]))
 
+# --- The eight that aim at a UNIT (§5.5) -----------------------------------
+#
+# A Unit is anything standing on the square: an enemy, a boss, or one of the
+# player's own bodies (spec §17). These are the six verbs the roster needed that
+# the DSL did not have, plus the two that reuse ops it already had.
+
+# A body parked on `cell`, so a ray has something to land on.
+func _body_at(cell: Vector2i, boss := false) -> int:
+	var e := GoalEnemyData.new()
+	e.id = &"wand_target"
+	e.display_name = "Target"
+	e.damage = 1
+	e.health = 3
+	e.difficulty = GoalEnemyData.Difficulty.LOW
+	e.boss = boss
+	var inst: int = GameLoop2.spawn_to_stack(e)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	if not entry.is_empty():
+		entry["col"] = cell.x
+		entry["row"] = cell.y
+	return inst
+
+func _zap(id: StringName, cell: Vector2i) -> Dictionary:
+	return WandSystem.zap_wand(_entry(id), {"rng": _rng(), "target": cell})
+
+func test_the_wand_of_death_takes_a_body_off_the_board() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	var out: Dictionary = _zap(&"wand_of_death", cell)
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "it dies where it stands")
+	assert_string_contains(str(out["logs"]), "dies where it stands")
+
+# THE ONE THING IN THE GAME THAT FINISHES A BOSS WITHOUT ITS GOAL (§7.1). Every
+# other outside hit floors at one point of Health; this is what a Legendary rung
+# and a single charge are paying for.
+func test_the_wand_of_death_is_the_one_thing_that_finishes_a_boss() -> void:
+	var cell := Vector2i(2, 1)
+	var boss: int = _body_at(cell, true)
+	# Magic Missile first, to show the floor is really there.
+	_zap(&"wand_of_magic_missile", cell)
+	assert_false(GameLoop2.entry_for(boss).is_empty(), "a bolt does not finish a boss")
+	assert_eq(int(GameLoop2.entry_for(boss)["health"]), 2, "but it does chip one")
+	_zap(&"wand_of_magic_missile", cell)
+	assert_eq(int(GameLoop2.entry_for(boss)["health"]), 1, "down to its last point")
+	_zap(&"wand_of_magic_missile", cell)
+	assert_eq(int(GameLoop2.entry_for(boss)["health"]), 1, "and it holds there")
+	_zap(&"wand_of_death", cell)
+	assert_true(GameLoop2.entry_for(boss).is_empty(), "Death is the exception")
+
+func test_the_wand_of_cancellation_empties_the_bodys_ability_list() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	GameLoop2.grant_ability(inst, &"invisibility")
+	assert_true(GameLoop2.entry_has_ability(GameLoop2.entry_for(inst), &"invisibility"))
+	var out: Dictionary = _zap(&"wand_of_cancellation", cell)
+	assert_false(GameLoop2.entry_has_ability(GameLoop2.entry_for(inst), &"invisibility"),
+		"granted abilities go with the authored ones — it loses what it knew")
+	assert_string_contains(str(out["logs"]), "forgets")
+
+func test_the_wand_of_invisibility_hangs_the_ability_on_the_body() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	_zap(&"wand_of_invisibility", cell)
+	assert_true(GameLoop2.entry_has_ability(GameLoop2.entry_for(inst), &"invisibility"),
+		"a Negative wand, and this is the cost")
+
+# "+1 Speed" IS the Speed status, not a bespoke verb — the sheet writes
+# `apply_status speed 1 target=enemy` and the combat side does the rest.
+func test_the_wand_of_haste_monster_is_the_speed_status() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	_zap(&"wand_of_haste_monster", cell)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(int((entry.get("statuses", {}) as Dictionary).get(&"speed", 0)), 1,
+		"one stack of Speed, which is what makes it close a column faster")
+
+func test_the_wand_of_plenty_halves_a_body_into_two() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["health"] = 4
+	entry["max_health"] = 4
+	var before: int = GameLoop2.stack.size()
+	var out: Dictionary = _zap(&"wand_of_plenty", cell)
+	assert_eq(GameLoop2.stack.size(), before + 1, "two where there was one")
+	assert_eq(int(GameLoop2.entry_for(inst)["max_health"]), 2, "each with half the ceiling")
+	assert_string_contains(str(out["logs"]), "comes apart")
+
+# "IF POSSIBLE" is the sheet's own wording, and a body with one point of Max
+# Health has nothing to halve.
+func test_the_wand_of_plenty_cannot_halve_a_single_point() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["health"] = 1
+	entry["max_health"] = 1
+	var before: int = GameLoop2.stack.size()
+	_zap(&"wand_of_plenty", cell)
+	assert_eq(GameLoop2.stack.size(), before, "nothing to split")
+
+func test_the_wand_of_polymorph_swaps_the_body_and_keeps_the_slot() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	var was: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
+	var out: Dictionary = _zap(&"wand_of_polymorph", cell)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(entry.is_empty(), "the slot survives — it is the body that changed")
+	assert_ne(entry.get("enemy"), was, "and it is something else now")
+	assert_false((entry.get("enemy") as GoalEnemyData).is_boss(),
+		"never INTO a boss — a Rare stick that could would lose runs by being used")
+	assert_string_contains(str(out["logs"]), "It becomes ",
+		"the log names what it became, which the board cannot say on its own")
+
+func test_the_wand_of_teleportation_moves_the_body_somewhere_else() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	var out: Dictionary = _zap(&"wand_of_teleportation", cell)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(entry.is_empty())
+	assert_ne(Vector2i(int(entry.get("col", 0)), int(entry.get("row", 0))), cell,
+		"it is somewhere else")
+	assert_string_contains(str(out["logs"]), "somewhere else")
+
+func test_a_unit_wand_aimed_at_an_empty_square_fizzles() -> void:
+	var out: Dictionary = _zap(&"wand_of_death", Vector2i(3, 2))
+	assert_eq(out["logs"].size(), 1)
+	assert_string_contains(String(out["logs"][0]), "without finding anything")
+
 func test_a_ray_with_nowhere_to_land_fizzles_rather_than_no_opping() -> void:
 	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_fire"), {"rng": _rng()})
 	assert_eq(out["logs"].size(), 1)
@@ -321,17 +450,17 @@ func test_a_wand_reads_as_a_wand_everywhere_the_pack_asks() -> void:
 	assert_eq(LootSystem.use_verb(entry), "Zap")
 	assert_true(LootSystem.is_wand(entry))
 	assert_false(LootSystem.can_throw(entry), "a wand is zapped, never thrown")
-	assert_eq(LootSystem.charges(entry), [4, 4])
+	assert_eq(LootSystem.charges(entry), [3, 3])
 	assert_eq(LootSystem.charges({"type": "pill", "id": &"x"}), [0, 0],
 		"no other kind is counting")
 
 func test_the_hover_says_the_charges_whether_or_not_the_stick_is_known() -> void:
 	var entry: Dictionary = _entry(&"wand_of_fire")
 	assert_string_contains(String(LootSystem.hover_card(entry).get("subtitle", "")),
-		"4 / 4 charges")
+		"3 / 3 charges")
 	WandSystem.identify(&"wand_of_fire")
 	assert_string_contains(String(LootSystem.hover_card(entry).get("subtitle", "")),
-		"4 / 4 charges")
+		"3 / 3 charges")
 
 func test_an_unknown_wand_still_counts_its_charges_in_words() -> void:
 	var entry: Dictionary = _entry(&"wand_of_fire")
@@ -370,8 +499,8 @@ func test_the_charge_op_fills_a_wand_and_names_it() -> void:
 	GameState.loot_items[0]["charges"] = 1
 	var out: Dictionary = PillSystem.take_pill(
 		{"type": "pill", "id": &"48_hour_energy", "horse": false}, {"rng": _rng()})
-	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 4,
-		"three charges, one wand, nothing else in the pack to take them")
+	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 3,
+		"two charges, one wand, nothing else in the pack to take them")
 	assert_true(str(out["logs"]).contains("charged"),
 		"and the pill says what it charged: %s" % str(out["logs"]))
 
@@ -424,18 +553,18 @@ func test_a_half_spent_wand_and_its_alphabet_survive_a_round_trip() -> void:
 func test_a_loose_wand_still_spends_a_charge() -> void:
 	var entry: Dictionary = _entry(&"wand_of_nothing")
 	LootSystem.use_entry(entry, {"rng": _rng()})
-	assert_eq(WandSystem.charges_of(entry), 5,
+	assert_eq(WandSystem.charges_of(entry), 3,
 		"a wand used where you stand costs a charge like any other")
 	assert_eq(GameState.loot_items.size(), 0, "and it was never in the pack")
 
 func test_the_result_carries_what_is_left_on_both_paths() -> void:
 	var loose: Dictionary = LootSystem.use_entry(_entry(&"wand_of_fire"),
 		{"rng": _rng(), "target": Vector2i(1, 0)})
-	assert_eq(int(loose.get("charges_left", -1)), 3, "loose: 4 - 1")
+	assert_eq(int(loose.get("charges_left", -1)), 2, "loose: 3 - 1")
 	GameState.add_wand_loot(&"wand_of_fire")
 	var packed: Dictionary = LootSystem.use_loot(0,
 		{"rng": _rng(), "target": Vector2i(1, 0)})
-	assert_eq(int(packed.get("charges_left", -1)), 3, "and the pack path agrees")
+	assert_eq(int(packed.get("charges_left", -1)), 2, "and the pack path agrees")
 
 func test_only_a_wand_reports_a_charge_count() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")

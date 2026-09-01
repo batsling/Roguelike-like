@@ -769,10 +769,15 @@ func test_level_up_not_applied_when_unchecked() -> void:
 	_report_beat(_ui)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
-# A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THE HAUL SCREEN (§18). It
-# used to throw a RewardScreen over the checklist the instant the box was ticked —
-# on a list of five rows, four interruptions — so it is banked at the tick and
-# handed over when the report opens the screen every other reward lands on.
+# A CHEST THE LEVEL-UP EARNS WAITS FOR THE HAUL SCREEN (§18). It used to throw a
+# RewardScreen over the checklist the instant the box was ticked — on a list of
+# five rows, four interruptions — so it is banked and handed over when the report
+# opens the screen every other reward lands on.
+#
+# THE LEVEL-UP IS A WINNING-RUN ROW NOW (ReportChecklist's block of that name), so
+# the banking happens at the REPORT rather than at the tick: the box arms and
+# disarms freely while the game is on, and handing the game in is the moment it
+# means anything.
 #
 # Both halves are asserted, because either one alone would pass while the feature
 # was broken: banked-and-never-handed-over is a lost chest, and handed-over-without-
@@ -782,8 +787,8 @@ func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
-	assert_eq(GameState.pending_chests, chests_before + 1,
-		"Isaac's level-up banks a chest at the tick")
+	assert_eq(GameState.pending_chests, chests_before,
+		"nothing is banked while the game is still on — the row is only armed")
 	assert_null(_ui.get_node_or_null("RewardScreen"),
 		"and nothing is thrown over the checklist for it")
 	_ui.report(false)
@@ -797,14 +802,34 @@ func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
-	var chests_before: int = GameState.pending_chests
 	_ui.pick(0)
 	_tick(_ui._levelup_check)
-	# Read BEFORE the report, which is what now empties the queue onto the screen.
-	assert_eq(GameState.pending_chests, chests_before + 1, "Poe's level-up banks a chest")
-	var choices: int = GameState.pending_chest_choices.back()
-	assert_true([1, 2, 3, 5].has(choices),
-		"chest SIZE is rolled: Small=1 / Medium=2 / Large=3 / Huge=5, got %d" % choices)
+	# WATCHED RATHER THAN READ AFTERWARDS. The report takes the level, banks the
+	# chest and — once the board's resolve playback lands, which is immediately in a
+	# headless test — hands the whole queue to the haul screen. So `pending_chests`
+	# is 0 again by the time the report returns, and the size roll has to be caught
+	# at the moment it was banked.
+	var rolled: Array = []
+	TriggerBus.chest_granted.connect(func(_ctx):
+		if not GameState.pending_chest_choices.is_empty():
+			rolled.append(int(GameState.pending_chest_choices.back())))
+	# A BEATEN report, because a missed one can end the run under the level-up: the
+	# bodies swing, and `_apply_level_up` is skipped once GameLoop2.run_over.
+	_report_beat(_ui)
+	assert_false(GameLoop2.run_over, "the run is still on, so the level was takeable")
+	assert_false(rolled.is_empty(), "Poe's level-up banks a chest")
+	if rolled.is_empty():
+		return
+	assert_true([1, 2, 3, 5].has(rolled[0]),
+		"chest SIZE is rolled: Small=1 / Medium=2 / Large=3 / Huge=5, got %d" % rolled[0])
+	# …and it lands on the haul screen, which is where every reward this report
+	# earned is answered for.
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
+	assert_gt(_ui._post_screen._chest_sections.size(), 0,
+		"and the level-up's chest is on it")
+	_leave_post_game()
+	_dismiss_event()
 
 # --- a completed goal sinks (§2.1) ------------------------------------------
 #
@@ -828,29 +853,45 @@ func _last_row_index(prefix: String) -> int:
 			found = i
 	return found
 
-func test_a_ticked_level_up_drops_below_the_enemies() -> void:
+# THE WINNING-RUN ROWS DO NOT SINK, and that is the exception the sinking rule
+# needs rather than an oversight. A row sinks once it is a RECORD — answered,
+# locked, nothing left to decide. These two are never answered mid-game: they arm
+# and disarm as many times as the player likes, and the report is what cashes
+# them, so a ticked one is still a live question and belongs where it was.
+func test_a_ticked_level_up_stays_where_it_is() -> void:
 	_reboot(&"isaac")
 	_ui.pick(0)
-	assert_gt(_row_index("Cleared:"), _row_index("Leveled up"),
-		"it starts above them, where the open goals are")
+	var head: int = _row_index("On a winning run:")
+	assert_gt(head, -1, "the winning-run header is on the list")
+	var lu: int = _row_index("Leveled up")
+	assert_gt(lu, head, "and the level-up nests under it")
+	assert_gt(_row_index("Cleared:"), lu,
+		"above the board, where the open goals are")
 	_tick(_ui._levelup_check)
 	_ui._populate_play_panel()
-	assert_gt(_row_index("Leveled up"), _last_row_index("Cleared:"),
-		"and lands under every enemy row once it is answered")
+	assert_eq(_row_index("Leveled up"), lu,
+		"and ticking it moves nothing — it is armed, not answered")
+	assert_true(_ui._levelup_check.button_pressed, "the tick survived the rebuild")
+	assert_false(_ui._levelup_check.disabled, "and can still be taken back")
 
-func test_a_ticked_status_goal_drops_below_the_enemies() -> void:
+func test_a_ticked_status_goal_stays_where_it_is() -> void:
 	_reboot(&"isaac")
 	GameState.apply_status(&"strength", 1)
 	_ui.pick(0)
 	assert_false(_ui._status_goal_checks.is_empty(), "the status put a row on the list")
 	var check: CheckBox = _ui._status_goal_checks[0]["check"]
 	var row_text: String = check.text
-	assert_gt(_row_index("Cleared:"), _row_index(row_text),
+	assert_false(row_text.contains("On a winning run"),
+		"the header says that once — the row carries its own sentence: %s" % row_text)
+	var was: int = _row_index(row_text)
+	assert_gt(_row_index("Cleared:"), was,
 		"it starts above the board, with the other open goals")
 	_tick(check)
 	_ui._populate_play_panel()
-	assert_gt(_row_index(row_text), _last_row_index("Cleared:"),
-		"and sinks under every enemy row once it is answered")
+	assert_eq(_row_index(row_text), was, "and ticking it moves nothing")
+	assert_false(_ui._status_goal_checks.is_empty())
+	assert_true((_ui._status_goal_checks[0]["check"] as CheckBox).button_pressed,
+		"the tick survived the rebuild")
 
 func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
 	# The exception. A body with more Health than one goal completion can take is
@@ -7836,24 +7877,32 @@ func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 		"its loot is on the floor to go and pick up (§8.2)")
 
 func test_a_confirmed_row_cannot_be_taken_back() -> void:
-	# The level-up row is the one that stays on the list whatever it resolves —
-	# an enemy's row goes with the body — so it is where "locked" can be looked at.
-	_reboot(&"zoe")
+	# A CURSE ROW is where "locked" can be looked at: it stays on the list whatever
+	# it resolves (a curse is not cleared by being followed, only by its timer) and
+	# it is recorded in `answered_rows`. The level-up used to play this part and no
+	# longer can — it is a winning-run row now, and those ARM rather than resolve.
+	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
-	if _ui._levelup_check == null:
+	var checks: Array = _curse_checks()
+	if checks.is_empty():
 		return
-	var check: CheckBox = _ui._levelup_check
+	var check: CheckBox = checks[0]
+	var key: String = "curse:0:poor_sleep"
 	_tick(check)
 	assert_true(check.disabled, "an answered row is locked, so it takes no more input")
 	assert_true(check.button_pressed, "and stays ticked")
-	assert_true(GameLoop2.row_answered("levelup"),
+	assert_true(GameLoop2.row_answered(key),
 		"and the LOOP holds it, so nothing a repaint does can lose it")
 	check.button_pressed = false
 	assert_null(_ui.get_node_or_null("Confirm"),
 		"there is nothing left to raise a question about")
 	_ui._populate_play_panel()
-	assert_true(_ui._levelup_check.disabled, "the rebuilt row is locked again")
-	assert_true(_ui._levelup_check.button_pressed, "and still ticked")
+	var again: Array = _curse_checks()
+	assert_false(again.is_empty(), "the curse is still on the list")
+	if again.is_empty():
+		return
+	assert_true((again[0] as CheckBox).disabled, "the rebuilt row is locked again")
+	assert_true((again[0] as CheckBox).button_pressed, "and still ticked")
 
 func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	_pick_solo(0)
@@ -7893,45 +7942,286 @@ func test_a_goal_answered_mid_game_still_engages_the_body_that_survived_it() -> 
 	GameLoop2.attempt_turn()
 	assert_eq(GameState.hp, 40, "and held its fire — its goal was engaged this game")
 
-func test_the_level_up_is_taken_the_moment_it_is_confirmed() -> void:
+# --- the "Completed Game" confirm and its winning-run review -----------------
+#
+# Pressing the button raises a confirm carrying the winning-run rows again, with
+# the box the player has been ticking all game and a notes field beside each. It
+# is where those rows are last askable, which is the whole argument for it.
+
+# The review's own checkboxes, in build order.
+func _review_boxes(panel) -> Array:
+	var out: Array = []
+	if panel == null or not is_instance_valid(panel):
+		return out
+	for node in panel.find_children("*", "CheckBox", true, false):
+		out.append(node)
+	return out
+
+func _review_notes_fields(panel) -> Array:
+	var out: Array = []
+	if panel == null or not is_instance_valid(panel):
+		return out
+	for node in panel.find_children("*", "TextEdit", true, false):
+		out.append(node)
+	return out
+
+func test_completed_game_asks_before_it_reports() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	var played: int = GameState.games_played
+	_ui.confirm_completed_game()
+	assert_not_null(_ui.get_node_or_null("Confirm"),
+		"the button raises a question rather than reporting on the press")
+	assert_eq(GameState.games_played, played, "and nothing has been reported yet")
+	_say_no(_ui)
+	assert_eq(GameState.games_played, played, "a No reports nothing at all")
+	assert_eq(_ui._phase, _ui.Phase.PLAYING, "the game is still in play")
+
+func test_the_confirm_carries_the_winning_run_rows_and_their_notes() -> void:
+	_reboot(&"zoe")
+	GameState.apply_status(&"strength", 1)
+	_ui.pick(0)
+	_ui.confirm_completed_game()
+	var panel = _ui.get_node_or_null("Confirm")
+	assert_not_null(panel)
+	if panel == null:
+		return
+	var boxes: Array = _review_boxes(panel)
+	# One per winning-run row: the status goal and Zoe's level-up.
+	assert_eq(boxes.size(), _ui._checklist.winning_rows.size(),
+		"every winning-run row is on the panel and nothing else is")
+	assert_gte(boxes.size(), 2, "the status goal and the level-up are both there")
+	assert_eq(_review_notes_fields(panel).size(), boxes.size(),
+		"and each one has a note beside it")
+	_say_no(_ui)
+
+# THE BOXES ARE MIRRORS. Ticking one on the panel ticks the row behind it, which
+# is what the report actually reads — so what the player leaves ticked here is
+# what goes in with the game.
+func test_the_review_box_writes_through_to_the_checklist_row() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	assert_not_null(_ui._levelup_check)
+	if _ui._levelup_check == null:
+		return
+	assert_false(_ui._levelup_check.button_pressed, "it opens unticked")
+	_ui.confirm_completed_game()
+	var panel = _ui.get_node_or_null("Confirm")
+	var boxes: Array = _review_boxes(panel)
+	assert_false(boxes.is_empty())
+	if boxes.is_empty():
+		return
+	(boxes[0] as CheckBox).button_pressed = true
+	assert_true(_ui._levelup_check.button_pressed,
+		"the row behind the panel is what was ticked")
+	assert_true(GameLoop2.row_armed("levelup"), "and the loop is holding it")
+	(boxes[0] as CheckBox).button_pressed = false
+	assert_false(GameLoop2.row_armed("levelup"), "unticking it disarms it, both ways")
+	_say_no(_ui)
+
+# …and the row it opens with is the row as the player left it, so a box ticked on
+# the checklist an hour ago is already ticked when the panel comes up.
+func test_the_review_opens_showing_what_is_already_ticked() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	_tick(_ui._levelup_check)
+	_ui.confirm_completed_game()
+	var boxes: Array = _review_boxes(_ui.get_node_or_null("Confirm"))
+	assert_false(boxes.is_empty())
+	if boxes.is_empty():
+		return
+	assert_true((boxes[0] as CheckBox).button_pressed,
+		"the panel shows the tick the player already made")
+	_say_no(_ui)
+
+# THE NOTE IS SAVED ON YES AND THROWN AWAY ON NO, exactly as the enemy rows'
+# note was when it rode their own confirm.
+func test_the_review_note_is_written_on_yes() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	var game: GameData = _ui._chosen.get("game")
+	assert_not_null(game)
+	if game == null:
+		return
+	GameStats.clear_level_up_note(game.id, GameState.character_id)
+	_ui.confirm_completed_game()
+	var fields: Array = _review_notes_fields(_ui.get_node_or_null("Confirm"))
+	assert_false(fields.is_empty())
+	if fields.is_empty():
+		return
+	(fields[0] as TextEdit).text = "beat it on the third try"
+	_say_yes(_ui)
+	assert_eq(GameStats.level_up_note(game.id, GameState.character_id),
+		"beat it on the third try", "the note went in with the report")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_the_review_note_is_dropped_on_no() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	var game: GameData = _ui._chosen.get("game")
+	if game == null:
+		return
+	# From a clean slate: GameStats outlives one test, and the Yes case above may
+	# have written this very pair.
+	GameStats.clear_level_up_note(game.id, GameState.character_id)
+	_ui.confirm_completed_game()
+	var fields: Array = _review_notes_fields(_ui.get_node_or_null("Confirm"))
+	if fields.is_empty():
+		return
+	(fields[0] as TextEdit).text = "typed and thought better of"
+	_say_no(_ui)
+	assert_eq(GameStats.level_up_note(game.id, GameState.character_id), "",
+		"a No throws the note away with the panel")
+
+# A run with no status goals and a character with no level-up has nothing to
+# review, and the confirm is then just the question.
+func test_the_confirm_still_asks_when_there_is_nothing_to_review() -> void:
+	_reboot(&"erratic_deck")
+	_ui.pick(0)
+	_ui._checklist.winning_rows.clear()
+	assert_null(_ui._checklist.winning_run_review(),
+		"no rows, no review block")
+	_ui.confirm_completed_game()
+	assert_not_null(_ui.get_node_or_null("Confirm"), "the question is still asked")
+	_say_no(_ui)
+
+# --- what the level-up paid shows up on the haul screen ----------------------
+
+# A level-up's stat gains used to land silently on the header bar: the chest it
+# granted got a section on the haul screen and the +1 Dash got nothing, on the one
+# screen that exists to say what the evening earned.
+func test_the_haul_screen_says_what_the_level_up_paid() -> void:
+	_reboot(&"zoe")                          # +1 Dash, no chest
+	_ui.pick(0)
+	_tick(_ui._levelup_check)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen)
+	if _ui._post_screen == null:
+		return
+	var text: String = str(_labels_under(_ui._post_screen))
+	assert_string_contains(text, "LEVELLED UP", "the haul screen says a level was taken")
+	assert_string_contains(text, "Dash", "and what it actually paid")
+	_leave_post_game()
+	_dismiss_event()
+
+# A LOOT reward goes onto the haul screen's own table rather than appearing in
+# the pack with nothing said. Rodney's level pays "1 Loot", and `grant_level_up`
+# OFFERS it (GameState.offer_loot) for exactly this — which also means a full pack
+# is asked about instead of swallowing the surplus.
+func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
+	_reboot(&"rodney")
+	_ui.pick(0)
+	if _ui._levelup_check == null:
+		return
+	var carried: int = GameState.loot_items.size()
+	_tick(_ui._levelup_check)
+	_report_beat(_ui)
+	assert_eq(GameState.loot_items.size(), carried,
+		"it is not shovelled into the pack behind the player's back")
+	_ui._end_resolve()
+	assert_not_null(_ui._post_screen)
+	if _ui._post_screen == null:
+		return
+	assert_true(_ui._post_screen.has_loot_section(),
+		"it is on the table the haul screen offers")
+	_leave_post_game()
+	_dismiss_event()
+
+func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
+	_reboot(&"zoe")
+	_ui.pick(0)
+	_report_beat(_ui)                        # box left unticked
+	_ui._end_resolve()
+	if _ui._post_screen == null:
+		return
+	assert_false(str(_labels_under(_ui._post_screen)).contains("LEVELLED UP"),
+		"no level, no panel")
+	_leave_post_game()
+	_dismiss_event()
+
+# THE LEVEL-UP IS TAKEN AT THE REPORT, and only there. It asks about a run rather
+# than about the hour just spent, so the box arms while the game is on and handing
+# the game in is what cashes it. Unticking it before the report costs nothing,
+# which is the other half of the same rule.
+func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	if _ui._levelup_check == null:
 		return
 	_tick(_ui._levelup_check)
-	assert_eq(GameState.dash_charges, dash_before + 1,
-		"the level landed mid-game, not at the report")
-	assert_true(_ui._levelup_check.disabled, "and the row is locked behind it")
+	assert_eq(GameState.dash_charges, dash_before,
+		"nothing landed mid-game — the row is armed, not answered")
+	assert_false(_ui._levelup_check.disabled, "and it can still be taken back")
 	_report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before + 1,
-		"the report does not take it a second time")
+	assert_eq(GameState.dash_charges, dash_before + 1, "the report is what takes it")
 	_ui._end_resolve()
 	_leave_post_game()
 	_dismiss_event()
 
-func test_a_confirmed_goal_survives_the_checklist_being_rebuilt() -> void:
-	# The page rebuilds this list on every repaint. A tick that cannot be taken
-	# back must not be something a repaint can lose, which is why the loop and not
-	# the box is what remembers it.
+func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
+	_reboot(&"zoe")
+	var dash_before: int = GameState.dash_charges
+	_ui.pick(0)
+	if _ui._levelup_check == null:
+		return
+	_tick(_ui._levelup_check)
+	_ui._levelup_check.button_pressed = false      # thought better of it
+	_report_beat(_ui)
+	assert_eq(GameState.dash_charges, dash_before,
+		"a row you took back is a row you did not claim")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_an_armed_winning_run_row_survives_the_checklist_being_rebuilt() -> void:
+	# The page rebuilds this list on every repaint. A tick the player made must not
+	# be something a repaint can lose, which is why the LOOP and not the box is what
+	# remembers it — `armed_rows` here, exactly as `answered_rows` holds the ticks
+	# that have already resolved.
 	_pick_solo(0)
 	if _ui._levelup_check == null:
 		return
 	_tick(_ui._levelup_check)
+	assert_true(GameLoop2.row_armed("levelup"), "the loop is holding the tick")
 	_ui._populate_play_panel()
 	assert_not_null(_ui._levelup_check)
 	assert_true(_ui._levelup_check.button_pressed, "the rebuilt row is still ticked")
-	assert_true(_ui._levelup_check.disabled, "and still locked")
+	assert_false(_ui._levelup_check.disabled,
+		"and still takeable back — an armed row has done nothing yet")
+	_ui._levelup_check.button_pressed = false
+	assert_false(GameLoop2.row_armed("levelup"), "unticking it disarms it")
 
 func test_the_answered_rows_go_with_the_game() -> void:
+	GameState.add_curse_goal(&"poor_sleep")
+	_pick_solo(0)
+	var checks: Array = _curse_checks()
+	if checks.is_empty():
+		return
+	var key: String = "curse:0:poor_sleep"
+	_tick(checks[0])
+	assert_true(GameLoop2.row_answered(key))
+	_report_beat(_ui)
+	assert_false(GameLoop2.row_answered(key),
+		"what this game was answered for is not true of the next one")
+	_ui._end_resolve()
+	_leave_post_game()
+	_dismiss_event()
+
+func test_the_armed_rows_go_with_the_game_too() -> void:
+	# The winning-run half of the same rule. A tick is a claim about the game just
+	# handed in; the next game asks again.
 	_pick_solo(0)
 	if _ui._levelup_check == null:
 		return
 	_tick(_ui._levelup_check)
-	assert_true(GameLoop2.row_answered("levelup"))
+	assert_true(GameLoop2.row_armed("levelup"))
 	_report_beat(_ui)
-	assert_false(GameLoop2.row_answered("levelup"),
-		"what this game was answered for is not true of the next one")
+	assert_false(GameLoop2.row_armed("levelup"),
+		"the next game asks the question again")
 	_ui._end_resolve()
 	_leave_post_game()
 	_dismiss_event()
@@ -7974,11 +8264,16 @@ func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
 	if _ui._levelup_check == null:
 		return
 	_tick(_ui._levelup_check)
-	var done: int = GameLoop2.completed_goals.size()
-	assert_gt(done, 0, "the level-up is on the ledger")
+	var before: int = GameLoop2.completed_goals.size()
 	_report_beat(_ui)
-	assert_false(GameLoop2.row_answered("levelup"),
-		"the game's answered rows go with the game")
+	# A WINNING-RUN ROW IS BANKED AT THE REPORT, because that is where it resolves.
+	assert_gt(GameLoop2.completed_goals.size(), before,
+		"the level-up went onto the ledger when the game was handed in")
+	assert_string_contains(String(GameLoop2.completed_goals.back()["text"]),
+		"On a winning run,", "in the wording the row asked it in")
+	var done: int = GameLoop2.completed_goals.size()
+	assert_false(GameLoop2.row_armed("levelup"),
+		"the game's ticks go with the game")
 	assert_eq(GameLoop2.completed_goals.size(), done,
 		"…and the record of them does not — it is the RUN's")
 	_ui._end_resolve()

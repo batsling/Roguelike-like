@@ -27,9 +27,13 @@ const PANEL_W := 460
 # The checklist's ticks use it for the note about what you just did (§2.1): the
 # moment you confirm a kill is the moment you remember how it went, and asking for
 # both in one place is what let the goal rows drop their own Notes button.
+# `width` widens the panel past PANEL_W for an `extra` that needs the room — the
+# report's winning-run review puts a notes field BESIDE each row, and two columns
+# in 460px is two columns of three words. Clamped to the viewport by the caller's
+# own judgement; nothing here can measure a screen it is not yet on.
 static func ask(parent: Node, title: String, body: String, ok_text: String,
 		on_ok: Callable, on_cancel: Callable = Callable(),
-		extra: Control = null) -> ConfirmPanel:
+		extra: Control = null, width: int = 0) -> ConfirmPanel:
 	var panel := ConfirmPanel.new()
 	panel._title = title
 	panel._body = body
@@ -37,6 +41,7 @@ static func ask(parent: Node, title: String, body: String, ok_text: String,
 	panel._on_ok = on_ok
 	panel._on_cancel = on_cancel
 	panel._extra = extra
+	panel._width = maxi(PANEL_W, width)
 	parent.add_child(panel)
 	return panel
 
@@ -48,6 +53,8 @@ var _on_cancel: Callable = Callable()
 # The caller's own control, mounted under the body. Held rather than added at
 # `ask` time because the panel has no tree until _ready builds one.
 var _extra: Control = null
+# How wide the panel is drawn, never narrower than PANEL_W. See `ask`.
+var _width: int = PANEL_W
 # Set the instant Yes is pressed, so the tear-down below knows not to also call
 # the No handler for the same question.
 var _answered: bool = false
@@ -92,7 +99,7 @@ func _build() -> void:
 	add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(PANEL_W, 0)
+	panel.custom_minimum_size = Vector2(_width, 0)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.10, 0.09, 0.11, 0.99)
 	sb.set_corner_radius_all(8)
@@ -115,7 +122,7 @@ func _build() -> void:
 	var text := Label.new()
 	text.text = _body
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text.custom_minimum_size = Vector2(PANEL_W - 40, 0)
+	text.custom_minimum_size = Vector2(_width - 40, 0)
 	text.add_theme_font_size_override("font_size", 14)
 	text.add_theme_color_override("font_color", Color(0.86, 0.86, 0.9))
 	vbox.add_child(text)

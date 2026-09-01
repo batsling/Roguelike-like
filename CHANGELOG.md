@@ -11,6 +11,139 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **"✓ Completed Game" asks, and what it asks with is the winning-run rows.**
+
+  Every other row on the checklist raises its own "did you really?" the moment it
+  is ticked, because that is the moment it resolves. The winning-run rows are the
+  opposite: they have been armed and disarmed all game with nothing happening, and
+  pressing this button is the one irreversible thing about them. So they get their
+  safeguard here, at the moment that is actually final for them — the confirm
+  carries each status goal and the level-up with the box exactly as the player
+  left it, still changeable, and a **notes field beside each one**.
+
+  The boxes on the panel are **mirrors**, not a second source of truth: each one
+  writes straight through to the checklist's own CheckBox, which is what
+  `ticked_status_claims` and the report's `leveled` read. So a change made on the
+  panel is a change made on the list behind it, and Cancel leaves both exactly as
+  they were — only the unsaved note text is dropped, as a No drops the note on any
+  other confirm.
+
+  **This is also where the note came back.** It used to ride the level-up row's own
+  confirm and went with it when that row started arming; a note field on a box you
+  can simply untick is a question with no moment attached to it. Status goals get
+  one too, against the (game, status) pair — `GameStats.status_goal_log`, mirroring
+  `levelup_log` and paired for the same reason: "beat every boss without getting
+  hit" reads completely differently at Hades and at Balatro.
+
+- **Everything a level-up paid shows up on the haul screen.**
+
+  A level-up was the one reward on that screen with nothing to show for itself. A
+  chest it granted got a section, and the +1 Dash and the +1 Gold went straight
+  onto the header bar and said nothing anywhere — on the one screen that exists to
+  answer "what did the evening earn", which is the wrong place to be quiet.
+
+  There is a panel above the chests now: the condition that was met, and every stat
+  line the level actually granted. **The chain, not the level** — a Crown doubling
+  it paid twice, so `_apply_level_up` collects the applied lines across its whole
+  loop and returns them, and the report carries them into `_post_snapshot`.
+
+  And Rodney's `loot` reward goes through `offer_loot` rather than `add_loot`, so
+  it lands on the haul screen's own table beside the chest and the game's drop
+  instead of appearing silently in the pack — and, when the pack is full, gets
+  asked about rather than swallowed. The `scroll` arm moves with it.
+
+- **The winning-run condition is said once, on the header.**
+
+  Every row under it carried the `On a winning run,` prefix for a while, which put
+  the phrase three times into five lines of the narrowest column on the page and
+  wrapped rows that had fitted. The indent is what ties a row to the header — that
+  is what an indent is for. The **ledger** still says it in full on every line
+  (`GameLoop2._record_player_objective` and the level-up's line in
+  `Overworld2.report`): that record is a flat list of sentences on another screen,
+  with no header above them to inherit the condition from.
+
+- **The winning-run section: the player's status goals and the level-up arm rather
+  than resolve, and say what they actually need.**
+
+  Both ask about something the hour at the game does not settle. "Beat every boss
+  without getting hit" and a character's level-up condition are claims about a
+  RUN — and, since the `statuses` sheet was reworded, about a run **taken to a
+  win**. Every other row on the checklist is about the game in front of you and
+  resolves the second it is confirmed; these two were doing the same thing, which
+  meant paying out for something that had not happened yet.
+
+  They behave like an **enemy's bonus row** now (see the entry below it, which is
+  the same argument pointed at a different row): the box goes on and off as many
+  times as the player likes, there is **no confirm** because there is nothing yet
+  to take back, and the **report** is what cashes it — `_resolve_status_claims`
+  for the status rows, the `leveled` branch of `Overworld2.report` for the
+  level-up. **An escape cashes them too**, because an escape is a report. The tick
+  lives in `GameLoop2.armed_rows`, so a repaint and a reload both keep it, and it
+  goes with the game like every other per-game record.
+
+  They also **read** as what they are. Every player-side row is prefixed
+  `On a winning run,` and the level-up says
+  `On a winning run, leveled up — <condition>`; both nest, indented, under one
+  `On a winning run:` header, on the standing list and on the report step alike.
+  The row text is built from the Effect DSL rather than from the sheet's prose
+  column, which is why the rewording of `On Player` did not reach it on its own.
+
+  Two consequences worth knowing. The level-up's **notes editor is gone from the
+  checklist** — it lived inside the confirm, and an editor inside a box you can
+  simply untick is a question with no moment attached to it; the note itself is
+  untouched and still written from the Collection's character page. And
+  `_redeem_pending_chests` now holds while `_resolving` as well as while
+  `_phase == PLAYING`: a level-up chest banked at the report arrives after the
+  phase has already moved to SELECT, and without the second guard it opened a
+  RewardScreen over a board still playing the resolve back — the exact
+  interruption that block exists to prevent.
+
+- **Eight more wands, and the six board verbs they needed.**
+
+  The `wands` sheet went from four rows to twelve: Cancellation, Death, Haste
+  Monster, Invisibility, Magic Missile, Plenty, Polymorph and Teleportation, one
+  per rung of the ladder as before but no longer one *each*. Two of the eight
+  needed no new grammar — Magic Missile is `deal_damage 1`, and Haste Monster's
+  "+1 Speed" **is** the Speed status (`apply_status speed 1 target=enemy`), since a
+  second way to make a body faster would be a second thing to keep in step with
+  the first. The other six are new verbs: `kill`, `cancel_abilities`,
+  `grant_ability`, `split`, `polymorph`, `teleport`, one line each in `GameLoop2`'s
+  wand-verbs block and all resolved by one `WandSystem._zap_unit`.
+
+  **A UNIT is anything standing on a cell now** — an enemy and a boss included
+  (spec §17). The word used to mean only the player's own bodies, and `units2.0`
+  is still the sheet of *those*; what changed is the word, because the content
+  started using it. Every wand in the roster is written about a "Target Unit", and
+  a player reading "Target Unit is instantly killed" off a card has just pointed a
+  stick at the thing they mean.
+
+  **So a boss is a Unit like any other, and these five reach one** — a real
+  departure, since a bomb and the D10 both refuse a boss. What is bought with it is
+  the one rule that keeps a boss a boss: **nothing but its goal takes its last
+  point of Health.** `_damage_enemy` grew an opt-in `boss_floor` that
+  `damage_enemy_instance` (the outside-hit path a thrown potion and a zapped wand
+  share) is the only caller to ask for, so Magic Missile and Fire chip a boss and
+  stall at 1 where they used to be refused outright. The floor is **opt-in and off
+  by default** on purpose: the goal hit resolves through that very function, and a
+  floor that defaulted on would make a boss unkillable by the one thing that is
+  supposed to kill it. **Wand of Death is the single authored exception**, which is
+  what its Legendary rung and its one charge are paying for.
+
+- **A conjured body does not queue.**
+
+  `spawn_to_stack` — Scroll and Wand of Create Monster — walked a body onto the
+  spawn column like anything else, and a spawn column with a body in every row
+  parked it off-grid to wait. That is right for an enemy that ARRIVED with a game
+  (it is queuing behind the crowd it came with) and wrong for one somebody
+  conjured: the card says a monster is created, and a monster created into a
+  holding pen the player cannot see is a charge spent on nothing. A full spawn
+  column now falls back to `nearest_open_cell` — the closest square the body's
+  footprint fits in, measured from the back of its own lane, ties breaking toward
+  the back the way `place_drop` breaks its own. A genuinely full board still waits,
+  because there is nowhere for "nearest" to point.
+
+- **One more influence edge**: Muck → Megabonk, from the `connections` sheet.
+
 - **The checklist's status rows nest under their body, and a bonus is armed rather
   than claimed.**
 

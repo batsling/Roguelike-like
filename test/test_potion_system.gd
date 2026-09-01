@@ -620,13 +620,24 @@ func test_brimstone_does_not_widen_a_bottle() -> void:
 	assert_eq(int(GameLoop2.entry_for(second)["health"]), 3,
 		"and the column was not — a bottle is not widened by a bomb relic")
 
-func test_a_boss_shrugs_off_a_thrown_bottle() -> void:
+func test_a_thrown_bottle_chips_a_boss_but_never_finishes_one() -> void:
 	# §7.1's rule, and the reason it is a rule: a Rare bottle that one-shot a
 	# boss's Health would make that section a suggestion.
+	#
+	# A boss used to refuse the hit entirely. It takes it now and STOPS AT ONE —
+	# `damage_enemy_instance` asks `_damage_enemy` for the boss floor, which is what
+	# lets a Unit-targeting wand mean something pointed at the biggest Unit on the
+	# board (docs/wands-design.md §5.5) without moving what a boss is. Only its goal
+	# takes the last point off it, and only Wand of Death is the exception.
 	var inst: int = _solo(_enemy(3, true))
 	_park(inst, Vector2i(2, 1))
 	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))   # deal_damage 3 area=cell
-	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "bosses take no damage from one")
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 1,
+		"the bottle chipped it down to its last point")
+	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))
+	assert_false(GameLoop2.entry_for(inst).is_empty(),
+		"and a second bottle cannot take that point off it")
+	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 1, "it holds at one")
 
 func test_a_body_killed_by_a_bottle_is_destroyed_not_defeated() -> void:
 	var inst: int = _solo(_enemy(1))

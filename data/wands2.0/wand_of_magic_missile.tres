@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_magic_missile"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_magic_missile"
+display_name = "Wand of Magic Missile"
+rarity = "Common"
+preference = "Positive"
+reference = "Rogue"
+description = "Target Unit takes 1 Damage"
+charges = 3
+targeting = "ray"
+effect = [{"op": "deal_damage", "value": 1, "area": "cell"}]
+file = ""
