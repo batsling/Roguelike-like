@@ -544,6 +544,13 @@ func _left_column() -> Control:
 
 	col.add_child(_tally_panel())
 
+	# THE LEVEL-UP, WHEN THE REPORT TOOK ONE. Above the chests, because its chest
+	# is one of the ones below and this is the line that says where that one came
+	# from. See _level_up_panel.
+	var lvl: Control = _level_up_panel()
+	if lvl != null:
+		col.add_child(lvl)
+
 	# One heading over all the chests rather than one apiece: three bodies each
 	# leaving a single relic is three panels that would otherwise each announce "it
 	# dropped something" over the picture that already says it.
@@ -663,6 +670,58 @@ func add_loot(entries: Array) -> bool:
 func refresh_payout() -> void:
 	if _loot_section != null and is_instance_valid(_loot_section):
 		_loot_section.redraw()
+
+# WHAT THE LEVEL-UP PAID, or null when this report took none.
+#
+# A level-up is the one reward on this screen with no picture of its own. A chest
+# it granted lands in the chest column below and a piece of loot it granted lands
+# on the payout table to the right, but the +1 Scramble and the +1 Gold went
+# straight onto the header bar and said nothing anywhere — and on the one screen
+# that exists to answer "what did the evening earn", a reward that arrives
+# silently is a reward the player has to take on trust.
+#
+# So: the condition they met, the sheet's own wording for what it is worth, and
+# every stat line the chain actually granted. THE CHAIN, not the level — a Crown
+# doubling it paid twice, and quoting the character sheet instead of what was
+# applied would under-report the relic that caused it (Overworld2._apply_level_up
+# collects them across the whole while-loop for exactly this).
+func _level_up_panel() -> Control:
+	var lvl: Dictionary = _snap.get("level_up", {})
+	if lvl.is_empty():
+		return null
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG_DEEP, UITheme.GOLD.lerp(UITheme.BORDER, 0.4), 8, 10, 1))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	wrap.add_child(col)
+	var levels: int = maxi(1, int(lvl.get("levels", 1)))
+	# "LEVELLED UP ×2" only when the Crown actually chained one. A count on the
+	# common case is a number the player has to read to learn it says one.
+	# ✦, not an up-arrow: the glyph font is a subset (see tools/build_glyph_font.py)
+	# and a symbol it does not carry costs a host font search every time a Label
+	# wearing it is built. ✦ is already in it, and already means "the evening earned
+	# something" on the heading below this panel.
+	col.add_child(_line("✦  LEVELLED UP" + ("" if levels == 1 else "  ×%d" % levels),
+		UITheme.GOLD, 10))
+	col.add_child(_line(String(lvl.get("condition", "")), UITheme.TEXT, 13, true))
+	var stats: Array = lvl.get("stats", [])
+	if not stats.is_empty():
+		col.add_child(_line(", ".join(PackedStringArray(stats)), UITheme.SUCCESS, 12, true))
+	# The sheet's wording is the FALLBACK, not the headline: it is a promise, and
+	# the stat lines above are what was actually paid. It is still worth printing
+	# when there are none, because a chest-only or loot-only level has nothing else
+	# to show here — the thing it bought is in another column.
+	var reward: String = String(lvl.get("reward", ""))
+	if stats.is_empty() and reward != "" and reward.to_upper() != "N/A":
+		col.add_child(_line(reward, UITheme.SUCCESS, 12, true))
+	return wrap
+
+# Is there a payout table on this screen at all? A report that earned nothing says
+# so with a note where the loot would have been, and this is how a caller tells
+# the two apart without reaching into the section.
+func has_loot_section() -> bool:
+	return _loot_section != null and is_instance_valid(_loot_section)
 
 func _empty_note(text: String) -> Control:
 	var wrap := PanelContainer.new()

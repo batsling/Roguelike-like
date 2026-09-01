@@ -11,6 +11,57 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **"✓ Completed Game" asks, and what it asks with is the winning-run rows.**
+
+  Every other row on the checklist raises its own "did you really?" the moment it
+  is ticked, because that is the moment it resolves. The winning-run rows are the
+  opposite: they have been armed and disarmed all game with nothing happening, and
+  pressing this button is the one irreversible thing about them. So they get their
+  safeguard here, at the moment that is actually final for them — the confirm
+  carries each status goal and the level-up with the box exactly as the player
+  left it, still changeable, and a **notes field beside each one**.
+
+  The boxes on the panel are **mirrors**, not a second source of truth: each one
+  writes straight through to the checklist's own CheckBox, which is what
+  `ticked_status_claims` and the report's `leveled` read. So a change made on the
+  panel is a change made on the list behind it, and Cancel leaves both exactly as
+  they were — only the unsaved note text is dropped, as a No drops the note on any
+  other confirm.
+
+  **This is also where the note came back.** It used to ride the level-up row's own
+  confirm and went with it when that row started arming; a note field on a box you
+  can simply untick is a question with no moment attached to it. Status goals get
+  one too, against the (game, status) pair — `GameStats.status_goal_log`, mirroring
+  `levelup_log` and paired for the same reason: "beat every boss without getting
+  hit" reads completely differently at Hades and at Balatro.
+
+- **Everything a level-up paid shows up on the haul screen.**
+
+  A level-up was the one reward on that screen with nothing to show for itself. A
+  chest it granted got a section, and the +1 Dash and the +1 Gold went straight
+  onto the header bar and said nothing anywhere — on the one screen that exists to
+  answer "what did the evening earn", which is the wrong place to be quiet.
+
+  There is a panel above the chests now: the condition that was met, and every stat
+  line the level actually granted. **The chain, not the level** — a Crown doubling
+  it paid twice, so `_apply_level_up` collects the applied lines across its whole
+  loop and returns them, and the report carries them into `_post_snapshot`.
+
+  And Rodney's `loot` reward goes through `offer_loot` rather than `add_loot`, so
+  it lands on the haul screen's own table beside the chest and the game's drop
+  instead of appearing silently in the pack — and, when the pack is full, gets
+  asked about rather than swallowed. The `scroll` arm moves with it.
+
+- **The winning-run condition is said once, on the header.**
+
+  Every row under it carried the `On a winning run,` prefix for a while, which put
+  the phrase three times into five lines of the narrowest column on the page and
+  wrapped rows that had fitted. The indent is what ties a row to the header — that
+  is what an indent is for. The **ledger** still says it in full on every line
+  (`GameLoop2._record_player_objective` and the level-up's line in
+  `Overworld2.report`): that record is a flat list of sentences on another screen,
+  with no header above them to inherit the condition from.
+
 - **The winning-run section: the player's status goals and the level-up arm rather
   than resolve, and say what they actually need.**
 

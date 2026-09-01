@@ -333,7 +333,10 @@ node and its script.
   the player's standing status goals and the character's level-up nest under one
   header there, and they ARM rather than resolve — the box goes on and off freely,
   there is no confirm, and handing the game in is what cashes it, because what
-  they ask about is a run rather than the hour just spent),
+  they ask about is a run rather than the hour just spent. Their safeguard is on
+  the **`✓ Completed Game`** confirm instead, which carries those rows again with
+  the ticks as they stand and a **notes** field beside each: it is the moment
+  that is final for them, and the only place their note can be asked for),
   the battlefield on the right with the player's pack (items **and** scrolls,
   one strip of tokens) above it. **The two halves point at each other**: hovering
   a goal row lights the body it belongs to on the board, and hovering a body

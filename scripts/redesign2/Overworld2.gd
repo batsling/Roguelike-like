@@ -1762,8 +1762,48 @@ func loot_teleport(req: Dictionary) -> String:
 # credited as beaten — see the `if not escaped` block below for exactly what that
 # withholds.
 # `beaten` is the honour-system answer to the only question this app actually
-# asks: did you complete the real video game? It is what "✓ Completed Game"
-# presses, and it drives the RECORD half of the report — the run's beaten set, the
+# What "✓ Completed Game" actually presses: the confirm, with the WINNING-RUN
+# REVIEW on it (ReportChecklist.winning_run_review).
+#
+# Every other row on the checklist asks its own "did you really?" at the moment it
+# is ticked, because that is the moment it resolves. The winning-run rows — the
+# player's standing status goals and the character's level-up — resolve HERE and
+# nowhere else: they have been armed and disarmed all game with nothing happening,
+# and this button is the one irreversible thing about them. So they get their
+# safeguard here, at the moment that is final for them, with the box still
+# changeable and the NOTE about how it went asked for beside it.
+#
+# The panel is wide (REVIEW_PANEL_W) because a note field beside a wrapped goal
+# line does not fit ConfirmPanel's own 460, and it says both halves of what
+# pressing Yes means: the game is reported, and these claims go in with it.
+const REVIEW_PANEL_W := 780
+
+func confirm_completed_game() -> void:
+	if _phase != Phase.PLAYING or _chosen.is_empty():
+		return
+	var review: Control = _checklist.winning_run_review() if _checklist != null else null
+	var body: String = ("Reporting this game as completed. It resolves now — the "
+		+ "board takes its turn and the run moves on.")
+	if review != null:
+		body += ("\n\nEverything below is claimed with it. These are the goals no "
+			+ "single game settles, so this is the last moment to answer them.")
+	ConfirmPanel.ask(self, "Completed this game?", body, "Yes, I completed it",
+		func() -> void:
+			if _checklist != null:
+				_checklist.save_review_notes()
+			report(true),
+		func() -> void:
+			# A No changes nothing — the boxes the review mirrored were written
+			# straight through as they were clicked, so what the player left ticked
+			# on this panel is what the checklist behind it is holding. Only the
+			# unsaved note text is dropped, exactly as a No drops the note on any
+			# other confirm.
+			if _checklist != null:
+				_checklist.drop_review_notes(),
+		review, REVIEW_PANEL_W)
+
+# asks: did you complete the real video game? It is the claim "✓ Completed Game"
+# makes once its confirm is answered, and it drives the RECORD half of the report — the run's beaten set, the
 # repeat-visit Dash, the lifetime tally, the Amulet win.
 #
 # It has nothing to do with the enemies. Clearing a goal is ticking that enemy's
@@ -1803,6 +1843,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# (ReportChecklist._lock_row) — paying that one again would pay it twice.
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed \
 		and not _levelup_check.disabled
+	# What the level-up paid, filled in below when one is actually taken and read
+	# by `_post_snapshot` at the end of this function.
+	var level_up_paid: Dictionary = {}
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
 	# the strike and the advance back from the old positions to the new ones.
 	var before: Dictionary = _board.capture_positions()
@@ -1964,7 +2007,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		if lvl_ch != null:
 			GameLoop2.record_completed_goal("levelup",
 				"On a winning run, levelled up — %s" % lvl_ch.level_up_condition)
-		_apply_level_up()
+		# What it paid, kept for the haul screen (see `_post_snapshot` below) so a
+		# level-up's stat gains and its loot are reported alongside its chest
+		# instead of landing silently.
+		level_up_paid = _apply_level_up()
 		# Which game the level was taken at, so the character's page can list it
 		# beside whatever the player wrote about doing it here.
 		if played_game != null:
@@ -2035,6 +2081,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# What bought the chest: {enemy, points} rows, read before the claim
 		# emptied the pool. Empty on a report that earned no chest at all.
 		"chest_sources": chest_sources,
+		# …and what the LEVEL-UP paid, when one was taken: the condition, the
+		# sheet's reward wording, and every stat line the chain granted. Empty on
+		# a report with no level in it.
+		"level_up": level_up_paid,
 	}
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 
@@ -4102,17 +4152,28 @@ func _ticked_status_claims() -> Dictionary:
 # apply_level_up_stats (its stat vocabulary already covers the 2.0 verbs) and the
 # grant_chest/add_loot reward paths — no combat machinery. Capped so a 100%
 # bonus-chance item can't loop forever.
-func _apply_level_up() -> void:
+# Returns WHAT IT PAID, so the haul screen can show it (see `_post_snapshot`'s
+# `level_up`): {levels, condition, reward, stats: ["+1 Scramble", …]}. Empty when
+# no level was taken. A level-up's payout used to be invisible unless it happened
+# to be a chest — the stat gains landed silently on the header bar and Rodney's
+# loot appeared in the pack with nothing said — which on the one screen that
+# exists to say what the evening earned is the wrong place to be quiet.
+func _apply_level_up() -> Dictionary:
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch == null or ch.level_up_condition == "":
-		return
+		return {}
 	var bonus_levels: int = 0
+	var stats: Array = []
 	while true:
 		# One level, stats and reward — GameState.grant_level_up. What is left here
 		# is the two things that are about EARNING one rather than about what one is
 		# worth: the condition checked above, and the bonus-level chain below.
 		# Potion of Raise Level calls the same function with neither.
-		GameState.grant_level_up(_rng)
+		#
+		# The stat lines are collected across the WHOLE chain: a Crown-doubled level
+		# paid twice, and a screen that reported one of them would be under-counting
+		# the relic that caused it.
+		stats.append_array(GameState.grant_level_up(_rng))
 		if bonus_levels >= 10 or not _roll_bonus_level_up():
 			break
 		bonus_levels += 1
@@ -4120,6 +4181,8 @@ func _apply_level_up() -> void:
 	# perfect-aware items can fire on it.
 	if ch.level_up_condition.to_lower().contains("perfect"):
 		GameState.last_game_perfected = true
+	return {"levels": bonus_levels + 1, "condition": ch.level_up_condition,
+		"reward": ch.level_up_reward, "stats": stats}
 
 # Bank one enemy defeat against both records that care about it: the game it
 # happened at, and the character who was playing.
@@ -5638,8 +5701,10 @@ func _build_ui() -> void:
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
 	done.add_theme_font_size_override("font_size", 15)
 	# Pressing it IS the claim: "I completed this game." What you did to the
-	# enemies is the checklist above it, ticked row by row.
-	done.pressed.connect(func(): report(true))
+	# enemies is the checklist above it, ticked row by row — and what it raises is
+	# the winning-run review (confirm_completed_game), because those rows are the
+	# ones this button is the last chance to answer.
+	done.pressed.connect(confirm_completed_game)
 	_play_panel.add_child(done)
 
 	# The way out, directly under the way through — they resolve the same step, so
