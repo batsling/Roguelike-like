@@ -1795,10 +1795,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# the graph slot rather than the game, because an event belongs to the place
 	# (a dead end, §1) — a transmuted card plays a different game on the same node.
 	var slot_here: StringName = StringName(_chosen.get("slot", &""))
-	# …unless the level was already TAKEN mid-game (§2.1). Ticking that row is a
-	# confirm and it applies on the spot, so a locked box has been paid for and the
-	# report must not pay for it twice. `disabled` is the mark of a resolved row
-	# (ReportChecklist._lock_row).
+	# THE LEVEL-UP IS TAKEN HERE, at the report, and nowhere else. It is a
+	# winning-run row now (ReportChecklist's block of that name): the box arms and
+	# disarms freely while the game is on, and this is the moment it means
+	# something. `disabled` is still asked about, because a run saved mid-game by an
+	# older build can carry a level-up that already resolved and locked
+	# (ReportChecklist._lock_row) — paying that one again would pay it twice.
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed \
 		and not _levelup_check.disabled
 	# Snapshot where everyone stands BEFORE the resolve, so the animation can play
@@ -1955,6 +1957,13 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
+		# Into the run's ledger first, in the winning-run row's own wording — the
+		# level-up used to bank this line as it resolved mid-game, and it resolves
+		# here now (see ReportChecklist's winning-run block).
+		var lvl_ch: CharacterData = Data.get_character2(GameState.character_id)
+		if lvl_ch != null:
+			GameLoop2.record_completed_goal("levelup",
+				"On a winning run, levelled up — %s" % lvl_ch.level_up_condition)
 		_apply_level_up()
 		# Which game the level was taken at, so the character's page can list it
 		# beside whatever the player wrote about doing it here.
@@ -2566,7 +2575,15 @@ func _redeem_pending_chests() -> void:
 	# decision, next to the loot and the chest the kills bought — which is what the
 	# haul screen is for. Nothing is lost by waiting: `pending_chests` is run state,
 	# it survives a save, and `report` hands the queue over the moment it opens.
-	if _phase == Phase.PLAYING:
+	#
+	# …AND WHILE THE REPORT IS STILL RESOLVING. `_resolving` is the window between
+	# `report` starting and `_end_resolve` opening the haul screen, and by the
+	# middle of it `_phase` has already moved to SELECT — so the phase check alone
+	# stopped covering this the moment the level-up became a winning-run row and
+	# started paying out at the report instead of at the tick. Without it the
+	# level-up's chest opens a RewardScreen over a board still playing the resolve
+	# back, which is the exact interruption this whole block exists to prevent.
+	if _phase == Phase.PLAYING or _resolving:
 		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh

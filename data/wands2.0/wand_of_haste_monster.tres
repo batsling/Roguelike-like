@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_haste_monster"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_haste_monster"
+display_name = "Wand of Haste Monster"
+rarity = "Common"
+preference = "Negative"
+reference = "Rogue"
+description = "Target Unit Gains +1 Speed"
+charges = 3
+targeting = "ray"
+effect = [{"op": "apply_status", "status": "speed", "value": 1, "target": "enemy", "area": "cell"}]
+file = ""

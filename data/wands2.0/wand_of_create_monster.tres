@@ -6,11 +6,11 @@
 script = ExtResource("1_wand")
 id = &"wand_of_create_monster"
 display_name = "Wand of Create Monster"
-rarity = "Uncommon"
+rarity = "Rare"
 preference = "Negative"
 reference = "NetHack"
 description = "Spawn 1 Random Enemy to the Board"
-charges = 6
+charges = 4
 targeting = "non_directional"
 effect = [{"op": "spawn_enemy", "tier": "current", "value": 1}]
 file = ""

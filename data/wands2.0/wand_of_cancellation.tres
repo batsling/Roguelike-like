@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_cancellation"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_cancellation"
+display_name = "Wand of Cancellation"
+rarity = "Uncommon"
+preference = "Positive"
+reference = "Rogue"
+description = "Target Unit loses it's ability"
+charges = 3
+targeting = "ray"
+effect = [{"op": "cancel_abilities", "area": "cell"}]
+file = ""

@@ -460,17 +460,25 @@ func test_path_check_uses_the_whole_footprint() -> void:
 	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.grid_cols()),
 		"but rows 2-3 are clear all the way in")
 
+# THROUGH `summon`, not `spawn_to_stack`. The off-grid queue is what a body that
+# could not reach the spawn column does while it waits for room. A CONJURED body
+# does not queue at all any more (docs/wands-design.md §5.4): a scroll or a wand
+# that said a monster was created and then put it in a holding pen the player
+# cannot see spent its charge on nothing, so `spawn_to_stack` falls back to the
+# nearest square the body fits in. Filling the board with it would test the
+# opposite of what these three are about. `summon` is the ability-spawn path and
+# still queues, which is what makes it the right stand-in here.
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
 	for i in range(GameLoop2.grid_rows()):
-		GameLoop2.spawn_to_stack(_enemy(0))
+		GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column holds grid_rows() enemies")
-	GameLoop2.spawn_to_stack(_enemy(0))
+	GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 1, "the next enemy waits off-grid")
 
 func test_full_front_column_stalls_the_queue() -> void:
 	# Six enemies converging on a grid_rows()-wide front column.
 	for i in range(6):
-		GameLoop2.spawn_to_stack(_enemy(0))
+		GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 6 - GameLoop2.grid_rows(), "two overflow the spawn column")
 	# March forward; the front column caps attackers at grid_rows() and the rest jam.
 	for i in range(12):
@@ -1287,9 +1295,11 @@ func test_growing_the_board_buys_a_game_of_distance() -> void:
 func test_the_queue_walks_onto_the_room_the_growth_made() -> void:
 	# Fill the back column, then jam one more enemy behind it: with 4 lanes the
 	# fifth has nowhere to stand and waits off-grid.
+	# `summon`, not `spawn_to_stack`, for the reason above
+	# (test_spawn_column_overflows_to_off_grid_when_full).
 	for _i in range(GameLoop2.grid_rows()):
-		GameLoop2.spawn_to_stack(_enemy(1))
-	var waiting: int = GameLoop2.spawn_to_stack(_enemy(1))
+		GameLoop2.summon(_enemy(1))
+	var waiting: int = GameLoop2.summon(_enemy(1))
 	assert_eq(_col_of(waiting), GameLoop2.offgrid_col(), "no lane left for it")
 	assert_eq(GameLoop2.offgrid_count(), 1)
 	GameState.add_item(_minor())
@@ -1358,6 +1368,42 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	assert_eq(GameState.hp, 10, "closing in costs nothing")
 	_turn()                             # strikes for 2
 	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 once at the front")
+
+# A CONJURED BODY DOES NOT QUEUE (docs/wands-design.md §5.4). A scroll or a wand
+# that says a monster is created and then parks it in a holding pen the player
+# cannot see has spent a charge on nothing, so a full spawn column falls back to
+# the nearest square the body fits in.
+func test_a_conjured_body_takes_the_nearest_square_when_its_column_is_full() -> void:
+	# `summon` fills the spawn column and queues anything that will not fit; the
+	# conjured body arriving after it must NOT join that queue.
+	for _i in range(GameLoop2.grid_rows()):
+		GameLoop2.summon(_enemy(0))
+	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column is full and nobody is waiting")
+	var conjured: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_gt(conjured, 0)
+	assert_eq(GameLoop2.offgrid_count(), 0, "and the conjured body did not queue behind it")
+	var col: int = _col_of(conjured)
+	assert_lte(col, GameLoop2.grid_cols(), "it is on the board")
+	assert_gte(col, 1)
+	# THE NEAREST one, not just any: the spawn column is taken, so the square it
+	# lands on is one column in from it.
+	assert_eq(col, GameLoop2.spawn_col() - 1,
+		"the closest open column to the one it wanted")
+
+# …and when the board has no room at all it still waits, because there is nowhere
+# for "nearest" to point. The fallback is a better answer than the queue, not a
+# promise the board can always keep.
+func test_a_conjured_body_with_nowhere_at_all_to_stand_still_waits() -> void:
+	# Placed cell by cell: `summon` with no cell walks onto the spawn column and
+	# QUEUES behind a full one, which would leave the rest of the board empty.
+	for c in range(1, GameLoop2.grid_cols() + 1):
+		for r in range(GameLoop2.grid_rows()):
+			GameLoop2.summon(_enemy(0), Vector2i(c, r))
+	assert_true(GameLoop2.empty_cells().is_empty(), "there is no square left")
+	var conjured: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_gt(conjured, 0)
+	assert_eq(_col_of(conjured), GameLoop2.offgrid_col(),
+		"a full board is a full board")
 
 # --- Strength on the board (Aggravate Monsters, §4.1 / §13.4) -------------
 

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_death"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_death"
+display_name = "Wand of Death"
+rarity = "Legendary"
+preference = "Positive"
+reference = "NetHack"
+description = "Target Unit is instantly killed"
+charges = 1
+targeting = "ray"
+effect = [{"op": "kill", "area": "cell"}]
+file = ""

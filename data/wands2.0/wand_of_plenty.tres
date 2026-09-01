@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WandData" load_steps=2 format=3 uid="uid://wand2_wand_of_plenty"]
+
+[ext_resource type="Script" path="res://scripts/resources/WandData.gd" id="1_wand"]
+
+[resource]
+script = ExtResource("1_wand")
+id = &"wand_of_plenty"
+display_name = "Wand of Plenty"
+rarity = "Uncommon"
+preference = "Neutral"
+reference = "Brogue"
+description = "Target Unit is split into two of the same Units with half Max Health if possible"
+charges = 2
+targeting = "ray"
+effect = [{"op": "split", "area": "cell"}]
+file = ""

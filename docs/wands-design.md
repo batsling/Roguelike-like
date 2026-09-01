@@ -176,24 +176,38 @@ So `LootSystem.use_entry` skips both the queue and the memory for a wand, and
 
 ## 5. The roster
 
-Four rows, one per rung of the rarity ladder — which makes the shared ladder do all
-the work. At its 75/20/5 with the Rare rung's 10% bump to Legendary, `Data.roll_wand`
-gives Nothing on three drops in four, Create Monster on one in five, Fire on about
-one in twenty-two and Wishing on about one in two hundred (before Luck, which rides
-the same roll). None of that spread is authored anywhere except in the four rarity
-words.
+Twelve rows across the four rungs of the rarity ladder — which makes the shared
+ladder do all the work. At its 75/20/5 with the Rare rung's 10% bump to Legendary,
+`Data.roll_wand` gives a Common on three drops in four and a Legendary on about one
+in two hundred (before Luck, which rides the same roll). None of that spread is
+authored anywhere except in the twelve rarity words.
 
 | Wand | Rarity | Charges | Type | Effect cell |
 |---|---|---|---|---|
-| **Wand of Nothing** | Common | 6 | Random | `nothing` |
-| **Wand of Create Monster** | Uncommon | 6 | Non-Directional | `spawn_enemy current` |
-| **Wand of Fire** | Rare | 4 | Ray | `apply_status burn 3 target=enemy; apply_tile fire` |
+| **Wand of Nothing** | Common | 4 | Random | `nothing` |
+| **Wand of Magic Missile** | Common | 3 | Ray | `deal_damage 1` |
+| **Wand of Haste Monster** | Common | 3 | Ray | `apply_status speed 1 target=enemy` |
+| **Wand of Invisibility** | Common | 3 | Ray | `grant_ability invisibility` |
+| **Wand of Cancellation** | Uncommon | 3 | Ray | `cancel_abilities` |
+| **Wand of Plenty** | Uncommon | 2 | Ray | `split` |
+| **Wand of Create Monster** | Rare | 4 | Non-Directional | `spawn_enemy current` |
+| **Wand of Fire** | Rare | 3 | Ray | `apply_status burn 3 target=enemy; apply_tile fire` |
+| **Wand of Polymorph** | Rare | 3 | Ray | `polymorph` |
+| **Wand of Teleportation** | Rare | 3 | Ray | `teleport` |
+| **Wand of Death** | Legendary | 1 | Ray | `kill` |
 | **Wand of Wishing** | Legendary | 1 | Non-Directional | `obtain_item any` |
 
-**The charge count is the rarity ladder read a second way.** The Legendary has one
-charge and the two cheapest have six, which is what lets a Common wand and a
-Legendary one sit in the same pack without the Common being strictly worse: six
-zaps of nothing is still six chances to have been holding something else.
+**The charge count is the rarity ladder read a second way.** The two Legendaries
+have one charge each and the Commons have three or four, which is what lets a
+Common wand and a Legendary one sit in the same pack without the Common being
+strictly worse: four zaps of nothing is still four chances to have been holding
+something else.
+
+**Three of the twelve are Negative or Neutral**, and that is what stops the kind
+from being a strictly good slot: Create Monster is a cost, Haste Monster and
+Invisibility make the board worse, and Nothing and Plenty are gambles that pay
+nothing. An unknown stick is one of twelve things and four of them you would
+rather not have zapped.
 
 ### 5.1 Wand of Nothing — the joke that has to be authored
 
@@ -229,9 +243,59 @@ potion's would.
 
 ### 5.4 Wand of Create Monster
 
-Scroll of Create Monster's op, six times over. It rolls at the run's **own**
+Scroll of Create Monster's op, four times over. It rolls at the run's **own**
 difficulty, which is what keeps a Negative piece of loot expensive: a cost that
 stayed flat while the roster climbed would stop being a cost.
+
+**A conjured body does not queue.** `GameLoop2.spawn_to_stack` walks it onto the
+spawn column like anything else, and a spawn column with a body already standing in
+every row used to park it off-grid to wait. That is right for an enemy that
+*arrived* with a game — it is queuing behind the crowd it came with — and wrong for
+one somebody conjured: the card says a monster is created, and a monster created
+into a holding pen the player cannot see is a charge spent on nothing. So a full
+spawn column falls back to `nearest_open_cell`, the closest square the body's
+footprint fits in, measured from the back of its own lane and breaking ties
+**toward the back** (the same tie-break `place_drop` uses, and for the same reason:
+the further square gives the player a turn to answer it).
+
+### 5.5 The eight that aim at a Unit
+
+A **Unit** is anything standing on the square the bolt landed on: an enemy, a boss,
+or one of the player's own bodies (spec §17, which is where the word was widened).
+Eight of the twelve wands are written about one, and six of those needed a verb the
+Effect DSL did not have. Two needed nothing:
+
+- **Wand of Magic Missile** is `deal_damage 1`, the op Wand of Fire's sibling
+  already used.
+- **Wand of Haste Monster** is `apply_status speed 1 target=enemy` — "+1 Speed"
+  **is** the Speed status, whose combat side is `tile_move +X`. A second way to
+  make a body faster would be a second thing to keep in step with the first.
+
+The six new verbs are one line each in `GameLoop2`'s wand-verbs block, and
+`WandSystem._zap_unit` is one function for all of them: resolve the area to the
+units in it, run the verb once per unit, say how many it found.
+
+| Verb | Wand | What it does |
+|---|---|---|
+| `kill` | Death | Off the board, now. Runs the body's death list, so a Split still splits. Does **not** go through `_damage_enemy` — a Legendary with one charge that a damage-halving status could survive would be a coin flip. |
+| `cancel_abilities` | Cancellation | Empties the body's **runtime** ability list — authored and granted alike. On the entry, so a cancelled Spitter is one body rather than every Spitter in the run. |
+| `grant_ability <id>` | Invisibility | The grant an Illusionist already uses on what it summons. |
+| `split` | Plenty | Two of the same body, each with half the Max Health of the one that was standing there. "If possible" is two real conditions: a body at 1 Max Health has nothing to halve, and a full board has nowhere for the twin. |
+| `polymorph` | Polymorph | Same slot, same statuses, a body of the same **tier** and any game type. Health resets to the new body's own, exactly as the D10's reroll does. Bosses are off the **result** list — a Rare stick that could turn a body *into* one would lose runs by being used. |
+| `teleport` | Teleportation | A random square it fits in, through `_move_entry` — so arriving by teleport costs the ground what arriving on foot does (§17). |
+
+**A boss is a Unit, and these five reach one.** That is a real change from the rest
+of the board — a bomb and the D10 both refuse a boss. What is bought with it is the
+one rule that keeps a boss a boss: **nothing but its goal takes its last point of
+Health.** `GameLoop2._damage_enemy` grew an opt-in `boss_floor`, which
+`damage_enemy_instance` (the outside-hit path a thrown potion and a zapped wand
+both come in through) is the only caller to ask for — so Magic Missile and Fire
+chip a boss and stall at 1. The floor is **opt-in and off by default** on purpose:
+the goal hit resolves through that very function, and a floor that defaulted on
+would make a boss unkillable by the one thing that is supposed to kill it.
+
+**Wand of Death is the single authored exception**, and that is what its Legendary
+rung and its one charge are paying for.
 
 ---
 
