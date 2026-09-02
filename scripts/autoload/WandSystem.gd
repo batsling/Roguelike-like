@@ -162,14 +162,26 @@ func is_identified(id: StringName) -> bool:
 # STICK (§6.5): the charges left over are the reward for having gambled the first
 # one, and a wand that had to be learned six times would be six gambles for the
 # price of one slot, which is the opposite of what the kind is for.
-func identify(id: StringName) -> bool:
+# `announce` is FALSE when the caller does not yet know whether the use will land
+# (see the spend paths): the type goes on the identified list straight away, so the
+# effect itself can see it — Amnesia's whole trick is forgetting the name it has
+# just taught — and the toast waits until the use is known to have done something.
+# A use that turns out to have done nothing calls `unidentify` and no toast was
+# ever shown.
+func identify(id: StringName, announce: bool = true) -> bool:
 	if id == &"" or GameState.identified_wand_types.has(id):
 		return false
 	GameState.identified_wand_types.append(id)
+	if announce:
+		announce_identified(id)
+	return true
+
+# The toast on its own, so a spend path can record the type now and say so
+# later — see the `announce` argument above.
+func announce_identified(id: StringName) -> void:
 	var w: WandData = Data.get_wand(id)
 	var nm: String = w.display_name if w != null else String(id)
 	Notifications.notify("Identified: %s!" % nm, WAND_COLOR)
-	return true
 
 func unidentify(id: StringName) -> void:
 	GameState.identified_wand_types.erase(id)
@@ -287,9 +299,18 @@ func notify_used(wand: WandData) -> void:
 # it — belongs to the pack rather than to the system that knows what the piece
 # does. This function is what ONE charge buys, and it is called once per charge.
 #
-# IDENTIFY FIRST, ALWAYS. The gamble pays its information out even when the effect
-# lands on nothing (§4.5) — a Wand of Nothing that fizzled anonymously would be a
-# stick the player could spend six times without ever learning it was the joke.
+# NOTHING HAPPENED MEANS NOTHING WAS LEARNED. A zap identifies the stick only when
+# the bolt actually LANDED on something — a ray fired at an empty square, and the
+# Wand of Nothing whichever square it is pointed at, leave the wand exactly as
+# unknown as it was.
+#
+# This reverses the earlier rule ("identify first, always"), and the argument for
+# the reversal is what identification IS. Learning a wand is learning what it does
+# by watching it do it; a charge that visibly did nothing showed the player
+# nothing, so a run that wrote the name down anyway was handing over knowledge
+# nobody had earned. The Wand of Nothing is the sharpest case and the reason the
+# old rule existed — it can now only be learned from a Scroll of Identify, which
+# is exactly right: there is no way to tell it apart from a wand aimed badly.
 func zap_wand(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	var wand: WandData = data_for(entry)
@@ -300,7 +321,8 @@ func zap_wand(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 
-	identify(wand.id)
+	# THE CHARGE WAS SPENT WHATEVER HAPPENS, so the relics that watch for a zap see
+	# one either way. Only the IDENTIFY hangs on the bolt landing (see the header).
 	notify_used(wand)
 
 	var mode: String = resolve_targeting(wand, rng)
@@ -321,12 +343,21 @@ func zap_wand(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		out["logs"].append("The bolt goes wide and fades on nothing.")
 		return out
 
+	# Recorded first and rolled back if the bolt finds nothing, so the ops run
+	# against a run that already knows the stick — ScrollSystem.read_scroll has the
+	# argument. The toast waits for the landing either way.
+	var newly: bool = identify(wand.id, false)
 	var landed: bool = false
 	for op in wand.effect:
 		if op is Dictionary:
 			landed = _apply_one(op, cell, out, rng) or landed
-	if not landed and out["logs"].is_empty():
-		out["logs"].append("The bolt fades without finding anything.")
+	if not landed:
+		if out["logs"].is_empty():
+			out["logs"].append("The bolt fades without finding anything.")
+		if newly:
+			unidentify(wand.id)
+	elif newly and is_identified(wand.id):
+		announce_identified(wand.id)
 	return out
 
 # One clause. Returns whether it actually DID anything, so a zap that found nothing
@@ -578,7 +609,7 @@ func description(entry: Dictionary) -> String:
 	if wand == null:
 		return ""
 	if not is_identified(wand.id):
-		return "You don't know what this one does, or how many zaps are in it. Zapping it is how you find out both."
+		return LootSystem.UNKNOWN_TEXT
 	var left: int = charges_of(entry)
 	return "%s  %d charge%s left." % [wand.description, left, "" if left == 1 else "s"]
 

@@ -134,15 +134,26 @@ func test_an_unknown_wand_is_named_for_its_material_and_a_known_one_for_itself()
 	WandSystem.identify(&"wand_of_fire")
 	assert_eq(WandSystem.display_name(entry), "Wand of Fire")
 
-func test_zapping_identifies_the_type_and_every_charge_behind_it() -> void:
+func test_a_zap_that_lands_identifies_the_type_and_every_charge_behind_it() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	assert_gt(inst, 0, "there is something for the bolt to land on")
+	assert_false(WandSystem.is_identified(&"wand_of_death"))
+	_zap(&"wand_of_death", cell)
+	assert_true(WandSystem.is_identified(&"wand_of_death"),
+		"watching it work is what teaches the type")
+
+func test_the_wand_of_nothing_cannot_be_learned_by_zapping_it() -> void:
+	# NOTHING HAPPENED MEANS NOTHING WAS LEARNED. The joke wand does nothing
+	# whatever it is pointed at, so there is nothing to learn from watching it — it
+	# is learnable from a Scroll of Identify and from nowhere else, which is right:
+	# from the inside it is indistinguishable from a stick aimed badly.
 	var entry: Dictionary = _entry(&"wand_of_nothing")
 	assert_false(WandSystem.is_identified(&"wand_of_nothing"))
-	WandSystem.zap_wand(entry, {"rng": _rng()})
-	# EVEN THE ONE THAT DID NOTHING. The gamble pays its information out whatever
-	# the effect landed on — a wand you could spend four times without learning what
-	# it was would be four gambles for the price of one slot.
-	assert_true(WandSystem.is_identified(&"wand_of_nothing"),
-		"the fizzle still teaches you what it was")
+	var out: Dictionary = WandSystem.zap_wand(entry, {"rng": _rng()})
+	assert_false(WandSystem.is_identified(&"wand_of_nothing"),
+		"the fizzle teaches nothing")
+	assert_false((out["logs"] as Array).is_empty(), "but it still says so")
 
 func test_the_preference_is_hidden_until_the_wand_is_known() -> void:
 	var entry: Dictionary = _entry(&"wand_of_create_monster")

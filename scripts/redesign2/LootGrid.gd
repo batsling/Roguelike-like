@@ -42,8 +42,6 @@ signal take_requested(entry: Dictionary, slot: int, offer: int)
 signal moved(from: int, to: int)
 # The Use button on a carried piece.
 signal use_requested(index: int)
-# A carried piece was clicked — read it, don't spend it.
-signal inspect_requested(index: int)
 # A carried piece was dragged onto the bin (LootTrash).
 signal discard_requested(index: int)
 # One of the pieces a drop modal is offering was dragged onto the bin — which is
@@ -90,9 +88,9 @@ var allow_discard: bool = false
 # to finish their paperwork first is the run refusing the thing it wants them to
 # risk. A piece whose effect cannot land in that gap FIZZLES instead of being
 # refused — Teleportation and Telepills do not move a run halfway through a game
-# (Overworld2.loot_teleport) — and either way it is identified, because both
-# ScrollSystem.read_scroll and PillSystem.take_pill identify before they apply
-# anything.
+# (Overworld2.loot_teleport). A FIZZLE TEACHES NOTHING, though: a piece is
+# identified by using it only when the use actually landed, so a piece spent into
+# a gap where its effect had nowhere to go is still an unknown piece.
 var locked: bool = false
 
 # HOW WIDE THE GRID IS, DERIVED FROM THE CAP rather than from a literal 3 — a
@@ -318,20 +316,14 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	# (see `locked`). Kept as an argument rather than dropped, because the cell body
 	# is shared with the loose-offer layout and a future rule may want it back.
 	slot.add_child(_cell_body(entry, use_cb, false))
-	# CLICK READS, DRAG MOVES, THE BUTTON SPENDS. A relic in the pack opens its card
-	# on a click and spends only from its own button, and loot answered a click with
-	# nothing at all — the same object class with two different gestures. Now it
-	# opens the same kind of card.
+	# HOVER READS, DRAG MOVES, THE BUTTON SPENDS — and a click does nothing.
 	#
-	# ON RELEASE, and only if no drag came of it. A cell is both a click target and
-	# a drag handle, and a drag necessarily begins with a press: reading the press
-	# would open a card under every drag the player started, which is the one way to
-	# make both gestures feel broken at once.
-	slot.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and not ev.pressed \
-				and ev.button_index == MOUSE_BUTTON_LEFT \
-				and not slot.get_viewport().gui_is_dragging():
-			inspect_requested.emit(slot.loot_index))
+	# A cell used to open a reading card on click (LootInfoCard), which meant two
+	# screens said the same things about one piece: that card, and the Use screen
+	# the button opens, which already leads with the art, the kind, the Preference
+	# and what the piece does before it asks whether to spend it. The one that only
+	# read was the one nothing was decided on, so it is gone; the hover card is the
+	# fast read on the way past, and Use is where the piece is actually looked at.
 	return slot
 
 # The art band, the name, the preference chip and (when the grid spends) the Use
@@ -426,8 +418,11 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		var use := UITheme.confirm_button("Zap" if wand else "Use",
 			Vector2(0, LootSlot.USE_H), 10)
 		use.disabled = locked_now
-		use.tooltip_text = "Spend a charge — this is how an unknown one gets identified." \
-			if wand else "Spend it — this is how an unknown one gets identified."
+		# NOT "this is how an unknown one gets identified" any more: a use only
+		# identifies a piece when it actually DID something (LootSystem's spend
+		# paths), so a tooltip promising the lesson would be promising a lesson a
+		# zap into an empty square does not buy.
+		use.tooltip_text = "Spend a charge." if wand else "Spend it."
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col

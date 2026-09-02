@@ -208,7 +208,6 @@ func _panel(reporting: bool) -> Control:
 	grid.allow_discard = true
 	grid.locked = reporting
 	grid.use_requested.connect(func(i: int): _page.use_loot(i))
-	grid.inspect_requested.connect(func(i: int): _page.open_loot_card(i))
 	grid.moved.connect(func(from: int, to: int):
 		if GameState.move_loot(from, to):
 			_page.refresh_loot_window())

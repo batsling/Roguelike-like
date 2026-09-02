@@ -597,8 +597,9 @@ func test_remove_curse_with_nothing_held_fizzles() -> void:
 		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": _rng()})
 	assert_true((out["requests"] as Array).is_empty(), "no picker over an empty list")
 	assert_true(str(out["logs"]).contains("Nothing is weighing on you"),
-		"it fizzles in words, and the scroll is identified either way: %s" % str(out["logs"]))
-	assert_true(ScrollSystem.is_identified(&"scroll_of_remove_curse"))
+		"it fizzles in words: %s" % str(out["logs"]))
+	assert_false(ScrollSystem.is_identified(&"scroll_of_remove_curse"),
+		"and teaches nothing — a read that did nothing showed nothing (§4.5)")
 
 func test_removing_several_curses_takes_the_ones_that_were_picked() -> void:
 	# Descending removal, or every index above the first one lifted points at the

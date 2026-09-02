@@ -160,22 +160,13 @@ func _show_intro() -> void:
 			UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR),
 			UITheme.chip("Unidentified", UITheme.TEXT_DIM),
 		]))
-		if _is_pill():
-			# A pill hides its NAME, never its capsule (§4.3) — the art above is the
-			# thing being learned, so the gamble line says what is unknown rather than
-			# pretending the tile is a mystery.
-			_body.add_child(_muted("You have never taken this one. Its Preference could be Positive, Negative, or Neutral — taking it is how you find out what the colour means."))
-		elif LootSystem.is_wand(_entry):
-			# A WAND'S GAMBLE LINE DOES NOT COUNT ITS CHARGES (docs/wands-design.md
-			# §6.2). How many zaps are in an unknown stick is part of the bet — the
-			# two Legendaries carry one each and the Commons three or four, so a
-			# count the player could read would be the rarity ladder read aloud.
-			_body.add_child(_muted(
-				"Unidentified — zapping it is a gamble. Its Preference could be "
-				+ "Positive, Negative, or Neutral, and there is no telling how many "
-				+ "zaps are in it. One is how you find out both."))
-		else:
-			_body.add_child(_muted("Unidentified — reading it is a gamble. Its Preference could be Positive, Negative, or Neutral."))
+		# ??? AND NOTHING ELSE (LootSystem.UNKNOWN_TEXT). Each kind used to write its
+		# own paragraph here — that the Preference could be anything, that using it
+		# is how you find out, and for a wand that the charge count is part of the bet
+		# too. All of it is already said by the screen around it: the Unidentified
+		# chip beside the kind, the Preference chip that is missing, the button that
+		# spends it. The blank is the fact.
+		_body.add_child(_muted(LootSystem.UNKNOWN_TEXT))
 	if _echo_note() != "":
 		_body.add_child(_muted(_echo_note()))
 	# ONE ROW, TWO WEIGHTS. The confirm and the way out used to be two stacked
@@ -397,6 +388,14 @@ func _process_next_request() -> void:
 # every alphabet in the pack (§10). The rows are keyed by "type/id" — a pill and a
 # scroll could otherwise collide on a bare id, and the whole point of the widening
 # is that both are in the same list.
+#
+# IT IS THE PACK, NOT A LIST OF NAMES. This picker used to be a column of text
+# buttons — "◆ Unidentified Pill", four times over — which is the one question in
+# the game a list of names cannot answer: every unknown capsule is called the same
+# thing, and what tells them apart is the COLOUR, which the player has been looking
+# at in the loot window all run. So the rows are cells now, drawn the way the pack
+# draws them (the art at LootSlot.ART in a band of LootSlot.ART_BAND, the name
+# under it, three to a row), and picking one is picking the picture you recognise.
 func _pick_identify(req: Dictionary) -> void:
 	var candidates: Array = req.get("candidates", [])
 	var max_pick: int = int(req.get("count", 1))
@@ -404,21 +403,78 @@ func _pick_identify(req: Dictionary) -> void:
 	_rebuild_panel()
 	_body.add_child(_heading("Identify Loot", ACCENT, 20))
 	_body.add_child(_muted("Choose up to %d to identify." % max_pick))
+	var grid := GridContainer.new()
+	grid.columns = LootGrid.COLS
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for entry in candidates:
 		if not (entry is Dictionary):
 			continue
 		var key: String = "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
-		var btn := Button.new()
-		btn.toggle_mode = true
-		btn.text = "%s %s" % [LootSystem.glyph(entry), LootSystem.pick_label(entry)]
+		var btn := _pick_cell(entry)
 		btn.toggled.connect(func(on): _toggle_select(selected, key, on, max_pick, btn, entry))
-		_body.add_child(btn)
+		grid.add_child(btn)
+	_body.add_child(grid)
 	var confirm := UITheme.confirm_button("Identify Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
 		_report(ScrollSystem.identify_loot_chosen(selected.values()))
 		_process_next_request())
 	_body.add_child(confirm)
+
+# One cell of that grid: a toggle button the size of a pack slot, with the piece's
+# own art and name drawn inside it.
+#
+# A BUTTON WITH CHILDREN, deliberately. A Button imposes no layout on what is put
+# inside it, so the column of art and name is anchored over its whole rect and set
+# to ignore the mouse — which leaves the press, the toggle and the theme's pressed
+# state to the Button, and means selection looks the way selection looks everywhere
+# else on this screen rather than being a border this file paints itself.
+func _pick_cell(entry: Dictionary) -> Button:
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.custom_minimum_size = Vector2(LootSlot.CELL_W,
+		LootSlot.ART_BAND + LootSlot.NAME_H + LootSlot.GAP * 2)
+	# The pack's own hover, so a cell here says what the same cell says in the loot
+	# window. A plain Button defines no `_make_custom_tooltip`, so what actually
+	# appears is `attach`'s fallback string — the name and the first fact, which for
+	# an unidentified piece is the name and `???`, and that is the whole truth
+	# available about it.
+	HoverCard.attach(btn, LootSystem.hover_card(entry))
+
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.add_theme_constant_override("separation", LootSlot.GAP)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(col)
+
+	# The same fixed band the pack uses, so a horse dose draws oversized here too
+	# rather than being shrunk to match the capsule beside it (§4.3).
+	var band := Control.new()
+	band.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.add_child(centre)
+	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(art)
+	col.add_child(band)
+
+	var name := Label.new()
+	name.text = LootSystem.display_name(entry)
+	name.add_theme_font_size_override("font_size", 10)
+	name.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.custom_minimum_size = Vector2(0, LootSlot.NAME_H)
+	name.max_lines_visible = 2
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(name)
+	return btn
 
 # --- Lift which curse (choose up to N) -------------------------------------
 #

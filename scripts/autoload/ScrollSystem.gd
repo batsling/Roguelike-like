@@ -169,25 +169,47 @@ func is_identified(id: StringName) -> bool:
 
 # Reveals a scroll type for the rest of the run. Returns true if this call newly
 # identified it (so callers can show a one-time toast).
-func identify(id: StringName) -> bool:
+# `announce` is FALSE when the caller does not yet know whether the read will land
+# (see read_scroll): the type goes on the identified list straight away, so the
+# effect itself can see it — Amnesia's whole trick is forgetting the name it has
+# just taught — and the toast waits until the read is known to have done something.
+# A read that turns out to have done nothing calls `unidentify` and no toast was
+# ever shown.
+func identify(id: StringName, announce: bool = true) -> bool:
 	if id == &"" or GameState.identified_scroll_types.has(id):
 		return false
 	# The mask is read BEFORE the type goes on the identified list, because that
-	# append is what stops it being a mask.
+	# append is what stops it being a mask. Kept even when the toast is deferred:
+	# by the time `announce_identified` runs, `name_for` would answer with the real
+	# name and the sentence would read "Scroll of Fire is Scroll of Fire!".
 	var mask: String = name_for(id)
 	GameState.identified_scroll_types.append(id)
+	if announce:
+		_say_identified(id, mask)
+	else:
+		_deferred_masks[id] = mask
+	return true
+
+# The masks held back by a deferred identify, so the toast can still be the
+# sentence the player has been waiting for once the read is known to have landed.
+var _deferred_masks: Dictionary = {}
+
+func announce_identified(id: StringName) -> void:
+	_say_identified(id, String(_deferred_masks.get(id, "")))
+	_deferred_masks.erase(id)
+
+# NAMED AS THE ANSWER TO A QUESTION, where the run dealt one: "ZELGO MER is
+# Scroll of Fire!" is the sentence the player has been waiting for, and it is
+# also the one that teaches them to read the OTHER ZELGO MER in their pack.
+# Without the mask half it says only what this piece was, which is the smaller
+# fact — identification is of the type.
+func _say_identified(id: StringName, mask: String) -> void:
 	var s: ScrollData = Data.get_scroll(id)
 	var nm: String = s.display_name if s != null else String(id)
-	# NAMED AS THE ANSWER TO A QUESTION, where the run dealt one: "ZELGO MER is
-	# Scroll of Fire!" is the sentence the player has been waiting for, and it is
-	# also the one that teaches them to read the OTHER ZELGO MER in their pack.
-	# Without the mask half it says only what this piece was, which is the smaller
-	# fact — identification is of the type.
 	if mask != "":
 		Notifications.notify("%s is %s!" % [mask, nm], SCROLL_COLOR)
 	else:
 		Notifications.notify("Identified: %s!" % nm, SCROLL_COLOR)
-	return true
 
 func unidentify(id: StringName) -> void:
 	GameState.identified_scroll_types.erase(id)
@@ -258,14 +280,35 @@ func read_scroll(scroll: ScrollData, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	if scroll == null:
 		return out
-	identify(scroll.id)
 	var rng: RandomNumberGenerator = ctx.get("rng")
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
+	# LEARN-BY-USE, AND ONLY WHEN THERE WAS SOMETHING TO LEARN FROM. A scroll read
+	# to no effect at all — an Identify with nothing unidentified in the pack, a
+	# Remove Curse with nothing weighing on you, an Aggravate Monsters read into an
+	# empty room — showed the reader nothing, so the title on it stays a mystery.
+	# See WandSystem.zap_wand for the argument this rule is one half of.
+	#
+	# RECORDED FIRST AND ROLLED BACK, rather than simply deferred to the end: the
+	# ops have to run against a run that already knows this scroll, or Amnesia would
+	# stop forgetting the name it just taught (§10) — which is the one thing that
+	# rule is for. The toast is what waits (see `identify`), so a read that fizzles
+	# announces nothing and puts the mask straight back.
+	var newly: bool = identify(scroll.id, false)
+	var landed: bool = false
 	for effect in scroll.effect:
 		if effect is Dictionary:
-			_apply_one(effect, out, rng)
+			landed = _apply_one(effect, out, rng) or landed
+	if not landed:
+		if newly:
+			unidentify(scroll.id)
+			_deferred_masks.erase(scroll.id)
+	elif newly and is_identified(scroll.id):
+		# `is_identified` because the read may have forgotten it again on purpose —
+		# Amnesia takes its own name with it, and a toast for a name the run no
+		# longer holds would be the scroll lying about what it did.
+		announce_identified(scroll.id)
 	return out
 
 # Which of an op's numbers Sacred Bark's "double the effect" actually doubles.
@@ -300,7 +343,13 @@ func _scaled(effect: Dictionary) -> Dictionary:
 	return out
 
 
-func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+# One clause. Returns whether it actually DID anything — a scroll whose every
+# clause no-opped is what leaves a title unread (see read_scroll).
+#
+# A REQUEST COUNTS AS SOMETHING HAPPENING. The picker it opens resolves a moment
+# later rather than here, and a Teleportation that identified nothing because this
+# file had not moved the player yet would be the one scroll nobody could learn.
+func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var effect: Dictionary = _scaled(raw_effect)
 	var op := String(effect.get("op", ""))
 	match op:
@@ -315,7 +364,7 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# once at the READER, which is why this handler knows about the player
 			# at all: a scroll that only ever hurt the other side would not need a
 			# Preference (§4.1).
-			_apply_status(effect, out)
+			return _apply_status(effect, out)
 		"apply_tile":
 			# Scroll of Fire — the ground itself, not a body (§17). The tile lands
 			# on the same front column its Burn clause targets: the bodies already
@@ -323,30 +372,30 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# keeps burning whatever steps into it for the next three games. This
 			# is the half of the scroll that is still worth reading into an EMPTY
 			# room, which is why it is authored as its own clause.
-			_apply_tile(effect, out)
+			return _apply_tile(effect, out)
 		"forget":
 			# Amnesia — forget (unidentify) random known loot, any kind (§4.1, §10).
-			_forget(String(effect.get("kind", "loot")).to_lower(),
+			return _forget(String(effect.get("kind", "loot")).to_lower(),
 				int(effect.get("count", 1)), rng, out)
 		"spawn_enemy":
 			# Create Monster — conjure a random enemy at the run's current tier that
 			# starts following the player (§4.1).
-			_spawn_enemy(String(effect.get("difficulty", "current")),
+			return _spawn_enemy(String(effect.get("difficulty", "current")),
 				int(effect.get("count", 1)), out)
 		"identify_loot", "identify_scrolls":
 			# Identify — the player chooses which carried piece(s) to reveal (§10).
 			# `identify_scrolls` is the pre-widening spelling: the generator already
 			# rewrites it, and it is matched here too so a .tres generated before
 			# that still resolves rather than warning about an unknown op.
-			_identify_loot(String(effect.get("mode", "choose")),
+			return _identify_loot(String(effect.get("mode", "choose")),
 				int(effect.get("count", 1)), rng, out)
 		"remove_curse":
 			# Remove Curse — the player chooses a curse GOAL to be rid of (§10.1).
-			_remove_curse(String(effect.get("mode", "choose")),
+			return _remove_curse(String(effect.get("mode", "choose")),
 				int(effect.get("count", 1)), rng, out)
 		"stun_enemies":
 			# Scare Monster — the player chooses a following enemy to Stun (§7.2).
-			_stun_enemies(String(effect.get("mode", "choose")),
+			return _stun_enemies(String(effect.get("mode", "choose")),
 				int(effect.get("count", 1)), out)
 		"teleport":
 			# Teleportation — move ~the same distance from the Amulet (±spread, §4.1).
@@ -355,8 +404,10 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 				"dir": String(effect.get("dir", "same")),
 				"spread": int(effect.get("spread", 1)),
 			})
+			return true
 		_:
 			push_warning("ScrollSystem: unknown effect op '%s'" % op)
+			return false
 
 # How an `apply_tile` clause reads on a scroll's card and in the read modal
 # (§17). Beside status_effect_text and for the same reason: two screens describe
@@ -468,13 +519,13 @@ func status_effect_text(effect: Dictionary) -> String:
 # can't reach anything an item couldn't. A board with nothing on it says so rather
 # than reporting a silent success: reading Aggravate Monsters into an empty room
 # is a wasted scroll, and the log is the only place the player finds that out.
-func _apply_status(effect: Dictionary, out: Dictionary) -> void:
+func _apply_status(effect: Dictionary, out: Dictionary) -> bool:
 	var status_id := StringName(String(effect.get("status", "")))
 	var stacks: int = maxi(1, int(effect.get("value", 1)))
 	var status: StatusData = Data.get_status(status_id)
 	if status == null:
 		push_warning("ScrollSystem: no status '%s' in the catalog" % status_id)
-		return
+		return false
 	var target: String = String(effect.get("target", "all")).to_lower()
 	if target == "player" or target == "self":
 		# Quoted from what the player ENDED UP with rather than from what was
@@ -484,9 +535,9 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 		var after: int = GameState.apply_status(status_id, stacks)
 		if after <= before:
 			out["logs"].append("%s is already as deep as it goes." % status.display_name)
-			return
+			return false
 		out["logs"].append("You gain +%d %s." % [after - before, status.display_name])
-		return
+		return true
 	var landed: int = GameLoop2.apply_enemy_status(status_id, stacks, target)
 	if landed <= 0:
 		# NOTHING IS SAID when the clause found nobody. It used to append a line
@@ -494,9 +545,10 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 		# thing the scroll did rather than as the absence of a third: the log is
 		# a list of what LANDED, and a clause that landed on nothing belongs in
 		# it exactly as much as a clause that was never authored.
-		return
+		return false
 	out["logs"].append("%d %s gain +%d %s." % [
 		landed, "enemy" if landed == 1 else "enemies", stacks, status.display_name])
+	return true
 
 # --- apply_tile (Scroll of Fire) -------------------------------------------
 # Lay a tile effect over the cells the target word names (§17). What it reports is
@@ -504,12 +556,12 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> void:
 # arrival is one fewer tile on the board, and a line promising four when three
 # landed would be describing a different scroll — the same rule the status branch
 # above follows for a Burn that hit its ceiling.
-func _apply_tile(effect: Dictionary, out: Dictionary) -> void:
+func _apply_tile(effect: Dictionary, out: Dictionary) -> bool:
 	var tile_id := StringName(String(effect.get("tile", "")))
 	var tile: TileEffectData = Data.get_tile(tile_id)
 	if tile == null:
 		push_warning("ScrollSystem: no tile '%s' in the catalog" % tile_id)
-		return
+		return false
 	var cells: Array = GameLoop2.target_cells(String(effect.get("target", "front")).to_lower())
 	var landed: int = 0
 	for cell in cells:
@@ -517,9 +569,10 @@ func _apply_tile(effect: Dictionary, out: Dictionary) -> void:
 			landed += 1
 	if landed <= 0:
 		out["logs"].append("There is no ground left to cover.")
-		return
+		return false
 	out["logs"].append("%s spreads across %d %s." % [
 		tile.display_name, landed, "tile" if landed == 1 else "tiles"])
+	return true
 
 # --- forget (Scroll of Amnesia) --------------------------------------------
 # Amnesia — forget (unidentify) random KNOWN LOOT, of whatever kind (§10).
@@ -534,16 +587,17 @@ func _apply_tile(effect: Dictionary, out: Dictionary) -> void:
 # WHAT IT DOES NOT DO IS REDEAL THE COLOURS. The capsule and the bottle still mean
 # what they meant; you have merely stopped knowing, and using one is how you find
 # out again.
-func _forget(kind: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+func _forget(kind: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> bool:
 	var forgot: int = LootSystem.forget_identified(kind, count, rng)
 	if forgot <= 0:
 		out["logs"].append("You have no loot knowledge to forget.")
-		return
+		return false
 	out["logs"].append("You forget what %d %s do%s." % [
 		forgot, "thing" if forgot == 1 else "things", "es" if forgot == 1 else ""])
+	return true
 
 # --- spawn_enemy (Scroll of Create Monster) --------------------------------
-func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
+func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> bool:
 	# Roll at the run's current tier and at no other (roll_conjured_enemy); the
 	# enemy joins the following stack and attacks on the next game beaten (§7.2).
 	# Rolled once per body rather than once and duplicated, so a doubled Create
@@ -557,11 +611,12 @@ func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
 		names.append(enemy.display_name)
 	if names.is_empty():
 		out["logs"].append("No monster could be conjured.")
-		return
+		return false
 	out["logs"].append("%s %s and start%s following you!" % [
 		", ".join(PackedStringArray(names)),
 		"appears" if names.size() == 1 else "appear",
 		"s" if names.size() == 1 else ""])
+	return true
 
 # --- identify_loot (Scroll of Identify) ------------------------------------
 #
@@ -573,15 +628,16 @@ func _spawn_enemy(_difficulty: String, count: int, out: Dictionary) -> void:
 #
 # The candidate list is LootSystem's, so this reads as "the unidentified things you
 # are carrying" and does not have to know how many kinds that is.
-func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> bool:
 	var unknown: Array = LootSystem.carried_unidentified()
 	if unknown.is_empty():
 		out["logs"].append("You have nothing unidentified to identify.")
-		return
+		return false
 	if mode == "all":
 		for entry in unknown:
 			LootSystem.identify(entry)
 		out["logs"].append("Everything you are carrying is identified.")
+		return true
 	elif mode == "random":
 		# NAMED, not counted. A random identify used to resolve in silence, which on a
 		# scroll whose entire subject is *what is this* left the reader knowing
@@ -596,8 +652,9 @@ func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: D
 			learned.append(LootSystem.display_name(unknown[idx]))
 			unknown.remove_at(idx)
 		out["logs"].append("You identify %s." % ", ".join(PackedStringArray(learned)))
-	else: # choose
-		out["requests"].append({"kind": "identify_loot", "count": count, "candidates": unknown})
+		return not learned.is_empty()
+	out["requests"].append({"kind": "identify_loot", "count": count, "candidates": unknown})
+	return true
 
 # --- remove_curse (Scroll of Remove Curse) ---------------------------------
 #
@@ -605,15 +662,16 @@ func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: D
 # are live content — three authored rows, handed out by events, by the Amnesia pill
 # and by the Calling Bell, and drawn on the checklist every game as the things you
 # are trying not to do. Lifting one is a real effect, not a placeholder.
-func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> void:
+func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> bool:
 	if GameState.curse_goals.is_empty():
 		out["logs"].append("Nothing is weighing on you.")
-		return
+		return false
 	if mode == "all":
 		var lifted: Array = []
 		for i in range(GameState.curse_goals.size() - 1, -1, -1):
 			lifted.push_front(curse_name(GameState.remove_curse_goal(i)))
 		out["logs"].append(_lifted_line(lifted))
+		return not lifted.is_empty()
 	elif mode == "random":
 		var pool: Array = range(GameState.curse_goals.size())
 		var picked: Array = []
@@ -621,9 +679,11 @@ func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Di
 			if pool.is_empty():
 				break
 			picked.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
-		out["logs"].append(_lifted_line(_remove_indices(picked)))
-	else: # choose
-		out["requests"].append({"kind": "remove_curse", "count": count})
+		var lifted_now: Array = _remove_indices(picked)
+		out["logs"].append(_lifted_line(lifted_now))
+		return not lifted_now.is_empty()
+	out["requests"].append({"kind": "remove_curse", "count": count})
+	return true
 
 # Remove several curse rows by index at once. DESCENDING, because every removal
 # shifts the indices above it — the one bug this op can have that the player would
@@ -654,14 +714,15 @@ func curse_name(row: Dictionary) -> String:
 	return cd.display_name if cd != null else String(id)
 
 # --- stun_enemies (Scroll of Scare Monster) --------------------------------
-func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
+func _stun_enemies(mode: String, count: int, out: Dictionary) -> bool:
 	if GameLoop2.stack.is_empty():
 		out["logs"].append("No following enemies to Stun.")
-		return
+		return false
 	if mode == "all":
 		for entry in GameLoop2.stack:
 			GameLoop2.stun(int(entry["instance"]))
 		out["logs"].append("All following enemies are Stunned.")
+		return true
 	elif mode == "random":
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
@@ -678,8 +739,9 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> void:
 		# silence was a scroll the reader could not plan the next game around.
 		out["logs"].append("%s %s Stunned — %s." % [", ".join(PackedStringArray(hit)),
 			"is" if hit.size() == 1 else "are", stun_worth()])
-	else: # choose
-		out["requests"].append({"kind": "stun_enemies", "count": count})
+		return not hit.is_empty()
+	out["requests"].append({"kind": "stun_enemies", "count": count})
+	return true
 
 # ===========================================================================
 # Fulfilment helpers (called by the UI after a request's choice is made)

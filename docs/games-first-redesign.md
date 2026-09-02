@@ -509,8 +509,9 @@ existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
   while telling you nothing, which is the trick every roguelike this one is built
   out of plays with its scrolls. The flat "Unidentified Scroll" survives only as
   the fallback for a checkout where the generator has not been run.
-- It becomes **identified** by reading one (learn-by-use) or via **Scroll of
-  Identify**; from then on that type shows its real name and art, and the toast
+- It becomes **identified** by reading one **to some effect** (learn-by-use — a
+  scroll whose every clause no-opped teaches nothing, see potions-design §4.5) or
+  via **Scroll of Identify**; from then on that type shows its real name and art, and the toast
   names both halves — *"ZELGO MER is Scroll of Fire!"* — because the answer worth
   having is the one that also teaches you to read the other ZELGO MER in the pack.
   **Amnesia** can re-hide (`unidentify`) a known scroll, which puts back **the same
@@ -769,13 +770,16 @@ the pack strip goes back to being the relics.
 
 **The grid is the thing you handle, not just the thing you read.** A piece can be
 **dragged from one slot to another**, and the piece a game pays out is **dragged
-into the slot you want it in** — see the drop modal below. Clicking a piece opens
-its **card** (`LootInfoCard`), the twin of the relic's: a relic answered a click by
-opening its card and a pill answered a click with nothing at all, which is the same
-class of object with two different gestures, and the one that did nothing was the
-one whose entire subject is *what is this*. So: **click reads, drag moves, the
-button spends** — and the card's own Use goes back through the same `use_loot`, so
-there is one spend path and inspecting a piece can never cost you one.
+into the slot you want it in** — see the drop modal below. So: **hover reads, drag
+moves, the button spends**, and a click does nothing at all.
+
+A piece used to open a read-only card on click (`LootInfoCard`, now gone), on the
+argument that a relic answered a click with its card and a pill answered with
+nothing. The argument was right about the gesture and wrong about which screen was
+missing: the **Use screen** already leads with the art, the kind, the Preference and
+what the piece does before it asks whether to spend it, so the reading card was the
+same page twice — and it was the copy on which nothing could be decided. The hover
+card is the fast read on the way past; Use is where a piece is actually looked at.
 
 **What an arrangement is allowed to be: any of them.** A piece goes wherever it is
 dropped — onto another piece, which **swaps** the two, or onto **any empty slot**,

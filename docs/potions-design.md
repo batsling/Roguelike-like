@@ -257,10 +257,25 @@ that one-shot a boss's health would make §7.1 a suggestion.
 ### 4.5 Fizzles, not refusals
 
 The rule loot already lives by (spec §4.3): a Use button that will not press teaches the
-player the piece is broken. Every dead end here is a fizzle instead, and the piece
-is **identified either way** — `PotionSystem` identifies before it applies anything,
-like both its siblings, so the gamble pays its information out even when the effect
-lands on nothing:
+player the piece is broken. Every dead end here is a fizzle instead — the bottle is
+spent, the throw is thrown, the log says what happened.
+
+**A fizzle does NOT identify the bottle.** This reverses the original rule
+("identify first, always", which paid the information out even when the effect
+landed on nothing). Identification here is learn-by-use, and *use* means watching
+the thing work: a mouthful that visibly changed nothing, or a bottle that smashed
+on empty ground, showed the player nothing about what it was, so writing the name
+down would be handing over knowledge nobody earned. The bottle stays unknown and
+the next one is the same gamble it was.
+
+The consequence, said out loud: **Potion of Uselessness can only be learned from a
+Scroll of Identify**, since neither of its sides ever does anything. That is the
+right answer rather than a gap — there is no way, from the inside, to tell it from
+a bottle whose effect had nowhere to land, and a run that told you anyway would be
+answering a question the board never asked. The same rule holds for the Wand of
+Nothing (wands-design §5.1) and for a scroll read to no effect.
+
+The fizzles themselves:
 
 - a throw at a square with **nothing on it** and no tile clause: *"It smashes on
   empty ground."*
@@ -856,9 +871,9 @@ are actually about potions rather than about loot:
 - the run's deal binds 15 distinct colours and leaves 22 unbound; a reloaded run
   keeps its alphabet;
 - **the colour list matches the folder in both directions** (§6.1);
-- quaffing and throwing the same potion each identify it, and identification is one
-  fact — throwing one teaches you what quaffing it would do;
-- a fizzled throw (empty ground, `none` throw) still identifies;
+- quaffing and throwing the same potion each identify it *when the effect landed*,
+  and identification is one fact — throwing one teaches you what quaffing it would do;
+- a fizzled throw (empty ground, `none` throw) identifies nothing (§4.5);
 - `area=3x3` clips at the board's edge and `area=row` covers `grid_cols()` cells on
   a grown board, not 4;
 - a thrown potion does not fire `bomb_used` and is not widened by Brimstone (§4.4);
@@ -943,7 +958,8 @@ one new function, `GameState.remove_curse_goal(index)`: the list has `add`, `has
 > warning `CurseData2.gd` opens with.
 
 A fizzle when the player holds none — *"Nothing is weighing on you."* — and the
-scroll is identified either way (§4.5).
+scroll is **not** identified by it (§4.5): a Remove Curse read with nothing to lift
+taught the reader nothing about what it was.
 
 ---
 
