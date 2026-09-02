@@ -25,6 +25,19 @@ extends Node
 
 const LOOT_COLOR := Color(0.72, 0.62, 0.86)
 
+# WHAT AN UNIDENTIFIED PIECE SAYS ABOUT ITSELF, everywhere it is described: three
+# question marks, and nothing else.
+#
+# Every kind used to write its own sentence here — "Unidentified — reading it is a
+# gamble. Its Preference could be Positive, Negative, or Neutral", and a longer one
+# for a wand — which spent three lines saying two things the screen has already
+# said. The piece is drawn under a mask and the name over it reads "Unidentified
+# Pill"; that the Preference is unknown is what the missing Preference chip means,
+# and that spending it is how you find out is what the Use button is. A blank the
+# player can recognise says the same thing in one glyph, and it says it identically
+# for a scroll, a pill, a bottle and a stick.
+const UNKNOWN_TEXT := "???"
+
 # What Echo Chamber remembers is RUN state, not item state (GameState.loot_used_
 # memory): the relic READS the memory, it does not carry it. Two Echo Chambers
 # therefore see the same three uses rather than two separate histories, and the
@@ -434,7 +447,7 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			if s == null:
 				return ""
 			if not ScrollSystem.is_identified(s.id):
-				return "Unidentified — reading it is a gamble."
+				return UNKNOWN_TEXT
 			# This file used to assemble the scroll's ops into words itself,
 			# alongside a second copy in the collection's catalog. Both go through
 			# ScrollSystem.scroll_text now, which prefers the sheet's authored
@@ -618,5 +631,8 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		"accent": LOOT_COLOR,
 		"art": art_texture(entry),
 		"lines": [description(entry)],
-		"note": "" if known else "▸ Using it is how you learn what it is.",
+		# NO NOTE ON AN UNKNOWN PIECE. It used to carry "Using it is how you learn
+		# what it is", which is the same advice the ??? above it already gives and the
+		# Use button under it already offers.
+		"note": "",
 	}

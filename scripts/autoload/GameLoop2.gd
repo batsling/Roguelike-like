@@ -5609,6 +5609,11 @@ func grant_ability(instance: int, id: StringName, amount: int = 0,
 	var rows: Array = entry_abilities(entry).duplicate(true)
 	rows.append({"id": id, "amount": amount, "arg": arg, "text": text})
 	entry["abilities"] = rows
+	# AND WHATEVER IT IS TRUE OF THE BODY RIGHT NOW. Appending the row alone left
+	# the five spawn-time abilities implemented at the spawn and nowhere else — a
+	# body zapped with the Wand of Invisibility carried the ability and went on
+	# being drawn, because nothing spawns twice. See _ability_takes_hold.
+	_ability_takes_hold(entry, id)
 	loop_changed.emit()
 	return true
 
@@ -6625,28 +6630,47 @@ func _apply_spawn_abilities(entry: Dictionary) -> void:
 	entry["phase"] = 0
 	entry["fades"] = -1
 
-	# TANKY — "spawns with X More Max Health". Health here is GOAL COMPLETIONS, so
-	# Transient's Tanky (8) is nine goals to put it down, and that is the joke: you
-	# are not meant to kill it. Its Fading (3) is the answer to it.
-	var tanky: int = entry_ability_amount(entry, &"tanky", 0)
-	if tanky > 0:
-		entry["max_health"] = entry_max_health(entry) + tanky
-		entry["health"] = int(entry.get("health", 1)) + tanky
+	for row in entry_abilities(entry):
+		if row is Dictionary:
+			_ability_takes_hold(entry, StringName((row as Dictionary).get("id", &"")))
 
-	# HASTE — "spawns with X Speed", which is extra columns per step (§13.4).
-	var haste: int = entry_ability_amount(entry, &"haste", 0)
-	if haste > 0:
-		_add_status_to(entry, &"speed", haste)
-
-	# INVISIBILITY — the board does not draw it until it swings.
-	if entry_has_ability(entry, &"invisibility"):
-		entry["hidden"] = true
-
-	# UNDYING and FADING start their counters here, so the numbers survive a save
-	# rather than being re-read off the sheet every time they are asked for.
-	var undying: int = entry_ability_amount(entry, &"undying", 0)
-	if undying > 0:
-		entry["revives"] = undying
-	var fading: int = entry_ability_amount(entry, &"fading", 0)
-	if fading > 0:
-		entry["fades"] = fading
+# WHAT ONE ABILITY DOES THE INSTANT THE BODY HAS IT. Five of them are true from
+# the moment they are held rather than being consulted on some later turn, and
+# this is the one place that says so.
+#
+# IT IS SHARED WITH `grant_ability`, which is the whole reason it is a function.
+# An ability handed to a body mid-game — the Wand of Invisibility is the one that
+# does it today — used to be appended to the runtime list and nothing else, so a
+# body zapped invisible went on being drawn: "spawns invisible" was implemented
+# only at the spawn, and a body already standing there never spawns again. A
+# granted ability arrives complete now, exactly as a spawned one does.
+func _ability_takes_hold(entry: Dictionary, id: StringName) -> void:
+	match id:
+		&"tanky":
+			# TANKY — "spawns with X More Max Health". Health here is GOAL
+			# COMPLETIONS, so Transient's Tanky (8) is nine goals to put it down, and
+			# that is the joke: you are not meant to kill it. Its Fading (3) is the
+			# answer to it.
+			var tanky: int = entry_ability_amount(entry, &"tanky", 0)
+			if tanky > 0:
+				entry["max_health"] = entry_max_health(entry) + tanky
+				entry["health"] = int(entry.get("health", 1)) + tanky
+		&"haste":
+			# HASTE — "spawns with X Speed", which is extra columns per step (§13.4).
+			var haste: int = entry_ability_amount(entry, &"haste", 0)
+			if haste > 0:
+				_add_status_to(entry, &"speed", haste)
+		&"invisibility":
+			# INVISIBILITY — the board does not draw it until it swings.
+			entry["hidden"] = true
+		&"undying":
+			# UNDYING and FADING start their counters here, so the numbers survive a
+			# save rather than being re-read off the sheet every time they are asked
+			# for.
+			var undying: int = entry_ability_amount(entry, &"undying", 0)
+			if undying > 0:
+				entry["revives"] = undying
+		&"fading":
+			var fading: int = entry_ability_amount(entry, &"fading", 0)
+			if fading > 0:
+				entry["fades"] = fading

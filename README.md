@@ -50,7 +50,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #                       into any slot, drag a drop into one
 │   │                      #     LootTrash       — the red bin both surfaces draw
 │   │                      #     LootDiscoveries — "Known this run", on both too
-│   │                      #     LootInfoCard    — click-to-inspect loot card
 │   │                      #     ReportChecklist — its left column, both states
 │   │                      #     CompletedGoalsPanel — the ✓ record that column opens
 │   │                      #     OfferingCards   — its choice cards + hover line

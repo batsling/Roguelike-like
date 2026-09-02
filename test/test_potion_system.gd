@@ -118,7 +118,8 @@ func test_an_unknown_potion_hides_its_preference_and_its_effect() -> void:
 	PotionSystem.ensure_colors()
 	var entry := {"type": "potion", "id": &"fire_potion"}
 	assert_eq(PotionSystem.preference(entry), "", "the gamble depends on this")
-	assert_true(PotionSystem.description(entry).contains("don't know"))
+	assert_eq(PotionSystem.description(entry), LootSystem.UNKNOWN_TEXT,
+		"an unknown bottle says ??? and nothing else")
 
 func test_a_known_potion_shows_BOTH_verbs() -> void:
 	# Decision #22: identification is of the type and covers both sides, and the
@@ -170,13 +171,16 @@ func test_quaffing_identifies_the_bottle() -> void:
 	PotionSystem.quaff_potion({"type": "potion", "id": &"block_potion"}, {"rng": _rng()})
 	assert_true(PotionSystem.is_identified(&"block_potion"))
 
-func test_quaffing_a_useless_potion_still_identifies_it_and_says_so() -> void:
-	# The gamble pays its information out even when the effect lands on nothing
-	# (§4.5), and the joke should read as one rather than as a silent use.
+func test_quaffing_a_useless_potion_says_so_and_teaches_nothing() -> void:
+	# NOTHING HAPPENED MEANS NOTHING WAS LEARNED (§4.5). Uselessness does nothing on
+	# either side, so drinking it shows the player nothing about what it is and the
+	# bottle stays unknown — it is learnable from a Scroll of Identify and from
+	# nothing else. The joke still reads as one rather than as a silent use.
 	PotionSystem.ensure_colors()
 	var out: Dictionary = PotionSystem.quaff_potion(
 		{"type": "potion", "id": &"potion_of_uselessness"}, {"rng": _rng()})
-	assert_true(PotionSystem.is_identified(&"potion_of_uselessness"))
+	assert_false(PotionSystem.is_identified(&"potion_of_uselessness"),
+		"a draught that did nothing taught nothing")
 	assert_false((out["logs"] as Array).is_empty(), "it says nothing happened")
 
 func test_block_potion_pays_the_shield_pool_that_does_not_expire() -> void:
@@ -684,17 +688,17 @@ func test_a_thrown_block_potion_hands_a_body_shields() -> void:
 
 # --- Fizzles (§4.5) --------------------------------------------------------
 
-func test_a_throw_at_empty_ground_still_identifies_the_bottle() -> void:
+func test_a_throw_at_empty_ground_teaches_the_thrower_nothing() -> void:
 	GameLoop2.reset()
 	var out: Dictionary = _throw(&"explosive_ampoule", Vector2i(2, 1))
-	assert_true(PotionSystem.is_identified(&"explosive_ampoule"),
-		"the gamble pays its information out even when the effect lands on nothing")
+	assert_false(PotionSystem.is_identified(&"explosive_ampoule"),
+		"a bottle that smashed on nothing showed nothing (§4.5)")
 	assert_true(String((out["logs"] as Array)[0]).contains("empty ground"))
 
-func test_throwing_the_potion_with_no_throw_fizzles_and_still_identifies_it() -> void:
+func test_throwing_the_potion_with_no_throw_fizzles_and_teaches_nothing() -> void:
 	var level: int = GameState.player_level
 	var out: Dictionary = _throw(&"potion_of_raise_level", Vector2i(2, 1))
-	assert_true(PotionSystem.is_identified(&"potion_of_raise_level"))
+	assert_false(PotionSystem.is_identified(&"potion_of_raise_level"))
 	assert_eq(GameState.player_level, level, "and it certainly did not level anybody")
 	assert_false((out["logs"] as Array).is_empty(), "it says the bottle smashed")
 
@@ -703,6 +707,10 @@ func test_throwing_identifies_the_QUAFF_side_too() -> void:
 	# what drinking it would do, because the alternative is thirty facts instead of
 	# fifteen and a research task where a choice should be.
 	PotionSystem.ensure_colors()
+	# ON A BODY, so the throw actually lands — a throw that fizzles teaches nothing
+	# at all now (§4.5), which would make this test about the wrong rule.
+	GameLoop2.reset()
+	_park(GameLoop2.spawn_to_stack(_enemy(9)), Vector2i(2, 1))
 	_throw(&"fire_potion", Vector2i(2, 1))
 	var entry := {"type": "potion", "id": &"fire_potion"}
 	assert_true(PotionSystem.description(entry).contains("Quaff:"))
@@ -711,7 +719,8 @@ func test_throwing_identifies_the_QUAFF_side_too() -> void:
 func test_a_potion_with_no_cell_in_hand_fizzles_rather_than_no_opping() -> void:
 	var out: Dictionary = PotionSystem.throw_potion(
 		{"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
-	assert_true(PotionSystem.is_identified(&"fire_potion"), "still spent, still learned")
+	assert_false(PotionSystem.is_identified(&"fire_potion"),
+		"spent, and with nothing learned for it (§4.5)")
 	assert_false((out["logs"] as Array).is_empty())
 
 # --- Which button is offered (§4.5) ----------------------------------------

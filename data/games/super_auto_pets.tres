@@ -8,9 +8,9 @@ id = &"super_auto_pets"
 display_name = "Super Auto Pets"
 year = 2021
 type = 1
-games_influenced = Array[StringName]([&"backpack_battles", &"cursed_words", &"facehand", &"k_domon_hyper_auto_battlers", &"knightica", &"lunchbreak_tactics", &"merge_maestro", &"nubby_s_number_factory", &"oaken_tower", &"roulette_hero", &"tiny_auto_knights"])
-influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=7SjRhK9wdEE", "look at it", "check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "check folder", "check folder", "check folder", "check folder", "https://x.com/CLLC_studio/status/1925866594078453892", "https://x.com/mumpitzgames/status/1925572756806017381")
-influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "")
+games_influenced = Array[StringName]([&"backpack_battles", &"cursed_words", &"facehand", &"k_domon_hyper_auto_battlers", &"knightica", &"lunchbreak_tactics", &"merge_maestro", &"nubby_s_number_factory", &"oaken_tower", &"roulette_hero", &"tiny_auto_knights", &"ultrapool"])
+influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=7SjRhK9wdEE", "look at it", "check folder", "https://www.reddit.com/r/IndieGaming/comments/1iooyqr/roguelike_autobattler_cute_creatures_what_do_you/", "check folder", "check folder", "check folder", "check folder", "https://x.com/CLLC_studio/status/1925866594078453892", "https://x.com/mumpitzgames/status/1925572756806017381", "https://store.steampowered.com/app/4195110/Ultrapool/")
+influence_relations = PackedStringArray("", "", "", "", "", "", "", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

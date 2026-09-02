@@ -134,15 +134,55 @@ func test_an_unknown_wand_is_named_for_its_material_and_a_known_one_for_itself()
 	WandSystem.identify(&"wand_of_fire")
 	assert_eq(WandSystem.display_name(entry), "Wand of Fire")
 
-func test_zapping_identifies_the_type_and_every_charge_behind_it() -> void:
+func test_a_zap_that_lands_identifies_the_type_and_every_charge_behind_it() -> void:
+	var cell := Vector2i(2, 1)
+	var inst: int = _body_at(cell)
+	assert_gt(inst, 0, "there is something for the bolt to land on")
+	assert_false(WandSystem.is_identified(&"wand_of_death"))
+	_zap(&"wand_of_death", cell)
+	assert_true(WandSystem.is_identified(&"wand_of_death"),
+		"watching it work is what teaches the type")
+
+func test_the_wand_of_nothing_cannot_be_learned_by_zapping_it() -> void:
+	# NOTHING HAPPENED MEANS NOTHING WAS LEARNED. The joke wand does nothing
+	# whatever it is pointed at, so there is nothing to learn from watching it — it
+	# is learnable from a Scroll of Identify and from nowhere else, which is right:
+	# from the inside it is indistinguishable from a stick aimed badly.
 	var entry: Dictionary = _entry(&"wand_of_nothing")
 	assert_false(WandSystem.is_identified(&"wand_of_nothing"))
-	WandSystem.zap_wand(entry, {"rng": _rng()})
-	# EVEN THE ONE THAT DID NOTHING. The gamble pays its information out whatever
-	# the effect landed on — a wand you could spend four times without learning what
-	# it was would be four gambles for the price of one slot.
-	assert_true(WandSystem.is_identified(&"wand_of_nothing"),
-		"the fizzle still teaches you what it was")
+	var out: Dictionary = WandSystem.zap_wand(entry, {"rng": _rng()})
+	assert_false(WandSystem.is_identified(&"wand_of_nothing"),
+		"the fizzle teaches nothing")
+	assert_false((out["logs"] as Array).is_empty(), "but it still says so")
+
+# THE CASE THE RULE IS ACTUALLY FOR: the player aimed, the square was empty, and
+# the bolt found nothing to land on. Nothing was shown, so nothing is learned —
+# and the charge is gone either way, which is what makes aiming worth doing well.
+#
+# Every wand that aims at a UNIT, so the fizzle is the empty square rather than
+# anything about the individual stick. A wand whose clause is the GROUND (Fire
+# lays its tile on any square) is deliberately not here: laying fire on empty
+# ground is something happening, and it identifies.
+func test_a_wand_aimed_at_an_empty_square_teaches_nothing() -> void:
+	GameLoop2.reset()
+	var empty := Vector2i(2, 1)
+	for id in [&"wand_of_magic_missile", &"wand_of_death", &"wand_of_polymorph",
+			&"wand_of_cancellation", &"wand_of_invisibility"]:
+		var out: Dictionary = _zap(id, empty)
+		assert_false(WandSystem.is_identified(id),
+			"%s found nothing at the square it was pointed at" % id)
+		assert_false((out["logs"] as Array).is_empty(),
+			"%s still reports the fizzle" % id)
+
+# …and the other half of it, so the test above is not passing because zapping
+# never identifies anything: the same stick, the same square, with a body on it.
+func test_the_same_wand_aimed_at_a_body_does_teach() -> void:
+	GameLoop2.reset()
+	var cell := Vector2i(2, 1)
+	_body_at(cell)
+	_zap(&"wand_of_magic_missile", cell)
+	assert_true(WandSystem.is_identified(&"wand_of_magic_missile"),
+		"a bolt that hit something is what teaches the type")
 
 func test_the_preference_is_hidden_until_the_wand_is_known() -> void:
 	var entry: Dictionary = _entry(&"wand_of_create_monster")

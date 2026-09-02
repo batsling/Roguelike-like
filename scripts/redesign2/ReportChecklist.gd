@@ -158,14 +158,22 @@ func populate_play_panel() -> void:
 	# under it, exactly as an enemy's bonuses nest under the body they hang off.
 	# `_verify_head`, not `_verify_head_row`: that one carries the "N done" button,
 	# and one door into the record per panel is the whole of what it is for.
-	_box.add_child(_verify_head(WINNING_RUN_HEAD))
+	#
+	# ONLY WHEN THERE IS SOMETHING UNDER IT. This list is three headed sections now
+	# (see the `_verify_head` calls below), and a header with no rows beneath it is
+	# a section the player scans for and does not find — which is worse than one
+	# fewer heading on the narrowest column on the page.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var winning: Array = GameState.status_objectives()
+	if not _settled_at_the_end_is_empty(ch, winning):
+		_box.add_child(_verify_head(WINNING_RUN_HEAD))
 
 	# Challenges that pay out every game you satisfy them, and the `demand` rows
 	# that CHARGE for every game you don't — so they are on the report step of
 	# EVERY game rather than belonging to any one enemy. A demand is tinted like
 	# the threat it is: on this list an unticked box usually means a prize forgone,
 	# and on that one row it means a bill.
-	for row in GameState.status_objectives():
+	for row in winning:
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
 		# A BORROWED goal says so on the row itself, not only in its hover
@@ -207,7 +215,6 @@ func populate_play_panel() -> void:
 	# its notes button went with the confirm that used to ask for one. A level-up is
 	# not something the hour at the game settles either: the condition is met over a
 	# run, and it is the run reaching a win that makes meeting it worth anything.
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null and ch.level_up_condition != "":
 		var lu_text: String = "Leveled up — %s" % ch.level_up_condition
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
@@ -219,13 +226,12 @@ func populate_play_panel() -> void:
 		winning_rows.append({"check": lu_row["check"], "label": lu_text,
 			"mark": {"character": ch}, "note": _level_up_note_hooks(ch)})
 
-	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5). Their own
-	# sections, deliberately: the checklist now carries three kinds of objective
-	# and they bite in three different ways. An enemy goal is a DEBT — miss it and
-	# it follows you and hits. An event goal is a BONUS — miss it and it merely
-	# expires. A curse is a BILL, and the only row here you tick to say you did
-	# something WRONG. Rendering all three alike would misrepresent which one
-	# hurts, so the curse rows are purple and sit apart.
+	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5), nested under
+	# the SAME header as the rows above them. They bite in different ways — an event
+	# goal is a BONUS that merely expires, a curse is a BILL, and the curse rows are
+	# purple for it — but they are answered at the same moment as a status goal and
+	# a level-up, and that is what this section is: the things the report settles,
+	# as against the bodies on the board below.
 	_add_event_goal_rows()
 
 	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
@@ -235,6 +241,15 @@ func populate_play_panel() -> void:
 	#
 	# EVERY body on the board, on the same terms and in board order. The ones that
 	# walked on when this game was taken are simply the last ones in the list.
+	#
+	# UNDER A HEADER, AND NOT INDENTED UNDER IT. The two sections above are goals
+	# that are settled when the run or the game is handed in; these are the bodies
+	# standing on the board beside the list, and a tick here resolves on the spot.
+	# The header is what says the list changed subject. The rows stay flush with it
+	# rather than nesting, because they do not belong to it the way a bonus belongs
+	# to the body above it — it is a label on a section, not a sentence they finish.
+	if not GameLoop2.stack.is_empty() or not GameLoop2.cleared_this_game.is_empty():
+		_box.add_child(_verify_head(ENEMIES_HEAD))
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry["instance"])
 		var e: GoalEnemyData = entry["enemy"]
@@ -389,6 +404,8 @@ func _status_note_hooks(status: StatusData) -> Dictionary:
 # decision on its last game than on its first, and the player cannot see the
 # clock anywhere else.
 func _add_event_goal_rows() -> void:
+	# NO HEADER OF ITS OWN. These rows nest under WINNING_RUN_HEAD with the status
+	# goals and the level-up — see the block in populate_play_panel that raises it.
 	for i in range(GameState.event_goals.size()):
 		var goal: Dictionary = GameState.event_goals[i]
 		var left: int = int(goal.get("games_left", 0))
@@ -396,35 +413,15 @@ func _add_event_goal_rows() -> void:
 			goal.get("condition", ""), goal.get("effects_text", ""),
 			left, "game" if left == 1 else "games"]
 		var row := verify_row(text, UITheme.ACCENT, false)
-		_add_row(row["row"])
+		_add_row(row["row"], false, true)
 		event_goal_checks.append({"check": row["check"], "index": i})
-		# CLAIMED ON THE SPOT, and claiming it takes it off GameState's list — which
-		# is why there is no row key for it: the row is simply not built again. The
-		# goal is looked up by IDENTITY rather than by the index captured here,
-		# because an earlier claim in the same game has already shifted the indices
-		# under it.
-		var goal_row: Dictionary = goal
-		_arm_row(row["check"], "event:%d:%s" % [i, goal.get("condition", "")],
-			"You met the event goal: %s." % goal.get("condition", ""),
-			func() -> void:
-				var at: int = GameState.event_goals.find(goal_row)
-				if at < 0:
-					return
-				var claimed: Dictionary = GameState.claim_event_goal(at)
-				if claimed.is_empty():
-					return
-				# The goal is off the run now, so the LOOP keeps what the row was
-				# drawn from — otherwise the rebuild below would take the row away
-				# with it, and a claimed goal is the one thing on this list the
-				# player has most reason to want to still see (§2.1).
-				GameLoop2.record_claimed_event_goal(claimed)
-				GameLoop2.record_completed_goal("event",
-					"Event goal — %s" % claimed.get("condition", ""))
-				var src: EventData2 = Data.get_event2(StringName(claimed.get("event", &"")))
-				var line: String = src.goal_met if src != null and src.goal_met != "" \
-					else "Event goal met — %s." % claimed.get("effects_text", "")
-				_announce(line, UITheme.ACCENT)
-				_rebuild_soon())
+		# ARMED, NOT CLAIMED (see the winning-run block). This row used to confirm
+		# and pay out on the spot, which made it the odd one out among the goals that
+		# are not about a body on the board: a box you cannot untick, asked about
+		# halfway through a game you have not finished. It behaves like a status goal
+		# now — on and off as many times as you like, cashed by the report
+		# (resolve_event_goals, which was already the path for anything left ticked).
+		_arm_winning_row(row["check"], "event:%d:%s" % [i, goal.get("condition", "")])
 
 	# The ones already CLAIMED this game, ticked and locked and on their way to the
 	# bottom (§2.1). They are off the run — GameState.claim_event_goal took them —
@@ -437,7 +434,7 @@ func _add_event_goal_rows() -> void:
 			(claimed as Dictionary).get("condition", ""),
 			(claimed as Dictionary).get("effects_text", "")],
 			UITheme.ACCENT, false)
-		_add_row(done_row["row"], true)
+		_add_row(done_row["row"], true, true)
 		_lock_row(done_row["check"])
 
 	for i in range(GameState.curse_goals.size()):
@@ -458,23 +455,22 @@ func _add_event_goal_rows() -> void:
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)]
 		var curse_key: String = "curse:%d:%s" % [i, cd.id]
-		var row := verify_row(text, UITheme.CURSE, false)
-		_add_row(row["row"], GameLoop2.row_answered(curse_key))
+		# LED BY ITS OWN PICTURE, exactly as a status row is led by its symbol and the
+		# level-up by the character's face. A curse is a named thing with art in
+		# images2.0/curses/, and this list is scanned rather than read: the portrait is
+		# what makes the purple row findable without reading the sentence in it.
+		var row := verify_row(text, UITheme.CURSE, false, null, null, 0,
+			_curse_icon_rect(cd))
+		_add_row(row["row"], GameLoop2.row_answered(curse_key), true)
 		curse_goal_checks.append({"check": row["check"], "index": i})
-		# THE ONE ROW WITH NOTHING TO RESOLVE. A curse pays no reward for being
-		# followed; what ticking it buys is the penalty NOT firing at the end of the
-		# game, and that is settled at the report either way (resolve_event_goals).
-		# It still confirms and still locks, because it is still a claim about what
-		# you did, and this list does not take those back.
-		_arm_row(row["check"], curse_key,
-			"You followed %s: %s." % [cd.display_name, cd.goal_text()],
-			func() -> void:
-				GameLoop2.mark_row_answered(curse_key)
-				GameLoop2.record_completed_goal("curse",
-					"%s followed — %s" % [cd.display_name, cd.goal_text()])
-				_announce("%s followed — it will not bite this game." % cd.display_name,
-					UITheme.CURSE)
-				_rebuild_soon())
+		# THE ROW WITH NOTHING TO RESOLVE, AND SO NOTHING TO CONFIRM. A curse pays no
+		# reward for being followed; what ticking it buys is the penalty NOT firing
+		# when the game is handed in, and that is settled at the report either way
+		# (resolve_event_goals). It used to raise a confirm and lock — a promise the
+		# player could not take back about a game they were still in the middle of,
+		# for a row whose tick does nothing until the report reads it. It arms now,
+		# like every other row on this list that the report is what settles.
+		_arm_winning_row(row["check"], curse_key)
 
 
 # Pay out whatever the player ticked in those two sections. Claims are resolved
@@ -515,8 +511,28 @@ func resolve_event_goals() -> void:
 	var triggered: Array = []
 	for entry in curse_goal_checks:
 		var check: CheckBox = entry.get("check")
-		if check != null and is_instance_valid(check) and not check.button_pressed:
+		if check == null or not is_instance_valid(check):
+			continue
+		if not check.button_pressed:
 			triggered.append(int(entry.get("index", -1)))
+			continue
+		# FOLLOWED. Recorded here rather than at the tick, because the tick is no
+		# longer the moment anything happens — the row arms and disarms all game and
+		# the report is what reads it, exactly as it is for the winning-run rows.
+		# `disabled` is an old save's row, already recorded under the confirm rules.
+		if check.disabled:
+			continue
+		var followed: Dictionary = GameState.curse_goals[int(entry.get("index", -1))] \
+			if int(entry.get("index", -1)) >= 0 \
+				and int(entry.get("index", -1)) < GameState.curse_goals.size() else {}
+		var fcd: CurseData2 = Data.get_curse2(StringName(followed.get("curse", &"")))
+		if fcd == null:
+			continue
+		GameLoop2.record_completed_goal("curse",
+			"%s followed — %s" % [fcd.display_name, fcd.goal_text()])
+		var fline: String = "%s followed — it did not bite this game." % fcd.display_name
+		Notifications.notify(fline, UITheme.CURSE)
+		GameLog.add(fline, UITheme.CURSE)
 	for idx in triggered:
 		var fired: Dictionary = GameState.trigger_curse_goal(idx)
 		if fired.is_empty():
@@ -925,13 +941,51 @@ const LEVELUP_KEY := "levelup"
 # The indent is what ties a row to this line — that is what an indent is for.
 const WINNING_RUN_HEAD := "On a winning run:"
 
+# THE OTHER SECTION HEAD, and the reason there are two of them.
+#
+# This list carries two kinds of objective and they are answered at two different
+# moments. A ROW THE REPORT SETTLES — a status goal, the level-up, an event goal, a
+# curse — arms and disarms as many times as the player likes and nothing happens
+# until the game is handed in. A ROW ABOUT A BODY ON THE BOARD resolves the second
+# it is confirmed: the enemy takes its hit, its loot lands on the square, and there
+# are no take-backs. Read as one undifferentiated column those two read as the same
+# promise, which is the thing this split exists to stop.
+#
+# So all four kinds of settled-at-the-end row nest under WINNING_RUN_HEAD, and the
+# bodies come last under a head of their own.
+#
+# NOT INDENTED, and no colon on it: the rows below this one do not nest under it
+# (see the block in populate_play_panel), so it is a label on a section rather than
+# a sentence they complete.
+const ENEMIES_HEAD := "Enemies"
+
 # THE LEDGER SAYS IT IN FULL, though (GameLoop2._record_player_objective and the
 # level-up's line in Overworld2.report). The record of what a run has done is a
 # flat list of sentences on another screen, with no header above them to inherit
 # the condition from, so each line there carries its own.
 
-# Wire one winning-run row. `key` is what GameLoop2 remembers the tick by — the
-# status row's objective key, or LEVELUP_KEY.
+# Is there nothing at all to put under WINNING_RUN_HEAD? Asked by both states of
+# the panel, because the header and the four kinds of row under it have to appear
+# and disappear together — a heading with nothing beneath it is a section the
+# player scans for and does not find.
+func _settled_at_the_end_is_empty(ch: CharacterData, winning: Array) -> bool:
+	return winning.is_empty() \
+		and (ch == null or ch.level_up_condition == "") \
+		and GameState.event_goals.is_empty() \
+		and GameState.curse_goals.is_empty() \
+		and GameLoop2.claimed_event_goals.is_empty()
+
+# Wire one ARMED row. `key` is what GameLoop2 remembers the tick by — the status
+# row's objective key, LEVELUP_KEY, or an event / curse row's key.
+#
+# THE EVENT AND CURSE ROWS ARM THROUGH HERE TOO, which is why this is no longer
+# only the winning-run rows' wiring. Both used to confirm and resolve mid-game, and
+# both were the wrong shape for it: a curse's tick does nothing until the report
+# reads it (resolve_event_goals) and an event goal's claim is a reward for a game
+# you have not finished yet. Everything on this list that the report settles now
+# behaves the one way — on and off freely, nothing spent until the game is handed
+# in — and the rows that resolve on the spot are exactly the ones about a body on
+# the board.
 func _arm_winning_row(cb: CheckBox, key: String) -> void:
 	if cb == null:
 		return
@@ -1218,38 +1272,20 @@ func populate_standing() -> void:
 	reset_state()
 	_box.add_child(_verify_head_row("What you need to do:"))
 
-	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
-	# have to be here and not only on the report step: an event fires the moment a
-	# game is beaten, and the goal it hands over lands while the player is still
-	# looking at the OFFERING. Listing it only once a game is picked meant taking
-	# on "beat a game in 1 attempt" and then being shown nothing about it until
-	# after the decision it was supposed to inform.
-	for goal in GameState.event_goals:
-		var left: int = int(goal.get("games_left", 0))
-		_box.add_child(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
-			goal.get("condition", ""), goal.get("effects_text", ""),
-			left, "game" if left == 1 else "games"], UITheme.ACCENT))
-	for entry in GameState.curse_goals:
-		var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
-		if cd == null:
-			continue
-		var left: int = int(entry.get("games_left", 0))
-		# The same instruction the report step will ask about, because this list is
-		# headed "What you need to do" and the answer for a curse is the thing to
-		# do, not the rule it is derived from.
-		_box.add_child(_objective_row("%s — %s   if failed, %s   (%s)" % [
-			cd.display_name, cd.goal_text(), cd.penalty_text,
-			CurseData2.window_text(left)], UITheme.CURSE))
-
-	# THE WINNING-RUN SECTION, the same shape it takes on the report step: the
-	# player's standing status buffs (§13) and the character's level-up, under one
-	# header and nested under it. Both are goals that belong to no enemy and to no
-	# particular game — what they need is a run taken all the way to a win — and
-	# saying that once above them is how this list stops reading as a list of things
-	# the NEXT game could settle.
+	# THE SAME TWO SECTIONS THE REPORT STEP DRAWS, in the same order and with the
+	# same headers (see the block above WINNING_RUN_HEAD): the goals the report
+	# settles, and the bodies on the board. These are one list in two states, and a
+	# section that moved between them would be a section the player has to find
+	# twice.
+	#
+	# THE WINNING-RUN SECTION: the player's standing status buffs (§13) and the
+	# character's level-up, under one header and nested under it. Both are goals
+	# that belong to no enemy and to no particular game — what they need is a run
+	# taken all the way to a win — and saying that once above them is how this list
+	# stops reading as a list of things the NEXT game could settle.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	var winning: Array = GameState.status_objectives()
-	if not winning.is_empty() or (ch != null and ch.level_up_condition != ""):
+	if not _settled_at_the_end_is_empty(ch, winning):
 		_box.add_child(_verify_head(WINNING_RUN_HEAD))
 	for row in winning:
 		var sd: StatusData = row["status"]
@@ -1282,8 +1318,34 @@ func populate_standing() -> void:
 				ch.display_name, ch.level_up_reward]
 		_add_row(lu_row, false, true)
 
+	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
+	# have to be here and not only on the report step: an event fires the moment a
+	# game is beaten, and the goal it hands over lands while the player is still
+	# looking at the OFFERING. Listing it only once a game is picked meant taking
+	# on "beat a game in 1 attempt" and then being shown nothing about it until
+	# after the decision it was supposed to inform.
+	for goal in GameState.event_goals:
+		var left: int = int(goal.get("games_left", 0))
+		_add_row(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
+			goal.get("condition", ""), goal.get("effects_text", ""),
+			left, "game" if left == 1 else "games"], UITheme.ACCENT), false, true)
+	for centry in GameState.curse_goals:
+		var cd: CurseData2 = Data.get_curse2(StringName(centry.get("curse", &"")))
+		if cd == null:
+			continue
+		var cleft: int = int(centry.get("games_left", 0))
+		# The same instruction the report step will ask about, because this list is
+		# headed "What you need to do" and the answer for a curse is the thing to
+		# do, not the rule it is derived from.
+		_add_row(_objective_row("%s — %s   if failed, %s   (%s)" % [
+			cd.display_name, cd.goal_text(), cd.penalty_text,
+			CurseData2.window_text(cleft)], UITheme.CURSE,
+			_curse_icon_rect(cd)), false, true)
+
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
+	if not GameLoop2.stack.is_empty():
+		_box.add_child(_verify_head(ENEMIES_HEAD))
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		var urgent: bool = GameLoop2.in_front(entry)
@@ -1687,6 +1749,30 @@ func _buff_strip(entry: Dictionary) -> Control:
 # both standing clauses ON THE PLAYER, where an enemy portrait is a body on the
 # board. It also costs the page four fewer pixels than an enemy's would, and the
 # overworld's left column has thirteen to give (test_overworld2's _assert_fits).
+# The curse's own picture, as a row-leading chip in the checklist's purple — the
+# same furniture a status's symbol and the character's face ride in
+# (`_status_mark`, `_character_icon_rect`), because a curse is the same sort of
+# thing on this list: a named standing objective, not a body on the board.
+#
+# Null for a curse the sheet gave no `File`, in which case the row reads exactly as
+# it did before. Carries a hover of its own: the picture is what makes the row
+# findable, and what it COSTS is the fact the picture cannot say.
+func _curse_icon_rect(curse: CurseData2) -> Control:
+	if curse == null or curse.image == null:
+		return null
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, UITheme.CURSE.lerp(UITheme.BORDER, 0.45)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.tooltip_text = "%s — if you fail it, %s when you report the game." % [
+		curse.display_name, curse.penalty_text]
+	# Marked, so "how many BODIES are on this list" stays an answerable question —
+	# the character's face carries the same kind of mark for the same reason (see
+	# test_overworld2's _texture_rects_under). A curse is not a body on the board.
+	frame.set_meta(&"curse_portrait", true)
+	frame.add_child(UITheme.crisp_tex(curse.image, STATUS_ICON_SIZE))
+	return frame
+
 func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) -> Control:
 	if character == null:
 		return null

@@ -57,6 +57,28 @@ static func window_text(games_left: int) -> String:
 # Art base name under res://images2.0/curses/.
 @export var file: String = ""
 
+var _art: Texture2D = null
+var _art_loaded: bool = false            # so a missing/broken name is tried once
+
+# The curse's own picture, loaded on first access and cached — null when the sheet
+# authored no `File`, or when the name does not resolve.
+#
+# LAZY, AND A PATH RATHER THAN AN `@export var image: Texture2D`, which is the
+# shape StatusData uses. The reason is GameData.cover_image's (see the note in
+# CLAUDE.md): an ExtResource resolves EAGERLY when `Data` loads the folder, so a
+# typed export would decode every curse's art on every boot and every headless
+# test run whether or not a run is carrying one. Three files is not what that rule
+# is protecting against — it is here so that a fourth, and a fortieth, cost
+# nothing either.
+var image: Texture2D:
+	get:
+		if not _art_loaded:
+			_art_loaded = true
+			var path: String = "res://images2.0/curses/%s.png" % file
+			if file != "" and ResourceLoader.exists(path):
+				_art = load(path)
+		return _art
+
 
 # The checklist row, composed rather than authored — there is no prose column to
 # drift out of sync with what the curse actually does.

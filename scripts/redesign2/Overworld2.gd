@@ -230,10 +230,10 @@ var _rng := RandomNumberGenerator.new()
 # buttons already read "⇤ Push (1)" / "✸ Bomb (3)", and its pressure bar ends in
 # the run's tier.)
 var _select_stats: HFlowContainer
-# The open READING CARD, or null. Either an ItemInfoCard (a relic) or a
-# LootInfoCard (a pill or a scroll) — they are the same slot on the screen and
-# only one of them is ever up, so the field holds whichever it is. Typed as Control
-# because the two share a shape (`close`, `closed`) rather than a base class.
+# The open READING CARD, or null — an ItemInfoCard (a relic), which is the only
+# kind left: loot is read from its hover and its Use screen and no longer opens a
+# card of its own. Typed as Control because what this field needs of a card is a
+# shape (`close`, `closed`) rather than a base class.
 var _item_card: Control = null
 var _banner: Label
 # The boss round announces itself as a POPUP (BossNoticeModal), not as a strip
@@ -4678,26 +4678,6 @@ func _close_item_card() -> void:
 	if _item_card != null and is_instance_valid(_item_card):
 		_item_card.close()
 	_item_card = null
-
-# The same gesture for a piece of loot: clicking one in the window opens its card,
-# and firing it from there goes back through `use_loot` — the same verb the
-# window's own Use button calls, so reading a pill can never spend it (§4.3).
-# It rides `_item_card` because the two cards are the same slot on the screen and
-# only one of them can be open at a time.
-func open_loot_card(index: int) -> void:
-	if index < 0 or index >= GameState.loot_items.size():
-		return
-	var entry = GameState.loot_items[index]
-	if not (entry is Dictionary):
-		return
-	_close_item_card()
-	var card := LootInfoCard.new()
-	card.use_requested.connect(use_loot)
-	_mount_reading_card(card)
-	# ALWAYS SPENDABLE (§4.3). The mid-report lock holds the pack still; it does
-	# not stop a piece being used, and a piece whose effect cannot land right now
-	# fizzles rather than being refused.
-	card.setup(entry, index, true)
 
 # The hover model for a carried item, kept on the page as the name the shop's
 # shelf and the drop modal already reach for. PackStrip.item_hover is the one

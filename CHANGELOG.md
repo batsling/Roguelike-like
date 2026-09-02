@@ -11,6 +11,97 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The checklist is two sections, and the enemies are one of them.**
+
+  The list already grouped its winning-run rows under a header; everything else ran
+  together underneath, so an event goal, a curse and a body on the board were three
+  rows of the same weight in the same column. They are not the same kind of thing,
+  and the difference is *when they are answered*: a status goal, the level-up, an
+  event goal and a curse are all settled when the game is handed in, and an enemy
+  row resolves the second you confirm it — the body takes its hit, its loot lands,
+  no take-backs.
+
+  So all four kinds of settled-at-the-end row nest under **On a winning run:**, the
+  way a bonus nests under the body it hangs off, and the bodies come last under
+  **Enemies**. That header is a label on a section rather than a sentence the rows
+  finish, so it sits flush and so do they. Both are drawn only when they have
+  something under them. Both states of the panel — the standing list while choosing
+  and the report step while playing — take the same two sections in the same order.
+
+- **A curse row leads with its own picture.**
+
+  A status row leads with its symbol and the level-up with the character's face; a
+  curse — the one purple row on the list — led with nothing, on a list that is
+  scanned rather than read. `images2.0/curses/` has had the art all along and
+  `CurseData2.file` has had the name; what was missing was anything that loaded it.
+  It loads **lazily**, the way `GameData.cover_image` does and deliberately not the
+  way `StatusData.image` does: a typed `Texture2D` export resolves eagerly when
+  `Data` walks the folder, and three files is not what that rule is protecting
+  against — it is there so the fortieth costs nothing either.
+
+- **The event and curse rows arm instead of confirming.**
+
+  Both used to raise "This resolves right now, and it cannot be taken back" and
+  lock: an event goal paid out on the spot, halfway through a game you had not
+  finished, and a curse row locked a promise whose tick does nothing until the
+  report reads it either way. They behave like the status goals now — on and off as
+  many times as you like, and the report is what cashes them
+  (`resolve_event_goals`, which was already the path for anything left ticked). The
+  ledger line for a curse you followed moved to the report with it.
+
+- **Loot's click-to-read card is gone.**
+
+  A piece in the pack answered a click by opening `LootInfoCard`, and its Use button
+  opened a second screen that led with the same art, the same kind, the same
+  Preference and the same description before asking whether to spend it. Two screens
+  for one piece, and the one that could not decide anything was the extra. Reading a
+  piece is its hover card now; looking at it properly is the Use screen.
+
+- **An unidentified piece says `???`.**
+
+  Each kind wrote its own paragraph — *"Unidentified — reading it is a gamble. Its
+  Preference could be Positive, Negative, or Neutral"*, and a longer one for a wand
+  about how many zaps might be in it. All of it was already on the screen around it:
+  the Unidentified chip, the Preference chip that is missing, the button that spends
+  it. `LootSystem.UNKNOWN_TEXT` is the one blank all five kinds show instead.
+
+- **A use that does nothing teaches you nothing.**
+
+  This reverses "identify first, always" (potions-design §4.5), which paid the
+  information out even when the effect landed on nothing. Identification is
+  learn-by-**use**, and use means watching the thing work: a wand zapped at an empty
+  square, a bottle smashed on empty ground, a Scroll of Identify read with nothing
+  unidentified in the pack, a 48 Hour Energy taken with nothing chargeable — none of
+  them showed the player anything, so none of them writes the name down. Every
+  system's clause helper reports whether it actually landed (`_apply_one` returns a
+  bool now, the way `WandSystem`'s and the potion throw's already did) and the
+  identify hangs off that.
+
+  The consequence, said out loud: **Wand of Nothing and Potion of Uselessness can
+  only be learned from a Scroll of Identify.** That is the right answer rather than a
+  gap — from the inside there is nothing to tell them from a stick aimed badly.
+  Cards are untouched: there was never anything hidden about a card.
+
+- **The Identify picker is the pack, not a list of names.**
+
+  Choosing which piece to identify was a column of text buttons, and every unknown
+  capsule in the game is called "Unidentified Pill" — so the one screen whose whole
+  subject is *which of these* could not tell them apart. It draws them as cells now,
+  at the pack's own size, with the art the player has been looking at all run.
+
+- **The Wand of Invisibility hides the body it hits.**
+
+  Invisibility is a spawn-time ability and it was implemented at the spawn and
+  nowhere else, so a body zapped with the wand carried the ability and went on being
+  drawn — nothing spawns twice. The five abilities that are true from the moment
+  they are held now live in `GameLoop2._ability_takes_hold`, which the spawn path
+  and `grant_ability` both go through.
+
+- **Regenerated from the sheet.** The statuses' On Enemy prose — including Burn's
+  "beat *w* run", fixed in the workbook itself (`tools/_statuses_burn_typo_fix.py`)
+  rather than in the `.tres`, which the next regeneration would have reverted — and
+  **Ultrapool** with its two influence edges (from Super Auto Pets and Balatro).
+
 - **The checklist says which half of a goal a buff put there.**
 
   A status on a body — or on the *player*, which taxes every body's goal — adds a

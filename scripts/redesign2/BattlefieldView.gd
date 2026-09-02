@@ -2294,7 +2294,6 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		"art": GameLoop2.entry_image(entry),
 		"pips": pips,
 		"lines": lines,
-		"note": "Click for the full card.",
 	}
 
 # A single full-rect Control child of a cell PanelContainer, inside which art and

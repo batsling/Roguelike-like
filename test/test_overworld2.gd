@@ -2505,16 +2505,18 @@ func _find_confirm(node: Node) -> ConfirmPanel:
 			return found
 	return null
 
-func test_clicking_a_carried_piece_opens_its_card() -> void:
-	# Click reads, drag moves, the button spends — a relic in the pack has answered
-	# a click with its card since ItemInfoCard shipped, and loot answered with
-	# nothing at all.
+# A CARRIED PIECE IS READ FROM ITS HOVER, NOT FROM A CARD. Clicking one used to
+# open a LootInfoCard, which said the same things the Use screen already leads
+# with — so the read-only screen went and the hover is what carries the fast read.
+func test_a_carried_piece_carries_its_hover_and_opens_no_card() -> void:
 	GameState.add_pill_loot(&"luck_up")
-	_ui.open_loot_card(0)
+	_ui._refresh_items()
 	await wait_frames(2)
-	assert_true(_ui._item_card is LootInfoCard, "the reading card for a piece of loot")
-	if _ui._item_card != null:
-		_ui._item_card.close()
+	assert_false(_ui.has_method("open_loot_card"),
+		"the click-to-read card for loot is gone")
+	var hover: Dictionary = LootSystem.hover_card(GameState.loot_items[0])
+	assert_false(String(hover.get("title", "")).is_empty(),
+		"and the hover is what reads it instead")
 
 func test_the_loot_toggle_carries_the_count_and_says_when_it_is_full() -> void:
 	GameState.loot_items.clear()
@@ -3044,11 +3046,12 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 func _texture_rects_under(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
-		# Neither the player's own face nor a body's BUFF PIPS are bodies on the
-		# board, and this walk is how "how many bodies are on this list" is
-		# answered. Both mark themselves; the strip marks the whole subtree, since
-		# every chip in it is one of these.
-		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip"):
+		# Neither the player's own face nor a curse's picture nor a body's BUFF PIPS
+		# are bodies on the board, and this walk is how "how many bodies are on this
+		# list" is answered. Each marks itself; the strip marks the whole subtree,
+		# since every chip in it is one of these.
+		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip") \
+				or child.has_meta(&"curse_portrait"):
 			continue
 		if child is TextureRect and (child as TextureRect).texture != null:
 			out.append(child)
@@ -7952,11 +7955,14 @@ func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"its loot is on the floor to go and pick up (§8.2)")
 
-func test_a_confirmed_row_cannot_be_taken_back() -> void:
-	# A CURSE ROW is where "locked" can be looked at: it stays on the list whatever
-	# it resolves (a curse is not cleared by being followed, only by its timer) and
-	# it is recorded in `answered_rows`. The level-up used to play this part and no
-	# longer can — it is a winning-run row now, and those ARM rather than resolve.
+func test_a_curse_row_arms_rather_than_confirming() -> void:
+	# A CURSE ROW IS SETTLED BY THE REPORT, NOT BY ITS TICK. It used to raise the
+	# "this cannot be taken back" confirm and lock, which was the wrong shape for it
+	# twice over: nothing happens when the box goes on (what a tick buys is the
+	# penalty NOT firing at the report — resolve_event_goals), and the promise was
+	# taken halfway through a game the player had not finished. It behaves like the
+	# winning-run rows now — on and off freely, and the tick survives a repaint
+	# because the LOOP holds it.
 	GameState.add_curse_goal(&"poor_sleep")
 	_ui.pick(0)
 	var checks: Array = _curse_checks()
@@ -7965,20 +7971,21 @@ func test_a_confirmed_row_cannot_be_taken_back() -> void:
 	var check: CheckBox = checks[0]
 	var key: String = "curse:0:poor_sleep"
 	_tick(check)
-	assert_true(check.disabled, "an answered row is locked, so it takes no more input")
-	assert_true(check.button_pressed, "and stays ticked")
-	assert_true(GameLoop2.row_answered(key),
-		"and the LOOP holds it, so nothing a repaint does can lose it")
-	check.button_pressed = false
-	assert_null(_ui.get_node_or_null("Confirm"),
-		"there is nothing left to raise a question about")
+	assert_null(_ui.get_node_or_null("Confirm"), "no confirm is raised")
+	assert_false(check.disabled, "and the row can still be taken back")
+	assert_true(check.button_pressed, "it is ticked")
+	assert_true(GameLoop2.row_armed(key), "and armed on the loop, not answered")
+	assert_false(GameLoop2.row_answered(key), "nothing has resolved")
+
 	_ui._populate_play_panel()
 	var again: Array = _curse_checks()
 	assert_false(again.is_empty(), "the curse is still on the list")
 	if again.is_empty():
 		return
-	assert_true((again[0] as CheckBox).disabled, "the rebuilt row is locked again")
-	assert_true((again[0] as CheckBox).button_pressed, "and still ticked")
+	assert_true((again[0] as CheckBox).button_pressed,
+		"and the rebuilt row is still ticked")
+	(again[0] as CheckBox).button_pressed = false
+	assert_false(GameLoop2.row_armed(key), "unticking disarms it")
 
 func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	_pick_solo(0)
@@ -8317,10 +8324,13 @@ func test_the_answered_rows_go_with_the_game() -> void:
 	if checks.is_empty():
 		return
 	var key: String = "curse:0:poor_sleep"
+	# A CURSE ROW ARMS NOW rather than resolving on its tick, so what this asks about
+	# is `armed_rows` — the same rule either way: a tick is a claim about the game
+	# being handed in, and the next game asks again.
 	_tick(checks[0])
-	assert_true(GameLoop2.row_answered(key))
+	assert_true(GameLoop2.row_armed(key))
 	_report_beat(_ui)
-	assert_false(GameLoop2.row_answered(key),
+	assert_false(GameLoop2.row_armed(key),
 		"what this game was answered for is not true of the next one")
 	_ui._end_resolve()
 	_leave_post_game()

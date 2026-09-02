@@ -100,14 +100,26 @@ func is_identified(id: StringName) -> bool:
 # a horse pill is the same capsule at a bigger size, and learning one and not the
 # other would mean the player who took the rare dose knows less than the one who
 # took the common one.
-func identify(id: StringName) -> bool:
+# `announce` is FALSE when the caller does not yet know whether the use will land
+# (see the spend paths): the type goes on the identified list straight away, so the
+# effect itself can see it — Amnesia's whole trick is forgetting the name it has
+# just taught — and the toast waits until the use is known to have done something.
+# A use that turns out to have done nothing calls `unidentify` and no toast was
+# ever shown.
+func identify(id: StringName, announce: bool = true) -> bool:
 	if id == &"" or GameState.identified_pill_types.has(id):
 		return false
 	GameState.identified_pill_types.append(id)
+	if announce:
+		announce_identified(id)
+	return true
+
+# The toast on its own, so a spend path can record the type now and say so
+# later — see the `announce` argument above.
+func announce_identified(id: StringName) -> void:
 	var p: PillData = Data.get_pill(id)
 	var nm: String = p.display_name if p != null else String(id)
 	Notifications.notify("Identified: %s!" % nm, PILL_COLOR)
-	return true
 
 func unidentify(id: StringName) -> void:
 	GameState.identified_pill_types.erase(id)
@@ -148,7 +160,7 @@ func description(entry: Dictionary) -> String:
 	if pill == null:
 		return ""
 	if not is_identified(pill.id):
-		return "You don't know what this one does. Taking it is how you find out."
+		return LootSystem.UNKNOWN_TEXT
 	if would_save_you(pill, horse):
 		return "It would kill you, so it does the opposite: heal to full health."
 	return pill.line(horse)
@@ -264,11 +276,18 @@ func take_pill(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 
-	# LEARN-BY-USE, AND LEARN THE TRUTH. This happens before any reroll or swap,
-	# and it records the pill that was actually in the capsule — Lucky Foot changes
-	# the outcome, never the fact (§4.3). A version that identified what you GOT
-	# would start lying to the player the moment the relic left the pack.
-	identify(pill.id)
+	# LEARN-BY-USE, AND LEARN THE TRUTH — but only when the dose DID something.
+	#
+	# RECORDED FIRST AND ROLLED BACK IF IT DID NOT (see ScrollSystem.read_scroll for
+	# the same shape and the same reason): the horse Amnesia forgets every
+	# identified piece of loot INCLUDING the name it has just taught, so the ops
+	# have to run against a run that already knows this colour. The toast is what
+	# waits until the dose is known to have landed.
+	#
+	# What is recorded is the pill that was actually in the capsule: Lucky Foot
+	# changes the outcome, never the fact (§4.3), and a version that identified what
+	# you GOT would start lying to the player the moment the relic left the pack.
+	var newly: bool = identify(pill.id, false)
 
 	var ops: Array = pill.ops(horse)
 	if GameState.pills_reroll_positive() and pill.is_negative():
@@ -283,9 +302,22 @@ func take_pill(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	elif would_save_you(pill, horse):
 		ops = [{"op": "heal_full"}]
 
+	var landed: bool = false
 	for op in ops:
 		if op is Dictionary:
-			_apply_one(op, out, rng)
+			landed = _apply_one(op, out, rng) or landed
+	# Nothing happened means nothing was learned: a capsule whose every op no-opped
+	# — a 48 Hour Energy taken with nothing chargeable in the pack, an Amnesia with
+	# nothing known to forget — showed the player nothing about what the colour
+	# means, so the colour goes back to being unlearned.
+	if not landed:
+		if newly:
+			unidentify(pill.id)
+	elif newly and is_identified(pill.id):
+		# …and not when the dose forgot it again on purpose: the horse Amnesia takes
+		# its own name with it, and a toast for a name the run no longer holds would
+		# be the capsule lying about what it did.
+		announce_identified(pill.id)
 	return out
 
 # Lucky Foot's pool: every Positive pill, INCLUDING the ones whose colours are
@@ -332,15 +364,18 @@ func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
 	# which is what "doubled" means for a count nobody wrote down.
 	return maxi(1, raw) * mult
 
-func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+# One dose clause. Returns whether it actually DID anything — a dose whose every
+# clause no-opped is what leaves a capsule unidentified (see take_pill).
+func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var verb := String(op.get("op", ""))
 	match verb:
 		"gain_stat", "lose_stat":
-			_apply_stat(op, verb == "lose_stat", out)
+			return _apply_stat(op, verb == "lose_stat", out)
 		"gain_hp":
 			var healed: int = _scaled_value(op, "value", 1)
 			GameState.change_hp(healed)
 			out["logs"].append("You gain +%d Health." % healed)
+			return true
 		"gain_max_hp":
 			# Raising the cap heals by the same amount (§3) — the container arrives
 			# full, which is what makes Health Up worth taking at full Health.
@@ -348,25 +383,29 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> 
 			GameState.change_max_hp(up)
 			GameState.change_hp(up)
 			out["logs"].append("You gain +%d Max Health." % up)
+			return true
 		"lose_max_hp":
 			# The deliberate NON-mirror (§3): the room goes, the Health stays, and
 			# only moves when it no longer fits.
 			var down: int = _scaled_value(op, "value", 1)
 			GameState.set_max_hp(maxi(1, GameState.max_hp - down), false)
 			out["logs"].append("You lose %d Max Health." % down)
+			return true
 		"lose_hp":
 			var dmg: int = _scaled_value(op, "value", 1)
 			GameState.change_hp(-dmg)
 			out["logs"].append("You lose %d Health." % dmg)
+			return true
 		"heal_full":
 			GameState.set_hp(GameState.max_hp)
 			out["logs"].append("You are healed to full.")
+			return true
 		"add_curse":
-			_add_curses(op, out, rng)
+			return _add_curses(op, out, rng)
 		"forget":
-			_forget(op, out, rng)
+			return _forget(op, out, rng)
 		"charge":
-			_charge(op, out, rng)
+			return _charge(op, out, rng)
 		"teleport":
 			# Telepills — movement belongs to the overworld, so it comes back as a
 			# request the way a scroll's does rather than reaching into the map here.
@@ -377,21 +416,27 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> 
 			else:
 				req["spread"] = int(op.get("spread", 1))
 			out["requests"].append(req)
+			# A REQUEST IS SOMETHING HAPPENING. The move is fulfilled by the overworld
+			# a moment later rather than here, and a Telepill that identified nothing
+			# because this file had not moved the player yet would be the one dose you
+			# could take all run without learning it.
+			return true
 		_:
 			push_warning("PillSystem: unknown effect op '%s'" % verb)
+			return false
 
 # --- gain_stat / lose_stat --------------------------------------------------
 # Both directions of the same verb, so Luck Up and Luck Down cannot drift apart.
 # `bonus_shields` is the one stat here that is not an ordinary run stat: it is the
 # pool that does not expire (§4.3), and it is granted through the same path so a
 # pill has no privileged way to reach it that an item wouldn't have.
-func _apply_stat(op: Dictionary, negative: bool, out: Dictionary) -> void:
+func _apply_stat(op: Dictionary, negative: bool, out: Dictionary) -> bool:
 	var stat: String = String(op.get("stat", ""))
 	if stat == "":
-		return
+		return false
 	var amount: int = _scaled_value(op, "value", 1)
 	if amount == 0:
-		return
+		return false
 	GameState.grant_run_stat(stat, -amount if negative else amount)
 	# The sign belongs to the NUMBER, not to the verb. Splitting the format three
 	# ways put a space between them — "You gain + 1 Luck." — which nobody caught
@@ -399,6 +444,7 @@ func _apply_stat(op: Dictionary, negative: bool, out: Dictionary) -> void:
 	# you read on the screen that now says what a pill did.
 	out["logs"].append("You %s %s." % [
 		"lose %d" % amount if negative else "gain +%d" % amount, _pretty(stat)])
+	return true
 
 func _pretty(stat: String) -> String:
 	return stat.capitalize()
@@ -407,7 +453,7 @@ func _pretty(stat: String) -> String:
 # A curse GOAL (§5): a row on the post-game checklist you are trying not to
 # complete. `random` picks from the whole authored set each time rather than once
 # and repeated, so a doubled Amnesia is two DIFFERENT curses where it can be.
-func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var count: int = maxi(1, _scaled_value(op, "count", 1))
 	var named := StringName(String(op.get("curse", "random")))
 	var taken: Array = []
@@ -425,12 +471,13 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 			taken.append(id)
 	if taken.is_empty():
 		out["logs"].append("Nothing sticks.")
-		return
+		return false
 	var names: Array = []
 	for id in taken:
 		var cd = Data.get_curse2(id)
 		names.append(cd.display_name if cd != null else String(id))
 	out["logs"].append("You are cursed: %s." % ", ".join(PackedStringArray(names)))
+	return true
 
 # --- forget (horse Amnesia) -------------------------------------------------
 # Forgetting is per-KIND so the sheet can say "scroll", "pill" or — the horse
@@ -452,7 +499,7 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 # turn, so "forget 1" forgot one scroll AND one pill. It forgets one thing now,
 # drawn from everything known — which is what the sheet's "1 random Identified
 # Loot" says, and what a horse `all` meant either way.
-func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var kind: String = String(op.get("kind", "loot")).to_lower()
 	var count: int = int(op.get("count", 1))
 	if count > 0:
@@ -460,9 +507,10 @@ func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> voi
 	var forgot: int = LootSystem.forget_identified(kind, count, rng)
 	if forgot <= 0:
 		out["logs"].append("You have no loot knowledge to forget.")
-		return
+		return false
 	out["logs"].append("You forget what %d %s do%s." % [
 		forgot, "thing" if forgot == 1 else "things", "es" if forgot == 1 else ""])
+	return true
 
 # --- charge (48 Hour Energy) ------------------------------------------------
 # Three SEPARATE charges, each landing on a random chargeable thing — so two can
@@ -483,11 +531,11 @@ func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> voi
 # A pack with nothing chargeable in it says so. Reading it into an empty pack is a
 # wasted pill, and the log is the only place the player finds that out — the same
 # rule ScrollSystem follows for Aggravate Monsters in an empty room.
-func _charge(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> void:
+func _charge(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var pool: Array = GameState.chargeable_things()
 	if pool.is_empty():
 		out["logs"].append("Nothing in the pack takes a charge.")
-		return
+		return false
 	var count: int = maxi(1, _scaled_value(op, "count", 1))
 	var full: bool = bool(op.get("full", false))
 	var touched: Array = []
@@ -509,6 +557,7 @@ func _charge(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> voi
 				touched.append(nm)
 	if touched.is_empty():
 		out["logs"].append("Everything in the pack is already charged.")
-		return
+		return false
 	out["logs"].append("%s %s charged." % [
 		", ".join(PackedStringArray(touched)), "is" if touched.size() == 1 else "are"])
+	return true

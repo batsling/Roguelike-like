@@ -281,7 +281,6 @@ func _build() -> void:
 	_grid.take_requested.connect(_take_offer)
 	_grid.use_requested.connect(_use_carried)
 	_grid.discard_requested.connect(_discard_carried)
-	_grid.inspect_requested.connect(_inspect_carried)
 	_grid.moved.connect(func(from: int, to: int):
 		if GameState.move_loot(from, to):
 			_rebuild())
@@ -600,26 +599,6 @@ func _discard_carried(index: int) -> void:
 		GameState.remove_loot_at(index)
 		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
 		_after_change())
-
-# Reading a carried piece, on the same terms the loot window offers it: the card
-# opens above this screen, and firing from it goes back through the same use path.
-func _inspect_carried(index: int) -> void:
-	if _answered or index < 0 or index >= GameState.loot_items.size():
-		return
-	var entry = GameState.loot_items[index]
-	if not (entry is Dictionary):
-		return
-	var layer := CanvasLayer.new()
-	layer.layer = USE_LAYER
-	layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	_page().add_child(layer)
-	var card := LootInfoCard.new()
-	card.use_requested.connect(_use_carried)
-	card.closed.connect(func():
-		if is_instance_valid(layer):
-			layer.queue_free())
-	layer.add_child(card)
-	card.setup(entry, index, _spendable)
 
 # One place for "something on this screen changed": redraw it, let the page redraw
 # the strip and window behind it, and close if the table is empty.

@@ -161,14 +161,26 @@ func is_identified(id: StringName) -> bool:
 # (decision #22): learning it from a quaff teaches the throw too, because the
 # alternative is thirty facts instead of fifteen and a quaff-or-throw choice that
 # turns into a research task.
-func identify(id: StringName) -> bool:
+# `announce` is FALSE when the caller does not yet know whether the use will land
+# (see the spend paths): the type goes on the identified list straight away, so the
+# effect itself can see it — Amnesia's whole trick is forgetting the name it has
+# just taught — and the toast waits until the use is known to have done something.
+# A use that turns out to have done nothing calls `unidentify` and no toast was
+# ever shown.
+func identify(id: StringName, announce: bool = true) -> bool:
 	if id == &"" or GameState.identified_potion_types.has(id):
 		return false
 	GameState.identified_potion_types.append(id)
+	if announce:
+		announce_identified(id)
+	return true
+
+# The toast on its own, so a spend path can record the type now and say so
+# later — see the `announce` argument above.
+func announce_identified(id: StringName) -> void:
 	var p: PotionData = Data.get_potion(id)
 	var nm: String = p.display_name if p != null else String(id)
 	Notifications.notify("Identified: %s!" % nm, POTION_COLOR)
-	return true
 
 func unidentify(id: StringName) -> void:
 	GameState.identified_potion_types.erase(id)
@@ -207,7 +219,7 @@ func description(entry: Dictionary) -> String:
 	if potion == null:
 		return ""
 	if not is_identified(potion.id):
-		return "You don't know what this one does. Using it is how you find out."
+		return LootSystem.UNKNOWN_TEXT
 	var parts: Array = []
 	if potion.quaff_text != "":
 		parts.append("Quaff: %s" % potion.quaff_text)
@@ -297,9 +309,15 @@ func notify_used(potion: PotionData) -> void:
 # caller can spend any of the three.
 #   ctx (optional): { "rng": RandomNumberGenerator }
 #
-# IDENTIFY FIRST, ALWAYS. The gamble pays its information out even when the effect
-# lands on nothing (§4.5) — a Potion of Uselessness that fizzled anonymously would
-# be a piece of loot the player could spend twice without learning anything.
+# NOTHING HAPPENED MEANS NOTHING WAS LEARNED. The bottle is identified only when
+# the draught actually DID something — a Potion of Uselessness, whose quaff side is
+# empty, teaches nothing by being drunk and stays unknown for it.
+#
+# This reverses the earlier rule ("identify first, always"). Learning a potion is
+# watching it work; a mouthful that visibly changed nothing showed the player
+# nothing, and writing the name down anyway handed over knowledge nobody earned.
+# Uselessness can now only be learned from a Scroll of Identify, which is right:
+# there is no way to tell it from a bottle whose effect had nowhere to land.
 func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
@@ -310,7 +328,8 @@ func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 
-	identify(potion.id)
+	# The bottle was DRUNK whatever happens, so the relics that watch for it see a
+	# use either way. Only the IDENTIFY hangs on the draught doing something.
 	notify_used(potion)
 
 	var ops: Array = potion.quaff
@@ -319,9 +338,18 @@ func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		# as a use that reported nothing.
 		out["logs"].append("Nothing happens.")
 		return out
+	# Recorded first and rolled back if nothing lands, so the ops run against a run
+	# that already knows the bottle — ScrollSystem.read_scroll has the argument.
+	var newly: bool = identify(potion.id, false)
+	var landed: bool = false
 	for op in ops:
 		if op is Dictionary:
-			_apply_one(op, out, rng)
+			landed = _apply_one(op, out, rng) or landed
+	if not landed:
+		if newly:
+			unidentify(potion.id)
+	elif newly and is_identified(potion.id):
+		announce_identified(potion.id)
 	return out
 
 # Which of an op's numbers Sacred Bark's "double the effect" doubles (§8.2). Named
@@ -384,7 +412,10 @@ func _scaled_area(op: Dictionary) -> String:
 		return area
 	return String(AREA_LADDER.get(area, area))
 
-func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) -> void:
+# One quaff clause. Returns whether it actually DID anything, the way the throw
+# side's `_throw_one` already does — a use that landed on nothing is what leaves a
+# bottle unidentified (see quaff_potion).
+func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) -> bool:
 	match String(op.get("op", "")):
 		"take_damage":
 			# THROUGH THE BOARD'S OWN HIT PATH, so shields stop it and every relic
@@ -393,28 +424,33 @@ func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 			var dmg: int = _scaled_value(op, "value", 1)
 			GameLoop2.damage_player(dmg)
 			out["logs"].append("You take %d damage." % dmg)
+			return true
 		"gain_hp":
 			var healed: int = _scaled_value(op, "value", 1)
 			GameState.change_hp(healed)
 			out["logs"].append("You gain +%d Health." % healed)
+			return true
 		"gain_max_hp":
 			# The container arrives full, exactly as Health Up does (spec §3).
 			var up: int = _scaled_value(op, "value", 1)
 			GameState.change_max_hp(up)
 			GameState.change_hp(up)
 			out["logs"].append("You gain +%d Max Health." % up)
+			return true
 		"gain_stat":
 			var stat: String = String(op.get("stat", ""))
 			var amount: int = _scaled_value(op, "value", 1)
 			GameState.grant_run_stat(stat, amount)
 			out["logs"].append("You gain +%d %s." % [amount, _pretty_stat(stat)])
+			return true
 		"apply_status":
-			_apply_status(op, out)
+			return _apply_status(op, out)
 		"gain_level":
 			# The character's ordinary level-up path with the condition simply not
 			# consulted (§7.3, decision #7): the same stats and the same reward a
 			# level always pays, so a Rare potion invents no new payout content.
 			var levels: int = maxi(1, _scaled_value(op, "value", 1))
+			var took: bool = false
 			for _i in range(levels):
 				# grant_level_up needs a character to know what a level PAYS, and a
 				# run without one cannot level. Read the counter rather than trusting
@@ -425,11 +461,14 @@ func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 				if GameState.player_level == was:
 					out["logs"].append("It fizzles — there is nothing to level up.")
 					break
+				took = true
 				out["logs"].append("You reach level %d%s." % [
 					GameState.player_level,
 					"" if gained.is_empty() else " — %s" % ", ".join(PackedStringArray(gained))])
+			return took
 		_:
 			push_warning("PotionSystem: unknown quaff op '%s'" % String(op.get("op", "")))
+			return false
 
 # A status on the drinker, with the potion's clock if it authored one (§5.2).
 #
@@ -437,17 +476,18 @@ func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 # second path for a timed stack, and adding one is the mistake that layer was
 # built early to prevent. A clause with no `games` is permanent, which is what
 # every apply_status written before potions already meant.
-func _apply_status(op: Dictionary, out: Dictionary) -> void:
+func _apply_status(op: Dictionary, out: Dictionary) -> bool:
 	var status: StatusData = Data.get_status(StringName(String(op.get("status", ""))))
 	if status == null:
-		return
+		return false
 	var stacks: int = _scaled_value(op, "value", 1)
 	var games: int = int(op.get("games", 0))
 	var applied: int = GameState.apply_status(status.id, stacks, games)
 	if applied <= 0:
-		return
+		return false
 	out["logs"].append("You gain +%d %s%s." % [
 		applied, status.display_name, StatusData.clock_suffix(games)])
+	return true
 
 func _pretty_stat(stat: String) -> String:
 	return stat.replace("_", " ").capitalize()
@@ -471,15 +511,16 @@ func _pretty_stat(stat: String) -> String:
 # re-throws at the SAME cell, because the player aimed once and the copies land
 # where the original did.
 #
-# IDENTIFY FIRST, ALWAYS, exactly as the quaff does — the gamble pays its
-# information out even when the bottle smashes on empty ground (§4.5).
+# NOTHING HAPPENED MEANS NOTHING WAS LEARNED, exactly as the quaff has it: a
+# bottle that smashes on empty ground taught the player nothing about itself, so it
+# is still an unknown bottle. See quaff_potion for the argument.
 func throw_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	var potion: PotionData = Data.get_potion(StringName(entry.get("id", "")))
 	if potion == null:
 		return out
 
-	identify(potion.id)
+	# Thrown is thrown, whatever it hit — the relics that watch for a use see one.
 	notify_used(potion)
 
 	var target = ctx.get("target")
@@ -500,12 +541,17 @@ func throw_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		out["logs"].append("It smashes. Nothing happens.")
 		return out
 
+	var newly: bool = identify(potion.id, false)
 	var landed: bool = false
 	for op in ops:
 		if op is Dictionary:
 			landed = _throw_one(op, cell, out) or landed
 	if not landed:
 		out["logs"].append("It smashes on empty ground.")
+		if newly:
+			unidentify(potion.id)
+	elif newly and is_identified(potion.id):
+		announce_identified(potion.id)
 	return out
 
 # One throw clause. Returns whether it actually DID anything, so a bottle that
