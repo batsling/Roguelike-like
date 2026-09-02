@@ -13,6 +13,7 @@ the honour system.
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. One left: splitting `Overworld2.gd` |
+| the signed mechanics/systems graph | `docs/systems-graph.md` — **design in progress, nothing built**. The `chart` sheet's schema and the reasoning behind it; note its warning that the committed workbook is behind |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
