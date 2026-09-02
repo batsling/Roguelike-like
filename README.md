@@ -147,6 +147,11 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_event2_tres.py     #   data/events2.0
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
+│   ├── audit_systems_graph.py      #   read-only audit of the `chart` sheet (systems graph)
+│   ├── _chart_system_vocabulary.py #   one-shot: settle the chart sheet's System vocabulary
+│   ├── _chart_abilities_review_fixes.py #  one-shot: the ability-review fixes
+│   ├── _chart_summoners_and_tiles.py #  one-shot: summoner payouts + the tile rules
+│   ├── _chart_enemy_goals.py       #   one-shot: enemy goals — the central loop
 │   ├── generate_item_tres.py, generate_character_tres.py,
 │   ├── generate_curse_tres.py      #   the pre-2.0 sets
 │   ├── import-games-godot.py
@@ -730,6 +735,11 @@ still exists under an old name silently generates the wrong content.
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
+| `_chart_system_vocabulary.py` | one-shot: settled the `chart` sheet's System column on plural (`Bomb`/`Bombs` and three more collided, and a group-by rendered each as two systems), trimmed stray whitespace, and renamed the `Arcade` node to `Arcade Room`. |
+| `_chart_abilities_review_fixes.py` | one-shot: the ten fixes off the systems-graph ability review — dropped the duplicate `Loot Amount` Good Direction, pointed Haste at `Speed on Enemy`, renamed the Gold system to `Economy`, settled the new trigger names (`Enemy Attack`, `Enemy Passive`, `On Player Debuff`), and added the three structural rows (Enemy Damage, Shield Absorption, Lost Game). |
+| `_chart_summoners_and_tiles.py` | one-shot: gave the five summoners the loot/gold payout §7.6 says a summoned body owes, and added the two tile rules (Fire applies Burn, Web applies Stun, both to enemies) — which took Tiles off the systems graph's sink list. |
+| `_chart_enemy_goals.py` | one-shot: added `Goals · Goal Amount` and the `Enemy Goal` structural row, so the systems graph carries the game's central loop — a body arriving puts a real game on your evening, and beating that game is what takes a point of its Health (§7.6, "Health here is goal completions"). |
+| `audit_systems_graph.py` | read-only audit of the `chart` sheet — the systems graph (`docs/systems-graph.md`). Reports uncoloured arrows, vocabulary collisions and dangling `Otainable` refs; coverage against every content sheet; and the collapsed system→system graph with its cycles and its sinks. Writes nothing, so it is safe to run any time. |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's eight charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_statuses2_burn_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`, `_abilities_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's

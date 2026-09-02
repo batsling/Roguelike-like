@@ -1,9 +1,17 @@
 # The systems graph — design notes
 
-**Status: design in progress. Nothing is built yet.** There is no generator, no
-renderer, and no output. This document is the accumulated design thinking for a
-signed graph of how the game's mechanics feed each other, so a session picking
-this up doesn't re-derive it or re-litigate decisions already made.
+**Status: the table is real; the renderer is not.** The `chart` sheet now
+carries 152 node rows and 213 arrows — every item, card, pill, potion, scroll
+and wand in the game, all 30 enemy abilities, both tiles, and five structural
+rules including the game's central loop. There is still no generator and no rendered
+output. What exists is `tools/audit_systems_graph.py` — read-only, run it any
+time — which checks the sheet's hygiene, reports coverage against the content
+sheets, and performs the §4.2 collapse to show the signed system→system graph,
+its cycles, and its sinks. **Every count in this document comes from that
+script; re-run it rather than trusting the numbers here.**
+
+This document is the accumulated design thinking, so a session picking it up
+doesn't re-derive it or re-litigate decisions already made.
 
 ---
 
@@ -39,66 +47,78 @@ wrong change.
 
 ---
 
-## 2. Where the data lives, and a warning
+## 2. Where the data lives
 
 The table is the **`chart` sheet** of `tools/Roguelikes.xlsx` (sheet 49,
-`xl/worksheets/sheet20.xml`).
+`xl/worksheets/sheet21.xml` — it was sheet20 before the `wands` sheet was
+inserted; resolve it through `xl/_rels/workbook.xml.rels` rather than hardcoding
+the number).
 
-> **⚠️ The committed workbook is behind the working copy.** As of this writing
-> the `chart` sheet on `main` still has the *original* header — `Name, Type,
-> Subtype, System 1, Subsystem 1, Preference 1, …` — with only rows 2–4 filled
-> in and 55 bare item names below. Every schema decision in this document
-> post-dates that. The current shape has been seen only in screenshots the user
-> shared in conversation; **the edits were never pushed.**
->
-> **Before doing any work here, check whether the workbook now carries the
-> schema described in §3, and if it doesn't, ask the user to push it.** Do not
-> build a generator against the committed sheet — you would be targeting a
-> schema that has been superseded three times.
+> **The warning that used to stand here is resolved.** Earlier revisions of this
+> document described a schema that existed only in screenshots, because the
+> workbook on `main` still carried the original `Name / Type / Subtype /
+> Preference` header. The workbook was pushed in d619afd and **now carries the
+> schema in §3**, plus a fourth arrow block the design had not anticipated.
+> §3 and §6 below were re-derived from the pushed file, not transcribed.
 
-Everything in §3–§6 is transcribed from those screenshots. Treat it as an
-accurate record of the *design*, and the workbook as the authority on the
-*data*.
+Read the sheet with `_xlsx_surgery.Workbook.read_grid`, never openpyxl — see
+CLAUDE.md and §8.
 
 ---
 
 ## 3. The schema as it currently stands
 
 One row per node. Columns A–C identify it, then a repeating four-column block
-declares its outgoing arrows, up to three so far (the block is designed to
-extend).
+declares its outgoing arrows. **There are four blocks now, not three** — Fysh
+Oil in row 87 uses all four. The block is designed to extend further; a parser
+should walk them by stride rather than naming D/H/L/P.
 
 | Col | Header | Meaning |
 |---|---|---|
 | A | `Node` | The thing. `Alien Baby`, `Blood Donation Machine`, `Bombs`. |
 | B | `Otainable` *(sic)* | Where it enters the run — see §4.5, this column is overloaded. |
-| C | `Node Type` | `Item`, `Object`, `Event`, `Unit`, `Loot`, `Stat`. See §4.4. |
-| D/H/L | `System n` | Target system — the coarse node. |
-| E/I/M | `Subsystem n` | Target subsystem — the fine node, what actually moves. |
-| F/J/N | `Trigger n` | *When* the arrow fires. See §4.2 — this is the important one. |
-| G/K/O | `Dir n` | `Up` or `Down`. **Magnitude only, never valence.** See §4.1. |
+| C | `Node Type` | `Item`, `Card`, `Pill`, `Potion`, `Scroll`, `Wand`, `Object`, `Event`, `Unit`, `Enemy Ability`, `Resource`. See §4.4 — `Resource` is the structural-rule type, and since the review it is a Node Type *only*, never a System. |
+| D/H/L/P | `System n` | Target system — the coarse node. |
+| E/I/M/Q | `Subsystem n` | Target subsystem — the fine node, what actually moves. |
+| F/J/N/R | `Trigger n` | *When* the arrow fires. See §4.2 — this is the important one. |
+| G/K/O/S | `Dir n` | `Up` or `Down`. **Magnitude only, never valence.** See §4.1. |
 
-Two lookup blocks sit to the right of the main table:
+Two lookup blocks sit to the right of the main table. **They have moved** — the
+fourth arrow block pushed them two columns right, which is why a parser must
+find them by header text and not by letter:
 
 | Cols | Contents |
 |---|---|
-| Q–R | `Subsystem` → `Good Direction` (`Up`/`Down`). The colour table. See §4.1. |
-| T | `Groups` — a nested containment tree over the System vocabulary. See §4.3. |
+| U–V | `Subsystem` → `Good Dir` (`Up`/`Down`). The colour table, 60 keys, no duplicates. See §4.1. |
+| W | `Groups` — a containment tree over the System vocabulary. See §4.3. |
 
-### Vocabulary observed so far
+A row whose `System 1` is `N/A` declares a node with no arrows at all — Potion
+of Uselessness and Wand of Nothing. That is deliberate content ("it does
+nothing"), not a gap, and the parser must not treat `N/A` as a system name.
 
-**Systems:** Health, Shield, Stats, Bomb, Item, Goal, Potion, Enemy, Loot,
-Pill, Grid, Tile, Object
+### Vocabulary as it actually stands
 
-**Subsystems** (those with a Good Direction declared): Bash, Bomb Amount, Bomb
-Size, Curse ↓, Enemy Max Health ↓, Health Amount, Item Amount, Level Up, Luck,
-Max Health, Pill Amount, Potion Amount, Speed, Temporary Shield, Enemy Variety,
-Fire Tile, Gold, Friendly Unit Spawn, Enemy Damage Taken, Loot Copy, Loot
-Amount, Object Spawn
+**Systems** (21, one string each — the singular/plural split is gone): Bombs,
+Cards, Charges, Chest, Economy, Enemies, Game Choices, Goals, Grid, Health,
+Items, Loot, Movement, Objects, Pills, Potions, Run, Shields, Stats, Statuses,
+Tiles. `Economy` holds Gold; `Resource` is a Node Type only (§4.4), never a
+system.
 
-**Triggers:** Pickup, Passive, Combat Start, Combat End, Damage Taken, Enemy
-Defeat, Enemy Spawn, Enemy Movement, Bomb Use, Item Use, Loot Use, Object Use,
-Gold Use, On Level Up
+**Subsystems:** 60 keys carry a Good Direction, each appearing once, and every
+arrow resolves to one.
+
+**Triggers** (30): Item Pickup, Item Use, Card Use, Pill Use, Potion Quaff,
+Potion Throw, Scroll Use, Wand Use, Loot Use, Bomb Use, Object Use, Gold Use,
+Shop Purchase, Passive, Combat Start, Combat End, Enemy Defeat, Damage Taken,
+Health Lost, Enemy Spawn, Enemy Movement, On Level Up, On Transmute Gain,
+Game Completion, Game Loss — plus, from the ability rows and the review that
+followed: Enemy Passive, Enemy Turn, Enemy Attack, On Player Debuff, and
+Shield Absorb. (`Enemy Clog` was folded into `Enemy Turn`.)
+
+Note `Potion Quaff` vs `Potion Throw`: the same potion pointed at yourself or at
+a body, and the two get *opposite colours* on the same subsystem. That split is
+the schema working exactly as §4.1 intended, and it is where a third of the
+graph's red currently lives.
 
 ---
 
@@ -111,7 +131,7 @@ rationale before changing any of them.
 ### 4.1 Colour is computed, never hand-entered
 
 **The rule:** `Dir` records only which way the number moves. Colour comes from
-`Dir × Good Direction`, looked up per subsystem in Q–R.
+`Dir × Good Direction`, looked up per subsystem in U–V (§3).
 
 **Why it matters.** The sheet's first version had a single `Preference` column
 holding `Positive`/`Negative`, and within three rows it already meant two
@@ -154,19 +174,32 @@ signed. Add a small lookup mapping each trigger to the system that *emits* it �
 
 | Trigger | Emitted by |
 |---|---|
-| Pickup | Loot |
-| Combat Start / Combat End / Enemy Defeat | Combat |
-| Damage Taken / Enemy Spawn / Enemy Movement | Enemy |
-| Bomb Use | Bomb |
-| Item Use / Loot Use / Object Use / Gold Use | *(player action — see below)* |
+| Item Pickup / Loot Use | Loot |
+| Card Use | Cards |
+| Pill Use | Pills |
+| Potion Quaff / Potion Throw | Potions |
+| Scroll Use | Scrolls |
+| Wand Use | Wands |
+| Item Use | Items |
+| Bomb Use | Bombs |
+| Object Use | Objects |
+| Gold Use / Shop Purchase / On Transmute Gain | Stats |
+| Combat Start / Combat End / Enemy Defeat / Damage Taken / Enemy Spawn / Enemy Movement | Enemies |
+| Health Lost | Health |
+| Game Completion / Game Loss / On Level Up | Goals |
+| Passive | *(the `Otainable` source — see below)* |
 
 — and you have a pure signed **system → system** graph *with cycles*, derived
 entirely from rows already typed. Health keeps you alive → you defeat more
 enemies → Enemy Defeat fires Charm of the Vampire → Health. That is a Zomboid
 loop, and it fell out of the data rather than out of anyone's head.
 
-**This lookup does not exist yet.** It is small (~14 rows) and it is the highest-
-value missing piece.
+**This lookup now exists**, as `EMITTED_BY` in `tools/audit_systems_graph.py`.
+It is the single place the trigger vocabulary is interpreted; a new trigger
+string that is not in it is reported rather than silently dropping its arrows.
+Running the collapse over the current sheet produces **160 system→system edges
+and 14 cycles**, so the central bet of the design is confirmed: the two-hop
+reading does generate loops out of rows nobody authored as loops.
 
 **`Passive` is the exception, and a useful one.** No gate means the arrow's
 source is wherever the content *entered the run* — which is what `Otainable`
@@ -200,19 +233,46 @@ The supersystem view matters more than it looks: at subsystem granularity red
 arrows are scattered noise, but at `Opposition → Resource` versus
 `Resource → Opposition` the whole story is two arrows.
 
-### 4.4 `Node Type = Stat` marks a rule, not a thing
+**How the tree is actually stored, and why that is fragile.** Column W holds a
+flat list of 15 strings with blank cells between blocks and *no indentation*
+(checked: no cell carries an `indent` alignment). The convention appears to be
+*first cell of a block is the parent, the rest are its children*, blank row
+between blocks:
 
-Row 29 is `Bombs` — Node Type `Stat`, arrow `Enemy · Enemy Damage Taken /
-Bomb Use / Up`.
+```
+Resource | Stats, Health, Bombs, Collectables, Shields
+Collectables | Items, Loot
+Loot | Pills, Scrolls, Potions, Cards, Wands
+```
+
+That decodes, but a blank row is the only delimiter, so inserting one row
+silently reparents a branch and nothing errors. Before a generator depends on
+it, either give W a real `Parent | Child` two-column shape or indent it and read
+the indent level. Note also that `Loot` appears twice — as a leaf of
+Collectables and as a parent — which is correct as a tree but will trip a parser
+that assumes each name appears once.
+
+### 4.4 A structural row is a node type of its own — now `Resource`
+
+Row 96 is `Bombs` — Node Type **`Resource`** (this was `Stat` in an earlier
+revision; the sheet is the authority), arrow `Enemies · Enemy Health / Bomb Use
+/ Down`, obtained from `Item: Blood Bombs, Brimstone Bombs, Hot Bombs, Sticky
+Bombs; Character Start: Isaac`.
 
 Bombs are not content. You cannot pick up a "Bombs". That row states a **rule**:
-spending a bomb damages an enemy.
+spending a bomb damages an enemy. It also shows the pattern at its best — the
+four bomb items feed the resource, and the resource is what actually acts, so
+the items stop being four parallel arrows into Enemies and become a supply
+chain into one.
 
 An earlier proposal in this design was a second worksheet for hand-authored
-structural edges. **That proposal is superseded.** `Node Type = Stat` is
+structural edges. **That proposal is superseded.** A structural node type is
 cleaner: same grammar, same columns, one table, one vocabulary that cannot
 drift, and the renderer can still style rule-edges differently. Every structural
-edge belongs here as a `Stat`-typed row.
+edge belongs here as a `Resource`-typed row.
+
+**There is exactly one such row today.** That is the graph's largest structural
+gap, and §6A says what the others should be.
 
 ### 4.5 `Otainable` is a foreign key, and it is what makes this a graph
 
@@ -221,9 +281,26 @@ Machine`, `Event: Golden Idol`, `Item: Landmines` — with commas for multiples
 (`Starter, Chest`). That means **content chains to content**, and the graph can
 be walked across node types. See §5.2.
 
-Commas now appear in `Trigger` cells too (`Object Use, Bomb Use` on Blood
-Donation Machine), fanning one row into two edges. **Make comma-splitting
-universal across columns rather than per-column.**
+**The "make comma-splitting universal" proposal is now wrong, and the sheet is
+what killed it.** Two separators are in use and they mean different things:
+
+```
+Item: Blood Bombs, Brimstone Bombs, Hot Bombs; Character Start: Isaac
+└──────────── one reference, three names ────┘  └── second reference ──┘
+```
+
+So **`;` separates references, `,` separates names inside one**. Split on commas
+universally and `Character Start: Isaac` becomes a place called
+`Character Start: Isaac` and the four bombs become four unqualified strings.
+`tools/audit_systems_graph.py` implements the two-level rule in `split_cell()`.
+
+The catch: `Starter, Chest` (D6) and `Enemy Defeat; Game Completion` (every
+loot row) both mean "two places", one with each separator. Bare place names are
+unambiguous either way so both parse, but the sheet should settle on `;` for
+consistency, and one row is genuinely broken by the mixture — see §6.
+
+Trigger cells take commas too (`Object Use, Bomb Use`), fanning one row into two
+edges. There the comma is unambiguous because trigger names never contain one.
 
 ---
 
@@ -288,28 +365,310 @@ That is the most Zomboid-shaped mechanic in the game, and it only appears as a
 
 ## 6. Known problems in the data
 
-Live at last look — verify against the pushed workbook before acting.
+**Reproduced by `python3 tools/audit_systems_graph.py`, which now EXITS
+NON-ZERO** on the faults that are silently wrong rather than loudly wrong — a
+contradictory Good Direction, a singular/plural collision, a subsystem filed
+under two systems, an unparseable `Otainable`, an unknown trigger, stray
+whitespace. **The audit is currently green**, and nothing in the table below is
+a fault it can prove — treat a red audit as a regression, not as normal.
 
 | Problem | Detail |
 |---|---|
-| **`Scramble` has no Good Direction** | D6 targets `Stats · Scramble`; Q–R has no entry. Outstanding across three revisions. Its arrow cannot be coloured. |
-| **Singular/plural join failure** | Groups leaves say `Bombs, Shields, Items, Pills, Potions`; the System column says `Bomb, Shield, Item, Pill, Potion`. Five will not match, and a naive group-by **will not error** — it will silently drop those systems from the supersystem view. Pick one convention, enforce with data validation. |
-| **Five systems ungrouped** | `Enemy`, `Goal`, `Grid`, `Tile`, `Object` appear in the System column and nowhere in the Groups tree. See §7. |
-| **`Node Type` mixes tiers** | `XIV - Temperance` has Node Type `Loot`, but Loot is a *branch* in the Groups tree containing Cards, while `Item` is a leaf. If Temperance is a card its type is `Card`. Keep Node Type at leaf granularity and let the tree group. |
-| **`Otainable` does two jobs** | It holds places (`Chest`, `Boss Chest`, `Starter`), triggers (`Game Completion`, `Enemy Defeat`), qualified refs (`Event: Arcade`), and bare types with no name (`Items`). Proposed fix in §7. |
-| **Case inconsistency in `Dir`** | Hot Bombs had a lowercase `up`. A naive group-by makes that a distinct value. Validate, or use dropdowns. |
-| **Alien Baby — confirm intent** | Now reads `Enemy Max Health / Up` against a Good Direction of `Down`, i.e. an unambiguous **red** arrow: Alien Baby *raises* enemy max health as the cost of its two health buffs. This is the row that exposed the §4.1 ambiguity, so it is worth confirming with the user rather than assuming. |
+| **`Dash` is a dead Good Direction entry** | No row targets it. Harmless, and the last of the three that used to sit here. |
+| **`Event: Golden Idol` resolves to nothing** | The `events` sheet has a Golden Idol; the chart has no node row for it, so the reference dangles. Nine other events are in the same position — see §6A. |
+| **`Alien Baby` — still worth confirming** | Reads `Enemies · Enemy Max Health / Enemy Spawn / Up` against a Good Direction of `Down`, i.e. an unambiguous **red** arrow: Alien Baby *raises* enemy max health as the cost of its two health buffs. This is the row that exposed the §4.1 ambiguity, so confirm rather than assume. |
 
-*Resolved:* Echo Chamber was a self-loop (`Loot / Loot Use / Loot Use`); its
-target became `Loot Copy` and the loop is gone.
+Everything else §6A raises about the ability rows is a *judgement* call — a
+missing arrow, a duplicated trigger name, a modelling choice — rather than a
+fault the audit can prove. They are listed there, not here.
+
+*Resolved since the last revision.* Worth reading before assuming a fault is
+new, because several of these looked like different problems than they were:
+
+- **The singular/plural collisions are gone.** `Bomb`/`Bombs`, `Tile`/`Tiles`,
+  `Object`/`Objects` and `Pill`/`Pills` were folded onto plural, and `Item` went
+  with them so the System column and the Groups tree finally use one spelling.
+  `tools/_chart_system_vocabulary.py` did it and is idempotent; `CANON` in the
+  audit is now a regression detector rather than a fixer.
+- **`Teleport Start Game ` carried a trailing space on BOTH sides** — the arrow
+  (E3) and the Good Dir lookup (U50) — so the join worked and nothing complained.
+  Tidying either cell alone would have silently uncoloured the arrow. Both were
+  trimmed together, and the audit now refuses to strip before comparing so it can
+  see this class of fault at all.
+- **Every arrow can be coloured.** `Identification`, `Enemy Ability` and
+  `Pill Preference` were the three subsystems missing a Good Direction; all three
+  are in the table now.
+- **`Speed on Player` is filed under `Statuses` everywhere**, not split between
+  `Stats` and `Statuses`.
+- **`Otainable` parses.** Blood Donation Machine's two qualified references are
+  separated with `;` rather than a comma (§4.5).
+- **`Arcade` is now `Arcade Room`**, matching the `events` sheet, so its three
+  inbound references resolve.
+- **`Loot Amount` no longer has two Good Directions.** It was in the table twice
+  — `Up` on U29 and `Down` on U58 — and because a repeated key does not error,
+  iteration order picked one and picked the wrong one: Degradation and Theft
+  coloured GREEN, "an enemy burning your loot is good for you". The `Down` row is
+  deleted and the audit now fails on a contradictory duplicate.
+- `Scramble` has a Good Direction, Echo Chamber's self-loop is gone (`Loot
+  Copy`), `Dir` is uniformly `Up`/`Down` across all 194 arrows, and
+  `XIV - Temperance` is typed `Card` rather than `Loot`.
+
+---
+
+## 6A. Where the graph stands, and what to add next
+
+All figures from `python3 tools/audit_systems_graph.py`. **Re-run it rather than
+trusting these** — they have already moved once, sharply, since this section was
+written.
+
+### The ability rows changed the diagnosis
+
+The 30 `Enemy Ability` rows are the single biggest thing to happen to this sheet,
+and they fixed the problem this section was originally written to describe.
+Before and after:
+
+| | before | after the rows | after the fixes |
+|---|---|---|---|
+| node rows | 116 | 146 | **149** |
+| system→system edges | 160 | 190 | **195** |
+| red edges | 36 (23%) | 63 (33%) | **68 (35%)** |
+| cycles (len 2–4) | 14 | 25 | **30** |
+| sinks | 8 | 7 | **7** |
+| `Enemies → Health` red | **none** | present | present |
+
+The old diagnosis — "the chart says fighting is good for you", because enemies
+only ever appeared as the thing that fires Enemy Defeat — is **resolved**. Bodies
+now take health, max health, loot, items, gold and turns off you, and the graph
+says so.
+
+Two structural wins worth naming, because neither was obvious in advance:
+
+- **Statuses stopped being a sink.** It was the worst one at 27 inbound arrows
+  and none out. It now emits, entirely because of **Predatory Scent**, whose
+  trigger is `Debuff on Player` — the player carrying an unmet status goal is
+  what fires it. That closes `Enemies → Statuses → Enemies`, a real Zomboid loop,
+  and it is the only row in the sheet where a *status* is the gate.
+- **Theft is the model row.** One ability, three arrows (`Items`, `Loot`,
+  `Resource · Gold`), because it really does take three different things. Most
+  rows in the batch have one arrow where the mechanic has two or three; see below.
+
+### Coverage
+
+| Covered | | Not covered | |
+|---|---|---|---|
+| Items | 52/52 | Enemies | 0/54 |
+| **Abilities** | **30/30** | Bosses | 0/40 |
+| Potions | 15/15 | Characters | 0/11 |
+| Cards | 14/14 | Events | 1/11 |
+| Wands | 12/12 | Statuses | 0/7 |
+| Pills | 10/10 | Curses | 0/3 |
+| Scrolls | 8/8 | Tiles | 0/2 |
+| Objects 2/2, Units 1/1 | | Amulets, Locations | 0 |
+
+### Sinks: seven systems receive arrows and emit none
+
+A sink is a system that things point *at* and that never points anywhere — which
+is precisely a cycle that failed to close.
+
+| Sink | Inbound edges |
+|---|---|
+| Grid / Movement | 5 each |
+| Run | 1 — **deliberate**, see below |
+| Chest / Game Choices / Charges | 1 each |
+
+Three systems have left this list in order: Statuses when the ability rows
+landed, Shields when `Shield Absorb` was added, and **Tiles** with the two tile
+rows. `Run` is a sink on purpose — the run ending is where everything stops.
+
+**The tiles were the last big one**, and they took two rows. Eight arrows set a
+tile and nothing happened afterwards; the `tiles` sheet says Fire applies +1 Burn
+and Web +1 Stun **to enemies standing on them**, so both are green arrows into
+`Statuses`. The trigger is `Tile Step`, emitted by **Tiles** — that is the load-
+bearing part. Route it through Enemies (whoever walked on) and the arrow leaves
+from the wrong place and Tiles stays a sink.
+
+The seven status rows are still worth authoring even though Statuses is no longer
+a sink: it emits through exactly one ability today. The `statuses` sheet holds
+each status's combat effect *and* its goal condition — the second half being the
+layer no other roguelike chart has (§7 question 6).
+
+### The review fixes, applied
+
+All ten items from the review are in the sheet, via
+`tools/_chart_abilities_review_fixes.py` (idempotent). What they bought:
+
+| | before abilities | after abilities | after fixes | + tiles | + enemy goals |
+|---|---|---|---|---|---|
+| node rows | 116 | 146 | 149 | 151 | **152** |
+| edges | 160 | 190 | 195 | 207 | **214** |
+| red | 36 (23%) | 63 (33%) | 68 (35%) | 68 (33%) | **74 (35%)** |
+| cycles | 14 | 25 | 30 | 32 | **32** |
+| sinks | 8 | 7 | 7 | 6 | **6** |
+
+**Fixed:** the duplicate `Loot Amount` Good Direction is gone (Degradation and
+Theft now read red, as they should). Haste points at `Speed on Enemy`. The Gold
+system is **`Economy`**, freeing `Resource` to mean one thing — a Node Type for
+structural rules. Triggers renamed to `Enemy Attack`, `Enemy Passive` and
+`On Player Debuff`, with `Enemy Clog` folded into `Enemy Turn`; that also
+un-collides `Debuff on Player`, which stays a *subsystem* name only.
+
+**Three structural rules were added** (§4.4 `Resource` rows — things no item can
+express):
+
+| Row | Arrows |
+|---|---|
+| **Enemy Damage** | `Health · Health Amount / Enemy Attack / Down`, `Shields · Shield Amount / Enemy Attack / Down` |
+| **Shield Absorption** | `Health · Health Amount / Shield Absorb / Up` |
+| **Lost Game** | `Enemies · Enemy Turn / Game Loss / Up` |
+
+`Shield Absorb` is emitted by Shields and `On Player Debuff` by Statuses. Those
+two mappings are why **Shields and Statuses are no longer sinks** — between them
+they were 33 inbound arrows and nothing coming back.
+
+The loop that matters most is new and only two hops:
+
+```
+Enemies ──red──▸ Goals ──red──▸ Enemies
+   (a body curses you)   (a lost game hands the board a turn)
+```
+
+An enemy makes the real game harder → you fail the report → the board gets a
+free turn → it hits you again. That is the Zomboid shape the whole exercise was
+for, and it is derived, not asserted.
+
+**Devour Whole** now points at `Run · End Run` rather than reading as ordinary
+damage. `Run` is a sink at 1 inbound — and unlike the others that is **correct**:
+the run ending is where everything stops. It is the one terminal node in the
+graph, not a cycle that failed to close.
+
+#### Two things deliberately not changed
+
+- **`Immobile` is `Enemy Position / Up`, not `Down`.** The review asked for
+  `Down` on the strength of "Immobile is the opposite of Agile, which is Up" —
+  but Agile is `Down`. `Enemy Position` reads as distance from you, so Up is
+  good for the player: Wand of Teleportation is `Up` (green, it throws a body
+  away), Agile is `Down` (red, it closes). A body that cannot close is `Up`.
+  One cell to flip if the literal `Down` was meant.
+- **`Trample` is `Enemy Position / Up` and looks wrong** for the same reason: it
+  shoves a blocker aside in order to *advance*, so it should be `Down` / red.
+  Not part of the review, so left for a decision.
+
+### The central loop, and the summoners settled
+
+**An enemy is a game you have to go and play, and beating it is how you kill the
+enemy.** §7.6 says it outright — "Health here is goal completions" — and §7.1
+removes a normal enemy "by fulfilling its goal". That is the loop the whole game
+is built on, and until now not one arrow of it was in the sheet.
+
+It is two arrows, and it needed one new subsystem: **`Goals · Goal Amount`**,
+Good Direction `Down`, because fewer games demanded of you is better. That is the
+subsystem §6A previously flagged as missing — `Enemy Amount` counts *bodies*, not
+the evenings they cost, and using it for both would say one thing twice.
+
+The **`Enemy Goal`** row (a `Resource` structural rule, §4.4) carries both halves:
+
+| Arrow | Reads |
+|---|---|
+| `Goals · Goal Amount / Enemy Spawn / Up` — **red** | a body arriving puts a real game on your evening |
+| `Enemies · Enemy Health / Game Completion / Down` — **green** | beating that game takes a point off it |
+
+`Enemy Spawn` covers **every** body, naturally spawned or summoned. The five
+summoners then carry the same arrow on their own trigger, because they put
+*extra* games on your evening beyond the ones the board deals you.
+
+The pay-off is the pair of arrows now running between Goals and Enemies in both
+directions and both colours:
+
+```
+Enemies ──red──▸ Goals      spawning hands you games to play, and curses
+Goals ──green──▸ Enemies    beating one damages the body that set it
+Goals ──red────▸ Enemies    failing one hands the board a free turn
+```
+
+**And it settles the summoner imbalance.** They were 10 green to 5 red, which
+§6A called too kind. They are now **10 green to 10 red** — more bodies and more
+goals against loot and gold, which is the trade §7.6 actually describes:
+
+    Enemies · Enemy Amount / Up   red     more bodies
+    Goals · Goal Amount / Up      red     more evenings spent
+    Loot · Loot Amount / Up       green   each one pays
+    Economy · Gold / Up           green   each one pays
+
+**One cost is still not on the summoner's row, and still should not be.** A
+summoned body can hit you — but `Enemies → Health` already exists once, from the
+`Enemy Damage` rule, and a summoner *thickens* that edge rather than creating it.
+§5.3 is the open schema problem: there is no way to mark a row as multiplying an
+existing edge, so writing a Health arrow onto each summoner would count the same
+swing five times over.
+
+### Still open on the ability rows
+
+- **`Ranged` stops at `Enemy Range / Up`** — no arrow for reaching you sooner.
+- **`Fading → Enemy Health / Down`** models a timer as damage; `Enemy Amount /
+  Down` is truer.
+- **All 30 rows have `Otainable = Enemy Spawn`**, so abilities hang off one
+  generic node rather than chaining to the bodies that carry them
+  (`Enemy: Sharky`). Only 39 of 94 bodies carry one, so the chain would say
+  something. §5.2 is the argument.
+- **`Bolster` / `Melee Ally Buff` point at a generic `Buff on Enemy`**, so a
+  Bishop's Dexterity aura and a thrown Dexterity Potion never meet at a node.
+- **`Aftermath → Tiles · Fire Tile`** hardcodes its only current argument — and
+  now that `Web` is a node too, the second tile it could name actually exists.
+
+### Recommended order
+
+Cheapest-first, and deliberately not the order the coverage table implies.
+
+1. **Fix the six uncoloured arrows and the two broken references** (§6). Half an
+   hour, and until it is done every downstream count is provisional.
+2. **7 status rows + 2 tile rows.** Closes the largest sink, adds the goal-
+   difficulty layer, and turns 34 dead-end arrows into paths. Highest ratio of
+   loops-gained to rows-typed in the whole backlog by a wide margin.
+3. **~6 `Resource` rows** (§4.4). Structural rules, not content, and each one
+   closes a loop no item can: `Enemies → Health` (bodies deal damage),
+   `Enemy Defeat → Stats · Gold` and `→ Loot` (the +1 gold and the drop that
+   §5.1 says bombing severs), `Health → Goals` (dying ends the run),
+   `Hops to Amulet → Enemies` (§5.4's two-coloured arrowhead),
+   `Goals · Level Up → Enemies` (difficulty scaling). Six rows, and they are
+   what turns the fan into the Zomboid picture — more signal than all 54
+   enemies would add.
+4. **10 event rows.** Events are already the graph's best chains (§5.2) and one
+   dangling reference is waiting on them.
+5. **3 curse rows.** Small, and pure red — the only pure-red content in the
+   game.
+6. **Enemies and abilities last.** 84 near-identical rows for a diagram that
+   collapses them all onto one `Enemies` node anyway. The abilities are the
+   interesting subset — Ritual, Necromancy, Split, Theft and Entry Summon are
+   genuinely different arrows — so if this tier gets done at all, do the 30
+   abilities and skip the 94 bodies.
+
+Your instinct that "events and enemy abilities could be added later" is right,
+with one amendment: **statuses and tiles should not wait**, and they are not
+what you listed. Nine rows there beat everything else on the list combined.
+
+### Not in the graph at all: the run itself
+
+`games` (858) and `connections` (1241) are the actual map the run is played on,
+and no node row references them. Neither do `locations`, `amulets` or
+`characters`. §7 question 6 argues the top row of the chart should be the player's real
+free time; the honest version of that is a small handful of `Resource` rows —
+game length, do you own it, how good are you at it — feeding `Goals`. That is a
+design decision, not a data-entry one, which is why it stays in §7 rather
+than in the order above.
 
 ---
 
 ## 7. Open questions — do not decide these alone
 
-1. **The Groups tree needs at least three more top-level branches.** Only things
-   you *accumulate* are grouped today. A proposed shape, **offered but not
-   accepted by the user** — check before implementing:
+1. **The Groups tree still needs at least three more top-level branches.** Only
+   things you *accumulate* are grouped today: the tree covers Resource and its
+   descendants and nothing else, leaving `Enemies`, `Statuses`, `Goals`, `Grid`,
+   `Tiles`, `Objects`, `Movement`, `Chest`, `Charges` and `Game Choices`
+   ungrouped — ten of the nineteen systems, and the supersystem view (§4.3)
+   cannot be rendered without them. (`Scrolls` and `Wands` have the opposite
+   problem: they are in the tree but never appear in the System column, because
+   scrolls and wands only ever *emit*.) A proposed shape, **offered but not accepted by the
+   user** — check before implementing:
 
    ```
    Resource     Stats · Health · Shields · Bombs · Collectables ▸ Items, Loot ▸ Pills, Scrolls, Potions, Cards
@@ -325,12 +684,19 @@ target became `Loot Copy` and the loop is gone.
    would leave the parser one grammar instead of four string shapes to guess
    between. Proposed, not decided.
 
-4. **Trigger → emitting-system lookup** (§4.2) — needs authoring, ~14 rows.
+4. ~~**Trigger → emitting-system lookup** (§4.2)~~ — **done.** Authored as
+   `EMITTED_BY` in `tools/audit_systems_graph.py`, 25 triggers. It lives in code
+   rather than on the sheet, which is a decision worth revisiting: on the sheet
+   it would be visible and editable without a code change, but in code it
+   errors loudly on an unknown trigger. Move it to a lookup block beside U–W if
+   the vocabulary starts changing often.
 
-5. **Scope.** The stated intent is *every* event, loot, item and mechanic. The
-   red arrows overwhelmingly live in `enemies2.0`, `statuses2.0`, `curses2.0`,
-   difficulty scaling and amulet pressure — until those are in, the chart
-   flatters the game, because items are buffs by nature.
+5. **Scope.** The stated intent is *every* event, loot, item and mechanic. This
+   was a prediction and it is now measured: the chart runs **118 green to 36
+   red**, and two-thirds of the red is a player misusing a consumable rather
+   than the game pushing back. Until statuses, curses, enemy damage and amulet
+   pressure are in, the chart flatters the game, because items are buffs by
+   nature. §6A puts numbers and an order on this.
 
 6. **The layer no other roguelike chart has.** Combat here is *going and actually
    playing a real game*. There are nodes above the ones listed: game length,
@@ -342,7 +708,14 @@ target became `Loot Copy` and the loop is gone.
 
 ## 8. When it comes time to build
 
-Nothing here is built. The intended shape:
+**`tools/audit_systems_graph.py` exists** and is the reference implementation of
+every parsing rule in §3–§4.5 — the four-block stride, the two-level `Otainable`
+separator, `N/A` rows, the singular/plural canonicaliser, the colour rule, and
+the trigger collapse. A generator should import from it or move that logic to a
+shared module rather than re-deriving it; the parsing rules are the part of this
+design that took the longest to get right.
+
+The renderer is still unbuilt. The intended shape:
 
 - **`tools/build_systems_graph.py`**, following the conventions of
   `tools/build_map_charts.py` — read the sheet, emit the trigger map as
@@ -356,4 +729,6 @@ Nothing here is built. The intended shape:
 
 Recommended order of work: settle the vocabulary questions in §7 **first** —
 renaming things is cheap now and expensive once a renderer and several hundred
-rows depend on the strings.
+rows depend on the strings. Then §6A's content order. The renderer is last, and
+it should be built against a sheet that already has its sinks closed, or the
+first picture it draws will be the flattering one.
