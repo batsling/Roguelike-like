@@ -54,16 +54,31 @@ CANON = {
 # closes loops. `Passive` is deliberately None: an ungated arrow's source is
 # wherever the content entered the run, which `Otainable` already says.
 EMITTED_BY = {
-    "Item Pickup": "Loot", "Loot Use": "Loot", "Shop Purchase": "Stats",
+    "Item Pickup": "Loot", "Loot Use": "Loot",
     "Card Use": "Cards", "Pill Use": "Pills", "Scroll Use": "Scrolls",
     "Wand Use": "Wands", "Item Use": "Items",
     "Potion Quaff": "Potions", "Potion Throw": "Potions",
-    "Bomb Use": "Bombs", "Object Use": "Objects", "Gold Use": "Stats",
+    "Bomb Use": "Bombs", "Object Use": "Objects",
+    # Gold moved out of Stats into its own `Resource` system with the ability
+    # rows, so the two triggers that SPEND gold have to move with it or the new
+    # system is a sink: ten arrows point into it and none come back out.
+    "Gold Use": "Resource", "Shop Purchase": "Resource",
     "Combat Start": "Enemies", "Combat End": "Enemies", "Enemy Defeat": "Enemies",
     "Damage Taken": "Enemies", "Enemy Spawn": "Enemies", "Enemy Movement": "Enemies",
     "Health Lost": "Health", "On Level Up": "Goals", "On Transmute Gain": "Stats",
     "Game Completion": "Goals", "Game Loss": "Goals",
     "Passive": None,
+    # Added with the 30 Enemy Ability rows. Four of these are a body acting, so
+    # they emit from Enemies like the combat triggers above.
+    "Enemy Living": "Enemies",   # true while it stands — an aura
+    "Enemy Turn": "Enemies",     # it spends its turn on this
+    "Enemy Hit": "Enemies",      # its swing landed
+    "Enemy Clog": "Enemies",     # its own allies are in the way
+    # The exception, and the most interesting row in the batch: Predatory Scent
+    # is gated on the PLAYER carrying an unmet status goal, so the thing that
+    # fires it is a status, not a body. That makes Statuses an emitter for the
+    # first time — see docs/systems-graph.md §6A on sinks.
+    "Debuff on Player": "Statuses",
 }
 
 # `Otainable` place names, mapped to the system that supplies them, for the
@@ -118,19 +133,25 @@ def load():
     header = {}
     for i, v in enumerate(grid[0]):
         header[chr(ord("A") + i) if i < 26 else "?"] = str(v)
-    rows, good_dir, groups = [], {}, []
+    rows, good_dir_rows, groups = [], {}, []
     for n, raw in enumerate(grid[1:], start=2):
         cells = {}
         for i, v in enumerate(raw):
             if i < 26 and v not in ("", None):
                 cells[chr(ord("A") + i)] = str(v)
         if cells.get("U"):
-            good_dir[cells["U"].strip()] = (cells.get("V") or "").strip()
+            # Collect EVERY row, not just the last. A repeated key silently
+            # overwrote its earlier entry, which is how `Loot Amount` sat in the
+            # table twice — Up on U29 and Down on U58 — with the reader's
+            # iteration order quietly deciding the colour of every loot arrow.
+            good_dir_rows.setdefault(cells["U"].strip(), []).append(
+                (n, (cells.get("V") or "").strip()))
         if cells.get("W"):
             groups.append((n, cells["W"].strip()))
         if cells.get("A"):
             rows.append(Row(n, cells, header))
-    return rows, good_dir, groups, grid
+    good_dir = {k: v[-1][1] for k, v in good_dir_rows.items()}
+    return rows, good_dir, good_dir_rows, groups, grid
 
 
 def colour(direction, sub, good_dir):
@@ -216,7 +237,7 @@ def main():
     ap.add_argument("--cycles", action="store_true", help="list the cycles")
     args = ap.parse_args()
 
-    rows, good_dir, groups, grid = load()
+    rows, good_dir, good_dir_rows, groups, grid = load()
     edges, uncoloured, unknown_triggers = build(rows, good_dir)
     arrows = sum(len(r.edges) for r in rows)
     # Faults that are silently wrong rather than loudly wrong: they produce a
@@ -236,6 +257,16 @@ def main():
         print("  every arrow has a Good Direction")
 
     used_subs = {sub for r in rows for _, sub, _, _ in r.edges if sub}
+    contradictory = {k: v for k, v in good_dir_rows.items()
+                     if len({d for _, d in v}) > 1}
+    if contradictory:
+        errors += len(contradictory)
+        print(f"  {len(contradictory)} Good Direction key(s) listed TWICE with "
+              "different directions — the colour of every arrow into them is "
+              "decided by iteration order:")
+        for k, v in sorted(contradictory.items()):
+            print("     %s: %s" % (k, ", ".join("U%d=%s" % (n, d) for n, d in v)))
+
     stale = sorted(k for k in good_dir if k not in used_subs)
     if stale:
         print(f"  {len(stale)} Good Direction entr(ies) no row uses: {', '.join(stale)}")
