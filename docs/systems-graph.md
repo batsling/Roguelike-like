@@ -1,9 +1,9 @@
 # The systems graph — design notes
 
 **Status: the table is real; the renderer is not.** The `chart` sheet now
-carries 151 node rows and 206 arrows — every item, card, pill, potion, scroll
-and wand in the game, all 30 enemy abilities, both tiles, and four structural
-rules. There is still no generator and no rendered
+carries 152 node rows and 213 arrows — every item, card, pill, potion, scroll
+and wand in the game, all 30 enemy abilities, both tiles, and five structural
+rules including the game's central loop. There is still no generator and no rendered
 output. What exists is `tools/audit_systems_graph.py` — read-only, run it any
 time — which checks the sheet's hygiene, reports coverage against the content
 sheets, and performs the §4.2 collapse to show the signed system→system graph,
@@ -497,13 +497,13 @@ layer no other roguelike chart has (§7 question 6).
 All ten items from the review are in the sheet, via
 `tools/_chart_abilities_review_fixes.py` (idempotent). What they bought:
 
-| | before abilities | after abilities | after fixes | + summoners & tiles |
-|---|---|---|---|---|
-| node rows | 116 | 146 | 149 | **151** |
-| edges | 160 | 190 | 195 | **207** |
-| red | 36 (23%) | 63 (33%) | 68 (35%) | **68 (33%)** |
-| cycles | 14 | 25 | 30 | **32** |
-| sinks | 8 | 7 | 7 | **6** |
+| | before abilities | after abilities | after fixes | + tiles | + enemy goals |
+|---|---|---|---|---|---|
+| node rows | 116 | 146 | 149 | 151 | **152** |
+| edges | 160 | 190 | 195 | 207 | **214** |
+| red | 36 (23%) | 63 (33%) | 68 (35%) | 68 (33%) | **74 (35%)** |
+| cycles | 14 | 25 | 30 | 32 | **32** |
+| sinks | 8 | 7 | 7 | 6 | **6** |
 
 **Fixed:** the duplicate `Loot Amount` Good Direction is gone (Degradation and
 Theft now read red, as they should). Haste points at `Speed on Enemy`. The Gold
@@ -553,39 +553,53 @@ graph, not a cycle that failed to close.
   shoves a blocker aside in order to *advance*, so it should be `Down` / red.
   Not part of the review, so left for a decision.
 
-### The summoners, and the half the sheet still cannot say
+### The central loop, and the summoners settled
 
-The five summoners — Illusionist, Necromancy, Nested Spawner, Entry Summon and
-Split — now carry the payout §7.6 says a summoned body owes: it is an **ordinary
-body**, so clearing it pays its loot and its gold. Each has
-`Loot · Loot Amount / Enemy Defeat / Up` and `Economy · Gold / Enemy Defeat / Up`
-alongside its original red `Enemies · Enemy Amount / Up`.
+**An enemy is a game you have to go and play, and beating it is how you kill the
+enemy.** §7.6 says it outright — "Health here is goal completions" — and §7.1
+removes a normal enemy "by fulfilling its goal". That is the loop the whole game
+is built on, and until now not one arrow of it was in the sheet.
 
-**That leaves them reading 10 green to 5 red, and that is too kind.** A summoned
-body is also an enemy: it has a goal you must go and play, and it can hit you.
-Neither cost lands on the summoner's own row, for two different reasons — and
-they are worth separating, because only one of them is fixable by typing.
+It is two arrows, and it needed one new subsystem: **`Goals · Goal Amount`**,
+Good Direction `Down`, because fewer games demanded of you is better. That is the
+subsystem §6A previously flagged as missing — `Enemy Amount` counts *bodies*, not
+the evenings they cost, and using it for both would say one thing twice.
 
-1. **The damage is a §5.3 modifier edge.** `Enemies → Health` already exists once,
-   from the `Enemy Damage` rule. A summoner does not *create* that flow, it
-   **thickens** it — more bodies, more swings. §5.3 flags exactly this as an
-   unsolved schema problem: there is no way to mark a row as multiplying an
-   existing edge rather than making a new one, so writing a Health arrow onto
-   each summoner would double-count the same swing.
-2. **The goal has no subsystem at all.** `Enemy Amount` counts bodies, not the
-   evenings they demand, and using it for both would say one thing twice. This
-   is the more interesting gap: a goal is *a real video game you have to go and
-   play*, which is the cost this game has and no other roguelike chart does.
+The **`Enemy Goal`** row (a `Resource` structural rule, §4.4) carries both halves:
 
-Adding **`Goals · Goal Amount`** (Good Direction `Down`) would fix the second
-one — every summoner, and every `Enemy Spawn`, could then carry the cost of the
-game it puts on your evening. It is the first real foothold for §7 question 6,
-where the top of the chart is the player's actual free time. It is a **vocabulary
-decision, not a fix**, so it has deliberately not been made.
+| Arrow | Reads |
+|---|---|
+| `Goals · Goal Amount / Enemy Spawn / Up` — **red** | a body arriving puts a real game on your evening |
+| `Enemies · Enemy Health / Game Completion / Down` — **green** | beating that game takes a point off it |
 
-Until one of those lands, read the summoner cluster knowing its red is
-structurally under-weighted — the same way §5.1 warns the bomb cluster reads as
-four green arrows and a lie.
+`Enemy Spawn` covers **every** body, naturally spawned or summoned. The five
+summoners then carry the same arrow on their own trigger, because they put
+*extra* games on your evening beyond the ones the board deals you.
+
+The pay-off is the pair of arrows now running between Goals and Enemies in both
+directions and both colours:
+
+```
+Enemies ──red──▸ Goals      spawning hands you games to play, and curses
+Goals ──green──▸ Enemies    beating one damages the body that set it
+Goals ──red────▸ Enemies    failing one hands the board a free turn
+```
+
+**And it settles the summoner imbalance.** They were 10 green to 5 red, which
+§6A called too kind. They are now **10 green to 10 red** — more bodies and more
+goals against loot and gold, which is the trade §7.6 actually describes:
+
+    Enemies · Enemy Amount / Up   red     more bodies
+    Goals · Goal Amount / Up      red     more evenings spent
+    Loot · Loot Amount / Up       green   each one pays
+    Economy · Gold / Up           green   each one pays
+
+**One cost is still not on the summoner's row, and still should not be.** A
+summoned body can hit you — but `Enemies → Health` already exists once, from the
+`Enemy Damage` rule, and a summoner *thickens* that edge rather than creating it.
+§5.3 is the open schema problem: there is no way to mark a row as multiplying an
+existing edge, so writing a Health arrow onto each summoner would count the same
+swing five times over.
 
 ### Still open on the ability rows
 
