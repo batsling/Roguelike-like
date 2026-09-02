@@ -256,6 +256,54 @@ class Workbook:
         if table is not None:
             self._write_table(table, grid[0], last)
 
+    def replace_cells(self, sheet_name: str, edits: dict) -> int:
+        """Rewrite the VALUES of named cells in place; touch nothing else.
+
+        `edits` maps a cell ref to its new value: `{"D17": "Bombs"}`. Every
+        other attribute of the cell survives, as do the sheet's dimension, its
+        tables, and any formulas elsewhere on it.
+
+        This is the complement to `write_grid`, and on a lot of sheets it is the
+        only safe option. `write_grid` regenerates the whole `<sheetData>` and
+        resizes THE FIRST table it finds — but `sheet_parts` returns only one
+        table, and a sheet can carry several. `chart` carries five: the main
+        A1:S table, the U:V Good Dir lookup, and one per branch of the Groups
+        tree. Pointing `write_grid` at it would resize the Good Dir lookup to
+        span the whole sheet and rebuild it with a blank-named column, which
+        Excel rejects as corrupt. Use this for a value edit; keep `write_grid`
+        for a plain single-table value grid you are regenerating wholesale.
+
+        Returns the number of cells changed. A ref that is not already present
+        in the sheet is an error rather than an insert — this edits, it does not
+        author, and a typo'd ref should not silently become a new cell.
+        """
+        part, _ = self.sheet_parts(sheet_name)
+        xml = self._by_name[part].decode("utf-8")
+        remaining = dict(edits)
+
+        def sub(m):
+            ref, attrs = m.group(1), m.group(2)
+            if ref not in remaining:
+                return m.group(0)
+            value = remaining.pop(ref)
+            keep = re.search(r'\ss="(\d+)"', attrs or "")
+            style = ' s="%s"' % keep.group(1) if keep else ""
+            if value is None or value == "":
+                return '<c r="%s"%s/>' % (ref, style)
+            if isinstance(value, bool):
+                return '<c r="%s"%s t="b"><v>%d</v></c>' % (ref, style, 1 if value else 0)
+            if isinstance(value, (int, float)):
+                return '<c r="%s"%s><v>%s</v></c>' % (ref, style, value)
+            return ('<c r="%s"%s t="inlineStr"><is><t xml:space="preserve">%s'
+                    "</t></is></c>" % (ref, style, _esc(str(value))))
+
+        xml = re.sub(r'<c r="([A-Z]+\d+)"([^>]*?)(?:/>|>(.*?)</c>)', sub, xml, flags=re.S)
+        if remaining:
+            raise KeyError("%s has no cell(s) %s"
+                           % (sheet_name, ", ".join(sorted(remaining))))
+        self._dirty[part] = xml.encode("utf-8")
+        return len(edits)
+
     def _write_table(self, table_part: str, headers: list, last_ref: str) -> None:
         xml = self._by_name[table_part].decode("utf-8")
         xml = re.sub(r'(<table[^>]*\sref=")[^"]*(")', r"\g<1>A1:%s\g<2>" % last_ref, xml)

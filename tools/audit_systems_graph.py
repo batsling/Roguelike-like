@@ -28,7 +28,7 @@ import sys
 from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _xlsx_surgery import Workbook  # noqa: E402
+from _xlsx_surgery import Workbook, col_name  # noqa: E402
 
 BOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Roguelikes.xlsx")
 SHEET = "chart"
@@ -37,9 +37,11 @@ SHEET = "chart"
 BLOCKS = [("D", "E", "F", "G"), ("H", "I", "J", "K"),
           ("L", "M", "N", "O"), ("P", "Q", "R", "S")]
 
-# The System column mixes singular and plural for the same system. Until the
-# sheet picks one, fold them here so the group-by does not silently split a
-# system in half (§6, "Singular/plural join failure").
+# The sheet settled on plural (see tools/_chart_system_vocabulary.py), so this
+# is now a REGRESSION DETECTOR rather than a fixer: the collapse still folds a
+# singular so one stray cell cannot skew the graph, but the hygiene pass reports
+# it and main() exits non-zero. That is the whole point — a singular/plural
+# split does not error on its own, it just quietly renders one system as two.
 CANON = {
     "Bomb": "Bombs", "Tile": "Tiles", "Object": "Objects", "Item": "Items",
     "Pill": "Pills", "Potion": "Potions", "Card": "Cards", "Shield": "Shields",
@@ -128,7 +130,7 @@ def load():
             groups.append((n, cells["W"].strip()))
         if cells.get("A"):
             rows.append(Row(n, cells, header))
-    return rows, good_dir, groups
+    return rows, good_dir, groups, grid
 
 
 def colour(direction, sub, good_dir):
@@ -214,15 +216,19 @@ def main():
     ap.add_argument("--cycles", action="store_true", help="list the cycles")
     args = ap.parse_args()
 
-    rows, good_dir, groups = load()
+    rows, good_dir, groups, grid = load()
     edges, uncoloured, unknown_triggers = build(rows, good_dir)
     arrows = sum(len(r.edges) for r in rows)
+    # Faults that are silently wrong rather than loudly wrong: they produce a
+    # plausible graph with the wrong shape. Each one makes the exit non-zero.
+    errors = 0
 
     print(f"{len(rows)} node rows, {arrows} arrows, {len(good_dir)} Good Direction entries")
     print(f"node types: {dict(Counter(r.type for r in rows))}\n")
 
     print("== 1. hygiene ==")
     if uncoloured:
+        errors += len(uncoloured)
         print(f"  {len(uncoloured)} arrow(s) CANNOT BE COLOURED (no Good Direction):")
         for name, system, sub in uncoloured:
             print(f"     {name} -> {system} . {sub}")
@@ -237,12 +243,14 @@ def main():
     systems = {s for r in rows for s, _, _, _ in r.edges}
     collisions = sorted(s for s in systems if s in CANON and CANON[s] in systems)
     if collisions:
+        errors += len(collisions)
         print("  singular/plural collisions in the System column: "
               + ", ".join(f"{s}/{CANON[s]}" for s in collisions))
 
     dirs = Counter(d for r in rows for _, _, _, d in r.edges)
     odd = {d: n for d, n in dirs.items() if d not in ("Up", "Down")}
     if odd:
+        errors += len(odd)
         print(f"  Dir values outside Up/Down: {odd}")
 
     multi = defaultdict(set)
@@ -252,12 +260,35 @@ def main():
                 multi[sub].add(system)
     split_subs = {k: sorted(v) for k, v in multi.items() if len(v) > 1}
     if split_subs:
+        errors += len(split_subs)
         print("  subsystem filed under more than one system:")
         for k, v in sorted(split_subs.items()):
             print(f"     {k}: {' / '.join(v)}")
 
     if unknown_triggers:
+        errors += len(unknown_triggers)
         print(f"  triggers with no emitting system in EMITTED_BY: {dict(unknown_triggers)}")
+
+    # Leading/trailing space is the nastiest fault on this sheet because it can
+    # be INVISIBLY CORRECT: `Teleport Start Game ` carries a trailing space in
+    # both the arrow (E3) and the Good Dir lookup (U50), so the join works — and
+    # tidying up either one alone silently uncolours the arrow. Every other check
+    # here strips before comparing (Row and load() both do), which is why this one
+    # reads the raw grid instead.
+    headings = [str(h).strip() for h in grid[0]]
+    padded = []
+    for r, raw in enumerate(grid[1:], start=2):
+        for i, value in enumerate(raw):
+            text = str(value)
+            if text and text != text.strip():
+                label = headings[i] if i < len(headings) and headings[i] else "?"
+                padded.append(("%s%d" % (col_name(i), r), label, text))
+    if padded:
+        errors += len(padded)
+        print(f"  {len(padded)} cell(s) with leading/trailing whitespace — "
+              "these join by luck, and tidying one side alone breaks the join:")
+        for ref, label, value in padded:
+            print(f"     {ref} ({label}): {value!r}")
 
     by_type = defaultdict(set)
     for r in rows:
@@ -280,6 +311,7 @@ def main():
                     if target not in pool:
                         dangling.append((r.name, f"{kind}: {target}"))
     if tangled:
+        errors += len(tangled)
         print(f"  {len(tangled)} Otainable cell(s) packing two qualified refs into one "
               "comma list — separate them with ';':")
         for name, ref in tangled:
@@ -335,7 +367,10 @@ def main():
             tag = "  [SELF]" if a == b else ""
             print(f"     {n:3d}  {a:10s} -> {b:12s} {c}{tag}")
 
-    return 1 if uncoloured else 0
+    if errors:
+        print(f"\n{errors} fault(s) that would silently misshape the graph — "
+              "see docs/systems-graph.md §6")
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":
