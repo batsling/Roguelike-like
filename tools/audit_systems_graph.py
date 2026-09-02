@@ -59,26 +59,26 @@ EMITTED_BY = {
     "Wand Use": "Wands", "Item Use": "Items",
     "Potion Quaff": "Potions", "Potion Throw": "Potions",
     "Bomb Use": "Bombs", "Object Use": "Objects",
-    # Gold moved out of Stats into its own `Resource` system with the ability
-    # rows, so the two triggers that SPEND gold have to move with it or the new
-    # system is a sink: ten arrows point into it and none come back out.
-    "Gold Use": "Resource", "Shop Purchase": "Resource",
+    # Gold moved out of Stats into its own system with the ability rows — named
+    # `Economy` off the review, because `Resource` was already a Node Type and
+    # the root of the Groups tree. The two triggers that SPEND gold move with
+    # it, or the new system is a sink.
+    "Gold Use": "Economy", "Shop Purchase": "Economy",
     "Combat Start": "Enemies", "Combat End": "Enemies", "Enemy Defeat": "Enemies",
     "Damage Taken": "Enemies", "Enemy Spawn": "Enemies", "Enemy Movement": "Enemies",
     "Health Lost": "Health", "On Level Up": "Goals", "On Transmute Gain": "Stats",
     "Game Completion": "Goals", "Game Loss": "Goals",
     "Passive": None,
-    # Added with the 30 Enemy Ability rows. Four of these are a body acting, so
-    # they emit from Enemies like the combat triggers above.
-    "Enemy Living": "Enemies",   # true while it stands — an aura
-    "Enemy Turn": "Enemies",     # it spends its turn on this
-    "Enemy Hit": "Enemies",      # its swing landed
-    "Enemy Clog": "Enemies",     # its own allies are in the way
-    # The exception, and the most interesting row in the batch: Predatory Scent
-    # is gated on the PLAYER carrying an unmet status goal, so the thing that
-    # fires it is a status, not a body. That makes Statuses an emitter for the
-    # first time — see docs/systems-graph.md §6A on sinks.
-    "Debuff on Player": "Statuses",
+    # Added with the 30 Enemy Ability rows, and renamed off the §6A review.
+    "Enemy Passive": "Enemies",  # true while it stands — an aura
+    "Enemy Turn": "Enemies",     # it spends its turn on this (Enemy Clog folded in)
+    "Enemy Attack": "Enemies",   # its swing landed
+    # Two exceptions, and they are what stop Statuses and Shields being sinks.
+    # Predatory Scent is gated on the PLAYER carrying an unmet status goal, so a
+    # status fires it; Shield Absorption is the shield eating a hit, so the
+    # shield fires it.
+    "On Player Debuff": "Statuses",
+    "Shield Absorb": "Shields",
 }
 
 # `Otainable` place names, mapped to the system that supplies them, for the

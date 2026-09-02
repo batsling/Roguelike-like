@@ -304,6 +304,85 @@ class Workbook:
         self._dirty[part] = xml.encode("utf-8")
         return len(edits)
 
+    def set_cells(self, sheet_name: str, edits: dict) -> int:
+        """Like `replace_cells`, but ALSO creates cells and rows that are absent.
+
+        `replace_cells` refuses an unknown ref on purpose, so a typo cannot
+        quietly become a new cell. This is the version for when you really are
+        authoring: filling a blank cell in an existing row, or appending rows
+        past the end of the sheet.
+
+        Existing cells you do not name are copied through verbatim — their
+        style, type and value are untouched — so this is still far safer than
+        `write_grid`, which regenerates every cell from values and resizes the
+        first table it finds. It does NOT touch any table's ref: growing a
+        sheet past its table means calling `resize_table` afterwards, which the
+        caller has to do deliberately because only the caller knows which of
+        several tables the new rows belong to.
+
+        Setting a cell to "" or None empties it.
+        """
+        part, _ = self.sheet_parts(sheet_name)
+        xml = self._by_name[part].decode("utf-8")
+
+        m = re.search(r"<sheetData\s*/>|<sheetData(?:\s[^>]*)?>(.*?)</sheetData>",
+                      xml, re.S)
+        if not m:
+            raise ValueError("no <sheetData> element in %s (%s)" % (sheet_name, part))
+
+        rows = {}          # row number -> (row open tag, {col letter: cell xml})
+        for rm in re.finditer(r'<row r="(\d+)"([^>]*)>(.*?)</row>', m.group(1) or "", re.S):
+            cells = {}
+            for cm in re.finditer(r'<c r="([A-Z]+)\d+"[^>]*?(?:/>|>.*?</c>)',
+                                  rm.group(3), re.S):
+                cells[cm.group(1)] = cm.group(0)
+            rows[int(rm.group(1))] = [rm.group(2), cells]
+
+        width = max((_col_index(c) + 1 for _, cs in rows.values() for c in cs), default=0)
+        for ref, value in edits.items():
+            rm = re.fullmatch(r"([A-Z]+)(\d+)", ref)
+            if not rm:
+                raise ValueError("not a cell reference: %r" % ref)
+            col, r = rm.group(1), int(rm.group(2))
+            rows.setdefault(r, ['  spans="1:%d"' % max(width, 1), {}])
+            if value is None or value == "":
+                rows[r][1].pop(col, None)
+            else:
+                rows[r][1][col] = _cell_xml(ref, value)
+            width = max(width, _col_index(col) + 1)
+
+        body = []
+        for r in sorted(rows):
+            attrs, cells = rows[r]
+            ordered = sorted(cells, key=_col_index)
+            body.append('<row r="%d"%s>%s</row>'
+                        % (r, attrs, "".join(cells[c] for c in ordered)))
+
+        xml = (xml[:m.start()] + "<sheetData>" + "".join(body) + "</sheetData>"
+               + xml[m.end():])
+        last = "%s%d" % (col_name(width - 1), max(rows) if rows else 1)
+        xml = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:%s"/>' % last, xml)
+        self._dirty[part] = xml.encode("utf-8")
+        return len(edits)
+
+    def resize_table(self, display_name: str, ref: str) -> None:
+        """Point one table (found by its displayName) at a new range.
+
+        Its `<autoFilter>` moves with it. The column list is left ALONE — this
+        grows a table over more rows, it does not re-author its columns, which
+        is the part `write_grid` gets wrong on a multi-table sheet.
+        """
+        for part in [n for n in self._by_name if n.startswith("xl/tables/")]:
+            xml = self._by_name[part].decode("utf-8")
+            if 'displayName="%s"' % display_name not in xml:
+                continue
+            xml = re.sub(r'(<table[^>]*\sref=")[^"]*(")', r"\g<1>%s\g<2>" % ref, xml, count=1)
+            xml = re.sub(r'(<autoFilter[^>]*\sref=")[^"]*(")', r"\g<1>%s\g<2>" % ref, xml)
+            self._dirty[part] = xml.encode("utf-8")
+            self._by_name[part] = self._dirty[part]
+            return
+        raise KeyError("no table named %r in %s" % (display_name, self.path))
+
     def _write_table(self, table_part: str, headers: list, last_ref: str) -> None:
         xml = self._by_name[table_part].decode("utf-8")
         xml = re.sub(r'(<table[^>]*\sref=")[^"]*(")', r"\g<1>A1:%s\g<2>" % last_ref, xml)

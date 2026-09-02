@@ -1,8 +1,8 @@
 # The systems graph — design notes
 
 **Status: the table is real; the renderer is not.** The `chart` sheet now
-carries 146 node rows and 189 arrows — every item, card, pill, potion, scroll
-and wand in the game, plus all 30 enemy abilities. There is still no generator and no rendered
+carries 149 node rows and 194 arrows — every item, card, pill, potion, scroll
+and wand in the game, all 30 enemy abilities, and four structural rules. There is still no generator and no rendered
 output. What exists is `tools/audit_systems_graph.py` — read-only, run it any
 time — which checks the sheet's hygiene, reports coverage against the content
 sheets, and performs the §4.2 collapse to show the signed system→system graph,
@@ -76,7 +76,7 @@ should walk them by stride rather than naming D/H/L/P.
 |---|---|---|
 | A | `Node` | The thing. `Alien Baby`, `Blood Donation Machine`, `Bombs`. |
 | B | `Otainable` *(sic)* | Where it enters the run — see §4.5, this column is overloaded. |
-| C | `Node Type` | `Item`, `Card`, `Pill`, `Potion`, `Scroll`, `Wand`, `Object`, `Event`, `Unit`, `Enemy Ability`, `Resource`. See §4.4. |
+| C | `Node Type` | `Item`, `Card`, `Pill`, `Potion`, `Scroll`, `Wand`, `Object`, `Event`, `Unit`, `Enemy Ability`, `Resource`. See §4.4 — `Resource` is the structural-rule type, and since the review it is a Node Type *only*, never a System. |
 | D/H/L/P | `System n` | Target system — the coarse node. |
 | E/I/M/Q | `Subsystem n` | Target subsystem — the fine node, what actually moves. |
 | F/J/N/R | `Trigger n` | *When* the arrow fires. See §4.2 — this is the important one. |
@@ -88,7 +88,7 @@ find them by header text and not by letter:
 
 | Cols | Contents |
 |---|---|
-| U–V | `Subsystem` → `Good Dir` (`Up`/`Down`). The colour table: 61 rows, 59 distinct keys — see §6, one key is in there twice with two answers. See §4.1. |
+| U–V | `Subsystem` → `Good Dir` (`Up`/`Down`). The colour table, 60 keys, no duplicates. See §4.1. |
 | W | `Groups` — a containment tree over the System vocabulary. See §4.3. |
 
 A row whose `System 1` is `N/A` declares a node with no arrows at all — Potion
@@ -97,21 +97,22 @@ nothing"), not a gap, and the parser must not treat `N/A` as a system name.
 
 ### Vocabulary as it actually stands
 
-**Systems** (20, and since `_chart_system_vocabulary.py` ran they are 20
-*strings* too — the singular/plural split is gone): Bombs, Cards, Charges, Chest,
-Enemies, Game Choices, Goals, Grid, Health, Items, Loot, Movement, Objects,
-Pills, Potions, Resource, Shields, Stats, Statuses, Tiles.
+**Systems** (21, one string each — the singular/plural split is gone): Bombs,
+Cards, Charges, Chest, Economy, Enemies, Game Choices, Goals, Grid, Health,
+Items, Loot, Movement, Objects, Pills, Potions, Run, Shields, Stats, Statuses,
+Tiles. `Economy` holds Gold; `Resource` is a Node Type only (§4.4), never a
+system.
 
-**Subsystems:** 59 distinct keys carry a Good Direction and every arrow resolves
-to one. See §6 for the one key that carries two contradictory answers.
+**Subsystems:** 60 keys carry a Good Direction, each appearing once, and every
+arrow resolves to one.
 
 **Triggers** (30): Item Pickup, Item Use, Card Use, Pill Use, Potion Quaff,
 Potion Throw, Scroll Use, Wand Use, Loot Use, Bomb Use, Object Use, Gold Use,
 Shop Purchase, Passive, Combat Start, Combat End, Enemy Defeat, Damage Taken,
 Health Lost, Enemy Spawn, Enemy Movement, On Level Up, On Transmute Gain,
-Game Completion, Game Loss — and five added with the ability rows: Enemy Living,
-Enemy Turn, Enemy Hit, Enemy Clog, Debuff on Player. §6A argues three of those
-five duplicate names the sheet already had.
+Game Completion, Game Loss — plus, from the ability rows and the review that
+followed: Enemy Passive, Enemy Turn, Enemy Attack, On Player Debuff, and
+Shield Absorb. (`Enemy Clog` was folded into `Enemy Turn`.)
 
 Note `Potion Quaff` vs `Potion Throw`: the same potion pointed at yourself or at
 a body, and the two get *opposite colours* on the same subsystem. That split is
@@ -367,13 +368,12 @@ That is the most Zomboid-shaped mechanic in the game, and it only appears as a
 NON-ZERO** on the faults that are silently wrong rather than loudly wrong — a
 contradictory Good Direction, a singular/plural collision, a subsystem filed
 under two systems, an unparseable `Otainable`, an unknown trigger, stray
-whitespace. Everything in the table below is currently *clean* except the first
-row; treat a red audit as a regression, not as the normal state.
+whitespace. **The audit is currently green**, and nothing in the table below is
+a fault it can prove — treat a red audit as a regression, not as normal.
 
 | Problem | Detail |
 |---|---|
-| **`Loot Amount` has two Good Directions** | `U29=Up` and `U58=Down`. A repeated key does not error — the reader's iteration order silently decides, and it currently lands on `Down`, which colours Degradation's and Theft's loot-destruction arrows **green**. Delete `U58`. This is the only outstanding fault. |
-| **`Dash` is a dead Good Direction entry** | No row targets it. Harmless, but it is the last of the three that used to sit here. |
+| **`Dash` is a dead Good Direction entry** | No row targets it. Harmless, and the last of the three that used to sit here. |
 | **`Event: Golden Idol` resolves to nothing** | The `events` sheet has a Golden Idol; the chart has no node row for it, so the reference dangles. Nine other events are in the same position — see §6A. |
 | **`Alien Baby` — still worth confirming** | Reads `Enemies · Enemy Max Health / Enemy Spawn / Up` against a Good Direction of `Down`, i.e. an unambiguous **red** arrow: Alien Baby *raises* enemy max health as the cost of its two health buffs. This is the row that exposed the §4.1 ambiguity, so confirm rather than assume. |
 
@@ -403,8 +403,13 @@ new, because several of these looked like different problems than they were:
   separated with `;` rather than a comma (§4.5).
 - **`Arcade` is now `Arcade Room`**, matching the `events` sheet, so its three
   inbound references resolve.
+- **`Loot Amount` no longer has two Good Directions.** It was in the table twice
+  — `Up` on U29 and `Down` on U58 — and because a repeated key does not error,
+  iteration order picked one and picked the wrong one: Degradation and Theft
+  coloured GREEN, "an enemy burning your loot is good for you". The `Down` row is
+  deleted and the audit now fails on a contradictory duplicate.
 - `Scramble` has a Good Direction, Echo Chamber's self-loop is gone (`Loot
-  Copy`), `Dir` is uniformly `Up`/`Down` across all 189 arrows, and
+  Copy`), `Dir` is uniformly `Up`/`Down` across all 194 arrows, and
   `XIV - Temperance` is typed `Card` rather than `Loot`.
 
 ---
@@ -421,14 +426,14 @@ The 30 `Enemy Ability` rows are the single biggest thing to happen to this sheet
 and they fixed the problem this section was originally written to describe.
 Before and after:
 
-| | before | after |
-|---|---|---|
-| node rows | 116 | 146 |
-| system→system edges | 160 | 190 |
-| red edges | 36 (23%) | **63 (33%)** |
-| cycles (len 2–4) | 14 | **25** |
-| sinks | 8 | 7 |
-| `Enemies → Health` red | **none** | present |
+| | before | after the rows | after the fixes |
+|---|---|---|---|
+| node rows | 116 | 146 | **149** |
+| system→system edges | 160 | 190 | **195** |
+| red edges | 36 (23%) | 63 (33%) | **68 (35%)** |
+| cycles (len 2–4) | 14 | 25 | **30** |
+| sinks | 8 | 7 | **7** |
+| `Enemies → Health` red | **none** | present | present |
 
 The old diagnosis — "the chart says fighting is good for you", because enemies
 only ever appeared as the thing that fires Enemy Defeat — is **resolved**. Bodies
@@ -467,9 +472,13 @@ is precisely a cycle that failed to close.
 | Sink | Inbound edges |
 |---|---|
 | Tiles | 8 |
-| Shields | 6 |
 | Grid / Movement | 5 each |
+| Run | 1 — **deliberate**, see below |
 | Chest / Game Choices / Charges | 1 each |
+
+Shields left this list when `Shield Absorb` was added; Statuses left it when the
+ability rows landed. `Run` is a sink on purpose: the run ending is where
+everything stops.
 
 **Tiles is now the prize, and it is two rows.** Five items and three abilities
 set Fire Tile and nothing happens; the `tiles` sheet says Fire applies +1 Burn to
@@ -481,84 +490,86 @@ a sink: it emits through exactly one ability today. The `statuses` sheet holds
 each status's combat effect *and* its goal condition — the second half being the
 layer no other roguelike chart has (§7 question 6).
 
-### What I would change in the ability rows
+### The review fixes, applied
 
-Ordered by whether it is wrong, then by cost.
+All ten items from the review are in the sheet, via
+`tools/_chart_abilities_review_fixes.py` (idempotent). What they bought:
 
-**Wrong, and silently so**
+| | before abilities | after abilities | after fixes |
+|---|---|---|---|
+| node rows | 116 | 146 | **149** |
+| edges | 160 | 190 | **195** |
+| red | 36 (23%) | 63 (33%) | **68 (35%)** |
+| cycles | 14 | 25 | **30** |
+| sinks | 8 | 7 | **7** (different ones) |
 
-1. **`Loot Amount` is in the Good Direction table twice** — `U29=Up` and
-   `U58=Down`. A repeated key does not error; the reader's iteration order picks
-   one. It currently resolves to `Down`, which colours Degradation's and Theft's
-   loot-destruction arrows **green** — "an enemy burning your loot is good for
-   you". Delete `U58`. The audit now fails on a contradictory duplicate.
-2. **`Haste` targets `Dexterity on Enemy`, but Haste grants Speed** — its own
-   sheet row says "Spawns with X Speed", and `Speed on Enemy` already exists as a
-   subsystem with a Good Direction. (`Defensive Stance → Dexterity on Enemy` is
-   correct and is probably where the copy came from.)
-3. **`Resource` now means three different things.** It is a Node Type (the Bombs
-   row), it is the new System that Gold moved into, and it is the ROOT of the
-   Groups tree, whose children are Stats, Health, Bombs, Collectables and
-   Shields. Rendering the supersystem view would nest Resource inside itself.
-   Moving Gold out of Stats is a good call — Gold is not a stat like Luck — but
-   the new system needs its own name; `Economy` leaves room for shops and prices.
-   Note also that moving Gold orphaned its return leg until `Gold Use` and
-   `Shop Purchase` moved with it (fixed in `EMITTED_BY`; it is code, not sheet).
+**Fixed:** the duplicate `Loot Amount` Good Direction is gone (Degradation and
+Theft now read red, as they should). Haste points at `Speed on Enemy`. The Gold
+system is **`Economy`**, freeing `Resource` to mean one thing — a Node Type for
+structural rules. Triggers renamed to `Enemy Attack`, `Enemy Passive` and
+`On Player Debuff`, with `Enemy Clog` folded into `Enemy Turn`; that also
+un-collides `Debuff on Player`, which stays a *subsystem* name only.
 
-**Vocabulary that will cost more to fix later than now**
+**Three structural rules were added** (§4.4 `Resource` rows — things no item can
+express):
 
-4. **`Enemy Hit` and the existing `Damage Taken` are the same moment** seen from
-   two sides — the swing landing, and the player being hit by it. Twelve arrows
-   are split across the two names. Pick one.
-5. **`Enemy Living` duplicates `Passive`.** It gates Bolster, Fireproof and
-   Ranged — all three "true while it stands", which is what `Passive` means, and
-   §7.6 literally calls Bolster "a live aura".
-6. **`Enemy Clog` is a one-off** for Ruthless: "Enemy Turn, but only when its own
-   allies are in the way". Either fold it into `Enemy Turn` or give it a name
-   that reads (`Blocked by Ally`).
-7. **`Debuff on Player` and `Enemy Turn` are both triggers AND subsystems.** For
-   `Enemy Turn` that is probably an accident. For `Debuff on Player` it is the
-   best idea in the batch — `Infliction → Debuff on Player → Predatory Scent` is
-   a genuine content-to-content chain and it is what un-sank Statuses — but §3
-   currently describes the two columns as separate vocabularies, and a parser
-   built on that assumption will not see the join. Decide it deliberately.
+| Row | Arrows |
+|---|---|
+| **Enemy Damage** | `Health · Health Amount / Enemy Attack / Down`, `Shields · Shield Amount / Enemy Attack / Down` |
+| **Shield Absorption** | `Health · Health Amount / Shield Absorb / Up` |
+| **Lost Game** | `Enemies · Enemy Turn / Game Loss / Up` |
 
-**Arrows the mechanic has and the row does not**
+`Shield Absorb` is emitted by Shields and `On Player Debuff` by Statuses. Those
+two mappings are why **Shields and Statuses are no longer sinks** — between them
+they were 33 inbound arrows and nothing coming back.
 
-8. **Every summoner shows only the threat half.** Illusionist, Necromancy,
-   Nested Spawner, Entry Summon and Split all carry exactly
-   `Enemies · Enemy Amount / Up`. But §7.6 is explicit that **a summoned body is
-   an ordinary body**: it carries a goal and pays its loot, its gold and its
-   chest point. Each of those rows also has green arrows into `Loot` and
-   `Resource · Gold`. As written, the spawner cluster is §5.1's bomb problem
-   exactly in mirror — all red, and a lie by omission.
-9. **`Illusion` and `Immobile` are `N/A`, and both have real arrows.** `Immobile`
-   is the precise negative of `Agile`, which got `Enemy Position / Up` — so it is
-   `Enemy Position / Down`. `Illusion` pops when its maker dies:
-   `Enemies · Enemy Amount / Enemy Defeat / Down`.
-10. **`Devour Whole` reads as ordinary damage.** `Health · Health Amount / Down`
-    is what a 1-damage swing says too, but this one ends the run whatever your
-    Health. It is the most consequential ability in the game and the chart
-    cannot see that.
-11. **`Ranged` stops at `Enemy Range / Up`** — the consequence is that it reaches
-    you sooner, and there is no arrow for that.
-12. **`Fading → Enemy Health / Down`** models a timer as damage. `Enemy Amount /
-    Down` is truer: the body leaves the board, it is not whittled.
+The loop that matters most is new and only two hops:
 
-**Modelling judgement calls**
+```
+Enemies ──red──▸ Goals ──red──▸ Enemies
+   (a body curses you)   (a lost game hands the board a turn)
+```
 
-13. **All 30 rows have `Otainable = Enemy Spawn`** — a trigger, not a place, and
-    it means every ability hangs off one generic node instead of chaining to the
-    bodies that carry it (`Enemy: Sharky`). §5.2 is the argument for the other
-    choice, and only 39 of the 94 bodies carry an ability at all, so the chain
-    would say something. This is the one place the batch leaves value on the table.
-14. **`Bolster` and `Melee Ally Buff` point at a generic `Buff on Enemy`**, so
-    Bishop's Dexterity aura and a thrown Dexterity Potion never meet at a node
-    even though they do the same thing. Both abilities take a Status Type
-    argument; pointing them at the specific statuses their carriers actually use
-    (Bishop → Dexterity, Time Eater → Speed, Love Bot → Speed) would join them.
-15. **`Aftermath → Tiles · Fire Tile`** hardcodes its only current argument. It
-    takes any tile effect, and there is a Web tile.
+An enemy makes the real game harder → you fail the report → the board gets a
+free turn → it hits you again. That is the Zomboid shape the whole exercise was
+for, and it is derived, not asserted.
+
+**Devour Whole** now points at `Run · End Run` rather than reading as ordinary
+damage. `Run` is a sink at 1 inbound — and unlike the others that is **correct**:
+the run ending is where everything stops. It is the one terminal node in the
+graph, not a cycle that failed to close.
+
+#### Two things deliberately not changed
+
+- **`Immobile` is `Enemy Position / Up`, not `Down`.** The review asked for
+  `Down` on the strength of "Immobile is the opposite of Agile, which is Up" —
+  but Agile is `Down`. `Enemy Position` reads as distance from you, so Up is
+  good for the player: Wand of Teleportation is `Up` (green, it throws a body
+  away), Agile is `Down` (red, it closes). A body that cannot close is `Up`.
+  One cell to flip if the literal `Down` was meant.
+- **`Trample` is `Enemy Position / Up` and looks wrong** for the same reason: it
+  shoves a blocker aside in order to *advance*, so it should be `Down` / red.
+  Not part of the review, so left for a decision.
+
+### Still open on the ability rows
+
+Unchanged from the review, and still worth doing:
+
+- **Every summoner shows only the threat half.** Illusionist, Necromancy, Nested
+  Spawner, Entry Summon and Split carry only `Enemy Amount / Up`, but §7.6 is
+  explicit that a summoned body is an ordinary body that pays its loot, its gold
+  and its chest point. Each also has green arrows into `Loot` and
+  `Economy · Gold`. As written the cluster is §5.1's bomb problem in mirror.
+- **`Ranged` stops at `Enemy Range / Up`** — no arrow for reaching you sooner.
+- **`Fading → Enemy Health / Down`** models a timer as damage; `Enemy Amount /
+  Down` is truer.
+- **All 30 rows have `Otainable = Enemy Spawn`**, so abilities hang off one
+  generic node rather than chaining to the bodies that carry them
+  (`Enemy: Sharky`). Only 39 of 94 bodies carry one, so the chain would say
+  something. §5.2 is the argument.
+- **`Bolster` / `Melee Ally Buff` point at a generic `Buff on Enemy`**, so a
+  Bishop's Dexterity aura and a thrown Dexterity Potion never meet at a node.
+- **`Aftermath → Tiles · Fire Tile`** hardcodes its only current argument.
 
 ### Recommended order
 
