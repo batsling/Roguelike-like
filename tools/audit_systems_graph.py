@@ -79,6 +79,10 @@ EMITTED_BY = {
     # shield fires it.
     "On Player Debuff": "Statuses",
     "Shield Absorb": "Shields",
+    # A body standing on a tile: the TILE is the thing acting, so this emits from
+    # Tiles. Route it through Enemies instead (whoever walked on) and Tiles stays
+    # a sink with eight arrows in and none out, which was the whole problem.
+    "Tile Step": "Tiles",
 }
 
 # `Otainable` place names, mapped to the system that supplies them, for the

@@ -1,8 +1,9 @@
 # The systems graph — design notes
 
 **Status: the table is real; the renderer is not.** The `chart` sheet now
-carries 149 node rows and 194 arrows — every item, card, pill, potion, scroll
-and wand in the game, all 30 enemy abilities, and four structural rules. There is still no generator and no rendered
+carries 151 node rows and 206 arrows — every item, card, pill, potion, scroll
+and wand in the game, all 30 enemy abilities, both tiles, and four structural
+rules. There is still no generator and no rendered
 output. What exists is `tools/audit_systems_graph.py` — read-only, run it any
 time — which checks the sheet's hygiene, reports coverage against the content
 sheets, and performs the §4.2 collapse to show the signed system→system graph,
@@ -471,19 +472,20 @@ is precisely a cycle that failed to close.
 
 | Sink | Inbound edges |
 |---|---|
-| Tiles | 8 |
 | Grid / Movement | 5 each |
 | Run | 1 — **deliberate**, see below |
 | Chest / Game Choices / Charges | 1 each |
 
-Shields left this list when `Shield Absorb` was added; Statuses left it when the
-ability rows landed. `Run` is a sink on purpose: the run ending is where
-everything stops.
+Three systems have left this list in order: Statuses when the ability rows
+landed, Shields when `Shield Absorb` was added, and **Tiles** with the two tile
+rows. `Run` is a sink on purpose — the run ending is where everything stops.
 
-**Tiles is now the prize, and it is two rows.** Five items and three abilities
-set Fire Tile and nothing happens; the `tiles` sheet says Fire applies +1 Burn to
-whoever stands on it and Web applies +1 Stun. That is `Tiles → Statuses`, and
-Statuses now reaches Enemies, so Fire → Burn → … is a return leg for two rows.
+**The tiles were the last big one**, and they took two rows. Eight arrows set a
+tile and nothing happened afterwards; the `tiles` sheet says Fire applies +1 Burn
+and Web +1 Stun **to enemies standing on them**, so both are green arrows into
+`Statuses`. The trigger is `Tile Step`, emitted by **Tiles** — that is the load-
+bearing part. Route it through Enemies (whoever walked on) and the arrow leaves
+from the wrong place and Tiles stays a sink.
 
 The seven status rows are still worth authoring even though Statuses is no longer
 a sink: it emits through exactly one ability today. The `statuses` sheet holds
@@ -495,13 +497,13 @@ layer no other roguelike chart has (§7 question 6).
 All ten items from the review are in the sheet, via
 `tools/_chart_abilities_review_fixes.py` (idempotent). What they bought:
 
-| | before abilities | after abilities | after fixes |
-|---|---|---|---|
-| node rows | 116 | 146 | **149** |
-| edges | 160 | 190 | **195** |
-| red | 36 (23%) | 63 (33%) | **68 (35%)** |
-| cycles | 14 | 25 | **30** |
-| sinks | 8 | 7 | **7** (different ones) |
+| | before abilities | after abilities | after fixes | + summoners & tiles |
+|---|---|---|---|---|
+| node rows | 116 | 146 | 149 | **151** |
+| edges | 160 | 190 | 195 | **207** |
+| red | 36 (23%) | 63 (33%) | 68 (35%) | **68 (33%)** |
+| cycles | 14 | 25 | 30 | **32** |
+| sinks | 8 | 7 | 7 | **6** |
 
 **Fixed:** the duplicate `Loot Amount` Good Direction is gone (Degradation and
 Theft now read red, as they should). Haste points at `Speed on Enemy`. The Gold
@@ -551,15 +553,42 @@ graph, not a cycle that failed to close.
   shoves a blocker aside in order to *advance*, so it should be `Down` / red.
   Not part of the review, so left for a decision.
 
+### The summoners, and the half the sheet still cannot say
+
+The five summoners — Illusionist, Necromancy, Nested Spawner, Entry Summon and
+Split — now carry the payout §7.6 says a summoned body owes: it is an **ordinary
+body**, so clearing it pays its loot and its gold. Each has
+`Loot · Loot Amount / Enemy Defeat / Up` and `Economy · Gold / Enemy Defeat / Up`
+alongside its original red `Enemies · Enemy Amount / Up`.
+
+**That leaves them reading 10 green to 5 red, and that is too kind.** A summoned
+body is also an enemy: it has a goal you must go and play, and it can hit you.
+Neither cost lands on the summoner's own row, for two different reasons — and
+they are worth separating, because only one of them is fixable by typing.
+
+1. **The damage is a §5.3 modifier edge.** `Enemies → Health` already exists once,
+   from the `Enemy Damage` rule. A summoner does not *create* that flow, it
+   **thickens** it — more bodies, more swings. §5.3 flags exactly this as an
+   unsolved schema problem: there is no way to mark a row as multiplying an
+   existing edge rather than making a new one, so writing a Health arrow onto
+   each summoner would double-count the same swing.
+2. **The goal has no subsystem at all.** `Enemy Amount` counts bodies, not the
+   evenings they demand, and using it for both would say one thing twice. This
+   is the more interesting gap: a goal is *a real video game you have to go and
+   play*, which is the cost this game has and no other roguelike chart does.
+
+Adding **`Goals · Goal Amount`** (Good Direction `Down`) would fix the second
+one — every summoner, and every `Enemy Spawn`, could then carry the cost of the
+game it puts on your evening. It is the first real foothold for §7 question 6,
+where the top of the chart is the player's actual free time. It is a **vocabulary
+decision, not a fix**, so it has deliberately not been made.
+
+Until one of those lands, read the summoner cluster knowing its red is
+structurally under-weighted — the same way §5.1 warns the bomb cluster reads as
+four green arrows and a lie.
+
 ### Still open on the ability rows
 
-Unchanged from the review, and still worth doing:
-
-- **Every summoner shows only the threat half.** Illusionist, Necromancy, Nested
-  Spawner, Entry Summon and Split carry only `Enemy Amount / Up`, but §7.6 is
-  explicit that a summoned body is an ordinary body that pays its loot, its gold
-  and its chest point. Each also has green arrows into `Loot` and
-  `Economy · Gold`. As written the cluster is §5.1's bomb problem in mirror.
 - **`Ranged` stops at `Enemy Range / Up`** — no arrow for reaching you sooner.
 - **`Fading → Enemy Health / Down`** models a timer as damage; `Enemy Amount /
   Down` is truer.
@@ -569,7 +598,8 @@ Unchanged from the review, and still worth doing:
   something. §5.2 is the argument.
 - **`Bolster` / `Melee Ally Buff` point at a generic `Buff on Enemy`**, so a
   Bishop's Dexterity aura and a thrown Dexterity Potion never meet at a node.
-- **`Aftermath → Tiles · Fire Tile`** hardcodes its only current argument.
+- **`Aftermath → Tiles · Fire Tile`** hardcodes its only current argument — and
+  now that `Web` is a node too, the second tile it could name actually exists.
 
 ### Recommended order
 
