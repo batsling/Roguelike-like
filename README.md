@@ -147,6 +147,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_event2_tres.py     #   data/events2.0
 │   ├── generate_curse2_tres.py     #   data/curses2.0
 │   ├── _xlsx_surgery.py            #   edit one sheet without losing the charts
+│   ├── audit_systems_graph.py      #   read-only audit of the `chart` sheet (systems graph)
 │   ├── generate_item_tres.py, generate_character_tres.py,
 │   ├── generate_curse_tres.py      #   the pre-2.0 sets
 │   ├── import-games-godot.py
@@ -730,6 +731,7 @@ still exists under an old name silently generates the wrong content.
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
+| `audit_systems_graph.py` | read-only audit of the `chart` sheet — the systems graph (`docs/systems-graph.md`). Reports uncoloured arrows, vocabulary collisions and dangling `Otainable` refs; coverage against every content sheet; and the collapsed system→system graph with its cycles and its sinks. Writes nothing, so it is safe to run any time. |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's eight charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_statuses2_burn_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`, `_abilities_sheet_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
