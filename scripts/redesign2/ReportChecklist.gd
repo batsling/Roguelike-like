@@ -165,7 +165,7 @@ func populate_play_panel() -> void:
 	# fewer heading on the narrowest column on the page.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	var winning: Array = GameState.status_objectives()
-	if not winning.is_empty() or (ch != null and ch.level_up_condition != ""):
+	if not _settled_at_the_end_is_empty(ch, winning):
 		_box.add_child(_verify_head(WINNING_RUN_HEAD))
 
 	# Challenges that pay out every game you satisfy them, and the `demand` rows
@@ -226,12 +226,12 @@ func populate_play_panel() -> void:
 		winning_rows.append({"check": lu_row["check"], "label": lu_text,
 			"mark": {"character": ch}, "note": _level_up_note_hooks(ch)})
 
-	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5), under a header
-	# of their own. They bite in different ways — an event goal is a BONUS that
-	# merely expires, a curse is a BILL, and the curse rows are purple for it — but
-	# they share the thing that decides where they go on this list: neither is an
-	# ENEMY, and neither resolves the moment it is ticked. They are settled when the
-	# game is handed in, exactly as the winning-run rows above them are.
+	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5), nested under
+	# the SAME header as the rows above them. They bite in different ways — an event
+	# goal is a BONUS that merely expires, a curse is a BILL, and the curse rows are
+	# purple for it — but they are answered at the same moment as a status goal and
+	# a level-up, and that is what this section is: the things the report settles,
+	# as against the bodies on the board below.
 	_add_event_goal_rows()
 
 	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
@@ -404,12 +404,8 @@ func _status_note_hooks(status: StatusData) -> Dictionary:
 # decision on its last game than on its first, and the player cannot see the
 # clock anywhere else.
 func _add_event_goal_rows() -> void:
-	# The header, and only when the run is actually carrying one of either. See the
-	# winning-run header above for why an empty section head is worse than none.
-	if not GameState.event_goals.is_empty() or not GameState.curse_goals.is_empty() \
-			or not GameLoop2.claimed_event_goals.is_empty():
-		_box.add_child(_verify_head(GAME_GOALS_HEAD))
-
+	# NO HEADER OF ITS OWN. These rows nest under WINNING_RUN_HEAD with the status
+	# goals and the level-up — see the block in populate_play_panel that raises it.
 	for i in range(GameState.event_goals.size()):
 		var goal: Dictionary = GameState.event_goals[i]
 		var left: int = int(goal.get("games_left", 0))
@@ -459,7 +455,12 @@ func _add_event_goal_rows() -> void:
 			cd.display_name, cd.goal_text(), cd.penalty_text,
 			CurseData2.window_text(left)]
 		var curse_key: String = "curse:%d:%s" % [i, cd.id]
-		var row := verify_row(text, UITheme.CURSE, false)
+		# LED BY ITS OWN PICTURE, exactly as a status row is led by its symbol and the
+		# level-up by the character's face. A curse is a named thing with art in
+		# images2.0/curses/, and this list is scanned rather than read: the portrait is
+		# what makes the purple row findable without reading the sentence in it.
+		var row := verify_row(text, UITheme.CURSE, false, null, null, 0,
+			_curse_icon_rect(cd))
 		_add_row(row["row"], GameLoop2.row_answered(curse_key), true)
 		curse_goal_checks.append({"check": row["check"], "index": i})
 		# THE ROW WITH NOTHING TO RESOLVE, AND SO NOTHING TO CONFIRM. A curse pays no
@@ -940,7 +941,7 @@ const LEVELUP_KEY := "levelup"
 # The indent is what ties a row to this line — that is what an indent is for.
 const WINNING_RUN_HEAD := "On a winning run:"
 
-# THE OTHER TWO SECTION HEADS, and the reason there are three of them.
+# THE OTHER SECTION HEAD, and the reason there are two of them.
 #
 # This list carries two kinds of objective and they are answered at two different
 # moments. A ROW THE REPORT SETTLES — a status goal, the level-up, an event goal, a
@@ -950,9 +951,9 @@ const WINNING_RUN_HEAD := "On a winning run:"
 # are no take-backs. Read as one undifferentiated column those two read as the same
 # promise, which is the thing this split exists to stop.
 #
-# So the settled-at-the-end goals come first, in two nested sections (the run's own
-# and the game's), and the bodies come last under a head of their own.
-const GAME_GOALS_HEAD := "Events and curses:"
+# So all four kinds of settled-at-the-end row nest under WINNING_RUN_HEAD, and the
+# bodies come last under a head of their own.
+#
 # NOT INDENTED, and no colon on it: the rows below this one do not nest under it
 # (see the block in populate_play_panel), so it is a label on a section rather than
 # a sentence they complete.
@@ -962,6 +963,17 @@ const ENEMIES_HEAD := "Enemies"
 # level-up's line in Overworld2.report). The record of what a run has done is a
 # flat list of sentences on another screen, with no header above them to inherit
 # the condition from, so each line there carries its own.
+
+# Is there nothing at all to put under WINNING_RUN_HEAD? Asked by both states of
+# the panel, because the header and the four kinds of row under it have to appear
+# and disappear together — a heading with nothing beneath it is a section the
+# player scans for and does not find.
+func _settled_at_the_end_is_empty(ch: CharacterData, winning: Array) -> bool:
+	return winning.is_empty() \
+		and (ch == null or ch.level_up_condition == "") \
+		and GameState.event_goals.is_empty() \
+		and GameState.curse_goals.is_empty() \
+		and GameLoop2.claimed_event_goals.is_empty()
 
 # Wire one ARMED row. `key` is what GameLoop2 remembers the tick by — the status
 # row's objective key, LEVELUP_KEY, or an event / curse row's key.
@@ -1260,11 +1272,11 @@ func populate_standing() -> void:
 	reset_state()
 	_box.add_child(_verify_head_row("What you need to do:"))
 
-	# THE SAME THREE SECTIONS THE REPORT STEP DRAWS, in the same order and with the
-	# same headers (see the block above WINNING_RUN_HEAD): the goals a run settles,
-	# the goals a game settles, and the bodies on the board. These are one list in
-	# two states, and a section that moved between them would be a section the
-	# player has to find twice.
+	# THE SAME TWO SECTIONS THE REPORT STEP DRAWS, in the same order and with the
+	# same headers (see the block above WINNING_RUN_HEAD): the goals the report
+	# settles, and the bodies on the board. These are one list in two states, and a
+	# section that moved between them would be a section the player has to find
+	# twice.
 	#
 	# THE WINNING-RUN SECTION: the player's standing status buffs (§13) and the
 	# character's level-up, under one header and nested under it. Both are goals
@@ -1273,7 +1285,7 @@ func populate_standing() -> void:
 	# stops reading as a list of things the NEXT game could settle.
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	var winning: Array = GameState.status_objectives()
-	if not winning.is_empty() or (ch != null and ch.level_up_condition != ""):
+	if not _settled_at_the_end_is_empty(ch, winning):
 		_box.add_child(_verify_head(WINNING_RUN_HEAD))
 	for row in winning:
 		var sd: StatusData = row["status"]
@@ -1312,8 +1324,6 @@ func populate_standing() -> void:
 	# looking at the OFFERING. Listing it only once a game is picked meant taking
 	# on "beat a game in 1 attempt" and then being shown nothing about it until
 	# after the decision it was supposed to inform.
-	if not GameState.event_goals.is_empty() or not GameState.curse_goals.is_empty():
-		_box.add_child(_verify_head(GAME_GOALS_HEAD))
 	for goal in GameState.event_goals:
 		var left: int = int(goal.get("games_left", 0))
 		_add_row(_objective_row("Event goal — %s   → %s   (%d %s left)" % [
@@ -1329,7 +1339,8 @@ func populate_standing() -> void:
 		# do, not the rule it is derived from.
 		_add_row(_objective_row("%s — %s   if failed, %s   (%s)" % [
 			cd.display_name, cd.goal_text(), cd.penalty_text,
-			CurseData2.window_text(cleft)], UITheme.CURSE), false, true)
+			CurseData2.window_text(cleft)], UITheme.CURSE,
+			_curse_icon_rect(cd)), false, true)
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -1738,6 +1749,30 @@ func _buff_strip(entry: Dictionary) -> Control:
 # both standing clauses ON THE PLAYER, where an enemy portrait is a body on the
 # board. It also costs the page four fewer pixels than an enemy's would, and the
 # overworld's left column has thirteen to give (test_overworld2's _assert_fits).
+# The curse's own picture, as a row-leading chip in the checklist's purple — the
+# same furniture a status's symbol and the character's face ride in
+# (`_status_mark`, `_character_icon_rect`), because a curse is the same sort of
+# thing on this list: a named standing objective, not a body on the board.
+#
+# Null for a curse the sheet gave no `File`, in which case the row reads exactly as
+# it did before. Carries a hover of its own: the picture is what makes the row
+# findable, and what it COSTS is the fact the picture cannot say.
+func _curse_icon_rect(curse: CurseData2) -> Control:
+	if curse == null or curse.image == null:
+		return null
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, UITheme.CURSE.lerp(UITheme.BORDER, 0.45)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.tooltip_text = "%s — if you fail it, %s when you report the game." % [
+		curse.display_name, curse.penalty_text]
+	# Marked, so "how many BODIES are on this list" stays an answerable question —
+	# the character's face carries the same kind of mark for the same reason (see
+	# test_overworld2's _texture_rects_under). A curse is not a body on the board.
+	frame.set_meta(&"curse_portrait", true)
+	frame.add_child(UITheme.crisp_tex(curse.image, STATUS_ICON_SIZE))
+	return frame
+
 func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) -> Control:
 	if character == null:
 		return null

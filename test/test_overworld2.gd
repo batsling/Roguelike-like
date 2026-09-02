@@ -3046,11 +3046,12 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 func _texture_rects_under(node: Node) -> Array:
 	var out: Array = []
 	for child in node.get_children():
-		# Neither the player's own face nor a body's BUFF PIPS are bodies on the
-		# board, and this walk is how "how many bodies are on this list" is
-		# answered. Both mark themselves; the strip marks the whole subtree, since
-		# every chip in it is one of these.
-		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip"):
+		# Neither the player's own face nor a curse's picture nor a body's BUFF PIPS
+		# are bodies on the board, and this walk is how "how many bodies are on this
+		# list" is answered. Each marks itself; the strip marks the whole subtree,
+		# since every chip in it is one of these.
+		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip") \
+				or child.has_meta(&"curse_portrait"):
 			continue
 		if child is TextureRect and (child as TextureRect).texture != null:
 			out.append(child)

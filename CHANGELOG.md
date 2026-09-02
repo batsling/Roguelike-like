@@ -11,23 +11,33 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
-- **The checklist is three sections, and the enemies are one of them.**
+- **The checklist is two sections, and the enemies are one of them.**
 
   The list already grouped its winning-run rows under a header; everything else ran
   together underneath, so an event goal, a curse and a body on the board were three
   rows of the same weight in the same column. They are not the same kind of thing,
-  and the difference is *when they are answered*: a winning-run row, an event goal
-  and a curse are all settled when the game (or the run) is handed in, and an enemy
+  and the difference is *when they are answered*: a status goal, the level-up, an
+  event goal and a curse are all settled when the game is handed in, and an enemy
   row resolves the second you confirm it — the body takes its hit, its loot lands,
   no take-backs.
 
-  So the column reads **On a winning run:** (the status goals and the level-up),
-  then **Events and curses:**, then **Enemies**. The first two nest their rows under
-  their header the way a bonus nests under the body it hangs off. The enemies do
-  not: their header is a label on a section rather than a sentence the rows finish,
-  so it sits flush and so do they. Each header is drawn only when it has something
-  under it. Both states of the panel — the standing list while choosing and the
-  report step while playing — take the same three sections in the same order.
+  So all four kinds of settled-at-the-end row nest under **On a winning run:**, the
+  way a bonus nests under the body it hangs off, and the bodies come last under
+  **Enemies**. That header is a label on a section rather than a sentence the rows
+  finish, so it sits flush and so do they. Both are drawn only when they have
+  something under them. Both states of the panel — the standing list while choosing
+  and the report step while playing — take the same two sections in the same order.
+
+- **A curse row leads with its own picture.**
+
+  A status row leads with its symbol and the level-up with the character's face; a
+  curse — the one purple row on the list — led with nothing, on a list that is
+  scanned rather than read. `images2.0/curses/` has had the art all along and
+  `CurseData2.file` has had the name; what was missing was anything that loaded it.
+  It loads **lazily**, the way `GameData.cover_image` does and deliberately not the
+  way `StatusData.image` does: a typed `Texture2D` export resolves eagerly when
+  `Data` walks the folder, and three files is not what that rule is protecting
+  against — it is there so the fortieth costs nothing either.
 
 - **The event and curse rows arm instead of confirming.**
 
@@ -87,8 +97,10 @@ For how the project is laid out and how its systems fit together, see
   they are held now live in `GameLoop2._ability_takes_hold`, which the spawn path
   and `grant_ability` both go through.
 
-- **Regenerated from the sheet.** The statuses' On Enemy prose, and **Ultrapool**
-  with its two influence edges (from Super Auto Pets and Balatro).
+- **Regenerated from the sheet.** The statuses' On Enemy prose — including Burn's
+  "beat *w* run", fixed in the workbook itself (`tools/_statuses_burn_typo_fix.py`)
+  rather than in the `.tres`, which the next regeneration would have reverted — and
+  **Ultrapool** with its two influence edges (from Super Auto Pets and Balatro).
 
 - **The checklist says which half of a goal a buff put there.**
 
