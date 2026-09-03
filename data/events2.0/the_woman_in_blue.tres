@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_the_woman_in_blue"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"the_woman_in_blue"
+display_name = "The Woman in Blue"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "gold", "op": ">=", "value": 3, "percent": false}
+trigger = "after"
+rarity = "Common"
+file = "TheWomanInBlue"
+prompt = "From the darkness, an arm pulls you into a small shop. As your eyes adjust, you see a pale woman in sharp clothes gesturing towards a wall of potions. Pale Woman: “Buy a potion. Now!” she states."
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "buy_1_potion", "text": "Buy 1 Potion", "repeat": "end", "repeat_max": 0, "results": ["Pale Woman: “Good. Now leave.” You exit the shop cautiously."], "gates": [{"resource": "gold", "value": 1}], "effects": [{"type": "lose_gold", "value": 1}, {"type": "gain_potion", "value": 1}], "effects_text": "-1 Gold, +1 Potion", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "buy_2_potions", "text": "Buy 2 Potions", "repeat": "end", "repeat_max": 0, "results": ["Pale Woman: “Good. Now leave.” You exit the shop cautiously."], "gates": [{"resource": "gold", "value": 2}], "effects": [{"type": "lose_gold", "value": 2}, {"type": "gain_potion", "value": 2}], "effects_text": "-2 Gold, +2 Potions", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "buy_3_potions", "text": "Buy 3 Potions", "repeat": "end", "repeat_max": 0, "results": ["Pale Woman: “Good. Now leave.” You exit the shop cautiously."], "gates": [{"resource": "gold", "value": 3}], "effects": [{"type": "lose_gold", "value": 3}, {"type": "gain_potion", "value": 3}], "effects_text": "-3 Gold, +3 Potions", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": ["WHAM. Her gloved fist collides with your face, nearly knocking you off your feet. Pale Woman: “Get out before I litter the floor with your guts.” You take her word and exit with your guts still safely in your body."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

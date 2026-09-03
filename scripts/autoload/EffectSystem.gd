@@ -184,13 +184,7 @@ func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 	if bool(effect.get("all", false)):
 		GameState.set_gold(0)
 		return
-	# A RANGE was rolled when the event opened and printed on the button (see
-	# EventSystem's offering). Charging a fresh roll here would take an amount
-	# other than the one the player agreed to, which is the whole reason the ask
-	# is settled up front rather than at the press.
 	var v: int = int(effect.get("value", 0))
-	if effect.has("min"):
-		v = EventSystem.offered_gold()
 	if v != 0:
 		GameState.change_gold(-v)
 

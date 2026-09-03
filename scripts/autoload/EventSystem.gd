@@ -255,12 +255,10 @@ const ITEM_HOLE := "{ITEM}"
 # a potion and a relic rather than a number.
 const POTION_HOLE := "<potion>"
 const RELIC_HOLE := "<relic>"
-# The other two things Ranwid asks for on his first meeting (§16): a card out of
-# the pack, and an amount of gold that varies. Both are rolled with the rest of
-# the offering and named on the button, because "give me some gold" is not a
-# price anyone can weigh.
+# The third thing Ranwid asks for on his first meeting (§16): a card out of the
+# pack. Rolled with the rest of the offering and named on the button, because
+# "give me a card" is not a price anyone can weigh.
 const CARD_HOLE := "<card>"
-const GOLD_HOLE := "<gold>"
 
 var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
 # What this event will take off you if you let it: one loot entry out of the
@@ -271,10 +269,6 @@ var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
 var _offered_potion: Dictionary = {}
 var _offered_relic: StringName = &""
 var _offered_card: Dictionary = {}
-# What a `lose_gold <lo>-<hi>` will actually charge, rolled once with the rest of
-# the offering and clamped to what the purse holds — he cannot ask for more than
-# you have, which is the original's rule too.
-var _offered_gold: int = 0
 # What the event is already OFFERING when it opens (`EventData2.opens_with`) —
 # the Potion Lab's three bottles. Rolled here, once, for the same reason the
 # trade pairing is: the modal repaints on every press and a per-repaint roll
@@ -289,7 +283,6 @@ func begin_event(ev: EventData2) -> void:
 	_offered_potion = {}
 	_offered_relic = &""
 	_offered_card = {}
-	_offered_gold = 0
 	_opening_loot.clear()
 	if ev == null:
 		return
@@ -300,7 +293,6 @@ func begin_event(ev: EventData2) -> void:
 	if _wants(ev, "lose_relic"):
 		_offered_relic = _roll_offered_relic()
 	_offered_card = _roll_offered_card(ev)
-	_offered_gold = _roll_offered_gold(ev)
 	_opening_loot = _roll_opening_loot(ev)
 
 
@@ -505,19 +497,6 @@ func _rarity_at_least(entry: Dictionary, floor_rarity: String) -> bool:
 	return have >= want and have >= 0
 
 
-# What a `lose_gold <lo>-<hi>` will charge. Rolled once, clamped to the purse: he
-# asks for between the floor and the ceiling, or everything you have if that is
-# less — the original's rule, and the reason the button can promise a number.
-func _roll_offered_gold(ev: EventData2) -> int:
-	var want: Dictionary = _effect_of(ev, "lose_gold")
-	if want.is_empty() or not want.has("min"):
-		return 0
-	var lo: int = int(want.get("min", 1))
-	var hi: int = maxi(lo, int(want.get("max", lo)))
-	hi = mini(hi, maxi(lo, GameState.gold))
-	return _roll_rng().randi_range(lo, hi)
-
-
 # The first effect of `type` on any of this event's choices, or {} — how the
 # offering finds out WHAT it has been asked to roll.
 func _effect_of(ev: EventData2, type: String) -> Dictionary:
@@ -530,10 +509,6 @@ func _effect_of(ev: EventData2, type: String) -> Dictionary:
 
 func offered_card() -> Dictionary:
 	return _offered_card
-
-
-func offered_gold() -> int:
-	return _offered_gold
 
 
 # Hand the rolled card over: it leaves the pack.
@@ -595,11 +570,6 @@ func fill_name_holes(text: String, choice: Dictionary) -> String:
 		text = text.replace(RELIC_HOLE, _item_name(_offered_relic))
 	if text.contains(CARD_HOLE):
 		text = text.replace(CARD_HOLE, offered_card_name())
-	if text.contains(GOLD_HOLE):
-		# Outside a run there is no purse to roll against, so the sentence keeps
-		# the shape of the ask rather than quoting a number that is not true yet.
-		text = text.replace(GOLD_HOLE, "%d Gold" % _offered_gold
-			if _offered_gold > 0 else "some Gold")
 	return text
 
 

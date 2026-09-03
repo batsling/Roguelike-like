@@ -736,6 +736,7 @@ still exists under an old name silently generates the wrong content.
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
 | `_events2_we_meet_again_setup.py` | one-shot: the We Meet Again! event row |
+| `_events2_woman_in_blue_setup.py` | one-shot: the Woman in Blue row, and Ranwid's gold ask settling at a flat 2 |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
 | `_chart_system_vocabulary.py` | one-shot: settled the `chart` sheet's System column on plural (`Bomb`/`Bombs` and three more collided, and a group-by rendered each as two systems), trimmed stray whitespace, and renamed the `Arcade` node to `Arcade Room`. |
@@ -891,7 +892,6 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `gain_random_item N` | N relics off the rollable pool, straight into the pack — not a chest opened a screen later. Prefers what you don't own, and fills `{ITEM}` with what it rolled. |
 | `lose_potion` / `lose_relic` / `lose_card [uncommon+]` | A price paid in **things**: one bottle, one tradeable relic, one card. Which one is rolled when the event opens and named on the button through the `<potion>` / `<relic>` / `<card>` holes, so the player knows what they are handing over before they press (Ranwid the Elder, We Meet Again!). |
-| `lose_gold <lo>-<hi>` | An ask that **varies**: rolled when the event opens, clamped to what the purse holds, and quoted on the button through `<gold>` ("Give 3 Gold"). A literal amount is still a fixed price. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker (the WAND's, since the relic became one — `docs/wands-design.md` §5.2) — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
 

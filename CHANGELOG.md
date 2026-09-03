@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Woman in Blue, and Ranwid's gold ask settles at two.**
+
+  Slay the Spire's pale woman: a shop with one thing on the shelf and no
+  interest in your browsing. Buy one, two or three potions at a Gold each, or
+  leave and be shown out by her fist. **It needed nothing from the format** —
+  three prices for the same thing and a way out, authored entirely out of tokens
+  the sheet already had, which is the first event since Whispering Hollow that
+  can be said of.
+
+  `gain_potion N` OFFERS rather than grants, so the bottles arrive on the
+  ordinary drop screen: the same three-offers-and-your-3x3 the Potion Lab embeds
+  and every kill drop opens. Buying two potions ends with the same drag into the
+  same nine slots as finding two, and the nine-piece cap gets its say. Her fist
+  is prose — `Leave` is `nothing`, and the WHAM is the Result cell. Slay the
+  Spire charges Health for walking out; an event that opens on a three-Gold
+  Requirement and then bills you for declining is a mugging rather than a shop.
+
+  **We Meet Again's gold price is a flat 2**, where it was authored as a rolled
+  2-6 on the original's "varying amount". This economy is priced in single
+  digits, where 2 to 6 is the difference between a small ask and most of what you
+  have — a price that swings that far is one nobody can plan around. The
+  `lose_gold <lo>-<hi>` form and the `<gold>` hole went with it: a DSL token with
+  no author is a token nobody maintains, and the button says the number outright
+  now.
+
 - **We Meet Again!, and the man you have now met twice.**
 
   Slay the Spire's Ranwid, which makes Ranwid the Elder (Slay the Spire 2) the

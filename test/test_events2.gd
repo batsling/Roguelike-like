@@ -1730,59 +1730,38 @@ func test_he_asks_for_two_gold_before_he_turns_up_at_all() -> void:
 	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 2")
 
 
-# The prices are DISPLAYED, which is the original's own rule. Each is rolled when
-# the event opens and lands in the button through its hole.
+# The prices are DISPLAYED, which is the original's own rule. The two that the run
+# picks are rolled when the event opens and land in the button through their
+# holes; the gold is a flat two and simply says so.
 func test_every_price_is_named_on_its_button() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
 	EventSystem.begin_event(ev)
 	var potion: Dictionary = _choice(ev, "give_potion")
-	var gold: Dictionary = _choice(ev, "give_gold")
+	var gold: Dictionary = _choice(ev, "give_2_gold")
 	var card: Dictionary = _choice(ev, "give_card")
 	assert_eq(EventSystem.fill_name_holes(String(potion["text"]), potion),
 		"Give %s" % EventSystem.offered_potion_name())
 	assert_eq(EventSystem.fill_name_holes(String(card["text"]), card),
 		"Give %s" % EventSystem.offered_card_name())
-	assert_eq(EventSystem.fill_name_holes(String(gold["text"]), gold),
-		"Give %d Gold" % EventSystem.offered_gold())
-	for line in [String(potion["text"]), String(gold["text"]), String(card["text"])]:
+	assert_eq(String(gold["text"]), "Give 2 Gold", "the number is on the button")
+	for line in [String(potion["text"]), String(card["text"])]:
 		assert_true(line.contains("<"), "the .tres carries the holes: %s" % line)
 
 
-# "A varying amount", between the floor and the ceiling — and never more than the
-# purse holds, which is the original's rule and the reason the button can promise
-# a number at all.
-func test_the_gold_he_asks_for_varies_and_is_never_more_than_you_have() -> void:
+# Two Gold, every time. The ask was authored as a rolled 2-6 for a while, on the
+# original's "varying amount"; it is a flat price now, and the button and the
+# press have to agree on it.
+func test_he_asks_for_two_gold_and_charges_two() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
-	var seen: Dictionary = {}
-	for _i in range(40):
+	for _i in range(10):
 		GameState.gold = 9
 		EventSystem.begin_event(ev)
-		var ask: int = EventSystem.offered_gold()
-		assert_between(ask, 2, 6, "between the floor and the ceiling")
-		seen[ask] = true
-	assert_gt(seen.size(), 1, "varying, not a fixed price wearing a hole")
-
-	# Two Gold in the purse is a two-Gold ask, never a six-Gold one he cannot be paid.
-	for _i in range(20):
-		GameState.gold = 2
-		EventSystem.begin_event(ev)
-		assert_eq(EventSystem.offered_gold(), 2, "he asks for what you have")
-
-
-# And the press charges what the button quoted. A fresh roll here would take an
-# amount the player never agreed to.
-func test_the_gold_press_charges_the_number_on_the_button() -> void:
-	var ev: EventData2 = _event(AGAIN)
-	_stock_again()
-	GameState.gold = 9
-	EventSystem.begin_event(ev)
-	var quoted: int = EventSystem.offered_gold()
-	var held: int = GameState.inventory.size()
-	EventSystem.resolve_choice(ev, _choice(ev, "give_gold"), 0)
-	assert_eq(GameState.gold, 9 - quoted, "exactly what it said")
-	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
+		var held: int = GameState.inventory.size()
+		EventSystem.resolve_choice(ev, _choice(ev, "give_2_gold"), 0)
+		assert_eq(GameState.gold, 7, "exactly the two the button said")
+		assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
 
 
 # The card he takes is one worth studying: Uncommon or better, which is what the
@@ -1859,3 +1838,62 @@ func _has_effect_type(ev: EventData2, type: String) -> bool:
 			if eff is Dictionary and String(eff.get("type", "")) == type:
 				return true
 	return false
+
+
+# --- The Woman in Blue: a shop with one item and no browsing ----------------
+#
+# Slay the Spire's pale woman. Three prices for the same thing, a Gold a bottle,
+# and a fourth button that is her fist. The potions arrive the way every other
+# payout does — offered on the drop screen, dragged into the pack — because a
+# potion bought is a potion found as far as the nine slots are concerned.
+
+const BLUE := &"the_woman_in_blue"
+
+
+func test_she_pulls_you_in_for_the_price_of_the_whole_shelf() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 3
+	assert_true(EventSystem.requirement_met(ev), "three Gold is the whole wall")
+	GameState.gold = 2
+	assert_false(EventSystem.requirement_met(ev),
+		"a purse that cannot clear her out is not shown the shop")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 3")
+
+
+func test_each_shelf_costs_a_gold_a_bottle() -> void:
+	var ev: EventData2 = _event(BLUE)
+	for n in [1, 2, 3]:
+		GameState.gold = 3
+		GameState.loot_items.clear()
+		var choice: Dictionary = _choice(ev, "buy_%d_potion%s" % [n, "" if n == 1 else "s"])
+		assert_string_contains(EventSystem.describe_choice(choice, 0), "-%d Gold" % n)
+		EventSystem.resolve_choice(ev, choice, 0)
+		assert_eq(GameState.gold, 3 - n, "a Gold a bottle")
+		assert_eq(GameState.loot_potions().size(), n, "and that many bottles")
+
+
+# The purse is what the buttons are gated on, one by one — the Requirement is
+# checked when the event is DEALT, and the gates are what hold if it moves while
+# the modal is up.
+func test_a_shelf_you_cannot_afford_is_not_offered() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 1
+	assert_true(EventSystem.choice_available(_choice(ev, "buy_1_potion"), {}))
+	assert_false(EventSystem.choice_available(_choice(ev, "buy_2_potions"), {}))
+	assert_false(EventSystem.choice_available(_choice(ev, "buy_3_potions"), {}))
+	assert_true(EventSystem.choice_available(_choice(ev, "leave"), {}),
+		"walking out is always on the table")
+
+
+func test_walking_out_costs_nothing_but_your_dignity() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 3
+	GameState.loot_items.clear()
+	var hp: int = GameState.hp
+	var leave: Dictionary = _choice(ev, "leave")
+	assert_true(EventSystem.does_nothing(leave), "the fist is prose, not damage")
+	var out: Dictionary = EventSystem.resolve_choice(ev, leave, 0)
+	assert_eq(GameState.gold, 3)
+	assert_eq(GameState.hp, hp, "she does not actually hit you for Health")
+	assert_eq(GameState.loot_potions().size(), 0)
+	assert_string_contains(String(out["result"]), "WHAM")
