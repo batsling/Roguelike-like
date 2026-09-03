@@ -11,6 +11,57 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two from Tiny Rogues: the Potion Lab and the Golden Monkey.**
+
+  Both wordless, the way the Arcade Room is, and between them they are the same
+  authoring lesson from opposite ends — one needed a new column and no new
+  tokens, the other a new token and no new column.
+
+  **The Potion Lab is an event that is a table rather than a question.** Three
+  potions on the bench when it opens and one button, `Leave`. There is no
+  *Take*: a button in front of a table you can already see is a click that
+  answers a question nobody asked. What draws the bench is the REAL drop screen
+  — `LootDropModal.embed`, the section the post-combat screen already carries —
+  mounted between the event's machines and its buttons, so the bottles, the
+  player's own 3×3, the drag between them, the bin and "use it where you stand"
+  behave exactly as they do everywhere else. Nothing about a potion had to be
+  re-taught to the event modal.
+
+  It arrives on a new event-level column, **`Opens With`**: what the event is
+  already doing before anything is pressed, as `offer_loot <kind> <n>`. A
+  sibling of `Prompt` rather than an `Effect` cell, because an `Effect` fires
+  when a choice is pressed and this fires when the event opens — and
+  deliberately not the whole DSL, since a cell that could write `lose_hp 3` here
+  would be an event that hurts you for reading it. It is an OFFER and not a
+  payout, which is the whole difference from `gain_potion 3`: that token hands
+  the same three pieces over, this one puts them on a table and lets you take
+  what you want. Anything still on the bench when you leave is left there, the
+  way the arcade's cabinets are. Rolled once, when the event opens, so a repaint
+  cannot deal a different three.
+
+  **The Golden Monkey is a point of Luck against a curse you don't get to
+  pick** — `gain_stat luck 1; add_curse random`. The roll happens when the
+  button is pressed, so the line under it says "+1 random Curse" and names
+  nothing; naming one there would be the button lying about which. **A random
+  curse is never a permanent one**, and that is the rule rather than the
+  monkey's exception: a permanent curse is a price something specific charges —
+  Curse of the Bell is what the Calling Bell hangs on you — and a random draw
+  that could land one turns an idle button into a coin flip on the rest of the
+  run. A curse authored with `Timer: 0` opts itself out of every random draw by
+  saying so.
+
+  Ranwid the Elder's credit line is filled in in the same pass: Slay the Spire 2
+  — and one bug the new tests caught with him: he could hand back the relic he
+  had just eaten. The moment a relic leaves the pack it is a relic you do not
+  own, so `gain_random_item`'s "prefer what you don't have" preferred it. What
+  a choice takes is now written into the effect context (`given_item`) and the
+  payout in the same breath excludes it.
+
+  Both events ship with **placeholder art** at `images2.0/events/PotionLab.png`
+  and `GoldenMonkey.png` — a flat panel with the name on it, so the catalogue's
+  "every event has art" test has something true to check. Drop the real PNGs at
+  the same paths and nothing else has to change.
+
 - **Ranwid the Elder, and prices paid in things rather than in numbers.**
 
   A new event (`docs/event-sheet-authoring.md` §14): the oldest person you have

@@ -424,12 +424,17 @@ func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
 # Names what it rolled into `ctx` so the prose can say what appeared ({ITEM}).
 func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 	var count: int = maxi(1, int(effect.get("value", 1)))
+	# What this very choice took off the player, if anything (see _h_lose_relic).
+	# Never paid back as a "new" relic: a trade that returns what you traded is not
+	# a trade, and it is the shape `prefer what you don't own` falls into the
+	# instant the cost is charged before the payout.
+	var given := StringName(ctx.get("given_item", &""))
 	var names: Array = []
 	for _i in range(count):
 		var pool: Array = Data.reward_item2_pool().filter(
-			func(it): return not GameState.has_item(it.id))
+			func(it): return not GameState.has_item(it.id) and it.id != given)
 		if pool.is_empty():
-			pool = Data.reward_item2_pool()
+			pool = Data.reward_item2_pool().filter(func(it): return it.id != given)
 		if pool.is_empty():
 			break
 		var pick: ItemData = pool[_rng.randi_range(0, pool.size() - 1)]
@@ -447,8 +452,14 @@ func _h_lose_potion(_effect: Dictionary, _ctx: Dictionary) -> void:
 	EventSystem.take_offered_potion()
 
 
-func _h_lose_relic(_effect: Dictionary, _ctx: Dictionary) -> void:
-	EventSystem.take_offered_relic()
+# Written into `ctx` so a payout in the SAME choice cannot hand it straight back.
+# Ranwid eats your relic and pays two; without this, one of the two could be the
+# relic he just ate, because the moment it leaves the pack it is a relic you do
+# not own and so the payout's "prefer what you don't have" rule prefers it.
+func _h_lose_relic(_effect: Dictionary, ctx: Dictionary) -> void:
+	var eaten: StringName = EventSystem.take_offered_relic()
+	if eaten != &"":
+		ctx["given_item"] = eaten
 
 # DAMAGE, as against `lose_hp`'s bill: it resolves on the battlefield, so the tries
 # absorb it first and the player's own statuses scale it (Burn's "or take 3

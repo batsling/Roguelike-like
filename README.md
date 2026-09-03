@@ -734,6 +734,7 @@ still exists under an old name silently generates the wrong content.
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
+| `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
 | `_chart_system_vocabulary.py` | one-shot: settled the `chart` sheet's System column on plural (`Bomb`/`Bombs` and three more collided, and a group-by rendered each as two systems), trimmed stray whitespace, and renamed the `Arcade` node to `Arcade Room`. |
@@ -839,7 +840,7 @@ The generator is **strict on purpose** — a typo'd stat or a dangling curse id 
 an event that silently never fires, so it raises instead. Read the error, it
 names the row and the cell.
 
-#### The row: fourteen event columns, then four choice groups
+#### The row: fifteen event columns, then four choice groups
 
 | Column | Fill in |
 |---|---|
@@ -852,6 +853,7 @@ names the row and the cell.
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
 | `Prompt` | The prose at the top of the modal. Blank is legal — a wordless event stacks its art *above* the choices instead of beside them (see "Art"). |
+| `Opens With` | What the event is already doing when it opens, before anything is pressed. One token: `offer_loot <kind> <n>` — n rolled pieces laid out as the **real drop table inside the event's body**, with the player's live 3×3 and its bin beside them, so taking one is the same drag it is anywhere else (the Potion Lab). Blank on every other event. |
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
 | `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
 
@@ -897,7 +899,7 @@ And the event-only forms:
 needs keys 1                           only offered if the player HAS it (a check, not a charge)
 needs Immerse > 0                      only offered at this point in the event (names another Choice)
 add_goal "<condition>" [for <n> games] -> <reward>
-add_curse <curse_id> [for <n> games]
+add_curse <curse_id> | random [for <n> games]
 play_game tag=<tag> -> <reward>
 chance <p>% -> <reward>
 ```
@@ -909,6 +911,10 @@ chance <p>% -> <reward>
   `shields`, `relics` (tradeable ones only) and `potions` (bottles carried).
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
+- **`add_curse random`** draws the curse when the button is pressed instead of
+  naming one, and **never draws a permanent one** — a random roll that could hand
+  out Curse of the Bell would make an idle button a coin flip on the rest of the
+  run. The Golden Monkey is what it is for.
 - **`add_curse`** is that inverted — an objective you want to *not* meet, which
   bills you every time you do. It takes an id from the **`curses2.0` tab**, so
   the curse is authored once and any event can hand out the same one. On the

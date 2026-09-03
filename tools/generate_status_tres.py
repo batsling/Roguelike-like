@@ -124,6 +124,8 @@ STAT_LABELS = {
     "block": ("Block", "Block"),
     "push": ("Push", "Pushes"),
     "game_choices": ("Game Choice", "Game Choices"),
+    # A quantity, not a count of things: two Luck is "2 Luck", never "2 Lucks".
+    "luck": ("Luck", "Luck"),
 }
 
 

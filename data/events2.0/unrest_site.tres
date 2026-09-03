@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "UnrestSite"
 prompt = "You find a secluded Rest Site and start a fire to get some rest. Once the fire is started, it begins to swell, reaching not upwards but sideways towards a grove of oil-seeping trees."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

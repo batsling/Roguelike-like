@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built, illustrated and running.** Twelve events authored, generators
-and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §16 is how it runs and the little
+Status: **built, illustrated and running.** Fourteen events authored, generators
+and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §17 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -147,7 +147,7 @@ leaves the last eight cells empty.
 
 ## 3. Columns
 
-Fourteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
+Fifteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
 for N = 1…6.
 
 | Column | Scope | Meaning |
@@ -157,10 +157,11 @@ for N = 1…6.
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | **Leave blank.** An event fires after every game (§1.1), so this answers no placement question today. It stays wired — `Dead End` (a node with one connection), `Any`, `Game` (only ever on its own `Game`) — for the per-location work, and nothing authored sets it. |
 | `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`), and several of those joined by **`and`** (`gold>=2 and potions>=1 and relics>=1`) when an event needs more than one thing at once. Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13) — and `potions`, bottles carried, which is what Ranwid gates on (§14). |
-| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §16. |
+| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §17. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
 | `Prompt` | event | The prose at the top of the modal. **Blank is legal and changes the layout**: a wordless event stacks its illustration *above* the choices instead of standing it in a column beside them — see below. |
+| `Opens With` | event | What the event is **already doing when it opens**, before anything is pressed. One token: `offer_loot <kind> <n>` — n rolled pieces laid out as the real drop table *inside* the event's body, with the player's own 3×3 and its bin beside them (the Potion Lab, §15). Blank on every other event. Deliberately not the whole `Effect` DSL: this fires with nothing pressed, so an event that could charge Health here would be one that hurts you for reading it. |
 | `Goal Met` | event | Printed when a goal this event handed out has its condition **met**. |
 | `Goal Missed` | event | Printed when that goal's window closes unmet. Curses never expire, so they leave it blank. |
 | `Chance Won` | event | Printed when a `chance` roll (§5) lands. Blank on events with no gamble. |
@@ -437,6 +438,11 @@ takes a status id — the curse's condition, penalty and lifetime are authored
 once and any number of events can hand out the same one. It carries a window
 like `add_goal` does, defaulting to the curse's own `Timer`; `for <n> games`
 overrides it. Unrest Site (§9) is where it comes from.
+
+`add_curse random` is the one id that names no row (§15): the curse is drawn when
+the choice is taken, and **never a permanent one** — a random draw that could hand
+out Curse of the Bell would make an idle button a coin flip on the rest of the
+run, so a curse with `Timer: 0` is opted out of every random draw by saying so.
 
 `play_game` is the odd one out: it hands over neither a reward nor a goal but
 **sends the player somewhere**. `play_game tag=mecha` drops them into a random
@@ -1075,7 +1081,7 @@ the same choices twice**.
 Every row is an offer; there is **no "Trade Nothing"**. The button already names
 both relics, so the prose on the way out is only the trader's own line — the
 same one whichever row you point at. And a run he wants nothing from shows no
-rows at all, which the modal already answers with its own **Leave** (§16,
+rows at all, which the modal already answers with its own **Leave** (§17,
 `EventModal2`): a decline button would be a fourth choice that exists purely to
 say what an empty list already says.
 
@@ -1091,7 +1097,7 @@ event off the node rather than opening it half-empty.
 
 ### The offers are rolled once, when the event opens
 
-Placement is hashed so a card's badge cannot change under the player (§16). A
+Placement is hashed so a card's badge cannot change under the player (§17). A
 trade cannot be: it depends on the **inventory**, not on the node. So the three
 pairings are rolled once, in `EventSystem.begin_event`, and held for as long as
 the modal is up — re-rolling per repaint would rename the button under the
@@ -1188,7 +1194,81 @@ and no new column, no new group and no change to how an event is drawn.
 
 ---
 
-## 15. Other shapes, for reference
+## 15. The ninth and tenth: Potion Lab and Golden Monkey
+
+Two from **Tiny Rogues**, and both are **wordless** — no `Prompt` at all, the way
+the Arcade Room is. They are here together because they are the same authoring
+lesson from opposite ends: one needed a new column and no new tokens, the other a
+new token and no new column.
+
+### Potion Lab — the event that is a table rather than a question
+
+| | |
+|---|---|
+| `Prompt` | *(blank)* |
+| `Opens With` | `offer_loot potion 3` |
+
+| Choice | Effect |
+|---|---|
+| **Leave** | `nothing` |
+
+Three potions on the bench, and the only button on the event is walking out.
+There is no *Take*: a button in front of a table you can already see is a click
+that answers a question nobody asked.
+
+**What draws the bench is the real drop screen.** `LootDropModal.embed` — the
+same section the post-combat screen carries (`games-first-redesign.md` §4.3) —
+mounted between the event's machines and its buttons. So the three bottles, the
+player's own 3×3, the drag between them, the bin, the info card and "use it where
+you stand" all behave here exactly as they do everywhere else, and *nothing about
+a potion had to be re-taught to the event modal*.
+
+**Why `Opens With` is a column and not an `Effect` cell.** An `Effect` fires when
+a choice is pressed, and this fires when the event opens. It is a sibling of
+`Prompt` — what the event puts in front of you before it asks anything — which is
+also why it sits next to it on the sheet. Deliberately **not** the whole DSL:
+this runs with nothing pressed, so a cell that could write `lose_hp 3` here would
+be an event that hurts you for reading it. One token, `offer_loot <kind> <n>`,
+over the kinds `roll_loot_entry` knows (`loot`, `scroll`, `pill`, `potion`,
+`card`, `wand`).
+
+**It is an OFFER and not a payout**, which is the whole difference from
+`gain_potion 3` in an `Effect` cell. That token rolls the same three pieces and
+hands them over (through the same drop screen, stacked *over* the event); this
+one puts them on a table inside the event and lets the player take what they
+want. Anything still on the bench when they press **Leave** is left there, the
+way the arcade's cabinets are.
+
+The pieces are rolled once, in `EventSystem.begin_event`, and held for as long as
+the event is up — the modal repaints on every press, and a per-repaint roll would
+deal a different three each time the player looked away.
+
+### Golden Monkey — a curse you do not get to pick
+
+| Choice | Effect |
+|---|---|
+| **Touch the Golden Monkey** | `gain_stat luck 1; add_curse random` |
+| **Leave** | `nothing` |
+
+A point of Luck against a curse, and *which* curse is not yours to know: the roll
+happens when the button is pressed, so the line under it can only say **"+1
+random Curse"**. Naming one there would be the button lying about which.
+
+**`add_curse random` never rolls a permanent curse**, and that is the rule rather
+than the monkey's exception. A permanent curse is a price something *specific*
+charges for something specific — Curse of the Bell is what the Calling Bell hangs
+on you — and a random draw that could land one turns an idle button into a coin
+flip on the rest of the run. So "a random curse" means a curse with a clock on
+it, and a curse authored with `Timer: 0` opts itself out of every random draw by
+saying so. `EventSystem.roll_random_curse` is the one place that holds.
+
+The result prose is blank on both choices, on purpose: what the player needs to
+read is what they caught, and that line is composed from the curse itself
+(`CurseData2.describe()`) rather than authored, so it names whichever one landed.
+
+---
+
+## 16. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -1209,7 +1289,7 @@ and it turned out not to be plain at all: see §12.)
 
 ---
 
-## 16. How it runs
+## 17. How it runs
 
 Built and under test (`test/test_events2.gd`). The pieces, and the one thing each
 of them is really solving:

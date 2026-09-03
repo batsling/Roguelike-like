@@ -34,6 +34,13 @@ extends Control
 # next to two lonely buttons in a half-empty column. Stacked, the art is the
 # event's only voice and sits where you read it first.
 #
+# UNLESS THE EVENT OPENS WITH A TABLE (`EventData2.opens_with` — the Potion Lab,
+# §15). Then the body is the real drop screen embedded in this column: the pieces
+# on the bench, the player's own 3x3 and its bin, the same drag as every other
+# payout, with the event's `Leave` under it. A wordless event with a table is not
+# a picture and two buttons after all, so the art goes back beside it — stacked,
+# it would spend 190px of the height the 3x3 needs to stand up in one piece.
+#
 # The panel SIZES ITSELF TO ITS CONTENT (see _fit) and only starts scrolling once
 # that would overflow the window. So a two-option event is a small card and a
 # nine-option one is a full-height panel with a scrolling column beside the art,
@@ -61,6 +68,10 @@ const STACKED_ART_HEIGHT := 190.0
 # scrolling column. Subtracted from the viewport cap so the panel as a whole
 # stays inside the window.
 const HEADER_ALLOWANCE := 110.0
+# How tall an embedded drop table is given inside an event (§15). The 3x3 is three
+# rows of LootSlot plus its heading; below this the pack is cut off mid-grid, and
+# a slot you cannot see is a slot you cannot drag a bottle into.
+const LOOT_BODY_H := 400.0
 
 var _event: EventData2 = null
 var _layer: CanvasLayer = null
@@ -90,6 +101,15 @@ var _scroll: ScrollContainer = null
 # Nothing about the event resolves while it is hidden; it is only out of the way.
 var _hidden: bool = false
 var _objects_box: HFlowContainer = null
+# The table an event OPENS with (`EventData2.opens_with`, §15) — the Potion Lab's
+# three bottles, drawn as the real drop screen embedded in the event's body. Its
+# own answer is the drag; the event's `Leave` is what walks out on the rest.
+var _loot_box: VBoxContainer = null
+var _loot_section: LootDropModal = null
+# The node the modal was opened over — the overworld. The embedded table's use
+# modal and info card mount there rather than on this panel, the same way the
+# post-combat screen hands its page down.
+var _host: Node = null
 # The machines that were already standing at this game when the event opened.
 # Everything spawned after it is the event's own, and goes when the event does.
 var _objects_before: Array = []
@@ -118,6 +138,7 @@ static func open(host: Node, event: EventData2, game_id: StringName = &"") -> Ev
 
 func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	_event = event
+	_host = host
 	_layer = CanvasLayer.new()
 	_layer.layer = 123
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -192,7 +213,12 @@ func _build() -> void:
 	# must not make the picture jump out of the stack and into a side column
 	# mid-event. A wordless event that goes on to say something keeps the layout
 	# it opened in.
-	var stacked: bool = _event.prompt == ""
+	# An event with no prose and no table is a picture and two buttons, and the
+	# picture goes above them. An event that opens with a TABLE has a body after
+	# all — the table is the body — so the art stands beside it in the column,
+	# exactly as it does beside prose. Stacking it there would spend 190px of the
+	# height the 3x3 needs to stand up in one piece.
+	var stacked: bool = _event.prompt == "" and _event.opens_with.is_empty()
 	if art != null and not stacked and _panel_size().x >= TWO_COLUMN_MIN_WIDTH:
 		body.add_child(_art_column(art))
 
@@ -234,6 +260,14 @@ func _build() -> void:
 	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_objects_drawn = []
 	_right.add_child(_objects_box)
+	# The table the event opened with, under the machines and above the buttons —
+	# the same place in the column, for the same reason: it is a thing standing in
+	# the room with you, and the choices below it are what you do about the room.
+	_loot_box = VBoxContainer.new()
+	_loot_box.add_theme_constant_override("separation", 8)
+	_loot_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right.add_child(_loot_box)
+	_mount_opening_loot()
 	_right.add_child(_rule())
 	_choice_box = VBoxContainer.new()
 	_choice_box.add_theme_constant_override("separation", 8)
@@ -422,6 +456,40 @@ func _render_objects() -> void:
 	for inst in _objects_drawn:
 		_objects_box.add_child(ObjectCard.make(inst))
 	_fit.call_deferred()
+
+
+# The event's own drop table (`EventData2.opens_with`, §15). The REAL one —
+# `LootDropModal.embed`, the same section the post-combat screen carries — so the
+# pieces, the player's live 3x3, the drag between them, the bin and "use it where
+# you stand" all behave here exactly as they do everywhere else. Nothing about a
+# potion had to be re-taught to this file.
+#
+# The pieces are EventSystem's, rolled when the event opened, so a repaint cannot
+# deal a different three.
+func _mount_opening_loot() -> void:
+	if _loot_box == null or _loot_section != null:
+		return
+	var offer: Array = EventSystem.opening_loot()
+	if offer.is_empty():
+		return
+	# A floor tall enough for the pack to stand up in one piece: the whole body of
+	# this event is the table, where the post-combat screen's is one column of
+	# three, so the section is given room rather than a scrollbar.
+	_loot_section = LootDropModal.embed(_page(), self, _loot_box, offer, true, LOOT_BODY_H)
+	# The table changing changes how tall the panel wants to be — a piece taken is
+	# a cell gone from the offer grid — and the panel is sized to its content.
+	_loot_section.changed.connect(func(): _fit.call_deferred())
+	_loot_section.answered.connect(func(_taken: Array):
+		_loot_section = null
+		_fit.call_deferred())
+
+
+# The screen the embedded table's own modals mount over: the overworld, not this
+# panel. `_host` is what `open` was given; outside a run (the dev panel, a test
+# that builds the modal on a bare node) it is whatever opened it, which is the
+# same fallback LootDropModal makes for itself.
+func _page() -> Node:
+	return _host if _host != null and is_instance_valid(_host) else self
 
 
 # Same machines, in the same order. By reference (is_same), because two untouched

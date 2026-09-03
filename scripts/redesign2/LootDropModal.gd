@@ -130,6 +130,12 @@ const EMBED_W := SINGLE_W + ROW_GAP + PACK_W + MARGIN * 2
 # stops a short column from collapsing the scroll to nothing and hiding the
 # question entirely.
 const EMBED_BODY_MIN_H := 200.0
+# …and what THIS embed was given instead, when the host can afford more. The
+# post-combat screen's column is one of three on a full screen, so 200 and a
+# scrollbar is the right floor there; an event modal whose whole body is the
+# table can hand over enough room for the 3x3 to stand up in one piece, and a
+# pack cut off at two rows is a pack the player cannot drop a bottle into.
+var _body_min_h: float = EMBED_BODY_MIN_H
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
 const LAYER := 122
 const USE_LAYER := 130
@@ -166,9 +172,11 @@ func _start(host: Node, offer) -> void:
 # than over the page. `page` is the overworld — the use modal, the info card and
 # the pack-strip refresh all still go to it — and `host` is the node the
 # controller parks on, drawing nothing and taking no room.
-static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true) -> LootDropModal:
+static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true,
+		body_min_h: float = EMBED_BODY_MIN_H) -> LootDropModal:
 	var modal := LootDropModal.new()
 	modal._spendable = spendable
+	modal._body_min_h = maxf(EMBED_BODY_MIN_H, body_min_h)
 	modal._slot = slot
 	modal._page_node = page
 	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -633,7 +641,7 @@ func _fit_body(box: Control) -> void:
 	# short column cannot collapse the scroll to nothing and hide the question.
 	if _slot != null:
 		_body_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		_body_scroll.custom_minimum_size.y = EMBED_BODY_MIN_H
+		_body_scroll.custom_minimum_size.y = _body_min_h
 		return
 	var content: float = box.get_combined_minimum_size().y
 	# Against the room a modal is actually ALLOWED (ModalScaffold.free_rect), not

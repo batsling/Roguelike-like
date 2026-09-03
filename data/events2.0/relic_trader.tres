@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "RelicTrader"
 prompt = "You turn a corner and suddenly, a shadowy figure is just standing there. He pivots to face you. “Welcome! What're ya trading?” The figure inquires as he flares open his cloak to reveal a slew of suspicious wares."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

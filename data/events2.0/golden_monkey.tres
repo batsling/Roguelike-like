@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_golden_monkey"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"golden_monkey"
+display_name = "Golden Monkey"
+source_game = "Tiny Rogues"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {}
+trigger = "after"
+rarity = "Common"
+file = "GoldenMonkey"
+prompt = ""
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "touch_the_golden_monkey", "text": "Touch the Golden Monkey", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "gain_stat", "stat": "luck", "value": 1}], "effects_text": "+1 Luck", "goal": {}, "curse": {"random": true, "games": 0}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

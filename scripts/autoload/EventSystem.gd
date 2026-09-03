@@ -264,6 +264,11 @@ var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
 # drawn, and a per-repaint roll would rename it under the player's cursor.
 var _offered_potion: Dictionary = {}
 var _offered_relic: StringName = &""
+# What the event is already OFFERING when it opens (`EventData2.opens_with`) —
+# the Potion Lab's three bottles. Rolled here, once, for the same reason the
+# trade pairing is: the modal repaints on every press and a per-repaint roll
+# would deal three different potions each time the player looked away.
+var _opening_loot: Array = []
 
 
 # An event is opening: roll whatever live content it needs. Called by EventModal2
@@ -272,6 +277,7 @@ func begin_event(ev: EventData2) -> void:
 	_trade_offers.clear()
 	_offered_potion = {}
 	_offered_relic = &""
+	_opening_loot.clear()
 	if ev == null:
 		return
 	if _wants_trades(ev):
@@ -280,6 +286,7 @@ func begin_event(ev: EventData2) -> void:
 		_offered_potion = _roll_offered_potion()
 	if _wants(ev, "lose_relic"):
 		_offered_relic = _roll_offered_relic()
+	_opening_loot = _roll_opening_loot(ev)
 
 
 func _wants_trades(ev: EventData2) -> bool:
@@ -411,6 +418,50 @@ func _roll_offered_relic() -> StringName:
 	return StringName(mine[_roll_rng().randi_range(0, mine.size() - 1)])
 
 
+# --- what the event is offering before it asks anything ---------------------
+#
+# `EventData2.opens_with` (§15) — the Potion Lab's bench. The pieces are rolled
+# here rather than granted: nothing has entered the pack, and nothing will until
+# the player drags one in. What draws them is EventModal2, which embeds the same
+# drop table every other payout uses.
+func _roll_opening_loot(ev: EventData2) -> Array:
+	var opens: Dictionary = ev.opens_with
+	if opens.is_empty() or String(opens.get("type", "")) != "offer_loot":
+		return []
+	var kind: String = String(opens.get("kind", "loot"))
+	var out: Array = []
+	for _i in range(maxi(1, int(opens.get("value", 1)))):
+		var entry: Dictionary = GameState.roll_loot_entry(kind)
+		if not entry.is_empty():
+			out.append(entry)
+	return out
+
+
+func opening_loot() -> Array:
+	return _opening_loot
+
+
+# The curse behind `add_curse random` (§16). PERMANENT CURSES ARE NOT IN THE BAG,
+# and that is the rule rather than the Golden Monkey's own exception: a permanent
+# curse is a price something specific charges for something specific — Curse of
+# the Bell is what the Calling Bell hangs on you — and a random roll that can land
+# one turns every idle button in the game into a coin flip on the rest of the run.
+# So "a random curse" means a curse with a clock on it, and a curse authored with
+# `timer: 0` is opted out of every random draw by saying so.
+#
+# &"" when nothing qualifies, which the caller treats as "no curse" rather than
+# reaching for a permanent one to fill the gap.
+func roll_random_curse() -> StringName:
+	var pool: Array = []
+	for cd in Data.all_curses2():
+		if cd is CurseData2 and cd.timer > 0:
+			pool.append(cd.id)
+	if pool.is_empty():
+		return &""
+	pool.sort_custom(func(a, b): return String(a) < String(b))
+	return StringName(pool[_roll_rng().randi_range(0, pool.size() - 1)])
+
+
 func offered_potion() -> Dictionary:
 	return _offered_potion
 
@@ -431,15 +482,16 @@ func take_offered_potion() -> bool:
 	return false
 
 
-# And the rolled relic.
-func take_offered_relic() -> bool:
+# And the rolled relic. Returns WHICH one went, so the payout in the same breath
+# can avoid handing it straight back — see EffectSystem's `given_item`.
+func take_offered_relic() -> StringName:
 	if _offered_relic == &"":
-		return false
+		return &""
 	for it in GameState.inventory:
 		if it is ItemData and it.id == _offered_relic:
 			GameState.remove_item(it)
-			return true
-	return false
+			return _offered_relic
+	return &""
 
 
 # `<give>` / `<get>` / `<potion>` / `<relic>` filled in from what this event
@@ -851,8 +903,18 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 
 	var curse: Dictionary = choice.get("curse", {})
 	if not curse.is_empty():
-		GameState.add_curse_goal(StringName(curse.get("curse", &"")), ev.id,
-			int(curse.get("games", 0)))
+		# `add_curse random` names no row: the curse is drawn HERE, when the
+		# button is pressed, so the player finds out what they caught at the same
+		# moment the monkey decides. What it says on the way out names it —
+		# `words` is what the modal prints under the result.
+		var cid := StringName(curse.get("curse", &""))
+		if bool(curse.get("random", false)):
+			cid = roll_random_curse()
+			var caught: CurseData2 = Data.get_curse2(cid)
+			if caught != null:
+				words.append("%s: %s" % [caught.display_name, caught.describe()])
+		if cid != &"":
+			GameState.add_curse_goal(cid, ev.id, int(curse.get("games", 0)))
 
 	# A gamble's prose comes from the EVENT, because it depends on the roll rather
 	# than on which button produced it — Scrap Ooze's two reaches print the same
@@ -1053,6 +1115,12 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 
 	var curse: Dictionary = choice.get("curse", {})
 	if not curse.is_empty():
+		# A RANDOM curse cannot be named before it is rolled, and must not be:
+		# naming one on the button would be the button lying about which. What
+		# the player is owed is the shape of the bargain — that a curse is coming
+		# and that it has a clock on it, which every curse in the bag does.
+		if bool(curse.get("random", false)):
+			parts.append("+1 random Curse")
 		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
 		if cd != null:
 			var games: int = int(curse.get("games", 0))

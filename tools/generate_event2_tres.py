@@ -176,6 +176,11 @@ def parse_result_cell(raw) -> list:
 GATE_CHOICE_RE = re.compile(r"^([A-Za-z0-9_' ]+?)\s*(<=|>=|==|=|<|>)\s*(\d+)$")
 GOAL_RE = re.compile(r'^add_goal\s+"([^"]*)"\s*(?:for\s+(\d+)\s+games?)?\s*$', re.I)
 CURSE_RE = re.compile(r"^add_curse\s+([a-z0-9_]+)\s*(?:for\s+(\d+)\s+games?)?\s*$", re.I)
+# `add_curse random` is the one id that names no row: the curse is drawn when the
+# choice is taken rather than authored (the Golden Monkey, §16). It never rolls a
+# PERMANENT curse — see EventSystem.roll_random_curse for why that is the rule
+# rather than the monkey's own exception.
+RANDOM_CURSE = "random"
 PLAY_RE = re.compile(r"^play_game\s+tag\s*=\s*([A-Za-z0-9_' -]+?)\s*$", re.I)
 # `chance 25%` or `chance {35+10*X}%` — the percent is an ordinary reward amount,
 # so it takes a {expr} hole and climbs with X exactly as a cost does.
@@ -434,6 +439,10 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
         m = CURSE_RE.match(clause)
         if m:
             cid = m.group(1).lower()
+            if cid == RANDOM_CURSE:
+                out["curse"] = {"random": True,
+                                "games": int(m.group(2)) if m.group(2) else 0}
+                continue
             if cid not in curse_ids:
                 raise ValueError("events2.0 %s: add_curse names unknown curse %r "
                                  "(the curses sheet has: %s)"
@@ -516,6 +525,40 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
 
 
 # --- one row ----------------------------------------------------------------
+
+# --- the Opens With column --------------------------------------------------
+
+# What an event can already be DOING when it opens, before a button is pressed.
+# One token today, and deliberately a closed list rather than the whole reward
+# DSL: this fires with nothing pressed, so an event that could charge Health here
+# would be one that hurts you for reading it.
+#
+#   offer_loot <kind> <n>    n rolled pieces on the table, drawn as the real drop
+#                            screen inside the event's body — the pieces, the
+#                            player's own 3x3, the bin, the same drag as
+#                            everywhere else (the Potion Lab, §15).
+OFFER_RE = re.compile(r"^offer_loot\s+([a-z]+)\s+(\d+)\s*$", re.I)
+OFFER_KINDS = ("loot", "scroll", "pill", "potion", "card", "wand")
+
+
+def parse_opens_with(raw, where):
+    s = dsl._clean(raw)
+    if not s:
+        return {}
+    m = OFFER_RE.match(s)
+    if not m:
+        raise ValueError('events2.0 %s: cannot parse Opens With %r — expected '
+                         '"offer_loot <kind> <n>"' % (where, s))
+    kind = m.group(1).lower()
+    if kind not in OFFER_KINDS:
+        raise ValueError("events2.0 %s: Opens With names unknown loot kind %r "
+                         "(known: %s)" % (where, kind, ", ".join(OFFER_KINDS)))
+    n = int(m.group(2))
+    if n < 1:
+        raise ValueError("events2.0 %s: Opens With offers %d pieces — a table "
+                         "with nothing on it is a blank cell" % (where, n))
+    return {"type": "offer_loot", "kind": kind, "value": n}
+
 
 def _tier_tags(raw, where):
     s = dsl._clean(raw)
@@ -621,6 +664,7 @@ def event_tres(row, curse_ids, item_ids=(), enemy_tags=(), object_tags=()) -> tu
         'rarity = "%s"' % dsl.gd_str(dsl._clean(row.get("Rarity")) or "Common"),
         'file = "%s"' % dsl.gd_str(dsl._clean(row.get("Image"))),
         'prompt = "%s"' % dsl.gd_str(dsl._clean(row.get("Prompt"))),
+        "opens_with = %s" % dsl.gd_value(parse_opens_with(row.get("Opens With"), name)),
         'goal_met = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Met"))),
         'goal_missed = "%s"' % dsl.gd_str(dsl._clean(row.get("Goal Missed"))),
         'chance_won = "%s"' % dsl.gd_str(dsl._clean(row.get("Chance Won"))),

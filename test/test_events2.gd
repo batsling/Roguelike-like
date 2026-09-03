@@ -120,6 +120,14 @@ func test_every_curse_an_event_hands_out_exists() -> void:
 			var curse: Dictionary = choice.get("curse", {})
 			if curse.is_empty():
 				continue
+			# `add_curse random` names no row on purpose (§15) — the curse is
+			# drawn when the button is pressed. What has to hold for one of those
+			# is that the bag is not empty, which is the assertion below.
+			if bool(curse.get("random", false)):
+				assert_ne(EventSystem.roll_random_curse(), &"",
+					"%s/%s rolls a random curse, so something must be rollable"
+						% [ev.id, choice.get("id", "")])
+				continue
 			var cid := StringName(curse.get("curse", &""))
 			assert_not_null(Data.get_curse2(cid),
 				"%s/%s references curse %s, which curses2.0 does not define"
@@ -1570,3 +1578,123 @@ func test_the_relic_arrives_in_the_pack_not_in_a_chest() -> void:
 	EventSystem.resolve_choice(ev, _choice(ev, "give_2_gold"), 0)
 	assert_eq(GameState.pending_chests, chests, "nothing was banked")
 	assert_eq(GameState.inventory.size(), held + 1, "it is already in the pack")
+
+
+# --- Potion Lab: an event that is a table, not a question -------------------
+#
+# Tiny Rogues' lab, and the first event to carry `opens_with` (§15). There is no
+# prose and no "Take" button: the three bottles are on the bench when the event
+# opens, and the only choice on it is walking out on whatever is left.
+
+const LAB := &"potion_lab"
+const MONKEY := &"golden_monkey"
+
+
+func test_the_lab_puts_three_bottles_on_the_bench() -> void:
+	var ev: EventData2 = _event(LAB)
+	assert_eq(ev.prompt, "", "the lab speaks in bottles")
+	assert_eq(ev.opens_with, {"type": "offer_loot", "kind": "potion", "value": 3},
+		"and says so in Opens With rather than in a choice")
+	GameState.loot_items.clear()
+	EventSystem.begin_event(ev)
+	var offer: Array = EventSystem.opening_loot()
+	assert_eq(offer.size(), 3, "three of them")
+	for entry in offer:
+		assert_eq(String(entry.get("type", "")), "potion", "all potions")
+
+
+# The table is an OFFER: nothing has entered the pack, and nothing will until the
+# player drags it there. This is the whole difference from `gain_potion 3`, which
+# rolls the same three pieces and hands them over.
+func test_the_bench_is_an_offer_and_not_a_payout() -> void:
+	GameState.loot_items.clear()
+	EventSystem.begin_event(_event(LAB))
+	assert_eq(EventSystem.opening_loot().size(), 3, "three on the bench")
+	assert_eq(GameState.loot_potions().size(), 0, "and none of them in the pack")
+
+
+# Rolled ONCE, when the event opens. The modal repaints on every press, and a
+# per-repaint roll would deal three different potions each time the player looked
+# away from the bench.
+func test_the_bench_is_not_redealt_while_the_event_is_open() -> void:
+	EventSystem.begin_event(_event(LAB))
+	var first: Array = EventSystem.opening_loot()
+	assert_eq(EventSystem.opening_loot(), first, "the same three bottles")
+	# A different event opening clears it — the bench belongs to the lab.
+	EventSystem.begin_event(_event(BATHS))
+	assert_eq(EventSystem.opening_loot().size(), 0,
+		"an event that opens with nothing opens with nothing")
+
+
+func test_leaving_the_lab_is_the_only_choice_on_it() -> void:
+	var ev: EventData2 = _event(LAB)
+	assert_eq(ev.choices.size(), 1, "no Take button in front of a table you can see")
+	var leave: Dictionary = _choice(ev, "leave")
+	assert_true(EventSystem.does_nothing(leave), "and it costs and pays nothing")
+
+
+# --- Golden Monkey: a point of Luck and a curse you don't get to pick -------
+
+func test_touching_the_monkey_pays_luck_and_costs_a_curse() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	assert_eq(ev.prompt, "", "wordless, like the lab")
+	var luck: int = GameState.luck
+	var curses: int = GameState.curse_goals.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "touch_the_golden_monkey"), 0)
+	assert_eq(GameState.luck, luck + 1, "+1 Luck")
+	assert_eq(GameState.curse_goals.size(), curses + 1, "and one curse for it")
+
+
+func test_leaving_the_monkey_alone_costs_nothing() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	var luck: int = GameState.luck
+	EventSystem.resolve_choice(ev, _choice(ev, "leave"), 0)
+	assert_eq(GameState.luck, luck, "no Luck")
+	assert_eq(GameState.curse_goals.size(), 0, "and no curse")
+
+
+# The button cannot name the curse, because the curse has not been rolled yet —
+# and naming one would be the button lying about which. What it owes the player is
+# the shape of the bargain.
+func test_the_monkey_offers_a_curse_without_naming_one() -> void:
+	var line: String = EventSystem.describe_choice(
+		_choice(_event(MONKEY), "touch_the_golden_monkey"), 0)
+	assert_string_contains(line, "+1 Luck")
+	assert_string_contains(line, "random Curse")
+	for cd in Data.all_curses2():
+		assert_false(line.contains(cd.display_name),
+			"no curse is named before it is rolled: %s" % line)
+
+
+# A RANDOM CURSE IS NEVER A PERMANENT ONE, and that is the rule rather than the
+# monkey's own exception: a permanent curse is the price something specific
+# charges — Curse of the Bell is what the Calling Bell hangs on you — and a random
+# roll that could land one turns an idle button into a coin flip on the whole run.
+func test_a_random_curse_is_never_a_permanent_one() -> void:
+	var permanent: Array = []
+	var timed: Array = []
+	for cd in Data.all_curses2():
+		if cd.timer > 0:
+			timed.append(cd.id)
+		else:
+			permanent.append(cd.id)
+	assert_gt(permanent.size(), 0, "the catalogue has a permanent curse to exclude")
+	assert_gt(timed.size(), 0, "and something to roll instead")
+	for _i in range(40):
+		var rolled: StringName = EventSystem.roll_random_curse()
+		assert_has(timed, rolled, "a random curse has a clock on it")
+		assert_does_not_have(permanent, rolled, "never the permanent one")
+
+
+func test_the_curse_the_monkey_rolls_is_the_curse_it_hands_over() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	var out: Dictionary = EventSystem.resolve_choice(
+		ev, _choice(ev, "touch_the_golden_monkey"), 0)
+	assert_eq(GameState.curse_goals.size(), 1, "one curse landed")
+	var cid := StringName(GameState.curse_goals[0].get("curse", &""))
+	var cd: CurseData2 = Data.get_curse2(cid)
+	assert_not_null(cd, "and it is a real one")
+	assert_gt(cd.timer, 0, "with a clock on it")
+	# …and the line the modal prints on the way out names what was caught, since
+	# the button could not.
+	assert_string_contains(String(out["text"]), cd.display_name)

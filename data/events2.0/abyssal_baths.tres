@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "AbyssalBaths"
 prompt = "You discover a secluded chamber. Steam rises from bubbling pools of hot liquid that shifts colors with hypnotic rhythm. Barnacled growths hang from the ceiling, dripping viscous fluid that hisses and writhes when it touches the surface. The air feels heavy, laden with salt and something unmistakably organic. As you approach the edge of the largest pool, the liquid ripples. The waters bubble more intensely as if anticipating your entry."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

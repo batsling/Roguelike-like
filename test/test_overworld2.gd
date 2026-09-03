@@ -8542,3 +8542,52 @@ func test_an_armed_bonus_survives_a_repaint() -> void:
 	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "the loop remembers, not the box")
 	assert_true(_ui._bonus_checks[0]["check"].button_pressed,
 		"and the rebuilt row comes back ticked")
+
+# --- the table an event opens with ------------------------------------------
+#
+# The Potion Lab (docs/event-sheet-authoring.md §15) is an event whose body IS a
+# drop table: three bottles on the bench when it opens, drawn as the real
+# LootDropModal section — the same pieces, the same live 3x3, the same drag — and
+# a Leave button under it. Nothing about a potion is re-taught to the event modal.
+
+func test_the_potion_lab_lays_its_bench_out_inside_the_event() -> void:
+	GameState.loot_items.clear()
+	assert_true(_ui.open_event(Data.get_event2(&"potion_lab")))
+	var modal = _ui._event_modal
+	await get_tree().process_frame
+	assert_eq(EventSystem.opening_loot().size(), 3, "three bottles on the bench")
+	assert_not_null(modal._loot_section,
+		"and the real drop table is standing inside the event")
+	assert_true(modal._loot_box.get_child_count() > 0, "with a panel in the column")
+	assert_true(modal._loot_box.get_index() < modal._choice_box.get_index(),
+		"the bench is above the buttons, the way the machines are")
+	assert_eq(GameState.loot_potions().size(), 0,
+		"and nothing is in the pack until the player puts it there")
+	assert_eq(_live_children(modal._choice_box), 1, "Leave is the only choice")
+	modal._close()
+	await get_tree().process_frame
+
+func test_taking_the_lab_bottles_puts_them_in_the_pack() -> void:
+	GameState.loot_items.clear()
+	assert_true(_ui.open_event(Data.get_event2(&"potion_lab")))
+	var modal = _ui._event_modal
+	await get_tree().process_frame
+	# The section's own "Take 3" — the button the player presses when they want
+	# all of it rather than dragging each bottle into a chosen slot.
+	modal._loot_section._take_all()
+	await get_tree().process_frame
+	assert_eq(GameState.loot_potions().size(), 3, "all three, in the pack")
+	modal._close()
+	await get_tree().process_frame
+
+# Walking out is walking out ON the rest: a bottle left on the bench is gone, the
+# same way a machine left in the arcade is.
+func test_leaving_the_lab_leaves_the_bottles_behind() -> void:
+	GameState.loot_items.clear()
+	assert_true(_ui.open_event(Data.get_event2(&"potion_lab")))
+	var modal = _ui._event_modal
+	await get_tree().process_frame
+	modal.take(0)                    # Leave
+	await get_tree().process_frame
+	assert_eq(GameState.loot_potions().size(), 0, "nothing followed you out")
+	assert_null(_ui._event_modal, "and the event closed on it")
