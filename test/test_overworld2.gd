@@ -8605,3 +8605,79 @@ func test_leaving_the_lab_leaves_the_bottles_behind() -> void:
 	await get_tree().process_frame
 	assert_eq(GameState.loot_potions().size(), 0, "nothing followed you out")
 	assert_null(_ui._event_modal, "and the event closed on it")
+
+# --- loot an event PAYS lands on the event ----------------------------------
+#
+# The Woman in Blue sells potions (§17). Buying three used to fire
+# GameState.offer_loot, which the page answered with its own drop modal — so a
+# purchase made inside a shop handed you a second window on top of the shop. The
+# bottles belong where the decision was made: they go on the event's own table,
+# the same embedded drop screen the Potion Lab opens with.
+
+func _buy_from_the_woman(index: int):
+	GameState.gold = 3
+	GameState.loot_items.clear()
+	assert_true(_ui.open_event(Data.get_event2(&"the_woman_in_blue")))
+	var modal = _ui._event_modal
+	await get_tree().process_frame
+	assert_null(modal._loot_section, "she opens with no table — you have not bought yet")
+	modal.take(index)
+	await get_tree().process_frame
+	return modal
+
+func test_potions_bought_in_an_event_land_on_the_event() -> void:
+	var modal = await _buy_from_the_woman(2)          # Buy 3 Potions
+	assert_not_null(modal._loot_section, "the bottles are on her counter, inside the event")
+	assert_eq(modal._loot_section.remaining(), 3, "all three of them")
+	assert_null(_ui._drop_modal, "and no second window opened over the shop")
+	assert_eq(_ui._drop_queue.size(), 0, "nor was one queued behind it")
+	assert_eq(GameState.loot_potions().size(), 0,
+		"nothing is in the pack until the player puts it there")
+	modal._close()
+	await get_tree().process_frame
+
+func test_the_way_out_of_an_event_counts_what_is_left_on_its_table() -> void:
+	var modal = await _buy_from_the_woman(1)          # Buy 2 Potions
+	assert_string_contains(modal._exit_button.text, "leaving 2 behind",
+		"walking out with the bottles still there is a decision, so it says so")
+	modal._loot_section._take_all()
+	await get_tree().process_frame
+	assert_eq(GameState.loot_potions().size(), 2, "the take-all collects the purchase")
+	assert_eq(modal._exit_button.text, "Onward",
+		"and with nothing left the warning goes")
+	modal._close()
+	await get_tree().process_frame
+
+func test_an_event_table_carries_a_take_all_button() -> void:
+	# The post-combat screen's embedded table deliberately has no answer buttons;
+	# an event's does, because its pieces are usually an order the player has just
+	# placed and collecting a purchase should not cost three drags.
+	var modal = await _buy_from_the_woman(2)
+	# Searched under the event's own box: an embedded table's panel is a child of
+	# the HOST's container, not of the LootDropModal controller, which draws
+	# nothing itself.
+	var takes: Array = []
+	for node in modal._loot_box.find_children("*", "Button", true, false):
+		if String((node as Button).text).begins_with("✓"):
+			takes.append(node)
+	assert_eq(takes.size(), 1, "one take-all under the table")
+	(takes[0] as Button).pressed.emit()
+	await get_tree().process_frame
+	assert_eq(GameState.loot_potions().size(), 3, "pressing it takes the lot")
+	modal._close()
+	await get_tree().process_frame
+
+func test_a_hidden_event_lets_the_page_answer_for_the_loot() -> void:
+	# Put away, the event's table is a table nobody can see, which is worse than a
+	# window. The page takes the payout back.
+	GameState.gold = 3
+	GameState.loot_items.clear()
+	assert_true(_ui.open_event(Data.get_event2(&"the_woman_in_blue")))
+	var modal = _ui._event_modal
+	modal.hide_event()
+	await get_tree().process_frame
+	assert_false(modal.add_loot([GameState.roll_loot_entry("potion")]),
+		"a hidden event refuses the loot")
+	modal.show_event()
+	modal._close()
+	await get_tree().process_frame

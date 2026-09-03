@@ -1340,15 +1340,39 @@ prices for the same thing and a way out, authored out of tokens that were alread
 in the sheet. A Gold a bottle, and the shelf is priced so the Requirement — the
 whole wall — is a purse that can actually clear her out.
 
-### The potions arrive the way every other payout does
+### The potions land on the event, not on a screen over it
 
 `gain_potion N` **offers** rather than grants (§5): it rolls the bottles and
-hands them to whoever is listening, which in a run is the drop screen — the same
-three-offers-and-your-3×3 the Potion Lab (§15) embeds and every kill drop opens.
-So buying two potions ends with the same drag into the same nine slots as finding
-two, and the nine-piece cap gets its say. The difference from the Lab is only
-*where* the table stands: hers opens over the event as the payout it is, where
-the Lab's is the event.
+hands them to whoever is listening. Inside an event, that is **the event** —
+`Overworld2._on_loot_offered` gives an open modal first refusal, and
+`EventModal2.add_loot` puts the pieces on the same embedded table the Potion Lab
+(§15) opens with. Buying two potions ends with the same drag into the same nine
+slots as finding two, and the nine-piece cap gets its say, but the shop you are
+standing in does not sprout a second window on top of itself.
+
+So an event's table has two ways of arriving and one appearance: `Opens With`
+puts it there before anything is pressed (the Lab), a payout puts it there when a
+choice pays (the shelf). Both are `LootDropModal.embed`, with two differences
+from the post-combat screen's copy: it is given room for the 3×3 to stand up in
+one piece, and it carries a **take-all** button — an event's pieces are usually
+an order the player just placed, and collecting a purchase should not cost three
+drags.
+
+The table is given room for the 3×3 to stand up in one piece, but it is also the
+thing that **gives way when the window runs out**: an event carrying prose, an
+outcome line and a table is more than 720p has, and the overflow comes off the
+table (`LootDropModal.shrink_body`) rather than off the buttons. A table that
+scrolls is a great deal better than a way out that is off the bottom of the
+screen.
+
+**The event's way out is the table's way out**, so it counts: press Onward with
+two bottles still on the counter and they are left there, and the button says
+*"Onward   (leaving 2 behind)"* while they are. Live, not drawn once — the table
+fires on every take, leave, use and bin. Nothing is swept quietly, and nothing
+traps the player on the screen either; leaving loot is a decision the build lets
+you make everywhere else too (`PostCombatScreen.exit_text` says the same thing in
+the same words). A hidden event (the ⌄ Hide chip) refuses a payout and the page
+falls back to its own drop screen: a table nobody can see is worse than a window.
 
 ### Her fist is prose
 

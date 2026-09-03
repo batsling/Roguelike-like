@@ -11,6 +11,60 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Loot an event pays lands on the event.**
+
+  Buying three potions from the Woman in Blue used to hand you a second window
+  on top of the shop you were standing in: `gain_potion 3` fires
+  `GameState.offer_loot`, and the page answered that with its own drop modal. The
+  bottles belong where the decision was made. `Overworld2._on_loot_offered` now
+  gives an open event first refusal — the same courtesy the post-combat screen
+  already had — and `EventModal2.add_loot` puts the pieces on the event's own
+  table: the embedded drop screen the Potion Lab opens with, with the offer, the
+  live 3x3, the drag between them and the bin.
+
+  So an event's table has two ways of arriving and one appearance: `Opens With`
+  puts it there before anything is pressed, a payout puts it there when a choice
+  pays. Both now carry a **take-all** button, which the post-combat screen's copy
+  deliberately does without — an event's pieces are usually an order the player
+  just placed, and collecting a purchase should not cost three drags. The drag is
+  still there for putting a piece in a chosen slot, and the bin is still "leave
+  it" said with the hands.
+
+  **The event's way out is the table's way out, so it counts what is on it**:
+  press Onward with two bottles still on the counter and they are left there, and
+  the button reads "Onward   (leaving 2 behind)" while they are — live, off the
+  table's own `changed`, so it is never warning about a bottle already in the
+  pack. The same sentence `PostCombatScreen.exit_text` has said all along. A
+  closing choice that pays loot no longer skips its epilogue either, since the
+  table standing on it is the thing still being answered.
+
+  A HIDDEN event refuses a payout and the page falls back to its own drop screen:
+  a table nobody can see is worse than a window.
+
+  **The table gives way before the buttons do.** A drop table asks for enough
+  room to stand the 3x3 up in one piece, and on an event carrying prose, an
+  outcome line AND a table that is more than a 720p window has — which put
+  "Onward   (leaving 3 behind)" below the fold of the scrolling column, so the
+  way out was something you had to go looking for. `EventModal2._fit` now hands
+  the overflow back to the table (`LootDropModal.shrink_body`, floored at the
+  ordinary embedded height), because a table that scrolls is a great deal better
+  than a way out that is off the bottom of the screen.
+
+  Two more only-usually-true assertions came out with it, both in tests written
+  in this session's earlier commits: the two events that charge Gold for a
+  RANDOM relic asserted the purse to the coin afterwards, and Old Coin pays 6
+  Gold the moment it is picked up. They assert the price off the cell and charge
+  it on its own now, and only that the relic arrived.
+
+  A second latent flake turned up on the way and is fixed rather than reseeded:
+  `test_bombing_the_escort_clears_the_handle_it_was_held_by` asserted a board
+  exactly one body deep after the bomb. The escort is a RANDOM body off the
+  roster, and some of them leave something behind when they are destroyed — bomb
+  a Slime and you get two smaller Slimes, which is the body doing its job. It
+  failed on about one run in twenty, on nothing but which escort was rolled, and
+  now asserts what it is named for: the handle cleared, the bombed body gone, and
+  the game's own enemy still standing.
+
 - **The Woman in Blue, and Ranwid's gold ask settles at two.**
 
   Slay the Spire's pale woman: a shop with one thing on the shelf and no

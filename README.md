@@ -855,7 +855,7 @@ names the row and the cell.
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
 | `Prompt` | The prose at the top of the modal. Blank is legal — a wordless event stacks its art *above* the choices instead of beside them (see "Art"). |
-| `Opens With` | What the event is already doing when it opens, before anything is pressed. One token: `offer_loot <kind> <n>` — n rolled pieces laid out as the **real drop table inside the event's body**, with the player's live 3×3 and its bin beside them, so taking one is the same drag it is anywhere else (the Potion Lab). Blank on every other event. |
+| `Opens With` | What the event is already doing when it opens, before anything is pressed. One token: `offer_loot <kind> <n>` — n rolled pieces laid out as the **real drop table inside the event's body**, with the player's live 3×3 and its bin beside them, so taking one is the same drag it is anywhere else (the Potion Lab). Blank on every other event — and note that loot an event PAYS lands on the same table, so a `gain_potion 3` in an `Effect` cell needs nothing here. |
 | `Goal Met` / `Goal Missed` | Only if a choice uses `add_goal`: what the event says when that goal lands or lapses, games later. |
 | `Chance Won` / `Chance Lost` | Only if a choice uses `chance`: what it says when the roll lands or doesn't. |
 

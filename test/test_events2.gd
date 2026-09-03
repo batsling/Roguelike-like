@@ -95,6 +95,17 @@ func _event(id: StringName) -> EventData2:
 	return ev
 
 
+# One effect off a choice, by type — for the tests that want to assert a PRICE
+# without the payout in the way. Old Coin pays 6 Gold the moment it is picked up,
+# so "the purse after the whole choice" is a claim about which relic was rolled
+# rather than about what the event charges.
+func _effect_of(choice: Dictionary, type: String) -> Dictionary:
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) == type:
+			return eff
+	return {}
+
+
 func _choice(ev: EventData2, cid: String) -> Dictionary:
 	for c in ev.choices:
 		if String(c.get("id", "")) == cid:
@@ -1516,10 +1527,18 @@ func test_the_gold_price_costs_two_and_pays_one_relic() -> void:
 	var ev: EventData2 = _event(RANWID)
 	_stock_ranwid()
 	EventSystem.begin_event(ev)
-	var held: int = GameState.inventory.size()
-	EventSystem.resolve_choice(ev, _choice(ev, "give_2_gold"), 0)
+	var choice: Dictionary = _choice(ev, "give_2_gold")
+	# The price, off the cell and charged on its own (see _effect_of).
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 2})
+	GameState.gold = 5
+	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
 	assert_eq(GameState.gold, 3, "he chews two of the five")
+	# …and the press pays a relic for them.
+	GameState.gold = 5
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, choice, 0)
 	assert_eq(GameState.inventory.size(), held + 1, "and one relic comes back")
+	assert_lte(GameState.gold, 3, "the two are spent whatever the relic pays back")
 
 
 func test_the_potion_price_takes_the_bottle_he_named() -> void:
@@ -1755,13 +1774,20 @@ func test_every_price_is_named_on_its_button() -> void:
 func test_he_asks_for_two_gold_and_charges_two() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
-	for _i in range(10):
-		GameState.gold = 9
-		EventSystem.begin_event(ev)
-		var held: int = GameState.inventory.size()
-		EventSystem.resolve_choice(ev, _choice(ev, "give_2_gold"), 0)
-		assert_eq(GameState.gold, 7, "exactly the two the button said")
-		assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
+	var choice: Dictionary = _choice(ev, "give_2_gold")
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 2},
+		"exactly the two the button said")
+	GameState.gold = 9
+	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
+	assert_eq(GameState.gold, 7)
+	# The press pays a relic for them — and the purse afterwards is NOT asserted
+	# to the coin, because the relic he hands over may carry gold of its own.
+	GameState.gold = 9
+	EventSystem.begin_event(ev)
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, choice, 0)
+	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
+	assert_lte(GameState.gold, 7, "the two are spent whatever the relic pays back")
 
 
 # The card he takes is one worth studying: Uncommon or better, which is what the

@@ -117,6 +117,9 @@ var _objects_before: Array = []
 # the set changes rather than when the count does.
 var _objects_drawn: Array = []
 var _chip: Button = null
+# The epilogue's one button. Held because its label is live: it counts what is
+# still on the event's loot table, which the player can be moving while it is up.
+var _exit_button: Button = null
 var _backdrop_nodes: Array = []
 
 
@@ -467,20 +470,52 @@ func _render_objects() -> void:
 # The pieces are EventSystem's, rolled when the event opened, so a repaint cannot
 # deal a different three.
 func _mount_opening_loot() -> void:
-	if _loot_box == null or _loot_section != null:
-		return
-	var offer: Array = EventSystem.opening_loot()
-	if offer.is_empty():
+	_mount_loot(EventSystem.opening_loot())
+
+
+# LOOT AN EVENT PAYS GOES ON THE EVENT, not on a screen over it. A choice that
+# grants loot (`gain_potion 3` — the Woman in Blue's shelf) used to fire
+# GameState.offer_loot, which the page answered by queueing its own drop modal;
+# the player then bought three potions and was handed a second window on top of
+# the shop they were standing in. The bottles belong where the decision was made,
+# so the page hands them here instead (Overworld2._on_loot_offered) and they land
+# on the same embedded table the Potion Lab opens with.
+#
+# Returns false when this modal cannot take them — it is closing, or it is put
+# away, where a table nobody can see is worse than a window — and the page then
+# falls back to its own queue.
+func add_loot(entries: Array) -> bool:
+	if _done or _hidden or entries.is_empty() or _loot_box == null:
+		return false
+	if _loot_section != null and is_instance_valid(_loot_section):
+		_loot_section.add_offers(entries)
+		_refresh_exit()
+		_fit.call_deferred()
+		return true
+	_mount_loot(entries)
+	return _loot_section != null
+
+
+func _mount_loot(offer: Array) -> void:
+	if _loot_box == null or _loot_section != null or offer.is_empty():
 		return
 	# A floor tall enough for the pack to stand up in one piece: the whole body of
 	# this event is the table, where the post-combat screen's is one column of
-	# three, so the section is given room rather than a scrollbar.
-	_loot_section = LootDropModal.embed(_page(), self, _loot_box, offer, true, LOOT_BODY_H)
+	# three, so the section is given room rather than a scrollbar. And the take-all
+	# button, which that screen does without: an event's pieces are usually an
+	# order the player just placed, and collecting a purchase should not cost three
+	# drags.
+	_loot_section = LootDropModal.embed(_page(), self, _loot_box, offer, true,
+		LOOT_BODY_H, true)
 	# The table changing changes how tall the panel wants to be — a piece taken is
-	# a cell gone from the offer grid — and the panel is sized to its content.
-	_loot_section.changed.connect(func(): _fit.call_deferred())
+	# a cell gone from the offer grid — and the panel is sized to its content. It
+	# also changes what the way out has to warn about.
+	_loot_section.changed.connect(func():
+		_refresh_exit()
+		_fit.call_deferred())
 	_loot_section.answered.connect(func(_taken: Array):
 		_loot_section = null
+		_refresh_exit()
 		_fit.call_deferred())
 
 
@@ -515,6 +550,15 @@ func _fit() -> void:
 		return
 	var wanted: float = _right.get_combined_minimum_size().y
 	var cap: float = _panel_size().y - HEADER_ALLOWANCE
+	# THE TABLE GIVES WAY BEFORE THE BUTTONS DO. A drop table asks for enough room
+	# to stand the 3x3 up in one piece (LOOT_BODY_H), and on an event that also
+	# carries prose and an outcome line that is more than the window has — which
+	# put "Onward   (leaving 3 behind)" below the fold of a scroll region, so the
+	# way out of the event was something you had to go looking for. The table
+	# scrolls perfectly well; the way out has to be on the screen.
+	if wanted > cap and _loot_section != null and is_instance_valid(_loot_section):
+		if _loot_section.shrink_body(wanted - cap):
+			wanted = _right.get_combined_minimum_size().y
 	_scroll.custom_minimum_size.y = clampf(wanted, 90.0, cap)
 	_panel.size = _panel.get_combined_minimum_size()
 	_recentre()
@@ -658,6 +702,12 @@ func _take(index: int) -> void:
 		# an Onward. You pressed Leave and the event was still there, wanting
 		# another click before it would go. An epilogue with nothing in it is not
 		# a closing beat, it is a second press, so the event simply ends.
+		# A CHOICE THAT PAYS LOOT never reaches this: it does something, so it gets
+		# its epilogue, and the table it just put on the event is standing on that
+		# screen with the way out counting it. What does reach it is a `nothing`
+		# choice with a table already up — the Potion Lab's Leave — and that is
+		# exactly the press that means "I am done with the bench", so it closes on
+		# the one click it always has.
 		if _last_result == "" and _play_request.is_empty() \
 				and EventSystem.does_nothing(choice):
 			_close()
@@ -694,7 +744,6 @@ func _show_epilogue() -> void:
 	_fit.call_deferred()
 
 	var done := Button.new()
-	done.text = "Onward"
 	done.custom_minimum_size = Vector2(0, 42)
 	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	done.add_theme_font_size_override("font_size", 16)
@@ -704,7 +753,28 @@ func _show_epilogue() -> void:
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.42), 8, 8, 2, UITheme.ACCENT))
 	done.pressed.connect(_close)
 	_choice_box.add_child(done)
+	_exit_button = done
+	_refresh_exit()
 	done.grab_focus()
+
+
+# THE WAY OUT COUNTS WHAT IS STILL ON THE TABLE. The event's last button is also
+# the table's way out — press it with two bottles still on the bench and they are
+# left there — so it says so, exactly as the post-combat screen's does
+# (`PostCombatScreen.exit_text`). A Legendary left on the ground should be a
+# decision, not a side effect of pressing Onward.
+#
+# Live rather than drawn once: the section fires `changed` on every take, leave,
+# use and bin, and a button still warning about a bottle already in the pack is
+# the one number on the screen whose whole job is to be current.
+func _refresh_exit() -> void:
+	if _exit_button == null or not is_instance_valid(_exit_button):
+		return
+	var left: int = 0
+	if _loot_section != null and is_instance_valid(_loot_section):
+		left = _loot_section.remaining()
+	_exit_button.text = "Onward" if left <= 0 \
+		else "Onward   (leaving %d behind)" % left
 
 
 func _did_line(text: String, size: int) -> Label:

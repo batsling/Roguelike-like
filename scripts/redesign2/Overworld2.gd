@@ -4965,6 +4965,16 @@ func _on_loot_offered(entries: Array) -> void:
 	if _post_screen != null and is_instance_valid(_post_screen) \
 			and _post_screen.add_loot(entries):
 		return
+	# AND ONTO THE EVENT when one is open, for the same reason. An event that pays
+	# loot — the Woman in Blue's shelf, `gain_potion 3` — used to queue a drop
+	# modal, so buying three potions in a shop handed you a second window on top of
+	# the shop you were standing in. The bottles belong where the decision was
+	# made: they land on the event's own table (EventModal2.add_loot), which is the
+	# same embedded drop screen the Potion Lab opens with. A hidden or closing
+	# event refuses them and they fall through to the queue below.
+	if _event_modal != null and is_instance_valid(_event_modal) \
+			and _event_modal.add_loot(entries):
+		return
 	_drop_queue.append({"loot": entries.duplicate(true)})
 	_pump_drops()
 
