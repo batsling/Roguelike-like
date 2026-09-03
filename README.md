@@ -733,6 +733,7 @@ still exists under an old name silently generates the wrong content.
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
+| `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_punch_off_robot_edit.py` | one-shot: Punch Off's "I Can Take Them" also spawns a robot (`spawn_enemy tag=robot 1`) |
 | `_abilities_sheet_setup.py` | one-shot: settled the `abilities` sheet (the two riders' wording, the new **Agile** row), gave The Obscura and the two thieves their arguments, and turned the boss sheet's `Notes` column into `Phases` — with Guillatina as the first three-phase boss (§7.6) |
 | `_chart_system_vocabulary.py` | one-shot: settled the `chart` sheet's System column on plural (`Bomb`/`Bombs` and three more collided, and a group-by rendered each as two systems), trimmed stray whitespace, and renamed the `Arcade` node to `Arcade Room`. |
@@ -846,7 +847,7 @@ names the row and the cell.
 | `Game` | The real game it's lifted from. Shows as "From: *game*" in the modal. |
 | `Tier` | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. |
 | `Where` | **Leave blank.** An event fires after every game, so this answers nothing today. It stays wired (`Dead End` / `Any` / `Game`) for the per-location work. |
-| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Blank = always eligible. A gated event is skipped and stays in the bag. |
+| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Several clauses joined by **`and`** when an event needs more than one thing at once (`gold>=2 and potions>=1 and relics>=1` — Ranwid, whose every button spends a different kind of thing). Blank = always eligible. A gated event is skipped and stays in the bag. |
 | `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
@@ -885,6 +886,8 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
 | `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
+| `gain_random_item N` | N relics off the rollable pool, straight into the pack — not a chest opened a screen later. Prefers what you don't own, and fills `{ITEM}` with what it rolled. |
+| `lose_potion` / `lose_relic` | A price paid in **things**: one bottle, one tradeable relic. Which one is rolled when the event opens and named on the button through the `<potion>` / `<relic>` holes, so the player knows what they are handing over before they press (Ranwid the Elder). |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker (the WAND's, since the relic became one — `docs/wands-design.md` §5.2) — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
 
@@ -903,7 +906,7 @@ chance <p>% -> <reward>
   that costs a key is `needs keys 1; lose_stat keys 1; gain_chest medium 1`, with
   the gate and the charge written separately. Gate stats: `hp`, `max_hp`, `gold`,
   `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`,
-  `shields`.
+  `shields`, `relics` (tradeable ones only) and `potions` (bottles carried).
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
 - **`add_curse`** is that inverted — an objective you want to *not* meet, which

@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Ranwid the Elder, and prices paid in things rather than in numbers.**
+
+  A new event (`docs/event-sheet-authoring.md` §14): the oldest person you have
+  ever seen, who greets you like an old friend you have never met and eats
+  whatever you hand him. Three prices — two Gold, one of your potions, one of
+  your relics — and what it costs you to give is what he pays for: Gold and a
+  potion each buy a random relic, and a relic buys two.
+
+  He needed four small things, and each of them is now the sheet's rather than
+  his:
+
+  * **`Requirement` takes `and`.** Every one of his buttons spends a different
+    kind of thing, so `gold>=2 and potions>=1 and relics>=1` is the gate — a run
+    short of any one of the three would open him on a shelf he cannot fill,
+    which is the failure the Relic Trader's `relics >= 5` prevents one price at
+    a time. Clauses are ANDed only; an `or` gate *is* the half-empty event. A
+    single clause keeps the flat shape it always had, so the eleven rows
+    authored before this one regenerate byte-identical.
+  * **`potions` is a gate stat**, counting bottles in the pack, identified or
+    not — an unknown potion is as good a gift as a known one.
+  * **`lose_potion` / `lose_relic`** charge one thing rather than a number.
+    Which bottle and which relic is rolled when the event opens and held while
+    the modal is up — the Relic Trader's contract exactly, for the same reason:
+    a button reading "Give Swirly Potion" has to still mean that bottle when it
+    is pressed. The relic is drawn from the rollable pool, so a Starter, a Boss
+    relic and an Event relic are as safe from an old man's appetite as they are
+    from the trader's coat. `<potion>` and `<relic>` are the name holes that let
+    the sheet write the sentence without knowing the name — `fill_trade_names`
+    became `fill_name_holes` and fills all four.
+  * **`gain_random_item N`** hands over N relics off the rollable pool where he
+    stands, rather than banking a chest the reward screen opens after the event
+    has closed. Prefers what you don't already own, and writes what it rolled
+    into `{ITEM}`.
+
+  A price he cannot be paid is not a button: the Requirement keeps him off the
+  node, and `choice_available` holds if the pack empties underneath him.
+
 - **The checklist is two sections, and the enemies are one of them.**
 
   The list already grouped its winning-run rows under a header; everything else ran

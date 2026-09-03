@@ -75,23 +75,47 @@ TRIGGERS = ("after", "before")
 # Event relic, because those are the three classes nothing may take off you. It
 # is what the Relic Trader gates on: an event whose every button is a swap should
 # not stand on a node where there is nothing to swap.
+# `potions` is the pack too: bottles carried, whatever they turn out to be. It
+# is what Ranwid gates on — an event whose middle button is "hand over a potion"
+# should not stand on a node where there is no bottle to hand over.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
-              "push", "transmute", "scramble", "shields", "relics")
+              "push", "transmute", "scramble", "shields", "relics", "potions")
 
 
 # --- the Requirement column -------------------------------------------------
 
 REQ_RE = re.compile(r"^\s*([a-z_]+)\s*(<=|>=|==|=|<|>)\s*(\d+)\s*(%?)\s*$", re.I)
+# ` and ` between clauses, so a Requirement can ask for more than one thing at
+# once. Only AND: an event is dealt when the run can afford everything it is
+# about, and an `or` gate would be an event that opens on a button it cannot
+# offer. Ranwid wants two Gold, a potion AND a relic, because all three of his
+# choices have to be live for the event to be the trade it is.
+REQ_AND_RE = re.compile(r"\s+and\s+", re.I)
 
 
 def parse_requirement(raw, where):
+    """-> {} | one clause | {"all": [clause, …]}.
+
+    A single clause keeps the flat shape every row authored before this one has,
+    so teaching the column `and` did not rewrite eleven .tres files.
+    """
     s = dsl._clean(raw)
     if not s:
         return {}
+    clauses = [parse_requirement_clause(c, where)
+               for c in REQ_AND_RE.split(s) if c.strip()]
+    if len(clauses) == 1:
+        return clauses[0]
+    return {"all": clauses}
+
+
+def parse_requirement_clause(raw, where):
+    s = raw.strip()
     m = REQ_RE.match(s)
     if not m:
         raise ValueError('events2.0 %s: cannot parse Requirement %r — expected '
-                         '"<stat> <op> <value>[%%]"' % (where, s))
+                         '"<stat> <op> <value>[%%]", or several of those joined '
+                         'by `and`' % (where, s))
     stat = m.group(1).lower()
     if stat not in GATE_STATS:
         raise ValueError("events2.0 %s: Requirement names unknown stat %r (known: %s)"

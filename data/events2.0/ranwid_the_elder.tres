@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_ranwid_the_elder"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"ranwid_the_elder"
+display_name = "Ranwid the Elder"
+source_game = ""
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"all": [{"stat": "gold", "op": ">=", "value": 2, "percent": false}, {"stat": "potions", "op": ">=", "value": 1, "percent": false}, {"stat": "relics", "op": ">=", "value": 1, "percent": false}]}
+trigger = "after"
+rarity = "Common"
+file = "RanwidTheElder"
+prompt = "You are approached by the oldest person you have ever seen. “We meet once more... it's me, Ranwid!” You do not know this man."
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "give_2_gold", "text": "Give 2 Gold", "repeat": "end", "repeat_max": 0, "results": ["“Mag.. nificent...” Ranwid mumbles while chewing the gold."], "gates": [{"resource": "gold", "value": 2}], "effects": [{"type": "lose_gold", "value": 2}, {"type": "gain_random_item", "value": 1}], "effects_text": "-2 Gold, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "give_potion", "text": "Give <potion>", "repeat": "end", "repeat_max": 0, "results": ["“Exquisite...” Glup glup glup. He downs the <potion> in one go."], "gates": [], "effects": [{"type": "lose_potion"}, {"type": "gain_random_item", "value": 1}], "effects_text": "-<potion>, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "give_relic", "text": "Give <relic>", "repeat": "end", "repeat_max": 0, "results": ["“Exemplary...” Ranwid observes the relic studiously for several minutes... Then eats the <relic>."], "gates": [], "effects": [{"type": "lose_relic"}, {"type": "gain_random_item", "value": 2}], "effects_text": "-<relic>, +2 random Relics", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

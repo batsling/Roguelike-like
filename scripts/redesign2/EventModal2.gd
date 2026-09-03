@@ -487,7 +487,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	var btn := Button.new()
 	# The label goes through the same name holes the prose does, so a sheet can
 	# write `Trade <give>` as a button as readily as it writes it as a result.
-	btn.text = EventSystem.fill_trade_names(String(choice.get("text", "…")), choice)
+	btn.text = EventSystem.fill_name_holes(String(choice.get("text", "…")), choice)
 	btn.custom_minimum_size = Vector2(0, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 15)

@@ -2107,7 +2107,7 @@ func _show_event_detail(ev: EventData2) -> void:
 	# is stored on EventData2, and nothing in Overworld2 reads it — every event is
 	# queued from _end_resolve once the game is beaten. Saying "fires on arrival"
 	# because a cell said so was describing an intention rather than the build
-	# (docs/event-sheet-authoring.md §15).
+	# (docs/event-sheet-authoring.md §16).
 	_detail_box.add_child(_detail_meta("%s  •  fires after the game" % ev.rarity, ac))
 	if ev.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ev.source_game,
@@ -2150,8 +2150,13 @@ func _event_choice_block(c: Dictionary, ac: Color) -> Control:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 3)
 	panel.add_child(vb)
-	vb.add_child(_label("▸ " + String(c.get("text", "…")), ac, 12, false, true))
-	var effects: String = String(c.get("effects_text", ""))
+	# Through the name holes on the way out. There is no run here and so no pack
+	# to fill them from, which is exactly what their unfilled forms are for: the
+	# catalogue reads "Give a potion" and "Trade a relic for a relic" rather than
+	# showing the reader the angle brackets.
+	vb.add_child(_label("▸ " + EventSystem.fill_name_holes(String(c.get("text", "…")), c),
+		ac, 12, false, true))
+	var effects: String = EventSystem.fill_name_holes(String(c.get("effects_text", "")), c)
 	if effects != "":
 		vb.add_child(_label(effects, Color(0.75, 0.88, 0.95), 11, false, true))
 	var goal: Dictionary = c.get("goal", {}) if c.get("goal") is Dictionary else {}
