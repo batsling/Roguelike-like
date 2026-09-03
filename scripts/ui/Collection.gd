@@ -2107,7 +2107,7 @@ func _show_event_detail(ev: EventData2) -> void:
 	# is stored on EventData2, and nothing in Overworld2 reads it — every event is
 	# queued from _end_resolve once the game is beaten. Saying "fires on arrival"
 	# because a cell said so was describing an intention rather than the build
-	# (docs/event-sheet-authoring.md §16).
+	# (docs/event-sheet-authoring.md §18).
 	_detail_box.add_child(_detail_meta("%s  •  fires after the game" % ev.rarity, ac))
 	if ev.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ev.source_game,

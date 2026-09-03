@@ -6783,8 +6783,22 @@ func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
 	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
 	await get_tree().process_frame
 	assert_not_null(_ui._object_panel, "a machine puts a panel under the board")
-	assert_lt(BattlefieldView.fitted_cell(cols), full,
-		"the board shrinks its cells to pay for the panel under it")
+	# THE BUDGET IS WHAT MOVES; the cell is what the budget buys. This asserted
+	# the cell alone and was only USUALLY true: `fitted_cell` takes the smaller of
+	# the two budgets and clamps to CELL_MIN, so on a board of 8 columns or more
+	# the width budget already has it at the floor and the height it just gave up
+	# changes nothing — correct behaviour that read exactly like a board refusing
+	# to share. Which board a run is on depends on its difficulty, so the failure
+	# came and went.
+	assert_lt(BattlefieldView._height_budget, BattlefieldView.FIELD_HEIGHT_BUDGET,
+		"the board gives up height for the panel under it")
+	assert_lte(BattlefieldView.fitted_cell(cols), full,
+		"and its cells never grow for it")
+	# …and on a board where HEIGHT is the binding budget, that is a smaller cell.
+	# Five columns is such a board at both budgets (72 against 44), whatever this
+	# run happens to be playing on.
+	assert_lt(BattlefieldView.fitted_cell(5), 72,
+		"where height is what binds, the cell is smaller for sharing")
 	ObjectSystem.clear()
 	await get_tree().process_frame
 	assert_eq(BattlefieldView.fitted_cell(cols), full,

@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built, illustrated and running.** Fourteen events authored, generators
-and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §17 is how it runs and the little
+Status: **built, illustrated and running.** Fifteen events authored, generators
+and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §18 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -157,7 +157,7 @@ for N = 1…6.
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | **Leave blank.** An event fires after every game (§1.1), so this answers no placement question today. It stays wired — `Dead End` (a node with one connection), `Any`, `Game` (only ever on its own `Game`) — for the per-location work, and nothing authored sets it. |
 | `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`), and several of those joined by **`and`** (`gold>=2 and potions>=1 and relics>=1`) when an event needs more than one thing at once. Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13) — and `potions`, bottles carried, which is what Ranwid gates on (§14). |
-| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §17. |
+| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §18. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
 | `Prompt` | event | The prose at the top of the modal. **Blank is legal and changes the layout**: a wordless event stacks its illustration *above* the choices instead of standing it in a column beside them — see below. |
@@ -327,6 +327,8 @@ paid in **things** rather than in numbers needs:
 | `gain_random_item N` | N relics off the **rollable** pool, handed straight over. The sibling of `gain_item` for a payout that names nothing — and deliberately not `gain_chest small N`, which banks a chest the reward screen opens a screen and a walk later. Prefers what you don't already own, and fills the `{ITEM}` hole with what it rolled. |
 | `lose_potion` | One bottle out of the pack. **Which** one is rolled when the event opens and named on the button through the `<potion>` hole (§5.2) — the player is told what they are about to hand over before they press. |
 | `lose_relic` | The same for one **tradeable** relic — rollable only, so a Starter, a Boss relic and an Event relic are as safe from an old man's appetite as they are from the trader's coat. The `<relic>` hole names it. |
+| `lose_card [uncommon+]` | And the third thing a pack carries. `uncommon+` narrows the draw to a card worth studying, which is We Meet Again's own rule (§16); without it any carried card is fair game. The `<card>` hole names it, face up — it is in your pack, so it is itself. |
+| `lose_gold <lo>-<hi>` | A price the RUN settles rather than the sheet: rolled when the event opens, clamped to what the purse actually holds, and named on the button through `<gold>` ("Give 3 Gold"). A literal `lose_gold 3` is still a fixed price; the range is for the ask that varies. Gold only — a Health cost you cannot read before pressing is a death trap. |
 
 Both costs are settled by the run rather than by the cell, which is why neither
 takes a number: "give a potion" is one bottle, and a choice that wanted two would
@@ -1081,7 +1083,7 @@ the same choices twice**.
 Every row is an offer; there is **no "Trade Nothing"**. The button already names
 both relics, so the prose on the way out is only the trader's own line — the
 same one whichever row you point at. And a run he wants nothing from shows no
-rows at all, which the modal already answers with its own **Leave** (§17,
+rows at all, which the modal already answers with its own **Leave** (§18,
 `EventModal2`): a decline button would be a fourth choice that exists purely to
 say what an empty list already says.
 
@@ -1097,7 +1099,7 @@ event off the node rather than opening it half-empty.
 
 ### The offers are rolled once, when the event opens
 
-Placement is hashed so a card's badge cannot change under the player (§17). A
+Placement is hashed so a card's badge cannot change under the player (§18). A
 trade cannot be: it depends on the **inventory**, not on the node. So the three
 pairings are rolled once, in `EventSystem.begin_event`, and held for as long as
 the modal is up — re-rolling per repaint would rename the button under the
@@ -1268,7 +1270,59 @@ read is what they caught, and that line is composed from the curse itself
 
 ---
 
-## 16. Other shapes, for reference
+## 16. The eleventh: We Meet Again!
+
+Slay the Spire's Ranwid — and the **first** meeting with the man §14 is the
+second, since Ranwid the Elder is the same event in Slay the Spire 2. They are
+both in the bag on purpose, and what tells them apart is what he asks for.
+
+| | |
+|---|---|
+| `Requirement` | `gold>=2` |
+| `Prompt` | *"We meet again!" A cheery disheveled fellow approaches you gleefully. You do not know this man. "It's me, Ranwid! Have any goods for me today? The usual?…"* |
+
+| Choice | Effect |
+|---|---|
+| **Give `<potion>`** | `lose_potion; gain_random_item 1` |
+| **Give `<gold>`** | `needs gold 2; lose_gold 2-6; gain_random_item 1` |
+| **Give `<card>`** | `lose_card uncommon+; gain_random_item 1` |
+| **Attack** | `nothing` |
+
+### Every price is named, and the payout is not
+
+That asymmetry is the original's, and it is the event's whole texture: the
+potion, the gold and the card are picked out and **shown to you** before you
+choose, while the relic is "look what I've got for you today" and could be
+anything. So the three costs are rolled in `begin_event` and land on the buttons
+through `<potion>`, `<gold>` and `<card>` (§5.2), and the payout is
+`gain_random_item 1`, which names nothing until it is in your hand.
+
+`lose_gold 2-6` is the new shape (§5): a **range** is a price the run settles
+rather than the sheet. It is rolled once, clamped to what the purse holds — he
+cannot ask for more than you have, as in the original — and the press charges the
+number the button quoted, never a fresh roll.
+
+The numbers are scaled, not copied. Slay the Spire asks 50–150 gold of a purse
+that runs to hundreds; a Roguelike-like purse is single digits, so the floor is
+the two Gold this economy is priced in and the ceiling keeps the original's 1:3
+spread.
+
+### Why he turns up for two Gold and nothing else
+
+Ranwid the Elder gates on all three of his prices, because every one of his
+buttons spends one and a run short of any would open him on a shelf he cannot
+fill. This one keeps **[Attack]** — a real choice that costs nothing, pays
+nothing and is the joke — so the event is never a dead end even when the pack is
+empty. The potion and card buttons hide themselves when there is nothing behind
+them, which is the same rule the Relic Trader's empty slots follow.
+
+`uncommon+` on the card is his own standard: he wants something worth studying,
+and a Common is not it. It is a modifier rather than the default, so an event
+that wants any card at all does not have to say so.
+
+---
+
+## 17. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -1289,7 +1343,7 @@ and it turned out not to be plain at all: see §12.)
 
 ---
 
-## 17. How it runs
+## 18. How it runs
 
 Built and under test (`test/test_events2.gd`). The pieces, and the one thing each
 of them is really solving:

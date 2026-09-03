@@ -1698,3 +1698,164 @@ func test_the_curse_the_monkey_rolls_is_the_curse_it_hands_over() -> void:
 	# …and the line the modal prints on the way out names what was caught, since
 	# the button could not.
 	assert_string_contains(String(out["text"]), cd.display_name)
+
+
+# --- We Meet Again!: the first meeting with the same old man ----------------
+#
+# Slay the Spire's Ranwid (§16), and the difference from his Slay the Spire 2
+# self (§14) is the third price: this one wants a CARD out of the pack where the
+# later one wants a relic. Every price is settled when the event opens and named
+# on the button — the original displays them too — while the relic he pays is not
+# named until it is in your hand.
+
+const AGAIN := &"we_meet_again"
+
+
+func _stock_again() -> void:
+	GameState.gold = 5
+	GameState.loot_items.clear()
+	GameState.add_potion_loot(Data.all_potions()[0].id)
+	for cd in Data.all_cards():
+		if cd.rarity != "Common":
+			GameState.add_card_loot(cd.id)
+			break
+
+
+func test_he_asks_for_two_gold_before_he_turns_up_at_all() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	assert_true(EventSystem.requirement_met(ev), "five Gold is more than two")
+	GameState.gold = 1
+	assert_false(EventSystem.requirement_met(ev), "one is not")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 2")
+
+
+# The prices are DISPLAYED, which is the original's own rule. Each is rolled when
+# the event opens and lands in the button through its hole.
+func test_every_price_is_named_on_its_button() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	EventSystem.begin_event(ev)
+	var potion: Dictionary = _choice(ev, "give_potion")
+	var gold: Dictionary = _choice(ev, "give_gold")
+	var card: Dictionary = _choice(ev, "give_card")
+	assert_eq(EventSystem.fill_name_holes(String(potion["text"]), potion),
+		"Give %s" % EventSystem.offered_potion_name())
+	assert_eq(EventSystem.fill_name_holes(String(card["text"]), card),
+		"Give %s" % EventSystem.offered_card_name())
+	assert_eq(EventSystem.fill_name_holes(String(gold["text"]), gold),
+		"Give %d Gold" % EventSystem.offered_gold())
+	for line in [String(potion["text"]), String(gold["text"]), String(card["text"])]:
+		assert_true(line.contains("<"), "the .tres carries the holes: %s" % line)
+
+
+# "A varying amount", between the floor and the ceiling — and never more than the
+# purse holds, which is the original's rule and the reason the button can promise
+# a number at all.
+func test_the_gold_he_asks_for_varies_and_is_never_more_than_you_have() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	var seen: Dictionary = {}
+	for _i in range(40):
+		GameState.gold = 9
+		EventSystem.begin_event(ev)
+		var ask: int = EventSystem.offered_gold()
+		assert_between(ask, 2, 6, "between the floor and the ceiling")
+		seen[ask] = true
+	assert_gt(seen.size(), 1, "varying, not a fixed price wearing a hole")
+
+	# Two Gold in the purse is a two-Gold ask, never a six-Gold one he cannot be paid.
+	for _i in range(20):
+		GameState.gold = 2
+		EventSystem.begin_event(ev)
+		assert_eq(EventSystem.offered_gold(), 2, "he asks for what you have")
+
+
+# And the press charges what the button quoted. A fresh roll here would take an
+# amount the player never agreed to.
+func test_the_gold_press_charges_the_number_on_the_button() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	GameState.gold = 9
+	EventSystem.begin_event(ev)
+	var quoted: int = EventSystem.offered_gold()
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "give_gold"), 0)
+	assert_eq(GameState.gold, 9 - quoted, "exactly what it said")
+	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
+
+
+# The card he takes is one worth studying: Uncommon or better, which is what the
+# cell's `uncommon+` says and the only card rule this build has to enforce.
+func test_he_only_takes_a_card_worth_studying() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	GameState.gold = 5
+	GameState.loot_items.clear()
+	var common: CardData = null
+	for cd in Data.all_cards():
+		if cd.rarity == "Common":
+			common = cd
+			break
+	assert_not_null(common, "the catalogue has a Common card")
+	GameState.add_card_loot(common.id)
+	EventSystem.begin_event(ev)
+	assert_true(EventSystem.offered_card().is_empty(), "a Common is not his sort of card")
+	assert_false(EventSystem.choice_available(_choice(ev, "give_card"), {}),
+		"so the button is not offered")
+
+	for cd in Data.all_cards():
+		if cd.rarity != "Common":
+			GameState.add_card_loot(cd.id)
+			break
+	EventSystem.begin_event(ev)
+	assert_false(EventSystem.offered_card().is_empty(), "an Uncommon+ is")
+	assert_true(EventSystem.choice_available(_choice(ev, "give_card"), {}))
+
+
+func test_giving_the_card_takes_that_card_and_pays_a_relic() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	EventSystem.begin_event(ev)
+	var named: Dictionary = EventSystem.offered_card()
+	assert_false(named.is_empty(), "he picked one out")
+	var cards: int = GameState.loot_cards().size()
+	var held: int = GameState.inventory.size()
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "give_card"), 0)
+	assert_eq(GameState.loot_cards().size(), cards - 1, "one card down")
+	for entry in GameState.loot_cards():
+		assert_false(is_same(entry, named), "and it is the one he named")
+	assert_eq(GameState.inventory.size(), held + 1, "one relic back")
+	assert_string_contains(String(out["result"]), "Exemplary")
+
+
+# Hitting him costs nothing and pays nothing, which is the whole joke.
+func test_attacking_him_does_nothing_at_all() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	var gold: int = GameState.gold
+	var held: int = GameState.inventory.size()
+	var attack: Dictionary = _choice(ev, "attack")
+	assert_true(EventSystem.does_nothing(attack))
+	var out: Dictionary = EventSystem.resolve_choice(ev, attack, 0)
+	assert_eq(GameState.gold, gold)
+	assert_eq(GameState.inventory.size(), held)
+	assert_string_contains(String(out["result"]), "runs away")
+
+
+# The two meetings are the same man and NOT the same event: what he asks for on
+# the third button is the difference, and it is what the pair is for.
+func test_the_two_meetings_ask_for_different_things() -> void:
+	var first: EventData2 = _event(AGAIN)
+	var second: EventData2 = _event(RANWID)
+	assert_true(_has_effect_type(first, "lose_card"), "the older man wants a card")
+	assert_false(_has_effect_type(first, "lose_relic"), "and never a relic")
+	assert_true(_has_effect_type(second, "lose_relic"), "the newer one wants a relic")
+	assert_false(_has_effect_type(second, "lose_card"), "and never a card")
+
+
+func _has_effect_type(ev: EventData2, type: String) -> bool:
+	for choice in ev.choices:
+		for eff in choice.get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == type:
+				return true
+	return false

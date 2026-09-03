@@ -101,6 +101,7 @@ func _register_defaults() -> void:
 	register("trade_relic", _h_trade_relic)
 	register("gain_random_item", _h_gain_random_item)
 	register("lose_potion", _h_lose_potion)
+	register("lose_card", _h_lose_card)
 	register("lose_relic", _h_lose_relic)
 	# Objects (docs/object-sheet-authoring.md).
 	register("gain_pickups", _h_gain_pickups)
@@ -183,7 +184,13 @@ func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 	if bool(effect.get("all", false)):
 		GameState.set_gold(0)
 		return
+	# A RANGE was rolled when the event opened and printed on the button (see
+	# EventSystem's offering). Charging a fresh roll here would take an amount
+	# other than the one the player agreed to, which is the whole reason the ask
+	# is settled up front rather than at the press.
 	var v: int = int(effect.get("value", 0))
+	if effect.has("min"):
+		v = EventSystem.offered_gold()
 	if v != 0:
 		GameState.change_gold(-v)
 
@@ -450,6 +457,10 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 # the button named — see EventSystem's offering block.
 func _h_lose_potion(_effect: Dictionary, _ctx: Dictionary) -> void:
 	EventSystem.take_offered_potion()
+
+
+func _h_lose_card(_effect: Dictionary, _ctx: Dictionary) -> void:
+	EventSystem.take_offered_card()
 
 
 # Written into `ctx` so a payout in the SAME choice cannot hand it straight back.

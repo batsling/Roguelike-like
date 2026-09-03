@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_we_meet_again"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"we_meet_again"
+display_name = "We Meet Again!"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "gold", "op": ">=", "value": 2, "percent": false}
+trigger = "after"
+rarity = "Common"
+file = "WeMeetAgain"
+prompt = "“We meet again!” A cheery disheveled fellow approaches you gleefully. You do not know this man. “It's me, Ranwid! Have any goods for me today? The usual? A fella like me can't make it alone, you know?” You eye him suspiciously and consider your options..."
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "give_potion", "text": "Give <potion>", "repeat": "end", "repeat_max": 0, "results": ["Ranwid: “Exquisite! Was feeling parched.” Glup glup glup. He downs the potion in one go and lets out a satisfied burp. He rummages around his various pockets... Ranwid: “Here, look what I've got for you today! Take it take it!”"], "gates": [], "effects": [{"type": "lose_potion"}, {"type": "gain_random_item", "value": 1}], "effects_text": "-<potion>, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "give_gold", "text": "Give <gold>", "repeat": "end", "repeat_max": 0, "results": ["Ranwid: “Magnificent! This will be quite handy if I run into those mask wearing hoodlums again.” He rummages around his various pockets... Ranwid: “Here, look what I've got for you today! Take it take it!”"], "gates": [{"resource": "gold", "value": 2}], "effects": [{"type": "lose_gold", "min": 2, "max": 6}, {"type": "gain_random_item", "value": 1}], "effects_text": "-<gold>, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "give_card", "text": "Give <card>", "repeat": "end", "repeat_max": 0, "results": ["Ranwid: “Exemplary! I shall study this further in my chambers.” He rummages around his various pockets... Ranwid: “Here, look what I've got for you today! Take it take it!”"], "gates": [], "effects": [{"type": "lose_card", "min_rarity": "Uncommon"}, {"type": "gain_random_item", "value": 1}], "effects_text": "-<card>, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "attack", "text": "Attack", "repeat": "end", "repeat_max": 0, "results": ["Ranwid: “Aaaaagghh!! What a jerk you are sometimes!” He runs away."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

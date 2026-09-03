@@ -652,6 +652,21 @@ def parse_reward_clause(clause):
                 raise ValueError("reward DSL: `all` is a lose_gold amount only, "
                                  "not %s (%r)" % (verb, clause))
             return {"type": verb, "all": True}, "-All %s" % label
+        # A RANGE is a price the run settles, not the sheet: `lose_gold 2-6` is
+        # rolled when the event OPENS and named on the button through the <gold>
+        # hole, exactly as `lose_potion` names the bottle it is about to take.
+        # Ranwid asks for "a varying amount", and a button that would not say
+        # which amount is a button nobody can weigh. Gold only, for `all`'s
+        # reason: a Health cost you cannot read before pressing is a death trap.
+        if re.fullmatch(r"\d+\s*-\s*\d+", rest[0].strip()):
+            if verb != "lose_gold":
+                raise ValueError("reward DSL: a rolled range is a lose_gold "
+                                 "amount only, not %s (%r)" % (verb, clause))
+            lo, hi = _range(rest[0], clause)
+            # The hole carries the unit as well as the number ("3 Gold"), so the
+            # same `<gold>` reads on a button ("Give 3 Gold") and on a cost line
+            # ("-3 Gold") without either sentence writing the word itself.
+            return {"type": verb, "min": lo, "max": hi}, "-<gold>"
         eff = {"type": verb}
         put(eff, "value", rest[0])
         return eff, "-%s %s" % (_amount_word(rest[0]), label)
@@ -774,6 +789,16 @@ def parse_reward_clause(clause):
 
     if verb == "lose_relic":
         return {"type": "lose_relic"}, "-<relic>"
+
+    # And the third thing a pack carries. `uncommon+` narrows the draw to a card
+    # worth studying — We Meet Again's own rule (§16), and the reason it is a
+    # modifier rather than the default: an event that wants any card at all
+    # should not have to say so.
+    if verb == "lose_card":
+        eff = {"type": "lose_card"}
+        if rest and rest[0].strip().lower() in ("uncommon+", "uncommon_plus"):
+            eff["min_rarity"] = "Uncommon"
+        return eff, "-<card>"
 
     if verb == "random_item_choice":
         amount = rest[0] if rest else "3"

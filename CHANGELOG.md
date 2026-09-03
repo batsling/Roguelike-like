@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **We Meet Again!, and the man you have now met twice.**
+
+  Slay the Spire's Ranwid, which makes Ranwid the Elder (Slay the Spire 2) the
+  second meeting with the same disheveled fellow who is certain you know him.
+  Both are in the bag on purpose, and what tells them apart is what he asks for:
+  the older event wants a **card** out of your pack where the newer one wants a
+  relic.
+
+  Give a potion, give a varying amount of gold, or give a card — each pays one
+  random relic — and **[Attack]**, which costs nothing, pays nothing and is the
+  joke. The asymmetry the original runs on is the whole texture, so it is kept:
+  the three prices are picked out and SHOWN to you before you choose, while the
+  relic is "look what I've got for you today" and is not named until it is in
+  your hand.
+
+  Two new tokens for it:
+
+  * **`lose_card [uncommon+]`** — the third thing a pack carries, rolled and
+    named on the button like the potion and the relic before it. `uncommon+` is
+    Ranwid's own standard (he wants something worth studying, and a Common is
+    not it), authored as a modifier so an event that wants any card at all does
+    not have to say so.
+  * **`lose_gold <lo>-<hi>`** — a price the RUN settles rather than the sheet.
+    Rolled when the event opens, clamped to what the purse actually holds (he
+    cannot ask for more than you have, as in the original), quoted on the button
+    through the new `<gold>` hole, and charged at exactly the number quoted — a
+    fresh roll at the press would take an amount the player never agreed to. A
+    literal `lose_gold 3` is still a fixed price; Gold only, because a Health
+    cost you cannot read before pressing is a death trap.
+
+  The gold is scaled rather than copied: Slay the Spire asks 50–150 of a purse
+  that runs to hundreds, so this asks 2–6 — the floor is the two Gold this
+  economy is priced in, and the ceiling keeps the original's 1:3 spread.
+
+  He turns up for `gold>=2` and nothing else, where Ranwid the Elder gates on all
+  three of his prices. [Attack] is why: the event is never a dead end even on an
+  empty pack, and the potion and card buttons hide themselves when there is
+  nothing behind them.
+
+  One latent flake fell out of the new roll and is fixed rather than reseeded:
+  `test_the_board_gives_up_height_while_it_is_sharing_its_column` asserted that a
+  machine's panel SHRINKS the board's cells, which is only usually true.
+  `fitted_cell` takes the smaller of the width and height budgets and clamps to
+  CELL_MIN, so from eight columns up the width budget already has the cell at the
+  floor and the height it gives up changes nothing — correct behaviour reading
+  exactly like a board that refused to share, on whichever runs rolled a wide
+  enough board. It now asserts the budget moving, the cell never growing, and the
+  real shrink on a board where height is what binds.
+
 - **Two from Tiny Rogues: the Potion Lab and the Golden Monkey.**
 
   Both wordless, the way the Arcade Room is, and between them they are the same
