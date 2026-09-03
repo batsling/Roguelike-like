@@ -34,6 +34,13 @@ extends Control
 # next to two lonely buttons in a half-empty column. Stacked, the art is the
 # event's only voice and sits where you read it first.
 #
+# UNLESS THE EVENT OPENS WITH A TABLE (`EventData2.opens_with` — the Potion Lab,
+# §15). Then the body is the real drop screen embedded in this column: the pieces
+# on the bench, the player's own 3x3 and its bin, the same drag as every other
+# payout, with the event's `Leave` under it. A wordless event with a table is not
+# a picture and two buttons after all, so the art goes back beside it — stacked,
+# it would spend 190px of the height the 3x3 needs to stand up in one piece.
+#
 # The panel SIZES ITSELF TO ITS CONTENT (see _fit) and only starts scrolling once
 # that would overflow the window. So a two-option event is a small card and a
 # nine-option one is a full-height panel with a scrolling column beside the art,
@@ -61,6 +68,10 @@ const STACKED_ART_HEIGHT := 190.0
 # scrolling column. Subtracted from the viewport cap so the panel as a whole
 # stays inside the window.
 const HEADER_ALLOWANCE := 110.0
+# How tall an embedded drop table is given inside an event (§15). The 3x3 is three
+# rows of LootSlot plus its heading; below this the pack is cut off mid-grid, and
+# a slot you cannot see is a slot you cannot drag a bottle into.
+const LOOT_BODY_H := 400.0
 
 var _event: EventData2 = null
 var _layer: CanvasLayer = null
@@ -90,6 +101,15 @@ var _scroll: ScrollContainer = null
 # Nothing about the event resolves while it is hidden; it is only out of the way.
 var _hidden: bool = false
 var _objects_box: HFlowContainer = null
+# The table an event OPENS with (`EventData2.opens_with`, §15) — the Potion Lab's
+# three bottles, drawn as the real drop screen embedded in the event's body. Its
+# own answer is the drag; the event's `Leave` is what walks out on the rest.
+var _loot_box: VBoxContainer = null
+var _loot_section: LootDropModal = null
+# The node the modal was opened over — the overworld. The embedded table's use
+# modal and info card mount there rather than on this panel, the same way the
+# post-combat screen hands its page down.
+var _host: Node = null
 # The machines that were already standing at this game when the event opened.
 # Everything spawned after it is the event's own, and goes when the event does.
 var _objects_before: Array = []
@@ -97,6 +117,9 @@ var _objects_before: Array = []
 # the set changes rather than when the count does.
 var _objects_drawn: Array = []
 var _chip: Button = null
+# The epilogue's one button. Held because its label is live: it counts what is
+# still on the event's loot table, which the player can be moving while it is up.
+var _exit_button: Button = null
 var _backdrop_nodes: Array = []
 
 
@@ -118,6 +141,7 @@ static func open(host: Node, event: EventData2, game_id: StringName = &"") -> Ev
 
 func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	_event = event
+	_host = host
 	_layer = CanvasLayer.new()
 	_layer.layer = 123
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -192,7 +216,12 @@ func _build() -> void:
 	# must not make the picture jump out of the stack and into a side column
 	# mid-event. A wordless event that goes on to say something keeps the layout
 	# it opened in.
-	var stacked: bool = _event.prompt == ""
+	# An event with no prose and no table is a picture and two buttons, and the
+	# picture goes above them. An event that opens with a TABLE has a body after
+	# all — the table is the body — so the art stands beside it in the column,
+	# exactly as it does beside prose. Stacking it there would spend 190px of the
+	# height the 3x3 needs to stand up in one piece.
+	var stacked: bool = _event.prompt == "" and _event.opens_with.is_empty()
 	if art != null and not stacked and _panel_size().x >= TWO_COLUMN_MIN_WIDTH:
 		body.add_child(_art_column(art))
 
@@ -234,6 +263,14 @@ func _build() -> void:
 	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_objects_drawn = []
 	_right.add_child(_objects_box)
+	# The table the event opened with, under the machines and above the buttons —
+	# the same place in the column, for the same reason: it is a thing standing in
+	# the room with you, and the choices below it are what you do about the room.
+	_loot_box = VBoxContainer.new()
+	_loot_box.add_theme_constant_override("separation", 8)
+	_loot_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right.add_child(_loot_box)
+	_mount_opening_loot()
 	_right.add_child(_rule())
 	_choice_box = VBoxContainer.new()
 	_choice_box.add_theme_constant_override("separation", 8)
@@ -424,6 +461,72 @@ func _render_objects() -> void:
 	_fit.call_deferred()
 
 
+# The event's own drop table (`EventData2.opens_with`, §15). The REAL one —
+# `LootDropModal.embed`, the same section the post-combat screen carries — so the
+# pieces, the player's live 3x3, the drag between them, the bin and "use it where
+# you stand" all behave here exactly as they do everywhere else. Nothing about a
+# potion had to be re-taught to this file.
+#
+# The pieces are EventSystem's, rolled when the event opened, so a repaint cannot
+# deal a different three.
+func _mount_opening_loot() -> void:
+	_mount_loot(EventSystem.opening_loot())
+
+
+# LOOT AN EVENT PAYS GOES ON THE EVENT, not on a screen over it. A choice that
+# grants loot (`gain_potion 3` — the Woman in Blue's shelf) used to fire
+# GameState.offer_loot, which the page answered by queueing its own drop modal;
+# the player then bought three potions and was handed a second window on top of
+# the shop they were standing in. The bottles belong where the decision was made,
+# so the page hands them here instead (Overworld2._on_loot_offered) and they land
+# on the same embedded table the Potion Lab opens with.
+#
+# Returns false when this modal cannot take them — it is closing, or it is put
+# away, where a table nobody can see is worse than a window — and the page then
+# falls back to its own queue.
+func add_loot(entries: Array) -> bool:
+	if _done or _hidden or entries.is_empty() or _loot_box == null:
+		return false
+	if _loot_section != null and is_instance_valid(_loot_section):
+		_loot_section.add_offers(entries)
+		_refresh_exit()
+		_fit.call_deferred()
+		return true
+	_mount_loot(entries)
+	return _loot_section != null
+
+
+func _mount_loot(offer: Array) -> void:
+	if _loot_box == null or _loot_section != null or offer.is_empty():
+		return
+	# A floor tall enough for the pack to stand up in one piece: the whole body of
+	# this event is the table, where the post-combat screen's is one column of
+	# three, so the section is given room rather than a scrollbar. And the take-all
+	# button, which that screen does without: an event's pieces are usually an
+	# order the player just placed, and collecting a purchase should not cost three
+	# drags.
+	_loot_section = LootDropModal.embed(_page(), self, _loot_box, offer, true,
+		LOOT_BODY_H, true)
+	# The table changing changes how tall the panel wants to be — a piece taken is
+	# a cell gone from the offer grid — and the panel is sized to its content. It
+	# also changes what the way out has to warn about.
+	_loot_section.changed.connect(func():
+		_refresh_exit()
+		_fit.call_deferred())
+	_loot_section.answered.connect(func(_taken: Array):
+		_loot_section = null
+		_refresh_exit()
+		_fit.call_deferred())
+
+
+# The screen the embedded table's own modals mount over: the overworld, not this
+# panel. `_host` is what `open` was given; outside a run (the dev panel, a test
+# that builds the modal on a bare node) it is whatever opened it, which is the
+# same fallback LootDropModal makes for itself.
+func _page() -> Node:
+	return _host if _host != null and is_instance_valid(_host) else self
+
+
 # Same machines, in the same order. By reference (is_same), because two untouched
 # copies of one cabinet are equal dictionaries and are still two cabinets.
 func _same_objects(a: Array, b: Array) -> bool:
@@ -447,6 +550,15 @@ func _fit() -> void:
 		return
 	var wanted: float = _right.get_combined_minimum_size().y
 	var cap: float = _panel_size().y - HEADER_ALLOWANCE
+	# THE TABLE GIVES WAY BEFORE THE BUTTONS DO. A drop table asks for enough room
+	# to stand the 3x3 up in one piece (LOOT_BODY_H), and on an event that also
+	# carries prose and an outcome line that is more than the window has — which
+	# put "Onward   (leaving 3 behind)" below the fold of a scroll region, so the
+	# way out of the event was something you had to go looking for. The table
+	# scrolls perfectly well; the way out has to be on the screen.
+	if wanted > cap and _loot_section != null and is_instance_valid(_loot_section):
+		if _loot_section.shrink_body(wanted - cap):
+			wanted = _right.get_combined_minimum_size().y
 	_scroll.custom_minimum_size.y = clampf(wanted, 90.0, cap)
 	_panel.size = _panel.get_combined_minimum_size()
 	_recentre()
@@ -487,7 +599,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	var btn := Button.new()
 	# The label goes through the same name holes the prose does, so a sheet can
 	# write `Trade <give>` as a button as readily as it writes it as a result.
-	btn.text = EventSystem.fill_trade_names(String(choice.get("text", "…")), choice)
+	btn.text = EventSystem.fill_name_holes(String(choice.get("text", "…")), choice)
 	btn.custom_minimum_size = Vector2(0, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 15)
@@ -590,6 +702,12 @@ func _take(index: int) -> void:
 		# an Onward. You pressed Leave and the event was still there, wanting
 		# another click before it would go. An epilogue with nothing in it is not
 		# a closing beat, it is a second press, so the event simply ends.
+		# A CHOICE THAT PAYS LOOT never reaches this: it does something, so it gets
+		# its epilogue, and the table it just put on the event is standing on that
+		# screen with the way out counting it. What does reach it is a `nothing`
+		# choice with a table already up — the Potion Lab's Leave — and that is
+		# exactly the press that means "I am done with the bench", so it closes on
+		# the one click it always has.
 		if _last_result == "" and _play_request.is_empty() \
 				and EventSystem.does_nothing(choice):
 			_close()
@@ -626,7 +744,6 @@ func _show_epilogue() -> void:
 	_fit.call_deferred()
 
 	var done := Button.new()
-	done.text = "Onward"
 	done.custom_minimum_size = Vector2(0, 42)
 	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	done.add_theme_font_size_override("font_size", 16)
@@ -636,7 +753,28 @@ func _show_epilogue() -> void:
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.42), 8, 8, 2, UITheme.ACCENT))
 	done.pressed.connect(_close)
 	_choice_box.add_child(done)
+	_exit_button = done
+	_refresh_exit()
 	done.grab_focus()
+
+
+# THE WAY OUT COUNTS WHAT IS STILL ON THE TABLE. The event's last button is also
+# the table's way out — press it with two bottles still on the bench and they are
+# left there — so it says so, exactly as the post-combat screen's does
+# (`PostCombatScreen.exit_text`). A Legendary left on the ground should be a
+# decision, not a side effect of pressing Onward.
+#
+# Live rather than drawn once: the section fires `changed` on every take, leave,
+# use and bin, and a button still warning about a bottle already in the pack is
+# the one number on the screen whose whole job is to be current.
+func _refresh_exit() -> void:
+	if _exit_button == null or not is_instance_valid(_exit_button):
+		return
+	var left: int = 0
+	if _loot_section != null and is_instance_valid(_loot_section):
+		left = _loot_section.remaining()
+	_exit_button.text = "Onward" if left <= 0 \
+		else "Onward   (leaving %d behind)" % left
 
 
 func _did_line(text: String, size: int) -> Label:

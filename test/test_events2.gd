@@ -39,6 +39,7 @@ var _loop: Dictionary
 # And the pack: the Relic Trader's offers are built out of it, so those tests
 # stock a known one and this puts back whatever was there.
 var _inventory: Array
+var _loot: Array
 
 
 func before_each() -> void:
@@ -59,6 +60,9 @@ func before_each() -> void:
 	_transmute = GameState.transmute
 	_loop = GameLoop2.serialize()
 	_inventory = GameState.inventory.duplicate()
+	# And the loot pack: Ranwid takes a potion out of it, so these tests stock
+	# one and this puts back whatever was there.
+	_loot = GameState.loot_items.duplicate(true)
 	GameState.event_goals.clear()
 	GameState.curse_goals.clear()
 	GameState.events_fired.clear()
@@ -82,12 +86,24 @@ func after_each() -> void:
 	GameState.transmute = _transmute
 	GameLoop2.restore(_loop)
 	GameState.inventory = _inventory.duplicate()
+	GameState.loot_items = _loot.duplicate(true)
 
 
 func _event(id: StringName) -> EventData2:
 	var ev: EventData2 = Data.get_event2(id)
 	assert_not_null(ev, "data/events2.0/%s.tres must exist — regenerate with tools/generate_event2_tres.py" % id)
 	return ev
+
+
+# One effect off a choice, by type — for the tests that want to assert a PRICE
+# without the payout in the way. Old Coin pays 6 Gold the moment it is picked up,
+# so "the purse after the whole choice" is a claim about which relic was rolled
+# rather than about what the event charges.
+func _effect_of(choice: Dictionary, type: String) -> Dictionary:
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) == type:
+			return eff
+	return {}
 
 
 func _choice(ev: EventData2, cid: String) -> Dictionary:
@@ -114,6 +130,14 @@ func test_every_curse_an_event_hands_out_exists() -> void:
 		for choice in ev.choices:
 			var curse: Dictionary = choice.get("curse", {})
 			if curse.is_empty():
+				continue
+			# `add_curse random` names no row on purpose (§15) — the curse is
+			# drawn when the button is pressed. What has to hold for one of those
+			# is that the bag is not empty, which is the assertion below.
+			if bool(curse.get("random", false)):
+				assert_ne(EventSystem.roll_random_curse(), &"",
+					"%s/%s rolls a random curse, so something must be rollable"
+						% [ev.id, choice.get("id", "")])
 				continue
 			var cid := StringName(curse.get("curse", &""))
 			assert_not_null(Data.get_curse2(cid),
@@ -1404,3 +1428,498 @@ func test_an_event_goal_is_called_one() -> void:
 	assert_false(line.contains("Goal for 3 games"),
 		"the label says what KIND of objective this is, not how long it runs")
 	assert_string_contains(line, "Lasts 3 games")
+
+
+# --- Ranwid the Elder: three prices, one for each kind of thing you carry ----
+#
+# The first event to gate on more than one thing at once, and the first to charge
+# a price paid in KIND — a bottle out of the pack, a relic out of the pack —
+# rather than in numbers. Both halves are why he is worth a section: the
+# Requirement column learned `and` for him, and the reward DSL learned
+# `lose_potion` / `lose_relic` / `gain_random_item`.
+
+const RANWID := &"ranwid_the_elder"
+
+
+func _stock_ranwid() -> void:
+	GameState.gold = 5
+	GameState.inventory.clear()
+	GameState.loot_items.clear()
+	GameState.add_item(_tradeable()[0])
+	GameState.add_potion_loot(Data.all_potions()[0].id)
+
+
+# All three, or he does not turn up. Every button he has costs one of them, so a
+# run short of any is a run he would open on a shelf he cannot fill — the same
+# argument the trader's five-relic gate makes, three prices at a time.
+func test_ranwid_wants_gold_a_potion_and_a_relic_all_at_once() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	assert_true(EventSystem.requirement_met(ev), "two Gold, a bottle and a relic")
+
+	GameState.gold = 1
+	assert_false(EventSystem.requirement_met(ev), "one Gold is not two")
+	GameState.gold = 5
+	GameState.loot_items.clear()
+	assert_false(EventSystem.requirement_met(ev), "and nothing to drink is a missing price")
+	GameState.add_potion_loot(Data.all_potions()[0].id)
+	GameState.inventory.clear()
+	assert_false(EventSystem.requirement_met(ev), "so is an empty pack")
+
+
+func test_a_multi_clause_requirement_reads_as_one_sentence() -> void:
+	assert_eq(EventSystem.requirement_text(_event(RANWID).requirement),
+		"Gold >= 2 and Potions >= 1 and Tradeable Relics >= 1",
+		"the phrase the player reads is the phrase in the cell")
+	# And a single clause still reads exactly as it did — eleven authored rows
+	# depend on it.
+	assert_eq(EventSystem.requirement_text(
+		{"stat": "gold", "op": ">=", "value": 3, "percent": false}), "Gold >= 3")
+
+
+# The relics he counts are relics he would EAT. A starter, a Boss relic and an
+# Event relic are the three classes nothing may take off you, and an old man's
+# appetite is not the exception — so a pack of nothing but those is a pack he has
+# no business standing in front of.
+func test_the_relic_he_counts_is_one_he_would_take() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	for held in GameState.inventory.duplicate():
+		GameState.remove_item(held)
+	for it in Data.all_items2():
+		if not it.is_rollable():
+			GameState.add_item(it)
+			break
+	for held in GameState.inventory.duplicate():
+		if held is ItemData and held.is_rollable():
+			GameState.remove_item(held)   # a payout the off-ladder relic made as it landed
+	assert_gt(GameState.inventory.size(), 0, "the pack is not empty")
+	assert_eq(GameState.tradeable_relic_count(), 0, "it is just nothing he would eat")
+	assert_false(EventSystem.requirement_met(ev), "so he is not offered the node")
+
+
+# The two prices he names. Rolled when the event opens and held there, so the
+# button names the same bottle when it is pressed as it named when it was drawn.
+func test_ranwid_names_the_potion_and_the_relic_he_is_asking_for() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	EventSystem.begin_event(ev)
+	var bottle: String = EventSystem.offered_potion_name()
+	var relic: ItemData = Data.get_item2(EventSystem.offered_relic())
+	assert_ne(bottle, "a potion", "a run with a bottle in it rolls that bottle")
+	assert_not_null(relic, "and one of your own relics")
+
+	var potion_choice: Dictionary = _choice(ev, "give_potion")
+	var relic_choice: Dictionary = _choice(ev, "give_relic")
+	assert_eq(String(potion_choice.get("text", "")), "Give <potion>",
+		"the .tres carries the hole, unresolved")
+	assert_eq(EventSystem.fill_name_holes(String(potion_choice["text"]), potion_choice),
+		"Give %s" % bottle)
+	assert_eq(EventSystem.fill_name_holes(String(relic_choice["text"]), relic_choice),
+		"Give %s" % relic.display_name)
+	# …and the cost line under the button says the same thing.
+	assert_string_contains(EventSystem.describe_choice(potion_choice, 0), bottle)
+	assert_false(EventSystem.describe_choice(relic_choice, 0).contains("<relic>"),
+		"no hole survives to the screen")
+
+
+func test_the_gold_price_costs_two_and_pays_one_relic() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	EventSystem.begin_event(ev)
+	var choice: Dictionary = _choice(ev, "give_2_gold")
+	# The price, off the cell and charged on its own (see _effect_of).
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 2})
+	GameState.gold = 5
+	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
+	assert_eq(GameState.gold, 3, "he chews two of the five")
+	# …and the press pays a relic for them.
+	GameState.gold = 5
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, choice, 0)
+	assert_eq(GameState.inventory.size(), held + 1, "and one relic comes back")
+	assert_lte(GameState.gold, 3, "the two are spent whatever the relic pays back")
+
+
+func test_the_potion_price_takes_the_bottle_he_named() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	GameState.add_potion_loot(Data.all_potions()[1].id)
+	EventSystem.begin_event(ev)
+	var named: Dictionary = EventSystem.offered_potion()
+	var bottles: int = GameState.loot_potions().size()
+	var held: int = GameState.inventory.size()
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "give_potion"), 0)
+	assert_eq(GameState.loot_potions().size(), bottles - 1, "one bottle down")
+	for entry in GameState.loot_potions():
+		assert_false(is_same(entry, named), "and it is the one he was handed")
+	assert_eq(GameState.inventory.size(), held + 1, "one relic back")
+	# The prose names it too, after it has gone: the sentence is about the potion
+	# he just drank.
+	assert_string_contains(String(out["result"]), EventSystem.offered_potion_name())
+
+
+# The best of the three trades, and the reason to make it: what you give is what
+# he pays for. A relic is worth two back.
+func test_the_relic_price_pays_two_relics_back() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	EventSystem.begin_event(ev)
+	var eaten: StringName = EventSystem.offered_relic()
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "give_relic"), 0)
+	assert_false(GameState.has_item(eaten), "he ate it")
+	assert_eq(GameState.inventory.size(), held + 1,
+		"one out, two in — the pack is one relic bigger")
+
+
+# A price he cannot be paid is not a button. The Requirement keeps him off the
+# node in the first place; this is what holds if the pack empties underneath him.
+func test_a_price_he_cannot_be_paid_is_not_offered() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	GameState.loot_items.clear()
+	EventSystem.begin_event(ev)
+	assert_false(EventSystem.choice_available(_choice(ev, "give_potion"), {}),
+		"no bottle, no button — it would pay a relic for nothing")
+	assert_true(EventSystem.choice_available(_choice(ev, "give_relic"), {}),
+		"the relic he can still be handed is still on the table")
+
+
+# `gain_random_item` hands the relic over WHERE HE STANDS, rather than banking a
+# chest the reward screen opens a screen and a walk later.
+func test_the_relic_arrives_in_the_pack_not_in_a_chest() -> void:
+	var ev: EventData2 = _event(RANWID)
+	_stock_ranwid()
+	var chests: int = GameState.pending_chests
+	EventSystem.begin_event(ev)
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "give_2_gold"), 0)
+	assert_eq(GameState.pending_chests, chests, "nothing was banked")
+	assert_eq(GameState.inventory.size(), held + 1, "it is already in the pack")
+
+
+# --- Potion Lab: an event that is a table, not a question -------------------
+#
+# Tiny Rogues' lab, and the first event to carry `opens_with` (§15). There is no
+# prose and no "Take" button: the three bottles are on the bench when the event
+# opens, and the only choice on it is walking out on whatever is left.
+
+const LAB := &"potion_lab"
+const MONKEY := &"golden_monkey"
+
+
+func test_the_lab_puts_three_bottles_on_the_bench() -> void:
+	var ev: EventData2 = _event(LAB)
+	assert_eq(ev.prompt, "", "the lab speaks in bottles")
+	assert_eq(ev.opens_with, {"type": "offer_loot", "kind": "potion", "value": 3},
+		"and says so in Opens With rather than in a choice")
+	GameState.loot_items.clear()
+	EventSystem.begin_event(ev)
+	var offer: Array = EventSystem.opening_loot()
+	assert_eq(offer.size(), 3, "three of them")
+	for entry in offer:
+		assert_eq(String(entry.get("type", "")), "potion", "all potions")
+
+
+# The table is an OFFER: nothing has entered the pack, and nothing will until the
+# player drags it there. This is the whole difference from `gain_potion 3`, which
+# rolls the same three pieces and hands them over.
+func test_the_bench_is_an_offer_and_not_a_payout() -> void:
+	GameState.loot_items.clear()
+	EventSystem.begin_event(_event(LAB))
+	assert_eq(EventSystem.opening_loot().size(), 3, "three on the bench")
+	assert_eq(GameState.loot_potions().size(), 0, "and none of them in the pack")
+
+
+# Rolled ONCE, when the event opens. The modal repaints on every press, and a
+# per-repaint roll would deal three different potions each time the player looked
+# away from the bench.
+func test_the_bench_is_not_redealt_while_the_event_is_open() -> void:
+	EventSystem.begin_event(_event(LAB))
+	var first: Array = EventSystem.opening_loot()
+	assert_eq(EventSystem.opening_loot(), first, "the same three bottles")
+	# A different event opening clears it — the bench belongs to the lab.
+	EventSystem.begin_event(_event(BATHS))
+	assert_eq(EventSystem.opening_loot().size(), 0,
+		"an event that opens with nothing opens with nothing")
+
+
+func test_leaving_the_lab_is_the_only_choice_on_it() -> void:
+	var ev: EventData2 = _event(LAB)
+	assert_eq(ev.choices.size(), 1, "no Take button in front of a table you can see")
+	var leave: Dictionary = _choice(ev, "leave")
+	assert_true(EventSystem.does_nothing(leave), "and it costs and pays nothing")
+
+
+# --- Golden Monkey: a point of Luck and a curse you don't get to pick -------
+
+func test_touching_the_monkey_pays_luck_and_costs_a_curse() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	assert_eq(ev.prompt, "", "wordless, like the lab")
+	var luck: int = GameState.luck
+	var curses: int = GameState.curse_goals.size()
+	EventSystem.resolve_choice(ev, _choice(ev, "touch_the_golden_monkey"), 0)
+	assert_eq(GameState.luck, luck + 1, "+1 Luck")
+	assert_eq(GameState.curse_goals.size(), curses + 1, "and one curse for it")
+
+
+func test_leaving_the_monkey_alone_costs_nothing() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	var luck: int = GameState.luck
+	EventSystem.resolve_choice(ev, _choice(ev, "leave"), 0)
+	assert_eq(GameState.luck, luck, "no Luck")
+	assert_eq(GameState.curse_goals.size(), 0, "and no curse")
+
+
+# The button cannot name the curse, because the curse has not been rolled yet —
+# and naming one would be the button lying about which. What it owes the player is
+# the shape of the bargain.
+func test_the_monkey_offers_a_curse_without_naming_one() -> void:
+	var line: String = EventSystem.describe_choice(
+		_choice(_event(MONKEY), "touch_the_golden_monkey"), 0)
+	assert_string_contains(line, "+1 Luck")
+	assert_string_contains(line, "random Curse")
+	for cd in Data.all_curses2():
+		assert_false(line.contains(cd.display_name),
+			"no curse is named before it is rolled: %s" % line)
+
+
+# A RANDOM CURSE IS NEVER A PERMANENT ONE, and that is the rule rather than the
+# monkey's own exception: a permanent curse is the price something specific
+# charges — Curse of the Bell is what the Calling Bell hangs on you — and a random
+# roll that could land one turns an idle button into a coin flip on the whole run.
+func test_a_random_curse_is_never_a_permanent_one() -> void:
+	var permanent: Array = []
+	var timed: Array = []
+	for cd in Data.all_curses2():
+		if cd.timer > 0:
+			timed.append(cd.id)
+		else:
+			permanent.append(cd.id)
+	assert_gt(permanent.size(), 0, "the catalogue has a permanent curse to exclude")
+	assert_gt(timed.size(), 0, "and something to roll instead")
+	for _i in range(40):
+		var rolled: StringName = EventSystem.roll_random_curse()
+		assert_has(timed, rolled, "a random curse has a clock on it")
+		assert_does_not_have(permanent, rolled, "never the permanent one")
+
+
+func test_the_curse_the_monkey_rolls_is_the_curse_it_hands_over() -> void:
+	var ev: EventData2 = _event(MONKEY)
+	var out: Dictionary = EventSystem.resolve_choice(
+		ev, _choice(ev, "touch_the_golden_monkey"), 0)
+	assert_eq(GameState.curse_goals.size(), 1, "one curse landed")
+	var cid := StringName(GameState.curse_goals[0].get("curse", &""))
+	var cd: CurseData2 = Data.get_curse2(cid)
+	assert_not_null(cd, "and it is a real one")
+	assert_gt(cd.timer, 0, "with a clock on it")
+	# …and the line the modal prints on the way out names what was caught, since
+	# the button could not.
+	assert_string_contains(String(out["text"]), cd.display_name)
+
+
+# --- We Meet Again!: the first meeting with the same old man ----------------
+#
+# Slay the Spire's Ranwid (§16), and the difference from his Slay the Spire 2
+# self (§14) is the third price: this one wants a CARD out of the pack where the
+# later one wants a relic. Every price is settled when the event opens and named
+# on the button — the original displays them too — while the relic he pays is not
+# named until it is in your hand.
+
+const AGAIN := &"we_meet_again"
+
+
+func _stock_again() -> void:
+	GameState.gold = 5
+	GameState.loot_items.clear()
+	GameState.add_potion_loot(Data.all_potions()[0].id)
+	for cd in Data.all_cards():
+		if cd.rarity != "Common":
+			GameState.add_card_loot(cd.id)
+			break
+
+
+func test_he_asks_for_two_gold_before_he_turns_up_at_all() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	assert_true(EventSystem.requirement_met(ev), "five Gold is more than two")
+	GameState.gold = 1
+	assert_false(EventSystem.requirement_met(ev), "one is not")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 2")
+
+
+# The prices are DISPLAYED, which is the original's own rule. The two that the run
+# picks are rolled when the event opens and land in the button through their
+# holes; the gold is a flat two and simply says so.
+func test_every_price_is_named_on_its_button() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	EventSystem.begin_event(ev)
+	var potion: Dictionary = _choice(ev, "give_potion")
+	var gold: Dictionary = _choice(ev, "give_2_gold")
+	var card: Dictionary = _choice(ev, "give_card")
+	assert_eq(EventSystem.fill_name_holes(String(potion["text"]), potion),
+		"Give %s" % EventSystem.offered_potion_name())
+	assert_eq(EventSystem.fill_name_holes(String(card["text"]), card),
+		"Give %s" % EventSystem.offered_card_name())
+	assert_eq(String(gold["text"]), "Give 2 Gold", "the number is on the button")
+	for line in [String(potion["text"]), String(card["text"])]:
+		assert_true(line.contains("<"), "the .tres carries the holes: %s" % line)
+
+
+# Two Gold, every time. The ask was authored as a rolled 2-6 for a while, on the
+# original's "varying amount"; it is a flat price now, and the button and the
+# press have to agree on it.
+func test_he_asks_for_two_gold_and_charges_two() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	var choice: Dictionary = _choice(ev, "give_2_gold")
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 2},
+		"exactly the two the button said")
+	GameState.gold = 9
+	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
+	assert_eq(GameState.gold, 7)
+	# The press pays a relic for them — and the purse afterwards is NOT asserted
+	# to the coin, because the relic he hands over may carry gold of its own.
+	GameState.gold = 9
+	EventSystem.begin_event(ev)
+	var held: int = GameState.inventory.size()
+	EventSystem.resolve_choice(ev, choice, 0)
+	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
+	assert_lte(GameState.gold, 7, "the two are spent whatever the relic pays back")
+
+
+# The card he takes is one worth studying: Uncommon or better, which is what the
+# cell's `uncommon+` says and the only card rule this build has to enforce.
+func test_he_only_takes_a_card_worth_studying() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	GameState.gold = 5
+	GameState.loot_items.clear()
+	var common: CardData = null
+	for cd in Data.all_cards():
+		if cd.rarity == "Common":
+			common = cd
+			break
+	assert_not_null(common, "the catalogue has a Common card")
+	GameState.add_card_loot(common.id)
+	EventSystem.begin_event(ev)
+	assert_true(EventSystem.offered_card().is_empty(), "a Common is not his sort of card")
+	assert_false(EventSystem.choice_available(_choice(ev, "give_card"), {}),
+		"so the button is not offered")
+
+	for cd in Data.all_cards():
+		if cd.rarity != "Common":
+			GameState.add_card_loot(cd.id)
+			break
+	EventSystem.begin_event(ev)
+	assert_false(EventSystem.offered_card().is_empty(), "an Uncommon+ is")
+	assert_true(EventSystem.choice_available(_choice(ev, "give_card"), {}))
+
+
+func test_giving_the_card_takes_that_card_and_pays_a_relic() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	EventSystem.begin_event(ev)
+	var named: Dictionary = EventSystem.offered_card()
+	assert_false(named.is_empty(), "he picked one out")
+	var cards: int = GameState.loot_cards().size()
+	var held: int = GameState.inventory.size()
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "give_card"), 0)
+	assert_eq(GameState.loot_cards().size(), cards - 1, "one card down")
+	for entry in GameState.loot_cards():
+		assert_false(is_same(entry, named), "and it is the one he named")
+	assert_eq(GameState.inventory.size(), held + 1, "one relic back")
+	assert_string_contains(String(out["result"]), "Exemplary")
+
+
+# Hitting him costs nothing and pays nothing, which is the whole joke.
+func test_attacking_him_does_nothing_at_all() -> void:
+	var ev: EventData2 = _event(AGAIN)
+	_stock_again()
+	var gold: int = GameState.gold
+	var held: int = GameState.inventory.size()
+	var attack: Dictionary = _choice(ev, "attack")
+	assert_true(EventSystem.does_nothing(attack))
+	var out: Dictionary = EventSystem.resolve_choice(ev, attack, 0)
+	assert_eq(GameState.gold, gold)
+	assert_eq(GameState.inventory.size(), held)
+	assert_string_contains(String(out["result"]), "runs away")
+
+
+# The two meetings are the same man and NOT the same event: what he asks for on
+# the third button is the difference, and it is what the pair is for.
+func test_the_two_meetings_ask_for_different_things() -> void:
+	var first: EventData2 = _event(AGAIN)
+	var second: EventData2 = _event(RANWID)
+	assert_true(_has_effect_type(first, "lose_card"), "the older man wants a card")
+	assert_false(_has_effect_type(first, "lose_relic"), "and never a relic")
+	assert_true(_has_effect_type(second, "lose_relic"), "the newer one wants a relic")
+	assert_false(_has_effect_type(second, "lose_card"), "and never a card")
+
+
+func _has_effect_type(ev: EventData2, type: String) -> bool:
+	for choice in ev.choices:
+		for eff in choice.get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == type:
+				return true
+	return false
+
+
+# --- The Woman in Blue: a shop with one item and no browsing ----------------
+#
+# Slay the Spire's pale woman. Three prices for the same thing, a Gold a bottle,
+# and a fourth button that is her fist. The potions arrive the way every other
+# payout does — offered on the drop screen, dragged into the pack — because a
+# potion bought is a potion found as far as the nine slots are concerned.
+
+const BLUE := &"the_woman_in_blue"
+
+
+func test_she_pulls_you_in_for_the_price_of_the_whole_shelf() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 3
+	assert_true(EventSystem.requirement_met(ev), "three Gold is the whole wall")
+	GameState.gold = 2
+	assert_false(EventSystem.requirement_met(ev),
+		"a purse that cannot clear her out is not shown the shop")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 3")
+
+
+func test_each_shelf_costs_a_gold_a_bottle() -> void:
+	var ev: EventData2 = _event(BLUE)
+	for n in [1, 2, 3]:
+		GameState.gold = 3
+		GameState.loot_items.clear()
+		var choice: Dictionary = _choice(ev, "buy_%d_potion%s" % [n, "" if n == 1 else "s"])
+		assert_string_contains(EventSystem.describe_choice(choice, 0), "-%d Gold" % n)
+		EventSystem.resolve_choice(ev, choice, 0)
+		assert_eq(GameState.gold, 3 - n, "a Gold a bottle")
+		assert_eq(GameState.loot_potions().size(), n, "and that many bottles")
+
+
+# The purse is what the buttons are gated on, one by one — the Requirement is
+# checked when the event is DEALT, and the gates are what hold if it moves while
+# the modal is up.
+func test_a_shelf_you_cannot_afford_is_not_offered() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 1
+	assert_true(EventSystem.choice_available(_choice(ev, "buy_1_potion"), {}))
+	assert_false(EventSystem.choice_available(_choice(ev, "buy_2_potions"), {}))
+	assert_false(EventSystem.choice_available(_choice(ev, "buy_3_potions"), {}))
+	assert_true(EventSystem.choice_available(_choice(ev, "leave"), {}),
+		"walking out is always on the table")
+
+
+func test_walking_out_costs_nothing_but_your_dignity() -> void:
+	var ev: EventData2 = _event(BLUE)
+	GameState.gold = 3
+	GameState.loot_items.clear()
+	var hp: int = GameState.hp
+	var leave: Dictionary = _choice(ev, "leave")
+	assert_true(EventSystem.does_nothing(leave), "the fist is prose, not damage")
+	var out: Dictionary = EventSystem.resolve_choice(ev, leave, 0)
+	assert_eq(GameState.gold, 3)
+	assert_eq(GameState.hp, hp, "she does not actually hit you for Health")
+	assert_eq(GameState.loot_potions().size(), 0)
+	assert_string_contains(String(out["result"]), "WHAM")

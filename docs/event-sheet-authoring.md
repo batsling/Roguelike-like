@@ -1,7 +1,7 @@
 # Event sheet-authoring (`events2.0`)
 
-Status: **built, illustrated and running.** Eight events authored, generators
-and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §15 is how it runs and the little
+Status: **built, illustrated and running.** Sixteen events authored, generators
+and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §19 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
 `locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
@@ -147,7 +147,7 @@ leaves the last eight cells empty.
 
 ## 3. Columns
 
-Fourteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
+Fifteen event columns, then `Choice N` / `Repeat N` / `Result N` / `Effect N`
 for N = 1…6.
 
 | Column | Scope | Meaning |
@@ -156,11 +156,12 @@ for N = 1…6.
 | `Game` | event | The real game this is lifted from. Flavour credit (the modal's "From: *game*" line), and the target when `Where` is `Game`. |
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | **Leave blank.** An event fires after every game (§1.1), so this answers no placement question today. It stays wired — `Dead End` (a node with one connection), `Any`, `Game` (only ever on its own `Game`) — for the per-location work, and nothing authored sets it. |
-| `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`). Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, and `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13). |
-| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §15. |
+| `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`), and several of those joined by **`and`** (`gold>=2 and potions>=1 and relics>=1`) when an event needs more than one thing at once. Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13) — and `potions`, bottles carried, which is what Ranwid gates on (§14). |
+| `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §19. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
 | `Prompt` | event | The prose at the top of the modal. **Blank is legal and changes the layout**: a wordless event stacks its illustration *above* the choices instead of standing it in a column beside them — see below. |
+| `Opens With` | event | What the event is **already doing when it opens**, before anything is pressed. One token: `offer_loot <kind> <n>` — n rolled pieces laid out as the real drop table *inside* the event's body, with the player's own 3×3 and its bin beside them (the Potion Lab, §15). Blank on every other event. Deliberately not the whole `Effect` DSL: this fires with nothing pressed, so an event that could charge Health here would be one that hurts you for reading it. |
 | `Goal Met` | event | Printed when a goal this event handed out has its condition **met**. |
 | `Goal Missed` | event | Printed when that goal's window closes unmet. Curses never expire, so they leave it blank. |
 | `Chance Won` | event | Printed when a `chance` roll (§5) lands. Blank on events with no gamble. |
@@ -318,6 +319,20 @@ word.** No engine work, just the generator.
 `lose_stat <stat> N`, `lose_gold N`, `lose_max_hp N`, `heal_full`,
 `gain_loot N`, and the four event-only forms below.
 
+Three more of that kind arrived with Ranwid (§14), and they are what a trade
+paid in **things** rather than in numbers needs:
+
+| Token | Meaning |
+|---|---|
+| `gain_random_item N` | N relics off the **rollable** pool, handed straight over. The sibling of `gain_item` for a payout that names nothing — and deliberately not `gain_chest small N`, which banks a chest the reward screen opens a screen and a walk later. Prefers what you don't already own, and fills the `{ITEM}` hole with what it rolled. |
+| `lose_potion` | One bottle out of the pack. **Which** one is rolled when the event opens and named on the button through the `<potion>` hole (§5.2) — the player is told what they are about to hand over before they press. |
+| `lose_relic` | The same for one **tradeable** relic — rollable only, so a Starter, a Boss relic and an Event relic are as safe from an old man's appetite as they are from the trader's coat. The `<relic>` hole names it. |
+| `lose_card [uncommon+]` | And the third thing a pack carries. `uncommon+` narrows the draw to a card worth studying, which is We Meet Again's own rule (§16); without it any carried card is fair game. The `<card>` hole names it, face up — it is in your pack, so it is itself. |
+
+Both costs are settled by the run rather than by the cell, which is why neither
+takes a number: "give a potion" is one bottle, and a choice that wanted two would
+be a different button with a different sentence on it.
+
 Two of the costs do not simply mirror their gains, and both asymmetries are
 deliberate:
 
@@ -425,6 +440,11 @@ once and any number of events can hand out the same one. It carries a window
 like `add_goal` does, defaulting to the curse's own `Timer`; `for <n> games`
 overrides it. Unrest Site (§9) is where it comes from.
 
+`add_curse random` is the one id that names no row (§15): the curse is drawn when
+the choice is taken, and **never a permanent one** — a random draw that could hand
+out Curse of the Bell would make an idle button a coin flip on the rest of the
+run, so a curse with `Timer: 0` is opted out of every random draw by saying so.
+
 `play_game` is the odd one out: it hands over neither a reward nor a goal but
 **sends the player somewhere**. `play_game tag=mecha` drops them into a random
 game carrying that tag, off their route, which spawns its enemy and is played
@@ -516,7 +536,7 @@ authoring notes fall out of it:
   rounds to nothing for half the roster. `max(1, ...)` is the difference between
   a cost and a button that claims to hurt and doesn't.
 
-### 5.2 `<give>` and `<get>` — name holes
+### 5.2 `<give>`, `<get>`, `<potion>`, `<relic>` — name holes
 
 `{...}` holes carry arithmetic. `<give>` and `<get>` carry a **name**, and they
 exist for one event: the Relic Trader (§13), whose three offers are built out of
@@ -529,6 +549,14 @@ alike, so the whole event stays authored in the spreadsheet: the only thing
 GDScript knows about the Relic Trader is what `<give>` and `<get>` mean. An
 unfilled hole (the Collection's event page, where there is no run and no pack)
 reads "a relic", so the sentence still scans outside a run.
+
+**`<potion>` and `<relic>` are the same idea pointed the other way**: not the
+two halves of a swap, but the one thing the event is about to *take*. They are
+filled by whatever `lose_potion` / `lose_relic` rolled when the event opened —
+so `Give <potion>` on a button becomes *"Give Swirly Potion"*, and the result
+prose can go on naming that bottle after it has been drunk. Their unfilled forms
+read "a potion" and "a relic". Ranwid (§14) is where they come from, and, as with
+the trader, GDScript knows the two hole names and nothing else about him.
 
 ---
 
@@ -1054,7 +1082,7 @@ the same choices twice**.
 Every row is an offer; there is **no "Trade Nothing"**. The button already names
 both relics, so the prose on the way out is only the trader's own line — the
 same one whichever row you point at. And a run he wants nothing from shows no
-rows at all, which the modal already answers with its own **Leave** (§15,
+rows at all, which the modal already answers with its own **Leave** (§19,
 `EventModal2`): a decline button would be a fourth choice that exists purely to
 say what an empty list already says.
 
@@ -1070,7 +1098,7 @@ event off the node rather than opening it half-empty.
 
 ### The offers are rolled once, when the event opens
 
-Placement is hashed so a card's badge cannot change under the player (§15). A
+Placement is hashed so a card's badge cannot change under the player (§19). A
 trade cannot be: it depends on the **inventory**, not on the node. So the three
 pairings are rolled once, in `EventSystem.begin_event`, and held for as long as
 the modal is up — re-rolling per repaint would rename the button under the
@@ -1100,7 +1128,263 @@ mean and nothing else about the Relic Trader.
 
 ---
 
-## 14. Other shapes, for reference
+## 14. The eighth worked example: Ranwid the Elder
+
+The old man who eats what you hand him. Not lifted from anything — the `Game`
+column is blank, so no credit line prints — and the first event whose **prices
+are things rather than numbers**.
+
+| | |
+|---|---|
+| `Requirement` | `gold>=2 and potions>=1 and relics>=1` |
+| `Prompt` | *"You are approached by the oldest person you have ever seen. 'We meet once more... it's me, Ranwid!' You do not know this man."* |
+
+| Choice | Effect | Result |
+|---|---|---|
+| **Give 2 Gold** | `needs gold 2; lose_gold 2; gain_random_item 1` | *"Mag.. nificent..." Ranwid mumbles while chewing the gold.* |
+| **Give `<potion>`** | `lose_potion; gain_random_item 1` | *"Exquisite..." Glup glup glup. He downs the `<potion>` in one go.* |
+| **Give `<relic>`** | `lose_relic; gain_random_item 2` | *"Exemplary..." Ranwid observes the relic studiously for several minutes... Then eats the `<relic>`.* |
+
+**The shape is: what it costs you to give is what he pays for.** Two Gold is the
+cheap door and pays one relic; a relic — the thing you would actually miss — pays
+two. There is no decline button and none is needed, because every row is a gain:
+the decision is *which* of the three things you are carrying you can most afford
+to lose, not whether to trade at all.
+
+### He is the reason `Requirement` learned `and`
+
+Every one of his buttons spends a different kind of thing, so a run short of any
+one of the three opens him on a shelf he cannot fill — the failure the trader's
+`relics >= 5` exists to prevent, three prices at a time. The column takes clauses
+joined by `and` (§3); a single clause keeps the flat shape it always had, so
+teaching it this rewrote nothing. **AND only**: an `or` gate would be exactly the
+half-empty event the gate is for.
+
+`potions` joined the closed stat list with him, and it counts bottles carried,
+identified or not — an unknown potion is as good a gift as a known one. `relics`
+he shares with the trader, and it means the same thing: **tradeable** relics
+only. A Starter, a Boss relic and an Event relic are the three classes nothing
+may take off you, and an old man's appetite is not the exception.
+
+### Two prices paid in kind, and the run picks which
+
+`lose_potion` and `lose_relic` (§5) take **one** bottle and **one** relic, and
+which ones is rolled in `EventSystem.begin_event` and held for as long as the
+modal is up — the trader's contract exactly, for the trader's reason: a button
+that says *"Give Swirly Potion"* has to still mean that bottle when it is
+pressed, and a per-repaint roll would rename it under the cursor. The `<potion>`
+and `<relic>` holes (§5.2) are how the sheet says the name without knowing it.
+
+If the pack empties underneath him — the Requirement is checked when the event is
+*dealt*, not on every repaint — the choice with nothing behind it is simply not
+offered, the same gate `trade_relic` uses on an empty slot.
+
+### The relic arrives in your hand, not on the reward screen
+
+`gain_random_item N` and not `gain_chest small N`. A chest is banked and opened
+after the event closes, which would put a screen and a walk between the gift and
+the giving; Ranwid presses the relic into your palm while he is still chewing.
+It rolls off the same rollable pool a chest would, prefers what you don't already
+own, and writes what it rolled into `{ITEM}` for prose that wants to name it —
+Ranwid's own lines don't, since he is looking at what he was *given*.
+
+### What it needed from the format
+
+An `and` in one column, one gate stat, three reward tokens and two name holes —
+and no new column, no new group and no change to how an event is drawn.
+
+---
+
+## 15. The ninth and tenth: Potion Lab and Golden Monkey
+
+Two from **Tiny Rogues**, and both are **wordless** — no `Prompt` at all, the way
+the Arcade Room is. They are here together because they are the same authoring
+lesson from opposite ends: one needed a new column and no new tokens, the other a
+new token and no new column.
+
+### Potion Lab — the event that is a table rather than a question
+
+| | |
+|---|---|
+| `Prompt` | *(blank)* |
+| `Opens With` | `offer_loot potion 3` |
+
+| Choice | Effect |
+|---|---|
+| **Leave** | `nothing` |
+
+Three potions on the bench, and the only button on the event is walking out.
+There is no *Take*: a button in front of a table you can already see is a click
+that answers a question nobody asked.
+
+**What draws the bench is the real drop screen.** `LootDropModal.embed` — the
+same section the post-combat screen carries (`games-first-redesign.md` §4.3) —
+mounted between the event's machines and its buttons. So the three bottles, the
+player's own 3×3, the drag between them, the bin, the info card and "use it where
+you stand" all behave here exactly as they do everywhere else, and *nothing about
+a potion had to be re-taught to the event modal*.
+
+**Why `Opens With` is a column and not an `Effect` cell.** An `Effect` fires when
+a choice is pressed, and this fires when the event opens. It is a sibling of
+`Prompt` — what the event puts in front of you before it asks anything — which is
+also why it sits next to it on the sheet. Deliberately **not** the whole DSL:
+this runs with nothing pressed, so a cell that could write `lose_hp 3` here would
+be an event that hurts you for reading it. One token, `offer_loot <kind> <n>`,
+over the kinds `roll_loot_entry` knows (`loot`, `scroll`, `pill`, `potion`,
+`card`, `wand`).
+
+**It is an OFFER and not a payout**, which is the whole difference from
+`gain_potion 3` in an `Effect` cell. That token rolls the same three pieces and
+hands them over (through the same drop screen, stacked *over* the event); this
+one puts them on a table inside the event and lets the player take what they
+want. Anything still on the bench when they press **Leave** is left there, the
+way the arcade's cabinets are.
+
+The pieces are rolled once, in `EventSystem.begin_event`, and held for as long as
+the event is up — the modal repaints on every press, and a per-repaint roll would
+deal a different three each time the player looked away.
+
+### Golden Monkey — a curse you do not get to pick
+
+| Choice | Effect |
+|---|---|
+| **Touch the Golden Monkey** | `gain_stat luck 1; add_curse random` |
+| **Leave** | `nothing` |
+
+A point of Luck against a curse, and *which* curse is not yours to know: the roll
+happens when the button is pressed, so the line under it can only say **"+1
+random Curse"**. Naming one there would be the button lying about which.
+
+**`add_curse random` never rolls a permanent curse**, and that is the rule rather
+than the monkey's exception. A permanent curse is a price something *specific*
+charges for something specific — Curse of the Bell is what the Calling Bell hangs
+on you — and a random draw that could land one turns an idle button into a coin
+flip on the rest of the run. So "a random curse" means a curse with a clock on
+it, and a curse authored with `Timer: 0` opts itself out of every random draw by
+saying so. `EventSystem.roll_random_curse` is the one place that holds.
+
+The result prose is blank on both choices, on purpose: what the player needs to
+read is what they caught, and that line is composed from the curse itself
+(`CurseData2.describe()`) rather than authored, so it names whichever one landed.
+
+---
+
+## 16. The eleventh: We Meet Again!
+
+Slay the Spire's Ranwid — and the **first** meeting with the man §14 is the
+second, since Ranwid the Elder is the same event in Slay the Spire 2. They are
+both in the bag on purpose, and what tells them apart is what he asks for.
+
+| | |
+|---|---|
+| `Requirement` | `gold>=2` |
+| `Prompt` | *"We meet again!" A cheery disheveled fellow approaches you gleefully. You do not know this man. "It's me, Ranwid! Have any goods for me today? The usual?…"* |
+
+| Choice | Effect |
+|---|---|
+| **Give `<potion>`** | `lose_potion; gain_random_item 1` |
+| **Give 2 Gold** | `needs gold 2; lose_gold 2; gain_random_item 1` |
+| **Give `<card>`** | `lose_card uncommon+; gain_random_item 1` |
+| **Attack** | `nothing` |
+
+### Every price is named, and the payout is not
+
+That asymmetry is the original's, and it is the event's whole texture: the
+potion and the card are picked out and **shown to you** before you choose, while
+the relic is "look what I've got for you today" and could be anything. So the two
+costs the run settles are rolled in `begin_event` and land on the buttons through
+`<potion>` and `<card>` (§5.2), and the payout is `gain_random_item 1`, which
+names nothing until it is in your hand.
+
+**The gold is a flat two.** Slay the Spire asks a varying 50–150 of a purse that
+runs to hundreds; this economy is priced in single digits, where "2 to 6" is the
+difference between a small ask and most of what you have, and a price that swings
+that far is one nobody can plan around. Two Gold, said on the button, every time.
+(A `lose_gold <lo>-<hi>` form existed briefly for the varying ask and went with
+it: a DSL token with no author is a token nobody maintains.)
+
+### Why he turns up for two Gold and nothing else
+
+Ranwid the Elder gates on all three of his prices, because every one of his
+buttons spends one and a run short of any would open him on a shelf he cannot
+fill. This one keeps **[Attack]** — a real choice that costs nothing, pays
+nothing and is the joke — so the event is never a dead end even when the pack is
+empty. The potion and card buttons hide themselves when there is nothing behind
+them, which is the same rule the Relic Trader's empty slots follow.
+
+`uncommon+` on the card is his own standard: he wants something worth studying,
+and a Common is not it. It is a modifier rather than the default, so an event
+that wants any card at all does not have to say so.
+
+---
+
+## 17. The twelfth: The Woman in Blue
+
+Slay the Spire's pale woman — a shop with one thing on the shelf and no interest
+in your browsing.
+
+| | |
+|---|---|
+| `Requirement` | `gold>=3` |
+| `Prompt` | *From the darkness, an arm pulls you into a small shop… "Buy a potion. Now!"* |
+
+| Choice | Effect |
+|---|---|
+| **Buy 1 Potion** | `needs gold 1; lose_gold 1; gain_potion 1` |
+| **Buy 2 Potions** | `needs gold 2; lose_gold 2; gain_potion 2` |
+| **Buy 3 Potions** | `needs gold 3; lose_gold 3; gain_potion 3` |
+| **Leave** | `nothing` |
+
+**It needed nothing from the format**, which is the point of it being here: three
+prices for the same thing and a way out, authored out of tokens that were already
+in the sheet. A Gold a bottle, and the shelf is priced so the Requirement — the
+whole wall — is a purse that can actually clear her out.
+
+### The potions land on the event, not on a screen over it
+
+`gain_potion N` **offers** rather than grants (§5): it rolls the bottles and
+hands them to whoever is listening. Inside an event, that is **the event** —
+`Overworld2._on_loot_offered` gives an open modal first refusal, and
+`EventModal2.add_loot` puts the pieces on the same embedded table the Potion Lab
+(§15) opens with. Buying two potions ends with the same drag into the same nine
+slots as finding two, and the nine-piece cap gets its say, but the shop you are
+standing in does not sprout a second window on top of itself.
+
+So an event's table has two ways of arriving and one appearance: `Opens With`
+puts it there before anything is pressed (the Lab), a payout puts it there when a
+choice pays (the shelf). Both are `LootDropModal.embed`, with two differences
+from the post-combat screen's copy: it is given room for the 3×3 to stand up in
+one piece, and it carries a **take-all** button — an event's pieces are usually
+an order the player just placed, and collecting a purchase should not cost three
+drags.
+
+The table is given room for the 3×3 to stand up in one piece, but it is also the
+thing that **gives way when the window runs out**: an event carrying prose, an
+outcome line and a table is more than 720p has, and the overflow comes off the
+table (`LootDropModal.shrink_body`) rather than off the buttons. A table that
+scrolls is a great deal better than a way out that is off the bottom of the
+screen.
+
+**The event's way out is the table's way out**, so it counts: press Onward with
+two bottles still on the counter and they are left there, and the button says
+*"Onward   (leaving 2 behind)"* while they are. Live, not drawn once — the table
+fires on every take, leave, use and bin. Nothing is swept quietly, and nothing
+traps the player on the screen either; leaving loot is a decision the build lets
+you make everywhere else too (`PostCombatScreen.exit_text` says the same thing in
+the same words). A hidden event (the ⌄ Hide chip) refuses a payout and the page
+falls back to its own drop screen: a table nobody can see is worse than a window.
+
+### Her fist is prose
+
+`Leave` is authored as `nothing`, and the WHAM is the `Result` cell. Slay the
+Spire charges Health for walking out; here she swings and misses, because an
+event that opens on a Requirement of three Gold and then bills you for declining
+is a mugging rather than a shop. The line still lands — it is the best line in
+the event — and it costs nothing, which is what `nothing` is for (§3).
+
+---
+
+## 18. Other shapes, for reference
 
 Not authored — these are here so the format can be read against more than one
 event.
@@ -1121,7 +1405,7 @@ and it turned out not to be plain at all: see §12.)
 
 ---
 
-## 15. How it runs
+## 19. How it runs
 
 Built and under test (`test/test_events2.gd`). The pieces, and the one thing each
 of them is really solving:

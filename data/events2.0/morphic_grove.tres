@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "MorphicGrove"
 prompt = "You enter a grove of crystalline trees, and they begin to quiver excitedly! A chorus of hellos and welcomes bombard you as a group of Morphics burst forth from trees. One of the Morphics is fidgeting in the corner, clearly not as sociable as the others. Approach the group or the loner?"
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

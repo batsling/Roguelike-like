@@ -263,10 +263,18 @@ func test_a_reported_games_escort_survives_the_next_choice() -> void:
 # for the next supersede to chase.
 func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 	GameState.bombs = 1
-	GameLoop2.choose_game(_enemy(2))
-	GameLoop2.bomb(GameLoop2.escort_instance())
+	var primary: int = GameLoop2.choose_game(_enemy(2))
+	var escort: int = GameLoop2.escort_instance()
+	assert_gt(escort, 0, "the game brought one")
+	GameLoop2.bomb(escort)
 	assert_eq(GameLoop2.escort_instance(), 0, "nothing to reach back for")
-	assert_eq(GameLoop2.stack_size(), 1)
+	assert_true(_entry(escort).is_empty(), "and the body it named is off the board")
+	# NOT the stack size. The escort is a RANDOM body off the roster
+	# (GameLoop2.roll_escort), and some of them leave something behind when they
+	# are destroyed — bomb a Slime and you get two smaller Slimes, which is the
+	# body doing its job. This asserted a board exactly one deep and so failed on
+	# about one run in twenty, on nothing but which escort was rolled.
+	assert_false(_entry(primary).is_empty(), "the game's own enemy is still standing")
 
 # The pairing is what the save has to carry: a Scramble taken after a reload must
 # still supersede both bodies.

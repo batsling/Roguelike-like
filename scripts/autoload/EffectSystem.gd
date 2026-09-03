@@ -99,6 +99,10 @@ func _register_defaults() -> void:
 	register("add_curse", _h_add_curse)
 	register("spawn_enemy", _h_spawn_enemy)
 	register("trade_relic", _h_trade_relic)
+	register("gain_random_item", _h_gain_random_item)
+	register("lose_potion", _h_lose_potion)
+	register("lose_card", _h_lose_card)
+	register("lose_relic", _h_lose_relic)
 	# Objects (docs/object-sheet-authoring.md).
 	register("gain_pickups", _h_gain_pickups)
 	register("gain_item_of", _h_gain_item_of)
@@ -409,6 +413,58 @@ func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
 # the event opened — this handler only names the slot the button belongs to.
 func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
 	EventSystem.resolve_trade(int(effect.get("slot", 1)))
+
+
+# `gain_random_item N` — N relics off the rollable pool, straight into the pack.
+# The sibling of `gain_item` for a payout that names nothing, and NOT a chest:
+# Ranwid hands the relic over where he stands, and a chest would put a screen and
+# a walk between the gift and the giving.
+#
+# Prefers what the player does not already own, the same preference a shop shelf
+# and the Calling Bell have, and never pays the same relic twice in one call.
+# Names what it rolled into `ctx` so the prose can say what appeared ({ITEM}).
+func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
+	var count: int = maxi(1, int(effect.get("value", 1)))
+	# What this very choice took off the player, if anything (see _h_lose_relic).
+	# Never paid back as a "new" relic: a trade that returns what you traded is not
+	# a trade, and it is the shape `prefer what you don't own` falls into the
+	# instant the cost is charged before the payout.
+	var given := StringName(ctx.get("given_item", &""))
+	var names: Array = []
+	for _i in range(count):
+		var pool: Array = Data.reward_item2_pool().filter(
+			func(it): return not GameState.has_item(it.id) and it.id != given)
+		if pool.is_empty():
+			pool = Data.reward_item2_pool().filter(func(it): return it.id != given)
+		if pool.is_empty():
+			break
+		var pick: ItemData = pool[_rng.randi_range(0, pool.size() - 1)]
+		GameState.add_item(pick)
+		names.append(pick.display_name)
+	if names.is_empty():
+		return
+	ctx["granted_item_name"] = " and ".join(PackedStringArray(names))
+
+
+# The two prices paid in KIND. Which potion and which relic was rolled when the
+# event opened and is held on EventSystem, so the bottle taken here is the bottle
+# the button named — see EventSystem's offering block.
+func _h_lose_potion(_effect: Dictionary, _ctx: Dictionary) -> void:
+	EventSystem.take_offered_potion()
+
+
+func _h_lose_card(_effect: Dictionary, _ctx: Dictionary) -> void:
+	EventSystem.take_offered_card()
+
+
+# Written into `ctx` so a payout in the SAME choice cannot hand it straight back.
+# Ranwid eats your relic and pays two; without this, one of the two could be the
+# relic he just ate, because the moment it leaves the pack it is a relic you do
+# not own and so the payout's "prefer what you don't have" rule prefers it.
+func _h_lose_relic(_effect: Dictionary, ctx: Dictionary) -> void:
+	var eaten: StringName = EventSystem.take_offered_relic()
+	if eaten != &"":
+		ctx["given_item"] = eaten
 
 # DAMAGE, as against `lose_hp`'s bill: it resolves on the battlefield, so the tries
 # absorb it first and the player's own statuses scale it (Burn's "or take 3

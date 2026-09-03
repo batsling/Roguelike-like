@@ -11,6 +11,222 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Loot an event pays lands on the event.**
+
+  Buying three potions from the Woman in Blue used to hand you a second window
+  on top of the shop you were standing in: `gain_potion 3` fires
+  `GameState.offer_loot`, and the page answered that with its own drop modal. The
+  bottles belong where the decision was made. `Overworld2._on_loot_offered` now
+  gives an open event first refusal — the same courtesy the post-combat screen
+  already had — and `EventModal2.add_loot` puts the pieces on the event's own
+  table: the embedded drop screen the Potion Lab opens with, with the offer, the
+  live 3x3, the drag between them and the bin.
+
+  So an event's table has two ways of arriving and one appearance: `Opens With`
+  puts it there before anything is pressed, a payout puts it there when a choice
+  pays. Both now carry a **take-all** button, which the post-combat screen's copy
+  deliberately does without — an event's pieces are usually an order the player
+  just placed, and collecting a purchase should not cost three drags. The drag is
+  still there for putting a piece in a chosen slot, and the bin is still "leave
+  it" said with the hands.
+
+  **The event's way out is the table's way out, so it counts what is on it**:
+  press Onward with two bottles still on the counter and they are left there, and
+  the button reads "Onward   (leaving 2 behind)" while they are — live, off the
+  table's own `changed`, so it is never warning about a bottle already in the
+  pack. The same sentence `PostCombatScreen.exit_text` has said all along. A
+  closing choice that pays loot no longer skips its epilogue either, since the
+  table standing on it is the thing still being answered.
+
+  A HIDDEN event refuses a payout and the page falls back to its own drop screen:
+  a table nobody can see is worse than a window.
+
+  **The table gives way before the buttons do.** A drop table asks for enough
+  room to stand the 3x3 up in one piece, and on an event carrying prose, an
+  outcome line AND a table that is more than a 720p window has — which put
+  "Onward   (leaving 3 behind)" below the fold of the scrolling column, so the
+  way out was something you had to go looking for. `EventModal2._fit` now hands
+  the overflow back to the table (`LootDropModal.shrink_body`, floored at the
+  ordinary embedded height), because a table that scrolls is a great deal better
+  than a way out that is off the bottom of the screen.
+
+  Two more only-usually-true assertions came out with it, both in tests written
+  in this session's earlier commits: the two events that charge Gold for a
+  RANDOM relic asserted the purse to the coin afterwards, and Old Coin pays 6
+  Gold the moment it is picked up. They assert the price off the cell and charge
+  it on its own now, and only that the relic arrived.
+
+  A second latent flake turned up on the way and is fixed rather than reseeded:
+  `test_bombing_the_escort_clears_the_handle_it_was_held_by` asserted a board
+  exactly one body deep after the bomb. The escort is a RANDOM body off the
+  roster, and some of them leave something behind when they are destroyed — bomb
+  a Slime and you get two smaller Slimes, which is the body doing its job. It
+  failed on about one run in twenty, on nothing but which escort was rolled, and
+  now asserts what it is named for: the handle cleared, the bombed body gone, and
+  the game's own enemy still standing.
+
+- **The Woman in Blue, and Ranwid's gold ask settles at two.**
+
+  Slay the Spire's pale woman: a shop with one thing on the shelf and no
+  interest in your browsing. Buy one, two or three potions at a Gold each, or
+  leave and be shown out by her fist. **It needed nothing from the format** —
+  three prices for the same thing and a way out, authored entirely out of tokens
+  the sheet already had, which is the first event since Whispering Hollow that
+  can be said of.
+
+  `gain_potion N` OFFERS rather than grants, so the bottles arrive on the
+  ordinary drop screen: the same three-offers-and-your-3x3 the Potion Lab embeds
+  and every kill drop opens. Buying two potions ends with the same drag into the
+  same nine slots as finding two, and the nine-piece cap gets its say. Her fist
+  is prose — `Leave` is `nothing`, and the WHAM is the Result cell. Slay the
+  Spire charges Health for walking out; an event that opens on a three-Gold
+  Requirement and then bills you for declining is a mugging rather than a shop.
+
+  **We Meet Again's gold price is a flat 2**, where it was authored as a rolled
+  2-6 on the original's "varying amount". This economy is priced in single
+  digits, where 2 to 6 is the difference between a small ask and most of what you
+  have — a price that swings that far is one nobody can plan around. The
+  `lose_gold <lo>-<hi>` form and the `<gold>` hole went with it: a DSL token with
+  no author is a token nobody maintains, and the button says the number outright
+  now.
+
+- **We Meet Again!, and the man you have now met twice.**
+
+  Slay the Spire's Ranwid, which makes Ranwid the Elder (Slay the Spire 2) the
+  second meeting with the same disheveled fellow who is certain you know him.
+  Both are in the bag on purpose, and what tells them apart is what he asks for:
+  the older event wants a **card** out of your pack where the newer one wants a
+  relic.
+
+  Give a potion, give a varying amount of gold, or give a card — each pays one
+  random relic — and **[Attack]**, which costs nothing, pays nothing and is the
+  joke. The asymmetry the original runs on is the whole texture, so it is kept:
+  the three prices are picked out and SHOWN to you before you choose, while the
+  relic is "look what I've got for you today" and is not named until it is in
+  your hand.
+
+  Two new tokens for it:
+
+  * **`lose_card [uncommon+]`** — the third thing a pack carries, rolled and
+    named on the button like the potion and the relic before it. `uncommon+` is
+    Ranwid's own standard (he wants something worth studying, and a Common is
+    not it), authored as a modifier so an event that wants any card at all does
+    not have to say so.
+  * **`lose_gold <lo>-<hi>`** — a price the RUN settles rather than the sheet.
+    Rolled when the event opens, clamped to what the purse actually holds (he
+    cannot ask for more than you have, as in the original), quoted on the button
+    through the new `<gold>` hole, and charged at exactly the number quoted — a
+    fresh roll at the press would take an amount the player never agreed to. A
+    literal `lose_gold 3` is still a fixed price; Gold only, because a Health
+    cost you cannot read before pressing is a death trap.
+
+  The gold is scaled rather than copied: Slay the Spire asks 50–150 of a purse
+  that runs to hundreds, so this asks 2–6 — the floor is the two Gold this
+  economy is priced in, and the ceiling keeps the original's 1:3 spread.
+
+  He turns up for `gold>=2` and nothing else, where Ranwid the Elder gates on all
+  three of his prices. [Attack] is why: the event is never a dead end even on an
+  empty pack, and the potion and card buttons hide themselves when there is
+  nothing behind them.
+
+  One latent flake fell out of the new roll and is fixed rather than reseeded:
+  `test_the_board_gives_up_height_while_it_is_sharing_its_column` asserted that a
+  machine's panel SHRINKS the board's cells, which is only usually true.
+  `fitted_cell` takes the smaller of the width and height budgets and clamps to
+  CELL_MIN, so from eight columns up the width budget already has the cell at the
+  floor and the height it gives up changes nothing — correct behaviour reading
+  exactly like a board that refused to share, on whichever runs rolled a wide
+  enough board. It now asserts the budget moving, the cell never growing, and the
+  real shrink on a board where height is what binds.
+
+- **Two from Tiny Rogues: the Potion Lab and the Golden Monkey.**
+
+  Both wordless, the way the Arcade Room is, and between them they are the same
+  authoring lesson from opposite ends — one needed a new column and no new
+  tokens, the other a new token and no new column.
+
+  **The Potion Lab is an event that is a table rather than a question.** Three
+  potions on the bench when it opens and one button, `Leave`. There is no
+  *Take*: a button in front of a table you can already see is a click that
+  answers a question nobody asked. What draws the bench is the REAL drop screen
+  — `LootDropModal.embed`, the section the post-combat screen already carries —
+  mounted between the event's machines and its buttons, so the bottles, the
+  player's own 3×3, the drag between them, the bin and "use it where you stand"
+  behave exactly as they do everywhere else. Nothing about a potion had to be
+  re-taught to the event modal.
+
+  It arrives on a new event-level column, **`Opens With`**: what the event is
+  already doing before anything is pressed, as `offer_loot <kind> <n>`. A
+  sibling of `Prompt` rather than an `Effect` cell, because an `Effect` fires
+  when a choice is pressed and this fires when the event opens — and
+  deliberately not the whole DSL, since a cell that could write `lose_hp 3` here
+  would be an event that hurts you for reading it. It is an OFFER and not a
+  payout, which is the whole difference from `gain_potion 3`: that token hands
+  the same three pieces over, this one puts them on a table and lets you take
+  what you want. Anything still on the bench when you leave is left there, the
+  way the arcade's cabinets are. Rolled once, when the event opens, so a repaint
+  cannot deal a different three.
+
+  **The Golden Monkey is a point of Luck against a curse you don't get to
+  pick** — `gain_stat luck 1; add_curse random`. The roll happens when the
+  button is pressed, so the line under it says "+1 random Curse" and names
+  nothing; naming one there would be the button lying about which. **A random
+  curse is never a permanent one**, and that is the rule rather than the
+  monkey's exception: a permanent curse is a price something specific charges —
+  Curse of the Bell is what the Calling Bell hangs on you — and a random draw
+  that could land one turns an idle button into a coin flip on the rest of the
+  run. A curse authored with `Timer: 0` opts itself out of every random draw by
+  saying so.
+
+  Ranwid the Elder's credit line is filled in in the same pass: Slay the Spire 2
+  — and one bug the new tests caught with him: he could hand back the relic he
+  had just eaten. The moment a relic leaves the pack it is a relic you do not
+  own, so `gain_random_item`'s "prefer what you don't have" preferred it. What
+  a choice takes is now written into the effect context (`given_item`) and the
+  payout in the same breath excludes it.
+
+  Both events ship with **placeholder art** at `images2.0/events/PotionLab.png`
+  and `GoldenMonkey.png` — a flat panel with the name on it, so the catalogue's
+  "every event has art" test has something true to check. Drop the real PNGs at
+  the same paths and nothing else has to change.
+
+- **Ranwid the Elder, and prices paid in things rather than in numbers.**
+
+  A new event (`docs/event-sheet-authoring.md` §14): the oldest person you have
+  ever seen, who greets you like an old friend you have never met and eats
+  whatever you hand him. Three prices — two Gold, one of your potions, one of
+  your relics — and what it costs you to give is what he pays for: Gold and a
+  potion each buy a random relic, and a relic buys two.
+
+  He needed four small things, and each of them is now the sheet's rather than
+  his:
+
+  * **`Requirement` takes `and`.** Every one of his buttons spends a different
+    kind of thing, so `gold>=2 and potions>=1 and relics>=1` is the gate — a run
+    short of any one of the three would open him on a shelf he cannot fill,
+    which is the failure the Relic Trader's `relics >= 5` prevents one price at
+    a time. Clauses are ANDed only; an `or` gate *is* the half-empty event. A
+    single clause keeps the flat shape it always had, so the eleven rows
+    authored before this one regenerate byte-identical.
+  * **`potions` is a gate stat**, counting bottles in the pack, identified or
+    not — an unknown potion is as good a gift as a known one.
+  * **`lose_potion` / `lose_relic`** charge one thing rather than a number.
+    Which bottle and which relic is rolled when the event opens and held while
+    the modal is up — the Relic Trader's contract exactly, for the same reason:
+    a button reading "Give Swirly Potion" has to still mean that bottle when it
+    is pressed. The relic is drawn from the rollable pool, so a Starter, a Boss
+    relic and an Event relic are as safe from an old man's appetite as they are
+    from the trader's coat. `<potion>` and `<relic>` are the name holes that let
+    the sheet write the sentence without knowing the name — `fill_trade_names`
+    became `fill_name_holes` and fills all four.
+  * **`gain_random_item N`** hands over N relics off the rollable pool where he
+    stands, rather than banking a chest the reward screen opens after the event
+    has closed. Prefers what you don't already own, and writes what it rolled
+    into `{ITEM}`.
+
+  A price he cannot be paid is not a button: the Requirement keeps him off the
+  node, and `choice_available` holds if the pack empties underneath him.
+
 - **The checklist is two sections, and the enemies are one of them.**
 
   The list already grouped its winning-run rows under a header; everything else ran

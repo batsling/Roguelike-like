@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "WhisperingHollow"
 prompt = "Making your way through a hollow of dead trees you happen upon a single bone-white tree. Clay baubles hang off its branches, which curve inward like protective ribs. Such a creepy tree. It whispers. ...make exchange....."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

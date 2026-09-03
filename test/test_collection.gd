@@ -291,7 +291,10 @@ func test_every_event_renders_its_choices_in_full() -> void:
 		var text: String = _text_of(col._detail_box)
 		assert_true(text.contains(ev.display_name), "which names %s" % ev.display_name)
 		for c in ev.choices:
-			var label: String = String(c.get("text", ""))
+			# Through the name holes, the way the panel draws it: outside a run
+			# there is no pack to fill `<potion>` / `<give>` from, so the
+			# catalogue shows "Give a potion" rather than the angle brackets.
+			var label: String = EventSystem.fill_name_holes(String(c.get("text", "")), c)
 			if label != "":
 				assert_true(text.contains(label),
 					"and lists %s's option '%s'" % [ev.display_name, label])

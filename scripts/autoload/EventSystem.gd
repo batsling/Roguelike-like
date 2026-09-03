@@ -140,13 +140,25 @@ const GATE_STAT_NAMES := {
 	# simply Shields. The field names are the older ones — see GameState.
 	"scramble": "Scramble", "shields": "Temporary Shields",
 	"bonus_shields": "Shields", "relics": "Tradeable Relics",
+	# The pack again: bottles carried, identified or not.
+	"potions": "Potions",
 }
 
 # A Requirement dictionary in words: "Health <= 70%". One implementation, read by
 # the Collection's event page and by the dev panel.
+#
+# A multi-clause Requirement — `{"all": [...]}`, what the sheet's `and` compiles
+# to — reads as its clauses joined the way they were authored, so the phrase the
+# player sees is the phrase in the cell.
 static func requirement_text(req: Dictionary) -> String:
 	if req.is_empty():
 		return "nothing"
+	if req.has("all"):
+		var parts := PackedStringArray()
+		for clause in req.get("all", []):
+			if clause is Dictionary:
+				parts.append(requirement_text(clause))
+		return " and ".join(parts) if parts.size() > 0 else "nothing"
 	var stat: String = String(req.get("stat", ""))
 	return "%s %s %s%s" % [
 		String(GATE_STAT_NAMES.get(stat, stat.capitalize())),
@@ -237,22 +249,73 @@ const GET_HOLE := "<get>"
 # the thing the roll produced. Braces rather than angle brackets to match the
 # sheet's other {…} holes, and read before _fill_holes would try the arithmetic.
 const ITEM_HOLE := "{ITEM}"
+# The other two name holes, and the other half of the same idea. `<give>` names
+# a relic the trader picked out to swap; these name the one thing the run has
+# picked out to be HANDED OVER — Ranwid's middle and bottom buttons, which cost
+# a potion and a relic rather than a number.
+const POTION_HOLE := "<potion>"
+const RELIC_HOLE := "<relic>"
+# The third thing Ranwid asks for on his first meeting (§16): a card out of the
+# pack. Rolled with the rest of the offering and named on the button, because
+# "give me a card" is not a price anyone can weigh.
+const CARD_HOLE := "<card>"
 
 var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
+# What this event will take off you if you let it: one loot entry out of the
+# pack and one relic id out of the inventory, rolled when the event opens for
+# the same reason the trader's pairing is. A button that says "Give Swirly
+# Potion" has to name the same bottle when it is pressed as it named when it was
+# drawn, and a per-repaint roll would rename it under the player's cursor.
+var _offered_potion: Dictionary = {}
+var _offered_relic: StringName = &""
+var _offered_card: Dictionary = {}
+# What the event is already OFFERING when it opens (`EventData2.opens_with`) —
+# the Potion Lab's three bottles. Rolled here, once, for the same reason the
+# trade pairing is: the modal repaints on every press and a per-repaint roll
+# would deal three different potions each time the player looked away.
+var _opening_loot: Array = []
 
 
 # An event is opening: roll whatever live content it needs. Called by EventModal2
 # beside mark_fired, and by any test or dev-panel path that opens one.
 func begin_event(ev: EventData2) -> void:
 	_trade_offers.clear()
-	if ev == null or not _wants_trades(ev):
+	_offered_potion = {}
+	_offered_relic = &""
+	_offered_card = {}
+	_opening_loot.clear()
+	if ev == null:
 		return
-	_trade_offers = _roll_trades()
+	if _wants_trades(ev):
+		_trade_offers = _roll_trades()
+	if _wants(ev, "lose_potion"):
+		_offered_potion = _roll_offered_potion()
+	if _wants(ev, "lose_relic"):
+		_offered_relic = _roll_offered_relic()
+	_offered_card = _roll_offered_card(ev)
+	_opening_loot = _roll_opening_loot(ev)
 
 
 func _wants_trades(ev: EventData2) -> bool:
 	for choice in ev.choices:
 		if _trade_slot(choice) > 0:
+			return true
+	return false
+
+
+# Does any choice on this event carry `type`? Read off the effects rather than
+# authored anywhere, so an event that starts asking for a potion gets its roll
+# without a second cell saying so.
+func _wants(ev: EventData2, type: String) -> bool:
+	for choice in ev.choices:
+		if _has_effect(choice, type):
+			return true
+	return false
+
+
+func _has_effect(choice: Dictionary, type: String) -> bool:
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) == type:
 			return true
 	return false
 
@@ -328,14 +391,204 @@ func resolve_trade(slot: int) -> bool:
 	return true
 
 
-# `<give>` / `<get>` filled in from this choice's offer. A choice that trades
-# nothing is returned untouched, so this is safe to run over every line.
-func fill_trade_names(text: String, choice: Dictionary) -> String:
-	if text == "" or not (text.contains(GIVE_HOLE) or text.contains(GET_HOLE)):
+# --- what the event will take off you ---------------------------------------
+#
+# Ranwid the Elder (docs/event-sheet-authoring.md §14) pays in relics for things
+# out of your pack, and two of his three prices are a THING rather than a number:
+# a potion, and a relic. Which one is the run's to say, not the sheet's — so it is
+# rolled here when the event opens and held for as long as it is on screen, the
+# same contract the trader's pairing has and for the same reason: the button
+# names what it is about to take, and it must still mean that bottle when it is
+# pressed.
+
+# One bottle out of the pack, whatever it is. Straight random: an unidentified
+# potion is as good a gift as a known one, and nothing here knows which of the
+# two the player would rather keep.
+func _roll_offered_potion() -> Dictionary:
+	var held: Array = GameState.loot_potions()
+	if held.is_empty():
+		return {}
+	return held[_roll_rng().randi_range(0, held.size() - 1)]
+
+
+# One relic out of the pack, drawn from the ROLLABLE ones only — the same
+# is_rollable() line the trader draws: a starter, a Boss relic and an Event relic
+# are the three classes nothing may take off you, and an old man's appetite is
+# not the exception.
+func _roll_offered_relic() -> StringName:
+	var mine: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and it.is_rollable():
+			mine.append(it.id)
+	if mine.is_empty():
+		return &""
+	return StringName(mine[_roll_rng().randi_range(0, mine.size() - 1)])
+
+
+# --- what the event is offering before it asks anything ---------------------
+#
+# `EventData2.opens_with` (§15) — the Potion Lab's bench. The pieces are rolled
+# here rather than granted: nothing has entered the pack, and nothing will until
+# the player drags one in. What draws them is EventModal2, which embeds the same
+# drop table every other payout uses.
+func _roll_opening_loot(ev: EventData2) -> Array:
+	var opens: Dictionary = ev.opens_with
+	if opens.is_empty() or String(opens.get("type", "")) != "offer_loot":
+		return []
+	var kind: String = String(opens.get("kind", "loot"))
+	var out: Array = []
+	for _i in range(maxi(1, int(opens.get("value", 1)))):
+		var entry: Dictionary = GameState.roll_loot_entry(kind)
+		if not entry.is_empty():
+			out.append(entry)
+	return out
+
+
+func opening_loot() -> Array:
+	return _opening_loot
+
+
+# The curse behind `add_curse random` (§16). PERMANENT CURSES ARE NOT IN THE BAG,
+# and that is the rule rather than the Golden Monkey's own exception: a permanent
+# curse is a price something specific charges for something specific — Curse of
+# the Bell is what the Calling Bell hangs on you — and a random roll that can land
+# one turns every idle button in the game into a coin flip on the rest of the run.
+# So "a random curse" means a curse with a clock on it, and a curse authored with
+# `timer: 0` is opted out of every random draw by saying so.
+#
+# &"" when nothing qualifies, which the caller treats as "no curse" rather than
+# reaching for a permanent one to fill the gap.
+func roll_random_curse() -> StringName:
+	var pool: Array = []
+	for cd in Data.all_curses2():
+		if cd is CurseData2 and cd.timer > 0:
+			pool.append(cd.id)
+	if pool.is_empty():
+		return &""
+	pool.sort_custom(func(a, b): return String(a) < String(b))
+	return StringName(pool[_roll_rng().randi_range(0, pool.size() - 1)])
+
+
+# One card out of the pack. `min_rarity` on the effect narrows the draw the way
+# We Meet Again narrows it — Ranwid wants something worth studying, so a Common
+# is not a card he will take — and an event that wants any card at all simply
+# does not author it.
+func _roll_offered_card(ev: EventData2) -> Dictionary:
+	var want: Dictionary = _effect_of(ev, "lose_card")
+	if want.is_empty():
+		return {}
+	var floor_rarity: String = String(want.get("min_rarity", ""))
+	var held: Array = []
+	for entry in GameState.loot_cards():
+		if floor_rarity == "" or _rarity_at_least(entry, floor_rarity):
+			held.append(entry)
+	if held.is_empty():
+		return {}
+	return held[_roll_rng().randi_range(0, held.size() - 1)]
+
+
+# Is this loot entry's rarity `floor_rarity` or better? Read off the ladder Data
+# already ranks items and loot by, so "Uncommon+" means the same thing here as it
+# does on a chest.
+func _rarity_at_least(entry: Dictionary, floor_rarity: String) -> bool:
+	var ladder: Array = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+	var have: int = ladder.find(String(entry.get("rarity", "Common")).capitalize())
+	var want: int = ladder.find(floor_rarity.capitalize())
+	return have >= want and have >= 0
+
+
+# The first effect of `type` on any of this event's choices, or {} — how the
+# offering finds out WHAT it has been asked to roll.
+func _effect_of(ev: EventData2, type: String) -> Dictionary:
+	for choice in ev.choices:
+		for eff in choice.get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == type:
+				return eff
+	return {}
+
+
+func offered_card() -> Dictionary:
+	return _offered_card
+
+
+# Hand the rolled card over: it leaves the pack.
+func take_offered_card() -> bool:
+	if _offered_card.is_empty():
+		return false
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], _offered_card):
+			GameState.remove_loot_at(i)
+			return true
+	return false
+
+
+func offered_potion() -> Dictionary:
+	return _offered_potion
+
+
+func offered_relic() -> StringName:
+	return _offered_relic
+
+
+# Hand the rolled potion over: it leaves the pack. False when there was nothing
+# to hand over, which is what keeps the choice off the screen in the first place.
+func take_offered_potion() -> bool:
+	if _offered_potion.is_empty():
+		return false
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], _offered_potion):
+			GameState.remove_loot_at(i)
+			return true
+	return false
+
+
+# And the rolled relic. Returns WHICH one went, so the payout in the same breath
+# can avoid handing it straight back — see EffectSystem's `given_item`.
+func take_offered_relic() -> StringName:
+	if _offered_relic == &"":
+		return &""
+	for it in GameState.inventory:
+		if it is ItemData and it.id == _offered_relic:
+			GameState.remove_item(it)
+			return _offered_relic
+	return &""
+
+
+# `<give>` / `<get>` / `<potion>` / `<relic>` filled in from what this event
+# rolled. A line carrying none of them is returned untouched, so this is safe to
+# run over every label, every cost line and every rung of prose.
+func fill_name_holes(text: String, choice: Dictionary) -> String:
+	if text == "":
 		return text
-	var offer: Dictionary = trade_offer(_trade_slot(choice))
-	return text.replace(GIVE_HOLE, _item_name(offer.get("give", &""))) \
-		.replace(GET_HOLE, _item_name(offer.get("get", &"")))
+	if text.contains(GIVE_HOLE) or text.contains(GET_HOLE):
+		var offer: Dictionary = trade_offer(_trade_slot(choice))
+		text = text.replace(GIVE_HOLE, _item_name(offer.get("give", &""))) \
+			.replace(GET_HOLE, _item_name(offer.get("get", &"")))
+	if text.contains(POTION_HOLE):
+		text = text.replace(POTION_HOLE, offered_potion_name())
+	if text.contains(RELIC_HOLE):
+		text = text.replace(RELIC_HOLE, _item_name(_offered_relic))
+	if text.contains(CARD_HOLE):
+		text = text.replace(CARD_HOLE, offered_card_name())
+	return text
+
+
+# "a potion" and not "" for an unresolved hole, the same fallback `<give>` has:
+# the Collection's event page draws these lines outside any run, where there is
+# no pack to roll from, and the sentence still has to read.
+func offered_potion_name() -> String:
+	if _offered_potion.is_empty():
+		return "a potion"
+	return PotionSystem.display_name(_offered_potion)
+
+
+# The card, face UP: it is in the pack, so it is itself. What Ranwid is asking
+# for is a particular card, and a button that said "a card" would be hiding the
+# one thing the choice turns on.
+func offered_card_name() -> String:
+	if _offered_card.is_empty():
+		return "a card"
+	return CardSystem.display_name(_offered_card)
 
 
 # "a relic" and not "" for an unresolved hole: the Collection's event page draws
@@ -357,6 +610,16 @@ func requirement_met(ev: EventData2) -> bool:
 
 func _compare_stat(req: Dictionary) -> bool:
 	if req.is_empty():
+		return true
+	# Several clauses, ANDed. Only AND: an event is dealt when the run can afford
+	# everything the event is ABOUT, and Ranwid's three buttons are three
+	# different prices — a run short of any one of them would open him on a
+	# shelf he cannot fill, which is the thing the Relic Trader's gate exists to
+	# prevent one price at a time.
+	if req.has("all"):
+		for clause in req.get("all", []):
+			if clause is Dictionary and not _compare_stat(clause):
+				return false
 		return true
 	var stat: String = String(req.get("stat", ""))
 	var have: float = float(_run_stat(stat))
@@ -395,6 +658,10 @@ func _run_stat(stat: String) -> int:
 		# rule the trade itself uses, so the gate cannot pass on five relics none
 		# of which he would touch.
 		"relics": return GameState.tradeable_relic_count()
+		# Bottles in the pack, whatever they are. No is_rollable() equivalent to
+		# apply: every potion carried is a potion that can be handed over, and an
+		# unidentified one is handed over exactly as readily as a known one.
+		"potions": return GameState.loot_potions().size()
 		_: return -1
 
 
@@ -409,6 +676,16 @@ func choice_available(choice: Dictionary, picks: Dictionary) -> bool:
 	# a run carrying a single relic is one row and not three.
 	var slot: int = _trade_slot(choice)
 	if slot > 0 and trade_offer(slot).is_empty():
+		return false
+	# The same argument for a price paid in KIND: a button that says "Give a
+	# potion" on a run holding none is a button that takes nothing and pays a
+	# relic for it. The event's Requirement is what normally keeps that off the
+	# screen; this is what holds once the pack changes underneath it.
+	if _has_effect(choice, "lose_potion") and _offered_potion.is_empty():
+		return false
+	if _has_effect(choice, "lose_relic") and _offered_relic == &"":
+		return false
+	if _has_effect(choice, "lose_card") and _offered_card.is_empty():
 		return false
 	for gate in choice.get("gates", []):
 		if not _gate_passes(gate, picks):
@@ -669,7 +946,7 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 	for eff in choice.get("effects", []):
 		EffectSystem.apply(_scaled(eff, taken), ctx)
 	if String(choice.get("effects_text", "")) != "":
-		words.append(fill_trade_names(_fill_holes(String(choice["effects_text"]), taken), choice))
+		words.append(fill_name_holes(_fill_holes(String(choice["effects_text"]), taken), choice))
 
 	# The gamble. Rolled AFTER the certain costs, because that is the order the
 	# player experiences: the acid burns whether or not there was a relic in there.
@@ -699,14 +976,24 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 
 	var curse: Dictionary = choice.get("curse", {})
 	if not curse.is_empty():
-		GameState.add_curse_goal(StringName(curse.get("curse", &"")), ev.id,
-			int(curse.get("games", 0)))
+		# `add_curse random` names no row: the curse is drawn HERE, when the
+		# button is pressed, so the player finds out what they caught at the same
+		# moment the monkey decides. What it says on the way out names it —
+		# `words` is what the modal prints under the result.
+		var cid := StringName(curse.get("curse", &""))
+		if bool(curse.get("random", false)):
+			cid = roll_random_curse()
+			var caught: CurseData2 = Data.get_curse2(cid)
+			if caught != null:
+				words.append("%s: %s" % [caught.display_name, caught.describe()])
+		if cid != &"":
+			GameState.add_curse_goal(cid, ev.id, int(curse.get("games", 0)))
 
 	# A gamble's prose comes from the EVENT, because it depends on the roll rather
 	# than on which button produced it — Scrap Ooze's two reaches print the same
 	# two strings. The choice's own `results` rung still stands in when the event
 	# left them blank, so a gamble is authorable without them.
-	var result: String = fill_trade_names(result_for(choice, taken), choice)
+	var result: String = fill_name_holes(result_for(choice, taken), choice)
 	if rolled:
 		var prose: String = String(ev.chance_won if won else ev.chance_lost)
 		if prose != "":
@@ -887,7 +1174,7 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 	var parts: Array = []
 	var text: String = String(choice.get("effects_text", ""))
 	if text != "":
-		parts.append(fill_trade_names(_fill_holes(text, taken), choice))
+		parts.append(fill_name_holes(_fill_holes(text, taken), choice))
 
 	var goal: Dictionary = choice.get("goal", {})
 	if not goal.is_empty():
@@ -901,6 +1188,12 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 
 	var curse: Dictionary = choice.get("curse", {})
 	if not curse.is_empty():
+		# A RANDOM curse cannot be named before it is rolled, and must not be:
+		# naming one on the button would be the button lying about which. What
+		# the player is owed is the shape of the bargain — that a curse is coming
+		# and that it has a clock on it, which every curse in the bag does.
+		if bool(curse.get("random", false)):
+			parts.append("+1 random Curse")
 		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
 		if cd != null:
 			var games: int = int(curse.get("games", 0))

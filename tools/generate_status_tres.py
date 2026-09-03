@@ -124,6 +124,8 @@ STAT_LABELS = {
     "block": ("Block", "Block"),
     "push": ("Push", "Pushes"),
     "game_choices": ("Game Choice", "Game Choices"),
+    # A quantity, not a count of things: two Luck is "2 Luck", never "2 Lucks".
+    "luck": ("Luck", "Luck"),
 }
 
 
@@ -746,6 +748,42 @@ def parse_reward_clause(clause):
     if verb == "trade_relic":
         slot = int(rest[0]) if rest and re.fullmatch(r"\d+", rest[0]) else 1
         return {"type": "trade_relic", "slot": slot}, "Trade <give> for <get>"
+
+    # A relic off the rollable pool, handed straight over — the sibling of
+    # `gain_item` for the payout that names no relic at all. NOT `gain_chest
+    # small`, which banks a chest the reward screen opens after the event: Ranwid
+    # eats what you gave him and presses the relic into your hand there and then,
+    # and the difference between the two is a screen and a delay.
+    #
+    # Writes what it rolled into the {ITEM} hole, so the prose can name it.
+    if verb == "gain_random_item":
+        amount = rest[0] if rest else "1"
+        eff = {"type": "gain_random_item"}
+        put(eff, "value", amount)
+        return eff, "+%s random %s" % (_amount_word(amount),
+                                       _plural(amount, "Relic", "Relics"))
+
+    # The two costs paid in KIND rather than in numbers: one potion out of the
+    # pack, one tradeable relic out of it. Which one is rolled when the event
+    # opens and held on EventSystem — the same shape the Relic Trader's pairing
+    # has, and for the same reason: the button has to be able to name what it is
+    # about to take before it is pressed. The <potion> / <relic> holes are where
+    # the name lands.
+    if verb == "lose_potion":
+        return {"type": "lose_potion"}, "-<potion>"
+
+    if verb == "lose_relic":
+        return {"type": "lose_relic"}, "-<relic>"
+
+    # And the third thing a pack carries. `uncommon+` narrows the draw to a card
+    # worth studying — We Meet Again's own rule (§16), and the reason it is a
+    # modifier rather than the default: an event that wants any card at all
+    # should not have to say so.
+    if verb == "lose_card":
+        eff = {"type": "lose_card"}
+        if rest and rest[0].strip().lower() in ("uncommon+", "uncommon_plus"):
+            eff["min_rarity"] = "Uncommon"
+        return eff, "-<card>"
 
     if verb == "random_item_choice":
         amount = rest[0] if rest else "3"

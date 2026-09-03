@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "GoldenIdol"
 prompt = "You come across an inconspicuous pedestal with a shining gold idol sitting peacefully atop. It looks incredibly valuable. You sure don't see any traps nearby."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

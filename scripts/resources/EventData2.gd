@@ -52,6 +52,19 @@ extends Resource
 # --- what it says ----------------------------------------------------------
 
 @export var prompt: String = ""
+
+# WHAT THE EVENT IS ALREADY DOING WHEN IT OPENS, before a button is pressed —
+# `{"type": "offer_loot", "kind": "potion", "value": 3}` or empty. Today's one
+# use is the Potion Lab (§15): a room with three potions on the bench, drawn as
+# the real drop table — the pieces, the player's own 3x3, the bin — inside the
+# event's body, so taking one is the drag it is everywhere else and the event's
+# `Leave` is what walks out on the rest.
+#
+# It is not a choice's `Effect` because it is not a choice: nothing is pressed to
+# make it happen, and a "Take" button in front of a table you can already see is
+# a click that answers a question nobody asked. It is a sibling of `prompt` —
+# what the event puts in front of you before it asks anything.
+@export var opens_with: Dictionary = {}
 # The two endings of a goal this event hands out. They cannot live on a choice's
 # `results` because an add_goal event finishes on the CHECKLIST, games after the
 # modal closed. Event-level because they are the event's voice rather than the

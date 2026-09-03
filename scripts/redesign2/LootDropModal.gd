@@ -130,6 +130,16 @@ const EMBED_W := SINGLE_W + ROW_GAP + PACK_W + MARGIN * 2
 # stops a short column from collapsing the scroll to nothing and hiding the
 # question entirely.
 const EMBED_BODY_MIN_H := 200.0
+# …and what THIS embed was given instead, when the host can afford more. The
+# post-combat screen's column is one of three on a full screen, so 200 and a
+# scrollbar is the right floor there; an event modal whose whole body is the
+# table can hand over enough room for the 3x3 to stand up in one piece, and a
+# pack cut off at two rows is a pack the player cannot drop a bottle into.
+var _body_min_h: float = EMBED_BODY_MIN_H
+# Whether an EMBEDDED table carries the take-all button. Off for the post-combat
+# screen, where the haul is something you sort; on for an event, where the pieces
+# are usually an order you just placed. See _build.
+var _take_all_button: bool = false
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
 const LAYER := 122
 const USE_LAYER := 130
@@ -166,9 +176,12 @@ func _start(host: Node, offer) -> void:
 # than over the page. `page` is the overworld — the use modal, the info card and
 # the pack-strip refresh all still go to it — and `host` is the node the
 # controller parks on, drawing nothing and taking no room.
-static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true) -> LootDropModal:
+static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true,
+		body_min_h: float = EMBED_BODY_MIN_H, take_all_button: bool = false) -> LootDropModal:
 	var modal := LootDropModal.new()
 	modal._spendable = spendable
+	modal._body_min_h = maxf(EMBED_BODY_MIN_H, body_min_h)
+	modal._take_all_button = take_all_button
 	modal._slot = slot
 	modal._page_node = page
 	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -320,15 +333,24 @@ func _build() -> void:
 			% [GameState.loot_items.size(), GameState.loot_capacity()]
 			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
-	# NO ANSWER BUTTONS WHEN EMBEDDED. "Take" and "Leave the rest" are the modal's
-	# way of ending itself, and this section does not end — the host's own way out
-	# is the answer to the whole haul. Everything the two buttons did is already on
-	# the panel and reads better for being done with the hands: a piece goes into
-	# the slot you drag it to, and the bin under the pack is "leave it" said the
-	# same way. What is left on the table when the player walks off the screen is
-	# counted on the way out (PostCombatScreen.exit_text), so nothing goes quietly.
+	# THE ANSWER BUTTONS BELONG TO THE MODAL. "Take" and "Leave the rest" are how
+	# it ends itself, and an embedded section does not end — the host's own way out
+	# is the answer to the whole haul. On the post-combat screen everything they
+	# did is already on the panel and reads better done with the hands: a piece
+	# goes into the slot you drag it to, and the bin under the pack is "leave it"
+	# said the same way. What is left when the player walks off is counted on the
+	# way out (PostCombatScreen.exit_text), so nothing goes quietly.
+	#
+	# AN EVENT'S TABLE ASKS FOR THE TAKE-ALL BACK (`take_all_button`). Three
+	# potions bought in one press is a purchase already decided on, and three drags
+	# to collect it is friction the post-combat screen never has — its pieces are
+	# a haul you are sorting, not an order you placed. So the host says whether the
+	# button belongs: never "Leave the rest", which would be a second way out of a
+	# screen that already has one, and never anything that ends the section.
 	if _slot == null:
 		shell.add_child(_buttons(multi))
+	elif _take_all_button:
+		shell.add_child(_take_all_row(multi))
 	_fit_body(box)
 
 # How wide the offer grid runs. Two abreast is the shape of a four-pill payout;
@@ -475,6 +497,24 @@ func _pack_column() -> Control:
 	if _slot == null:
 		col.add_child(LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 	return col
+
+# Just the take-all, for an embedded table whose host asked for one. Deliberately
+# NOT `_buttons` minus a button: this row cannot close anything, and its label
+# counts what will actually fit rather than what is on the table.
+func _take_all_row(multi: bool) -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var room: int = GameState.loot_space()
+	var take := UITheme.confirm_button(
+		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		Vector2(190, 34), 15)
+	take.disabled = room <= 0
+	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
+		if room <= 0 else "Put them in the first free slots. Or drag each into the one you want."
+	take.pressed.connect(_take_all)
+	row.add_child(take)
+	return row
+
 
 func _buttons(multi: bool) -> Control:
 	var buttons := HBoxContainer.new()
@@ -633,7 +673,7 @@ func _fit_body(box: Control) -> void:
 	# short column cannot collapse the scroll to nothing and hide the question.
 	if _slot != null:
 		_body_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		_body_scroll.custom_minimum_size.y = EMBED_BODY_MIN_H
+		_body_scroll.custom_minimum_size.y = _body_min_h
 		return
 	var content: float = box.get_combined_minimum_size().y
 	# Against the room a modal is actually ALLOWED (ModalScaffold.free_rect), not
@@ -688,6 +728,21 @@ func add_offers(entries: Array) -> void:
 			added = true
 	if added:
 		_rebuild()
+
+# Give back some of the height this section was floored at, down to the ordinary
+# embedded floor. The host asks when its own column has run out of window: the
+# table scrolls, and a table that scrolls is a great deal better than a way out
+# that is off the bottom of the screen. Returns whether anything moved.
+func shrink_body(by: float) -> bool:
+	if _slot == null or _body_scroll == null or not is_instance_valid(_body_scroll):
+		return false
+	var want: float = maxf(EMBED_BODY_MIN_H, _body_min_h - maxf(0.0, by))
+	if is_equal_approx(want, _body_min_h):
+		return false
+	_body_min_h = want
+	_body_scroll.custom_minimum_size.y = want
+	return true
+
 
 # Redraw against a pack that changed under this panel — a relic taken from a chest
 # beside it granting loot, say. Public because the host owns the other sections and

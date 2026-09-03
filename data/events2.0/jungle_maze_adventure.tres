@@ -14,6 +14,7 @@ trigger = "after"
 rarity = "Common"
 file = "JungleMazeAdventure"
 prompt = "In a clearing, you run into a Ragtag Group of Adventurers looking down and gesturing at a gigantic maze. They offer to join forces with you in an Epic Quest to loot the riches of this maze. As an experienced adventurer yourself, it's clear this maze is filled with deadly traps and guardians. It would be easier if you work together, but then you would have to split the loot."
+opens_with = {}
 goal_met = ""
 goal_missed = ""
 chance_won = ""

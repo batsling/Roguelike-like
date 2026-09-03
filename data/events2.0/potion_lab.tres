@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_potion_lab"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"potion_lab"
+display_name = "Potion Lab"
+source_game = "Tiny Rogues"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {}
+trigger = "after"
+rarity = "Common"
+file = "PotionLab"
+prompt = ""
+opens_with = {"type": "offer_loot", "kind": "potion", "value": 3}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]
