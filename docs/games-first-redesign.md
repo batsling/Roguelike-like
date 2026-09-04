@@ -2109,20 +2109,85 @@ same thing.
 
 ---
 
-## 9. OBS companion window
+## 9. OBS companion overlay
 
-- The player-facing HUD is a **separate slim companion window** captured in OBS,
-  **not** the main app window you drive from.
-- **Designed to help the viewer follow the run** — at a glance the audience should
-  see the current game, the enemy and **what its goal is** (so they know what
-  they're rooting for), health, shields, the stack of undefeated enemies, and the
-  verb/consumable counts.
-- Renders: health, shields + attempts, current enemy + its goal, the **stacked-enemy count**,
-  verb counts (bash/dash/transmute/scramble), consumable counts (keys/bombs/scrolls).
-- Architecture: a dedicated HUD scene reading the same `GameState`/autoloads the
-  main window mutates. Godot `Window` vs. always-on-top scene, and the exact
-  layout, are **deferred** — revisit once the rest of the mechanics are locked.
-- Everything must read at a glance → keep all numbers single-digit where possible.
+**Built.** `scripts/autoload/ObsCompanion.gd` + the page in `obs/`. The
+architecture this section deferred is settled, and it is **neither** of the two
+options it named.
+
+### 9.1 Why it is a browser source and not a second Godot window
+
+The overlay is on screen precisely when the game window is **not**: the player is
+off inside a real game for ninety minutes and the run's state is frozen behind
+it. Both deferred options — a Godot `Window`, an always-on-top scene — solve that
+by adding a second thing to capture, which means window capture, which means
+fussy transparency and no way to restyle anything without a rebuild.
+
+So the game does not render the HUD at all. It **writes the run's state to disk**
+and OBS renders the page:
+
+```
+user://obs/overlay.html   the page          ┐ installed from res://obs/
+user://obs/overlay.css    its styling       │ at EVERY boot — a stale copy
+user://obs/overlay.js     its ticker        ┘ reads as a broken overlay
+user://obs/custom.css     the streamer's own styling, created empty ONCE
+user://obs/state.js       window.OBS_STATE = { … }, rewritten as the run moves
+user://obs/covers/        covers lifted out of the .pck (exported builds only)
+```
+
+In OBS: **Browser Source → Local file → `overlay.html`**. The settings screen
+prints the absolute path, because `user://` is somewhere different on every
+platform and a streamer who cannot read it off that screen cannot set this up at
+all.
+
+**There is no server and no port.** The state travels as a `<script>` rather than
+as JSON over `fetch()`, and that is the load-bearing decision: Chromium (which
+OBS ships) refuses every `fetch()`/XHR a `file://` page makes at a sibling file —
+no origin, so it is an unfixable CORS failure short of launching OBS with
+`--allow-file-access-from-files`. A `<script src>` has no such restriction. So
+the payload is written as an assignment, and `overlay.js` re-loads it four times
+a second with a cache-buster. Covers travel the same way, as `<img src="file://…">`.
+
+Writes are **debounced to 4/sec and deduped on content**, with a **5-second
+heartbeat** underneath. The heartbeat is what lets the page tell "the run has not
+moved" from "the game is not running" — identical on disk, very different on a
+stream — so the overlay dims only when the beat actually stops.
+
+### 9.2 What it renders
+
+§9's original list, grown into the current build. In order down the strip:
+
+- **The hero** — icon, level, and the health bar. Health is the bar's *width*
+  first and a number second, and it pulses below 30%.
+- **Shields, incoming damage, bodies following** — `incoming` is what the front
+  line swings for if the next turn resolves as the board stands. This is the
+  board at the resolution an overlay actually has; a 5×3 grid is not readable
+  out of the corner of a stream.
+- **The game in play**, its cover, the **attempts** spent on it, and the hops
+  left to the Amulet.
+- **The checklist**, live, and it is the point of the whole thing: a viewer
+  watching someone play Hollow Knight has no idea they are doing it to "defeat 3
+  bosses without healing". Every row the report panel would draw — body goals,
+  bonuses, `instead` rows, the player's own status objectives, event goals,
+  curses — each with whether it is ticked. It **scrolls itself** when there is
+  more of it than there is room, and a row flashes green at the moment it ticks.
+  Goal text is always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
+- **Statuses on the player** as chips, borrowed ones carrying their clock.
+- **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
+  replays numbered, **ending on the Amulet whether or not the run got there**,
+  drawn dashed until it does. Without that terminus the strip is a list rather
+  than progress.
+- **A ticker** of what just happened (beat a game, took damage, lost a run, found
+  an item), which is also what stops the overlay reading as a dead PNG during the
+  long stretches when nothing in the run changes.
+
+The rows are read from `GameLoop2` and `GameState` **directly, never from
+`ReportChecklist`** — that is a Control tree which only exists while the
+overworld is on screen, and being right when that window is behind a stream is
+the entire job.
+
+Everything must still read at a glance → keep all numbers single-digit where
+possible.
 
 ---
 

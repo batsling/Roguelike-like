@@ -150,6 +150,12 @@ var canvas_width: int = CANVAS_BASE.x
 # works out of the box; toggle from the Settings menu.
 var dev_mode: bool = true
 
+# The OBS companion overlay (§9, ObsCompanion). When on, the run's state is
+# mirrored to user://obs/ for a Browser Source to render. Default ON — the whole
+# build is stream-first (§1) and the files it writes are a few KB — but it is a
+# toggle rather than a fact so a player who never streams can stop the writes.
+var obs_overlay: bool = true
+
 func _ready() -> void:
 	load_settings()
 	# The shared theme on the WINDOW, as the floor under every screen: anything
@@ -303,6 +309,16 @@ func set_dev_mode(value: bool) -> void:
 	dev_mode = value
 	save_settings()
 
+# Turning the overlay on writes its page and a fresh state.js straight away, so
+# the folder is ready to point OBS at the moment the box is ticked rather than at
+# the next thing that happens in the run.
+func set_obs_overlay(value: bool) -> void:
+	if value == obs_overlay:
+		return
+	obs_overlay = value
+	save_settings()
+	ObsCompanion.set_enabled(value)
+
 func set_game_filter(value: int) -> void:
 	value = clampi(value, 0, GameFilter.DOWNLOADED)
 	if value == game_filter:
@@ -350,6 +366,7 @@ func load_settings() -> void:
 		RunGraph.invalidate_cache()
 		return
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
+	obs_overlay = bool(cfg.get_value("stream", "obs_overlay", true))
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
 	var stored_size = cfg.get_value("display", "windowed_size", WINDOWED_SIZE)
@@ -365,6 +382,7 @@ func save_settings() -> void:
 
 	var cfg := ConfigFile.new()
 	cfg.set_value("dev", "dev_mode", dev_mode)
+	cfg.set_value("stream", "obs_overlay", obs_overlay)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.set_value("display", "windowed_size", windowed_size)
 	cfg.save(CONFIG_PATH)

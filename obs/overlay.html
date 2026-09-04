@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roguelike-like — stream overlay</title>
+<!--
+  THE OBS COMPANION OVERLAY (docs/games-first-redesign.md §9).
+
+  This file is INSTALLED, not authored in place: the game copies it (with
+  overlay.css and overlay.js) from res://obs/ into user://obs/ at every boot, so
+  edits made to the copy are lost the next time the game starts. Edit the
+  originals in the repo — or, for styling only, edit user://obs/custom.css, which
+  is created empty once and never overwritten.
+
+  In OBS: add a Browser Source, tick "Local file", and point it at
+  user://obs/overlay.html (the settings screen prints the absolute path). Width
+  440, height 1000 is the shape it is drawn for; "Shutdown source when not
+  visible" is fine, "Refresh browser when scene becomes active" is not needed —
+  the page re-reads the state on its own.
+-->
+<link rel="stylesheet" href="overlay.css">
+<!-- Yours. Loaded last so anything in it wins. -->
+<link rel="stylesheet" href="custom.css">
+</head>
+<body>
+<div id="overlay" class="waiting">
+
+  <!-- THE HERO: who is playing, and how much of them is left. -->
+  <section class="card hero">
+    <img id="hero-icon" class="hero-icon" alt="">
+    <div class="hero-text">
+      <div class="row">
+        <span id="hero-name" class="hero-name"></span>
+        <span id="hero-level" class="pill"></span>
+      </div>
+      <div class="bar">
+        <div id="hp-fill" class="bar-fill"></div>
+        <span id="hp-text" class="bar-text"></span>
+      </div>
+      <div class="row sub">
+        <span id="shields" class="chip shield" hidden></span>
+        <span id="incoming" class="chip danger" hidden></span>
+        <span id="bodies" class="chip" hidden></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE GAME IN PLAY. The line that tells a viewer what they are watching. -->
+  <section class="card now">
+    <img id="now-cover" class="now-cover" alt="">
+    <div class="now-text">
+      <div id="now-label" class="label">Now playing</div>
+      <div id="now-game" class="now-game"></div>
+      <div class="row sub">
+        <span id="attempts" class="chip" hidden></span>
+        <span id="hops" class="chip" hidden></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE CHECKLIST. Scrolls itself when there is more of it than there is room. -->
+  <section class="card goals">
+    <div class="label">The goals</div>
+    <div id="goal-scroll" class="goal-scroll">
+      <ul id="goal-list" class="goal-list"></ul>
+    </div>
+  </section>
+
+  <!-- What is riding the run. Hidden entirely when there is none. -->
+  <section id="status-card" class="card statuses" hidden>
+    <div class="label">On you</div>
+    <div id="status-chips" class="chips"></div>
+  </section>
+
+  <!-- THE ROAD: every stop walked, ending on the Amulet. -->
+  <section class="card road">
+    <div class="label">The road</div>
+    <div id="road-strip" class="road-strip"></div>
+  </section>
+
+  <!-- What just happened. Fades out on its own. -->
+  <div id="ticker" class="ticker"></div>
+
+  <div id="verdict" class="verdict" hidden></div>
+  <div id="offline" class="offline">waiting for the game…</div>
+</div>
+
+<script src="overlay.js"></script>
+</body>
+</html>

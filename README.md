@@ -245,6 +245,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
+| `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See "The stream overlay" below. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
 | `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and the two verbs themselves: `quaff_potion` applies the sheet's `On Player` side to the drinker, `throw_potion` takes an aimed cell in `ctx.target` and applies the `On Tile` side around it. The shapes an `area=` token names are the BOARD's (`GameLoop2.area_cells`); Sacred Bark widens one by a rung of `AREA_LADDER` rather than by a multiplier, because a grid has no way to be exactly twice as big. |
@@ -671,6 +672,59 @@ built to fit 1280×720 and why `test_overworld2` pins that. `stretch/aspect` is
 extra pixels as real canvas instead of black bars (16:10 → 1280×800, ultrawide →
 1706×720); `expand` can only ever give *more* than the base, so the one-screen
 guarantee holds.
+
+### The stream overlay
+
+The build is stream-first: the "combat" is you going off and playing a real game,
+so for most of a stream **the Godot window is not on screen at all**. The overlay
+is what the audience sees instead — and what tells them why this person is
+playing Hollow Knight right now, and what happens if they fail.
+
+It is **not a second Godot window**. `ObsCompanion` mirrors the run onto disk and
+OBS renders the page:
+
+```
+user://obs/overlay.html   the page          ┐ reinstalled from obs/ at
+user://obs/overlay.css    its styling       │ EVERY boot — edit the repo's
+user://obs/overlay.js     its ticker        ┘ copies, not these
+user://obs/custom.css     yours — created empty once, never overwritten
+user://obs/state.js       the run, as `window.OBS_STATE = { … }`
+user://obs/covers/        covers lifted out of the .pck (exported builds only)
+```
+
+**Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
+and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
+point it at that `overlay.html`, and size it **440 × 1000**.
+
+**Why a script file and not JSON over `fetch()`.** OBS renders the page from a
+`file://` URL, and Chromium refuses every `fetch()`/XHR a `file://` page makes at
+a sibling file — there is no origin to grant, so it is a CORS failure with no fix
+short of launching OBS with `--allow-file-access-from-files`. A `<script src>`
+has no such restriction. So the state is written *as* an assignment and
+`overlay.js` re-loads it four times a second with a cache-buster on the end; the
+covers ride the same way, as `<img src="file://…">`. No server, no port.
+
+It shows health and shields, the character, the game in play and **its goal**,
+the checklist as it ticks (scrolling itself when there is more of it than there is
+room, flashing a row green as it is crossed off), the attempts spent, the bodies
+on the board and what they swing for, the statuses riding the run, and **the road
+walked so far ending on the Amulet** — the same strip `RunOverScreen` draws at
+the end of a run, drawn live, with the gap to the Amulet dashed until it closes.
+
+Two things worth knowing if you change it:
+
+- **Goal text is always `GameLoop2.goal_text_for`**, never `enemy.goal` — the
+  resource's stem says nothing about the clauses a status has bolted on (§13).
+- **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
+  That is a Control tree which only exists while the overworld is on screen, and
+  being right when the game window is behind a stream is the whole job.
+
+`obs/` holds plain `.html`/`.css`/`.js`, which Godot does not treat as resources.
+Running from source they are read straight out of `res://obs/`; if you ever
+**export** the project, add `*.html, *.css, *.js` to the export preset's
+"Filters to export non-resource files" or `ObsCompanion` will warn that the page
+is missing. (`export_presets.cfg` is gitignored, so this cannot be committed for
+you.)
 
 ### Data as Godot Resources
 

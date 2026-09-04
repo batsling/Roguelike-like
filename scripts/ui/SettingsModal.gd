@@ -293,6 +293,10 @@ func _build_ui() -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	_build_stream_section(vbox)
+
+	vbox.add_child(HSeparator.new())
+
 	var dev_heading := Label.new()
 	dev_heading.text = "Developer"
 	dev_heading.add_theme_font_size_override("font_size", 17)
@@ -327,6 +331,44 @@ func _build_ui() -> void:
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(queue_free)
 	vbox.add_child(close_btn)
+
+
+# THE STREAM OVERLAY (docs/games-first-redesign.md §9, ObsCompanion).
+#
+# Two controls and one path. The path is the load-bearing part: OBS needs an
+# absolute file to point a Browser Source at, and the folder it lives in
+# (`user://`) is somewhere different on every platform, so a streamer who cannot
+# read it off this screen cannot set the overlay up at all. It is in a
+# SELECTABLE LineEdit rather than a Label for the same reason — it is there to be
+# copied, and a Label cannot be.
+func _build_stream_section(vbox: VBoxContainer) -> void:
+	var heading := Label.new()
+	heading.text = "Stream overlay"
+	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(heading)
+
+	var chk := CheckButton.new()
+	chk.text = "Mirror the run for OBS"
+	chk.button_pressed = Settings.obs_overlay
+	chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_obs_overlay(on))
+	vbox.add_child(chk)
+
+	var hint := Label.new()
+	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (440 x 1000). It shows health, the game in play and its goal, the checklist as it ticks, and the road walked so far."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 58)
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(hint)
+
+	var path := LineEdit.new()
+	path.text = ObsCompanion.page_path()
+	path.editable = false
+	path.select_all_on_focus = true
+	path.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(path)
 
 
 # Starting over as yourself: empty the profile you are playing and keep it —

@@ -11,6 +11,71 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The OBS companion overlay is built** (§9), and it is not a Godot window.
+
+  §9 has been the deferred slot since the redesign opened: a "slim companion
+  window" for the audience, architecture "revisit once the mechanics are locked".
+  The mechanics are locked. The two options it named — a Godot `Window`, an
+  always-on-top scene — both answer the problem by adding a second thing for OBS
+  to *capture*, which means fussy transparency and no way to restyle anything
+  without a rebuild. So the game does not render the HUD at all: `ObsCompanion`
+  writes the run to `user://obs/` and **OBS renders the page** as a Browser
+  Source.
+
+  **The transport is a `<script>`, and that is the load-bearing decision.** OBS
+  renders a local page from a `file://` URL, and Chromium refuses every
+  `fetch()`/XHR such a page makes at a sibling file — no origin to grant, so it
+  is an unfixable CORS failure short of asking a streamer to launch OBS with
+  `--allow-file-access-from-files`. A `<script src>` has no such restriction. So
+  the state is written *as* an assignment — `window.OBS_STATE = {…}` in
+  `state.js` — and `overlay.js` re-loads it four times a second with a
+  cache-buster. Covers ride the same way, as `<img src="file://…">`. No server,
+  no port, nothing to configure but a path.
+
+  **Writes are debounced and deduped, over a heartbeat.** `loop_changed` fires on
+  every frame of a board animation and almost none of those frames move a number
+  the overlay draws, so a change only marks the payload dirty and it is written
+  at most 4/sec, and not at all when the content came out identical. Underneath
+  that is a 5-second heartbeat, which is what lets the page tell **"the run has
+  not moved" from "the game is not running"** — the same thing on disk, very
+  different things on a stream. The streamer who alt-tabs into Hollow Knight for
+  ninety minutes changes nothing, and an overlay that greyed itself out for that
+  would be useless exactly when it is the only thing on screen. So the page dims
+  only when the beat stops.
+
+  **What it shows is §9's list grown into the current build**, and the biggest
+  addition is the one §9 only half had: **the checklist, live**. A viewer
+  watching someone play Hollow Knight has no idea they are doing it to "defeat 3
+  bosses without healing" — that sentence is the whole honour-system premise and
+  it was nowhere on the stream. Every row the report panel would draw is on the
+  overlay now (body goals, bonuses, `instead` rows, status objectives, event
+  goals, curses), each with its tick, scrolling itself when there is more of it
+  than there is room, flashing green at the moment a row is crossed off. Beside
+  it: health as a bar that pulses under 30%, shields, **what the front line
+  swings for if the next turn resolves as the board stands**, the attempts
+  already spent, the statuses riding the run, and a ticker of what just happened.
+
+  **The road is `RunOverScreen`'s route strip drawn live** — every stop walked,
+  replays numbered the way that screen numbers them, **ending on the Amulet
+  whether or not the run got there**, dashed until it does. Without that terminus
+  the strip is a list; with it, it is progress.
+
+  Two rules the code keeps and a change here must keep. Goal text is always
+  `GameLoop2.goal_text_for`, never `enemy.goal` — the resource's stem says
+  nothing about the clauses a status has bolted onto it since (§13), which is the
+  exact mistake §13's own comments call out. And the rows are read from
+  `GameLoop2`/`GameState` **directly, never from `ReportChecklist`**: that is a
+  Control tree which only exists while the overworld is on screen, and being
+  right when the game window is behind a stream is the entire job.
+
+  The page ships in `obs/` and is **reinstalled over `user://obs/` at every
+  boot** — a stale copy there reads exactly like a broken overlay.
+  `user://obs/custom.css` is the other way round: created empty once, never
+  written again, and loaded last so anything in it wins. Settings grows a
+  *Stream overlay* section with the toggle and the absolute path to paste into
+  OBS, because `user://` is somewhere different on every platform and a streamer
+  who cannot read it off that screen cannot set this up at all.
+
 - **Loot an event pays lands on the event.**
 
   Buying three potions from the Woman in Blue used to hand you a second window
