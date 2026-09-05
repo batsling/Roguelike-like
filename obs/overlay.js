@@ -396,12 +396,13 @@ function drawRoad(road) {
     img.alt = stop.name;
     setImg(img, stop.cover);
     box.appendChild(img);
-    if (num(stop.visit) > 1) {
-      const badge = document.createElement('span');
-      badge.className = 'visit';
-      badge.textContent = stop.visit;
-      box.appendChild(badge);
-    }
+    /* NO VISIT BADGE. A game the run stood on twice is already TWO STOPS on this
+     * strip — `_road` emits one per entry in `path_taken`, never a merged one —
+     * so a "2" on the second cover was labelling something the strip had already
+     * said by drawing it again, and read as though the two visits had been
+     * collapsed into one. The payload still carries `visit` for anyone
+     * restyling; the road just walks now, so there is room to show the stops
+     * themselves. */
     strip.appendChild(box);
   });
   restartScroll('road-scroll');

@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The road's replay badge goes; two visits were always two stops.**
+
+  A game the run stands on twice has always been drawn twice — `_road` emits one
+  stop per entry in `path_taken` and never a merged one — so the "2" on the
+  second cover was labelling something the strip had already said by drawing it
+  again, and read as though the two visits had been collapsed into one. It is
+  gone. `visit` stays in the payload for anyone restyling the page; nothing draws
+  it. Now that the strip scrolls rather than trimming, there is room to simply
+  show the stops.
+
+  Its test changes with it — from asserting the numbering to asserting the thing
+  that actually matters, which is that the road is a SEQUENCE and not a set: two
+  visits, two covers, and a strip never shorter than the route.
+
 - **The road scrolls itself instead of turning stops into a number.**
 
   It was capped at twelve covers with a "+7" where the rest had been. That is the

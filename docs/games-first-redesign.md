@@ -2218,7 +2218,9 @@ stream — so the overlay dims only when the beat actually stops.
   Goal text is always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
 - **Statuses on the player** as chips, borrowed ones carrying their clock.
 - **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
-  replays numbered, **ending on the Amulet whether or not the run got there**,
+  a game stood on twice drawn twice (the road is a sequence, not a set — a badge
+  saying "2" made two visits look like one), **ending on the Amulet whether or
+  not the run got there**,
   drawn dashed until it does. Without that terminus the strip is a list rather
   than progress. It **scrolls sideways** when the run outgrows the strip, on the
   same walker the checklist uses: it was capped with a "+7" for the rest, and a

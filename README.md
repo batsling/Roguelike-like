@@ -703,19 +703,43 @@ and softens the pixel art. Set 440 × 828 and leave the transform at 100%.
 
 #### A scene layout that fits
 
-A 1920 × 1080 canvas, no overlapping sources, everything at native scale:
+Two arrangements for a 1920 x 1080 canvas, both putting the **camera on one side
+with chat directly under it** and the overlay on the other. They differ only in
+whether the game is allowed to sit behind them.
+
+**A — three columns, nothing overlaps.** Everything is visible at all times; the
+game pays for it.
 
 | Source | Position | Size |
 |---|---|---|
-| Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay** | `1476, 0` | `440 × 828` |
-| Camera | `0, 828` | `440 × 252` (16:9) |
-| Chat | `440, 828` | `1032 × 252` |
-| *(spare)* | `1472, 828` | `448 × 252` — alerts, or leave it empty |
+| Camera | `0, 0` | `384 × 216` (16:9) |
+| Chat | `0, 224` | `384 × 856` |
+| Game capture | `392, 236` | `1080 × 608` (16:9) |
+| **Overlay** | `1480, 0` | `440 × 828` |
+| *(spare)* | `1480, 836` | `440 × 244` |
 
-The game keeps 77% of the width and its bottom edge lines up with the overlay's.
-The camera sits under the game at the same width as the overlay column, so the
-two vertical edges at x=440 and x=1472 run the whole height of the canvas.
+The game lands at 56% of the canvas width, and the middle column carries ~470px
+of dead band above and below it — that is the unavoidable cost of two sidebars
+and a fixed 16:9 rectangle between them.
+
+**B — full-bleed game, the columns sit over its edges.** The usual arrangement
+for this shape of layout, and the one to prefer unless the game you are playing
+uses its left and right edges for something.
+
+| Source | Position | Size |
+|---|---|---|
+| Game capture | `0, 0` | `1920 × 1080` |
+| Camera | `16, 16` | `384 × 216` |
+| Chat | `16, 240` | `384 × 700` |
+| **Overlay** | `1464, 16` | `440 × 828` |
+
+The game keeps every pixel; the two columns cover about 20% of the width at each
+edge. Since the games on this map are *real* games with their own HUDs, check the
+one you are about to play before committing — a minimap or an ability bar in a
+covered corner is the failure case.
+
+Either way the columns can swap sides; nothing on the overlay cares which edge it
+is on.
 
 **If the overlay reads small** for viewers on 720p or a phone, don't scale the
 scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the

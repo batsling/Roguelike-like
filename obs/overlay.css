@@ -635,21 +635,8 @@ html, body {
  * RunOverScreen draws the gap a lost run never closed. */
 .stop.unreached img { opacity: 0.4; border-style: dashed; }
 
-/* The replay badge — "this is the second time the run stood here". */
-.stop .visit {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 14px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--accent);
-  color: #14100c;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 14px;
-  text-shadow: none;
-}
+/* The replay badge is gone: two visits are two stops on this strip, which says
+ * it better than a number on one of them did. See drawRoad in overlay.js. */
 
 .arrow {
   flex: 0 0 auto;

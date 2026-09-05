@@ -220,16 +220,21 @@ func test_the_road_cap_is_a_safety_valve_and_still_says_when_it_bites() -> void:
 	assert_gt(int(road[0].get("dropped", 0)), 0,
 		"the first stop carries the count of what was cut off the left")
 
-func test_a_replayed_game_is_numbered_by_the_visit() -> void:
+func test_a_game_played_twice_is_two_stops_and_not_one_with_a_number_on_it() -> void:
+	# THE ROAD IS A SEQUENCE, NOT A SET. Standing on a game a second time is a
+	# second place the run has been, at a different point in it, and the strip has
+	# to show it as one — the covers are the record of the journey, and merging
+	# two visits into a badge would make the strip shorter than the route.
 	var here: StringName = GameState.current_game_id
 	GameState.path_taken = [here, here] as Array[StringName]
-	var visits: Array = []
+	var stops: Array = []
 	for stop in ObsCompanion.payload()["road"]:
 		if String(stop.get("id", "")) == String(here):
-			visits.append(int(stop.get("visit", 0)))
-	assert_eq(visits, [1, 2],
-		"a game the run stood on twice is two stops, numbered — the same way "
-		+ "RunOverScreen's strip numbers them")
+			stops.append(int(stop.get("visit", 0)))
+	assert_eq(stops.size(), 2, "two visits, two covers on the strip")
+	# `visit` still rides along for anyone restyling the page, but nothing draws
+	# it: two stops already say "twice" better than a 2 on one of them did.
+	assert_eq(stops, [1, 2], "each carrying which visit it was")
 
 # ------------------------------------------------------------- the file ----
 
