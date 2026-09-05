@@ -212,9 +212,14 @@ html, body {
   /* Ringed in black so a number never lands illegibly on the art behind it. */
   text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 1px 2px #000;
 }
+/* The shield badge stays bigger than the status clock, because here it is not a
+ * flag on the side of the thing — it IS the answer (this swing never lands). But
+ * 15px on a 28px mark was more than half the width and buried the body behind
+ * it, which is the half that says WHO. 12px still reads unmistakably as a shield
+ * with the face clear behind it. */
 .swing-badge.shield img {
-  width: 15px;
-  height: 15px;
+  width: 12px;
+  height: 12px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 2px #000);
@@ -320,7 +325,12 @@ html, body {
   height: 22px;
   flex: 0 0 auto;
 }
-.pip-art img {
+/* `:not(.pip-clock)` IS LOAD-BEARING. As a bare `.pip-art img` this rule has
+ * specificity (0,1,1) and `.pip-clock` below has (0,1,0) — so it won, and the
+ * corner clock was being blown up to the full 22px of the pip, covering the
+ * status art completely. It read as "the badge is too big" and was really "the
+ * badge has no size of its own at all". */
+.pip-art > img:not(.pip-clock) {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -342,15 +352,24 @@ html, body {
   color: var(--tint);
 }
 
-/* The borrowed-status clock, bottom-right and hanging off the corner — the same
- * badge and the same overhang UITheme.timed_art uses. The corner is the FLAG,
- * not the number: how many games are left is not small enough to read here. */
+/* The borrowed-status clock, bottom-right and hanging off the corner. The corner
+ * is the FLAG, not the number: how many games are left is not small enough to
+ * read here.
+ *
+ * SMALLER THAN THE BOARD'S, deliberately. `UITheme.timed_art` draws a 14px badge
+ * on a 22px pip (TIMER_MIN, since TIMER_FRACTION*22 rounds below it) and that is
+ * right at desk distance, where the art has a tooltip behind it and the clock is
+ * the thing being hunted for. On a stream it is the other way round: the picture
+ * is the only thing identifying the status at a glance, and at 11px the clock was
+ * taking a visible bite out of it. 9px still reads as a clock — checked against
+ * 11 / 9 / 8 / 7 at 3x — and leaves the art alone. Below about 8 it stops being
+ * recognisably a clock and becomes a dot. */
 .pip-clock {
   position: absolute;
   right: -3px;
   bottom: -3px;
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   image-rendering: pixelated;
 }
 
@@ -373,7 +392,9 @@ html, body {
   height: 22px;
   flex: 0 0 auto;
 }
-.shield-pip img {
+/* Same trap as `.pip-art > img` above: without the :not() this rule outranks
+ * `.pip-clock` and stretches a timed shield's clock over the whole sprite. */
+.shield-pip > img:not(.pip-clock) {
   width: 100%;
   height: 100%;
   object-fit: contain;
