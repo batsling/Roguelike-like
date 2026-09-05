@@ -2205,8 +2205,10 @@ stream — so the overlay dims only when the beat actually stops.
   back to its initial; a test asserts the catalogue never needs to.
 - **Bodies following** — the board at the resolution an overlay actually has; a
   5×3 grid is not readable out of the corner of a stream.
-- **The game in play**, its cover, the **attempts** spent on it, and the hops
-  left to the Amulet.
+- **The game in play**, its cover, and the hops left to the Amulet. The attempt
+  count lives with the cost line instead — "Attempt 4" under *Lose a run*, since
+  the whole line is a forecast of the next one and which attempt it would be is
+  part of what makes it a decision.
 - **The checklist**, live, and it is the point of the whole thing: a viewer
   watching someone play Hollow Knight has no idea they are doing it to "defeat 3
   bosses without healing". Every row the report panel would draw — body goals,

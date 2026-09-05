@@ -61,7 +61,13 @@
          whatever its size, and the swings past your last shield are what hits
          Health. -->
     <div id="cost" class="cost" hidden>
-      <span class="cost-label">Lose a run</span>
+      <!-- WHICH attempt this would be, under the label, because the whole line
+           is a forecast of the NEXT lost run and the count is part of what makes
+           it a decision. -->
+      <span class="cost-head">
+        <span class="cost-label">Lose a run</span>
+        <span id="cost-attempt" class="cost-attempt" hidden></span>
+      </span>
       <span class="cost-arrow">&rarr;</span>
       <span id="cost-swings" class="cost-swings"></span>
       <span id="cost-total" class="cost-total"></span>
@@ -87,8 +93,9 @@
     <div class="now-text">
       <div id="now-label" class="label">Now playing</div>
       <div id="now-game" class="now-game"></div>
+      <!-- The attempts chip used to sit here. It moved up beside the cost line,
+           where the consequence it belongs to is. -->
       <div class="row sub">
-        <span id="attempts" class="chip" hidden></span>
         <span id="hops" class="chip" hidden></span>
       </div>
     </div>

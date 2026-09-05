@@ -706,7 +706,7 @@ covers ride the same way, as `<img src="file://…">`. No server, no port.
 
 It shows health, the character, the game in play, **the checklist as it ticks**
 (scrolling itself when there is more of it than there is room, flashing a row
-green as it is crossed off), the attempts spent, the bodies on the board,
+green as it is crossed off), the bodies on the board,
 **the shields and statuses as sprites under the portrait** in two labelled rows,
 **what a lost run would cost you** swing by swing, and **the road walked so far
 ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,

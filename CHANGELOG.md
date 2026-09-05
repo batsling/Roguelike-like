@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay is legible from the side of a stream.**
+
+  Three passes over the same problem: this page is read at a glance, at a
+  distance, over moving video, through a lossy encode.
+
+  **The palette was measured rather than eyeballed.** The card composites over
+  the capture, so a bright game eats into every contrast ratio on the page.
+  Against the card over a dark, a mid and a bright ground, UITheme's `TEXT_FAINT`
+  scored **2.33–3.31** and `TEXT_DIM` **4.36–6.19** — both under AA at the sizes
+  they are used, which is exactly why the section labels and the goal subtitles
+  washed out. The overlay now runs its own lighter pair (`#9a9183` / `#c4b8a2`,
+  worst-case 4.6 and 7.3) rather than quoting the game's, because the game's are
+  read on an opaque page at desk distance and these are not.
+
+  **The card went from 0.88 to 0.95 opaque**, which is the single biggest lever
+  there is and costs nothing — the card was never meant to show the game through
+  it. **Every piece of text carries a dark halo** now, inherited from `#overlay`,
+  which is what holds thin light-on-dark strokes together through an encode; the
+  two dark-on-light badges opt out, since a dark halo smears those rather than
+  protecting them. The smallest labels went up a point, and completed goal rows
+  went from 0.45 to 0.62 opacity — the strike-through already says "done", so the
+  fade only has to rank them, and at 0.45 they had stopped being readable at all.
+
+  **The attempt count moved to the cost line** — "Attempt 4" under *Lose a run* —
+  from a chip in the Now Playing card, a long way from the consequence it belongs
+  to. It reads as the attempt the forecast is FOR, which is the next one up.
+
+  And the timed-badge clock went to 11px. It had been set to 9 in the commit that
+  fixed it having no size at all, which was a fair correction to a badge covering
+  the whole sprite and a size too far the other way once it applied.
+
 - **A swing on the overlay is the body throwing it.**
 
   The cost line was a row of bare numbers, which said how much and never *who* —

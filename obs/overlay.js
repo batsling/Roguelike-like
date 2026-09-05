@@ -81,7 +81,7 @@ function render(s) {
 
   drawHero(s.hero || {}, s.vitals || {}, s.board || {});
   drawBarThreat(s.vitals || {}, s.threat || {});
-  drawCost(s.threat || {}, s.art || {});
+  drawCost(s.threat || {}, s.art || {}, s.now || {});
   drawShields(s.vitals || {}, s.art || {});
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || []);
@@ -126,9 +126,20 @@ function drawShields(vitals, art) {
  * them: a blocked swing wears the shield that breaks on it, an unblocked one
  * shows the damage it lands. Read left to right the row IS the rule — shields
  * eat whole hits, and everything past your last shield is Health. */
-function drawCost(threat, art) {
+function drawCost(threat, art, now) {
   const box = el('cost');
   const swings = (threat && threat.swings) || [];
+
+  /* WHICH attempt this would be — `now.attempts` counts the ones already spent,
+   * so the one this line is forecasting is the next one up. It sits under the
+   * label rather than in the Now Playing card, where it was a chip a long way
+   * from the consequence it belongs to. */
+  const att = el('cost-attempt');
+  const spent = num(now && now.attempts);
+  att.hidden = false;
+  att.textContent = 'Attempt ' + (spent + 1);
+  att.title = spent === 0 ? 'no runs lost at this game yet'
+    : spent + (spent === 1 ? ' run lost here so far' : ' runs lost here so far');
   /* Nothing that can reach you: the line goes entirely rather than announcing a
    * threat of zero, which reads as a threat. */
   box.hidden = swings.length === 0;
@@ -239,8 +250,6 @@ function drawNow(now, run) {
   setImg(el('now-cover'), now.cover);
   el('now-label').textContent = now.playing ? 'Now playing' : 'Standing on';
   el('now-game').textContent = now.game || '—';
-  chip(el('attempts'), num(now.attempts) > 0,
-    now.attempts + (now.attempts === 1 ? ' attempt' : ' attempts'));
   const hops = num(run.hops, -1);
   chip(el('hops'), hops >= 0,
     hops === 0 ? 'At the Amulet'
