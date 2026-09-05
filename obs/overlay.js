@@ -80,11 +80,43 @@ function render(s) {
   if (s.state === 'idle') { firstDraw = false; return; }
 
   drawHero(s.hero || {}, s.vitals || {}, s.board || {});
+  drawShields(s.vitals || {}, s.art || {});
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || []);
-  drawStatuses(s.statuses || []);
+  drawStatuses(s.statuses || [], s.art || {});
   drawRoad(s.road || []);
   firstDraw = false;
+}
+
+/* ONE SPRITE PER SHIELD, in the board's order: the pool that stays comes first
+ * and bare, the timed ones follow wearing the clock. Position and badge say the
+ * same thing twice — the further from the portrait a shield is, the sooner it
+ * goes — which is what makes the row readable with no tooltip to hover. */
+function drawShields(vitals, art) {
+  const box = el('hero-shields');
+  box.innerHTML = '';
+  if (!art || !art.shield) return;
+  const rows = [[num(vitals.shields_kept), false], [num(vitals.shields_timed), true]];
+  for (const [count, timed] of rows) {
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('span');
+      s.className = 'shield-pip';
+      s.title = timed ? 'Temporary shield — goes when you report this game'
+                      : 'Shield — nothing takes it but a hit';
+      const img = document.createElement('img');
+      img.alt = 'shield';
+      img.src = art.shield;
+      s.appendChild(img);
+      if (timed && art.timer) {
+        const clock = document.createElement('img');
+        clock.className = 'pip-clock';
+        clock.alt = '';
+        clock.src = art.timer;
+        s.appendChild(clock);
+      }
+      box.appendChild(s);
+    }
+  }
 }
 
 function drawHero(hero, vitals, board) {
@@ -104,8 +136,6 @@ function drawHero(hero, vitals, board) {
    * the subsetted Noto fonts that carry them; this page is rendered by OBS's
    * Chromium against whatever the host has installed, and a glyph that is
    * missing there comes out as a tofu box or the wrong symbol entirely. */
-  chip(el('shields'), num(vitals.shields) > 0, vitals.shields + ' shield'
-    + (vitals.shields === 1 ? '' : 's'));
   /* What the front line swings for if the next turn resolves as the board
    * stands — the number that makes the checklist urgent. */
   chip(el('incoming'), num(board.incoming) > 0,
@@ -186,20 +216,50 @@ function subtitle(g) {
   return bits.join(' · ');
 }
 
-function drawStatuses(statuses) {
-  const box = el('status-chips');
-  el('status-card').hidden = statuses.length === 0;
+/* THE STATUS PIPS, under the portrait — art and a stack count, the same shape
+ * BattlefieldView draws under the hero. Written out as names they were words
+ * with no picture behind them, which is not something you can read at a glance
+ * from across a room. */
+function drawStatuses(statuses, art) {
+  const box = el('hero-pips');
   box.innerHTML = '';
   for (const st of statuses) {
-    const c = document.createElement('span');
-    c.className = 'chip ' + (st.buff ? 'buff' : 'debuff');
-    let text = st.name;
-    if (num(st.stacks) > 1) text += ' ' + st.stacks;
-    /* A borrowed status says so where it is read — a tax about to lift is a
-     * different fact from a permanent one. */
-    if (num(st.games) > 0) text += ' (' + st.games + 'g)';
-    c.textContent = text;
-    box.appendChild(c);
+    const pip = document.createElement('span');
+    pip.className = 'pip' + (st.good ? ' good' : '');
+    /* The name survives as the tooltip. Nothing on an overlay is hoverable, but
+     * it costs nothing and makes the page readable when opened in a browser. */
+    pip.title = st.name + (num(st.games) > 0 ? ' — ' + st.games + ' games left' : '');
+
+    const art_box = document.createElement('span');
+    art_box.className = 'pip-art';
+    if (st.icon) {
+      const img = document.createElement('img');
+      img.alt = st.name;
+      img.src = st.icon;
+      art_box.appendChild(img);
+    } else {
+      /* No art authored yet: its initial, in the pip's own colour. */
+      const letter = document.createElement('span');
+      letter.className = 'pip-letter';
+      letter.textContent = st.letter || st.name.slice(0, 1).toUpperCase();
+      art_box.appendChild(letter);
+    }
+    /* Borrowed stacks wear the clock in the corner (§5.3) — the flag says "this
+     * one is going away", and the count is in the tooltip. */
+    if (num(st.games) > 0 && art && art.timer) {
+      const clock = document.createElement('img');
+      clock.className = 'pip-clock';
+      clock.alt = '';
+      clock.src = art.timer;
+      art_box.appendChild(clock);
+    }
+    pip.appendChild(art_box);
+
+    const count = document.createElement('span');
+    count.className = 'pip-count';
+    count.textContent = st.stacks;
+    pip.appendChild(count);
+    box.appendChild(pip);
   }
 }
 

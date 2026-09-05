@@ -707,7 +707,8 @@ covers ride the same way, as `<img src="file://…">`. No server, no port.
 It shows health and shields, the character, the game in play, **the checklist as
 it ticks** (scrolling itself when there is more of it than there is room, flashing
 a row green as it is crossed off), the attempts spent, the bodies on the board and
-what they swing for, the statuses riding the run, and **the road walked so far
+what they swing for, **the shields and statuses as sprites under the portrait**
+(the board's own art, tint and clock badge — see below), and **the road walked so far
 ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,
 drawn live, with the gap to the Amulet dashed until it closes.
 
@@ -720,6 +721,12 @@ Three things worth knowing if you change it:
   a row belongs to the body or the clause that owns it, never to the game.
 - **Goal text is always `GameLoop2.goal_text_for`**, never `enemy.goal` — the
   resource's stem says nothing about the clauses a status has bolted on (§13).
+- **Statuses and shields are drawn, not written.** They are `StatusData.image` /
+  `UITheme.SHIELD_ART` at 22px with `UITheme.TIMER_ART` in the corner for
+  anything borrowed — the same art and the same sizes as
+  `BattlefieldView._status_pip`, quoted from the same constants so the board and
+  the stream cannot disagree. The pip's colour follows **what the side does**
+  (gold for a `bonus`/`goal`, red for anything that taxes), never Buff/Debuff.
 - **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
   That is a Control tree which only exists while the overworld is on screen, and
   being right when the game window is behind a stream is the whole job.

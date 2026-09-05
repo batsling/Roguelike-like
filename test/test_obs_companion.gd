@@ -81,6 +81,26 @@ func test_the_vitals_are_the_health_the_run_actually_has() -> void:
 	assert_eq(int(vitals["hp"]), 42)
 	assert_eq(int(vitals["max"]), 75)
 
+func test_both_shield_pools_are_counted_and_kept_apart() -> void:
+	# THE POOLS ARE TWO PROMISES, and the overlay used to send only one of them:
+	# `GameState.shields` is the pool that expires when the game is reported, and
+	# a run holding two permanent shields on top of it read as having none. The
+	# board has always drawn them as two rows (BattlefieldView._fill_shields), so
+	# the page gets them the same way — apart, and totalled.
+	GameState.shields = 2
+	GameState.bonus_shields = 3
+	var vitals: Dictionary = ObsCompanion.payload()["vitals"]
+	assert_eq(int(vitals["shields_timed"]), 2, "the pool that expires this game")
+	assert_eq(int(vitals["shields_kept"]), 3, "the pool nothing but a hit takes")
+	assert_eq(int(vitals["shields"]), 5, "and the total, for anything that just wants a number")
+
+func test_a_shield_is_a_sprite_the_page_can_draw() -> void:
+	var art: Dictionary = ObsCompanion.payload()["art"]
+	assert_true(String(art.get("shield", "")).ends_with(
+		UITheme.SHIELD_ART.resource_path.get_file()),
+		"the overlay's shield is UITheme.SHIELD_ART — one file, so the board and "
+		+ "the stream cannot draw different armour")
+
 # ---------------------------------------------------------------- goals ----
 
 func test_every_body_on_the_board_is_a_goal_row_and_the_game_itself_is_not() -> void:
@@ -284,6 +304,62 @@ func test_the_road_hands_the_page_urls_rather_than_resource_paths() -> void:
 			continue   # a game with no art authored — the page hides the <img>
 		assert_true(cover.begins_with("file://"),
 			"a browser cannot open a res:// path; %s" % cover)
+
+# ------------------------------------------------------------- statuses ----
+
+func test_every_status_in_the_catalogue_has_art_for_its_pip() -> void:
+	# THE GUARANTEE BEHIND DRAWING STATUSES AS PICTURES. The overlay shows a
+	# status as art and a stack count, the way the board does — so a status
+	# shipped without art is a pip with nothing in it, on the one surface nobody
+	# is looking at the game window to check. There is a letter fallback for that
+	# case, but it is a safety net and not the plan: all of them should be drawn.
+	var missing: Array = []
+	for s in Data.all_statuses():
+		var sd: StatusData = s
+		if sd.image == null:
+			missing.append(String(sd.id))
+	assert_eq(missing, [],
+		"these statuses have no art in images2.0/statuses/, so their pip falls "
+		+ "back to a letter: %s" % str(missing))
+
+func test_a_status_pip_carries_a_picture_the_browser_can_open() -> void:
+	# The player's own statuses, whatever the run happens to have dealt.
+	GameState.apply_status(&"strength", 3)
+	var rows: Array = ObsCompanion.payload()["statuses"]
+	assert_gt(rows.size(), 0, "a status was just applied")
+	for row in rows:
+		assert_ne(String(row.get("icon", "")), "",
+			"%s has no icon url" % row.get("name", "?"))
+		assert_true(String(row["icon"]).begins_with("file://"),
+			"a browser cannot open a res:// path")
+		assert_ne(String(row.get("letter", "")), "",
+			"every pip carries its fallback initial")
+
+func test_a_pip_is_gold_when_the_status_pays_and_red_when_it_taxes() -> void:
+	# The board colours on WHAT THE SIDE DOES (BattlefieldView._status_pip), not
+	# on Buff/Debuff — a buff that taxes you would be the wrong colour under any
+	# other rule. The overlay must not invent a second answer.
+	GameState.apply_status(&"strength", 1)
+	GameState.apply_status(&"burn", 1)
+	var checked: int = 0
+	for row in ObsCompanion.payload()["statuses"]:
+		var sd: StatusData = Data.get_status(StringName(String(row["name"]).to_lower()))
+		if sd == null:
+			continue
+		checked += 1
+		var want: bool = sd.is_bonus(StatusData.PLAYER) or sd.is_goal(StatusData.PLAYER)
+		assert_eq(bool(row["good"]), want,
+			"%s: the pip's tint must follow the side's mode" % row["name"])
+	assert_gt(checked, 0, "at least one status was resolvable back to its data")
+
+func test_the_borrowed_status_clock_is_the_boards_own_badge() -> void:
+	# The page hangs a clock off a pip whose stacks are on loan, and it must be
+	# the same picture UITheme.timed_art hangs off the board's — one file, so the
+	# two surfaces cannot disagree about what "temporary" looks like.
+	var art: Dictionary = ObsCompanion.payload()["art"]
+	assert_true(String(art.get("timer", "")).ends_with(
+		UITheme.TIMER_ART.resource_path.get_file()),
+		"the overlay's clock is UITheme.TIMER_ART")
 
 # --------------------------------------------------------------- events ----
 

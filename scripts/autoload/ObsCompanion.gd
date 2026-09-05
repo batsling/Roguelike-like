@@ -32,7 +32,8 @@ extends Node
 #
 # WHAT IT SHOWS is §9's list grown up into the current build: health and shields,
 # the character, the game in play, the attempts already spent on it, the bodies on
-# the board, the statuses riding the run, and the road walked so far as a strip of
+# the board, the shields and statuses riding the run AS SPRITES under the
+# portrait (the board's own art and tint — see `_statuses`), and the road so far as a strip of
 # covers ending on the Amulet. And THE CHECKLIST, which is what a viewer is
 # actually watching for.
 #
@@ -230,6 +231,7 @@ func payload() -> Dictionary:
 	if out["state"] == "idle":
 		return out
 	out["hero"] = _hero()
+	out["art"] = _shared_art()
 	out["vitals"] = _vitals()
 	out["run"] = _run_line()
 	out["now"] = _now_playing()
@@ -249,6 +251,20 @@ func _run_state() -> String:
 		return "run"
 	return "won" if GameLoop2.won else "lost"
 
+# Art the page needs that belongs to no one row. Only the borrowed-status clock
+# so far — the badge `UITheme.timed_art` hangs off the corner of a pip out of the
+# timed layer (docs/potions-design.md §5.3). Taken from UITheme's own constant
+# rather than by path, so the board's clock and the overlay's are the same file
+# by construction.
+func _shared_art() -> Dictionary:
+	return {
+		"timer": _texture_url(UITheme.TIMER_ART),
+		# One sprite per shield, at the same 22px as a status pip — the board sizes
+		# them alike on purpose, so the two rows are read in one glance and a
+		# shield never claims a rank over a status it does not have.
+		"shield": _texture_url(UITheme.SHIELD_ART),
+	}
+
 func _hero() -> Dictionary:
 	var cd: CharacterData = Data.get_character(GameState.character_id)
 	if cd == null:
@@ -263,11 +279,22 @@ func _hero() -> Dictionary:
 # §9's "keep all numbers single-digit where possible" is why this is health,
 # shields and nothing else: they are the two numbers a viewer has to be able to
 # read without pausing.
+#
+# THE SHIELDS COME OUT IN TWO POOLS, because they are two different promises and
+# the board already draws them as two (_fill_shields). `kept` is what nothing but
+# a hit will take; `timed` expires when this game is reported and wears the clock
+# for it. Sent apart AND totalled: the page draws one sprite per shield in the
+# board's own order — the pool that stays nearest the portrait, bare — and the
+# total is there for anything that just wants the number.
 func _vitals() -> Dictionary:
+	var kept: int = GameState.bonus_shields
+	var timed: int = GameState.shields
 	return {
 		"hp": GameState.hp,
 		"max": GameState.max_hp,
-		"shields": GameState.shields,
+		"shields": kept + timed,
+		"shields_kept": kept,
+		"shields_timed": timed,
 	}
 
 func _run_line() -> Dictionary:
@@ -428,12 +455,23 @@ func _board() -> Dictionary:
 		"incoming": incoming,
 	}
 
-# The statuses riding the PLAYER — the run's standing modifiers, as chips. The
-# curses are NOT here: since §13 a curse is a checklist row with a clock and a
+# The statuses riding the PLAYER, AS PIPS — art and a stack count, which is what
+# a status is on every other surface in this game (BattlefieldView's
+# `_status_pip`: under the hero's portrait for the player's own, under an enemy's
+# box for its own). A status written out as its NAME is a word with no picture
+# behind it, and the overlay is read at a glance from across a room.
+#
+# THE TINT IS THE GAME'S, NOT buff/debuff. `_status_pip` colours on what this
+# SIDE DOES — a `bonus` or a `goal` is an opportunity and reads gold, anything
+# else taxes you and reads red — and a Buff that happens to tax would be the
+# wrong colour under any other rule. Quoted here so the board and the overlay
+# cannot say different things about the same stack.
+#
+# The curses are NOT here: since §13 a curse is a checklist row with a clock and a
 # penalty (GameState.curse_goals), so it goes out with the goals where it can be
 # read as the instruction it is, rather than as a chip that only names itself.
 #
-# One chip per status, totalled — the other way round from `status_objectives`
+# One pip per status, totalled — the other way round from `status_objectives`
 # above, which is one row per instance. What a stack DOES is felt as a total, and
 # GameState.status_list says so in the same words.
 func _statuses() -> Array:
@@ -445,7 +483,14 @@ func _statuses() -> Array:
 		out.append({
 			"name": sd.display_name,
 			"stacks": int(row.get("stacks", 0)),
-			"buff": sd.is_buff(),
+			# An opportunity (gold) or a tax (red) — see the note above.
+			"good": sd.is_bonus(StatusData.PLAYER) or sd.is_goal(StatusData.PLAYER),
+			"icon": _texture_url(sd.image),
+			# What the pip shows when a status ships without art. The board's own
+			# comment already promises "the name's first letter" for that case;
+			# here it is, so a new status is legible the day it is authored and
+			# before anyone has drawn for it.
+			"letter": sd.display_name.substr(0, 1).to_upper(),
 			# 0 = permanent; anything else is games left on the clock (§5.3).
 			"games": int(row.get("games", 0)),
 		})

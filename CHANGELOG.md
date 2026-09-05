@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay draws statuses and shields instead of naming them.**
+
+  They went out as text chips — "Strength 3", "Burn (2g)", "2 shields" — which is
+  a word with no picture behind it on the one surface in this project that is
+  read at a glance from across a room. They are **sprites now, under the
+  portrait**, which is both where the board puts them and what they look like
+  there: `StatusData.image` and `UITheme.SHIELD_ART` at 22px with
+  `UITheme.TIMER_ART` in the corner of anything borrowed, quoted from those
+  constants rather than by path so the board and the stream cannot end up drawing
+  different armour.
+
+  **The tint is the board's rule, which was not the one the chips used.**
+  `BattlefieldView._status_pip` colours on what the SIDE DOES — a `bonus` or a
+  `goal` is an opportunity and reads gold, anything else taxes you and reads red
+  — where the chips coloured on Buff/Debuff, so a buff that taxes came out the
+  wrong colour. All 7 statuses in the catalogue have art, and a test says so, so
+  the letter fallback under a missing picture stays a safety net rather than the
+  usual case.
+
+  Two things fell out of doing it. The **shields were being under-reported**:
+  `_vitals` sent `GameState.shields` alone, which is only the pool that expires
+  at the report, so a run holding permanent `bonus_shields` on top of it read as
+  having fewer than it had. Both pools go out now, apart and totalled, drawn in
+  the board's order — the pool that stays nearest the portrait and bare, the
+  timed ones after it under the clock, position and badge saying the same thing
+  twice. And the pips were briefly put *inside* the 56px portrait column, which
+  is the obvious reading of "under the character icon" and completely wrong in
+  practice: a pip is about 40px wide, so seven statuses stacked one per row and
+  made the hero card 283px tall. Full width and wrapping, the same card is 126.
+
+  Also drops `color-mix()`, which had expressed the pip's tint in one line the
+  way `UITheme.flat` does. It needs Chrome 111 and OBS ships whatever CEF its
+  build was cut against; an unsupported colour function is not an error anybody
+  sees, the declaration is simply dropped, and the pips would have lost their
+  tint on the streamer's machine while looking correct everywhere else. Written
+  out as plain rgba, along with an `inset: 0` beside it.
+
 - **The OBS companion overlay is built** (§9), and it is not a Godot window.
 
   §9 has been the deferred slot since the redesign opened: a "slim companion

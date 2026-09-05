@@ -25,23 +25,34 @@
 <body>
 <div id="overlay" class="waiting">
 
-  <!-- THE HERO: who is playing, and how much of them is left. -->
+  <!-- THE HERO: who is playing, how much of them is left, and what is riding
+       them. The status pips sit UNDER THE PORTRAIT because that is where the
+       game itself puts them (BattlefieldView's hero block) — same art, same
+       stack count, same gold/red tint. -->
   <section class="card hero">
-    <img id="hero-icon" class="hero-icon" alt="">
-    <div class="hero-text">
-      <div class="row">
-        <span id="hero-name" class="hero-name"></span>
-        <span id="hero-level" class="pill"></span>
+    <div class="hero-top">
+      <img id="hero-icon" class="hero-icon" alt="">
+      <div class="hero-text">
+        <div class="row">
+          <span id="hero-name" class="hero-name"></span>
+          <span id="hero-level" class="pill"></span>
+        </div>
+        <div class="bar">
+          <div id="hp-fill" class="bar-fill"></div>
+          <span id="hp-text" class="bar-text"></span>
+        </div>
+        <div class="row sub">
+          <span id="incoming" class="chip danger" hidden></span>
+          <span id="bodies" class="chip" hidden></span>
+        </div>
       </div>
-      <div class="bar">
-        <div id="hp-fill" class="bar-fill"></div>
-        <span id="hp-text" class="bar-text"></span>
-      </div>
-      <div class="row sub">
-        <span id="shields" class="chip shield" hidden></span>
-        <span id="incoming" class="chip danger" hidden></span>
-        <span id="bodies" class="chip" hidden></span>
-      </div>
+    </div>
+    <!-- The armour and what is riding you, as sprites, in the board's own
+         order: shields first (the pool that stays nearest, bare; the timed ones
+         after it wearing the clock), then the status pips. -->
+    <div class="hero-strip">
+      <div id="hero-shields" class="pips"></div>
+      <div id="hero-pips" class="pips"></div>
     </div>
   </section>
 
@@ -64,12 +75,6 @@
     <div id="goal-scroll" class="goal-scroll">
       <ul id="goal-list" class="goal-list"></ul>
     </div>
-  </section>
-
-  <!-- What is riding the run. Hidden entirely when there is none. -->
-  <section id="status-card" class="card statuses" hidden>
-    <div class="label">On you</div>
-    <div id="status-chips" class="chips"></div>
   </section>
 
   <!-- THE ROAD: every stop walked, ending on the Amulet. -->

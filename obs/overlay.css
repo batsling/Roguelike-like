@@ -96,14 +96,27 @@ html, body {
 }
 .chip.shield { color: #8ab6e6; border-color: #33506e; }
 .chip.danger { color: var(--danger); border-color: #6e2f28; }
-.chip.buff   { color: var(--success); border-color: #2c5c39; }
-.chip.debuff { color: var(--curse); border-color: #57356e; }
-
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ----------------------------------------------------------------- hero -- */
 
-.hero { display: flex; gap: 12px; align-items: center; }
+/* The card is a COLUMN: the portrait and the vitals on top, the sprite strip
+ * under them. The strip was briefly inside the 56px portrait column, which is
+ * the obvious reading of "under the character icon" and completely wrong in
+ * practice: a pip is ~40px wide, so they stacked one per row and a run carrying
+ * seven statuses made the hero card 283px tall. Full width, wrapping, it is two
+ * rows. */
+.hero { display: flex; flex-direction: column; gap: 8px; }
+.hero-top { display: flex; gap: 12px; align-items: center; }
+
+.hero-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 10px;
+}
+/* Nothing on you and no armour: the strip has no height of its own to leave
+ * behind, so the card closes up rather than keeping an empty band. */
+.hero-strip:empty, .pips:empty { display: none; }
 
 .hero-icon {
   width: 56px;
@@ -112,9 +125,115 @@ html, body {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--panel);
-  flex: 0 0 auto;
 }
 .hero-icon:not([src]) { visibility: hidden; }
+
+/* --------------------------------------------------------- status pips -- */
+
+/* One pip per status: the art, its stack count beside it, and a clock in the
+ * corner when the stacks are borrowed. This is BattlefieldView's `_status_pip`
+ * rebuilt in CSS — same shape, same 22px art, same rule for the colour, so
+ * "what is on me" reads the same on the board and on the stream.
+ *
+ * The strip wraps inside the 56px portrait column and the column stretches to
+ * fit, which is what keeps a run carrying six statuses from pushing the health
+ * bar off its own card. */
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+/* NO color-mix() HERE, deliberately. It would express "the tint, most of the way
+ * to the page's ground" in one line the way UITheme.flat does — but it needs
+ * Chrome 111, and OBS ships whatever CEF its build was cut against, several
+ * versions back. An unsupported colour function is not an error a streamer ever
+ * sees; the declaration is just dropped and the pip loses its tint on their
+ * machine while looking right on everyone else's. So the two mixes are written
+ * out as plain rgba over the dark card, which has worked since forever. */
+.pip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px 1px 1px;
+  border-radius: 3px;
+  --tint: var(--danger);
+  background: rgba(230, 84, 71, 0.20);
+  border: 1px solid rgba(230, 84, 71, 0.55);
+}
+/* A `bonus` or a `goal` on the player's side is an OPPORTUNITY, not a tax. */
+.pip.good {
+  --tint: var(--gold);
+  background: rgba(255, 204, 102, 0.16);
+  border-color: rgba(255, 204, 102, 0.50);
+}
+
+.pip-art {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.pip-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Pixel art, kept crisp — UITheme.crisp_tex is the same decision. */
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* The fallback when a status ships before its art does: its initial, in the
+ * pip's own colour, occupying exactly the space the picture would. */
+.pip-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tint);
+}
+
+/* The borrowed-status clock, bottom-right and hanging off the corner — the same
+ * badge and the same overhang UITheme.timed_art uses. The corner is the FLAG,
+ * not the number: how many games are left is not small enough to read here. */
+.pip-clock {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  image-rendering: pixelated;
+}
+
+.pip-count {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tint);
+  text-shadow: 0 1px 2px #000;
+}
+
+/* A SHIELD IS A SPRITE, NOT A NUMBER — one per shield, each being one instance
+ * of damage stopped dead (§3), which is why the board draws them individually
+ * rather than as a count. No chip around them: they are the player's own armour,
+ * not something riding them, and the bare sprites read as a row of armour where
+ * a bordered chip would read as another status. */
+.shield-pip {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.shield-pip img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
 
 .hero-text { flex: 1 1 auto; min-width: 0; }
 .hero-name {
@@ -151,7 +270,9 @@ html, body {
 
 .bar-text {
   position: absolute;
-  inset: 0;
+  /* Written the long way rather than `inset: 0` for the same reason the pip
+   * tints avoid color-mix: an old CEF drops what it doesn't know, silently. */
+  top: 0; right: 0; bottom: 0; left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
