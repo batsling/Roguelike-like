@@ -80,6 +80,8 @@ function render(s) {
   if (s.state === 'idle') { firstDraw = false; return; }
 
   drawHero(s.hero || {}, s.vitals || {}, s.board || {});
+  drawBarThreat(s.vitals || {}, s.threat || {});
+  drawCost(s.threat || {}, s.art || {});
   drawShields(s.vitals || {}, s.art || {});
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || []);
@@ -95,6 +97,7 @@ function render(s) {
 function drawShields(vitals, art) {
   const box = el('hero-shields');
   box.innerHTML = '';
+  el('shield-row').hidden = num(vitals.shields) === 0;
   if (!art || !art.shield) return;
   const rows = [[num(vitals.shields_kept), false], [num(vitals.shields_timed), true]];
   for (const [count, timed] of rows) {
@@ -119,6 +122,71 @@ function drawShields(vitals, art) {
   }
 }
 
+/* WHAT A LOST RUN COSTS, one mark per swing, in the order the board resolves
+ * them: a blocked swing wears the shield that breaks on it, an unblocked one
+ * shows the damage it lands. Read left to right the row IS the rule — shields
+ * eat whole hits, and everything past your last shield is Health. */
+function drawCost(threat, art) {
+  const box = el('cost');
+  const swings = (threat && threat.swings) || [];
+  /* Nothing that can reach you: the line goes entirely rather than announcing a
+   * threat of zero, which reads as a threat. */
+  box.hidden = swings.length === 0;
+  if (box.hidden) return;
+
+  const strip = el('cost-swings');
+  strip.innerHTML = '';
+  for (const sw of swings) {
+    const s = document.createElement('span');
+    if (sw.blocked && art && art.shield) {
+      s.className = 'swing blocked';
+      s.title = sw.who + ' swings for ' + sw.damage + ' — a shield stops it whole';
+      const img = document.createElement('img');
+      img.alt = 'shield breaks';
+      img.src = art.shield;
+      s.appendChild(img);
+    } else {
+      s.className = 'swing hits';
+      s.title = sw.who + ' swings for ' + sw.damage;
+      s.textContent = sw.damage;
+    }
+    strip.appendChild(s);
+  }
+
+  const total = el('cost-total');
+  const dmg = num(threat.damage);
+  const broke = num(threat.blocked);
+  /* The sentence under the marks, for the viewer who wants it stated rather
+   * than counted. */
+  const parts = [];
+  if (broke > 0) parts.push(broke + (broke === 1 ? ' shield' : ' shields'));
+  parts.push(dmg + ' damage');
+  total.textContent = '= ' + parts.join(', ');
+  total.className = 'cost-total' + (dmg === 0 ? ' safe' : '');
+
+  /* THE ONE STATE ALLOWED TO SHOUT. A hatched bar covering the whole of a short
+   * health total does say "all of it goes", but only to someone already reading
+   * the bar — and this is the moment the overlay exists for. */
+  const kill = el('cost-lethal');
+  kill.hidden = !threat.lethal;
+  box.classList.toggle('lethal', !!threat.lethal);
+}
+
+/* The same forecast on the bar: a hatched notch covering the Health that would
+ * go, parked at the leading edge of the fill. */
+function drawBarThreat(vitals, threat) {
+  const node = el('hp-threat');
+  const max = Math.max(1, num(vitals.max));
+  const hp = num(vitals.hp);
+  const dmg = Math.min(hp, num(threat && threat.damage));
+  node.hidden = dmg <= 0;
+  if (node.hidden) return;
+  const pct = (v) => Math.max(0, Math.min(100, (v / max) * 100));
+  node.style.left = pct(hp - dmg) + '%';
+  node.style.width = (pct(hp) - pct(hp - dmg)) + '%';
+  node.classList.toggle('lethal', !!(threat && threat.lethal));
+}
+
 function drawHero(hero, vitals, board) {
   setImg(el('hero-icon'), hero.icon);
   el('hero-name').textContent = hero.name || '';
@@ -136,10 +204,8 @@ function drawHero(hero, vitals, board) {
    * the subsetted Noto fonts that carry them; this page is rendered by OBS's
    * Chromium against whatever the host has installed, and a glyph that is
    * missing there comes out as a tofu box or the wrong symbol entirely. */
-  /* What the front line swings for if the next turn resolves as the board
-   * stands — the number that makes the checklist urgent. */
-  chip(el('incoming'), num(board.incoming) > 0,
-    board.incoming + ' incoming');
+  /* The threat is drawn by drawCost below, swing by swing, rather than summed
+   * into a chip here — see the note in overlay.html. */
   chip(el('bodies'), num(board.bodies) > 0,
     board.bodies + (board.bodies === 1 ? ' body' : ' bodies') + ' following');
 }
@@ -223,6 +289,7 @@ function subtitle(g) {
 function drawStatuses(statuses, art) {
   const box = el('hero-pips');
   box.innerHTML = '';
+  el('status-row').hidden = statuses.length === 0;
   for (const st of statuses) {
     const pip = document.createElement('span');
     pip.className = 'pip' + (st.good ? ' good' : '');

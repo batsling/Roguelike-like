@@ -108,15 +108,135 @@ html, body {
 .hero { display: flex; flex-direction: column; gap: 8px; }
 .hero-top { display: flex; gap: 12px; align-items: center; }
 
-.hero-strip {
+/* One labelled row per kind. The armour and the statuses were briefly one strip
+ * and it read as though the shields were two more statuses — they are not, they
+ * are the player's own and they are what the cost line above spends. */
+.hero-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 3px 10px;
+  gap: 8px;
 }
-/* Nothing on you and no armour: the strip has no height of its own to leave
- * behind, so the card closes up rather than keeping an empty band. */
-.hero-strip:empty, .pips:empty { display: none; }
+.row-label {
+  flex: 0 0 52px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------ what a lost run costs -- */
+
+/* THE LINE THE WHOLE CARD IS FOR. A summed "12 incoming" hides the rule that
+ * actually decides whether to risk another attempt: a shield stops ONE HIT
+ * outright, whatever that hit was for, so two shields against three small swings
+ * is a very different position from two shields against one enormous one. Drawn
+ * as one mark per swing, it is countable instead of inferred. */
+.cost {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(230, 84, 71, 0.10);
+  border: 1px solid rgba(230, 84, 71, 0.35);
+}
+
+.cost-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.cost-arrow { color: var(--faint); font-size: 12px; }
+
+.cost-swings { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+
+/* One swing. A blocked one wears the shield that breaks on it — struck through,
+ * because that shield is gone afterwards. */
+.swing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.swing.blocked {
+  background: rgba(138, 182, 230, 0.14);
+  border: 1px solid rgba(138, 182, 230, 0.45);
+}
+.swing.blocked img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+  display: block;
+  /* Greyed and cracked-looking: this one does not survive the swing. */
+  filter: grayscale(0.5) brightness(0.85);
+}
+/* The break, drawn over the shield rather than beside it. */
+.swing.blocked::after {
+  content: "";
+  position: absolute;
+  left: 3px; right: 3px; top: 50%;
+  height: 2px;
+  background: var(--danger);
+  transform: rotate(-28deg);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+.swing.hits {
+  background: rgba(230, 84, 71, 0.22);
+  border: 1px solid rgba(230, 84, 71, 0.6);
+  color: #ffd3cd;
+}
+
+.cost-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+  white-space: nowrap;
+}
+.cost-total.safe { color: #8ab6e6; }
+
+/* The whole point of the forecast, when the forecast is that there isn't one. */
+.cost-lethal {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--danger);
+  color: #1d0b09;
+  animation: pulse 0.7s ease-in-out infinite;
+}
+/* A cost line that ends the run is the one card that gets a rim. The class is
+ * set from overlay.js rather than written as `.cost:has(...)` — `:has()` needs
+ * Chrome 105 and OBS ships the CEF its build was cut against, which is the same
+ * trap color-mix() was. */
+.cost.lethal { border-color: var(--danger); }
+
+/* Nothing left standing that can reach you: the whole line goes rather than
+ * saying "0 damage", which reads as a threat that happens to be zero. */
+.pips:empty { display: none; }
+
+/* THE FORECAST ON THE BAR: a hatched notch at the leading edge of the fill,
+ * covering the Health a lost run would take. Seeing the bar you are about to
+ * lose is a different kind of understanding from reading the number. */
+.bar-threat {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(-45deg,
+    rgba(230, 84, 71, 0.85) 0 4px, rgba(90, 20, 16, 0.85) 4px 8px);
+  border-left: 1px solid rgba(255, 255, 255, 0.55);
+  transition: left 400ms ease, width 400ms ease;
+}
+/* It would kill you. The one state on this overlay that is allowed to shout. */
+.bar-threat.lethal { animation: pulse 0.7s ease-in-out infinite; }
 
 .hero-icon {
   width: 56px;

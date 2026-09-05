@@ -11,6 +11,51 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay says what a lost run will cost, swing by swing.**
+
+  A lost run is the decision the honour system is actually made of, and the
+  overlay was describing it with a summed "13 incoming" sitting next to a row of
+  shield sprites — two true numbers that between them said nothing about the rule
+  that decides it. **One shield stops one HIT outright, whatever that hit was
+  for** (`_take_hit`), so two shields against three small swings is a completely
+  different position from two shields against one enormous one, and the sum hides
+  exactly that.
+
+  So the cost is drawn as **one mark per swing**, in the order the resolver takes
+  them: the blocked ones as the shield that breaks on them, struck through; the
+  rest as the damage they land; and the sentence after it — `= 2 shields, 6
+  damage`. Left to right the row IS the mechanic, countable rather than inferred.
+  The same forecast is hatched onto the health bar over the HP that would go, so
+  it is legible as a quantity as well as a number, and a forecast that would end
+  the run says THIS KILLS YOU rather than leaving it to be worked out.
+
+  **`_threat()` mirrors `_take_hit` step for step instead of re-deriving it**,
+  because a forecast that is merely plausible is worse than none: the player's
+  damage-taken mods land first (Marked doubles what arrives), a swing modded to
+  nothing spends no shield, Pierce takes both pools past, and the timed pool
+  blocks first (§4.3). Nothing in it mutates — a test asserts the live shield
+  pools survive being forecast at, and another takes the prediction and then makes
+  the board resolve a real `attempt_turn()` to check the Health that actually
+  went.
+
+  **Two accuracy bugs came out of writing it down.** `incoming` was summing every
+  body `in_front`, which (a) counted the staggered and the stunned, who do not
+  swing at all, and (b) missed every Ranged body, which strikes from further back
+  than the front column — `can_strike` is the resolver's own test and is what it
+  uses now. It also read `enemy.damage` off the resource instead of
+  `enemy_damage(entry)`, so every point of Strength on a body was missing from the
+  threat.
+
+  The shields and statuses are **two labelled rows** now rather than one strip.
+  They were adjacent sprites of the same size and the shields read as two more
+  statuses, when they are the player's own and are precisely what the line above
+  them spends. And the "incoming" chip is gone: it carried the raw pre-shield
+  total, sat two lines above "6 damage", and contradicted it at a glance.
+
+  Also caught a `:has()` selector on the way in — Chrome 105, the same trap as
+  the `color-mix()` removed in the entry below, and on a page rendered by whatever
+  CEF the streamer's OBS was built against. The class is set from JS instead.
+
 - **The overlay draws statuses and shields instead of naming them.**
 
   They went out as text chips — "Strength 3", "Burn (2g)", "2 shields" — which is

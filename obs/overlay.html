@@ -39,19 +39,43 @@
         </div>
         <div class="bar">
           <div id="hp-fill" class="bar-fill"></div>
+          <!-- The slice of the bar a lost run would take, hatched, sitting at
+               the leading edge of the fill. -->
+          <div id="hp-threat" class="bar-threat" hidden></div>
           <span id="hp-text" class="bar-text"></span>
         </div>
+        <!-- NO "incoming" CHIP. It carried the raw total before shields, which
+             sat next to the cost line below saying "6 damage" and contradicted
+             it at a glance. The cost line is the better answer to the same
+             question; `board.incoming` is still in the payload for anyone
+             restyling this page. -->
         <div class="row sub">
-          <span id="incoming" class="chip danger" hidden></span>
           <span id="bodies" class="chip" hidden></span>
         </div>
       </div>
     </div>
-    <!-- The armour and what is riding you, as sprites, in the board's own
-         order: shields first (the pool that stays nearest, bare; the timed ones
-         after it wearing the clock), then the status pips. -->
-    <div class="hero-strip">
+    <!-- WHAT A LOST RUN COSTS, one mark per swing: the ones a shield eats drawn
+         as the shield that breaks on them, the rest as the damage they land.
+         Read left to right it is the rule itself — a shield stops one hit
+         whatever its size, and the swings past your last shield are what hits
+         Health. -->
+    <div id="cost" class="cost" hidden>
+      <span class="cost-label">Lose a run</span>
+      <span class="cost-arrow">&rarr;</span>
+      <span id="cost-swings" class="cost-swings"></span>
+      <span id="cost-total" class="cost-total"></span>
+      <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
+    </div>
+
+    <!-- SEPARATE ROWS, and separately labelled: the armour is yours and the
+         statuses are riding you, which are different enough facts that running
+         them together in one strip made the shields read as two more statuses. -->
+    <div id="shield-row" class="hero-row" hidden>
+      <span class="row-label">Shields</span>
       <div id="hero-shields" class="pips"></div>
+    </div>
+    <div id="status-row" class="hero-row" hidden>
+      <span class="row-label">On you</span>
       <div id="hero-pips" class="pips"></div>
     </div>
   </section>

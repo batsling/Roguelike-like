@@ -704,15 +704,40 @@ has no such restriction. So the state is written *as* an assignment and
 `overlay.js` re-loads it four times a second with a cache-buster on the end; the
 covers ride the same way, as `<img src="file://…">`. No server, no port.
 
-It shows health and shields, the character, the game in play, **the checklist as
-it ticks** (scrolling itself when there is more of it than there is room, flashing
-a row green as it is crossed off), the attempts spent, the bodies on the board and
-what they swing for, **the shields and statuses as sprites under the portrait**
-(the board's own art, tint and clock badge — see below), and **the road walked so far
+It shows health, the character, the game in play, **the checklist as it ticks**
+(scrolling itself when there is more of it than there is room, flashing a row
+green as it is crossed off), the attempts spent, the bodies on the board,
+**the shields and statuses as sprites under the portrait** in two labelled rows,
+**what a lost run would cost you** swing by swing, and **the road walked so far
 ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,
 drawn live, with the gap to the Amulet dashed until it closes.
 
-Three things worth knowing if you change it:
+### What a lost run costs
+
+The most important thing on the overlay, and the reason the hero card is shaped
+the way it is. A lost run is not an abstract penalty: the enemies take a turn
+(§3.2), every body that can reach you swings once, **one shield stops one hit
+outright whatever that hit was for**, and the swings past your last shield are
+what reaches Health.
+
+That rule is invisible in a summed "12 incoming" — two shields against three
+small swings is a completely different position from two shields against one
+enormous one — so the page draws **one mark per swing**: the blocked ones as the
+shield that breaks on them, struck through, and the rest as the damage they land.
+Left to right the row *is* the rule. The same forecast is hatched onto the health
+bar over the HP that would go, and one that would end the run says so in words.
+
+`ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
+re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing
+spends no shield, Pierce takes both pools past, timed shields block first — and
+excludes the bodies that sit a turn out (staggered, stunned, out of reach). Reach
+is `can_strike`, not `in_front`: a Ranged body hits from further back. It is a
+forecast, not a promise, since an ability can spend a body's turn on something
+else, and **nothing in it mutates** — a test asserts the live shield pools are
+untouched by forecasting, and another one takes the prediction and then makes the
+board resolve a real `attempt_turn()` to check the Health that actually went.
+
+Four things worth knowing if you change it:
 
 - **A game has no goal of its own, so the overlay has no headline goal line.**
   The goals are the **bodies'** goals — every body following the run, not just
@@ -721,6 +746,10 @@ Three things worth knowing if you change it:
   a row belongs to the body or the clause that owns it, never to the game.
 - **Goal text is always `GameLoop2.goal_text_for`**, never `enemy.goal` — the
   resource's stem says nothing about the clauses a status has bolted on (§13).
+- **Nothing on this page may guess at a rule the game owns.** The cost forecast
+  mirrors `_take_hit`; the goal text comes from `goal_text_for`; the pip tint
+  comes from `_status_pip`'s rule. An overlay that promises a shield will hold
+  and then watches Health go is worse than one that says nothing at all.
 - **Statuses and shields are drawn, not written.** They are `StatusData.image` /
   `UITheme.SHIELD_ART` at 22px with `UITheme.TIMER_ART` in the corner for
   anything borrowed — the same art and the same sizes as

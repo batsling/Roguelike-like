@@ -305,6 +305,134 @@ func test_the_road_hands_the_page_urls_rather_than_resource_paths() -> void:
 		assert_true(cover.begins_with("file://"),
 			"a browser cannot open a res:// path; %s" % cover)
 
+# --------------------------------------------------- what a lost run costs ----
+#
+# The forecast has to be TRUE, not merely legible: it is the number the player
+# decides on, and an overlay that promises a shield will hold and then watches
+# Health go is worse than one that says nothing. So these check it against the
+# resolver's own behaviour rather than against a second copy of the arithmetic.
+
+func test_a_shield_eats_a_whole_swing_however_big_it_is() -> void:
+	# THE RULE THAT IS INVISIBLE IN A SUMMED "12 INCOMING": one shield stops one
+	# HIT outright (_take_hit), so what matters is how many swings there are, not
+	# how big they are.
+	_disarm_to_one_swing()
+	GameState.shields = 1
+	GameState.bonus_shields = 0
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	if (threat["swings"] as Array).is_empty():
+		return
+	assert_eq(int(threat["blocked"]), 1, "the one shield breaks on the swing")
+	assert_eq(int(threat["damage"]), 0,
+		"and it stops the whole thing — a shield is not a subtraction")
+
+func test_the_swings_past_your_last_shield_are_the_ones_that_hurt() -> void:
+	_front_line()
+	GameState.shields = 1
+	GameState.bonus_shields = 0
+	if (ObsCompanion.payload()["threat"]["swings"] as Array).size() < 2:
+		# A one-body board cannot show a shield running out. Assert the half it
+		# CAN show rather than nothing at all.
+		assert_eq(int(ObsCompanion.payload()["threat"]["damage"]), 0,
+			"one swing into one shield lands nothing")
+		return
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	var rows: Array = threat["swings"]
+	assert_true(bool(rows[0]["blocked"]), "the first swing meets the shield")
+	assert_false(bool(rows[1]["blocked"]), "the second finds nothing left")
+	var expect: int = 0
+	for i in range(1, rows.size()):
+		expect += int(rows[i]["damage"])
+	assert_eq(int(threat["damage"]), expect,
+		"what lands is every swing after the shields ran out")
+
+func test_the_timed_shields_break_first() -> void:
+	# §4.3: the pool that expires at the report blocks before the pool that stays,
+	# or a lost run would spend the shield that survives to save the one that
+	# doesn't. The board draws them in that order too.
+	_disarm_to_one_swing()
+	GameState.shields = 1        # timed
+	GameState.bonus_shields = 1  # kept
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	if (threat["swings"] as Array).is_empty():
+		return
+	assert_eq(int(threat["blocked"]), 1)
+	# The live pools are untouched — a forecast that spent them would be a bug
+	# with a very long tail.
+	assert_eq(GameState.shields, 1, "forecasting must not spend anything")
+	assert_eq(GameState.bonus_shields, 1)
+
+func test_a_body_that_sits_the_turn_out_is_not_counted_against_you() -> void:
+	# Staggered and stunned bodies do not swing (_resolve_enemy_turn), so counting
+	# them would overstate the cost of a lost run — and overstating it is the same
+	# kind of wrong as understating it: the player routes around a threat that
+	# was not there.
+	_front_line()
+	var entry: Dictionary = GameLoop2.arrival()
+	if entry.is_empty():
+		assert_eq(ObsCompanion.payload()["threat"]["swings"], [],
+			"nothing arrived, so nothing swings")
+		return
+	var instance: int = int(entry.get("instance", 0))
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var before: int = int(ObsCompanion.payload()["threat"]["damage"])
+	GameLoop2.staggered_this_game[instance] = true
+	var after: int = int(ObsCompanion.payload()["threat"]["damage"])
+	assert_lt(after, before,
+		"a staggered body holds its fire, so the forecast drops with it")
+
+func test_the_forecast_matches_the_turn_the_board_actually_takes() -> void:
+	# THE ONE THAT MATTERS. Rather than re-deriving the sum, take the forecast and
+	# then make the board resolve a real lost-run turn — the same `attempt_turn`
+	# the tracker ticks — and check the Health that actually went.
+	_front_line()
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.hp = GameState.max_hp
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	assert_gt((threat["swings"] as Array).size(), 0,
+		"the board is in the player's face, so something is swinging")
+	var predicted: int = int(threat["damage"])
+	var before: int = GameState.hp
+	GameLoop2.attempt_turn()
+	var actually: int = before - GameState.hp
+	assert_eq(actually, predicted,
+		"the overlay promised %d damage and the board dealt %d" % [predicted, actually])
+
+func test_the_forecast_survives_an_empty_board() -> void:
+	GameLoop2.stack.clear()
+	GameLoop2.arrivals.clear()
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	assert_eq(threat["swings"], [], "nothing standing swings at you")
+	assert_eq(int(threat["damage"]), 0)
+	assert_false(bool(threat["lethal"]), "nothing is not lethal")
+
+# A BOARD THAT IS ACTUALLY IN YOUR FACE. A body that has just landed spawns at
+# the back and cannot reach you, which is correct and is also why every test
+# above about a swing had nothing to assert until it was walked forward. This is
+# `test_overworld2._front_line()`: abilities off (§7.6 — an ability can spend a
+# body's whole turn on something other than you, which is exactly the flake
+# CLAUDE.md warns about) and everything standing in the front column.
+func _front_line() -> void:
+	for entry in GameLoop2.stack:
+		entry["abilities"] = []
+		entry["col"] = 1
+
+# …and then leave exactly one of them able to swing, for the tests about a single
+# hit meeting a single shield.
+func _disarm_to_one_swing() -> void:
+	_front_line()
+	var kept: bool = false
+	for entry in GameLoop2.stack.duplicate():
+		var instance: int = int(entry.get("instance", 0))
+		if not kept and GameLoop2.can_strike(entry) \
+				and not GameLoop2.is_staggered(instance) \
+				and not GameLoop2.is_stunned(entry):
+			kept = true
+			continue
+		GameLoop2.staggered_this_game[instance] = true
+
 # ------------------------------------------------------------- statuses ----
 
 func test_every_status_in_the_catalogue_has_art_for_its_pip() -> void:

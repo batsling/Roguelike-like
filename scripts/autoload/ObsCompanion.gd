@@ -236,7 +236,12 @@ func payload() -> Dictionary:
 	out["run"] = _run_line()
 	out["now"] = _now_playing()
 	out["goals"] = _goals()
-	out["board"] = _board()
+	# Walked once and handed to both: the board's summary is the same forecast
+	# counted up, and resolving the stack twice per write would be two chances to
+	# disagree with itself as well as twice the work.
+	var threat: Dictionary = _threat()
+	out["board"] = _board(threat)
+	out["threat"] = threat
 	out["statuses"] = _statuses()
 	out["road"] = _road()
 	return out
@@ -434,25 +439,90 @@ func _goals() -> Array:
 # The board in one line rather than as a grid. A viewer cannot read a 5x3 tactical
 # board out of the corner of a stream, but "3 bodies, 12 damage waiting" is the
 # same information at the resolution the overlay actually has.
-func _board() -> Dictionary:
-	var bodies: int = GameLoop2.stack.size()
-	var front: int = 0
-	var incoming: int = 0
+func _board(threat: Dictionary) -> Dictionary:
+	return {
+		"bodies": GameLoop2.stack.size(),
+		"front": (threat["swings"] as Array).size(),
+		# What lands if the next turn resolves with the board as it stands, BEFORE
+		# shields — the page draws the shields eating it and the subtraction is the
+		# interesting part.
+		"incoming": int(threat["raw"]),
+	}
+
+# WHAT ONE LOST RUN COSTS, SWING BY SWING — the whole point of the hero card.
+#
+# A lost run is not an abstract penalty: THE ENEMIES TAKE A TURN (§3.2). Every
+# body that can reach you swings once, each swing is stopped WHOLE by one shield,
+# and whatever is left over comes off Health. The "one shield per HIT, whatever
+# the hit was for" rule (_take_hit) is the part nobody guesses — a shield eats a
+# 9-damage swing as completely as a 1-damage one — and it is invisible in a
+# summed "12 incoming".
+#
+# So this returns the swings as a LIST, in the order the resolver takes them
+# (`stack` order, same as _resolve_enemy_turn), each already marked with whether a
+# shield is standing to eat it. The page draws one mark per swing and the mechanic
+# is countable.
+#
+# IT MIRRORS `_take_hit` RATHER THAN GUESSING: the player's own damage-taken mods
+# are applied first (Marked doubles what lands), a swing modded down to nothing
+# spends no shield, Pierce takes both pools past, and the TIMED pool blocks first
+# because those expire anyway (§4.3).
+#
+# IT IS A FORECAST AND NOT A PROMISE, which is why nothing here mutates: an
+# ability can spend a body's whole turn on something other than you (§7.6), and a
+# body that is staggered or stunned sits this one out — those are excluded, but a
+# Cultist that decides to buff instead of swing cannot be known until it does.
+func _threat() -> Dictionary:
+	var totals: Dictionary = GameState.combat_totals()
+	var pierce: bool = bool(totals.get("pierce_shields", false))
+	# The pools spend in the board's order: timed first, then the ones that stay.
+	var timed_left: int = GameState.shields
+	var kept_left: int = GameState.bonus_shields
+	var swings: Array = []
+	var raw: int = 0
+	var through: int = 0
+	var broken: int = 0
 	for entry in GameLoop2.stack:
-		if not GameLoop2.in_front(entry):
-			continue
 		var enemy: GoalEnemyData = entry.get("enemy")
 		if enemy == null:
 			continue
-		front += 1
-		incoming += enemy.damage
+		var instance: int = int(entry.get("instance", 0))
+		# The three that sit the turn out, exactly as the resolver skips them: a
+		# body answered for this game holds its fire, a stunned one loses the turn,
+		# and one still out of reach cannot swing from where it stands. `can_strike`
+		# rather than `in_front` — a Ranged body reaches from further back (§7.6),
+		# and counting only the front column understated the cost for every one of
+		# them.
+		if GameLoop2.is_staggered(instance) or GameLoop2.is_stunned(entry) \
+				or not GameLoop2.can_strike(entry):
+			continue
+		var landed: int = StatusData.apply_damage_mods(GameLoop2.enemy_damage(entry),
+			int(totals.get("damage_taken", 0)), float(totals.get("damage_taken_mult", 1.0)))
+		if landed <= 0:
+			continue    # _take_hit returns before it reaches a shield
+		raw += landed
+		var blocked: bool = false
+		if not pierce:
+			if timed_left > 0:
+				timed_left -= 1
+				blocked = true
+			elif kept_left > 0:
+				kept_left -= 1
+				blocked = true
+		if blocked:
+			broken += 1
+		else:
+			through += landed
+		swings.append({
+			"damage": landed, "who": enemy.display_name, "blocked": blocked,
+		})
 	return {
-		"bodies": bodies,
-		"front": front,
-		# What the front line swings for if the next turn resolves with the board
-		# as it stands. Before shields, deliberately: the page shows the shields
-		# beside it and the subtraction is the interesting part.
-		"incoming": incoming,
+		"swings": swings,
+		"raw": raw,             # everything thrown, before any shield
+		"blocked": broken,      # shields that would break
+		"damage": through,      # what actually reaches Health
+		"hp_after": maxi(0, GameState.hp - through),
+		"lethal": through >= GameState.hp and through > 0,
 	}
 
 # The statuses riding the PLAYER, AS PIPS — art and a stack count, which is what

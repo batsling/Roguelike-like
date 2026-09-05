@@ -2159,21 +2159,43 @@ stream — so the overlay dims only when the beat actually stops.
 
 - **The hero** — icon, level, and the health bar. Health is the bar's *width*
   first and a number second, and it pulses below 30%.
-- **Shields and statuses as SPRITES, under the portrait**, which is where the
-  board puts them and what they look like there (`BattlefieldView.refresh_hero`
-  → `_fill_shields` / `_status_pip`). One shield sprite per shield — the pool
-  that stays nearest and bare, the timed ones after it wearing the clock — then
-  one pip per status: its art, its stack count, and the same clock when the
-  stacks are on loan. **The tint is the board's rule, not buff/debuff**: a
-  `bonus` or a `goal` on the player's side is an opportunity and reads gold,
-  anything else taxes you and reads red. A status written out as its *name* is a
-  word with no picture behind it, and this page is read at a glance from across
-  a room. A status shipped without art falls back to its initial; a test asserts
-  the catalogue never needs to.
-- **Incoming damage and bodies following** — `incoming` is what the front line
-  swings for if the next turn resolves as the board stands. This is the board at
-  the resolution an overlay actually has; a 5×3 grid is not readable out of the
-  corner of a stream.
+- **What a lost run costs, swing by swing** — the line the hero card is *for*.
+  A lost run is not an abstract penalty: the enemies take a turn (§3.2), every
+  body that can reach you swings once, **one shield stops one hit outright
+  whatever that hit was for** (`_take_hit`), and the swings past your last shield
+  are what reaches Health. That rule is invisible in a summed "12 incoming" — two
+  shields against three small swings is a completely different position from two
+  shields against one enormous one — so the overlay draws **one mark per swing**:
+  the blocked ones as the shield that breaks on them, struck through; the rest as
+  the damage they land. Read left to right the row *is* the rule, and it is
+  countable rather than inferred. The same forecast is hatched onto the health
+  bar over the HP that would go, and a forecast that would end the run says so in
+  words.
+
+  It **mirrors `_take_hit` rather than re-deriving it**: the player's damage-taken
+  mods first (Marked doubles what lands), a swing modded to nothing spends no
+  shield, Pierce takes both pools past, and the timed pool blocks first (§4.3).
+  Bodies that are staggered, stunned or still out of reach are excluded, and
+  reach is `can_strike` rather than `in_front` — a Ranged body hits from further
+  back (§7.6) and counting only the front column understated the cost for every
+  one of them. It is a **forecast and not a promise** (an ability can spend a
+  body's turn on something else) and nothing in it mutates.
+- **Shields and statuses as SPRITES, under the portrait, in two labelled rows**
+  — where the board puts them and what they look like there
+  (`BattlefieldView.refresh_hero` → `_fill_shields` / `_status_pip`). One shield
+  sprite per shield — the pool that stays nearest and bare, the timed ones after
+  it wearing the clock — and, on its own row, one pip per status: its art, its
+  stack count, and the same clock when the stacks are on loan. The two are
+  **separately labelled** because they are different facts: the armour is yours
+  and it is what the cost line above spends; the statuses are riding you. Run
+  together in one strip the shields read as two more statuses. **The pip's tint
+  is the board's rule, not buff/debuff**: a `bonus` or a `goal` on the player's
+  side is an opportunity and reads gold, anything else taxes you and reads red. A
+  status written out as its *name* is a word with no picture behind it, and this
+  page is read at a glance from across a room. A status shipped without art falls
+  back to its initial; a test asserts the catalogue never needs to.
+- **Bodies following** — the board at the resolution an overlay actually has; a
+  5×3 grid is not readable out of the corner of a stream.
 - **The game in play**, its cover, the **attempts** spent on it, and the hops
   left to the Amulet.
 - **The checklist**, live, and it is the point of the whole thing: a viewer
