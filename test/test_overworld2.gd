@@ -6255,6 +6255,18 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
 		return
+	# THE OPENING GAME MAY ITSELF HAVE BEEN A HUB. `choose_start(0)` takes the
+	# first of a RANDOM offering, so once in a while it is one of the ten hubs —
+	# and `_open_at_first_offering` then walks off that game's haul screen, which
+	# is precisely the thing that mounts a shelf. The page arrives here with a
+	# shop already on it and `assert_null` below fails, on a run that did nothing
+	# wrong.
+	#
+	# It is the assertion that was only USUALLY true, not the behaviour: this test
+	# is about what LEAVING THE HAUL mounts, so the page has to start with nothing
+	# mounted whatever the opening rolled. Cleared through the page's own teardown
+	# rather than by nulling the field, so the panel is actually closed.
+	_ui._clear_shop()
 	# Standing IN the hub with its shelf owed — the state _open_post_game names a
 	# shelf in. The screen is opened directly rather than reported into: a report
 	# moves the run to the card it just played and builds the screen in the same

@@ -2165,12 +2165,21 @@ stream — so the overlay dims only when the beat actually stops.
   whatever that hit was for** (`_take_hit`), and the swings past your last shield
   are what reaches Health. That rule is invisible in a summed "12 incoming" — two
   shields against three small swings is a completely different position from two
-  shields against one enormous one — so the overlay draws **one mark per swing**:
-  the blocked ones as the shield that breaks on them, struck through; the rest as
-  the damage they land. Read left to right the row *is* the rule, and it is
-  countable rather than inferred. The same forecast is hatched onto the health
+  shields against one enormous one — so the overlay draws **one mark per swing,
+  and the mark is the BODY throwing it**: its own art at 28px, with a shield on
+  the corner when the swing is eaten whole (and the face behind it desaturated)
+  or the damage it lands when it is not. Read left to right the row *is* the
+  rule, countable rather than inferred, and it says *who* as well as *how much* —
+  the boss's swing and the fly's are not the same problem, and a row of bare
+  numbers could not tell them apart. The same forecast is hatched onto the health
   bar over the HP that would go, and a forecast that would end the run says so in
   words.
+
+  The art survives being drawn that small because the roster's is bold and
+  silhouette-driven; it was checked by rendering the widest range in the set (a
+  19×10 sprite through a 734×841 painting) at 22 / 28 / 34 / 40 rather than
+  assumed. A body with no art falls back to a bare number, and a test asserts
+  that every goal-enemy and boss has some so it never comes up.
 
   It **mirrors `_take_hit` rather than re-deriving it**: the player's damage-taken
   mods first (Marked doubles what lands), a swing modded to nothing spends no

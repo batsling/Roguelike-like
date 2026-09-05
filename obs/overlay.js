@@ -138,18 +138,43 @@ function drawCost(threat, art) {
   strip.innerHTML = '';
   for (const sw of swings) {
     const s = document.createElement('span');
-    if (sw.blocked && art && art.shield) {
-      s.className = 'swing blocked';
-      s.title = sw.who + ' swings for ' + sw.damage + ' — a shield stops it whole';
+    s.className = 'swing ' + (sw.blocked ? 'blocked' : 'hits');
+    s.title = sw.who + ' swings for ' + sw.damage
+      + (sw.blocked ? ' — a shield stops it whole' : '');
+
+    /* THE BODY DOING THE SWINGING, as its own face. A row of bare numbers said
+     * how much but never who, and "who" is half of what the player is deciding
+     * about — the boss's swing and the fly's are not the same problem. */
+    if (sw.icon) {
       const img = document.createElement('img');
-      img.alt = 'shield breaks';
-      img.src = art.shield;
+      img.className = 'swing-art';
+      img.alt = sw.who;
+      img.src = sw.icon;
       s.appendChild(img);
     } else {
-      s.className = 'swing hits';
-      s.title = sw.who + ' swings for ' + sw.damage;
-      s.textContent = sw.damage;
+      /* No art for this body: fall back to the bare number, which is what the
+       * row used to be all the way across. */
+      const n = document.createElement('span');
+      n.className = 'swing-bare';
+      n.textContent = sw.damage;
+      s.appendChild(n);
     }
+
+    /* The badge in the corner is the binary: a shield means this swing is eaten
+     * whole, a number means that much Health. Greyed art behind the shield says
+     * the same thing a second way. */
+    const badge = document.createElement('span');
+    if (sw.blocked && art && art.shield) {
+      badge.className = 'swing-badge shield';
+      const sh = document.createElement('img');
+      sh.alt = 'blocked';
+      sh.src = art.shield;
+      badge.appendChild(sh);
+    } else if (sw.icon) {
+      badge.className = 'swing-badge dmg';
+      badge.textContent = sw.damage;
+    }
+    if (badge.className) s.appendChild(badge);
     strip.appendChild(s);
   }
 

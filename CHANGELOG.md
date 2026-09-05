@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A swing on the overlay is the body throwing it.**
+
+  The cost line was a row of bare numbers, which said how much and never *who* —
+  and who is half of what the player is deciding about, because the boss's swing
+  and the fly's are not the same problem. Each mark is that body's own art now,
+  at 28px, with the corner badge carrying the binary: a **shield** means the
+  swing is eaten whole (and the face behind it desaturates), a **number** means
+  that much Health.
+
+  **Whether the art survives being drawn that small was measured, not guessed.**
+  The roster is wildly heterogeneous — `images2.0/enemies/` runs from a 19×10
+  sprite to a 734×841 painting — so the widest range in it was rendered at 22 /
+  28 / 34 / 40 and looked at. It reads fine even at 22: the art is bold and
+  silhouette-driven, which is exactly the property that survives downscaling. 28
+  is the pick, legible with room for eight or nine swings across a 440px overlay,
+  which is more than a board ever puts in reach.
+
+  The blocked faces are deliberately **not** drained all the way. At full
+  grayscale and 0.7 brightness the darker bodies went unreadable, which throws
+  away the reason for using faces: the player needs to see which body the shield
+  is being spent on, not merely that one is.
+
+  A body with no art still falls back to the bare number the row used to be made
+  of, and a test asserts that every goal-enemy and every boss has art so the
+  fallback stays theoretical. "On you" is now "Statuses".
+
 - **The overlay says what a lost run will cost, swing by swing.**
 
   A lost run is the decision the honour system is actually made of, and the

@@ -515,6 +515,12 @@ func _threat() -> Dictionary:
 			through += landed
 		swings.append({
 			"damage": landed, "who": enemy.display_name, "blocked": blocked,
+			# WHICH BODY IS SWINGING, as its own picture. The roster's art is bold
+			# and silhouette-driven, so it survives being drawn at 28px — checked
+			# by rendering the widest range in the set (a 19x10 sprite up to a
+			# 734x841 painting) rather than assumed. A phase boss shows the face
+			# it is currently wearing (§7.6), not the sheet's first one.
+			"icon": _texture_url(enemy.image_at(int(entry.get("phase", 0)))),
 		})
 	return {
 		"swings": swings,

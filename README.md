@@ -722,10 +722,18 @@ what reaches Health.
 
 That rule is invisible in a summed "12 incoming" — two shields against three
 small swings is a completely different position from two shields against one
-enormous one — so the page draws **one mark per swing**: the blocked ones as the
-shield that breaks on them, struck through, and the rest as the damage they land.
-Left to right the row *is* the rule. The same forecast is hatched onto the health
-bar over the HP that would go, and one that would end the run says so in words.
+enormous one — so the page draws **one mark per swing, and the mark is the body
+throwing it**: its own art at 28px, wearing a shield on the corner when the swing
+is eaten whole (with the face behind it desaturated) or the damage it lands when
+it is not. Left to right the row *is* the rule, and it says *who* as well as
+*how much* — the boss's swing and the fly's are not the same problem. The same
+forecast is hatched onto the health bar over the HP that would go, and one that
+would end the run says so in words.
+
+The art holds up at that size because the roster's is bold and silhouette-driven
+— checked by rendering the widest range in the set (a 19×10 sprite through a
+734×841 painting) at four sizes, not assumed. A body with no art falls back to a
+bare number; a test asserts every goal-enemy and boss has some, so it doesn't.
 
 `ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
 re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing

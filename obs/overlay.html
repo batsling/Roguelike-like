@@ -54,9 +54,10 @@
         </div>
       </div>
     </div>
-    <!-- WHAT A LOST RUN COSTS, one mark per swing: the ones a shield eats drawn
-         as the shield that breaks on them, the rest as the damage they land.
-         Read left to right it is the rule itself — a shield stops one hit
+    <!-- WHAT A LOST RUN COSTS, one mark per swing, each mark being the BODY
+         throwing it. A shield on the corner means that swing is eaten whole and
+         the face behind it is greyed out; a number means that much Health.
+         Read left to right it is the rule itself — one shield stops one hit
          whatever its size, and the swings past your last shield are what hits
          Health. -->
     <div id="cost" class="cost" hidden>
@@ -75,7 +76,7 @@
       <div id="hero-shields" class="pips"></div>
     </div>
     <div id="status-row" class="hero-row" hidden>
-      <span class="row-label">On you</span>
+      <span class="row-label">Statuses</span>
       <div id="hero-pips" class="pips"></div>
     </div>
   </section>

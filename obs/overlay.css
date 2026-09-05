@@ -152,46 +152,72 @@ html, body {
 
 .cost-swings { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
 
-/* One swing. A blocked one wears the shield that breaks on it — struck through,
- * because that shield is gone afterwards. */
+/* ONE SWING = THE BODY THROWING IT. 28px: the roster's art is bold and
+ * silhouette-driven, so it survives being drawn small — verified by rendering
+ * the widest range in the set (a 19x10 sprite through a 734x841 painting) at
+ * 22 / 28 / 34 / 40 before choosing. 28 is legible with room for eight or nine
+ * swings across a 440px overlay, which is more than a board ever puts in reach.
+ *
+ * The corner badge is the binary: a SHIELD means this swing is eaten whole, a
+ * NUMBER means that much Health. */
 .swing {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 700;
 }
+.swing-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
+/* A body with no art: the bare number the row used to be made of. */
+.swing-bare { color: #ffd3cd; }
+
 .swing.blocked {
   background: rgba(138, 182, 230, 0.14);
   border: 1px solid rgba(138, 182, 230, 0.45);
 }
-.swing.blocked img {
-  width: 16px;
-  height: 16px;
-  image-rendering: pixelated;
-  display: block;
-  /* Greyed and cracked-looking: this one does not survive the swing. */
-  filter: grayscale(0.5) brightness(0.85);
-}
-/* The break, drawn over the shield rather than beside it. */
-.swing.blocked::after {
-  content: "";
-  position: absolute;
-  left: 3px; right: 3px; top: 50%;
-  height: 2px;
-  background: var(--danger);
-  transform: rotate(-28deg);
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
-}
+/* Drained of colour, because this one never reaches you. Said twice — greyed
+ * art AND the shield on the corner — so it survives being glanced at.
+ *
+ * NOT DRAINED ALL THE WAY. At full grayscale and 0.7 brightness the darker
+ * bodies went unreadable, which throws away the reason for using faces at all:
+ * the player needs to see WHICH body the shield is spent on, not merely that one
+ * is. Enough desaturation to read as "off", enough light to stay identifiable. */
+.swing.blocked .swing-art { filter: grayscale(0.9) brightness(1.05); opacity: 0.8; }
+
 .swing.hits {
   background: rgba(230, 84, 71, 0.22);
   border: 1px solid rgba(230, 84, 71, 0.6);
+}
+
+.swing-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -5px;
+  line-height: 1;
+}
+.swing-badge.dmg {
+  font-size: 12px;
+  font-weight: 800;
   color: #ffd3cd;
+  /* Ringed in black so a number never lands illegibly on the art behind it. */
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 1px 2px #000;
+}
+.swing-badge.shield img {
+  width: 15px;
+  height: 15px;
+  image-rendering: pixelated;
+  display: block;
+  filter: drop-shadow(0 0 2px #000);
 }
 
 .cost-total {

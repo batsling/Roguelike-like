@@ -400,6 +400,37 @@ func test_the_forecast_matches_the_turn_the_board_actually_takes() -> void:
 	assert_eq(actually, predicted,
 		"the overlay promised %d damage and the board dealt %d" % [predicted, actually])
 
+func test_every_swing_says_which_body_is_throwing_it() -> void:
+	# A row of bare numbers said how much but never WHO, and who is half of what
+	# the player is deciding about — the boss's swing and the fly's are not the
+	# same problem. The art is bold enough to read at 28px (checked by rendering
+	# the widest range in the roster), so each swing is drawn as its body.
+	_front_line()
+	var swings: Array = ObsCompanion.payload()["threat"]["swings"]
+	assert_gt(swings.size(), 0, "the board is in the player's face")
+	for sw in swings:
+		assert_ne(String(sw.get("who", "")), "", "a swing names its body")
+		assert_ne(String(sw.get("icon", "")), "",
+			"%s has no art url — the page would fall back to a bare number"
+				% sw.get("who", "?"))
+		assert_true(String(sw["icon"]).begins_with("file://"),
+			"a browser cannot open a res:// path")
+
+func test_every_goal_enemy_in_the_roster_has_a_face_to_draw() -> void:
+	# The same guarantee the statuses get: the swing marks are pictures, so a body
+	# shipped without art is a bare number in a row of faces. The page copes, but
+	# the roster should not need it to.
+	var missing: Array = []
+	# The bosses too — a boss stands on the board and swings like any other body,
+	# so it turns up in this row like any other body.
+	for e in Data.all_goal_enemies() + Data.all_bosses():
+		var enemy: GoalEnemyData = e
+		if enemy.image == null:
+			missing.append(String(enemy.id))
+	assert_eq(missing, [],
+		"these goal-enemies have no art, so their swing draws as a bare number "
+		+ "in a row of faces: %s" % str(missing))
+
 func test_the_forecast_survives_an_empty_board() -> void:
 	GameLoop2.stack.clear()
 	GameLoop2.arrivals.clear()
