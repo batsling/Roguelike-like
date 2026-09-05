@@ -60,7 +60,17 @@ For how the project is laid out and how its systems fit together, see
   whether or not the run got there**, dashed until it does. Without that terminus
   the strip is a list; with it, it is progress.
 
-  Two rules the code keeps and a change here must keep. Goal text is always
+  **There is no headline goal line on it, and there must not be one.** A game has
+  no goal of its own (§7.2): the goals are the *bodies'* goals — every body
+  following the run, not only the one that arrived with the game in play, which is
+  an ordinary follower from the moment it lands — plus what a status, an event or
+  a curse is asking of the player. So the checklist is the whole of it, every row
+  owned by the body or the clause it came from and saying so. `_goals` walks
+  `GameLoop2.stack` and never `arrival()` for exactly that reason, and a test
+  counts the rows against the board so a "this game's goal" row could not creep
+  back in unnoticed.
+
+  Two more rules the code keeps and a change here must keep. Goal text is always
   `GameLoop2.goal_text_for`, never `enemy.goal` — the resource's stem says
   nothing about the clauses a status has bolted onto it since (§13), which is the
   exact mistake §13's own comments call out. And the rows are read from

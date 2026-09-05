@@ -704,15 +704,20 @@ has no such restriction. So the state is written *as* an assignment and
 `overlay.js` re-loads it four times a second with a cache-buster on the end; the
 covers ride the same way, as `<img src="file://…">`. No server, no port.
 
-It shows health and shields, the character, the game in play and **its goal**,
-the checklist as it ticks (scrolling itself when there is more of it than there is
-room, flashing a row green as it is crossed off), the attempts spent, the bodies
-on the board and what they swing for, the statuses riding the run, and **the road
-walked so far ending on the Amulet** — the same strip `RunOverScreen` draws at
-the end of a run, drawn live, with the gap to the Amulet dashed until it closes.
+It shows health and shields, the character, the game in play, **the checklist as
+it ticks** (scrolling itself when there is more of it than there is room, flashing
+a row green as it is crossed off), the attempts spent, the bodies on the board and
+what they swing for, the statuses riding the run, and **the road walked so far
+ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,
+drawn live, with the gap to the Amulet dashed until it closes.
 
-Two things worth knowing if you change it:
+Three things worth knowing if you change it:
 
+- **A game has no goal of its own, so the overlay has no headline goal line.**
+  The goals are the **bodies'** goals — every body following the run, not just
+  the one that arrived with the game in play (§7.2) — plus what a status, an
+  event or a curse is asking of the player. The checklist is the whole of it, and
+  a row belongs to the body or the clause that owns it, never to the game.
 - **Goal text is always `GameLoop2.goal_text_for`**, never `enemy.goal` — the
   resource's stem says nothing about the clauses a status has bolted on (§13).
 - **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
@@ -1169,13 +1174,9 @@ The core loop is in and playable end to end: character select, a start/amulet
 graph over 751 real games, the limited offering with its verbs, the honour-system
 report step, goal-enemies that follow you across the grid, drops and chests,
 level-ups, difficulty tiers with boss rounds, scrolls, the Collection, and the
-cross-run tier list. What's still ahead:
+cross-run tier list, and the OBS companion overlay (§9, "The stream overlay"
+above). What's still ahead:
 
-- **The OBS companion HUD (§9)** — the design is stream-first: a slim always-on-top
-  window showing health, shields, the current game + its goal, the follower stack,
-  and the verb/consumable counts, reading the same autoloads the main window
-  mutates. Deferred by decision until the mechanics lock; it is the largest
-  unbuilt piece of the spec.
 - **Overworld encounters** — deals, teleporters and challenge rifts are a design
   with no code behind it any more. The seven-row `data/encounters` scaffold,
   `EncounterData`, its generator and `GameState.encounter_requirement_met` were

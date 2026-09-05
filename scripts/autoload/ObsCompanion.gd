@@ -31,10 +31,16 @@ extends Node
 # and the covers travel as <img src="file:///...">.
 #
 # WHAT IT SHOWS is §9's list grown up into the current build: health and shields,
-# the character, the game in play and ITS GOAL — the one line that tells a viewer
-# what they are watching for — the checklist as it ticks, the attempts already
-# spent, the bodies on the board, the statuses and curses riding the run, and the
-# road walked so far as a strip of covers ending on the Amulet.
+# the character, the game in play, the attempts already spent on it, the bodies on
+# the board, the statuses riding the run, and the road walked so far as a strip of
+# covers ending on the Amulet. And THE CHECKLIST, which is what a viewer is
+# actually watching for.
+#
+# A GAME HAS NO GOAL OF ITS OWN. It never has (§7.2) — the goals are the BODIES'
+# goals, plus what a status, an event or a curse has handed the player, and a game
+# is only the place you go and do them. So there is no headline goal line on this
+# overlay and there must not be one: what the viewer reads is the checklist, every
+# row of it, and a row belongs to the body or the clause that owns it.
 #
 # WRITES ARE DEBOUNCED AND DEDUPED. Everything here hangs off signals that fire
 # in bursts (a resolved turn moves health, the board and the checklist in one

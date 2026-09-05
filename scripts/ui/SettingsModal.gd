@@ -356,7 +356,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	vbox.add_child(chk)
 
 	var hint := Label.new()
-	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (440 x 1000). It shows health, the game in play and its goal, the checklist as it ticks, and the road walked so far."
+	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (440 x 1000). It shows health, the game in play, the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you — and the road walked so far."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 58)
 	hint.add_theme_font_size_override("font_size", 13)

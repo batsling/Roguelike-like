@@ -10,12 +10,20 @@ extends GutTest
 # (no Resource ever escapes into it), and that the transport really is the
 # `window.OBS_STATE = …` assignment overlay.js loads as a script.
 #
-# The goal rows get their own attention. They are read from the loop and from
-# GameState directly rather than from ReportChecklist — the checklist is a
-# Control tree that only exists while the overworld is on screen, and the whole
-# point of the overlay is being right when that window is behind a stream — so
-# "the overlay says the same thing the checklist would" is a claim only a test
-# can hold up.
+# The goal rows get most of that attention, for two reasons.
+#
+# They are read from the loop and from GameState directly rather than from
+# ReportChecklist — the checklist is a Control tree that only exists while the
+# overworld is on screen, and the whole point of the overlay is being right when
+# that window is behind a stream — so "the overlay says the same thing the
+# checklist would" is a claim only a test can hold up.
+#
+# And A GAME HAS NO GOAL OF ITS OWN (§7.2). The goals belong to the BODIES, all of
+# them, plus what a status, an event or a curse is asking; a game is only the
+# place you go and do them. That is the easiest thing in the world to draw wrong —
+# every stream overlay in the genre has a big "CURRENT OBJECTIVE" line — so the
+# row count is asserted against the board itself, where one row too many is
+# exactly what a reintroduced headline goal would look like.
 
 const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 
@@ -75,26 +83,51 @@ func test_the_vitals_are_the_health_the_run_actually_has() -> void:
 
 # ---------------------------------------------------------------- goals ----
 
-func test_a_body_on_the_board_is_a_goal_row_carrying_the_loops_own_sentence() -> void:
-	var entry: Dictionary = GameLoop2.arrival()
-	if entry.is_empty():
-		# No game in play means no advertised body, and this test is about the row
-		# a body makes. Nothing to assert would be a Risky, so assert the other
-		# half on purpose: an empty board is an empty goal list.
+func test_every_body_on_the_board_is_a_goal_row_and_the_game_itself_is_not() -> void:
+	# THE POINT OF THE WHOLE PANEL. A game has no goal of its own (§7.2) — the
+	# goals belong to the BODIES, all of them, not just the one that arrived with
+	# the game in play, which is a follower like every other from the moment it
+	# lands. So the count has to match the board exactly: a headline "this game's
+	# goal" row would show up here as one row too many, and a checklist that only
+	# listed the advertised body as one row too few.
+	var want: Array = []
+	for entry in GameLoop2.stack:
+		if entry.get("enemy") != null:
+			want.append(GameLoop2.goal_text_for(entry))
+	var got: Array = []
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "goal":
+			got.append(String(row.get("text", "")))
+	want.sort()
+	got.sort()
+	assert_eq(got, want,
+		"one goal row per body on the board — no more (the game has no goal of "
+		+ "its own) and no fewer (a follower's goal is still owed)")
+
+func test_a_goal_row_says_which_body_it_belongs_to() -> void:
+	# A row with no owner is a row that reads as the GAME's, which is exactly the
+	# thing that does not exist.
+	var bodies: int = 0
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) != "goal":
+			continue
+		bodies += 1
+		assert_ne(String(row.get("who", "")), "",
+			"every goal row names the body whose goal it is")
+	if bodies == 0:
+		# An empty board is the other half of the same claim, asserted rather than
+		# left as a Risky: nothing standing means nothing owed.
 		assert_eq(ObsCompanion.payload()["goals"].size(), 0,
 			"no bodies on the board means no body rows")
+
+func test_a_body_that_has_just_landed_has_not_been_answered() -> void:
+	var entry: Dictionary = GameLoop2.arrival()
+	if entry.is_empty():
+		assert_true(GameLoop2.cleared_this_game.is_empty(),
+			"nothing arrived, so nothing has been cleared this game")
 		return
 	var want: String = GameLoop2.goal_text_for(entry)
-	var enemy: GoalEnemyData = entry.get("enemy")
-	var found: bool = false
-	for row in ObsCompanion.payload()["goals"]:
-		if String(row.get("kind", "")) == "goal" and String(row.get("text", "")) == want:
-			found = true
-			assert_eq(String(row.get("who", "")), enemy.display_name,
-				"the row says whose goal it is")
-			assert_false(bool(row.get("done", true)),
-				"a body that has just landed has not been answered")
-	assert_true(found, "the advertised body's goal is on the overlay verbatim")
+	assert_false(_row_done(want), "a body that has just landed is not ticked")
 
 func test_the_goal_line_is_the_one_with_the_statuses_clauses_on_it() -> void:
 	# `goal_text_for` and `enemy.goal` differ the moment a status bolts a clause

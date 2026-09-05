@@ -2181,6 +2181,12 @@ stream — so the overlay dims only when the beat actually stops.
   an item), which is also what stops the overlay reading as a dead PNG during the
   long stretches when nothing in the run changes.
 
+**There is no headline goal line, because a game has no goal of its own** (§7.2).
+The goals are the *bodies'* goals — every body following the run, not only the one
+that arrived with the game in play — plus whatever a status, an event or a curse
+is asking of the player. The checklist is the whole of it, and each row belongs to
+the body or the clause that owns it and says so.
+
 The rows are read from `GameLoop2` and `GameState` **directly, never from
 `ReportChecklist`** — that is a Control tree which only exists while the
 overworld is on screen, and being right when that window is behind a stream is
