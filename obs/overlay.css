@@ -589,11 +589,29 @@ html, body {
 
 /* ----------------------------------------------------------------- road -- */
 
+/* The horizontal twin of `.goal-scroll`: same masked edges, same walker, other
+ * axis. `--fade-start` / `--fade-end` rather than top/bot because the direction
+ * differs; overlay.js sets whichever pair belongs to the box's axis. */
+.road-scroll {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)), transparent 100%);
+}
+
 .road-strip {
   display: flex;
   align-items: flex-start;
   gap: 0;
-  overflow: hidden;
+  /* `max-content` so the stops keep their own width and overflow the scroller
+   * instead of being squeezed to fit it — squeezing is what a cap does, and the
+   * whole point of the walk is not to do that. */
+  width: max-content;
 }
 
 .stop { position: relative; flex: 0 0 auto; width: 34px; text-align: center; }

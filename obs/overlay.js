@@ -301,7 +301,7 @@ function drawGoals(goals) {
     list.appendChild(li);
   }
   doneRows = nowDone;
-  restartScroll();
+  restartScroll('goal-scroll');
 }
 
 /* The small grey line under a goal: whose it is, and how long is left on it. */
@@ -367,6 +367,11 @@ function drawStatuses(statuses, art) {
 function drawRoad(road) {
   const strip = el('road-strip');
   strip.innerHTML = '';
+  /* NO "+N earlier" HEAD ANY MORE. The strip scrolls the whole road instead of
+   * trimming it to a count — a stop turned into a number is a stop the viewer
+   * cannot see, and the road is the one part of this page that is about where
+   * the run has actually been. `dropped` survives in the payload as the safety
+   * valve for a run longer than MAX_ROAD, which nothing realistic reaches. */
   if (road.length && num(road[0].dropped) > 0) {
     const more = document.createElement('span');
     more.className = 'dropped';
@@ -399,6 +404,7 @@ function drawRoad(road) {
     }
     strip.appendChild(box);
   });
+  restartScroll('road-scroll');
 }
 
 function drawVerdict(state) {
@@ -437,55 +443,84 @@ function drawEvents(events) {
 
 /* ------------------------------------------------------- the auto-scroll -- */
 
-/* THE SCROLLING CHECKLIST. A run eight games deep has more goals than fits the
- * card, and a list that silently cuts off is a list that lies. So when the
- * content is taller than the box it walks: pause at the top, creep down, pause
- * at the bottom, snap back. Slow enough to read at a glance while doing
- * something else, which is the whole use case. */
+/* THE SELF-SCROLLING BOXES. A run eight games deep has more goals than fits the
+ * card and more road than fits the strip, and a list that silently cuts off is a
+ * list that lies. So when the content is bigger than the box it walks: pause at
+ * the start, creep along, pause at the end, snap back. Slow enough to read at a
+ * glance while doing something else, which is the whole use case.
+ *
+ * ONE WALKER, BOTH AXES. The checklist scrolls down and the road scrolls right;
+ * everything else about them — the pauses, the speed, the edge fades that appear
+ * only where content is actually hidden — is the same behaviour, and two copies
+ * of this state machine would be two places for it to drift. */
 const SCROLL_PAUSE = 2500;
 const SCROLL_SPEED = 14;      /* px per second */
-let scrollState = null;
 
-function restartScroll() {
-  const box = el('goal-scroll');
-  box.scrollTop = 0;
-  scrollState = { phase: 'top', since: performance.now(), pos: 0 };
+const scrollers = {};
+
+function makeScroller(id, axis) {
+  scrollers[id] = { axis: axis, phase: 'start', since: performance.now(),
+                    pos: 0, last: 0 };
+  const box = el(id);
+  if (box) { box.scrollTop = 0; box.scrollLeft = 0; }
 }
 
-/* Fade an edge only when something is actually hidden behind it. */
-function setFades(box, room) {
-  const top = room > 1 && box.scrollTop > 1 ? '12px' : '0px';
-  const bot = room > 1 && box.scrollTop < room - 1 ? '12px' : '0px';
-  box.style.setProperty('--fade-top', top);
-  box.style.setProperty('--fade-bot', bot);
+function restartScroll(id) {
+  const st = scrollers[id];
+  if (!st) return;
+  const box = el(id);
+  if (box) { box.scrollTop = 0; box.scrollLeft = 0; }
+  st.phase = 'start';
+  st.since = performance.now();
+  st.pos = 0;
 }
 
-function stepScroll(now) {
-  const box = el('goal-scroll');
-  const room = box.scrollHeight - box.clientHeight;
-  if (!scrollState || room <= 1) { box.scrollTop = 0; setFades(box, room); return; }
-  const st = scrollState;
+/* Fade an edge only when something is actually hidden behind it — a fixed mask
+ * would fade the first row of a list parked at the start, which is the most
+ * important row on the page. */
+function setFades(box, room, at, vertical) {
+  const a = room > 1 && at > 1 ? '12px' : '0px';
+  const b = room > 1 && at < room - 1 ? '12px' : '0px';
+  box.style.setProperty(vertical ? '--fade-top' : '--fade-start', a);
+  box.style.setProperty(vertical ? '--fade-bot' : '--fade-end', b);
+}
+
+function stepOne(id, now) {
+  const st = scrollers[id];
+  const box = el(id);
+  if (!st || !box) return;
+  const vertical = st.axis === 'y';
+  const room = vertical ? box.scrollHeight - box.clientHeight
+                        : box.scrollWidth - box.clientWidth;
+  const at = () => vertical ? box.scrollTop : box.scrollLeft;
+  if (room <= 1) {
+    if (vertical) box.scrollTop = 0; else box.scrollLeft = 0;
+    setFades(box, room, 0, vertical);
+    return;
+  }
   const dt = (now - (st.last || now)) / 1000;
   st.last = now;
   switch (st.phase) {
-    case 'top':
-      if (now - st.since > SCROLL_PAUSE) { st.phase = 'down'; st.since = now; }
+    case 'start':
+      if (now - st.since > SCROLL_PAUSE) { st.phase = 'run'; st.since = now; }
       break;
-    case 'down':
+    case 'run':
       st.pos = Math.min(room, st.pos + SCROLL_SPEED * dt);
-      box.scrollTop = st.pos;
-      if (st.pos >= room) { st.phase = 'bottom'; st.since = now; }
+      if (vertical) box.scrollTop = st.pos; else box.scrollLeft = st.pos;
+      if (st.pos >= room) { st.phase = 'end'; st.since = now; }
       break;
-    case 'bottom':
-      if (now - st.since > SCROLL_PAUSE) { st.phase = 'top'; st.since = now; st.pos = 0;
-        box.scrollTop = 0; }
+    case 'end':
+      if (now - st.since > SCROLL_PAUSE) {
+        st.phase = 'start'; st.since = now; st.pos = 0;
+        if (vertical) box.scrollTop = 0; else box.scrollLeft = 0;
+      }
       break;
   }
-  setFades(box, room);
+  setFades(box, room, at(), vertical);
 }
 
 function frame(now) {
-  stepScroll(now);
+  for (const id in scrollers) stepOne(id, now);
   checkStale();
   requestAnimationFrame(frame);
 }
@@ -505,7 +540,11 @@ function chip(node, show, text) {
   if (show) node.textContent = text;
 }
 
-restartScroll();
+/* The two self-scrolling boxes, registered before the first payload lands so
+ * `frame` has something to walk from the very first tick. */
+makeScroller('goal-scroll', 'y');
+makeScroller('road-scroll', 'x');
+
 poll();
 setInterval(poll, POLL_MS);
 requestAnimationFrame(frame);

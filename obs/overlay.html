@@ -109,10 +109,14 @@
     </div>
   </section>
 
-  <!-- THE ROAD: every stop walked, ending on the Amulet. -->
+  <!-- THE ROAD: every stop walked, ending on the Amulet. Scrolls itself
+       sideways when the run is longer than the strip, the way the checklist
+       scrolls down — a stop turned into a "+7" is a stop nobody can see. -->
   <section class="card road">
     <div class="label">The road</div>
-    <div id="road-strip" class="road-strip"></div>
+    <div id="road-scroll" class="road-scroll">
+      <div id="road-strip" class="road-strip"></div>
+    </div>
   </section>
 
   <!-- What just happened. Fades out on its own. -->

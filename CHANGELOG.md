@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The road scrolls itself instead of turning stops into a number.**
+
+  It was capped at twelve covers with a "+7" where the rest had been. That is the
+  wrong trade for this strip in particular: the road is the one part of the page
+  that is about *where the run has actually been*, and a stop rendered as a digit
+  is a stop nobody can see. It walks sideways now when the run outgrows it —
+  pause, creep, pause, snap back — exactly as the checklist walks down.
+
+  **One walker, both axes.** The checklist's scroller is now a small state
+  machine keyed by element id with an axis on it, so the road reuses it rather
+  than growing a second copy; the edge fades that appear only where content is
+  really hidden come along for free. `MAX_ROAD` survives at 40 purely as a safety
+  valve against a pathological run putting hundreds of covers into a file written
+  four times a second, and `dropped` still rides the first stop for the day it
+  bites.
+
+  Also documents a scene layout in the README — game, overlay, camera and chat on
+  a 1920x1080 canvas with no overlaps and nothing scaled — plus the measured
+  height the Browser Source actually needs (828, for ~735px of content and ~815
+  with the ticker full) and the `zoom` escape hatch for making the page bigger
+  without resampling it.
+
 - **The overlay is legible from the side of a stream.**
 
   Three passes over the same problem: this page is read at a glance, at a

@@ -2220,7 +2220,9 @@ stream — so the overlay dims only when the beat actually stops.
 - **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
   replays numbered, **ending on the Amulet whether or not the run got there**,
   drawn dashed until it does. Without that terminus the strip is a list rather
-  than progress.
+  than progress. It **scrolls sideways** when the run outgrows the strip, on the
+  same walker the checklist uses: it was capped with a "+7" for the rest, and a
+  stop rendered as a digit is a stop nobody can see.
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the
   long stretches when nothing in the run changes.

@@ -89,10 +89,14 @@ const HEARTBEAT := 5.0
 # the log.
 const MAX_EVENTS := 8
 
-# The road strip's tail. A fifteen-game run is fifteen covers and the overlay is
-# a slim strip, so only the last stops are carried and the page says how many
-# were dropped off the left.
-const MAX_ROAD := 12
+# A SAFETY VALVE, not a layout decision. The strip used to be capped at 12 and
+# the page printed "+7" for what it had dropped — but a stop turned into a number
+# is a stop nobody can see, and the road is the one part of this page that is
+# about where the run has actually been. The page SCROLLS the whole thing now
+# (the same walker the checklist uses, other axis), so this only exists to stop a
+# pathological run putting hundreds of covers into a file written four times a
+# second. `dropped` still rides on the first stop for the day it bites.
+const MAX_ROAD := 40
 
 # Off switches the whole thing: no writes, no cover extraction, no page install.
 # Mirrors Settings.obs_overlay, which is where the toggle in the settings modal

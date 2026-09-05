@@ -694,7 +694,35 @@ user://obs/covers/        covers lifted out of the .pck (exported builds only)
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **440 × 1000**.
+point it at that `overlay.html`, and size it **440 × 828**. The page draws about
+735px of content, ~815 with the ticker full, so 828 clears it.
+
+**Do not resize the scene item.** The Browser Source's own Width/Height is the
+canvas the page renders into; stretching the item afterwards resamples the result
+and softens the pixel art. Set 440 × 828 and leave the transform at 100%.
+
+#### A scene layout that fits
+
+A 1920 × 1080 canvas, no overlapping sources, everything at native scale:
+
+| Source | Position | Size |
+|---|---|---|
+| Game capture | `0, 0` | `1472 × 828` (16:9) |
+| **Overlay** | `1476, 0` | `440 × 828` |
+| Camera | `0, 828` | `440 × 252` (16:9) |
+| Chat | `440, 828` | `1032 × 252` |
+| *(spare)* | `1472, 828` | `448 × 252` — alerts, or leave it empty |
+
+The game keeps 77% of the width and its bottom edge lines up with the overlay's.
+The camera sits under the game at the same width as the overlay column, so the
+two vertical edges at x=440 and x=1472 run the whole height of the canvas.
+
+**If the overlay reads small** for viewers on 720p or a phone, don't scale the
+scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the
+Browser Source to **550 × 1035**. `zoom` re-lays the page out at the larger size,
+so the text is rendered crisply rather than resampled, and the sprites stay sharp
+because everything pixel-art on this page already carries
+`image-rendering: pixelated`.
 
 **Why a script file and not JSON over `fetch()`.** OBS renders the page from a
 `file://` URL, and Chromium refuses every `fetch()`/XHR a `file://` page makes at

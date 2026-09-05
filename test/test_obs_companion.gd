@@ -202,10 +202,12 @@ func test_the_road_marks_where_the_run_is_standing() -> void:
 			assert_eq(String(stop.get("id", "")), String(GameState.current_game_id))
 	assert_eq(current, 1, "exactly one stop is the one being played")
 
-func test_a_long_run_keeps_only_the_tail_and_says_how_much_it_dropped() -> void:
-	# Standing on more games than the strip holds: the page has no room for a
-	# twenty-stop road, and one that silently shows twelve of them is lying about
-	# the route.
+func test_the_road_cap_is_a_safety_valve_and_still_says_when_it_bites() -> void:
+	# MAX_ROAD is no longer a layout decision — the page SCROLLS the whole road
+	# now rather than trimming it, because a stop turned into a "+7" is a stop
+	# nobody can see. It survives only to stop a pathological run putting hundreds
+	# of covers into a file written four times a second, and if it ever does bite
+	# the count has to ride along rather than the route being quietly wrong.
 	var ids: Array[StringName] = []
 	for game in Data.all_games():
 		ids.append(game.id)
