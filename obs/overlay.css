@@ -50,7 +50,7 @@
  * overlay.js hides half a dozen things by setting the `hidden` property, which
  * relies on the UA stylesheet's `[hidden] { display: none }`. That rule is a UA
  * rule, so ANY author `display` on the same element outranks it — and `.cost`
- * and `.hero-row` both set `display: flex`. The result was not a cosmetic slip:
+ * sets `display: flex`. The result was not a cosmetic slip:
  * with nothing on the board able to reach you, `drawCost` set `hidden` and
  * returned early, leaving the PREVIOUS forecast on screen — so the overlay sat
  * there pulsing THIS KILLS YOU at a player in no danger at all, which is the one
@@ -130,23 +130,25 @@ html, body {
 .hero { display: flex; flex-direction: column; gap: 8px; }
 .hero-top { display: flex; gap: 12px; align-items: center; }
 
-/* THE SHIELDS' OWN ROW, labelled. There were two of these — armour and statuses —
- * until the statuses moved onto the checklist, where each of them has a row
- * saying what it wants rather than a picture with a number on it. The shields
- * stayed because they are not a status: they are the player's own, and they are
- * what the cost line above spends. */
-.hero-row {
+/* HEALTH AND ARMOUR ON ONE LINE. There were two labelled rows under the portrait
+ * — armour and statuses — and the labels existed to stop the two strips being
+ * read as one. The statuses moved onto the checklist, so there is nothing left to
+ * confuse the shields with, which left a label doing no work above a row spending
+ * a whole line of the page on at most a handful of 22px sprites. Beside the bar
+ * they read as what they are: the armour standing in front of that health.
+ *
+ * The BAR takes the slack and the shields are sized by content, with a floor
+ * under the bar so a heavily armoured run cannot squeeze the health it is about
+ * — past that the sprites wrap onto a second line, which is the same growth the
+ * labelled row had. */
+.vitals {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 5px;
 }
-.row-label {
-  flex: 0 0 58px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
+.vitals .bar { flex: 1 1 auto; min-width: 110px; margin-top: 0; }
+.vitals .pips { flex: 0 1 auto; justify-content: flex-end; }
 
 /* ------------------------------------------------ what a lost run costs -- */
 

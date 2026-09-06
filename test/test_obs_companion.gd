@@ -217,6 +217,25 @@ func test_a_status_row_carries_the_stack_total_the_pip_used_to() -> void:
 		assert_eq(GameState.status_objectives().size(), 0,
 			"no status rows means no claimable statuses on the run")
 
+func test_the_hero_card_names_every_character_the_run_can_deal() -> void:
+	# THE ROSTER THE RUN IS DEALT FROM IS `characters2.0`. This asked
+	# `Data.get_character`, which serves the two the combat build shipped
+	# (`ironclad`, `silent`) — and only `ironclad` is in both — so ten of the eleven
+	# characters drew a nameless, portraitless hero card for a whole stream.
+	#
+	# Every fixture that ever exercised the page named its own hero, which is why
+	# nothing caught it; it turned up the first time a payload was dumped out of a
+	# real run. So this walks the roster rather than trusting one of them.
+	var missing: Array = []
+	for c in Data.all_characters2():
+		var cd: CharacterData = c
+		GameState.character_id = cd.id
+		var hero: Dictionary = ObsCompanion.payload()["hero"]
+		if String(hero.get("name", "")) == "":
+			missing.append(String(cd.id))
+	assert_eq(missing, [],
+		"these characters draw a hero card with no name on it: %s" % str(missing))
+
 func test_the_headline_names_the_game_the_whole_run_is_for() -> void:
 	# THE PREMISE, and the one thing a viewer who has just tuned in cannot get from
 	# a health bar and a checklist. It used to be legible only off the right-hand

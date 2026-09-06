@@ -2203,11 +2203,15 @@ stream — so the overlay dims only when the beat actually stops.
   to somebody a Host can already shoot, which is the one lie this page must not
   tell. It is a **floor** — a blocked lane, a stun, a turn spent on an ability
   all make the real wait longer and never shorter — so it is worded "at least".
-- **Shields as SPRITES under the portrait** — where the board puts them and what
-  they look like there (`BattlefieldView.refresh_hero` → `_fill_shields`). One
-  sprite per shield: the pool that stays nearest and bare, the timed ones after it
-  wearing the clock. They keep a row of their own because **they are not a
-  status** — the armour is yours and it is what the cost line above spends.
+- **Shields as SPRITES, on the health bar's own line** — the same art the board
+  draws (`BattlefieldView.refresh_hero` → `_fill_shields`). One sprite per shield:
+  the pool that stays nearest the bar and bare, the timed ones after it wearing
+  the clock. They had a labelled row of their own while the statuses had another
+  beside it, and the labels were there to stop the two strips being read as one;
+  with the statuses gone to the checklist there is nothing left to confuse them
+  with, so the label was a word doing no work above a whole line of the page spent
+  on a handful of 22px sprites. Beside the bar they read as what they are: the
+  armour standing in front of that health, and what the cost line above spends.
   **The statuses no longer have a strip here.** Every player-side status on the
   roster is `is_claimable` (3 `goal`, 4 `demand`), so every one of them already
   had a checklist row saying what it wants — and the strip was saying the same

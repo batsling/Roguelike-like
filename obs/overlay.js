@@ -133,7 +133,10 @@ function render(s) {
 function drawShields(vitals, art) {
   const box = el('hero-shields');
   box.innerHTML = '';
-  el('shield-row').hidden = num(vitals.shields) === 0;
+  /* No `hidden` to set any more: the box sits beside the health bar and
+   * `.pips:empty` takes it out of the flex row when there is no armour, so an
+   * unarmoured run gives the bar the whole width instead of leaving a gap where
+   * the shields would be. */
   if (!art || !art.shield) return;
   const rows = [[num(vitals.shields_kept), false], [num(vitals.shields_timed), true]];
   for (const [count, timed] of rows) {

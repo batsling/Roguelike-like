@@ -708,21 +708,21 @@ and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 505 | 674 | 695 | **745** |
-| `overlay.html#top` | 324 | 306 | 327 | **377** |
+| `overlay.html` | 475 | 644 | 665 | **731** |
+| `overlay.html#top` | 294 | 276 | 297 | **363** |
 | `overlay.html#bottom` | 197 | 384 | 384 | **384** |
 | `overlay.html#road` | 118 | 118 | 118 | **118** |
 
 **Almost nothing moves any more, and that is new.** A heavy run and a run twice
-its size measure the same 695, because the two things that used to grow the page
-are gone: the hero card's status strip (every status is a checklist row now) and
-the cost line's strip of swing marks (it is a sentence). `#bottom` stops at 384
-because the checklist scroller is capped at 320px and walks the rest, and `#road`
-is a fixed 118 whatever the run's length — a longer road is a wider strip, not a
-taller one.
+its size measure the same 665, because everything that used to grow the page is
+gone: the hero card's status strip (every status is a checklist row now), the
+cost line's strip of swing marks (it is a sentence), and the shields' labelled
+row (they sit beside the health bar). `#bottom` stops at 384 because the
+checklist scroller is capped at 320px and walks the rest, and `#road` is a fixed
+118 whatever the run's length — a longer road is a wider strip, not a taller one.
 
-The one thing left that can push it is **the shields row wrapping**: thirteen
-shields fit one row, and every thirteen after that costs 25px. "Pathological"
+The one thing left that can push it is **the shields wrapping past the bar**:
+about five fit on the line beside it before they take a second row. "Pathological"
 above is thirty of them, which no run realistically reaches.
 
 **The ticker is not in those numbers, on purpose.** It is pinned to the bottom of
@@ -745,8 +745,8 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 674 → 745 |
-| `overlay.html#top` | hero card + the headline | 306 → 377 |
+| `overlay.html` | everything except the road | 644 → 731 |
+| `overlay.html#top` | hero card + the headline | 276 → 363 |
 | `overlay.html#bottom` | checklist + ticker | 384 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 118 (fixed) |
 
@@ -775,25 +775,25 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 360` |
-| Camera | `1476, 372` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 632` | `440 × 390` |
+| **Overlay `#top`** | `1476, 0` | `440 × 330` |
+| Camera | `1476, 342` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 602` | `440 × 390` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**Everything fits now, with room to spare.** 360 + 248 + 390 is 998 of the 1080,
+**Everything fits now, with room to spare.** 330 + 248 + 390 is 968 of the 1080,
 where the old layout needed 26px more than existed and had to under-size `#top` to
-get there. `#top`'s 360 clears every run up to the heavy column above (327) and
+get there. `#top`'s 360 clears every run up to the heavy column above (297) and
 `#bottom` is at its fixed 384 with 6px of slack. Only a run carrying more than
 thirteen shields at once — the one thing that still grows the page — would clip,
 and it clips the bottom of a shield row and nothing else.
 
-**There is now room for the road too**, if you want it: the 82px left over takes
+**There is now room for the road too**, if you want it: the 112px left over takes
 `overlay.html#road` at `440 × 118` if you drop the camera to `400 × 225`. It is
 the between-games source, so a scene where it sits under the checklist and only
 gets looked at while the streamer is picking their next game is exactly what it
 is for.
 
-**Chat still cannot go in the column.** 82px of chat is not chat. It goes in the
+**Chat still cannot go in the column.** 112px of chat is not chat. It goes in the
 bar under the game, or on a second monitor. If chat *must* sit directly under the
 camera, that is a second sidebar and the game pays for it — see A.
 
@@ -836,7 +836,7 @@ has no such restriction. So the state is written *as* an assignment and
 `overlay.js` re-loads it four times a second with a cache-buster on the end; the
 covers ride the same way, as `<img src="file://…">`. No server, no port.
 
-It shows health with **the shields as sprites** beside it, the character, **what a
+It shows health with **the shields as sprites on the same line**, the character, **what a
 lost run would cost you** as a sentence, **the headline** — the game in play, how
 many hops to the Amulet, and the Amulet itself — and **the checklist as it ticks**,
 which is the page's centre of gravity: every row wearing its own art, scrolling
@@ -932,9 +932,11 @@ Four things worth knowing if you change it:
   borrowed — the same art as `BattlefieldView._status_pip`, quoted from the same
   constants so the board and the stream cannot disagree. The colour follows **what
   the side does** (gold for a `bonus`/`goal`, red for anything that taxes), never
-  Buff/Debuff. The shields keep their own row under the hero because they are not
-  a status — they are what the cost line spends — while a status now rides its
-  checklist row at 26px.
+  Buff/Debuff. The shields sit **beside the health bar** rather than in a row of
+  their own: the labels existed to keep two strips apart, and with the statuses
+  gone to the checklist there is nothing left to confuse them with — so they read
+  as the armour standing in front of that health, and the page saves a line. A
+  status rides its checklist row at 26px instead.
 - **A status's row is one instance; its badge is the total.** `status_objectives()`
   is one row per instance (a permanent Strength 1 and a borrowed Strength 3 are
   two offers with two deadlines) while `status_list()` totals them, because what a
@@ -964,6 +966,26 @@ node tools/check_overlay.js          # --browser=/path/to/chrome if it can't fin
 It is deliberately not wired into GUT — different runtime, different dependency —
 so run it by hand when anything under `obs/` changes. Every check in it is a
 regression that shipped once.
+
+**And look at it with real content, not only the fixture.**
+`tools/dump_obs_payload.gd` drives a real `Overworld2`, walks a few games, and
+writes an actual `ObsCompanion.payload()` to JSON, which you can drop in beside
+the page as `state.js`:
+
+```bash
+OBS_DUMP_TO=/tmp/obs_state.json godot --headless -s addons/gut/gut_cmdln.gd \
+    -gdir=res://tools -gprefix=dump_ -gselect=dump_obs_payload.gd -gexit
+```
+
+The fixture is synthetic on purpose — it has to force states a real run reaches
+rarely, and be reproducible. The cost is that it never disagrees with itself:
+every fixture that ever exercised this page named its own hero, which is how
+`_hero()` came to look the character up in `Data.get_character` (the two-strong
+combat-era roster) while the run is dealt from `get_character2` (eleven). Ten of
+the eleven drew a **nameless, portraitless hero card for an entire stream**, and
+no test could see it because no test used a real character id. One real payload
+showed it immediately. A test walks the roster now, but the lesson is the tool:
+render the real thing occasionally.
 
 `obs/` holds plain `.html`/`.css`/`.js`, which Godot does not treat as resources.
 Running from source they are read straight out of `res://obs/`; if you ever

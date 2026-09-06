@@ -296,8 +296,26 @@ func _shared_art() -> Dictionary:
 		"shield": _texture_url(UITheme.SHIELD_ART),
 	}
 
+# `get_character2` FIRST, and that is not a preference — it is the roster the run
+# is actually dealt from. `Overworld2.start_run` resolves the character through
+# `Data.get_character2` (`data/characters2.0/`, eleven of them) while this asked
+# `Data.get_character` (`data/characters/`, which still holds the two the combat
+# build shipped: `ironclad` and `silent`). Only `ironclad` is in both — so for TEN
+# of the eleven characters the game can deal, the lookup missed, `_hero` took its
+# null branch, and the stream drew a nameless, portraitless hero card for the
+# whole run.
+#
+# It survived because every fixture that ever exercised this page named its own
+# hero, and because `ironclad` is the one id that works. It was found by dumping a
+# real payload out of a real run (`tools/dump_obs_payload.gd`) and looking at it.
+#
+# The 1.0 lookup stays as a fallback rather than being replaced: a save from
+# before the migration carries a `silent`, and a hero card that says "Silent" is
+# better than one that says nothing.
 func _hero() -> Dictionary:
-	var cd: CharacterData = Data.get_character(GameState.character_id)
+	var cd: CharacterData = Data.get_character2(GameState.character_id)
+	if cd == null:
+		cd = Data.get_character(GameState.character_id)
 	if cd == null:
 		return {"name": "", "icon": "", "level": GameState.player_level}
 	return {

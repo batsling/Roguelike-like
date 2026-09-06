@@ -229,6 +229,7 @@ async function main() {
     shields: document.querySelectorAll('.shield-pip').length,
     dest: document.getElementById('dest-game').textContent,
     count: document.getElementById('goal-count').textContent,
+    barW: Math.round(document.querySelector('.bar').getBoundingClientRect().width),
   }));
   check('every section has content', drew.hero && drew.goals > 0 && drew.art > 0
     && drew.stops > 0 && drew.shields > 0, JSON.stringify(drew));
@@ -279,7 +280,9 @@ async function main() {
       const n = document.getElementById(id);
       return { shown: getComputedStyle(n).display !== 'none', h: Math.round(n.getBoundingClientRect().height) };
     };
-    return { cost: vis('cost'), lethal: vis('cost-lethal'), shieldRow: vis('shield-row'),
+    return { cost: vis('cost'), lethal: vis('cost-lethal'),
+      shields: document.querySelectorAll('.shield-pip').length,
+      barW: Math.round(document.querySelector('.bar').getBoundingClientRect().width),
       total: document.getElementById('cost-total').textContent,
       quiet: document.getElementById('cost').classList.contains('quiet') };
   });
@@ -293,7 +296,12 @@ async function main() {
   check('…and stops being an alarm while it does', gone.quiet);
   check('the lethality warning is gone, not merely flagged', !gone.lethal.shown,
     JSON.stringify(gone.lethal));
-  check('the shields row is gone', !gone.shieldRow.shown, JSON.stringify(gone.shieldRow));
+  /* THE SHIELDS SIT BESIDE THE BAR NOW, so an unarmoured run has to give the bar
+   * the whole width rather than leave a gap where the sprites would be —
+   * `.pips:empty` is what does that, and it is easy to lose. */
+  check('no shields are drawn', gone.shields === 0, gone.shields + ' drawn');
+  check('…and the bar takes back the width they were using',
+    gone.barW > drew.barW, drew.barW + 'px armoured -> ' + gone.barW + 'px bare');
   /* The forecast reads the OTHER way when nothing is ever coming, rather than
    * promising a wait of minus one turn. */
   write((s) => { s.at++; s.threat.turns_away = -1; });
@@ -441,12 +449,12 @@ async function main() {
    *    are what a streamer sizes a scene against. A page that grows past these has
    *    either gained a card or lost the ticker's anchoring, and either way the
    *    README is now wrong — which is the thing that is hard to notice by eye. */
-  /* The whole page came down from 777 to 695 on the same heavy run — the road
+  /* The whole page came down from 777 to 665 on the same heavy run — the road
    * left the default column and the hero card lost its status strip, and the
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 695, '#top': 327, '#bottom': 384, '#road': 118 };
+  const DOCUMENTED = { '': 665, '#top': 297, '#bottom': 384, '#road': 118 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
   await sleep(1000);

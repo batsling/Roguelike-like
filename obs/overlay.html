@@ -47,12 +47,23 @@
           <span id="hero-name" class="hero-name"></span>
           <span id="hero-level" class="pill"></span>
         </div>
-        <div class="bar">
-          <div id="hp-fill" class="bar-fill"></div>
-          <!-- The slice of the bar a lost run would take, hatched, sitting at
-               the leading edge of the fill. -->
-          <div id="hp-threat" class="bar-threat" hidden></div>
-          <span id="hp-text" class="bar-text"></span>
+        <!-- HEALTH AND ARMOUR ON ONE LINE. The shields had a labelled row of
+             their own while the statuses had another beside it, and the labels
+             were there to stop the two being read as one strip. The statuses
+             moved to the checklist, so there is nothing left to confuse the
+             shields WITH — which makes the label a word doing no work and the
+             row a whole line of the page spent on at most a handful of 22px
+             sprites. Beside the bar they are read as what they are: the armour
+             in front of that health. -->
+        <div class="vitals">
+          <div class="bar">
+            <div id="hp-fill" class="bar-fill"></div>
+            <!-- The slice of the bar a lost run would take, hatched, sitting at
+                 the leading edge of the fill. -->
+            <div id="hp-threat" class="bar-threat" hidden></div>
+            <span id="hp-text" class="bar-text"></span>
+          </div>
+          <div id="hero-shields" class="pips"></div>
         </div>
       </div>
     </div>
@@ -77,10 +88,6 @@
       <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
     </div>
 
-    <div id="shield-row" class="hero-row" hidden>
-      <span class="row-label">Shields</span>
-      <div id="hero-shields" class="pips"></div>
-    </div>
   </section>
 
   <!-- THE HEADLINE: the game in play, and the game the whole run is for.
