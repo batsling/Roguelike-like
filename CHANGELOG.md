@@ -11,6 +11,77 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The OBS overlay is now RENDERED in a test, and it turned out to be lying.**
+
+  `test_obs_companion.gd` is 600 careful lines about the payload — its shape, that
+  no `Resource` escapes into it, that the swing forecast matches the turn the
+  board really takes. Its own header says why that matters: nothing in
+  `overlay.js` fails to compile when a key is renamed out from under it. That is
+  right, and the conclusion drawn from it was to test the *producer* harder. The
+  consumer is a browser page and it was tested nowhere, so five things shipped
+  broken, none of them visible to GUT and none of them the kind of thing you
+  notice glancing at your own stream.
+
+  **`hidden` did not hide.** `.cost` and `.hero-row` carry an author
+  `display: flex`, which outranks the UA stylesheet's `[hidden] { display: none }`
+  — so `drawCost` set the attribute, returned early, and left the PREVIOUS
+  forecast on screen. With nothing on the board able to reach you, the overlay sat
+  there pulsing **THIS KILLS YOU** at a player in no danger at all: the exact
+  failure `_threat()`'s long comment and four tests exist to prevent, arriving
+  through CSS instead of arithmetic. The two section labels did the same quieter
+  thing, standing over empty rows. `[hidden] { display: none !important }` now,
+  globally, because the next element given a `display` would have reintroduced it.
+
+  **The road never walked.** `drawRoad` restarted the auto-scroll on every
+  payload, and the game writes up to four times a second while a run moves and at
+  least every five seconds when it does not — against a 2500ms opening pause, so
+  the strip was reset before it could ever start. Measured at one payload every
+  two seconds it sat at `scrollLeft` 0 indefinitely; with 610px of road it needed
+  three quarters of a minute of total silence to reach the end. Every stop past
+  the sixth was exactly as invisible as the `+7` this scroller was built to
+  replace, and less honest, because nothing said they were there. It has a
+  signature now, like the checklist.
+
+  **The clocks were frozen.** The checklist's rebuild signature was
+  `kind|text|done`, which left `games` out — so an event's or a curse's countdown
+  ticked down in the payload and never redrew. A curse sat on "3 games left" until
+  some unrelated row changed, then jumped.
+
+  **A beaten Amulet was drawn as one the run never reached.** `.stop.beaten`,
+  `.stop.current` and `.stop.amulet` all have specificity (0,2,1), so the cascade
+  fell to source order and `.stop.amulet`, last, painted over both — accent
+  orange, a hair off `--unbeaten` at a 1px border. The one moment the whole strip
+  is built to show was the one moment it could not report. The two channels are
+  split now: the **border** says how the stop went, an **outline** says which stop
+  is the destination, and the border is 2px, because the outcome was the weakest
+  encoding on a page read across a room through a lossy encode.
+
+  **A burst of toasts fell off the bottom.** `player_hit` is emitted per swing, so
+  one lost run against five bodies fired six toasts; the ticker was the last item
+  in a content-height column inside a fixed-height browser source, and
+  `overflow: hidden` threw the newest lines away without a mark — measured, 900px
+  of page in the recommended 828px source. The turn's swings are added up and
+  spoken once now ("Took 7 damage — 1 shield broke"), the stack is capped at
+  three, and the ticker is pinned to the foot of the source and grows upward. That
+  last part is what makes the rest of the page a shape anyone can write down: the
+  README's layout tables were samples from a median run presented as fixed, and
+  they are now a measured range with a real ceiling.
+
+  **And one bug that only existed in an exported build.** `_extract` lifted packed
+  art into `user://obs/covers/` keyed on the BASE NAME, and `images/` and
+  `images2.0/` hold thirty-three duplicate base names between them (`Clover.png`,
+  `Crown.png`, `Isaac.png`, …) — so the first of a pair to be asked for took the
+  filename and every later request for the other was answered with the wrong
+  picture, permanently. Invisible from source, where `_path_url` finds the file
+  where it lies and never comes here at all; invisible in the tests for the same
+  reason. The extracted name carries the whole path's hash now.
+
+  **`tools/check_overlay.js`** is the half that was missing: it renders the real
+  page in headless Chromium against a heavy synthetic run and asserts every one of
+  the above. `npm install playwright-core && node tools/check_overlay.js`. It is
+  deliberately not wired into GUT — different runtime, different dependency — so
+  it is run by hand when anything under `obs/` changes.
+
 - **Every road says how each stop went, and it is a PER-VISIT fact.**
 
   A stop is green if that visit beat the game and **orange** if the run walked

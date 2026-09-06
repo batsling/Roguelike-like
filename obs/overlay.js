@@ -30,12 +30,25 @@ const TOAST_MS = 6000;
 const el = (id) => document.getElementById(id);
 const overlay = el('overlay');
 
+/* The text `#offline` carries when the only thing wrong is that nothing has been
+ * read yet. Held here because the two failure branches below overwrite it and
+ * have to be able to put it back. */
+const OFFLINE_TEXT = 'waiting for the game…';
+
+/* At most this many toasts on screen at once. The ticker is the last item in a
+ * content-height column inside a fixed-height browser source, and `overflow:
+ * hidden` means anything past the bottom is thrown away with no sign that it
+ * existed — so a burst has to be trimmed at the top, where the trimming is
+ * visible, rather than at the bottom, where it is not. */
+const MAX_TOASTS = 3;
+
 let lastStamp = null;     /* payload `at` of the last state we drew */
 let lastSeenAt = 0;       /* wall-clock ms when that arrived */
 let firstDraw = true;
 let shownEvents = new Set();
 let doneRows = new Set();
 let goalSignature = '';
+let roadSignature = '';
 
 /* ----------------------------------------------------------- the polling -- */
 
@@ -59,9 +72,29 @@ function consume() {
     return;
   }
   if (state.at === lastStamp) return;   /* the heartbeat has not ticked */
+  /* THE CLOCKS MOVE ONLY ON A DRAW THAT SUCCEEDED, and that ordering is the whole
+   * point of this block. They used to be set first — so a throw anywhere inside
+   * `render` (one unexpected shape, one null nobody guarded) left the page frozen
+   * on the half-drawn last payload, `lastStamp` already advanced so it would
+   * never retry, and `lastSeenAt` still ticking so `checkStale` never dimmed it.
+   * A frozen overlay that looks alive is the worst state this page has, and it is
+   * exactly the state the heartbeat was built to make impossible.
+   *
+   * Left as they are, a bad payload retries four times a second and the page goes
+   * stale on schedule if it never comes good — which is the honest outcome. */
+  try {
+    render(state);
+  } catch (err) {
+    /* Nobody can open devtools on a browser source, so the error has to be on the
+     * page or it does not exist. */
+    el('offline').textContent = 'The overlay could not draw the run: '
+      + ((err && err.message) ? err.message : String(err));
+    overlay.classList.add('waiting');
+    return;
+  }
+  el('offline').textContent = OFFLINE_TEXT;
   lastStamp = state.at;
   lastSeenAt = Date.now();
-  render(state);
 }
 
 /* The overlay dims when the heartbeat stops, and comes back on its own if the
@@ -259,8 +292,15 @@ function drawNow(now, run) {
 function drawGoals(goals) {
   const list = el('goal-list');
   /* Rebuild only when the LIST changed. Redrawing every quarter second would
-   * restart the tick-flash animation forever and fight the auto-scroll. */
-  const sig = goals.map(g => g.kind + '|' + g.text + '|' + g.done).join('');
+   * restart the tick-flash animation forever and fight the auto-scroll.
+   *
+   * EVERYTHING `subtitle()` DRAWS BELONGS IN HERE. It was kind/text/done alone,
+   * which left `games` — the countdown on an event or a curse — outside the
+   * comparison: the clock was in the payload, ticking down, and the row on screen
+   * never redrew to show it. A curse sat on "3 games left" until some unrelated
+   * row happened to change, then jumped. */
+  const sig = goals.map(g => [g.kind, g.text, g.done, g.who, g.games].join('|'))
+    .join('\x01');
   if (sig === goalSignature) return;
   goalSignature = sig;
 
@@ -366,6 +406,24 @@ function drawStatuses(statuses, art) {
 
 function drawRoad(road) {
   const strip = el('road-strip');
+  /* REBUILT ONLY WHEN THE ROAD CHANGED, for the reason `drawGoals` is — and this
+   * one was missing it, which quietly cost the strip the entire feature below.
+   *
+   * `restartScroll` at the end of this function used to run on EVERY payload.
+   * SCROLL_PAUSE is 2500ms and the game writes up to four times a second while a
+   * run moves, and at minimum every five seconds from the heartbeat even when it
+   * does not — so the walker was reset before it could ever finish its opening
+   * pause. Measured against a payload every two seconds (gentler than the real
+   * heartbeat) the strip sat at scrollLeft 0 for as long as you cared to watch;
+   * with 610px of road to walk it needed three quarters of a minute of total
+   * silence to reach the end, which never happens. The stops past the sixth were
+   * exactly as invisible as the "+7" this scroller was built to replace, and less
+   * honest, because nothing said they were there. */
+  const sig = road.map(s => [s.id, s.beaten, s.current, s.amulet, s.unreached,
+    s.dropped].join('|')).join('\x01');
+  if (sig === roadSignature) return;
+  roadSignature = sig;
+
   strip.innerHTML = '';
   /* NO "+N earlier" HEAD ANY MORE. The strip scrolls the whole road instead of
    * trimming it to a count — a stop turned into a number is a stop the viewer
@@ -431,6 +489,14 @@ function drawEvents(events) {
     t.className = 'toast ' + (ev.tone || 'info');
     t.textContent = ev.text;
     ticker.appendChild(t);
+    /* TRIMMED AT THE TOP, NOT THE BOTTOM. The ticker is the last item in a
+     * content-height column inside a browser source of a fixed height, and the
+     * page's `overflow: hidden` throws away anything past that edge without a
+     * mark — measured, a heavy run with four toasts up stood 900px tall against
+     * the recommended 828px source, so the two newest lines, the ones a viewer
+     * most wants, were the ones cut. Dropping the OLDEST instead keeps the page
+     * inside its box and keeps the trimming where it can be seen. */
+    while (ticker.children.length > MAX_TOASTS) ticker.firstChild.remove();
     setTimeout(() => {
       t.classList.add('out');
       setTimeout(() => t.remove(), 600);

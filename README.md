@@ -694,12 +694,38 @@ user://obs/covers/        covers lifted out of the .pck (exported builds only)
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **440 × 828**. The page draws about
-735px of content, ~815 with the ticker full, so 828 clears it.
+point it at that `overlay.html`, and size it **440 × 850**.
 
 **Do not resize the scene item.** The Browser Source's own Width/Height is the
 canvas the page renders into; stretching the item afterwards resamples the result
-and softens the pixel art. Set 440 × 828 and leave the transform at 100%.
+and softens the pixel art. Set 440 × 850 and leave the transform at 100%.
+
+**How tall the page gets.** It is content-height, so it grows with the run — the
+figures below are `tools/check_overlay.js` measuring the real page at 440 wide,
+and the last column is the one to size a source against.
+
+| | light run | median | heavy (hour three) | pathological |
+|---|---|---|---|---|
+| `overlay.html` | 539 | 735 | 777 | **838** |
+| `overlay.html#top` | 261 | 325 | 367 | **428** |
+| `overlay.html#bottom` | 294 | 426 | 426 | **426** |
+
+Only the hero card really moves: its height rides the shields row, the statuses
+row, and how far the cost line's swing marks wrap. "Pathological" is twelve
+statuses, nine shields and ten bodies in reach at once. `#bottom` stops growing at
+426 because the checklist scroller is capped at 260px and walks the rest.
+
+**The ticker is not in those numbers, on purpose.** It is pinned to the bottom of
+the browser source and grows upward — at most three toasts, ~91px — so a burst
+floats over the foot of the page instead of pushing it out the bottom of the
+source, which is what used to happen, silently, at exactly the busiest moment of a
+run.
+
+That means the toasts do briefly cover the last ~30px of the road on a heavy run
+at 850, which is a strip of cover art for six seconds. **If you would rather they
+never touch it, give the source 900** and they land in the slack instead. Taller
+than that only buys headroom for a pathological run; the extra is transparent
+either way.
 
 #### Splitting the page in two
 
@@ -707,15 +733,18 @@ The overlay is one column, but a scene usually wants the camera partway *down*
 that column rather than under all of it — and OBS cannot interleave scene items
 with the inside of a browser source. So the page can render half of itself:
 
-| URL | Shows | Height |
+| URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything | 735 |
-| `overlay.html#top` | hero card + game in play | 325 |
-| `overlay.html#bottom` | checklist + road + ticker | 426 |
+| `overlay.html` | everything | 735 → 838 |
+| `overlay.html#top` | hero card + game in play | 325 → 428 |
+| `overlay.html#bottom` | checklist + road + ticker | 426 (fixed) |
 
 Point **two** browser sources at the same file with different fragments and put
 whatever you like between them. They read the same `state.js`, so they stay in
 step for free.
+
+`#offline` is in neither list, so a half that is up before the game is still says
+so. The ticker rides with `#bottom`.
 
 #### A scene layout that fits
 
@@ -725,13 +754,20 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 325` |
-| Camera | `1476, 333` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 589` | `440 × 426` |
+| **Overlay `#top`** | `1476, 0` | `440 × 370` |
+| Camera | `1476, 386` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 646` | `440 × 430` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**Chat cannot go in the column too.** 325 + 248 + 426 leaves 81px of the 1080,
-and 81px of chat is not chat. It goes in the bar under the game, or on a second
+**`#top` is given 370, not its 428 ceiling**, because 428 + 248 + 430 is 26px more
+than the 1080 exists. 370 clears every run up to the heavy column above; a run
+carrying a dozen statuses at once loses the bottom of its pip row and nothing
+else, because `#bottom` is the half with a real ceiling and it is not moving. If
+you would rather never clip than keep a full-width camera, take the 58px off the
+camera instead: `400 × 225` at `1496, 444`.
+
+**Chat cannot go in the column too.** 370 + 248 + 430 leaves 32px of the 1080, and
+32px of chat is not chat. It goes in the bar under the game, or on a second
 monitor. If chat *must* sit directly under the camera, that is a second sidebar
 and the game pays for it — see A.
 
@@ -743,7 +779,7 @@ overlay on the right.
 | Camera | `0, 0` | `384 × 216` |
 | Chat | `0, 224` | `384 × 856` |
 | Game capture | `392, 236` | `1080 × 608` (16:9) |
-| **Overlay** | `1480, 0` | `440 × 828` |
+| **Overlay** | `1480, 0` | `440 × 850` |
 
 The game drops to 56% of the width and the middle column carries ~470px of dead
 band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
@@ -751,7 +787,7 @@ rectangle between them.
 
 **B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
 camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
-`1464, 16` at `440 × 828`. The game keeps every pixel and the columns cover ~20%
+`1464, 16` at `440 × 850`. The game keeps every pixel and the columns cover ~20%
 of the width at each edge. The games on this map are *real* games with their own
 HUDs, so check the one you are about to play — a minimap in a covered corner is
 the failure case.
@@ -761,7 +797,7 @@ is on.
 
 **If the overlay reads small** for viewers on 720p or a phone, don't scale the
 scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the
-Browser Source to **550 × 1035**. `zoom` re-lays the page out at the larger size,
+Browser Source to **550 × 1065**. `zoom` re-lays the page out at the larger size,
 so the text is rendered crisply rather than resampled, and the sprites stay sharp
 because everything pixel-art on this page already carries
 `image-rendering: pixelated`.
@@ -844,6 +880,26 @@ Four things worth knowing if you change it:
 - **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
   That is a Control tree which only exists while the overworld is on screen, and
   being right when the game window is behind a stream is the whole job.
+
+**Testing the page itself.** `test/test_obs_companion.gd` pins the *payload* — its
+shape, that no `Resource` escapes into it, that the swing forecast matches the
+turn the board really takes. It cannot say anything about the page, because the
+page is a browser and GUT is Godot. `tools/check_overlay.js` is the other half: it
+renders `obs/overlay.html` in headless Chromium against a heavy synthetic run and
+asserts the things that only exist once it is on a screen — that `hidden` really
+hides, that the road's outcome colours survive the cascade, that the checklist and
+the road actually walk while payloads keep arriving, that a burst of toasts stays
+inside the browser source, that an undrawable payload is announced rather than
+frozen over, and the heights the tables above promise.
+
+```bash
+npm install playwright-core          # once
+node tools/check_overlay.js          # --browser=/path/to/chrome if it can't find one
+```
+
+It is deliberately not wired into GUT — different runtime, different dependency —
+so run it by hand when anything under `obs/` changes. Every check in it is a
+regression that shipped once.
 
 `obs/` holds plain `.html`/`.css`/`.js`, which Godot does not treat as resources.
 Running from source they are read straight out of `res://obs/`; if you ever

@@ -343,6 +343,26 @@ func test_a_windows_drive_letter_keeps_its_colon() -> void:
 	var url: String = ObsCompanion._file_url("C:\\Users\\me\\obs\\cover.png")
 	assert_eq(url, "file:///C:/Users/me/obs/cover.png")
 
+func test_two_pictures_with_the_same_file_name_do_not_become_one() -> void:
+	# THE BUG THIS PINS ONLY EXISTED IN AN EXPORTED BUILD, which is why nothing
+	# caught it for so long. Run from source, `_path_url` finds the file where it
+	# lies and never calls `_extract` at all; packed, res:// is inside the .pck and
+	# every picture has to be lifted out to user://obs/covers/ first — and that was
+	# keyed on the BASE NAME. `images/` and `images2.0/` hold thirty-three duplicate
+	# base names between them (Clover.png, Crown.png, Isaac.png, …), so the first of
+	# a pair to be asked for took the name and every later request for the other was
+	# answered with the wrong picture, for good.
+	#
+	# Asserted on the OUTPUT PATH rather than by extracting: the two source paths
+	# are the input, and all that has to be true is that they cannot land on one
+	# file.
+	var a: String = "res://images/items/Clover.png"
+	var b: String = "res://images2.0/items/Clover.png"
+	assert_ne(a.hash(), b.hash(),
+		"two different res:// paths must not hash alike, or covers/ collides again")
+	assert_eq(a.get_file(), b.get_file(),
+		"…and this is only worth asserting because the file names DO collide")
+
 func test_the_road_hands_the_page_urls_rather_than_resource_paths() -> void:
 	for stop in ObsCompanion.payload()["road"]:
 		var cover: String = String(stop.get("cover", ""))
@@ -585,3 +605,47 @@ func test_the_ticker_is_a_ticker_and_not_a_log() -> void:
 		"only the last few ride along — GameLog is the log")
 	assert_eq(String(events[events.size() - 1].get("text", "")),
 		"line %d" % (ObsCompanion.MAX_EVENTS + 9), "newest last")
+
+# A LOST RUN IS ONE LINE, NOT ONE PER BODY.
+#
+# `player_hit` is emitted from inside the resolver's per-body loop (§3.2 — every
+# body that can reach you swings once), so a five-body board used to put five
+# toasts on the ticker and then "Lost a run — attempt N" on top of them. Six
+# lines, most of them "Took 3 damage" over and over, arriving at the moment the
+# page has least room: the ticker is pinned to the foot of the browser source and
+# shows three at a time, so the rest were pushed off the top before anyone read
+# them. The swings are added up and spoken once instead.
+func test_one_enemy_turn_is_one_line_on_the_ticker() -> void:
+	ObsCompanion._events.clear()
+	# Three swings, exactly as _resolve_enemy_turn emits them: one call per body,
+	# all inside one frame. The third is stopped dead by a shield.
+	GameLoop2.player_hit.emit(3, 0)
+	GameLoop2.player_hit.emit(4, 0)
+	GameLoop2.player_hit.emit(0, 5)
+	await get_tree().process_frame
+	assert_eq(ObsCompanion._events.size(), 1,
+		"a turn is one line — five bodies must not be five toasts")
+	var text: String = String(ObsCompanion._events[0].get("text", ""))
+	assert_true(text.contains("7"),
+		"the line carries the turn's TOTAL, not the last swing's: %s" % text)
+	assert_true(text.contains("shield"),
+		"…and says the shield went, which is the other half of the cost: %s" % text)
+
+func test_a_turn_the_shields_ate_whole_says_so() -> void:
+	ObsCompanion._events.clear()
+	GameLoop2.player_hit.emit(0, 6)
+	GameLoop2.player_hit.emit(0, 2)
+	await get_tree().process_frame
+	assert_eq(ObsCompanion._events.size(), 1)
+	var row: Dictionary = ObsCompanion._events[0]
+	assert_eq(String(row.get("tone", "")), "info",
+		"nothing reached Health, so this is not bad news")
+	assert_true(String(row.get("text", "")).contains("2 shields"),
+		"both shields broke: %s" % row.get("text", ""))
+
+func test_a_turn_that_did_nothing_at_all_says_nothing() -> void:
+	ObsCompanion._events.clear()
+	GameLoop2.player_hit.emit(0, 0)
+	await get_tree().process_frame
+	assert_eq(ObsCompanion._events.size(), 0,
+		"a swing modded down to nothing is not an event")

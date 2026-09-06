@@ -119,6 +119,15 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill
   (`.claude/skills/verify/`) — Xvfb + a temporary driver scene.
+- **GUT cannot see the OBS overlay, because the overlay is a browser page.**
+  `test_obs_companion.gd` pins the payload and stops at the file; everything past
+  it — whether `hidden` hides, whether the road actually scrolls, whether a burst
+  of toasts stays inside the browser source, how tall the page really is — needs
+  `node tools/check_overlay.js`, which renders `obs/overlay.html` in headless
+  Chromium and asserts all of it. Run it whenever anything under `obs/` changes;
+  every check in it is a regression that shipped once. It needs
+  `npm install playwright-core` and a Chromium (`--browser=` or `$CHROMIUM_PATH`
+  if it cannot find one).
 
 ## Things that will bite you
 
