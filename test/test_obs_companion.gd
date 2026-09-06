@@ -614,10 +614,28 @@ func test_a_board_out_of_reach_says_how_many_lost_runs_of_quiet_are_left() -> vo
 	if GameLoop2.stack.is_empty():
 		pending("the offering rolled no bodies onto the board")
 		return
-	# Everything at the back, nothing Ranged, so nothing is in reach.
+	# ARRANGED, NOT HOPED FOR. `_turns_away` skips the bodies that sit a turn out,
+	# exactly as `_threat` does — so a run whose opening offering happened to
+	# stagger everything standing would leave it with nothing to count and answer
+	# -1, and this test asserted a positive number. That is an assertion which is
+	# only USUALLY true, and it failed about one full-suite run in six.
+	#
+	# The state the test is about is a LIVE body out of reach, so it is set up:
+	# nothing staggered, nothing stunned, everything parked in the back column.
+	# `skip_turn` rides the entry's STATUSES (`is_stunned` → `enemy_combat` →
+	# `entry_statuses_effective`), so both status books are emptied and not just
+	# the abilities.
+	GameLoop2.staggered_this_game.clear()
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
+		entry["statuses"] = {}
+		entry["timed_statuses"] = []
 		entry["col"] = GameLoop2.grid_cols()
+	var live: int = 0
+	for entry in GameLoop2.stack:
+		if not GameLoop2.is_stunned(entry):
+			live += 1
+	assert_gt(live, 0, "the board has a body on it that is taking its turns")
 	var threat: Dictionary = ObsCompanion.payload()["threat"]
 	assert_eq(threat["swings"], [], "nothing is in reach from the back column")
 	assert_gt(int(threat["turns_away"]), 0,
