@@ -174,6 +174,7 @@ func _build_payload() -> Dictionary:
 		"route_waypoint": String(GameState.route_waypoint),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"path_taken": _stringnames_to_strings(GameState.path_taken),
+		"path_beaten": GameState.path_beaten.duplicate(),
 		"beaten_games": _stringnames_to_strings(GameState.beaten_games),
 		"played_games": _stringnames_to_strings(GameState.played_games),
 		"total_games_beaten": GameState.total_games_beaten,
@@ -344,6 +345,14 @@ func _apply_save_data(data: Dictionary) -> void:
 	# rebuilding the road from `visited_games` — the same picture that save's run
 	# was drawn with while it was live.
 	GameState.path_taken = _strings_to_stringnames(data.get("path_taken", []))
+	# Per-visit outcomes, and a save from before they existed has none. Left EMPTY
+	# rather than guessed at here: GameState.walked_outcomes falls back to
+	# `beaten_games` on its own, and does it in one place where the loss of
+	# per-visit resolution is written down.
+	var walk_won: Array[bool] = []
+	for v in data.get("path_beaten", []):
+		walk_won.append(bool(v))
+	GameState.path_beaten = walk_won if walk_won.size() == GameState.path_taken.size() else []
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
 	# A save written before this list existed falls back to the games it BEAT,
 	# which is the part of "where have I been" that old save knew about.

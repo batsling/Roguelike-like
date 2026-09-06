@@ -3796,10 +3796,16 @@ func _refresh_route_strip() -> void:
 	# Repeats included (GameState.walked_path): going back to a game is a real stop
 	# on the road and the strip is the only place that says the run doubled back.
 	var stops: Array = GameState.walked_path()
+	# Index for index with `stops`, and sliced with it below so the two stay
+	# aligned — a road drawn with the wrong outcomes is worse than one drawn with
+	# none, because it makes a claim.
+	var won: Array = GameState.walked_outcomes()
 
 	var trimmed: bool = stops.size() > STRIP_MAX_STOPS
 	if trimmed:
-		stops = stops.slice(stops.size() - STRIP_MAX_STOPS)
+		var cut: int = stops.size() - STRIP_MAX_STOPS
+		stops = stops.slice(cut)
+		won = won.slice(cut) if won.size() > cut else []
 	if trimmed:
 		var more := Label.new()
 		more.text = "…"
@@ -3814,7 +3820,8 @@ func _refresh_route_strip() -> void:
 	# is where the player is standing.
 	var last: int = stops.size() - 1
 	for i in range(stops.size()):
-		_route_strip.add_child(_strip_stop(stops[i], i == last))
+		_route_strip.add_child(
+			_strip_stop(stops[i], i == last, bool(won[i]) if i < won.size() else false))
 		if i < last:
 			_route_strip.add_child(_strip_arrow())
 
@@ -3827,11 +3834,18 @@ func _refresh_route_strip() -> void:
 # One cover on the strip. `is_here` rings the game you are standing on; every
 # other stop is a plain frame. There is no Amulet tile any more — see
 # _refresh_route_strip: this strip is the road behind, and the Amulet is ahead.
-func _strip_stop(id: StringName, is_here: bool) -> Control:
+func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control:
 	var game: GameData = GameLoop2.game_at(id)
 	if game == null:
 		game = Data.get_game(id)
-	var border: Color = UITheme.ACCENT if is_here else UITheme.BORDER
+	# THE ROAD SAYS HOW EACH STOP WENT. Green for a game beaten on that visit,
+	# ORANGE for one the run walked away from — a missed goal, an escape (§3.2),
+	# or a teleport that passed through without playing at all. They are one
+	# colour because they are one fact: you were there and the game is still
+	# standing. The game under your feet keeps the accent ring instead; it has not
+	# gone either way yet.
+	var border: Color = UITheme.ACCENT if is_here \
+		else (UITheme.SUCCESS if beaten else UITheme.UNBEATEN)
 	var width: int = 2 if is_here else 1
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
@@ -3839,7 +3853,11 @@ func _strip_stop(id: StringName, is_here: bool) -> Control:
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	frame.set_meta("stop", id)
 	var name_text: String = game.display_name if game != null else String(id)
-	frame.tooltip_text = ("▶ %s — you are here" if is_here else "%s") % name_text
+	if is_here:
+		frame.tooltip_text = "▶ %s — you are here" % name_text
+	else:
+		frame.tooltip_text = "%s — %s" % [name_text,
+			"beaten" if beaten else "walked away from"]
 
 	if game != null and game.cover_image != null:
 		var art := TextureRect.new()

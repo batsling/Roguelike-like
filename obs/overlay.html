@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roguelike-like — stream overlay</title>
+<!--
+  THE OBS COMPANION OVERLAY (docs/games-first-redesign.md §9).
+
+  This file is INSTALLED, not authored in place: the game copies it (with
+  overlay.css and overlay.js) from res://obs/ into user://obs/ at every boot, so
+  edits made to the copy are lost the next time the game starts. Edit the
+  originals in the repo — or, for styling only, edit user://obs/custom.css, which
+  is created empty once and never overwritten.
+
+  In OBS: add a Browser Source, tick "Local file", and point it at
+  user://obs/overlay.html (the settings screen prints the absolute path). Width
+  440, height 1000 is the shape it is drawn for; "Shutdown source when not
+  visible" is fine, "Refresh browser when scene becomes active" is not needed —
+  the page re-reads the state on its own.
+-->
+<link rel="stylesheet" href="overlay.css">
+<!-- Yours. Loaded last so anything in it wins. -->
+<link rel="stylesheet" href="custom.css">
+</head>
+<body>
+<div id="overlay" class="waiting">
+
+  <!-- THE HERO: who is playing, how much of them is left, and what is riding
+       them. The status pips sit UNDER THE PORTRAIT because that is where the
+       game itself puts them (BattlefieldView's hero block) — same art, same
+       stack count, same gold/red tint. -->
+  <section class="card hero">
+    <div class="hero-top">
+      <img id="hero-icon" class="hero-icon" alt="">
+      <div class="hero-text">
+        <div class="row">
+          <span id="hero-name" class="hero-name"></span>
+          <span id="hero-level" class="pill"></span>
+        </div>
+        <div class="bar">
+          <div id="hp-fill" class="bar-fill"></div>
+          <!-- The slice of the bar a lost run would take, hatched, sitting at
+               the leading edge of the fill. -->
+          <div id="hp-threat" class="bar-threat" hidden></div>
+          <span id="hp-text" class="bar-text"></span>
+        </div>
+        <!-- NO "incoming" CHIP. It carried the raw total before shields, which
+             sat next to the cost line below saying "6 damage" and contradicted
+             it at a glance. The cost line is the better answer to the same
+             question; `board.incoming` is still in the payload for anyone
+             restyling this page. -->
+        <div class="row sub">
+          <span id="bodies" class="chip" hidden></span>
+        </div>
+      </div>
+    </div>
+    <!-- WHAT A LOST RUN COSTS, one mark per swing, each mark being the BODY
+         throwing it. A shield on the corner means that swing is eaten whole and
+         the face behind it is greyed out; a number means that much Health.
+         Read left to right it is the rule itself — one shield stops one hit
+         whatever its size, and the swings past your last shield are what hits
+         Health. -->
+    <div id="cost" class="cost" hidden>
+      <!-- WHICH attempt this would be, under the label, because the whole line
+           is a forecast of the NEXT lost run and the count is part of what makes
+           it a decision. -->
+      <span class="cost-head">
+        <span class="cost-label">Lose a run</span>
+        <span id="cost-attempt" class="cost-attempt" hidden></span>
+      </span>
+      <span class="cost-arrow">&rarr;</span>
+      <span id="cost-swings" class="cost-swings"></span>
+      <span id="cost-total" class="cost-total"></span>
+      <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
+    </div>
+
+    <!-- SEPARATE ROWS, and separately labelled: the armour is yours and the
+         statuses are riding you, which are different enough facts that running
+         them together in one strip made the shields read as two more statuses. -->
+    <div id="shield-row" class="hero-row" hidden>
+      <span class="row-label">Shields</span>
+      <div id="hero-shields" class="pips"></div>
+    </div>
+    <div id="status-row" class="hero-row" hidden>
+      <span class="row-label">Statuses</span>
+      <div id="hero-pips" class="pips"></div>
+    </div>
+  </section>
+
+  <!-- THE GAME IN PLAY. The line that tells a viewer what they are watching. -->
+  <section class="card now">
+    <img id="now-cover" class="now-cover" alt="">
+    <div class="now-text">
+      <div id="now-label" class="label">Now playing</div>
+      <div id="now-game" class="now-game"></div>
+      <!-- The attempts chip used to sit here. It moved up beside the cost line,
+           where the consequence it belongs to is. -->
+      <div class="row sub">
+        <span id="hops" class="chip" hidden></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE CHECKLIST. Scrolls itself when there is more of it than there is room. -->
+  <section class="card goals">
+    <div class="label">The goals</div>
+    <div id="goal-scroll" class="goal-scroll">
+      <ul id="goal-list" class="goal-list"></ul>
+    </div>
+  </section>
+
+  <!-- THE ROAD: every stop walked, ending on the Amulet. Scrolls itself
+       sideways when the run is longer than the strip, the way the checklist
+       scrolls down — a stop turned into a "+7" is a stop nobody can see. -->
+  <section class="card road">
+    <div class="label">The road</div>
+    <div id="road-scroll" class="road-scroll">
+      <div id="road-strip" class="road-strip"></div>
+    </div>
+  </section>
+
+  <!-- What just happened. Fades out on its own. -->
+  <div id="ticker" class="ticker"></div>
+
+  <div id="verdict" class="verdict" hidden></div>
+  <div id="offline" class="offline">waiting for the game…</div>
+</div>
+
+<script src="overlay.js"></script>
+</body>
+</html>

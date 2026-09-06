@@ -2109,20 +2109,141 @@ same thing.
 
 ---
 
-## 9. OBS companion window
+## 9. OBS companion overlay
 
-- The player-facing HUD is a **separate slim companion window** captured in OBS,
-  **not** the main app window you drive from.
-- **Designed to help the viewer follow the run** — at a glance the audience should
-  see the current game, the enemy and **what its goal is** (so they know what
-  they're rooting for), health, shields, the stack of undefeated enemies, and the
-  verb/consumable counts.
-- Renders: health, shields + attempts, current enemy + its goal, the **stacked-enemy count**,
-  verb counts (bash/dash/transmute/scramble), consumable counts (keys/bombs/scrolls).
-- Architecture: a dedicated HUD scene reading the same `GameState`/autoloads the
-  main window mutates. Godot `Window` vs. always-on-top scene, and the exact
-  layout, are **deferred** — revisit once the rest of the mechanics are locked.
-- Everything must read at a glance → keep all numbers single-digit where possible.
+**Built.** `scripts/autoload/ObsCompanion.gd` + the page in `obs/`. The
+architecture this section deferred is settled, and it is **neither** of the two
+options it named.
+
+### 9.1 Why it is a browser source and not a second Godot window
+
+The overlay is on screen precisely when the game window is **not**: the player is
+off inside a real game for ninety minutes and the run's state is frozen behind
+it. Both deferred options — a Godot `Window`, an always-on-top scene — solve that
+by adding a second thing to capture, which means window capture, which means
+fussy transparency and no way to restyle anything without a rebuild.
+
+So the game does not render the HUD at all. It **writes the run's state to disk**
+and OBS renders the page:
+
+```
+user://obs/overlay.html   the page          ┐ installed from res://obs/
+user://obs/overlay.css    its styling       │ at EVERY boot — a stale copy
+user://obs/overlay.js     its ticker        ┘ reads as a broken overlay
+user://obs/custom.css     the streamer's own styling, created empty ONCE
+user://obs/state.js       window.OBS_STATE = { … }, rewritten as the run moves
+user://obs/covers/        covers lifted out of the .pck (exported builds only)
+```
+
+In OBS: **Browser Source → Local file → `overlay.html`**. The settings screen
+prints the absolute path, because `user://` is somewhere different on every
+platform and a streamer who cannot read it off that screen cannot set this up at
+all.
+
+**There is no server and no port.** The state travels as a `<script>` rather than
+as JSON over `fetch()`, and that is the load-bearing decision: Chromium (which
+OBS ships) refuses every `fetch()`/XHR a `file://` page makes at a sibling file —
+no origin, so it is an unfixable CORS failure short of launching OBS with
+`--allow-file-access-from-files`. A `<script src>` has no such restriction. So
+the payload is written as an assignment, and `overlay.js` re-loads it four times
+a second with a cache-buster. Covers travel the same way, as `<img src="file://…">`.
+
+Writes are **debounced to 4/sec and deduped on content**, with a **5-second
+heartbeat** underneath. The heartbeat is what lets the page tell "the run has not
+moved" from "the game is not running" — identical on disk, very different on a
+stream — so the overlay dims only when the beat actually stops.
+
+### 9.2 What it renders
+
+§9's original list, grown into the current build. In order down the strip:
+
+- **The hero** — icon, level, and the health bar. Health is the bar's *width*
+  first and a number second, and it pulses below 30%.
+- **What a lost run costs, swing by swing** — the line the hero card is *for*.
+  A lost run is not an abstract penalty: the enemies take a turn (§3.2), every
+  body that can reach you swings once, **one shield stops one hit outright
+  whatever that hit was for** (`_take_hit`), and the swings past your last shield
+  are what reaches Health. That rule is invisible in a summed "12 incoming" — two
+  shields against three small swings is a completely different position from two
+  shields against one enormous one — so the overlay draws **one mark per swing,
+  and the mark is the BODY throwing it**: its own art at 28px, with a shield on
+  the corner when the swing is eaten whole (and the face behind it desaturated)
+  or the damage it lands when it is not. Read left to right the row *is* the
+  rule, countable rather than inferred, and it says *who* as well as *how much* —
+  the boss's swing and the fly's are not the same problem, and a row of bare
+  numbers could not tell them apart. The same forecast is hatched onto the health
+  bar over the HP that would go, and a forecast that would end the run says so in
+  words.
+
+  The art survives being drawn that small because the roster's is bold and
+  silhouette-driven; it was checked by rendering the widest range in the set (a
+  19×10 sprite through a 734×841 painting) at 22 / 28 / 34 / 40 rather than
+  assumed. A body with no art falls back to a bare number, and a test asserts
+  that every goal-enemy and boss has some so it never comes up.
+
+  It **mirrors `_take_hit` rather than re-deriving it**: the player's damage-taken
+  mods first (Marked doubles what lands), a swing modded to nothing spends no
+  shield, Pierce takes both pools past, and the timed pool blocks first (§4.3).
+  Bodies that are staggered, stunned or still out of reach are excluded, and
+  reach is `can_strike` rather than `in_front` — a Ranged body hits from further
+  back (§7.6) and counting only the front column understated the cost for every
+  one of them. It is a **forecast and not a promise** (an ability can spend a
+  body's turn on something else) and nothing in it mutates.
+- **Shields and statuses as SPRITES, under the portrait, in two labelled rows**
+  — where the board puts them and what they look like there
+  (`BattlefieldView.refresh_hero` → `_fill_shields` / `_status_pip`). One shield
+  sprite per shield — the pool that stays nearest and bare, the timed ones after
+  it wearing the clock — and, on its own row, one pip per status: its art, its
+  stack count, and the same clock when the stacks are on loan. The two are
+  **separately labelled** because they are different facts: the armour is yours
+  and it is what the cost line above spends; the statuses are riding you. Run
+  together in one strip the shields read as two more statuses. **The pip's tint
+  is the board's rule, not buff/debuff**: a `bonus` or a `goal` on the player's
+  side is an opportunity and reads gold, anything else taxes you and reads red. A
+  status written out as its *name* is a word with no picture behind it, and this
+  page is read at a glance from across a room. A status shipped without art falls
+  back to its initial; a test asserts the catalogue never needs to.
+- **Bodies following** — the board at the resolution an overlay actually has; a
+  5×3 grid is not readable out of the corner of a stream.
+- **The game in play**, its cover, and the hops left to the Amulet. The attempt
+  count lives with the cost line instead — "Attempt 4" under *Lose a run*, since
+  the whole line is a forecast of the next one and which attempt it would be is
+  part of what makes it a decision.
+- **The checklist**, live, and it is the point of the whole thing: a viewer
+  watching someone play Hollow Knight has no idea they are doing it to "defeat 3
+  bosses without healing". Every row the report panel would draw — body goals,
+  bonuses, `instead` rows, the player's own status objectives, event goals,
+  curses — each with whether it is ticked. It **scrolls itself** when there is
+  more of it than there is room, and a row flashes green at the moment it ticks.
+  Goal text is always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
+- **Statuses on the player** as chips, borrowed ones carrying their clock.
+- **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
+  a game stood on twice drawn twice (the road is a sequence, not a set — a badge
+  saying "2" made two visits look like one), each stop **green if it was beaten
+  on that visit and orange if the run walked away from it** — a missed goal, an
+  escape (§3.2) or a teleport straight through are one colour because to the road
+  they are one fact — **ending on the Amulet whether or not the run got there**,
+  drawn dashed until it does. Without that terminus the strip is a list rather
+  than progress. It **scrolls sideways** when the run outgrows the strip, on the
+  same walker the checklist uses: it was capped with a "+7" for the rest, and a
+  stop rendered as a digit is a stop nobody can see.
+- **A ticker** of what just happened (beat a game, took damage, lost a run, found
+  an item), which is also what stops the overlay reading as a dead PNG during the
+  long stretches when nothing in the run changes.
+
+**There is no headline goal line, because a game has no goal of its own** (§7.2).
+The goals are the *bodies'* goals — every body following the run, not only the one
+that arrived with the game in play — plus whatever a status, an event or a curse
+is asking of the player. The checklist is the whole of it, and each row belongs to
+the body or the clause that owns it and says so.
+
+The rows are read from `GameLoop2` and `GameState` **directly, never from
+`ReportChecklist`** — that is a Control tree which only exists while the
+overworld is on screen, and being right when that window is behind a stream is
+the entire job.
+
+Everything must still read at a glance → keep all numbers single-digit where
+possible.
 
 ---
 

@@ -39,6 +39,11 @@ GameLoop2="*res://scripts/autoload/GameLoop2.gd"
 EventSystem="*res://scripts/autoload/EventSystem.gd"
 ObjectSystem="*res://scripts/autoload/ObjectSystem.gd"
 ShopSystem="*res://scripts/autoload/ShopSystem.gd"
+; LAST, and deliberately so: the OBS overlay is a pure READER of everything
+; above it, and loading it after them means every signal it subscribes to
+; already exists. (Comments here are ';' — a '#' line is parsed as part of the
+; NEXT key, which has silently renamed an input action before now.)
+ObsCompanion="*res://scripts/autoload/ObsCompanion.gd"
 
 [display]
 

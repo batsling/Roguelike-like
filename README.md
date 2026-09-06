@@ -245,6 +245,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
+| `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See "The stream overlay" below. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
 | `PotionSystem` | Potions (`docs/potions-design.md`): the per-run deal of 15 of the 37 vials (22 mean nothing, which is what stops the fifteenth being deducible — and the deal is by COLOUR NAME, since Golden and Magenta each ship twice and an unknown bottle introduces itself by its colour), type-scoped identification that covers BOTH verbs at once, the art fallback for the six potions with no bottle of their own, and the two verbs themselves: `quaff_potion` applies the sheet's `On Player` side to the drinker, `throw_potion` takes an aimed cell in `ctx.target` and applies the `On Tile` side around it. The shapes an `area=` token names are the BOARD's (`GameLoop2.area_cells`); Sacred Bark widens one by a rung of `AREA_LADDER` rather than by a multiplier, because a grid has no way to be exactly twice as big. |
@@ -671,6 +672,185 @@ built to fit 1280×720 and why `test_overworld2` pins that. `stretch/aspect` is
 extra pixels as real canvas instead of black bars (16:10 → 1280×800, ultrawide →
 1706×720); `expand` can only ever give *more* than the base, so the one-screen
 guarantee holds.
+
+### The stream overlay
+
+The build is stream-first: the "combat" is you going off and playing a real game,
+so for most of a stream **the Godot window is not on screen at all**. The overlay
+is what the audience sees instead — and what tells them why this person is
+playing Hollow Knight right now, and what happens if they fail.
+
+It is **not a second Godot window**. `ObsCompanion` mirrors the run onto disk and
+OBS renders the page:
+
+```
+user://obs/overlay.html   the page          ┐ reinstalled from obs/ at
+user://obs/overlay.css    its styling       │ EVERY boot — edit the repo's
+user://obs/overlay.js     its ticker        ┘ copies, not these
+user://obs/custom.css     yours — created empty once, never overwritten
+user://obs/state.js       the run, as `window.OBS_STATE = { … }`
+user://obs/covers/        covers lifted out of the .pck (exported builds only)
+```
+
+**Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
+and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
+point it at that `overlay.html`, and size it **440 × 828**. The page draws about
+735px of content, ~815 with the ticker full, so 828 clears it.
+
+**Do not resize the scene item.** The Browser Source's own Width/Height is the
+canvas the page renders into; stretching the item afterwards resamples the result
+and softens the pixel art. Set 440 × 828 and leave the transform at 100%.
+
+#### Splitting the page in two
+
+The overlay is one column, but a scene usually wants the camera partway *down*
+that column rather than under all of it — and OBS cannot interleave scene items
+with the inside of a browser source. So the page can render half of itself:
+
+| URL | Shows | Height |
+|---|---|---|
+| `overlay.html` | everything | 735 |
+| `overlay.html#top` | hero card + game in play | 325 |
+| `overlay.html#bottom` | checklist + road + ticker | 426 |
+
+Point **two** browser sources at the same file with different fragments and put
+whatever you like between them. They read the same `state.js`, so they stay in
+step for free.
+
+#### A scene layout that fits
+
+**C — camera inside the overlay column.** The recommended one: the camera sits
+between the overlay's halves, and the game keeps 77% of the width.
+
+| Source | Position | Size |
+|---|---|---|
+| Game capture | `0, 0` | `1472 × 828` (16:9) |
+| **Overlay `#top`** | `1476, 0` | `440 × 325` |
+| Camera | `1476, 333` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 589` | `440 × 426` |
+| Chat | `0, 836` | `1472 × 244` |
+
+**Chat cannot go in the column too.** 325 + 248 + 426 leaves 81px of the 1080,
+and 81px of chat is not chat. It goes in the bar under the game, or on a second
+monitor. If chat *must* sit directly under the camera, that is a second sidebar
+and the game pays for it — see A.
+
+**A — three columns, nothing overlaps.** Camera top-left, chat directly under it,
+overlay on the right.
+
+| Source | Position | Size |
+|---|---|---|
+| Camera | `0, 0` | `384 × 216` |
+| Chat | `0, 224` | `384 × 856` |
+| Game capture | `392, 236` | `1080 × 608` (16:9) |
+| **Overlay** | `1480, 0` | `440 × 828` |
+
+The game drops to 56% of the width and the middle column carries ~470px of dead
+band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
+rectangle between them.
+
+**B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
+camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
+`1464, 16` at `440 × 828`. The game keeps every pixel and the columns cover ~20%
+of the width at each edge. The games on this map are *real* games with their own
+HUDs, so check the one you are about to play — a minimap in a covered corner is
+the failure case.
+
+Either way the columns can swap sides; nothing on the overlay cares which edge it
+is on.
+
+**If the overlay reads small** for viewers on 720p or a phone, don't scale the
+scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the
+Browser Source to **550 × 1035**. `zoom` re-lays the page out at the larger size,
+so the text is rendered crisply rather than resampled, and the sprites stay sharp
+because everything pixel-art on this page already carries
+`image-rendering: pixelated`.
+
+**Why a script file and not JSON over `fetch()`.** OBS renders the page from a
+`file://` URL, and Chromium refuses every `fetch()`/XHR a `file://` page makes at
+a sibling file — there is no origin to grant, so it is a CORS failure with no fix
+short of launching OBS with `--allow-file-access-from-files`. A `<script src>`
+has no such restriction. So the state is written *as* an assignment and
+`overlay.js` re-loads it four times a second with a cache-buster on the end; the
+covers ride the same way, as `<img src="file://…">`. No server, no port.
+
+It shows health, the character, the game in play, **the checklist as it ticks**
+(scrolling itself when there is more of it than there is room, flashing a row
+green as it is crossed off), the bodies on the board,
+**the shields and statuses as sprites under the portrait** in two labelled rows,
+**what a lost run would cost you** swing by swing, and **the road walked so far
+ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,
+drawn live, with the gap to the Amulet dashed until it closes.
+
+### What a lost run costs
+
+The most important thing on the overlay, and the reason the hero card is shaped
+the way it is. A lost run is not an abstract penalty: the enemies take a turn
+(§3.2), every body that can reach you swings once, **one shield stops one hit
+outright whatever that hit was for**, and the swings past your last shield are
+what reaches Health.
+
+That rule is invisible in a summed "12 incoming" — two shields against three
+small swings is a completely different position from two shields against one
+enormous one — so the page draws **one mark per swing, and the mark is the body
+throwing it**: its own art at 28px, wearing a shield on the corner when the swing
+is eaten whole (with the face behind it desaturated) or the damage it lands when
+it is not. Left to right the row *is* the rule, and it says *who* as well as
+*how much* — the boss's swing and the fly's are not the same problem. The same
+forecast is hatched onto the health bar over the HP that would go, and one that
+would end the run says so in words.
+
+The art holds up at that size because the roster's is bold and silhouette-driven
+— checked by rendering the widest range in the set (a 19×10 sprite through a
+734×841 painting) at four sizes, not assumed. A body with no art falls back to a
+bare number; a test asserts every goal-enemy and boss has some, so it doesn't.
+
+`ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
+re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing
+spends no shield, Pierce takes both pools past, timed shields block first — and
+excludes the bodies that sit a turn out (staggered, stunned, out of reach). Reach
+is `can_strike`, not `in_front`: a Ranged body hits from further back. It is a
+forecast, not a promise, since an ability can spend a body's turn on something
+else, and **nothing in it mutates** — a test asserts the live shield pools are
+untouched by forecasting, and another one takes the prediction and then makes the
+board resolve a real `attempt_turn()` to check the Health that actually went.
+
+Four things worth knowing if you change it:
+
+- **A game has no goal of its own, so the overlay has no headline goal line.**
+  The goals are the **bodies'** goals — every body following the run, not just
+  the one that arrived with the game in play (§7.2) — plus what a status, an
+  event or a curse is asking of the player. The checklist is the whole of it, and
+  a row belongs to the body or the clause that owns it, never to the game.
+- **Goal text is always `GameLoop2.goal_text_for`**, never `enemy.goal` — the
+  resource's stem says nothing about the clauses a status has bolted on (§13).
+- **Nothing on this page may guess at a rule the game owns.** The cost forecast
+  mirrors `_take_hit`; the goal text comes from `goal_text_for`; the pip tint
+  comes from `_status_pip`'s rule. An overlay that promises a shield will hold
+  and then watches Health go is worse than one that says nothing at all.
+- **The road says how each stop went.** Green for a game beaten on that visit,
+  **orange (`UITheme.UNBEATEN`) for one the run walked away from** — a missed
+  goal, an escape (§3.2), or a teleport that passed straight through without
+  playing at all. One colour, because to the road they are one fact: you were
+  there and the game is still standing. The same two colours are used by the
+  overworld's own header strip and by `RunOverScreen`, all three reading
+  `GameState.walked_outcomes()`.
+- **Statuses and shields are drawn, not written.** They are `StatusData.image` /
+  `UITheme.SHIELD_ART` at 22px with `UITheme.TIMER_ART` in the corner for
+  anything borrowed — the same art and the same sizes as
+  `BattlefieldView._status_pip`, quoted from the same constants so the board and
+  the stream cannot disagree. The pip's colour follows **what the side does**
+  (gold for a `bonus`/`goal`, red for anything that taxes), never Buff/Debuff.
+- **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
+  That is a Control tree which only exists while the overworld is on screen, and
+  being right when the game window is behind a stream is the whole job.
+
+`obs/` holds plain `.html`/`.css`/`.js`, which Godot does not treat as resources.
+Running from source they are read straight out of `res://obs/`; if you ever
+**export** the project, add `*.html, *.css, *.js` to the export preset's
+"Filters to export non-resource files" or `ObsCompanion` will warn that the page
+is missing. (`export_presets.cfg` is gitignored, so this cannot be committed for
+you.)
 
 ### Data as Godot Resources
 
@@ -1115,13 +1295,9 @@ The core loop is in and playable end to end: character select, a start/amulet
 graph over 751 real games, the limited offering with its verbs, the honour-system
 report step, goal-enemies that follow you across the grid, drops and chests,
 level-ups, difficulty tiers with boss rounds, scrolls, the Collection, and the
-cross-run tier list. What's still ahead:
+cross-run tier list, and the OBS companion overlay (§9, "The stream overlay"
+above). What's still ahead:
 
-- **The OBS companion HUD (§9)** — the design is stream-first: a slim always-on-top
-  window showing health, shields, the current game + its goal, the follower stack,
-  and the verb/consumable counts, reading the same autoloads the main window
-  mutates. Deferred by decision until the mechanics lock; it is the largest
-  unbuilt piece of the spec.
 - **Overworld encounters** — deals, teleporters and challenge rifts are a design
   with no code behind it any more. The seven-row `data/encounters` scaffold,
   `EncounterData`, its generator and `GameState.encounter_requirement_met` were

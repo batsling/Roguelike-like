@@ -79,9 +79,19 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   cache. It now checks the cache against a fresh build instead, which is what
   "rebuilt" meant and is true either way. Before blaming a random graph for a
   varying failure, work out which assertion is only *usually* true.
-- **The two varying failures that used to live here are FIXED.** Both were
-  assertions that were only *usually* true, and both are worth reading before
+- **The varying failures that used to live here are FIXED.** All were
+  assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_overworld2.gd::test_leaving_the_haul_screen_lands_the_shelf_under_the_board`
+    failed roughly one full-suite run in six, and only in a FULL run, which is
+    what made it look like cross-file leakage. It isn't: `before_each` →
+    `_open_at_first_offering` takes `choose_start(0)`, the first of a **random**
+    offering, and once in a while that opening game is one of the ten hubs — at
+    which point walking off its haul screen mounts that hub's shelf, exactly as
+    it should. The test then asserted `_shop_panel` was null "while the haul is
+    up" and found the OPENING game's shop sitting there. The behaviour was never
+    wrong; the test now calls `_ui._clear_shop()` first so it starts from the
+    state it is actually about, whatever the opening rolled.
   - `test_overworld2.gd::test_the_page_still_fits_the_window_with_machines_standing_on_it`
     was a **real thin margin, not a bad assertion**: the page with three machines
     under the board measured 616px of the 625px a 720p window leaves, and the

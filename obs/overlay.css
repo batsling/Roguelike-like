@@ -1,0 +1,745 @@
+/* THE OBS COMPANION OVERLAY — styling (docs/games-first-redesign.md §9).
+ *
+ * INSTALLED, NOT AUTHORED IN PLACE: the game overwrites user://obs/overlay.css
+ * from res://obs/overlay.css at every boot. Put your own styling in
+ * user://obs/custom.css, which is created empty once and never written again.
+ *
+ * The palette is UITheme's (scripts/ui/UITheme.gd), quoted here rather than
+ * invented so the overlay and the game are visibly the same object. If a colour
+ * changes there it should change here.
+ *
+ * TRANSPARENT BODY. OBS composites the page over the capture, so the page's
+ * ground is the stream — only the cards paint. */
+
+:root {
+  --bg:        #1d1812;
+  --panel:     #251f18;
+  --panel-hi:  #312920;
+  --border:    #4a3f2e;
+  --accent:    #ff8a3c;
+  --gold:      #ffcc66;
+  --text:      #e6d5b8;
+  /* LIGHTER THAN THE GAME'S. UITheme's TEXT_DIM (#a89c87) and TEXT_FAINT
+   * (#756e61) are read on an opaque page at desk distance; this page is
+   * semi-transparent over an arbitrary video capture and read from across a
+   * room. Measured against the card composited over a dark, a mid and a bright
+   * capture, the originals scored 2.33-3.31 for faint and 4.36-6.19 for dim —
+   * below AA at the sizes they are used, which is why the section labels and the
+   * goal subtitles washed out. These clear 4.6 and 7.3 at their worst. */
+  --dim:       #c4b8a2;
+  --faint:     #9a9183;
+  --success:   #4dc76b;
+  --danger:    #e65447;
+  --curse:     #b873e6;
+  /* UITheme.UNBEATEN — a stop the run walked away from. */
+  --unbeaten:  #d97821;
+
+  /* 0.95, not 0.88. The card composites over the stream, so its opacity decides
+   * how much a bright capture eats into every contrast ratio on the page — this
+   * is the single biggest lever on legibility and costs almost nothing, since
+   * the card was never meant to show the game through it in the first place. */
+  --card-bg:   rgba(37, 31, 24, 0.95);
+  --width:     440px;
+  --radius:    10px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Segoe UI", Inter, system-ui, sans-serif;
+  color: var(--text);
+  /* Nothing on an overlay is clickable and OBS gives it no cursor anyway. */
+  user-select: none;
+}
+
+#overlay {
+  width: var(--width);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* THE OUTLINE, inherited by every piece of text on the page. A stream overlay
+   * is read at a glance, at a distance, over moving video, and often through a
+   * lossy encode that eats thin light-on-dark strokes first. A dark halo costs
+   * nothing and holds the glyph edges together through all of it — the same
+   * reason UITheme puts an outline on the board's own floating numbers. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.55);
+  /* The whole overlay fades when the heartbeat stops — see .stale below. */
+  transition: opacity 600ms ease;
+}
+
+/* ---------------------------------------------------------------- cards -- */
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  /* A dark rim so the card holds its edge over a bright game capture. */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+
+.row { display: flex; align-items: center; gap: 8px; }
+.row.sub { margin-top: 5px; flex-wrap: wrap; gap: 6px; }
+
+.pill {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-hi);
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--panel-hi);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  white-space: nowrap;
+}
+.chip.shield { color: #8ab6e6; border-color: #33506e; }
+.chip.danger { color: var(--danger); border-color: #6e2f28; }
+
+/* ----------------------------------------------------------------- hero -- */
+
+/* The card is a COLUMN: the portrait and the vitals on top, the sprite strip
+ * under them. The strip was briefly inside the 56px portrait column, which is
+ * the obvious reading of "under the character icon" and completely wrong in
+ * practice: a pip is ~40px wide, so they stacked one per row and a run carrying
+ * seven statuses made the hero card 283px tall. Full width, wrapping, it is two
+ * rows. */
+.hero { display: flex; flex-direction: column; gap: 8px; }
+.hero-top { display: flex; gap: 12px; align-items: center; }
+
+/* One labelled row per kind. The armour and the statuses were briefly one strip
+ * and it read as though the shields were two more statuses — they are not, they
+ * are the player's own and they are what the cost line above spends. */
+.hero-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.row-label {
+  flex: 0 0 58px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------ what a lost run costs -- */
+
+/* THE LINE THE WHOLE CARD IS FOR. A summed "12 incoming" hides the rule that
+ * actually decides whether to risk another attempt: a shield stops ONE HIT
+ * outright, whatever that hit was for, so two shields against three small swings
+ * is a very different position from two shields against one enormous one. Drawn
+ * as one mark per swing, it is countable instead of inferred. */
+.cost {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(230, 84, 71, 0.10);
+  border: 1px solid rgba(230, 84, 71, 0.35);
+}
+
+.cost-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cost-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+/* Which attempt the forecast above is for. Gold rather than red: the count is
+ * not itself a threat, it is the tally of how many times this game has already
+ * been walked away from. */
+.cost-attempt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.cost-arrow { color: var(--faint); font-size: 12px; }
+
+.cost-swings { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+
+/* ONE SWING = THE BODY THROWING IT. 28px: the roster's art is bold and
+ * silhouette-driven, so it survives being drawn small — verified by rendering
+ * the widest range in the set (a 19x10 sprite through a 734x841 painting) at
+ * 22 / 28 / 34 / 40 before choosing. 28 is legible with room for eight or nine
+ * swings across a 440px overlay, which is more than a board ever puts in reach.
+ *
+ * The corner badge is the binary: a SHIELD means this swing is eaten whole, a
+ * NUMBER means that much Health. */
+.swing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.swing-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
+/* A body with no art: the bare number the row used to be made of. */
+.swing-bare { color: #ffd3cd; }
+
+.swing.blocked {
+  background: rgba(138, 182, 230, 0.14);
+  border: 1px solid rgba(138, 182, 230, 0.45);
+}
+/* Drained of colour, because this one never reaches you. Said twice — greyed
+ * art AND the shield on the corner — so it survives being glanced at.
+ *
+ * NOT DRAINED ALL THE WAY. At full grayscale and 0.7 brightness the darker
+ * bodies went unreadable, which throws away the reason for using faces at all:
+ * the player needs to see WHICH body the shield is spent on, not merely that one
+ * is. Enough desaturation to read as "off", enough light to stay identifiable. */
+.swing.blocked .swing-art { filter: grayscale(0.9) brightness(1.05); opacity: 0.8; }
+
+.swing.hits {
+  background: rgba(230, 84, 71, 0.22);
+  border: 1px solid rgba(230, 84, 71, 0.6);
+}
+
+.swing-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -5px;
+  line-height: 1;
+}
+.swing-badge.dmg {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffd3cd;
+  /* Ringed in black so a number never lands illegibly on the art behind it. */
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 1px 2px #000;
+}
+/* The shield badge stays bigger than the status clock, because here it is not a
+ * flag on the side of the thing — it IS the answer (this swing never lands). But
+ * 15px on a 28px mark was more than half the width and buried the body behind
+ * it, which is the half that says WHO. 12px still reads unmistakably as a shield
+ * with the face clear behind it. */
+.swing-badge.shield img {
+  width: 12px;
+  height: 12px;
+  image-rendering: pixelated;
+  display: block;
+  filter: drop-shadow(0 0 2px #000);
+}
+
+.cost-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger);
+  white-space: nowrap;
+}
+.cost-total.safe { color: #8ab6e6; }
+
+/* The whole point of the forecast, when the forecast is that there isn't one. */
+.cost-lethal {
+  /* Dark text on a light badge: the page's inherited dark halo would smear it
+     rather than protect it, so this one opts out. Same for the visit badge. */
+  text-shadow: none;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--danger);
+  color: #1d0b09;
+  animation: pulse 0.7s ease-in-out infinite;
+}
+/* A cost line that ends the run is the one card that gets a rim. The class is
+ * set from overlay.js rather than written as `.cost:has(...)` — `:has()` needs
+ * Chrome 105 and OBS ships the CEF its build was cut against, which is the same
+ * trap color-mix() was. */
+.cost.lethal { border-color: var(--danger); }
+
+/* Nothing left standing that can reach you: the whole line goes rather than
+ * saying "0 damage", which reads as a threat that happens to be zero. */
+.pips:empty { display: none; }
+
+/* THE FORECAST ON THE BAR: a hatched notch at the leading edge of the fill,
+ * covering the Health a lost run would take. Seeing the bar you are about to
+ * lose is a different kind of understanding from reading the number. */
+.bar-threat {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(-45deg,
+    rgba(230, 84, 71, 0.85) 0 4px, rgba(90, 20, 16, 0.85) 4px 8px);
+  border-left: 1px solid rgba(255, 255, 255, 0.55);
+  transition: left 400ms ease, width 400ms ease;
+}
+/* It would kill you. The one state on this overlay that is allowed to shout. */
+.bar-threat.lethal { animation: pulse 0.7s ease-in-out infinite; }
+
+.hero-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.hero-icon:not([src]) { visibility: hidden; }
+
+/* --------------------------------------------------------- status pips -- */
+
+/* One pip per status: the art, its stack count beside it, and a clock in the
+ * corner when the stacks are borrowed. This is BattlefieldView's `_status_pip`
+ * rebuilt in CSS — same shape, same 22px art, same rule for the colour, so
+ * "what is on me" reads the same on the board and on the stream.
+ *
+ * The strip wraps inside the 56px portrait column and the column stretches to
+ * fit, which is what keeps a run carrying six statuses from pushing the health
+ * bar off its own card. */
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+/* NO color-mix() HERE, deliberately. It would express "the tint, most of the way
+ * to the page's ground" in one line the way UITheme.flat does — but it needs
+ * Chrome 111, and OBS ships whatever CEF its build was cut against, several
+ * versions back. An unsupported colour function is not an error a streamer ever
+ * sees; the declaration is just dropped and the pip loses its tint on their
+ * machine while looking right on everyone else's. So the two mixes are written
+ * out as plain rgba over the dark card, which has worked since forever. */
+.pip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px 1px 1px;
+  border-radius: 3px;
+  --tint: var(--danger);
+  background: rgba(230, 84, 71, 0.20);
+  border: 1px solid rgba(230, 84, 71, 0.55);
+}
+/* A `bonus` or a `goal` on the player's side is an OPPORTUNITY, not a tax. */
+.pip.good {
+  --tint: var(--gold);
+  background: rgba(255, 204, 102, 0.16);
+  border-color: rgba(255, 204, 102, 0.50);
+}
+
+.pip-art {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+/* `:not(.pip-clock)` IS LOAD-BEARING. As a bare `.pip-art img` this rule has
+ * specificity (0,1,1) and `.pip-clock` below has (0,1,0) — so it won, and the
+ * corner clock was being blown up to the full 22px of the pip, covering the
+ * status art completely. It read as "the badge is too big" and was really "the
+ * badge has no size of its own at all". */
+.pip-art > img:not(.pip-clock) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Pixel art, kept crisp — UITheme.crisp_tex is the same decision. */
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* The fallback when a status ships before its art does: its initial, in the
+ * pip's own colour, occupying exactly the space the picture would. */
+.pip-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tint);
+}
+
+/* The borrowed-status clock, bottom-right and hanging off the corner. The corner
+ * is the FLAG, not the number: how many games are left is not small enough to
+ * read here.
+ *
+ * SMALLER THAN THE BOARD'S, deliberately. `UITheme.timed_art` draws a 14px badge
+ * on a 22px pip (TIMER_MIN, since TIMER_FRACTION*22 rounds below it) and that is
+ * right at desk distance, where the art has a tooltip behind it and the clock is
+ * the thing being hunted for. On a stream it is the other way round: the picture
+ * is the only thing identifying the status at a glance. 9px was the first size
+ * that actually applied (the rule was being outranked — see `.pip-art > img`)
+ * and it landed on the small side; 11px is the size this is really after, still
+ * clear of the art because it hangs further off the corner to pay for the extra
+ * pixels. Below about 8 it stops being recognisably a clock and becomes a dot. */
+.pip-clock {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 11px;
+  height: 11px;
+  image-rendering: pixelated;
+}
+
+.pip-count {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tint);
+  text-shadow: 0 1px 2px #000;
+}
+
+/* A SHIELD IS A SPRITE, NOT A NUMBER — one per shield, each being one instance
+ * of damage stopped dead (§3), which is why the board draws them individually
+ * rather than as a count. No chip around them: they are the player's own armour,
+ * not something riding them, and the bare sprites read as a row of armour where
+ * a bordered chip would read as another status. */
+.shield-pip {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+/* Same trap as `.pip-art > img` above: without the :not() this rule outranks
+ * `.pip-clock` and stretches a timed shield's clock over the whole sprite. */
+.shield-pip > img:not(.pip-clock) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.hero-text { flex: 1 1 auto; min-width: 0; }
+.hero-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The health bar. Its WIDTH is the number — the text on top is there for the
+ * viewer who wants the exact figure, not as the primary read. */
+.bar {
+  position: relative;
+  height: 20px;
+  margin-top: 5px;
+  border-radius: 5px;
+  background: #140f0a;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #b8342a, #e65447);
+  transition: width 400ms ease;
+}
+/* Low health stops being red-on-red and starts pulsing, because at that point
+ * it is the most important thing on the overlay. */
+.bar.low .bar-fill { animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse { 50% { filter: brightness(1.6); } }
+
+.bar-text {
+  position: absolute;
+  /* Written the long way rather than `inset: 0` for the same reason the pip
+   * tints avoid color-mix: an old CEF drops what it doesn't know, silently. */
+  top: 0; right: 0; bottom: 0; left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 3px #000;
+}
+
+/* ---------------------------------------------------------- now playing -- */
+
+.now { display: flex; gap: 12px; align-items: center; }
+
+.now-cover {
+  width: 46px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  flex: 0 0 auto;
+}
+.now-cover:not([src]) { visibility: hidden; }
+
+.now-text { flex: 1 1 auto; min-width: 0; }
+.now-game {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1.2;
+  /* Two lines, then ellipsis — some of these titles are very long. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------ checklist -- */
+
+/* The scroller has a fixed ceiling and overlay.js walks it when the list is
+ * taller than that. Masked at whichever edge has content hidden behind it, so a
+ * half-row reads as "there is more" rather than as a clipped bug.
+ *
+ * THE FADES ARE VARIABLES, SET BY overlay.js, and both start at zero. A fixed
+ * mask top and bottom would fade the FIRST row of a list parked at the top —
+ * the most important row on the overlay, greyed out for no reason. */
+.goal-scroll {
+  --fade-top: 0px;
+  --fade-bot: 0px;
+  max-height: 260px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg,
+    transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+  mask-image: linear-gradient(180deg,
+    transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+}
+
+.goal-list { list-style: none; margin: 0; padding: 0; }
+
+.goal {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(74, 63, 46, 0.4);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.goal:last-child { border-bottom: none; }
+
+.goal .tick {
+  flex: 0 0 auto;
+  width: 15px;
+  color: var(--faint);
+  font-weight: 700;
+}
+.goal .body { flex: 1 1 auto; min-width: 0; }
+.goal .who {
+  display: block;
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 1px;
+}
+
+/* Done rows stay on the list — half the point of a checklist on a stream is
+ * seeing what has already been crossed off — but they get out of the way.
+ *
+ * 0.62, not the 0.45 this started at. The strike-through already says "done"
+ * unambiguously, so the opacity is only there to rank the row below the live
+ * ones; at 0.45 over a bright capture it stopped being readable at all, which
+ * throws away the seeing-what-you-crossed-off half. */
+.goal.done { opacity: 0.62; }
+.goal.done .tick { color: var(--success); }
+.goal.done .text { text-decoration: line-through; }
+
+/* The body in the player's face. This is the row that costs health next. */
+.goal.front .tick { color: var(--danger); }
+.goal.boss  .text { color: var(--gold); font-weight: 600; }
+
+.goal.bonus   .tick, .goal.bonus   .text { color: var(--success); }
+.goal.instead .tick, .goal.instead .text { color: var(--success); }
+.goal.status  .text { color: #8ab6e6; }
+.goal.event   .text { color: var(--accent); }
+.goal.curse   .text { color: var(--curse); }
+
+/* A row that just got ticked flashes once, so the viewer sees it happen rather
+ * than noticing later that the list changed. */
+@keyframes tick-flash {
+  0%   { background: rgba(77, 199, 107, 0.45); }
+  100% { background: transparent; }
+}
+.goal.flash { animation: tick-flash 1.4s ease-out; }
+
+/* ----------------------------------------------------------------- road -- */
+
+/* The horizontal twin of `.goal-scroll`: same masked edges, same walker, other
+ * axis. `--fade-start` / `--fade-end` rather than top/bot because the direction
+ * differs; overlay.js sets whichever pair belongs to the box's axis. */
+.road-scroll {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(90deg,
+    transparent 0, #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)), transparent 100%);
+}
+
+.road-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  /* `max-content` so the stops keep their own width and overflow the scroller
+   * instead of being squeezed to fit it — squeezing is what a cap does, and the
+   * whole point of the walk is not to do that. */
+  width: max-content;
+}
+
+.stop { position: relative; flex: 0 0 auto; width: 34px; text-align: center; }
+
+.stop img {
+  width: 34px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  display: block;
+}
+/* HOW THAT STOP WENT — the same two colours the game's own strips use
+ * (UITheme.SUCCESS / UITheme.UNBEATEN). Green: beaten on that visit. Orange: the
+ * run walked away from it, whether the goal was missed, it escaped, or a
+ * teleport passed straight through without playing at all. One colour, because
+ * to the road they are one fact: you were there and the game is still standing.
+ *
+ * `--unbeaten` is its own token rather than `--accent`: the strip already spends
+ * accent-orange on the stop you are standing on, and at a 1px border the two
+ * would be saying different things in nearly the same colour. */
+.stop img { border-color: var(--unbeaten); }
+.stop.beaten img { border-color: var(--success); }
+.stop.current img {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(255, 204, 102, 0.35);
+}
+.stop.amulet img { border-color: var(--accent); }
+/* The Amulet the run has not reached yet: drawn dashed and faded, the way
+ * RunOverScreen draws the gap a lost run never closed. */
+.stop.unreached img { opacity: 0.4; border-style: dashed; }
+
+/* The replay badge is gone: two visits are two stops on this strip, which says
+ * it better than a number on one of them did. See drawRoad in overlay.js. */
+
+.arrow {
+  flex: 0 0 auto;
+  width: 12px;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 46px;
+  text-align: center;
+}
+.arrow.dashed { color: var(--faint); opacity: 0.5; }
+
+/* "+7 earlier" where the strip was cut. */
+.dropped {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 46px;
+  padding-right: 4px;
+}
+
+/* --------------------------------------------------------------- ticker -- */
+
+.ticker { display: flex; flex-direction: column; gap: 5px; }
+
+.toast {
+  background: var(--card-bg);
+  border-left: 3px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  animation: toast-in 260ms ease-out;
+}
+.toast.good { border-left-color: var(--success); }
+.toast.bad  { border-left-color: var(--danger); }
+.toast.info { border-left-color: var(--accent); }
+.toast.out  { opacity: 0; transform: translateX(-12px);
+              transition: opacity 500ms ease, transform 500ms ease; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* -------------------------------------------------------------- verdict -- */
+
+.verdict {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+.verdict.won  { color: var(--gold);   border-color: var(--accent); }
+.verdict.lost { color: var(--danger); border-color: #6e2f28; }
+
+/* ----------------------------------------------------------- the halves -- */
+
+/* `overlay.html#top` / `#bottom` render half the page each, so a camera or a
+ * chat box can be placed between them in the scene. See applySplit in
+ * overlay.js. The default — no fragment — hides nothing.
+ *
+ * `#offline` is in neither list: a half that is up before the game is should
+ * still say so rather than sitting blank. */
+#overlay.only-top > .goals,
+#overlay.only-top > .road,
+#overlay.only-top > .ticker,
+#overlay.only-top > .verdict { display: none; }
+
+#overlay.only-bottom > .hero,
+#overlay.only-bottom > .now { display: none; }
+
+/* ------------------------------------------------------- the two blanks -- */
+
+/* Nothing has ever been read: the page is up before the game is. */
+.offline {
+  font-size: 13px;
+  color: var(--faint);
+  padding: 8px 12px;
+  font-style: italic;
+}
+#overlay:not(.waiting) .offline { display: none; }
+#overlay.waiting .card,
+#overlay.waiting .ticker,
+#overlay.waiting .verdict { display: none; }
+
+/* The heartbeat stopped — the game was closed, or the overlay switched off.
+ * Faded rather than hidden: a stream that suddenly loses its overlay looks
+ * broken, one that dims looks deliberate. */
+#overlay.stale { opacity: 0.35; filter: grayscale(0.7); }

@@ -11,6 +11,297 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every road says how each stop went, and it is a PER-VISIT fact.**
+
+  A stop is green if that visit beat the game and **orange** if the run walked
+  away from it — a missed goal, an escape (§3.2), or a teleport that passed
+  straight through without playing at all. One colour for all three because to
+  the road they are one fact: you were there and the game is still standing. It
+  lands on all three surfaces that draw this road — the overworld's header strip,
+  `RunOverScreen`, and the OBS overlay — reading one new accessor so they cannot
+  disagree.
+
+  **`beaten_games` could not have answered this**, which is why the run gains
+  state rather than the screens gaining a lookup. It is a SET of ids, so a game
+  the run escaped and later came back and cleared would light up green on BOTH
+  stops the moment it was beaten at either — and the road draws a stop per visit
+  precisely so those two trips can differ. `GameState.path_beaten` is a parallel
+  array to `path_taken`: false on arrival, true when *that* visit's game is
+  beaten. `walked_outcomes()` serves it beside `walked_path()`, and falls back to
+  the id set for a save written before it existed — the weaker answer rather than
+  no answer, wrong in exactly one case on old saves only.
+
+  `UITheme.UNBEATEN` (#d97821) is its own colour rather than ACCENT, which the
+  strips already spend on "you are here": at a 1px border the two would be saying
+  different things in nearly the same orange.
+
+- **The road's replay badge goes; two visits were always two stops.**
+
+  A game the run stands on twice has always been drawn twice — `_road` emits one
+  stop per entry in `path_taken` and never a merged one — so the "2" on the
+  second cover was labelling something the strip had already said by drawing it
+  again, and read as though the two visits had been collapsed into one. It is
+  gone. `visit` stays in the payload for anyone restyling the page; nothing draws
+  it. Now that the strip scrolls rather than trimming, there is room to simply
+  show the stops.
+
+  Its test changes with it — from asserting the numbering to asserting the thing
+  that actually matters, which is that the road is a SEQUENCE and not a set: two
+  visits, two covers, and a strip never shorter than the route.
+
+- **The overlay page can render half of itself.**
+
+  A scene usually wants the camera partway DOWN the overlay column rather than
+  under all of it, and OBS cannot interleave scene items with the inside of a
+  browser source. So `overlay.html#top` draws the hero card and the game in play,
+  `overlay.html#bottom` draws the checklist, the road and the ticker, and no
+  fragment still draws everything. Point two browser sources at the same file and
+  put whatever you like between them; they read the same `state.js`, so they stay
+  in step for free.
+
+  Measured, the halves are 325 and 426 of the page's 735 — so a 248px camera
+  between them totals 999 of a 1080 canvas and fits with room to spare, while the
+  game keeps 77% of the width. **Chat does not fit there too**: 81px is left, and
+  81px of chat is not chat. The README says so rather than leaving it to be
+  discovered, and keeps the two-sidebar layout for when chat has to sit directly
+  under the camera.
+
+- **The road scrolls itself instead of turning stops into a number.**
+
+  It was capped at twelve covers with a "+7" where the rest had been. That is the
+  wrong trade for this strip in particular: the road is the one part of the page
+  that is about *where the run has actually been*, and a stop rendered as a digit
+  is a stop nobody can see. It walks sideways now when the run outgrows it —
+  pause, creep, pause, snap back — exactly as the checklist walks down.
+
+  **One walker, both axes.** The checklist's scroller is now a small state
+  machine keyed by element id with an axis on it, so the road reuses it rather
+  than growing a second copy; the edge fades that appear only where content is
+  really hidden come along for free. `MAX_ROAD` survives at 40 purely as a safety
+  valve against a pathological run putting hundreds of covers into a file written
+  four times a second, and `dropped` still rides the first stop for the day it
+  bites.
+
+  Also documents a scene layout in the README — game, overlay, camera and chat on
+  a 1920x1080 canvas with no overlaps and nothing scaled — plus the measured
+  height the Browser Source actually needs (828, for ~735px of content and ~815
+  with the ticker full) and the `zoom` escape hatch for making the page bigger
+  without resampling it.
+
+- **The overlay is legible from the side of a stream.**
+
+  Three passes over the same problem: this page is read at a glance, at a
+  distance, over moving video, through a lossy encode.
+
+  **The palette was measured rather than eyeballed.** The card composites over
+  the capture, so a bright game eats into every contrast ratio on the page.
+  Against the card over a dark, a mid and a bright ground, UITheme's `TEXT_FAINT`
+  scored **2.33–3.31** and `TEXT_DIM` **4.36–6.19** — both under AA at the sizes
+  they are used, which is exactly why the section labels and the goal subtitles
+  washed out. The overlay now runs its own lighter pair (`#9a9183` / `#c4b8a2`,
+  worst-case 4.6 and 7.3) rather than quoting the game's, because the game's are
+  read on an opaque page at desk distance and these are not.
+
+  **The card went from 0.88 to 0.95 opaque**, which is the single biggest lever
+  there is and costs nothing — the card was never meant to show the game through
+  it. **Every piece of text carries a dark halo** now, inherited from `#overlay`,
+  which is what holds thin light-on-dark strokes together through an encode; the
+  two dark-on-light badges opt out, since a dark halo smears those rather than
+  protecting them. The smallest labels went up a point, and completed goal rows
+  went from 0.45 to 0.62 opacity — the strike-through already says "done", so the
+  fade only has to rank them, and at 0.45 they had stopped being readable at all.
+
+  **The attempt count moved to the cost line** — "Attempt 4" under *Lose a run* —
+  from a chip in the Now Playing card, a long way from the consequence it belongs
+  to. It reads as the attempt the forecast is FOR, which is the next one up.
+
+  And the timed-badge clock went to 11px. It had been set to 9 in the commit that
+  fixed it having no size at all, which was a fair correction to a badge covering
+  the whole sprite and a size too far the other way once it applied.
+
+- **A swing on the overlay is the body throwing it.**
+
+  The cost line was a row of bare numbers, which said how much and never *who* —
+  and who is half of what the player is deciding about, because the boss's swing
+  and the fly's are not the same problem. Each mark is that body's own art now,
+  at 28px, with the corner badge carrying the binary: a **shield** means the
+  swing is eaten whole (and the face behind it desaturates), a **number** means
+  that much Health.
+
+  **Whether the art survives being drawn that small was measured, not guessed.**
+  The roster is wildly heterogeneous — `images2.0/enemies/` runs from a 19×10
+  sprite to a 734×841 painting — so the widest range in it was rendered at 22 /
+  28 / 34 / 40 and looked at. It reads fine even at 22: the art is bold and
+  silhouette-driven, which is exactly the property that survives downscaling. 28
+  is the pick, legible with room for eight or nine swings across a 440px overlay,
+  which is more than a board ever puts in reach.
+
+  The blocked faces are deliberately **not** drained all the way. At full
+  grayscale and 0.7 brightness the darker bodies went unreadable, which throws
+  away the reason for using faces: the player needs to see which body the shield
+  is being spent on, not merely that one is.
+
+  A body with no art still falls back to the bare number the row used to be made
+  of, and a test asserts that every goal-enemy and every boss has art so the
+  fallback stays theoretical. "On you" is now "Statuses".
+
+- **The overlay says what a lost run will cost, swing by swing.**
+
+  A lost run is the decision the honour system is actually made of, and the
+  overlay was describing it with a summed "13 incoming" sitting next to a row of
+  shield sprites — two true numbers that between them said nothing about the rule
+  that decides it. **One shield stops one HIT outright, whatever that hit was
+  for** (`_take_hit`), so two shields against three small swings is a completely
+  different position from two shields against one enormous one, and the sum hides
+  exactly that.
+
+  So the cost is drawn as **one mark per swing**, in the order the resolver takes
+  them: the blocked ones as the shield that breaks on them, struck through; the
+  rest as the damage they land; and the sentence after it — `= 2 shields, 6
+  damage`. Left to right the row IS the mechanic, countable rather than inferred.
+  The same forecast is hatched onto the health bar over the HP that would go, so
+  it is legible as a quantity as well as a number, and a forecast that would end
+  the run says THIS KILLS YOU rather than leaving it to be worked out.
+
+  **`_threat()` mirrors `_take_hit` step for step instead of re-deriving it**,
+  because a forecast that is merely plausible is worse than none: the player's
+  damage-taken mods land first (Marked doubles what arrives), a swing modded to
+  nothing spends no shield, Pierce takes both pools past, and the timed pool
+  blocks first (§4.3). Nothing in it mutates — a test asserts the live shield
+  pools survive being forecast at, and another takes the prediction and then makes
+  the board resolve a real `attempt_turn()` to check the Health that actually
+  went.
+
+  **Two accuracy bugs came out of writing it down.** `incoming` was summing every
+  body `in_front`, which (a) counted the staggered and the stunned, who do not
+  swing at all, and (b) missed every Ranged body, which strikes from further back
+  than the front column — `can_strike` is the resolver's own test and is what it
+  uses now. It also read `enemy.damage` off the resource instead of
+  `enemy_damage(entry)`, so every point of Strength on a body was missing from the
+  threat.
+
+  The shields and statuses are **two labelled rows** now rather than one strip.
+  They were adjacent sprites of the same size and the shields read as two more
+  statuses, when they are the player's own and are precisely what the line above
+  them spends. And the "incoming" chip is gone: it carried the raw pre-shield
+  total, sat two lines above "6 damage", and contradicted it at a glance.
+
+  Also caught a `:has()` selector on the way in — Chrome 105, the same trap as
+  the `color-mix()` removed in the entry below, and on a page rendered by whatever
+  CEF the streamer's OBS was built against. The class is set from JS instead.
+
+- **The overlay draws statuses and shields instead of naming them.**
+
+  They went out as text chips — "Strength 3", "Burn (2g)", "2 shields" — which is
+  a word with no picture behind it on the one surface in this project that is
+  read at a glance from across a room. They are **sprites now, under the
+  portrait**, which is both where the board puts them and what they look like
+  there: `StatusData.image` and `UITheme.SHIELD_ART` at 22px with
+  `UITheme.TIMER_ART` in the corner of anything borrowed, quoted from those
+  constants rather than by path so the board and the stream cannot end up drawing
+  different armour.
+
+  **The tint is the board's rule, which was not the one the chips used.**
+  `BattlefieldView._status_pip` colours on what the SIDE DOES — a `bonus` or a
+  `goal` is an opportunity and reads gold, anything else taxes you and reads red
+  — where the chips coloured on Buff/Debuff, so a buff that taxes came out the
+  wrong colour. All 7 statuses in the catalogue have art, and a test says so, so
+  the letter fallback under a missing picture stays a safety net rather than the
+  usual case.
+
+  Two things fell out of doing it. The **shields were being under-reported**:
+  `_vitals` sent `GameState.shields` alone, which is only the pool that expires
+  at the report, so a run holding permanent `bonus_shields` on top of it read as
+  having fewer than it had. Both pools go out now, apart and totalled, drawn in
+  the board's order — the pool that stays nearest the portrait and bare, the
+  timed ones after it under the clock, position and badge saying the same thing
+  twice. And the pips were briefly put *inside* the 56px portrait column, which
+  is the obvious reading of "under the character icon" and completely wrong in
+  practice: a pip is about 40px wide, so seven statuses stacked one per row and
+  made the hero card 283px tall. Full width and wrapping, the same card is 126.
+
+  Also drops `color-mix()`, which had expressed the pip's tint in one line the
+  way `UITheme.flat` does. It needs Chrome 111 and OBS ships whatever CEF its
+  build was cut against; an unsupported colour function is not an error anybody
+  sees, the declaration is simply dropped, and the pips would have lost their
+  tint on the streamer's machine while looking correct everywhere else. Written
+  out as plain rgba, along with an `inset: 0` beside it.
+
+- **The OBS companion overlay is built** (§9), and it is not a Godot window.
+
+  §9 has been the deferred slot since the redesign opened: a "slim companion
+  window" for the audience, architecture "revisit once the mechanics are locked".
+  The mechanics are locked. The two options it named — a Godot `Window`, an
+  always-on-top scene — both answer the problem by adding a second thing for OBS
+  to *capture*, which means fussy transparency and no way to restyle anything
+  without a rebuild. So the game does not render the HUD at all: `ObsCompanion`
+  writes the run to `user://obs/` and **OBS renders the page** as a Browser
+  Source.
+
+  **The transport is a `<script>`, and that is the load-bearing decision.** OBS
+  renders a local page from a `file://` URL, and Chromium refuses every
+  `fetch()`/XHR such a page makes at a sibling file — no origin to grant, so it
+  is an unfixable CORS failure short of asking a streamer to launch OBS with
+  `--allow-file-access-from-files`. A `<script src>` has no such restriction. So
+  the state is written *as* an assignment — `window.OBS_STATE = {…}` in
+  `state.js` — and `overlay.js` re-loads it four times a second with a
+  cache-buster. Covers ride the same way, as `<img src="file://…">`. No server,
+  no port, nothing to configure but a path.
+
+  **Writes are debounced and deduped, over a heartbeat.** `loop_changed` fires on
+  every frame of a board animation and almost none of those frames move a number
+  the overlay draws, so a change only marks the payload dirty and it is written
+  at most 4/sec, and not at all when the content came out identical. Underneath
+  that is a 5-second heartbeat, which is what lets the page tell **"the run has
+  not moved" from "the game is not running"** — the same thing on disk, very
+  different things on a stream. The streamer who alt-tabs into Hollow Knight for
+  ninety minutes changes nothing, and an overlay that greyed itself out for that
+  would be useless exactly when it is the only thing on screen. So the page dims
+  only when the beat stops.
+
+  **What it shows is §9's list grown into the current build**, and the biggest
+  addition is the one §9 only half had: **the checklist, live**. A viewer
+  watching someone play Hollow Knight has no idea they are doing it to "defeat 3
+  bosses without healing" — that sentence is the whole honour-system premise and
+  it was nowhere on the stream. Every row the report panel would draw is on the
+  overlay now (body goals, bonuses, `instead` rows, status objectives, event
+  goals, curses), each with its tick, scrolling itself when there is more of it
+  than there is room, flashing green at the moment a row is crossed off. Beside
+  it: health as a bar that pulses under 30%, shields, **what the front line
+  swings for if the next turn resolves as the board stands**, the attempts
+  already spent, the statuses riding the run, and a ticker of what just happened.
+
+  **The road is `RunOverScreen`'s route strip drawn live** — every stop walked,
+  replays numbered the way that screen numbers them, **ending on the Amulet
+  whether or not the run got there**, dashed until it does. Without that terminus
+  the strip is a list; with it, it is progress.
+
+  **There is no headline goal line on it, and there must not be one.** A game has
+  no goal of its own (§7.2): the goals are the *bodies'* goals — every body
+  following the run, not only the one that arrived with the game in play, which is
+  an ordinary follower from the moment it lands — plus what a status, an event or
+  a curse is asking of the player. So the checklist is the whole of it, every row
+  owned by the body or the clause it came from and saying so. `_goals` walks
+  `GameLoop2.stack` and never `arrival()` for exactly that reason, and a test
+  counts the rows against the board so a "this game's goal" row could not creep
+  back in unnoticed.
+
+  Two more rules the code keeps and a change here must keep. Goal text is always
+  `GameLoop2.goal_text_for`, never `enemy.goal` — the resource's stem says
+  nothing about the clauses a status has bolted onto it since (§13), which is the
+  exact mistake §13's own comments call out. And the rows are read from
+  `GameLoop2`/`GameState` **directly, never from `ReportChecklist`**: that is a
+  Control tree which only exists while the overworld is on screen, and being
+  right when the game window is behind a stream is the entire job.
+
+  The page ships in `obs/` and is **reinstalled over `user://obs/` at every
+  boot** — a stale copy there reads exactly like a broken overlay.
+  `user://obs/custom.css` is the other way round: created empty once, never
+  written again, and loaded last so anything in it wins. Settings grows a
+  *Stream overlay* section with the toggle and the absolute path to paste into
+  OBS, because `user://` is somewhere different on every platform and a streamer
+  who cannot read it off that screen cannot set this up at all.
+
 - **Loot an event pays lands on the event.**
 
   Buying three potions from the Woman in Blue used to hand you a second window
