@@ -49,6 +49,26 @@ extends Resource
 # Art base name under res://images2.0/events/.
 @export var file: String = ""
 
+var _art: Texture2D = null
+var _art_loaded: bool = false            # so a missing/broken name is tried once
+
+# LAZY, AND A PATH RATHER THAN AN `@export var image: Texture2D` — CurseData2's
+# `image` for the same reason, quoted rather than reinvented so the two read
+# alike: an ExtResource resolves EAGERLY when `Data` loads the folder, so a typed
+# export would decode every event's art on every boot and every headless test run
+# whether or not a run has ever opened one.
+#
+# The OBS overlay is what wants it: since the goals card draws each row's own art
+# (§9), an event's row needs a picture the same way a body's row has a face.
+var image: Texture2D:
+	get:
+		if not _art_loaded:
+			_art_loaded = true
+			var path: String = "res://images2.0/events/%s.png" % file
+			if file != "" and ResourceLoader.exists(path):
+				_art = load(path)
+		return _art
+
 # --- what it says ----------------------------------------------------------
 
 @export var prompt: String = ""

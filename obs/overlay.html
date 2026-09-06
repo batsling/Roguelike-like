@@ -17,6 +17,10 @@
   440, height 1000 is the shape it is drawn for; "Shutdown source when not
   visible" is fine, "Refresh browser when scene becomes active" is not needed —
   the page re-reads the state on its own.
+
+  THE PAGE IS THREE THINGS, IN THIS ORDER: what is left of you, what you are
+  doing and where it leads, and the list of what has to be true. The road is a
+  fourth and is OFF by default — see #road at the foot of this file.
 -->
 <link rel="stylesheet" href="overlay.css">
 <!-- Yours. Loaded last so anything in it wins. -->
@@ -25,10 +29,16 @@
 <body>
 <div id="overlay" class="waiting">
 
-  <!-- THE HERO: who is playing, how much of them is left, and what is riding
-       them. The status pips sit UNDER THE PORTRAIT because that is where the
-       game itself puts them (BattlefieldView's hero block) — same art, same
-       stack count, same gold/red tint. -->
+  <!-- THE HERO: who is playing, how much of them is left, and what armour is on
+       them. The STATUS PIPS ARE GONE FROM HERE, and that is deliberate: every
+       player-side status on the roster is claimable, so every one of them
+       already has a row in the checklist below, wearing the same art this strip
+       used to draw. Two places saying the same thing meant neither said it
+       completely — the strip had the stack total and no sentence, the row had
+       the sentence and no picture. The row now has both.
+
+       The SHIELDS stay, because they are not a status: they are what the cost
+       line below spends, and nothing else on the page draws them. -->
   <section class="card hero">
     <div class="hero-top">
       <img id="hero-icon" class="hero-icon" alt="">
@@ -44,74 +54,93 @@
           <div id="hp-threat" class="bar-threat" hidden></div>
           <span id="hp-text" class="bar-text"></span>
         </div>
-        <!-- NO "incoming" CHIP. It carried the raw total before shields, which
-             sat next to the cost line below saying "6 damage" and contradicted
-             it at a glance. The cost line is the better answer to the same
-             question; `board.incoming` is still in the payload for anyone
-             restyling this page. -->
-        <div class="row sub">
-          <span id="bodies" class="chip" hidden></span>
-        </div>
       </div>
     </div>
-    <!-- WHAT A LOST RUN COSTS, one mark per swing, each mark being the BODY
-         throwing it. A shield on the corner means that swing is eaten whole and
-         the face behind it is greyed out; a number means that much Health.
-         Read left to right it is the rule itself — one shield stops one hit
-         whatever its size, and the swings past your last shield are what hits
-         Health. -->
+
+    <!-- WHAT A LOST RUN COSTS, AS A SENTENCE. It used to be a strip of one face
+         per swing, which was the only place the page said WHO — so it had to be
+         pictures. The checklist below now draws every body's face on its own
+         row with its own damage beside it, so the identity is answered there,
+         next to the sentence it belongs to, and this line is free to be the
+         thing it is best at: the arithmetic, stated.
+
+         When nothing can reach you it does NOT go quiet. A board with no swing
+         in it is still a board walking towards you, and how many lost runs of
+         quiet are left is the question that follows — see `turns_away`. -->
     <div id="cost" class="cost" hidden>
-      <!-- WHICH attempt this would be, under the label, because the whole line
-           is a forecast of the NEXT lost run and the count is part of what makes
-           it a decision. -->
       <span class="cost-head">
         <span class="cost-label">Lose a run</span>
         <span id="cost-attempt" class="cost-attempt" hidden></span>
       </span>
       <span class="cost-arrow">&rarr;</span>
-      <span id="cost-swings" class="cost-swings"></span>
       <span id="cost-total" class="cost-total"></span>
       <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
     </div>
 
-    <!-- SEPARATE ROWS, and separately labelled: the armour is yours and the
-         statuses are riding you, which are different enough facts that running
-         them together in one strip made the shields read as two more statuses. -->
     <div id="shield-row" class="hero-row" hidden>
       <span class="row-label">Shields</span>
       <div id="hero-shields" class="pips"></div>
     </div>
-    <div id="status-row" class="hero-row" hidden>
-      <span class="row-label">Statuses</span>
-      <div id="hero-pips" class="pips"></div>
-    </div>
   </section>
 
-  <!-- THE GAME IN PLAY. The line that tells a viewer what they are watching. -->
+  <!-- THE HEADLINE: the game in play, and the game the whole run is for.
+       Side by side, with the hop count on the arrow between them, because that
+       pair IS the premise — a viewer who has just tuned in cannot get "they are
+       playing real games to reach that one" from a health bar and a checklist.
+
+       The Amulet used to be readable only off the right-hand end of the road
+       strip, which is a scroller: on a 22-stop run it was fully on screen 12%
+       of the time. A destination cannot live inside something that scrolls away
+       from it. -->
+  <!-- TWO ROWS, NOT TWO COLUMNS. Side by side is the obvious reading of "the
+       game we are on and the goal game" and it does not fit: 440px less the
+       chrome leaves ~224px to split between two titles, and these are real game
+       names — "Vampire Survivors: Legacy of the Moonspell" truncated over two
+       lines to make room for its own footnote. The current game takes the full
+       width, and the destination is a line under it that spans the same width. -->
   <section class="card now">
-    <img id="now-cover" class="now-cover" alt="">
-    <div class="now-text">
-      <div id="now-label" class="label">Now playing</div>
-      <div id="now-game" class="now-game"></div>
-      <!-- The attempts chip used to sit here. It moved up beside the cost line,
-           where the consequence it belongs to is. -->
-      <div class="row sub">
-        <span id="hops" class="chip" hidden></span>
+    <div class="now-main">
+      <img id="now-cover" class="now-cover" alt="">
+      <div class="now-text">
+        <div id="now-label" class="label">Now playing</div>
+        <div id="now-game" class="now-game"></div>
       </div>
     </div>
+    <div class="now-dest">
+      <span class="now-arrow">&rarr;</span>
+      <span id="hops" class="now-hops"></span>
+      <img id="dest-cover" class="dest-cover" alt="">
+      <span id="dest-game" class="dest-game"></span>
+    </div>
   </section>
 
-  <!-- THE CHECKLIST. Scrolls itself when there is more of it than there is room. -->
+  <!-- THE CHECKLIST, and the page's centre of gravity. Every row carries its own
+       art: a body's face, a status's pip, a curse's, an event's. Scrolls itself
+       when there is more of it than there is room. -->
   <section class="card goals">
-    <div class="label">The goals</div>
+    <div class="goals-head">
+      <span class="label">The goals</span>
+      <span id="goal-count" class="goal-count"></span>
+    </div>
     <div id="goal-scroll" class="goal-scroll">
       <ul id="goal-list" class="goal-list"></ul>
     </div>
   </section>
 
-  <!-- THE ROAD: every stop walked, ending on the Amulet. Scrolls itself
-       sideways when the run is longer than the strip, the way the checklist
-       scrolls down — a stop turned into a "+7" is a stop nobody can see. -->
+  <!-- THE ROAD: every stop walked, ending on the Amulet. OFF THE DEFAULT PAGE —
+       it renders only at overlay.html#road, as its own browser source.
+
+       It is the one part of this page that could not be read at a glance and
+       never will be: it is a horizontal scroller, and measured on a 22-stop run
+       the stop you are standing on was fully visible for 6 seconds in every 50,
+       taking 42 seconds to first appear — and every change to the road snapped
+       it back to the START of the run, which is when a viewer is most likely to
+       be looking. The distance it was carrying now sits on the arrow above, in
+       one number that never moves.
+
+       It is kept, not cut, because it says one thing nothing else does: WHICH
+       games got beaten and which the run walked away from. That is worth a
+       source of its own on a between-games screen. -->
   <section class="card road">
     <div class="label">The road</div>
     <div id="road-scroll" class="road-scroll">

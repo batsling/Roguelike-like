@@ -30,12 +30,26 @@ extends Node
 # stylesheet or an image. So the state travels as an assignment in a script file,
 # and the covers travel as <img src="file:///...">.
 #
-# WHAT IT SHOWS is §9's list grown up into the current build: health and shields,
-# the character, the game in play, the attempts already spent on it, the bodies on
-# the board, the shields and statuses riding the run AS SPRITES under the
-# portrait (the board's own art and tint — see `_statuses`), and the road so far as a strip of
-# covers ending on the Amulet. And THE CHECKLIST, which is what a viewer is
-# actually watching for.
+# WHAT IT SHOWS is §9's list grown up into the current build: health and the
+# shields riding it as sprites, the character, and then THE HEADLINE — the game in
+# play beside the Amulet the run is walking to, which is the premise a viewer who
+# has just tuned in cannot get from a health bar. And THE CHECKLIST, which is what
+# a viewer is actually watching for, every row of it carrying its own art.
+#
+# THE CHECKLIST IS WHERE THE ART LIVES NOW, and that is the layout's one big idea.
+# A goal IS an enemy (§7.2), so a body's row wears its face; a status's row wears
+# the pip's art and its stack total; a curse's and an event's wear theirs. That
+# one change paid for three others: the hero card's status strip went (every
+# player-side status is claimable, so every one of them already had a row here —
+# the strip was saying it twice), the cost line stopped drawing a parallel strip of
+# faces the viewer had to match up against this one, and the six kinds of row
+# stopped being told apart by TEXT COLOUR ALONE, which was the weakest encoding on
+# a page read across a room through a lossy encode.
+#
+# `statuses` and `road` are still in the payload and are no longer on the page's
+# default column — the road moved behind `overlay.html#road`, its own optional
+# source, because measured on a 22-stop run the stop you are standing on was fully
+# visible 12% of the time. Both are kept here for anyone restyling the page.
 #
 # A GAME HAS NO GOAL OF ITS OWN. It never has (§7.2) — the goals are the BODIES'
 # goals, plus what a status, an event or a curse has handed the player, and a game
@@ -245,11 +259,13 @@ func payload() -> Dictionary:
 	out["vitals"] = _vitals()
 	out["run"] = _run_line()
 	out["now"] = _now_playing()
-	out["goals"] = _goals()
-	# Walked once and handed to both: the board's summary is the same forecast
-	# counted up, and resolving the stack twice per write would be two chances to
-	# disagree with itself as well as twice the work.
+	# Walked once and handed to all three: the board's summary is the same forecast
+	# counted up and a body's goal row carries its own swing, and resolving the
+	# stack three times per write would be three chances to disagree with itself as
+	# well as three times the work. THE THREAT COMES FIRST for that reason — the
+	# goals need it, which they did not when the swings were drawn as their own row.
 	var threat: Dictionary = _threat()
+	out["goals"] = _goals(threat)
 	out["board"] = _board(threat)
 	out["threat"] = threat
 	out["statuses"] = _statuses()
@@ -314,6 +330,7 @@ func _vitals() -> Dictionary:
 
 func _run_line() -> Dictionary:
 	var hops: int = GameLoop2.hops_to_amulet()
+	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	return {
 		"played": GameState.games_played,
 		"beaten": GameState.total_games_beaten,
@@ -321,6 +338,20 @@ func _run_line() -> Dictionary:
 		# -1 when the Amulet is unreachable from here, which the page prints as
 		# "—" rather than as a distance of minus one.
 		"hops": hops,
+		# WHERE THE RUN IS GOING, beside where it is. The page's headline is the
+		# pair — this game, that many hops, the Amulet — because a viewer who has
+		# just tuned in cannot get the premise from a title and a health bar, and
+		# "the goal is to reach THAT game" is the whole premise.
+		#
+		# It used to be readable only off the end of the road strip, which is a
+		# scroller: measured on a 22-stop run the Amulet was fully on screen 12% of
+		# the time, and the strip snapped back to the START of the run every time
+		# the road changed. The destination cannot live inside something that
+		# scrolls away from it.
+		"amulet": {
+			"game": amulet.display_name if amulet != null else "",
+			"cover": _cover_url(amulet),
+		},
 	}
 
 # The game the run is standing on, and what it is costing so far. `attempts` is
@@ -355,8 +386,24 @@ func _now_playing() -> Dictionary:
 # ReportChecklist: the checklist is a Control tree that only exists while the
 # overworld is on screen, and the overlay has to be right when the game window is
 # minimised behind a stream.
-func _goals() -> Array:
+func _goals(threat: Dictionary) -> Array:
 	var out: Array = []
+	# The forecast, keyed by the body that throws it, so a row can carry its own
+	# swing. `instance` and not `who`: two copies of the same enemy share a display
+	# name and are two different problems.
+	var swing_of: Dictionary = {}
+	for sw in (threat.get("swings", []) as Array):
+		swing_of[int(sw.get("instance", 0))] = sw
+	# The stack totals, for the badge on a status row's art. `status_objectives` is
+	# one row PER INSTANCE — a permanent Strength 1 and a borrowed Strength 3 are
+	# two offers with two deadlines — while what a stack DOES is felt as a total
+	# (GameState.status_list, and the note above it). The rows are the instances and
+	# the badge is the total, so cutting the hero card's pip strip lost neither.
+	var totals: Dictionary = {}
+	for row in GameState.status_list():
+		var sd0: StatusData = row.get("status")
+		if sd0 != null:
+			totals[sd0.id] = int(row.get("stacks", 0))
 	for entry in GameLoop2.stack:
 		var enemy: GoalEnemyData = entry.get("enemy")
 		if enemy == null:
@@ -372,12 +419,30 @@ func _goals() -> Array:
 			or GameLoop2.is_staggered(instance)
 		# `goal_text_for`, never `enemy.goal` — the stem on the resource says
 		# nothing about the clauses a status has bolted onto it since (§13).
+		# THE BODY'S OWN FACE ON ITS OWN ROW. A goal IS an enemy — a game has no
+		# goal of its own (§7.2) — and a list of sentences never said so. With the
+		# face on the row the checklist reads as the board, and it is also what lets
+		# the cost line stop drawing seven faces of its own: the identity is here,
+		# beside the sentence it belongs to, rather than in a separate strip the
+		# viewer has to match up against this one.
+		#
+		# A phase boss shows the face it is currently wearing (§7.6), not the
+		# sheet's first one.
+		var swing: Dictionary = swing_of.get(instance, {})
 		out.append({
 			"kind": "goal",
 			"text": GameLoop2.goal_text_for(entry),
 			"who": enemy.display_name,
+			"icon": _texture_url(enemy.image_at(int(entry.get("phase", 0)))),
 			"boss": enemy.boss,
 			"front": GameLoop2.in_front(entry),
+			# WHAT THIS BODY DOES TO YOU IF THE RUN IS LOST, on the row that names
+			# it. `front` is NOT this question and must not be read as it: it asks
+			# about column 1, and a Ranged body swings from further back (§7.6, and
+			# the note in `_threat`). Absent when this body throws nothing next
+			# turn — it is staggered, stunned, out of reach, or modded to zero.
+			"damage": int(swing.get("damage", 0)),
+			"blocked": bool(swing.get("blocked", false)),
 			"done": cleared,
 		})
 		for addon in GameLoop2.goal_addons_for(entry):
@@ -399,6 +464,13 @@ func _goals() -> Array:
 				"kind": kind,
 				"text": String(addon.get("text", "")),
 				"who": enemy.display_name,
+				# NO ART, AND `addon` INSTEAD. These hang off the body whose row is
+				# directly above, so repeating its face here would draw the same
+				# enemy two and three times running and read as two and three
+				# enemies. The page indents them under their parent instead, which
+				# is what "hangs off" looks like.
+				"icon": "",
+				"addon": true,
 				"boss": false,
 				"front": false,
 				"done": GameLoop2.row_answered(key),
@@ -411,6 +483,22 @@ func _goals() -> Array:
 			"kind": "status",
 			"text": sd2.objective_text(StatusData.PLAYER, int(row.get("stacks", 0))),
 			"who": sd2.display_name,
+			# THE PIP'S ART, ON THE ROW THAT SAYS WHAT THE STATUS WANTS. The hero
+			# card used to carry a strip of these and the checklist carried the
+			# sentences, which drew every status twice and neither time completely.
+			# Every player-side status on the roster is `is_claimable` — 3 `goal`
+			# and 4 `demand` — so every one of them has a row here to land on, and
+			# the strip was saying a second time what this row says once.
+			"icon": _texture_url(sd2.image),
+			# The pip's number: what the run is carrying in total, across the
+			# permanent bucket and every borrowed application. The ROW is one
+			# instance (see `totals` above), so without this the four stacks of a
+			# Strength 1 + 3 appear nowhere.
+			"stacks": int(totals.get(sd2.id, 0)),
+			# An opportunity (gold) or a tax (red) — `_statuses` colours a pip on
+			# the same question, and the two must not disagree about the same stack.
+			"good": sd2.is_bonus(StatusData.PLAYER) or sd2.is_goal(StatusData.PLAYER),
+			"games": int(row.get("games", 0)),
 			"boss": false,
 			"front": false,
 			"done": GameLoop2.row_answered("status:%s" % String(row.get("key", ""))),
@@ -418,10 +506,15 @@ func _goals() -> Array:
 	for i in range(GameState.event_goals.size()):
 		var eg: Dictionary = GameState.event_goals[i]
 		var left: int = int(eg.get("games_left", 0))
+		# The event that handed this out, for its picture and its name. A goal
+		# outlives the modal that gave it by several games, so by the time it is on
+		# the checklist the art is the only thing left connecting the two.
+		var ed: EventData2 = Data.get_event2(StringName(eg.get("event", &"")))
 		out.append({
 			"kind": "event",
 			"text": "%s → %s" % [eg.get("condition", ""), eg.get("effects_text", "")],
-			"who": "",
+			"who": ed.display_name if ed != null else "",
+			"icon": _texture_url(ed.image) if ed != null else "",
 			"boss": false,
 			"front": false,
 			"games": left,
@@ -437,6 +530,7 @@ func _goals() -> Array:
 			"text": "%s — %s (if failed, %s)" % [cd.display_name, cd.goal_text(),
 				cd.penalty_text],
 			"who": cd.display_name,
+			"icon": _texture_url(cd.image),
 			"boss": false,
 			"front": false,
 			# -1 is a curse with no clock on it at all, which the page prints as
@@ -525,6 +619,10 @@ func _threat() -> Dictionary:
 			through += landed
 		swings.append({
 			"damage": landed, "who": enemy.display_name, "blocked": blocked,
+			# WHICH BODY, as a key rather than a name: the goals card draws each
+			# body's own row and hangs its swing on it, and two copies of the same
+			# enemy share a display name but never an instance.
+			"instance": instance,
 			# WHICH BODY IS SWINGING, as its own picture. The roster's art is bold
 			# and silhouette-driven, so it survives being drawn at 28px — checked
 			# by rendering the widest range in the set (a 19x10 sprite up to a
@@ -539,7 +637,50 @@ func _threat() -> Dictionary:
 		"damage": through,      # what actually reaches Health
 		"hp_after": maxi(0, GameState.hp - through),
 		"lethal": through >= GameState.hp and through > 0,
+		"turns_away": _turns_away(),
 	}
+
+# HOW MANY LOST RUNS OF QUIET ARE LEFT, when the answer to "what does a lost run
+# cost" is "nothing yet". A board with nothing in reach used to draw no cost line
+# at all, which is honest about this turn and silent about the only question that
+# follows from it — the run is walking towards you and the viewer cannot see how
+# far off it is.
+#
+# IT IS MEASURED AGAINST EACH BODY'S OWN REACH, NOT AGAINST COLUMN 1 — see
+# `GameLoop2.turns_until_strike`, which is `can_strike`'s own inequality solved
+# for turns. A Ranged body swings from several columns back, so counting the steps
+# to the front line would promise a quiet turn to somebody a Host can already
+# shoot, which is the one lie this page must never tell.
+#
+# IT IS A FLOOR AND NOT A SCHEDULE, for the same reason `_threat` is a forecast:
+# a blocked lane stalls a body short of where this says it will be, an ability can
+# spend a turn on something other than walking, and a spawner can lay a new body
+# in front of you between now and then. All of those make the real wait LONGER or
+# the board WIDER, never this number smaller for a body already counted — so "not
+# for at least N" holds, and the page words it that way.
+#
+# -1 when nothing on the board is ever going to close: an empty board, or one
+# holding only bodies that are staggered, stunned, off the grid or immobile. The
+# page prints that as "nothing is coming" rather than as a wait of minus one turn.
+func _turns_away() -> int:
+	var best: int = -1
+	for entry in GameLoop2.stack:
+		if entry.get("enemy") == null:
+			continue
+		# The two that sit a turn out sit this count out too, exactly as `_threat`
+		# skips them: a body answered for this game holds its fire, a stunned one
+		# has lost the turn it would have walked on.
+		if GameLoop2.is_staggered(int(entry.get("instance", 0))) \
+				or GameLoop2.is_stunned(entry):
+			continue
+		var turns: int = GameLoop2.turns_until_strike(entry)
+		if turns == 0:
+			return 0            # it can already reach you; `swings` says how hard
+		if turns < 0:
+			continue            # off the grid, or a turret that never closes
+		if best < 0 or turns < best:
+			best = turns
+	return best
 
 # The statuses riding the PLAYER, AS PIPS — art and a stack count, which is what
 # a status is on every other surface in this game (BattlefieldView's

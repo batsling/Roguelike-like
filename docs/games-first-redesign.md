@@ -2159,27 +2159,30 @@ stream — so the overlay dims only when the beat actually stops.
 
 - **The hero** — icon, level, and the health bar. Health is the bar's *width*
   first and a number second, and it pulses below 30%.
-- **What a lost run costs, swing by swing** — the line the hero card is *for*.
+- **What a lost run costs, as a SENTENCE** — the line the hero card is *for*.
   A lost run is not an abstract penalty: the enemies take a turn (§3.2), every
   body that can reach you swings once, **one shield stops one hit outright
   whatever that hit was for** (`_take_hit`), and the swings past your last shield
   are what reaches Health. That rule is invisible in a summed "12 incoming" — two
   shields against three small swings is a completely different position from two
-  shields against one enormous one — so the overlay draws **one mark per swing,
-  and the mark is the BODY throwing it**: its own art at 28px, with a shield on
-  the corner when the swing is eaten whole (and the face behind it desaturated)
-  or the damage it lands when it is not. Read left to right the row *is* the
-  rule, countable rather than inferred, and it says *who* as well as *how much* —
-  the boss's swing and the fly's are not the same problem, and a row of bare
-  numbers could not tell them apart. The same forecast is hatched onto the health
-  bar over the HP that would go, and a forecast that would end the run says so in
+  shields against one enormous one — so the overlay states it: **"2 shields
+  break, −12 Health"**, saying *Health* rather than *damage* because the bar
+  directly above reads `7 / 20` and the two numbers a viewer has to connect
+  should have the same name. The same forecast is hatched onto the health bar
+  over the HP that would go, and a forecast that would end the run says so in
   words.
 
-  The art survives being drawn that small because the roster's is bold and
-  silhouette-driven; it was checked by rendering the widest range in the set (a
-  19×10 sprite through a 734×841 painting) at 22 / 28 / 34 / 40 rather than
-  assumed. A body with no art falls back to a bare number, and a test asserts
-  that every goal-enemy and boss has some so it never comes up.
+  **WHO is throwing each swing is answered on the checklist now, not here.** This
+  line used to draw one mark per swing — the body's own art at 28px, badged with
+  a shield when the swing was eaten whole (the face behind it desaturated) or
+  with the damage when it was not — because it was the only place the page said
+  *who*, and the boss's swing and the fly's are not the same problem. Every body
+  now has a checklist row carrying its face and its own damage, so the identity
+  sits beside the sentence that names it rather than in a parallel strip the
+  viewer had to align against the real list by eye. The art still survives being
+  drawn small — checked by rendering the widest range in the set (a 19×10 sprite
+  through a 734×841 painting) at 22 / 28 / 34 / 40 rather than assumed — and a
+  row with no art falls back to an initial, which a test asserts never comes up.
 
   It **mirrors `_take_hit` rather than re-deriving it**: the player's damage-taken
   mods first (Marked doubles what lands), a swing modded to nothing spends no
@@ -2189,44 +2192,87 @@ stream — so the overlay dims only when the beat actually stops.
   back (§7.6) and counting only the front column understated the cost for every
   one of them. It is a **forecast and not a promise** (an ability can spend a
   body's turn on something else) and nothing in it mutates.
-- **Shields and statuses as SPRITES, under the portrait, in two labelled rows**
-  — where the board puts them and what they look like there
-  (`BattlefieldView.refresh_hero` → `_fill_shields` / `_status_pip`). One shield
-  sprite per shield — the pool that stays nearest and bare, the timed ones after
-  it wearing the clock — and, on its own row, one pip per status: its art, its
-  stack count, and the same clock when the stacks are on loan. The two are
-  **separately labelled** because they are different facts: the armour is yours
-  and it is what the cost line above spends; the statuses are riding you. Run
-  together in one strip the shields read as two more statuses. **The pip's tint
-  is the board's rule, not buff/debuff**: a `bonus` or a `goal` on the player's
-  side is an opportunity and reads gold, anything else taxes you and reads red. A
-  status written out as its *name* is a word with no picture behind it, and this
-  page is read at a glance from across a room. A status shipped without art falls
-  back to its initial; a test asserts the catalogue never needs to.
-- **Bodies following** — the board at the resolution an overlay actually has; a
-  5×3 grid is not readable out of the corner of a stream.
-- **The game in play**, its cover, and the hops left to the Amulet. The attempt
-  count lives with the cost line instead — "Attempt 4" under *Lose a run*, since
-  the whole line is a forecast of the next one and which attempt it would be is
-  part of what makes it a decision.
+- **How long the quiet lasts, when nothing can reach you.** The line used to hide
+  itself entirely on an empty forecast, which is honest about this turn and
+  silent about the only question that follows from it: the board is still walking
+  towards you. It now reads *"nothing reaches you for at least 2 more lost
+  runs"* — `threat.turns_away`, from `GameLoop2.turns_until_strike`, which is
+  `can_strike`'s own inequality (`_front_col <= 1 + strike_range`) rearranged so
+  the two cannot drift apart. **Measured against each body's own reach, never
+  against column 1**: counting steps to the front line would promise a quiet turn
+  to somebody a Host can already shoot, which is the one lie this page must not
+  tell. It is a **floor** — a blocked lane, a stun, a turn spent on an ability
+  all make the real wait longer and never shorter — so it is worded "at least".
+- **Shields as SPRITES under the portrait** — where the board puts them and what
+  they look like there (`BattlefieldView.refresh_hero` → `_fill_shields`). One
+  sprite per shield: the pool that stays nearest and bare, the timed ones after it
+  wearing the clock. They keep a row of their own because **they are not a
+  status** — the armour is yours and it is what the cost line above spends.
+  **The statuses no longer have a strip here.** Every player-side status on the
+  roster is `is_claimable` (3 `goal`, 4 `demand`), so every one of them already
+  had a checklist row saying what it wants — and the strip was saying the same
+  thing a second time with a picture but no sentence, while the row had the
+  sentence and no picture. The row now has both.
+- **The headline: the game in play, and the game the whole run is for.** Its
+  cover and title, then a line under it — *"→ 3 games to the Amulet"* and the
+  Amulet's own cover and name. This pair **is the premise**, and it is the one
+  thing a viewer who has just tuned in cannot get from a health bar and a
+  checklist. The Amulet used to be legible only off the right-hand end of the
+  road strip, which scrolls: measured on a 22-stop run it was fully on screen 12%
+  of the time. **A destination cannot live inside something that scrolls away from
+  it.** Side by side in two columns does not fit either — 440px less the covers
+  and the hop count leaves ~224px to split between two real game titles and both
+  truncate — so the destination is a full-width line under the game in play
+  rather than a column beside it. The attempts already spent ride here too, with
+  the game they were spent on.
 - **The checklist**, live, and it is the point of the whole thing: a viewer
   watching someone play Hollow Knight has no idea they are doing it to "defeat 3
   bosses without healing". Every row the report panel would draw — body goals,
   bonuses, `instead` rows, the player's own status objectives, event goals,
-  curses — each with whether it is ticked. It **scrolls itself** when there is
-  more of it than there is room, and a row flashes green at the moment it ticks.
-  Goal text is always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
-- **Statuses on the player** as chips, borrowed ones carrying their clock.
-- **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
-  a game stood on twice drawn twice (the road is a sequence, not a set — a badge
-  saying "2" made two visits look like one), each stop **green if it was beaten
-  on that visit and orange if the run walked away from it** — a missed goal, an
-  escape (§3.2) or a teleport straight through are one colour because to the road
-  they are one fact — **ending on the Amulet whether or not the run got there**,
-  drawn dashed until it does. Without that terminus the strip is a list rather
-  than progress. It **scrolls sideways** when the run outgrows the strip, on the
-  same walker the checklist uses: it was capped with a "+7" for the rest, and a
-  stop rendered as a digit is a stop nobody can see.
+  curses — each with whether it is ticked, and the card's label carrying **how
+  many of them are done**, because the list scrolls and a viewer should not have
+  to watch a whole cycle and count. It **scrolls itself** when there is more of it
+  than there is room, and a row flashes green at the moment it ticks. Goal text is
+  always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
+
+  **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
+  *is* an enemy (§7.2), and a column of sentences never said so; with the face on
+  the row the checklist reads as the board. A body's row carries its face and, on
+  the corner of it, the damage that body lands if the run is lost. A status's row
+  carries its pip art and, on the corner, **the stack total** — `status_objectives`
+  is one row per instance (a permanent Strength 1 and a borrowed Strength 3 are
+  two offers with two deadlines) while what a stack *does* is felt as a total, and
+  the hero card's strip was the only thing carrying that. A curse's and an event's
+  rows carry theirs. A `bonus` or an `instead` deliberately carries none: it hangs
+  off the body whose row is directly above, so repeating that face would draw one
+  enemy two and three times running and read as two and three enemies — it is
+  indented under its parent instead.
+
+  It also fixes the weakest encoding on the page. The six kinds of row used to be
+  told apart by **text colour alone**, on an identical checkbox at an identical
+  weight, with nothing anywhere saying what a colour meant — purple-curse against
+  blue-status is not a distinction that survives being read across a room through
+  a lossy encode. The art says it first now and the colour agrees, which is the
+  same "say it twice" rule the road's stops already followed.
+- **The road**, at `overlay.html#road` — **its own source, off the default
+  column.** `RunOverScreen`'s route strip drawn live: every stop walked, a game
+  stood on twice drawn twice (the road is a sequence, not a set — a badge saying
+  "2" made two visits look like one), each stop **green if it was beaten on that
+  visit and orange if the run walked away from it** — a missed goal, an escape
+  (§3.2) or a teleport straight through are one colour because to the road they
+  are one fact — **ending on the Amulet whether or not the run got there**, drawn
+  dashed until it does.
+
+  It is opt-in because **at 440px it could not be read**. It scrolls sideways on
+  the same walker the checklist uses, and measured on a 22-stop run (1008px of
+  strip in a 390px window) the stop the player was standing on was fully visible
+  for **6 seconds in every 50**, took 42 seconds to first appear, and every change
+  to the road reset the walk to the *start* of the run — which is exactly when a
+  viewer looks up. No styling fixes that; the strip is simply wider than the
+  column. What it uniquely says — which games were beaten and which the run walked
+  away from — earns a source of its own on a between-games scene, at a width where
+  it does not have to scroll at all. The **distance** it was carrying moved to the
+  headline, into a number that never moves.
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the
   long stretches when nothing in the run changes.
