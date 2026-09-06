@@ -12,19 +12,23 @@ the honour system.
 | how the current build works | `docs/games-first-redesign.md` — **the canonical spec**, referenced from 25 places |
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
-| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. One left: splitting `Overworld2.gd` |
+| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. Two left: `Overworld2.gd` is still the biggest file in the repo, and its seam table is re-measured there rather than guessed |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
 
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
-  *is* the game. Every screen is built in code, so `.tscn` files hold a root node
-  and a script and nothing else — don't go looking for UI in them.
-- **25 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+  *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
+  looking for the game's UI in it; every screen past the menu is built in code.
+  `MainMenu.tscn` is the exception and always was: it lays out its 20 nodes (the
+  title, the eight buttons, the save list) in the editor like an ordinary scene.
+- **26 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 25.
+  README's "Autoload singletons" table covers all 26. Count them with
+  `sed -n '/^\[autoload\]/,/^\[/p' project.godot | grep -c '=\"\*res://'` rather
+  than trusting this line — it has been wrong before.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
   with schemas in `scripts/resources/`. Gameplay code asks `Data` for content
   rather than hardcoding it.
@@ -42,7 +46,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 tests, ~9 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 tests, ~9 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -53,6 +57,18 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   with "Could not find type X" — in hundreds of unrelated tests, because the
   script that referenced it failed to parse and its scene fell back to a bare
   Control. Run `godot --headless --editor --quit` once after adding one.
+- **A skipped case is `pending("why")`, never a bare `return`.** ~250 tests guard
+  themselves against a run that did not reach their case (`if pin == &"":`,
+  `if _ui._fulfil_checks.is_empty():`, `if not view.has_layout():`). They used to
+  bail in silence — and GUT only reports Risky when a test asserts **nothing at
+  all**, so a test that asserted once and then bailed reported green while testing
+  nothing it was written for. There was no way to tell "2092 passing" from "1997
+  passing and 95 shrugging". Every one of those guards now calls `pending()` with
+  the reason first, which GUT counts separately and prints as **Risky/Pending** in
+  the totals: the skips are a number you can watch. Read it as a budget, not as
+  noise — a guard that fires often is a case the suite has stopped covering, and
+  the fix is to ARRANGE the state (`_stand_at_hops`, `_reboot`, `_disarm_board`)
+  rather than to hope for it.
 - **A GUT run should be all green, with no Risky / "Did not assert"** — with no
   known exceptions any more. It used to
   report one or two, varying between runs, because a couple of tests early-
@@ -119,6 +135,23 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill
   (`.claude/skills/verify/`) — Xvfb + a temporary driver scene.
+- **The docs are the navigation layer, so a dead pointer in one is a real bug.**
+  `python3 tools/check_doc_paths.py` checks that every repo path named in a live
+  doc exists. Seventeen had rotted before it was written, all from the same two
+  renames the project has already done (the `2.0` migration and the combat →
+  games-first cut) with the prose left behind — including two whole documents that
+  described retired systems while sitting in the live `docs/` folder. The five
+  paths that are missing ON PURPOSE are listed in the script with the reason;
+  add to that list rather than deleting a sentence that means what it says.
+- **GUT cannot see the OBS overlay, because the overlay is a browser page.**
+  `test_obs_companion.gd` pins the payload and stops at the file; everything past
+  it — whether `hidden` hides, whether the road actually scrolls, whether a burst
+  of toasts stays inside the browser source, how tall the page really is — needs
+  `node tools/check_overlay.js`, which renders `obs/overlay.html` in headless
+  Chromium and asserts all of it. Run it whenever anything under `obs/` changes;
+  every check in it is a regression that shipped once. It needs
+  `npm install playwright-core` and a Chromium (`--browser=` or `$CHROMIUM_PATH`
+  if it cannot find one).
 
 ## Things that will bite you
 
@@ -134,10 +167,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   wiring it up — it says "hides a native class" in one line.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
-  back into an `@export var ... : Texture2D` — `Data` loads all 854 games at
+  back into an `@export var ... : Texture2D` — `Data` loads all 857 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
-- **`data/games/` has 854 files.** Never glob or read it wholesale to answer a
+- **`data/games/` has 857 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file

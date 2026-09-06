@@ -1,5 +1,17 @@
 # Handoff: sheet-author items, events, and addons
 
+> **STATUS: the items and events halves of this are DONE, and this document is
+> the plan they were built from rather than a description of the result.** The
+> generators it calls for exist as `tools/generate_item2_tres.py` and
+> `tools/generate_event2_tres.py`, beside the whole `generate_*2_tres.py` family;
+> what to read for the shipped shape is `docs/event-sheet-authoring.md` and
+> `docs/item-sheet-authoring.md`. The **addons** half was never built and its two
+> companion documents are in `docs/archive/`.
+>
+> Note also that the sheet names lost their `2.0` and `new` suffixes on the way in
+> (`cardsnew` → `cards`, and so on — see `CLAUDE.md`), so the sheet names below are
+> the pre-migration ones.
+
 **Goal:** make **items**, **events**, and **addons** generated from
 `tools/Roguelikes.xlsx` the same way the entire **card** catalog already is —
 the spreadsheet becomes the single source of truth, the `.tres` / generated
@@ -16,7 +28,7 @@ existing prose sheets (`items`, `events`) untouched as reference.
 
 The card catalog is fully sheet-authored. Study these before starting:
 
-- `tools/generate_card_tres.py` — the reference generator. Note its Effects DSL
+- `tools/generate_card2_tres.py` — the reference generator. Note its Effects DSL
   parser (`_effect_from_tokens` / `parse_effects`), the `parse_attack` archetype
   parser, the upgrade-column handling, `parse_keywords`, and the `--all` /
   `--attacks` / default(curses) mode switch.
@@ -92,7 +104,7 @@ The card catalog is fully sheet-authored. Study these before starting:
      DSL** column, plus columns for the common structured fields: triggers,
      card_grants, stat_bonuses, charge/weapon fields).
   2. Extend the card Effects-DSL approach to items, or write a dedicated item
-     DSL. Reuse `tools/generate_card_tres.py`'s parser pieces where possible.
+     DSL. Reuse `tools/generate_card2_tres.py`'s parser pieces where possible.
   3. **`custom_handler` items cannot be fully sheet-authored** — they point to
      bespoke GDScript. Give `itemsnew` a `custom_handler` column that just emits
      that field; the logic stays in code. Catalog the items that need it.
@@ -109,7 +121,7 @@ The card catalog is fully sheet-authored. Study these before starting:
 > and the `EventModal` that read them have all been deleted. What follows is the
 > handoff as it was written, kept for the reasoning.
 
-- **State:** `tools/generate_event_tres.py` already pulls event **metadata**
+- **State:** `tools/generate_event2_tres.py` already pulls event **metadata**
   from the `events` sheet, but the **narrative** (prompt + choices + per-outcome
   effects) is hand-authored in a Python dict named `AUTHORED` inside that file,
   keyed by the row's `Img`. Only 4 events exist.

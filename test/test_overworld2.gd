@@ -972,6 +972,7 @@ func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
 	_reboot(&"isaac")
 	_ui.pick(0)
 	if GameLoop2.stack.size() < 2:
+		pending("the run did not reach this case (GameLoop2.stack.size() < 2)")
 		return
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -1443,6 +1444,7 @@ func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 func test_a_goal_row_carries_no_notes_button() -> void:
 	_ui.pick(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var row: Control = _ui._fulfil_checks[0]["check"].get_parent()
 	for btn in row.find_children("*", "Button", true, false):
@@ -1452,6 +1454,7 @@ func test_a_goal_row_carries_no_notes_button() -> void:
 func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
 	_ui.pick(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var game_id: StringName = _ui._chosen["game"].id
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
@@ -1477,11 +1480,13 @@ func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
 func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
 	_ui.pick(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var game_id: StringName = _ui._chosen["game"].id
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
 	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
 	if enemy == null:
+		pending("the roll put no body on the board to ask about")
 		return
 	# GameStats is a CROSS-RUN store backed by a real file, like the tier list — it
 	# is not wiped by after_each, so the pair this test happens to roll may already
@@ -1531,6 +1536,7 @@ func test_ticking_an_arrival_is_what_clears_it() -> void:
 	_ui.pick(0)
 	var landed: Dictionary = GameLoop2.arrival()
 	if landed.is_empty():
+		pending("the run did not reach this case (landed.is_empty())")
 		return
 	var inst: int = int(landed["instance"])
 	# Disarmed: a ticked body that dies with Split leaves two behind, so the count
@@ -1577,6 +1583,7 @@ func test_a_bodys_statuses_ride_its_hover_card_as_pips() -> void:
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	var node: Control = _ui._board._enemy_nodes.get(inst)
 	if node == null:
+		pending("the run did not reach this case (node == null)")
 		return
 	var card: Dictionary = node.get_meta(HoverCard.META, {})
 	var pips: Array = card.get("pips", [])
@@ -1636,6 +1643,7 @@ func test_an_offered_card_has_no_hover_of_its_own() -> void:
 func test_the_hover_shows_the_enemys_portrait() -> void:
 	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
 	if enemy == null or enemy.image == null:
+		pending("the roll put no body on the board to ask about")
 		return                                    # a free game has nothing to draw
 	_ui._show_preview(0)
 	assert_true(_ui._preview_art.visible, "hovering a card shows what is waiting there")
@@ -1649,6 +1657,7 @@ func test_the_hover_shows_the_enemys_portrait() -> void:
 func test_the_hover_portrait_respects_the_dome() -> void:
 	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
 	if enemy == null or enemy.image == null:
+		pending("the roll put no body on the board to ask about")
 		return
 	var dome := ItemData.new()
 	dome.id = &"__test_dome__"
@@ -1878,6 +1887,7 @@ func test_the_loot_window_stays_on_screen() -> void:
 	_ui._refresh_items()
 	await wait_frames(2)
 	if _ui._loot_panel == null:
+		pending("the run did not reach this case (_ui._loot_panel == null)")
 		return
 	var panel: Rect2 = _ui._loot_panel.get_global_rect()
 	var screen: Vector2 = _ui.get_viewport_rect().size
@@ -1953,6 +1963,7 @@ func test_a_piece_can_be_dragged_into_any_empty_slot() -> void:
 	var moving: StringName = _id_in_slot(0)
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	var payload = grid.get_child(0)._get_drag_data(Vector2.ZERO)
 	var far: LootSlot = grid.get_child(GameState.LOOT_CAPACITY - 1)
@@ -1973,6 +1984,7 @@ func test_an_arrangement_survives_the_grid_being_redrawn() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	var moving: StringName = _id_in_slot(0)
 	var payload = grid.get_child(0)._get_drag_data(Vector2.ZERO)
@@ -1993,6 +2005,7 @@ func test_a_piece_stays_where_it_was_put_when_another_is_spent() -> void:
 	GameState.add_pill_loot(&"health_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	# Put the third piece in the far corner, then destroy the first.
 	var payload = grid.get_child(2)._get_drag_data(Vector2.ZERO)
@@ -2011,6 +2024,7 @@ func test_the_whole_cell_is_what_follows_the_cursor() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	var cell: LootSlot = grid.get_child(0)
 	var preview: Control = grid.drag_preview(cell)
@@ -2033,6 +2047,7 @@ func test_loot_cannot_be_rearranged_mid_report() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	grid.locked = true
 	assert_null(grid.get_child(0)._get_drag_data(Vector2.ZERO),
@@ -2077,6 +2092,7 @@ func test_an_offer_cannot_be_dropped_onto_a_piece_already_carried() -> void:
 	await wait_frames(2)
 	var grid: LootGrid = _find_grid(modal) as LootGrid
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	var payload := {"kind": "loot_take", "entry": offer, "offer": 0}
 	assert_false(grid.get_child(0)._can_drop_data(Vector2.ZERO, payload),
@@ -2093,6 +2109,7 @@ func test_a_full_pack_refuses_the_drop() -> void:
 	await wait_frames(2)
 	var grid: LootGrid = _find_grid(modal) as LootGrid
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	assert_false(grid.get_child(0)._can_drop_data(Vector2.ZERO,
 		{"kind": "loot_take", "entry": {"type": "scroll", "id": &"scroll_of_fire"}, "offer": 0}),
@@ -2185,6 +2202,7 @@ func test_a_teleport_says_where_it_put_you() -> void:
 	modal._on_read()
 	await wait_frames(2)
 	if not is_instance_valid(modal):
+		pending("the run did not reach this case (not is_instance_valid(modal))")
 		return
 	var text: String = _text_of(modal)
 	assert_false(text.contains("Nothing happens"),
@@ -2342,6 +2360,7 @@ func test_binning_a_carried_piece_asks_before_destroying_it() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	# The payload the grid's own cells hand over: the SLOT it is leaving and the
 	# index of the piece, which are two different numbers now that a pack can have
@@ -2365,6 +2384,7 @@ func test_nothing_can_be_binned_mid_report() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	var grid: LootGrid = _open_loot_grid()
 	if grid == null:
+		pending("the page has no loot grid up to drag into")
 		return
 	grid.locked = true
 	assert_false(grid.can_trash({"kind": "loot_move", "from": 0, "index": 0}),
@@ -2826,6 +2846,7 @@ func test_the_road_walked_carries_only_games_the_run_has_reached() -> void:
 func test_the_amulet_is_not_drawn_on_the_road_behind_you() -> void:
 	var amulet: StringName = GameState.amulet_game_id
 	if amulet == &"" or GameState.walked_path().has(amulet):
+		pending("the run did not reach this case (amulet == &'' or GameState.walked_path().has(amulet))")
 		return    # standing on it is a legitimate stop; there is nothing to catch
 	_ui._refresh()
 	assert_false(_ui.route_strip_stops().has(amulet),
@@ -2837,6 +2858,7 @@ func test_the_road_walked_keeps_the_doubling_back() -> void:
 	var start: StringName = GameState.current_game_id
 	var away: StringName = _neighbour_of_here()
 	if away == &"" or away == start:
+		pending("the run did not reach this case (away == &'' or away == start)")
 		return
 	GameState.set_current_game(away)
 	GameState.set_current_game(start)
@@ -2851,6 +2873,7 @@ func test_only_the_last_stop_is_ringed_as_where_you_are() -> void:
 	var start: StringName = GameState.current_game_id
 	var away: StringName = _neighbour_of_here()
 	if away == &"" or away == start:
+		pending("the run did not reach this case (away == &'' or away == start)")
 		return
 	GameState.set_current_game(away)
 	GameState.set_current_game(start)
@@ -2966,6 +2989,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 	_pick_solo(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
+		pending("the run did not reach this case (checks.is_empty())")
 		return
 	_tick(checks[0])                                 # "I didn't use a rest site"
 	_report_beat(_ui)
@@ -3096,6 +3120,7 @@ func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_disarm_board()
 	var e: GoalEnemyData = _ui._chosen["enemy"]
 	if e.is_boss() or e.image == null:
+		pending("the run did not reach this case (e.is_boss() or e.image == null)")
 		return                                # the boss case, and art-less content
 	# The escort left the board a moment ago (_pick_solo) and the panel is rebuilt
 	# on a later frame, so it is rebuilt here rather than counted a body stale.
@@ -3113,6 +3138,7 @@ func test_only_a_boss_portrait_says_boss() -> void:
 	_pick_solo(0)
 	var e: GoalEnemyData = _ui._chosen["enemy"]
 	if e.is_boss() or e.image == null:
+		pending("the run did not reach this case (e.is_boss() or e.image == null)")
 		return
 	_ui._populate_play_panel()
 	for rect in _texture_rects_under(_ui._verify_box):
@@ -3218,6 +3244,7 @@ func test_the_checklist_boxes_are_drawn_not_left_to_the_stock_theme() -> void:
 func test_ticking_a_checklist_row_restyles_the_whole_row() -> void:
 	_ui.pick(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var check: CheckBox = _ui._fulfil_checks[0]["check"]
 	var row: Control = check.get_parent().get_parent()
@@ -4350,6 +4377,7 @@ func test_the_verdict_screen_keeps_the_replays_on_the_road() -> void:
 	var start: StringName = GameState.current_game_id
 	var away: StringName = _neighbour_of_here()
 	if away == &"" or away == start:
+		pending("the run did not reach this case (away == &'' or away == start)")
 		return
 	GameState.set_current_game(away)
 	GameState.set_current_game(start)
@@ -4560,6 +4588,7 @@ func test_the_chart_can_be_closed_back_to_the_run() -> void:
 	_ui.open_map()
 	var atlas: AtlasView = _chart()
 	if atlas == null:
+		pending("the run did not reach this case (atlas == null)")
 		return
 	var close: Button = _close_button(atlas)
 	assert_not_null(close, "the chart carries a way back")
@@ -4583,6 +4612,7 @@ func test_clicking_a_game_on_the_ladder_finds_it_on_the_chart() -> void:
 	var modal = _ui.open_map()
 	var atlas: AtlasView = _chart()
 	if atlas == null or not atlas.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_true(modal.show_on_chart(GameState.amulet_game_id), "the chart takes the click")
 	assert_eq(atlas.layout.id_at(atlas.selected_index()), GameState.amulet_game_id,
@@ -4673,6 +4703,7 @@ func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 	var here: StringName = _a_game_at_hops(6)
 	var there: StringName = _a_game_at_hops(1)
 	if here == &"" or there == &"":
+		pending("the run did not reach this case (here == &'' or there == &'')")
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
@@ -4686,6 +4717,7 @@ func test_backing_off_reads_as_the_relief_it_is() -> void:
 	var here: StringName = _a_game_at_hops(1)
 	var there: StringName = _a_game_at_hops(6)
 	if here == &"" or there == &"":
+		pending("the run did not reach this case (here == &'' or there == &'')")
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
@@ -4697,6 +4729,7 @@ func test_a_card_that_changes_nothing_says_so_quietly() -> void:
 	var here: StringName = _a_game_at_hops(6)
 	var there: StringName = _a_game_at_hops(5)
 	if here == &"" or there == &"":
+		pending("the run did not reach this case (here == &'' or there == &'')")
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
@@ -4975,6 +5008,7 @@ func _offer_at(hub: StringName, salt: int) -> Array:
 func test_a_hub_always_offers_at_least_one_game_that_leads_onward() -> void:
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	# Many seeds, because the bug this guards is probabilistic: the unguarded
 	# draw only strands you on the subsets that happen to be all dead ends.
@@ -4991,12 +5025,14 @@ func test_a_hub_always_offers_at_least_one_game_that_leads_onward() -> void:
 func test_the_hub_rule_never_drops_the_amulet() -> void:
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	# Park the amulet on a neighbour of the hub so it's reachable and therefore
 	# pinned to the front of the offering; the onward swap takes the LAST slot
 	# precisely so it can never be the card that goes.
 	var nbrs: Array = RunGraph.neighbors(hub)
 	if nbrs.is_empty():
+		pending("the run did not reach this case (nbrs.is_empty())")
 		return
 	GameState.amulet_game_id = nbrs[0]
 	for salt in range(20):
@@ -5016,6 +5052,7 @@ func test_off_a_hub_the_offering_is_left_alone() -> void:
 			small = g.id
 			break
 	if small == &"":
+		pending("the run did not reach this case (small == &'')")
 		return
 	GameState.current_game_id = small
 	# Park the amulet on the node itself so it can't be among the neighbours — the
@@ -5032,6 +5069,7 @@ func test_the_rule_promises_a_card_that_exists_not_an_invented_one() -> void:
 	# have degree 0, which is exactly the all-dead-ends pool this guards.
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	GameState.current_game_id = hub          # so the hub rule is actually engaged
 	var offered: Array = [&"a", &"b", &"c"]
@@ -5398,6 +5436,7 @@ func test_escaping_still_owes_the_road_its_extra_turns() -> void:
 	# missed report. Stood on the doorstep so there is something to owe.
 	var near: StringName = _a_game_at_hops(1)
 	if near == &"":
+		pending("the run did not reach this case (near == &'')")
 		return
 	_ui.pick(0)
 	GameState.set_current_game(near)
@@ -5649,6 +5688,7 @@ func test_escaping_does_not_recharge_a_charged_item() -> void:
 			charged = it
 			break
 	if charged == null:
+		pending("the run did not reach this case (charged == null)")
 		return
 	var inst: ItemData = GameState.add_item(charged)
 	inst.current_charge = 0
@@ -5814,6 +5854,7 @@ func test_a_boss_read_off_the_warning_is_read_only() -> void:
 	var notice = _ui._boss_notice
 	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
 	if boss == null:
+		pending("the run did not reach this case (boss == null)")
 		return
 	var card = notice.inspect_boss(boss)
 	assert_not_null(card)
@@ -6025,6 +6066,7 @@ func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
 	# between report() and the screen opening in which to post one.
 	var events: Array = Data.all_events2()
 	if events.is_empty():
+		pending("the run did not reach this case (events.is_empty())")
 		return
 	_ui.pick(0)
 	_ui._pending_event = events[0]
@@ -6254,6 +6296,7 @@ func test_a_queued_payout_survives_a_save_in_either_shape() -> void:
 func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	# THE OPENING GAME MAY ITSELF HAVE BEEN A HUB. `choose_start(0)` takes the
 	# first of a RANDOM offering, so once in a while it is one of the ten hubs —
@@ -6335,6 +6378,7 @@ func _a_hub() -> StringName:
 func test_a_shop_mounts_under_the_board_rather_than_over_it() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	_ui._mount_shop(hub)
 	assert_not_null(_ui._shop_panel, "the shop is on the page")
@@ -6345,6 +6389,7 @@ func test_a_shop_mounts_under_the_board_rather_than_over_it() -> void:
 func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	_ui._mount_shop(hub)
 	assert_eq(_ui._shop_hint.visible, not _ui._shop_in_view(),
@@ -6356,6 +6401,7 @@ func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
 func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
 	var hub: StringName = _a_hub()
 	if hub == &"":
+		pending("the offering rolled no hub to stand on")
 		return
 	ShopSystem.shop_for(hub)
 	_ui._mount_shop(hub)
@@ -6375,6 +6421,7 @@ func _neighbour_of_here() -> StringName:
 func test_stay_or_return_is_asked_with_the_offering_not_a_dialog() -> void:
 	var back: StringName = _neighbour_of_here()
 	if back == &"":
+		pending("the run did not reach this case (back == &'')")
 		return
 	_ui._ask_stay_or_return(back)
 	assert_true(_ui._asking_return(), "the run is standing on the question")
@@ -6387,6 +6434,7 @@ func test_stay_or_return_is_asked_with_the_offering_not_a_dialog() -> void:
 func test_a_destination_card_opens_the_same_popup_with_a_different_verb() -> void:
 	var back: StringName = _neighbour_of_here()
 	if back == &"":
+		pending("the run did not reach this case (back == &'')")
 		return
 	_ui._ask_stay_or_return(back)
 	var modal: GameChoiceModal = _ui.open_choice(1)
@@ -6399,6 +6447,7 @@ func test_a_destination_card_opens_the_same_popup_with_a_different_verb() -> voi
 func test_staying_keeps_the_run_where_the_detour_left_it() -> void:
 	var back: StringName = _neighbour_of_here()
 	if back == &"":
+		pending("the run did not reach this case (back == &'')")
 		return
 	var here: StringName = GameState.current_game_id
 	_ui._ask_stay_or_return(back)
@@ -6410,6 +6459,7 @@ func test_staying_keeps_the_run_where_the_detour_left_it() -> void:
 func test_the_verbs_are_held_while_the_question_is_up() -> void:
 	var back: StringName = _neighbour_of_here()
 	if back == &"":
+		pending("the run did not reach this case (back == &'')")
 		return
 	GameState.dash_charges = 2
 	GameState.scramble = 2
@@ -6438,6 +6488,7 @@ func _node_carrying_an_event() -> StringName:
 func test_a_detour_hands_over_no_event_of_its_own() -> void:
 	var node: StringName = _node_carrying_an_event()
 	if node == &"":
+		pending("the run did not reach this case (node == &'')")
 		return
 	_ui.pick(0)
 	# The game being reported is a detour's destination, standing on a node that
@@ -6453,6 +6504,7 @@ func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
 	# detour, not on events firing at all.
 	var node: StringName = _node_carrying_an_event()
 	if node == &"":
+		pending("the run did not reach this case (node == &'')")
 		return
 	_ui.pick(0)
 	_ui._chosen["slot"] = node
@@ -7869,6 +7921,7 @@ func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 	GameLoop2.drops.clear()
 	var landed: Dictionary = GameLoop2.arrival()
 	if landed.is_empty():
+		pending("the run did not reach this case (landed.is_empty())")
 		return
 	var cell := Vector2i(int(landed.get("col", 2)), int(landed.get("row", 0)))
 	_ui._on_enemy_defeated(landed.get("enemy"), cell)
@@ -7882,6 +7935,7 @@ func test_a_body_that_fell_off_the_board_sends_its_loot_to_the_haul_screen() -> 
 	_ui._drop_queue.clear()
 	var landed: Dictionary = GameLoop2.arrival()
 	if landed.is_empty():
+		pending("the run did not reach this case (landed.is_empty())")
 		return
 	_ui._on_enemy_defeated(landed.get("enemy"), GameLoop2.OFF_FIELD)
 	assert_eq(_loot_pieces(), 1, "nowhere to lay it, so it goes where unclaimed loot goes")
@@ -7957,6 +8011,7 @@ func _confirm_panel() -> Node:
 func test_ticking_a_goal_asks_before_it_does_anything() -> void:
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var standing: int = GameLoop2.stack_size()
 	var check: CheckBox = _ui._fulfil_checks[0]["check"]
@@ -7971,6 +8026,7 @@ func test_ticking_a_goal_asks_before_it_does_anything() -> void:
 func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
 	var check: CheckBox = _ui._fulfil_checks[0]["check"]
@@ -7993,6 +8049,7 @@ func test_a_curse_row_arms_rather_than_confirming() -> void:
 	_ui.pick(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
+		pending("the run did not reach this case (checks.is_empty())")
 		return
 	var check: CheckBox = checks[0]
 	var key: String = "curse:0:poor_sleep"
@@ -8016,6 +8073,7 @@ func test_a_curse_row_arms_rather_than_confirming() -> void:
 func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	_tick(_ui._fulfil_checks[0]["check"])
 	await wait_frames(2)
@@ -8035,10 +8093,12 @@ func test_a_goal_answered_mid_game_still_engages_the_body_that_survived_it() -> 
 	# of the game you engaged it at.
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	if entry.is_empty():
+		pending("nothing arrived on the board this game")
 		return
 	entry["health"] = 2
 	entry["col"] = 1                       # in reach, so a turn would be a swing
@@ -8171,6 +8231,7 @@ func test_the_review_note_is_dropped_on_no() -> void:
 	_ui.pick(0)
 	var game: GameData = _ui._chosen.get("game")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	# From a clean slate: GameStats outlives one test, and the Yes case above may
 	# have written this very pair.
@@ -8178,6 +8239,7 @@ func test_the_review_note_is_dropped_on_no() -> void:
 	_ui.confirm_completed_game()
 	var fields: Array = _review_notes_fields(_ui.get_node_or_null("Confirm"))
 	if fields.is_empty():
+		pending("the run did not reach this case (fields.is_empty())")
 		return
 	(fields[0] as TextEdit).text = "typed and thought better of"
 	_say_no(_ui)
@@ -8263,6 +8325,7 @@ func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
 	_reboot(&"rodney")
 	_ui.pick(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	var carried: int = GameState.loot_items.size()
 	_tick(_ui._levelup_check)
@@ -8284,6 +8347,7 @@ func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
 	_report_beat(_ui)                        # box left unticked
 	_ui._end_resolve()
 	if _ui._post_screen == null:
+		pending("the run did not reach this case (_ui._post_screen == null)")
 		return
 	assert_false(str(_labels_under(_ui._post_screen)).contains("LEVELLED UP"),
 		"no level, no panel")
@@ -8299,6 +8363,7 @@ func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
 	assert_eq(GameState.dash_charges, dash_before,
@@ -8315,6 +8380,7 @@ func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 	var dash_before: int = GameState.dash_charges
 	_ui.pick(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
 	_ui._levelup_check.button_pressed = false      # thought better of it
@@ -8332,6 +8398,7 @@ func test_an_armed_winning_run_row_survives_the_checklist_being_rebuilt() -> voi
 	# that have already resolved.
 	_pick_solo(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
 	assert_true(GameLoop2.row_armed("levelup"), "the loop is holding the tick")
@@ -8348,6 +8415,7 @@ func test_the_answered_rows_go_with_the_game() -> void:
 	_pick_solo(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
+		pending("the run did not reach this case (checks.is_empty())")
 		return
 	var key: String = "curse:0:poor_sleep"
 	# A CURSE ROW ARMS NOW rather than resolving on its tick, so what this asks about
@@ -8367,6 +8435,7 @@ func test_the_armed_rows_go_with_the_game_too() -> void:
 	# handed in; the next game asks again.
 	_pick_solo(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
 	assert_true(GameLoop2.row_armed("levelup"))
@@ -8396,10 +8465,12 @@ func _completed_button() -> Button:
 func test_a_confirmed_goal_is_written_into_the_runs_ledger() -> void:
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
 	var enemy: GoalEnemyData = GameLoop2.entry_for(inst).get("enemy")
 	if enemy == null:
+		pending("the roll put no body on the board to ask about")
 		return
 	var before: int = GameLoop2.completed_goals.size()
 	_tick(_ui._fulfil_checks[0]["check"])
@@ -8413,6 +8484,7 @@ func test_a_confirmed_goal_is_written_into_the_runs_ledger() -> void:
 func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
 	_pick_solo(0)
 	if _ui._levelup_check == null:
+		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
 	var before: int = GameLoop2.completed_goals.size()
@@ -8447,6 +8519,7 @@ func test_the_checklist_head_carries_the_count_and_opens_the_panel() -> void:
 func test_the_panel_groups_what_was_done_under_the_game_it_was_done_at() -> void:
 	_pick_solo(0)
 	if _ui._fulfil_checks.is_empty():
+		pending("the offering rolled a game with no goal rows on it")
 		return
 	_tick(_ui._fulfil_checks[0]["check"])
 	var panel = _ui.show_completed_goals()
@@ -8554,6 +8627,7 @@ func test_a_bonus_ticked_after_the_body_is_down_pays_at_once() -> void:
 	if _ui._bonus_checks.is_empty():
 		# The body survived its goal hit, so its row is still open — not the case
 		# this test is about.
+		pending("the run did not reach this case (_ui._bonus_checks.is_empty())")
 		return
 	var chests_before: int = GameState.pending_chests
 	_ui._bonus_checks[0]["check"].button_pressed = true

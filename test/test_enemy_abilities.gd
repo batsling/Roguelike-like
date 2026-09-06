@@ -744,6 +744,7 @@ func test_phases_carry_their_own_goal_and_their_own_picture() -> void:
 func test_a_revived_boss_steps_to_the_next_phase() -> void:
 	var boss: GoalEnemyData = Data.get_boss(&"guillatina")
 	if boss == null:
+		pending("the run did not reach this case (boss == null)")
 		return
 	var entry: Dictionary = _put(boss, Vector2i(1, 0))
 	assert_eq(GameLoop2.entry_goal(entry), boss.goal_at(0), "it starts as itself")

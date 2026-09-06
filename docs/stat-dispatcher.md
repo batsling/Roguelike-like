@@ -326,4 +326,4 @@ all three modes since every mode shares the resolver.
 strategy doesn't seed combat-start statuses yet, but crits still roll).
 The Luck portion of the roll stays hidden, and a negative `crit_chance`
 lowers the roll without showing a status. Icon falls back to Unknown.png
-until `images/statuses/CritChanceUp.png` is added.
+until `images2.0/statuses/CritChanceUp.png` is added.

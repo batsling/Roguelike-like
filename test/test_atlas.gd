@@ -34,6 +34,7 @@ func test_layout_resource_exists() -> void:
 
 func test_layout_covers_every_game() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var catalog: int = Data.all_games().size()
 	assert_eq(_layout.star_count(), catalog, "every game in the catalog has a star")
@@ -42,6 +43,7 @@ func test_layout_covers_every_game() -> void:
 
 func test_parallel_arrays_are_the_same_length() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var n: int = _layout.star_count()
 	assert_eq(_layout.xs.size(), n, "one x per star")
@@ -51,6 +53,7 @@ func test_parallel_arrays_are_the_same_length() -> void:
 
 func test_edges_are_pairs_of_real_stars() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(_layout.edges.size() % 2, 0, "the edge list is flat pairs")
 	assert_gt(_layout.edge_count(), 0, "the sky has links in it")
@@ -63,6 +66,7 @@ func test_edges_are_pairs_of_real_stars() -> void:
 # never overlap. If this fails the layout is wrong, not the renderer.
 func test_no_two_stars_overlap() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var n: int = _layout.star_count()
 	var cell: float = 48.0
@@ -88,6 +92,7 @@ func test_no_two_stars_overlap() -> void:
 
 func test_capitals_are_the_highest_degree_games() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_gt(_layout.capitals.size(), 0, "the sky has capitals")
 	var cap_degree: int = _layout.degree_of(_layout.capitals[0])
@@ -97,6 +102,7 @@ func test_capitals_are_the_highest_degree_games() -> void:
 
 func test_every_star_is_in_a_region_or_drifting() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for i in range(_layout.star_count()):
 		var r: int = _layout.region[i]
@@ -108,6 +114,7 @@ func test_every_star_is_in_a_region_or_drifting() -> void:
 
 func test_capitals_sit_at_hop_zero_of_their_own_region() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for ci in range(_layout.capitals.size()):
 		var cap: int = _layout.capitals[ci]
@@ -116,6 +123,7 @@ func test_capitals_sit_at_hop_zero_of_their_own_region() -> void:
 
 func test_bounds_contain_every_star() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for i in range(_layout.star_count()):
 		assert_true(_layout.bounds.has_point(_layout.position_of(i)),
@@ -133,6 +141,7 @@ func test_view_builds_headless() -> void:
 func test_neighbors_match_the_baked_edges() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var counted: int = 0
 	for i in range(view.layout.star_count()):
@@ -143,6 +152,7 @@ func test_neighbors_match_the_baked_edges() -> void:
 func test_neighbors_are_symmetric() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var a: int = view.layout.capitals[0]
 	for n in view.neighbors_of(a):
@@ -152,6 +162,7 @@ func test_neighbors_are_symmetric() -> void:
 func test_selecting_a_star_lights_its_links() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var cap: int = view.layout.capitals[0]
 	view.select(cap)
@@ -166,6 +177,7 @@ func test_selecting_a_star_lights_its_links() -> void:
 func test_picking_finds_the_star_under_the_cursor() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var target: int = view.layout.capitals[0]
 	var at: Vector2 = view.to_screen(view.layout.position_of(target))
@@ -174,6 +186,7 @@ func test_picking_finds_the_star_under_the_cursor() -> void:
 func test_picking_empty_sky_returns_nothing() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	# Far outside the bounds, so nothing is within the screen-space tolerance.
 	var far: Vector2 = view.to_screen(view.layout.bounds.end + Vector2(6000, 6000))
@@ -182,6 +195,7 @@ func test_picking_empty_sky_returns_nothing() -> void:
 func test_focus_game_centres_and_selects() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var id: StringName = view.layout.id_at(view.layout.capitals[0])
 	assert_true(view.focus_game(id), "focusing a real game succeeds")
@@ -190,12 +204,14 @@ func test_focus_game_centres_and_selects() -> void:
 func test_focus_unknown_game_is_refused() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_false(view.focus_game(&"not_a_real_game"), "an unknown id is refused")
 
 func test_zoom_is_clamped() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for _i in range(60):
 		view.zoom_by(2.0, Vector2(400, 300))
@@ -207,6 +223,7 @@ func test_zoom_is_clamped() -> void:
 func test_hulls_cover_every_region() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.hulls().size(), view.layout.capitals.size(),
 		"every constellation has a hull")
@@ -237,6 +254,7 @@ func test_cover_size_is_degenerate_when_it_should_be() -> void:
 func test_no_two_covers_can_overlap() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var lay: AtlasLayout = view.layout
 	var checked: int = 0
@@ -277,6 +295,7 @@ func _world_cover_rect(view: AtlasView, lay: AtlasLayout, i: int, tex: Texture2D
 func test_most_games_have_cover_art() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var with_art: int = 0
 	for i in range(view.layout.star_count()):
@@ -288,6 +307,7 @@ func test_most_games_have_cover_art() -> void:
 func test_drawn_half_height_tracks_what_is_actually_drawn() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var i: int = view.layout.capitals[0]
 	assert_gt(view.drawn_half_height(i), 0.0, "something is always drawn for a star")
@@ -297,6 +317,7 @@ func test_drawn_half_height_tracks_what_is_actually_drawn() -> void:
 func test_well_connected_games_become_art_sooner() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var hub: int = view.layout.capitals[0]
 	var leaf: int = -1
@@ -305,6 +326,7 @@ func test_well_connected_games_become_art_sooner() -> void:
 			leaf = i
 			break
 	if leaf < 0 or view.cover_texture(hub) == null:
+		pending("the run did not reach this case (leaf < 0 or view.cover_texture(hub) == null)")
 		return
 	# Zoom up from the overview one step at a time and record which flips first.
 	var hub_at: float = -1.0
@@ -326,6 +348,7 @@ func test_well_connected_games_become_art_sooner() -> void:
 func test_nothing_shows_art_at_the_overview() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.frame_all()
 	assert_eq(view.cover_count(), 0, "the whole-sky overview is dots, not stamps")
@@ -333,6 +356,7 @@ func test_nothing_shows_art_at_the_overview() -> void:
 func test_everything_on_screen_with_art_shows_it_when_zoomed_right_in() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for _step in range(80):
 		view.zoom_by(1.3, Vector2(400, 300))
@@ -354,6 +378,7 @@ func test_everything_on_screen_with_art_shows_it_when_zoomed_right_in() -> void:
 func test_the_cover_count_memo_follows_the_camera() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.frame_all()
 	var overview: int = view.cover_count()
@@ -397,6 +422,7 @@ func test_the_cover_count_memo_follows_the_camera() -> void:
 func test_the_overview_decodes_no_cover_art() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.frame_all()
 	assert_eq(view.cover_count(), 0, "nothing is showing art out here")
@@ -409,6 +435,7 @@ func test_the_overview_decodes_no_cover_art() -> void:
 func test_zooming_in_only_decodes_what_it_draws() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.frame_all()
 	for _step in range(14):
@@ -434,6 +461,7 @@ func test_trail_follows_the_run() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_gt(view.trail_segment_count(), 0, "a run in progress draws a trail")
 	# Every segment is a real edge between two real stars.
@@ -456,6 +484,7 @@ func test_a_run_puts_its_whole_route_in_the_route_set() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	assert_true(view.showing_route(), "a run in progress is a route on the sky")
 	# Every star either road touches is on the route…
@@ -490,6 +519,7 @@ func test_the_road_is_drawn_over_the_games_it_has_nothing_to_do_with() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	var layers: Array = view.draw_layers()
 	var roads: int = layers.find(view.LAYER_ROADS)
@@ -514,6 +544,7 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	var left: int = view.current_index()
 	assert_eq(view.history_segment_count(), 0, "nothing walked yet — this is the first game")
@@ -551,6 +582,7 @@ func test_framing_the_trail_keeps_the_route_on_screen() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	view.frame_trail()
 	# The current game and the amulet both sit inside the framed view.
@@ -584,6 +616,7 @@ func test_owned_sky_holds_only_owned_games() -> void:
 func test_owned_sky_is_smaller_than_the_full_one() -> void:
 	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
 	if owned == null or _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_lt(owned.star_count(), _layout.star_count(),
 		"the owned sky is a subset of the whole catalog")
@@ -594,6 +627,7 @@ func test_owned_sky_is_smaller_than_the_full_one() -> void:
 func test_owned_sky_is_laid_out_independently() -> void:
 	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
 	if owned == null or _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_gt(owned.capitals.size(), 0, "the owned sky has its own capitals")
 	var moved: int = 0
@@ -607,6 +641,7 @@ func test_owned_sky_is_laid_out_independently() -> void:
 func test_owned_sky_has_no_overlapping_stars() -> void:
 	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
 	if owned == null:
+		pending("the run did not reach this case (owned == null)")
 		return
 	var overlaps: int = 0
 	for i in range(owned.star_count()):
@@ -622,6 +657,7 @@ func test_owned_sky_has_no_overlapping_stars() -> void:
 func test_filtered_sky_edges_stay_inside_the_filter() -> void:
 	var owned: AtlasLayout = ATLAS.load_layout(Settings.GameFilter.OWNED)
 	if owned == null:
+		pending("the run did not reach this case (owned == null)")
 		return
 	var e: int = 0
 	while e + 1 < owned.edges.size():
@@ -654,6 +690,7 @@ func test_an_unbaked_filter_falls_back_to_the_full_sky() -> void:
 func test_clicking_a_game_lights_every_one_of_its_connections() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for target in [view.layout.capitals[0], view.layout.capitals[3]]:
 		view.select(target)
@@ -674,6 +711,7 @@ func test_clicking_a_game_lights_every_one_of_its_connections() -> void:
 func test_a_one_connection_game_still_highlights() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var leaf: int = -1
 	for i in range(view.layout.star_count()):
@@ -681,6 +719,7 @@ func test_a_one_connection_game_still_highlights() -> void:
 			leaf = i
 			break
 	if leaf < 0:
+		pending("the run did not reach this case (leaf < 0)")
 		return
 	view.select(leaf)
 	assert_eq(view._near.size(), 2, "a dead end highlights itself and its one neighbour")
@@ -688,6 +727,7 @@ func test_a_one_connection_game_still_highlights() -> void:
 func test_selection_survives_zooming_out_past_the_link_threshold() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.select(view.layout.capitals[0])
 	for _i in range(30):
@@ -721,6 +761,7 @@ func test_route_matches_the_run_minimap_exactly() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	var dag: Dictionary = RunGraph.shortest_path_dag(
 		GameState.current_game_id, GameState.amulet_game_id)
@@ -747,6 +788,7 @@ func test_the_two_star_passes_are_every_star_exactly_once() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or not view.showing_route():
+		pending("no baked layout, or this sky is not showing a route")
 		return
 	var off: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_OFF_ROUTE)
 	var on: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE)
@@ -772,11 +814,13 @@ func test_the_partition_follows_the_route_when_it_moves() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or not view.showing_route():
+		pending("no baked layout, or this sky is not showing a route")
 		return
 	var before: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE).duplicate()
 	# Pin a game on the route: a forced route is a different set of stars.
 	var pin: StringName = _off_route_game(view)
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	GameState.route_waypoint = pin
 	view.refresh_route()
@@ -796,6 +840,7 @@ func test_the_partition_follows_the_route_when_it_moves() -> void:
 func test_with_no_route_one_pass_covers_the_sky() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_false(view.showing_route(), "the catalog view draws no run")
 	assert_eq(view.star_indices(AtlasView.LAYER_STARS_ALL).size(), view.layout.star_count(),
@@ -823,9 +868,11 @@ func test_the_route_survives_selecting_something_else() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var before: int = view.trail_segment_count()
 	if before == 0:
+		pending("the run did not reach this case (before == 0)")
 		return
 	view.select(view.layout.capitals[0])
 	assert_eq(view.trail_segment_count(), before,
@@ -855,6 +902,7 @@ func test_a_long_segment_gets_several_arrows() -> void:
 func test_arrows_are_evenly_spaced() -> void:
 	var offsets: PackedFloat32Array = AtlasView.route_arrow_offsets(900.0, 10.0, 10.0, 12.0)
 	if offsets.size() < 3:
+		pending("the run did not reach this case (offsets.size() < 3)")
 		return
 	var first_gap: float = offsets[1] - offsets[0]
 	for i in range(2, offsets.size()):
@@ -878,6 +926,7 @@ func test_route_segments_run_toward_the_amulet() -> void:
 	ui.choose_start(0)
 	var view := _open()
 	if not view.has_layout() or view.trail_segment_count() == 0:
+		pending("no baked layout, or this run walked no trail to draw")
 		return
 	var to_amulet: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
 	for seg in view._trail:
@@ -910,10 +959,12 @@ func test_path_taken_grows_as_the_player_moves() -> void:
 	var start_id: StringName = GameState.current_game_id
 	var next: Array = RunGraph.neighbors(start_id)
 	if next.is_empty():
+		pending("the run did not reach this case (next.is_empty())")
 		return
 	GameState.set_current_game(next[0])
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.history_segment_count(), 1, "one hop walked, one segment drawn")
 	var seg: Array = view._history[0]
@@ -985,10 +1036,12 @@ func test_a_hop_with_no_connection_is_flagged_as_a_jump() -> void:
 			stranger = g.id
 			break
 	if stranger == &"":
+		pending("the run did not reach this case (stranger == &'')")
 		return
 	GameState.set_current_game(stranger)
 	var view := _open()
 	if not view.has_layout() or view.history_segment_count() == 0:
+		pending("no baked layout, or this run has no history to draw")
 		return
 	assert_true(bool(view._history[0][2]),
 		"a move with no link between the two games reads as a jump")
@@ -999,10 +1052,12 @@ func test_path_taken_and_route_ahead_are_separate_roads() -> void:
 	ui.choose_start(0)
 	var next: Array = RunGraph.neighbors(GameState.current_game_id)
 	if next.is_empty():
+		pending("the run did not reach this case (next.is_empty())")
 		return
 	GameState.set_current_game(next[0])
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_gt(view.history_segment_count(), 0, "there is a road behind")
 	# No segment appears on both roads: the DAG starts where the player stands.
@@ -1019,11 +1074,13 @@ func test_my_run_framing_covers_both_roads() -> void:
 	ui.choose_start(0)
 	var next: Array = RunGraph.neighbors(GameState.current_game_id)
 	if next.is_empty():
+		pending("the run did not reach this case (next.is_empty())")
 		return
 	var start_id: StringName = GameState.current_game_id
 	GameState.set_current_game(next[0])
 	var view := _open()
 	if not view.has_layout() or view.history_segment_count() == 0:
+		pending("no baked layout, or this run has no history to draw")
 		return
 	view.frame_trail()
 	var canvas := Rect2(Vector2.ZERO, view._canvas_size()).grow(4.0)
@@ -1080,6 +1137,7 @@ func _baked_edge_keys(lay: AtlasLayout) -> Dictionary:
 # existing games and the star count is identical while the map is wrong.
 func test_baked_sky_matches_the_catalogs_connections() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var want: Dictionary = _catalog_edge_keys()
 	var have: Dictionary = _baked_edge_keys(_layout)
@@ -1099,6 +1157,7 @@ func test_baked_sky_matches_the_catalogs_connections() -> void:
 
 func test_baked_sky_matches_the_catalogs_games() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var baked: Dictionary = {}
 	for i in range(_layout.star_count()):
@@ -1123,6 +1182,7 @@ func test_filtered_skies_are_baked_from_the_same_catalog() -> void:
 # every star. Check them against the catalog directly.
 func test_star_sizes_match_the_catalogs_connection_counts() -> void:
 	if _layout == null:
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var degree: Dictionary = {}
 	for g in Data.all_games():
@@ -1164,6 +1224,7 @@ func test_influence_is_described_in_the_authored_direction() -> void:
 	var older: GameData = Data.get_game(&"rogue")
 	var newer: GameData = Data.get_game(&"brogue")
 	if older == null or newer == null:
+		pending("the run did not reach this case (older == null or newer == null)")
 		return
 	# Asked either way round, the answer names the influencer as the source.
 	for pair in [[older, newer], [newer, older]]:
@@ -1176,6 +1237,7 @@ func test_unconnected_games_describe_nothing() -> void:
 	var a: GameData = Data.get_game(&"rogue")
 	var b: GameData = Data.get_game(&"balatro")
 	if a == null or b == null:
+		pending("the run did not reach this case (a == null or b == null)")
 		return
 	assert_true(GameData.describe_influence(a, b).is_empty(),
 		"two games with no link between them have nothing to describe")
@@ -1190,6 +1252,7 @@ func test_only_real_urls_are_offered_as_openable() -> void:
 func test_clicking_a_link_picks_it() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var e: int = 0
 	var a: int = view.layout.edges[0]
@@ -1202,6 +1265,7 @@ func test_clicking_a_link_picks_it() -> void:
 func test_empty_sky_picks_no_link() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var far: Vector2 = view.to_screen(view.layout.bounds.end + Vector2(9000, 9000))
 	assert_eq(view.pick_edge(far), -1, "empty sky has no link under it")
@@ -1209,6 +1273,7 @@ func test_empty_sky_picks_no_link() -> void:
 func test_a_link_reports_both_games_and_its_evidence() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var found: int = -1
 	for e in range(view.layout.edge_count()):
@@ -1224,6 +1289,7 @@ func test_a_link_reports_both_games_and_its_evidence() -> void:
 func test_selecting_a_link_and_a_game_are_mutually_exclusive() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.select(view.layout.capitals[0])
 	view.select_edge(0)
@@ -1235,6 +1301,7 @@ func test_selecting_a_link_and_a_game_are_mutually_exclusive() -> void:
 func test_edge_details_refuses_a_bad_index() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_true(view.edge_details(-1).is_empty(), "no link below zero")
 	assert_true(view.edge_details(view.layout.edge_count()).is_empty(), "none past the end")
@@ -1244,6 +1311,7 @@ func test_edge_details_refuses_a_bad_index() -> void:
 func test_every_link_on_the_map_can_be_described() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for e in range(view.layout.edge_count()):
 		var d: Dictionary = view.edge_details(e)
@@ -1256,6 +1324,7 @@ func test_every_link_on_the_map_can_be_described() -> void:
 func test_sequel_links_are_identified() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var count: int = view.sequel_link_count()
 	assert_gt(count, 50, "the sheet's ~112 sequel / same-devs links are found on the map")
@@ -1264,6 +1333,7 @@ func test_sequel_links_are_identified() -> void:
 func test_a_sequel_link_agrees_with_its_card() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for e in range(view.layout.edge_count()):
 		var flagged: bool = view.is_sequel_link(e)
@@ -1281,6 +1351,7 @@ func test_sequel_stroke_is_distinct_from_the_other_lines() -> void:
 func test_bad_edge_index_is_not_a_sequel() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_false(view.is_sequel_link(-1))
 	assert_false(view.is_sequel_link(view.layout.edge_count()))
@@ -1299,6 +1370,7 @@ func test_a_bashed_game_is_marked_on_the_map() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var victim: StringName = view.layout.id_at(view.layout.capitals[0])
 	assert_false(view.is_bashed(view.layout.index_of(victim)), "nothing is bashed yet")
@@ -1325,9 +1397,11 @@ func test_the_map_draws_the_pasted_game_not_the_old_one() -> void:
 	var node: StringName = GameState.current_game_id
 	var repl: GameData = GameLoop2.transmute_game(node, [])
 	if repl == null:
+		pending("the run did not reach this case (repl == null)")
 		return
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var i: int = view.layout.index_of(node)
 	assert_true(view.is_transmuted(i), "the star is marked as pasted over")
@@ -1341,6 +1415,7 @@ func test_a_paste_survives_a_save_and_reload() -> void:
 	var node: StringName = GameState.current_game_id
 	var repl: GameData = GameLoop2.transmute_game(node, [])
 	if repl == null:
+		pending("the run did not reach this case (repl == null)")
 		return
 	var saved: Dictionary = GameLoop2.serialize()
 	GameLoop2.reset()
@@ -1361,6 +1436,7 @@ func test_bashing_a_pasted_node_takes_the_paste_with_it() -> void:
 	GameState.transmute = 1
 	var node: StringName = GameState.current_game_id
 	if GameLoop2.transmute_game(node, []) == null:
+		pending("the run did not reach this case (GameLoop2.transmute_game(node, []) == null)")
 		return
 	GameLoop2.transmuted.erase(node)
 	assert_false(GameLoop2.is_transmuted(node), "the paste goes with the destroyed slot")
@@ -1400,6 +1476,7 @@ func test_pure_catalog_ignores_bashed_games() -> void:
 	_start_run()
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var victim: StringName = view.layout.id_at(view.layout.capitals[0])
 	GameState.bash = 1
@@ -1416,9 +1493,11 @@ func test_pure_catalog_shows_the_real_game_not_a_paste() -> void:
 	var node: StringName = GameState.current_game_id
 	var repl: GameData = GameLoop2.transmute_game(node, [])
 	if repl == null:
+		pending("the run did not reach this case (repl == null)")
 		return
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var i: int = view.layout.index_of(node)
 	assert_false(view.is_transmuted(i), "a catalog view has nothing pasted on it")
@@ -1430,9 +1509,11 @@ func test_a_run_view_still_shows_the_paste() -> void:
 	var node: StringName = GameState.current_game_id
 	var repl: GameData = GameLoop2.transmute_game(node, [])
 	if repl == null:
+		pending("the run did not reach this case (repl == null)")
 		return
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.game_at(view.layout.index_of(node)).id, repl.id,
 		"the run's map still shows what was pasted")
@@ -1441,6 +1522,7 @@ func test_a_run_view_still_shows_the_paste() -> void:
 func test_pure_catalog_holds_the_whole_catalog() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.layout.star_count(), Data.all_games().size(),
 		"every game is still on the chart")
@@ -1465,6 +1547,7 @@ func _restore_stats() -> void:
 func test_an_unplayed_game_is_drawn_at_full_colour() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var i: int = -1
 	for k in range(view.layout.star_count()):
@@ -1473,6 +1556,7 @@ func test_an_unplayed_game_is_drawn_at_full_colour() -> void:
 			i = k
 			break
 	if i < 0:
+		pending("the run did not reach this case (i < 0)")
 		return
 	var game: GameData = Data.get_game(view.layout.id_at(i))
 	assert_false(view.has_record(i), "nothing earned on it yet")
@@ -1484,6 +1568,7 @@ func test_an_unplayed_game_is_drawn_at_full_colour() -> void:
 func test_a_beaten_game_has_a_silver_middle() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var gid: StringName = view.layout.id_at(0)
 	_stub_stats(gid, 3, 0)
@@ -1494,6 +1579,7 @@ func test_a_beaten_game_has_a_silver_middle() -> void:
 func test_an_amulet_win_is_gold_and_outranks_silver() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var gid: StringName = view.layout.id_at(0)
 	# A game won on is also a game beaten — gold has to win.
@@ -1512,10 +1598,12 @@ func test_the_record_is_drawn_in_the_catalog_but_not_in_a_run() -> void:
 	var pure_view := _open_pure()
 	if not run_view.has_layout():
 		_restore_stats()
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var i: int = run_view.layout.index_of(gid)
 	if i < 0:
 		_restore_stats()
+		pending("the run did not reach this case (i < 0)")
 		return
 	assert_true(pure_view.has_record(i), "the catalog view fills its middle")
 	assert_eq(pure_view.star_record_color(i), AtlasView.COL_AMULET_WIN, "gold, here")
@@ -1528,9 +1616,11 @@ func test_genre_is_drawn_in_both_views() -> void:
 	var run_view := _open()
 	var pure_view := _open_pure()
 	if not run_view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var game: GameData = Data.get_game(run_view.layout.id_at(0))
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	for view in [run_view, pure_view]:
 		assert_eq(RunGraph.type_color(view.game_at(0).type), RunGraph.type_color(game.type),
@@ -1547,6 +1637,7 @@ func test_silver_and_gold_are_tellable_apart() -> void:
 func test_genre_still_reads_on_a_game_with_a_record() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var gid: StringName = view.layout.id_at(0)
 	_stub_stats(gid, 2, 1)
@@ -1568,6 +1659,7 @@ func test_genre_still_reads_on_a_game_with_a_record() -> void:
 func test_no_filtering_outside_the_catalog_view() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_type = 0
 	for i in range(mini(30, view.layout.star_count())):
@@ -1576,12 +1668,14 @@ func test_no_filtering_outside_the_catalog_view() -> void:
 func test_everything_passes_by_default() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.filtered_count(), view.layout.star_count(), "nothing is hidden to start")
 
 func test_the_type_filter_keeps_only_that_type() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_type = GameData.GameType.DECKBUILDER
 	var shown: int = 0
@@ -1596,6 +1690,7 @@ func test_the_type_filter_keeps_only_that_type() -> void:
 func test_the_library_filter_keeps_only_owned() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_owned = 1
 	for i in range(view.layout.star_count()):
@@ -1605,6 +1700,7 @@ func test_the_library_filter_keeps_only_owned() -> void:
 func test_not_owned_is_the_complement_of_owned() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_owned = 1
 	var owned: int = view.filtered_count()
@@ -1616,6 +1712,7 @@ func test_not_owned_is_the_complement_of_owned() -> void:
 func test_filters_combine() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_type = GameData.GameType.ACTION
 	var by_type: int = view.filtered_count()
@@ -1626,6 +1723,7 @@ func test_filters_combine() -> void:
 func test_the_region_filter_keeps_one_constellation() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_region = 0
 	for i in range(view.layout.star_count()):
@@ -1638,6 +1736,7 @@ func test_the_region_filter_keeps_one_constellation() -> void:
 func test_the_region_filter_still_means_the_baked_constellation() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var base: AtlasLayout = view._base_layout
 	view._f_region = 0
@@ -1656,6 +1755,7 @@ func test_the_region_filter_still_means_the_baked_constellation() -> void:
 func test_an_unfiltered_catalog_draws_the_baked_sky() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.layout, view._base_layout,
 		"nothing narrows it, so there is nothing to rebuild")
@@ -1663,6 +1763,7 @@ func test_an_unfiltered_catalog_draws_the_baked_sky() -> void:
 func test_a_filter_rebuilds_the_sky_around_the_survivors() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var before: int = view.layout.star_count()
 	view._f_type = GameData.GameType.DECKBUILDER
@@ -1676,6 +1777,7 @@ func test_a_filter_rebuilds_the_sky_around_the_survivors() -> void:
 func test_a_rebuilt_sky_cuts_its_own_constellations() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var baked_caps: Array = []
 	for c in view._base_layout.capitals:
@@ -1691,6 +1793,7 @@ func test_a_rebuilt_sky_cuts_its_own_constellations() -> void:
 func test_clearing_the_filter_returns_the_baked_sky() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_type = GameData.GameType.ACTION
 	view._relayout()
@@ -1703,6 +1806,7 @@ func test_clearing_the_filter_returns_the_baked_sky() -> void:
 func test_a_relayout_drops_the_selection() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.select(3)
 	view._f_owned = 1
@@ -1717,6 +1821,7 @@ func test_a_relayout_drops_the_selection() -> void:
 func test_the_tree_mode_builds_a_tree() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.set_mode(AtlasView.Mode.TREE)
 	assert_true(view.layout.is_tree(), "the drawn sky is a tree")
@@ -1728,6 +1833,7 @@ func test_the_tree_mode_builds_a_tree() -> void:
 func test_switching_back_returns_the_constellations() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.set_mode(AtlasView.Mode.TREE)
 	view.set_mode(AtlasView.Mode.CONSTELLATIONS)
@@ -1737,6 +1843,7 @@ func test_switching_back_returns_the_constellations() -> void:
 func test_the_tree_honours_the_filters_too() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view.set_mode(AtlasView.Mode.TREE)
 	var whole: int = view.layout.star_count()
@@ -1753,6 +1860,7 @@ func test_the_run_map_never_relayouts() -> void:
 	# across it and moving the stars underneath them would be a lie.
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var before: AtlasLayout = view.layout
 	view._f_type = GameData.GameType.ACTION
@@ -1762,6 +1870,7 @@ func test_the_run_map_never_relayouts() -> void:
 func test_the_record_filters_split_the_catalog() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_record = 1
 	var beaten: int = view.filtered_count()
@@ -1774,6 +1883,7 @@ func test_the_record_filters_split_the_catalog() -> void:
 func test_changing_the_capital_count_swaps_the_sky() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var before: int = view.layout.capitals.size()
 	view.set_capital_count(12)
@@ -1785,6 +1895,7 @@ func test_changing_the_capital_count_swaps_the_sky() -> void:
 func test_an_unbaked_capital_count_is_refused() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var before: int = view.layout.capitals.size()
 	view.set_capital_count(99)
@@ -1794,6 +1905,7 @@ func test_an_unbaked_capital_count_is_refused() -> void:
 func test_changing_capitals_clears_the_region_filter() -> void:
 	var view := _open_pure()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	view._f_region = 1
 	view.set_capital_count(6)
@@ -1832,6 +1944,7 @@ func test_card_art_refuses_a_degenerate_texture() -> void:
 func test_the_clicked_card_never_crops_its_cover() -> void:
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	# The first star that actually has art — that's the card with a picture on it.
 	var target: int = -1
@@ -1863,6 +1976,7 @@ func test_the_sky_knows_where_the_player_is_and_where_the_goal_is() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_eq(view.current_index(), view.layout.index_of(GameState.current_game_id),
 		"you-are-here is the star of the game being stood on")
@@ -1875,6 +1989,7 @@ func test_both_anchors_are_named_on_the_map() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	assert_true(view.marker_text(view.current_index()).contains("YOU ARE HERE"),
 		"the spot you're on says so: %s" % view.marker_text(view.current_index()))
@@ -1888,6 +2003,7 @@ func test_the_goal_marker_counts_the_steps_left() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
 	var hops: int = int(dist.get(GameState.amulet_game_id, -1))
@@ -1899,6 +2015,7 @@ func test_the_run_line_names_both_ends() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	var here: GameData = Data.get_game(GameState.current_game_id)
 	var goal: GameData = Data.get_game(GameState.amulet_game_id)
@@ -1923,6 +2040,7 @@ func test_framing_an_anchor_puts_it_on_screen() -> void:
 	_start_run()
 	var view := _open()
 	if not view.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
 		return
 	for idx in [view.current_index(), view.amulet_index()]:
 		view._frame_star(idx)

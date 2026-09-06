@@ -11,6 +11,187 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seventeen dead pointers in the live docs, and a check so they stay dead-free.**
+
+  Found by sweeping the actual game code for silent-failure classes and coming up
+  empty: the dead-code scan, the lambda capture-by-value trap, unguarded signal
+  connects, `capture_view_state`/`restore_view_state` symmetry (13 keys written,
+  13 read, no gaps either way) and unguarded `[0]` reads all came back clean, as
+  did `TODO`/`FIXME` (zero in 64k lines) and every integer division. **The rot was
+  in the prose**, which is the layer this project actually navigates by.
+
+  All seventeen traced to the same two renames the project has already done — the
+  `2.0` content migration and the combat → games-first cut — with the docs left
+  behind. `tools/generate_card_tres.py` is `generate_card2_tres.py`,
+  `generate_event_tres.py` is `generate_event2_tres.py`,
+  `images/scrolls/Unidentified.png` moved to `images2.0/`, `LootInfoCard.gd` was
+  deleted outright (a click used to open a reading card that said the same things
+  as the Use screen). Twelve fixed.
+
+  **Two whole documents were describing systems that no longer exist while sitting
+  in the live `docs/` folder.** `addon-sheet-authoring-handoff.md` and
+  `addon-translation-dsl.md` name `scripts/action/ActionCombat.gd`,
+  `scripts/deckbuilder/DeckbuilderCombat.gd`, `scripts/strategy/combat/BattleView.gd`
+  and `scripts/runtime/AddonSystem.gd` — four paths long gone — and nothing live
+  linked to either, so nothing ever contradicted them. `CLAUDE.md` warns that
+  `docs/archive/` is historical; these were outside it, so the warning did not
+  cover them. Both are in `docs/archive/` now with the archive README saying what
+  they were and why they moved. `sheet-authoring-handoff.md` stays where it is and
+  gains a status banner: the items and events halves of the migration it plans
+  shipped, the addons half never did.
+
+  **Five paths are missing on purpose and stay that way** — a deleted item that
+  `cards-design.md` records as deleted, a mention explicitly labelled "combat-era",
+  a temp file whose doc describes creating and deleting it, and two "not built
+  yet" forward references. `tools/check_doc_paths.py` knows all five by name and
+  the reason for each, and fails on any sixth. It is the same lesson as the
+  performance backlog's stale seam table and the OBS overlay's untested page: the
+  documentation was accurate when written and nothing re-read it.
+
+- **The drop queue moves out of `Overworld2.gd`, and the seam table that said it
+  was a 230-line job gets re-measured.**
+
+  `docs/performance-backlog.md` §1 has said "`Overworld2.gd` is 4260 lines" for
+  months. The file was 5623 when that was last close to true and **6114** by the
+  time anyone checked — so the three splits it records did their 24% and then
+  accretion put all of it back and more. That is the finding, not the line count:
+  a seam table goes stale the moment it stops being re-run, and this one was being
+  quoted as current while the file grew past its own pre-split size.
+
+  **Where the growth went**, measured rather than guessed: +405 lines of a region
+  that did not exist at the last reading (*arriving somewhere you did not choose* —
+  card teleports, detours, the stay-or-return question, item aiming) and +138 of
+  card/item actions, against a diffuse +30 spread over everything else. A new
+  mechanic landed **in** the page rather than beside it. This file does not creep,
+  it absorbs.
+
+  **`DropQueue.gd`** takes the §8/§8.2 seam the doc named — everything the run pays
+  out and the order it is asked about: the queue, the modal in front of it, the two
+  gestures that get a piece off the floor, and the pack that appears for the length
+  of a drag. 6114 → 5826. The page keeps `_drop_queue`, `_drop_modal` and
+  `_drag_pack` as published views onto the class, because `test_overworld2.gd`
+  reads all three off the instance; `_drop_modal` needed a **setter** as well,
+  because the tests stand a modal up by hand where they only ever *mutate* the
+  queue array. `_notification` stays on the page — a Godot virtual cannot move off
+  the Node — and hands both ends of the drag over. The class asks the page four
+  small questions (`drops_are_done`, `drops_are_held`, `offer_loot_to_open_screen`,
+  `drag_pack_anchor`) rather than reading `Phase` or `_resolving`, which is the
+  same "pass phase in, don't read it out" rule the earlier three splits set.
+
+  **The doc now says which seams NOT to cut, and why**, because two of the
+  remaining big ones are traps. *Routing* looks like a 606-line region and is
+  actually the run loop with a banner on top — `report()` alone is 284 lines of it,
+  and splitting on a banner rather than on a mechanic is how you get a class called
+  `Routing` that owns `report()`. *The header* is three unrelated things under one
+  banner plus four page-wide helpers that merely sit at the bottom of the file.
+
+- **The test suite stops skipping in silence.**
+
+  ~250 tests guard themselves against a run that did not reach their case —
+  `if pin == &"": return`, `if _ui._fulfil_checks.is_empty(): return`. GUT only
+  reports **Risky** when a test asserts *nothing at all*, so a test that asserted
+  once and then bailed reported green: there was no way to tell "2092 passing" from
+  "1997 passing and 95 shrugging", and `CLAUDE.md` claimed the Risky problem was
+  solved while the pattern that produces it was alive in twelve files.
+
+  Every one of those guards now calls `pending("why")` before returning. GUT counts
+  pending separately, excludes it from Passing, and prints it in the totals — so
+  the skips are a number you can watch and treat as a budget. On the run that
+  landed this, **none of them fired**, which is the answer that was worth having
+  either way: the cases are currently covered, and the day one stops being reached
+  the totals will say so instead of staying quietly green.
+
+- **Two Ranwid tests that were only usually right.**
+
+  Found by the above, and both the same root cause: the relic the event pays back
+  with can carry gold or loot of its own.
+  `test_he_asks_for_two_gold_and_charges_two` asserted `gold <= 7` after the press
+  — under a comment that already admitted the relic "may carry gold of its own" —
+  so a run that rolled a relic paying 6 left 13 and the test failed on those runs
+  only. It watches the purse **through** the resolve now and asserts the low-water
+  mark, since the certain costs are charged before anything is granted.
+  `test_the_potion_price_takes_the_bottle_he_named` asserted a bottle COUNT of
+  `bottles - 1`; a relic that pays loot left six where it wanted one. It asserts
+  that **the bottle he named** is gone, which is the claim the test's own name
+  makes and is true whatever else arrives.
+
+  A third bug fell out of writing the first fix, and it is worth knowing about:
+  **a GDScript lambda captures a local by value.** `var low := 9` and a
+  `func(g): low = mini(low, g)` closure updates its own copy, and the test reads
+  back the number it started with. Use a reference type — the fix accumulates into
+  an Array.
+
+- **The OBS overlay is now RENDERED in a test, and it turned out to be lying.**
+
+  `test_obs_companion.gd` is 600 careful lines about the payload — its shape, that
+  no `Resource` escapes into it, that the swing forecast matches the turn the
+  board really takes. Its own header says why that matters: nothing in
+  `overlay.js` fails to compile when a key is renamed out from under it. That is
+  right, and the conclusion drawn from it was to test the *producer* harder. The
+  consumer is a browser page and it was tested nowhere, so five things shipped
+  broken, none of them visible to GUT and none of them the kind of thing you
+  notice glancing at your own stream.
+
+  **`hidden` did not hide.** `.cost` and `.hero-row` carry an author
+  `display: flex`, which outranks the UA stylesheet's `[hidden] { display: none }`
+  — so `drawCost` set the attribute, returned early, and left the PREVIOUS
+  forecast on screen. With nothing on the board able to reach you, the overlay sat
+  there pulsing **THIS KILLS YOU** at a player in no danger at all: the exact
+  failure `_threat()`'s long comment and four tests exist to prevent, arriving
+  through CSS instead of arithmetic. The two section labels did the same quieter
+  thing, standing over empty rows. `[hidden] { display: none !important }` now,
+  globally, because the next element given a `display` would have reintroduced it.
+
+  **The road never walked.** `drawRoad` restarted the auto-scroll on every
+  payload, and the game writes up to four times a second while a run moves and at
+  least every five seconds when it does not — against a 2500ms opening pause, so
+  the strip was reset before it could ever start. Measured at one payload every
+  two seconds it sat at `scrollLeft` 0 indefinitely; with 610px of road it needed
+  three quarters of a minute of total silence to reach the end. Every stop past
+  the sixth was exactly as invisible as the `+7` this scroller was built to
+  replace, and less honest, because nothing said they were there. It has a
+  signature now, like the checklist.
+
+  **The clocks were frozen.** The checklist's rebuild signature was
+  `kind|text|done`, which left `games` out — so an event's or a curse's countdown
+  ticked down in the payload and never redrew. A curse sat on "3 games left" until
+  some unrelated row changed, then jumped.
+
+  **A beaten Amulet was drawn as one the run never reached.** `.stop.beaten`,
+  `.stop.current` and `.stop.amulet` all have specificity (0,2,1), so the cascade
+  fell to source order and `.stop.amulet`, last, painted over both — accent
+  orange, a hair off `--unbeaten` at a 1px border. The one moment the whole strip
+  is built to show was the one moment it could not report. The two channels are
+  split now: the **border** says how the stop went, an **outline** says which stop
+  is the destination, and the border is 2px, because the outcome was the weakest
+  encoding on a page read across a room through a lossy encode.
+
+  **A burst of toasts fell off the bottom.** `player_hit` is emitted per swing, so
+  one lost run against five bodies fired six toasts; the ticker was the last item
+  in a content-height column inside a fixed-height browser source, and
+  `overflow: hidden` threw the newest lines away without a mark — measured, 900px
+  of page in the recommended 828px source. The turn's swings are added up and
+  spoken once now ("Took 7 damage — 1 shield broke"), the stack is capped at
+  three, and the ticker is pinned to the foot of the source and grows upward. That
+  last part is what makes the rest of the page a shape anyone can write down: the
+  README's layout tables were samples from a median run presented as fixed, and
+  they are now a measured range with a real ceiling.
+
+  **And one bug that only existed in an exported build.** `_extract` lifted packed
+  art into `user://obs/covers/` keyed on the BASE NAME, and `images/` and
+  `images2.0/` hold thirty-three duplicate base names between them (`Clover.png`,
+  `Crown.png`, `Isaac.png`, …) — so the first of a pair to be asked for took the
+  filename and every later request for the other was answered with the wrong
+  picture, permanently. Invisible from source, where `_path_url` finds the file
+  where it lies and never comes here at all; invisible in the tests for the same
+  reason. The extracted name carries the whole path's hash now.
+
+  **`tools/check_overlay.js`** is the half that was missing: it renders the real
+  page in headless Chromium against a heavy synthetic run and asserts every one of
+  the above. `npm install playwright-core && node tools/check_overlay.js`. It is
+  deliberately not wired into GUT — different runtime, different dependency — so
+  it is run by hand when anything under `obs/` changes.
+
 - **Every road says how each stop went, and it is a PER-VISIT fact.**
 
   A stop is green if that visit beat the game and **orange** if the run walked

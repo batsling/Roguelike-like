@@ -114,6 +114,12 @@ var _since_write: float = HEARTBEAT
 # CONTENT, so the heartbeat's ticking clock does not read as a change.
 var _last_json: String = ""
 var _events: Array = []
+# One enemy turn's swings, added up so the ticker says them once — see
+# `_on_player_hit`. Everything emitted in a single frame is a single turn.
+var _hit_damage: int = 0
+var _hit_absorbed: int = 0
+var _hit_shields: int = 0
+var _hit_pending: bool = false
 # res:// texture path -> the file:// URL the page should use for it. Populated
 # lazily, because resolving one may mean lifting a PNG out of the .pck.
 var _art_urls: Dictionary = {}
@@ -650,13 +656,46 @@ func _on_enemy_defeated(enemy, _cell) -> void:
 	var e: GoalEnemyData = enemy as GoalEnemyData
 	_note("good", "Defeated %s" % (e.display_name if e != null else "an enemy"))
 
+# ONE LINE PER TURN, NOT ONE PER SWING.
+#
+# `player_hit` is emitted from inside the resolver's per-body loop (§3.2 — every
+# body that can reach you swings once), so a lost run against a five-body board
+# fired five toasts and then "Lost a run — attempt N" on top of them. Six lines,
+# most of them saying "Took 3 damage" in a row, is not a ticker: it is a wall, it
+# is the least information per pixel on the page, and it arrives at the exact
+# moment the page has the least room for it.
+#
+# So the swings are added up and spoken once. Everything emitted in the SAME FRAME
+# is one enemy turn — the resolver takes the whole board inside one call — which is
+# why the total can ride a deferred call rather than needing the loop to tell us
+# where a turn ended.
 func _on_player_hit(damage, blocked) -> void:
-	var dealt: int = int(damage)
-	var stopped: int = int(blocked)
-	if dealt <= 0 and stopped <= 0:
+	_hit_damage += int(damage)
+	_hit_absorbed += int(blocked)
+	if int(blocked) > 0:
+		# `blocked` is the damage a shield ate, and a shield eats a whole hit — so a
+		# swing with anything absorbed is exactly one shield gone (_take_hit).
+		_hit_shields += 1
+	if not _hit_pending:
+		_hit_pending = true
+		_flush_hits.call_deferred()
+
+func _flush_hits() -> void:
+	var dealt: int = _hit_damage
+	var absorbed: int = _hit_absorbed
+	var shields: int = _hit_shields
+	_hit_damage = 0
+	_hit_absorbed = 0
+	_hit_shields = 0
+	_hit_pending = false
+	if dealt <= 0 and absorbed <= 0:
 		return
+	var broke: String = "%d shield%s" % [shields, "" if shields == 1 else "s"]
 	if dealt <= 0:
-		_note("info", "Shields held (%d blocked)" % stopped)
+		_note("info", "%s held — %d damage stopped" % [broke, absorbed])
+		return
+	if shields > 0:
+		_note("bad", "Took %d damage — %s broke" % [dealt, broke])
 		return
 	_note("bad", "Took %d damage" % dealt)
 
@@ -725,9 +764,21 @@ func _path_url(res_path: String) -> String:
 # BYTE FOR BYTE rather than loaded and re-encoded: a JPG cover stays the JPG it
 # was, and nothing here has to decode an image (see the lazy-cover note in
 # CLAUDE.md — decoding covers eagerly is what cost 5 seconds of every boot).
+#
+# THE NAME CARRIES THE WHOLE PATH, not just the file. This used to write
+# `covers/<basename>` and skip the copy when that name already existed — and
+# `images/` and `images2.0/` between them hold THIRTY-THREE duplicate basenames
+# (Clover.png, Crown.png, Isaac.png, HollowHeart.png, …), so whichever of a pair
+# was asked for first took the filename and every later request for the other one
+# was answered with the wrong picture, permanently. It could not be seen from
+# source, where `_path_url` takes the `direct` branch and never comes here, and it
+# could not be seen in the tests for the same reason: it was a bug that existed
+# only in an exported build, which is the one place nobody can attach a debugger.
+# The path's hash goes in front of the file name — unique per source path, stable
+# across runs, and still leaving the name readable in the folder.
 func _extract(res_path: String) -> String:
 	DirAccess.make_dir_recursive_absolute(COVER_DIR)
-	var out_path: String = "%s/%s" % [COVER_DIR, res_path.get_file()]
+	var out_path: String = "%s/%d-%s" % [COVER_DIR, res_path.hash(), res_path.get_file()]
 	if not FileAccess.file_exists(out_path):
 		var src := FileAccess.open(res_path, FileAccess.READ)
 		if src == null:

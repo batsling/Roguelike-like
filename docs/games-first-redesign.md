@@ -481,7 +481,7 @@ buying the player another game to solve it.
 **Identification (reuse `PotionSystem`'s pattern via a new `ScrollSystem`).** The
 project already ships full consumable identification — `PotionSystem.is_identified
 / identify / display_name / art_texture` with a mystery-art fallback, plus an
-existing `images/scrolls/Unidentified.png`. Scrolls get the identical treatment:
+existing `images2.0/scrolls/Unidentified.png`. Scrolls get the identical treatment:
 
 - A scroll type starts **unidentified**: it shows the generic **Unidentified**
   art and a masked name, and reading it is the Preference gamble.
@@ -854,7 +854,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 854, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 857, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is

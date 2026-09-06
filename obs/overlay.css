@@ -45,6 +45,22 @@
 
 * { box-sizing: border-box; }
 
+/* `hidden` MUST WIN, and without this it does not.
+ *
+ * overlay.js hides half a dozen things by setting the `hidden` property, which
+ * relies on the UA stylesheet's `[hidden] { display: none }`. That rule is a UA
+ * rule, so ANY author `display` on the same element outranks it — and `.cost`
+ * and `.hero-row` both set `display: flex`. The result was not a cosmetic slip:
+ * with nothing on the board able to reach you, `drawCost` set `hidden` and
+ * returned early, leaving the PREVIOUS forecast on screen — so the overlay sat
+ * there pulsing THIS KILLS YOU at a player in no danger at all, which is the one
+ * thing `_threat()` and its tests exist to prevent. The two section labels did
+ * the same quieter thing, standing over empty rows.
+ *
+ * `!important` rather than a `.cost[hidden]` pair per offender, because the next
+ * element given a `display` would silently reintroduce it. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -182,7 +198,12 @@ html, body {
 }
 .cost-arrow { color: var(--faint); font-size: 12px; }
 
-.cost-swings { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+/* 8px, not 3. The damage badge hangs 4px off its mark's right edge and its glyph
+ * is another ~7px wide, so at a 3px gap every number was drawn ON TOP of the next
+ * body's face — the half of the mark that says WHO, covered by the half that says
+ * how much. There is room: seven swings at 28px plus six 8px gaps is 244px of the
+ * card's 390. */
+.cost-swings { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* ONE SWING = THE BODY THROWING IT. 28px: the roster's art is bold and
  * silhouette-driven, so it survives being drawn small — verified by rendering
@@ -610,6 +631,10 @@ html, body {
   display: flex;
   align-items: flex-start;
   gap: 0;
+  /* Room for the Amulet's outline, which hangs 4px off its cover on every side.
+   * `.road-scroll` clips, so without this the ring is shaved off wherever the
+   * destination sits at an edge of the strip — which is exactly where it sits. */
+  padding: 4px;
   /* `max-content` so the stops keep their own width and overflow the scroller
    * instead of being squeezed to fit it — squeezing is what a cap does, and the
    * whole point of the walk is not to do that. */
@@ -618,12 +643,18 @@ html, body {
 
 .stop { position: relative; flex: 0 0 auto; width: 34px; text-align: center; }
 
+/* 2px, not 1. The outcome of a stop is the one thing this strip is FOR, and at a
+ * 1px border on a 34px cover it was the weakest encoding on the page — thinner
+ * than anything a stream encoder is willing to keep. Everything else here is said
+ * twice (a blocked swing is greyed AND badged, a timed shield is placed AND
+ * clocked); this was said once, faintly. The border is inside the box
+ * (`box-sizing: border-box` above), so nothing moves. */
 .stop img {
   width: 34px;
   height: 46px;
   object-fit: cover;
   border-radius: 3px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   background: var(--panel);
   display: block;
 }
@@ -636,16 +667,35 @@ html, body {
  * `--unbeaten` is its own token rather than `--accent`: the strip already spends
  * accent-orange on the stop you are standing on, and at a 1px border the two
  * would be saying different things in nearly the same colour. */
+/* TWO CHANNELS, AND THEY MUST NOT FIGHT. The BORDER says how that stop went; the
+ * OUTLINE says which stop is the destination. They used to be the same property,
+ * and because `.stop.beaten`, `.stop.current` and `.stop.amulet` all have
+ * specificity (0,2,1) the cascade fell to source order — so `.stop.amulet`, being
+ * last, painted over both. The stop that ENDS A WINNING RUN came out accent
+ * orange, identical to the Amulet a run never reached and a hair off `--unbeaten`
+ * (#ff8a3c against #d97821), which is to say: the moment the whole strip is built
+ * to show was the one moment it could not report.
+ *
+ * Split apart, the precedence is what it should have been — the outcome always
+ * wins the border, and the Amulet keeps a ring of its own whatever happened
+ * there. `outline` is used rather than a second box-shadow so `.current`'s gold
+ * halo can sit alongside it, and it costs no layout. */
 .stop img { border-color: var(--unbeaten); }
 .stop.beaten img { border-color: var(--success); }
 .stop.current img {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px rgba(255, 204, 102, 0.35);
 }
-.stop.amulet img { border-color: var(--accent); }
+/* The destination, reached or not. */
+.stop.amulet img { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The Amulet the run has not reached yet: drawn dashed and faded, the way
- * RunOverScreen draws the gap a lost run never closed. */
-.stop.unreached img { opacity: 0.4; border-style: dashed; }
+ * RunOverScreen draws the gap a lost run never closed. It has no outcome to
+ * report, so the border carries the destination's colour here and nowhere else. */
+.stop.unreached img {
+  opacity: 0.4;
+  border-style: dashed;
+  border-color: var(--accent);
+}
 
 /* The replay badge is gone: two visits are two stops on this strip, which says
  * it better than a number on one of them did. See drawRoad in overlay.js. */
@@ -671,7 +721,30 @@ html, body {
 
 /* --------------------------------------------------------------- ticker -- */
 
-.ticker { display: flex; flex-direction: column; gap: 5px; }
+/* PINNED TO THE BOTTOM OF THE SOURCE, GROWING UPWARD — and that is what makes the
+ * rest of the page a shape anyone can write down.
+ *
+ * In flow, the ticker was the last item in a content-height column inside a
+ * fixed-height browser source, so the page's total height depended on how many
+ * things had just happened. Measured, a heavy run with a burst up stood 900px in
+ * the 828px source the README recommends, and `overflow: hidden` threw the newest
+ * lines away without a mark. Every height in the README's layout tables was
+ * therefore a sample rather than a promise.
+ *
+ * Anchored, the flow content has a hard ceiling (846px on a pathological run, 434
+ * for `#bottom`) and the toasts float over the foot of whatever source they are
+ * in. A toast covering the road for six seconds is a real cost and a bounded one;
+ * silent clipping was neither. `bottom` fixed with `height: auto` is what makes it
+ * grow upward, so the newest line is always in the same place. */
+.ticker {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
 .toast {
   background: var(--card-bg);

@@ -19,5 +19,19 @@ build works.** Treat every path, class and sheet name in these files as historic
 | `enemy-plan.md` | deckbuilder enemy system (never implemented) |
 | `fear-status-design.md` | the Fear status across all three combat modes |
 | `gaper-plan.md` | the Gaper action enemy (never implemented) |
+| `addon-sheet-authoring-handoff.md` | sheet-authoring the **addon** catalog (never implemented) |
+| `addon-translation-dsl.md` | the DSL that handoff was to translate into |
+
+**The two addon docs were in the live `docs/` folder until they were moved here**,
+which is worth recording because it is the failure this README exists to prevent:
+they name `scripts/action/ActionCombat.gd`,
+`scripts/deckbuilder/DeckbuilderCombat.gd`, `scripts/strategy/combat/BattleView.gd`
+and `scripts/runtime/AddonSystem.gd` — four paths that have not existed for a long
+time — and nothing live linked to either of them, so nothing ever contradicted
+them. A reader following `CLAUDE.md`'s reading order would have found them sitting
+beside the current specs with no warning attached. The addon system they plan was
+never built at all; the sheet-authoring pass they were part of shipped for items
+and events only (`docs/sheet-authoring-handoff.md`, which carries a status banner
+saying so).
 
 For the current build, start at [`../games-first-redesign.md`](../games-first-redesign.md).
