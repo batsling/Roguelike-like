@@ -140,6 +140,160 @@ func test_a_goal_row_says_which_body_it_belongs_to() -> void:
 		assert_eq(ObsCompanion.payload()["goals"].size(), 0,
 			"no bodies on the board means no body rows")
 
+func test_every_goal_row_carries_its_own_art_except_the_ones_that_hang_off_one()\
+		-> void:
+	# THE LAYOUT'S ONE BIG IDEA. A goal IS an enemy (§7.2), and a column of
+	# sentences never said so — so a body's row wears its face, a status's row
+	# wears the pip art the hero card used to carry, a curse's and an event's wear
+	# theirs. It is also what lets the six KINDS of row be told apart by something
+	# other than text colour, which was the only channel they had.
+	#
+	# A `bonus` or an `instead` is the exception on purpose: it hangs off the body
+	# whose row is directly above, so repeating that face would draw one enemy two
+	# and three times running and read as two and three enemies.
+	var rows: int = 0
+	for row in ObsCompanion.payload()["goals"]:
+		rows += 1
+		if bool(row.get("addon", false)):
+			assert_eq(String(row.get("icon", "")), "",
+				"an addon row is indented under its parent, not given its face "
+				+ "again")
+			continue
+		assert_ne(String(row.get("icon", "")), "",
+			"a %s row with no art draws as a bare initial: %s"
+				% [row.get("kind", "?"), row.get("text", "?")])
+		assert_true(String(row["icon"]).begins_with("file://"),
+			"a browser cannot open a res:// path")
+	if rows == 0:
+		assert_eq(GameLoop2.stack.size(), 0,
+			"no rows means nothing on the board owed one")
+
+func test_a_body_row_carries_the_swing_that_body_throws() -> void:
+	# The cost line used to draw a PARALLEL strip of faces, one per swing, which
+	# the viewer had to match up against this list by eye. The damage belongs on
+	# the row that names the body, and this is the join that puts it there — keyed
+	# by `instance`, because two copies of one enemy share a display name.
+	_front_line()
+	var swings: Array = ObsCompanion.payload()["threat"]["swings"]
+	if swings.is_empty():
+		pending("nothing on this board can reach the player")
+		return
+	var by_damage: Dictionary = {}
+	for sw in swings:
+		by_damage[int(sw["damage"])] = true
+	var carried: int = 0
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) != "goal" or int(row.get("damage", 0)) == 0:
+			continue
+		carried += 1
+		assert_true(by_damage.has(int(row["damage"])),
+			"a row is forecasting damage no swing in the threat accounts for")
+	assert_eq(carried, swings.size(),
+		"every swing lands on the row of the body throwing it — no more (a row "
+		+ "inventing one) and no fewer (a swing with nowhere to be drawn)")
+
+func test_a_status_row_carries_the_stack_total_the_pip_used_to() -> void:
+	# THE ONE THING CUTTING THE PIP STRIP COULD HAVE LOST. `status_objectives` is
+	# one row PER INSTANCE — a permanent Strength 1 and a borrowed Strength 3 are
+	# two offers with two deadlines — while `status_list` is one row per status,
+	# TOTALLED, because what a stack does is felt as a total. The strip was the
+	# only place carrying that total; now the badge on the row's art is.
+	var totals: Dictionary = {}
+	for row in GameState.status_list():
+		var sd: StatusData = row.get("status")
+		if sd != null:
+			totals[sd.display_name] = int(row.get("stacks", 0))
+	var seen: int = 0
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) != "status":
+			continue
+		seen += 1
+		var who: String = String(row.get("who", ""))
+		assert_true(totals.has(who), "a status row names a status not on the run")
+		assert_eq(int(row.get("stacks", 0)), int(totals[who]),
+			"the badge is what the run holds in TOTAL across every instance, not "
+			+ "this row's own stacks")
+	if seen == 0:
+		assert_eq(GameState.status_objectives().size(), 0,
+			"no status rows means no claimable statuses on the run")
+
+func test_the_hero_card_names_every_character_the_run_can_deal() -> void:
+	# THE ROSTER THE RUN IS DEALT FROM IS `characters2.0`. This asked
+	# `Data.get_character`, which serves the two the combat build shipped
+	# (`ironclad`, `silent`) — and only `ironclad` is in both — so ten of the eleven
+	# characters drew a nameless, portraitless hero card for a whole stream.
+	#
+	# Every fixture that ever exercised the page named its own hero, which is why
+	# nothing caught it; it turned up the first time a payload was dumped out of a
+	# real run. So this walks the roster rather than trusting one of them.
+	var missing: Array = []
+	for c in Data.all_characters2():
+		var cd: CharacterData = c
+		GameState.character_id = cd.id
+		var hero: Dictionary = ObsCompanion.payload()["hero"]
+		if String(hero.get("name", "")) == "":
+			missing.append(String(cd.id))
+	assert_eq(missing, [],
+		"these characters draw a hero card with no name on it: %s" % str(missing))
+
+func test_the_characters_own_goal_is_on_the_checklist() -> void:
+	# THE ROW THIS LIST WAS MISSING. The file's header promises "every row the
+	# report panel would draw", and `ReportChecklist` draws a level-up row — under
+	# "What you need to do", led by the character's face, because a level-up is the
+	# player's standing challenge in the way a body's goal is the body's. It was
+	# the only row on that panel with no counterpart here, so the one goal
+	# belonging to the CHARACTER was the one goal a viewer could not see.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.level_up_condition == "":
+		pending("this character has no level-up condition to draw")
+		return
+	var rows: Array = []
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "levelup":
+			rows.append(row)
+	assert_eq(rows.size(), 1, "exactly one level-up row, like the checklist's")
+	var lu: Dictionary = rows[0]
+	assert_true(lu["text"].contains(ch.level_up_condition),
+		"the row quotes the character's own condition")
+	assert_true(String(lu.get("who", "")).contains(ch.display_name),
+		"and names the character, which is where the hero card's name went")
+	assert_ne(String(lu.get("icon", "")), "",
+		"…and wears their portrait, which is where the hero card's picture went")
+
+func test_the_level_up_row_is_ticked_off_the_checklists_own_key() -> void:
+	# A row the overlay calls done has to be one the checklist has actually locked,
+	# so it reads `ReportChecklist.LEVELUP_KEY` rather than spelling "levelup"
+	# again in a second place that can drift.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.level_up_condition == "":
+		pending("this character has no level-up condition to draw")
+		return
+	assert_false(_levelup_row().get("done", true), "not ticked to begin with")
+	GameLoop2.mark_row_answered(ReportChecklist.LEVELUP_KEY)
+	assert_true(_levelup_row().get("done", false),
+		"the checklist's own key is what ticks it")
+
+func _levelup_row() -> Dictionary:
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "levelup":
+			return row
+	return {}
+
+func test_the_headline_names_the_game_the_whole_run_is_for() -> void:
+	# THE PREMISE, and the one thing a viewer who has just tuned in cannot get from
+	# a health bar and a checklist. It used to be legible only off the right-hand
+	# end of the road strip, which scrolls — so it was off screen most of the time
+	# and is now its own field, beside the game in play.
+	var amulet: Dictionary = ObsCompanion.payload()["run"]["amulet"]
+	assert_ne(String(amulet.get("game", "")), "",
+		"the Amulet game is named on the headline")
+	assert_eq(String(amulet["game"]),
+		Data.get_game(GameState.amulet_game_id).display_name,
+		"and it is the run's actual destination")
+	if String(amulet.get("cover", "")) != "":
+		assert_true(String(amulet["cover"]).begins_with("file://"),
+			"a browser cannot open a res:// path")
+
 func test_a_body_that_has_just_landed_has_not_been_answered() -> void:
 	var entry: Dictionary = GameLoop2.arrival()
 	if entry.is_empty():
@@ -508,6 +662,81 @@ func test_the_forecast_survives_an_empty_board() -> void:
 	assert_eq(threat["swings"], [], "nothing standing swings at you")
 	assert_eq(int(threat["damage"]), 0)
 	assert_false(bool(threat["lethal"]), "nothing is not lethal")
+	assert_eq(int(threat["turns_away"]), -1,
+		"an empty board is not a wait, it is nothing coming at all — the page "
+		+ "prints -1 as \"nothing on the board can reach you\"")
+
+# ------------------------------------------------ how long the quiet lasts ----
+
+func test_a_board_out_of_reach_says_how_many_lost_runs_of_quiet_are_left() -> void:
+	# The cost line used to hide itself entirely when nothing could reach you,
+	# which is honest about this turn and silent about the only question that
+	# follows from it: the board is still walking towards you. `turns_away` is that
+	# question answered.
+	if GameLoop2.stack.is_empty():
+		pending("the offering rolled no bodies onto the board")
+		return
+	# ARRANGED, NOT HOPED FOR. `_turns_away` skips the bodies that sit a turn out,
+	# exactly as `_threat` does — so a run whose opening offering happened to
+	# stagger everything standing would leave it with nothing to count and answer
+	# -1, and this test asserted a positive number. That is an assertion which is
+	# only USUALLY true, and it failed about one full-suite run in six.
+	#
+	# The state the test is about is a LIVE body out of reach, so it is set up:
+	# nothing staggered, nothing stunned, everything parked in the back column.
+	# `skip_turn` rides the entry's STATUSES (`is_stunned` → `enemy_combat` →
+	# `entry_statuses_effective`), so both status books are emptied and not just
+	# the abilities.
+	GameLoop2.staggered_this_game.clear()
+	for entry in GameLoop2.stack:
+		entry["abilities"] = []
+		entry["statuses"] = {}
+		entry["timed_statuses"] = []
+		entry["col"] = GameLoop2.grid_cols()
+	var live: int = 0
+	for entry in GameLoop2.stack:
+		if not GameLoop2.is_stunned(entry):
+			live += 1
+	assert_gt(live, 0, "the board has a body on it that is taking its turns")
+	var threat: Dictionary = ObsCompanion.payload()["threat"]
+	assert_eq(threat["swings"], [], "nothing is in reach from the back column")
+	assert_gt(int(threat["turns_away"]), 0,
+		"a board that cannot reach you yet is a countdown, not a silence")
+
+func test_the_countdown_is_measured_against_reach_and_not_against_the_front_row()\
+		-> void:
+	# THE ONE LIE THIS NUMBER MUST NOT TELL. A Ranged body swings from several
+	# columns back (§7.6), so counting the steps to column 1 would promise a quiet
+	# turn to somebody a Host can already shoot. `turns_until_strike` is
+	# `can_strike`'s own inequality solved for turns, which is why it cannot drift.
+	if GameLoop2.stack.is_empty():
+		pending("the offering rolled no bodies onto the board")
+		return
+	var entry: Dictionary = GameLoop2.stack[0]
+	entry["abilities"] = []
+	entry["col"] = GameLoop2.grid_cols()
+	var walking: int = GameLoop2.turns_until_strike(entry)
+	assert_gt(walking, 0, "at the back with no reach, it has ground to cover")
+	# The same body, same square, given reach across the whole board.
+	entry["abilities"] = [{"id": &"ranged", "amount": 0}]
+	assert_eq(GameLoop2.turns_until_strike(entry), 0,
+		"a body that can already shoot you is 0 turns away wherever it stands")
+	assert_true(GameLoop2.can_strike(entry),
+		"…and `can_strike` agrees, which is the whole point of deriving one from "
+		+ "the other")
+
+func test_a_turret_never_closes_and_is_not_counted_as_approaching() -> void:
+	# `immobile` is a body that never walks (§7.6). It is dangerous where it stands
+	# or not at all, and a countdown to it arriving would be counting to something
+	# that never happens.
+	if GameLoop2.stack.is_empty():
+		pending("the offering rolled no bodies onto the board")
+		return
+	var entry: Dictionary = GameLoop2.stack[0]
+	entry["col"] = GameLoop2.grid_cols()
+	entry["abilities"] = [{"id": &"immobile", "amount": 0}]
+	assert_eq(GameLoop2.turns_until_strike(entry), -1,
+		"a turret out of reach is never arriving")
 
 # A BOARD THAT IS ACTUALLY IN YOUR FACE. A body that has just landed spawns at
 # the back and cannot reach you, which is correct and is also why every test

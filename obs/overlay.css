@@ -27,20 +27,62 @@
    * below AA at the sizes they are used, which is why the section labels and the
    * goal subtitles washed out. These clear 4.6 and 7.3 at their worst. */
   --dim:       #c4b8a2;
-  --faint:     #9a9183;
+  /* THREE OF THESE ARE LIGHTER THAN THE GAME'S, and it is the CARD's opacity that
+   * decides by how much — see `--card-bg` below. The card is now mostly
+   * transparent so the stream shows through it, which means a bright capture
+   * lifts the ground every one of these is read against. Measured against the
+   * card composited over a dark, a mid and a bright capture:
+   *
+   *   faint  #9a9183 -> 4.18 over bright, so #a49b8c (4.73)
+   *   danger #e65447 -> 3.54 over bright, so #f77f71 (5.09)
+   *   curse  #b873e6 -> 4.11 over bright, so #c68df0 (5.24)
+   *
+   * The other four already clear AA at this ground: text 9.02, gold 8.72, accent
+   * 5.54, success 6.00. Worth noting that `danger` was ALREADY failing on the
+   * opaque card it replaced (3.90) — the translucency did not introduce that, it
+   * just made it impossible to keep ignoring. */
+  --faint:     #a49b8c;
   --success:   #4dc76b;
-  --danger:    #e65447;
-  --curse:     #b873e6;
+  --danger:    #f77f71;
+  --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
   --unbeaten:  #d97821;
 
-  /* 0.95, not 0.88. The card composites over the stream, so its opacity decides
-   * how much a bright capture eats into every contrast ratio on the page — this
-   * is the single biggest lever on legibility and costs almost nothing, since
-   * the card was never meant to show the game through it in the first place. */
-  --card-bg:   rgba(37, 31, 24, 0.95);
+  /* MOSTLY TRANSPARENT, AND THE GAME SHOWS THROUGH IT. This was 0.95 — all but
+   * opaque — on the reasoning that the card's alpha is the single biggest lever
+   * on legibility and the card was never meant to show the game through it. The
+   * first half is true and the second was a choice, and it is the wrong one for a
+   * thing that spends its life sitting on top of somebody's gameplay.
+   *
+   * WHAT PAYS FOR IT IS `backdrop-filter`, not the alpha. The filter blurs and
+   * DARKENS the capture behind the card before the card paints over it, so the
+   * ground the text is read against stays dark whatever is on screen, while the
+   * shapes and motion of the game still read through. Measured over a dark, a mid
+   * and a bright capture, the worst ratio on the page is 4.73 — BETTER than the
+   * 3.90 the opaque card managed, because the pass also fixed the three colours
+   * that were quietly failing on it (see the palette above).
+   *
+   * The blur is what keeps it from being noise: a hard 45%-transparent card over
+   * a fast game is unreadable no matter what the arithmetic says, and a blurred
+   * one is a frosted panel. */
+  --card-bg:   rgba(26, 20, 16, 0.45);
+  --card-blur: blur(12px) brightness(0.30) saturate(1.05);
   --width:     440px;
   --radius:    10px;
+}
+
+/* THE OLD-CEF FALLBACK, and it is not optional. Everything above depends on
+ * `backdrop-filter` actually running: without it the card is just 45% of a dark
+ * brown over raw video, and the worst ratio on the page collapses from 4.73 to
+ * 1.20 — text that is simply not there over a bright capture. OBS ships whatever
+ * CEF its build was cut against and an unsupported filter is dropped in silence,
+ * which is the same trap `color-mix()` and `:has()` are called out for below.
+ *
+ * So the transparency is spent only where it can be afforded. A browser that
+ * cannot dim the backdrop gets the opaque card instead (5.47 worst) and the
+ * streamer gets a legible overlay rather than a pretty one. */
+@supports not (backdrop-filter: blur(1px)) {
+  :root { --card-bg: rgba(26, 20, 16, 0.92); }
 }
 
 * { box-sizing: border-box; }
@@ -50,7 +92,7 @@
  * overlay.js hides half a dozen things by setting the `hidden` property, which
  * relies on the UA stylesheet's `[hidden] { display: none }`. That rule is a UA
  * rule, so ANY author `display` on the same element outranks it — and `.cost`
- * and `.hero-row` both set `display: flex`. The result was not a cosmetic slip:
+ * sets `display: flex`. The result was not a cosmetic slip:
  * with nothing on the board able to reach you, `drawCost` set `hidden` and
  * returned early, leaving the PREVIOUS forecast on screen — so the overlay sat
  * there pulsing THIS KILLS YOU at a player in no danger at all, which is the one
@@ -72,8 +114,22 @@ html, body {
   user-select: none;
 }
 
+/* FLUID, NOT PINNED TO 440. This was `width: var(--width)`, so a browser source
+ * made 600 wide rendered a 440 column with 160px of dead space beside it — the
+ * page could not be stretched, only surrounded. It fills whatever canvas OBS
+ * gives it now: the covers, the art and the type stay their own size and the TEXT
+ * COLUMNS take the slack, which is what "wider" should mean for a page that is
+ * mostly sentences.
+ *
+ * `--max-width` is the way back for anyone who wants the old behaviour — set it
+ * in custom.css and the column stops growing there.
+ *
+ * NOTE THAT WIDER IS NOT BIGGER. Stretching the source gives the text more room
+ * to run; it does not change the type size, so it does not help a viewer who
+ * finds the overlay small. That is `zoom`, and it is documented in the README. */
 #overlay {
-  width: var(--width);
+  width: 100%;
+  max-width: var(--max-width, none);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -92,12 +148,17 @@ html, body {
 
 .card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
+  /* BRIGHTER THAN THE PANEL BORDER IT WAS. On an opaque card the border was a
+   * seam between two solids and `--border` was enough; on a translucent one it is
+   * the only thing separating the card from the video, and it has to hold that
+   * edge against whatever is behind it. */
+  border: 1px solid rgba(122, 106, 82, 0.55);
   border-radius: var(--radius);
   padding: 10px 12px;
   /* A dark rim so the card holds its edge over a bright game capture. */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
 }
 
 .label {
@@ -109,7 +170,6 @@ html, body {
 }
 
 .row { display: flex; align-items: center; gap: 8px; }
-.row.sub { margin-top: 5px; flex-wrap: wrap; gap: 6px; }
 
 .pill {
   font-size: 11px;
@@ -120,55 +180,43 @@ html, body {
   white-space: nowrap;
 }
 
-.chip {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--panel-hi);
-  border: 1px solid var(--border);
-  color: var(--dim);
-  white-space: nowrap;
-}
-.chip.shield { color: #8ab6e6; border-color: #33506e; }
-.chip.danger { color: var(--danger); border-color: #6e2f28; }
 
-/* ----------------------------------------------------------------- hero -- */
-
-/* The card is a COLUMN: the portrait and the vitals on top, the sprite strip
- * under them. The strip was briefly inside the 56px portrait column, which is
- * the obvious reading of "under the character icon" and completely wrong in
- * practice: a pip is ~40px wide, so they stacked one per row and a run carrying
- * seven statuses made the hero card 283px tall. Full width, wrapping, it is two
- * rows. */
-.hero { display: flex; flex-direction: column; gap: 8px; }
-.hero-top { display: flex; gap: 12px; align-items: center; }
-
-/* One labelled row per kind. The armour and the statuses were briefly one strip
- * and it read as though the shields were two more statuses — they are not, they
- * are the player's own and they are what the cost line above spends. */
-.hero-row {
+/* HEALTH AND ARMOUR ON ONE LINE, at the foot of the run card. There were two
+ * labelled rows under a portrait — armour and statuses — and the labels existed
+ * to stop the two strips being read as one. The statuses moved onto the
+ * checklist, so there is nothing left to confuse the shields with; and then the
+ * portrait and the name followed them, onto the level-up row that is the
+ * character's own goal. What is left is the stake: the health, and the armour
+ * standing in front of it.
+ *
+ * The BAR takes the slack and the shields are sized by content, with a floor
+ * under the bar so a heavily armoured run cannot squeeze the health it is about
+ * — past that the sprites wrap onto a second line. */
+.vitals {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.row-label {
-  flex: 0 0 58px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
+.vitals .bar { flex: 1 1 auto; min-width: 110px; margin-top: 0; }
+.vitals .pips { flex: 0 1 auto; justify-content: flex-end; }
 
 /* ------------------------------------------------ what a lost run costs -- */
 
-/* THE LINE THE WHOLE CARD IS FOR. A summed "12 incoming" hides the rule that
- * actually decides whether to risk another attempt: a shield stops ONE HIT
+/* WHAT A LOST RUN COSTS, AS A SENTENCE. A summed "12 incoming" hides the rule
+ * that actually decides whether to risk another attempt: a shield stops ONE HIT
  * outright, whatever that hit was for, so two shields against three small swings
- * is a very different position from two shields against one enormous one. Drawn
- * as one mark per swing, it is countable instead of inferred. */
+ * is a very different position from two shields against one enormous one.
+ *
+ * That rule used to be drawn as one mark per swing — a strip of faces, each
+ * badged — because this line was the only place the page said WHO. The checklist
+ * says who now, on the row that names each body, with that body's own damage on
+ * the corner of its face. So the marks are gone and the words are back: "2
+ * shields break, −7 Health" states the same rule in the space a single row of
+ * 28px marks took, and the strip is no longer a parallel list the viewer has to
+ * align against the real one. */
 .cost {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 6px;
   padding: 6px 8px;
@@ -176,107 +224,27 @@ html, body {
   background: rgba(230, 84, 71, 0.10);
   border: 1px solid rgba(230, 84, 71, 0.35);
 }
-
-.cost-head {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+/* NOTHING IN REACH is not an alarm. The line stays — it is answering "how long
+ * does this last" rather than going quiet — so it drops the red it wears when
+ * there is something to be red about.
+ *
+ * `.cost.quiet` set from overlay.js rather than `.cost:has(.cost-total.safe)`,
+ * for the reason `.cost.lethal` below is: `:has()` needs Chrome 105 and OBS ships
+ * whatever CEF its build was cut against. An unsupported selector is not an error
+ * a streamer ever sees — the rule is simply dropped, and the line sits there red
+ * on their machine while looking right on everyone else's. */
+.cost.quiet {
+  background: rgba(138, 182, 230, 0.08);
+  border-color: rgba(138, 182, 230, 0.30);
 }
+
 .cost-label {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
 }
-/* Which attempt the forecast above is for. Gold rather than red: the count is
- * not itself a threat, it is the tally of how many times this game has already
- * been walked away from. */
-.cost-attempt {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-}
 .cost-arrow { color: var(--faint); font-size: 12px; }
-
-/* 8px, not 3. The damage badge hangs 4px off its mark's right edge and its glyph
- * is another ~7px wide, so at a 3px gap every number was drawn ON TOP of the next
- * body's face — the half of the mark that says WHO, covered by the half that says
- * how much. There is room: seven swings at 28px plus six 8px gaps is 244px of the
- * card's 390. */
-.cost-swings { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-/* ONE SWING = THE BODY THROWING IT. 28px: the roster's art is bold and
- * silhouette-driven, so it survives being drawn small — verified by rendering
- * the widest range in the set (a 19x10 sprite through a 734x841 painting) at
- * 22 / 28 / 34 / 40 before choosing. 28 is legible with room for eight or nine
- * swings across a 440px overlay, which is more than a board ever puts in reach.
- *
- * The corner badge is the binary: a SHIELD means this swing is eaten whole, a
- * NUMBER means that much Health. */
-.swing {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.swing-art {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-  display: block;
-}
-/* A body with no art: the bare number the row used to be made of. */
-.swing-bare { color: #ffd3cd; }
-
-.swing.blocked {
-  background: rgba(138, 182, 230, 0.14);
-  border: 1px solid rgba(138, 182, 230, 0.45);
-}
-/* Drained of colour, because this one never reaches you. Said twice — greyed
- * art AND the shield on the corner — so it survives being glanced at.
- *
- * NOT DRAINED ALL THE WAY. At full grayscale and 0.7 brightness the darker
- * bodies went unreadable, which throws away the reason for using faces at all:
- * the player needs to see WHICH body the shield is spent on, not merely that one
- * is. Enough desaturation to read as "off", enough light to stay identifiable. */
-.swing.blocked .swing-art { filter: grayscale(0.9) brightness(1.05); opacity: 0.8; }
-
-.swing.hits {
-  background: rgba(230, 84, 71, 0.22);
-  border: 1px solid rgba(230, 84, 71, 0.6);
-}
-
-.swing-badge {
-  position: absolute;
-  right: -4px;
-  bottom: -5px;
-  line-height: 1;
-}
-.swing-badge.dmg {
-  font-size: 12px;
-  font-weight: 800;
-  color: #ffd3cd;
-  /* Ringed in black so a number never lands illegibly on the art behind it. */
-  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 1px 2px #000;
-}
-/* The shield badge stays bigger than the status clock, because here it is not a
- * flag on the side of the thing — it IS the answer (this swing never lands). But
- * 15px on a 28px mark was more than half the width and buried the body behind
- * it, which is the half that says WHO. 12px still reads unmistakably as a shield
- * with the face clear behind it. */
-.swing-badge.shield img {
-  width: 12px;
-  height: 12px;
-  image-rendering: pixelated;
-  display: block;
-  filter: drop-shadow(0 0 2px #000);
-}
 
 .cost-total {
   font-size: 12px;
@@ -325,102 +293,26 @@ html, body {
 /* It would kill you. The one state on this overlay that is allowed to shout. */
 .bar-threat.lethal { animation: pulse 0.7s ease-in-out infinite; }
 
-.hero-icon {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-.hero-icon:not([src]) { visibility: hidden; }
+/* --------------------------------------------------------- shield pips -- */
 
-/* --------------------------------------------------------- status pips -- */
-
-/* One pip per status: the art, its stack count beside it, and a clock in the
- * corner when the stacks are borrowed. This is BattlefieldView's `_status_pip`
- * rebuilt in CSS — same shape, same 22px art, same rule for the colour, so
- * "what is on me" reads the same on the board and on the stream.
- *
- * The strip wraps inside the 56px portrait column and the column stretches to
- * fit, which is what keeps a run carrying six statuses from pushing the health
- * bar off its own card. */
+/* The row of armour under the hero. It kept the `.pips` wrapper the status strip
+ * used because the two were always sized alike on purpose (the board does the
+ * same), and a shield row that wraps has to wrap the way that one did. */
 .pips {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
 }
 
-/* NO color-mix() HERE, deliberately. It would express "the tint, most of the way
- * to the page's ground" in one line the way UITheme.flat does — but it needs
- * Chrome 111, and OBS ships whatever CEF its build was cut against, several
- * versions back. An unsupported colour function is not an error a streamer ever
- * sees; the declaration is just dropped and the pip loses its tint on their
- * machine while looking right on everyone else's. So the two mixes are written
- * out as plain rgba over the dark card, which has worked since forever. */
-.pip {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 3px 1px 1px;
-  border-radius: 3px;
-  --tint: var(--danger);
-  background: rgba(230, 84, 71, 0.20);
-  border: 1px solid rgba(230, 84, 71, 0.55);
-}
-/* A `bonus` or a `goal` on the player's side is an OPPORTUNITY, not a tax. */
-.pip.good {
-  --tint: var(--gold);
-  background: rgba(255, 204, 102, 0.16);
-  border-color: rgba(255, 204, 102, 0.50);
-}
-
-.pip-art {
-  position: relative;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-}
-/* `:not(.pip-clock)` IS LOAD-BEARING. As a bare `.pip-art img` this rule has
- * specificity (0,1,1) and `.pip-clock` below has (0,1,0) — so it won, and the
- * corner clock was being blown up to the full 22px of the pip, covering the
- * status art completely. It read as "the badge is too big" and was really "the
- * badge has no size of its own at all". */
-.pip-art > img:not(.pip-clock) {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  /* Pixel art, kept crisp — UITheme.crisp_tex is the same decision. */
-  image-rendering: pixelated;
-  display: block;
-}
-
-/* The fallback when a status ships before its art does: its initial, in the
- * pip's own colour, occupying exactly the space the picture would. */
-.pip-letter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--tint);
-}
-
-/* The borrowed-status clock, bottom-right and hanging off the corner. The corner
- * is the FLAG, not the number: how many games are left is not small enough to
- * read here.
+/* THE BORROWED-SHIELD CLOCK, bottom-right and hanging off the corner — the badge
+ * `UITheme.timed_art` draws out of the timed layer (§5.3). The corner is the
+ * FLAG, not the number: how many games are left is not small enough to read here.
  *
- * SMALLER THAN THE BOARD'S, deliberately. `UITheme.timed_art` draws a 14px badge
- * on a 22px pip (TIMER_MIN, since TIMER_FRACTION*22 rounds below it) and that is
- * right at desk distance, where the art has a tooltip behind it and the clock is
- * the thing being hunted for. On a stream it is the other way round: the picture
- * is the only thing identifying the status at a glance. 9px was the first size
- * that actually applied (the rule was being outranked — see `.pip-art > img`)
- * and it landed on the small side; 11px is the size this is really after, still
- * clear of the art because it hangs further off the corner to pay for the extra
- * pixels. Below about 8 it stops being recognisably a clock and becomes a dot. */
+ * SMALLER THAN THE BOARD'S, deliberately. The board draws a 14px badge on a 22px
+ * pip and that is right at desk distance, where the art has a tooltip behind it
+ * and the clock is the thing being hunted for. On a stream it is the other way
+ * round: the picture is the only thing identifying the sprite at a glance. Below
+ * about 8 it stops being recognisably a clock and becomes a dot. */
 .pip-clock {
   position: absolute;
   right: -4px;
@@ -428,14 +320,6 @@ html, body {
   width: 11px;
   height: 11px;
   image-rendering: pixelated;
-}
-
-.pip-count {
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--tint);
-  text-shadow: 0 1px 2px #000;
 }
 
 /* A SHIELD IS A SPRITE, NOT A NUMBER — one per shield, each being one instance
@@ -459,16 +343,6 @@ html, body {
   display: block;
 }
 
-.hero-text { flex: 1 1 auto; min-width: 0; }
-.hero-name {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* The health bar. Its WIDTH is the number — the text on top is there for the
  * viewer who wants the exact figure, not as the primary read. */
@@ -507,7 +381,24 @@ html, body {
 
 /* ---------------------------------------------------------- now playing -- */
 
-.now { display: flex; gap: 12px; align-items: center; }
+/* THE HEADLINE — here, and the Amulet the run is walking to, with the distance
+ * on the arrow between them. Three columns, and the two ends are NOT equal: the
+ * game in play is what the streamer is doing right now and gets the bigger cover
+ * and the gold; the destination is context and reads a size down. Equal weight
+ * would make the pair a comparison rather than a journey. */
+/* THE RUN CARD — the game in play, where it leads, and what is at stake. It was
+ * two cards until the hero card lost its portrait and its name to the checklist's
+ * level-up row and had only a health bar left in it, which is not a card.
+ *
+ * The pair at the top is TWO ROWS, not two columns. Side by side is the obvious
+ * reading and it does not fit: 440px less the covers, the gaps and the hop count
+ * leaves about 224px to split between two real game titles, and both truncated —
+ * the page's biggest text cut short to make room for its own footnote. Stacked,
+ * the current game gets the full width and the destination gets a line that
+ * spans it. */
+.run { display: flex; flex-direction: column; gap: 8px; }
+
+.now-main { display: flex; gap: 12px; align-items: center; min-width: 0; }
 
 .now-cover {
   width: 46px;
@@ -520,6 +411,43 @@ html, body {
 }
 .now-cover:not([src]) { visibility: hidden; }
 
+/* WHICH ATTEMPT THIS IS. Gold rather than red: the count is not itself a threat,
+ * it is the tally of how many times this game has already been walked away from —
+ * and on the cost line, inside a sentence about damage, it read as part of the
+ * arithmetic. Here it belongs to the game it is being spent on. */
+.attempts {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* THE DESTINATION LINE, under the game in play and spanning the same width:
+ * the arrow, how far, and the Amulet itself. Ruled off rather than boxed — it is
+ * the same card's second sentence, not a second card. */
+.now-dest {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(74, 63, 46, 0.5);
+  min-width: 0;
+}
+
+/* Smaller, and RINGED IN ACCENT — the same colour `.stop.amulet` rings the
+ * destination with on the road, so the two surfaces mark the same game the same
+ * way. */
+.dest-cover {
+  width: 22px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  flex: 0 0 auto;
+}
+.dest-cover:not([src]) { visibility: hidden; }
+
 .now-text { flex: 1 1 auto; min-width: 0; }
 .now-game {
   font-size: 18px;
@@ -531,6 +459,36 @@ html, body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.dest-game {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1.2;
+  /* ONE line, ellipsised. The destination is context for the game above it, and a
+   * name long enough to wrap here would set this card's height from the half it
+   * is not about. Across the full card width there is room for most of them. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* THE DISTANCE, and the number the whole run is measured in. It used to be a dim
+ * 12px chip below the title — the run's entire progress toward winning, drawn as
+ * the quietest thing on the page. Here it is the second thing read on the line
+ * that names where it leads. */
+.now-arrow { flex: 0 0 auto; color: var(--faint); font-size: 15px; line-height: 1; }
+.now-hops {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  white-space: nowrap;
+  /* A little air before the cover, so "3 games" is not read as part of the name
+   * that follows it. */
+  margin-right: 3px;
 }
 
 /* ------------------------------------------------------------ checklist -- */
@@ -545,7 +503,11 @@ html, body {
 .goal-scroll {
   --fade-top: 0px;
   --fade-bot: 0px;
-  max-height: 260px;
+  /* 320, up from 260. Cutting the road off the default column and the status
+   * strip out of the hero card gave the page ~150px back, and the checklist is
+   * what it is for — every row this ceiling buys is a row a viewer can read
+   * standing still instead of waiting for the walker to bring it round. */
+  max-height: 320px;
   overflow: hidden;
   -webkit-mask-image: linear-gradient(180deg,
     transparent 0, #000 var(--fade-top),
@@ -559,7 +521,8 @@ html, body {
 
 .goal {
   display: flex;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 7px;
   padding: 5px 0;
   border-bottom: 1px solid rgba(74, 63, 46, 0.4);
   font-size: 14px;
@@ -573,6 +536,85 @@ html, body {
   color: var(--faint);
   font-weight: 700;
 }
+
+/* ------------------------------------------- the art on a checklist row -- */
+
+/* THE ROW'S OWN PICTURE, and the reason this card is now the page's centre of
+ * gravity. A goal IS an enemy (§7.2) and a column of sentences never said so;
+ * with the face on the row, the checklist reads as the board.
+ *
+ * 26px, between the board's 22px status pip and the 28px the cost strip used for
+ * a swing. The upper end of that range is what the swing marks were measured at
+ * (the widest range in the roster — a 19x10 sprite through a 734x841 painting —
+ * rendered at 22/28/34/40 before choosing), and there is more room here than
+ * there was in a row of seven, because there is exactly one per line. */
+.goal-art {
+  position: relative;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  /* The art's optical centre against a 14px line of text, which sits lower than
+   * the box's top edge. */
+  margin-top: -1px;
+}
+.goal-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Pixel art, kept crisp — UITheme.crisp_tex is the same decision. */
+  image-rendering: pixelated;
+  display: block;
+}
+/* Nothing authored yet: the initial, in the row's own colour, occupying exactly
+ * the space the picture would. The pip has always fallen back this way. */
+.goal-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+/* THE CORNER BADGE, carrying whichever number this row has: the damage this body
+ * lands if the run is lost, or the stacks a status is riding at. Hangs off the
+ * corner the way the pip's clock and the swing's badge both did, and is ringed in
+ * black for the same reason — a number must never land illegibly on the art. */
+.goal-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  line-height: 1;
+  font-size: 12px;
+  font-weight: 800;
+}
+.goal-badge.dmg {
+  color: #ffd3cd;
+  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 1px 2px #000;
+}
+/* A swing a shield eats whole. The sprite says it outright, which is the same
+ * binary the cost strip's corner used to carry: a shield here means this one
+ * never reaches Health however big it is. */
+.goal-badge.shield img {
+  width: 13px;
+  height: 13px;
+  image-rendering: pixelated;
+  display: block;
+  filter: drop-shadow(0 0 2px #000);
+}
+/* The pip's number, in the pip's own colour rule: an opportunity is gold, a tax
+ * is red (see `_statuses` — the tint is what the SIDE DOES, not buff/debuff). */
+.goal-badge.stacks { color: var(--danger); text-shadow: 0 0 3px #000, 0 1px 2px #000; }
+.goal-badge.stacks.good { color: var(--gold); }
+
+/* A BONUS OR AN `instead` HANGS OFF THE ROW ABOVE IT, and is indented to say so
+ * rather than repeating that body's face — which would draw one enemy two and
+ * three times running and read as two and three enemies. The indent is the art
+ * column's width plus its gap, so an addon's text lines up under its parent's. */
+.goal.addon { padding-left: 33px; padding-top: 2px; }
+.goal.addon .text { font-size: 13px; }
 .goal .body { flex: 1 1 auto; min-width: 0; }
 .goal .who {
   display: block;
@@ -595,6 +637,16 @@ html, body {
 /* The body in the player's face. This is the row that costs health next. */
 .goal.front .tick { color: var(--danger); }
 .goal.boss  .text { color: var(--gold); font-weight: 600; }
+
+/* THE LEVEL-UP ROW — the character's own standing challenge, and the only row
+ * here that belongs to the player rather than to something on the board. Gold,
+ * because `ReportChecklist` draws it gold for the same reason (`UITheme.GOLD`),
+ * and its art is the character's face, which is where the portrait went when the
+ * hero card was folded away. */
+.goal.levelup .text { color: var(--gold); font-weight: 600; }
+.goal.levelup .tick { color: var(--gold); }
+/* Rounder than a body's square face: this one is a person, not a footprint. */
+.goal.levelup .goal-art > img { border-radius: 4px; object-fit: cover; }
 
 .goal.bonus   .tick, .goal.bonus   .text { color: var(--success); }
 .goal.instead .tick, .goal.instead .text { color: var(--success); }
@@ -748,6 +800,8 @@ html, body {
 
 .toast {
   background: var(--card-bg);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
   border-left: 3px solid var(--border);
   border-radius: 5px;
   padding: 6px 10px;
@@ -770,6 +824,8 @@ html, body {
 /* -------------------------------------------------------------- verdict -- */
 
 .verdict {
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
   text-align: center;
   font-size: 22px;
   font-weight: 700;
@@ -784,19 +840,69 @@ html, body {
 
 /* ----------------------------------------------------------- the halves -- */
 
-/* `overlay.html#top` / `#bottom` render half the page each, so a camera or a
- * chat box can be placed between them in the scene. See applySplit in
- * overlay.js. The default — no fragment — hides nothing.
+/* `overlay.html#top` / `#bottom` render part of the page each, so a camera or a
+ * chat box can be placed between them in the scene. See applySplit in overlay.js.
  *
- * `#offline` is in neither list: a half that is up before the game is should
- * still say so rather than sitting blank. */
+ * THE ROAD IS THE EXCEPTION AND IS OFF BY DEFAULT — it renders only at
+ * `#road`, its own source. It is a 1008px horizontal scroller in a 390px window
+ * and cannot be read at a glance at this width: measured on a 22-stop run, the
+ * stop the player is standing on was fully visible for 6 seconds in every 50, it
+ * took 42 seconds to first appear, and every change to the road reset the walk to
+ * the START of the run — which is precisely when a viewer looks up. The distance
+ * it was carrying now lives on the headline's arrow, where it does not move.
+ *
+ * It is kept rather than cut because it says one thing nothing else on the page
+ * does: which games got beaten and which the run walked away from. That earns a
+ * source of its own, on a wider between-games scene where the strip does not have
+ * to scroll at all.
+ *
+ * `#offline` is in none of these lists: a source that is up before the game is
+ * should still say so rather than sitting blank. */
+#overlay > .road { display: none; }
+#overlay.only-road > .road { display: block; }
+
 #overlay.only-top > .goals,
-#overlay.only-top > .road,
 #overlay.only-top > .ticker,
 #overlay.only-top > .verdict { display: none; }
 
-#overlay.only-bottom > .hero,
-#overlay.only-bottom > .now { display: none; }
+#overlay.only-bottom > .run { display: none; }
+
+/* The road's own source is the road and the verdict, nothing else. */
+#overlay.only-road > .run,
+#overlay.only-road > .goals,
+#overlay.only-road > .ticker { display: none; }
+
+/* ------------------------------------------------------- filling a source -- */
+
+/* STRETCHING THE PAGE DOWN, opt-in at `overlay.html#fill` (and combinable —
+ * `#bottom,fill`).
+ *
+ * The default page is CONTENT-HEIGHT: it is exactly as tall as the run makes it
+ * and a source taller than that has transparent space under it. That is the right
+ * default — a three-goal run stretched over 900px is a mostly-empty card, and
+ * every height in the README's tables is a promise about this mode.
+ *
+ * `fill` is the other answer: the page takes the whole source and THE CHECKLIST
+ * TAKES THE SLACK, so a taller source shows more rows standing still instead of
+ * more rows waiting for the walker to bring them round. That is the one thing on
+ * this page that genuinely wants the room — everything above it is a fixed number
+ * of lines. `min-height: 0` on the card is what lets a flex child actually shrink
+ * its scroller rather than pushing past the bottom, which is the usual way this
+ * goes wrong. */
+#overlay.fill {
+  height: 100vh;
+}
+#overlay.fill > .goals {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#overlay.fill .goal-scroll {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
 
 /* ------------------------------------------------------- the two blanks -- */
 

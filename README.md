@@ -702,20 +702,50 @@ point it at that `overlay.html`, and size it **440 × 850**.
 canvas the page renders into; stretching the item afterwards resamples the result
 and softens the pixel art. Set 440 × 850 and leave the transform at 100%.
 
+**The cards are glass, and `backdrop-filter` is what pays for it.** They sit at
+0.45 alpha so the game shows through, which is only readable because the filter
+blurs and *darkens* the capture behind each card before the card paints over it —
+so the ground the text is read against stays dark whatever is on screen. Measured
+over a dark, a mid and a bright capture, the worst contrast ratio on the page is
+**4.73**, which is better than the **3.90** the old near-opaque card managed
+(that pass also fixed three palette colours that were quietly below AA on it).
+
+The two halves cannot be separated. Without the filter the same transparency
+scores **1.20** — text that is simply not there over a bright game. OBS ships
+whatever CEF its build was cut against, and an unsupported filter is dropped in
+silence, so `overlay.css` carries an `@supports not (backdrop-filter: …)` block
+that puts the card back to 0.92 opaque (5.47 worst) on a browser that cannot do
+it. If you edit the glass, edit both: `check_overlay.js` asserts that a
+transparent card always comes with a darkening filter, because dropping one and
+keeping the other looks completely fine on a dark game and is unreadable on a
+bright one.
+
+Want it more or less see-through? `#overlay .card { background: rgba(26,20,16,.7) }`
+in `user://obs/custom.css` — up for legibility over a busy capture, down for more
+of the game.
+
 **How tall the page gets.** It is content-height, so it grows with the run — the
 figures below are `tools/check_overlay.js` measuring the real page at 440 wide,
 and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 539 | 735 | 777 | **838** |
-| `overlay.html#top` | 261 | 325 | 367 | **428** |
-| `overlay.html#bottom` | 294 | 426 | 426 | **426** |
+| `overlay.html` | 418 | 587 | 608 | **658** |
+| `overlay.html#top` | 255 | 237 | 258 | **308** |
+| `overlay.html#bottom` | 179 | 366 | 366 | **366** |
+| `overlay.html#road` | 118 | 118 | 118 | **118** |
 
-Only the hero card really moves: its height rides the shields row, the statuses
-row, and how far the cost line's swing marks wrap. "Pathological" is twelve
-statuses, nine shields and ten bodies in reach at once. `#bottom` stops growing at
-426 because the checklist scroller is capped at 260px and walks the rest.
+**Almost nothing moves any more, and that is new.** A heavy run and a run twice
+its size measure the same 608, because everything that used to grow the page is
+gone: the hero card's status strip (every status is a checklist row now), the
+cost line's strip of swing marks (it is a sentence), and the shields' labelled
+row (they sit beside the health bar). `#bottom` stops at 384 because the
+checklist scroller is capped at 320px and walks the rest, and `#road` is a fixed
+118 whatever the run's length — a longer road is a wider strip, not a taller one.
+
+The one thing left that can push it is **the shields wrapping past the bar**:
+about five fit on the line beside it before they take a second row. "Pathological"
+above is thirty of them, which no run realistically reaches.
 
 **The ticker is not in those numbers, on purpose.** It is pinned to the bottom of
 the browser source and grows upward — at most three toasts, ~91px — so a burst
@@ -729,24 +759,57 @@ never touch it, give the source 900** and they land in the slack instead. Taller
 than that only buys headroom for a pathological run; the extra is transparent
 either way.
 
-#### Splitting the page in two
+#### Stretching it
+
+**The page fills whatever canvas the Browser Source gives it.** Widen the source
+and the text columns take the slack — the covers, the art and the type stay their
+own size, which is what "wider" should mean for a page that is mostly sentences.
+Note that **wider is not bigger**: stretching does not change the type size, so if
+the overlay reads *small* on a 720p stream that is `zoom` (below), not width.
+
+**Vertically it is content-height by default**, which is why the tables above are
+promises: the page is exactly as tall as the run makes it and a taller source has
+transparent space under it. Add **`#fill`** to take the whole source instead —
+the checklist grows into the slack, so a 900px source shows about fourteen rows
+standing still where 620 shows seven. That is the only part of the page that wants
+the room; everything above it is a fixed number of lines.
+
+`#fill` is a *modifier*, so it combines with the fragments below and any separator
+works: `overlay.html#fill`, `#bottom,fill`, `#road+fill`.
+
+To pin the old fixed width, put `#overlay { --max-width: 440px }` in
+`user://obs/custom.css`.
+
+#### Rendering part of the page
 
 The overlay is one column, but a scene usually wants the camera partway *down*
 that column rather than under all of it — and OBS cannot interleave scene items
-with the inside of a browser source. So the page can render half of itself:
+with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything | 735 → 838 |
-| `overlay.html#top` | hero card + game in play | 325 → 428 |
-| `overlay.html#bottom` | checklist + road + ticker | 426 (fixed) |
+| `overlay.html` | everything except the road | 587 → 658 |
+| `overlay.html#top` | the run card | 237 → 308 |
+| `overlay.html#bottom` | checklist + ticker | 366 (fixed) |
+| `overlay.html#road` | the road, and nothing else | 118 (fixed) |
+| …`#fill` on any of them | as above, stretched to the source | fills |
 
-Point **two** browser sources at the same file with different fragments and put
-whatever you like between them. They read the same `state.js`, so they stay in
+Point **several** browser sources at the same file with different fragments and
+put whatever you like between them. They read the same `state.js`, so they stay in
 step for free.
 
-`#offline` is in neither list, so a half that is up before the game is still says
-so. The ticker rides with `#bottom`.
+**The road is opt-in**, and it is the only piece that is. It is a horizontal
+scroller, and at 440px it could not be read: measured on a 22-stop run, the stop
+the player is standing on was fully on screen for **6 seconds in every 50** and
+took 42 seconds to first appear — and every change to the road reset the walk to
+the *start* of the run, which is exactly when a viewer looks up. What the road
+uniquely says (which games were beaten, which the run walked away from) is worth a
+source of its own on a between-games scene, at a width where it does not have to
+scroll at all — a 22-stop run is 1008px wide. The **distance** it used to carry is
+now on the headline, in a number that never moves.
+
+`#offline` is in none of these lists, so a source that is up before the game is
+still says so. The ticker rides with `#bottom`.
 
 #### A scene layout that fits
 
@@ -756,22 +819,27 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 370` |
-| Camera | `1476, 386` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 646` | `440 × 430` |
+| **Overlay `#top`** | `1476, 0` | `440 × 290` |
+| Camera | `1476, 302` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 562` | `440 × 380` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**`#top` is given 370, not its 428 ceiling**, because 428 + 248 + 430 is 26px more
-than the 1080 exists. 370 clears every run up to the heavy column above; a run
-carrying a dozen statuses at once loses the bottom of its pip row and nothing
-else, because `#bottom` is the half with a real ceiling and it is not moving. If
-you would rather never clip than keep a full-width camera, take the 58px off the
-camera instead: `400 × 225` at `1496, 444`.
+**Everything fits now, with room to spare.** 290 + 248 + 380 is 918 of the 1080,
+where the old layout needed 26px more than existed and had to under-size `#top` to
+get there. `#top`'s 360 clears every run up to the heavy column above (258) and
+`#bottom` is at its fixed 384 with 6px of slack. Only a run carrying more than
+thirteen shields at once — the one thing that still grows the page — would clip,
+and it clips the bottom of a shield row and nothing else.
 
-**Chat cannot go in the column too.** 370 + 248 + 430 leaves 32px of the 1080, and
-32px of chat is not chat. It goes in the bar under the game, or on a second
-monitor. If chat *must* sit directly under the camera, that is a second sidebar
-and the game pays for it — see A.
+**There is now room for the road too**, if you want it: the 162px left over takes
+`overlay.html#road` at `440 × 118` if you drop the camera to `400 × 225`. It is
+the between-games source, so a scene where it sits under the checklist and only
+gets looked at while the streamer is picking their next game is exactly what it
+is for.
+
+**Chat still cannot go in the column.** 162px of chat is still not chat. It goes in the
+bar under the game, or on a second monitor. If chat *must* sit directly under the
+camera, that is a second sidebar and the game pays for it — see A.
 
 **A — three columns, nothing overlaps.** Camera top-left, chat directly under it,
 overlay on the right.
@@ -812,13 +880,35 @@ has no such restriction. So the state is written *as* an assignment and
 `overlay.js` re-loads it four times a second with a cache-buster on the end; the
 covers ride the same way, as `<img src="file://…">`. No server, no port.
 
-It shows health, the character, the game in play, **the checklist as it ticks**
-(scrolling itself when there is more of it than there is room, flashing a row
-green as it is crossed off), the bodies on the board,
-**the shields and statuses as sprites under the portrait** in two labelled rows,
-**what a lost run would cost you** swing by swing, and **the road walked so far
-ending on the Amulet** — the same strip `RunOverScreen` draws at the end of a run,
-drawn live, with the gap to the Amulet dashed until it closes.
+**It is two cards.** The first is the run: the game in play, how many hops to the
+Amulet and the Amulet itself, then health with **the shields as sprites on the
+same line**, then **what a lost run would cost you** as a sentence. The second is
+**the checklist as it ticks**,
+which is the page's centre of gravity: every row wearing its own art, scrolling
+itself when there is more of it than there is room, flashing a row green as it is
+crossed off — with no header above it, because a list of ticked and unticked rows
+is self-evidently a checklist. **The road** walked so far, ending on the Amulet, is the same strip
+`RunOverScreen` draws at the end of a run — it is drawn live but lives at
+`overlay.html#road`, its own source, rather than on the default column.
+
+**Every row of the checklist carries its own picture**, and that is the layout's
+one big idea. A goal *is* an enemy (§7.2), so a body's row wears its face and, on
+the corner of it, the damage that body lands if the run is lost; a status's row
+wears its pip art and its stack total; a curse's and an event's wear theirs. **The
+character's own goal leads the list** — `Level up — <condition>`, wearing the
+portrait, with `Isaac · Level 3` under it. `ReportChecklist` has always drawn that
+row and this page never did, so the one goal belonging to the *character* was the
+one goal a viewer could not see; the portrait and the name live there now rather
+than on a hero card of their own. It goes **first** here where the checklist files
+it after the statuses, and that is deliberate: the report panel does not scroll, so
+where a row sits costs nothing, while on a fifteen-body run this list does and a
+row near the end is a row nobody watching ever sees. That
+one change paid for three others — the hero card's status strip went (every
+player-side status is claimable, so every one already had a row here, and the
+strip was saying it twice), the cost line stopped drawing a *parallel* strip of
+faces the viewer had to match against this one, and the six kinds of row stopped
+being told apart by **text colour alone**, which was the weakest encoding on a
+page read across a room through a lossy encode.
 
 ### What a lost run costs
 
@@ -830,18 +920,36 @@ what reaches Health.
 
 That rule is invisible in a summed "12 incoming" — two shields against three
 small swings is a completely different position from two shields against one
-enormous one — so the page draws **one mark per swing, and the mark is the body
-throwing it**: its own art at 28px, wearing a shield on the corner when the swing
-is eaten whole (with the face behind it desaturated) or the damage it lands when
-it is not. Left to right the row *is* the rule, and it says *who* as well as
-*how much* — the boss's swing and the fly's are not the same problem. The same
-forecast is hatched onto the health bar over the HP that would go, and one that
-would end the run says so in words.
+enormous one — so the page states it: **"2 shields break, −12 Health"**, and
+"Health" rather than "damage" because the bar directly above says `7 / 20` and the
+two numbers a viewer has to connect should have the same name. The same forecast
+is hatched onto the health bar over the HP that would go, and one that would end
+the run says so in words.
 
-The art holds up at that size because the roster's is bold and silhouette-driven
-— checked by rendering the widest range in the set (a 19×10 sprite through a
-734×841 painting) at four sizes, not assumed. A body with no art falls back to a
-bare number; a test asserts every goal-enemy and boss has some, so it doesn't.
+**Who is throwing each swing is answered on the checklist**, not here. This line
+used to draw one mark per swing — the body's own face at 28px, badged with a
+shield when the swing was eaten whole or with the damage when it was not — because
+it was the only place the page said *who*, and the boss's swing and the fly's are
+not the same problem. Now every body has a row in the checklist with its face and
+its own damage on the corner, so the identity sits beside the sentence naming it
+instead of in a parallel strip the viewer had to align against the real list by
+eye. The art holds up at that size because the roster's is bold and
+silhouette-driven — checked by rendering the widest range in the set (a 19×10
+sprite through a 734×841 painting) at four sizes, not assumed. A row with no art
+falls back to an initial; a test asserts every goal-enemy and boss has some, so it
+doesn't.
+
+**And a board that cannot reach you does not make the line go quiet.** It used to
+hide itself entirely on an empty forecast, which is honest about this turn and
+silent about the only question that follows: the board is still walking towards
+you. It now says *"nothing reaches you for at least 2 more lost runs"* —
+`threat.turns_away`, from `GameLoop2.turns_until_strike`, which is `can_strike`'s
+own inequality (`_front_col <= 1 + strike_range`) solved for turns so the two
+cannot drift. **It is measured against each body's own reach, never against column
+1**: a Ranged body swings from several columns back, and counting steps to the
+front line would promise a quiet turn to somebody a Host can already shoot. It is
+also a **floor** — a blocked lane, a stun, a turn spent on an ability all make the
+real wait longer, never shorter — which is why the page words it "at least".
 
 `ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
 re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing
@@ -874,11 +982,21 @@ Four things worth knowing if you change it:
   overworld's own header strip and by `RunOverScreen`, all three reading
   `GameState.walked_outcomes()`.
 - **Statuses and shields are drawn, not written.** They are `StatusData.image` /
-  `UITheme.SHIELD_ART` at 22px with `UITheme.TIMER_ART` in the corner for
-  anything borrowed — the same art and the same sizes as
-  `BattlefieldView._status_pip`, quoted from the same constants so the board and
-  the stream cannot disagree. The pip's colour follows **what the side does**
-  (gold for a `bonus`/`goal`, red for anything that taxes), never Buff/Debuff.
+  `UITheme.SHIELD_ART` with `UITheme.TIMER_ART` in the corner for anything
+  borrowed — the same art as `BattlefieldView._status_pip`, quoted from the same
+  constants so the board and the stream cannot disagree. The colour follows **what
+  the side does** (gold for a `bonus`/`goal`, red for anything that taxes), never
+  Buff/Debuff. The shields sit **beside the health bar** rather than in a row of
+  their own: the labels existed to keep two strips apart, and with the statuses
+  gone to the checklist there is nothing left to confuse them with — so they read
+  as the armour standing in front of that health, and the page saves a line. A
+  status rides its checklist row at 26px instead.
+- **A status's row is one instance; its badge is the total.** `status_objectives()`
+  is one row per instance (a permanent Strength 1 and a borrowed Strength 3 are
+  two offers with two deadlines) while `status_list()` totals them, because what a
+  stack *does* is felt as a total. The hero card's pip strip was the only thing
+  carrying that total, so the badge on the row's art carries it now — that is the
+  one thing cutting the strip could have lost, and a test pins it.
 - **The rows are read from `GameLoop2`/`GameState`, never from `ReportChecklist`.**
   That is a Control tree which only exists while the overworld is on screen, and
   being right when the game window is behind a stream is the whole job.
@@ -902,6 +1020,26 @@ node tools/check_overlay.js          # --browser=/path/to/chrome if it can't fin
 It is deliberately not wired into GUT — different runtime, different dependency —
 so run it by hand when anything under `obs/` changes. Every check in it is a
 regression that shipped once.
+
+**And look at it with real content, not only the fixture.**
+`tools/dump_obs_payload.gd` drives a real `Overworld2`, walks a few games, and
+writes an actual `ObsCompanion.payload()` to JSON, which you can drop in beside
+the page as `state.js`:
+
+```bash
+OBS_DUMP_TO=/tmp/obs_state.json godot --headless -s addons/gut/gut_cmdln.gd \
+    -gdir=res://tools -gprefix=dump_ -gselect=dump_obs_payload.gd -gexit
+```
+
+The fixture is synthetic on purpose — it has to force states a real run reaches
+rarely, and be reproducible. The cost is that it never disagrees with itself:
+every fixture that ever exercised this page named its own hero, which is how
+`_hero()` came to look the character up in `Data.get_character` (the two-strong
+combat-era roster) while the run is dealt from `get_character2` (eleven). Ten of
+the eleven drew a **nameless, portraitless hero card for an entire stream**, and
+no test could see it because no test used a real character id. One real payload
+showed it immediately. A test walks the roster now, but the lesson is the tool:
+render the real thing occasionally.
 
 `obs/` holds plain `.html`/`.css`/`.js`, which Godot does not treat as resources.
 Running from source they are read straight out of `res://obs/`; if you ever

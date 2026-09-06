@@ -102,20 +102,43 @@ function fixture() {
   const at = Math.floor(Date.now() / 1000);
 
   const kinds = ['goal', 'goal', 'bonus', 'instead', 'status', 'event', 'curse', 'goal', 'goal'];
-  const goals = kinds.map((kind, i) => ({
-    kind,
-    text: kind === 'curse'
-      ? 'Curse of the Ledger — beat a game without dying (if failed, lose 3 Health)'
-      : 'Reach the second boss without spending a single healing item this game',
-    who: 'The Wretched Cartographer',
-    boss: i === 1,
-    front: i === 0,
-    done: i >= kinds.length - 2,
-    games: (kind === 'event' || kind === 'curse') ? 3 : 0,
-  }));
+  /* EVERY ROW CARRIES ITS OWN ART NOW, and the art it carries depends on the
+   * kind — an enemy's face, a status's pip, a curse's, an event's. `addon` rows
+   * (a bonus, an `instead`) deliberately have none: they hang off the row above
+   * and are indented under it instead of repeating its face. */
+  const goals = kinds.map((kind, i) => {
+    const addon = kind === 'bonus' || kind === 'instead';
+    return {
+      kind,
+      text: kind === 'curse'
+        ? 'Curse of the Ledger — beat a game without dying (if failed, lose 3 Health)'
+        : 'Reach the second boss without spending a single healing item this game',
+      who: 'The Wretched Cartographer',
+      icon: addon ? '' : (kind === 'status' ? statuses[i % statuses.length]
+        : enemies[i % enemies.length]),
+      addon,
+      boss: i === 1,
+      front: i === 0,
+      done: i >= kinds.length - 2,
+      games: (kind === 'event' || kind === 'curse') ? 3 : 0,
+      /* A body's row wears its own swing; a status's wears its stack total. */
+      damage: kind === 'goal' ? 3 + i : 0,
+      blocked: i === 0,
+      stacks: kind === 'status' ? 4 : 0,
+      good: kind === 'status',
+    };
+  });
+
+  /* THE CHARACTER'S OWN GOAL, which `ReportChecklist` has always drawn and this
+   * page did not until the hero card was folded away. Its art is the portrait. */
+  goals.unshift({
+    kind: 'levelup', text: 'Level up — beat three games without losing a run',
+    who: 'Isaac \u00b7 Level 3', icon: enemies[0] || '', addon: false,
+    boss: false, front: false, done: false, games: 0, damage: 0, stacks: 0,
+  });
 
   const swings = enemies.map((icon, i) => ({
-    damage: 3 + i, who: 'Body ' + i, blocked: i < 2, icon,
+    damage: 3 + i, who: 'Body ' + i, blocked: i < 2, icon, instance: i + 1,
   }));
 
   /* The four road states that matter, and then the tail, so both the cascade and
@@ -138,14 +161,20 @@ function fixture() {
       shield: 'file://' + path.join(REPO, 'images2.0/general/Shield.png'),
     },
     vitals: { hp: 7, max: 20, shields: 4, shields_kept: 2, shields_timed: 2 },
-    run: { played: 8, beaten: 5, gold: 120, hops: 3 },
+    run: { played: 8, beaten: 5, gold: 120, hops: 3,
+      /* The headline's right-hand half. A deliberately long title, because the
+       * destination's column is the narrower of the two and this is where it
+       * would bite. */
+      amulet: { game: 'The Legend of Zelda: Tears of the Kingdom',
+        cover: games[games.length - 1] || '' } },
     now: {
       playing: true, game: 'Vampire Survivors: Legacy of the Moonspell',
       cover: games[0] || '', attempts: 4,
     },
     goals,
     board: { bodies: 5, front: swings.length, incoming: 18 },
-    threat: { swings, raw: 18, blocked: 2, damage: 12, hp_after: 0, lethal: true },
+    threat: { swings, raw: 18, blocked: 2, damage: 12, hp_after: 0, lethal: true,
+      turns_away: 0 },
     statuses: statuses.map((icon, i) => ({
       name: 'Status ' + i, stacks: 2 + i, good: i % 2 === 0, icon,
       letter: 'S', games: i === 1 ? 2 : 0,
@@ -200,22 +229,122 @@ async function main() {
   console.log('the page draws a heavy run');
   check('no uncaught page errors', errors.length === 0, errors.join(' / '));
   const drew = await page.evaluate(() => ({
-    hero: !!document.getElementById('hero-name').textContent,
+    cards: document.querySelectorAll('.card:not(.road)').length,
     goals: document.querySelectorAll('.goal').length,
-    swings: document.querySelectorAll('.swing').length,
+    art: document.querySelectorAll('.goal-art img').length,
+    badges: document.querySelectorAll('.goal-badge').length,
     stops: document.querySelectorAll('.stop').length,
     shields: document.querySelectorAll('.shield-pip').length,
-    pips: document.querySelectorAll('.pip').length,
+    dest: document.getElementById('dest-game').textContent,
+    barW: Math.round(document.querySelector('.bar').getBoundingClientRect().width),
   }));
-  check('every section has content', drew.hero && drew.goals > 0 && drew.swings > 0
-    && drew.stops > 0 && drew.shields > 0 && drew.pips > 0, JSON.stringify(drew));
+  check('every section has content', drew.goals > 0 && drew.art > 0
+    && drew.stops > 0 && drew.shields > 0, JSON.stringify(drew));
+  /* TWO CARDS ON THE DEFAULT PAGE, not three: the run and the checklist. The hero
+   * card lost its portrait and name to the level-up row and had only a health bar
+   * left in it, which is not a card. */
+  check('the page is two cards', drew.cards === 2, drew.cards + ' cards');
+
+  /* THE HEADLINE. The premise of the whole run — this game, that far, that game —
+   * has to be on the page without scrolling anything. */
+  check('the Amulet is named beside the game in play', /Tears of the Kingdom/.test(drew.dest),
+    drew.dest);
+  check('the distance is on the line that names where it leads',
+    await page.evaluate(() => document.getElementById('hops').textContent)
+      === '3 games to the Amulet');
+  /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
+   * self-evidently a checklist. */
+  check('the checklist has no label above it',
+    await page.evaluate(() => !document.querySelector('.goals .label')));
+
+  /* EVERY ROW WEARS ITS OWN ART, except the two that hang off the row above. An
+   * addon repeating its parent's face read as another enemy. */
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.goal')].map((g) => ({
+    kind: g.className.replace('goal ', ''),
+    art: !!g.querySelector('.goal-art img'),
+    indent: Math.round(parseFloat(getComputedStyle(g).paddingLeft)),
+  })));
+  check('every non-addon row has a picture',
+    rows.filter((r) => !/addon/.test(r.kind)).every((r) => r.art),
+    rows.filter((r) => !/addon/.test(r.kind) && !r.art).length + ' without');
+  check('an addon carries no face and is indented under its parent',
+    rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
+    JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
+
+  /* THE CARD IS TRANSPARENT, AND ONLY THE BACKDROP FILTER MAKES THAT SAFE. The
+   * card sits at 0.45 alpha so the stream shows through it, which is only legible
+   * because `backdrop-filter` blurs and darkens the capture behind it first —
+   * measured, the worst contrast on the page is 4.73 with the filter and 1.20
+   * without. The two must therefore never be separated: dropping the filter while
+   * keeping the transparency is the one edit here that silently produces an
+   * unreadable overlay on a bright game, and it would look completely fine to
+   * whoever made it on a dark one. */
+  const glass = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.card'));
+    const bg = cs.backgroundColor;
+    const m = bg.match(/rgba?\(([^)]+)\)/);
+    const parts = m ? m[1].split(',').map((n) => parseFloat(n)) : [];
+    const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
+    return { alpha: parts.length === 4 ? parts[3] : 1, filter };
+  });
+  check('the card lets the stream through', glass.alpha < 0.6, 'alpha ' + glass.alpha);
+  check('…and darkens what it lets through, which is what keeps it readable',
+    /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+
+  /* THE CHARACTER'S GOAL IS ON THE LIST. The portrait and the name left the hero
+   * card for this row, and if it did not draw, both would simply be gone. */
+  const lvl = await page.evaluate(() => {
+    const n = document.querySelector('.goal.levelup');
+    return n ? { art: !!n.querySelector('.goal-art img'),
+                 who: n.querySelector('.who') ? n.querySelector('.who').textContent : '' }
+             : null;
+  });
+  check('the level-up goal is a checklist row, wearing the character',
+    !!lvl && lvl.art && /Isaac/.test(lvl.who), JSON.stringify(lvl));
+
+  /* STRETCHING: `#fill` makes the page take the whole source and gives the slack
+   * to the checklist, which is the only part of it that can use the room. */
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#fill');
+  await sleep(900);
+  const filled = await page.evaluate(() => ({
+    page: Math.round(document.getElementById('overlay').getBoundingClientRect().height),
+    scroller: Math.round(document.getElementById('goal-scroll').getBoundingClientRect().height),
+  }));
+  check('#fill takes the whole source', filled.page === HEIGHT,
+    filled.page + ' of ' + HEIGHT);
+  check('…and the checklist is what grows into it', filled.scroller > 320,
+    filled.scroller + 'px of scroller');
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(700);
+
+  /* STRETCHING SIDEWAYS: the page fills whatever width the source is, rather than
+   * rendering a 440 column with dead space beside it. */
+  await page.setViewportSize({ width: 640, height: HEIGHT });
+  await sleep(500);
+  const wide = await page.evaluate(() => ({
+    page: Math.round(document.getElementById('overlay').getBoundingClientRect().width),
+    title: Math.round(document.getElementById('now-game').getBoundingClientRect().width),
+  }));
+  check('a wider source is filled, not letterboxed', wide.page === 640, wide.page + 'px');
+  check('…and the text columns are what take the slack', wide.title > 400,
+    wide.title + 'px of title');
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  await sleep(500);
+
+  /* THE ROAD IS OFF THE DEFAULT PAGE — it is a scroller that cannot be read at a
+   * glance, and lives at #road now. It must still be IN the document (the strip
+   * is built either way) and simply not displayed. */
+  check('the road is built but not shown on the default page',
+    await page.evaluate(() => document.querySelectorAll('.stop').length > 0
+      && getComputedStyle(document.querySelector('.road')).display === 'none'));
 
   /* 1. `hidden` has to actually hide — the regression that left THIS KILLS YOU on
    *    screen over a board that could not reach the player. */
   console.log('a board that cannot reach you');
   write((s) => {
     s.at++;
-    s.threat = { swings: [], raw: 0, blocked: 0, damage: 0, hp_after: s.vitals.hp, lethal: false };
+    s.threat = { swings: [], raw: 0, blocked: 0, damage: 0, hp_after: s.vitals.hp,
+      lethal: false, turns_away: 2 };
     s.vitals = { hp: 18, max: 20, shields: 0, shields_kept: 0, shields_timed: 0 };
     s.statuses = [];
   });
@@ -225,15 +354,44 @@ async function main() {
       const n = document.getElementById(id);
       return { shown: getComputedStyle(n).display !== 'none', h: Math.round(n.getBoundingClientRect().height) };
     };
-    return { cost: vis('cost'), shieldRow: vis('shield-row'), statusRow: vis('status-row') };
+    return { cost: vis('cost'), lethal: vis('cost-lethal'),
+      shields: document.querySelectorAll('.shield-pip').length,
+      barW: Math.round(document.querySelector('.bar').getBoundingClientRect().width),
+      total: document.getElementById('cost-total').textContent,
+      quiet: document.getElementById('cost').classList.contains('quiet') };
   });
-  check('the cost line is gone, not merely flagged', !gone.cost.shown, JSON.stringify(gone.cost));
-  check('the shields row is gone', !gone.shieldRow.shown, JSON.stringify(gone.shieldRow));
-  check('the statuses row is gone', !gone.statusRow.shown, JSON.stringify(gone.statusRow));
+  /* THE LINE NO LONGER HIDES ITSELF HERE, and that is the change: a board with
+   * nothing in reach is still a board walking towards you, and how many lost runs
+   * of quiet are left is the question that follows. What must still hide is the
+   * LETHALITY WARNING — that is the regression this file was written for, where
+   * THIS KILLS YOU sat pulsing over a safe board carrying the previous forecast. */
+  check('the cost line says how long the quiet lasts',
+    gone.cost.shown && /at least 2 more lost runs/.test(gone.total), gone.total);
+  check('…and stops being an alarm while it does', gone.quiet);
+  check('the lethality warning is gone, not merely flagged', !gone.lethal.shown,
+    JSON.stringify(gone.lethal));
+  /* THE SHIELDS SIT BESIDE THE BAR NOW, so an unarmoured run has to give the bar
+   * the whole width rather than leave a gap where the sprites would be —
+   * `.pips:empty` is what does that, and it is easy to lose. */
+  check('no shields are drawn', gone.shields === 0, gone.shields + ' drawn');
+  check('…and the bar takes back the width they were using',
+    gone.barW > drew.barW, drew.barW + 'px armoured -> ' + gone.barW + 'px bare');
+  /* The forecast reads the OTHER way when nothing is ever coming, rather than
+   * promising a wait of minus one turn. */
+  write((s) => { s.at++; s.threat.turns_away = -1; });
+  await sleep(900);
+  check('a board that never closes says so',
+    /nothing on the board can reach you/.test(
+      await page.evaluate(() => document.getElementById('cost-total').textContent)));
 
   /* 2. the road's outcome colours, including the combinations the cascade used to
    *    lose. --success #4dc76b, --gold #ffcc66, --unbeaten #d97821. */
   console.log('the road says how each stop went');
+  /* AT #road, WHICH IS WHERE THE ROAD LIVES NOW. A `display: none` scroller has
+   * no scrollWidth, so the walk below cannot be measured on the default page —
+   * and the colours are worth asserting on the source that actually shows them. */
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#road');
+  await sleep(900);
   write((s) => {
     s.at++;
     const cover = s.road[0].cover;
@@ -302,6 +460,11 @@ async function main() {
   check('the strip is still moving after four payloads',
     walked[walked.length - 1] > walked[0], 'scrollLeft ' + walked.join(' -> '));
 
+  /* Back to the default page for everything below — the road's own source is not
+   * the shape the README's layout tables are about. */
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(900);
+
   /* 5. a burst of toasts must not push the page out of its browser source. */
   console.log('a burst of toasts');
   const base = Math.floor(Date.now() / 1000) + 50;
@@ -360,11 +523,17 @@ async function main() {
    *    are what a streamer sizes a scene against. A page that grows past these has
    *    either gained a card or lost the ticker's anchoring, and either way the
    *    README is now wrong — which is the thing that is hard to notice by eye. */
-  const DOCUMENTED = { '': 777, '#top': 367, '#bottom': 426 };
+  /* The whole page came down from 777 to 608 on the same heavy run — the road
+   * left the default column and the hero card lost its status strip, and the
+   * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
+   * where the space is worth spending. `#road` is its own source now and is the
+   * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
+  const DOCUMENTED = { '': 608, '#top': 258, '#bottom': 366, '#road': 118 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
   await sleep(1000);
-  for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom']]) {
+  for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
+    ['#road', '#road']]) {
     await page.goto('file://' + path.join(dir, 'overlay.html') + hash);
     await sleep(900);
     const h = await page.evaluate(() =>

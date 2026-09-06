@@ -5758,6 +5758,34 @@ func can_strike(entry: Dictionary) -> bool:
 		return false
 	return _front_col(entry) <= 1 + strike_range(entry)
 
+# THE SAME QUESTION AS `can_strike`, SOLVED FOR TURNS: how many of them before
+# this body's leading edge is within its own reach of the front column. 0 when it
+# can swing now, -1 when it never closes from where it stands (off the grid, or
+# `immobile` — a turret is dangerous where it is or not at all).
+#
+# It lives here rather than in the caller because it is `can_strike`'s inequality
+# rearranged, and the two must not drift: a body reaches you when
+# `_front_col <= 1 + strike_range`, so it is short by `_front_col - 1 -
+# strike_range` columns and closes `1 + tile_move` of them a turn (§13.4). Written
+# anywhere else it would have to reach for `_front_col`, and the next change to
+# how a footprint's leading edge is measured would fix one of them and not the
+# other.
+#
+# A FLOOR, NOT A SCHEDULE. Everything the board can do to this number makes the
+# wait longer — a blocked lane stalls a body short of where this says it will be
+# (`_walk_one`), an ability can spend its turn on something other than walking
+# (§7.6), a stun costs it the step. Nothing makes it shorter for a body already
+# counted. The OBS overlay is the caller and words it as "at least".
+func turns_until_strike(entry: Dictionary) -> int:
+	if int(entry.get("col", offgrid_col())) > grid_cols():
+		return -1
+	var short: int = _front_col(entry) - 1 - strike_range(entry)
+	if short <= 0:
+		return 0
+	if entry_has_ability(entry, &"immobile"):
+		return -1
+	return int(ceil(float(short) / float(1 + enemy_tile_move(entry))))
+
 # --- summoning -------------------------------------------------------------
 #
 # Every ability that puts a body on the board comes through here, so a summoned

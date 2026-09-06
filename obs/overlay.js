@@ -112,16 +112,19 @@ function render(s) {
   drawEvents(s.events || []);
   if (s.state === 'idle') { firstDraw = false; return; }
 
-  drawHero(s.hero || {}, s.vitals || {}, s.board || {});
+  drawHero(s.hero || {}, s.vitals || {});
   drawBarThreat(s.vitals || {}, s.threat || {});
-  drawCost(s.threat || {}, s.art || {}, s.now || {});
+  drawCost(s.threat || {});
   drawShields(s.vitals || {}, s.art || {});
   drawNow(s.now || {}, s.run || {});
-  drawGoals(s.goals || []);
-  drawStatuses(s.statuses || [], s.art || {});
+  drawGoals(s.goals || [], s.art || {});
   drawRoad(s.road || []);
   firstDraw = false;
 }
+/* `s.statuses` IS DELIBERATELY NOT DRAWN. It is still in the payload for anyone
+ * restyling this page, but every player-side status is claimable and therefore
+ * already has a checklist row — wearing this strip's art and carrying its stack
+ * total (see `goal.stacks`). Drawing both was drawing every status twice. */
 
 /* ONE SPRITE PER SHIELD, in the board's order: the pool that stays comes first
  * and bare, the timed ones follow wearing the clock. Position and badge say the
@@ -130,7 +133,10 @@ function render(s) {
 function drawShields(vitals, art) {
   const box = el('hero-shields');
   box.innerHTML = '';
-  el('shield-row').hidden = num(vitals.shields) === 0;
+  /* No `hidden` to set any more: the box sits beside the health bar and
+   * `.pips:empty` takes it out of the flex row when there is no armour, so an
+   * unarmoured run gives the bar the whole width instead of leaving a gap where
+   * the shields would be. */
   if (!art || !art.shield) return;
   const rows = [[num(vitals.shields_kept), false], [num(vitals.shields_timed), true]];
   for (const [count, timed] of rows) {
@@ -155,88 +161,62 @@ function drawShields(vitals, art) {
   }
 }
 
-/* WHAT A LOST RUN COSTS, one mark per swing, in the order the board resolves
- * them: a blocked swing wears the shield that breaks on it, an unblocked one
- * shows the damage it lands. Read left to right the row IS the rule — shields
- * eat whole hits, and everything past your last shield is Health. */
-function drawCost(threat, art, now) {
+/* WHAT A LOST RUN COSTS, STATED. This used to be one mark per swing — a strip of
+ * enemy faces, each badged with its damage or with the shield that eats it —
+ * because it was the only place on the page that said WHO was hitting you, and
+ * "who" is half of what the player is deciding about.
+ *
+ * The checklist answers that now. Every body has a row there with its own face
+ * and its own `damage` beside it, which is a better place for it in two ways: the
+ * damage sits next to the sentence naming the body rather than in a parallel strip
+ * the viewer had to match up against the list, and it leaves this line free to
+ * state the ARITHMETIC in words. The rule that nobody guesses — one shield stops
+ * one hit whatever its size — reads better as "2 shields break, −7 Health" than
+ * as a row of badges you have to count.
+ *
+ * AND WHEN NOTHING CAN REACH YOU IT DOES NOT GO QUIET. The line used to hide
+ * itself entirely on an empty forecast, which is honest about this turn and silent
+ * about the only question that follows from it: the board is still walking
+ * towards you. `turns_away` is how many lost runs of quiet are left, floored (see
+ * ObsCompanion._turns_away — a blocked lane or a spent turn makes the real wait
+ * longer, never shorter), so it is worded as "at least". */
+function drawCost(threat) {
   const box = el('cost');
   const swings = (threat && threat.swings) || [];
 
-  /* WHICH attempt this would be — `now.attempts` counts the ones already spent,
-   * so the one this line is forecasting is the next one up. It sits under the
-   * label rather than in the Now Playing card, where it was a chip a long way
-   * from the consequence it belongs to. */
-  const att = el('cost-attempt');
-  const spent = num(now && now.attempts);
-  att.hidden = false;
-  att.textContent = 'Attempt ' + (spent + 1);
-  att.title = spent === 0 ? 'no runs lost at this game yet'
-    : spent + (spent === 1 ? ' run lost here so far' : ' runs lost here so far');
-  /* Nothing that can reach you: the line goes entirely rather than announcing a
-   * threat of zero, which reads as a threat. */
-  box.hidden = swings.length === 0;
-  if (box.hidden) return;
-
-  const strip = el('cost-swings');
-  strip.innerHTML = '';
-  for (const sw of swings) {
-    const s = document.createElement('span');
-    s.className = 'swing ' + (sw.blocked ? 'blocked' : 'hits');
-    s.title = sw.who + ' swings for ' + sw.damage
-      + (sw.blocked ? ' — a shield stops it whole' : '');
-
-    /* THE BODY DOING THE SWINGING, as its own face. A row of bare numbers said
-     * how much but never who, and "who" is half of what the player is deciding
-     * about — the boss's swing and the fly's are not the same problem. */
-    if (sw.icon) {
-      const img = document.createElement('img');
-      img.className = 'swing-art';
-      img.alt = sw.who;
-      img.src = sw.icon;
-      s.appendChild(img);
-    } else {
-      /* No art for this body: fall back to the bare number, which is what the
-       * row used to be all the way across. */
-      const n = document.createElement('span');
-      n.className = 'swing-bare';
-      n.textContent = sw.damage;
-      s.appendChild(n);
-    }
-
-    /* The badge in the corner is the binary: a shield means this swing is eaten
-     * whole, a number means that much Health. Greyed art behind the shield says
-     * the same thing a second way. */
-    const badge = document.createElement('span');
-    if (sw.blocked && art && art.shield) {
-      badge.className = 'swing-badge shield';
-      const sh = document.createElement('img');
-      sh.alt = 'blocked';
-      sh.src = art.shield;
-      badge.appendChild(sh);
-    } else if (sw.icon) {
-      badge.className = 'swing-badge dmg';
-      badge.textContent = sw.damage;
-    }
-    if (badge.className) s.appendChild(badge);
-    strip.appendChild(s);
-  }
-
+  box.hidden = false;
   const total = el('cost-total');
+  const kill = el('cost-lethal');
+
+  /* NOTHING IN REACH. Say how long that lasts rather than saying nothing. */
+  if (swings.length === 0) {
+    const away = num(threat.turns_away, -1);
+    total.className = 'cost-total safe';
+    total.textContent = away < 0 ? 'nothing on the board can reach you'
+      : away === 0 ? 'nothing lands this turn'
+      : 'nothing reaches you for at least ' + away
+        + (away === 1 ? ' more lost run' : ' more lost runs');
+    kill.hidden = true;
+    box.classList.remove('lethal');
+    box.classList.add('quiet');
+    return;
+  }
+  box.classList.remove('quiet');
+
   const dmg = num(threat.damage);
   const broke = num(threat.blocked);
-  /* The sentence under the marks, for the viewer who wants it stated rather
-   * than counted. */
+  /* THE ARITHMETIC IN WORDS, and "Health" rather than "damage" on purpose: the
+   * bar directly above says "7 / 20" and never uses the word damage, so the two
+   * numbers a viewer has to connect were being given different names. */
   const parts = [];
-  if (broke > 0) parts.push(broke + (broke === 1 ? ' shield' : ' shields'));
-  parts.push(dmg + ' damage');
-  total.textContent = '= ' + parts.join(', ');
+  if (broke > 0) parts.push(broke + (broke === 1 ? ' shield breaks' : ' shields break'));
+  parts.push(dmg > 0 ? '−' + dmg + ' Health' : 'no Health lost');
+  total.textContent = parts.join(', ');
   total.className = 'cost-total' + (dmg === 0 ? ' safe' : '');
 
   /* THE ONE STATE ALLOWED TO SHOUT. A hatched bar covering the whole of a short
    * health total does say "all of it goes", but only to someone already reading
    * the bar — and this is the moment the overlay exists for. */
-  const kill = el('cost-lethal');
   kill.hidden = !threat.lethal;
   box.classList.toggle('lethal', !!threat.lethal);
 }
@@ -256,40 +236,89 @@ function drawBarThreat(vitals, threat) {
   node.classList.toggle('lethal', !!(threat && threat.lethal));
 }
 
-function drawHero(hero, vitals, board) {
-  setImg(el('hero-icon'), hero.icon);
-  el('hero-name').textContent = hero.name || '';
-  const lvl = el('hero-level');
-  lvl.textContent = hero.level > 1 ? ('Level ' + hero.level) : '';
-  lvl.hidden = !(hero.level > 1);
-
+/* JUST THE HEALTH NOW. The portrait, the name and the level pill went with the
+ * hero card when it merged into the run card: which character is being played is
+ * a detail of the run rather than its premise, and all three now ride the
+ * checklist's LEVEL-UP row — the character's own goal, wearing the character's
+ * own face, with "Isaac · Level 3" as its subtitle. `s.hero` stays in the payload
+ * for anyone restyling this page. */
+function drawHero(hero, vitals) {
   const hp = num(vitals.hp), max = Math.max(1, num(vitals.max));
   const bar = el('hp-fill').parentElement;
   el('hp-fill').style.width = Math.max(0, Math.min(100, (hp / max) * 100)) + '%';
   el('hp-text').textContent = hp + ' / ' + max;
   bar.classList.toggle('low', hp > 0 && hp / max <= 0.3);
 
-  /* WORDS, NOT SYMBOLS. The game's own UI can lean on ⚔ and ⛨ because it ships
-   * the subsetted Noto fonts that carry them; this page is rendered by OBS's
-   * Chromium against whatever the host has installed, and a glyph that is
-   * missing there comes out as a tofu box or the wrong symbol entirely. */
-  /* The threat is drawn by drawCost below, swing by swing, rather than summed
-   * into a chip here — see the note in overlay.html. */
-  chip(el('bodies'), num(board.bodies) > 0,
-    board.bodies + (board.bodies === 1 ? ' body' : ' bodies') + ' following');
+  /* NO "N BODIES FOLLOWING" CHIP. It was jargon a viewer had no way to cash —
+   * "following" is a board concept — and it sat next to a cost line drawing a
+   * DIFFERENT count (the bodies in reach, which is not the bodies on the board).
+   * Two numbers about enemies, neither labelled in a way that told them apart.
+   * The checklist is the honest version of the same fact: one row per body, each
+   * with its face and, when it can reach you, its damage. `board.bodies` is still
+   * in the payload for anyone restyling this page. */
 }
 
+/* THE HEADLINE: where the run is, and what it is for. Two covers with the
+ * distance on the arrow between them.
+ *
+ * This is the one line that gives a viewer who has just tuned in the premise —
+ * they are playing a real game, to get to THAT real game — and nothing else on
+ * the page carries it. The Amulet used to be legible only off the end of the road
+ * strip, which scrolls, so most of the time the destination was off screen and
+ * the distance to it was a dim 12px chip below a two-line title. */
 function drawNow(now, run) {
   setImg(el('now-cover'), now.cover);
   el('now-label').textContent = now.playing ? 'Now playing' : 'Standing on';
   el('now-game').textContent = now.game || '—';
+
+  /* WHICH ATTEMPT THIS IS, under the game it is being spent on. `now.attempts`
+   * counts the ones already spent, so the one being played is the next one up.
+   *
+   * It belongs to the GAME, not to the forecast. On the cost line it was a number
+   * inside a sentence about damage, which made it read as part of the arithmetic;
+   * here it is what it actually is — the honour system's tension in plain sight,
+   * climbing while the streamer swears at a boss. Hidden on the first attempt:
+   * "Attempt 1" is every game's opening state and says nothing. */
+  const spent = num(now.attempts);
+  const att = el('attempts');
+  att.hidden = spent === 0;
+  if (spent > 0) {
+    att.textContent = 'Attempt ' + (spent + 1);
+    att.title = spent + (spent === 1 ? ' run lost here so far'
+                                     : ' runs lost here so far');
+  }
+
+  const dest = (run && run.amulet) || {};
+  setImg(el('dest-cover'), dest.cover);
+  el('dest-game').textContent = dest.game || '—';
+
+  /* The distance, on the line that names where it leads — so the number is read
+   * as the gap it measures rather than as a chip beside an unrelated title. It
+   * carries the words "to the Amulet" because nothing else on this line does: the
+   * cover and the name that follow are the Amulet, and without them said out loud
+   * the row is a game title with a number in front of it. */
   const hops = num(run.hops, -1);
-  chip(el('hops'), hops >= 0,
-    hops === 0 ? 'At the Amulet'
-      : hops + (hops === 1 ? ' game to the Amulet' : ' games to the Amulet'));
+  el('hops').textContent = hops < 0 ? 'no route to the Amulet'
+    : hops === 0 ? 'you are AT the Amulet'
+    : hops + (hops === 1 ? ' game to the Amulet' : ' games to the Amulet');
 }
 
-function drawGoals(goals) {
+/* THE CHECKLIST, AND THE PAGE'S CENTRE OF GRAVITY.
+ *
+ * EVERY ROW WEARS ITS OWN ART, which is the layout's one big idea. A goal IS an
+ * enemy — a game has no goal of its own (§7.2) — and a column of sentences never
+ * said so; with the face on the row the list reads as the board. A status's row
+ * wears the pip art the hero card used to carry (and its stack total, so cutting
+ * that strip lost nothing), a curse's and an event's wear theirs.
+ *
+ * It also fixes the weakest encoding on the page. The six kinds of row — goal,
+ * bonus, instead, status, event, curse — used to be told apart by TEXT COLOUR
+ * ALONE, on an identical checkbox at an identical weight, with nothing anywhere
+ * saying what a colour meant. Purple-curse against blue-status is not a
+ * distinction that survives being read across a room through a lossy encode. The
+ * art says it first now and the colour agrees with it, which is the same "say it
+ * twice" rule the road's stops and the blocked swings already followed. */
+function drawGoals(goals, art) {
   const list = el('goal-list');
   /* Rebuild only when the LIST changed. Redrawing every quarter second would
    * restart the tick-flash animation forever and fight the auto-scroll.
@@ -299,8 +328,8 @@ function drawGoals(goals) {
    * comparison: the clock was in the payload, ticking down, and the row on screen
    * never redrew to show it. A curse sat on "3 games left" until some unrelated
    * row happened to change, then jumped. */
-  const sig = goals.map(g => [g.kind, g.text, g.done, g.who, g.games].join('|'))
-    .join('\x01');
+  const sig = goals.map(g => [g.kind, g.text, g.done, g.who, g.games,
+    g.damage, g.blocked, g.stacks, g.icon].join('|')).join('\x01');
   if (sig === goalSignature) return;
   goalSignature = sig;
 
@@ -312,6 +341,7 @@ function drawGoals(goals) {
     li.className = 'goal ' + g.kind
       + (g.done ? ' done' : '')
       + (g.front && !g.done ? ' front' : '')
+      + (g.addon ? ' addon' : '')
       + (g.boss ? ' boss' : '');
     /* A row that was NOT done a moment ago and is now: flash it, so the tick is
      * something the viewer sees happen. Never on the first draw, where every
@@ -322,6 +352,59 @@ function drawGoals(goals) {
     tick.className = 'tick';
     tick.textContent = g.done ? '✓' : '□';
     li.appendChild(tick);
+
+    /* THE ROW'S OWN ART. An `addon` row deliberately has none: a bonus and an
+     * `instead` hang off the body whose row is directly above, so repeating its
+     * face would draw one enemy two and three times running and read as two and
+     * three enemies. They are indented under their parent instead, which is what
+     * "hangs off" looks like. */
+    if (!g.addon) {
+      const pic = document.createElement('span');
+      pic.className = 'goal-art';
+      if (g.icon) {
+        const img = document.createElement('img');
+        img.alt = g.who || '';
+        img.src = g.icon;
+        pic.appendChild(img);
+      } else {
+        /* Nothing authored yet: the initial, the way a status pip has always
+         * fallen back, so a row is legible the day its content is written. */
+        const letter = document.createElement('span');
+        letter.className = 'goal-letter';
+        letter.textContent = (g.who || g.text || '?').slice(0, 1).toUpperCase();
+        pic.appendChild(letter);
+      }
+      /* WHAT THIS BODY DOES TO YOU IF THE RUN IS LOST, on the corner of its own
+       * face — the half of the old cost strip worth keeping, moved to the row
+       * that names the body rather than sitting in a parallel strip the viewer
+       * had to match up against this list. A shield means the swing is eaten
+       * whole; a number is that much Health. */
+      const dmg = num(g.damage);
+      if (dmg > 0) {
+        const badge = document.createElement('span');
+        if (g.blocked && art && art.shield) {
+          badge.className = 'goal-badge shield';
+          const sh = document.createElement('img');
+          sh.alt = 'blocked';
+          sh.src = art.shield;
+          badge.appendChild(sh);
+        } else {
+          badge.className = 'goal-badge dmg';
+          badge.textContent = dmg;
+        }
+        pic.appendChild(badge);
+      } else if (num(g.stacks) > 0) {
+        /* A status's row carries the pip's number instead: what the run holds in
+         * TOTAL, across the permanent bucket and every borrowed application. The
+         * row itself is one instance, so without this the four stacks of a
+         * Strength 1 + 3 would appear nowhere at all. */
+        const badge = document.createElement('span');
+        badge.className = 'goal-badge stacks' + (g.good ? ' good' : '');
+        badge.textContent = g.stacks;
+        pic.appendChild(badge);
+      }
+      li.appendChild(pic);
+    }
 
     const body = document.createElement('span');
     body.className = 'body';
@@ -352,56 +435,15 @@ function subtitle(g) {
   if (g.kind === 'event' || g.kind === 'curse') {
     bits.push(games < 0 ? 'permanent'
       : games + (games === 1 ? ' game left' : ' games left'));
+  } else if (g.kind === 'status' && games > 0) {
+    /* A BORROWED status wears its clock here rather than on the corner of its
+     * art, where the pip used to put it: that corner now carries the stack total,
+     * and the two would sit on top of each other. Only when there IS a clock —
+     * `games` is 0 for the permanent bucket, and "0 games left" on a status that
+     * is not going anywhere would read as one about to expire. */
+    bits.push(games + (games === 1 ? ' game left' : ' games left'));
   }
   return bits.join(' · ');
-}
-
-/* THE STATUS PIPS, under the portrait — art and a stack count, the same shape
- * BattlefieldView draws under the hero. Written out as names they were words
- * with no picture behind them, which is not something you can read at a glance
- * from across a room. */
-function drawStatuses(statuses, art) {
-  const box = el('hero-pips');
-  box.innerHTML = '';
-  el('status-row').hidden = statuses.length === 0;
-  for (const st of statuses) {
-    const pip = document.createElement('span');
-    pip.className = 'pip' + (st.good ? ' good' : '');
-    /* The name survives as the tooltip. Nothing on an overlay is hoverable, but
-     * it costs nothing and makes the page readable when opened in a browser. */
-    pip.title = st.name + (num(st.games) > 0 ? ' — ' + st.games + ' games left' : '');
-
-    const art_box = document.createElement('span');
-    art_box.className = 'pip-art';
-    if (st.icon) {
-      const img = document.createElement('img');
-      img.alt = st.name;
-      img.src = st.icon;
-      art_box.appendChild(img);
-    } else {
-      /* No art authored yet: its initial, in the pip's own colour. */
-      const letter = document.createElement('span');
-      letter.className = 'pip-letter';
-      letter.textContent = st.letter || st.name.slice(0, 1).toUpperCase();
-      art_box.appendChild(letter);
-    }
-    /* Borrowed stacks wear the clock in the corner (§5.3) — the flag says "this
-     * one is going away", and the count is in the tooltip. */
-    if (num(st.games) > 0 && art && art.timer) {
-      const clock = document.createElement('img');
-      clock.className = 'pip-clock';
-      clock.alt = '';
-      clock.src = art.timer;
-      art_box.appendChild(clock);
-    }
-    pip.appendChild(art_box);
-
-    const count = document.createElement('span');
-    count.className = 'pip-count';
-    count.textContent = st.stacks;
-    pip.appendChild(count);
-    box.appendChild(pip);
-  }
 }
 
 function drawRoad(road) {
@@ -602,28 +644,48 @@ function setImg(img, url) {
   if (url) { img.src = url; } else { img.removeAttribute('src'); }
 }
 
-function chip(node, show, text) {
-  node.hidden = !show;
-  if (show) node.textContent = text;
-}
-
-/* SPLITTING THE PAGE IN TWO, so other sources can sit between its halves.
+/* RENDERING PART OF THE PAGE, so other sources can sit between its pieces.
  *
  * The overlay is one column, but a stream layout usually wants the camera partway
  * down that column rather than under all of it. OBS cannot interleave scene items
  * with the inside of a browser source — so instead the page can render only part
- * of itself, and you point TWO browser sources at the same file:
+ * of itself, and you point SEVERAL browser sources at the same file:
  *
- *   overlay.html#top     the hero card and the game in play
- *   overlay.html#bottom  the checklist, the road and the ticker
- *   overlay.html         everything (unchanged default)
+ *   overlay.html#top     the run card — the game, the road ahead, the stake
+ *   overlay.html#bottom  the checklist and the ticker
+ *   overlay.html#road    the road, and nothing else
+ *   overlay.html         everything EXCEPT the road (the default)
  *
- * Both halves read the same state.js and stay in step for free, because they are
- * the same page reading the same file. */
+ * AND `#fill`, WHICH IS A MODIFIER RATHER THAN A CHOICE, so it combines:
+ * `#fill`, `#bottom,fill`, `#road,fill`. The default page is content-height and
+ * leaves transparent space under itself in a taller source; `fill` makes it take
+ * the whole source and gives the slack to the checklist, which is the only part
+ * of the page that can use it. Hence the token parsing below rather than a
+ * straight equality test — the fragment is a SET of words now.
+ *
+ * THE ROAD IS OPT-IN, and that is the one asymmetry here. It is a horizontal
+ * scroller on a 440px source, and measured on a 22-stop run the stop you are
+ * standing on was fully visible for 6 seconds in every 50 — taking 42 to first
+ * appear, and snapping back to the start of the run every time the road changed,
+ * which is exactly when someone looks up. It cannot be read at a glance and no
+ * amount of styling makes a 1008px strip fit 390px. What it uniquely says —
+ * which games were beaten and which the run walked away from — is worth a source
+ * of its own on a between-games screen, at a width where it does not have to
+ * scroll, and is not worth the space on the always-on column. The distance it
+ * used to carry now sits on the headline's arrow, in a number that never moves.
+ *
+ * Every fragment reads the same state.js and they stay in step for free, because
+ * they are the same page reading the same file. */
 function applySplit() {
-  const half = (location.hash || '').replace('#', '').toLowerCase();
-  overlay.classList.toggle('only-top', half === 'top');
-  overlay.classList.toggle('only-bottom', half === 'bottom');
+  /* Split on anything that is not a word, so `#bottom,fill`, `#bottom+fill` and
+   * `#bottom fill` all mean the same thing — a streamer typing this into an OBS
+   * URL box should not have to guess the separator. */
+  const parts = new Set((location.hash || '').replace('#', '').toLowerCase()
+    .split(/[^a-z]+/).filter(Boolean));
+  overlay.classList.toggle('only-top', parts.has('top'));
+  overlay.classList.toggle('only-bottom', parts.has('bottom'));
+  overlay.classList.toggle('only-road', parts.has('road'));
+  overlay.classList.toggle('fill', parts.has('fill'));
 }
 applySplit();
 window.addEventListener('hashchange', applySplit);
