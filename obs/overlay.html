@@ -79,10 +79,7 @@
          in it is still a board walking towards you, and how many lost runs of
          quiet are left is the question that follows — see `turns_away`. -->
     <div id="cost" class="cost" hidden>
-      <span class="cost-head">
-        <span class="cost-label">Lose a run</span>
-        <span id="cost-attempt" class="cost-attempt" hidden></span>
-      </span>
+      <span class="cost-label">Lose a run</span>
       <span class="cost-arrow">&rarr;</span>
       <span id="cost-total" class="cost-total"></span>
       <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
@@ -90,16 +87,16 @@
 
   </section>
 
-  <!-- THE HEADLINE: the game in play, and the game the whole run is for.
-       Side by side, with the hop count on the arrow between them, because that
+  <!-- THE HEADLINE: the game in play, and the game the whole run is for. That
        pair IS the premise — a viewer who has just tuned in cannot get "they are
        playing real games to reach that one" from a health bar and a checklist.
 
        The Amulet used to be readable only off the right-hand end of the road
        strip, which is a scroller: on a 22-stop run it was fully on screen 12%
        of the time. A destination cannot live inside something that scrolls away
-       from it. -->
-  <!-- TWO ROWS, NOT TWO COLUMNS. Side by side is the obvious reading of "the
+       from it.
+
+       TWO ROWS, NOT TWO COLUMNS. Side by side is the obvious reading of "the
        game we are on and the goal game" and it does not fit: 440px less the
        chrome leaves ~224px to split between two titles, and these are real game
        names — "Vampire Survivors: Legacy of the Moonspell" truncated over two
@@ -111,6 +108,13 @@
       <div class="now-text">
         <div id="now-label" class="label">Now playing</div>
         <div id="now-game" class="now-game"></div>
+        <!-- WHICH ATTEMPT THIS IS, with the game it is being spent on. It rode
+             the cost line while that line was the only place it could be read
+             against a consequence; here it is the honour system's tension in
+             plain sight — the viewer watches the number climb while the streamer
+             swears at a boss, and it belongs to the GAME rather than to the
+             forecast. -->
+        <div id="attempts" class="attempts" hidden></div>
       </div>
     </div>
     <div class="now-dest">

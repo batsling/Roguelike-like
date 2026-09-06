@@ -2277,6 +2277,25 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
+**THE CARDS ARE GLASS.** They sit at 0.45 alpha so the game shows through them —
+this page spends its life on top of somebody's gameplay, and an all-but-opaque
+panel is a hole punched in their capture. What makes that readable is
+`backdrop-filter`, not the alpha: it blurs and **darkens** the capture behind each
+card before the card paints over it, so the ground the text is read against stays
+dark whatever is on screen. Measured over a dark, a mid and a bright capture the
+worst ratio on the page is **4.73**, against **3.90** for the near-opaque card it
+replaced — the same pass fixed three palette colours (`faint`, `danger`, `curse`)
+that were already below AA and had simply never been checked.
+
+The two halves are one decision. Without the filter that transparency scores
+**1.20**, and OBS ships whatever CEF its build was cut against — an unsupported
+filter is dropped in silence, exactly as `color-mix()` and `:has()` are. So
+`overlay.css` carries an `@supports not (backdrop-filter: …)` block that restores
+an opaque card (5.47), and `check_overlay.js` asserts a transparent card always
+comes with a darkening filter. Separating them looks perfect on a dark game and
+is unreadable on a bright one, which is the worst kind of regression this page
+can have.
+
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the
   long stretches when nothing in the run changes.

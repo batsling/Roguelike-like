@@ -114,7 +114,7 @@ function render(s) {
 
   drawHero(s.hero || {}, s.vitals || {});
   drawBarThreat(s.vitals || {}, s.threat || {});
-  drawCost(s.threat || {}, s.now || {});
+  drawCost(s.threat || {});
   drawShields(s.vitals || {}, s.art || {});
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || [], s.art || {});
@@ -180,20 +180,10 @@ function drawShields(vitals, art) {
  * towards you. `turns_away` is how many lost runs of quiet are left, floored (see
  * ObsCompanion._turns_away — a blocked lane or a spent turn makes the real wait
  * longer, never shorter), so it is worded as "at least". */
-function drawCost(threat, now) {
+function drawCost(threat) {
   const box = el('cost');
   const swings = (threat && threat.swings) || [];
 
-  /* WHICH attempt this would be — `now.attempts` counts the ones already spent,
-   * so the one this line is forecasting is the next one up. It sits under the
-   * label rather than in the Now Playing card, where it was a chip a long way
-   * from the consequence it belongs to. */
-  const att = el('cost-attempt');
-  const spent = num(now && now.attempts);
-  att.hidden = false;
-  att.textContent = 'Attempt ' + (spent + 1);
-  att.title = spent === 0 ? 'no runs lost at this game yet'
-    : spent + (spent === 1 ? ' run lost here so far' : ' runs lost here so far');
   box.hidden = false;
   const total = el('cost-total');
   const kill = el('cost-lethal');
@@ -281,11 +271,22 @@ function drawNow(now, run) {
   el('now-label').textContent = now.playing ? 'Now playing' : 'Standing on';
   el('now-game').textContent = now.game || '—';
 
-  /* NO ATTEMPTS CHIP HERE. "4 runs lost here" beside the title and "Attempt 5" on
-   * the cost line are the same fact counted from both ends, and one of them had to
-   * go — the same duplication that took the status strip off the hero card. The
-   * cost line keeps it, because there the number is part of a decision ("if you
-   * lose attempt 5, this is what it costs") rather than a statistic. */
+  /* WHICH ATTEMPT THIS IS, under the game it is being spent on. `now.attempts`
+   * counts the ones already spent, so the one being played is the next one up.
+   *
+   * It belongs to the GAME, not to the forecast. On the cost line it was a number
+   * inside a sentence about damage, which made it read as part of the arithmetic;
+   * here it is what it actually is — the honour system's tension in plain sight,
+   * climbing while the streamer swears at a boss. Hidden on the first attempt:
+   * "Attempt 1" is every game's opening state and says nothing. */
+  const spent = num(now.attempts);
+  const att = el('attempts');
+  att.hidden = spent === 0;
+  if (spent > 0) {
+    att.textContent = 'Attempt ' + (spent + 1);
+    att.title = spent + (spent === 1 ? ' run lost here so far'
+                                     : ' runs lost here so far');
+  }
 
   const dest = (run && run.amulet) || {};
   setImg(el('dest-cover'), dest.cover);

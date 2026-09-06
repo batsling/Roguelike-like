@@ -257,6 +257,26 @@ async function main() {
     rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
     JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
 
+  /* THE CARD IS TRANSPARENT, AND ONLY THE BACKDROP FILTER MAKES THAT SAFE. The
+   * card sits at 0.45 alpha so the stream shows through it, which is only legible
+   * because `backdrop-filter` blurs and darkens the capture behind it first —
+   * measured, the worst contrast on the page is 4.73 with the filter and 1.20
+   * without. The two must therefore never be separated: dropping the filter while
+   * keeping the transparency is the one edit here that silently produces an
+   * unreadable overlay on a bright game, and it would look completely fine to
+   * whoever made it on a dark one. */
+  const glass = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.card'));
+    const bg = cs.backgroundColor;
+    const m = bg.match(/rgba?\(([^)]+)\)/);
+    const parts = m ? m[1].split(',').map((n) => parseFloat(n)) : [];
+    const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
+    return { alpha: parts.length === 4 ? parts[3] : 1, filter };
+  });
+  check('the card lets the stream through', glass.alpha < 0.6, 'alpha ' + glass.alpha);
+  check('…and darkens what it lets through, which is what keeps it readable',
+    /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+
   /* THE ROAD IS OFF THE DEFAULT PAGE — it is a scroller that cannot be read at a
    * glance, and lives at #road now. It must still be IN the document (the strip
    * is built either way) and simply not displayed. */
@@ -449,12 +469,12 @@ async function main() {
    *    are what a streamer sizes a scene against. A page that grows past these has
    *    either gained a card or lost the ticker's anchoring, and either way the
    *    README is now wrong — which is the thing that is hard to notice by eye. */
-  /* The whole page came down from 777 to 665 on the same heavy run — the road
+  /* The whole page came down from 777 to 682 on the same heavy run — the road
    * left the default column and the hero card lost its status strip, and the
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 665, '#top': 297, '#bottom': 384, '#road': 118 };
+  const DOCUMENTED = { '': 682, '#top': 314, '#bottom': 384, '#road': 118 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
   await sleep(1000);

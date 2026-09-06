@@ -702,19 +702,41 @@ point it at that `overlay.html`, and size it **440 × 850**.
 canvas the page renders into; stretching the item afterwards resamples the result
 and softens the pixel art. Set 440 × 850 and leave the transform at 100%.
 
+**The cards are glass, and `backdrop-filter` is what pays for it.** They sit at
+0.45 alpha so the game shows through, which is only readable because the filter
+blurs and *darkens* the capture behind each card before the card paints over it —
+so the ground the text is read against stays dark whatever is on screen. Measured
+over a dark, a mid and a bright capture, the worst contrast ratio on the page is
+**4.73**, which is better than the **3.90** the old near-opaque card managed
+(that pass also fixed three palette colours that were quietly below AA on it).
+
+The two halves cannot be separated. Without the filter the same transparency
+scores **1.20** — text that is simply not there over a bright game. OBS ships
+whatever CEF its build was cut against, and an unsupported filter is dropped in
+silence, so `overlay.css` carries an `@supports not (backdrop-filter: …)` block
+that puts the card back to 0.92 opaque (5.47 worst) on a browser that cannot do
+it. If you edit the glass, edit both: `check_overlay.js` asserts that a
+transparent card always comes with a darkening filter, because dropping one and
+keeping the other looks completely fine on a dark game and is unreadable on a
+bright one.
+
+Want it more or less see-through? `#overlay .card { background: rgba(26,20,16,.7) }`
+in `user://obs/custom.css` — up for legibility over a busy capture, down for more
+of the game.
+
 **How tall the page gets.** It is content-height, so it grows with the run — the
 figures below are `tools/check_overlay.js` measuring the real page at 440 wide,
 and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 475 | 644 | 665 | **731** |
-| `overlay.html#top` | 294 | 276 | 297 | **363** |
+| `overlay.html` | 492 | 661 | 682 | **748** |
+| `overlay.html#top` | 311 | 293 | 314 | **380** |
 | `overlay.html#bottom` | 197 | 384 | 384 | **384** |
 | `overlay.html#road` | 118 | 118 | 118 | **118** |
 
 **Almost nothing moves any more, and that is new.** A heavy run and a run twice
-its size measure the same 665, because everything that used to grow the page is
+its size measure the same 682, because everything that used to grow the page is
 gone: the hero card's status strip (every status is a checklist row now), the
 cost line's strip of swing marks (it is a sentence), and the shields' labelled
 row (they sit beside the health bar). `#bottom` stops at 384 because the
@@ -745,8 +767,8 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 644 → 731 |
-| `overlay.html#top` | hero card + the headline | 276 → 363 |
+| `overlay.html` | everything except the road | 661 → 748 |
+| `overlay.html#top` | hero card + the headline | 293 → 380 |
 | `overlay.html#bottom` | checklist + ticker | 384 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 118 (fixed) |
 
@@ -775,25 +797,25 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 330` |
-| Camera | `1476, 342` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 602` | `440 × 390` |
+| **Overlay `#top`** | `1476, 0` | `440 × 345` |
+| Camera | `1476, 357` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 617` | `440 × 390` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**Everything fits now, with room to spare.** 330 + 248 + 390 is 968 of the 1080,
+**Everything fits now, with room to spare.** 345 + 248 + 390 is 983 of the 1080,
 where the old layout needed 26px more than existed and had to under-size `#top` to
-get there. `#top`'s 360 clears every run up to the heavy column above (297) and
+get there. `#top`'s 360 clears every run up to the heavy column above (314) and
 `#bottom` is at its fixed 384 with 6px of slack. Only a run carrying more than
 thirteen shields at once — the one thing that still grows the page — would clip,
 and it clips the bottom of a shield row and nothing else.
 
-**There is now room for the road too**, if you want it: the 112px left over takes
+**There is now room for the road too**, if you want it: the 97px left over takes
 `overlay.html#road` at `440 × 118` if you drop the camera to `400 × 225`. It is
 the between-games source, so a scene where it sits under the checklist and only
 gets looked at while the streamer is picking their next game is exactly what it
 is for.
 
-**Chat still cannot go in the column.** 112px of chat is not chat. It goes in the
+**Chat still cannot go in the column.** 97px of chat is not chat. It goes in the
 bar under the game, or on a second monitor. If chat *must* sit directly under the
 camera, that is a second sidebar and the game pays for it — see A.
 

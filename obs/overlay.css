@@ -27,20 +27,62 @@
    * below AA at the sizes they are used, which is why the section labels and the
    * goal subtitles washed out. These clear 4.6 and 7.3 at their worst. */
   --dim:       #c4b8a2;
-  --faint:     #9a9183;
+  /* THREE OF THESE ARE LIGHTER THAN THE GAME'S, and it is the CARD's opacity that
+   * decides by how much — see `--card-bg` below. The card is now mostly
+   * transparent so the stream shows through it, which means a bright capture
+   * lifts the ground every one of these is read against. Measured against the
+   * card composited over a dark, a mid and a bright capture:
+   *
+   *   faint  #9a9183 -> 4.18 over bright, so #a49b8c (4.73)
+   *   danger #e65447 -> 3.54 over bright, so #f77f71 (5.09)
+   *   curse  #b873e6 -> 4.11 over bright, so #c68df0 (5.24)
+   *
+   * The other four already clear AA at this ground: text 9.02, gold 8.72, accent
+   * 5.54, success 6.00. Worth noting that `danger` was ALREADY failing on the
+   * opaque card it replaced (3.90) — the translucency did not introduce that, it
+   * just made it impossible to keep ignoring. */
+  --faint:     #a49b8c;
   --success:   #4dc76b;
-  --danger:    #e65447;
-  --curse:     #b873e6;
+  --danger:    #f77f71;
+  --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
   --unbeaten:  #d97821;
 
-  /* 0.95, not 0.88. The card composites over the stream, so its opacity decides
-   * how much a bright capture eats into every contrast ratio on the page — this
-   * is the single biggest lever on legibility and costs almost nothing, since
-   * the card was never meant to show the game through it in the first place. */
-  --card-bg:   rgba(37, 31, 24, 0.95);
+  /* MOSTLY TRANSPARENT, AND THE GAME SHOWS THROUGH IT. This was 0.95 — all but
+   * opaque — on the reasoning that the card's alpha is the single biggest lever
+   * on legibility and the card was never meant to show the game through it. The
+   * first half is true and the second was a choice, and it is the wrong one for a
+   * thing that spends its life sitting on top of somebody's gameplay.
+   *
+   * WHAT PAYS FOR IT IS `backdrop-filter`, not the alpha. The filter blurs and
+   * DARKENS the capture behind the card before the card paints over it, so the
+   * ground the text is read against stays dark whatever is on screen, while the
+   * shapes and motion of the game still read through. Measured over a dark, a mid
+   * and a bright capture, the worst ratio on the page is 4.73 — BETTER than the
+   * 3.90 the opaque card managed, because the pass also fixed the three colours
+   * that were quietly failing on it (see the palette above).
+   *
+   * The blur is what keeps it from being noise: a hard 45%-transparent card over
+   * a fast game is unreadable no matter what the arithmetic says, and a blurred
+   * one is a frosted panel. */
+  --card-bg:   rgba(26, 20, 16, 0.45);
+  --card-blur: blur(12px) brightness(0.30) saturate(1.05);
   --width:     440px;
   --radius:    10px;
+}
+
+/* THE OLD-CEF FALLBACK, and it is not optional. Everything above depends on
+ * `backdrop-filter` actually running: without it the card is just 45% of a dark
+ * brown over raw video, and the worst ratio on the page collapses from 4.73 to
+ * 1.20 — text that is simply not there over a bright capture. OBS ships whatever
+ * CEF its build was cut against and an unsupported filter is dropped in silence,
+ * which is the same trap `color-mix()` and `:has()` are called out for below.
+ *
+ * So the transparency is spent only where it can be afforded. A browser that
+ * cannot dim the backdrop gets the opaque card instead (5.47 worst) and the
+ * streamer gets a legible overlay rather than a pretty one. */
+@supports not (backdrop-filter: blur(1px)) {
+  :root { --card-bg: rgba(26, 20, 16, 0.92); }
 }
 
 * { box-sizing: border-box; }
@@ -92,12 +134,17 @@ html, body {
 
 .card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
+  /* BRIGHTER THAN THE PANEL BORDER IT WAS. On an opaque card the border was a
+   * seam between two solids and `--border` was enough; on a translucent one it is
+   * the only thing separating the card from the video, and it has to hold that
+   * edge against whatever is behind it. */
+  border: 1px solid rgba(122, 106, 82, 0.55);
   border-radius: var(--radius);
   padding: 10px 12px;
   /* A dark rim so the card holds its edge over a bright game capture. */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
 }
 
 .label {
@@ -188,27 +235,11 @@ html, body {
   border-color: rgba(138, 182, 230, 0.30);
 }
 
-/* ONE ROW, NOT A COLUMN. The label and the attempt count stacked while this line
- * carried a strip of faces and needed the height anyway; with the line reduced to
- * a sentence they stack for nothing and push the whole box to three rows. */
-.cost-head {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
 .cost-label {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
-}
-/* Which attempt the forecast above is for. Gold rather than red: the count is
- * not itself a threat, it is the tally of how many times this game has already
- * been walked away from. */
-.cost-attempt {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
 }
 .cost-arrow { color: var(--faint); font-size: 12px; }
 
@@ -391,6 +422,17 @@ html, body {
   flex: 0 0 auto;
 }
 .now-cover:not([src]) { visibility: hidden; }
+
+/* WHICH ATTEMPT THIS IS. Gold rather than red: the count is not itself a threat,
+ * it is the tally of how many times this game has already been walked away from —
+ * and on the cost line, inside a sentence about damage, it read as part of the
+ * arithmetic. Here it belongs to the game it is being spent on. */
+.attempts {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
 
 /* THE DESTINATION LINE, under the game in play and spanning the same width:
  * the arrow, how far, and the Amulet itself. Ruled off rather than boxed — it is
@@ -778,6 +820,8 @@ html, body {
 
 .toast {
   background: var(--card-bg);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
   border-left: 3px solid var(--border);
   border-radius: 5px;
   padding: 6px 10px;
@@ -800,6 +844,8 @@ html, body {
 /* -------------------------------------------------------------- verdict -- */
 
 .verdict {
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
   text-align: center;
   font-size: 22px;
   font-weight: 700;
