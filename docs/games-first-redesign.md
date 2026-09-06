@@ -2219,8 +2219,10 @@ stream — so the overlay dims only when the beat actually stops.
 - **Statuses on the player** as chips, borrowed ones carrying their clock.
 - **The road** — `RunOverScreen`'s route strip drawn live: every stop walked,
   a game stood on twice drawn twice (the road is a sequence, not a set — a badge
-  saying "2" made two visits look like one), **ending on the Amulet whether or
-  not the run got there**,
+  saying "2" made two visits look like one), each stop **green if it was beaten
+  on that visit and orange if the run walked away from it** — a missed goal, an
+  escape (§3.2) or a teleport straight through are one colour because to the road
+  they are one fact — **ending on the Amulet whether or not the run got there**,
   drawn dashed until it does. Without that terminus the strip is a list rather
   than progress. It **scrolls sideways** when the run outgrows the strip, on the
   same walker the checklist uses: it was capped with a "+7" for the rest, and a

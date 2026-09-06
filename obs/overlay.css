@@ -31,6 +31,8 @@
   --success:   #4dc76b;
   --danger:    #e65447;
   --curse:     #b873e6;
+  /* UITheme.UNBEATEN — a stop the run walked away from. */
+  --unbeaten:  #d97821;
 
   /* 0.95, not 0.88. The card composites over the stream, so its opacity decides
    * how much a bright capture eats into every contrast ratio on the page — this
@@ -625,6 +627,16 @@ html, body {
   background: var(--panel);
   display: block;
 }
+/* HOW THAT STOP WENT — the same two colours the game's own strips use
+ * (UITheme.SUCCESS / UITheme.UNBEATEN). Green: beaten on that visit. Orange: the
+ * run walked away from it, whether the goal was missed, it escaped, or a
+ * teleport passed straight through without playing at all. One colour, because
+ * to the road they are one fact: you were there and the game is still standing.
+ *
+ * `--unbeaten` is its own token rather than `--accent`: the strip already spends
+ * accent-orange on the stop you are standing on, and at a 1px border the two
+ * would be saying different things in nearly the same colour. */
+.stop img { border-color: var(--unbeaten); }
 .stop.beaten img { border-color: var(--success); }
 .stop.current img {
   border-color: var(--gold);
@@ -696,6 +708,22 @@ html, body {
 }
 .verdict.won  { color: var(--gold);   border-color: var(--accent); }
 .verdict.lost { color: var(--danger); border-color: #6e2f28; }
+
+/* ----------------------------------------------------------- the halves -- */
+
+/* `overlay.html#top` / `#bottom` render half the page each, so a camera or a
+ * chat box can be placed between them in the scene. See applySplit in
+ * overlay.js. The default — no fragment — hides nothing.
+ *
+ * `#offline` is in neither list: a half that is up before the game is should
+ * still say so rather than sitting blank. */
+#overlay.only-top > .goals,
+#overlay.only-top > .road,
+#overlay.only-top > .ticker,
+#overlay.only-top > .verdict { display: none; }
+
+#overlay.only-bottom > .hero,
+#overlay.only-bottom > .now { display: none; }
 
 /* ------------------------------------------------------- the two blanks -- */
 

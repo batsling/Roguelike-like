@@ -45,6 +45,19 @@ var visited_games: Array[StringName] = []
 # road with four stops on it, and the strip that drew it from `visited_games`
 # showed one. This is the list with the doubling-back still in it.
 var path_taken: Array[StringName] = []
+# WHAT HAPPENED AT EACH STOP, one entry per entry in `path_taken`.
+#
+# `beaten_games` cannot answer this and never could: it is a SET of ids, so a
+# game the run went back to reads as beaten at BOTH stops the moment it is
+# beaten at either — and the road draws a stop per visit, which is exactly the
+# case that matters. A run that escaped Isaac, came back and cleared it wants two
+# different colours on those two covers.
+#
+# `false` on arrival (see set_current_game), `true` when that visit's game is
+# actually beaten (note_game_beaten). Anything still false when the run moves on
+# is a stop the player walked away from — a missed goal, an escape, or a
+# teleport that passed straight through without playing at all.
+var path_beaten: Array[bool] = []
 var beaten_games: Array[StringName] = []
 # Every game the run has actually PLAYED — one entry per game, added the moment
 # it is reported, whatever the report said. Beaten, failed or walked away from:
@@ -991,6 +1004,7 @@ func reset_run() -> void:
 	route_waypoint = &""
 	visited_games.clear()
 	path_taken.clear()
+	path_beaten.clear()
 	beaten_games.clear()
 	played_games.clear()
 	total_games_beaten = 0
@@ -1357,6 +1371,11 @@ func set_current_game(id: StringName) -> void:
 	# the strip that draws it needs no "…and here" fix-up on the end.
 	if id != &"" and current_game_id != id:
 		path_taken.append(id)
+		# Arriving somewhere is arriving UNBEATEN. It stays that way unless this
+		# visit's game is actually beaten, which is what makes a walk-out, a
+		# missed goal and a teleport that only passed through all read alike on
+		# the road — because to the road they are the same thing.
+		path_beaten.append(false)
 	current_game_id = id
 	# Arriving at the game you pinned to route through spends the pin: the detour
 	# is done, and the road on from here is just the road.
@@ -1372,6 +1391,12 @@ func note_game_beaten(game_id: StringName) -> bool:
 	if game_id == &"":
 		return false
 	total_games_beaten += 1
+	# THIS VISIT, not this game. The stop being reported is always the one under
+	# the player's feet, which is the last entry on the walk — so a game beaten on
+	# the second trip leaves the first trip's cover exactly as unbeaten as it was.
+	var last: int = path_taken.size() - 1
+	if last >= 0 and path_taken[last] == game_id and last < path_beaten.size():
+		path_beaten[last] = true
 	if beaten_games.has(game_id):
 		return true
 	beaten_games.append(game_id)
@@ -1418,6 +1443,25 @@ func walked_path() -> Array[StringName]:
 		out.append(StringName(id))
 	if current_game_id != &"" and (out.is_empty() or out[out.size() - 1] != current_game_id):
 		out.append(current_game_id)
+	return out
+
+# WHICH STOPS ON `walked_path()` WERE BEATEN, index for index. Beside it for the
+# same reason it exists: several screens draw this road, and a stop that is green
+# on one and orange on another is a bug in whichever the player looked at second.
+#
+# The fall-back is deliberately the weaker answer rather than no answer. A save
+# written before per-visit outcomes existed has only `beaten_games` to go on,
+# which cannot tell one visit from another — so a game beaten on the second trip
+# lights up on the first as well. That is wrong in exactly one case, on old saves
+# only, and it beats drawing a whole road as unbeaten.
+func walked_outcomes() -> Array[bool]:
+	var road: Array[StringName] = walked_path()
+	var out: Array[bool] = []
+	if not path_taken.is_empty() and path_beaten.size() == path_taken.size():
+		out.assign(path_beaten)
+		return out
+	for id in road:
+		out.append(beaten_games.has(id))
 	return out
 
 func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:

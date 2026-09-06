@@ -11,6 +11,30 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every road says how each stop went, and it is a PER-VISIT fact.**
+
+  A stop is green if that visit beat the game and **orange** if the run walked
+  away from it — a missed goal, an escape (§3.2), or a teleport that passed
+  straight through without playing at all. One colour for all three because to
+  the road they are one fact: you were there and the game is still standing. It
+  lands on all three surfaces that draw this road — the overworld's header strip,
+  `RunOverScreen`, and the OBS overlay — reading one new accessor so they cannot
+  disagree.
+
+  **`beaten_games` could not have answered this**, which is why the run gains
+  state rather than the screens gaining a lookup. It is a SET of ids, so a game
+  the run escaped and later came back and cleared would light up green on BOTH
+  stops the moment it was beaten at either — and the road draws a stop per visit
+  precisely so those two trips can differ. `GameState.path_beaten` is a parallel
+  array to `path_taken`: false on arrival, true when *that* visit's game is
+  beaten. `walked_outcomes()` serves it beside `walked_path()`, and falls back to
+  the id set for a save written before it existed — the weaker answer rather than
+  no answer, wrong in exactly one case on old saves only.
+
+  `UITheme.UNBEATEN` (#d97821) is its own colour rather than ACCENT, which the
+  strips already spend on "you are here": at a 1px border the two would be saying
+  different things in nearly the same orange.
+
 - **The road's replay badge goes; two visits were always two stops.**
 
   A game the run stands on twice has always been drawn twice — `_road` emits one
@@ -24,6 +48,23 @@ For how the project is laid out and how its systems fit together, see
   Its test changes with it — from asserting the numbering to asserting the thing
   that actually matters, which is that the road is a SEQUENCE and not a set: two
   visits, two covers, and a strip never shorter than the route.
+
+- **The overlay page can render half of itself.**
+
+  A scene usually wants the camera partway DOWN the overlay column rather than
+  under all of it, and OBS cannot interleave scene items with the inside of a
+  browser source. So `overlay.html#top` draws the hero card and the game in play,
+  `overlay.html#bottom` draws the checklist, the road and the ticker, and no
+  fragment still draws everything. Point two browser sources at the same file and
+  put whatever you like between them; they read the same `state.js`, so they stay
+  in step for free.
+
+  Measured, the halves are 325 and 426 of the page's 735 — so a 248px camera
+  between them totals 999 of a 1080 canvas and fits with room to spare, while the
+  game keeps 77% of the width. **Chat does not fit there too**: 81px is left, and
+  81px of chat is not chat. The README says so rather than leaving it to be
+  discovered, and keeps the two-sidebar layout for when chat has to sit directly
+  under the camera.
 
 - **The road scrolls itself instead of turning stops into a number.**
 

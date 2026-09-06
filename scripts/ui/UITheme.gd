@@ -26,6 +26,17 @@ const TEXT_DIM := Color(0.659, 0.612, 0.529)      # #a89c87 secondary text
 const TEXT_FAINT := Color(0.46, 0.43, 0.38)       # tertiary / placeholders
 
 const SUCCESS := Color(0.30, 0.78, 0.42)
+
+# A STOP THE RUN WALKED AWAY FROM — a game visited and left standing, whether the
+# goal was missed, the run escaped it (§3.2), or a teleport passed straight
+# through without playing at all. Those are one colour because they are one fact:
+# you were there and the game is still standing.
+#
+# Its own value rather than ACCENT, which the road already spends on "you are
+# here": at a 1px border the two would be telling different things in nearly the
+# same orange. This one is deeper and browner, and reads as orange beside SUCCESS
+# green without competing with the accent ring on the current stop.
+const UNBEATEN := Color(0.85, 0.47, 0.12)        # #d97821
 const DANGER := Color(0.90, 0.33, 0.28)
 # CURSE purple (docs/event-sheet-authoring.md §5). The checklist carries three
 # kinds of objective and they bite differently — an enemy goal is a debt, an

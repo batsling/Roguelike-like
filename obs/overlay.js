@@ -541,6 +541,27 @@ function chip(node, show, text) {
   if (show) node.textContent = text;
 }
 
+/* SPLITTING THE PAGE IN TWO, so other sources can sit between its halves.
+ *
+ * The overlay is one column, but a stream layout usually wants the camera partway
+ * down that column rather than under all of it. OBS cannot interleave scene items
+ * with the inside of a browser source — so instead the page can render only part
+ * of itself, and you point TWO browser sources at the same file:
+ *
+ *   overlay.html#top     the hero card and the game in play
+ *   overlay.html#bottom  the checklist, the road and the ticker
+ *   overlay.html         everything (unchanged default)
+ *
+ * Both halves read the same state.js and stay in step for free, because they are
+ * the same page reading the same file. */
+function applySplit() {
+  const half = (location.hash || '').replace('#', '').toLowerCase();
+  overlay.classList.toggle('only-top', half === 'top');
+  overlay.classList.toggle('only-bottom', half === 'bottom');
+}
+applySplit();
+window.addEventListener('hashchange', applySplit);
+
 /* The two self-scrolling boxes, registered before the first payload lands so
  * `frame` has something to walk from the very first tick. */
 makeScroller('goal-scroll', 'y');

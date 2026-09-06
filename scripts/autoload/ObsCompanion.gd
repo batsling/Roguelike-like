@@ -584,21 +584,24 @@ func _statuses() -> Array:
 # with no destination on the right-hand end says nothing about how far there is
 # left to go.
 func _road() -> Array:
-	var walked: Array = GameState.path_taken.duplicate()
-	if walked.is_empty() and GameState.current_game_id != &"":
-		walked.append(GameState.current_game_id)
+	# `walked_path`/`walked_outcomes` rather than `path_taken` directly: four
+	# screens draw this road and they must not disagree about it, which is what
+	# those two exist for.
+	var walked: Array = GameState.walked_path()
+	var won: Array = GameState.walked_outcomes()
 	var seen: Dictionary = {}
 	var stops: Array = []
-	for id in walked:
+	for i in range(walked.size()):
+		var id: StringName = walked[i]
 		var n: int = int(seen.get(id, 0)) + 1
 		seen[id] = n
-		stops.append(_stop(id, n, false))
+		stops.append(_stop(id, n, false, bool(won[i]) if i < won.size() else false))
 	var amulet: StringName = GameState.amulet_game_id
 	# The Amulet always terminates the strip — as the last stop when the run
 	# reached it, and as an unreached one otherwise. RunOverScreen draws the gap
 	# dashed for exactly the same reason.
 	if amulet != &"" and (stops.is_empty() or StringName(stops[-1]["id"]) != amulet):
-		stops.append(_stop(amulet, 0, true))
+		stops.append(_stop(amulet, 0, true, false))
 	# Only the tail fits a slim strip. `dropped` rides on the first stop so the
 	# page can print "+7 earlier" rather than silently lying about the route.
 	var dropped: int = maxi(0, stops.size() - MAX_ROAD)
@@ -608,7 +611,7 @@ func _road() -> Array:
 		stops[0]["dropped"] = dropped
 	return stops
 
-func _stop(id: StringName, visit: int, unreached: bool) -> Dictionary:
+func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:
 	var game: GameData = Data.get_game(id)
 	return {
 		"id": String(id),
@@ -617,7 +620,11 @@ func _stop(id: StringName, visit: int, unreached: bool) -> Dictionary:
 		# 1 the first time the run stood here, 2 the second, and so on — the
 		# replay badge. 0 on the unreached Amulet, which was never stood on.
 		"visit": visit,
-		"beaten": GameState.beaten_games.has(id),
+		# THIS VISIT, not this game. `beaten_games` is a set of ids, so a game the
+		# run went back to would light up green on the trip it was escaped from
+		# as well — and the road draws a stop per visit precisely so those two
+		# trips can say different things.
+		"beaten": beaten,
 		"amulet": id == GameState.amulet_game_id,
 		"current": id == GameState.current_game_id and not unreached,
 		"unreached": unreached,

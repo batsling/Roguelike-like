@@ -36,6 +36,7 @@ var won: bool = false
 var _layer: CanvasLayer = null
 var _stats: Dictionary = {}
 var _route: Array = []          # Array[StringName] — the games walked, in order
+var _won_at: Array = []         # Array[bool] — whether each of those stops was beaten
 var _amulet: StringName = &""
 
 # Mount over `host` on its own layer, so the overworld stays visible (dimmed)
@@ -74,6 +75,12 @@ func _snapshot() -> void:
 	# the player made and paid a Dash for. `walked_path` keeps the repeats.
 	for id in GameState.walked_path():
 		_route.append(StringName(id))
+	# …and how each of those stops went, index for index. Snapshotted with the
+	# route for the same reason the route is: this screen outlives the run state
+	# it describes.
+	_won_at.clear()
+	for did in GameState.walked_outcomes():
+		_won_at.append(bool(did))
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	_stats = {
 		"character": ch.display_name if ch != null else String(GameState.character_id),
@@ -271,7 +278,8 @@ func _route_strip() -> Control:
 		# A REPLAY is marked on the tile rather than left to look like a duplicate
 		# the screen printed by mistake: this is the second (or third) time the run
 		# stood here, and the number says which.
-		strip.add_child(_stop(_route[i], _route[i] == _amulet, _visit_number(i)))
+		strip.add_child(_stop(_route[i], _route[i] == _amulet, _visit_number(i),
+			_won_at[i] if i < _won_at.size() else false))
 		if i < _route.size() - 1:
 			strip.add_child(_arrow())
 	# A lost run still ends at the Amulet on this strip — with the gap it never
@@ -304,14 +312,20 @@ func _visit_number(index: int) -> int:
 			n += 1
 	return n
 
-func _stop(id: StringName, is_amulet: bool, visit: int = 1) -> Control:
+func _stop(id: StringName, is_amulet: bool, visit: int = 1,
+		beaten: bool = false) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 3)
 	col.custom_minimum_size.x = COVER.x
 
 	var frame := PanelContainer.new()
-	var border: Color = UITheme.BORDER
+	# HOW EACH STOP WENT, the same two colours the overworld's own strip uses:
+	# green for a game beaten on that visit, ORANGE for one the run walked away
+	# from — a missed goal, an escape, or a teleport that only passed through. The
+	# Amulet keeps its own gold-or-red, which is about the RUN rather than about
+	# that one stop.
+	var border: Color = UITheme.SUCCESS if beaten else UITheme.UNBEATEN
 	var border_w: int = 1
 	if is_amulet:
 		border = UITheme.GOLD if won else UITheme.DANGER

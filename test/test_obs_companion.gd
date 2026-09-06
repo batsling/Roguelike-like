@@ -194,6 +194,45 @@ func test_the_road_ends_on_the_amulet_even_before_the_run_gets_there() -> void:
 		assert_true(bool(last.get("unreached", false)),
 			"an Amulet not yet stood on is drawn as the gap it is")
 
+func test_a_stop_the_run_walked_away_from_is_not_marked_beaten() -> void:
+	# ESCAPING, MISSING THE GOAL AND TELEPORTING THROUGH ARE ONE FACT to the road:
+	# you were there and the game is still standing. None of them calls
+	# note_game_beaten, so none of them marks the stop.
+	GameState.path_taken = [&"a", &"b"] as Array[StringName]
+	GameState.path_beaten = [false, false]
+	var beaten: Array = []
+	for stop in ObsCompanion.payload()["road"]:
+		if String(stop.get("id", "")) in ["a", "b"]:
+			beaten.append(bool(stop.get("beaten", true)))
+	assert_eq(beaten, [false, false], "two stops walked away from, neither green")
+
+func test_the_same_game_escaped_then_beaten_is_one_orange_stop_and_one_green() -> void:
+	# THE CASE `beaten_games` CANNOT ANSWER. It is a set of ids, so the moment the
+	# second trip is beaten it would light the first one up too — and the road
+	# draws a stop per visit precisely so those two trips can differ.
+	GameState.path_taken = [&"a", &"b", &"a"] as Array[StringName]
+	GameState.path_beaten = [false, true, true]
+	GameState.beaten_games = [&"a", &"b"] as Array[StringName]
+	var beaten: Array = []
+	for stop in ObsCompanion.payload()["road"]:
+		if String(stop.get("id", "")) == "a":
+			beaten.append(bool(stop.get("beaten", false)))
+	assert_eq(beaten, [false, true],
+		"walked away from it the first time, beat it the second")
+
+func test_a_save_from_before_per_visit_outcomes_still_colours_its_road() -> void:
+	# The fall-back is the weaker answer, not no answer: with no per-visit record
+	# the best available is the id set, which loses which visit won. Drawing the
+	# whole road as unbeaten would be worse.
+	GameState.path_taken = [&"a", &"b"] as Array[StringName]
+	GameState.path_beaten = []          # an old save carries none
+	GameState.beaten_games = [&"b"] as Array[StringName]
+	var got: Dictionary = {}
+	for stop in ObsCompanion.payload()["road"]:
+		got[String(stop.get("id", ""))] = bool(stop.get("beaten", false))
+	assert_false(bool(got.get("a", true)), "never beaten, so not green either way")
+	assert_true(bool(got.get("b", false)), "beaten at some point, so green")
+
 func test_the_road_marks_where_the_run_is_standing() -> void:
 	var current: int = 0
 	for stop in ObsCompanion.payload()["road"]:

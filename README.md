@@ -701,42 +701,60 @@ point it at that `overlay.html`, and size it **440 × 828**. The page draws abou
 canvas the page renders into; stretching the item afterwards resamples the result
 and softens the pixel art. Set 440 × 828 and leave the transform at 100%.
 
+#### Splitting the page in two
+
+The overlay is one column, but a scene usually wants the camera partway *down*
+that column rather than under all of it — and OBS cannot interleave scene items
+with the inside of a browser source. So the page can render half of itself:
+
+| URL | Shows | Height |
+|---|---|---|
+| `overlay.html` | everything | 735 |
+| `overlay.html#top` | hero card + game in play | 325 |
+| `overlay.html#bottom` | checklist + road + ticker | 426 |
+
+Point **two** browser sources at the same file with different fragments and put
+whatever you like between them. They read the same `state.js`, so they stay in
+step for free.
+
 #### A scene layout that fits
 
-Two arrangements for a 1920 x 1080 canvas, both putting the **camera on one side
-with chat directly under it** and the overlay on the other. They differ only in
-whether the game is allowed to sit behind them.
-
-**A — three columns, nothing overlaps.** Everything is visible at all times; the
-game pays for it.
+**C — camera inside the overlay column.** The recommended one: the camera sits
+between the overlay's halves, and the game keeps 77% of the width.
 
 | Source | Position | Size |
 |---|---|---|
-| Camera | `0, 0` | `384 × 216` (16:9) |
+| Game capture | `0, 0` | `1472 × 828` (16:9) |
+| **Overlay `#top`** | `1476, 0` | `440 × 325` |
+| Camera | `1476, 333` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 589` | `440 × 426` |
+| Chat | `0, 836` | `1472 × 244` |
+
+**Chat cannot go in the column too.** 325 + 248 + 426 leaves 81px of the 1080,
+and 81px of chat is not chat. It goes in the bar under the game, or on a second
+monitor. If chat *must* sit directly under the camera, that is a second sidebar
+and the game pays for it — see A.
+
+**A — three columns, nothing overlaps.** Camera top-left, chat directly under it,
+overlay on the right.
+
+| Source | Position | Size |
+|---|---|---|
+| Camera | `0, 0` | `384 × 216` |
 | Chat | `0, 224` | `384 × 856` |
 | Game capture | `392, 236` | `1080 × 608` (16:9) |
 | **Overlay** | `1480, 0` | `440 × 828` |
-| *(spare)* | `1480, 836` | `440 × 244` |
 
-The game lands at 56% of the canvas width, and the middle column carries ~470px
-of dead band above and below it — that is the unavoidable cost of two sidebars
-and a fixed 16:9 rectangle between them.
+The game drops to 56% of the width and the middle column carries ~470px of dead
+band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
+rectangle between them.
 
-**B — full-bleed game, the columns sit over its edges.** The usual arrangement
-for this shape of layout, and the one to prefer unless the game you are playing
-uses its left and right edges for something.
-
-| Source | Position | Size |
-|---|---|---|
-| Game capture | `0, 0` | `1920 × 1080` |
-| Camera | `16, 16` | `384 × 216` |
-| Chat | `16, 240` | `384 × 700` |
-| **Overlay** | `1464, 16` | `440 × 828` |
-
-The game keeps every pixel; the two columns cover about 20% of the width at each
-edge. Since the games on this map are *real* games with their own HUDs, check the
-one you are about to play before committing — a minimap or an ability bar in a
-covered corner is the failure case.
+**B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
+camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
+`1464, 16` at `440 × 828`. The game keeps every pixel and the columns cover ~20%
+of the width at each edge. The games on this map are *real* games with their own
+HUDs, so check the one you are about to play — a minimap in a covered corner is
+the failure case.
 
 Either way the columns can swap sides; nothing on the overlay cares which edge it
 is on.
@@ -810,6 +828,13 @@ Four things worth knowing if you change it:
   mirrors `_take_hit`; the goal text comes from `goal_text_for`; the pip tint
   comes from `_status_pip`'s rule. An overlay that promises a shield will hold
   and then watches Health go is worse than one that says nothing at all.
+- **The road says how each stop went.** Green for a game beaten on that visit,
+  **orange (`UITheme.UNBEATEN`) for one the run walked away from** — a missed
+  goal, an escape (§3.2), or a teleport that passed straight through without
+  playing at all. One colour, because to the road they are one fact: you were
+  there and the game is still standing. The same two colours are used by the
+  overworld's own header strip and by `RunOverScreen`, all three reading
+  `GameState.walked_outcomes()`.
 - **Statuses and shields are drawn, not written.** They are `StatusData.image` /
   `UITheme.SHIELD_ART` at 22px with `UITheme.TIMER_ART` in the corner for
   anything borrowed — the same art and the same sizes as
