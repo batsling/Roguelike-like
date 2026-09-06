@@ -573,6 +573,7 @@ func test_an_event_is_not_staged_when_its_tag_has_no_games() -> void:
 	# option is a dead button, so the event should not be staged at all.
 	var node: StringName = _some_dead_end()
 	if node == &"":
+		pending("the run did not reach this case (node == &'')")
 		return
 	# Punch Off also carries `games >= 6`; satisfy it, or this passes for the
 	# wrong reason and would keep passing if the tag gate were deleted.
@@ -1441,6 +1442,16 @@ func test_an_event_goal_is_called_one() -> void:
 const RANWID := &"ranwid_the_elder"
 
 
+# Is THIS bottle still in the pack? `is_same` on the entry, because two bottles of
+# the same potion are two entries and the question is always about the one he
+# named, never about how many of that kind are left.
+func _holds_bottle(bottle: Dictionary) -> bool:
+	for entry in GameState.loot_potions():
+		if is_same(entry, bottle):
+			return true
+	return false
+
+
 func _stock_ranwid() -> void:
 	GameState.gold = 5
 	GameState.inventory.clear()
@@ -1547,12 +1558,16 @@ func test_the_potion_price_takes_the_bottle_he_named() -> void:
 	GameState.add_potion_loot(Data.all_potions()[1].id)
 	EventSystem.begin_event(ev)
 	var named: Dictionary = EventSystem.offered_potion()
-	var bottles: int = GameState.loot_potions().size()
 	var held: int = GameState.inventory.size()
+	assert_true(_holds_bottle(named), "he named a bottle that is in the pack")
 	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "give_potion"), 0)
-	assert_eq(GameState.loot_potions().size(), bottles - 1, "one bottle down")
-	for entry in GameState.loot_potions():
-		assert_false(is_same(entry, named), "and it is the one he was handed")
+	# THE BOTTLE HE NAMED IS GONE — asserted as itself, not as a COUNT. The count
+	# used to be `bottles - 1`, and the relic he pays back with can hand over loot
+	# of its own: a run that rolled one of those left six bottles where the test
+	# wanted one, and it failed on those runs only. Which bottle left is the claim
+	# this test is actually making; how many are in the pack afterwards is somebody
+	# else's business.
+	assert_false(_holds_bottle(named), "and it is the one he was handed that went")
 	assert_eq(GameState.inventory.size(), held + 1, "one relic back")
 	# The prose names it too, after it has gone: the sentence is about the potion
 	# he just drank.
@@ -1780,14 +1795,31 @@ func test_he_asks_for_two_gold_and_charges_two() -> void:
 	GameState.gold = 9
 	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
 	assert_eq(GameState.gold, 7)
-	# The press pays a relic for them — and the purse afterwards is NOT asserted
-	# to the coin, because the relic he hands over may carry gold of its own.
+	# The press pays a relic for them, and THE PURSE AFTERWARDS CANNOT SAY WHAT HE
+	# TOOK. The old assertion here was `gold <= 7` under a comment admitting the
+	# relic "may carry gold of its own" — which is exactly the case that breaks an
+	# upper bound: a relic paying 6 leaves 13 on a 9-gold start, and the test failed
+	# on the runs that rolled one and passed on the runs that did not.
+	#
+	# So watch the purse THROUGH the resolve rather than after it. The certain costs
+	# are charged before anything is granted (EventSystem.resolve_choice applies the
+	# choice's own effects first), so the LOW-WATER MARK is what he actually took,
+	# whatever comes back afterwards.
 	GameState.gold = 9
 	EventSystem.begin_event(ev)
 	var held: int = GameState.inventory.size()
+	# AN ARRAY, not an int. A GDScript lambda captures a local by VALUE, so a
+	# `low = mini(low, g)` closure updates its own copy and the test reads back the
+	# number it started with — which is a silent pass in most tests and was a silent
+	# FAILURE in this one. An Array is a reference, so appending to it from inside
+	# the closure is seen out here.
+	var purse: Array = [GameState.gold]
+	var watch: Callable = func(g: int) -> void: purse.append(g)
+	GameState.gold_changed.connect(watch)
 	EventSystem.resolve_choice(ev, choice, 0)
+	GameState.gold_changed.disconnect(watch)
 	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
-	assert_lte(GameState.gold, 7, "the two are spent whatever the relic pays back")
+	assert_eq(purse.min(), 7, "the two are spent, whatever the relic pays back after")
 
 
 # The card he takes is one worth studying: Uncommon or better, which is what the

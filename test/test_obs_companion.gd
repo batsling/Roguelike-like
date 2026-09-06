@@ -155,6 +155,7 @@ func test_the_goal_line_is_the_one_with_the_statuses_clauses_on_it() -> void:
 	# spec calls out. The overlay must be reading the finished sentence.
 	var entry: Dictionary = GameLoop2.arrival()
 	if entry.is_empty():
+		pending("nothing arrived on the board this game")
 		return
 	var sentence: String = GameLoop2.goal_text_for(entry)
 	var texts: Array = []
@@ -166,6 +167,7 @@ func test_the_goal_line_is_the_one_with_the_statuses_clauses_on_it() -> void:
 func test_a_goal_met_this_game_reads_as_ticked() -> void:
 	var entry: Dictionary = GameLoop2.arrival()
 	if entry.is_empty():
+		pending("nothing arrived on the board this game")
 		return
 	var instance: int = int(entry.get("instance", 0))
 	var before: bool = _row_done(GameLoop2.goal_text_for(entry))
@@ -387,6 +389,7 @@ func test_a_shield_eats_a_whole_swing_however_big_it_is() -> void:
 	GameState.bonus_shields = 0
 	var threat: Dictionary = ObsCompanion.payload()["threat"]
 	if (threat["swings"] as Array).is_empty():
+		pending("nothing on the board could reach the player this run")
 		return
 	assert_eq(int(threat["blocked"]), 1, "the one shield breaks on the swing")
 	assert_eq(int(threat["damage"]), 0,
@@ -421,6 +424,7 @@ func test_the_timed_shields_break_first() -> void:
 	GameState.bonus_shields = 1  # kept
 	var threat: Dictionary = ObsCompanion.payload()["threat"]
 	if (threat["swings"] as Array).is_empty():
+		pending("nothing on the board could reach the player this run")
 		return
 	assert_eq(int(threat["blocked"]), 1)
 	# The live pools are untouched — a forecast that spent them would be a bug

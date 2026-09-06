@@ -11,6 +11,79 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The drop queue moves out of `Overworld2.gd`, and the seam table that said it
+  was a 230-line job gets re-measured.**
+
+  `docs/performance-backlog.md` §1 has said "`Overworld2.gd` is 4260 lines" for
+  months. The file was 5623 when that was last close to true and **6114** by the
+  time anyone checked — so the three splits it records did their 24% and then
+  accretion put all of it back and more. That is the finding, not the line count:
+  a seam table goes stale the moment it stops being re-run, and this one was being
+  quoted as current while the file grew past its own pre-split size.
+
+  **Where the growth went**, measured rather than guessed: +405 lines of a region
+  that did not exist at the last reading (*arriving somewhere you did not choose* —
+  card teleports, detours, the stay-or-return question, item aiming) and +138 of
+  card/item actions, against a diffuse +30 spread over everything else. A new
+  mechanic landed **in** the page rather than beside it. This file does not creep,
+  it absorbs.
+
+  **`DropQueue.gd`** takes the §8/§8.2 seam the doc named — everything the run pays
+  out and the order it is asked about: the queue, the modal in front of it, the two
+  gestures that get a piece off the floor, and the pack that appears for the length
+  of a drag. 6114 → 5826. The page keeps `_drop_queue`, `_drop_modal` and
+  `_drag_pack` as published views onto the class, because `test_overworld2.gd`
+  reads all three off the instance; `_drop_modal` needed a **setter** as well,
+  because the tests stand a modal up by hand where they only ever *mutate* the
+  queue array. `_notification` stays on the page — a Godot virtual cannot move off
+  the Node — and hands both ends of the drag over. The class asks the page four
+  small questions (`drops_are_done`, `drops_are_held`, `offer_loot_to_open_screen`,
+  `drag_pack_anchor`) rather than reading `Phase` or `_resolving`, which is the
+  same "pass phase in, don't read it out" rule the earlier three splits set.
+
+  **The doc now says which seams NOT to cut, and why**, because two of the
+  remaining big ones are traps. *Routing* looks like a 606-line region and is
+  actually the run loop with a banner on top — `report()` alone is 284 lines of it,
+  and splitting on a banner rather than on a mechanic is how you get a class called
+  `Routing` that owns `report()`. *The header* is three unrelated things under one
+  banner plus four page-wide helpers that merely sit at the bottom of the file.
+
+- **The test suite stops skipping in silence.**
+
+  ~250 tests guard themselves against a run that did not reach their case —
+  `if pin == &"": return`, `if _ui._fulfil_checks.is_empty(): return`. GUT only
+  reports **Risky** when a test asserts *nothing at all*, so a test that asserted
+  once and then bailed reported green: there was no way to tell "2092 passing" from
+  "1997 passing and 95 shrugging", and `CLAUDE.md` claimed the Risky problem was
+  solved while the pattern that produces it was alive in twelve files.
+
+  Every one of those guards now calls `pending("why")` before returning. GUT counts
+  pending separately, excludes it from Passing, and prints it in the totals — so
+  the skips are a number you can watch and treat as a budget. On the run that
+  landed this, **none of them fired**, which is the answer that was worth having
+  either way: the cases are currently covered, and the day one stops being reached
+  the totals will say so instead of staying quietly green.
+
+- **Two Ranwid tests that were only usually right.**
+
+  Found by the above, and both the same root cause: the relic the event pays back
+  with can carry gold or loot of its own.
+  `test_he_asks_for_two_gold_and_charges_two` asserted `gold <= 7` after the press
+  — under a comment that already admitted the relic "may carry gold of its own" —
+  so a run that rolled a relic paying 6 left 13 and the test failed on those runs
+  only. It watches the purse **through** the resolve now and asserts the low-water
+  mark, since the certain costs are charged before anything is granted.
+  `test_the_potion_price_takes_the_bottle_he_named` asserted a bottle COUNT of
+  `bottles - 1`; a relic that pays loot left six where it wanted one. It asserts
+  that **the bottle he named** is gone, which is the claim the test's own name
+  makes and is true whatever else arrives.
+
+  A third bug fell out of writing the first fix, and it is worth knowing about:
+  **a GDScript lambda captures a local by value.** `var low := 9` and a
+  `func(g): low = mini(low, g)` closure updates its own copy, and the test reads
+  back the number it started with. Use a reference type — the fix accumulates into
+  an Array.
+
 - **The OBS overlay is now RENDERED in a test, and it turned out to be lying.**
 
   `test_obs_companion.gd` is 600 careful lines about the payload — its shape, that

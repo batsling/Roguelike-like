@@ -53,6 +53,18 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 35 scripts, ~1970 t
   with "Could not find type X" — in hundreds of unrelated tests, because the
   script that referenced it failed to parse and its scene fell back to a bare
   Control. Run `godot --headless --editor --quit` once after adding one.
+- **A skipped case is `pending("why")`, never a bare `return`.** ~250 tests guard
+  themselves against a run that did not reach their case (`if pin == &"":`,
+  `if _ui._fulfil_checks.is_empty():`, `if not view.has_layout():`). They used to
+  bail in silence — and GUT only reports Risky when a test asserts **nothing at
+  all**, so a test that asserted once and then bailed reported green while testing
+  nothing it was written for. There was no way to tell "2092 passing" from "1997
+  passing and 95 shrugging". Every one of those guards now calls `pending()` with
+  the reason first, which GUT counts separately and prints as **Risky/Pending** in
+  the totals: the skips are a number you can watch. Read it as a budget, not as
+  noise — a guard that fires often is a case the suite has stopped covering, and
+  the fix is to ARRANGE the state (`_stand_at_hops`, `_reboot`, `_disarm_board`)
+  rather than to hope for it.
 - **A GUT run should be all green, with no Risky / "Did not assert"** — with no
   known exceptions any more. It used to
   report one or two, varying between runs, because a couple of tests early-

@@ -401,12 +401,13 @@ var _loot_window: LootWindow = null
 # The board rect the overlay was last placed against, so the frame hook can tell
 # "the page moved" from "nothing happened" without re-placing every frame.
 var _loot_anchor_rect: Rect2 = Rect2()
-# The pack, mounted to the LEFT of the board for the length of a drag off the
-# battlefield floor and nowhere near the page's layout (§8.2). Null the rest of
-# the time, which is almost all of it — see `_notification`.
-var _drag_pack: DragPackPanel = null
+# EVERYTHING BELOW IS THE DROP QUEUE'S, AND THE PAGE ONLY PUBLISHES IT.
+# `DropQueue` owns the queue, the modal in front of it and the drag pack
+# (docs/performance-backlog.md §1); these three names stay here because the tests
+# and the rest of the page reach for them, and they read straight through.
+#
 # What the run still owes the player an answer about — one modal at a time, in the
-# order it landed (§8, _pump_drops). `_drop_modal` is the one in front of them
+# order it landed (§8, DropQueue.pump). `_drop_modal` is the one in front of them
 # right now, or null when nothing is being asked.
 #
 # Two shapes ride this queue, because a report pays two different things (§8.2):
@@ -417,13 +418,38 @@ var _drag_pack: DragPackPanel = null
 #   {loot: Array[Dictionary]}  — a handful of LOOT, each piece taken, used or
 #     binned on its own terms. The pieces the bodies dropped on the floor, the
 #     game's own payout, and anything a relic granted.
-var _drop_queue: Array = []
-var _drop_modal: Node = null
+var _drops: DropQueue = null
+# Read-only: every caller appends to, clears or walks the array, and none of them
+# rebinds the name — checked before this became a property, because a getter-only
+# one cannot be assigned to.
+var _drop_queue: Array:
+	get: return _drops.queue if _drops != null else []
+# This one needs the SETTER too. Unlike the other two, the tests stand a modal up
+# by hand and take it down again (`_ui._drop_modal = modal`), which a getter-only
+# property would silently refuse.
+var _drop_modal: Node:
+	get: return _drops.modal if _drops != null else null
+	set(value):
+		if _drops != null:
+			_drops.modal = value
+# The pack, mounted to the LEFT of the board for the length of a drag off the
+# battlefield floor and nowhere near the page's layout (§8.2). Null the rest of
+# the time, which is almost all of it — see `_notification`.
+var _drag_pack: DragPackPanel:
+	get: return _drops.drag_pack if _drops != null else null
 var _reward_open: bool = false      # a RewardScreen is currently showing
 # The game most recently reported on. Rating is OPT-IN and never pops itself up
 # (see _prompt_rating): this is what the "★ Rate <game>" button on the select
 # screen scores, so a game can still be rated after you've moved on.
 var _last_played_game: GameData = null
+
+# THE DROP QUEUE IS BUILT IN `_init`, NOT `_build_ui`, unlike the page's other
+# three extracted pieces. Those fill a container and cannot exist before there is
+# one; this one holds state the page publishes as `_drop_queue`, `_drop_modal` and
+# `_drag_pack`, and a test that reaches for one of those before `_ready` has run
+# would otherwise be reading through a null.
+func _init() -> void:
+	_drops = DropQueue.new(self)
 
 func _ready() -> void:
 	_rng.randomize()
@@ -4703,470 +4729,155 @@ func _close_item_card() -> void:
 func item_hover(item: ItemData, active: bool, ready: bool, reporting: bool) -> Dictionary:
 	return PackStrip.item_hover(item, active, ready, reporting)
 
-# --- kill-drops (§8) -------------------------------------------------------
+# --- what the run pays out (§8, §8.2) --------------------------------------
+#
+# THE QUEUE ITSELF IS `DropQueue` (docs/performance-backlog.md §1). It owns the
+# waiting drops, the modal in front of them and the pack that appears for the
+# length of a drag off the floor; what stays here is the page's half — the two
+# Godot virtuals that cannot move off a Node, the signal handlers the page
+# connects by name, and the handful of small answers the queue asks the page for
+# rather than reaching into its state.
+#
+# The forwards below are one-liners on purpose: every call site in the page and in
+# `test_overworld2.gd` keeps the name it already used, so the move costs no churn
+# anywhere else. Some of them have no caller left in the page and exist only for
+# the tests, which is fine and is why they say so.
 
-# A defeated enemy dropped LOOT: roll the piece it left and lay it on the square
-# it died in. Skipped once the run is over (win/lose screens take over the board).
-#
-# WHY LOOT AND NOT A RELIC (§8.2). A body used to drop a chest, and a chest is a
-# question the board is not allowed to answer: its card deliberately does not say
-# what is inside, so what stood on the square was a gold glyph standing in for an
-# offer you could only read by opening it. A scroll, a pill or a potion IS a
-# thing — it can be drawn as itself, on its own square, and recognised across the
-# board while a body is still walking at you. So the floor pays loot, and the
-# relics moved to the reward screen where the choosing belongs
-# (GameLoop2.claim_chests, spent in _queue_report_chests).
-#
-# One piece per body, rolled on the same four-way scroll/pill/potion/card split as
-# a game's own payout (§4.3, docs/cards-design.md §4) — a boss included. What a body is worth in RELICS is
-# its difficulty, and that is banked rather than dropped (GameLoop2._defeat).
-func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
-	if GameLoop2.run_over:
-		return
-	var from_boss: bool = enemy != null and enemy.is_boss()
-	var entry: Dictionary = GameState.roll_loot_entry("loot")
-	if entry.is_empty():
-		return
-	# ON THE FLOOR, where the body fell (§8.2). A kill you make mid-game puts its
-	# payout on the board in front of you rather than behind a screen you have not
-	# reached yet — that is what makes clearing a goal DURING a game worth doing.
-	# What nobody picks up is swept onto the haul screen when the game is reported
-	# (_sweep_floor_into_the_queue).
-	if cell == GameLoop2.OFF_FIELD \
-			or GameLoop2.place_drop(cell, entry, from_boss) == GameLoop2.OFF_FIELD:
-		# Nowhere on the board for it — a body still in the off-grid queue has no
-		# square to fall in, and a full floor has no room left. It goes straight to
-		# the screen the game ends on, which is where an unclaimed piece ends up
-		# anyway.
-		_drop_queue.append({"loot": [entry]})
-		_pump_drops()
+# WHAT THE QUEUE ASKS THE PAGE. Four questions, so the extracted class needs to
+# know nothing about `Phase`, `_resolving`, or which screens are currently up —
+# the page answers in its own terms and the queue just gets a yes or a no.
+
+# The run is over, or the page has handed the board to a screen that owns it now:
+# there is nothing left to ask a question on.
+func drops_are_done() -> bool:
+	return _phase == Phase.OVER or GameLoop2.run_over
+
+# The board is mid-playback — a report, or a lost run's enemy turn (§3). Both hold
+# the queue for the same reason: a board still moving is not a place to put a
+# modal. `_end_resolve` pumps it the moment the playback lands.
+func drops_are_held() -> bool:
+	return _resolving
+
+# A screen that can take loot ONTO ITSELF rather than behind itself, if one is up.
+# The haul screen and an open event both have a table of their own, and a payout
+# earned six inches to the left of that table belongs on it — queueing it behind a
+# screen the player has not left yet would hide it until after the decision that
+# earned it. Answers true when one of them took the pieces.
+func offer_loot_to_open_screen(entries: Array) -> bool:
+	if _post_screen != null and is_instance_valid(_post_screen) \
+			and _post_screen.add_loot(entries):
+		return true
+	if _event_modal != null and is_instance_valid(_event_modal) \
+			and _event_modal.add_loot(entries):
+		return true
+	return false
+
+# What the drag pack is placed against: the board's frame, or the column it sits
+# in when the page has not built the frame yet.
+func drag_pack_anchor() -> Control:
+	if _stage_panel != null and is_instance_valid(_stage_panel):
+		return _stage_panel
+	return _left_col
+
+# The run's RNG. Rolling a drop is the queue's job; owning the stream the whole
+# run rolls from is the page's, because a save restores it.
+func drop_rng() -> RandomNumberGenerator:
+	return _rng
+
+# Repaint the board, if there is one. The queue moves pieces on and off the floor
+# and has no business knowing whether the view exists yet.
+func refresh_board() -> void:
 	if _board != null:
 		_board.refresh()
 
-# --- picking a piece up off the floor (§8.2) -------------------------------
-#
-# THE GESTURE IS THE WHOLE INTERACTION. Dragging a token off a board square
-# (`FloorLoot`) puts the pack on screen beside the board for as long as the piece
-# is in the air (`DragPackPanel`), and letting go — in a slot, on the bin, or on
-# nothing at all — ends both.
-#
-# It replaces a click that opened the LootDropModal, whose entire contribution to
-# a one-piece decision was drawing the nine slots this drag now drops straight
-# into. The modal is still what a REPORT's handful is answered on; it is no longer
-# the toll on picking one thing up.
-
-# A piece dragged off the floor and into slot `slot` of the 3x3.
-#
-# TWO OUTCOMES, and which one it is depends on whether that slot was occupied:
-#   free   — the piece goes in and the square is cleared.
-#   filled — the two TRADE: the carried piece comes out and lands on the square
-#            this one came off, which is the answer to a full pack that only a
-#            floor take can give (LootGrid.can_accept). The square is never left
-#            empty by a swap, so a mistake costs a drag rather than a piece.
-func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
-	if GameLoop2.run_over or entry.is_empty():
-		return
-	var held: Dictionary = GameLoop2.drop_at(cell)
-	# The square is what says the piece is still there to be taken. A payload from a
-	# drag whose square has since been swept (a report resolving underneath it) is
-	# refused rather than minting a second copy of the piece.
-	if held.is_empty() or _floor_loot(held) != entry:
-		return
-	var displaced: Dictionary = GameState.swap_loot_entry_at(entry, slot)
-	if displaced.is_empty() and not GameState.take_loot_entry_at(entry, slot):
-		return
-	GameLoop2.take_drop(cell)
-	if not displaced.is_empty():
-		# Back onto the square the new piece came off — and NOT as a boss's drop
-		# whatever was on that square before, because a piece out of your own pack
-		# was not left there by anything.
-		GameLoop2.place_drop(cell, displaced)
-		GameLog.add("Traded %s for %s." % [LootSystem.display_name(displaced),
-			LootSystem.display_name(entry)], Color(0.72, 0.62, 0.86))
-	else:
-		GameLog.add("Picked up %s." % LootSystem.display_name(entry),
-			Color(0.72, 0.62, 0.86))
-	if _board != null:
-		_board.refresh()
-	refresh_loot_window()
-
-# A piece dragged off the floor and onto the bin. It ASKS FIRST, on the same terms
-# a carried piece binned in the loot window does (LootTrash.confirm): this is the
-# one gesture on the board that destroys something and gives nothing back, and it
-# is a strictly worse outcome than the thing that happens if you do nothing at all
-# — a piece left lying is swept onto the haul screen and is still yours.
-func bin_floor_loot(cell: Vector2i) -> void:
-	if GameLoop2.run_over:
-		return
-	var entry: Dictionary = _floor_loot(GameLoop2.drop_at(cell))
-	if entry.is_empty():
-		return
-	LootTrash.confirm(self, LootSystem.display_name(entry), func():
-		# Re-read on the way through: the confirmation is a screen the player spends
-		# time on, and the square may have been swept by a report behind it.
-		if _floor_loot(GameLoop2.drop_at(cell)) != entry:
-			return
-		GameLoop2.take_drop(cell)
-		GameLog.add("Threw away %s." % LootSystem.display_name(entry),
-			Color(0.8, 0.8, 0.8))
-		if _board != null:
-			_board.refresh())
-
-# THE PACK, MOUNTED FOR THE LENGTH OF A DRAG. `NOTIFICATION_DRAG_BEGIN` reaches
-# every Control in the tree the moment a drag starts anywhere in the viewport,
-# which is the one signal that means "the player's hand is full" — so the page
-# hangs the panel off it and takes it away again on DRAG_END.
+# THE PACK, MOUNTED FOR THE LENGTH OF A DRAG. `_notification` is a Godot virtual,
+# so it stays on the Node; `NOTIFICATION_DRAG_BEGIN` reaches every Control in the
+# tree the moment a drag starts anywhere in the viewport, which is the one signal
+# that means "the player's hand is full".
 #
 # Only for a piece off the FLOOR. Dragging inside the loot window or the drop
 # modal already has a pack in front of it, and a second one arriving beside the
 # board would be the page answering a question nobody asked.
 func _notification(what: int) -> void:
+	if _drops == null:
+		return
 	match what:
 		NOTIFICATION_DRAG_BEGIN:
 			var data = get_viewport().gui_get_drag_data() if get_viewport() != null else null
 			if data is Dictionary and (data as Dictionary).has("floor"):
-				_mount_drag_pack()
+				_drops.mount_drag_pack()
 		NOTIFICATION_DRAG_END:
-			_unmount_drag_pack()
+			_drops.unmount_drag_pack()
 
-func _mount_drag_pack() -> void:
-	_unmount_drag_pack()
-	if GameLoop2.run_over:
-		return
-	_drag_pack = DragPackPanel.build(take_floor_loot, bin_floor_loot)
-	_drag_pack.top_level = true
-	add_child(_drag_pack)
-	_place_drag_pack()
+# --- forwards into the queue -----------------------------------------------
 
-func _unmount_drag_pack() -> void:
-	if _drag_pack != null and is_instance_valid(_drag_pack):
-		_drag_pack.queue_free()
-	_drag_pack = null
+# Connected by name in `_wire_signals`, so these two keep their names here.
+func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
+	_drops.on_enemy_defeated(enemy, cell)
 
-# TO THE LEFT OF THE BOARD, vertically centred on it. The piece is on the board
-# and the pack is where it is going, so the drag runs right-to-left across the
-# page and the panel sits at the end of that run rather than on top of where it
-# started — covering the square the piece came off, and the squares around it,
-# which is where a drag has to be able to end harmlessly.
-#
-# Placed once: the panel lives for the length of one drag, and the board does not
-# move during one. Clamped to the screen so a page that has been squeezed puts it
-# somewhere reachable rather than off an edge, and held below the header the way
-# every other floating surface is.
-func _place_drag_pack() -> void:
-	if _drag_pack == null or not is_instance_valid(_drag_pack):
-		return
-	var anchor: Control = _stage_panel if _stage_panel != null and is_instance_valid(_stage_panel) \
-		else _left_col
-	if anchor == null or not is_instance_valid(anchor):
-		return
-	_drag_pack.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_drag_pack.size = _drag_pack.get_combined_minimum_size()
-	var on: Rect2 = anchor.get_global_rect()
-	var size: Vector2 = _drag_pack.size
-	var screen: Vector2 = get_viewport_rect().size
-	var x: float = clampf(on.position.x - size.x - DragPackPanel.BOARD_GAP,
-		4.0, maxf(4.0, screen.x - size.x - 4.0))
-	var y: float = clampf(on.position.y + (on.size.y - size.y) * 0.5,
-		ModalScaffold.reserved_top + 4.0, maxf(ModalScaffold.reserved_top + 4.0,
-			screen.y - size.y - 4.0))
-	_drag_pack.global_position = Vector2(x, y)
-
-# One floor square's payload as the loot entry the modals deal in. The loop stores
-# the entry whole (it is scene-free and JSON-safe already), so this is only the
-# unwrapping — and the guard for a save written when the floor still held relics.
-func _floor_loot(held: Dictionary) -> Dictionary:
-	var entry = held.get("loot")
-	return (entry as Dictionary).duplicate(true) if entry is Dictionary else {}
-
-# Everything still lying on the board when a game is reported goes onto the haul
-# screen (§8.2/§18): the floor belongs to the game being played, and what the
-# player did not stop to pick up is still theirs to answer for once.
-#
-# ONE TABLE, not one question per square. Three bodies leaving three pieces is a
-# handful of loot, and LootDropModal has always taken a list — asking about them
-# one modal at a time would put the ninth-slot decision to the player three times
-# over with a different third of the answer each time.
-#
-# Swept whatever the report said. The loot was earned by the KILL, which already
-# happened; only the relic chest is a reward for beating the game (claim_chests).
-func _sweep_floor_into_the_queue() -> void:
-	var swept: Array = []
-	for held in GameLoop2.sweep_drops():
-		var entry: Dictionary = _floor_loot(held)
-		if not entry.is_empty():
-			swept.append(entry)
-	if not swept.is_empty():
-		_drop_queue.append({"loot": swept})
-
-# THE RELICS THE EVENING EARNED (§8.2), spent and queued for the haul screen.
-#
-# A game beaten is worth one chest point on its own — a Small chest for a win with
-# nothing standing on the board — and every non-boss body defeated since the last
-# report adds its own difficulty on top: Low 1, Medium 2, High 3, Insane 4. The
-# total is spent on the SAME ladder every scaling payout in the game walks
-# (`Data.chest_reward_sizes`): the chest grows Small → Medium → Large → Huge, and
-# past Huge it splits into a second chest rather than running off the end. Three
-# High kills on a game you beat is 10 points — two Huge chests and a Medium.
-#
-# Which is the whole reason the relics left the floor. Paid a body at a time they
-# were N Small chests, each worth less than the last and each its own question;
-# paid at the report they are one growing reward that describes the evening.
-#
-# NOTHING FOR A GAME YOU DIDN'T BEAT. The loot the bodies dropped is already on
-# the floor and stays yours (it was earned by the kill) — the chest is what
-# beating the game buys, and GameLoop2.claim_chests is where that gate lives.
-# A BOSS chest is the exception it always was: it is paid whether or not the game
-# went your way, rolled from the boss pool, and kept as a chest OF ITS OWN beside
-# the kill chest rather than folded into its points — There's Options buys size on
-# that chest, not on this one.
-#
-# Queued rather than granted through `GameState.grant_chests`: a grant fires
-# `chest_granted`, which opens a RewardScreen on the next idle frame — over the
-# top of a board still playing the resolve back. The queue is the path that waits
-# (see _pump_drops), and it is where a defeated body's chest always went.
-func _queue_report_chests(beaten: bool) -> void:
-	if GameLoop2.run_over:
-		# The run ended on this report; the win/lose screen owns the page now, and
-		# the pool goes with the run rather than being carried into a screen that
-		# will never ask about it.
-		GameLoop2.claim_chests(false)
-		return
-	var granted: Array = []
-	for chest in GameLoop2.claim_chests(beaten):
-		var from_boss: bool = bool((chest as Dictionary).get("boss", false))
-		for size in Data.chest_reward_sizes(int((chest as Dictionary).get("points", 0))):
-			var offer: Array = _roll_chest(from_boss, int(Data.CHEST_SIZE_CHOICES[size]))
-			if offer.is_empty():
-				continue
-			_drop_queue.append({"items": offer})
-			granted.append(size)
-	if granted.is_empty():
-		return
-	# ONE LINE for the lot (§8.2). A reward promised as one line has to arrive as
-	# one line, so a win that paid a Huge and a Medium says so once rather than
-	# toasting twice — the two are still two chests, separately rolled and
-	# separately answered, on the screen itself.
-	Notifications.notify("Gained %s!" % Data.chest_sizes_text(granted),
-		Color(1.0, 0.85, 0.4))
-	GameLog.add("Gained %s." % Data.chest_sizes_text(granted), Color(1.0, 0.85, 0.4))
-
-# Roll the game's loot payout and queue the question (§4.3). Queued rather than
-# granted so the nine-piece cap can be answered by the player: a full pack turns
-# the payout into "spend something or leave this", and that is a decision the run
-# should be making out loud.
-func _queue_loot_drop() -> void:
-	if GameLoop2.run_over:
-		return
-	var entry: Dictionary = GameState.roll_loot_entry("loot")
-	if entry.is_empty():
-		return
-	_drop_queue.append({"loot": entry})
-	_pump_drops()
-
-# A GRANT of loot, asked about rather than pushed into the pack (§4.3). Mom's Coin
-# Purse pays four pills at once and Sacred Bark doubles what a grant pays; shovelled
-# straight in, the surplus over the nine-piece cap used to vanish without a word.
-# GameState.offer_loot rolls the pieces and calls here, and they arrive as ONE
-# question with all of them on the table rather than as four modals in a row.
-#
-# Behind the same queue as everything else, so a game that paid its own piece AND
-# fired a relic asks in the order they landed.
 func _on_loot_offered(entries: Array) -> void:
-	if GameLoop2.run_over or entries.is_empty():
-		return
-	# ONTO THE HAUL SCREEN when one is up. A relic taken from a chest ON that
-	# screen can pay loot the instant it is picked up, and the table it belongs on
-	# is six inches to the right of the card that paid it — queueing it behind a
-	# screen the player has not left yet would hide the payout until after the
-	# decision that earned it.
-	if _post_screen != null and is_instance_valid(_post_screen) \
-			and _post_screen.add_loot(entries):
-		return
-	# AND ONTO THE EVENT when one is open, for the same reason. An event that pays
-	# loot — the Woman in Blue's shelf, `gain_potion 3` — used to queue a drop
-	# modal, so buying three potions in a shop handed you a second window on top of
-	# the shop you were standing in. The bottles belong where the decision was
-	# made: they land on the event's own table (EventModal2.add_loot), which is the
-	# same embedded drop screen the Potion Lab opens with. A hidden or closing
-	# event refuses them and they fall through to the queue below.
-	if _event_modal != null and is_instance_valid(_event_modal) \
-			and _event_modal.add_loot(entries):
-		return
-	_drop_queue.append({"loot": entries.duplicate(true)})
-	_pump_drops()
+	_drops.on_loot_offered(entries)
 
-# Ask about the next waiting drop, if nothing else is already asking. Several
-# defeats in one report queue behind each other rather than stacking modals.
-#
-# Deferred, because a defeat lands in the MIDDLE of GameLoop2.beat_game: the run
-# is still mid-resolve, the board hasn't repainted and the report step hasn't
-# handed over yet. Opening on the next idle frame puts the question after all of
-# that, over a screen that has finished moving.
+# The two floor gestures. Public because `FloorLoot` and `DragPackPanel` call them.
+func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
+	_drops.take_floor_loot(entry, slot, cell)
+
+func bin_floor_loot(cell: Vector2i) -> void:
+	_drops.bin_floor_loot(cell)
+
+# Called from the report path (`report`) and the machines.
+func _sweep_floor_into_the_queue() -> void:
+	_drops.sweep_floor()
+
+func _queue_report_chests(beaten: bool) -> void:
+	_drops.queue_report_chests(beaten)
+
+func _queue_loot_drop() -> void:
+	_drops.queue_loot_drop()
+
 func _pump_drops() -> void:
-	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return
-	if _drop_queue.is_empty() or not is_inside_tree():
-		return
-	if _phase == Phase.OVER or GameLoop2.run_over:
-		return
-	# NOT WHILE A REPORT IS RESOLVING. Everything a report drops belongs to the
-	# post-combat screen, which opens when the board has finished playing the
-	# resolve back (_open_post_game) and takes the whole queue with it. Pumping
-	# here is what used to put "do you want this relic" over the top of the strike
-	# that had just taken eight Health off the player.
-	#
-	# A REPORT and A LOST RUN'S TURN (§3) both set `_resolving`, and both for the
-	# same reason: a board mid-playback is not a place to put a modal. The turn has
-	# no post-combat screen behind it to hand the queue to, so _end_resolve pumps
-	# it itself the moment the playback lands. An offer that arrives at any OTHER
-	# moment — a relic firing on the overworld, a machine, an event's payout —
-	# still asks for itself, on its own modal, immediately.
-	if _resolving:
-		return
-	_open_next_drop.call_deferred()
+	_drops.pump()
+
+func _roll_chest(from_boss: bool, count: int) -> Array:
+	return _drops.roll_chest(from_boss, count)
+
+func _drop_items(drop: Dictionary) -> Array:
+	return _drops.drop_items(drop)
+
+# TAKING ONE RELIC, wherever the chest was asked about — the post-combat screen
+# holds its chests itself, off the queue, and calls this directly so a relic taken
+# there is granted, logged and announced identically.
+func collect_drop_item(item: ItemData) -> void:
+	_drops.collect_drop_item(item)
+
+func skip_drop_items(items: Array) -> void:
+	_drops.skip_drop_items(items)
+
+# What the player kept off a payout, written down — the public name the
+# post-combat screen's embedded payout reports through, so it takes exactly the
+# path the standalone modal does.
+func note_loot_taken(taken: Array) -> void:
+	_drops.note_taken(taken)
+
+# No caller left in the page: these four are here for `test_overworld2.gd`, which
+# drives the queue directly to get at cases the run only reaches by luck.
+func _mount_drag_pack() -> void:
+	_drops.mount_drag_pack()
+
+func _place_drag_pack() -> void:
+	_drops.place_drag_pack()
+
+func _floor_loot(held: Dictionary) -> Dictionary:
+	return _drops.floor_loot(held)
 
 func _open_next_drop() -> void:
-	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return
-	if _drop_queue.is_empty() or not is_inside_tree():
-		return
-	if _phase == Phase.OVER or GameLoop2.run_over:
-		return
-	var drop: Dictionary = _drop_queue[0]
-	# A LOOT payout rides the same queue as the relics a body left (§4.3), because
-	# they are the same question asked about different things and a game can hand
-	# over both. It asks in its own modal — a scroll is not an ItemData and the
-	# nine-piece cap is a sentence only this one has to say.
-	if drop.has("loot"):
-		# Spendable, always. There is no longer a condition under which loot cannot
-		# be used (§4.3): the mid-report lock holds the pack still, and a piece whose
-		# effect cannot land right now fizzles rather than being refused. The flag
-		# stays on the call because this screen must not assume the rule — the day
-		# something else CAN forbid a use, it comes in here.
-		var loot_modal := LootDropModal.open(self, drop["loot"], true)
-		_drop_modal = loot_modal
-		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes (§4.3):
-		# with several offers, and uses and bins interleaved between them, the slot
-		# the player chose is only meaningful at the instant they choose it. So the
-		# page's job here is the log and the refresh, not the taking.
-		loot_modal.answered.connect(func(taken: Array):
-			_drop_modal = null
-			_drop_queue.pop_front()
-			_note_loot_taken(taken)
-			_pump_drops())
-		return
-	var modal = ItemDropModal.open(self, _drop_items(drop))
-	_drop_modal = modal
-	modal.answered.connect(func(taken: bool, chosen: ItemData):
-		_drop_modal = null
-		if taken:
-			_collect_drop(drop, chosen)
-		else:
-			_skip_drop(drop)
-		# Whatever is behind it in the queue is the next question.
-		_pump_drops())
-
-# Roll one drop item from the games-first reward pool, weighted by rarity the same
-# way the RewardScreen chest roll is (§8) — minus the luck advantage, which is the
-# chest's own bonus.
-#
-# A BOSS pays out of the boss pool instead, with no rarity roll at all: a boss
-# relic is not a rung on the ladder, it is a thing only a boss drops, so "which
-# rarity did the boss roll" is not a question with an answer (§7.1). Falls back to
-# the ordinary roll if no boss relics are authored, because a boss that drops
-# nothing would read as a bug rather than as a thin catalogue.
-func _roll_drop(from_boss: bool = false) -> ItemData:
-	if from_boss:
-		var boss_pool: Array = Data.boss_item2_pool()
-		if not boss_pool.is_empty():
-			return boss_pool[_rng.randi_range(0, boss_pool.size() - 1)]
-	var bucket: Array = Data.reward_item2_pool_of(Data.roll_item_rarity(_rng))
-	if bucket.is_empty():
-		return null
-	return bucket[_rng.randi_range(0, bucket.size() - 1)]
-
-# `count` DISTINCT items for one chest, each rolled by _roll_drop. Distinct is a
-# preference and not a rule, the same way the shop shelf treats it: two of the
-# same relic side by side is not a choice, but a thin pool still owes a full
-# chest, so the draw gives up after a few tries rather than shrinking the offer.
-# Fewer than `count` only when the pool itself is empty.
-func _roll_chest(from_boss: bool, count: int) -> Array:
-	var out: Array = []
-	var tries: int = 0
-	while out.size() < maxi(1, count) and tries < 40:
-		tries += 1
-		var item: ItemData = _roll_drop(from_boss)
-		if item == null:
-			break
-		if not out.has(item):
-			out.append(item)
-	return out
-
-# The items one queued chest is offering. `items` is the canonical shape; the
-# single-item `{item: …}` shorthand is still read so a save written before chests
-# had a size — and the tests that hand-build a drop — keep working.
-func _drop_items(drop: Dictionary) -> Array:
-	var items: Array = drop.get("items", [])
-	if not items.is_empty():
-		return items
-	var one = drop.get("item")
-	return [one] if one is ItemData else []
+	_drops.open_next()
 
 func _collect_drop(drop: Dictionary, chosen: ItemData = null) -> void:
-	if not _drop_queue.has(drop):
-		return
-	_drop_queue.erase(drop)
-	var offered: Array = _drop_items(drop)
-	# Defaults to the first thing offered, so a caller that doesn't care which —
-	# a test, a one-item chest — doesn't have to name it.
-	collect_drop_item(chosen if chosen != null and offered.has(chosen)
-		else (offered[0] if not offered.is_empty() else null))
+	_drops.collect_drop(drop, chosen)
 
-# TAKING ONE RELIC, wherever the chest was asked about. The queue bookkeeping above
-# belongs to the page's own modal; this is the half that touches the run, and the
-# post-combat screen — which holds its chests itself, off the queue — calls it
-# directly so a relic taken there is granted, logged and announced identically.
-func collect_drop_item(item: ItemData) -> void:
-	if item == null:
-		return
-	GameState.add_item(item)
-	GameLog.add("Collected %s." % item.display_name, Color(0.7, 1.0, 0.7))
-	Notifications.notify("Took %s." % item.display_name, UITheme.item_color(item))
-
-# …and leaving them, on the same terms.
-func skip_drop_items(items: Array) -> void:
-	var names: Array = []
-	for it in items:
-		if it is ItemData:
-			names.append(String((it as ItemData).display_name))
-	if not names.is_empty():
-		GameLog.add("Left %s behind." % ", ".join(names), Color(0.8, 0.8, 0.8))
-
-# What the player kept off a payout, written down — the public name for
-# _note_loot_taken, so the post-combat screen's embedded payout reports through
-# exactly the path the standalone modal does.
-func note_loot_taken(taken: Array) -> void:
-	_note_loot_taken(taken)
-
-# What the player kept off a payout, written down. The pieces are ALREADY in the
-# pack — the drop screen places each one as it is resolved, because with several
-# offers on the table and uses and bins between them, the slot a piece was dropped
-# into stops meaning anything the moment the next one moves (§4.3). So this is the
-# log and the redraw, and nothing else.
 func _note_loot_taken(taken: Array) -> void:
-	for entry in taken:
-		if entry is Dictionary:
-			GameLog.add("Collected %s." % LootSystem.display_name(entry),
-				Color(0.7, 1.0, 0.7))
-	if not taken.is_empty():
-		_refresh_items()
-
-func _skip_drop(drop: Dictionary) -> void:
-	if not _drop_queue.has(drop):
-		return
-	_drop_queue.erase(drop)
-	skip_drop_items(_drop_items(drop))
+	_drops.note_taken(taken)
 
 
 func _result_text(res: Dictionary) -> String:

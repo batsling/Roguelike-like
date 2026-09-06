@@ -331,6 +331,7 @@ func test_a_gap_in_the_catalog_is_a_gap_on_the_map() -> void:
 			jump = step
 			jump_years = span
 	if single < 0.0 or jump < 0.0:
+		pending("the run did not reach this case (single < 0.0 or jump < 0.0)")
 		return                             # no gaps in this catalog to check
 	assert_almost_eq(jump, single * float(jump_years), single * 0.5,
 		"a %d-year gap is about %d times a one-year step" % [jump_years, jump_years])

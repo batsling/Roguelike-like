@@ -169,12 +169,15 @@ func test_reporting_a_level_up_logs_it_against_the_game() -> void:
 	ui.pick(0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
+		pending("nothing was chosen — the offering did not reach this case")
 		return
 	var game: GameData = chosen.get("game")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch == null or ch.level_up_condition == "":
+		pending("the run did not reach this case (ch == null or ch.level_up_condition == '')")
 		return
 	_tick(ui._levelup_check, ui)
 	ui.report(false, [])
@@ -188,9 +191,11 @@ func test_not_ticking_the_level_up_logs_nothing() -> void:
 	ui.pick(0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
+		pending("nothing was chosen — the offering did not reach this case")
 		return
 	var game: GameData = chosen.get("game")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	ui.report(false, [])
 	assert_eq(GameStats.level_up_count(game.id, GameState.character_id), 0,
@@ -205,10 +210,12 @@ func test_beating_a_goal_fills_both_records() -> void:
 	ui.pick(0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
+		pending("nothing was chosen — the offering did not reach this case")
 		return
 	var game: GameData = chosen.get("game")
 	var enemy: GoalEnemyData = chosen.get("enemy")
 	if game == null or enemy == null:
+		pending("the run did not reach a game to ask about")
 		return
 	var who: StringName = GameState.character_id
 	_report_beat(ui)

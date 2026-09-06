@@ -314,6 +314,7 @@ func test_pinning_a_game_bends_the_route_through_it() -> void:
 	var modal = _open_map()
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return                    # this roll had no off-route neighbour to pin
 	var was: int = modal.shortest_distance()
 	assert_true(modal.set_waypoint(pin), "the pin is accepted")
@@ -331,6 +332,7 @@ func test_dropping_the_pin_restores_the_shortest_road() -> void:
 	var modal = _open_map()
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	var was: int = modal.shortest_distance()
 	modal.set_waypoint(pin)
@@ -351,6 +353,7 @@ func test_a_forced_route_still_starts_where_you_stand_and_ends_on_the_amulet() -
 	var modal = _open_map()
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	modal.set_waypoint(pin)
 	var layers: Array = modal.map_data().get("layers", [])
@@ -365,6 +368,7 @@ func test_a_game_walked_through_twice_gets_two_rungs() -> void:
 	var modal = _open_map()
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	modal.set_waypoint(pin)
 	var layers: Array = modal.map_data().get("layers", [])
@@ -388,6 +392,7 @@ func test_every_edge_of_a_forced_route_advances_one_layer() -> void:
 	var modal = _open_map()
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	modal.set_waypoint(pin)
 	for e in modal.map_data().get("edges", []):
@@ -397,6 +402,7 @@ func test_every_edge_of_a_forced_route_advances_one_layer() -> void:
 func test_the_start_picker_ignores_a_pin_it_has_no_route_for() -> void:
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	GameState.route_waypoint = pin
 	# The start picker is the one map drawn before the run stands anywhere.
@@ -427,6 +433,7 @@ func test_a_waypoint_that_cannot_be_reached_yields_no_route() -> void:
 func test_the_waypoint_sits_alone_on_the_join_layer() -> void:
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	var via: Dictionary = RunGraph.route_dag_via(
 		GameState.current_game_id, pin, GameState.amulet_game_id)
@@ -503,6 +510,7 @@ func _text_of(node: Node) -> String:
 func test_arriving_at_the_pinned_game_spends_the_pin() -> void:
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	GameState.route_waypoint = pin
 	GameState.set_current_game(pin)
@@ -512,6 +520,7 @@ func test_arriving_at_the_pinned_game_spends_the_pin() -> void:
 func test_pinning_from_the_card_leaves_the_card_open_on_the_same_game() -> void:
 	var pin: StringName = _detour_candidate()
 	if pin == &"":
+		pending("this run's route had no game worth pinning")
 		return
 	var modal = _open_map()
 	modal.open_node_card(pin, modal.depth_of(pin))

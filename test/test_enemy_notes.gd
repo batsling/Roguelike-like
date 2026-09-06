@@ -119,10 +119,12 @@ func test_completing_a_game_logs_its_goal_enemy() -> void:
 	ui.pick(0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
+		pending("nothing was chosen — the offering did not reach this case")
 		return
 	var game: GameData = chosen.get("game")
 	var enemy: GoalEnemyData = chosen.get("enemy")
 	if game == null or enemy == null:
+		pending("the run did not reach a game to ask about")
 		return
 	_report_beat(ui)
 	assert_gte(GameStats.enemy_beaten_count(game.id, enemy.id), 1,
@@ -135,10 +137,12 @@ func test_failing_the_goal_logs_nothing() -> void:
 	ui.pick(0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
+		pending("nothing was chosen — the offering did not reach this case")
 		return
 	var game: GameData = chosen.get("game")
 	var enemy: GoalEnemyData = chosen.get("enemy")
 	if game == null or enemy == null:
+		pending("the run did not reach a game to ask about")
 		return
 	ui.report(false, [])
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), 0,
@@ -208,6 +212,7 @@ func test_an_enemy_only_written_about_is_not_listed_as_beaten() -> void:
 func test_a_games_enemy_pool_is_the_whole_roster() -> void:
 	var game: GameData = Data.get_game(&"slay_the_spire")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	var pool: Array = GameLoop2.possible_enemies_at(game)
 	assert_eq(pool.size(), Data.all_goal_enemies().size() + Data.all_bosses().size(),
@@ -224,6 +229,7 @@ func test_a_games_enemy_pool_is_the_whole_roster() -> void:
 func test_an_enemys_possible_games_are_the_whole_catalog() -> void:
 	var foes: Array = Data.all_goal_enemies()
 	if foes.is_empty():
+		pending("the run did not reach this case (foes.is_empty())")
 		return
 	var enemy: GoalEnemyData = foes[0]
 	assert_eq(GameLoop2.possible_games_for(enemy), Data.all_games().size(),
@@ -235,6 +241,7 @@ func test_an_off_type_kill_still_fits_its_denominator() -> void:
 	# for it without being widened after the fact.
 	var game: GameData = Data.get_game(&"slay_the_spire")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	var key: StringName = GameLoop2.game_type_key(game)
 	var off: GoalEnemyData = null
@@ -256,6 +263,7 @@ func test_the_denominators_are_never_smaller_than_what_happened() -> void:
 	GameStats.record_enemy_beaten(&"slay_the_spire", &"not_in_the_pool_any_more")
 	var game: GameData = Data.get_game(&"slay_the_spire")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	var fought: int = GameStats.enemies_for(&"slay_the_spire").size()
 	var possible: int = GameLoop2.possible_enemies_at(game).size()
@@ -265,6 +273,7 @@ func test_the_denominators_are_never_smaller_than_what_happened() -> void:
 func test_nothing_beaten_reads_as_zero_of_the_pool() -> void:
 	var game: GameData = Data.get_game(&"slay_the_spire")
 	if game == null:
+		pending("the run did not reach a game to ask about")
 		return
 	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 0, "nothing beaten yet")
 	assert_gt(GameLoop2.possible_enemies_at(game).size(), 0, "but the pool isn't empty")
@@ -272,6 +281,7 @@ func test_nothing_beaten_reads_as_zero_of_the_pool() -> void:
 func test_beating_one_enemy_moves_only_that_games_number() -> void:
 	var foes: Array = Data.all_goal_enemies()
 	if foes.is_empty():
+		pending("the run did not reach this case (foes.is_empty())")
 		return
 	GameStats.record_enemy_beaten(&"slay_the_spire", foes[0].id)
 	assert_eq(GameStats.enemies_for(&"slay_the_spire").size(), 1, "one distinct enemy here")
@@ -294,6 +304,7 @@ func _offering() -> Node:
 func test_no_beatable_row_without_a_record() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
+		pending("the offering came up empty on this run")
 		return
 	assert_null(ui._beatable_row(ui._choices[0]),
 		"a card you've never cleared anything at stays clean")
@@ -301,11 +312,13 @@ func test_no_beatable_row_without_a_record() -> void:
 func test_the_card_enemy_shows_when_beaten_here_before() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
+		pending("the offering came up empty on this run")
 		return
 	var choice: Dictionary = ui._choices[0]
 	var game: GameData = choice.get("game")
 	var enemy: GoalEnemyData = choice.get("enemy")
 	if game == null or enemy == null:
+		pending("the run did not reach a game to ask about")
 		return
 	GameStats.record_enemy_beaten(game.id, enemy.id)
 	assert_not_null(ui._beatable_row(choice),
@@ -315,10 +328,12 @@ func test_the_card_enemy_shows_when_beaten_here_before() -> void:
 func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
+		pending("the offering came up empty on this run")
 		return
 	var choice: Dictionary = ui._choices[0]
 	var enemy: GoalEnemyData = choice.get("enemy")
 	if enemy == null:
+		pending("the roll put no body on the board to ask about")
 		return
 	GameStats.record_enemy_beaten(&"some_other_game", enemy.id)
 	assert_null(ui._beatable_row(choice),

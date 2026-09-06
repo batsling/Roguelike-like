@@ -44,6 +44,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── redesign2/        #   the games-first screens:
 │   │                      #     Overworld2      — run flow: offering, report, pack
 │   │                      #     PackStrip       — fills Overworld2's pack strip
+│   │                      #     DropQueue       — everything the run pays out and
+│   │                      #                       the order it is asked about (§8)
 │   │                      #     LootWindow      — the 3x3 loot grid, floated over
 │   │                      #                       the board by its toggle
 │   │                      #     LootGrid/LootSlot — that 3x3 itself: drag a cell

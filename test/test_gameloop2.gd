@@ -850,6 +850,7 @@ func test_a_goal_met_at_the_report_staggers_the_survivor_for_the_extra_turns() -
 	# its way out (_clear_game_record) — by the time it returns there is no game left
 	# for anything to be staggered in.
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _choose_solo(_tough()) ; _report()
 	_march_to_front(inst)
@@ -1820,6 +1821,7 @@ func test_the_extra_turns_are_the_whole_of_what_a_report_costs() -> void:
 	# result says so in both fields, since every turn at the end of a game is one
 	# of the Amulet's now.
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _stacked_at_front(1)
 	assert_eq(GameLoop2.enemy_turns(), 2, "the doorstep buys two extra turns")
@@ -1834,6 +1836,7 @@ func test_the_extra_turns_are_the_whole_of_what_a_report_costs() -> void:
 
 func test_at_the_doorstep_the_front_line_strikes_twice_for_the_report() -> void:
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _stacked_at_front(1)
 	assert_eq(_col_of(inst), 1, "it is on the front line")
@@ -1851,6 +1854,7 @@ func test_at_the_doorstep_the_front_line_strikes_twice_for_the_report() -> void:
 
 func test_out_in_the_wilds_the_same_enemy_strikes_not_at_all() -> void:
 	if not _stand_at_hops(6):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	_stacked_at_front(1)
 	GameState.hp = 10
@@ -1861,6 +1865,7 @@ func test_out_in_the_wilds_the_same_enemy_strikes_not_at_all() -> void:
 
 func test_each_attack_names_the_turn_it_happened_on() -> void:
 	if not _stand_at_hops(0):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	_stacked_at_front(1)
 	GameState.shields = 0
@@ -1874,6 +1879,7 @@ func test_each_attack_names_the_turn_it_happened_on() -> void:
 
 func test_the_board_is_snapshotted_once_per_turn() -> void:
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	# The doorstep's two extra turns, seen from the frames the view replays: the
 	# enemy stands on the back column the moment its game is chosen and walks two
@@ -1893,6 +1899,7 @@ func test_a_walk_and_a_strike_can_both_fit_in_one_report() -> void:
 	# the board two turns, and a body one column back spends the first walking and
 	# the second swinging — so it reaches you and hits inside a single report.
 	if not _stand_at_hops(0):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _choose_solo(_enemy(2))
 	_report()                               # stacks; nothing owed at the back
@@ -1912,6 +1919,7 @@ func test_a_walk_and_a_strike_can_both_fit_in_one_report() -> void:
 
 func test_a_stun_costs_one_turn_not_the_whole_report() -> void:
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _stacked_at_front(1)
 	GameLoop2.stun(inst)
@@ -1924,6 +1932,7 @@ func test_a_stun_costs_one_turn_not_the_whole_report() -> void:
 
 func test_a_stun_still_costs_a_whole_lost_run_out_in_the_wilds() -> void:
 	if not _stand_at_hops(6):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _stacked_at_front(3)
 	GameLoop2.stun(inst)
@@ -1937,6 +1946,7 @@ func test_a_stun_still_costs_a_whole_lost_run_out_in_the_wilds() -> void:
 
 func test_fulfilling_a_goal_holds_its_fire_for_every_turn() -> void:
 	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
 		return
 	# A two-Health enemy survives the fulfilment hit, so it is still standing to
 	# (not) attack — the only case where "one turn or all of them" is visible.
@@ -2082,6 +2092,7 @@ func test_the_game_in_play_survives_a_save_round_trip_once() -> void:
 	# be found again on the way back in.
 	var real: GoalEnemyData = _catalog_enemy()
 	if real == null:
+		pending("the run did not reach this case (real == null)")
 		return
 	var inst: int = _choose_solo(real)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -2098,6 +2109,7 @@ func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
 	# the old build would have put it on the next report anyway.
 	var real: GoalEnemyData = _catalog_enemy()
 	if real == null:
+		pending("the run did not reach this case (real == null)")
 		return
 	_choose_solo(real)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -2117,6 +2129,7 @@ func test_a_save_from_before_the_enemy_stood_on_the_board_still_loads() -> void:
 func test_a_status_aimed_at_everything_lands_once_per_body() -> void:
 	var sid: StringName = _any_status()
 	if sid == &"":
+		pending("the run did not reach this case (sid == &'')")
 		return
 	var inst: int = _choose_solo(_enemy(1))
 	var n: int = GameLoop2.apply_enemy_status(sid, 1, "all")
