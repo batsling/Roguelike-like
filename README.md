@@ -730,13 +730,13 @@ and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 492 | 661 | 682 | **748** |
-| `overlay.html#top` | 311 | 293 | 314 | **380** |
-| `overlay.html#bottom` | 197 | 384 | 384 | **384** |
+| `overlay.html` | 418 | 587 | 608 | **658** |
+| `overlay.html#top` | 255 | 237 | 258 | **308** |
+| `overlay.html#bottom` | 179 | 366 | 366 | **366** |
 | `overlay.html#road` | 118 | 118 | 118 | **118** |
 
 **Almost nothing moves any more, and that is new.** A heavy run and a run twice
-its size measure the same 682, because everything that used to grow the page is
+its size measure the same 608, because everything that used to grow the page is
 gone: the hero card's status strip (every status is a checklist row now), the
 cost line's strip of swing marks (it is a sentence), and the shields' labelled
 row (they sit beside the health bar). `#bottom` stops at 384 because the
@@ -759,6 +759,27 @@ never touch it, give the source 900** and they land in the slack instead. Taller
 than that only buys headroom for a pathological run; the extra is transparent
 either way.
 
+#### Stretching it
+
+**The page fills whatever canvas the Browser Source gives it.** Widen the source
+and the text columns take the slack — the covers, the art and the type stay their
+own size, which is what "wider" should mean for a page that is mostly sentences.
+Note that **wider is not bigger**: stretching does not change the type size, so if
+the overlay reads *small* on a 720p stream that is `zoom` (below), not width.
+
+**Vertically it is content-height by default**, which is why the tables above are
+promises: the page is exactly as tall as the run makes it and a taller source has
+transparent space under it. Add **`#fill`** to take the whole source instead —
+the checklist grows into the slack, so a 900px source shows about fourteen rows
+standing still where 620 shows seven. That is the only part of the page that wants
+the room; everything above it is a fixed number of lines.
+
+`#fill` is a *modifier*, so it combines with the fragments below and any separator
+works: `overlay.html#fill`, `#bottom,fill`, `#road+fill`.
+
+To pin the old fixed width, put `#overlay { --max-width: 440px }` in
+`user://obs/custom.css`.
+
 #### Rendering part of the page
 
 The overlay is one column, but a scene usually wants the camera partway *down*
@@ -767,10 +788,11 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 661 → 748 |
-| `overlay.html#top` | hero card + the headline | 293 → 380 |
-| `overlay.html#bottom` | checklist + ticker | 384 (fixed) |
+| `overlay.html` | everything except the road | 587 → 658 |
+| `overlay.html#top` | the run card | 237 → 308 |
+| `overlay.html#bottom` | checklist + ticker | 366 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 118 (fixed) |
+| …`#fill` on any of them | as above, stretched to the source | fills |
 
 Point **several** browser sources at the same file with different fragments and
 put whatever you like between them. They read the same `state.js`, so they stay in
@@ -797,25 +819,25 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 345` |
-| Camera | `1476, 357` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 617` | `440 × 390` |
+| **Overlay `#top`** | `1476, 0` | `440 × 290` |
+| Camera | `1476, 302` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 562` | `440 × 380` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**Everything fits now, with room to spare.** 345 + 248 + 390 is 983 of the 1080,
+**Everything fits now, with room to spare.** 290 + 248 + 380 is 918 of the 1080,
 where the old layout needed 26px more than existed and had to under-size `#top` to
-get there. `#top`'s 360 clears every run up to the heavy column above (314) and
+get there. `#top`'s 360 clears every run up to the heavy column above (258) and
 `#bottom` is at its fixed 384 with 6px of slack. Only a run carrying more than
 thirteen shields at once — the one thing that still grows the page — would clip,
 and it clips the bottom of a shield row and nothing else.
 
-**There is now room for the road too**, if you want it: the 97px left over takes
+**There is now room for the road too**, if you want it: the 162px left over takes
 `overlay.html#road` at `440 × 118` if you drop the camera to `400 × 225`. It is
 the between-games source, so a scene where it sits under the checklist and only
 gets looked at while the streamer is picking their next game is exactly what it
 is for.
 
-**Chat still cannot go in the column.** 97px of chat is not chat. It goes in the
+**Chat still cannot go in the column.** 162px of chat is still not chat. It goes in the
 bar under the game, or on a second monitor. If chat *must* sit directly under the
 camera, that is a second sidebar and the game pays for it — see A.
 
@@ -858,19 +880,29 @@ has no such restriction. So the state is written *as* an assignment and
 `overlay.js` re-loads it four times a second with a cache-buster on the end; the
 covers ride the same way, as `<img src="file://…">`. No server, no port.
 
-It shows health with **the shields as sprites on the same line**, the character, **what a
-lost run would cost you** as a sentence, **the headline** — the game in play, how
-many hops to the Amulet, and the Amulet itself — and **the checklist as it ticks**,
+**It is two cards.** The first is the run: the game in play, how many hops to the
+Amulet and the Amulet itself, then health with **the shields as sprites on the
+same line**, then **what a lost run would cost you** as a sentence. The second is
+**the checklist as it ticks**,
 which is the page's centre of gravity: every row wearing its own art, scrolling
 itself when there is more of it than there is room, flashing a row green as it is
-crossed off. **The road** walked so far, ending on the Amulet, is the same strip
+crossed off — with no header above it, because a list of ticked and unticked rows
+is self-evidently a checklist. **The road** walked so far, ending on the Amulet, is the same strip
 `RunOverScreen` draws at the end of a run — it is drawn live but lives at
 `overlay.html#road`, its own source, rather than on the default column.
 
 **Every row of the checklist carries its own picture**, and that is the layout's
 one big idea. A goal *is* an enemy (§7.2), so a body's row wears its face and, on
 the corner of it, the damage that body lands if the run is lost; a status's row
-wears its pip art and its stack total; a curse's and an event's wear theirs. That
+wears its pip art and its stack total; a curse's and an event's wear theirs. **The
+character's own goal leads the list** — `Level up — <condition>`, wearing the
+portrait, with `Isaac · Level 3` under it. `ReportChecklist` has always drawn that
+row and this page never did, so the one goal belonging to the *character* was the
+one goal a viewer could not see; the portrait and the name live there now rather
+than on a hero card of their own. It goes **first** here where the checklist files
+it after the statuses, and that is deliberate: the report panel does not scroll, so
+where a row sits costs nothing, while on a fifteen-body run this list does and a
+row near the end is a row nobody watching ever sees. That
 one change paid for three others — the hero card's status strip went (every
 player-side status is claimable, so every one already had a row here, and the
 strip was saying it twice), the cost line stopped drawing a *parallel* strip of

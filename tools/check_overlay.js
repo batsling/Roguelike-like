@@ -129,6 +129,14 @@ function fixture() {
     };
   });
 
+  /* THE CHARACTER'S OWN GOAL, which `ReportChecklist` has always drawn and this
+   * page did not until the hero card was folded away. Its art is the portrait. */
+  goals.unshift({
+    kind: 'levelup', text: 'Level up — beat three games without losing a run',
+    who: 'Isaac \u00b7 Level 3', icon: enemies[0] || '', addon: false,
+    boss: false, front: false, done: false, games: 0, damage: 0, stacks: 0,
+  });
+
   const swings = enemies.map((icon, i) => ({
     damage: 3 + i, who: 'Body ' + i, blocked: i < 2, icon, instance: i + 1,
   }));
@@ -221,18 +229,21 @@ async function main() {
   console.log('the page draws a heavy run');
   check('no uncaught page errors', errors.length === 0, errors.join(' / '));
   const drew = await page.evaluate(() => ({
-    hero: !!document.getElementById('hero-name').textContent,
+    cards: document.querySelectorAll('.card:not(.road)').length,
     goals: document.querySelectorAll('.goal').length,
     art: document.querySelectorAll('.goal-art img').length,
     badges: document.querySelectorAll('.goal-badge').length,
     stops: document.querySelectorAll('.stop').length,
     shields: document.querySelectorAll('.shield-pip').length,
     dest: document.getElementById('dest-game').textContent,
-    count: document.getElementById('goal-count').textContent,
     barW: Math.round(document.querySelector('.bar').getBoundingClientRect().width),
   }));
-  check('every section has content', drew.hero && drew.goals > 0 && drew.art > 0
+  check('every section has content', drew.goals > 0 && drew.art > 0
     && drew.stops > 0 && drew.shields > 0, JSON.stringify(drew));
+  /* TWO CARDS ON THE DEFAULT PAGE, not three: the run and the checklist. The hero
+   * card lost its portrait and name to the level-up row and had only a health bar
+   * left in it, which is not a card. */
+  check('the page is two cards', drew.cards === 2, drew.cards + ' cards');
 
   /* THE HEADLINE. The premise of the whole run — this game, that far, that game —
    * has to be on the page without scrolling anything. */
@@ -241,7 +252,10 @@ async function main() {
   check('the distance is on the line that names where it leads',
     await page.evaluate(() => document.getElementById('hops').textContent)
       === '3 games to the Amulet');
-  check('the checklist says how many are done', drew.count === '2 / 9', drew.count);
+  /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
+   * self-evidently a checklist. */
+  check('the checklist has no label above it',
+    await page.evaluate(() => !document.querySelector('.goals .label')));
 
   /* EVERY ROW WEARS ITS OWN ART, except the two that hang off the row above. An
    * addon repeating its parent's face read as another enemy. */
@@ -276,6 +290,46 @@ async function main() {
   check('the card lets the stream through', glass.alpha < 0.6, 'alpha ' + glass.alpha);
   check('…and darkens what it lets through, which is what keeps it readable',
     /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+
+  /* THE CHARACTER'S GOAL IS ON THE LIST. The portrait and the name left the hero
+   * card for this row, and if it did not draw, both would simply be gone. */
+  const lvl = await page.evaluate(() => {
+    const n = document.querySelector('.goal.levelup');
+    return n ? { art: !!n.querySelector('.goal-art img'),
+                 who: n.querySelector('.who') ? n.querySelector('.who').textContent : '' }
+             : null;
+  });
+  check('the level-up goal is a checklist row, wearing the character',
+    !!lvl && lvl.art && /Isaac/.test(lvl.who), JSON.stringify(lvl));
+
+  /* STRETCHING: `#fill` makes the page take the whole source and gives the slack
+   * to the checklist, which is the only part of it that can use the room. */
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#fill');
+  await sleep(900);
+  const filled = await page.evaluate(() => ({
+    page: Math.round(document.getElementById('overlay').getBoundingClientRect().height),
+    scroller: Math.round(document.getElementById('goal-scroll').getBoundingClientRect().height),
+  }));
+  check('#fill takes the whole source', filled.page === HEIGHT,
+    filled.page + ' of ' + HEIGHT);
+  check('…and the checklist is what grows into it', filled.scroller > 320,
+    filled.scroller + 'px of scroller');
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(700);
+
+  /* STRETCHING SIDEWAYS: the page fills whatever width the source is, rather than
+   * rendering a 440 column with dead space beside it. */
+  await page.setViewportSize({ width: 640, height: HEIGHT });
+  await sleep(500);
+  const wide = await page.evaluate(() => ({
+    page: Math.round(document.getElementById('overlay').getBoundingClientRect().width),
+    title: Math.round(document.getElementById('now-game').getBoundingClientRect().width),
+  }));
+  check('a wider source is filled, not letterboxed', wide.page === 640, wide.page + 'px');
+  check('…and the text columns are what take the slack', wide.title > 400,
+    wide.title + 'px of title');
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  await sleep(500);
 
   /* THE ROAD IS OFF THE DEFAULT PAGE — it is a scroller that cannot be read at a
    * glance, and lives at #road now. It must still be IN the document (the strip
@@ -469,12 +523,12 @@ async function main() {
    *    are what a streamer sizes a scene against. A page that grows past these has
    *    either gained a card or lost the ticker's anchoring, and either way the
    *    README is now wrong — which is the thing that is hard to notice by eye. */
-  /* The whole page came down from 777 to 682 on the same heavy run — the road
+  /* The whole page came down from 777 to 608 on the same heavy run — the road
    * left the default column and the hero card lost its status strip, and the
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 682, '#top': 314, '#bottom': 384, '#road': 118 };
+  const DOCUMENTED = { '': 608, '#top': 258, '#bottom': 366, '#road': 118 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
   await sleep(1000);

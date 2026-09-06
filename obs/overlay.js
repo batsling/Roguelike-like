@@ -236,13 +236,13 @@ function drawBarThreat(vitals, threat) {
   node.classList.toggle('lethal', !!(threat && threat.lethal));
 }
 
+/* JUST THE HEALTH NOW. The portrait, the name and the level pill went with the
+ * hero card when it merged into the run card: which character is being played is
+ * a detail of the run rather than its premise, and all three now ride the
+ * checklist's LEVEL-UP row — the character's own goal, wearing the character's
+ * own face, with "Isaac · Level 3" as its subtitle. `s.hero` stays in the payload
+ * for anyone restyling this page. */
 function drawHero(hero, vitals) {
-  setImg(el('hero-icon'), hero.icon);
-  el('hero-name').textContent = hero.name || '';
-  const lvl = el('hero-level');
-  lvl.textContent = hero.level > 1 ? ('Level ' + hero.level) : '';
-  lvl.hidden = !(hero.level > 1);
-
   const hp = num(vitals.hp), max = Math.max(1, num(vitals.max));
   const bar = el('hp-fill').parentElement;
   el('hp-fill').style.width = Math.max(0, Math.min(100, (hp / max) * 100)) + '%';
@@ -332,13 +332,6 @@ function drawGoals(goals, art) {
     g.damage, g.blocked, g.stacks, g.icon].join('|')).join('\x01');
   if (sig === goalSignature) return;
   goalSignature = sig;
-
-  /* HOW MANY OF THEM ARE DONE, in the card's own label. The list scrolls, so
-   * without this the one question a viewer most wants answered — how close is
-   * this game to finished — could only be got by watching a whole scroll cycle
-   * and counting. */
-  const done = goals.filter(g => g.done).length;
-  el('goal-count').textContent = goals.length ? done + ' / ' + goals.length : '';
 
   const nowDone = new Set(goals.filter(g => g.done).map(g => g.kind + '|' + g.text));
   list.innerHTML = '';
@@ -658,10 +651,17 @@ function setImg(img, url) {
  * with the inside of a browser source — so instead the page can render only part
  * of itself, and you point SEVERAL browser sources at the same file:
  *
- *   overlay.html#top     the hero card and the headline
+ *   overlay.html#top     the run card — the game, the road ahead, the stake
  *   overlay.html#bottom  the checklist and the ticker
  *   overlay.html#road    the road, and nothing else
  *   overlay.html         everything EXCEPT the road (the default)
+ *
+ * AND `#fill`, WHICH IS A MODIFIER RATHER THAN A CHOICE, so it combines:
+ * `#fill`, `#bottom,fill`, `#road,fill`. The default page is content-height and
+ * leaves transparent space under itself in a taller source; `fill` makes it take
+ * the whole source and gives the slack to the checklist, which is the only part
+ * of the page that can use it. Hence the token parsing below rather than a
+ * straight equality test — the fragment is a SET of words now.
  *
  * THE ROAD IS OPT-IN, and that is the one asymmetry here. It is a horizontal
  * scroller on a 440px source, and measured on a 22-stop run the stop you are
@@ -677,10 +677,15 @@ function setImg(img, url) {
  * Every fragment reads the same state.js and they stay in step for free, because
  * they are the same page reading the same file. */
 function applySplit() {
-  const half = (location.hash || '').replace('#', '').toLowerCase();
-  overlay.classList.toggle('only-top', half === 'top');
-  overlay.classList.toggle('only-bottom', half === 'bottom');
-  overlay.classList.toggle('only-road', half === 'road');
+  /* Split on anything that is not a word, so `#bottom,fill`, `#bottom+fill` and
+   * `#bottom fill` all mean the same thing — a streamer typing this into an OBS
+   * URL box should not have to guess the separator. */
+  const parts = new Set((location.hash || '').replace('#', '').toLowerCase()
+    .split(/[^a-z]+/).filter(Boolean));
+  overlay.classList.toggle('only-top', parts.has('top'));
+  overlay.classList.toggle('only-bottom', parts.has('bottom'));
+  overlay.classList.toggle('only-road', parts.has('road'));
+  overlay.classList.toggle('fill', parts.has('fill'));
 }
 applySplit();
 window.addEventListener('hashchange', applySplit);

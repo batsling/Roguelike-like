@@ -312,10 +312,14 @@ func _shared_art() -> Dictionary:
 # The 1.0 lookup stays as a fallback rather than being replaced: a save from
 # before the migration carries a `silent`, and a hero card that says "Silent" is
 # better than one that says nothing.
-func _hero() -> Dictionary:
+func _character() -> CharacterData:
 	var cd: CharacterData = Data.get_character2(GameState.character_id)
 	if cd == null:
 		cd = Data.get_character(GameState.character_id)
+	return cd
+
+func _hero() -> Dictionary:
+	var cd: CharacterData = _character()
 	if cd == null:
 		return {"name": "", "icon": "", "level": GameState.player_level}
 	return {
@@ -422,6 +426,48 @@ func _goals(threat: Dictionary) -> Array:
 		var sd0: StatusData = row.get("status")
 		if sd0 != null:
 			totals[sd0.id] = int(row.get("stacks", 0))
+	# THE LEVEL-UP GOAL, which this list has been missing since it was written.
+	#
+	# The file's header promises "every row the report panel would draw", and
+	# `ReportChecklist` draws this one — led by the character's face, because a
+	# level-up is the player's own standing challenge in exactly the way a body's
+	# goal is the body's. It was the only row on that panel with no counterpart
+	# here, so the one goal belonging to the CHARACTER was the one goal a viewer
+	# could not see.
+	#
+	# IT GOES FIRST HERE, and that is a deliberate departure from the checklist's
+	# own order, which files it after the statuses. The report panel does not
+	# scroll: every row on it is on screen, so where a row sits costs nothing. This
+	# list DOES scroll, and on a real run — fifteen bodies deep by the sixth game —
+	# a row filed near the end is a row nobody watching ever sees. That is the
+	# difference between "in the checklist" and "on the overlay", and this row in
+	# particular cannot afford it: the character's portrait and name live on it now
+	# and nowhere else, so a level-up row below the fold means the character has
+	# quietly vanished from the page.
+	#
+	# It also reads in the right order at the top — here is who you are and what
+	# you are chasing, then here is what the board wants — and it is the one row
+	# that is the same all run, so it costs the least by never moving.
+	#
+	# Keyed on `ReportChecklist.LEVELUP_KEY` rather than the string "levelup"
+	# spelled again: a row the overlay calls done has to be one the checklist has
+	# actually locked.
+	var ch: CharacterData = _character()
+	if ch != null and ch.level_up_condition != "":
+		out.append({
+			"kind": "levelup",
+			"text": "Level up — %s" % ch.level_up_condition,
+			# The character's NAME lives here now. The hero card used to carry it
+			# above a portrait, and both went when that card was folded into the
+			# headline — who you are playing is not what a viewer needs first, but
+			# it is not nothing either, and on its own row beside its own goal it
+			# is the right size.
+			"who": "%s · Level %d" % [ch.display_name, GameState.player_level],
+			"icon": _texture_url(ch.icon if ch.icon != null else ch.portrait),
+			"boss": false,
+			"front": false,
+			"done": GameLoop2.row_answered(ReportChecklist.LEVELUP_KEY),
+		})
 	for entry in GameLoop2.stack:
 		var enemy: GoalEnemyData = entry.get("enemy")
 		if enemy == null:

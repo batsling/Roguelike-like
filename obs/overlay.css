@@ -114,8 +114,22 @@ html, body {
   user-select: none;
 }
 
+/* FLUID, NOT PINNED TO 440. This was `width: var(--width)`, so a browser source
+ * made 600 wide rendered a 440 column with 160px of dead space beside it — the
+ * page could not be stretched, only surrounded. It fills whatever canvas OBS
+ * gives it now: the covers, the art and the type stay their own size and the TEXT
+ * COLUMNS take the slack, which is what "wider" should mean for a page that is
+ * mostly sentences.
+ *
+ * `--max-width` is the way back for anyone who wants the old behaviour — set it
+ * in custom.css and the column stops growing there.
+ *
+ * NOTE THAT WIDER IS NOT BIGGER. Stretching the source gives the text more room
+ * to run; it does not change the type size, so it does not help a viewer who
+ * finds the overlay small. That is `zoom`, and it is documented in the README. */
 #overlay {
-  width: var(--width);
+  width: 100%;
+  max-width: var(--max-width, none);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -167,32 +181,21 @@ html, body {
 }
 
 
-/* ----------------------------------------------------------------- hero -- */
-
-/* The card is a COLUMN: the portrait and the vitals on top, then what a lost run
- * costs, then the shields. The sprite strip is FULL WIDTH and wrapping rather
- * than tucked into the 56px portrait column — that is the obvious reading of
- * "under the character icon" and completely wrong in practice, since a sprite is
- * ~25px wide and they would stack one per row. */
-.hero { display: flex; flex-direction: column; gap: 8px; }
-.hero-top { display: flex; gap: 12px; align-items: center; }
-
-/* HEALTH AND ARMOUR ON ONE LINE. There were two labelled rows under the portrait
- * — armour and statuses — and the labels existed to stop the two strips being
- * read as one. The statuses moved onto the checklist, so there is nothing left to
- * confuse the shields with, which left a label doing no work above a row spending
- * a whole line of the page on at most a handful of 22px sprites. Beside the bar
- * they read as what they are: the armour standing in front of that health.
+/* HEALTH AND ARMOUR ON ONE LINE, at the foot of the run card. There were two
+ * labelled rows under a portrait — armour and statuses — and the labels existed
+ * to stop the two strips being read as one. The statuses moved onto the
+ * checklist, so there is nothing left to confuse the shields with; and then the
+ * portrait and the name followed them, onto the level-up row that is the
+ * character's own goal. What is left is the stake: the health, and the armour
+ * standing in front of it.
  *
  * The BAR takes the slack and the shields are sized by content, with a floor
  * under the bar so a heavily armoured run cannot squeeze the health it is about
- * — past that the sprites wrap onto a second line, which is the same growth the
- * labelled row had. */
+ * — past that the sprites wrap onto a second line. */
 .vitals {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 5px;
 }
 .vitals .bar { flex: 1 1 auto; min-width: 110px; margin-top: 0; }
 .vitals .pips { flex: 0 1 auto; justify-content: flex-end; }
@@ -290,16 +293,6 @@ html, body {
 /* It would kill you. The one state on this overlay that is allowed to shout. */
 .bar-threat.lethal { animation: pulse 0.7s ease-in-out infinite; }
 
-.hero-icon {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-}
-.hero-icon:not([src]) { visibility: hidden; }
-
 /* --------------------------------------------------------- shield pips -- */
 
 /* The row of armour under the hero. It kept the `.pips` wrapper the status strip
@@ -350,16 +343,6 @@ html, body {
   display: block;
 }
 
-.hero-text { flex: 1 1 auto; min-width: 0; }
-.hero-name {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* The health bar. Its WIDTH is the number — the text on top is there for the
  * viewer who wants the exact figure, not as the primary read. */
@@ -403,12 +386,17 @@ html, body {
  * game in play is what the streamer is doing right now and gets the bigger cover
  * and the gold; the destination is context and reads a size down. Equal weight
  * would make the pair a comparison rather than a journey. */
-/* TWO ROWS. Side by side is the obvious reading of the pair and it does not fit:
- * 440px less the covers, the gaps and the hop count leaves about 224px to split
- * between two real game titles, and both truncated — the page's biggest text cut
- * short to make room for its own footnote. Stacked, the current game gets the
- * full width and the destination gets a line that spans it. */
-.now { display: flex; flex-direction: column; gap: 8px; }
+/* THE RUN CARD — the game in play, where it leads, and what is at stake. It was
+ * two cards until the hero card lost its portrait and its name to the checklist's
+ * level-up row and had only a health bar left in it, which is not a card.
+ *
+ * The pair at the top is TWO ROWS, not two columns. Side by side is the obvious
+ * reading and it does not fit: 440px less the covers, the gaps and the hop count
+ * leaves about 224px to split between two real game titles, and both truncated —
+ * the page's biggest text cut short to make room for its own footnote. Stacked,
+ * the current game gets the full width and the destination gets a line that
+ * spans it. */
+.run { display: flex; flex-direction: column; gap: 8px; }
 
 .now-main { display: flex; gap: 12px; align-items: center; min-width: 0; }
 
@@ -531,24 +519,6 @@ html, body {
 
 .goal-list { list-style: none; margin: 0; padding: 0; }
 
-/* The label and the tally that sits beside it. */
-.goals-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.goals-head .label { margin-bottom: 0; }
-/* HOW MANY ARE DONE. The list scrolls, so this is the only place the answer to
- * "how close is this game to finished" stays put. */
-.goal-count {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--dim);
-  white-space: nowrap;
-}
-
 .goal {
   display: flex;
   align-items: flex-start;
@@ -667,6 +637,16 @@ html, body {
 /* The body in the player's face. This is the row that costs health next. */
 .goal.front .tick { color: var(--danger); }
 .goal.boss  .text { color: var(--gold); font-weight: 600; }
+
+/* THE LEVEL-UP ROW — the character's own standing challenge, and the only row
+ * here that belongs to the player rather than to something on the board. Gold,
+ * because `ReportChecklist` draws it gold for the same reason (`UITheme.GOLD`),
+ * and its art is the character's face, which is where the portrait went when the
+ * hero card was folded away. */
+.goal.levelup .text { color: var(--gold); font-weight: 600; }
+.goal.levelup .tick { color: var(--gold); }
+/* Rounder than a body's square face: this one is a person, not a footprint. */
+.goal.levelup .goal-art > img { border-radius: 4px; object-fit: cover; }
 
 .goal.bonus   .tick, .goal.bonus   .text { color: var(--success); }
 .goal.instead .tick, .goal.instead .text { color: var(--success); }
@@ -885,14 +865,44 @@ html, body {
 #overlay.only-top > .ticker,
 #overlay.only-top > .verdict { display: none; }
 
-#overlay.only-bottom > .hero,
-#overlay.only-bottom > .now { display: none; }
+#overlay.only-bottom > .run { display: none; }
 
 /* The road's own source is the road and the verdict, nothing else. */
-#overlay.only-road > .hero,
-#overlay.only-road > .now,
+#overlay.only-road > .run,
 #overlay.only-road > .goals,
 #overlay.only-road > .ticker { display: none; }
+
+/* ------------------------------------------------------- filling a source -- */
+
+/* STRETCHING THE PAGE DOWN, opt-in at `overlay.html#fill` (and combinable —
+ * `#bottom,fill`).
+ *
+ * The default page is CONTENT-HEIGHT: it is exactly as tall as the run makes it
+ * and a source taller than that has transparent space under it. That is the right
+ * default — a three-goal run stretched over 900px is a mostly-empty card, and
+ * every height in the README's tables is a promise about this mode.
+ *
+ * `fill` is the other answer: the page takes the whole source and THE CHECKLIST
+ * TAKES THE SLACK, so a taller source shows more rows standing still instead of
+ * more rows waiting for the walker to bring them round. That is the one thing on
+ * this page that genuinely wants the room — everything above it is a fixed number
+ * of lines. `min-height: 0` on the card is what lets a flex child actually shrink
+ * its scroller rather than pushing past the bottom, which is the usual way this
+ * goes wrong. */
+#overlay.fill {
+  height: 100vh;
+}
+#overlay.fill > .goals {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#overlay.fill .goal-scroll {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
 
 /* ------------------------------------------------------- the two blanks -- */
 

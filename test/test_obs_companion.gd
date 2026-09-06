@@ -236,6 +236,49 @@ func test_the_hero_card_names_every_character_the_run_can_deal() -> void:
 	assert_eq(missing, [],
 		"these characters draw a hero card with no name on it: %s" % str(missing))
 
+func test_the_characters_own_goal_is_on_the_checklist() -> void:
+	# THE ROW THIS LIST WAS MISSING. The file's header promises "every row the
+	# report panel would draw", and `ReportChecklist` draws a level-up row — under
+	# "What you need to do", led by the character's face, because a level-up is the
+	# player's standing challenge in the way a body's goal is the body's. It was
+	# the only row on that panel with no counterpart here, so the one goal
+	# belonging to the CHARACTER was the one goal a viewer could not see.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.level_up_condition == "":
+		pending("this character has no level-up condition to draw")
+		return
+	var rows: Array = []
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "levelup":
+			rows.append(row)
+	assert_eq(rows.size(), 1, "exactly one level-up row, like the checklist's")
+	var lu: Dictionary = rows[0]
+	assert_true(lu["text"].contains(ch.level_up_condition),
+		"the row quotes the character's own condition")
+	assert_true(String(lu.get("who", "")).contains(ch.display_name),
+		"and names the character, which is where the hero card's name went")
+	assert_ne(String(lu.get("icon", "")), "",
+		"…and wears their portrait, which is where the hero card's picture went")
+
+func test_the_level_up_row_is_ticked_off_the_checklists_own_key() -> void:
+	# A row the overlay calls done has to be one the checklist has actually locked,
+	# so it reads `ReportChecklist.LEVELUP_KEY` rather than spelling "levelup"
+	# again in a second place that can drift.
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.level_up_condition == "":
+		pending("this character has no level-up condition to draw")
+		return
+	assert_false(_levelup_row().get("done", true), "not ticked to begin with")
+	GameLoop2.mark_row_answered(ReportChecklist.LEVELUP_KEY)
+	assert_true(_levelup_row().get("done", false),
+		"the checklist's own key is what ticks it")
+
+func _levelup_row() -> Dictionary:
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "levelup":
+			return row
+	return {}
+
 func test_the_headline_names_the_game_the_whole_run_is_for() -> void:
 	# THE PREMISE, and the one thing a viewer who has just tuned in cannot get from
 	# a health bar and a checklist. It used to be legible only off the right-hand

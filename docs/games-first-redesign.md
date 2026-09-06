@@ -2217,6 +2217,13 @@ stream — so the overlay dims only when the beat actually stops.
   had a checklist row saying what it wants — and the strip was saying the same
   thing a second time with a picture but no sentence, while the row had the
   sentence and no picture. The row now has both.
+- **The run, in ONE card.** It was two — a hero card and a headline — and the
+  hero card led with a portrait and a name, which is the thing on this page a
+  viewer needs least: which character is being played is a detail of the run, not
+  the premise of it. What was left of it after the statuses moved to the checklist
+  was a health bar, which is not a card. So the premise leads and the stake sits
+  under it: the game in play, where it leads, then health, armour and what one
+  lost run costs.
 - **The headline: the game in play, and the game the whole run is for.** Its
   cover and title, then a line under it — *"→ 3 games to the Amulet"* and the
   Amulet's own cover and name. This pair **is the premise**, and it is the one
@@ -2238,6 +2245,22 @@ stream — so the overlay dims only when the beat actually stops.
   to watch a whole cycle and count. It **scrolls itself** when there is more of it
   than there is room, and a row flashes green at the moment it ticks. Goal text is
   always `GameLoop2.goal_text_for`, never `enemy.goal` (§13).
+
+  **THE CHARACTER'S OWN GOAL LEADS IT** — `Level up — <condition>`, wearing the
+  portrait, with `Isaac · Level 3` beneath. `ReportChecklist` has always drawn
+  that row and this page never did, so the one goal belonging to the CHARACTER
+  was the one goal a viewer could not see; the portrait and the name live there
+  now instead of on a hero card of their own. It goes FIRST here where the
+  checklist files it after the statuses, and the departure is deliberate: the
+  report panel does not scroll, so a row's position costs nothing there, while
+  this list does — and on a fifteen-body run a row near the end is a row nobody
+  watching ever sees. Keyed on `ReportChecklist.LEVELUP_KEY`, never on the string
+  spelled again, so a row the overlay calls done is one the checklist has locked.
+
+  **NO HEADER ABOVE IT.** A list of ticked and unticked rows is self-evidently a
+  checklist, so "THE GOALS" named the obvious and the "3 / 9" beside it counted
+  rows the viewer can already see — both spending the card's top line on saying
+  nothing the list does not.
 
   **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
   *is* an enemy (§7.2), and a column of sentences never said so; with the face on
@@ -2277,6 +2300,17 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
+**IT STRETCHES.** The page fills whatever canvas the Browser Source gives it
+rather than rendering a fixed 440 column with dead space beside it — the covers,
+the art and the type keep their own size and the TEXT COLUMNS take the slack,
+which is what "wider" should mean for a page that is mostly sentences. (Wider is
+not bigger: the type size does not change, so a viewer who finds the overlay small
+wants `zoom`, not width.) Vertically it stays CONTENT-HEIGHT by default, which is
+what makes the layout tables promises rather than samples; `overlay.html#fill`
+takes the whole source instead and gives the slack to the checklist, the one part
+of the page that can use it. `#fill` is a modifier and combines with the fragments
+above, so the hash is parsed as a set of words rather than matched whole.
+
 **THE CARDS ARE GLASS.** They sit at 0.45 alpha so the game shows through them —
 this page spends its life on top of somebody's gameplay, and an all-but-opaque
 panel is a hole punched in their capture. What makes that readable is
