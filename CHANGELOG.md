@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seventeen dead pointers in the live docs, and a check so they stay dead-free.**
+
+  Found by sweeping the actual game code for silent-failure classes and coming up
+  empty: the dead-code scan, the lambda capture-by-value trap, unguarded signal
+  connects, `capture_view_state`/`restore_view_state` symmetry (13 keys written,
+  13 read, no gaps either way) and unguarded `[0]` reads all came back clean, as
+  did `TODO`/`FIXME` (zero in 64k lines) and every integer division. **The rot was
+  in the prose**, which is the layer this project actually navigates by.
+
+  All seventeen traced to the same two renames the project has already done — the
+  `2.0` content migration and the combat → games-first cut — with the docs left
+  behind. `tools/generate_card_tres.py` is `generate_card2_tres.py`,
+  `generate_event_tres.py` is `generate_event2_tres.py`,
+  `images/scrolls/Unidentified.png` moved to `images2.0/`, `LootInfoCard.gd` was
+  deleted outright (a click used to open a reading card that said the same things
+  as the Use screen). Twelve fixed.
+
+  **Two whole documents were describing systems that no longer exist while sitting
+  in the live `docs/` folder.** `addon-sheet-authoring-handoff.md` and
+  `addon-translation-dsl.md` name `scripts/action/ActionCombat.gd`,
+  `scripts/deckbuilder/DeckbuilderCombat.gd`, `scripts/strategy/combat/BattleView.gd`
+  and `scripts/runtime/AddonSystem.gd` — four paths long gone — and nothing live
+  linked to either, so nothing ever contradicted them. `CLAUDE.md` warns that
+  `docs/archive/` is historical; these were outside it, so the warning did not
+  cover them. Both are in `docs/archive/` now with the archive README saying what
+  they were and why they moved. `sheet-authoring-handoff.md` stays where it is and
+  gains a status banner: the items and events halves of the migration it plans
+  shipped, the addons half never did.
+
+  **Five paths are missing on purpose and stay that way** — a deleted item that
+  `cards-design.md` records as deleted, a mention explicitly labelled "combat-era",
+  a temp file whose doc describes creating and deleting it, and two "not built
+  yet" forward references. `tools/check_doc_paths.py` knows all five by name and
+  the reason for each, and fails on any sixth. It is the same lesson as the
+  performance backlog's stale seam table and the OBS overlay's untested page: the
+  documentation was accurate when written and nothing re-read it.
+
 - **The drop queue moves out of `Overworld2.gd`, and the seam table that said it
   was a 230-line job gets re-measured.**
 

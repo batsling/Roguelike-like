@@ -49,7 +49,7 @@ def rows(sheet):
 
 
 # ---------------------------------------------------------------------------
-# Addon DSL vocabulary lint (see docs/addon-translation-dsl.md)
+# Addon DSL vocabulary lint (see docs/archive/addon-translation-dsl.md)
 #
 # The addonsnew sheet is hand-authored, so a typo (`colldown_mult`, a bad Expr)
 # would otherwise import as a silent no-op and only surface in-game. This lints
@@ -199,7 +199,7 @@ def main() -> int:
 
     addon_lines = []
     for r in addon_rows:
-        # Machine-readable DSL columns (see docs/addon-sheet-authoring-handoff.md):
+        # Machine-readable DSL columns (see docs/archive/addon-sheet-authoring-handoff.md):
         #   Key  — runtime slug the engine matches (falls back to slugify(Name))
         #   Hook — which dispatch slot the behavior runs in (effect_dmg_bonus /
         #          effect_retarget / effect_flag drive AddonSystem today; the
@@ -208,7 +208,7 @@ def main() -> int:
         #   Expr — closed-vocabulary parameter for the hook (gold/10, fish,
         #          enemy->all_enemies, indiscriminate, …); empty for the rest.
         #   DB/Action/Strategy Verb — forward per-mode translation verbs (see
-        #          docs/addon-translation-dsl.md); carried into the catalog now,
+        #          docs/archive/addon-translation-dsl.md); carried into the catalog now,
         #          consumed once the verb registry lands. Blank inherits Expr.
         # "Uses" is the renamed "Can Be Attatched To" column (old name kept as a
         # fallback); the engine-side JSON key stays `attaches_to`.
