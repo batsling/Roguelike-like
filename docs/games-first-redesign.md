@@ -854,7 +854,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 860, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 861, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is
@@ -1889,6 +1889,20 @@ coin, and the coin pays a point of Max Health. See `gold_gained:` and
 `card_obtained:` below for where each fires and, just as importantly, where it
 does not.
 
+**The Risk of Rain 2 trio** are three relics about the Health pool and the
+ground, and only one of them needed a hook that already existed. **Infusion**
+(Uncommon, +1 *empty* Max Health per body defeated) is two existing halves put
+together — `enemy_killed` has been a run-scope trigger since Charm of the
+Vampire, and `gain_empty_max_hp` since Hollow Heart — so it is a pool that grows
+all run and never fills itself, which is exactly what makes it a relic that wants
+a healer beside it. **Rejuvenation Rack** (Rare, "double the effect of all
+Healing") is the healer, on the new `heal_multiplier:` flag below, and the two are
+deliberately the halves of one pool: the Rack doubles the heal that fills the room
+Infusion made. **Gasoline** (Common, Fire on the square a body fell in) is the
+odd one out — it is about the *ground* rather than the pool, and its
+`death_tile` flag is documented where the rest of the ground content lives
+(§17.3).
+
 Three more run-scope hooks and two more flags carry the Isaac relics, and they
 are listed here because each is a *moment* or a *rule* the 2.0 loop did not
 previously name:
@@ -1904,6 +1918,8 @@ previously name:
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
+| `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
+| `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
@@ -3419,7 +3435,7 @@ sets the mine off and the blast blows the fire out. The pieces come off the boar
 finite — every detonation spends the unit that caused it — and `MAX_CHAIN` is the
 belt to that brace.
 
-### 17.3 The four pieces of content that reach them
+### 17.3 The five pieces of content that reach them
 
 - **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_tile fire front;
   apply_status burn 3 front`. Its prose gained the middle clause and its cell
@@ -3441,6 +3457,18 @@ belt to that brace.
   survivor a stack of Burn a turn for three games. Widened by Brimstone for free,
   because what it reads is the blast rather than the target — and it reaches a
   Landmine's blast for the same reason.
+- **Gasoline** (Common, Risk of Rain 2) — `death_tile fire`. The twin of Hot
+  Bombs, and the pair is only interesting because of what separates them: one
+  reads the **blast**, this one reads the **defeat**. `death_tile` is its own
+  field rather than a second use of `bomb_tile` precisely so the two can
+  disagree — a bomb is an escape from a goal (§8.2) and never reaches
+  `GameLoop2._defeat` at all, so Gasoline **cannot be farmed by spending
+  charges**, and nothing in `_defeat` had to be written to say so. What it lays
+  is laid through `apply_tile` like any other ground, so it bites a neighbour
+  standing in the square it lit and annihilates with a mine already there for
+  free. A body that fell **off** the board (§7.3) was never standing anywhere and
+  leaves nothing. Read off the inventory by `GameState.death_tile`, first one
+  owned winning, exactly as `bomb_tile` is.
 - **Landmines** (Uncommon) — `game_beaten: apply_unit landmine
   target=random_empty`. One mine per game finished, on a cell with **nothing on it
   at all** — no body, no unit, no tile effect. That is "a random empty Tile" read

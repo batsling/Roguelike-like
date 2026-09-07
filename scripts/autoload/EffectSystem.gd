@@ -133,7 +133,9 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	GameState.set_max_hp(before + v, false)
 	var landed: int = GameState.max_hp - before
 	if landed > 0:
-		GameState.change_hp(landed)
+		# Tagged as the CONTAINER'S fill rather than a heal, which is what keeps
+		# Rejuvenation Rack off it — see GameState.HEALTH_SOURCE_MAX_HP_FILL.
+		GameState.change_hp(landed, GameState.HEALTH_SOURCE_MAX_HP_FILL)
 
 # The other half of the split: the container WITHOUT the Health in it. Authored
 # as `gain_empty_max_hp` so an item that wants the bare cap says so out loud,

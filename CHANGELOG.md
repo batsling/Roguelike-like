@@ -11,6 +11,65 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A game, two connections and three relics off the sheet — and two of the
+  relics needed rules the loop had never had.**
+
+  The same straight port as the entry below it: what was added to
+  `tools/Roguelikes.xlsx`, run back through the generators the sheet is upstream
+  of.
+
+  **The catalog.** **Curse of Pirates** (2026) joins it, with the two connections
+  drawn to it — Vampire Survivors and Hades, both off its Steam page. 861 games
+  and 1,246 connections, and `tools/check_map_sync.py` agrees `data/games/` is
+  level with the sheet: against `Roguelikes.drawio`, the map the game is actually
+  drawn on, it is 861 nodes to 861 games with no drift in either direction. The
+  Atlas sky is re-baked with it, as it is a pure function of the catalog.
+
+  **All three relics arrived with empty Effect cells**, which generates a .tres
+  with no triggers and no flags on it — a relic that is in the pool, is drawn, is
+  described, and does nothing. One of them turned out to need nothing new:
+
+  - **Infusion** (Uncommon, Risk of Rain 2): +1 *empty* Max Health every time you
+    defeat an enemy. Two halves that already existed put together — `enemy_killed`
+    has been a run-scope trigger since Charm of the Vampire and
+    `gain_empty_max_hp` since Hollow Heart — so it is a Health pool that grows all
+    run and never fills itself, which is what makes it a relic that wants a healer
+    beside it.
+
+  The other two are the healer and the arsonist, and each is a rule rather than a
+  moment, so each is a flag on `ItemData` rather than a `TriggerBus` signal:
+
+  - **Rejuvenation Rack** (Rare): double the effect of all Healing, on the new
+    `heal_multiplier` flag. Read at `GameState.change_hp` — the one choke point
+    every gain in the run funnels through, and already where `health_lost` is
+    fired from — so a pill, a potion, an event's payment and a relic's report
+    payout all double without any of them knowing the Rack exists. The line it
+    draws is that **a heal is Health arriving in a container that already
+    exists**: the fill that comes WITH a bigger container is not one, so "+2 Max
+    Health" still pays 2 and not 4. The four places that widen the pool and then
+    fill it now say so out loud with a `HEALTH_SOURCE_MAX_HP_FILL` tag — the one
+    `source` ever read on a gain rather than on a loss. Copies multiply rather
+    than sum, like Sacred Bark: "double the effect" applied twice is quadruple.
+  - **Gasoline** (Common): the square a defeated enemy fell in is left on **Fire**,
+    on the new `death_tile` flag. It is the twin of Hot Bombs' `bomb_tile` and
+    deliberately not the same field, because the whole item is in where the two
+    disagree: a bomb is an escape from a goal, never reaches `GameLoop2._defeat`,
+    and so **cannot farm this** — and nothing in `_defeat` had to be written to
+    say so. What it lays goes down through `apply_tile` like any other ground, so
+    it bites a neighbour standing in the square it lit and annihilates with a mine
+    already there for free; a body that fell off the board was never standing
+    anywhere and leaves nothing.
+
+  The Rack and Infusion are the two halves of one pool and `test_items2.gd` pins
+  them as a pair — the Rack doubles the heal that fills the room Infusion made —
+  along with each rule's refusals: damage, a full pool, and the container's own
+  fill. `test_tiles_units.gd` pins Gasoline beside Hot Bombs, the bombed body
+  included. Hollow Heart's description also picked up the sheet's capitalisation
+  fix, which is what regenerating rather than hand-editing gets you.
+
+  Sheet edited with XML surgery (`tools/_items2_gasoline_infusion_rack_setup.py`),
+  never openpyxl: all eight charts are byte-identical afterwards.
+
 - **Three games, three connections and two relics off the sheet — and the two
   relics needed hooks the run had never named.**
 

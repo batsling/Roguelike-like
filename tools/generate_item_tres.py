@@ -32,8 +32,9 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   reroll_low_rarity:, carries_leftover_energy:,
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N),
-                  bomb_cardinal, bomb_tile <tile>, grid_grow, grid_length, hide_spawns,
-                  spawn_status <status> N, loot_multiplier: N,
+                  bomb_cardinal, bomb_tile <tile>, death_tile <tile>,
+                  grid_grow, grid_length, hide_spawns,
+                  spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
                   pills_positive, echo_loot N,
                   reroll_enemies, destroy_on_damage.
@@ -911,6 +912,16 @@ def parse_item(row):
                 raise ValueError("item DSL: bomb_tile needs <tile> in %r" % clause)
             fields["bomb_tile"] = mm.group(1)
             last_trigger = None
+        elif kl0 == "death_tile":
+            # Gasoline: the square a defeated enemy fell in is left carrying a
+            # tile effect (§17). The twin of bomb_tile, and deliberately NOT the
+            # same flag — a bomb never reaches GameLoop2._defeat, so an item can
+            # lay ground on kills without laying it on the bombs that skip them.
+            mm = re.match(r"death_tile\s+([a-z_]+)", kl)
+            if not mm:
+                raise ValueError("item DSL: death_tile needs <tile> in %r" % clause)
+            fields["death_tile"] = mm.group(1)
+            last_trigger = None
         elif kl0 == "grid_grow":
             # Mine-r Construction: the battlefield gains a column and a row.
             fields["grid_grow"] = True
@@ -935,6 +946,11 @@ def parse_item(row):
         elif kl0 == "loot_multiplier":
             # Sacred Bark: every loot consumable resolves at this multiple.
             fields["loot_multiplier"] = _int(re.search(r"\d+", clause).group(0), 1)
+            last_trigger = None
+        elif kl0 == "heal_multiplier":
+            # Rejuvenation Rack: every heal lands at this multiple. Read at
+            # GameState.change_hp, the choke point every gain funnels through.
+            fields["heal_multiplier"] = _int(re.search(r"\d+", clause).group(0), 1)
             last_trigger = None
         elif kl0 == "gold_per_enemy":
             # Golden Idol: every defeated enemy pays this much extra Gold.
@@ -1193,11 +1209,13 @@ def item_tres(row):
         ("bomb_stun", lambda v: "true"),
         ("bomb_cardinal", lambda v: "true"),
         ("bomb_tile", lambda v: '&"%s"' % gd_str(v)),
+        ("death_tile", lambda v: '&"%s"' % gd_str(v)),
         ("grid_grow", lambda v: "true"),
         ("grid_length_grow", lambda v: "true"),
         ("hide_spawns", lambda v: "true"),
         ("spawn_statuses", lambda v: gd_value(v)),
         ("loot_multiplier", lambda v: str(v)),
+        ("heal_multiplier", lambda v: str(v)),
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),
         ("boss_chest_bonus", lambda v: str(v)),
