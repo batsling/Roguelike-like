@@ -113,25 +113,39 @@ var _objects_sort: String = "name"
 
 var _content: VBoxContainer
 var _grid: Container = null
-# The grid's scroll region, and the covers not yet loaded into it.
+# The grid's scroll region, and the game cells that are standing empty in it.
 #
-# THE GAMES TAB IS 845 CELLS. A game's cover is a path until something reads it
-# (GameData.cover_image), and building every cell with its picture read all 845
-# of them — about 206 MB of PNG to decode before the window could be drawn, which
-# is the second and a half the Collection took to open. Nothing is gained by it:
-# a dozen cells are on screen and the rest are a scroll away, most of them never
-# reached at all.
+# THE GAMES TAB IS 857 CELLS, AND A CELL IS EIGHT NODES. Building them all was
+# 6,896 Controls entering the tree, which measured 3.29 s to open the tab with no
+# rendering in the way at all. The cost is ENTERING THE TREE, not the flow
+# container sorting them: the same 857 cells added to a Control outside the tree
+# is 2.3 ms, added to a bare mounted one 1,091 ms, and added to the real flow
+# 1,097 ms — so filling the grid detached and re-attaching it, the usual trick,
+# buys nothing. The only fix is not to make them.
 #
-# So a cell opens with an empty frame of the right size, and the picture is read
-# when the cell comes near the viewport (_load_visible_covers). The layout is
-# identical either way — the frame is sized from GRID_COVER_W, not from the image
-# — so nothing moves when one lands.
+# It used to be the PICTURES that were streamed and the cells that were all
+# built. Now the cell is streamed too, and the picture comes with it. A cell goes
+# up as an empty panel of exactly the size it will be filled at, and its contents
+# — cover, owned tick, name, the two stat lines — are built when it comes near
+# the viewport and freed again when it leaves (see _stream_cells). The flow still
+# holds all 857, so the scrollbar, the scroll position and the layout are the
+# ones the full catalog would give; only the seven nodes inside each cell come
+# and go.
+#
+# That the cell can be sized before it is filled is what the fixed NAME_LINES
+# below buys, and it is why that clamp is load-bearing rather than cosmetic.
 var _grid_scroll: ScrollContainer = null
-var _pending_covers: Array = []
+# Every game cell in the grid, as {cell, box, game, filled}. Ordered as the grid
+# is, so the window is a contiguous range of it.
+var _cell_slots: Array = []
+# The slots currently filled, as indices into `_cell_slots`, so a pass only has
+# to visit what changed rather than all 857.
+var _filled_from: int = 0
+var _filled_to: int = -1
 # Whether the flow has actually placed its cells yet. Until it has, every cell
 # reports a position of (0, 0) while already carrying its full size — so "is this
-# one on screen" answers YES for all 845 of them, which reads every cover and is
-# precisely the thing being avoided. The flow says when it has sorted.
+# one on screen" answers YES for all 857 of them, which fills the whole grid and
+# is precisely the thing being avoided. The flow says when it has sorted.
 var _grid_laid_out: bool = false
 var _detail_box: VBoxContainer = null
 var _count_lbl: Label = null
@@ -296,6 +310,21 @@ func _flat(bg: Color, border: Color = Color(0, 0, 0, 0), border_w: int = 0) -> S
 	_flat_cache[key] = sb
 	return sb
 
+# How long a keystroke waits before the tab under it is rebuilt.
+#
+# `text_changed` used to run `_populate()` directly, which on the Games tab is the
+# whole catalog torn down and built again: typing "bala" cost 688 ms across its
+# four keystrokes, and clearing the box back to 857 games cost 1,347 ms in
+# `_populate` alone. Every one of those rebuilds but the last was thrown away by
+# the next letter.
+#
+# Long enough to swallow a typing burst, short enough that the grid still feels
+# like it is answering the keyboard. The wait is restarted by each keystroke, so
+# a steady typist pays for one rebuild rather than one per letter.
+const SEARCH_DEBOUNCE := 0.18
+
+var _search_timer: Timer = null
+
 func _search_box(key: String) -> LineEdit:
 	var le := LineEdit.new()
 	le.placeholder_text = "Search…"
@@ -304,8 +333,25 @@ func _search_box(key: String) -> LineEdit:
 	le.custom_minimum_size = Vector2(180, 0)
 	le.text_changed.connect(func(t):
 		_search[key] = t
-		_populate())
+		_populate_soon())
 	return le
+
+# Rebuild the tab once the typing stops. One timer for all eight tabs, since only
+# one search box is ever on screen at a time.
+#
+# The TEXT is stored on the keystroke (above) and only the REBUILD is deferred, so
+# anything that reads `_search` in between — a sort button, a filter, a test —
+# sees what has actually been typed.
+func _populate_soon() -> void:
+	if _search_timer == null or not is_instance_valid(_search_timer):
+		_search_timer = Timer.new()
+		_search_timer.one_shot = true
+		# The Collection runs while the tree is paused (PROCESS_MODE_ALWAYS), and a
+		# timer that stops with the tree would leave the last keystroke unbuilt.
+		_search_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+		_search_timer.timeout.connect(_populate)
+		add_child(_search_timer)
+	_search_timer.start(SEARCH_DEBOUNCE)
 
 func _sort_button(label: String, active: bool, on_press: Callable) -> Button:
 	var b := Button.new()
@@ -473,54 +519,181 @@ func _new_grid() -> ScrollContainer:
 	scroll.add_child(flow)
 	_grid = flow
 	_grid_scroll = scroll
-	_pending_covers.clear()
+	_reset_cell_window()
 	_grid_laid_out = false
 	# Scrolling and resizing are the two things that change WHICH cells are on
-	# screen, and each is a cue to read the pictures that just became worth
-	# reading. `sort_children` is the third and the one that starts it all: it
-	# fires once the flow has placed its cells, which is the first moment the
-	# question can be answered at all.
-	scroll.get_v_scroll_bar().value_changed.connect(func(_v): _load_visible_covers())
-	scroll.resized.connect(_load_visible_covers)
+	# screen, and each is a cue to fill the ones that just became worth filling.
+	# `sort_children` is the third and the one that starts it all: it fires once
+	# the flow has placed its cells, which is the first moment the question can be
+	# answered at all.
+	scroll.get_v_scroll_bar().value_changed.connect(func(_v): _stream_cells())
+	scroll.resized.connect(_stream_cells)
 	flow.sort_children.connect(func():
 		_grid_laid_out = true
-		_load_visible_covers.call_deferred())
+		_stream_cells.call_deferred())
 	return scroll
 
+func _reset_cell_window() -> void:
+	_cell_slots.clear()
+	_filled_from = 0
+	_filled_to = -1
 
-# A cover to read once its cell is near the viewport. The frame is already the
-# size the picture will be drawn at, so landing one moves nothing on the page.
-func _defer_cover(cell: Control, rect: TextureRect, game: GameData) -> void:
-	_pending_covers.append({"cell": cell, "rect": rect, "game": game})
+# How far past the viewport a cell is still worth keeping filled, as a multiple of
+# the visible height. A screenful either side, so an ordinary scroll lands on
+# cells that are already drawn rather than on empty frames filling in behind the
+# cursor — and so a small scroll back and forth over one row's worth doesn't tear
+# the same cells down and build them again.
+const CELL_WINDOW_SCREENS := 1.0
 
-
-# Read the covers whose cells are on screen, or nearly. The margin is a screenful
-# either way, so an ordinary scroll lands on pictures that are already there
-# rather than on a row of empty frames filling in behind the cursor.
-func _load_visible_covers() -> void:
-	if not _grid_laid_out or _pending_covers.is_empty():
+# Fill the cells on screen, or nearly, and empty the ones that have left.
+#
+# The grid's cells are all the same height (see NAME_LINES), so "which of these is
+# on screen" is a contiguous RANGE rather than a scattered set. Finding that range
+# is still a linear scan — cheap, two float compares a slot, and it stops at the
+# first cell past the bottom — but knowing it is a range is what keeps the
+# BUILDING and FREEING to the slots at the two edges of the window, which is the
+# part that costs anything.
+func _stream_cells() -> void:
+	if not _grid_laid_out or _cell_slots.is_empty():
 		return
 	if _grid_scroll == null or not is_instance_valid(_grid_scroll):
 		return
-	var top: float = _grid_scroll.scroll_vertical - _grid_scroll.size.y
-	var bottom: float = _grid_scroll.scroll_vertical + _grid_scroll.size.y * 2.0
-	var still: Array = []
-	for entry in _pending_covers:
-		var cell: Control = entry["cell"]
-		var rect: TextureRect = entry["rect"]
-		if not is_instance_valid(cell) or not is_instance_valid(rect):
+	var margin: float = _grid_scroll.size.y * CELL_WINDOW_SCREENS
+	var top: float = _grid_scroll.scroll_vertical - margin
+	var bottom: float = _grid_scroll.scroll_vertical + _grid_scroll.size.y + margin
+	var want_from: int = -1
+	var want_to: int = -1
+	for i in _cell_slots.size():
+		var cell: Control = (_cell_slots[i] as Dictionary)["cell"]
+		if not is_instance_valid(cell):
 			continue
-		# Before the flow has laid out, every cell is at y=0 and the whole grid
-		# reads as visible — which would decode all 845 covers, the thing this
-		# exists to avoid. A zero-height cell is one that has not been placed yet.
+		# Before the flow has placed it, a cell is at y=0 while already carrying its
+		# full size, so every one of them reads as on screen. A zero-height cell is
+		# one that has not been placed yet.
 		if cell.size.y <= 0.0:
-			still.append(entry)
 			continue
-		if cell.position.y > bottom or cell.position.y + cell.size.y < top:
-			still.append(entry)
+		if cell.position.y > bottom:
+			break
+		if cell.position.y + cell.size.y < top:
 			continue
-		rect.texture = (entry["game"] as GameData).cover_image
-	_pending_covers = still
+		if want_from < 0:
+			want_from = i
+		want_to = i
+	if want_from < 0:
+		_empty_range(_filled_from, _filled_to)
+		_filled_from = 0
+		_filled_to = -1
+		return
+	# Empty whatever has dropped off either end, then fill whatever has come on.
+	if _filled_to >= _filled_from:
+		_empty_range(_filled_from, mini(_filled_to, want_from - 1))
+		_empty_range(maxi(_filled_from, want_to + 1), _filled_to)
+	_fill_range(want_from, want_to)
+	_filled_from = want_from
+	_filled_to = want_to
+
+func _fill_range(from: int, to: int) -> void:
+	for i in range(maxi(0, from), mini(to, _cell_slots.size() - 1) + 1):
+		_fill_cell(i)
+
+func _empty_range(from: int, to: int) -> void:
+	for i in range(maxi(0, from), mini(to, _cell_slots.size() - 1) + 1):
+		_empty_cell(i)
+
+# Build one cell's contents: the cover, the owned tick over it, the name and the
+# two stat lines. Everything here is thrown away again by _empty_cell, so nothing
+# in it may be state the rest of the screen needs — the tick registers itself in
+# `_owned_marks` and unregisters on the way out.
+func _fill_cell(index: int) -> void:
+	var slot: Dictionary = _cell_slots[index]
+	if bool(slot.get("filled", false)):
+		return
+	var box: VBoxContainer = slot["box"]
+	if not is_instance_valid(box):
+		return
+	var g: GameData = slot["game"]
+	var tc := _game_type_color(int(g.type))
+	if g.cover_path != "":
+		var tr := _cover_rect(g.cover_image, GRID_COVER_W)
+		# The cover and its owned tick share one box so the tick can sit ON the art
+		# rather than under it — a column of ticks down the left edge of the grid is
+		# the thing you read when working out what you still have to mark.
+		var stack := Control.new()
+		stack.custom_minimum_size = tr.custom_minimum_size
+		stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stack.add_child(tr)
+		stack.add_child(_owned_badge(g))
+		box.add_child(stack)
+	else:
+		# No art authored: the tick still needs somewhere to live, and top-left of
+		# the cell is the same place it would be if there were a cover. The spacer
+		# keeps the cell the same height as a cell with a picture in it, so a game
+		# with no art doesn't leave a short hole in the row.
+		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, roundi(GRID_COVER_W * 4.0 / 3.0))
+		row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		row.add_child(_owned_badge(g))
+		box.add_child(row)
+	box.add_child(_game_name_label(g.display_name, tc))
+	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
+	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
+	box.add_child(_label(meta, Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
+	var beaten: int = GameStats.beaten_count(g.id)
+	var amulets: int = GameStats.amulet_wins(g.id)
+	var stat_line: String = "⚔ %d" % beaten
+	if amulets > 0:
+		stat_line += "    👑 %d" % amulets
+	var played := beaten > 0 or amulets > 0
+	box.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
+	slot["filled"] = true
+
+func _empty_cell(index: int) -> void:
+	var slot: Dictionary = _cell_slots[index]
+	if not bool(slot.get("filled", false)):
+		return
+	var box: VBoxContainer = slot["box"]
+	slot["filled"] = false
+	# The tick goes with the cell, so the id must stop pointing at a freed Button —
+	# `_paint_owned_mark` is called for games that are nowhere on screen and answers
+	# by finding nothing, which is exactly right once this id is gone.
+	_owned_marks.erase((slot["game"] as GameData).id)
+	if not is_instance_valid(box):
+		return
+	for c in box.get_children():
+		box.remove_child(c)
+		c.free()
+
+# The name, clamped to NAME_LINES.
+#
+# The clamp is what makes every cell the same height, which is what lets a cell be
+# sized before it is filled — the whole of the streaming above rests on it. It
+# costs the tail of the catalog's longest titles: the median game name is 13
+# characters and fits one line, but about one in twenty runs past two, and those
+# now end in an ellipsis. The cell carries the full name as its tooltip (see
+# _game_cell) so nothing is actually lost, and the grid gains even rows in
+# exchange for a ragged flow that never lined up.
+const NAME_LINES := 2
+
+func _game_name_label(text: String, color: Color) -> Label:
+	var l := _label(text, color, GRID_NAME_FONT, true, true)
+	l.max_lines_visible = NAME_LINES
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.custom_minimum_size = Vector2(0, _name_block_height())
+	return l
+
+# The height of NAME_LINES lines of the grid's name font, measured off the theme
+# rather than guessed, so a theme or font change carries the cell with it. Cached
+# for the same reason _game_cell_height is.
+var _name_height_cache: float = 0.0
+
+func _name_block_height() -> float:
+	if _name_height_cache > 0.0:
+		return _name_height_cache
+	var font: Font = get_theme_font("font", "Label")
+	_name_height_cache = float(GRID_NAME_FONT + 4) * NAME_LINES if font == null \
+		else font.get_height(GRID_NAME_FONT) * NAME_LINES
+	return _name_height_cache
 
 const DETAIL_PANEL_W := 380
 func _new_detail_panel() -> PanelContainer:
@@ -578,11 +751,11 @@ func _set_count(shown: int, total: int) -> void:
 		_count_lbl.text = "%d / %d" % [shown, total]
 
 func _clear_children(node: Node) -> void:
-	# Emptying the grid retires whatever it was still waiting to read: the entries
-	# point at cells that are about to be freed, and a filter change re-registers
-	# the ones that survive it.
+	# Emptying the grid retires the window with it: the slots point at cells that
+	# are about to be freed, and a filter change registers fresh ones for whatever
+	# survives it.
 	if node == _grid:
-		_pending_covers.clear()
+		_reset_cell_window()
 		_grid_laid_out = false
 	for c in node.get_children():
 		node.remove_child(c)
@@ -698,9 +871,26 @@ func _populate_games() -> void:
 	if list.is_empty():
 		_grid.add_child(_label("No games match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), Data.all_games().size())
+	# The first rows, filled straight away rather than waiting for a frame.
+	#
+	# `_stream_cells` cannot answer anything until the flow has placed the cells,
+	# which is a frame away — and a populate always leaves the grid scrolled to the
+	# top, so the cells at the top of the list are the ones that will be on screen
+	# when it gets there. Filling them here means the tab is never drawn empty, and
+	# it means the owned ticks are registered for anything that asks before the
+	# first frame (which the tests do).
+	_fill_range(0, PREFILL_CELLS - 1)
+	_filled_from = 0
+	_filled_to = mini(PREFILL_CELLS, _cell_slots.size()) - 1
 	# Deferred: the cells have no position until the flow has laid them out, and
-	# "which of these is on screen" is a question about positions.
-	_load_visible_covers.call_deferred()
+	# "which of these is on screen" is a question about positions. This is what
+	# corrects the guess above once there are real positions to read.
+	_stream_cells.call_deferred()
+
+# How many cells are filled before the grid has been laid out even once. A little
+# over two rows at the widths the panel can take, so the top of the list is drawn
+# on the frame it appears rather than one after.
+const PREFILL_CELLS := 24
 
 func _game_type_color(t: int) -> Color:
 	match t:
@@ -710,48 +900,47 @@ func _game_type_color(t: int) -> Color:
 		3: return Color(0.55, 0.8, 0.5)
 		_: return Color(0.6, 0.6, 0.65)
 
+# An EMPTY cell of exactly the size the filled one will be. `_fill_cell` puts the
+# contents in when it comes near the viewport and `_empty_cell` takes them out
+# again; this is what stays in the flow either way, so the grid's height and the
+# scrollbar are the full catalog's whichever cells happen to be drawn.
 func _game_cell(g: GameData) -> Control:
 	var tc := _game_type_color(int(g.type))
 	var cell := _cell(tc, func(): _show_game_detail(g))
-	cell.panel.custom_minimum_size = Vector2(GRID_COVER_W + CELL_PAD, 0)
+	var panel: PanelContainer = cell.panel
+	panel.custom_minimum_size = Vector2(GRID_COVER_W + CELL_PAD, _game_cell_height())
+	# The full name, since the label inside is clamped to NAME_LINES and the long
+	# ones end in an ellipsis. On the panel rather than the label so it answers
+	# anywhere on the cell, and so it is there while the cell is empty too.
+	panel.tooltip_text = g.display_name
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	# The frame goes up empty and the picture is read when the cell nears the
-	# viewport (_load_visible_covers). A game with no art authored gets no frame
-	# at all, which is the one thing that has to be decided up front — and
-	# `cover_path` answers it without touching the image.
-	if g.cover_path != "":
-		var tr := _cover_rect(null, GRID_COVER_W)
-		# The cover and its owned tick share one box so the tick can sit ON the
-		# art rather than under it — a column of ticks down the left edge of the
-		# grid is the thing you read when working out what you still have to mark.
-		var stack := Control.new()
-		stack.custom_minimum_size = tr.custom_minimum_size
-		stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		stack.add_child(tr)
-		stack.add_child(_owned_badge(g))
-		vb.add_child(stack)
-		_defer_cover(cell.panel, tr, g)
-	else:
-		# No art authored: the tick still needs somewhere to live, and top-left of
-		# the cell is the same place it would be if there were a cover.
-		var row := HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, OWNED_BADGE)
-		row.add_child(_owned_badge(g))
-		vb.add_child(row)
-	vb.add_child(_label(g.display_name, tc, GRID_NAME_FONT, true, true))
-	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
-	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
-	vb.add_child(_label(meta, Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
-	var beaten: int = GameStats.beaten_count(g.id)
-	var amulets: int = GameStats.amulet_wins(g.id)
-	var stat_line: String = "⚔ %d" % beaten
-	if amulets > 0:
-		stat_line += "    👑 %d" % amulets
-	var played := beaten > 0 or amulets > 0
-	vb.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
-	return cell.panel
+	_cell_slots.append({"cell": panel, "box": vb, "game": g, "filled": false})
+	return panel
+
+# The height every game cell is pinned to: the cover, the clamped name, the two
+# stat lines, the separations between them and the panel's own padding.
+#
+# Measured off the same font the contents are drawn in rather than written down as
+# a number, so it cannot drift away from what _fill_cell actually puts in — but
+# measured ONCE. Asking the theme per cell is three font lookups 857 times over,
+# for an answer that is the same every time.
+var _cell_height_cache: float = 0.0
+
+func _game_cell_height() -> float:
+	if _cell_height_cache > 0.0:
+		return _cell_height_cache
+	var sep: float = 4.0                                  # _cell's vbox separation
+	_cell_height_cache = roundi(GRID_COVER_W * 4.0 / 3.0) \
+		+ _name_block_height() \
+		+ _line_height(GRID_META_FONT) * 2.0 \
+		+ sep * 3.0 \
+		+ CELL_PAD
+	return _cell_height_cache
+
+func _line_height(size: int) -> float:
+	var font: Font = get_theme_font("font", "Label")
+	return font.get_height(size) if font != null else float(size + 4)
 
 # The tick over a game's cover: what you own, readable straight off the grid, and
 # on the player's own list the fastest way to say so — click it and the game is

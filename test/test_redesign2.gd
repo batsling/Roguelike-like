@@ -549,6 +549,51 @@ func test_every_game_resolves_its_cover_art() -> void:
 	assert_eq(missing.size(), 0,
 		"games with no cover in images2.0/games/: %s" % [missing])
 
+# --- and holds only as many of them as a screen can want --------------------
+#
+# The lazy load above fixed STARTUP and moved the cost to the first time anyone
+# browses. A decoded cover is ~1.15MB of texture memory, and it used to be held
+# for the life of the GameData: reading all 857 took the process from 316MB of
+# texture memory to 1304MB, none of which ever came back. Scrolling the
+# Collection's Games tab from top to bottom did exactly that walk.
+#
+# The budget is sized off what a screen can actually want at once — the star chart
+# never draws more than 19 covers at any zoom, and the Collection's grid keeps a
+# few dozen cells near the viewport — so the cap only bites on a walk across the
+# catalog, which is the case it exists for.
+
+func test_the_catalog_holds_only_a_budget_of_decoded_covers() -> void:
+	for g in Data.all_games():
+		var _c = g.cover_image
+	assert_lte(GameData._cover_lru.size(), GameData.COVER_BUDGET,
+		"reading the whole catalog leaves at most COVER_BUDGET covers decoded")
+	assert_gt(GameData._cover_lru.size(), 0, "and does not throw all of them away")
+
+func test_a_cover_pushed_out_of_the_cache_comes_back_when_it_is_asked_for() -> void:
+	# Evicting drops a REFERENCE, not a picture. What must never happen is a game
+	# whose art is gone for good because it was once scrolled past.
+	var games: Array = Data.all_games()
+	if games.size() <= GameData.COVER_BUDGET:
+		pending("the catalog is smaller than the budget, so nothing is ever evicted")
+		return
+	var first: GameData = games[0]
+	assert_not_null(first.cover_image, "the game starts with art")
+	# Walk far enough past it that it cannot still be in the cache.
+	for i in range(1, GameData.COVER_BUDGET + 2):
+		var _c = (games[i] as GameData).cover_image
+	assert_false(GameData._cover_lru.has(first),
+		"the walk pushed the first game's cover out")
+	assert_not_null(first.cover_image, "and asking for it again decodes it again")
+
+func test_reading_the_same_cover_twice_does_not_grow_the_cache() -> void:
+	var g: GameData = Data.all_games()[0]
+	var _warm = g.cover_image
+	var size_before: int = GameData._cover_lru.size()
+	for i in 5:
+		var _c = g.cover_image
+	assert_eq(GameData._cover_lru.size(), size_before,
+		"a game already holding its cover is moved, not added again")
+
 func test_transient_high_tier_damage() -> void:
 	var t: GoalEnemyData = Data.get_goal_enemy(&"transient")
 	assert_eq(int(t.difficulty), int(GoalEnemyData.Difficulty.HIGH))

@@ -11,6 +11,62 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Collection stopped paying for the whole catalog, and covers stopped
+  accumulating forever.**
+
+  A measured pass over the screens rather than the code — the real scenes booted
+  headless for script time and under Xvfb for the rest. It found the run screens
+  in good shape (`Overworld2` is 154 nodes, `BattlefieldView.refresh()` is 4.5 ms,
+  every screen idles at the loop floor with nothing redrawing per frame) and the
+  catalog-sized screens paying for all 857 games at once. Three findings, one
+  screen, fixed together.
+
+  **A decoded cover was held for the life of the process.** The lazy load that
+  made `cover_image` a path until something read it fixed *startup* and moved the
+  cost to the first time anyone browses: reading all 857 took **7.35 s and grew
+  texture memory from 316 MB to 1304 MB**, and scrolling the Games tab from top to
+  bottom did exactly that walk. Nothing ever came back. `GameData` now keeps a
+  shared, bounded, least-recently-used set of them. **The budget was measured, not
+  guessed** — the star chart never draws more than 19 covers at any zoom, swept
+  over the whole range, and the grid keeps a few dozen cells near the viewport —
+  so the cap only bites on a walk across the catalog, which is what it is for.
+  Evicting drops a *reference*, not a picture: art still mounted in a
+  `TextureRect` stays alive until that node is freed, which is what makes it safe
+  to evict what is on screen. Same scroll now peaks at 614 MB, exactly the budget.
+
+  **The Games tab built 6,896 nodes** — 857 cells at eight each, **3.29 s to open
+  with no rendering in the way**. The cost is *entering the tree*, not the flow
+  container sorting: the same 857 cells added to a `Control` outside the tree is
+  2.3 ms, to a bare mounted one 1,091 ms, to the real `HFlowContainer` 1,097 ms.
+  So "fill it detached and re-attach", the usual trick, buys nothing — A/B'd end
+  to end at 1,104 ms vs 1,136 ms. The only fix is not to make them. The flow now
+  holds all 857 as **empty panels of exactly the size they will be filled at**,
+  and only the ones near the viewport carry their contents; the scrollbar and the
+  scroll position are the full catalog's either way. **2,024 nodes, 1,011 ms**,
+  and about twenty cells drawn at a time. It costs the tail of the longest titles:
+  a cell can only be sized before it is filled if every cell is the same height,
+  so the name is clamped to two lines with an ellipsis past it — the median game
+  name is 13 characters and fits one line, about one in twenty runs past two — and
+  the full name moved to the cell's tooltip. The grid gains even rows in exchange
+  for a ragged flow that never lined up.
+
+  **And every keystroke rebuilt the tab.** `text_changed` ran `_populate()`
+  directly, so typing `bala` cost 688 ms across its four letters and clearing the
+  box back to 857 games cost 1,347 ms in `_populate` alone, every rebuild but the
+  last thrown away by the next letter. One `Timer` at the single connect site
+  covers all eight tabs. The *text* is still stored on the keystroke and only the
+  *rebuild* is deferred, so anything reading `_search` in between — a sort button,
+  a filter, a test — sees what has actually been typed. 293 ms and 103 ms.
+
+  Three findings from the same pass are open and written up in
+  `docs/performance-backlog.md` §4: `RunGraph.pick_amulet_and_starts` runs a
+  full-graph BFS per candidate because one call site omits the cache argument the
+  function already takes (868 ms, and an unbounded memo at 509,778 entries after a
+  single roll); the Constellations view lays out 11 px wider than the 1280 canvas,
+  clipping its own Close button, because the legend is a non-wrapping `HBox` that
+  gains two chips in catalog mode; and the 720p fit test only covers the overworld,
+  which is why nothing caught the second one.
+
 - **Seventeen dead pointers in the live docs, and a check so they stay dead-free.**
 
   Found by sweeping the actual game code for silent-failure classes and coming up

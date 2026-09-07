@@ -10,10 +10,18 @@ star-chart double sweep, the uncached route DAG and the three dead functions
 the glyph shaping cost that one uncovered, by shipping the fonts ("The UI stopped
 asking the host what a ⚔ looks like").
 
-**Two items are left**, below. §1 is in progress — a fourth split has landed and
-the seam table has been re-measured, because the old one had gone badly stale;
-§2 is fixed and kept for the shape of it. Each states what is wrong, why it is
-wrong, what the fix looks like, and how to know it worked.
+**A second pass (2026-09-07)** measured the screens rather than the code, booting
+the real scenes headless (script time, no rendering) and under Xvfb. It found the
+catalog-sized screens paying for the whole catalog and the run screens in good
+shape — `Overworld2` is 154 nodes, `BattlefieldView.refresh()` is 4.5 ms, and
+every screen idles at the loop floor with nothing redrawing per frame. Three of
+its findings are **fixed and written up in §3 below**; three are open and listed
+in §4.
+
+**Two items are left from the first pass**, below. §1 is in progress — a fourth
+split has landed and the seam table has been re-measured, because the old one had
+gone badly stale; §2 is fixed and kept for the shape of it. Each states what is
+wrong, why it is wrong, what the fix looks like, and how to know it worked.
 
 **Two measurements worth keeping** from the passes that emptied the rest of this
 file, both because they say something about where to look next:
@@ -167,6 +175,131 @@ counts separately and prints as **Risky/Pending** in the totals. The skips are a
 number you can watch. Treat it as a budget: a guard that fires often is a case the
 suite has stopped covering, and the fix is to ARRANGE the state rather than hope
 for it.
+
+---
+
+## 3. The Collection was paying for the whole catalog — fixed
+
+Three findings from the 2026-09-07 pass, all in the compendium, all fixed
+together because they are the same screen and the first two are the same bug seen
+from two ends. Kept here for the numbers and for what they say about where to
+look next.
+
+### 3.1 A decoded cover was held for the life of the process
+
+`GameData.cover_path` → `cover_image` (§ the lazy-load note in that file) fixed
+**startup** and moved the cost to *the first time you browse*. `_cover` was then
+held forever, and nothing bounded how many were held.
+
+| | |
+|---|---|
+| reading all 857 `cover_image` | **7.35 s**, and texture memory 316 MB → **1304 MB** |
+| scrolling the Games tab top to bottom | 16.9 s, and every one of the 857 read |
+| after the fix, same scroll | texture memory 316 MB → **614 MB**, i.e. exactly the 256-cover budget |
+
+Fixed with a shared, bounded, least-recently-used set on `GameData`
+(`COVER_BUDGET`, `_cover_lru`). **The budget is sized off what a screen can
+actually want at once, and that was measured rather than guessed**: the star
+chart never draws more than **19** covers at any zoom (swept over the whole
+range), and the Collection's grid keeps a few dozen cells near the viewport. So
+the cap only bites on a walk across the catalog, which is the case it exists for,
+and nothing thrashes.
+
+**Evicting drops a reference, not a picture** — a cover still mounted in a
+`TextureRect` stays alive until that node is freed. That is what makes it safe to
+evict art that is on screen, and it is why 3.2 below is the half that actually
+releases the memory.
+
+### 3.2 The Games tab built 6,896 nodes
+
+857 cells at eight nodes each. **3.29 s to open the tab headless**, with no
+rendering in the way at all.
+
+**The cost is entering the tree, not the flow container sorting.** A/B'd three
+ways in the same process, adding the same 857 cells:
+
+| where | |
+|---|---|
+| into a `Control` **outside** the tree | 2.3 ms |
+| into a bare **mounted** `Control` (no sorting) | 1,091 ms |
+| into the real `HFlowContainer` | 1,097 ms |
+
+So "fill it detached and re-attach", the usual trick, buys nothing — measured at
+1,104 ms vs 1,136 ms end to end. The only fix is not to make them.
+
+The flow now holds all 857 cells as **empty panels of exactly the size they will
+be filled at**, and only the ones near the viewport carry their contents
+(`_cell_slots`, `_stream_cells`, `_fill_cell` / `_empty_cell`). The scrollbar and
+the scroll position are the full catalog's either way.
+
+| | before | after |
+|---|---|---|
+| Collection subtree | 6,896 nodes | **2,024** |
+| open the Games tab (headless) | 3,290 ms | **1,011 ms** |
+| `_populate_games()` alone | 1,425 ms | **138 ms** |
+| cells carrying contents at once | 857 | **~20** |
+
+**What it cost, and it is a real cost**: a cell can only be sized before it is
+filled if every cell is the same height, so the name is clamped to `NAME_LINES`
+(2) with an ellipsis past it. The median game name is 13 characters and fits one
+line; about one in twenty runs past two and is now trimmed. The full name is on
+the cell's tooltip, and the grid gains even rows in exchange for a ragged flow
+that never lined up.
+
+### 3.3 Every keystroke rebuilt the tab
+
+`_search_box` wired `text_changed` straight to `_populate()`. Typing `bala` cost
+**688 ms** across its four keystrokes and clearing the box back to 857 games cost
+**1,347 ms** in `_populate` alone — every rebuild but the last thrown away by the
+next letter.
+
+One `Timer` at the single connect site (`SEARCH_DEBOUNCE`, `_populate_soon`)
+covers all eight tabs. **The text is still stored on the keystroke and only the
+rebuild is deferred**, so a sort button, a filter or a test reading `_search` in
+between sees what has actually been typed.
+
+| | before | after |
+|---|---|---|
+| typing `bala` (4 keystrokes) | 688 ms | **293 ms**, one rebuild |
+| clearing the box back to 857 | 1,347 ms | **103 ms** |
+
+---
+
+## 4. Open, from the same pass
+
+**`RunGraph.pick_amulet_and_starts` is most of the boot, and leaks a BFS memo.**
+868 ms on the first roll, still 302–426 ms warm; `Overworld2` add_child (build +
+`start_run`, no frames) is 1,194 ms cold. The cause is one omitted argument —
+`RunGraph.gd:862` calls `dag_branch_score_early(d_ref, g.id)` without the
+`d_to_amulet_cache` the function already takes, so **every band candidate runs a
+full-graph `bfs_distances`**. The memo is unbounded: 669 origins / 509,778
+distance entries after one roll, 762 after four, growing every run for the life of
+the process. The fix inverts the traversal — the score only asks about nodes
+within `EARLY_LAYERS_FOR_SCORE` hops of the reference, so run one BFS per *early
+node* (a small ball) instead of one per *candidate amulet* (the 5–7-hop shell,
+which in a small-world graph is most of the catalog), then score every candidate
+in one sweep. Exact, not sampled.
+
+**The Constellations view is 11 px too wide for the 1280 canvas.** The
+pure-catalog `AtlasView` lays out at **1291×720**: the header's `✕ Close` ends at
+x=1281 and the legend's "Star size = connections" note at x=1283, both clipped off
+the right edge. `_fill_legend` is a plain `HBoxContainer`, and in `pure_catalog`
+it gains two chips the run view does not have (`⚔ Beaten`, `👑 Amulet won`); that
+row's minimum width sets the whole page's. **Opened from a run it measures exactly
+1280 and fits**, which is why nothing has caught it. An `HFlowContainer` for the
+legend row — the container the Collection grid already uses — wraps the key
+instead of widening the page.
+
+**The 720p fit test only covers the overworld.** `test_overworld2.gd::_assert_fits`
+is the suite's only fit guard, and the finding above is precisely what it cannot
+see. The audit that found it is ~30 lines — walk the tree, compare each
+`Control`'s global rect to the viewport, skip `ScrollContainer`s — and every other
+screen passes it today: MainMenu, the character picker, all eight Collection tabs,
+HowToPlay, TierList, RunHistory, Settings and the overworld page.
+
+**And one observation worth a look.** With the Games tab fixed, the slowest thing
+in the compendium is the **Events tab at 909 ms** for sixteen events, which is not
+a node-count problem at that size and was not chased.
 
 ---
 
