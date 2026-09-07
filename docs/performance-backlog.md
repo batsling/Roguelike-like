@@ -353,16 +353,41 @@ both its views. All fit.
 the slowest thing in the compendium, it is not a node-count problem at that size,
 and it was not chased.
 
-**~1,080 ms of the first `Overworld2` is one-time cost that is not the graph.**
-With the run graph fully warm and `pick_amulet_and_starts` down to 29 ms, the
-first construction still measures ~1,256 ms against ~175 ms for the second. That
-is theme, font and first-use script loading rather than anything this pass
-touched, and it is now the largest single number left in the boot.
+**Compiling `Overworld2.gd` costs ~1.05 s, and it is now the largest single
+number in starting a run** — bigger than everything else in the boot together.
+Split out, on a cold process:
 
-**Wall-clock on this box is noisy.** Identical code measured 1,194 ms and 2,019 ms
-for the same boot in different launches. Every timing above that matters is either
-a ratio far outside that band, a median of repeated launches, or a count
-(cache entries, node counts) rather than a time. Do the same.
+| | |
+|---|---|
+| `load("res://scripts/redesign2/Overworld2.gd")` | **1,019–1,092 ms** |
+| the `.tscn` around it, once that is compiled | ~1 ms |
+| `instantiate()` + `add_child()` (build the UI, roll the run) | 148–171 ms |
+
+**This is the runtime number §1 never had.** That entry argues the file's size on
+maintainability alone; this is what it costs the player, once, on the way into
+every run.
+
+**It is not simply the line count, and that matters for the fix.** Pre-compiling
+`BattlefieldView.gd` + `ReportChecklist.gd` (5,136 lines between them) takes
+205 ms; `Overworld2.gd` alone is 5,825 lines and takes ~950 ms with its
+dependencies already compiled — four to five times the cost for a similar number
+of lines. It is not the lambdas either (`Collection.gd` has 68 to this file's 27
+and compiles in ~225 ms). Something about this file specifically is superlinear
+and I did not find what. **So do not assume a split banks the second**: moving
+1,000 lines into a class `Overworld2` still names leaves both compiling at the
+same moment. The win, if it is there, comes from *deferring* — a modal reached
+through `load()` at first use rather than through a `class_name` the page
+mentions — and from whatever the superlinearity turns out to be. Measure a split
+against this number rather than assuming it.
+
+**A methodology note, because it cost an hour.** An earlier draft of this file
+claimed wall-clock here swings 70%, on the evidence of "identical code measuring
+1,194 ms and 2,019 ms". That was wrong and the fault was mine: the two drivers
+timed different things — one called `instantiate()` *before* starting the clock
+and the other inside it, so the second was carrying the ~1.05 s script compile
+above and the first was not. Repeated properly, the same measurement lands within
+about 7%. **When two runs of "the same thing" disagree by that much, suspect the
+harness before the machine**: read what is inside the timed region first.
 
 ---
 

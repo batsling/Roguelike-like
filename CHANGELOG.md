@@ -38,10 +38,9 @@ For how the project is laid out and how its systems fit together, see
   the score can read. The start half is the mirror image, carrying relative depths
   instead of absolute ones, and it also deleted a BFS that was never needed:
   `bfs_distances(start)[amulet]` is `d_to_amulet[start]` on an undirected graph.
-  **29 ms**, a cold boot from 2,188 to 1,301 ms (median of three, because
-  wall-clock on this box swings 70%), a warm one from 442 to 175, and a memo of
-  four origins instead of 669 — now capped besides, by the rule the DAG caches
-  next to it already used. Both sweeps are equivalences argued rather than
+  **29 ms**, a cold boot from 2,188 to 1,301 ms (median of three launches), a warm
+  one from 442 to 175, and a memo of four origins instead of 669 — now capped
+  besides, by the rule the DAG caches next to it already used. Both sweeps are equivalences argued rather than
   refactors, so `test_run_graph_scoring.gd` checks each against the slow function
   over every reachable game, and the two against each other.
 
