@@ -63,18 +63,73 @@ enum GameType { ACTION, STRATEGY, DECKBUILDER, TRADITIONAL }
 # `cover_image` keeps its old shape for readers, so call sites are unchanged.
 @export var cover_path: String = ""
 
-var _cover: Texture2D = null
-var _cover_loaded: bool = false          # so a missing/broken path is tried once
+# How many decoded covers the whole catalog may hold at once.
+#
+# THE LAZY LOAD ABOVE FIXED STARTUP AND MOVED THE COST TO "the first time you
+# browse". A decoded cover is ~1.15 MB of texture memory and `_cover` used to be
+# held for the life of the GameData — which `Data` owns for the life of the
+# process — so nothing ever came back. Reading all 857 took the process from
+# 316 MB of texture memory to 1304 MB, and scrolling the Collection's Games tab
+# from top to bottom did exactly that walk (measured: 16.9s, and every one of the
+# 857 covers read).
+#
+# So the decoded covers are a shared, bounded, least-recently-used set. The
+# budget is sized off what a screen can actually want at once, with room to
+# spare: the star chart never draws more than 19 covers at any zoom (measured
+# over the whole range), and the Collection's grid holds a few dozen cells near
+# the viewport. Nothing comes close to this, so nothing thrashes — the cap only
+# bites on a walk across the catalog, which is the case it exists for.
+#
+# Evicting drops a REFERENCE, not a picture: a cover still mounted in a
+# TextureRect stays alive until that node is freed. That is what makes it safe to
+# evict art that is on screen — the screen holding it keeps it, and the next read
+# after it is finally dropped simply decodes it again.
+const COVER_BUDGET := 256
 
-# The cover texture, loaded on first access and cached. null when the game has no
-# art authored, or when `cover_path` doesn't resolve.
+# The games holding a decoded cover, coldest first. An Array rather than a
+# Dictionary because the hot path is "read the cover I just read" (the star chart
+# asks three times per star per redraw), and that answers off the last element
+# without a scan.
+static var _cover_lru: Array[GameData] = []
+
+var _cover: Texture2D = null
+var _cover_missing: bool = false         # no art authored, or a path that doesn't resolve
+
+# The cover texture, decoded on first access and held until the budget above
+# pushes it out. null when the game has no art authored, or when `cover_path`
+# doesn't resolve — which is answered once and then remembered, so a broken path
+# is not retried on every read.
 var cover_image: Texture2D:
 	get:
-		if not _cover_loaded:
-			_cover_loaded = true
-			if cover_path != "" and ResourceLoader.exists(cover_path):
-				_cover = load(cover_path)
+		if _cover != null:
+			_touch_cover()
+			return _cover
+		if _cover_missing:
+			return null
+		if cover_path == "" or not ResourceLoader.exists(cover_path):
+			_cover_missing = true
+			return null
+		_cover = load(cover_path)
+		if _cover == null:
+			_cover_missing = true
+			return null
+		_touch_cover()
 		return _cover
+
+# Move this game to the hot end of the cache, and let the coldest ones go if that
+# puts it over budget. Never evicts `self`: the caller is about to use what it
+# just asked for.
+func _touch_cover() -> void:
+	if not _cover_lru.is_empty() and _cover_lru[-1] == self:
+		return
+	var at: int = _cover_lru.find(self)
+	if at >= 0:
+		_cover_lru.remove_at(at)
+	_cover_lru.append(self)
+	while _cover_lru.size() > COVER_BUDGET:
+		var cold: GameData = _cover_lru.pop_front()
+		if cold != null and cold != self:
+			cold._cover = null
 
 # --- Real-game launch (the player can play the actual game this represents) ---
 # Whether the player owns the real game (from the spreadsheet's "Owned" column).

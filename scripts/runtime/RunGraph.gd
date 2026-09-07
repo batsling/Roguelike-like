@@ -86,6 +86,23 @@ static var _route_dag_cache: Dictionary = {} # String -> Dictionary (the DAG)
 # is exactly the cost of not having had the cache, and an LRU is machinery
 # nothing here is asking for.
 const DAG_CACHE_MAX := 64
+# The same bound, on the distance memo, for the same reason and by the same rule.
+#
+# This one had no cap at all, and it used to matter enormously: scoring the amulet
+# candidates ran a whole-catalog BFS per candidate, so ONE roll of the
+# choose-your-start panel left 669 origins and 509,778 distance entries behind,
+# and every later run added more for the life of the process. The sweeps above
+# removed the reason for nearly all of it — a boot now leaves 4 origins and ~3,000
+# entries — but "small in practice" is not a bound, and the thing that made this
+# grow was a call site nobody had noticed. A cap is what makes it not depend on
+# noticing.
+#
+# A BFS on this graph is about 1 ms, and a roll wants well under ten distinct
+# origins at once, so emptying wholesale over the cap costs nothing worth an LRU.
+# Emptying is also safe while a caller holds a result: `bfs_distances` hands back
+# the Dictionary itself, and dropping the cache's reference to it does not
+# invalidate anyone else's.
+const BFS_CACHE_MAX := 64
 # Games that passed the filter but fell outside the main group, as a set. Pruned
 # out of _adj_cache and kept here because Transmute needs exactly this list.
 static var _off_map: Dictionary = {}         # StringName -> true
@@ -338,6 +355,8 @@ static func bfs_distances(start_id: StringName) -> Dictionary:
 			if not dist.has(nb):
 				dist[nb] = cur_d + 1
 				queue.append(nb)
+	if _bfs_cache.size() >= BFS_CACHE_MAX:
+		_bfs_cache.clear()
 	_bfs_cache[start_id] = dist
 	return dist
 
@@ -363,6 +382,151 @@ static func dag_branch_score_early(d_from_start: Dictionary, amulet_id: StringNa
 		if int(c) >= 2:
 			branched += 1
 	return branched
+
+# The same score, for EVERY reachable game at once, in one pass over the graph.
+#
+# `dag_branch_score_early` above needs the distances FROM the candidate amulet,
+# and `pick_amulet_and_starts` scores every game in the band — so it was running a
+# whole-catalog BFS per candidate. Measured on the shipping catalog that is 868 ms
+# for one roll of the choose-your-start panel, still 302-426 ms warm, and it left
+# 509,778 memoized distance entries behind.
+#
+# THE INVERSION THAT LOOKS OBVIOUS DOES NOT WORK. The score only asks about nodes
+# within `early_layers` of the reference, so one BFS per *early node* rather than
+# per *candidate* seems like the fix — but this graph is small-world, and the ball
+# within 3 hops is 184-415 games against a band shell of 343-562. Measured at
+# 1.29x. Not worth writing.
+#
+# What works is not doing any of those traversals. `d_from_start + d(n, A) ==
+# d_from_start[A]` — the condition the score counts — is exactly "n reaches A in
+# the shortest-path DAG rooted at the start", because every DAG edge steps the
+# depth by one, so any DAG path from n to A has length d[A] - d[n] and that is
+# therefore the true distance. (Both directions hold; the graph is undirected, so
+# d(n, A) = d(A, n).)
+#
+# So the answer for every candidate falls out of one sweep in BFS order, carrying
+# down each node the set of early-layer ancestors that can reach it. The set is
+# **capped at two**, which is all the score can use — a depth counts when two or
+# more of its nodes lie on a shortest path — so what each node carries is a couple
+# of ids per layer rather than anything that grows with the graph.
+#
+# Returns {game id: score}. Equivalence with the per-candidate function above is
+# asserted over the whole catalog in test_run_graph_scoring.gd.
+static func dag_branch_scores_from(d_from_start: Dictionary,
+		early_layers: int = EARLY_LAYERS_FOR_SCORE) -> Dictionary:
+	_build_adj()
+	# Nodes in BFS order, so a node is always reached after every DAG parent it
+	# could inherit from.
+	var by_depth: Array = []
+	for id in d_from_start:
+		var d: int = d_from_start[id]
+		while by_depth.size() <= d:
+			by_depth.append([])
+		(by_depth[d] as Array).append(id)
+	# id -> Array of `early_layers` Arrays, each holding at most two ids: which
+	# nodes at that layer can reach this one down the DAG.
+	var anc: Dictionary = {}
+	var scores: Dictionary = {}
+	for depth in range(by_depth.size()):
+		for v in (by_depth[depth] as Array):
+			var slots: Array = []
+			for k in range(early_layers):
+				slots.append([])
+			# A node IS its own only ancestor at its own layer: DAG edges step the
+			# depth by one, so nothing else at that depth can reach it.
+			if depth >= 1 and depth <= early_layers:
+				slots[depth - 1] = [v]
+			# Layers ABOVE this node are inherited from its DAG parents; layers
+			# below it are unreachable and stay empty.
+			if depth > 1:
+				for u in (_adj_cache.get(v, []) as Array):
+					if int(d_from_start.get(u, -1)) != depth - 1:
+						continue
+					var from_parent: Array = anc.get(u, [])
+					if from_parent.is_empty():
+						continue
+					for k in range(mini(early_layers, depth - 1)):
+						var into: Array = slots[k]
+						if into.size() >= 2:
+							continue
+						for a in (from_parent[k] as Array):
+							if into.size() >= 2:
+								break
+							if not into.has(a):
+								into.append(a)
+			anc[v] = slots
+			var branched := 0
+			for k in range(early_layers):
+				if (slots[k] as Array).size() >= 2:
+					branched += 1
+			scores[v] = branched
+	return scores
+
+# The same score again, but for every possible START against one fixed amulet.
+#
+# `_strict_starts_for` asks the mirror-image question — it holds the amulet still
+# and scores the candidate starts — and it was answering it the mirror-image
+# expensive way, a whole-catalog BFS per eligible start (239 of them on the
+# shipping catalog, which is what was left of the boot after the sweep above
+# landed).
+#
+# It needs no BFS at all. The graph is undirected, so the distances from the
+# amulet are also the distances TO it: `d_to_target[s]` is the path length the
+# loop wanted `bfs_distances(s)[amulet]` for. And the score inverts just as
+# cleanly — a node counted at layer j out of the start is, in the DAG rooted at
+# the AMULET, an ancestor of that start exactly j levels above it. So where
+# `dag_branch_scores_from` carries down ancestors at ABSOLUTE layers, this one
+# carries down ancestors at RELATIVE ones: parents, grandparents,
+# great-grandparents, each capped at the two the score can read.
+#
+# Returns {start id: score}. Checked against the per-candidate function over the
+# whole catalog in test_run_graph_scoring.gd, same as its twin.
+static func dag_branch_scores_to(d_to_target: Dictionary,
+		early_layers: int = EARLY_LAYERS_FOR_SCORE) -> Dictionary:
+	_build_adj()
+	var by_depth: Array = []
+	for id in d_to_target:
+		var d: int = d_to_target[id]
+		while by_depth.size() <= d:
+			by_depth.append([])
+		(by_depth[d] as Array).append(id)
+	# id -> Array of `early_layers` Arrays: the ancestors 1, 2, … levels above it
+	# in the DAG rooted at the target, at most two of each.
+	var rel: Dictionary = {}
+	var scores: Dictionary = {}
+	for depth in range(by_depth.size()):
+		for v in (by_depth[depth] as Array):
+			var slots: Array = []
+			for k in range(early_layers):
+				slots.append([])
+			if depth >= 1:
+				for u in (_adj_cache.get(v, []) as Array):
+					if int(d_to_target.get(u, -1)) != depth - 1:
+						continue
+					# One level up is the parent itself; every level past that is
+					# whatever that parent had one level shallower again.
+					var into: Array = slots[0]
+					if into.size() < 2 and not into.has(u):
+						into.append(u)
+					var from_parent: Array = rel.get(u, [])
+					if from_parent.is_empty():
+						continue
+					for k in range(1, early_layers):
+						var dest: Array = slots[k]
+						if dest.size() >= 2:
+							continue
+						for a in (from_parent[k - 1] as Array):
+							if dest.size() >= 2:
+								break
+							if not dest.has(a):
+								dest.append(a)
+			rel[v] = slots
+			var branched := 0
+			for k in range(early_layers):
+				if (slots[k] as Array).size() >= 2:
+					branched += 1
+			scores[v] = branched
+	return scores
 
 # Per-layer "how many nodes are on a shortest-path DAG at depth d?".
 # Used by the choose-your-start panel's vertical bar chart.
@@ -621,16 +785,21 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
 	var by_type: Dictionary = {}
 	var band: Vector2i = RunConfig.path_band()
+	# Every start's score against this amulet, in one sweep of the amulet's own
+	# DAG. This loop used to run a whole-catalog BFS per eligible start purely to
+	# read two things out of it — see dag_branch_scores_to.
+	var start_scores: Dictionary = dag_branch_scores_to(d_to_amulet)
 	for g in eligible_starts:
 		if g.id == amulet.id:
 			continue
-		var d_from := bfs_distances(g.id)
-		if not d_from.has(amulet.id):
+		# The graph is undirected, so the amulet's distance to this game IS this
+		# game's distance to the amulet.
+		if not d_to_amulet.has(g.id):
 			continue
-		var path_len: int = d_from[amulet.id]
+		var path_len: int = d_to_amulet[g.id]
 		if path_len < band.x or path_len > band.y:
 			continue
-		var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
+		var score := int(start_scores.get(g.id, 0))
 		if not by_type.has(g.type):
 			by_type[g.type] = {}
 		var per_len: Dictionary = by_type[g.type]
@@ -841,6 +1010,10 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	var band: Vector2i = RunConfig.path_band()
 	for i in range(refs.size()):
 		var d_ref: Dictionary = ref_dists[i]
+		# Every candidate's score from this reference, in ONE pass. Asking per
+		# candidate meant a whole-catalog BFS each (868 ms a roll, and a memo that
+		# grew for the life of the process) — see dag_branch_scores_from.
+		var ref_scores: Dictionary = dag_branch_scores_from(d_ref)
 		for g in all:
 			if ref_ids.has(g.id) or not d_ref.has(g.id):
 				continue
@@ -851,7 +1024,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			var d: int = d_ref[g.id]
 			if d < band.x or d > band.y:
 				continue
-			var s := dag_branch_score_early(d_ref, g.id)
+			var s := int(ref_scores.get(g.id, 0))
 			if not cand_score.has(g.id) or s > int(cand_score[g.id]):
 				cand_score[g.id] = s
 				cand_game[g.id] = g

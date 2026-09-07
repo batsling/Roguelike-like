@@ -396,40 +396,140 @@ func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
 	assert_false(_text_of(col._detail_box).contains("Steam page"),
 		"and a game without one stays clean")
 
-# --- the Games tab's covers -------------------------------------------------
+# --- the Games tab's streamed cells -----------------------------------------
 #
-# 845 games, and a cover is a path until something reads it (GameData.cover_path
-# -> cover_image). Building every cell with its picture read all 845 of them —
-# ~206MB of PNG decoded before the window could be drawn, which was almost all of
-# the time the Collection took to open. A dozen are on screen; the rest are a
-# scroll away and most are never reached.
+# 857 games, and a cell is eight nodes. Building them all was 6,896 Controls
+# entering the tree, which measured 3.29s to open the tab with no rendering in the
+# way — and the cost is ENTERING THE TREE, so filling the grid detached and
+# re-attaching it (measured, both ways) buys nothing.
+#
+# So the flow holds all 857 cells, each an empty panel of exactly the size it will
+# be filled at, and only the ones near the viewport carry their contents. The
+# scrollbar and the scroll position are the full catalog's either way; a dozen
+# cells are drawn and the rest are a scroll away.
 
-func test_the_games_tab_opens_without_reading_every_cover() -> void:
+func _filled_count(col: Collection) -> int:
+	var n: int = 0
+	for slot in col._cell_slots:
+		if bool((slot as Dictionary).get("filled", false)):
+			n += 1
+	return n
+
+func test_the_games_tab_opens_without_building_every_cell() -> void:
 	var col := _new_collection()
 	assert_gt(col._grid.get_child_count(), 100, "the whole catalog is in the grid")
-	assert_gt(col._pending_covers.size(), 100,
-		"and its covers are queued rather than read on the way in")
+	assert_eq(col._cell_slots.size(), col._grid.get_child_count(),
+		"every cell in it has a slot")
+	assert_lt(_filled_count(col), 100,
+		"but only a window of them is carrying its contents")
+	assert_gt(_filled_count(col), 0,
+		"and the top of the list is drawn on the frame it appears")
 
-func test_the_covers_on_screen_are_the_ones_that_get_read() -> void:
+func test_an_empty_cell_still_takes_up_a_filled_cell_s_room() -> void:
+	# The whole scheme rests on this: if an empty cell were shorter than a filled
+	# one, the grid's height would depend on which cells happened to be drawn and
+	# the scrollbar would move under the player as they used it.
 	var col := _new_collection()
-	var queued: int = col._pending_covers.size()
 	await wait_frames(4)
-	assert_lt(col._pending_covers.size(), queued,
-		"the cells that landed on screen have their pictures")
-	assert_gt(col._pending_covers.size(), 0,
-		"and the hundreds below the fold are still waiting to be scrolled to")
-	for entry in col._pending_covers:
-		assert_null((entry["rect"] as TextureRect).texture,
-			"an unread cover is an empty frame, not a broken one")
-		break
+	var filled: Control = null
+	var empty: Control = null
+	for slot in col._cell_slots:
+		var d: Dictionary = slot
+		if bool(d.get("filled", false)):
+			if filled == null:
+				filled = d["cell"]
+		elif empty == null:
+			empty = d["cell"]
+	if filled == null or empty == null:
+		pending("this run's grid had no filled and empty cell to compare")
+		return
+	assert_eq(empty.size.y, filled.size.y,
+		"an empty cell is exactly as tall as a filled one")
 
-func test_a_filter_that_empties_the_grid_drops_what_it_was_waiting_to_read() -> void:
+func test_the_cells_on_screen_are_the_ones_that_get_filled() -> void:
+	var col := _new_collection()
+	await wait_frames(4)
+	var window: int = _filled_count(col)
+	assert_gt(window, 0, "the cells that landed on screen carry their contents")
+	assert_lt(window, col._cell_slots.size(),
+		"and the hundreds below the fold are still empty")
+	for slot in col._cell_slots:
+		var d: Dictionary = slot
+		if not bool(d.get("filled", false)):
+			assert_eq((d["cell"] as Control).get_child_count(), 1,
+				"an unfilled cell is its empty box, not a broken one")
+			break
+
+func test_scrolling_past_a_cell_gives_its_contents_back() -> void:
+	# The half that actually releases memory: a cover held by a cell that is three
+	# screens above the viewport is a cover the run is paying for and nobody can
+	# see. Covers are freed by dropping the last reference to them, so the cell
+	# letting go is what lets GameData's cache let go too.
+	var col := _new_collection()
+	await wait_frames(4)
+	var top_slot: Dictionary = col._cell_slots[0]
+	assert_true(bool(top_slot.get("filled", false)), "the first cell starts filled")
+	var bar: VScrollBar = col._grid_scroll.get_v_scroll_bar()
+	if bar.max_value <= col._grid_scroll.size.y:
+		pending("this run's grid fits the viewport, so nothing is ever scrolled past")
+		return
+	bar.value = bar.max_value
+	await wait_frames(4)
+	assert_false(bool((col._cell_slots[0] as Dictionary).get("filled", false)),
+		"scrolling to the bottom empties the cells at the top")
+	assert_gt(_filled_count(col), 0, "and fills the ones that arrived")
+	bar.value = 0.0
+	await wait_frames(4)
+	assert_true(bool((col._cell_slots[0] as Dictionary).get("filled", false)),
+		"and scrolling back up fills them in again")
+
+func test_a_filter_that_empties_the_grid_drops_the_cells_it_was_tracking() -> void:
 	var col := _new_collection()
 	await wait_frames(2)
 	col._search["games"] = "__nothing matches this__"
 	col._refresh()
-	assert_eq(col._pending_covers.size(), 0,
-		"the queue points at cells that no longer exist — it goes with them")
+	assert_eq(col._cell_slots.size(), 0,
+		"the slots point at cells that no longer exist — they go with them")
+
+# --- typing does not rebuild the tab per letter -----------------------------
+#
+# `text_changed` used to run `_populate()` directly, which on this tab is the
+# whole catalog torn down and built again: clearing the box back to 857 games cost
+# 1,347ms in _populate alone, and every rebuild but the last was thrown away by
+# the next letter.
+
+func test_a_keystroke_records_the_text_without_rebuilding_the_grid() -> void:
+	var col := _new_collection()
+	await wait_frames(2)
+	var before: int = col._grid.get_child_count()
+	var box: LineEdit = _search_box_of(col)
+	assert_not_null(box, "the tab has a search box")
+	box.text = "zzzznotathing"
+	box.text_changed.emit("zzzznotathing")
+	assert_eq(col._search["games"], "zzzznotathing",
+		"the text is recorded on the keystroke, so anything reading it is current")
+	assert_eq(col._grid.get_child_count(), before,
+		"but the grid has not been rebuilt yet")
+
+func test_the_grid_catches_up_once_the_typing_stops() -> void:
+	var col := _new_collection()
+	await wait_frames(2)
+	var box: LineEdit = _search_box_of(col)
+	box.text = "zzzznotathing"
+	box.text_changed.emit("zzzznotathing")
+	await wait_seconds(Collection.SEARCH_DEBOUNCE + 0.25)
+	assert_eq(col._grid.get_child_count(), 1,
+		"the debounce fires and the grid shows the empty note")
+
+func _search_box_of(col: Collection) -> LineEdit:
+	var stack: Array = [col]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is LineEdit:
+			return n
+		for c in n.get_children():
+			stack.append(c)
+	return null
 
 # --- ticking games off as owned ---------------------------------------------
 #

@@ -11,6 +11,115 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run graph stopped running a BFS per candidate, and every screen is now
+  measured against the canvas it is drawn on.**
+
+  The other half of the same measured pass. Three findings, and two of them turned
+  out to be about how easy it is to be confidently wrong.
+
+  **`pick_amulet_and_starts` was scoring one candidate at a time**, and the score
+  needs the distances from that candidate — so both of its loops ran a
+  whole-catalog BFS per game they looked at. 764 ms with the graph warm, and a
+  memo left holding 669 origins and 509,778 distance entries after a single roll,
+  growing every run for the life of the process.
+
+  **The obvious inversion does not work, and that is worth writing down.** The
+  score only looks at nodes within three hops of the reference, so "one BFS per
+  early node instead of one per candidate" looks like the fix. Measured, it is
+  **1.29x** — this graph is small-world, the ball within 3 hops is 184–415 games
+  and the band shell it would replace is 343–562. Measure the two sets before
+  believing a swap like that.
+
+  What works is not traversing at all. `d_from[n] + d(n, A) == d_from[A]` — the
+  condition the score counts — is exactly "n reaches A in the shortest-path DAG
+  rooted at the start", since every DAG edge steps the depth by one. So every
+  candidate's score falls out of one sweep in BFS order, carrying down each node
+  the early-layer ancestors that reach it, **capped at two** because that is all
+  the score can read. The start half is the mirror image, carrying relative depths
+  instead of absolute ones, and it also deleted a BFS that was never needed:
+  `bfs_distances(start)[amulet]` is `d_to_amulet[start]` on an undirected graph.
+  **29 ms**, a cold boot from 2,188 to 1,301 ms (median of three launches), a warm
+  one from 442 to 175, and a memo of four origins instead of 669 — now capped
+  besides, by the rule the DAG caches next to it already used. Both sweeps are equivalences argued rather than
+  refactors, so `test_run_graph_scoring.gd` checks each against the slow function
+  over every reachable game, and the two against each other.
+
+  **The Constellations view was 11px wider than the canvas** — the header's own
+  ✕ Close a pixel off the right edge. The first diagnosis blamed the legend, which
+  grows with what is on the sky and has two extra chips in the catalog view. The
+  legend was made a flow and the page was **still 1291**. Measuring the rows'
+  minimum widths named the real one: the **filter bar**, because it carries a
+  Region dropdown and an OptionButton is as wide as its widest item — which here
+  are the full names of whichever games are hubs of the baked sky. The page's
+  width was a fact about the catalog. Both rows are flows now; the legend change
+  was right for the wrong reason and stays, as it is the row that grows next.
+
+  **And there is a general fit guard now** (`test_screens_fit.gd`) instead of one
+  page-height assertion on the overworld: walk a screen, compare every visible
+  Control against the canvas, skip ScrollContainers. It measures against
+  `Settings.canvas_width` rather than a literal 1280, because `request_canvas_width`
+  exists and a screen that asks for room is fitting rather than overflowing. **It
+  found a broken harness before it found a broken screen** — a headless GUT run
+  gives the root window 1280x1280, so all fourteen screens reported 560px of
+  overflow and the one real finding was buried in it. The file pins the window and
+  asserts the pinning took, so that can only happen once.
+
+- **The Collection stopped paying for the whole catalog, and covers stopped
+  accumulating forever.**
+
+  A measured pass over the screens rather than the code — the real scenes booted
+  headless for script time and under Xvfb for the rest. It found the run screens
+  in good shape (`Overworld2` is 154 nodes, `BattlefieldView.refresh()` is 4.5 ms,
+  every screen idles at the loop floor with nothing redrawing per frame) and the
+  catalog-sized screens paying for all 857 games at once. Three findings, one
+  screen, fixed together.
+
+  **A decoded cover was held for the life of the process.** The lazy load that
+  made `cover_image` a path until something read it fixed *startup* and moved the
+  cost to the first time anyone browses: reading all 857 took **7.35 s and grew
+  texture memory from 316 MB to 1304 MB**, and scrolling the Games tab from top to
+  bottom did exactly that walk. Nothing ever came back. `GameData` now keeps a
+  shared, bounded, least-recently-used set of them. **The budget was measured, not
+  guessed** — the star chart never draws more than 19 covers at any zoom, swept
+  over the whole range, and the grid keeps a few dozen cells near the viewport —
+  so the cap only bites on a walk across the catalog, which is what it is for.
+  Evicting drops a *reference*, not a picture: art still mounted in a
+  `TextureRect` stays alive until that node is freed, which is what makes it safe
+  to evict what is on screen. Same scroll now peaks at 614 MB, exactly the budget.
+
+  **The Games tab built 6,896 nodes** — 857 cells at eight each, **3.29 s to open
+  with no rendering in the way**. The cost is *entering the tree*, not the flow
+  container sorting: the same 857 cells added to a `Control` outside the tree is
+  2.3 ms, to a bare mounted one 1,091 ms, to the real `HFlowContainer` 1,097 ms.
+  So "fill it detached and re-attach", the usual trick, buys nothing — A/B'd end
+  to end at 1,104 ms vs 1,136 ms. The only fix is not to make them. The flow now
+  holds all 857 as **empty panels of exactly the size they will be filled at**,
+  and only the ones near the viewport carry their contents; the scrollbar and the
+  scroll position are the full catalog's either way. **2,024 nodes, 1,011 ms**,
+  and about twenty cells drawn at a time. It costs the tail of the longest titles:
+  a cell can only be sized before it is filled if every cell is the same height,
+  so the name is clamped to two lines with an ellipsis past it — the median game
+  name is 13 characters and fits one line, about one in twenty runs past two — and
+  the full name moved to the cell's tooltip. The grid gains even rows in exchange
+  for a ragged flow that never lined up.
+
+  **And every keystroke rebuilt the tab.** `text_changed` ran `_populate()`
+  directly, so typing `bala` cost 688 ms across its four letters and clearing the
+  box back to 857 games cost 1,347 ms in `_populate` alone, every rebuild but the
+  last thrown away by the next letter. One `Timer` at the single connect site
+  covers all eight tabs. The *text* is still stored on the keystroke and only the
+  *rebuild* is deferred, so anything reading `_search` in between — a sort button,
+  a filter, a test — sees what has actually been typed. 293 ms and 103 ms.
+
+  Three findings from the same pass were left open here and are fixed in the entry
+  above. Two things this entry said about them were wrong, and are corrected
+  there: the Constellations view is 11px too wide because of its **filter bar**,
+  not its legend (the legend was made to wrap first and the page did not move);
+  and `pick_amulet_and_starts` does not have "one call site omitting a cache
+  argument" — passing that cache would not have helped, because the loop needs
+  distances from each candidate in turn. Both were diagnoses made from reading,
+  and both fell over on the first measurement.
+
 - **Seventeen dead pointers in the live docs, and a check so they stay dead-free.**
 
   Found by sweeping the actual game code for silent-failure classes and coming up
