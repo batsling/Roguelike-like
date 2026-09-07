@@ -14,9 +14,9 @@ asking the host what a ⚔ looks like").
 the real scenes headless (script time, no rendering) and under Xvfb. It found the
 catalog-sized screens paying for the whole catalog and the run screens in good
 shape — `Overworld2` is 154 nodes, `BattlefieldView.refresh()` is 4.5 ms, and
-every screen idles at the loop floor with nothing redrawing per frame. Three of
-its findings are **fixed and written up in §3 below**; three are open and listed
-in §4.
+every screen idles at the loop floor with nothing redrawing per frame. **All six
+of its findings are fixed** — the compendium's three in §3, the run graph's in §4,
+and the screen-fit pair in §5. What that pass left behind is in §6.
 
 **Two items are left from the first pass**, below. §1 is in progress — a fourth
 split has landed and the seam table has been re-measured, because the old one had
@@ -265,41 +265,104 @@ between sees what has actually been typed.
 
 ---
 
-## 4. Open, from the same pass
+## 4. The run graph stopped running a BFS per candidate — fixed
 
-**`RunGraph.pick_amulet_and_starts` is most of the boot, and leaks a BFS memo.**
-868 ms on the first roll, still 302–426 ms warm; `Overworld2` add_child (build +
-`start_run`, no frames) is 1,194 ms cold. The cause is one omitted argument —
-`RunGraph.gd:862` calls `dag_branch_score_early(d_ref, g.id)` without the
-`d_to_amulet_cache` the function already takes, so **every band candidate runs a
-full-graph `bfs_distances`**. The memo is unbounded: 669 origins / 509,778
-distance entries after one roll, 762 after four, growing every run for the life of
-the process. The fix inverts the traversal — the score only asks about nodes
-within `EARLY_LAYERS_FOR_SCORE` hops of the reference, so run one BFS per *early
-node* (a small ball) instead of one per *candidate amulet* (the 5–7-hop shell,
-which in a small-world graph is most of the catalog), then score every candidate
-in one sweep. Exact, not sampled.
+`pick_amulet_and_starts` scores every game in the band as a possible Amulet, and
+then every eligible game as a possible start. Both loops asked their question one
+candidate at a time, and the question needed a whole-catalog BFS each.
 
-**The Constellations view is 11 px too wide for the 1280 canvas.** The
-pure-catalog `AtlasView` lays out at **1291×720**: the header's `✕ Close` ends at
-x=1281 and the legend's "Star size = connections" note at x=1283, both clipped off
-the right edge. `_fill_legend` is a plain `HBoxContainer`, and in `pure_catalog`
-it gains two chips the run view does not have (`⚔ Beaten`, `👑 Amulet won`); that
-row's minimum width sets the whole page's. **Opened from a run it measures exactly
-1280 and fits**, which is why nothing has caught it. An `HFlowContainer` for the
-legend row — the container the Collection grid already uses — wraps the key
-instead of widening the page.
+| | before | after |
+|---|---|---|
+| `pick_amulet_and_starts`, graph warm | 764 ms | **29 ms** |
+| `Overworld2` add_child, cold (median of 3) | 2,188 ms | **1,301 ms** |
+| `Overworld2` add_child, warm | 442 ms | **175 ms** |
+| BFS memo after one boot | 669 origins / 509,778 entries | **4 / 3,048** |
 
-**The 720p fit test only covers the overworld.** `test_overworld2.gd::_assert_fits`
-is the suite's only fit guard, and the finding above is precisely what it cannot
-see. The audit that found it is ~30 lines — walk the tree, compare each
-`Control`'s global rect to the viewport, skip `ScrollContainer`s — and every other
-screen passes it today: MainMenu, the character picker, all eight Collection tabs,
-HowToPlay, TierList, RunHistory, Settings and the overworld page.
+**The obvious inversion does not work, and this is the part worth keeping.** The
+score only looks at nodes within `EARLY_LAYERS_FOR_SCORE` (3) hops of the
+reference, so "one BFS per early node instead of one per candidate" looks like the
+fix. Measured on the shipping catalog it is **1.29x**: this graph is small-world,
+the ball within 3 hops is 184–415 games, and the band shell it would replace is
+343–562. An hour of writing for nothing. Measure the two set sizes before
+believing a swap like that.
 
-**And one observation worth a look.** With the Games tab fixed, the slowest thing
-in the compendium is the **Events tab at 909 ms** for sixteen events, which is not
-a node-count problem at that size and was not chased.
+**What works is not doing the traversals at all.** The condition the score counts
+— `d_from[n] + d(n, A) == d_from[A]` — is exactly "n reaches A in the
+shortest-path DAG rooted at the start", because every DAG edge steps the depth by
+one, so any DAG path from n to A has length `d[A] - d[n]` and that is therefore
+the true distance. Both directions hold, and the graph is undirected. So every
+candidate's score falls out of **one sweep in BFS order**, carrying down each node
+the set of early-layer ancestors that can reach it — capped at two, which is all
+the score can read, so what a node carries never grows with the graph.
+
+The start half is the mirror image (`dag_branch_scores_to`): hold the Amulet
+still, and a node counted at layer j out of the start is an ancestor of that start
+exactly j levels above it in the Amulet-rooted DAG. So that sweep carries
+**relative** depths where the first carries absolute ones. It also removed a BFS
+that was never needed at all — `bfs_distances(start)[amulet]` is just
+`d_to_amulet[start]` on an undirected graph.
+
+Both are equivalences argued rather than refactors, so `test_run_graph_scoring.gd`
+checks each against the per-candidate function **over every reachable game**, and
+checks the two sweeps against each other. That test is what lets the fast paths be
+trusted; if it fails, they are wrong and the slow one is the answer.
+
+**And the memo is bounded now** (`BFS_CACHE_MAX`, emptied wholesale over the cap,
+the rule `DAG_CACHE_MAX` beside it already used). The sweeps took the growth away
+on their own, but "small in practice" is not a bound and what made it grow was a
+call site nobody had noticed.
+
+---
+
+## 5. Every screen is measured against its canvas — fixed
+
+**The Constellations view laid out at 1291×720 in a 1280 canvas**, which put the
+header's own `✕ Close` a pixel off the right edge.
+
+**The first diagnosis was wrong, and the way it was wrong is the point.** It read
+as the legend: that row grows with what is on the sky, and the catalog view draws
+two chips the run view does not. The legend was made an `HFlowContainer` and the
+page was **still 1291**. Measuring the rows' minimum widths directly named the
+real culprit — the **filter bar**, at 1275, because it carries a Region dropdown
+and an `OptionButton` is as wide as its widest item, which here are the full
+display names of the baked sky's capitals. So the page's width was a fact about
+which games happen to be hubs. Both rows are flows now; the legend change was
+right for the wrong reason and is kept, since it is the row that grows next.
+
+`test_screens_fit.gd` is the general guard: walk a screen, compare every visible
+Control's global rect to the canvas, skip `ScrollContainer`s. It measures against
+**`Settings.canvas_width`, not a literal 1280**, because `request_canvas_width`
+lets a screen that needs room ask for it — a screen that asks is fitting, not
+overflowing.
+
+**It found a broken harness before it found a broken screen.** A headless GUT run
+gives the root window **1280×1280**, so every screen laid itself out 560px taller
+than it ships and the first run reported 560px of overflow on all fourteen — with
+the one real finding buried in it. The file pins the window to `CANVAS_BASE` and
+asserts that the pinning took, so that failure can only happen once.
+
+Covered: MainMenu, the character picker, the custom-run screen, the manual, the
+tier list, run history, settings, all eight Collection tabs, and the star chart in
+both its views. All fit.
+
+---
+
+## 6. Still open
+
+**The Events tab is 909 ms** for sixteen events. With the Games tab fixed it is
+the slowest thing in the compendium, it is not a node-count problem at that size,
+and it was not chased.
+
+**~1,080 ms of the first `Overworld2` is one-time cost that is not the graph.**
+With the run graph fully warm and `pick_amulet_and_starts` down to 29 ms, the
+first construction still measures ~1,256 ms against ~175 ms for the second. That
+is theme, font and first-use script loading rather than anything this pass
+touched, and it is now the largest single number left in the boot.
+
+**Wall-clock on this box is noisy.** Identical code measured 1,194 ms and 2,019 ms
+for the same boot in different launches. Every timing above that matters is either
+a ratio far outside that band, a median of repeated launches, or a count
+(cache entries, node counts) rather than a time. Do the same.
 
 ---
 

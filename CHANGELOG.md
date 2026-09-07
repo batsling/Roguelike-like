@@ -11,6 +11,60 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run graph stopped running a BFS per candidate, and every screen is now
+  measured against the canvas it is drawn on.**
+
+  The other half of the same measured pass. Three findings, and two of them turned
+  out to be about how easy it is to be confidently wrong.
+
+  **`pick_amulet_and_starts` was scoring one candidate at a time**, and the score
+  needs the distances from that candidate — so both of its loops ran a
+  whole-catalog BFS per game they looked at. 764 ms with the graph warm, and a
+  memo left holding 669 origins and 509,778 distance entries after a single roll,
+  growing every run for the life of the process.
+
+  **The obvious inversion does not work, and that is worth writing down.** The
+  score only looks at nodes within three hops of the reference, so "one BFS per
+  early node instead of one per candidate" looks like the fix. Measured, it is
+  **1.29x** — this graph is small-world, the ball within 3 hops is 184–415 games
+  and the band shell it would replace is 343–562. Measure the two sets before
+  believing a swap like that.
+
+  What works is not traversing at all. `d_from[n] + d(n, A) == d_from[A]` — the
+  condition the score counts — is exactly "n reaches A in the shortest-path DAG
+  rooted at the start", since every DAG edge steps the depth by one. So every
+  candidate's score falls out of one sweep in BFS order, carrying down each node
+  the early-layer ancestors that reach it, **capped at two** because that is all
+  the score can read. The start half is the mirror image, carrying relative depths
+  instead of absolute ones, and it also deleted a BFS that was never needed:
+  `bfs_distances(start)[amulet]` is `d_to_amulet[start]` on an undirected graph.
+  **29 ms**, a cold boot from 2,188 to 1,301 ms (median of three, because
+  wall-clock on this box swings 70%), a warm one from 442 to 175, and a memo of
+  four origins instead of 669 — now capped besides, by the rule the DAG caches
+  next to it already used. Both sweeps are equivalences argued rather than
+  refactors, so `test_run_graph_scoring.gd` checks each against the slow function
+  over every reachable game, and the two against each other.
+
+  **The Constellations view was 11px wider than the canvas** — the header's own
+  ✕ Close a pixel off the right edge. The first diagnosis blamed the legend, which
+  grows with what is on the sky and has two extra chips in the catalog view. The
+  legend was made a flow and the page was **still 1291**. Measuring the rows'
+  minimum widths named the real one: the **filter bar**, because it carries a
+  Region dropdown and an OptionButton is as wide as its widest item — which here
+  are the full names of whichever games are hubs of the baked sky. The page's
+  width was a fact about the catalog. Both rows are flows now; the legend change
+  was right for the wrong reason and stays, as it is the row that grows next.
+
+  **And there is a general fit guard now** (`test_screens_fit.gd`) instead of one
+  page-height assertion on the overworld: walk a screen, compare every visible
+  Control against the canvas, skip ScrollContainers. It measures against
+  `Settings.canvas_width` rather than a literal 1280, because `request_canvas_width`
+  exists and a screen that asks for room is fitting rather than overflowing. **It
+  found a broken harness before it found a broken screen** — a headless GUT run
+  gives the root window 1280x1280, so all fourteen screens reported 560px of
+  overflow and the one real finding was buried in it. The file pins the window and
+  asserts the pinning took, so that can only happen once.
+
 - **The Collection stopped paying for the whole catalog, and covers stopped
   accumulating forever.**
 
@@ -58,14 +112,14 @@ For how the project is laid out and how its systems fit together, see
   *rebuild* is deferred, so anything reading `_search` in between — a sort button,
   a filter, a test — sees what has actually been typed. 293 ms and 103 ms.
 
-  Three findings from the same pass are open and written up in
-  `docs/performance-backlog.md` §4: `RunGraph.pick_amulet_and_starts` runs a
-  full-graph BFS per candidate because one call site omits the cache argument the
-  function already takes (868 ms, and an unbounded memo at 509,778 entries after a
-  single roll); the Constellations view lays out 11 px wider than the 1280 canvas,
-  clipping its own Close button, because the legend is a non-wrapping `HBox` that
-  gains two chips in catalog mode; and the 720p fit test only covers the overworld,
-  which is why nothing caught the second one.
+  Three findings from the same pass were left open here and are fixed in the entry
+  above. Two things this entry said about them were wrong, and are corrected
+  there: the Constellations view is 11px too wide because of its **filter bar**,
+  not its legend (the legend was made to wrap first and the page did not move);
+  and `pick_amulet_and_starts` does not have "one call site omitting a cache
+  argument" — passing that cache would not have helped, because the loop needs
+  distances from each candidate in turn. Both were diagnoses made from reading,
+  and both fell over on the first measurement.
 
 - **Seventeen dead pointers in the live docs, and a check so they stay dead-free.**
 

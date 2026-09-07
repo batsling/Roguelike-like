@@ -1284,8 +1284,21 @@ func _rebuild_filter_bar() -> void:
 		return
 	for c in _filter_bar.get_children():
 		c.queue_free()
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	# A FLOW, for the same reason the legend below is one — and this is the row
+	# that was actually breaking the page.
+	#
+	# Thirteen controls, one of which is the REGION dropdown, and an OptionButton
+	# is as wide as its widest item. Those items are the capitals' full display
+	# names, so this row's minimum width is set by whichever game happens to be a
+	# hub of the baked sky — a number that moves when the catalog does. It came to
+	# 1275, which with the bar's margins laid the whole view out at 1291 in a 1280
+	# canvas and pushed the header's ✕ Close a pixel off the right edge.
+	#
+	# A flow's minimum is its widest single control, so a filter row too long for
+	# one line takes a second line instead of taking it out of the page.
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 10)
+	row.add_theme_constant_override("v_separation", 4)
 	_filter_bar.add_child(row)
 
 	# Two ways of arranging the same graph. Constellations cluster it around its
@@ -1353,8 +1366,9 @@ func _rebuild_filter_bar() -> void:
 	row.add_child(clear)
 
 	_filter_count = Label.new()
-	_filter_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_filter_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# No EXPAND_FILL / right-align: those pushed the count to the far end of an
+	# HBox, and in a flow they would win it a line of its own. Beside the Clear
+	# button it also sits with the filters it is counting.
 	_filter_count.add_theme_font_size_override("font_size", 12)
 	_filter_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_filter_count)
@@ -1482,8 +1496,22 @@ func _rebuild_legend() -> void:
 
 func _fill_legend() -> void:
 	var bar := _legend_bar
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	# A FLOW, not an HBox.
+	#
+	# The key grows with what is on the sky, and an HBox answers that by growing
+	# the PAGE: its minimum width is the sum of its chips, and a Control's minimum
+	# is a floor the window does not get to argue with. In the catalog view the two
+	# record chips below tip it over — the whole view laid out at 1291px in a 1280
+	# canvas, which put the header's own ✕ Close button one pixel off the right
+	# edge and this row's closing note three. Opened from a RUN it measured exactly
+	# 1280 and fitted, which is why it went unseen: the catalog is the only view
+	# that draws those two chips.
+	#
+	# A flow's minimum is its widest single chip, so a key too long for one line
+	# wraps onto a second and the page keeps its width.
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 18)
+	row.add_theme_constant_override("v_separation", 4)
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
@@ -1509,7 +1537,9 @@ func _fill_legend() -> void:
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
 	var note := Label.new()
 	note.text = "Star size = connections"
-	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# No EXPAND_FILL: in the HBox this used to be, that let the note swallow the
+	# slack and drew its text at the left of it — the same place a flow puts it
+	# anyway. In a flow it would claim a line of its own instead.
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	row.add_child(note)
