@@ -56,6 +56,17 @@ signal health_lost(ctx: Dictionary)         # ctx.amount — the PLAYER's Health
                                             # taken and no Health lost, and Piggy Bank
                                             # must not pay for it. Run-scope and
                                             # scene-less.
+signal gold_gained(ctx: Dictionary)         # ctx.amount — the player's purse went UP,
+                                            # from any source anywhere in the run: a
+                                            # report's payout, an event, a relic, a
+                                            # sold piece of loot. Emitted once per
+                                            # gain by GameState.change_gold, on what
+                                            # the purse ACTUALLY took. The mirror of
+                                            # health_lost, and deliberately NOT on
+                                            # set_gold: the run's opening purse is not
+                                            # gold you obtained, and an undo putting a
+                                            # number back is not a payout (Dragon
+                                            # Fruit, §8.1). Run-scope and scene-less.
 signal run_lost(ctx: Dictionary)            # ctx.attempt, ctx.goals_met — the player
                                             # pressed the button that logs a LOST RUN
                                             # at the game in play (§3). Emitted once
@@ -114,6 +125,17 @@ signal card_used(ctx: Dictionary)            # ctx.card — a CARD (the loot kin
                                             # card_played above, which belongs to
                                             # the combat deck that no longer
                                             # exists.
+signal card_obtained(ctx: Dictionary)        # ctx.card — a CARD (the loot kind)
+                                            # ENTERED THE PACK: rolled off a report's
+                                            # payout, taken off the battlefield floor,
+                                            # bought, traded in. The pickup twin of
+                                            # card_used, emitted once per card from
+                                            # GameState._note_loot_gained — the choke
+                                            # point every take funnels through — and
+                                            # never for a card the pack had no room
+                                            # for or for one restored by a save load
+                                            # (Lucky Fysh, §8.1). Run-scope and
+                                            # scene-less.
 signal wand_used(ctx: Dictionary)            # ctx.wand — a WAND (the loot kind,
                                             # docs/wands-design.md) was zapped.
                                             # Emitted once per CHARGE from

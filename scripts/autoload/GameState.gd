@@ -710,6 +710,13 @@ func _connect_lifecycle_hooks() -> void:
 		TriggerBus.enemy_killed.connect(_on_enemy_killed)
 	if not TriggerBus.health_lost.is_connected(_on_health_lost):
 		TriggerBus.health_lost.connect(_on_health_lost)
+	# The purse going UP and a card entering the pack are the same shape of hook
+	# again — no scene, one event per payout / per card, and Dragon Fruit's Max
+	# Health and Lucky Fysh's Gold on the other end of them (§8.1).
+	if not TriggerBus.gold_gained.is_connected(_on_gold_gained):
+		TriggerBus.gold_gained.connect(_on_gold_gained)
+	if not TriggerBus.card_obtained.is_connected(_on_card_obtained):
+		TriggerBus.card_obtained.connect(_on_card_obtained)
 	# A logged lost run (§3) is the same shape of hook: no scene, one press of the
 	# button, and Ripple Basin's shield on the other end of it.
 	if not TriggerBus.run_lost.is_connected(_on_run_lost):
@@ -778,6 +785,21 @@ func _on_enemy_killed(ctx: Dictionary) -> void:
 
 func _on_run_lost(ctx: Dictionary) -> void:
 	fire_run_item_triggers("run_lost", ctx)
+
+# The one run hook that can pay in its own currency, so it is the one that has to
+# refuse to re-enter: an item answering `gold_gained` with gold of its own would
+# otherwise fire itself forever. The grant still lands — it is the second round of
+# TRIGGERS that is dropped, not the gold.
+var _in_gold_gained := false
+func _on_gold_gained(ctx: Dictionary) -> void:
+	if _in_gold_gained:
+		return
+	_in_gold_gained = true
+	fire_run_item_triggers("gold_gained", ctx)
+	_in_gold_gained = false
+
+func _on_card_obtained(ctx: Dictionary) -> void:
+	fire_run_item_triggers("card_obtained", ctx)
 
 func _on_health_lost(ctx: Dictionary) -> void:
 	fire_run_item_triggers("health_lost", ctx)
@@ -1530,7 +1552,16 @@ func set_gold(new_gold: int) -> void:
 	emit_signal("gold_changed", gold)
 
 func change_gold(delta: int) -> void:
+	var before: int = gold
 	set_gold(gold + delta)
+	# "You obtained gold" (Dragon Fruit, §8.1) — the mirror of the health_lost hook
+	# above, and fired on what the purse ACTUALLY took: a payout is one event
+	# whatever its size, and a spend is none at all. It lives on `change_gold`
+	# rather than on `set_gold` for the same reason health_lost lives on
+	# `change_hp`: the run's opening purse and an undo's restore both go through
+	# the setter, and neither is gold the player obtained.
+	if gold > before:
+		TriggerBus.gold_gained.emit({"amount": gold - before})
 
 # Gold-on-hit rider (King Bomber evolution): an attack effect carrying
 # gold_on_hit_min/max grants a random amount in that range when it connects with
@@ -3428,6 +3459,19 @@ func loot_potions() -> Array:
 func loot_cards() -> Array:
 	return loot_items.filter(func(l): return l is Dictionary and String(l.get("type", "")) == "card")
 
+# A PIECE OF LOOT JUST ENTERED THE PACK — the one place that says so.
+#
+# Every take funnels through here (the kind-blind grant, the drop modal's drag,
+# the trade off the battlefield floor, a named grant), and only a take: a save
+# load rebuilds `loot_items` directly and must not re-pay a run's pickups. Cards
+# are the only kind with a hook on them today (Lucky Fysh, §8.1); the rest pass
+# through so the next one is a line rather than a new choke point.
+func _note_loot_gained(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	if String(entry.get("type", "")) == "card":
+		TriggerBus.card_obtained.emit({"card": entry.get("id", &"")})
+
 func _add_random_scroll_loot() -> void:
 	loot_items.append(roll_loot_entry("scroll"))
 
@@ -3445,6 +3489,7 @@ func _add_random_card_loot() -> void:
 	var entry: Dictionary = CardSystem.roll_card_loot()
 	if not entry.is_empty():
 		loot_items.append(entry)
+		_note_loot_gained(entry)
 
 func _add_random_wand_loot() -> void:
 	var entry: Dictionary = WandSystem.roll_wand_loot()
@@ -3552,6 +3597,7 @@ func take_loot_entry(entry: Dictionary) -> bool:
 		return false
 	loot_items.append(entry.duplicate(true))
 	emit_signal("inventory_changed")
+	_note_loot_gained(entry)
 	return true
 
 # OFFER `n` pieces of loot rather than granting them (§4.3).
@@ -3604,6 +3650,7 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 	taken["pack_slot"] = where
 	loot_items.append(taken)
 	emit_signal("inventory_changed")
+	_note_loot_gained(taken)
 	return true
 
 # TRADE a piece into an OCCUPIED slot, handing back the one it evicts (§8.2).
@@ -3636,6 +3683,7 @@ func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
 	taken["pack_slot"] = slot
 	loot_items[index] = taken
 	emit_signal("inventory_changed")
+	_note_loot_gained(taken)
 	return out
 
 # Grant a SPECIFIC scroll id as loot (DevTools grant). Emits so loot UI refreshes.
@@ -3674,6 +3722,7 @@ func add_card_loot(id: StringName) -> void:
 		return
 	loot_items.append({"type": "card", "id": c.id, "rarity": c.rarity})
 	emit_signal("inventory_changed")
+	_note_loot_gained(loot_items[-1])
 
 # And a SPECIFIC wand, FULL. `ensure_materials` first, so a granted stick has a
 # material to wear even in a run that has never seen one — and the charge count

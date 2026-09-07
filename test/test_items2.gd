@@ -901,3 +901,85 @@ func test_a_chest_is_still_a_chest() -> void:
 	assert_eq(chest._panel.custom_minimum_size, RewardScreen.PANEL_SIZE)
 	assert_false(chest._search.visible, "no search over two rolled cards")
 	assert_eq(chest._choices_box.get_child_count(), 2, "two choices, as asked for")
+
+# --- Dragon Fruit / Lucky Fysh: the purse and the pack --------------------
+#
+# Two relics on two hooks that did not exist before them (§8.1). Both are
+# "whenever", so what each test is really pinning is WHICH events count: a payout
+# but not a spend for Dragon Fruit, a card entering the pack but not any other
+# piece of loot for Lucky Fysh.
+
+func test_dragon_fruit_pays_once_per_payout_not_per_coin() -> void:
+	_give(&"dragon_fruit")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.change_gold(5)
+	assert_eq(GameState.max_hp, 11, "one payout, one Max Health — not five")
+	assert_eq(GameState.hp, 11, "and the new point comes filled, like every gain_max_hp")
+
+func test_dragon_fruit_ignores_gold_going_the_other_way() -> void:
+	_give(&"dragon_fruit")
+	GameState.max_hp = 10
+	GameState.gold = 20
+	GameState.spend_gold(5)
+	assert_eq(GameState.max_hp, 10, "spending is not obtaining")
+	GameState.change_gold(0)
+	assert_eq(GameState.max_hp, 10, "and neither is a payout of nothing")
+
+func test_dragon_fruit_does_not_pay_for_gold_that_was_only_put_back() -> void:
+	# `set_gold` is the setter the opening purse and the undo's restore both go
+	# through. Neither is gold the player obtained, and a relic that paid on them
+	# would turn the undo button into a Max Health press.
+	_give(&"dragon_fruit")
+	GameState.max_hp = 10
+	GameState.set_gold(50)
+	assert_eq(GameState.max_hp, 10, "a number written back is not a payout")
+
+func test_lucky_fysh_pays_when_a_card_enters_the_pack() -> void:
+	_give(&"lucky_fysh")
+	GameState.gold = 0
+	var card: Dictionary = CardSystem.roll_card_loot()
+	if card.is_empty():
+		pending("no cards loaded to put in the pack")
+		return
+	assert_true(GameState.take_loot_entry(card), "the pack had room for it")
+	assert_eq(GameState.gold, 1, "Lucky Fysh: +1 Gold for the card")
+
+func test_lucky_fysh_ignores_the_other_four_kinds_of_loot() -> void:
+	_give(&"lucky_fysh")
+	GameState.gold = 0
+	for kind in ["scroll", "pill", "potion", "wand"]:
+		var entry: Dictionary = GameState.roll_loot_entry(kind)
+		if entry.is_empty():
+			continue
+		GameState.take_loot_entry(entry)
+	assert_eq(GameState.gold, 0, "a card is a card, and a potion is not one")
+
+func test_lucky_fysh_pays_nothing_for_a_card_the_pack_had_no_room_for() -> void:
+	_give(&"lucky_fysh")
+	GameState.gold = 0
+	while not GameState.loot_is_full():
+		GameState.add_loot("scroll", 1)
+	var card: Dictionary = CardSystem.roll_card_loot()
+	if card.is_empty():
+		pending("no cards loaded to refuse")
+		return
+	assert_false(GameState.take_loot_entry(card), "the pack is full")
+	assert_eq(GameState.gold, 0, "a piece you never took pays nothing")
+
+func test_a_card_can_pay_a_coin_that_pays_a_max_health_but_no_further() -> void:
+	# The two relics chain — the card's coin IS a gold gain — and the chain has to
+	# stop there. `_on_gold_gained` refuses to re-enter, so a relic that answered
+	# gold with gold could not run away with the run.
+	_give(&"lucky_fysh")
+	_give(&"dragon_fruit")
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.gold = 0
+	var card: Dictionary = CardSystem.roll_card_loot()
+	if card.is_empty():
+		pending("no cards loaded to put in the pack")
+		return
+	GameState.take_loot_entry(card)
+	assert_eq(GameState.gold, 1, "the card paid its coin")
+	assert_eq(GameState.max_hp, 11, "and the coin paid its Max Health, once")

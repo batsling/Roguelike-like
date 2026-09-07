@@ -119,13 +119,23 @@ TRIGGER_SIGNALS = {
     # Basin's shield rides in on this, gated to a game where nothing has been
     # ticked off yet (`if_goals=0`).
     "run_lost": "run_lost",
+    # "whenever you obtain any amount of gold" — the mirror of health_lost, fired
+    # once per payout by GameState.change_gold on what the purse actually took, and
+    # never on a spend or on the run's opening gold (Dragon Fruit, §8.1).
+    "gold_gained": "gold_gained",
+    # "whenever you obtain a Card" — a card of the LOOT kind entering the pack,
+    # fired once per card by GameState._note_loot_gained (Lucky Fysh, §8.1). The
+    # pickup twin of card_used; nothing to do with the retired combat deck's
+    # card_played.
+    "card_obtained": "card_obtained",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
 # its grants (gain_hp / gain_stat / …) target the player.
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "item_acquired", "game_beaten", "game_selected",
-                         "bomb_used", "health_lost", "run_lost", "potion_used")
+                         "bomb_used", "health_lost", "run_lost", "potion_used",
+                         "gold_gained", "card_obtained")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and

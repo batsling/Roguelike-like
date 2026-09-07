@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_dragon_fruit"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/DragonFruit.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"dragon_fruit"
+display_name = "Dragon Fruit"
+kind = 1
+rarity = 2
+description = "Whenever you obtain any amount of gold, Gain +1 Max Health"
+triggers = [{"on": "gold_gained", "effects": [{"type": "gain_max_hp", "value": 1}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire 2"
+tags = PackedStringArray("food", "fruit")
+pools = PackedStringArray("shop")
+image = ExtResource("2_img")
