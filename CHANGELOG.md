@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Three games, three connections and two relics off the sheet — and the two
+  relics needed hooks the run had never named.**
+
+  A straight port of what was added to `tools/Roguelikes.xlsx`, run back through
+  the generators the sheet is upstream of.
+
+  **The catalog.** **Cadence of Hyrule** (2019) and **Order Automatica** (2026)
+  join it, with the three connections drawn to them — Crypt of the NecroDancer →
+  Cadence of Hyrule as a dev/series line, and Super Auto Pets and Loot Rascals →
+  Order Automatica off one interview. Loot Rascals becomes an influencer in the
+  process, and Mystery Chronicle: One Way Heroics is now Owned with a launch
+  target. **Guntouchables** came across too: it was already in the sheet and had
+  never been imported, which is what "regenerate, don't hand-edit" is for. 860
+  games and 1,244 connections, and `tools/check_map_sync.py` agrees `data/games/`
+  is level with the sheet again. The Atlas sky is re-baked with them, as it is a
+  pure function of the catalog.
+
+  **The relics arrived with empty Effect cells**, which generates a .tres with no
+  triggers on it — a relic that is drawn, described, and does nothing. Both were
+  waiting on a moment the loop had never named:
+
+  - **Dragon Fruit** (Rare, `shop`): +1 Max Health whenever you obtain any amount
+    of gold. `TriggerBus.gold_gained` is the mirror of `health_lost` down to where
+    it is fired from — `GameState.change_gold`, on what the purse ACTUALLY took,
+    so one payout is one event whatever its size. It is deliberately not on
+    `set_gold`: the run's opening purse is not gold you obtained, and the number
+    an undo puts back is not a payout. It is also the one run hook that can pay in
+    its own currency, so `_on_gold_gained` refuses to re-enter — a relic answering
+    gold with gold pays once instead of forever.
+  - **Lucky Fysh** (Uncommon): +1 Gold whenever you obtain a Card.
+    `TriggerBus.card_obtained` is the pickup twin of `card_used`, fired from
+    `GameState._note_loot_gained` — the one place that says a piece of loot
+    entered the pack, hit by all four takes (the kind-blind grant, the drop
+    modal's drag, the floor trade, a named grant) and by nothing else. So a card
+    the pack had no room for pays nothing, and a save load, which rebuilds
+    `loot_items` directly, never re-pays a run's pickups.
+
+  They chain in one direction — a card pays a coin and the coin pays a point of
+  Max Health — and `test_items2.gd` pins that, along with each hook's refusals:
+  a spend, a restored number, and the other four kinds of loot.
+
 - **The run graph stopped running a BFS per candidate, and every screen is now
   measured against the canvas it is drawn on.**
 

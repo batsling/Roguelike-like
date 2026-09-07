@@ -854,7 +854,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 857, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 860, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is
@@ -1879,6 +1879,16 @@ uses**, so no new engine is needed:
   already grants ability points; extend its vocabulary to bash/transmute/
   scramble/bombs/keys).
 
+**The Slay the Spire 2 pair** are one relic each on a hook the loop had never
+named, and the pair is the reason both hooks exist: **Dragon Fruit** (Rare,
+`shop`, +1 Max Health whenever you obtain any amount of gold) and **Lucky Fysh**
+(Uncommon, +1 Gold whenever you obtain a Card). Between them they close the two
+obvious "whenever" moments the run was still silent about — the purse going up
+and the pack taking a card — and they chain in one direction: a card pays a
+coin, and the coin pays a point of Max Health. See `gold_gained:` and
+`card_obtained:` below for where each fires and, just as importantly, where it
+does not.
+
 Three more run-scope hooks and two more flags carry the Isaac relics, and they
 are listed here because each is a *moment* or a *rule* the 2.0 loop did not
 previously name:
@@ -1887,6 +1897,8 @@ previously name:
 |---|---|
 | `health_lost:` | A trigger prefix — the player's Health went **down**, from any source anywhere in the run. Not `damage_taken`: Shields absorb first (§3), so a swing they eat whole is damage taken and no Health lost, and **Piggy Bank** must not pay for it. Emitted once per loss by `GameState.change_hp`, the choke point every drain funnels through, so an event's bill and the swing a failed try bought count exactly as an enemy's swing at the end of a game does. A failed try is the one Health loss that can be **undone**, and `GameLoop2.undo_attempt` restores what the tick's turn moved — the purse it minted included, otherwise the undo would be a coin press. |
 | `run_lost:` | A trigger prefix — the player pressed the button that logs a **lost run** at the game in play (§3). Fired once per press by `GameLoop2.log_attempt`, *before* the turn the tick costs is resolved, so what an item hands out here is standing when the board swings. The context carries `goals_met`, how many goals this game has paid out so far, which is what `if_goals=` reads. Inside the snapshot `undo_attempt` restores, like everything else the tick moved. **Ripple Basin** is the item. |
+| `gold_gained:` | A trigger prefix — the player's purse went **up**, from any source anywhere in the run: a report's payout, an event, another relic, a body's coins. The mirror of `health_lost` in every respect, including where it is fired from: `GameState.change_gold`, on what the purse **actually took**, so one payout is one event whatever its size. Deliberately NOT on `set_gold` — the run's opening purse (§14) is not gold you obtained, and the number an undo puts back is not a payout. **Dragon Fruit** is the item, and it is the one hook that can pay in its own currency, so `_on_gold_gained` refuses to re-enter: a relic answering gold with gold pays once and stops. |
+| `card_obtained:` | A trigger prefix — a **card** of the loot kind (docs/cards-design.md) **entered the pack**: rolled off a report's payout, dragged off the battlefield floor, bought, traded in. The pickup twin of the `card_used` hook, and neither one has anything to do with the retired combat deck's `card_played`. Fired once per card by `GameState._note_loot_gained`, the choke point every take funnels through — so a card the pack had **no room for** pays nothing (the cap is a refusal, not a silent drop, §4.3) and a save load, which rebuilds `loot_items` directly, never re-pays a run's pickups. **Lucky Fysh** is the item. |
 | `potion_used:` | A trigger prefix — a potion was **drunk or thrown**. One event for both, because that is how the wording reads (**Reptile Trinket**: "whenever you drink *or throw* a potion"), and a bottle that fizzled on empty ground was still spent. Emitted once per use by `PotionSystem.notify_used`, the choke point both sides go through. |
 | `if_goals=N` | A **gate** on the trigger before it, not a trigger of its own: the hook fires, and the item's effects only run when the context's `goals_met` is exactly N. Ripple Basin's `if_goals=0` is "before completing any goals". A hook that carries no goal count at all **refuses** a gated trigger rather than passing it — a gate is a narrowing, and "this hook can't answer that" is not a free pass. |
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
