@@ -120,3 +120,24 @@ extends Resource
 # (mirrors GoalEnemyData.art_file()).
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
+
+# The verbs this character actually opens a run with: `[display name, count]`
+# pairs in the sheet's own column order, and only the non-zero ones — which is
+# all either screen that shows a loadout ever wants.
+#
+# It lives here because BOTH of those screens used to write the seven-row table
+# out by hand — the character picker as chips, the Collection's character tab as
+# stat rows — so a verb added to one was a verb missing from the other, silently
+# and for as long as nobody compared the two screens. `start_random` is
+# deliberately NOT in it: it is points that have no verb yet, and each screen
+# says so in its own words.
+func verb_loadout() -> Array:
+	var out: Array = []
+	for pair in [
+		["Bash", start_bash], ["Dash", start_dash], ["Push", start_push],
+		["Transmute", start_transmute], ["Scramble", start_scramble],
+		["Bombs", start_bombs], ["Keys", start_keys],
+	]:
+		if int(pair[1]) > 0:
+			out.append(pair)
+	return out

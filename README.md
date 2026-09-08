@@ -68,7 +68,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     LootDropModal   — "the game paid out, keep it?"
 │   │                      #     RunMapModal / LootUseModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
-│   ├── menu/             #   the main menu + CustomRunScreen (the custom run's setup)
+│   ├── menu/             #   MainMenu + CharacterPicker + CustomRunScreen + ProfilePicker
 │   ├── runtime/          #   RunGraph — the real-games influence graph
 │   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
 │                          #     AtlasView + AtlasLayoutBuilder — the star chart
@@ -282,6 +282,17 @@ node and its script.
   raises mounts — so the door out of the application sat on top of the character
   picker, the Collection and the Atlas, live and clickable through their own
   backdrops. The corner is mounted under the modal layer now.
+  - **`CharacterPicker.gd`** — the roster in `data/characters2.0`, and the one
+    screen between **Start Run** and being in a run: a four-wide grid of icon
+    tiles on the left, the selected hero's full portrait beside its facts on the
+    right, Confirm along the bottom. The detail half **never scrolls** — the
+    facts stack to the *right* of the portrait rather than under it, which is
+    what buys the room to fit a hero on one screen. It only reports which hero
+    was picked (`chosen`); what that *means* — cancelling a pending resume,
+    parking the choice, swapping scene — stays in `MainMenu._begin_run`. It was
+    built inline in `MainMenu.gd` until it was 47% of that file, and it mounts on
+    `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
+    stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
     Bosses, **Loot**, Events, Objects. It is also **the only door onto the Atlas
     that is always open** — the Games tab's *✦ Show constellation* draws the same
