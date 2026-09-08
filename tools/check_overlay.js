@@ -44,6 +44,7 @@
 'use strict';
 
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 
@@ -109,22 +110,37 @@ function findBrowser() {
 /* ------------------------------------------------------------- the fixture -- */
 
 /* Real art off disk, so the sizes measured are the sizes a stream gets. A missing
- * folder is not a failure of the page — it just means this is a partial check. */
-function pick(dir, n) {
-  const full = path.join(REPO, dir);
+ * folder is not a failure of the page — it just means this is a partial check.
+ *
+ * STAGED BESIDE THE PAGE AND NAMED RELATIVELY, exactly as ObsCompanion._stage
+ * does it. This used to hand the fixture `file:///…/images2.0/games/x.png`, and
+ * that is the shape that broke OBS and could not be caught here: an absolute
+ * file:// subresource loads fine from a file:// document, which is what this
+ * harness and a double-clicked overlay.html both are, and is refused outright by
+ * a document served any other way — which is what OBS's browser source gives the
+ * page. Keeping the fixture in the producer's real shape is what lets the
+ * over-http check below mean anything. */
+function pick(stageDir, sub, n, only) {
+  const full = path.join(REPO, sub);
   if (!fs.existsSync(full)) return [];
-  const names = fs.readdirSync(full).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).sort();
+  const names = only
+    ? (fs.existsSync(path.join(full, only)) ? [only] : [])
+    : fs.readdirSync(full).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).sort();
+  const covers = path.join(stageDir, 'covers');
+  fs.mkdirSync(covers, { recursive: true });
   const out = [];
   for (let i = 0; i < n && names.length; i++) {
-    out.push('file://' + path.join(full, names[i % names.length]));
+    const name = sub.replace(/\//g, '-') + '-' + names[i % names.length];
+    fs.copyFileSync(path.join(full, names[i % names.length]), path.join(covers, name));
+    out.push('covers/' + name);
   }
   return out;
 }
 
-function fixture() {
-  const games = pick('images2.0/games', 22);
-  const enemies = pick('images2.0/enemies', 7);
-  const statuses = pick('images2.0/statuses', 6);
+function fixture(dir) {
+  const games = pick(dir, 'images2.0/games', 22);
+  const enemies = pick(dir, 'images2.0/enemies', 7);
+  const statuses = pick(dir, 'images2.0/statuses', 6);
   const at = Math.floor(Date.now() / 1000);
 
   const kinds = ['goal', 'goal', 'bonus', 'instead', 'status', 'event', 'curse', 'goal', 'goal'];
@@ -183,8 +199,8 @@ function fixture() {
     events: [{ tone: 'info', text: 'Now playing', at: at - 1 }],
     hero: { name: 'The Completionist', icon: enemies[3] || '', level: 3, levelup: '' },
     art: {
-      timer: 'file://' + path.join(REPO, 'images2.0/general/Timer.png'),
-      shield: 'file://' + path.join(REPO, 'images2.0/general/Shield.png'),
+      timer: pick(dir, 'images2.0/general', 1, 'Timer.png')[0] || '',
+      shield: pick(dir, 'images2.0/general', 1, 'Shield.png')[0] || '',
     },
     vitals: { hp: 7, max: 20, shields: 4, shields_kept: 2, shields_timed: 2 },
     run: { played: 8, beaten: 5, gold: 120, hops: 3,
@@ -237,7 +253,7 @@ async function main() {
   }
   fs.writeFileSync(path.join(dir, 'custom.css'), '');
 
-  const state = fixture();
+  const state = fixture(dir);
   const write = (mut) => {
     if (mut) mut(state);
     fs.writeFileSync(path.join(dir, 'state.js'),
@@ -474,7 +490,7 @@ async function main() {
   console.log('the road walks while the run moves');
   write((s) => {
     s.at++;
-    s.road = fixture().road;   /* long again, so there is something to walk */
+    s.road = fixture(dir).road;   /* long again, so there is something to walk */
   });
   await sleep(3500);           /* clear of SCROLL_PAUSE */
   const walked = [];
@@ -499,8 +515,8 @@ async function main() {
     /* BACK TO A FULL PAGE FIRST. The checks above shrank the goals and the road to
      * make their own points, and a burst measured against a short page proves
      * nothing — it is the tall page the toasts have to fit under. */
-    Object.assign(s, { goals: fixture().goals, road: fixture().road,
-      threat: fixture().threat, vitals: fixture().vitals, statuses: fixture().statuses });
+    Object.assign(s, { goals: fixture(dir).goals, road: fixture(dir).road,
+      threat: fixture(dir).threat, vitals: fixture(dir).vitals, statuses: fixture(dir).statuses });
     s.events = ['Defeated The Wretched Cartographer', 'Took 4 damage — 2 shields broke',
       'Now playing Vampire Survivors: Legacy of the Moonspell', 'Lost a run — attempt 5',
       'Beat Hollow Knight', 'Found the Golden Idol'].map((text, i) =>
@@ -535,7 +551,7 @@ async function main() {
   }));
   check('the failure is said out loud on the page',
     broke.waiting && /could not draw/.test(broke.message), broke.message.slice(0, 60));
-  write((s) => { s.at++; s.goals = fixture().goals; });
+  write((s) => { s.at++; s.goals = fixture(dir).goals; });
   await sleep(900);
   const recovered = await page.evaluate(() => ({
     waiting: document.getElementById('overlay').classList.contains('waiting'),
@@ -556,7 +572,7 @@ async function main() {
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
   const DOCUMENTED = { '': 608, '#top': 258, '#bottom': 366, '#road': 118 };
   console.log('the shape the README documents');
-  write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
+  write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
   for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
     ['#road', '#road']]) {
@@ -567,6 +583,51 @@ async function main() {
     check(label + ' still measures what the README says on a heavy run',
       h === DOCUMENTED[hash], h + 'px, documented ' + DOCUMENTED[hash]);
   }
+
+  /* THE PICTURES ACTUALLY LOAD WHEN THE PAGE IS NOT A file:// DOCUMENT.
+   *
+   * This is the one check in the file that is not about the page at all — it is
+   * about the URLs the producer writes, and it exists because that is what broke
+   * on a real stream. The overlay's art used to travel as absolute
+   * `file:///…/images2.0/games/x.png`. Chromium treats an absolute file:// URL as
+   * a LOCAL RESOURCE LOAD and refuses it from any document that is not itself
+   * file://; OBS's browser source does not serve local files as file:// documents,
+   * so in OBS — the only place this page is ever used — the text was perfect and
+   * EVERY picture was missing. Nothing could see it: double-clicking the page
+   * makes it a file:// document, and so did every `page.goto('file://…')` above.
+   *
+   * So the same fixture is served over http and the images are asked whether they
+   * decoded. `naturalWidth` is the question that matters — an <img> with a
+   * refused src is still in the DOM, still the size its CSS gives it, and reports
+   * 0 there. Serving it also proves the relative form resolves against a base
+   * that is not a folder path, which is the property the fix actually relies on. */
+  console.log('the art loads from a page that is not a file:// document');
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '');
+    const file = path.join(dir, rel);
+    if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+      res.writeHead(404); res.end(); return;
+    }
+    const type = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file)];
+    res.writeHead(200, { 'Content-Type': type || 'application/octet-stream' });
+    res.end(fs.readFileSync(file));
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  await page.goto('http://127.0.0.1:' + server.address().port + '/overlay.html');
+  await sleep(1200);
+  const art = await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll('img[src]')];
+    return { total: imgs.length,
+      broken: imgs.filter((i) => !i.complete || i.naturalWidth === 0).map((i) => i.getAttribute('src')),
+      absolute: imgs.map((i) => i.getAttribute('src')).filter((s) => /^[a-z]+:/i.test(s)) };
+  });
+  check('the page draws some art at all', art.total > 0, art.total + ' <img> with a src');
+  check('every picture decoded', art.broken.length === 0,
+    art.broken.length + ' broken: ' + art.broken.slice(0, 3).join(', '));
+  check('no art url carries a scheme — they are all relative to the page',
+    art.absolute.length === 0, art.absolute.slice(0, 3).join(', '));
+  await new Promise((r) => server.close(r));
 
   const shot = path.join(dir, 'overlay.png');
   await page.goto('file://' + path.join(dir, 'overlay.html'));

@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The stream overlay's art was invisible in OBS, and only in OBS.** Every
+  picture — the two headline covers, the hero, the shields, every checklist row's
+  face, the whole road — drew nothing in the one place the overlay is ever used.
+  The text beside them was perfect, which is what made it look like an art bug
+  rather than a URL one.
+
+  **The covers travelled as absolute `file:///…` URLs and `state.js` did not.**
+  That asymmetry is the entire bug. `overlay.js` pulls `state.js` as a *sibling*,
+  and a relative URL resolves against whatever base the browser handed the
+  document — so the state always arrived. The art was written as a full path at
+  wherever the picture lay, and Chromium treats an absolute `file://` URL as a
+  **local resource load**, which it refuses from any document that is not itself
+  `file://`. OBS does not serve a local page as a `file://` document. Nothing
+  could see this: double-clicking `overlay.html` to check makes it one, so the
+  page was perfect on every desk it was ever tested on.
+
+  **The art travels the way the state does now.** `ObsCompanion._stage()` copies
+  each picture into `user://obs/covers/` beside the page and the payload carries
+  `covers/<hash>-<name>` — no scheme, no absolute path, nothing for a browser to
+  refuse. Staging used to be the packed-build branch only, with a source run
+  pointed at `res://` where it lay; it is now the one path both builds take, which
+  is also how a dev machine came to be testing what a streamer actually runs. A
+  full run stages 135 files, 33 MB. The hash prefix that kept the thirty-three
+  duplicate basenames apart is unchanged, and `_file_url` is gone with the
+  Windows drive-letter hazard it existed to dodge — a relative URL has no drive
+  letter to escape.
+
+  **Both test harnesses were pinning the broken shape.** `test_obs_companion.gd`
+  asserted every art url `begins_with("file://")` in five places, and
+  `check_overlay.js` built its fixture from absolute paths and loaded the page
+  over `file://` — between them they reproduced the working double-click case
+  exactly. The GUT assertions now go through `_assert_page_local`, and
+  `check_overlay.js` serves the same fixture **over http** and asks every `<img>`
+  whether it decoded. Run against the old URLs that check fails 39 pictures out
+  of 39, with the files sitting right beside the page.
+
 - **Six passes over the screens, and four of them are about a line or a click
   that was costing more than it was worth.**
 

@@ -15,3 +15,5 @@ games-data.js.backup
 # ── Python bytecode (generator/test scripts) ─────────────────────────────
 __pycache__/
 *.pyc
+package.json
+package-lock.json

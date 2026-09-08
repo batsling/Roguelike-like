@@ -713,7 +713,7 @@ user://obs/overlay.css    its styling       │ EVERY boot — edit the repo's
 user://obs/overlay.js     its ticker        ┘ copies, not these
 user://obs/custom.css     yours — created empty once, never overwritten
 user://obs/state.js       the run, as `window.OBS_STATE = { … }`
-user://obs/covers/        covers lifted out of the .pck (exported builds only)
+user://obs/covers/        every picture the page shows, staged beside it
 ```
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
@@ -899,8 +899,29 @@ because everything pixel-art on this page already carries
 a sibling file — there is no origin to grant, so it is a CORS failure with no fix
 short of launching OBS with `--allow-file-access-from-files`. A `<script src>`
 has no such restriction. So the state is written *as* an assignment and
-`overlay.js` re-loads it four times a second with a cache-buster on the end; the
-covers ride the same way, as `<img src="file://…">`. No server, no port.
+`overlay.js` re-loads it four times a second with a cache-buster on the end. No
+server, no port.
+
+**And nothing the page loads may point outside its own folder**, which is the
+other half of the same rule and cost a stream to learn. The covers used to travel
+as absolute `<img src="file:///…/images2.0/games/x.png">`, straight at the repo or
+at the `.pck` extraction. Chromium treats an absolute `file://` URL as a *local
+resource load* and refuses it from any document that is not itself `file://` —
+and **OBS does not serve a local page as a `file://` document**. So the overlay's
+text was perfect and every single picture on it was missing, in the one place the
+overlay is ever used. Double-clicking `overlay.html` to check *makes* it a
+`file://` document, so the page looked fine everywhere except in OBS.
+
+`state.js` never had the bug, because the page pulls it as a **sibling**: a
+relative URL resolves against whatever base the browser gave the document. The
+art travels that way now — `ObsCompanion._stage()` copies each picture into
+`user://obs/covers/` and the payload carries `covers/<hash>-<name>`. Only the art
+a run actually shows is staged (a full run measured 135 files, 33 MB), the hash
+prefix keeps the thirty-three duplicate basenames in `images/` and `images2.0/`
+apart, and the Windows drive-letter hazard the old absolute URLs had to dodge
+cannot arise in a relative one. If you restyle the page, keep it to relative
+URLs; `tools/check_overlay.js` now serves the page over http and asserts every
+`<img>` decoded, which is the only way this class of bug is visible.
 
 **It is two cards.** The first is the run: the game in play, how many hops to the
 Amulet and the Amulet itself, then health with **the shields as sprites on the
@@ -1033,6 +1054,14 @@ hides, that the road's outcome colours survive the cascade, that the checklist a
 the road actually walk while payloads keep arriving, that a burst of toasts stays
 inside the browser source, that an undrawable payload is announced rather than
 frozen over, and the heights the tables above promise.
+
+Its last check is the odd one out and worth knowing about: it serves the same
+fixture **over http** and asks every `<img>` whether it decoded. That is not a
+question about the page at all — it is about the URLs `ObsCompanion` writes, and
+it exists because every other check here, and every hand-check anyone ever did,
+loaded the page as a `file://` document and so could not see the broken-art bug
+above. If you are adding a check about art, make sure it runs against a page that
+is *not* `file://`, or it is checking the case that already worked.
 
 ```bash
 npm install playwright-core          # once

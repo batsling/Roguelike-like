@@ -2200,7 +2200,7 @@ user://obs/overlay.css    its styling       │ at EVERY boot — a stale copy
 user://obs/overlay.js     its ticker        ┘ reads as a broken overlay
 user://obs/custom.css     the streamer's own styling, created empty ONCE
 user://obs/state.js       window.OBS_STATE = { … }, rewritten as the run moves
-user://obs/covers/        covers lifted out of the .pck (exported builds only)
+user://obs/covers/        every picture the page shows, staged beside it
 ```
 
 In OBS: **Browser Source → Local file → `overlay.html`**. The settings screen
@@ -2214,7 +2214,14 @@ OBS ships) refuses every `fetch()`/XHR a `file://` page makes at a sibling file 
 no origin, so it is an unfixable CORS failure short of launching OBS with
 `--allow-file-access-from-files`. A `<script src>` has no such restriction. So
 the payload is written as an assignment, and `overlay.js` re-loads it four times
-a second with a cache-buster. Covers travel the same way, as `<img src="file://…">`.
+a second with a cache-buster.
+
+**And every URL the page uses is RELATIVE to it**, which is the same decision
+seen from the other side. An absolute `file://` URL is a local resource load, and
+Chromium refuses one from any document that is not itself `file://` — which is
+what OBS gives the page. The covers were the only absolute thing here, and so
+were the only thing that broke, invisibly, on every stream. They are staged into
+`user://obs/covers/` beside the page now and travel as `<img src="covers/…">`.
 
 Writes are **debounced to 4/sec and deduped on content**, with a **5-second
 heartbeat** underneath. The heartbeat is what lets the page tell "the run has not

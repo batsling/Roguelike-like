@@ -162,8 +162,7 @@ func test_every_goal_row_carries_its_own_art_except_the_ones_that_hang_off_one()
 		assert_ne(String(row.get("icon", "")), "",
 			"a %s row with no art draws as a bare initial: %s"
 				% [row.get("kind", "?"), row.get("text", "?")])
-		assert_true(String(row["icon"]).begins_with("file://"),
-			"a browser cannot open a res:// path")
+		_assert_page_local(String(row["icon"]), "a checklist row's icon")
 	if rows == 0:
 		assert_eq(GameLoop2.stack.size(), 0,
 			"no rows means nothing on the board owed one")
@@ -291,8 +290,7 @@ func test_the_headline_names_the_game_the_whole_run_is_for() -> void:
 		Data.get_game(GameState.amulet_game_id).display_name,
 		"and it is the run's actual destination")
 	if String(amulet.get("cover", "")) != "":
-		assert_true(String(amulet["cover"]).begins_with("file://"),
-			"a browser cannot open a res:// path")
+		_assert_page_local(String(amulet["cover"]), "the Amulet's cover")
 
 func test_a_body_that_has_just_landed_has_not_been_answered() -> void:
 	var entry: Dictionary = GameLoop2.arrival()
@@ -488,26 +486,37 @@ func test_turning_it_off_stops_the_writing() -> void:
 
 # ------------------------------------------------------------------ art ----
 
-func test_art_is_a_file_url_the_browser_can_actually_open() -> void:
-	var url: String = ObsCompanion._file_url("/home/someone/My Games/cover.png")
-	assert_eq(url, "file:///home/someone/My%20Games/cover.png",
-		"a space is escaped, because an unescaped one truncates the URL")
+# EVERY ART URL THE PAYLOAD CARRIES MUST BE RELATIVE TO THE PAGE.
+#
+# These used to assert `begins_with("file://")`, which is the shape that broke
+# OBS: an absolute file:// subresource is a local-resource load, and Chromium
+# allows one only from a document that is itself file://. Double-clicking
+# overlay.html makes it one, so every cover loaded here and in check_overlay.js
+# and nowhere else — the overlay's text was perfect in OBS and every picture on
+# it was missing. See ObsCompanion._path_url.
+func _assert_page_local(url: String, what: String) -> void:
+	assert_true(url.begins_with("covers/"),
+		"%s must be a page-relative url, not %s" % [what, url])
 
-func test_a_windows_drive_letter_keeps_its_colon() -> void:
-	# A full uri_encode() would write file:///C%3A/… , which does not resolve in
-	# Chromium — leaving every cover broken on Windows and nowhere else.
-	var url: String = ObsCompanion._file_url("C:\\Users\\me\\obs\\cover.png")
-	assert_eq(url, "file:///C:/Users/me/obs/cover.png")
+func test_art_is_escaped_so_a_name_cannot_truncate_the_url() -> void:
+	assert_eq(ObsCompanion._escape("My Games.png"), "My%20Games.png",
+		"a space is escaped, because an unescaped one truncates the URL")
+	assert_eq(ObsCompanion._escape("100%.png"), "100%25.png",
+		"the percent goes first, or it re-escapes what the others just wrote")
 
 func test_two_pictures_with_the_same_file_name_do_not_become_one() -> void:
-	# THE BUG THIS PINS ONLY EXISTED IN AN EXPORTED BUILD, which is why nothing
-	# caught it for so long. Run from source, `_path_url` finds the file where it
-	# lies and never calls `_extract` at all; packed, res:// is inside the .pck and
-	# every picture has to be lifted out to user://obs/covers/ first — and that was
-	# keyed on the BASE NAME. `images/` and `images2.0/` hold thirty-three duplicate
-	# base names between them (Clover.png, Crown.png, Isaac.png, …), so the first of
-	# a pair to be asked for took the name and every later request for the other was
-	# answered with the wrong picture, for good.
+	# THE BUG THIS PINS ONLY EXISTED IN AN EXPORTED BUILD when it was found, which
+	# is why nothing caught it for so long: staging into user://obs/covers/ was the
+	# packed branch alone, and a source run pointed the page straight at res://
+	# where the picture lay. The staged name was keyed on the BASE NAME, and
+	# `images/` and `images2.0/` hold thirty-three duplicate base names between them
+	# (Clover.png, Crown.png, Isaac.png, …), so the first of a pair to be asked for
+	# took the name and every later request for the other was answered with the
+	# wrong picture, for good.
+	#
+	# Every build stages now (see `_path_url`), so this is no longer packed-only —
+	# a collision here would draw the wrong cover on a dev machine too. The hash
+	# prefix is what stops it either way.
 	#
 	# Asserted on the OUTPUT PATH rather than by extracting: the two source paths
 	# are the input, and all that has to be true is that they cannot land on one
@@ -524,8 +533,7 @@ func test_the_road_hands_the_page_urls_rather_than_resource_paths() -> void:
 		var cover: String = String(stop.get("cover", ""))
 		if cover == "":
 			continue   # a game with no art authored — the page hides the <img>
-		assert_true(cover.begins_with("file://"),
-			"a browser cannot open a res:// path; %s" % cover)
+		_assert_page_local(cover, "a road stop's cover")
 
 # --------------------------------------------------- what a lost run costs ----
 #
@@ -637,8 +645,7 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 		assert_ne(String(sw.get("icon", "")), "",
 			"%s has no art url — the page would fall back to a bare number"
 				% sw.get("who", "?"))
-		assert_true(String(sw["icon"]).begins_with("file://"),
-			"a browser cannot open a res:// path")
+		_assert_page_local(String(sw["icon"]), "a swing's icon")
 
 func test_every_goal_enemy_in_the_roster_has_a_face_to_draw() -> void:
 	# The same guarantee the statuses get: the swing marks are pictures, so a body
@@ -788,8 +795,7 @@ func test_a_status_pip_carries_a_picture_the_browser_can_open() -> void:
 	for row in rows:
 		assert_ne(String(row.get("icon", "")), "",
 			"%s has no icon url" % row.get("name", "?"))
-		assert_true(String(row["icon"]).begins_with("file://"),
-			"a browser cannot open a res:// path")
+		_assert_page_local(String(row["icon"]), "a status pip's icon")
 		assert_ne(String(row.get("letter", "")), "",
 			"every pip carries its fallback initial")
 
