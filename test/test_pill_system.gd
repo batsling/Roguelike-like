@@ -376,9 +376,10 @@ func test_the_horse_48_hour_energy_fills_the_relics_it_picks() -> void:
 
 # --- What a dose says it did (§4.3) ----------------------------------------
 #
-# These lines used to go only to the run log, where a stray space is nobody's
-# problem. They are the body of the outcome screen now (LootUseModal._show_outcome),
-# which is the sentence the player reads to find out what an unknown capsule was.
+# These lines are what the player reads to find out what an unknown capsule was,
+# so a stray space in one is not nobody's problem. They go to the run log
+# (LootUseModal._on_read), which is the whole account of a use now that the
+# acknowledge-and-press-Done screen is gone.
 
 func test_a_stat_dose_signs_the_number_not_the_verb() -> void:
 	var out: Dictionary = PillSystem.take_pill(
@@ -396,7 +397,8 @@ func test_a_negative_stat_dose_reads_the_same_way_round() -> void:
 
 func test_every_dose_of_every_pill_says_something_about_itself() -> void:
 	# THE SWEEP. "All loot tells the player what it did" is a claim about twenty
-	# doses, and a pill that resolves in silence shows the outcome screen a blank.
+	# doses, and a pill that resolves in silence reaches the player as a bare
+	# "nothing happens" toast.
 	# Both doses, because the horse side is authored separately and can grow an op
 	# the normal one never had.
 	for pill in Data.all_pills():

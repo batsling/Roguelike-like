@@ -166,7 +166,16 @@ func render() -> void:
 	_hover_grant = -1
 	if _page._choices.is_empty():
 		var l := Label.new()
-		l.text = "No reachable games — dead end."
+		# A DEAD END AND A SEARCH THAT MATCHED NOTHING LOOK IDENTICAL — an empty
+		# strip — and they are opposite facts: one says the run is out of road, the
+		# other says the road is there and the box is hiding it. The Dash panel's
+		# filters can produce the second, so it has to say which one this is.
+		if _page._dash_mode and _page.dash_total_count() > 0:
+			l.text = "No game here matches that — clear the search to see all %d." \
+				% _page.dash_total_count()
+			l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		else:
+			l.text = "No reachable games — dead end."
 		_row.add_child(l)
 		return
 	for i in range(_page._choices.size()):

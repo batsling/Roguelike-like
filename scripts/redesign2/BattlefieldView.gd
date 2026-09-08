@@ -2283,9 +2283,17 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	# like an ability the sheet authored. That is the whole point of naming them:
 	# an illusion that reads like an ordinary enemy is a goal the player will go
 	# and spend a real evening on.
-	var lines: Array = [GameLoop2.entry_goal(entry)]
-	for row in GameLoop2.ability_lines(entry):
-		lines.append("⚠  %s — %s" % [row["name"], row["text"]])
+	# TWO HEADERS, because this card carries two kinds of fact and they are not
+	# the same kind of thing: the GOAL is what you must go and do, the ABILITIES
+	# are what the body does to you meanwhile. Unlabelled they ran together as one
+	# stack of sentences and the ⚠ was the only thing separating them. A body with
+	# no abilities gets no Abilities header — an empty section is worse than none.
+	var lines: Array = [{"header": "Goals"}, GameLoop2.entry_goal(entry)]
+	var ability_rows: Array = GameLoop2.ability_lines(entry)
+	if not ability_rows.is_empty():
+		lines.append({"header": "Abilities"})
+		for row in ability_rows:
+			lines.append("⚠  %s — %s" % [row["name"], row["text"]])
 
 	return {
 		"title": e.display_name,

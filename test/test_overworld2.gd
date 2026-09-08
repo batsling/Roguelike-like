@@ -1741,10 +1741,96 @@ func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
 	var entry: Dictionary = GameLoop2.stack[0]
 	var card: Dictionary = _ui._board.enemy_hover(entry, entry["enemy"])
 	for line in card.get("lines", []):
+		if line is Dictionary:
+			continue                       # a section header, not a fact
 		assert_false(String(line).contains("lost run"),
 			"no lost-run countdown on the hover: %s" % line)
 		assert_false(String(line).contains("Waiting off the field"),
 			"and nothing about being out of range: %s" % line)
+
+# --- the enemy hover's two sections (§7.6) --------------------------------
+#
+# The card carries two kinds of fact — what you must go and DO, and what the body
+# does to you meanwhile — and unlabelled they ran together as one stack of
+# sentences with the ⚠ as the only thing telling them apart.
+
+# The headers a card is carrying, in order, as plain words.
+func _hover_headers(card: Dictionary) -> Array:
+	var out: Array = []
+	for line in card.get("lines", []):
+		if line is Dictionary and String(line.get("header", "")) != "":
+			out.append(String(line["header"]))
+	return out
+
+func test_the_enemy_hover_heads_its_goal_section() -> void:
+	_ui.pick(0)
+	if GameLoop2.stack.is_empty():
+		pending("nothing walked on to hover over")
+		return
+	var entry: Dictionary = GameLoop2.stack[0]
+	var card: Dictionary = _ui._board.enemy_hover(entry, entry["enemy"])
+	assert_has(_hover_headers(card), "Goals", "the goal half is labelled")
+	# And the goal itself still follows it, rather than the header replacing it.
+	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
+	assert_string_contains(lines, GameLoop2.entry_goal(entry),
+		"the goal is still said under its header")
+
+func test_a_body_with_abilities_heads_them_separately() -> void:
+	# ARRANGED, not hoped for: the body carries an ability off the catalogue rather
+	# than the test waiting for the run's random offering to roll one.
+	var armed := GoalEnemyData.new()
+	armed.id = &"synthetic"
+	armed.display_name = "Synthetic"
+	armed.goal = "Beat it"
+	armed.health = 1
+	armed.damage = 1
+	armed.difficulty = GoalEnemyData.Difficulty.LOW
+	var known: Array = Data.all_abilities()
+	assert_gt(known.size(), 0, "the abilities catalogue is served")
+	if known.is_empty():
+		return
+	armed.abilities = [{"id": String(known[0].id), "amount": 0, "arg": "", "text": ""}]
+	var inst: int = GameLoop2.spawn_to_stack(armed)
+	assert_gt(inst, 0, "the body stood up on the board")
+	if inst <= 0:
+		return
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(GameLoop2.ability_lines(entry).is_empty(),
+		"and it really is carrying an ability to head")
+	var headers: Array = _hover_headers(_ui._board.enemy_hover(entry, armed))
+	assert_eq(headers, ["Goals", "Abilities"],
+		"both sections, in the order they are read: %s" % str(headers))
+
+func test_a_body_with_no_abilities_grows_no_empty_section() -> void:
+	# An empty section is worse than none — it promises something the card does
+	# not have. Built from a synthetic body so it does not ride on what rolled.
+	var bare := GoalEnemyData.new()
+	bare.id = &"synthetic"
+	bare.display_name = "Synthetic"
+	bare.goal = "Beat it"
+	bare.health = 1
+	bare.damage = 1
+	bare.difficulty = GoalEnemyData.Difficulty.LOW
+	var inst: int = GameLoop2.spawn_to_stack(bare)
+	if inst <= 0:
+		pending("the board had no room for the synthetic body")
+		return
+	var card: Dictionary = _ui._board.enemy_hover(GameLoop2.entry_for(inst), bare)
+	assert_eq(_hover_headers(card), ["Goals"],
+		"no abilities, so no Abilities header")
+
+func test_a_header_never_becomes_the_plain_tooltip() -> void:
+	# The fallback string Godot needs before it will ask for a custom card is
+	# "title + the first FACT". A header is a label for what follows, so
+	# "Synthetic\nGoals" would be a worse tooltip than the goal itself.
+	var probe := Control.new()
+	add_child_autofree(probe)
+	HoverCard.attach(probe, {
+		"title": "Synthetic",
+		"lines": [{"header": "Goals"}, "Beat it"],
+	})
+	assert_eq(probe.tooltip_text, "Synthetic\nBeat it",
+		"the header is skipped in favour of the fact under it")
 
 # The other half of the same rule: a status the run OWNS is drawn bare, and one
 # it has only BORROWED (docs/potions-design.md §5.3) wears the clock — the same
@@ -2137,37 +2223,56 @@ func test_the_page_logs_what_a_drop_screen_placed() -> void:
 
 # --- Saying what the piece did (§4.3) --------------------------------------
 #
-# Taking a pill used to close the modal the instant it resolved, which put the
-# answer to "what did that do to me" in the run log on the far side of the page —
-# the one place the player was not looking, having just been looking at the pill.
-# On an unidentified capsule that IS the minigame: the reason to swallow an unknown
-# pill is to find out what it was.
+# A use USED TO END ON A SCREEN — the piece's art, its lines, and a Done button —
+# and that screen is gone. It asked the player to acknowledge a thing they had
+# just chosen to do, and it did so with a full-screen panel over the board the
+# piece had only that moment changed: the fire it lit, the body it stunned and the
+# square it teleported you to were all behind the report describing them.
+#
+# What replaces it is not silence. Every effect line was ALREADY going to the run
+# log before the screen drew it a second time, so the log is unchanged; the few
+# facts the log did not carry are written there now too, and the one fact a player
+# might act on immediately — that an unidentified piece has just been learned —
+# is a TOAST, which is on screen rather than in a panel on the far side of it.
 
-func test_taking_a_pill_says_what_it_did() -> void:
+# Everything written to the run log since `from`, as one string.
+func _log_since(from: int) -> String:
+	var out: Array = []
+	for i in range(from, GameLog.messages.size()):
+		out.append(String(GameLog.messages[i].get("text", "")))
+	return "\n".join(PackedStringArray(out))
+
+# Everything pushed to the toasts since `from`, as one string.
+func _toasts_since(from: int) -> String:
+	var out: Array = []
+	for entry in Notifications.history.slice(from):
+		out.append(String(entry.get("text", "")))
+	return "\n".join(PackedStringArray(out))
+
+func test_taking_a_pill_closes_on_the_spot_and_writes_what_it_did() -> void:
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"health_up")
 	GameState.set_max_hp(20, false)
 	GameState.set_hp(5)
+	var log_from: int = GameLog.messages.size()
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
 	modal._on_read()
 	await wait_frames(2)
-	assert_true(is_instance_valid(modal),
-		"the modal stays up rather than vanishing the moment the pill resolves")
-	if not is_instance_valid(modal):
-		return
-	var text: String = _text_of(modal)
-	assert_true(text.contains("Health"),
-		"and it says what happened to you: %s" % text)
-	assert_true(text.contains("Done"), "with one way out of it")
-	modal._finish()
-	await wait_frames(2)
+	assert_false(is_instance_valid(modal),
+		"the modal goes the moment the pill resolves — no Done to press")
+	assert_string_contains(_log_since(log_from), "Health",
+		"and what it did to you is in the log")
 
-func test_the_outcome_screen_names_the_colour_this_use_taught_you() -> void:
+func test_learning_a_capsule_is_said_where_the_player_is_looking() -> void:
+	# The one fact worth a TOAST rather than a log line: swallowing an unknown
+	# capsule to find out what it was IS the minigame (§4.3), and the answer must
+	# not land only in a panel the player has to go and read.
 	PillSystem.unidentify(&"luck_up")
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"luck_up")
+	var toast_from: int = Notifications.history.size()
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
@@ -2176,17 +2281,26 @@ func test_the_outcome_screen_names_the_colour_this_use_taught_you() -> void:
 		"it goes in a gamble: %s" % before.substr(0, 80))
 	modal._on_read()
 	await wait_frames(2)
-	if not is_instance_valid(modal):
-		return
-	var text: String = _text_of(modal)
-	assert_true(text.contains(PillSystem.display_name(
-		{"type": "pill", "id": &"luck_up", "horse": false})),
-		"and comes out named — the capsule above the line is the colour, "
-		+ "so the name under it is what the colour means: %s" % text)
-	assert_true(text.contains("know"),
-		"said as the lesson it is: %s" % text)
-	modal._finish()
+	assert_string_contains(_toasts_since(toast_from), "know",
+		"and the lesson is toasted, not buried")
+	assert_true(PillSystem.is_identified(&"luck_up"),
+		"the capsule really is learned now")
+
+func test_a_pill_already_known_teaches_nothing_and_says_nothing() -> void:
+	# The other half: a toast that fires on every use would be noise, so it is
+	# tied to the piece actually having been a gamble.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"health_up")
+	if not PillSystem.is_identified(&"health_up"):
+		PillSystem.identify(&"health_up")
+	var toast_from: int = Notifications.history.size()
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	assert_false(_toasts_since(toast_from).contains("know"),
+		"nothing was learned, so nothing is announced")
 
 func test_a_teleport_says_where_it_put_you() -> void:
 	# THE PIECE THAT USED TO SAY NOTHING. A teleport is the one op on either
@@ -2196,28 +2310,63 @@ func test_a_teleport_says_where_it_put_you() -> void:
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"telepills")
 	var was: StringName = GameState.current_game_id
+	var log_from: int = GameLog.messages.size()
+	var toast_from: int = Notifications.history.size()
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
 	modal._on_read()
 	await wait_frames(2)
-	if not is_instance_valid(modal):
-		pending("the run did not reach this case (not is_instance_valid(modal))")
-		return
-	var text: String = _text_of(modal)
-	assert_false(text.contains("Nothing happens"),
-		"the piece that moves you is not a piece that did nothing: %s" % text)
-	assert_true(text.contains("Teleported to") or text.contains("fizzles"),
-		"it says where you ended up, or why you did not move: %s" % text)
+	var said: String = _log_since(log_from) + "\n" + _toasts_since(toast_from)
+	assert_false(said.contains("nothing happens"),
+		"the piece that moves you is not a piece that did nothing: %s" % said)
+	assert_true(said.contains("Teleported to") or said.contains("fizzles"),
+		"it says where you ended up, or why you did not move: %s" % said)
 	if GameState.current_game_id != was:
-		assert_true(text.contains("from the Amulet"),
-			"and how far out that is, which is the fact the op is about: %s" % text)
-	modal._finish()
-	await wait_frames(2)
+		assert_true(said.contains("from the Amulet"),
+			"and how far out that is, which is the fact the op is about: %s" % said)
 
-func test_the_outcome_names_the_pieces_echo_chamber_replayed() -> void:
+func test_a_piece_that_does_nothing_at_all_still_says_so() -> void:
+	# Silence after a click reads as a click that did not register. A piece whose
+	# ops ALL no-opped writes nothing to the log, so that one case is toasted.
+	#
+	# ARRANGED at the report itself rather than by hunting for a piece that happens
+	# to no-op: whether an Amnesia has anything to forget rides on what this run
+	# has identified, so driving the modal was testing the run's luck as much as
+	# the rule. `_outcome_logs` empty IS the empty case, by definition.
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._outcome_logs = []
+	modal._requests = []
+	var toast_from: int = Notifications.history.size()
+	modal._report_outcome()
+	await wait_frames(2)
+	assert_string_contains(_toasts_since(toast_from).to_lower(), "nothing happens",
+		"the empty case is announced rather than passing in silence")
+	assert_false(is_instance_valid(modal), "and the report is what closes it")
+
+func test_a_piece_that_did_something_is_not_announced_as_doing_nothing() -> void:
+	# The other side of the same rule: the toast is for silence, so a piece whose
+	# lines reached the log must not also be reported as having done nothing.
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._outcome_logs = ["The front column catches."]
+	modal._requests = []
+	var toast_from: int = Notifications.history.size()
+	modal._report_outcome()
+	await wait_frames(2)
+	assert_false(_toasts_since(toast_from).to_lower().contains("nothing happens"),
+		"it did something, and the log already carries what")
+
+func test_the_log_names_the_pieces_echo_chamber_replayed() -> void:
 	# Echo Chamber's copies resolve into the SAME merged logs as the piece's own, so
-	# without naming them the outcome is four pieces' worth of effects and no account
+	# without naming them the log is four pieces' worth of effects and no account
 	# of where three of them came from.
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"luck_up")
@@ -2225,22 +2374,19 @@ func test_the_outcome_names_the_pieces_echo_chamber_replayed() -> void:
 	LootSystem.use_loot(0)          # something for the relic to copy
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	if GameState.loot_echo_depth() <= 0:
-		return                       # no such relic in the catalog — nothing to assert
+		pending("no Echo Chamber in the catalog — nothing to assert")
+		return
+	var log_from: int = GameLog.messages.size()
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
 	modal._on_read()
 	await wait_frames(2)
-	if not is_instance_valid(modal):
-		return
-	assert_true(_text_of(modal).contains("Echo Chamber also used"),
-		"the outcome says whose lines those are: %s" % _text_of(modal))
-	modal._finish()
-	await wait_frames(2)
+	assert_string_contains(_log_since(log_from), "Echo Chamber also used",
+		"the log says whose lines those are")
 
 func test_backing_out_of_a_use_says_nothing_about_what_it_did() -> void:
-	# Cancel is not a use. The outcome screen is what a use ends on, so a piece that
-	# was never spent must not reach it.
+	# Cancel is not a use. A piece that was never spent must report nothing.
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"luck_up")
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
@@ -2284,8 +2430,10 @@ func test_a_carried_piece_can_be_spent_from_the_drop_screen() -> void:
 	assert_false(GameState.loot_is_full())
 	assert_false(modal._answered,
 		"and the drop is still on the table — spending is not answering it")
-	use_modal._finish()
-	await wait_frames(2)
+	# The use modal takes itself away the moment the piece resolves; there is no
+	# outcome screen left to dismiss, so nothing here has to close it.
+	assert_false(is_instance_valid(use_modal),
+		"and it closed itself rather than waiting on a Done press")
 	modal.leave()
 
 func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
@@ -2311,13 +2459,11 @@ func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
 	await wait_frames(2)
 	assert_eq(GameState.loot_items.size(), held,
 		"it costs no slot — it never entered the pack")
-	assert_false(fired[0],
-		"the drop waits on the screen that says what the piece did — a use that "
-		+ "closed everything the instant it resolved is what the outcome screen "
-		+ "is for")
-	use_modal._finish()
-	await wait_frames(2)
-	assert_true(fired[0], "and once that is read, using the offer resolves the drop")
+	# The use closes itself now, so the drop resolves on the same press rather
+	# than waiting for an outcome screen to be dismissed.
+	assert_false(is_instance_valid(use_modal),
+		"the spend screen is gone the moment the piece resolves")
+	assert_true(fired[0], "and using the offer resolves the drop with it")
 	assert_eq(taken_answer[0], [],
 		"and nothing is reported as kept: the page has nothing to collect")
 
@@ -2336,8 +2482,6 @@ func test_using_the_offer_identifies_it_like_any_other_use() -> void:
 	await wait_frames(2)
 	assert_true(PillSystem.is_identified(&"health_up"),
 		"a colour taken on the spot is a colour learned")
-	use_modal._finish()
-	await wait_frames(2)
 
 func test_binning_the_offer_is_leaving_it() -> void:
 	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
@@ -2903,6 +3047,134 @@ func test_dashing_lists_the_connected_games_in_alphabetical_order() -> void:
 	expected.sort_custom(func(a, b): return String(a).naturalnocasecmp_to(String(b)) < 0)
 	assert_eq(names, expected, "A-Z, so a game can be found by eye: %s" % [names])
 	_ui.cancel_dash()
+
+# --- the Dash panel's search, filter and sort (§4) -------------------------
+#
+# A Dash is a LIST, not a hand of three cards — a hub has twenty connections — so
+# the question is "is the game I have in mind in here". These are the controls
+# that question wants, and they are DASH-ONLY: an ordinary offering must never be
+# narrowed by anything, or it would be a silently shortened offering.
+
+func _dash_names() -> Array:
+	var out: Array = []
+	for c in _ui._choices:
+		out.append(String((c["game"] as GameData).display_name))
+	return out
+
+func test_the_dash_panel_carries_a_search_bar_and_the_offering_does_not() -> void:
+	assert_false(_ui._dash_bar.visible, "no bar over an ordinary three-card offering")
+	GameState.dash_charges = 1
+	_ui.dash()
+	assert_true(_ui._dash_bar.visible, "the Dash panel gets one")
+	assert_not_null(_ui._dash_search_box, "with a search box on it")
+	_ui.cancel_dash()
+	assert_false(_ui._dash_bar.visible, "and it goes when the Dash is put down")
+
+func test_searching_narrows_the_dash_list_to_what_matches() -> void:
+	GameState.dash_charges = 1
+	_ui.dash()
+	var all_names: Array = _dash_names()
+	if all_names.is_empty():
+		pending("this node has no connected games to search")
+		return
+	# A fragment of a game that really is on the list, so the match is guaranteed.
+	var target: String = String(all_names[0])
+	_ui._dash_search = target.substr(0, mini(4, target.length()))
+	_ui._apply_dash_filter()
+	var shown: Array = _dash_names()
+	assert_true(target in shown, "the game searched for is still there: %s" % [shown])
+	assert_true(shown.size() <= all_names.size(), "and the list only ever narrows")
+	for name in shown:
+		assert_true(_ui._dash_search.to_lower() in String(name).to_lower(),
+			"everything left matches the term: %s" % name)
+	_ui.cancel_dash()
+
+func test_a_search_that_matches_nothing_says_the_games_are_still_there() -> void:
+	# An empty strip reads exactly like a dead end, and the two are opposite facts.
+	GameState.dash_charges = 1
+	_ui.dash()
+	if _ui.dash_total_count() <= 0:
+		pending("this node has no connected games to hide")
+		return
+	_ui._dash_search = "zzzznosuchgamezzzz"
+	_ui._apply_dash_filter()
+	assert_eq(_ui._choices.size(), 0, "nothing matches")
+	var said: String = _text_of(_ui._choices_row)
+	assert_false(said.contains("dead end"),
+		"the road is not gone — the box is hiding it: %s" % said)
+	assert_string_contains(said, "clear the search",
+		"and it says how to get it back")
+	_ui.cancel_dash()
+
+func test_the_dash_list_can_be_sorted_by_how_far_the_amulet_still_is() -> void:
+	GameState.dash_charges = 1
+	_ui.dash()
+	_ui._dash_sort = &"distance"
+	_ui._apply_dash_filter()
+	var last: int = -1
+	var seen: int = 0
+	for c in _ui._choices:
+		var d: int = _ui.steps_to_amulet(c["slot"])
+		if d < 0:
+			d = 1 << 30                    # off the map sorts to the back, not the front
+		assert_true(last < 0 or d >= last,
+			"the list runs closest-to-Amulet first: %d after %d" % [d, last])
+		last = d
+		seen += 1
+	if seen < 2:
+		pending("fewer than two connected games, so there is no order to check")
+		return
+	assert_gt(seen, 1, "there was an order to check")
+	_ui.cancel_dash()
+
+func test_the_type_filter_leaves_only_that_type() -> void:
+	GameState.dash_charges = 1
+	_ui.dash()
+	var want: int = -1
+	for c in _ui._choices:
+		want = int((c["game"] as GameData).type)
+		break
+	if want < 0:
+		pending("this node has no connected games to filter")
+		return
+	_ui._dash_type = want
+	_ui._apply_dash_filter()
+	assert_gt(_ui._choices.size(), 0, "the type that was there is still there")
+	for c in _ui._choices:
+		assert_eq(int((c["game"] as GameData).type), want,
+			"only %s games are left" % RunGraph.type_label(want))
+	_ui.cancel_dash()
+
+func test_a_filter_never_outlives_the_dash_that_set_it() -> void:
+	# The whole risk of putting a filter on an offering: one left standing would
+	# silently shorten the NEXT panel, and a shortened offering is a lie.
+	GameState.dash_charges = 2
+	_ui.dash()
+	var full: int = _ui._choices.size()
+	_ui._dash_search = "zzzznosuchgamezzzz"
+	_ui._dash_type = GameData.GameType.ACTION
+	_ui._dash_sort = &"year"
+	_ui._apply_dash_filter()
+	_ui.cancel_dash()
+	_ui.dash()
+	assert_eq(_ui._dash_search, "", "the search box opens empty")
+	assert_eq(_ui._dash_type, -1, "every type is offered again")
+	assert_eq(_ui._dash_sort, &"name", "and the order is back to A-Z")
+	assert_eq(_ui._choices.size(), full, "so the second Dash offers what the first did")
+	_ui.cancel_dash()
+
+func test_the_ordinary_offering_is_never_narrowed_by_a_dash_filter() -> void:
+	# Belt to the brace above: even with the filter fields set, a non-dash offering
+	# reads them not at all.
+	GameState.dash_charges = 1
+	_ui._build_choices()
+	var capped: int = _ui._choices.size()
+	_ui._dash_search = "zzzznosuchgamezzzz"
+	_ui._dash_type = GameData.GameType.ACTION
+	_ui._build_choices()
+	assert_eq(_ui._choices.size(), capped,
+		"the three-card offering does not read the Dash panel's filters")
+	_ui._reset_dash_filters()
 
 # The offering prints "⚡ +1 DASH" on a game the run has played, and the usual way
 # back to one is to SPEND a Dash — the offering is three of a hub's twenty
@@ -4691,8 +4963,13 @@ func test_a_card_names_the_pace_it_would_put_you_on() -> void:
 			"a card %d hops out reads the same rung the loop resolves on" % hops)
 		assert_eq(int(note["extra"]), RunDifficulty.extra_turns_for_hops(hops),
 			"and says so in the field the board reads")
-		# The EXTRA turns are what the card says out loud (§7.4) — "1 extra turn",
-		# or "no extra turns" on the rung where it charges nothing.
+		# The EXTRA turns are what the card says out loud (§7.4) — but ONLY when
+		# there are some. A rung that charges nothing draws no row at all: the
+		# pace line is a warning, and a warning about nothing is a wasted line.
+		if int(note["extra"]) <= 0:
+			assert_eq(String(note["text"]), "",
+				"a card that costs no turns says nothing: %s" % note["text"])
+			continue
 		var said: String = RunDifficulty.extra_text(int(note["extra"]))
 		assert_true(String(note["text"]).contains(said),
 			"and says the price out loud: %s" % note["text"])
@@ -4714,6 +4991,23 @@ func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 		"in the band's own colour, same as the board's strip")
 
 func test_backing_off_reads_as_the_relief_it_is() -> void:
+	# Backing off from the doorstep to the middle band: still a price, and a
+	# smaller one, so the card is allowed to say the enemies slow down.
+	var here: StringName = _a_game_at_hops(1)
+	var there: StringName = _a_game_at_hops(3)
+	if here == &"" or there == &"":
+		pending("the run did not reach this case (here == &'' or there == &'')")
+		return
+	GameState.set_current_game(here)
+	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
+	assert_eq(int(note["turns"]), RunDifficulty.EXTRA_MID)
+	assert_true(String(note["text"]).contains("slow down"),
+		"walking away buys pace, and the card says so: %s" % note["text"])
+
+func test_backing_off_all_the_way_to_nothing_says_nothing() -> void:
+	# The other half of the same rule: relief down to ZERO is not a warning, so
+	# the row goes rather than reading "slow down — no extra turns". A card that
+	# carries no pace line is a card that costs no turns, every time.
 	var here: StringName = _a_game_at_hops(1)
 	var there: StringName = _a_game_at_hops(6)
 	if here == &"" or there == &"":
@@ -4721,11 +5015,27 @@ func test_backing_off_reads_as_the_relief_it_is() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 0)
-	assert_true(String(note["text"]).contains("slow down"),
-		"walking away buys pace, and the card says so: %s" % note["text"])
+	assert_eq(int(note["turns"]), 0, "the far band charges nothing")
+	assert_eq(String(note["text"]), "", "so there is nothing to warn about")
 
 func test_a_card_that_changes_nothing_says_so_quietly() -> void:
+	# Same band either way AND that band charges something — the only case where
+	# "Still" is worth a line. Read from the doorstep, where the price is real.
+	var here: StringName = _a_game_at_hops(1)
+	var there: StringName = _a_game_at_hops(0)
+	if here == &"" or there == &"":
+		pending("the run did not reach this case (here == &'' or there == &'')")
+		return
+	GameState.set_current_game(here)
+	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
+	assert_gt(int(note["turns"]), 0, "the doorstep charges turns")
+	assert_true(String(note["text"]).contains("Still"),
+		"same band either way: %s" % note["text"])
+	assert_eq(note["color"], UITheme.TEXT_DIM, "and it doesn't shout about it")
+
+func test_a_card_in_the_quiet_band_carries_no_pace_row_at_all() -> void:
+	# Two games out in the wilds: nothing speeds up, nothing slows down, and the
+	# card spends no line saying so.
 	var here: StringName = _a_game_at_hops(6)
 	var there: StringName = _a_game_at_hops(5)
 	if here == &"" or there == &"":
@@ -4733,9 +5043,8 @@ func test_a_card_that_changes_nothing_says_so_quietly() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_true(String(note["text"]).contains("Still"),
-		"same band either way: %s" % note["text"])
-	assert_eq(note["color"], UITheme.TEXT_DIM, "and it doesn't shout about it")
+	assert_eq(int(note["turns"]), 0)
+	assert_eq(String(note["text"]), "", "no price, no row: %s" % note["text"])
 
 func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
 	# Taking the Amulet ends the run on the spot; a "+2 bonus turns" warning there
@@ -4745,14 +5054,23 @@ func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
 	assert_eq(String(note["text"]), "", "the winning card carries no pace warning")
 
 func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
+	# BOTH BRANCHES ASSERT. A card with a price states it; a card with none — the
+	# Amulet's, and any card that leaves the board taking no extra turns — carries
+	# no pace row at all. This used to `continue` past the silent ones, which meant
+	# a run standing out in the quiet band asserted nothing whatsoever and reported
+	# green for it.
 	_ui._render_choices()
+	assert_gt(_ui._choices.size(), 0, "there are cards on the table to read")
 	for i in range(_ui._choices.size()):
 		var note: Dictionary = _ui.turn_note(_ui._choices[i])
-		if String(note["text"]) == "":
-			continue                       # the Amulet's card, which says nothing
+		var said: String = String(note["text"])
 		var text: String = _text_of(_ui.open_choice(i))
-		assert_true(text.contains(String(note["text"])),
-			"choice %d states the pace it puts you on: %s" % [i, text])
+		if said == "":
+			assert_false(text.contains("⏱"),
+				"choice %d costs no turns, so it carries no pace row: %s" % [i, text])
+		else:
+			assert_true(text.contains(said),
+				"choice %d states the pace it puts you on: %s" % [i, text])
 		_ui._choice_modal._close()
 
 # ---------------------------------------------------------------------------
@@ -7333,7 +7651,7 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 		"the ordinary escape gate is shut — nothing has drawn blood yet")
 	var line: String = _ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 	assert_string_contains(line, "walk out of the game",
-		"the outcome screen says the expensive half out loud")
+		"the line it reports says the expensive half out loud")
 	assert_ne(GameState.current_game_id, here, "and the run actually moved")
 	# It did NOT leave you standing at the new node picking again: a teleport lands
 	# you IN the game it dropped you on (arrive_at_game).

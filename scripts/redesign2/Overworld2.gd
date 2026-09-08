@@ -287,6 +287,27 @@ var _dash_mode: bool = false        # Dash (§4): offer ANY connected game
 # Dash is not silently cancelled by the charge that paid for the trip.
 var _dashed_here: bool = false
 
+# --- the Dash panel's own search, filter and sort ---------------------------
+#
+# An ordinary offering is three cards and needs none of this. A Dash is a LIST —
+# a hub has twenty connections — and _offered_ids has said so in a comment for as
+# long as it has sorted them A-Z: "the question stops being *which of these three*
+# and becomes *is the game I have in mind in here*". These are the controls that
+# question actually wants, and they are the Collection's, because a player who has
+# used the search box there already knows how this one works.
+#
+# All three are DASH-ONLY and reset every time a Dash is opened (see `dash`). A
+# filter that outlived the panel would be a silently shortened offering the next
+# time round, which is the one thing an offering must never be.
+var _dash_search: String = ""
+# &"name" (A-Z, the default), &"distance" (fewest steps left to the Amulet
+# first) or &"year". Distance is the one this panel exists for: every dash target
+# is one hop away, so "how far away" can only mean how far the AMULET still is
+# from it, which is the number the whole run is counting down.
+var _dash_sort: StringName = &"name"
+# A GameData.GameType, or -1 for every type.
+var _dash_type: int = -1
+
 # THE ARMED VERB (§4): &"bash", &"transmute", or &"" for none.
 #
 # Bash and Transmute both need a TARGET — one specific card out of the offering —
@@ -344,6 +365,13 @@ var _controls_sig: String = ""
 # The third signature lives with the section it guards, in ReportChecklist.
 
 var _controls_row: HBoxContainer
+# The Dash panel's search / filter / sort bar. Empty and hidden outside dash mode.
+var _dash_bar: HFlowContainer
+# Kept so a change to the sort or the type can repaint the LIST without rebuilding
+# the bar the player is typing into.
+var _dash_search_box: LineEdit = null
+var _dash_count_label: Label = null
+var _dash_sort_buttons: Array = []
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
 # once a game is in play, which is what frees the room for the stage below.
 var _select_box: VBoxContainer
@@ -671,7 +699,13 @@ func open_start_choice(index: int) -> GameChoiceModal:
 func _start_pace_note(hops: int) -> Dictionary:
 	var extra: int = RunDifficulty.extra_turns_for_hops(hops)
 	return {
-		"text": ("⏱ Reporting a game costs no turns there" if extra <= 0
+		# SILENT WHEN THE ANSWER IS ZERO. A pace row is a WARNING, and "costs no
+		# turns there" is a warning about nothing — it took a line of the card to
+		# say that the thing the row exists to announce is not happening. The row
+		# is dropped instead (an empty text draws nothing, see
+		# GameChoiceModal._fact_line's caller), so seeing one at all means the
+		# board really does get extra turns after the game.
+		"text": ("" if extra <= 0
 			else "⏱ Reporting a game costs %s there" % RunDifficulty.extra_text(extra)),
 		"color": RunDifficulty.band_color(extra),
 		"turns": extra,
@@ -1379,14 +1413,20 @@ func dash() -> void:
 	# one puts the others down.
 	_armed_verb = &""
 	_dash_mode = true
+	# A fresh panel every time: a search left over from the last Dash would be a
+	# silently shortened offering, which is the one thing an offering must not be.
+	_reset_dash_filters()
 	_build_choices()
+	_rebuild_dash_bar()
 	_refresh()
 
 func cancel_dash() -> void:
 	if not _dash_mode:
 		return
 	_dash_mode = false
+	_reset_dash_filters()
 	_build_choices()
+	_rebuild_dash_bar()
 	_refresh()
 
 # --- Bash and Transmute, armed and aimed (§4) --------------------------------
@@ -1618,6 +1658,15 @@ func turn_note(choice: Dictionary) -> Dictionary:
 	var tip: String = ("Standing there, handing a game in gives the enemies %s.\n\n%s"
 		% [RunDifficulty.extra_text(then), RunDifficulty.ladder_text(then)])
 	if bool(choice.get("amulet", false)):
+		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
+	# NOTHING TO WARN ABOUT IS NOTHING TO SAY. A card that leaves the board taking
+	# no extra turns after the game drops the row entirely rather than spending a
+	# line on "still no extra turns" — including the case where backing off is what
+	# bought the zero, which reads as good news and is still not a warning. The
+	# number is still returned, so a caller (and a test) can ask without the row
+	# having to exist. Seeing a pace row at all now means the same thing every
+	# time: this game hands the enemies turns when you report it.
+	if then <= 0:
 		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
 	if then > now:
 		return {
@@ -3532,8 +3581,7 @@ func _offered_ids() -> Array:
 	# stop a three-card offering feeling like a menu, and this one IS a menu. Sorted
 	# by name, a player looking for a particular game can find it by eye.
 	if _dash_mode:
-		nbrs.sort_custom(_by_display_name)
-		return nbrs
+		return _dash_list(nbrs)
 	var cap: int = offer_count()
 	if amulet in nbrs and nbrs.size() > cap:
 		nbrs.erase(amulet)
@@ -3568,6 +3616,70 @@ func _guarantee_onward(offered: Array, pool: Array) -> Array:
 # it's also the pool a BASHED slot is refilled from (see _backfill_id_for): a
 # destroyed game is replaced by another game connected to the same node, not by
 # something off the route.
+# The Dash panel's list: every connected game, narrowed by the panel's own search
+# and type filter and put in the panel's own order.
+#
+# NARROWING IS NOT BASHING. What is filtered out is still connected, still
+# reachable and still there the moment the search box is cleared — this only
+# decides what is DRAWN. That is why it lives here rather than in
+# `_sorted_neighbors`, which is what the ordinary three-card offering draws from
+# and must never see a filter.
+func _dash_list(nbrs: Array) -> Array:
+	var out: Array = []
+	var term: String = _dash_search.strip_edges().to_lower()
+	for gid in nbrs:
+		var game: GameData = GameLoop2.game_at(gid)
+		if game == null:
+			continue
+		if _dash_type >= 0 and int(game.type) != _dash_type:
+			continue
+		if term != "" and not term in game.display_name.to_lower():
+			continue
+		out.append(gid)
+	match _dash_sort:
+		&"distance":
+			# Fewest steps LEFT first. A game the distance map has no answer for
+			# (-1, off the run's component) sorts to the back rather than to the
+			# front, where a raw -1 would put it: "unknown" is not "nearly there".
+			out.sort_custom(func(a, b):
+				var da: int = steps_to_amulet(a)
+				var db: int = steps_to_amulet(b)
+				if da < 0:
+					da = 1 << 30
+				if db < 0:
+					db = 1 << 30
+				if da != db:
+					return da < db
+				return _by_display_name(a, b))
+		&"year":
+			out.sort_custom(func(a, b):
+				var ga: GameData = GameLoop2.game_at(a)
+				var gb: GameData = GameLoop2.game_at(b)
+				var ya: int = ga.year if ga != null else 0
+				var yb: int = gb.year if gb != null else 0
+				if ya != yb:
+					return ya > yb
+				return _by_display_name(a, b))
+		_:
+			out.sort_custom(_by_display_name)
+	return out
+
+# Take the Dash panel back to the state it opens in. Called when a Dash is opened
+# and when one is put down, so a search typed into one Dash can never quietly
+# shorten the next.
+func _reset_dash_filters() -> void:
+	_dash_search = ""
+	_dash_sort = &"name"
+	_dash_type = -1
+
+# What the panel is showing versus what it could show — read by the filter row's
+# count, and by the tests, so neither has to re-derive it.
+func dash_visible_count() -> int:
+	return _choices.size() if _dash_mode else 0
+
+func dash_total_count() -> int:
+	return _sorted_neighbors().size() if _dash_mode else 0
+
 func _sorted_neighbors() -> Array:
 	var nbrs: Array = []
 	for gid in RunGraph.neighbors(GameState.current_game_id):
@@ -3972,6 +4084,14 @@ func _render_controls() -> void:
 	var sig: String = "%s|%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
 		String(_armed_verb),
 		String(_last_played_game.id) if _last_played_game != null else ""]
+	# THE DASH BAR IS REBUILT ON THE TRANSITION AND ONLY ON IT. A dozen paths drop
+	# out of dash mode (a pick, a report, arming a verb, a teleport), and none of
+	# them should have to remember to tear the bar down — but rebuilding it on
+	# every refresh would take the focus and the caret out of the search box every
+	# time the player typed a letter. Comparing what the bar is showing against the
+	# mode is what tells the two cases apart.
+	if _dash_bar != null and _dash_bar.visible != _dash_mode:
+		_rebuild_dash_bar()
 	if sig == _controls_sig:
 		return
 	_controls_sig = sig
@@ -4010,6 +4130,110 @@ func _render_controls() -> void:
 		rate.add_theme_color_override("font_color", UITheme.GOLD)
 		rate.pressed.connect(func(): _prompt_rating(game))
 		_controls_row.add_child(rate)
+
+# --- the Dash panel's search / filter / sort bar ------------------------------
+#
+# BUILT ONCE PER DASH, not once per refresh. Everything else on this page is torn
+# down and redrawn whenever anything changes, which is fine for labels and fatal
+# for a text field: rebuilding the LineEdit under the player mid-word takes the
+# focus and the caret with it, and the search box would be unusable. So the bar is
+# built when a Dash opens and torn down when it closes, and a change to any of its
+# three controls repaints the CARDS only (see `_apply_dash_filter`).
+
+# One of the three sort buttons. Pressed-looking when it is the one in force, so
+# the row says which order the list is in without a label.
+func _dash_sort_button(text: String, key: StringName, tip: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.tooltip_text = tip
+	b.toggle_mode = true
+	b.button_pressed = _dash_sort == key
+	b.add_theme_font_size_override("font_size", 12)
+	b.focus_mode = Control.FOCUS_NONE      # so tabbing stays in the search box
+	b.pressed.connect(func():
+		_dash_sort = key
+		for other in _dash_sort_buttons:
+			if is_instance_valid(other):
+				other.button_pressed = other == b
+		_apply_dash_filter())
+	_dash_sort_buttons.append(b)
+	return b
+
+func _rebuild_dash_bar() -> void:
+	if _dash_bar == null:
+		return
+	_dash_sort_buttons.clear()
+	_dash_search_box = null
+	_dash_count_label = null
+	_clear(_dash_bar)
+	_dash_bar.visible = _dash_mode
+	if not _dash_mode:
+		return
+
+	_dash_search_box = LineEdit.new()
+	_dash_search_box.placeholder_text = "Search…"
+	_dash_search_box.text = _dash_search
+	_dash_search_box.custom_minimum_size = Vector2(150, 0)
+	_dash_search_box.add_theme_font_size_override("font_size", 12)
+	# Live rather than debounced: a Dash offers the games CONNECTED to where you
+	# stand — a couple of dozen at the worst hub — so re-filtering is a sort of a
+	# short list, not the Collection's sweep of 861.
+	_dash_search_box.text_changed.connect(func(t: String):
+		_dash_search = t
+		_apply_dash_filter())
+	_dash_bar.add_child(_dash_search_box)
+
+	_dash_bar.add_child(_dash_sort_button("A-Z", &"name",
+		"Alphabetical, so a game you have in mind is where you expect it."))
+	# THE ONE THIS PANEL EXISTS FOR. Every dash target is one hop from here, so
+	# the only distance worth sorting on is how much road is LEFT after taking it.
+	_dash_bar.add_child(_dash_sort_button("Closest to Amulet", &"distance",
+		"Fewest games left between there and %s." % amulet_name()))
+	_dash_bar.add_child(_dash_sort_button("Newest", &"year",
+		"Most recently released first."))
+
+	var type_opt := OptionButton.new()
+	type_opt.add_item("All types", -1)
+	for i in [GameData.GameType.ACTION, GameData.GameType.STRATEGY,
+			GameData.GameType.DECKBUILDER, GameData.GameType.TRADITIONAL]:
+		type_opt.add_item(RunGraph.type_label(i), i)
+	for i in range(type_opt.item_count):
+		if type_opt.get_item_id(i) == _dash_type:
+			type_opt.select(i)
+	type_opt.add_theme_font_size_override("font_size", 12)
+	type_opt.focus_mode = Control.FOCUS_NONE
+	type_opt.item_selected.connect(func(idx: int):
+		_dash_type = type_opt.get_item_id(idx)
+		_apply_dash_filter())
+	_dash_bar.add_child(type_opt)
+
+	_dash_count_label = Label.new()
+	_dash_count_label.add_theme_font_size_override("font_size", 11)
+	_dash_count_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	_dash_count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dash_bar.add_child(_dash_count_label)
+	_refresh_dash_count()
+
+# "7 of 20" — and it is not decoration. A search that matches nothing leaves an
+# empty strip, which reads exactly like a dead end (the offering's own empty state
+# says "No reachable games"); this is what tells the player the games are still
+# there and the box is what is hiding them.
+func _refresh_dash_count() -> void:
+	if _dash_count_label == null or not is_instance_valid(_dash_count_label):
+		return
+	var shown: int = dash_visible_count()
+	var total: int = dash_total_count()
+	_dash_count_label.text = ("%d game%s" % [total, "" if total == 1 else "s"]
+		if shown == total else "%d of %d" % [shown, total])
+
+# A control on the bar moved: redraw the CARDS and leave the bar alone, so the
+# search box keeps the focus and the caret the player is typing at.
+func _apply_dash_filter() -> void:
+	if not _dash_mode:
+		return
+	_build_choices()
+	_render_choices()
+	_refresh_dash_count()
 
 # --- the offering ------------------------------------------------------------
 #
@@ -5175,6 +5399,15 @@ func _build_ui() -> void:
 	_controls_row = HBoxContainer.new()
 	_controls_row.add_theme_constant_override("separation", 8)
 	_select_box.add_child(_controls_row)
+	# The Dash panel's search / filter / sort bar, on a row of its own BELOW the
+	# controls: it is only ever populated in dash mode, and its widgets are built
+	# once per Dash rather than on every refresh — a LineEdit rebuilt under the
+	# player mid-word loses both the focus and the caret (see _rebuild_dash_bar).
+	_dash_bar = HFlowContainer.new()
+	_dash_bar.add_theme_constant_override("h_separation", 6)
+	_dash_bar.add_theme_constant_override("v_separation", 4)
+	_dash_bar.visible = false
+	_select_box.add_child(_dash_bar)
 	_choices_row = HFlowContainer.new()
 	_choices_row.add_theme_constant_override("h_separation", 12)
 	_choices_row.add_theme_constant_override("v_separation", 10)

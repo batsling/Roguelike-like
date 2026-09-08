@@ -11,6 +11,72 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Six passes over the screens, and four of them are about a line or a click
+  that was costing more than it was worth.**
+
+  **The pace row goes silent when there is nothing to warn about.** A card that
+  leaves the board taking no extra turns after the game used to spend a line
+  saying so — "Reporting a game costs no turns there", "Still no extra turns",
+  and even "Enemies slow down — no extra turns" when backing off is what bought
+  the zero. A pace row is a WARNING, and a warning about nothing is a wasted
+  line. `turn_note` and `_start_pace_note` return an empty text instead, which
+  draws no row, so seeing one at all now means the same thing every time: this
+  game hands the enemies turns when you report it. The number is still on the
+  note, so nothing that reads it had to change.
+
+  **★ Rate this game moved to where people actually look.** It sat in a corner
+  of the haul screen's header, beside the cover and the name — the right place
+  by "put it next to the thing it is about", and the wrong one by the only test
+  that matters: nobody found it. It is in the FOOTER now, immediately left of
+  the Go to Event / Go to Shop button every player presses to leave. Left of it
+  and never focused: leaving is still the default action and a rating is still
+  optional.
+
+  **The Dash panel got the controls a list wants.** A Dash is not three cards,
+  it is a menu — a hub has twenty connections — and `_offered_ids` has said so
+  in a comment for as long as it has sorted them A-Z. It now carries a search
+  box, a type filter and three sort orders, the Collection's own controls. The
+  one worth naming is **Closest to Amulet**: every dash target is one hop away,
+  so "how far away" can only mean how much road is LEFT after taking it. Two
+  rules keep a filter from becoming a lie — narrowing is not bashing (the
+  ordinary offering never reads these fields), and a filter never outlives the
+  Dash that set it. A search that matches nothing says the games are still
+  there, because an empty strip and a dead end look identical and are opposite
+  facts.
+
+  **A use no longer ends on a screen asking you to acknowledge it.** Reading a
+  scroll or playing a card is one decision, and it was costing two clicks and a
+  full-screen panel drawn OVER the board the piece had just changed — the fire
+  it lit, the body it stunned and the square it teleported you to were all
+  behind the report describing them. Nothing is lost in the move: every effect
+  line was already going to the run log before that screen drew it a second
+  time. `_report_outcome` adds only what the log did not carry (Echo Chamber's
+  attribution, a wand's charges left) and closes. Two facts get a TOAST rather
+  than a log line, because a toast is on screen and the log is not: **what an
+  unidentified piece turned out to be** — the case the old screen was really
+  built for — and **"nothing happens"** for a piece whose ops all no-opped,
+  since silence after a click reads as a click that did not register.
+
+  **The route strip's arrows were eating themselves.** `RouteArrow` drew a flat
+  7x10 head at a flat 4px inset, which is fine at the end-of-run screen's 24px
+  and falls apart at the header strip's 15: the pads took 8 of the 15, the head
+  took the remaining 7, and what drew was a squat triangle with no shaft behind
+  it. The head is sized against the arrow now — at most half the span — so there
+  is always a line for it to sit on the end of, and the shaft stops where the
+  head begins instead of running under it.
+
+  **The enemy hover card has two headers.** It carries two kinds of fact — the
+  GOAL you must go and do, and the ABILITIES the body uses on you meanwhile —
+  and unlabelled they ran together as one stack of sentences with the ⚠ as the
+  only thing separating them. `HoverCard` learned a section header
+  (`{"header": …}` among the lines); a body with no abilities grows no Abilities
+  header, because an empty section is worse than none, and a header never
+  becomes the plain tooltip, which wants the first FACT.
+
+  Verified on screen with the `verify` skill as well as in assertions — the
+  arrows at three widths, the Dash bar and its empty state, and both hover
+  cards.
+
 - **A game, two connections and three relics off the sheet — and two of the
   relics needed rules the loop had never had.**
 

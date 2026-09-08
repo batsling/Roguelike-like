@@ -408,9 +408,40 @@ mean.
 |---|---|
 | **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** The card it vacated is **refilled from the same pool the offering is drawn from**: another game *connected to where you are standing*, with its own freshly-rolled goal-enemy (the other cards keep the enemies they were already showing). When that node has no other connection left to give, the slot simply goes — bash is destruction, not a guaranteed reroll. Two bashes are refused outright, because both end the run rather than shape it: the **Amulet game** (destroying the goal makes the run unwinnable) and the **last card on the table** with nothing to replace it. |
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 shields rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
-| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. |
+| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. **The Dash panel is a LIST, and it has the controls a list wants** — see *Searching the Dash panel* below. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
 | **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
+
+#### Searching the Dash panel
+
+An ordinary offering is **three cards** and needs no controls at all. A Dash is a
+**menu**: a hub has twenty connections, so the question stops being *which of these
+three* and becomes *is the game I have in mind in here*. That is why the list has
+been sorted A-Z rather than shuffled for as long as it has existed, and it is why
+it now carries a **search box, a type filter and three sort orders**
+(`Overworld2._rebuild_dash_bar`, `_dash_list`) — the Collection's controls, so a
+player who has used the search there already knows how this one works.
+
+The sort worth naming is **Closest to Amulet**. Every dash target is one hop from
+where you stand, so "how far away" can only mean how much road is **left** after
+taking it — the number the whole run is counting down. A game the distance map has
+no answer for sorts to the **back**, not the front: "unknown" is not "nearly there".
+
+Two rules keep a filter from ever becoming a lie:
+
+- **Narrowing is not bashing.** What is filtered out is still connected, still
+  reachable, and back the instant the box is cleared. `_dash_list` decides what is
+  *drawn*; `_sorted_neighbors`, which the ordinary offering draws from, never sees
+  a filter.
+- **A filter never outlives the Dash that set it** (`_reset_dash_filters`, called
+  when a Dash opens *and* when one is put down). A search left standing would
+  silently shorten the next panel, and a silently shortened offering is the one
+  thing an offering must never be.
+
+A search that matches nothing says so in words, because an empty strip and a dead
+end look identical and are opposite facts: the panel prints *"No game here matches
+that — clear the search to see all N"* where the offering would print *"No
+reachable games — dead end."*
 
 ### Consumables
 | Item | Effect |
@@ -996,31 +1027,40 @@ The use modal opens on a **layer above** the drop modal (`USE_LAYER`) — a
 `CanvasLayer`'s order is global, so a modal opened from on top of another has to be
 told to clear it.
 
-**A use ends by saying what it did** (`LootUseModal._show_outcome`). Taking a pill
-used to close the modal the instant it resolved, which put the answer to *what did
-that do to me* into the run log on the far side of the page — the one place the
-player was not looking, having just been looking at the pill. On an **unidentified**
-capsule that is the whole minigame: the reason to swallow an unknown pill is to find
-out what it was, and finding out was happening off-screen.
+**A use ends by writing what it did and closing** (`LootUseModal._report_outcome`).
 
-So the piece gets one more screen, the same furniture as the intro said in the past
-tense: the art, the name it turned out to have, its Preference now that there is one
-to show, **what it turned out to be** when this use is what identified it (the
-capsule is right there above the line, so the colour is named without the run ever
-having to spell a colour out — see *Known this run*), **what it did** as the lines
-the effect itself reported (the same ones the log gets, so the two cannot say
-different things), and **where your Health landed** when it moved — `You lose 4
-Health` is the size of the hit, and the number that decides what to do next is the
-one left afterwards.
+There used to be one more screen here — the art, the name, the effect lines, the
+Health, and a **Done** button — and it is gone. It existed for a real reason: a use
+that closed on the spot put the answer to *what did that do to me* into the run log
+on the far side of the page, and on an **unidentified** capsule that answer is the
+whole minigame. But the cure was worse than the complaint. Reading a scroll is one
+decision, and it was costing two clicks and a full-screen panel drawn **over the
+board the scroll had just changed** — the fire it lit, the body it stunned and the
+square it teleported you to were all behind the report describing them.
 
-The **pickers come first and the summary last**: a request is part of what the piece
+So the account goes where the run's other accounts already go, and nothing is lost
+in the move: **every effect line was already written to the log by `_on_read`**
+before that screen drew it a second time. `_report_outcome` adds only what the log
+did not already carry — Echo Chamber's attribution, and a wand's remaining charges
+— and then closes.
+
+Two facts get a **toast** instead of a log line, because a toast is on screen and
+the log is not:
+
+- **What it turned out to be**, when this use is what identified the piece. This is
+  the case the old screen was really built for, and it is the one thing a player may
+  act on immediately, so it is the one thing that must not be buried.
+- **"Nothing happens"**, for a piece whose ops *all* no-opped. Silence after a click
+  reads as a click that did not register, and that piece wrote nothing to the log to
+  say otherwise.
+
+The **pickers come first and the report last**: a request is part of what the piece
 did, so a Scroll of Identify has nothing to report until you have chosen and a
 Telepill has already moved you by the time it does. **Cancel is not a use** and
-never reaches this screen. On the drop modal, a piece used from that screen now
-resolves the drop when the outcome is dismissed rather than the instant it fires.
+reports nothing at all.
 
-**Every piece has to have something to say, and three of them didn't.** The screen
-can only report what it is handed, and `read_scroll` / `take_pill` return their
+**Every piece has to have something to say, and three of them didn't.** The log
+can only carry what it is handed, and `read_scroll` / `take_pill` return their
 logs *before* a request has been fulfilled — so a scroll whose whole effect is a
 request contributed no line at all. Three pieces came out of a use reporting
 *"Nothing happens"*:
