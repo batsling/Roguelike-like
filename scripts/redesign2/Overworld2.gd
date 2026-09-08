@@ -480,6 +480,11 @@ func _init() -> void:
 	_drops = DropQueue.new(self)
 
 func _ready() -> void:
+	# A PLACEHOLDER STREAM, not the run's. Whichever way this page is about to be
+	# used replaces it: `start_run` seeds it from `GameState.run_seed` (so the run's
+	# seed deals the map), and `restore_view_state` puts back the exact position a
+	# save recorded. This only covers the gap between the two — a page mounted and
+	# poked at without either, which is a test rather than a run.
 	_rng.randomize()
 	_build_ui()
 	if not GameLoop2.loop_changed.is_connected(_refresh):
@@ -588,12 +593,28 @@ func start_run(character_id: StringName = &"") -> void:
 	_play_payload = []
 	_play_payload_text = ""
 	_boss_notice_for = -1
-	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
+	# THE RUN IS RESET BEFORE THE MAP IS ROLLED, and that order is now load-bearing
+	# rather than incidental. `GameLoop2.start_run` calls `GameState.reset_run`,
+	# which decides the run's seed (the custom-start screen's number, or a fresh
+	# roll) and seeds every stream in the game off it. The amulet and the opening
+	# three are drawn from `_rng` — so if they were drawn first, as they used to be,
+	# they would come off whatever stream the last screen left behind and the seed
+	# would describe a map it had not chosen.
+	#
+	# Nothing in `pick_amulet_and_starts` reads the run state this clears: it asks
+	# RunConfig, Settings and the catalog, and `GameStats` for the LIFETIME record.
+	# So it is safe on this side of the reset, and only correct on this side.
+	# The roster's FIRST entry when nobody chose — which the menu always does
+	# (`_begin_run` sets `pending_character2`), so this is the headless / test path.
+	# It is the sheet's first row now rather than the filesystem's, because `Data`
+	# sorts what it loads; before that this line's answer depended on the disk.
 	var ch: CharacterData = Data.get_character2(character_id)
 	if ch == null:
 		var roster: Array = Data.all_characters2()
 		ch = roster[0] if not roster.is_empty() else null
 	GameLoop2.start_run(ch)
+	_rng.seed = GameState.run_seed
+	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
 	# Belt and braces: whatever a run reset touches, this screen is still the
 	# mounted overworld, and scrolls / overworld actives / saving all look it up.
 	GameState.set_overworld_context(self)
@@ -849,9 +870,52 @@ func capture_view_state() -> Dictionary:
 		"visits": visits,
 		"drops": drops,
 		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
+		# THE RUN'S RANDOM STREAM, WHERE IT HAD GOT TO. `drop_rng()` has always
+		# described itself as the stream "the whole run rolls from ... because a save
+		# restores it" — and until this pair of keys existed, it did not: `_ready`
+		# called `randomize()` on every mount, so a reload dealt a brand new stream.
+		# The OFFERING survived that (it is hashed off `_offer_seed`, and the slot
+		# enemies are serialized above), which is exactly why the hole was easy to
+		# miss — but every roll still to come did not. A drop you didn't like, a
+		# level-up's stats, a card teleport's destination and an escape's could all
+		# be re-rolled by loading the save again. That is save-scumming, in the genre
+		# least able to afford it.
+		#
+		# BOTH keys are needed and they mean different things: `seed` is where the
+		# stream started, `state` is how far along it the run has walked. Restoring
+		# only the seed would rewind the run to its first roll.
+		#
+		# STORED AS STRINGS, WHICH IS NOT FUSSINESS. A save is JSON, and Godot's JSON
+		# parser hands a number back as a FLOAT once it is large enough — which these
+		# always are, being 64-bit. Round-tripped as numbers they come back close and
+		# wrong: measured, a state of 5531002124596741464 returned as
+		# 5531002124596742144, off by 680 in the low bits. That is the worst possible
+		# failure for this, because a PCG's next output rides on the HIGH bits — so
+		# the first roll after a load still matches and the stream silently diverges a
+		# few rolls later, which reads as "reloading sometimes changes things" rather
+		# than as a bug with a cause. A decimal string round-trips exactly.
+		"rng_seed": str(_rng.seed),
+		"rng_state": str(_rng.state),
 	}
 
 func restore_view_state(view: Dictionary) -> void:
+	# THE STREAM FIRST, because restoring the rest of the view can roll from it —
+	# a start option whose enemy has left the catalog re-rolls one a few lines
+	# down, and that roll should come out of the run's own stream rather than out
+	# of the randomized one `_ready` left behind.
+	#
+	# A save written before these keys existed has neither, and gets the stream it
+	# already had: `randomize()` ran at mount, and there is nothing better to say
+	# about a run whose rolls were never recorded. `seed` is assigned before
+	# `state` on purpose — setting `seed` RESETS `state`, so the other order would
+	# throw away the position we just restored.
+	# `_rng_int` because these are written as decimal STRINGS (see the note in
+	# capture_view_state) — and read tolerantly, so a capture taken in memory and
+	# never sent through JSON, which is what the tests do, restores the same way.
+	if view.has("rng_seed"):
+		_rng.seed = _rng_int(view["rng_seed"])
+	if view.has("rng_state"):
+		_rng.state = _rng_int(view["rng_state"])
 	_start_options.clear()
 	for s in view.get("start_options", []):
 		var sg: GameData = Data.get_game(StringName(s.get("game", "")))
@@ -4680,11 +4744,13 @@ const STAT_FONT := 13
 # One stat, as a chip: the glyph, the name and the count, dimmed to nothing when
 # there is nothing to spend.
 #
-# A verb the player can fire FROM HERE (Dash, Scramble — both act on the offering
-# as a whole) is a real button. One that needs a target (Bash and Transmute both
-# act on a specific offered game, Push and Bombs on a specific enemy) is a
-# readout, and its tooltip says where it actually gets spent, so a charge is never
-# a number with no visible way to use it.
+# A verb the player can fire FROM HERE is a real button — which is all four of
+# them now: Dash and Scramble act on the offering as a whole, and Bash and
+# Transmute ARM here and then aim at a card (see the note in
+# `_refresh_select_stats`, where they stopped being readouts). What is still a
+# readout is a charge with no surface here at all: Push and Bombs are spent on a
+# specific enemy, so their tooltip says where, and a charge is never a number with
+# no visible way to use it.
 func _stat_chip(text: String, count: int, tint: Color, tip: String,
 		fire: Callable = Callable(), armed: bool = false) -> Control:
 	var live: bool = count > 0
@@ -5007,6 +5073,16 @@ func drag_pack_anchor() -> Control:
 # run rolls from is the page's, because a save restores it.
 func drop_rng() -> RandomNumberGenerator:
 	return _rng
+
+# One end of the run's stream, read back off a view state. A String is the shape
+# a save holds (exact through JSON); an int is the shape a capture that never left
+# memory holds. A FLOAT is the shape a save written before the strings landed
+# holds, and it is accepted rather than refused — its low bits are already lost,
+# and a stream a little off where it was is better than one dealt from scratch.
+func _rng_int(raw) -> int:
+	if raw is String:
+		return (raw as String).to_int()
+	return int(raw)
 
 # Repaint the board, if there is one. The queue moves pieces on and off the floor
 # and has no business knowing whether the view exists yet.

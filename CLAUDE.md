@@ -143,6 +143,21 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 t
   described retired systems while sitting in the live `docs/` folder. The five
   paths that are missing ON PURPOSE are listed in the script with the reason;
   add to that list rather than deleting a sentence that means what it says.
+- **`data/` drifts from the sheet, and now something says so.**
+  `python3 tools/check_data_sync.py` runs every generator over the checked-in
+  workbook, asks git whether anything moved, and restores the tree. Its first run
+  found three rows that had been shipping wrong for weeks — and, tellingly, they
+  had drifted in BOTH directions (the sheet was ahead on two, the `.tres` on one),
+  so "which side is right" needed archaeology in the changelog rather than a rule.
+  Run it before pushing a content change; CI runs it on every push. A sheet row
+  part-way through being authored goes in the script's `KNOWN_UNFINISHED` list
+  with its reason, the way `check_doc_paths.py` lists its deliberate exceptions.
+- **CI runs all of this** (`.github/workflows/ci.yml`): GUT, `check_doc_paths`,
+  `check_data_sync`, `check_map_sync` (informational — it drifts in both
+  directions by design) and `check_overlay.js`. Three jobs, so a red build says
+  which KIND of thing broke — the game, the content pipeline, or the browser page
+  GUT cannot see. The engine version is pinned there and in
+  `.claude/hooks/session-start.sh`; keep the two the same as `project.godot`.
 - **GUT cannot see the OBS overlay, because the overlay is a browser page.**
   `test_obs_companion.gd` pins the payload and stops at the file; everything past
   it — whether `hidden` hides, whether the road actually scrolls, whether a burst

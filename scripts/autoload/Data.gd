@@ -70,20 +70,75 @@ func _ready() -> void:
 		_abilities.size(), _events2.size(), _curses2.size(), _objects2.size()
 	])
 
+# EVERY WAY THIS CAN GO WRONG NOW SAYS SO. It used to have three silent failure
+# modes, and they share a shape: the folder loads as fewer rows than it holds,
+# nothing complains, and the missing content surfaces hundreds of tests away as
+# "no such id" somewhere that has nothing to do with the cause. The project has
+# already been bitten by the first of them — a `class_name` shadowing a native
+# Godot class is a parse error that takes down every `.tres` naming that script,
+# and CLAUDE.md documents the resulting hunt.
+#
+#   * A MISSING FOLDER returned quietly, so a renamed directory read as an empty
+#     catalog rather than as a broken path.
+#   * A RESOURCE THAT WOULD NOT LOAD, or that carried no `id`, was skipped one at
+#     a time — which is how a single unparseable script silently empties a folder.
+#   * A DUPLICATE ID overwrote whatever was already under it, last file in
+#     directory order winning. Directory order is not sorted, so which of the two
+#     rows survived was not even stable. With 1,291 generated `.tres` coming out
+#     of one spreadsheet, a duplicated id is an ordinary authoring slip, and its
+#     symptom was one row of content quietly not existing.
+#
+# None of these are made FATAL — a boot that refuses to start is worse than a
+# boot missing one relic, and the tests want to run against a half-broken catalog
+# to say what broke. They are made LOUD, which is the whole difference between a
+# five-minute fix and an afternoon.
 func _load_dir(path: String, target: Dictionary) -> void:
 	var dir := DirAccess.open(path)
 	if dir == null:
+		push_error("[Data] no such content folder: '%s' — everything it holds will read as missing" % path)
 		return
+	# SORTED, AND THAT IS A FIX RATHER THAN A TIDY-UP. Insertion order here is the
+	# order `all_items2()`, `all_characters2()` and every other `.values()` comes
+	# back in, and it used to be whatever order the filesystem handed back — which
+	# is arbitrary, differs between machines and filesystems, and is nobody's
+	# decision. Real things rode on it: `Overworld2.start_run` falls back to
+	# `roster[0]` for a run with no character chosen, so the game's default
+	# character was a property of the disk (it was Isaac on one container and
+	# Antonio Belpaese, the sheet's own first row, once this sort landed).
+	#
+	# SEEDED RUNS MAKE IT LOAD-BEARING. A seed is a promise that the same number
+	# deals the same run; a catalog whose order varies by machine breaks that
+	# promise across exactly the boundary seed-sharing exists to cross. Sorted, the
+	# order is the same everywhere and matches the sheet's.
+	#
+	# It also means a duplicate id reports the same pair of files on every machine,
+	# and that the winner is at least deterministic when one slips through.
+	var names: Array = []
 	dir.list_dir_begin()
 	var fname := dir.get_next()
 	while fname != "":
 		if not dir.current_is_dir() and (fname.ends_with(".tres") or fname.ends_with(".res")):
-			var res: Resource = load(path + fname)
-			if res != null and res.get("id") != null:
-				var id: StringName = res.id
-				if id != &"":
-					target[id] = res
+			names.append(fname)
 		fname = dir.get_next()
+	names.sort()
+	var from_file: Dictionary = {}      # id -> the file that claimed it
+	for fn in names:
+		var res: Resource = load(path + fn)
+		if res == null:
+			push_error("[Data] '%s%s' would not load — check that the script it names parses" % [path, fn])
+			continue
+		if res.get("id") == null:
+			push_error("[Data] '%s%s' has no `id` property — wrong resource type for this folder?" % [path, fn])
+			continue
+		var id: StringName = res.id
+		if id == &"":
+			push_error("[Data] '%s%s' has an empty `id` and cannot be looked up" % [path, fn])
+			continue
+		if from_file.has(id):
+			push_error("[Data] duplicate id '%s' in %s: '%s' is overwritten by '%s'" % [
+				id, path, from_file[id], fn])
+		from_file[id] = fn
+		target[id] = res
 
 # Lookup APIs
 func get_curse(id: StringName) -> CurseData:

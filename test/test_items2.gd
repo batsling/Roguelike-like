@@ -330,12 +330,19 @@ func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
 	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
 	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
 	_give(&"lords_parasol")
-	GameState.gold = 0
+	# THE PURSE STARTS FULL, AND THE TEST IS THAT NOTHING COMES OUT OF IT. It used
+	# to start at 0 and assert 0 afterwards, which is a different claim and one the
+	# shelf itself can falsify: the stock is rolled, several relics pay out on
+	# pickup, and a sweep that happened to lift Old Coin arrived with +6 gold and
+	# failed a test about being charged. Whether the run got richer is the relics'
+	# business; the Parasol's promise is only that it takes nothing.
+	GameState.gold = 100
 	var before: int = GameState.inventory.size()
 	ShopSystem.mark_seen(hub)
 	assert_eq(GameState.inventory.size(), before + shelf.size(),
 		"every slot lands in the pack")
-	assert_eq(GameState.gold, 0, "and none of it is paid for")
+	assert_true(GameState.gold >= 100,
+		"and not a coin of it is paid for (gold %d, started at 100)" % GameState.gold)
 	assert_true(ShopSystem.is_sold_out(hub), "the shelf is bare behind you")
 
 func test_a_shop_is_only_swept_by_someone_holding_the_parasol() -> void:

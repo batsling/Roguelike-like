@@ -451,12 +451,24 @@ func test_a_stolen_relic_leaves_the_inventory_and_comes_back() -> void:
 	# test would be measuring the trinket rule instead. (That interaction is
 	# correct and rather good: a Lucky Hat cannot be stolen because it does not
 	# survive the hit that would have stolen it.)
+	#
+	# AND NOT A RELIC THAT CHANGES THE BOARD EITHER. This used to take the first
+	# non-fragile relic in catalog order and nothing more, which worked only for as
+	# long as that happened to be an inert one — and "catalog order" was the order
+	# the filesystem handed back `data/items2.0/`, so which relic this test ran on
+	# was never the same question twice and was never anybody's decision. Sorting
+	# the loader made it Alien Baby, whose `stat_bonuses` give every enemy +1
+	# Health: the one `fulfill` below then no longer finishes the thief, so it never
+	# died, never dropped its haul, and the test read a live enemy as a broken
+	# hand-back. The relic here has to be inert on the board or this is a test about
+	# the relic instead of about the theft.
 	var template: ItemData = null
 	for it in Data.all_items2():
-		if not (it as ItemData).destroyed_by_enemy_damage:
-			template = it
+		var relic := it as ItemData
+		if not relic.destroyed_by_enemy_damage and relic.stat_bonuses.is_empty():
+			template = relic
 			break
-	assert_not_null(template, "the 2.0 set has a relic that survives a hit")
+	assert_not_null(template, "the 2.0 set has an inert relic that survives a hit")
 	GameState.add_item(template)
 	var held: int = GameState.inventory.size()
 	var entry: Dictionary = _put(_enemy([_ability(&"theft", 1, &"item", "Item")]))

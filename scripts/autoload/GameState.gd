@@ -1012,6 +1012,20 @@ func active_affliction_effects(effect_type: String) -> Array:
 				out.append(eff)
 	return out
 
+# Put every private random stream in the game back onto the run's seed.
+#
+# Most of the game rolls off Godot's GLOBAL stream, which `reset_run` seeds
+# directly — but a handful of systems keep a `RandomNumberGenerator` of their own,
+# and one made at boot carries a boot-time seed that a run starting later cannot
+# reach. Each of them now takes its seed from the global stream, so all this has
+# to do is draw them a fresh number in a fixed order once the run's seed is set.
+#
+# NOT INCLUDED, ON PURPOSE: `Overworld2._rng`. The page owns that one because a
+# save restores it (`capture_view_state`), so it is seeded where the run is
+# started rather than here — reseeding it from this end would talk over a resume.
+func reseed_run_streams() -> void:
+	EffectSystem.reseed(randi())
+
 # ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------
@@ -1031,7 +1045,34 @@ func reset_run() -> void:
 	played_games.clear()
 	total_games_beaten = 0
 	games_played = 0
-	run_seed = randi()
+	# THE RUN'S SEED, AND THE STREAM IT DEALS. `run_seed` has existed and been
+	# saved since the shops needed something stable to hash their stock against,
+	# but nothing else read it: every other roll in the game came off Godot's
+	# GLOBAL random stream, which is seeded from the clock at boot. So the number
+	# in the save described one shop shelf and nothing else, and two runs on the
+	# same seed had nothing in common.
+	#
+	# `seed()` below fixes the global stream to the run's number, which is what
+	# turns the seed into the run: `randi()`, `randf()`, `pick_random()` and
+	# `shuffle()` are what GameLoop2's enemy rolls, the event bag, the pill and
+	# scroll alphabets, the shop stock and the loot tables all draw from. The
+	# overworld seeds its own `_rng` from the same number (Overworld2.start_run),
+	# and the three systems that keep a private generator seed theirs OUT of the
+	# global stream rather than off the clock — so one number reproduces the map,
+	# the offering, the drops, the level-ups and the alphabets together.
+	#
+	# RunConfig hands over the number: the custom-start screen's, or a fresh roll
+	# when the player named none. Rolled BEFORE the seeding, since a fresh one has
+	# to come off the old stream to be new.
+	#
+	# This reaches two autoloads registered AFTER this one (RunConfig, and
+	# EffectSystem through `reseed_run_streams`), which is safe only because
+	# `reset_run` is never called during boot — see the note on `_ready` above,
+	# where the same ordering is why the lifecycle hooks are deferred. Do not call
+	# this from an autoload's `_ready`.
+	run_seed = RunConfig.seed_for_run()
+	seed(run_seed)
+	reseed_run_streams()
 	total_combats_completed = 0
 	player_level = 1
 	last_game_perfected = false

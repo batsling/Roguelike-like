@@ -475,7 +475,16 @@ func test_lucky_foot_rerolls_a_negative_pill_into_a_positive_one() -> void:
 	GameState.hp = 10
 	GameState.add_item(Data.get_item2(&"lucky_foot"))
 	var out: Dictionary = _take(&"bad_trip")
-	assert_eq(GameState.hp, 10, "the negative dose never landed")
+	# NOT `hp == 10`. The Foot rerolls into a RANDOM Positive pill, and two of the
+	# five in that pool move Health on purpose — Health Up raises the ceiling and
+	# the container arrives full, so the honest outcome of a lucky Bad Trip can be
+	# 12. Asserting the number back meant asserting that the reroll landed on one
+	# of the three pills that happen not to touch Health, which is a fact about the
+	# roster rather than about the relic. What "the negative dose never landed"
+	# means is that Bad Trip's `lose_hp 2` did not: Health went anywhere except
+	# down.
+	assert_true(GameState.hp >= 10,
+		"Bad Trip's 2 damage never landed (hp %d, started at 10)" % GameState.hp)
 	assert_true(str(out["logs"]).contains("Lucky Foot"),
 		"and it says what happened: %s" % str(out["logs"]))
 

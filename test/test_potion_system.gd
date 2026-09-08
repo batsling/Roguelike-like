@@ -199,12 +199,17 @@ func test_a_healing_potion_heals_and_fruit_juice_raises_the_ceiling() -> void:
 	assert_eq(GameState.max_hp, cap + 2, "the ceiling moves")
 	assert_eq(GameState.hp, hp + 2, "and the container arrives full")
 
-func test_fire_potion_costs_the_drinker_health_and_sets_them_alight() -> void:
+func test_fire_potion_sets_the_drinker_alight_and_costs_them_nothing_up_front() -> void:
+	# The sheet took `take_damage 3` off the quaff, so drinking an unknown swirly
+	# bottle no longer bills you on the way down: it hands you +3 Burn and lets the
+	# debt do the work. The Health is asserted UNCHANGED rather than left unchecked,
+	# because "no damage on impact" is the rule now and a test that stopped looking
+	# would not notice it coming back.
 	var hp: int = GameState.hp
 	var out: Dictionary = PotionSystem.quaff_potion(
 		{"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
-	assert_lt(GameState.hp, hp, "3 damage, through the board's own hit path")
-	assert_gt(GameState.status_stacks(&"burn"), 0, "and +3 Burn")
+	assert_eq(GameState.hp, hp, "nothing up front")
+	assert_gt(GameState.status_stacks(&"burn"), 0, "+3 Burn, and that is the whole cost")
 	assert_false((out["logs"] as Array).is_empty())
 
 func test_a_quaffed_burn_has_NO_clock_on_it() -> void:
@@ -481,17 +486,27 @@ func test_a_wide_body_under_a_wide_throw_is_hit_ONCE() -> void:
 
 func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
 	# The other half of decision #26, and the half that is about the difference
-	# between a thing that happens once and ground that keeps happening. The throw
-	# bills the 2x2 ONCE; the fire it leaves behind bills every cell of that
-	# footprint, every turn, for three games.
+	# between a thing that happens once and ground that keeps happening. A thrown
+	# damage clause bills the 2x2 ONCE; the fire a bottle leaves behind bills every
+	# cell of that footprint, every turn, for three games.
 	#
 	# The DAMAGE is what proves the first half behaviourally — Burn cannot, because
 	# its authored ceiling is 3 and it would clamp 12 and 3 to the same number.
+	#
+	# IT USED TO PROVE IT WITH FIRE POTION, WHICH NO LONGER DEALS ANY. The sheet
+	# took the damage clauses off both of Fire Potion's verbs, so the bottle that
+	# used to carry tile + damage + Burn now carries tile + Burn — and the "once,
+	# not four times" half had nothing left to measure. The rule it is about is not
+	# Fire Potion's, though: it belongs to every area clause the board resolves. So
+	# the halves are thrown separately now, each by a bottle that still has the
+	# clause it is being read for — Explosive Ampoule for the damage (1 over a whole
+	# ROW, which a 2x2 spans two cells of), Fire Potion for the ground.
 	var wide: int = _solo(_wide(9))
 	_park(wide, Vector2i(2, 0))
-	_throw(&"fire_potion", Vector2i(2, 1))
+	_throw(&"explosive_ampoule", Vector2i(2, 0))
 	assert_eq(int(GameLoop2.entry_for(wide)["health"]), 8,
-		"1 damage, not 4 — the clause lands on the BODY, once")
+		"1 damage, not 2 — the clause lands on the BODY, once")
+	_throw(&"fire_potion", Vector2i(2, 1))
 	var covered: Array = GameLoop2.entry_cells(GameLoop2.entry_for(wide))
 	assert_eq(covered.size(), 4, "the body really does cover four squares")
 	for cell in covered:
@@ -655,17 +670,25 @@ func test_a_body_killed_by_a_bottle_is_destroyed_not_defeated() -> void:
 
 # --- Tiles and statuses on the throw side ----------------------------------
 
-func test_fire_potion_covers_the_whole_3x3_with_all_three_clauses() -> void:
+func test_fire_potion_covers_the_whole_3x3_with_both_its_clauses() -> void:
 	# Decision #11, stated as loudly as the roster can state it: nine squares of
-	# burning ground, 1 damage and +3 Burn on everything standing in them.
+	# burning ground and +3 Burn on everything standing in them.
+	#
+	# TWO CLAUSES, NOT THREE. The sheet took the throw's `deal_damage 1` off, so
+	# the bottle no longer hits on impact at all — it lights the ground and sets
+	# what is standing on it alight, and the damage comes out of the Burn from then
+	# on. The body's Health is asserted UNCHANGED rather than the assertion being
+	# dropped, because "the impact does nothing by itself" is now the rule and a
+	# test that simply stopped looking would not notice it coming back.
 	var inst: int = _solo(_enemy(3))
 	_park(inst, Vector2i(2, 1))
+	var before: int = int(GameLoop2.entry_for(inst)["health"])
 	_throw(&"fire_potion", Vector2i(2, 1))
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	assert_not_null(GameLoop2.tile_at(Vector2i(2, 1)), "the ground is alight")
 	assert_not_null(GameLoop2.tile_at(Vector2i(1, 0)), "and so are its neighbours")
-	assert_true(int(entry["health"]) < 3, "the body took the damage")
-	assert_true(GameLoop2.entry_status_stacks(entry, &"burn") > 0, "and the Burn")
+	assert_eq(int(entry["health"]), before, "the impact itself costs the body nothing")
+	assert_true(GameLoop2.entry_status_stacks(entry, &"burn") > 0, "the Burn is the whole bill")
 
 func test_a_thrown_speed_potion_borrows_its_stacks_for_one_game() -> void:
 	# The timed layer takes `games` straight through — there is no second path for

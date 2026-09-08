@@ -59,6 +59,30 @@ var max_path: int = 8
 # rather than one silently overriding the other.
 var amulet_id: StringName = &""
 
+# THE SEED THE RUN IS DEALT FROM. 0 means "roll me a fresh one", which is what
+# every run did before this existed and what an ordinary Start Run still does.
+#
+# A roguelike's seed is the run written down: the same number deals the same
+# amulet, the same opening three, the same drops, the same level-up rolls. That
+# makes a run shareable ("try 4815162342, the Amulet is two hops out"), a death
+# re-runnable, and — the reason it is worth having beyond the player — a bug
+# reproducible, because "it happened on seed N" is a complete report where "it
+# happened once" is not.
+#
+# It belongs on RunConfig rather than on Settings because it describes ONE run,
+# not a preference: it is set on the custom-start screen with the other three
+# filters, it is saved with them, and `reset()` clears it with them so the number
+# cannot outlive the screen that asked for it and quietly deal the next ordinary
+# run the same map.
+var seed: int = 0
+
+# The seed a run started under this configuration should use: the authored one,
+# or a fresh roll when none was named. Called once per run, at the point the run
+# is reset — never per draw, because a run whose seed moved mid-run is a run no
+# number describes.
+func seed_for_run() -> int:
+	return seed if seed != 0 else randi()
+
 # What a filter says when it has been asked for nothing: everything passes.
 # `genres` is a list rather than a single value because "Action or Deckbuilder" is
 # a run someone wants and "Action, and also Deckbuilder" is not a game type; an
@@ -191,6 +215,7 @@ func reset() -> void:
 	min_path = RunGraph.MIN_PATH_LENGTH
 	max_path = RunGraph.MAX_PATH_LENGTH
 	amulet_id = &""
+	seed = 0
 	RunGraph.invalidate_cache()
 
 # Adopt a configuration and rebuild the graph around it. The invalidate is the
@@ -203,6 +228,7 @@ func apply(config: Dictionary) -> void:
 	min_path = int(config.get("min_path", RunGraph.MIN_PATH_LENGTH))
 	max_path = int(config.get("max_path", RunGraph.MAX_PATH_LENGTH))
 	amulet_id = StringName(config.get("amulet_id", ""))
+	seed = int(config.get("seed", 0))
 	RunGraph.invalidate_cache()
 
 # One line describing the run this configures — for the Continue list, where a
@@ -242,6 +268,12 @@ static func describe(data: Dictionary) -> String:
 		PATH_FLOOR, PATH_CEILING)
 	parts.append("%d games" % lo if lo == hi
 		else "%d–%d games" % [mini(lo, hi), maxi(lo, hi)])
+	# The seed, when the player NAMED one. A rolled seed is deliberately not shown
+	# here: every run has one, so printing it on every row would say nothing about
+	# which run this is — and this line exists to tell two saves apart.
+	var s: int = int(data.get("seed", 0))
+	if s != 0:
+		parts.append("🎲 %d" % s)
 	return "  ·  ".join(PackedStringArray(parts))
 
 # A spec in words, or "" when it narrows nothing.
@@ -287,6 +319,7 @@ func serialize() -> Dictionary:
 		"min_path": min_path,
 		"max_path": max_path,
 		"amulet_id": String(amulet_id),
+		"seed": seed,
 	}
 
 func restore(data: Dictionary) -> void:
@@ -300,6 +333,10 @@ func restore(data: Dictionary) -> void:
 		"min_path": int(data.get("min_path", RunGraph.MIN_PATH_LENGTH)),
 		"max_path": int(data.get("max_path", RunGraph.MAX_PATH_LENGTH)),
 		"amulet_id": String(data.get("amulet_id", "")),
+		# A save from before seeds existed has none, and restores as 0 — "roll one".
+		# That is the honest answer: the run it holds was dealt off an unseeded
+		# stream, so there is no number that would reproduce it.
+		"seed": int(data.get("seed", 0)),
 	})
 
 # A saved spec, filled in from the default for anything the save predates — so a

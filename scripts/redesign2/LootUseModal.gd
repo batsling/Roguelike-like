@@ -67,7 +67,10 @@ func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_rng.randomize()
+	# Seeded out of the global stream rather than off the clock, for the reason
+	# RewardScreen is: a modal built per use should be repeatable within a seeded
+	# run (see GameState.reset_run).
+	_rng.seed = randi()
 
 # Entry point for a CARRIED piece. `overworld` is the Overworld2 scene (for
 # teleport fulfilment).

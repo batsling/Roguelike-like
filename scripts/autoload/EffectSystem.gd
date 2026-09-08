@@ -18,8 +18,21 @@ var _handlers: Dictionary = {}  # type: String -> Callable
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
-	_rng.randomize()
+	# SEEDED OUT OF THE GLOBAL STREAM, NOT OFF THE CLOCK. `randomize()` reads the
+	# system time, which would leave this generator the one part of a seeded run
+	# that a seed could not reproduce. Drawing its seed with `randi()` instead
+	# makes it a branch of whatever stream is running: unseeded at boot (the global
+	# stream is clock-seeded then, so this is as random as it ever was), and fixed
+	# to the run the moment `GameState.reset_run` seeds the global stream and the
+	# systems are re-seeded behind it.
+	_rng.seed = randi()
 	_register_defaults()
+
+# Put this system's private stream back on the run's seed. Called by
+# GameState.reset_run through `GameState.reseed_run_streams` — a generator made at
+# boot has a boot-time seed, and a run started afterwards needs it on the run's.
+func reseed(from: int) -> void:
+	_rng.seed = from
 
 func register(effect_type: String, handler: Callable) -> void:
 	_handlers[effect_type] = handler

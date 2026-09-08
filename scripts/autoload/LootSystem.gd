@@ -337,9 +337,18 @@ func unidentify(id: StringName) -> void:
 # (§10), so the two verbs mean the same thing and there is one implementation of
 # it. What each caller keeps is its own sentence about what just happened.
 #
+# `spare` is one id the caller is keeping back — the normal Amnesia's own name,
+# which the dose that teaches you the colour must not take away again (see
+# PillSystem._forget). Nothing else passes one, and &"" spares nothing, so the
+# horse dose and the scroll are unchanged: they still forget everything they can
+# reach, themselves included.
+#
 # The targets are snapshotted first, because forgetting is what removes them.
-func forget_identified(kind: String, count: int, rng: RandomNumberGenerator) -> int:
+func forget_identified(kind: String, count: int, rng: RandomNumberGenerator,
+		spare: StringName = &"") -> int:
 	var pool: Array = identified_types(kind)
+	if spare != &"":
+		pool = pool.filter(func(id): return StringName(id) != spare)
 	var n: int = pool.size() if count < 0 else mini(count, pool.size())
 	for _i in range(n):
 		if pool.is_empty():
