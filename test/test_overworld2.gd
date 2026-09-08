@@ -845,14 +845,6 @@ func _row_index(prefix: String) -> int:
 			return i
 	return -1
 
-func _last_row_index(prefix: String) -> int:
-	var labels: Array = _labels_under(_ui._verify_box)
-	var found: int = -1
-	for i in range(labels.size()):
-		if String(labels[i]).begins_with(prefix):
-			found = i
-	return found
-
 # THE WINNING-RUN ROWS DO NOT SINK, and that is the exception the sinking rule
 # needs rather than an oversight. A row sinks once it is a RECORD — answered,
 # locked, nothing left to decide. These two are never answered mid-game: they arm

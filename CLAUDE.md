@@ -12,7 +12,7 @@ the honour system.
 | how the current build works | `docs/games-first-redesign.md` — **the canonical spec**, referenced from 25 places |
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
-| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. Two left: `Overworld2.gd` is still the biggest file in the repo, and its seam table is re-measured there rather than guessed |
+| what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. Two left: `Overworld2.gd` (6034) carries a seam table that is re-measured there rather than guessed, and the Events tab is 909 ms. Note the file this repo has never measured is the BIGGER one — `GameLoop2.gd` is 6869 and has no seam table at all |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it

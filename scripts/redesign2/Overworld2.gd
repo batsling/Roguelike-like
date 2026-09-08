@@ -4186,14 +4186,16 @@ func _render_controls() -> void:
 # --- the Dash panel's search / filter / sort bar ------------------------------
 #
 # THE BAR IS `DashFilterBar` (docs/performance-backlog.md §1). What is left here
-# is the three entry points the page and the tests call, each passing the Dash
+# is the two entry points the page and the tests call, each passing the Dash
 # phase IN rather than letting the class read `_dash_mode` back out.
+#
+# There were three until the dead-code scan (same doc) was re-run after the split
+# and found `_refresh_dash_count` with both its callers gone into the class and no
+# test reaching for it — which is the fourth time that scan has caught a forward a
+# refactor had just orphaned. Run it after a split, not before.
 
 func _rebuild_dash_bar() -> void:
 	_dash.rebuild(_dash_mode)
-
-func _refresh_dash_count() -> void:
-	_dash.refresh_count()
 
 # A control on the bar moved: redraw the CARDS and leave the bar alone, so the
 # search box keeps the focus and the caret the player is typing at. No caller left

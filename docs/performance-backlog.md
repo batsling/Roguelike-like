@@ -64,10 +64,20 @@ while the file grew past its own pre-split size.
 **AND THEN IT HAPPENED AGAIN, INSIDE ONE RELEASE.** This entry was re-measured at
 5826 with the drop queue out, and read 6135 the next time anyone ran the numbers —
 **+309 lines against a table that had just been called current**. So the rule
-holds twice over: re-run the table, never quote it. Down to 6022 with the Dash
-filter bar out (`DashFilterBar.gd`, below). Still the biggest file in the repo —
-`AtlasView.gd` is 2794 — holding the run loop, the routing notes, the map
-plumbing, the save/restore of view state, and `_build_ui`.
+holds twice over: re-run the table, never quote it. Down to 6034 with the Dash
+filter bar out (`DashFilterBar.gd`, below) — holding the run loop, the routing
+notes, the map plumbing, the save/restore of view state, and `_build_ui`.
+
+**IT IS NOT THE BIGGEST FILE IN THE REPO, AND THIS ENTRY SAID IT WAS.**
+`GameLoop2.gd` is 6869. It was 6704 when this entry was written claiming
+`Overworld2.gd` at 5825 was the biggest — so the sentence was wrong by nine
+hundred lines on the day it was typed, in the document whose whole point is that
+numbers go stale. The comparison it reached for (`AtlasView.gd` is 2794) is the
+biggest file *in `scripts/ui/`*, which is how the mistake reads from the inside:
+the measurement was real, the set it was measured over was not the one the
+sentence claimed. **`GameLoop2.gd` has never had a seam table.** It is the run
+loop and the board — the thing the page is a view OVER — and nothing in this
+document has looked at it.
 
 **Where the growth actually went**, measured against the last commit this file was
 re-read at: +405 lines of a region that did not exist then (*arriving somewhere you
