@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay's run card is a third shorter, and the checklist has a source of
+  its own.** The page came down from 608px to 477 on a heavy run, and `#top` —
+  the run card — from 258 to 187.
+
+  **The headline is two columns on one line.** The game in play and the game the
+  run is for, each with its cover to the left of its name, each under its own
+  label: CURRENT GAME, and "3 games to Amulet". It was two stacked rows, and the
+  destination's row spent its own rule and padding, an arrow and the words "to
+  the Amulet" explaining a number that had nothing above it. §9 had argued two
+  columns could not fit — 440px less the covers and the hop count leaves ~224 to
+  split between two real titles — and three changes paid for it: the hop count
+  left the line to become the destination's label, the covers came down (46×62 →
+  38×51, the Amulet's 22×30 → 30×40), and both titles clamp to two lines so the
+  halves bound each other. The truncation the old reasoning warned about is real
+  and accepted; what it buys is 71px off `#top`, which is what lets the road into
+  a scene column at full camera size.
+
+  **The cost line is a label and two numbers.** `On next loss  −2 Shields, −12
+  Health`, or `N/A` when nothing lands. It was a sentence, which read better and
+  wrapped to a second line on a busy board — at the top of the card, where a
+  height that changes is a page that moves under a viewer who looked up for two
+  seconds. The lethal badge says "Death" rather than THIS KILLS YOU. What goes
+  with it is the quiet count ("nothing reaches you for at least 2 more lost
+  runs"): `threat.turns_away` is still computed, still measured against each
+  body's own reach, still a floor, and still in the payload — it is one line of
+  `overlay.js` for anyone who wants it back.
+
+  **The checklist got denser and shorter.** 5px of row padding to 3, 14px text to
+  13, 26px art to 22 — about 8px off every row — and the scroller's ceiling from
+  320 to 260 to match, which fits about the same nine rows in less height. All
+  three are variables now (`--goal-height`, `--goal-text`, `--goal-art`), because
+  "how much checklist fits" is the question this page gets asked most and
+  `custom.css` is the seam for answering it.
+
+  **`overlay.html#goals` is the checklist and nothing else.** It differs from
+  `#bottom` by the ticker alone, which is the whole point: the ticker is pinned to
+  the bottom of the browser SOURCE and grows upward, so on a source sized to the
+  checklist a burst of toasts lands on the checklist. Fine on the full column
+  where they float over slack; wrong on a source that is the list. `check_overlay.js`
+  measures the new view alongside the others, and the README's height tables,
+  scene layouts and source sizes are all re-measured (the default source is 440 ×
+  620 now, not 850).
+
+  The settings screen's OBS hint said 440 × 1000 against a page that has not been
+  that shape for two redesigns; it now names the real size, says to leave the
+  scene item at 100%, and points at `#goals` and `#road`.
+
 - **The stream overlay's art was invisible in OBS, and only in OBS.** Every
   picture — the two headline covers, the hero, the shields, every checklist row's
   face, the whole road — drew nothing in the one place the overlay is ever used.

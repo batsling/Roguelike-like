@@ -217,8 +217,11 @@ html, body {
 .cost {
   display: flex;
   align-items: baseline;
+  /* Still allowed to wrap, for the one state that can need it: the Death badge
+     arriving beside a two-part total on a narrow source. The label and the two
+     numbers on their own always fit. */
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px 8px;
   padding: 6px 8px;
   border-radius: 6px;
   background: rgba(230, 84, 71, 0.10);
@@ -244,7 +247,6 @@ html, body {
   text-transform: uppercase;
   color: var(--dim);
 }
-.cost-arrow { color: var(--faint); font-size: 12px; }
 
 .cost-total {
   font-size: 12px;
@@ -398,11 +400,34 @@ html, body {
  * spans it. */
 .run { display: flex; flex-direction: column; gap: 8px; }
 
-.now-main { display: flex; gap: 12px; align-items: center; min-width: 0; }
+/* TWO COLUMNS, ONE LINE: the game in play and the game the run is for, each
+ * under its own label, each with its cover to the left of its name.
+ *
+ * They were stacked — the current game on one row and a ruled-off destination
+ * row under it carrying an arrow, a distance and a second cover. That row cost
+ * its own padding, its own rule and a full line of the card, and the arrow and
+ * the words "to the Amulet" existed only to explain a number that had nothing
+ * above it. Side by side, the distance IS the destination's label and the
+ * explaining stops being necessary.
+ *
+ * `flex: 1 1 0` on both halves rather than `auto`: equal columns whatever the
+ * two titles are, so the card does not reflow into a different shape every time
+ * the run moves to a game with a longer name. */
+.now-main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.now-half { flex: 1 1 0; min-width: 0; }
+.now-row { display: flex; gap: 8px; align-items: center; min-width: 0; }
+
+/* Ruled off from the current game rather than boxed — the same "second sentence
+ * of one card, not a second card" the destination row used to get from its
+ * border-top, turned on its side. */
+.now-half.dest {
+  padding-left: 10px;
+  border-left: 1px solid rgba(74, 63, 46, 0.5);
+}
 
 .now-cover {
-  width: 46px;
-  height: 62px;
+  width: 38px;
+  height: 51px;
   object-fit: cover;
   border-radius: 5px;
   border: 1px solid var(--border);
@@ -422,24 +447,13 @@ html, body {
   color: var(--gold);
 }
 
-/* THE DESTINATION LINE, under the game in play and spanning the same width:
- * the arrow, how far, and the Amulet itself. Ruled off rather than boxed — it is
- * the same card's second sentence, not a second card. */
-.now-dest {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-top: 7px;
-  border-top: 1px solid rgba(74, 63, 46, 0.5);
-  min-width: 0;
-}
-
-/* Smaller, and RINGED IN ACCENT — the same colour `.stop.amulet` rings the
+/* Smaller than the game in play — the two are peers on the line, not equals in
+ * the run — and RINGED IN ACCENT, the same colour `.stop.amulet` rings the
  * destination with on the road, so the two surfaces mark the same game the same
  * way. */
 .dest-cover {
-  width: 22px;
-  height: 30px;
+  width: 30px;
+  height: 40px;
   object-fit: cover;
   border-radius: 3px;
   border: 1px solid var(--accent);
@@ -449,47 +463,27 @@ html, body {
 .dest-cover:not([src]) { visibility: hidden; }
 
 .now-text { flex: 1 1 auto; min-width: 0; }
-.now-game {
-  font-size: 18px;
+
+/* BOTH TITLES CLAMP TO TWO LINES, which is what fixes the card's height at two
+ * columns. The destination used to be one ellipsised line, on the grounds that a
+ * name long enough to wrap would set the card's height from the half it is not
+ * about; in a column half as wide that rule would ellipsise most of the roster,
+ * and the two halves now bound each other — whichever wraps, the card is the
+ * same height. */
+.now-game,
+.dest-game {
   font-weight: 600;
-  color: var(--gold);
   line-height: 1.2;
-  /* Two lines, then ellipsis — some of these titles are very long. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.dest-game {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  line-height: 1.2;
-  /* ONE line, ellipsised. The destination is context for the game above it, and a
-   * name long enough to wrap here would set this card's height from the half it
-   * is not about. Across the full card width there is room for most of them. */
-  flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-
-/* THE DISTANCE, and the number the whole run is measured in. It used to be a dim
- * 12px chip below the title — the run's entire progress toward winning, drawn as
- * the quietest thing on the page. Here it is the second thing read on the line
- * that names where it leads. */
-.now-arrow { flex: 0 0 auto; color: var(--faint); font-size: 15px; line-height: 1; }
-.now-hops {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-  white-space: nowrap;
-  /* A little air before the cover, so "3 games" is not read as part of the name
-   * that follows it. */
-  margin-right: 3px;
-}
+/* Down from 18px. It is still the largest text on the page and still the first
+ * thing read; at 18 in half the width, a two-word title was taking both lines. */
+.now-game { font-size: 15px; color: var(--gold); }
+.dest-game { font-size: 13px; color: var(--accent); }
 
 /* ------------------------------------------------------------ checklist -- */
 
@@ -503,11 +497,12 @@ html, body {
 .goal-scroll {
   --fade-top: 0px;
   --fade-bot: 0px;
-  /* 320, up from 260. Cutting the road off the default column and the status
-   * strip out of the hero card gave the page ~150px back, and the checklist is
-   * what it is for — every row this ceiling buys is a row a viewer can read
-   * standing still instead of waiting for the walker to bring it round. */
-  max-height: 320px;
+  /* THE ONE KNOB WORTH TURNING, so it is a variable: `#overlay { --goal-height:
+   * 180px }` in custom.css makes the checklist card shorter, and the walker
+   * brings the rest round. It was a flat 320 (up from 260 when the road left the
+   * default column); 260 is the default again now that the rows are denser, and
+   * the two together fit about the same nine rows in less height. */
+  max-height: var(--goal-height, 260px);
   overflow: hidden;
   -webkit-mask-image: linear-gradient(180deg,
     transparent 0, #000 var(--fade-top),
@@ -519,20 +514,26 @@ html, body {
 
 .goal-list { list-style: none; margin: 0; padding: 0; }
 
+/* DENSER THAN IT WAS: 5px of padding became 3, 14px of text became 13 and the
+ * line box tightened from 1.35 to 1.3 — about 8px off every row, which is a
+ * whole extra row visible in a shorter card. Both are variables, because "how
+ * much checklist fits" is the question this page gets asked most: set
+ * `--goal-text` and `--goal-art` in custom.css to trade legibility against rows
+ * on the source you actually run. */
 .goal {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 5px 0;
+  gap: 6px;
+  padding: 3px 0;
   border-bottom: 1px solid rgba(74, 63, 46, 0.4);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: var(--goal-text, 13px);
+  line-height: 1.3;
 }
 .goal:last-child { border-bottom: none; }
 
 .goal .tick {
   flex: 0 0 auto;
-  width: 15px;
+  width: 13px;
   color: var(--faint);
   font-weight: 700;
 }
@@ -543,16 +544,17 @@ html, body {
  * gravity. A goal IS an enemy (§7.2) and a column of sentences never said so;
  * with the face on the row, the checklist reads as the board.
  *
- * 26px, between the board's 22px status pip and the 28px the cost strip used for
- * a swing. The upper end of that range is what the swing marks were measured at
- * (the widest range in the roster — a 19x10 sprite through a 734x841 painting —
- * rendered at 22/28/34/40 before choosing), and there is more room here than
- * there was in a row of seven, because there is exactly one per line. */
+ * 22px, down from 26 with the rest of the row, and exactly the size the board
+ * draws a status pip at. That is the bottom of the range the swing marks were
+ * measured over (the widest art in the roster — a 19x10 sprite through a 734x841
+ * painting — rendered at 22/28/34/40 before choosing), and it holds because
+ * there is exactly one per line rather than seven in a strip. Raise it with
+ * `--goal-art` if your source is wider than 440. */
 .goal-art {
   position: relative;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: var(--goal-art, 22px);
+  height: var(--goal-art, 22px);
   /* The art's optical centre against a 14px line of text, which sits lower than
    * the box's top edge. */
   margin-top: -1px;
@@ -573,7 +575,7 @@ html, body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--faint);
 }
@@ -866,6 +868,20 @@ html, body {
 #overlay.only-top > .verdict { display: none; }
 
 #overlay.only-bottom > .run { display: none; }
+
+/* THE CHECKLIST ON ITS OWN, and the difference from `#bottom` is the ticker.
+ *
+ * The ticker is pinned to the bottom of the browser source and grows upward, so
+ * on a source sized to the checklist its toasts land ON the checklist for six
+ * seconds at a time — which is fine on the full column, where they float over
+ * the foot of the page, and not fine on a source that IS the list. `#goals` is
+ * the one to point a source at when the checklist has to sit in a scene beside
+ * something else, uncropped.
+ *
+ * The verdict stays: a run that has just ended is the one thing that outranks
+ * the list of what it needed. */
+#overlay.only-goals > .run,
+#overlay.only-goals > .ticker { display: none; }
 
 /* The road's own source is the road and the verdict, nothing else. */
 #overlay.only-road > .run,

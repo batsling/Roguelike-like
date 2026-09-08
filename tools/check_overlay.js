@@ -291,9 +291,21 @@ async function main() {
    * has to be on the page without scrolling anything. */
   check('the Amulet is named beside the game in play', /Tears of the Kingdom/.test(drew.dest),
     drew.dest);
-  check('the distance is on the line that names where it leads',
+  /* THE DISTANCE LABELS THE DESTINATION, in the column the destination is in —
+   * that adjacency is what lets it drop the words "to the" and stay readable. */
+  check('the distance labels the destination column',
     await page.evaluate(() => document.getElementById('hops').textContent)
-      === '3 games to the Amulet');
+      === '3 games to Amulet');
+  /* THE TWO GAMES ARE ON ONE LINE. Asserted on the boxes rather than on the
+   * markup: what matters is that a viewer reads them as a pair, which means
+   * their tops line up and the Amulet's is the one on the right. */
+  const pair = await page.evaluate(() => {
+    const a = document.getElementById('now-cover').getBoundingClientRect();
+    const b = document.getElementById('dest-cover').getBoundingClientRect();
+    return { dy: Math.round(Math.abs(a.top - b.top)), right: b.left > a.left };
+  });
+  check('the two games share a line, Amulet on the right',
+    pair.dy < 12 && pair.right, JSON.stringify(pair));
   /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
    * self-evidently a checklist. */
   check('the checklist has no label above it',
@@ -368,7 +380,9 @@ async function main() {
     title: Math.round(document.getElementById('now-game').getBoundingClientRect().width),
   }));
   check('a wider source is filled, not letterboxed', wide.page === 640, wide.page + 'px');
-  check('…and the text columns are what take the slack', wide.title > 400,
+  /* The title is one of TWO columns now, so the slack it takes is half the
+   * page's — 640 wide gives each half ~290 before its cover and gutters. */
+  check('…and the text columns are what take the slack', wide.title > 200,
     wide.title + 'px of title');
   await page.setViewportSize({ width: WIDTH, height: HEIGHT });
   await sleep(500);
@@ -402,13 +416,13 @@ async function main() {
       total: document.getElementById('cost-total').textContent,
       quiet: document.getElementById('cost').classList.contains('quiet') };
   });
-  /* THE LINE NO LONGER HIDES ITSELF HERE, and that is the change: a board with
-   * nothing in reach is still a board walking towards you, and how many lost runs
-   * of quiet are left is the question that follows. What must still hide is the
-   * LETHALITY WARNING — that is the regression this file was written for, where
-   * THIS KILLS YOU sat pulsing over a safe board carrying the previous forecast. */
-  check('the cost line says how long the quiet lasts',
-    gone.cost.shown && /at least 2 more lost runs/.test(gone.total), gone.total);
+  /* THE LINE STAYS AND READS N/A, which is the state to get right: it does not
+   * hide (a row that vanishes moves everything under it) and it does not go red.
+   * What must still hide is the LETHALITY WARNING — that is the regression this
+   * file was written for, where the badge sat pulsing over a safe board still
+   * carrying the previous forecast. */
+  check('the cost line says N/A rather than hiding',
+    gone.cost.shown && gone.total.trim() === 'N/A', gone.total);
   check('…and stops being an alarm while it does', gone.quiet);
   check('the lethality warning is gone, not merely flagged', !gone.lethal.shown,
     JSON.stringify(gone.lethal));
@@ -418,13 +432,27 @@ async function main() {
   check('no shields are drawn', gone.shields === 0, gone.shields + ' drawn');
   check('…and the bar takes back the width they were using',
     gone.barW > drew.barW, drew.barW + 'px armoured -> ' + gone.barW + 'px bare');
-  /* The forecast reads the OTHER way when nothing is ever coming, rather than
-   * promising a wait of minus one turn. */
+  /* A BOARD THAT CAN NEVER CLOSE READS THE SAME N/A, and that is deliberate:
+   * `turns_away` is no longer on the line, so "nothing this turn" and "nothing
+   * ever" are one state here. It still rides in the payload. */
   write((s) => { s.at++; s.threat.turns_away = -1; });
   await sleep(900);
-  check('a board that never closes says so',
-    /nothing on the board can reach you/.test(
-      await page.evaluate(() => document.getElementById('cost-total').textContent)));
+  check('a board that never closes reads N/A too',
+    'N/A' === (await page.evaluate(() =>
+      document.getElementById('cost-total').textContent)).trim());
+
+  /* THE ARITHMETIC, when there is some: a label and two numbers, on one line. */
+  write((s) => { s.at++; Object.assign(s, fixture(dir)); s.at = Date.now(); });
+  await sleep(900);
+  const cost = await page.evaluate(() => ({
+    text: document.getElementById('cost-total').textContent.trim(),
+    h: Math.round(document.getElementById('cost').getBoundingClientRect().height),
+  }));
+  check('the cost line is the two numbers and nothing else',
+    /^−\d+ Shields?, −\d+ Health$|^−\d+ (Shields?|Health)$/.test(cost.text), cost.text);
+  /* One line is ~31px (two 11-12px runs on a baseline, 6px of padding, a
+   * border); a wrapped one is past 45. */
+  check('…on one line', cost.h < 40, cost.h + 'px tall');
 
   /* 2. the road's outcome colours, including the combinations the cascade used to
    *    lose. --success #4dc76b, --gold #ffcc66, --unbeaten #d97821. */
@@ -570,12 +598,13 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 608, '#top': 258, '#bottom': 366, '#road': 118 };
+  const DOCUMENTED = { '': 477, '#top': 187, '#bottom': 306, '#goals': 306,
+    '#road': 118 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
   for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
-    ['#road', '#road']]) {
+    ['#goals', '#goals'], ['#road', '#road']]) {
     await page.goto('file://' + path.join(dir, 'overlay.html') + hash);
     await sleep(900);
     const h = await page.evaluate(() =>
@@ -601,6 +630,22 @@ async function main() {
    * refused src is still in the DOM, still the size its CSS gives it, and reports
    * 0 there. Serving it also proves the relative form resolves against a base
    * that is not a folder path, which is the property the fix actually relies on. */
+  /* #goals IS #bottom WITHOUT THE TICKER, and that is the only difference worth
+   * asserting: the ticker is pinned to the foot of the source and would land on
+   * a checklist sized to itself. The list must still be there and still walk. */
+  console.log('the checklist on its own');
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#goals');
+  await sleep(900);
+  const only = await page.evaluate(() => ({
+    goals: document.querySelectorAll('.goal').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    ticker: !!document.querySelector('.ticker').getClientRects().length,
+    road: !!document.querySelector('.road').getClientRects().length,
+  }));
+  check('#goals draws the checklist', only.goals > 0, only.goals + ' rows');
+  check('…and nothing else', !only.run && !only.ticker && !only.road,
+    JSON.stringify(only));
+
   console.log('the art loads from a page that is not a file:// document');
   const server = http.createServer((req, res) => {
     const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '');

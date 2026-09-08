@@ -170,32 +170,50 @@ function drawShields(vitals, art) {
  * and its own `damage` beside it, which is a better place for it in two ways: the
  * damage sits next to the sentence naming the body rather than in a parallel strip
  * the viewer had to match up against the list, and it leaves this line free to
- * state the ARITHMETIC in words. The rule that nobody guesses — one shield stops
- * one hit whatever its size — reads better as "2 shields break, −7 Health" than
- * as a row of badges you have to count.
+ * state the TOTAL and nothing else.
  *
- * AND WHEN NOTHING CAN REACH YOU IT DOES NOT GO QUIET. The line used to hide
- * itself entirely on an empty forecast, which is honest about this turn and silent
- * about the only question that follows from it: the board is still walking
- * towards you. `turns_away` is how many lost runs of quiet are left, floored (see
- * ObsCompanion._turns_away — a blocked lane or a spent turn makes the real wait
- * longer, never shorter), so it is worded as "at least". */
+ * IT IS A LABEL AND TWO NUMBERS, and every state of it is one short line:
+ * "On next loss  −2 Shields, −7 Health", or "On next loss  N/A". It was a
+ * sentence, which read better and wrapped to two lines on a busy board — and
+ * this line sits at the top of the card, where a height that changes is a page
+ * that moves under a viewer who looked up for two seconds.
+ *
+ * `turns_away` (how many lost runs of quiet are left, floored — see
+ * ObsCompanion._turns_away) used to be spelled out here on an empty forecast.
+ * It rides in the payload still, for anyone restyling this page who wants it. */
 function drawCost(threat) {
   const box = el('cost');
-  const swings = (threat && threat.swings) || [];
-
   box.hidden = false;
   const total = el('cost-total');
   const kill = el('cost-lethal');
 
-  /* NOTHING IN REACH. Say how long that lasts rather than saying nothing. */
-  if (swings.length === 0) {
-    const away = num(threat.turns_away, -1);
+  /* THE TWO NUMBERS, AND NOTHING ELSE. "−2 Shields, −7 Health" — the same
+   * arithmetic the sentence used to spell out ("2 shields break, −7 Health"),
+   * at a width that cannot wrap. The rule nobody guesses — one shield stops one
+   * hit whatever its size — is carried by the shields being counted separately
+   * from the Health, which is the part that has to survive; the checklist below
+   * already draws each body's own damage against its face for anyone who wants
+   * the breakdown.
+   *
+   * "Health" rather than "damage" on purpose: the bar directly above says
+   * "7 / 20" and never uses the word damage, so the two numbers a viewer has to
+   * connect were being given different names. */
+  const dmg = num(threat.damage);
+  const broke = num(threat.blocked);
+  const parts = [];
+  if (broke > 0) parts.push('−' + broke + (broke === 1 ? ' Shield' : ' Shields'));
+  if (dmg > 0) parts.push('−' + dmg + ' Health');
+
+  /* NOTHING LANDS: N/A, and the line goes quiet rather than red.
+   *
+   * It used to answer the question that follows instead — "nothing reaches you
+   * for at least 2 more lost runs", from `turns_away` — on the grounds that an
+   * empty forecast is not an empty board. That is true and it is still true;
+   * it is just not worth the widest line on the card, and `turns_away` rides in
+   * the payload for anyone restyling this page who wants it back. */
+  if (parts.length === 0) {
+    total.textContent = 'N/A';
     total.className = 'cost-total safe';
-    total.textContent = away < 0 ? 'nothing on the board can reach you'
-      : away === 0 ? 'nothing lands this turn'
-      : 'nothing reaches you for at least ' + away
-        + (away === 1 ? ' more lost run' : ' more lost runs');
     kill.hidden = true;
     box.classList.remove('lethal');
     box.classList.add('quiet');
@@ -203,16 +221,8 @@ function drawCost(threat) {
   }
   box.classList.remove('quiet');
 
-  const dmg = num(threat.damage);
-  const broke = num(threat.blocked);
-  /* THE ARITHMETIC IN WORDS, and "Health" rather than "damage" on purpose: the
-   * bar directly above says "7 / 20" and never uses the word damage, so the two
-   * numbers a viewer has to connect were being given different names. */
-  const parts = [];
-  if (broke > 0) parts.push(broke + (broke === 1 ? ' shield breaks' : ' shields break'));
-  parts.push(dmg > 0 ? '−' + dmg + ' Health' : 'no Health lost');
   total.textContent = parts.join(', ');
-  total.className = 'cost-total' + (dmg === 0 ? ' safe' : '');
+  total.className = 'cost-total';
 
   /* THE ONE STATE ALLOWED TO SHOUT. A hatched bar covering the whole of a short
    * health total does say "all of it goes", but only to someone already reading
@@ -268,7 +278,11 @@ function drawHero(hero, vitals) {
  * the distance to it was a dim 12px chip below a two-line title. */
 function drawNow(now, run) {
   setImg(el('now-cover'), now.cover);
-  el('now-label').textContent = now.playing ? 'Now playing' : 'Standing on';
+  /* "Current game" is the resting label. "Standing on" is kept for the gap
+     between games, because it is the one moment the two are different things —
+     the run is parked on a node nobody is playing, and a label that still said
+     "current game" would be claiming a session that is not happening. */
+  el('now-label').textContent = now.playing ? 'Current game' : 'Standing on';
   el('now-game').textContent = now.game || '—';
 
   /* WHICH ATTEMPT THIS IS, under the game it is being spent on. `now.attempts`
@@ -292,15 +306,16 @@ function drawNow(now, run) {
   setImg(el('dest-cover'), dest.cover);
   el('dest-game').textContent = dest.game || '—';
 
-  /* The distance, on the line that names where it leads — so the number is read
-   * as the gap it measures rather than as a chip beside an unrelated title. It
-   * carries the words "to the Amulet" because nothing else on this line does: the
-   * cover and the name that follow are the Amulet, and without them said out loud
-   * the row is a game title with a number in front of it. */
+  /* THE DISTANCE, USED AS THE DESTINATION'S LABEL. It sits directly above the
+   * cover and name it is counting towards, which is what lets it be this short:
+   * on a line of its own it needed "to the Amulet" spelled out or it read as a
+   * game title with a number in front of it, and here the thing underneath says
+   * which game is meant. The word Amulet stays because the run is FOR the
+   * Amulet — "3 games left" would be a countdown to nothing named. */
   const hops = num(run.hops, -1);
-  el('hops').textContent = hops < 0 ? 'no route to the Amulet'
-    : hops === 0 ? 'you are AT the Amulet'
-    : hops + (hops === 1 ? ' game to the Amulet' : ' games to the Amulet');
+  el('hops').textContent = hops < 0 ? 'No route to Amulet'
+    : hops === 0 ? 'At the Amulet'
+    : hops + (hops === 1 ? ' game to Amulet' : ' games to Amulet');
 }
 
 /* THE CHECKLIST, AND THE PAGE'S CENTRE OF GRAVITY.
@@ -653,8 +668,15 @@ function setImg(img, url) {
  *
  *   overlay.html#top     the run card — the game, the road ahead, the stake
  *   overlay.html#bottom  the checklist and the ticker
+ *   overlay.html#goals   the checklist, and nothing else
  *   overlay.html#road    the road, and nothing else
  *   overlay.html         everything EXCEPT the road (the default)
+ *
+ * `#goals` and `#bottom` differ by the ticker alone, and that is the whole
+ * reason `#goals` exists: the ticker is pinned to the BOTTOM of the browser
+ * source and floats over whatever is above it, so a source sized to the
+ * checklist has toasts landing on the checklist. `#goals` is the one to point a
+ * source at when the checklist has to share a scene with something else.
  *
  * AND `#fill`, WHICH IS A MODIFIER RATHER THAN A CHOICE, so it combines:
  * `#fill`, `#bottom,fill`, `#road,fill`. The default page is content-height and
@@ -684,6 +706,7 @@ function applySplit() {
     .split(/[^a-z]+/).filter(Boolean));
   overlay.classList.toggle('only-top', parts.has('top'));
   overlay.classList.toggle('only-bottom', parts.has('bottom'));
+  overlay.classList.toggle('only-goals', parts.has('goals'));
   overlay.classList.toggle('only-road', parts.has('road'));
   overlay.classList.toggle('fill', parts.has('fill'));
 }

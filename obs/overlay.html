@@ -14,13 +14,17 @@
 
   In OBS: add a Browser Source, tick "Local file", and point it at
   user://obs/overlay.html (the settings screen prints the absolute path). Width
-  440, height 1000 is the shape it is drawn for; "Shutdown source when not
-  visible" is fine, "Refresh browser when scene becomes active" is not needed —
-  the page re-reads the state on its own.
+  440, height 850 is the shape it is drawn for, with the scene item left at 100%;
+  "Shutdown source when not visible" is fine, "Refresh browser when scene becomes
+  active" is not needed — the page re-reads the state on its own.
 
-  THE PAGE IS THREE THINGS, IN THIS ORDER: what is left of you, what you are
-  doing and where it leads, and the list of what has to be true. The road is a
-  fourth and is OFF by default — see #road at the foot of this file.
+  THE PAGE IS THREE THINGS, IN THIS ORDER: what you are doing and where it leads,
+  what is left of you, and the list of what has to be true. The road is a fourth
+  and is OFF by default — see #road at the foot of this file.
+
+  ANY OF THEM CAN BE A SOURCE OF ITS OWN: #top, #bottom, #goals (the checklist
+  alone, for a scene that wants it uncropped beside something else) and #road.
+  See applySplit() in overlay.js.
 -->
 <link rel="stylesheet" href="overlay.css">
 <!-- Yours. Loaded last so anything in it wins. -->
@@ -42,27 +46,43 @@
        has always drawn it and this page never did, so the one goal belonging to
        the character was the one goal a viewer could not see. -->
   <section class="card run">
-    <div class="now-main">
-      <img id="now-cover" class="now-cover" alt="">
-      <div class="now-text">
-        <div id="now-label" class="label">Now playing</div>
-        <div id="now-game" class="now-game"></div>
-        <!-- WHICH ATTEMPT THIS IS, with the game it is being spent on: the
-             honour system's tension in plain sight, climbing while the streamer
-             swears at a boss. -->
-        <div id="attempts" class="attempts" hidden></div>
-      </div>
-    </div>
+    <!-- THE PREMISE, AS TWO COLUMNS ON ONE LINE: the game being played and the
+         game the run is for, side by side, each under its own label. This pair IS
+         the premise — a viewer who has just tuned in cannot get "they are playing
+         real games to reach that one" from a health bar and a checklist.
 
-    <!-- WHERE IT LEADS. The distance and the Amulet, on the line under the game
-         they are measured from. This pair IS the premise — a viewer who has just
-         tuned in cannot get "they are playing real games to reach that one" from
-         a health bar and a checklist. -->
-    <div class="now-dest">
-      <span class="now-arrow">&rarr;</span>
-      <span id="hops" class="now-hops"></span>
-      <img id="dest-cover" class="dest-cover" alt="">
-      <span id="dest-game" class="dest-game"></span>
+         IT WAS TWO STACKED ROWS, and the destination's row cost a rule, its own
+         padding and a full line of the card to say in an arrow and a sentence
+         what a label says in three words. Side by side, the distance becomes the
+         destination's HEADING — "3 games to Amulet" sits directly above the game
+         it is counting towards, which is the one place it reads without being
+         explained. -->
+    <div class="now-main">
+      <div class="now-half">
+        <div id="now-label" class="label">Current game</div>
+        <div class="now-row">
+          <img id="now-cover" class="now-cover" alt="">
+          <div class="now-text">
+            <div id="now-game" class="now-game"></div>
+            <!-- WHICH ATTEMPT THIS IS, with the game it is being spent on: the
+                 honour system's tension in plain sight, climbing while the
+                 streamer swears at a boss. -->
+            <div id="attempts" class="attempts" hidden></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="now-half dest">
+        <!-- The distance, used as the destination's label. `.label` and not a
+             heading of its own: it is the same size and colour as CURRENT GAME
+             opposite, so the two columns read as a pair rather than as a title
+             and a footnote. -->
+        <div id="hops" class="label"></div>
+        <div class="now-row">
+          <img id="dest-cover" class="dest-cover" alt="">
+          <div id="dest-game" class="dest-game"></div>
+        </div>
+      </div>
     </div>
 
     <!-- WHAT IS AT STAKE: the health, the armour standing in front of it, and
@@ -78,16 +98,17 @@
       <div id="hero-shields" class="pips"></div>
     </div>
 
-    <!-- WHAT A LOST RUN COSTS, AS A SENTENCE — the checklist draws every body's
-         face with its own damage, so this line is free to state the arithmetic.
-         When nothing can reach you it does NOT go quiet: a board with no swing in
-         it is still a board walking towards you, and how many lost runs of quiet
-         are left is the question that follows (see `turns_away`). -->
+    <!-- WHAT THE NEXT LOST RUN COSTS, AS FEW CHARACTERS AS IT TAKES. The
+         checklist draws every body's face with its own damage, so this line only
+         has to total it: "−2 Shields, −7 Health", or "N/A" when nothing lands.
+         It was a sentence ("2 shields break, −7 Health", and a clause about how
+         many quiet runs were left when nothing could reach you) — which read
+         well and wrapped to two lines on a busy board, at the top of the card
+         that has to stay the same height every time a viewer looks up. -->
     <div id="cost" class="cost" hidden>
-      <span class="cost-label">Lose a run</span>
-      <span class="cost-arrow">&rarr;</span>
+      <span class="cost-label">On next loss</span>
       <span id="cost-total" class="cost-total"></span>
-      <span id="cost-lethal" class="cost-lethal" hidden>THIS KILLS YOU</span>
+      <span id="cost-lethal" class="cost-lethal" hidden>Death</span>
     </div>
   </section>
 
@@ -113,8 +134,8 @@
        the stop you are standing on was fully visible for 6 seconds in every 50,
        taking 42 seconds to first appear — and every change to the road snapped
        it back to the START of the run, which is when a viewer is most likely to
-       be looking. The distance it was carrying now sits on the arrow above, in
-       one number that never moves.
+       be looking. The distance it was carrying now labels the destination on the
+       run card above, in one number that never moves.
 
        It is kept, not cut, because it says one thing nothing else does: WHICH
        games got beaten and which the run walked away from. That is worth a

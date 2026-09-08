@@ -718,7 +718,11 @@ user://obs/covers/        every picture the page shows, staged beside it
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **440 × 850**.
+point it at that `overlay.html`, and size it **440 × 620**.
+
+(620 rather than a round 850: the page tops out at 524 on a pathological run and
+the ticker needs ~91px of slack under it — see the tables below. A taller source
+is harmless, just transparent.)
 
 **Do not resize the scene item.** The Browser Source's own Width/Height is the
 canvas the page renders into; stretching the item afterwards resamples the result
@@ -747,23 +751,34 @@ in `user://obs/custom.css` — up for legibility over a busy capture, down for m
 of the game.
 
 **How tall the page gets.** It is content-height, so it grows with the run — the
-figures below are `tools/check_overlay.js` measuring the real page at 440 wide,
-and the last column is the one to size a source against.
+figures below are the real page measured at 440 wide (the heavy column is the
+fixture `tools/check_overlay.js` asserts on; the others are that fixture scaled
+up and down), and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 418 | 587 | 608 | **658** |
-| `overlay.html#top` | 255 | 237 | 258 | **308** |
-| `overlay.html#bottom` | 179 | 366 | 366 | **366** |
+| `overlay.html` | 378 | 474 | 477 | **524** |
+| `overlay.html#top` | 182 | 184 | 187 | **234** |
+| `overlay.html#bottom` | 212 | 306 | 306 | **306** |
+| `overlay.html#goals` | 212 | 306 | 306 | **306** |
 | `overlay.html#road` | 118 | 118 | 118 | **118** |
 
-**Almost nothing moves any more, and that is new.** A heavy run and a run twice
-its size measure the same 608, because everything that used to grow the page is
-gone: the hero card's status strip (every status is a checklist row now), the
-cost line's strip of swing marks (it is a sentence), and the shields' labelled
-row (they sit beside the health bar). `#bottom` stops at 384 because the
-checklist scroller is capped at 320px and walks the rest, and `#road` is a fixed
-118 whatever the run's length — a longer road is a wider strip, not a taller one.
+**The whole page came down by ~130px** when the headline became two columns and
+the checklist got denser. The run card was three stacked rows — the game, a
+ruled-off destination row under it, then the stake — and the destination row cost
+its own rule and padding to say what a label now says above the cover it belongs
+to; `#top` is 187 where it was 258. The checklist rows lost ~8px each (5px of
+padding to 3, 14px text to 13, 26px art to 22) and the scroller's ceiling came
+down from 320 to 260 to match, which fits about the same nine rows in less
+height.
+
+**Almost nothing moves.** A heavy run and a run twice its size measure within 3px,
+because everything that used to grow the page is gone: the hero card's status
+strip (every status is a checklist row now), the cost line's strip of swing marks
+(it is a label and two numbers), and the shields' labelled row (they sit beside
+the health bar). `#bottom` and `#goals` stop at 306 because the scroller is capped
+and walks the rest, and `#road` is a fixed 118 whatever the run's length — a
+longer road is a wider strip, not a taller one.
 
 The one thing left that can push it is **the shields wrapping past the bar**:
 about five fit on the line beside it before they take a second row. "Pathological"
@@ -775,11 +790,10 @@ floats over the foot of the page instead of pushing it out the bottom of the
 source, which is what used to happen, silently, at exactly the busiest moment of a
 run.
 
-That means the toasts do briefly cover the last ~30px of the road on a heavy run
-at 850, which is a strip of cover art for six seconds. **If you would rather they
-never touch it, give the source 900** and they land in the slack instead. Taller
-than that only buys headroom for a pathological run; the extra is transparent
-either way.
+**524 + 91 is where the 620 above comes from**: at that height a burst of toasts
+lands in the slack under the page and never touches it, on any run. Shorter than
+that and they float over the foot of the checklist for six seconds at a time,
+which is survivable but avoidable. Taller is transparent either way.
 
 #### Stretching it
 
@@ -792,9 +806,16 @@ the overlay reads *small* on a 720p stream that is `zoom` (below), not width.
 **Vertically it is content-height by default**, which is why the tables above are
 promises: the page is exactly as tall as the run makes it and a taller source has
 transparent space under it. Add **`#fill`** to take the whole source instead —
-the checklist grows into the slack, so a 900px source shows about fourteen rows
-standing still where 620 shows seven. That is the only part of the page that wants
+the checklist grows into the slack, so a 900px source shows about eighteen rows
+standing still where 620 shows nine. That is the only part of the page that wants
 the room; everything above it is a fixed number of lines.
+
+**To make the checklist SHORTER**, put `#overlay { --goal-height: 180px }` in
+`user://obs/custom.css` — that is the scroller's ceiling (260px by default), and
+the walker brings the rest of the list round rather than dropping it. Two more
+knobs trade legibility for rows in the same space: `--goal-text` (13px) and
+`--goal-art` (22px). Shrinking the card is the right lever here; scaling the OBS
+scene item resamples the pixel art instead.
 
 `#fill` is a *modifier*, so it combines with the fragments below and any separator
 works: `overlay.html#fill`, `#bottom,fill`, `#road+fill`.
@@ -810,15 +831,26 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 587 → 658 |
-| `overlay.html#top` | the run card | 237 → 308 |
-| `overlay.html#bottom` | checklist + ticker | 366 (fixed) |
+| `overlay.html` | everything except the road | 474 → 524 |
+| `overlay.html#top` | the run card | 184 → 234 |
+| `overlay.html#bottom` | checklist + ticker | 306 (fixed) |
+| `overlay.html#goals` | the checklist, and nothing else | 306 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 118 (fixed) |
 | …`#fill` on any of them | as above, stretched to the source | fills |
 
 Point **several** browser sources at the same file with different fragments and
 put whatever you like between them. They read the same `state.js`, so they stay in
 step for free.
+
+**`#goals` and `#bottom` differ by the ticker alone**, and that is the whole
+reason `#goals` exists. The ticker is pinned to the *bottom of the browser
+source* and grows upward, so on a source sized to the checklist a burst of toasts
+lands on the checklist for six seconds at a time. That is fine on the full column,
+where they float over the foot of a page with slack under it, and not fine on a
+source that *is* the list. Point a source at `#goals` when the checklist has to
+sit in a scene beside something else — it needs no cropping, and the run card,
+the ticker and the road are all simply not drawn. The two measure the same height
+because the ticker never contributed to it; what changes is what paints over it.
 
 **The road is opt-in**, and it is the only piece that is. It is a horizontal
 scroller, and at 440px it could not be read: measured on a 22-stop run, the stop
@@ -831,7 +863,7 @@ scroll at all — a 22-stop run is 1008px wide. The **distance** it used to carr
 now on the headline, in a number that never moves.
 
 `#offline` is in none of these lists, so a source that is up before the game is
-still says so. The ticker rides with `#bottom`.
+still says so. The ticker rides with `#bottom` and not with `#goals`.
 
 #### A scene layout that fits
 
@@ -841,23 +873,21 @@ between the overlay's halves, and the game keeps 77% of the width.
 | Source | Position | Size |
 |---|---|---|
 | Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 290` |
-| Camera | `1476, 302` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 562` | `440 × 380` |
+| **Overlay `#top`** | `1476, 0` | `440 × 240` |
+| Camera | `1476, 252` | `440 × 248` (16:9) |
+| **Overlay `#bottom`** | `1476, 512` | `440 × 400` |
+| **Overlay `#road`** | `1476, 924` | `440 × 118` |
 | Chat | `0, 836` | `1472 × 244` |
 
-**Everything fits now, with room to spare.** 290 + 248 + 380 is 918 of the 1080,
-where the old layout needed 26px more than existed and had to under-size `#top` to
-get there. `#top`'s 360 clears every run up to the heavy column above (258) and
-`#bottom` is at its fixed 384 with 6px of slack. Only a run carrying more than
-thirteen shields at once — the one thing that still grows the page — would clip,
-and it clips the bottom of a shield row and nothing else.
+**The road fits at full camera size now**, which it did not before. `#top` came
+down from 290 to 240 when the headline became two columns — its ceiling is 234 —
+and that 50px is what buys the road a place in the column without dropping the
+camera to `400 × 225`. 240 + 248 + 400 + 118 is 1006 of the 1080, gaps included.
 
-**There is now room for the road too**, if you want it: the 162px left over takes
-`overlay.html#road` at `440 × 118` if you drop the camera to `400 × 225`. It is
-the between-games source, so a scene where it sits under the checklist and only
-gets looked at while the streamer is picking their next game is exactly what it
-is for.
+`#bottom` gets 400 rather than its content height of 306 because the ticker is
+pinned to the foot of its source: the extra 94 is where a burst of toasts lands
+instead of on the checklist. If you would rather not spend it, use **`#goals`** at
+`440 × 310` — same list, no ticker — and give the road the difference.
 
 **Chat still cannot go in the column.** 162px of chat is still not chat. It goes in the
 bar under the game, or on a second monitor. If chat *must* sit directly under the
@@ -871,7 +901,7 @@ overlay on the right.
 | Camera | `0, 0` | `384 × 216` |
 | Chat | `0, 224` | `384 × 856` |
 | Game capture | `392, 236` | `1080 × 608` (16:9) |
-| **Overlay** | `1480, 0` | `440 × 850` |
+| **Overlay** | `1480, 0` | `440 × 620` |
 
 The game drops to 56% of the width and the middle column carries ~470px of dead
 band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
@@ -879,7 +909,7 @@ rectangle between them.
 
 **B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
 camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
-`1464, 16` at `440 × 850`. The game keeps every pixel and the columns cover ~20%
+`1464, 16` at `440 × 620`. The game keeps every pixel and the columns cover ~20%
 of the width at each edge. The games on this map are *real* games with their own
 HUDs, so check the one you are about to play — a minimap in a covered corner is
 the failure case.
@@ -889,7 +919,7 @@ is on.
 
 **If the overlay reads small** for viewers on 720p or a phone, don't scale the
 scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the
-Browser Source to **550 × 1065**. `zoom` re-lays the page out at the larger size,
+Browser Source to **550 × 775**. `zoom` re-lays the page out at the larger size,
 so the text is rendered crisply rather than resampled, and the sprites stay sharp
 because everything pixel-art on this page already carries
 `image-rendering: pixelated`.
@@ -923,9 +953,11 @@ cannot arise in a relative one. If you restyle the page, keep it to relative
 URLs; `tools/check_overlay.js` now serves the page over http and asserts every
 `<img>` decoded, which is the only way this class of bug is visible.
 
-**It is two cards.** The first is the run: the game in play, how many hops to the
-Amulet and the Amulet itself, then health with **the shields as sprites on the
-same line**, then **what a lost run would cost you** as a sentence. The second is
+**It is two cards.** The first is the run: the game in play and the game the run
+is for, **side by side in two columns** with the distance labelling the second,
+then health with **the shields as sprites on the same line**, then **what the
+next lost run costs** as a label and two numbers — `On next loss  −2 Shields,
+−7 Health`, or `N/A` when nothing lands. The second is
 **the checklist as it ticks**,
 which is the page's centre of gravity: every row wearing its own art, scrolling
 itself when there is more of it than there is room, flashing a row green as it is
@@ -963,9 +995,13 @@ what reaches Health.
 
 That rule is invisible in a summed "12 incoming" — two shields against three
 small swings is a completely different position from two shields against one
-enormous one — so the page states it: **"2 shields break, −12 Health"**, and
-"Health" rather than "damage" because the bar directly above says `7 / 20` and the
-two numbers a viewer has to connect should have the same name. The same forecast
+enormous one — so the page counts the two separately: **`On next loss  −2
+Shields, −12 Health`**, with "Health" rather than "damage" because the bar
+directly above says `7 / 20` and the two numbers a viewer has to connect should
+have the same name. It was a sentence ("2 shields break, −12 Health"), which read
+better and wrapped to a second line on a busy board — at the top of the card,
+where a height that changes is a page that moves under a viewer who looked up for
+two seconds. The same forecast
 is hatched onto the health bar over the HP that would go, and one that would end
 the run says so in words.
 
@@ -982,17 +1018,22 @@ sprite through a 734×841 painting) at four sizes, not assumed. A row with no ar
 falls back to an initial; a test asserts every goal-enemy and boss has some, so it
 doesn't.
 
-**And a board that cannot reach you does not make the line go quiet.** It used to
-hide itself entirely on an empty forecast, which is honest about this turn and
-silent about the only question that follows: the board is still walking towards
-you. It now says *"nothing reaches you for at least 2 more lost runs"* —
-`threat.turns_away`, from `GameLoop2.turns_until_strike`, which is `can_strike`'s
-own inequality (`_front_col <= 1 + strike_range`) solved for turns so the two
-cannot drift. **It is measured against each body's own reach, never against column
-1**: a Ranged body swings from several columns back, and counting steps to the
-front line would promise a quiet turn to somebody a Host can already shoot. It is
-also a **floor** — a blocked lane, a stun, a turn spent on an ability all make the
-real wait longer, never shorter — which is why the page words it "at least".
+**And a board that cannot reach you still does not make the line vanish**: it
+reads `N/A`, in the blue it wears when there is nothing to be red about. A row
+that disappears moves everything under it, which is the one thing this card must
+not do.
+
+The page used to spell out how long the quiet would last — *"nothing reaches you
+for at least 2 more lost runs"* — and that is now the widest line on the card
+spent on the least urgent thing it says. The number is still computed and still in
+the payload as `threat.turns_away`, from `GameLoop2.turns_until_strike`, which is
+`can_strike`'s own inequality (`_front_col <= 1 + strike_range`) solved for turns
+so the two cannot drift. **It is measured against each body's own reach, never
+against column 1**: a Ranged body swings from several columns back, and counting
+steps to the front line would promise a quiet turn to somebody a Host can already
+shoot. It is also a **floor** — a blocked lane, a stun, a turn spent on an ability
+all make the real wait longer, never shorter. Anyone restyling the page can put it
+back in a line of `overlay.js`.
 
 `ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
 re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing
