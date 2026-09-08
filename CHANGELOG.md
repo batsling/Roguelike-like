@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay is a 380px column you can see the game through, and the checklist
+  is readable across a room again.**
+
+  **The cards are barely there.** 0.12 alpha over a backdrop filter dimming by
+  half, so **44% of the capture survives** where the old glass let 17% through.
+  The panel reads as a tint over somebody's gameplay rather than a slab on top of
+  it.
+
+  **The alpha was never the see-through lever, and that took measuring to find.**
+  `brightness()` in the backdrop filter is: at the old 0.45/0.30, dropping the
+  alpha all the way to 0.15 while holding the brightness only reached 26%,
+  because the filter had already thrown away 70% of the picture before the card
+  painted anything. Every "make it more see-through" edit that only touches the
+  alpha is moving the small number.
+
+  **What pays for it is a halo on every glyph**, and that retires the way this
+  page was measured. A WCAG ratio against the composited card scores today's page
+  at 2.6 while it looks fine, because it measures the text against a ground the
+  text is no longer read against. `check_overlay.js` renders the page over a
+  dark, a mid and a bright capture and **samples the real pixels**, splitting each
+  line of text into glyph and ground by luminance — a minimal PNG decoder and a
+  percentile split, both in the file. Worst text on the page: **4.96:1** against
+  an AA bar of 4.5, and the brightness was swept against that number rather than
+  chosen (0.55 → 4.63, 0.70 → 3.79). The sampler found two things by measurement
+  that no one had seen by eye: the 12px uppercase labels needed weight 600 to give
+  the halo any stroke to sit on, and `--faint` had to come up to #cfc8bd.
+
+  **The 4.73 the docs quoted in three places was stale.** Recomputing the old
+  model over today's palette gives 4.66 for the worst text colour. (The lowest
+  token of any kind was `--unbeaten` at 4.06 — but that one is a border on the
+  road's thumbnails and never text, so the 4.5 text bar never applied to it.)
+  Sampled numbers fail loudly; computed ones sit in a document being wrong.
+
+  **380 wide, 15px checklist text.** The column gives the game 60px back and the
+  rows go back up from the 13px the density pass had taken them to — a row you
+  cannot read across a room is not a row. Art tracks it to 24px, the tick to 15.
+  Below **~350** the headline stops being two columns and stacks again: at 380
+  each half has ~155px for its title, and 40px less than that is one word and an
+  ellipsis on both sides. The destination's label is `nowrap` now — at 380 it
+  wrapped and pushed that half's cover 13px below the other, which is two columns
+  that no longer read as a pair.
+
+  Heights, scene layouts and source sizes are all re-measured: the default source
+  is **380 × 640**. `--card-bg`, `--card-blur`, `--goal-text`, `--goal-art` and
+  `--goal-height` are all `custom.css` knobs, and the contrast check is the thing
+  to run after touching any of them.
+
 - **The overlay's run card is a third shorter, and the checklist has a source of
   its own.** The page came down from 608px to 477 on a heavy run, and `#top` —
   the run card — from 258 to 187.

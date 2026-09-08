@@ -718,67 +718,86 @@ user://obs/covers/        every picture the page shows, staged beside it
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **440 × 620**.
+point it at that `overlay.html`, and size it **380 × 640**.
 
-(620 rather than a round 850: the page tops out at 524 on a pathological run and
-the ticker needs ~91px of slack under it — see the tables below. A taller source
-is harmless, just transparent.)
+(640 rather than a round number: the page tops out at 545 on a pathological run
+and the ticker needs ~91px of slack under it — see the tables below. A taller
+source is harmless, just transparent.)
 
 **Do not resize the scene item.** The Browser Source's own Width/Height is the
 canvas the page renders into; stretching the item afterwards resamples the result
-and softens the pixel art. Set 440 × 850 and leave the transform at 100%.
+and softens the pixel art. Set 380 × 640 and leave the transform at 100%.
 
-**The cards are glass, and `backdrop-filter` is what pays for it.** They sit at
-0.45 alpha so the game shows through, which is only readable because the filter
-blurs and *darkens* the capture behind each card before the card paints over it —
-so the ground the text is read against stays dark whatever is on screen. Measured
-over a dark, a mid and a bright capture, the worst contrast ratio on the page is
-**4.73**, which is better than the **3.90** the old near-opaque card managed
-(that pass also fixed three palette colours that were quietly below AA on it).
+**The cards are barely there, and the text carries its own ground.** The card
+sits at **0.12** alpha and the backdrop filter dims what shows through it by
+half, so **44% of the capture survives** where the old glass let 17% through. The
+game reads through the panel rather than under a slab.
 
-The two halves cannot be separated. Without the filter the same transparency
-scores **1.20** — text that is simply not there over a bright game. OBS ships
-whatever CEF its build was cut against, and an unsupported filter is dropped in
-silence, so `overlay.css` carries an `@supports not (backdrop-filter: …)` block
-that puts the card back to 0.92 opaque (5.47 worst) on a browser that cannot do
-it. If you edit the glass, edit both: `check_overlay.js` asserts that a
-transparent card always comes with a darkening filter, because dropping one and
-keeping the other looks completely fine on a dark game and is unreadable on a
-bright one.
+**The alpha was never the see-through lever**, which is worth knowing before
+editing it. `brightness()` in the backdrop filter is: at the old 0.45/0.30,
+dropping the alpha all the way to 0.15 while holding the brightness still only
+reached 26%, because the filter had already thrown away 70% of the picture before
+the card painted anything.
+
+**What pays for the transparency is the halo**, not the card. Every glyph carries
+a stacked dark rim (`--halo`), so what sits behind the strokes is the halo
+whatever the game is doing. That also means a flat WCAG ratio against the card no
+longer describes this page — it measures the text against a ground the text is not
+read against, and scores a page that looks fine at 2.6. So `check_overlay.js`
+**renders the page over a dark, a mid and a bright capture and samples the real
+pixels**, splitting each line of text into glyph and ground by luminance. Measured
+that way the worst text on the page is **4.96:1**, against an AA bar of 4.5, and
+the brightness was swept against that number rather than guessed (0.55 → 4.63,
+0.70 → 3.79).
+
+The two halves still cannot be separated, and it matters more at 0.12 than it did
+at 0.45: with the filter dropped and the card left as it is, the worst text falls
+to **3.03**. OBS ships whatever CEF its build was cut against and an unsupported
+filter is dropped in silence, so `overlay.css` carries an `@supports not
+(backdrop-filter: …)` block that puts the card back to nearly opaque on a browser
+that cannot do it. If you edit the glass, edit both — dropping one and keeping the
+other looks completely fine on a dark game and is unreadable on a bright one.
+
+(The **4.73** this section used to quote was arithmetic against the card, and it
+had gone stale: recomputing the same model over today's palette gives 4.66 for the
+worst text colour. The figures above are sampled instead, so they fail loudly when
+they stop being true.)
 
 Want it more or less see-through? `#overlay .card { background: rgba(26,20,16,.7) }`
 in `user://obs/custom.css` — up for legibility over a busy capture, down for more
 of the game.
 
 **How tall the page gets.** It is content-height, so it grows with the run — the
-figures below are the real page measured at 440 wide (the heavy column is the
+figures below are the real page measured at **380 wide** (the heavy column is the
 fixture `tools/check_overlay.js` asserts on; the others are that fixture scaled
 up and down), and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 378 | 474 | 477 | **524** |
-| `overlay.html#top` | 182 | 184 | 187 | **234** |
-| `overlay.html#bottom` | 212 | 306 | 306 | **306** |
-| `overlay.html#goals` | 212 | 306 | 306 | **306** |
-| `overlay.html#road` | 118 | 118 | 118 | **118** |
+| `overlay.html` | 432 | 470 | 491 | **545** |
+| `overlay.html#top` | 180 | 182 | 203 | **257** |
+| `overlay.html#bottom` | 268 | 304 | 304 | **304** |
+| `overlay.html#goals` | 268 | 304 | 304 | **304** |
+| `overlay.html#road` | 116 | 116 | 116 | **116** |
 
-**The whole page came down by ~130px** when the headline became two columns and
-the checklist got denser. The run card was three stacked rows — the game, a
-ruled-off destination row under it, then the stake — and the destination row cost
-its own rule and padding to say what a label now says above the cover it belongs
-to; `#top` is 187 where it was 258. The checklist rows lost ~8px each (5px of
-padding to 3, 14px text to 13, 26px art to 22) and the scroller's ceiling came
-down from 320 to 260 to match, which fits about the same nine rows in less
-height.
+**These are taller per row than the 440 column was, and that is the trade.** The
+checklist went to 15px text on a column 60px narrower, so a long goal takes one
+more wrapped line than it did — the page is a similar height while showing fewer,
+larger rows. That is the point: a row you cannot read across a room is not a row.
+The density pass that took the text to 13px went the other way and this reverses
+it.
 
-**Almost nothing moves.** A heavy run and a run twice its size measure within 3px,
-because everything that used to grow the page is gone: the hero card's status
-strip (every status is a checklist row now), the cost line's strip of swing marks
-(it is a label and two numbers), and the shields' labelled row (they sit beside
-the health bar). `#bottom` and `#goals` stop at 306 because the scroller is capped
-and walks the rest, and `#road` is a fixed 118 whatever the run's length — a
-longer road is a wider strip, not a taller one.
+**Almost nothing moves within a run size.** Everything that used to grow the page
+is gone: the hero card's status strip (every status is a checklist row now), the
+cost line's strip of swing marks (it is a label and two numbers), and the shields'
+labelled row (they sit beside the health bar). `#bottom` and `#goals` stop at 304
+because the scroller is capped and walks the rest, and `#road` is a fixed 116
+whatever the run's length — a longer road is a wider strip, not a taller one.
+
+**Below ~350 wide the headline stops being two columns** and stacks back into the
+current game over the destination. At 380 each half has ~155px for its title,
+which is two comfortable words; take another 40 away and it is one word and an
+ellipsis on both sides, which is worse than the stacked row the columns replaced.
 
 The one thing left that can push it is **the shields wrapping past the bar**:
 about five fit on the line beside it before they take a second row. "Pathological"
@@ -790,7 +809,7 @@ floats over the foot of the page instead of pushing it out the bottom of the
 source, which is what used to happen, silently, at exactly the busiest moment of a
 run.
 
-**524 + 91 is where the 620 above comes from**: at that height a burst of toasts
+**545 + 91 is where the 640 above comes from**: at that height a burst of toasts
 lands in the slack under the page and never touches it, on any run. Shorter than
 that and they float over the foot of the checklist for six seconds at a time,
 which is survivable but avoidable. Taller is transparent either way.
@@ -813,15 +832,23 @@ the room; everything above it is a fixed number of lines.
 **To make the checklist SHORTER**, put `#overlay { --goal-height: 180px }` in
 `user://obs/custom.css` — that is the scroller's ceiling (260px by default), and
 the walker brings the rest of the list round rather than dropping it. Two more
-knobs trade legibility for rows in the same space: `--goal-text` (13px) and
-`--goal-art` (22px). Shrinking the card is the right lever here; scaling the OBS
+knobs trade legibility for rows in the same space: `--goal-text` (15px) and
+`--goal-art` (24px). Shrinking the card is the right lever here; scaling the OBS
 scene item resamples the pixel art instead.
+
+**And to change how see-through it is**, `#overlay { --card-bg: rgba(26,20,16,.3) }`
+for more tint, or the backdrop filter for more game:
+`#overlay { --card-blur: blur(8px) brightness(.4) saturate(1.05) }`. The
+brightness is the lever that matters — see the glass section above — and it is
+also the one paying for legibility, so run `node tools/check_overlay.js` after
+touching it. Its contrast check samples real pixels and will tell you what you
+just spent.
 
 `#fill` is a *modifier*, so it combines with the fragments below and any separator
 works: `overlay.html#fill`, `#bottom,fill`, `#road+fill`.
 
-To pin the old fixed width, put `#overlay { --max-width: 440px }` in
-`user://obs/custom.css`.
+To stop the column growing past a width you choose, put
+`#overlay { --max-width: 380px }` in `user://obs/custom.css`.
 
 #### Rendering part of the page
 
@@ -831,11 +858,11 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 474 → 524 |
-| `overlay.html#top` | the run card | 184 → 234 |
-| `overlay.html#bottom` | checklist + ticker | 306 (fixed) |
-| `overlay.html#goals` | the checklist, and nothing else | 306 (fixed) |
-| `overlay.html#road` | the road, and nothing else | 118 (fixed) |
+| `overlay.html` | everything except the road | 470 → 545 |
+| `overlay.html#top` | the run card | 182 → 257 |
+| `overlay.html#bottom` | checklist + ticker | 304 (fixed) |
+| `overlay.html#goals` | the checklist, and nothing else | 304 (fixed) |
+| `overlay.html#road` | the road, and nothing else | 116 (fixed) |
 | …`#fill` on any of them | as above, stretched to the source | fills |
 
 Point **several** browser sources at the same file with different fragments and
@@ -853,7 +880,8 @@ the ticker and the road are all simply not drawn. The two measure the same heigh
 because the ticker never contributed to it; what changes is what paints over it.
 
 **The road is opt-in**, and it is the only piece that is. It is a horizontal
-scroller, and at 440px it could not be read: measured on a 22-stop run, the stop
+scroller, and at this width it could not be read: measured on a 22-stop run at
+440, the stop
 the player is standing on was fully on screen for **6 seconds in every 50** and
 took 42 seconds to first appear — and every change to the road reset the walk to
 the *start* of the run, which is exactly when a viewer looks up. What the road
@@ -872,22 +900,24 @@ between the overlay's halves, and the game keeps 77% of the width.
 
 | Source | Position | Size |
 |---|---|---|
-| Game capture | `0, 0` | `1472 × 828` (16:9) |
-| **Overlay `#top`** | `1476, 0` | `440 × 240` |
-| Camera | `1476, 252` | `440 × 248` (16:9) |
-| **Overlay `#bottom`** | `1476, 512` | `440 × 400` |
-| **Overlay `#road`** | `1476, 924` | `440 × 118` |
-| Chat | `0, 836` | `1472 × 244` |
+| Game capture | `0, 0` | `1532 × 862` (16:9) |
+| **Overlay `#top`** | `1536, 0` | `380 × 262` |
+| Camera | `1536, 274` | `380 × 214` (16:9) |
+| **Overlay `#bottom`** | `1536, 498` | `380 × 400` |
+| **Overlay `#road`** | `1536, 910` | `380 × 116` |
+| Chat | `0, 870` | `1532 × 210` |
 
-**The road fits at full camera size now**, which it did not before. `#top` came
-down from 290 to 240 when the headline became two columns — its ceiling is 234 —
-and that 50px is what buys the road a place in the column without dropping the
-camera to `400 × 225`. 240 + 248 + 400 + 118 is 1006 of the 1080, gaps included.
+**The narrower column gives the game 60px back**, which is the point of the pass:
+the capture goes from `1472` to `1532` wide, and the camera under `#top` from 248
+to 214 tall to pay for the taller run card. 262 + 214 + 400 + 116 is 992 of the
+1080, gaps included, and the road still fits.
 
-`#bottom` gets 400 rather than its content height of 306 because the ticker is
-pinned to the foot of its source: the extra 94 is where a burst of toasts lands
-instead of on the checklist. If you would rather not spend it, use **`#goals`** at
-`440 × 310` — same list, no ticker — and give the road the difference.
+`#top` gets 262 against a ceiling of 257 — it grew from 234 when the checklist's
+text did, so this is the row with the least slack in the column. `#bottom` gets
+400 rather than its content height of 304 because the ticker is pinned to the foot
+of its source: the extra 96 is where a burst of toasts lands instead of on the
+checklist. If you would rather not spend it, use **`#goals`** at `380 × 310` —
+same list, no ticker — and give the road the difference.
 
 **Chat still cannot go in the column.** 162px of chat is still not chat. It goes in the
 bar under the game, or on a second monitor. If chat *must* sit directly under the
@@ -900,8 +930,8 @@ overlay on the right.
 |---|---|---|
 | Camera | `0, 0` | `384 × 216` |
 | Chat | `0, 224` | `384 × 856` |
-| Game capture | `392, 236` | `1080 × 608` (16:9) |
-| **Overlay** | `1480, 0` | `440 × 620` |
+| Game capture | `392, 200` | `1140 × 641` (16:9) |
+| **Overlay** | `1540, 0` | `380 × 640` |
 
 The game drops to 56% of the width and the middle column carries ~470px of dead
 band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
@@ -909,7 +939,7 @@ rectangle between them.
 
 **B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
 camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
-`1464, 16` at `440 × 620`. The game keeps every pixel and the columns cover ~20%
+`1524, 16` at `380 × 640`. The game keeps every pixel and the columns cover ~20%
 of the width at each edge. The games on this map are *real* games with their own
 HUDs, so check the one you are about to play — a minimap in a covered corner is
 the failure case.
@@ -919,7 +949,7 @@ is on.
 
 **If the overlay reads small** for viewers on 720p or a phone, don't scale the
 scene item — put `#overlay { zoom: 1.25; }` in `user://obs/custom.css` and set the
-Browser Source to **550 × 775**. `zoom` re-lays the page out at the larger size,
+Browser Source to **475 × 800**. `zoom` re-lays the page out at the larger size,
 so the text is rendered crisply rather than resampled, and the sprites stay sharp
 because everything pixel-art on this page already carries
 `image-rendering: pixelated`.
@@ -953,8 +983,9 @@ cannot arise in a relative one. If you restyle the page, keep it to relative
 URLs; `tools/check_overlay.js` now serves the page over http and asserts every
 `<img>` decoded, which is the only way this class of bug is visible.
 
-**It is two cards.** The first is the run: the game in play and the game the run
-is for, **side by side in two columns** with the distance labelling the second,
+**It is two cards, on a 380px column that is mostly the game.** The first is the
+run: the game in play and the game the run is for, **side by side in two columns**
+with the distance labelling the second,
 then health with **the shields as sprites on the same line**, then **what the
 next lost run costs** as a label and two numbers — `On next loss  −2 Shields,
 −7 Health`, or `N/A` when nothing lands. The second is

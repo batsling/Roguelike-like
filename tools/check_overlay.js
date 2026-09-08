@@ -51,8 +51,10 @@ const path = require('path');
 const REPO = path.resolve(__dirname, '..');
 const SRC = path.join(REPO, 'obs');
 
-/* The browser source the README tells a streamer to make. */
-const WIDTH = 440;
+/* The browser source the README tells a streamer to make. 380 wide since the
+ * narrow-column pass; the page is fluid, but this is the width the layout is
+ * tuned against and every height below is measured at. */
+const WIDTH = 380;
 const HEIGHT = 828;
 
 let failures = 0;
@@ -105,6 +107,95 @@ function findBrowser() {
     }
   }
   return null;
+}
+
+/* ------------------------------------------------ reading back real pixels -- */
+
+/* A MINIMAL PNG DECODER, because the contrast check has to look at what was
+ * actually composited and node ships no image decoding. Playwright screenshots
+ * are non-interlaced 8-bit RGB or RGBA (colour type 2 or 6) — which of the two
+ * depends on whether the page is fully opaque, so both are handled and anything
+ * else throws rather than returning quiet nonsense.
+ *
+ * The five PNG row filters are the whole of it: each scanline is prefixed with a
+ * filter byte saying how it was predicted from the row above and the pixel to the
+ * left, and undoing them in order is the decode. */
+function decodePng(buf) {
+  let pos = 8;                        /* past the signature */
+  let w = 0, h = 0, depth = 0, type = 0;
+  const idat = [];
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const tag = buf.toString('ascii', pos + 4, pos + 8);
+    const body = buf.subarray(pos + 8, pos + 8 + len);
+    if (tag === 'IHDR') {
+      w = body.readUInt32BE(0); h = body.readUInt32BE(4);
+      depth = body[8]; type = body[9];
+    } else if (tag === 'IDAT') {
+      idat.push(body);
+    } else if (tag === 'IEND') break;
+    pos += 12 + len;                  /* length + tag + data + CRC */
+  }
+  if (depth !== 8 || (type !== 6 && type !== 2)) {
+    throw new Error('expected 8-bit RGB(A) png, got depth ' + depth + ' type ' + type);
+  }
+  const raw = require('zlib').inflateSync(Buffer.concat(idat));
+  const bpp = type === 6 ? 4 : 3;
+  const stride = w * bpp;
+  const out = Buffer.alloc(h * stride);
+  for (let y = 0; y < h; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? out[y * stride + x - bpp] : 0;          /* left */
+      const b = y > 0 ? out[(y - 1) * stride + x] : 0;             /* up */
+      const c = (x >= bpp && y > 0) ? out[(y - 1) * stride + x - bpp] : 0;
+      let v = line[x];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+      }
+      out[y * stride + x] = v & 0xff;
+    }
+  }
+  return { w, h, bpp, data: out };
+}
+
+const srgb = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+const relLum = (r, g, b) => 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+
+/* THE GLYPH AGAINST WHAT IT SITS ON, read off the composited page.
+ *
+ * Inside a line of text the pixels fall into two populations: the strokes, and
+ * everything the strokes are read against (the halo, then the card, then the
+ * capture). Sorting by luminance and taking a high percentile against a low one
+ * separates them without needing to know which pixel is which. The percentiles
+ * are 98 and 25 rather than something tidier because glyph coverage inside a
+ * line box is LOW — even tight to the text a line is mostly the space between
+ * letters, so the stroke core is a thin slice at the top of the distribution and
+ * a 90th percentile lands on antialiasing.
+ *
+ * Returns null for a box with no real range in it, which the caller skips rather
+ * than scoring. */
+function glyphContrast(png, box) {
+  const lums = [];
+  const x1 = Math.min(png.w, box.x + box.w), y1 = Math.min(png.h, box.y + box.h);
+  for (let y = Math.max(0, box.y); y < y1; y++) {
+    for (let x = Math.max(0, box.x); x < x1; x++) {
+      const i = (y * png.w + x) * png.bpp;
+      lums.push(relLum(png.data[i], png.data[i + 1], png.data[i + 2]));
+    }
+  }
+  if (lums.length < 40) return null;
+  lums.sort((a, b) => a - b);
+  const at = (f) => lums[Math.min(lums.length - 1, Math.floor(lums.length * f))];
+  const ink = at(0.98), ground = at(0.25);
+  if (ink - ground < 0.02) return null;      /* nothing drawn in this box */
+  return (ink + 0.05) / (ground + 0.05);
 }
 
 /* ------------------------------------------------------------- the fixture -- */
@@ -325,14 +416,13 @@ async function main() {
     rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
     JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
 
-  /* THE CARD IS TRANSPARENT, AND ONLY THE BACKDROP FILTER MAKES THAT SAFE. The
-   * card sits at 0.45 alpha so the stream shows through it, which is only legible
-   * because `backdrop-filter` blurs and darkens the capture behind it first —
-   * measured, the worst contrast on the page is 4.73 with the filter and 1.20
-   * without. The two must therefore never be separated: dropping the filter while
-   * keeping the transparency is the one edit here that silently produces an
-   * unreadable overlay on a bright game, and it would look completely fine to
-   * whoever made it on a dark one. */
+  /* THE CARD IS ALL BUT GONE, AND THE HALO IS WHAT MAKES THAT SAFE. The card sits
+   * at 0.12 alpha so the stream really shows through, which is only legible
+   * because every glyph carries its own dark rim (`--halo`) and the backdrop
+   * filter still dims what is behind the card. None of those three may be dropped
+   * on its own: each looks completely fine on a dark game and each is what fails
+   * on a bright one. The pixel sampling below is what actually holds the line —
+   * this pair only pins the mechanism. */
   const glass = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.card'));
     const bg = cs.backgroundColor;
@@ -341,9 +431,14 @@ async function main() {
     const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
     return { alpha: parts.length === 4 ? parts[3] : 1, filter };
   });
-  check('the card lets the stream through', glass.alpha < 0.6, 'alpha ' + glass.alpha);
+  check('the card lets the stream through', glass.alpha < 0.2, 'alpha ' + glass.alpha);
   check('…and darkens what it lets through, which is what keeps it readable',
     /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+  check('…and every glyph carries its own ground',
+    await page.evaluate(() => {
+      const sh = getComputedStyle(document.getElementById('overlay')).textShadow;
+      return (sh.match(/rgb/g) || []).length >= 3;
+    }), 'the halo is at least three stacked shadows');
 
   /* THE CHARACTER'S GOAL IS ON THE LIST. The portrait and the name left the hero
    * card for this row, and if it did not draw, both would simply be gone. */
@@ -441,8 +536,15 @@ async function main() {
     'N/A' === (await page.evaluate(() =>
       document.getElementById('cost-total').textContent)).trim());
 
-  /* THE ARITHMETIC, when there is some: a label and two numbers, on one line. */
-  write((s) => { s.at++; Object.assign(s, fixture(dir)); s.at = Date.now(); });
+  /* THE ARITHMETIC, when there is some: a label and two numbers, on one line.
+   *
+   * Measured WITHOUT the Death badge, because that is the resting state and the
+   * one whose height the rest of the card depends on. The lethal state is
+   * allowed to wrap and does at 380 — a badge is not a number, it arrives at the
+   * one moment the page is meant to shout, and pushing the checklist down 18px
+   * while it does is the correct trade. */
+  write((s) => { s.at++; Object.assign(s, fixture(dir)); s.threat.lethal = false;
+    s.at = Date.now(); });
   await sleep(900);
   const cost = await page.evaluate(() => ({
     text: document.getElementById('cost-total').textContent.trim(),
@@ -598,8 +700,8 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 477, '#top': 187, '#bottom': 306, '#goals': 306,
-    '#road': 118 };
+  const DOCUMENTED = { '': 491, '#top': 203, '#bottom': 304, '#goals': 304,
+    '#road': 116 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
@@ -645,6 +747,88 @@ async function main() {
   check('#goals draws the checklist', only.goals > 0, only.goals + ' rows');
   check('…and nothing else', !only.run && !only.ticker && !only.road,
     JSON.stringify(only));
+
+  /* ------------------------------------------------------------------------
+   * THE TEXT HOLDS ITS GROUND OVER ANY CAPTURE.
+   *
+   * WHY THIS SAMPLES PIXELS INSTEAD OF DOING THE ARITHMETIC. The old page was a
+   * near-opaque card, so a WCAG ratio of the text colour against the composited
+   * CARD was a fair description of it, and that is where the 4.73 in the docs
+   * came from — computed by hand, never asserted here. Two things are wrong with
+   * carrying that forward. It was never re-derived after the palette moved:
+   * recomputing the same model over today's tokens gives 4.66 for the worst TEXT
+   * colour (`--faint`), not 4.73 — the 4.73 belonged to an earlier palette and
+   * had been quoted in three documents since. (The lowest token of any kind was
+   * `--unbeaten` at 4.06, but that one is a border on the road's thumbnails and
+   * never text, so the 4.5 text bar never applied to it; against the 3:1 bar for
+   * non-text it passes.) And the model itself is now wrong outright — at 0.12
+   * alpha the text is not read against the card, it is read against its own halo,
+   * and arithmetic on the card alone scores a page that looks fine at 2.6.
+   *
+   * So the page is rendered over a dark, a mid and a bright solid "capture" and
+   * the real pixels are read back. For each text element: take its box, split
+   * the pixels into the light half (glyph) and the dark half (halo and whatever
+   * is behind it), and compute the WCAG ratio between the two medians. That is a
+   * PROXY and is documented as one — it is not the ratio of a glyph to a single
+   * flat ground, because there is no longer a single flat ground — but it is
+   * measured on the thing the viewer actually sees, and it moves the moment the
+   * halo, the card, the filter or a palette colour does.
+   * --------------------------------------------------------------------- */
+  console.log('the text holds its ground over any capture');
+  const CAPTURES = [['dark', '#101014'], ['mid', '#7c7c80'], ['bright', '#f6f6fa']];
+  let worstRatio = Infinity, worstWhere = '';
+  for (const [name, colour] of CAPTURES) {
+    await page.goto('file://' + path.join(dir, 'overlay.html'));
+    await page.evaluate((c) => { document.body.style.background = c; }, colour);
+    await sleep(700);
+    const shot = await page.screenshot({ clip: { x: 0, y: 0, width: WIDTH,
+      height: Math.min(HEIGHT, 520) } });
+    /* THE RANGE'S RECTS, CLIPPED TO WHAT IS ACTUALLY ON SCREEN.
+     *
+     * An element box runs the full width of its column whatever the text in it
+     * does, so a short subtitle in a wide row is mostly empty ground — a sampler
+     * splitting THAT by percentile finds no glyph and scores the halo against the
+     * card. A Range over the node's contents gives the line boxes the glyphs
+     * occupy instead.
+     *
+     * AND THEN THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to
+     * work out. `.now-game` and `.dest-game` are `-webkit-line-clamp: 2`, and a
+     * Range hands back a rect for EVERY line the text would have taken, clipped
+     * ones included — so on a long title the sampler was reading rects sitting
+     * 40px below the visible box, over the health bar and the cost line, and
+     * reporting their unrelated colours as a contrast failure of the title. The
+     * real text was scoring 8.9 to 11.3 the whole time. Any rect not inside its
+     * own element's border box is not on screen and is dropped. */
+    const boxes = await page.evaluate(() => {
+      const out = [];
+      for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
+        '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
+        const n = document.querySelector(sel);
+        if (!n || !n.textContent.trim()) continue;
+        const box = n.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width < 20 || r.height < 7) continue;
+          if (r.top < box.top - 1 || r.bottom > box.bottom + 1) continue;
+          out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
+            w: Math.round(r.width), h: Math.round(r.height) });
+        }
+      }
+      return out;
+    });
+    const png = decodePng(shot);
+    for (const b of boxes) {
+      const r = glyphContrast(png, b);
+      if (r && r < worstRatio) { worstRatio = r; worstWhere = b.sel + ' over ' + name; }
+    }
+  }
+  await page.evaluate(() => { document.body.style.background = ''; });
+  /* 4.5 is AA for body text, and the page clears it by sampling rather than by
+   * assertion — if a future pass lightens the card, weakens the halo or dims a
+   * palette colour, this is the check that notices. */
+  check('the worst text on the page is still legible over any capture',
+    worstRatio >= 4.5, worstRatio.toFixed(2) + ':1 — ' + worstWhere);
 
   console.log('the art loads from a page that is not a file:// document');
   const server = http.createServer((req, res) => {

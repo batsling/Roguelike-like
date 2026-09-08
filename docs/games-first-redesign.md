@@ -2316,7 +2316,7 @@ stream — so the overlay dims only when the beat actually stops.
   something that scrolls away from it.**
 
   It was a full-width line UNDER the game in play, on the reasoning that two
-  columns do not fit: 440px less the covers and the hop count leaves ~224px to
+  columns do not fit: 440px less the covers and the hop count left ~224px to
   split between two real game titles, and both truncate. Three changes paid for
   the column. **The hop count left the line** — it is the destination's label
   now, above the cover it belongs to, which is also where it stopped needing the
@@ -2382,7 +2382,7 @@ stream — so the overlay dims only when the beat actually stops.
   are one fact — **ending on the Amulet whether or not the run got there**, drawn
   dashed until it does.
 
-  It is opt-in because **at 440px it could not be read**. It scrolls sideways on
+  It is opt-in because **at the column's width it could not be read**. It scrolls sideways on
   the same walker the checklist uses, and measured on a 22-stop run (1008px of
   strip in a 390px window) the stop the player was standing on was fully visible
   for **6 seconds in every 50**, took 42 seconds to first appear, and every change
@@ -2406,7 +2406,7 @@ is fine on the full column, where they float over the foot of a page with slack
 under it, and wrong on a source that *is* the list.
 
 **IT STRETCHES.** The page fills whatever canvas the Browser Source gives it
-rather than rendering a fixed 440 column with dead space beside it — the covers,
+rather than rendering a fixed column with dead space beside it — the covers,
 the art and the type keep their own size and the TEXT COLUMNS take the slack,
 which is what "wider" should mean for a page that is mostly sentences. (Wider is
 not bigger: the type size does not change, so a viewer who finds the overlay small
@@ -2416,24 +2416,40 @@ takes the whole source instead and gives the slack to the checklist, the one par
 of the page that can use it. `#fill` is a modifier and combines with the fragments
 above, so the hash is parsed as a set of words rather than matched whole.
 
-**THE CARDS ARE GLASS.** They sit at 0.45 alpha so the game shows through them —
-this page spends its life on top of somebody's gameplay, and an all-but-opaque
-panel is a hole punched in their capture. What makes that readable is
-`backdrop-filter`, not the alpha: it blurs and **darkens** the capture behind each
-card before the card paints over it, so the ground the text is read against stays
-dark whatever is on screen. Measured over a dark, a mid and a bright capture the
-worst ratio on the page is **4.73**, against **3.90** for the near-opaque card it
-replaced — the same pass fixed three palette colours (`faint`, `danger`, `curse`)
-that were already below AA and had simply never been checked.
+**THE CARDS ARE BARELY THERE.** They sit at **0.12** alpha over a backdrop filter
+that dims what shows through by half, so **44% of the capture survives** — this
+page spends its life on top of somebody's gameplay, and a panel is a hole punched
+in their capture. It has been three things: all but opaque (0.95), glass (0.45
+over `brightness(0.30)`, 17% through), and now a tint.
 
-The two halves are one decision. Without the filter that transparency scores
-**1.20**, and OBS ships whatever CEF its build was cut against — an unsupported
-filter is dropped in silence, exactly as `color-mix()` and `:has()` are. So
-`overlay.css` carries an `@supports not (backdrop-filter: …)` block that restores
-an opaque card (5.47), and `check_overlay.js` asserts a transparent card always
-comes with a darkening filter. Separating them looks perfect on a dark game and
-is unreadable on a bright one, which is the worst kind of regression this page
-can have.
+**THE ALPHA WAS NEVER THE SEE-THROUGH LEVER.** `brightness()` in the filter is,
+and that took measuring to see: at 0.45/0.30, dropping the alpha all the way to
+0.15 while holding the brightness only reached 26%, because the filter had already
+thrown away 70% of the picture before the card painted anything. Every "make it
+more see-through" edit that only touches the alpha is moving the small number.
+
+**WHAT PAYS FOR IT IS THE HALO**, not the card. Every glyph carries a stacked dark
+rim, so what sits behind the strokes is the halo whatever the game is doing. That
+retires the way this page used to be measured: a WCAG ratio against the composited
+CARD scores a page that looks fine at 2.6, because it measures the text against a
+ground the text is no longer read against. `check_overlay.js` now **renders the
+page over a dark, a mid and a bright capture and samples the real pixels**,
+splitting each line of text into glyph and ground by luminance. Worst text on the
+page: **4.96:1** against an AA bar of 4.5, and the brightness was swept against
+that number rather than chosen (0.55 → 4.63, 0.70 → 3.79).
+
+The **4.73** this section used to quote came from the old model and had gone
+stale besides — recomputing it over today's palette gives 4.66 for the worst text
+colour. Sampled numbers fail loudly; computed ones sit in a document being wrong.
+
+The two halves are still one decision, and more so at 0.12 than at 0.45: with the
+filter dropped and the card left as it is, the worst text falls to **3.03**. OBS
+ships whatever CEF its build was cut against and an unsupported filter is dropped
+in silence, exactly as `color-mix()` and `:has()` are — so `overlay.css` carries
+an `@supports not (backdrop-filter: …)` block that restores a nearly opaque card,
+and `check_overlay.js` asserts a transparent card always comes with a darkening
+filter and a halo. Separating them looks perfect on a dark game and is unreadable
+on a bright one, which is the worst kind of regression this page can have.
 
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the
