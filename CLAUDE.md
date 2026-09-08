@@ -173,6 +173,19 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 t
 - **`project.godot` comments are `;`, not `#`.** A `#` line is parsed as part of
   the NEXT key. This already silently renamed the `backpack` input action once;
   `test/test_collection.gd` now guards against it.
+- **A new key on an enemy body goes in `GameLoop2.BODY_KEYS` too.** A body on the
+  board is a bare `Dictionary`, and reads are `entry.get(k, default)` by design —
+  a body from an older save legitimately lacks the newer keys. The cost is that a
+  mistyped WRITE (`entry["revive"]` for `revives`) is silent forever: the key
+  nothing reads is written, the real one keeps answering its default, and the
+  symptom is a content bug three files away. `BODY_KEYS` is the list, `_check_body`
+  compares against it on every spawn and load, and `_check_stack` sweeps the whole
+  board at the end of each turn and each game — so a stray key from ANY of the ~49
+  write sites is caught without those sites being touched. Debug builds only. The
+  report names the key, the site, and the legal key it is one edit from.
+  **This was written because the contract had already drifted**: the comment above
+  `stack` listed 16 keys where the code used 19, and two of the three it had lost
+  are written by `_add_to_grid`, the one constructor, in the same file.
 - **A `class_name` that shadows a NATIVE Godot class is a parse error**, and it
   takes down every `.tres` that names the script — `Data` then loads that whole
   folder as zero rows and the failure surfaces hundreds of tests away as missing

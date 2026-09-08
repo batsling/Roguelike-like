@@ -195,8 +195,14 @@ var _bounds_rows: int = BASE_GRID_ROWS
 var arrivals: Array[int] = []
 
 # Undefeated enemies following the player (§2). Each entry:
-#   {"instance": int, "enemy": GoalEnemyData, "health": int,
-#    "col": int, "row": int, "statuses": {id: stacks}}
+#   {"instance": int, "enemy": GoalEnemyData, "health": int, "max_health": int,
+#    "shield": int, "col": int, "row": int, "statuses": {id: stacks},
+#    "timed_statuses": [ … ]}
+# `max_health`, `shield` and `timed_statuses` were missing from this list until
+# `BODY_KEYS` below was written and the two were compared — see the note there.
+# `max_health` is what the body walked on with (§4.6), `shield` is the unspent
+# pool (§13.4, a POOL rather than a reading of the Dexterity stacks), and
+# `timed_statuses` are the stacks carrying a clock (potions-design §5.4).
 # `instance` is a unique per-spawn handle so two games rolling the same enemy
 # type stay distinct; bomb / stun / push / fulfil target by instance. THERE IS NO
 # `stun` FIELD: losing a turn is the Stun STATUS like everything else (§13.2), and
@@ -219,6 +225,124 @@ var arrivals: Array[int] = []
 #   "fleeing"     Theft has its haul and is running for the back edge
 #   "tags"        tags granted at runtime (Necromancy's `undead`)
 var stack: Array = []
+
+# THE LIST ABOVE, AS SOMETHING THE GAME CAN CHECK.
+#
+# WHY THIS EXISTS. A body is a bare Dictionary, and until this const the only
+# statement of what a body legally contains was the paragraph above it — a
+# comment, which nothing verifies and which had therefore already drifted. It
+# listed 16 keys where the code used 19, and the three it had lost (`max_health`,
+# `shield`, `timed_statuses`) are not obscure: two of them are written by
+# `_add_to_grid`, the one constructor every body on this board is born in, in this
+# same file. Nobody did that on purpose. It is what happens when a contract cannot
+# be checked — each of the three arrived with a feature that updated the code and
+# not the paragraph, and nothing existed that could have noticed.
+#
+# THE BUG THIS CATCHES is a mistyped WRITE, which is silent in a way a mistyped
+# read is not. Reads are almost all `entry.get("key", default)`, and rightly so:
+# a body restored from an older save legitimately lacks the newer keys, so a
+# missing one has to mean "the default". The cost of that is that
+#
+#     entry["revive"] = 2          # meant "revives"
+#
+# is not an error anywhere. It writes a key nothing reads, the real key keeps
+# answering 0, and the symptom is an Undying enemy that dies on the first hit —
+# a content bug, found in the ability system, three files from the typo.
+#
+# WHY A SET AND NOT A CLASS. A `BoardBody` class with typed fields would make the
+# whole class of mistake a parse error, and it is the better destination. It is
+# also 256 read sites plus both of the big test files, which read entries as
+# dictionaries throughout — a branch of its own, not a change to make in passing.
+# This gets most of the protection for a fraction of the risk, and it makes that
+# later conversion mechanical rather than archaeological, because after this the
+# list of what a body contains is enforced rather than remembered.
+const BODY_KEYS := {
+	"instance": true, "enemy": true, "health": true, "max_health": true,
+	"shield": true, "col": true, "row": true, "statuses": true,
+	"timed_statuses": true, "abilities": true, "turns": true, "phase": true,
+	"revives": true, "fades": true, "hidden": true, "illusionist": true,
+	"stolen": true, "fleeing": true, "tags": true,
+}
+
+# The keys every body has from birth. The rest are the ability fields (§7.6),
+# which are optional by design — "all optional and all defaulted by the readers,
+# so a body from an older save is still a legal body" — so their absence is legal
+# and only their MISSPELLING is not.
+const BODY_REQUIRED := ["instance", "enemy", "health", "max_health", "shield",
+	"col", "row", "statuses"]
+
+# Check one body against the two lists. Debug builds only: this runs on every
+# spawn, every load and once per turn over the whole stack, and a shipped build
+# has nothing to do with the answer — `OS.is_debug_build()` is true in the editor
+# and in a headless GUT run, false in an exported game.
+#
+# It REPORTS rather than refuses. A body with a stray key is still a playable
+# body, and a boot that halted over one would be worse than the bug; what was
+# missing was anybody saying so. The message names the offending key, where the
+# body was checked, and — the part that makes it actionable — the legal key it is
+# one edit away from, since that is nearly always the answer.
+func _check_body(entry: Dictionary, where: String) -> void:
+	if not OS.is_debug_build():
+		return
+	for key in entry.keys():
+		var k := String(key)
+		if BODY_KEYS.has(k):
+			continue
+		var suggestion: String = _nearest_body_key(k)
+		push_error("[GameLoop2] body at %s carries the unknown key '%s'%s — nothing reads it, and whatever should have been written is still at its default." % [
+			where, k, ("; did you mean '%s'?" % suggestion) if suggestion != "" else ""])
+	for req in BODY_REQUIRED:
+		if not entry.has(req):
+			push_error("[GameLoop2] body at %s is missing '%s', which every body has from birth." % [where, req])
+
+# The legal key `typo` is closest to, or "" when nothing is close enough to be
+# worth saying.
+#
+# THE THRESHOLD IS MEASURED, AND THE TWO FILTERS HAVE TO BE MEASURED TOGETHER.
+# `String.similarity` is a bigram score. Across the bare key list the closest two
+# DIFFERENT legal keys come is 0.714 — `health` and `max_health` — which argues
+# for a high bar. But those two are already ruled out by the LENGTH GUARD below
+# (six letters against ten), and once that guard is applied the worst any two
+# legal keys score against each other is **0.286**. The bar only ever had to
+# clear that.
+#
+# Set at 0.8 first, it was quietly missing real typos: a single substitution
+# scores 0.500–0.800 (`fadez`/`fades` 0.750, `turms`/`turns` 0.500,
+# `phose`/`phase` 0.500) and a transposition 0.600 (`healht`/`health`), so most
+# of the mistakes worth catching fell under it while the margin above the real
+# false-positive ceiling went unused. 0.4 sits between the two measured
+# populations — 0.114 above the worst confusion, 0.100 below the weakest real
+# typo — and catches every case in the sample, transpositions included.
+#
+# A wrong suggestion is cheap anyway: the message names the offending key and the
+# site regardless, and the "did you mean" is a hint on top of a report that is
+# already actionable.
+func _nearest_body_key(typo: String) -> String:
+	var best: String = ""
+	var best_score: float = 0.4
+	for k in BODY_KEYS.keys():
+		var legal := String(k)
+		# Off by more than one letter is a different word, not a slip — and this is
+		# what keeps `health` from ever being offered for `max_health`.
+		if absi(legal.length() - typo.length()) > 1:
+			continue
+		var score: float = legal.similarity(typo)
+		if score >= best_score:
+			best_score = score
+			best = legal
+	return best
+
+# The whole board, checked at once. Called at the turn and game boundaries rather
+# than at each of the ~49 sites that write to a body: a stray key written anywhere
+# is still on the body when the turn ends, so one sweep of a stack that is never
+# more than a handful of bodies catches every write site — including the ones that
+# do not exist yet.
+func _check_stack(where: String) -> void:
+	if not OS.is_debug_build():
+		return
+	for entry in stack:
+		if entry is Dictionary:
+			_check_body(entry, where)
 
 # THIS RUN'S DEAD, oldest first: [{"enemy": GoalEnemyData, "game": StringName}].
 # Necromancy raises from it (§7.6) and the board's graveyard panel lists it. Every
@@ -885,6 +1009,11 @@ func restore(data: Dictionary) -> void:
 	for raw in data.get("stack", []):
 		var entry: Dictionary = _deserialize_entry(raw)
 		if not entry.is_empty():
+			# The other way a body enters the game. `_deserialize_entry` builds its
+			# own literal rather than copying the save's keys across, so a save
+			# carrying a stray key is already filtered by the time it gets here —
+			# this catches the literal itself drifting from BODY_KEYS.
+			_check_body(entry, "load")
 			stack.append(entry)
 	# `arrivals` are HANDLES into the stack, so they are restored by finding the
 	# bodies the save named rather than by rebuilding them — and only ever bodies
@@ -1615,6 +1744,12 @@ func attempt_turn() -> Dictionary:
 		(res["turn_frames"] as Array).append(_board_snapshot())
 	res["hp"] = GameState.hp
 	res["run_over"] = run_over
+	# THE SWEEP THAT COVERS EVERY WRITE SITE. A turn is where bodies are mutated
+	# most — walked, hit, stunned, faded, stolen from, summoned beside — and a
+	# stray key written by any of it is still sitting on the body now. Checking the
+	# stack here rather than at each of the ~49 assignment sites costs one pass
+	# over a handful of bodies and catches the sites that do not exist yet.
+	_check_stack("end of turn")
 	return res
 
 # Everything an enemy turn can move, held so a mis-ticked try can be put back.
@@ -2143,6 +2278,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	res["run_over"] = run_over
 	res["won"] = won
 	last_result = res
+	# The other boundary. A game resolving is where the keys a turn never touches
+	# move — `fades` counting down, `revives` being spent, a phase advancing — so
+	# the board is answered for here as well as at the end of a turn.
+	_check_stack("end of game")
 	loop_changed.emit()
 	return res
 
@@ -5364,6 +5503,9 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	var entry := {"instance": instance, "enemy": enemy,
 		"health": health, "max_health": maxi(1, health), "shield": 0,
 		"col": offgrid_col(), "row": 0, "statuses": {}}
+	# Every body on this board is born here, so this is where the shape is first
+	# answered for (see BODY_KEYS). Debug builds only.
+	_check_body(entry, "spawn")
 	stack.append(entry)
 	# Statuses go on THROUGH _add_status_to rather than being copied into the
 	# entry, so a body that walks on already carrying Dexterity is granted the
