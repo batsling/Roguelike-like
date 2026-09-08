@@ -52,7 +52,7 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 5826 lines
+## 1. `Overworld2.gd` is 6022 lines
 
 **This entry said 4260 and had said so for a while.** The file was 5623 when that
 number was last true enough to write down, and 6114 by the time anyone re-measured
@@ -61,9 +61,13 @@ more. That is the finding, not the line count: **a seam table goes stale the
 moment it stops being re-run**, and this one was quoted as current for months
 while the file grew past its own pre-split size.
 
-Down to 5826 with the drop queue out (`DropQueue.gd`, below). Still the biggest
-file in the repo — `AtlasView.gd` is 2764 — holding the run loop, the routing
-notes, the map plumbing, the save/restore of view state, and `_build_ui`.
+**AND THEN IT HAPPENED AGAIN, INSIDE ONE RELEASE.** This entry was re-measured at
+5826 with the drop queue out, and read 6135 the next time anyone ran the numbers —
+**+309 lines against a table that had just been called current**. So the rule
+holds twice over: re-run the table, never quote it. Down to 6022 with the Dash
+filter bar out (`DashFilterBar.gd`, below). Still the biggest file in the repo —
+`AtlasView.gd` is 2794 — holding the run loop, the routing notes, the map
+plumbing, the save/restore of view state, and `_build_ui`.
 
 **Where the growth actually went**, measured against the last commit this file was
 re-read at: +405 lines of a region that did not exist then (*arriving somewhere you
@@ -71,6 +75,14 @@ did not choose* — card teleports, detours, the stay-or-return question, item
 aiming) and +138 of card/item actions, against a diffuse +30 or so spread over
 everything else. A new mechanic landed in the page rather than beside it. That is
 the pattern worth watching: this file does not creep, it absorbs.
+
+**And the +309 says the same thing a second time.** +146 of it was one region the
+table had never seen at all — the Dash panel's search / filter / sort, shipped
+straight into the page — with +63 on offering construction and +43 on save/restore
+behind it. Same shape, same cause: a new mechanic landed in the page rather than
+beside it. **When a feature lands here, its seam is the thing to write down while
+it is still small**; the Dash bar was 146 lines and four scattered fragments a
+month after it shipped.
 
 **The seam table, re-measured.** *Genuinely shared state* is vars the region
 touches that are also touched outside it, ignoring `_build_ui` (the assembler
@@ -84,20 +96,29 @@ region's functions are called from the rest of the page or straight off `_ui` in
 | ~~report checklist~~ | ~~776~~ | | ~~2~~ | **done — `ReportChecklist.gd`** |
 | ~~offering cards + preview~~ | ~~506~~ | | ~~3~~ | **done — `OfferingCards.gd`** |
 | ~~kill-drops + floor loot~~ | ~~498~~ | ~~22~~ | ~~11~~ | **done — `DropQueue.gd`** |
-| routing + the report verb | 606 | 11 | 17 | 8 |
-| `_build_ui` | 519 | 1 | 36 | 1 |
-| save/restore view state | 467 | 14 | 22 | 8 |
-| arriving somewhere you did not choose | 405 | 16 | 17 | 6 |
-| the header, pinned to the screen | 328 | 16 | 12 | 7 |
-| the stats that moved out of the HUD | 280 | 12 | 13 | 7 |
-| the road walked, across the top | 231 | 7 | 16 | 5 |
-| escaping a game you can't beat | 185 | 7 | 4 | 6 |
-| throwing a potion at the board | 183 | 8 | 6 | 3 |
+| ~~the Dash panel's search / filter / sort~~ | ~~146~~ | ~~8~~ | ~~3~~ | **done — `DashFilterBar.gd`** |
+| routing + the report verb | 615 | 11 | 17 | 8 |
+| `_build_ui` | 524 | 1 | 37 | 1 |
+| save/restore view state | 510 | 14 | 23 | 8 |
+| arriving somewhere you did not choose | 405 | 16 | 17 | 9 |
+| the header, pinned to the screen | 328 | 16 | 12 | 14 |
+| the stats that moved out of the HUD | 282 | 12 | 13 | 7 |
+| the road walked, across the top | 235 | 7 | 17 | 5 |
+| escaping a game you can't beat | 191 | 7 | 4 | 6 |
+| throwing a potion at the board | 183 | 8 | 6 | 7 |
 
 **The next cut is `arriving somewhere you did not choose`** (405 lines, 16 funcs) —
 it is the region that grew, it is a mechanic rather than a layout, and its 17
 shared vars are mostly the modal handles it puts up and takes down again. After
 that, *the header* — but read the warning below first.
+
+**Cut it as TWO, though, and the banners already say which two.** Its last five
+functions (`obtain_any_item`, `use_item`, `aim_item`, `_on_item_aimed`,
+`_on_item_aimed_at_cell`) are item use and aiming, not arrival at all — while the
+banner 300 lines above them, *overworld card / item actions*, claims item actions
+and holds seven teleport functions and no items. The two were regrouped under
+honest banners (*card teleports* / *using and aiming an item*) so that the split,
+when it comes, cuts a mechanic instead of a region.
 
 **Three of these should NOT be split, for three different reasons.**
 `capture_view_state`/`restore_view_state` touches 22 shared vars because touching
@@ -119,7 +140,7 @@ and reads privates straight off the instance. The extracted piece therefore
 **cannot take those names with it**: they stay declared on `Overworld2`, with the
 class owning the state under a public name and the page publishing a view of it.
 
-**The pattern the four splits established**, for anything that follows:
+**The pattern the five splits established**, for anything that follows:
 
 - A `RefCounted` holding the page, constructed in `_build_ui` beside the
   containers it fills — or in `_init`, if it owns state the page publishes and a
@@ -132,6 +153,10 @@ class owning the state under a public name and the page publishing a view of it.
   the page answers four small questions for it (`drops_are_done`,
   `drops_are_held`, `offer_loot_to_open_screen`, `drag_pack_anchor`) so the class
   needs to know nothing about `Phase`, `_resolving`, or which screens are up.
+  `DashFilterBar` takes `dash_mode` in on all three entry points, and where its
+  own widgets have to re-check it they read **their own bar's visibility** rather
+  than the page — a control on a hidden bar cannot be pressed, so that is both the
+  truth the callback needs and the only part of the phase the class should know.
 - **A const the page still uses moves with the class**, and the page names it.
 - Leave the old entry points as one-line forwards. Zero call-site churn, in the
   page or in the tests. Some forwards end up with no caller left in the page and
