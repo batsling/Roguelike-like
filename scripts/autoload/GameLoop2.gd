@@ -560,6 +560,8 @@ var instead_this_game: Dictionary = {}
 # with the rest of the game record.
 var staggered_this_game: Dictionary = {}
 
+# --- what this game has answered for, counted and remembered (§2.1) ---------
+
 # Player-side objectives already claimed this game, status id -> true. A `demand`
 # bites at the report for every game it went unanswered, and it must not bill a
 # player who answered it an hour ago (_resolve_status_demands).
@@ -585,6 +587,13 @@ var defeated_this_game: int = 0
 # player's rather than the code's, and killing a body first must not silently
 # forfeit the bonus you had already earned off it.
 var _ghosts: Dictionary = {}
+
+# --- the checklist's ledger: rows answered, bonuses armed, goals claimed -----
+#
+# What the report screen has already resolved, kept HERE rather than on the
+# checklist because the checklist is rebuilt on every repaint and a tick the
+# player cannot take back must not be something a repaint can lose. The five
+# small readers below it are the only way anything else touches these.
 
 # Checklist rows answered mid-game that the four records above have no room for:
 # an enemy BONUS claimed, a CURSE followed, the character's LEVEL-UP taken. Keys
@@ -693,6 +702,10 @@ func record_claimed_event_goal(goal: Dictionary) -> void:
 		"effects_text": String(goal.get("effects_text", "")),
 		"event": String(goal.get("event", "")),
 	})
+
+# --- the attempt tracker's state (§3) ---------------------------------------
+#
+# Its VERBS are further down, under `a lost run: the turn it buys`.
 
 # The attempt tracker for the game currently being played (§3). One entry per try
 # the player has logged, in order, holding what that try spent: "shield", "bonus"
@@ -1658,6 +1671,17 @@ func grant_selection_shields(game: GameData) -> int:
 	loop_changed.emit()
 	return n
 
+# --- a lost run: the turn it buys, and taking it back (§3) ------------------
+#
+# THE BANNER ABOVE USED TO COVER ALL OF THIS. `shields = the armour a game
+# grants` sat over two shield functions and then thirteen more that are the
+# ATTEMPT system — the tick, the turn it buys, the snapshots, the undo — which
+# is why the seam table read 35 shared vars against a heading about armour: a
+# snapshot touches everything, and that is its job rather than a sign of
+# tangle. Shields and lost runs used to BE the same mechanic (three ticks and
+# your shields were gone); they were separated in §3 and the heading never
+# was. Its state is declared under `the attempt tracker's state` above.
+
 # The lost runs logged against the game in play.
 func attempts() -> int:
 	return attempt_costs.size()
@@ -1971,6 +1995,8 @@ func _clear_game_record() -> void:
 	armed_rows.clear()
 	claimed_event_goals.clear()
 	_ghosts.clear()
+
+# --- how much a body has to be answered for --------------------------------
 
 # How many goal completions it takes to defeat `enemy`: its sheet Health (1 for
 # all current content) plus the player's enemy_health item bonus (Alien Baby +1,
@@ -5734,34 +5760,28 @@ const ABILITY_IDS := [
 ]
 
 # --- reading a body's abilities -------------------------------------------
+#
+# ALL OF THE PURE READERS ARE `BodyFacts` (docs/performance-backlog.md §1b). They
+# answer questions about one body Dictionary and touch nothing on this node, so
+# they are static functions in a file of their own; what stays here is a forward
+# apiece, because seven other files and the tests already call them off GameLoop2.
+# `grant_ability` below is NOT one of them — it looks a body up and rings the
+# loop's bell, which is exactly the line between the two halves.
 
-# The RUNTIME ability list for one body: what the sheet authored plus anything
-# granted since. Falls back to the enemy's own list for an entry built before
-# §7.6 (an old save, a hand-made test body), which is the honest answer there.
 func entry_abilities(entry: Dictionary) -> Array:
-	if entry.has("abilities"):
-		return entry.get("abilities", [])
-	var enemy: GoalEnemyData = entry.get("enemy")
-	return enemy.abilities if enemy != null else []
+	return BodyFacts.entry_abilities(entry)
 
 func entry_ability_row(entry: Dictionary, id: StringName) -> Dictionary:
-	for a in entry_abilities(entry):
-		if StringName(a.get("id", &"")) == id:
-			return a
-	return {}
+	return BodyFacts.entry_ability_row(entry, id)
 
 func entry_has_ability(entry: Dictionary, id: StringName) -> bool:
-	return not entry_ability_row(entry, id).is_empty()
+	return BodyFacts.entry_has_ability(entry, id)
 
-# The numeric argument on `id`. Note the difference between "no such ability" and
-# "the ability with argument 0": Ranged's 0 means UNLIMITED (§7.6), so a caller
-# that needs to tell them apart asks entry_has_ability first.
 func entry_ability_amount(entry: Dictionary, id: StringName, fallback: int = 0) -> int:
-	var row: Dictionary = entry_ability_row(entry, id)
-	return int(row.get("amount", fallback)) if not row.is_empty() else fallback
+	return BodyFacts.entry_ability_amount(entry, id, fallback)
 
 func entry_ability_arg(entry: Dictionary, id: StringName) -> StringName:
-	return StringName(entry_ability_row(entry, id).get("arg", &""))
+	return BodyFacts.entry_ability_arg(entry, id)
 
 # Hang an ability on a body that was not authored with one — an Illusionist
 # handing `illusion` to what it summons is the only user today. Refuses a
@@ -5782,62 +5802,22 @@ func grant_ability(instance: int, id: StringName, amount: int = 0,
 	loop_changed.emit()
 	return true
 
-# Every tag this body answers to: the sheet's, plus anything granted at runtime
-# (Necromancy raises the dead as `undead`). Ask this rather than
-# `entry["enemy"].has_tag`, or a raised body will not read as undead to the goal
-# that is hunting one.
 func entry_has_tag(entry: Dictionary, wanted: StringName) -> bool:
-	var enemy: GoalEnemyData = entry.get("enemy")
-	if enemy != null and enemy.has_tag(wanted):
-		return true
-	for t in entry.get("tags", []):
-		if StringName(t) == wanted:
-			return true
-	return false
+	return BodyFacts.entry_has_tag(entry, wanted)
 
 func entry_tags(entry: Dictionary) -> Array:
-	var out: Array = []
-	var enemy: GoalEnemyData = entry.get("enemy")
-	if enemy != null:
-		for t in enemy.tag_list():
-			out.append(StringName(t))
-	for t in entry.get("tags", []):
-		if not out.has(StringName(t)):
-			out.append(StringName(t))
-	return out
+	return BodyFacts.entry_tags(entry)
 
 func grant_tag(entry: Dictionary, tag: StringName) -> void:
-	if tag == &"" or entry_has_tag(entry, tag):
-		return
-	var tags: Array = (entry.get("tags", []) as Array).duplicate()
-	tags.append(tag)
-	entry["tags"] = tags
+	BodyFacts.grant_tag(entry, tag)
 
 # --- what a body is, for the screens --------------------------------------
 
-# Whether anything about this body is worth the board's ⚠ mark: it has an ability.
-# One question, so the badge, the hover and the card cannot disagree.
 func entry_has_abilities(entry: Dictionary) -> bool:
-	return not entry_abilities(entry).is_empty()
+	return BodyFacts.entry_has_abilities(entry)
 
-# Every ability on this body as [{ability: AbilityData, row: Dictionary,
-# text: String}], catalog-resolved and with its sentence already filled in. The
-# hover, the card and the collection screen all draw from this, so an ability
-# reads the same wherever it is met.
 func ability_lines(entry: Dictionary) -> Array:
-	var out: Array = []
-	for row in entry_abilities(entry):
-		var id: StringName = StringName(row.get("id", &""))
-		var ad: AbilityData = Data.get_ability(id)
-		if ad == null:
-			continue
-		out.append({
-			"ability": ad,
-			"row": row,
-			"name": ad.display_name,
-			"text": ad.describe(int(row.get("amount", 0)), String(row.get("text", ""))),
-		})
-	return out
+	return BodyFacts.ability_lines(entry)
 
 # --- INVISIBILITY ----------------------------------------------------------
 #
@@ -5852,7 +5832,7 @@ func is_hidden(instance: int) -> bool:
 	return bool(entry_for(instance).get("hidden", false))
 
 func entry_hidden(entry: Dictionary) -> bool:
-	return bool(entry.get("hidden", false))
+	return BodyFacts.entry_hidden(entry)
 
 # It swung, so it is there. Called from the strike path — every strike, including
 # the one it throws at another enemy under Ruthless, because a body eating your
@@ -5894,11 +5874,8 @@ func _bolster_auras(exclude: int) -> Dictionary:
 
 # --- FIREPROOF -------------------------------------------------------------
 
-# Whether `status_id` simply will not stick to this body. Fireproof refuses Burn,
-# and that is the whole roster of resistances today — but it is asked as a general
-# question so the next one is a row in a match rather than a new call site.
 func resists_status(entry: Dictionary, status_id: StringName) -> bool:
-	return status_id == &"burn" and entry_has_ability(entry, &"fireproof")
+	return BodyFacts.resists_status(entry, status_id)
 
 # --- RANGED ----------------------------------------------------------------
 #
@@ -6736,26 +6713,19 @@ func _pay_revivals() -> Array:
 # that reads a goal or a portrait off a body asks these, not the resource, so the
 # phase a boss is actually in is the one the player is shown.
 func entry_phase(entry: Dictionary) -> int:
-	return maxi(0, int(entry.get("phase", 0)))
+	return BodyFacts.entry_phase(entry)
 
 func entry_goal(entry: Dictionary) -> String:
-	var enemy: GoalEnemyData = entry.get("enemy")
-	return "" if enemy == null else enemy.goal_at(entry_phase(entry))
+	return BodyFacts.entry_goal(entry)
 
 func entry_goal_type(entry: Dictionary) -> StringName:
-	var enemy: GoalEnemyData = entry.get("enemy")
-	return &"" if enemy == null else enemy.goal_type_at(entry_phase(entry))
+	return BodyFacts.entry_goal_type(entry)
 
 func entry_image(entry: Dictionary) -> Texture2D:
-	var enemy: GoalEnemyData = entry.get("enemy")
-	return null if enemy == null else enemy.image_at(entry_phase(entry))
+	return BodyFacts.entry_image(entry)
 
-# "Phase 2 of 3" for the card, or "" for a body that has only ever been itself.
 func phase_note(entry: Dictionary) -> String:
-	var enemy: GoalEnemyData = entry.get("enemy")
-	if enemy == null or enemy.phase_count() <= 1:
-		return ""
-	return "phase %d of %d" % [entry_phase(entry) + 1, enemy.phase_count()]
+	return BodyFacts.phase_note(entry)
 
 # --- FADING ----------------------------------------------------------------
 #

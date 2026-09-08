@@ -195,6 +195,73 @@ keeps this section from going stale again.
 
 ---
 
+## 1b. `GameLoop2.gd` is 6896 lines — its first seam table
+
+Written the first time anyone measured this file. The entry above spent months
+calling `Overworld2.gd` the biggest file in the repo while this one was nine
+hundred lines longer and had never been looked at.
+
+**AND THE OVERWORLD2 METRIC DOES NOT TRANSFER. Read this before using the table.**
+§1 ranks seams by *genuinely shared state*, because `Overworld2` is a page: 116
+member vars, and a region that touches twenty of them is welded in. `GameLoop2`
+is the opposite shape — **300 functions over 38 member vars** — so almost every
+region scores low on shared state and the column cannot tell a clean seam from a
+welded one. What discriminates here is **behavioural coupling: how many distinct
+functions in the rest of the file the region calls, and at how many sites.** The
+first draft of this table did not have that column, recommended the abilities
+block on the strength of "6 shared vars across 1,182 lines", and was wrong.
+
+| seam | lines | funcs | shared | back-calls | sites |
+|---|---|---|---|---|---|
+| ENEMY ABILITIES §7.6 (whole tail) | 1182 | 53 | 6 | **30** | 90 |
+| Resolving a game | 657 | 15 | 12 | — | — |
+| save / load | 515 | 22 | 33 | — | — |
+| the ground: tiles + units §17 | 514 | 29 | 6 | — | — |
+| grid model §grid | 374 | 22 | 2 | **13** | 39 |
+| a lost run + its snapshots §3 | 325 | 12 | 35 | — | — |
+| Statuses 2.0 §13 | 321 | 16 | 1 | — | — |
+| INTENTS | 320 | 12 | 2 | — | — |
+
+**The bar this repo has actually set is 4–8 back-calls.** `DropQueue` asks the
+page four questions, `PackStrip` three, `DashFilterBar` eight. At 30 distinct
+back-calls over 90 sites, the abilities block is not a seam — it is a *layer*
+that would spend its life calling home, and every one of its 1,182 lines would
+carry a `_loop.` prefix to say so. The grid model at 13/39 is better and still
+over the bar; four of its thirteen are the board's own dimensions
+(`grid_cols`, `grid_rows`, `offgrid_col`, `spawn_col`), which would have to come
+with it.
+
+**What IS clean is a subset, and the measurement found it — `BodyFacts.gd`, done.**
+Of the abilities block's 53 functions, **22 touch no member var and make no
+back-call at all**. Seventeen of those are one coherent thing — the queries over a
+body `Dictionary`: `entry_goal`, `entry_goal_type`, `entry_image`, `entry_phase`,
+`phase_note`, `entry_hidden`, `entry_tags`, `entry_has_tag`, `grant_tag`,
+`ability_lines`, `resists_status` and the rest of the `entry_ability_*` family.
+That is the half the SCREENS call — `BattlefieldView`, `EnemyInfoCard`,
+`ReportChecklist`, `GameChoiceModal`, `OfferingCards`, `ObsCompanion` — and it
+needs no back-reference of any kind, so it is a file of `static` functions rather
+than a thing that holds the loop. GameLoop2 keeps a forward apiece, so no call
+site in the repo changed.
+
+**Do not read that as 57 lines saved, because that is not what it bought.**
+GameLoop2 went 6896 -> 6840, and the point was never the count: it is that the
+question "what is this body?" now has an answer that does not involve the run
+loop at all, and that the line between the two halves is written down where the
+next person will meet it. `grant_ability` sits immediately below the forwards and
+deliberately did NOT move — it looks a body up and emits `loop_changed`, which is
+exactly the boundary.
+
+The other 31 functions are ability *behaviour* (`_body_died` calls six loop
+functions and touches four vars; `_flee` calls nine), and they belong where they
+are.
+
+**So the honest reading of this file is that it is not Overworld2.** Overworld2
+was a page with mechanics accreted onto it, and the mechanics came off. This is a
+loop, and its regions are layers of one machine rather than passengers on it. The
+cut worth making is the query surface, not the machine.
+
+---
+
 ## 2. Tests that skip in silence
 
 Fixed, and left here because the shape of it generalises. ~250 tests guard
