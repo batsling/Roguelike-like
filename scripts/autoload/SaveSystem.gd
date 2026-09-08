@@ -271,6 +271,8 @@ func _build_payload() -> Dictionary:
 		# gone — so it has to be written down here or a reload would quietly cancel
 		# a card the player paid a loot slot for.
 		"bank_shields_next": GameState.bank_shields_next,
+		# Echo Form's one game, armed and not yet spent (docs/cards-design.md).
+		"echo_loot_next_game": GameState.echo_loot_next_game,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -311,16 +313,55 @@ func _capture_view_state() -> Dictionary:
 		return {}
 	return ow.capture_view_state()
 
+# WRITTEN BESIDE, THEN MOVED OVER. `FileAccess.WRITE` on the real path TRUNCATES
+# it before a single byte of the new payload is written, so every save used to
+# have a window in which the file on disk was neither the old run nor the new one
+# — and anything that went wrong inside that window (the process dying, a full
+# disk, a payload that fails to stringify) left a truncated file that `_read_path`
+# can only parse as `{}`. To the player that is not a corrupt save, it is the run
+# vanishing.
+#
+# The autosave is rewritten every time the run's position changes, so that window
+# was being opened dozens of times a run, on the one file the player never chose
+# to write and would never think to keep a copy of.
+#
+# So: build the payload FIRST (a stringify that throws takes nothing with it),
+# write it to `<path>.tmp`, and only then rename over the real path. A rename
+# within a directory is atomic on every platform this ships to — the save is
+# either wholly the old one or wholly the new one, and never the gap between.
 func _write_save(path: String) -> bool:
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_error("[SaveSystem] could not open '%s' for write" % path)
+	# Built before the file is touched: if anything here fails, the existing save
+	# is still sitting on disk untouched.
+	var payload: String = JSON.stringify(_build_payload(), "  ")
+	if payload == "":
+		push_error("[SaveSystem] refusing to write an empty payload to '%s'" % path)
 		return false
-	f.store_string(JSON.stringify(_build_payload(), "  "))
-	# Closed explicitly rather than on scope exit: the Continue list re-reads a
-	# save the same frame it was written (the autosave), and that read must see the
-	# whole file.
+	var tmp_path: String = path + ".tmp"
+	var f := FileAccess.open(tmp_path, FileAccess.WRITE)
+	if f == null:
+		push_error("[SaveSystem] could not open '%s' for write (%d)" % [
+			tmp_path, FileAccess.get_open_error()])
+		return false
+	f.store_string(payload)
+	# store_string returns nothing, so a full disk is silent unless it is asked
+	# for: get_error() carries the last failure on THIS handle, and it has to be
+	# read before the close that invalidates it.
+	var wrote := f.get_error()
+	# Closed explicitly rather than on scope exit: the rename below has to see a
+	# flushed file, and the Continue list re-reads a save the same frame it was
+	# written (the autosave), so that read must see the whole thing.
 	f.close()
+	if wrote != OK:
+		push_error("[SaveSystem] write to '%s' failed (%d)" % [tmp_path, wrote])
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp_path))
+		return false
+	var err := DirAccess.rename_absolute(
+		ProjectSettings.globalize_path(tmp_path),
+		ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("[SaveSystem] could not move '%s' over '%s' (%d)" % [tmp_path, path, err])
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp_path))
+		return false
 	return true
 
 func load_slot(slot: int) -> bool:
@@ -404,6 +445,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.shields = int(data.get("shields", 0))
 	GameState.bonus_shields = int(data.get("bonus_shields", 0))
 	GameState.bank_shields_next = bool(data.get("bank_shields_next", false))
+	# A save from before Echo Form existed has none, and 0 is the honest answer:
+	# its run was never promised the copies.
+	GameState.echo_loot_next_game = int(data.get("echo_loot_next_game", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))
@@ -416,6 +460,24 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.restore_event_goals(data.get("event_goals", {}))
 	GameState.restore_shops(data.get("shops", {}))
 	GameState.run_seed = int(data.get("run_seed", 0))
+	# AND PUT THE GLOBAL STREAM BACK WHERE THE SAVE LEFT IT — deterministically,
+	# which is the only sense in which it can be "put back" at all.
+	#
+	# `_apply_save_data` opens with `GameState.reset_run()`, which seeds the global
+	# stream for a FRESH run. Left at that, everything drawn from it after a load —
+	# an enemy roll, an event, a shop shelf — would come off a stream seeded from
+	# whatever the reset happened to draw, so loading the same save twice would deal
+	# two different runs and reloading would be a reroll button for all of it.
+	#
+	# Godot's global stream exposes `seed()` but no readable state, so it cannot be
+	# saved and resumed the way `Overworld2._rng` is (which IS saved, exactly, in the
+	# view state). What it can be is a deterministic FUNCTION of the saved run: the
+	# run's own seed, mixed with how far the run has got. Two loads of one save land
+	# on the same stream, and playing on moves it — which is the pair of properties
+	# that matter. It jumps rather than continues at the moment of the load, and that
+	# is the honest limit of seeding a stream that will not tell you where it is.
+	seed(GameState.run_seed ^ (GameState.games_played * 0x9E3779B9))
+	GameState.reseed_run_streams()
 	# Reset the running item contribution so _recompute starts fresh
 	# against the saved base stats (which already had bonuses applied
 	# when the save was written, but we save the base — see below).

@@ -121,7 +121,11 @@ func setup_obtain(items: Array) -> void:
 		_begin()
 
 func _ready() -> void:
-	_rng.randomize()
+	# Seeded out of the global stream rather than off the clock, so a chest opened
+	# on a given run seed offers the same items (see GameState.reset_run). A screen
+	# is built per chest, so it takes the stream's next number and moves it on —
+	# which is what makes two chests in a row differ while the run stays repeatable.
+	_rng.seed = randi()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()

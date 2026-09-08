@@ -779,14 +779,22 @@ func test_a_potion_without_a_clock_says_nothing_about_games() -> void:
 
 func test_fire_potions_throw_covers_the_whole_3x3_with_every_clause() -> void:
 	# Decision #11, and the roster's loudest argument: nine squares of burning
-	# ground, 1 damage and +3 Burn on everything in them, off a COMMON bottle.
+	# ground and +3 Burn on everything in them, off a COMMON bottle.
+	#
+	# TWO CLAUSES NOW, NOT THREE — the sheet took the throw's `deal_damage 1` off.
+	# What this test is really pinning is unchanged and is the reason it counts at
+	# all: whatever clauses the bottle has, EVERY one of them covers the 3x3. A
+	# clause that quietly landed on the centre cell only would still pass a size
+	# check, which is why the loop below is the assertion that matters.
 	var fire: PotionData = Data.get_potion(&"fire_potion")
-	assert_eq(fire.throw.size(), 3, "tile, damage and Burn")
+	assert_eq(fire.throw.size(), 2, "tile and Burn")
 	for op in fire.throw:
 		assert_eq(String(op.get("area", "")), "3x3",
-			"all three clauses cover the area: %s" % str(op))
+			"both clauses cover the area: %s" % str(op))
+	assert_false(fire.throw.any(func(op): return String(op.get("op", "")) == "deal_damage"),
+		"the impact does not hit any more — the Burn is the whole bill")
 	assert_eq(fire.rarity, "Common")
-	assert_eq(fire.preference, "Negative", "and drinking it is why")
+	assert_eq(fire.preference, "Negative", "and the Burn it hands you is why")
 
 func test_the_ampoule_throws_down_a_row() -> void:
 	var amp: PotionData = Data.get_potion(&"explosive_ampoule")

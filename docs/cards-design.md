@@ -5,7 +5,7 @@ spec). That doc's §4.1 is scrolls and its §4.3 is pills;
 [`potions-design.md`](potions-design.md) is the third loot consumable. This one is
 the **fourth**, and it is the one that breaks the pattern the other three share.
 
-Content source: the **`cards`** sheet of `tools/Roguelikes.xlsx` (13 rows), the
+Content source: the **`cards`** sheet of `tools/Roguelikes.xlsx` (14 rows), the
 faces in `images2.0/cards/` (13 PNGs) and the deck icons in
 `images2.0/cards_icons/` (5 PNGs).
 
@@ -138,7 +138,7 @@ card drop in twenty.
 
 ## 5. The roster
 
-Thirteen rows, `cards` sheet: `Name | Rarity | Description | Effect | Image |
+Fourteen rows, `cards` sheet: `Name | Rarity | Description | Effect | Image |
 Icon Image`. `Image` is the face, `Icon Image` is the back — and the back is also
 where the credit comes from, since the icon file names the game and the deck, so
 `source_game` and `set_name` are read off it by the generator rather than authored
@@ -147,6 +147,7 @@ twice.
 | Card | Rarity | Effect cell | Notes |
 |---|---|---|---|
 | Barricade | Rare | `bank_shields_next` | §5.1 |
+| Echo Form | Rare | `echo_loot_next 1` | §5.8 |
 | Ride the Bus | Uncommon | `teleport_type deckbuilder` | §5.2 |
 | V - The Hierophant | Common | `gain_stat bonus_shields 2` | |
 | VI - The Lovers | Common | `gain_hp 2` | |
@@ -295,6 +296,51 @@ that asks nothing. The rows carry each relic's own description, because the play
 is choosing between *effects* here rather than between names.
 
 ---
+
+### 5.8 Echo Form — the card that is not Echo Chamber
+
+> *Until the end of the next combat, play an additional copy of every loot you use*
+
+It arrived on the sheet with its Description, Rarity and both art names filled in
+and its **Effect cell empty**, so `generate_card2_tres.py` refused it — correctly,
+since a card that does not print what it does is worse than one that does not
+exist — and the catalog shipped thirteen cards where the sheet listed fourteen
+until `check_data_sync.py` started saying so on every run.
+
+**The trap in authoring it is that the game already has an Echo Chamber**, and the
+two read alike in one sentence. They are different mechanics:
+
+|  | copies | how long | read off |
+|---|---|---|---|
+| Echo Chamber (relic) | the **last three pieces you spent** | forever, while carried | the pack (`GameState.loot_echo_depth`) |
+| Echo Form (card) | **the piece in your hand**, once more | one game | a run flag (`echo_loot_next_game`) |
+
+In a pack they are nothing alike: the card is strongest on the best single piece
+you are holding, the relic on the best three you have already had. Implementing
+Echo Form as a temporary `echo_loot` would have made it a *worse Echo Chamber that
+expires* — and would not have been what its own Description says.
+
+**Its shape is Barricade's** (§5.1), because the two promise the same kind of
+thing: one game, then spent, with nothing left in the pack to read it off. The
+card arms `GameState.echo_loot_next_game`; `GameLoop2.beat_game` clears it beside
+`bank_shields_next`, unconditionally, because the promise was about the next game
+*however that game went* — expiring only on a game the player happened to spend
+loot in would hold it open indefinitely, which is a different card.
+
+An **int rather than a bool**, so a second Echo Form owes a second copy. "An
+additional copy" is a thing a card owes you, and a Rare that silently no-ops
+because you already played one is a thing a player only finds out by wasting it.
+
+**A wand is outside it**, exactly as it is outside Echo Chamber
+([`wands-design.md`](wands-design.md) §4.4): a wand spends a *charge* rather than a
+slot, so doubling one would be two effects for one charge on the only kind that
+already fires six times.
+
+**One content consequence, decided rather than discovered.** Echo Form is the only
+`Slay_the_Spire_Defect_Rare`, so its deck holds one card and its face-down icon
+names it — the property §3 already accepts for Balatro, the MTG icon and the
+Ironclad rare. `test_card_system.gd`'s `LONELY_DECKS` is where that is pinned, and
+it failed on this card exactly as its comment promised it would.
 
 ## 6. Where the code lives
 

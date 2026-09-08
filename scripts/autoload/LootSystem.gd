@@ -131,6 +131,24 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# per charge, for the price of one slot. Nothing else in the pack can pay a
 	# relic six times.
 	if not is_wand(spent):
+		# ECHO FORM FIRST, and it copies something different from what follows.
+		# The card promises "an additional copy of every loot you use" for one
+		# game, so what it repeats is THIS piece — the one in your hand — while
+		# Echo Chamber below repeats the last three you spent. Two mechanics that
+		# read alike in a sentence and are nothing alike in a pack: the card is
+		# strongest on the best piece you are holding, the relic on the best three
+		# you have already had.
+		#
+		# Before the relic's copies rather than after, so a use reads in the order
+		# it happens: the piece, the piece again, then the history.
+		#
+		# A wand is outside this for the reason it is outside Echo Chamber, spelled
+		# out below: it spends a charge rather than a slot, so doubling it would be
+		# two effects for one charge on the one kind that already fires six times.
+		for _extra in range(GameState.extra_loot_copies()):
+			var again: Dictionary = _resolve(spent.duplicate(true), ctx)
+			if not again.is_empty():
+				_merge(out, again)
 		for echo in _echo_queue():
 			var copy: Dictionary = _resolve(echo, ctx)
 			if not copy.is_empty():
@@ -337,9 +355,18 @@ func unidentify(id: StringName) -> void:
 # (§10), so the two verbs mean the same thing and there is one implementation of
 # it. What each caller keeps is its own sentence about what just happened.
 #
+# `spare` is one id the caller is keeping back — the normal Amnesia's own name,
+# which the dose that teaches you the colour must not take away again (see
+# PillSystem._forget). Nothing else passes one, and &"" spares nothing, so the
+# horse dose and the scroll are unchanged: they still forget everything they can
+# reach, themselves included.
+#
 # The targets are snapshotted first, because forgetting is what removes them.
-func forget_identified(kind: String, count: int, rng: RandomNumberGenerator) -> int:
+func forget_identified(kind: String, count: int, rng: RandomNumberGenerator,
+		spare: StringName = &"") -> int:
 	var pool: Array = identified_types(kind)
+	if spare != &"":
+		pool = pool.filter(func(id): return StringName(id) != spare)
 	var n: int = pool.size() if count < 0 else mini(count, pool.size())
 	for _i in range(n):
 		if pool.is_empty():

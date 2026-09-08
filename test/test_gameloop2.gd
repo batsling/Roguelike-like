@@ -60,6 +60,27 @@ func _shaped(dmg: int, rows: int, cols: int, mask: Array = []) -> GoalEnemyData:
 func _bastion(dmg: int = 3) -> GoalEnemyData:
 	return _shaped(dmg, 2, 3, [0b100, 0b111])
 
+# A BODY THE WAY THE GAME BUILDS ONE, for the tests that stand bodies on the
+# board by hand rather than through `spawn_to_stack`.
+#
+# The dozen fixtures that used to be written inline here set `instance`, `enemy`,
+# `health`, `col` and `row` and stopped — which is a shape `_add_to_grid` has
+# never produced. It went unnoticed for as long as it did because every read of a
+# body is `entry.get(key, default)`, so the missing `max_health`, `shield` and
+# `statuses` simply read as their defaults and the tests passed. They were
+# nonetheless testing a body the game cannot make, and `GameLoop2._check_stack`
+# says so out loud now — which GUT reports as an Unexpected Error, so a fixture
+# that drifts from the real shape fails the test that uses it.
+#
+# Built here rather than fixed twelve times, so the next fixture is complete by
+# construction. It mirrors `_add_to_grid`'s literal; if that gains a key, this is
+# the one place the tests need it.
+func _body(instance: int, enemy: GoalEnemyData, col: int, row: int,
+		health: int = 1) -> Dictionary:
+	return {"instance": instance, "enemy": enemy, "health": health,
+		"max_health": maxi(1, health), "shield": 0,
+		"col": col, "row": row, "statuses": {}}
+
 # Choose a game and take its ESCORT straight back off the board (§7.5).
 #
 # Committing to a game spawns TWO bodies now: the enemy handed in here, and an
@@ -407,8 +428,7 @@ func test_spawns_pick_a_row_with_a_clear_path_to_the_player() -> void:
 	# Wall off every lane but one, at the front where nothing can get past.
 	var blocked: Array = [0, 1, 3]
 	for row in blocked:
-		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0),
-			"health": 1, "col": 1, "row": row})
+		GameLoop2.stack.append(_body(900 + row, _enemy(0), 1, row))
 	for i in range(12):
 		var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
 		assert_eq(_row_of(inst), 2, "spawns into the one lane that still reaches the player")
@@ -419,8 +439,7 @@ func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 	# Every row walled at the front: there is no good answer, so the enemy still
 	# takes the board rather than stalling off-grid forever.
 	for row in range(GameLoop2.grid_rows()):
-		GameLoop2.stack.append({"instance": 900 + row, "enemy": _enemy(0),
-			"health": 1, "col": 1, "row": row})
+		GameLoop2.stack.append(_body(900 + row, _enemy(0), 1, row))
 	var inst: int = GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "it still finds somewhere to stand")
 	assert_between(_row_of(inst), 0, GameLoop2.grid_rows() - 1, "on the board")
@@ -432,11 +451,11 @@ func test_a_blocked_lane_is_still_used_when_no_lane_is_clear() -> void:
 func test_a_big_enemy_takes_the_lane_with_the_fewest_bodies_in_the_way() -> void:
 	GameLoop2.stack = [
 		# Row 0 column 3 — blocks a 2x2 from standing at row 0 at all.
-		{"instance": 951, "enemy": _enemy(0), "health": 1, "col": 3, "row": 0},
+		_body(951, _enemy(0), 3, 0),
 		# Row 2 column 2 — in the way of a 2x2 entering at row 1 OR row 2.
-		{"instance": 952, "enemy": _enemy(0), "health": 1, "col": 2, "row": 2},
+		_body(952, _enemy(0), 2, 2),
 		# Row 3 column 1 — only in the way of one entering at row 2.
-		{"instance": 953, "enemy": _enemy(0), "health": 1, "col": 1, "row": 3},
+		_body(953, _enemy(0), 1, 3),
 	]
 	var big: GoalEnemyData = _shaped(3, 2, 2)
 	assert_eq(int(GameLoop2.path_blockers(big, 1, GameLoop2.grid_cols() - 1)["enemies"]), 1,
@@ -460,8 +479,7 @@ func test_equally_clear_lanes_are_still_chosen_at_random() -> void:
 # will pass through.
 func test_path_check_uses_the_whole_footprint() -> void:
 	# A 1x1 sitting at the front of row 1.
-	GameLoop2.stack = [{"instance": 901, "enemy": _enemy(0), "health": 1,
-		"col": 1, "row": 1}]
+	GameLoop2.stack = [_body(901, _enemy(0), 1, 1)]
 	var tall: GoalEnemyData = _shaped(0, 2, 1)      # two rows tall, one column wide
 	assert_false(GameLoop2.has_clear_path(tall, 0, GameLoop2.grid_cols()),
 		"a 2-tall body starting at row 0 would drag its lower half into the blocked lane")
@@ -505,10 +523,8 @@ func test_full_front_column_stalls_the_queue() -> void:
 # walk through it — it stalls in the column behind and waits.
 func test_a_wide_enemy_blocks_a_smaller_one_behind_it() -> void:
 	# A 1x2 body parked at the front of row 0, and a 1x1 directly behind it.
-	var wall := {"instance": 91, "enemy": _shaped(0, 1, 2), "health": 1,
-		"col": 1, "row": 0}
-	var runt := {"instance": 92, "enemy": _enemy(0), "health": 1,
-		"col": 3, "row": 0}
+	var wall := _body(91, _shaped(0, 1, 2), 1, 0)
+	var runt := _body(92, _enemy(0), 3, 0)
 	GameLoop2.stack = [wall, runt]
 	_turn()
 	assert_eq(_col_of(92), 3, "column 2 is the wall's back half — the runt can't enter it")
@@ -517,8 +533,7 @@ func test_a_wide_enemy_blocks_a_smaller_one_behind_it() -> void:
 # The L's notch is a real gap: a 1x1 fits into the empty corner of its bounding
 # box, but not into any cell the L actually fills.
 func test_the_l_shape_blocks_its_solid_cells_but_not_its_notch() -> void:
-	var bastion := {"instance": 81, "enemy": _bastion(3), "health": 1,
-		"col": 1, "row": 0}
+	var bastion := _body(81, _bastion(3), 1, 0)
 	GameLoop2.stack = [bastion]
 	var runt: GoalEnemyData = _enemy(0)
 	# Row 0 columns 1-2 are the notch above the L's base; column 3 of row 0 is solid.
@@ -532,11 +547,9 @@ func test_the_l_shape_blocks_its_solid_cells_but_not_its_notch() -> void:
 # An enemy only steps forward when its ENTIRE footprint clears, so the L cannot
 # slide over a body tucked into the lane its base needs.
 func test_a_shaped_enemy_needs_its_whole_footprint_clear_to_advance() -> void:
-	var bastion := {"instance": 81, "enemy": _bastion(0), "health": 1,
-		"col": 2, "row": 0}
+	var bastion := _body(81, _bastion(0), 2, 0)
 	# A 1x1 sitting in row 1 column 1 — dead ahead of the L's base row.
-	var blocker := {"instance": 82, "enemy": _enemy(0), "health": 1,
-		"col": 1, "row": 1}
+	var blocker := _body(82, _enemy(0), 1, 1)
 	GameLoop2.stack = [bastion, blocker]
 	_turn()
 	assert_eq(_col_of(81), 2, "the L is held up by the body in front of its base")
@@ -548,8 +561,7 @@ func test_a_shaped_enemy_needs_its_whole_footprint_clear_to_advance() -> void:
 # An enemy strikes as soon as ANY of its cells is in the front column — the
 # reason a long body hurts sooner than a compact one.
 func test_any_cell_in_the_front_column_counts_as_the_front_line() -> void:
-	var wide := {"instance": 71, "enemy": _shaped(4, 1, 3), "health": 1,
-		"col": 1, "row": 0}
+	var wide := _body(71, _shaped(4, 1, 3), 1, 0)
 	GameLoop2.stack = [wide]
 	assert_eq(GameLoop2.front_count(), 1, "its leading cell is in column 1")
 	assert_eq(GameLoop2.damage_per_lost_run(), 4)

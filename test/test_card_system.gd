@@ -35,7 +35,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 13, "the sheet's 13 rows all generated")
+	assert_eq(cards.size(), 14, "the sheet's 14 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -121,11 +121,20 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # happens. Balatro, the Ironclad rare and the MTG icon each carry one.
 #
 # Pinned rather than waved through, because it is a fact about how much the floor
-# gives away — the day a fourth card joins Balatro's deck, or a sixth deck arrives
+# gives away — the day a fourth card joins Balatro's deck, or another deck arrives
 # with one card in it, this fails and somebody decides on purpose.
+#
+# IT HAS FAILED ONCE, AND THIS IS THE DECISION. Echo Form arrived as the only
+# Defect Rare, so its face-down icon names it exactly the way Barricade's names
+# Barricade. Accepted rather than worked around: three decks already gave their
+# one card away and a fourth is the same trade on the same terms, where hiding it
+# would mean either inventing a deck the card does not belong to or holding a
+# finished card back until it has a sibling. The guessing lives in the two decks
+# of five, and those are untouched.
 const LONELY_DECKS := [
 	"Balatro_Playing_Cards",        # Ride the Bus
 	"Isaac_MTG_Cards",              # Ancient Recall
+	"Slay_the_Spire_Defect_Rare",   # Echo Form
 	"Slay_the_Spire_Ironclad_Rare", # Barricade
 ]
 
@@ -140,7 +149,7 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 			lonely.append(icon)
 	lonely.sort()
 	assert_eq(lonely, LONELY_DECKS,
-		"three decks hold one card each and name it on the floor — see LONELY_DECKS")
+		"four decks hold one card each and name it on the floor — see LONELY_DECKS")
 	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 5,
 		"the arcana are where a face-down card is a real guess")
 	assert_eq(int(counts.get("Isaac_Playing_Cards", 0)), 5)
@@ -242,6 +251,39 @@ func test_barricade_arms_the_bank_for_exactly_one_game() -> void:
 	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
 	assert_true(GameState.banks_shields())
 	assert_true(GameState.bank_shields_next)
+
+func test_echo_form_arms_an_extra_copy_of_every_piece_of_loot() -> void:
+	assert_eq(GameState.extra_loot_copies(), 0, "nothing is armed to start with")
+	var out: Dictionary = CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	assert_eq(GameState.extra_loot_copies(), 1, "one additional copy, as the card says")
+	assert_string_contains(String(out["logs"][0]).to_lower(), "twice")
+
+func test_two_echo_forms_owe_two_extra_copies() -> void:
+	# "An additional copy" is a thing a card owes you, and two cards owe two — a
+	# second Rare quietly being a no-op is the kind of thing a player only ever
+	# finds out by wasting one.
+	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	assert_eq(GameState.extra_loot_copies(), 2)
+
+func test_echo_form_expires_when_the_next_game_resolves() -> void:
+	# Barricade's clock exactly, and cleared on the same beat: the promise was
+	# about the next game HOWEVER it went, so it does not wait around for a game
+	# the player happened to spend loot in.
+	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	assert_eq(GameState.extra_loot_copies(), 1)
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.extra_loot_copies(), 0, "one game, and the game counts")
+
+func test_echo_form_is_not_echo_chamber() -> void:
+	# The two read alike in a sentence and are different mechanics. The relic sets
+	# a DEPTH into the history of what has been spent; the card copies the piece in
+	# your hand. Neither should be readable as the other, or a temporary Echo Form
+	# would quietly become a worse Echo Chamber.
+	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	assert_eq(GameState.loot_echo_depth(), 0,
+		"the card grants no history depth — that is the relic's")
+	assert_eq(GameState.extra_loot_copies(), 1, "and the relic would grant none of this")
 
 func test_the_three_teleports_hand_back_a_request_rather_than_moving_you() -> void:
 	var wants: Dictionary = {

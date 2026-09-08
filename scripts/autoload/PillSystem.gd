@@ -302,10 +302,20 @@ func take_pill(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	elif would_save_you(pill, horse):
 		ops = [{"op": "heal_full"}]
 
+	# WHAT THIS DOSE MAY NOT MAKE THE RUN FORGET. The horse dose spares nothing —
+	# "every identified piece of loot" has always included the lesson taking it
+	# just taught. The NORMAL dose spares itself, which is the rule the file has
+	# stated since Amnesia shipped ("its colour is learned from the NORMAL dose,
+	# which forgets a curse's worth of other things and not this") and which only
+	# became reachable when the sheet gave the normal dose a `forget loot 1` of its
+	# own. Without it, a normal Amnesia taken when nothing else is known forgets
+	# the only thing there was to forget — itself — and the pill becomes one the
+	# run can never hold on to.
+	var spare: StringName = &"" if horse else pill.id
 	var landed: bool = false
 	for op in ops:
 		if op is Dictionary:
-			landed = _apply_one(op, out, rng) or landed
+			landed = _apply_one(op, out, rng, spare) or landed
 	# Nothing happened means nothing was learned: a capsule whose every op no-opped
 	# — a 48 Hour Energy taken with nothing chargeable in the pack, an Amnesia with
 	# nothing known to forget — showed the player nothing about what the colour
@@ -366,7 +376,10 @@ func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
 
 # One dose clause. Returns whether it actually DID anything — a dose whose every
 # clause no-opped is what leaves a capsule unidentified (see take_pill).
-func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
+# `spare` is the one loot id this dose must not un-identify — the pill being
+# swallowed, on a normal dose. Only `forget` reads it; every other op ignores it.
+func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
+		spare: StringName = &"") -> bool:
 	var verb := String(op.get("op", ""))
 	match verb:
 		"gain_stat", "lose_stat":
@@ -403,7 +416,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> 
 		"add_curse":
 			return _add_curses(op, out, rng)
 		"forget":
-			return _forget(op, out, rng)
+			return _forget(op, out, rng, spare)
 		"charge":
 			return _charge(op, out, rng)
 		"teleport":
@@ -487,11 +500,19 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 # meant; you have merely stopped knowing it, and taking one is how you find out
 # again. Redealing would make the pill unlearnable rather than forgotten.
 #
-# THE PILL BEING SWALLOWED IS NOT SPARED. Amnesia's horse dose wipes every
-# identified piece of loot, and "every" includes the lesson taking it just taught:
-# the dose that erases the run's knowledge erases its own name with it. So the
-# horse dose can never leave itself known — its colour is learned from the NORMAL
-# dose, which forgets a curse's worth of other things and not this.
+# THE PILL BEING SWALLOWED IS NOT SPARED BY THE HORSE DOSE. Amnesia's horse dose
+# wipes every identified piece of loot, and "every" includes the lesson taking it
+# just taught: the dose that erases the run's knowledge erases its own name with
+# it. So the horse dose can never leave itself known — its colour is learned from
+# the NORMAL dose, which forgets a curse's worth of other things and not this.
+#
+# THE NORMAL DOSE THEREFORE SPARES ITSELF, through `spare`. That sentence above
+# was a description of a rule nothing enforced for as long as the normal dose
+# forgot nothing at all; the sheet giving it `forget loot 1` is what made the
+# difference load-bearing. Un-spared, a normal Amnesia drawn when it is the only
+# thing the run has identified forgets ITSELF, every time — and the one dose that
+# is supposed to teach you the colour becomes the one that can never leave you
+# knowing it.
 #
 # THE FORGETTING ITSELF IS LootSystem's, shared with the scroll Amnesia, which now
 # asks for the same `forget loot` this dose always did (§10). One difference the
@@ -499,12 +520,13 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 # turn, so "forget 1" forgot one scroll AND one pill. It forgets one thing now,
 # drawn from everything known — which is what the sheet's "1 random Identified
 # Loot" says, and what a horse `all` meant either way.
-func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
+func _forget(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
+		spare: StringName = &"") -> bool:
 	var kind: String = String(op.get("kind", "loot")).to_lower()
 	var count: int = int(op.get("count", 1))
 	if count > 0:
 		count = _scaled_value(op, "count", 1)
-	var forgot: int = LootSystem.forget_identified(kind, count, rng)
+	var forgot: int = LootSystem.forget_identified(kind, count, rng, spare)
 	if forgot <= 0:
 		out["logs"].append("You have no loot knowledge to forget.")
 		return false

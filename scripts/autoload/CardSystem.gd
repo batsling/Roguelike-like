@@ -108,6 +108,8 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 			_gain_loot(effect, out)
 		"bank_shields_next":
 			_bank_shields_next(out)
+		"echo_loot_next":
+			_echo_loot_next(effect, out)
 		"spawn_object":
 			_spawn_object(effect, out)
 		"teleport_type":
@@ -251,6 +253,22 @@ func _bank_shields_next(out: Dictionary) -> void:
 	GameState.bank_shields_next = true
 	out["logs"].append("The next game's unspent %ss will become %ss."
 		% [GameState.TEMP_SHIELD_NAME, GameState.SHIELD_NAME])
+
+
+# Echo Form: every piece of loot spent this coming game is used one extra time.
+#
+# Barricade's shape exactly — arm a run flag, let the game that resolves clear it
+# — because the two cards make the same kind of promise: one game, spent card,
+# nothing left in the pack to read it off.
+#
+# It ADDS rather than sets, so a second Echo Form is a second copy rather than a
+# no-op. "An additional copy" is a thing a card owes you, and two cards owe two.
+func _echo_loot_next(effect: Dictionary, out: Dictionary) -> void:
+	var copies: int = maxi(1, int(effect.get("count", 1)))
+	GameState.echo_loot_next_game += copies
+	var total: int = GameState.extra_loot_copies()
+	out["logs"].append("Until the end of the next game, every piece of loot you use is used %s."
+		% ("twice" if total == 1 else "%d times" % (total + 1)))
 
 
 # Temperance: put a named machine under the board. NAMED, where an event's

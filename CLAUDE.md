@@ -143,6 +143,21 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 t
   described retired systems while sitting in the live `docs/` folder. The five
   paths that are missing ON PURPOSE are listed in the script with the reason;
   add to that list rather than deleting a sentence that means what it says.
+- **`data/` drifts from the sheet, and now something says so.**
+  `python3 tools/check_data_sync.py` runs every generator over the checked-in
+  workbook, asks git whether anything moved, and restores the tree. Its first run
+  found three rows that had been shipping wrong for weeks — and, tellingly, they
+  had drifted in BOTH directions (the sheet was ahead on two, the `.tres` on one),
+  so "which side is right" needed archaeology in the changelog rather than a rule.
+  Run it before pushing a content change; CI runs it on every push. A sheet row
+  part-way through being authored goes in the script's `KNOWN_UNFINISHED` list
+  with its reason, the way `check_doc_paths.py` lists its deliberate exceptions.
+- **CI runs all of this** (`.github/workflows/ci.yml`): GUT, `check_doc_paths`,
+  `check_data_sync`, `check_map_sync` (informational — it drifts in both
+  directions by design) and `check_overlay.js`. Three jobs, so a red build says
+  which KIND of thing broke — the game, the content pipeline, or the browser page
+  GUT cannot see. The engine version is pinned there and in
+  `.claude/hooks/session-start.sh`; keep the two the same as `project.godot`.
 - **GUT cannot see the OBS overlay, because the overlay is a browser page.**
   `test_obs_companion.gd` pins the payload and stops at the file; everything past
   it — whether `hidden` hides, whether the road actually scrolls, whether a burst
@@ -158,6 +173,19 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 t
 - **`project.godot` comments are `;`, not `#`.** A `#` line is parsed as part of
   the NEXT key. This already silently renamed the `backpack` input action once;
   `test/test_collection.gd` now guards against it.
+- **A new key on an enemy body goes in `GameLoop2.BODY_KEYS` too.** A body on the
+  board is a bare `Dictionary`, and reads are `entry.get(k, default)` by design —
+  a body from an older save legitimately lacks the newer keys. The cost is that a
+  mistyped WRITE (`entry["revive"]` for `revives`) is silent forever: the key
+  nothing reads is written, the real one keeps answering its default, and the
+  symptom is a content bug three files away. `BODY_KEYS` is the list, `_check_body`
+  compares against it on every spawn and load, and `_check_stack` sweeps the whole
+  board at the end of each turn and each game — so a stray key from ANY of the ~49
+  write sites is caught without those sites being touched. Debug builds only. The
+  report names the key, the site, and the legal key it is one edit from.
+  **This was written because the contract had already drifted**: the comment above
+  `stack` listed 16 keys where the code used 19, and two of the three it had lost
+  are written by `_add_to_grid`, the one constructor, in the same file.
 - **A `class_name` that shadows a NATIVE Godot class is a parse error**, and it
   takes down every `.tres` that names the script — `Data` then loads that whole
   folder as zero rows and the failure surfaces hundreds of tests away as missing

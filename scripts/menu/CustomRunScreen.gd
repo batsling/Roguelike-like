@@ -55,6 +55,12 @@ var _counts: Dictionary = {}         # key -> Label
 var _min_path: int = RunGraph.MIN_PATH_LENGTH
 var _max_path: int = RunGraph.MAX_PATH_LENGTH
 var _amulet_id: StringName = &""
+# 0 = "roll me one". Held as an int because that is what RunConfig wants, but
+# TYPED as text: a seed is a number you copy off a screenshot and paste back, and
+# a SpinBox would cap it, step it and reformat it out from under the player.
+var _seed: int = 0
+var _seed_field: LineEdit = null
+var _seed_note: Label = null
 var _band_label: Label = null
 var _target_label: Label = null
 var _target_search: LineEdit = null
@@ -88,6 +94,7 @@ func config() -> Dictionary:
 		"min_path": _min_path,
 		"max_path": _max_path,
 		"amulet_id": String(_amulet_id),
+		"seed": _seed,
 	}
 
 # --- building --------------------------------------------------------------
@@ -151,6 +158,7 @@ func _build() -> void:
 	bottom.add_theme_constant_override("separation", 18)
 	root.add_child(bottom)
 	bottom.add_child(_band_block())
+	bottom.add_child(_seed_block())
 	bottom.add_child(_target_block())
 
 	_verdict = Label.new()
@@ -354,6 +362,72 @@ func _band_block() -> Control:
 	box.add_child(_band_label)
 	return box
 
+# --- the seed --------------------------------------------------------------
+
+# THE RUN, WRITTEN DOWN. Left blank the run rolls its own number, which is what
+# every run did before this box existed. Typed in, the same number deals the same
+# run: the same Amulet, the same opening three, the same drops and level-up rolls,
+# the same alphabet of capsules (see GameState.reset_run).
+#
+# It is a text field rather than a SpinBox on purpose. A seed is a thing you read
+# off someone else's screenshot and paste back in, and a SpinBox would clamp it to
+# its range, step it with arrow keys and reformat it as it was typed — three ways
+# to hand back a different run from the one that was asked for.
+func _seed_block() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.custom_minimum_size.x = 220
+
+	var head := Label.new()
+	head.text = "SEED  (optional)"
+	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_color_override("font_color", UITheme.ACCENT)
+	box.add_child(head)
+
+	var note := Label.new()
+	note.text = "The same number deals the same run."
+	note.tooltip_text = "Leave it blank to be dealt a fresh run. Type a number a run was played on and it comes back: the same Amulet, the same opening cards, the same drops."
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	box.add_child(note)
+
+	_seed_field = LineEdit.new()
+	_seed_field.placeholder_text = "roll me one"
+	_seed_field.add_theme_font_size_override("font_size", 12)
+	_seed_field.text_changed.connect(_on_seed_typed)
+	box.add_child(_seed_field)
+
+	_seed_note = Label.new()
+	_seed_note.add_theme_font_size_override("font_size", 12)
+	_seed_note.add_theme_color_override("font_color", UITheme.GOLD)
+	box.add_child(_seed_note)
+	return box
+
+# DIGITS ONLY, AND THE FIELD IS CORRECTED AS YOU TYPE rather than at Begin —
+# silently ignoring the letters in a pasted "seed: 12345" would start a run on a
+# number the player never saw. `text_changed` re-entering itself is avoided by
+# only writing back when the cleaned text actually differs.
+func _on_seed_typed(raw: String) -> void:
+	var digits: String = ""
+	for ch in raw:
+		if ch >= "0" and ch <= "9":
+			digits += ch
+	# A seed is stored as a 64-bit int. 18 digits rather than 19: every 18-digit
+	# number fits, where 19-digit ones straddle the ceiling (9223372036854775807)
+	# and the ones past it would silently clamp to a different run than the one
+	# typed. The field stops taking digits instead, so what is on screen is always
+	# the seed you will get.
+	if digits.length() > 18:
+		digits = digits.substr(0, 18)
+	if digits != raw:
+		var caret: int = _seed_field.caret_column - (raw.length() - digits.length())
+		_seed_field.text = digits
+		_seed_field.caret_column = maxi(0, caret)
+	# 0 is the "roll me one" value, so a field holding only zeroes reads as blank
+	# rather than as the run whose seed is nothing.
+	_seed = int(digits) if digits != "" else 0
+	_refresh()
+
 func _band_spin(label_text: String, value: int, on_change: Callable) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
@@ -467,6 +541,14 @@ func _refresh() -> void:
 	if _band_label != null:
 		_band_label.text = ("%d games" % _min_path) if _min_path == _max_path \
 			else "%d–%d games" % [_min_path, _max_path]
+
+	if _seed_note != null:
+		if _seed == 0:
+			_seed_note.text = "A fresh run."
+			_seed_note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		else:
+			_seed_note.text = "🎲  %d" % _seed
+			_seed_note.add_theme_color_override("font_color", UITheme.GOLD)
 
 	if _target_label != null:
 		if _amulet_id == &"":

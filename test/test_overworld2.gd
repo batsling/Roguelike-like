@@ -1894,7 +1894,17 @@ func test_the_board_draws_its_own_verbs_and_tier() -> void:
 		assert_false(chips.contains(dup), "%s isn't drawn twice: %s" % [dup, chips])
 
 func test_a_spendable_charge_is_a_button_and_an_empty_one_is_not() -> void:
+	# ALL FOUR VERB CHARGES, not just Scramble. Every chip in `_refresh_select_stats`
+	# that carries a `fire` callable is a button when its count is above zero, and
+	# since Bash and Transmute stopped being readouts that is four of them. Zeroing
+	# Scramble alone left whatever the run had arrived here holding — the Dash that
+	# beating the opening game pays, or the Bash the starting character came with —
+	# so "no charges" was never actually set up, and the assertion held only while
+	# the character and the opening happened to leave all of them empty.
 	GameState.scramble = 0
+	GameState.dash_charges = 0
+	GameState.bash = 0
+	GameState.transmute = 0
 	_ui._refresh_stats()
 	assert_eq(_buttons_in(_ui._select_stats).size(), 0,
 		"no charges -> nothing to press")

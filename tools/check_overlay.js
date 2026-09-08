@@ -61,16 +61,42 @@ function check(name, ok, detail) {
   if (!ok) failures++;
 }
 
+/* ASK PLAYWRIGHT FIRST, GUESS SECOND.
+ *
+ * This used to be the directory scan alone, and the scan knew one Linux layout:
+ * `chrome-linux/chrome`. Playwright has since renamed it to `chrome-linux64/`,
+ * and it now also ships a separate `chromium_headless_shell-<rev>` build whose
+ * binary is called `headless_shell`. A fresh `npx playwright install chromium`
+ * therefore produces a browser this function could not see — which is exactly
+ * what happened the first time CI ran it, while the same code passed locally
+ * only because a STALE older download with the old layout was still on disk.
+ * A path-guesser that works on the machine it was written on and nowhere else
+ * is the worst kind, so the guessing is now the fallback.
+ *
+ * `chromium.executablePath()` is Playwright telling us where it actually put the
+ * browser for this installed version. It throws when nothing is installed, which
+ * is not an error here — it just means try the scan. */
 function findBrowser() {
   const flag = process.argv.find((a) => a.startsWith('--browser='));
   if (flag) return flag.slice('--browser='.length);
   if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+  try {
+    // Its own require: this runs before main() has one, and a missing
+    // playwright-core is reported there with a better message than a throw here.
+    const p = require('playwright-core').chromium.executablePath();
+    if (p && fs.existsSync(p)) return p;
+  } catch (_) { /* not installed, or no browser for this version — try the scan */ }
   const roots = [process.env.PLAYWRIGHT_BROWSERS_PATH, '/opt/pw-browsers',
     path.join(os.homedir(), '.cache/ms-playwright')].filter(Boolean);
   for (const root of roots) {
     if (!fs.existsSync(root)) continue;
     for (const dir of fs.readdirSync(root)) {
-      for (const rel of ['chrome-linux/chrome', 'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+      for (const rel of [
+        'chrome-linux64/chrome',        // current Playwright
+        'chrome-linux/chrome',          // older Playwright
+        'chrome-linux/headless_shell',  // the chromium_headless_shell-* build
+        'chrome-linux64/headless_shell',
+        'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
         'chrome-win/chrome.exe']) {
         const p = path.join(root, dir, rel);
         if (fs.existsSync(p)) return p;

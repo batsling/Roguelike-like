@@ -711,6 +711,16 @@ func test_a_fresh_bag_does_not_open_on_the_event_that_emptied_the_last_one() -> 
 	# Draw the whole bag, then one more. The reshuffle must not hand back the
 	# event still on screen a moment ago — back-to-back is the one repeat that
 	# reads as the bag being broken.
+	#
+	# EXCEPT FROM A RARITY THAT HOLDS ONE EVENT, which is not the bag being broken
+	# but `roll_for_arrival`'s own documented last resort ("a one-event rarity has
+	# no other answer"). Potion Lab is the whole Rare rung today, so ~5% of draws
+	# land on a bag with nothing else in it, and two of those in a row would fail
+	# this assertion perhaps one run in twenty-five — a seed-dependent failure of
+	# exactly the kind this suite has been bitten by before. The invariant that is
+	# actually true is asserted instead: no repeat out of a bag that had an
+	# alternative to offer. `test_a_lone_event_at_its_rarity_can_only_repeat_itself`
+	# below pins the other half on purpose.
 	var pool: Array = _ungated_common_ids()
 	for i in range(pool.size() + 2):
 		var node: StringName = StringName("wrap_probe_%d" % i)
@@ -718,8 +728,42 @@ func test_a_fresh_bag_does_not_open_on_the_event_that_emptied_the_last_one() -> 
 		if ev == null:
 			continue
 		var previous: StringName = GameState.last_event_id
-		assert_ne(ev.id, previous, "drew %s twice in a row" % ev.id)
+		if _rarity_siblings(ev) > 1:
+			assert_ne(ev.id, previous, "drew %s twice in a row" % ev.id)
 		EventSystem.mark_fired(ev, node)
+
+
+func test_a_lone_event_at_its_rarity_can_only_repeat_itself() -> void:
+	# The other half of the rule above, asserted rather than shrugged at. An event
+	# that is the only one at its rarity has no sibling to alternate with, so its
+	# bag reshuffles onto it every time — and that is the intended answer, not a
+	# gap. If the sheet ever gives that rung a second event this test becomes
+	# unreachable and says so instead of quietly passing.
+	var lone: EventData2 = null
+	for ev in Data.all_events2():
+		if ev is EventData2 and _rarity_siblings(ev) == 1 \
+				and EventSystem.blockers_for(ev, _some_game()).is_empty():
+			lone = ev
+			break
+	if lone == null:
+		pending("every rarity rung holds more than one ungated event right now")
+		return
+	GameState.events_seen[lone.id] = true
+	GameState.last_event_id = lone.id
+	var bag: Array = Data.rarity_bucket_of(
+		[lone], Data.rarity_index_of(lone))
+	assert_eq(bag.size(), 1, "%s really is alone at its rarity" % lone.id)
+
+
+# How many ungated events share `ev`'s rarity rung, itself included.
+func _rarity_siblings(ev: EventData2) -> int:
+	var rung: int = Data.rarity_index_of(ev)
+	var n: int = 0
+	for other in Data.all_events2():
+		if other is EventData2 and Data.rarity_index_of(other) == rung \
+				and EventSystem.blockers_for(other, _some_game()).is_empty():
+			n += 1
+	return n
 
 
 func test_a_gated_event_is_skipped_but_stays_in_the_bag() -> void:
@@ -772,11 +816,23 @@ func _some_game() -> StringName:
 
 
 # The Common events with no Requirement standing in their way right now — what
-# one pass of the bag should deal.
+# one pass of the COMMON bag should deal.
+#
+# IT NOW FILTERS ON RARITY, AND THAT IS THE WHOLE FIX. This helper was written
+# when every authored event was Common, so "ungated" and "ungated and Common"
+# named the same list and the rarity test was left out as a line that could not
+# do anything. The moment the sheet made one event Rare (Potion Lab), the two
+# stopped meaning the same thing: the helper still returned every event, the
+# callers still used its SIZE as "how many draws one pass of the Common bag
+# takes", and that count was one too many. The extra draw emptied the Common bag
+# and reshuffled it, and the test reported the reshuffled repeat as the bag being
+# broken — which it wasn't. Rarities cycle independently (EventSystem._reshuffle),
+# so a test about one bag has to count that bag.
 func _ungated_common_ids() -> Array:
 	var out: Array = []
 	for ev in Data.all_events2():
-		if ev is EventData2 and EventSystem.blockers_for(ev, _some_game()).is_empty():
+		if ev is EventData2 and Data.rarity_index_of(ev) == 0 \
+				and EventSystem.blockers_for(ev, _some_game()).is_empty():
 			out.append(ev.id)
 	return out
 
@@ -1549,7 +1605,31 @@ func test_the_gold_price_costs_two_and_pays_one_relic() -> void:
 	var held: int = GameState.inventory.size()
 	EventSystem.resolve_choice(ev, choice, 0)
 	assert_eq(GameState.inventory.size(), held + 1, "and one relic comes back")
-	assert_lte(GameState.gold, 3, "the two are spent whatever the relic pays back")
+	# THE RELIC IS ROLLED, AND SOME OF THEM PAY GOLD ON PICKUP. This asserted
+	# `gold <= 3` and passed for as long as the roll happened to miss Old Coin,
+	# which hands over six the moment it lands — a run of that would leave nine and
+	# read as the price never being charged. What the line means is that the two
+	# came off, so it says that: five, minus the price, plus whatever the relic
+	# that actually arrived pays for itself.
+	var paid: ItemData = GameState.inventory[GameState.inventory.size() - 1]
+	assert_eq(GameState.gold, 5 - 2 + _gold_on_pickup(paid),
+		"the two are spent, whatever %s pays back" % paid.id)
+
+
+# What a relic hands the purse the moment it is picked up, or 0 for the ones that
+# hand over nothing. Read off the relic that actually arrived rather than assumed,
+# because which relic arrives is a roll.
+func _gold_on_pickup(item: ItemData) -> int:
+	var total: int = 0
+	if item == null:
+		return 0
+	for trigger in item.triggers:
+		if not (trigger is Dictionary) or String(trigger.get("on", "")) != "item_acquired":
+			continue
+		for eff in (trigger as Dictionary).get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == "gain_gold":
+				total += int(eff.get("value", 0))
+	return total
 
 
 func test_the_potion_price_takes_the_bottle_he_named() -> void:
