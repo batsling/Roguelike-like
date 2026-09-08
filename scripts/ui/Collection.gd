@@ -389,28 +389,6 @@ func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	return tr
 
-func _tex_rect(tex: Texture2D, size: int, crisp: bool = false) -> TextureRect:
-	var tr := TextureRect.new()
-	tr.texture = tex
-	tr.custom_minimum_size = Vector2(size, size)
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	# Pixel art (small source art scaled UP) must stay crisp — nearest-neighbour
-	# so a 16/32px sprite doesn't blur when the cell blows it up. Auto-detected
-	# from the source size so real cover art (already large) keeps smooth filtering.
-	if crisp or _is_pixel_art(tex, size):
-		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	return tr
-
-# True when `tex` is smaller than the box it'll be drawn in, so scaling it up
-# would soften it — the cue that it's pixel art we should render nearest-neighbour.
-func _is_pixel_art(tex: Texture2D, size: int) -> bool:
-	if tex == null:
-		return false
-	var w: int = tex.get_width()
-	var h: int = tex.get_height()
-	return w > 0 and h > 0 and (w < size or h < size)
-
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
 func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false) -> Control:
 	var pad := 8
@@ -426,7 +404,7 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 	# Let clicks fall through to the enclosing cell so clicking the artwork opens
 	# the detail panel (games/characters already work; this wrapper was eating it).
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tr := _tex_rect(tex, size, crisp)
+	var tr := UITheme.crisp_tex(tex, size, crisp)
 	panel.add_child(tr)
 	return panel
 
@@ -471,7 +449,7 @@ func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.position = Vector2(col0 * step, 0)
 		art.size = Vector2(fc * step - BOARD_GAP, fr * step - BOARD_GAP)
-		if _is_pixel_art(e.image, cell * mini(fr, fc)):
+		if UITheme.is_pixel_art(e.image, Vector2.ONE * (cell * mini(fr, fc))):
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		board.add_child(art)
 	return board
@@ -1430,7 +1408,7 @@ func _character_cell(ch: CharacterData) -> Control:
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if ch.portrait != null:
-		var tr := _tex_rect(ch.portrait, GRID_PORTRAIT_SIZE)
+		var tr := UITheme.crisp_tex(ch.portrait, GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
 	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
@@ -1442,7 +1420,7 @@ func _show_character_detail(ch: CharacterData) -> void:
 	_detail_game = null
 	var green := Color(0.45, 0.82, 0.45)
 	if ch.portrait != null:
-		var tr := _tex_rect(ch.portrait, DETAIL_PORTRAIT_SIZE)
+		var tr := UITheme.crisp_tex(ch.portrait, DETAIL_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
@@ -1452,14 +1430,10 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
 	_detail_box.add_child(_detail_section("Base Stats"))
 	_detail_box.add_child(_kv("Health", str(ch.base_max_hp)))
-	var verbs := [
-		["Bash", ch.start_bash], ["Dash", ch.start_dash], ["Push", ch.start_push],
-		["Transmute", ch.start_transmute], ["Scramble", ch.start_scramble],
-		["Bombs", ch.start_bombs], ["Keys", ch.start_keys],
-	]
-	for v in verbs:
-		if int(v[1]) > 0:
-			_detail_box.add_child(_kv(String(v[0]), str(int(v[1]))))
+	# The loadout off the character itself, so this tab and the character picker
+	# cannot come to list different verbs (CharacterData.verb_loadout).
+	for v in ch.verb_loadout():
+		_detail_box.add_child(_kv(String(v[0]), str(int(v[1]))))
 	# The unrolled points, said as what they are rather than as a verb count:
 	# which verbs they land on isn't known until the run starts.
 	if ch.start_random > 0:
@@ -1467,13 +1441,8 @@ func _show_character_detail(ch: CharacterData) -> void:
 			"%d, rolled across the verbs at run start" % ch.start_random))
 	if ch.starting_items.size() > 0:
 		_detail_box.add_child(_detail_section("Starting Items"))
-		var inames: Array = []
-		for iid in ch.starting_items:
-			var idd: ItemData = Data.get_item2(iid)
-			if idd == null:
-				idd = Data.get_item(iid)
-			inames.append(idd.display_name if idd != null else String(iid))
-		_detail_box.add_child(_label(", ".join(inames), Color(0.8, 0.85, 0.95), 11, false, true))
+		_detail_box.add_child(_label(", ".join(Data.item_names(ch.starting_items)),
+			Color(0.8, 0.85, 0.95), 11, false, true))
 	if ch.level_up_condition != "":
 		_detail_box.add_child(_detail_section("Level Up"))
 		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
@@ -1904,7 +1873,7 @@ func _scroll_card(s: ScrollData) -> Control:
 		path = "res://images2.0/scrolls/Unidentified.png"
 	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	if tex != null:
-		top.add_child(_tex_rect(tex, 48))
+		top.add_child(UITheme.crisp_tex(tex, 48))
 	var head := VBoxContainer.new()
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(head)
@@ -1959,7 +1928,7 @@ func _pill_card(p: PillData) -> Control:
 	vb.add_child(top)
 	var tex: Texture2D = load(PILL_STANDIN) if ResourceLoader.exists(PILL_STANDIN) else null
 	if tex != null:
-		var art := _tex_rect(tex, 48)
+		var art := UITheme.crisp_tex(tex, 48)
 		art.modulate = PILL_STANDIN_TINT
 		top.add_child(art)
 	var head := VBoxContainer.new()
@@ -2008,7 +1977,7 @@ func _potion_card(p: PotionData) -> Control:
 	var tex: Texture2D = load(path) if p.art_file() != "" and ResourceLoader.exists(path) \
 		else null
 	if tex != null:
-		top.add_child(_tex_rect(tex, 48))
+		top.add_child(UITheme.crisp_tex(tex, 48))
 	var head := VBoxContainer.new()
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(head)
@@ -2055,10 +2024,10 @@ func _card_card(c: CardData) -> Control:
 	vb.add_child(top)
 	var face: Texture2D = _card_art("cards", c.art_file())
 	if face != null:
-		top.add_child(_tex_rect(face, 48))
+		top.add_child(UITheme.crisp_tex(face, 48))
 	var back: Texture2D = _card_art("cards_icons", c.icon_file())
 	if back != null:
-		var icon: Control = _tex_rect(back, 28)
+		var icon: Control = UITheme.crisp_tex(back, 28)
 		icon.modulate = Color(1, 1, 1, 0.75)
 		top.add_child(icon)
 	var head := VBoxContainer.new()

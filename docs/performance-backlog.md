@@ -52,7 +52,7 @@ checks at every size the UI uses. Three separate traps in one two-line change.
 
 ---
 
-## 1. `Overworld2.gd` is 5826 lines
+## 1. `Overworld2.gd` is 6022 lines
 
 **This entry said 4260 and had said so for a while.** The file was 5623 when that
 number was last true enough to write down, and 6114 by the time anyone re-measured
@@ -61,9 +61,23 @@ more. That is the finding, not the line count: **a seam table goes stale the
 moment it stops being re-run**, and this one was quoted as current for months
 while the file grew past its own pre-split size.
 
-Down to 5826 with the drop queue out (`DropQueue.gd`, below). Still the biggest
-file in the repo — `AtlasView.gd` is 2764 — holding the run loop, the routing
+**AND THEN IT HAPPENED AGAIN, INSIDE ONE RELEASE.** This entry was re-measured at
+5826 with the drop queue out, and read 6135 the next time anyone ran the numbers —
+**+309 lines against a table that had just been called current**. So the rule
+holds twice over: re-run the table, never quote it. Down to 6034 with the Dash
+filter bar out (`DashFilterBar.gd`, below) — holding the run loop, the routing
 notes, the map plumbing, the save/restore of view state, and `_build_ui`.
+
+**IT IS NOT THE BIGGEST FILE IN THE REPO, AND THIS ENTRY SAID IT WAS.**
+`GameLoop2.gd` is 6869. It was 6704 when this entry was written claiming
+`Overworld2.gd` at 5825 was the biggest — so the sentence was wrong by nine
+hundred lines on the day it was typed, in the document whose whole point is that
+numbers go stale. The comparison it reached for (`AtlasView.gd` is 2794) is the
+biggest file *in `scripts/ui/`*, which is how the mistake reads from the inside:
+the measurement was real, the set it was measured over was not the one the
+sentence claimed. **`GameLoop2.gd` has never had a seam table.** It is the run
+loop and the board — the thing the page is a view OVER — and nothing in this
+document has looked at it.
 
 **Where the growth actually went**, measured against the last commit this file was
 re-read at: +405 lines of a region that did not exist then (*arriving somewhere you
@@ -71,6 +85,14 @@ did not choose* — card teleports, detours, the stay-or-return question, item
 aiming) and +138 of card/item actions, against a diffuse +30 or so spread over
 everything else. A new mechanic landed in the page rather than beside it. That is
 the pattern worth watching: this file does not creep, it absorbs.
+
+**And the +309 says the same thing a second time.** +146 of it was one region the
+table had never seen at all — the Dash panel's search / filter / sort, shipped
+straight into the page — with +63 on offering construction and +43 on save/restore
+behind it. Same shape, same cause: a new mechanic landed in the page rather than
+beside it. **When a feature lands here, its seam is the thing to write down while
+it is still small**; the Dash bar was 146 lines and four scattered fragments a
+month after it shipped.
 
 **The seam table, re-measured.** *Genuinely shared state* is vars the region
 touches that are also touched outside it, ignoring `_build_ui` (the assembler
@@ -84,20 +106,29 @@ region's functions are called from the rest of the page or straight off `_ui` in
 | ~~report checklist~~ | ~~776~~ | | ~~2~~ | **done — `ReportChecklist.gd`** |
 | ~~offering cards + preview~~ | ~~506~~ | | ~~3~~ | **done — `OfferingCards.gd`** |
 | ~~kill-drops + floor loot~~ | ~~498~~ | ~~22~~ | ~~11~~ | **done — `DropQueue.gd`** |
-| routing + the report verb | 606 | 11 | 17 | 8 |
-| `_build_ui` | 519 | 1 | 36 | 1 |
-| save/restore view state | 467 | 14 | 22 | 8 |
-| arriving somewhere you did not choose | 405 | 16 | 17 | 6 |
-| the header, pinned to the screen | 328 | 16 | 12 | 7 |
-| the stats that moved out of the HUD | 280 | 12 | 13 | 7 |
-| the road walked, across the top | 231 | 7 | 16 | 5 |
-| escaping a game you can't beat | 185 | 7 | 4 | 6 |
-| throwing a potion at the board | 183 | 8 | 6 | 3 |
+| ~~the Dash panel's search / filter / sort~~ | ~~146~~ | ~~8~~ | ~~3~~ | **done — `DashFilterBar.gd`** |
+| routing + the report verb | 615 | 11 | 17 | 8 |
+| `_build_ui` | 524 | 1 | 37 | 1 |
+| save/restore view state | 510 | 14 | 23 | 8 |
+| arriving somewhere you did not choose | 405 | 16 | 17 | 9 |
+| the header, pinned to the screen | 328 | 16 | 12 | 14 |
+| the stats that moved out of the HUD | 282 | 12 | 13 | 7 |
+| the road walked, across the top | 235 | 7 | 17 | 5 |
+| escaping a game you can't beat | 191 | 7 | 4 | 6 |
+| throwing a potion at the board | 183 | 8 | 6 | 7 |
 
 **The next cut is `arriving somewhere you did not choose`** (405 lines, 16 funcs) —
 it is the region that grew, it is a mechanic rather than a layout, and its 17
 shared vars are mostly the modal handles it puts up and takes down again. After
 that, *the header* — but read the warning below first.
+
+**Cut it as TWO, though, and the banners already say which two.** Its last five
+functions (`obtain_any_item`, `use_item`, `aim_item`, `_on_item_aimed`,
+`_on_item_aimed_at_cell`) are item use and aiming, not arrival at all — while the
+banner 300 lines above them, *overworld card / item actions*, claims item actions
+and holds seven teleport functions and no items. The two were regrouped under
+honest banners (*card teleports* / *using and aiming an item*) so that the split,
+when it comes, cuts a mechanic instead of a region.
 
 **Three of these should NOT be split, for three different reasons.**
 `capture_view_state`/`restore_view_state` touches 22 shared vars because touching
@@ -119,7 +150,7 @@ and reads privates straight off the instance. The extracted piece therefore
 **cannot take those names with it**: they stay declared on `Overworld2`, with the
 class owning the state under a public name and the page publishing a view of it.
 
-**The pattern the four splits established**, for anything that follows:
+**The pattern the five splits established**, for anything that follows:
 
 - A `RefCounted` holding the page, constructed in `_build_ui` beside the
   containers it fills — or in `_init`, if it owns state the page publishes and a
@@ -132,6 +163,10 @@ class owning the state under a public name and the page publishing a view of it.
   the page answers four small questions for it (`drops_are_done`,
   `drops_are_held`, `offer_loot_to_open_screen`, `drag_pack_anchor`) so the class
   needs to know nothing about `Phase`, `_resolving`, or which screens are up.
+  `DashFilterBar` takes `dash_mode` in on all three entry points, and where its
+  own widgets have to re-check it they read **their own bar's visibility** rather
+  than the page — a control on a hidden bar cannot be pressed, so that is both the
+  truth the callback needs and the only part of the phase the class should know.
 - **A const the page still uses moves with the class**, and the page names it.
 - Leave the old entry points as one-line forwards. Zero call-site churn, in the
   page or in the tests. Some forwards end up with no caller left in the page and
@@ -157,6 +192,73 @@ class owning the state under a public name and the page publishing a view of it.
 **Re-run the measurement before trusting this table.** The script is in the
 CHANGELOG entry that produced it; it takes seconds and it is the only thing that
 keeps this section from going stale again.
+
+---
+
+## 1b. `GameLoop2.gd` is 6896 lines — its first seam table
+
+Written the first time anyone measured this file. The entry above spent months
+calling `Overworld2.gd` the biggest file in the repo while this one was nine
+hundred lines longer and had never been looked at.
+
+**AND THE OVERWORLD2 METRIC DOES NOT TRANSFER. Read this before using the table.**
+§1 ranks seams by *genuinely shared state*, because `Overworld2` is a page: 116
+member vars, and a region that touches twenty of them is welded in. `GameLoop2`
+is the opposite shape — **300 functions over 38 member vars** — so almost every
+region scores low on shared state and the column cannot tell a clean seam from a
+welded one. What discriminates here is **behavioural coupling: how many distinct
+functions in the rest of the file the region calls, and at how many sites.** The
+first draft of this table did not have that column, recommended the abilities
+block on the strength of "6 shared vars across 1,182 lines", and was wrong.
+
+| seam | lines | funcs | shared | back-calls | sites |
+|---|---|---|---|---|---|
+| ENEMY ABILITIES §7.6 (whole tail) | 1182 | 53 | 6 | **30** | 90 |
+| Resolving a game | 657 | 15 | 12 | — | — |
+| save / load | 515 | 22 | 33 | — | — |
+| the ground: tiles + units §17 | 514 | 29 | 6 | — | — |
+| grid model §grid | 374 | 22 | 2 | **13** | 39 |
+| a lost run + its snapshots §3 | 325 | 12 | 35 | — | — |
+| Statuses 2.0 §13 | 321 | 16 | 1 | — | — |
+| INTENTS | 320 | 12 | 2 | — | — |
+
+**The bar this repo has actually set is 4–8 back-calls.** `DropQueue` asks the
+page four questions, `PackStrip` three, `DashFilterBar` eight. At 30 distinct
+back-calls over 90 sites, the abilities block is not a seam — it is a *layer*
+that would spend its life calling home, and every one of its 1,182 lines would
+carry a `_loop.` prefix to say so. The grid model at 13/39 is better and still
+over the bar; four of its thirteen are the board's own dimensions
+(`grid_cols`, `grid_rows`, `offgrid_col`, `spawn_col`), which would have to come
+with it.
+
+**What IS clean is a subset, and the measurement found it — `BodyFacts.gd`, done.**
+Of the abilities block's 53 functions, **22 touch no member var and make no
+back-call at all**. Seventeen of those are one coherent thing — the queries over a
+body `Dictionary`: `entry_goal`, `entry_goal_type`, `entry_image`, `entry_phase`,
+`phase_note`, `entry_hidden`, `entry_tags`, `entry_has_tag`, `grant_tag`,
+`ability_lines`, `resists_status` and the rest of the `entry_ability_*` family.
+That is the half the SCREENS call — `BattlefieldView`, `EnemyInfoCard`,
+`ReportChecklist`, `GameChoiceModal`, `OfferingCards`, `ObsCompanion` — and it
+needs no back-reference of any kind, so it is a file of `static` functions rather
+than a thing that holds the loop. GameLoop2 keeps a forward apiece, so no call
+site in the repo changed.
+
+**Do not read that as 57 lines saved, because that is not what it bought.**
+GameLoop2 went 6896 -> 6840, and the point was never the count: it is that the
+question "what is this body?" now has an answer that does not involve the run
+loop at all, and that the line between the two halves is written down where the
+next person will meet it. `grant_ability` sits immediately below the forwards and
+deliberately did NOT move — it looks a body up and emits `loop_changed`, which is
+exactly the boundary.
+
+The other 31 functions are ability *behaviour* (`_body_died` calls six loop
+functions and touches four vars; `_flee` calls nine), and they belong where they
+are.
+
+**So the honest reading of this file is that it is not Overworld2.** Overworld2
+was a page with mechanics accreted onto it, and the mechanics came off. This is a
+loop, and its regions are layers of one machine rather than passengers on it. The
+cut worth making is the query surface, not the machine.
 
 ---
 

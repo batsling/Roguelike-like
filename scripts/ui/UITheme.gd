@@ -377,24 +377,40 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 # and renders it CRISPLY (nearest-neighbour) when the source is smaller than the
 # box — small pixel art scaled up must not blur, while already-large art such as
 # game cover scans keeps smooth filtering.
-static func crisp_tex(tex: Texture2D, size: int) -> TextureRect:
+#
+# `force` says "nearest-neighbour whatever the sizes are", for the few callers
+# that know their art is a sprite even when it happens to be drawn small.
+#
+# THIS IS THE ONE COPY OF THE RULE. It has been written out by hand three times
+# in this project — the Collection's own `_tex_rect`, the main menu's `_char_tex`
+# and HoverCard's inline TextureRect (test_overworld2 has the regression that
+# caught the last one) — and each hand-rolled copy is a place the game's pixel
+# art can start blurring on its own.
+static func crisp_tex(tex: Texture2D, size: int, force: bool = false) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
 	tr.custom_minimum_size = Vector2(size, size)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	apply_crisp(tr, tex)
+	apply_crisp(tr, tex, force)
 	return tr
 
 # The same rule applied to an existing TextureRect after its texture is assigned,
 # for art that is set dynamically rather than at build time.
-static func apply_crisp(tr: TextureRect, tex: Texture2D) -> void:
-	var box: Vector2 = tr.custom_minimum_size
-	if tex != null and (tex.get_width() < int(box.x) or tex.get_height() < int(box.y)):
+static func apply_crisp(tr: TextureRect, tex: Texture2D, force: bool = false) -> void:
+	if force or is_pixel_art(tex, tr.custom_minimum_size):
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
+
+# True when `tex` is smaller than the `box` it will be drawn in, so scaling it up
+# would soften it — the cue that it is pixel art and wants nearest-neighbour.
+# Public because a couple of callers draw the art themselves (the Collection's
+# footprint board lays the enemy over the grid at a computed size) and still want
+# the same answer this theme gives everything else.
+static func is_pixel_art(tex: Texture2D, box: Vector2) -> bool:
+	return tex != null and (tex.get_width() < int(box.x) or tex.get_height() < int(box.y))
 
 # --- Check boxes -----------------------------------------------------------
 #

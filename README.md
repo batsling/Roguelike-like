@@ -46,6 +46,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     PackStrip       — fills Overworld2's pack strip
 │   │                      #     DropQueue       — everything the run pays out and
 │   │                      #                       the order it is asked about (§8)
+│   │                      #     DashFilterBar   — the Dash panel's search, filter
+│   │                      #                       and sort (§4)
 │   │                      #     LootWindow      — the 3x3 loot grid, floated over
 │   │                      #                       the board by its toggle
 │   │                      #     LootGrid/LootSlot — that 3x3 itself: drag a cell
@@ -68,7 +70,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     LootDropModal   — "the game paid out, keep it?"
 │   │                      #     RunMapModal / LootUseModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
-│   ├── menu/             #   the main menu + CustomRunScreen (the custom run's setup)
+│   ├── menu/             #   MainMenu + CharacterPicker + CustomRunScreen + ProfilePicker
 │   ├── runtime/          #   RunGraph — the real-games influence graph
 │   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
 │                          #     AtlasView + AtlasLayoutBuilder — the star chart
@@ -244,7 +246,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
-| `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. |
+| `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability BEHAVIOUR did not come with it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
 | `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See "The stream overlay" below. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
@@ -282,6 +284,17 @@ node and its script.
   raises mounts — so the door out of the application sat on top of the character
   picker, the Collection and the Atlas, live and clickable through their own
   backdrops. The corner is mounted under the modal layer now.
+  - **`CharacterPicker.gd`** — the roster in `data/characters2.0`, and the one
+    screen between **Start Run** and being in a run: a four-wide grid of icon
+    tiles on the left, the selected hero's full portrait beside its facts on the
+    right, Confirm along the bottom. The detail half **never scrolls** — the
+    facts stack to the *right* of the portrait rather than under it, which is
+    what buys the room to fit a hero on one screen. It only reports which hero
+    was picked (`chosen`); what that *means* — cancelling a pending resume,
+    parking the choice, swapping scene — stays in `MainMenu._begin_run`. It was
+    built inline in `MainMenu.gd` until it was 47% of that file, and it mounts on
+    `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
+    stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
     Bosses, **Loot**, Events, Objects. It is also **the only door onto the Atlas
     that is always open** — the Games tab's *✦ Show constellation* draws the same

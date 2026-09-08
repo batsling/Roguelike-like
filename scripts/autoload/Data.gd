@@ -495,6 +495,20 @@ func get_item_any(id: StringName) -> ItemData:
 	var found: ItemData = _items2.get(id)
 	return found if found != null else _items.get(id)
 
+# The display names of a list of item ids, resolved through `get_item_any` and
+# falling back to the raw id for one the catalogue no longer carries — a starting
+# loadout that names a retired relic prints the id rather than a gap in the list,
+# which is the difference between a visible content bug and an invisible one.
+#
+# Both character screens print a `starting_items` list this way and both used to
+# do the two-table lookup and the fallback by hand.
+func item_names(ids: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for iid in ids:
+		var it: ItemData = get_item_any(StringName(iid))
+		out.append(it.display_name if it != null else String(iid))
+	return out
+
 func get_goal_enemy(id: StringName) -> GoalEnemyData:
 	return _goal_enemies.get(id)
 

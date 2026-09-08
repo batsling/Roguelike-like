@@ -40,12 +40,42 @@ func test_the_character_picker_covers_the_quit_button() -> void:
 	assert_not_null(picker, "the picker is up")
 	if picker == null:
 		return
-	# Two conditions, and it needs both: the picker has to be drawn over the
-	# corner, and it has to swallow the click rather than let it fall through.
+	# THREE conditions, and it needs all of them: the picker has to be drawn over
+	# the corner, it has to swallow the click rather than let it fall through, and
+	# it has to actually REACH the corner.
 	assert_gt(menu._modal_layer.get_index(), menu.get_node("QuitCorner").get_index(),
 		"the picker's layer is above the quit corner")
 	assert_eq(picker.mouse_filter, Control.MOUSE_FILTER_STOP,
 		"and it takes the click rather than passing it down")
+	# The third one is not pedantry. A picker mounted with `set_anchors_preset`
+	# from inside `_ready` anchors its own 0x0 rect to the full parent and stays
+	# 0x0 — it draws its panel in the top-left corner, covers nothing, and passes
+	# both assertions above while Exit Game sits live on top of it. Whether the
+	# screen COVERS the screen is the thing this test is named for.
+	var quit_btn: Button = menu.get_node("QuitCorner/QuitBtn")
+	assert_true(picker.get_global_rect().encloses(quit_btn.get_global_rect()),
+		"the picker's own rect covers the quit corner: picker %s vs button %s"
+			% [str(picker.get_global_rect()), str(quit_btn.get_global_rect())])
+
+# The picker is its own screen now (CharacterPicker), and the seam between it and
+# the menu is one signal. Both halves are worth pinning: the menu has to raise a
+# CharacterPicker rather than some other Control that happens to be up, and that
+# picker's `chosen` has to reach `_begin_run` — an extraction that forgets the
+# connect leaves a Confirm button that lights up, names the hero, and does nothing.
+func test_the_menu_raises_the_character_picker_and_listens_for_the_pick() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	menu._open_character_picker()
+	await wait_frames(2)
+	var picker: CharacterPicker = null
+	for c in menu._modal_layer.get_children():
+		if c is CharacterPicker:
+			picker = c
+	assert_not_null(picker, "the menu raised a CharacterPicker")
+	if picker == null:
+		return
+	assert_true(picker.chosen.is_connected(menu._begin_run),
+		"and Confirm's pick reaches the menu's _begin_run")
 
 # The button still works when nothing is standing in front of it.
 func test_the_quit_button_is_still_wired_up() -> void:

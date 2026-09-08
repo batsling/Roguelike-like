@@ -129,8 +129,7 @@ func test_the_character_picker_fits() -> void:
 	var menu = load("res://scenes/menu/MainMenu.tscn").instantiate()
 	add_child_autofree(menu)
 	await wait_frames(4)
-	var picker: Control = menu._build_character_picker()
-	menu.add_child(picker)
+	var picker: Control = CharacterPicker.open(menu)
 	await wait_frames(6)
 	_assert_fits("the character picker", picker)
 

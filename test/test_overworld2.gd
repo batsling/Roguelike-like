@@ -845,14 +845,6 @@ func _row_index(prefix: String) -> int:
 			return i
 	return -1
 
-func _last_row_index(prefix: String) -> int:
-	var labels: Array = _labels_under(_ui._verify_box)
-	var found: int = -1
-	for i in range(labels.size()):
-		if String(labels[i]).begins_with(prefix):
-			found = i
-	return found
-
 # THE WINNING-RUN ROWS DO NOT SINK, and that is the exception the sinking rule
 # needs rather than an oversight. A row sinks once it is a RECORD — answered,
 # locked, nothing left to decide. These two are never answered mid-game: they arm
@@ -1223,6 +1215,16 @@ func test_shields_expire_when_the_game_is_reported() -> void:
 
 func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> void:
 	_ui.pick(0)
+	# THE BOARD IS EMPTIED FIRST, and that is the whole point of the test rather
+	# than a convenience. A tick gives the enemies a TURN (GameLoop2.log_attempt),
+	# and a body that can reach you swings on its turn and breaks a shield doing it
+	# (_take_hit) — so "the shields are untouched" was only ever true when the
+	# random offering happened to roll bodies that could not reach, and it failed
+	# on roughly one run in four with a 3 that had become a 2. What this test is
+	# about is that the PRESS charges nothing; what a body does with the turn the
+	# press buys is a question for the tests that stand one where it can swing
+	# (`_front_line`), and they arrange the board for it rather than hoping.
+	GameLoop2.stack.clear()
 	var shields: int = GameState.shields
 	assert_eq(_ui.log_attempt(), "turn")
 	_ui._end_resolve()                     # land the playback the tick started

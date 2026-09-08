@@ -289,26 +289,41 @@ var _dashed_here: bool = false
 
 # --- the Dash panel's own search, filter and sort ---------------------------
 #
-# An ordinary offering is three cards and needs none of this. A Dash is a LIST —
-# a hub has twenty connections — and _offered_ids has said so in a comment for as
-# long as it has sorted them A-Z: "the question stops being *which of these three*
-# and becomes *is the game I have in mind in here*". These are the controls that
-# question actually wants, and they are the Collection's, because a player who has
-# used the search box there already knows how this one works.
+# ALL OF IT IS `DashFilterBar`'S, AND THE PAGE ONLY PUBLISHES IT
+# (docs/performance-backlog.md §1). The class owns the three filter values, the
+# bar and its widgets; these names stay here because `test_overworld2.gd` reaches
+# for them, and they read straight through.
 #
-# All three are DASH-ONLY and reset every time a Dash is opened (see `dash`). A
-# filter that outlived the panel would be a silently shortened offering the next
-# time round, which is the one thing an offering must never be.
-var _dash_search: String = ""
+# All three values are DASH-ONLY and reset every time a Dash is opened (see
+# `dash`). A filter that outlived the panel would be a silently shortened offering
+# the next time round, which is the one thing an offering must never be.
+var _dash: DashFilterBar = null
+# These three need SETTERS as well as getters: the tests drive the panel by
+# assigning them rather than by typing into the box.
+var _dash_search: String:
+	get: return _dash.search if _dash != null else ""
+	set(value):
+		if _dash != null:
+			_dash.search = value
 # &"name" (A-Z, the default), &"distance" (fewest steps left to the Amulet
 # first) or &"year". Distance is the one this panel exists for: every dash target
 # is one hop away, so "how far away" can only mean how far the AMULET still is
 # from it, which is the number the whole run is counting down.
-var _dash_sort: StringName = &"name"
+var _dash_sort: StringName:
+	get: return _dash.sort if _dash != null else &"name"
+	set(value):
+		if _dash != null:
+			_dash.sort = value
 # A GameData.GameType, or -1 for every type.
-var _dash_type: int = -1
+var _dash_type: int:
+	get: return _dash.type_filter if _dash != null else -1
+	set(value):
+		if _dash != null:
+			_dash.type_filter = value
 
-# THE ARMED VERB (§4): &"bash", &"transmute", or &"" for none.
+# --- the armed verb (§4) ----------------------------------------------------
+#
+# &"bash", &"transmute", or &"" for none.
 #
 # Bash and Transmute both need a TARGET — one specific card out of the offering —
 # and for a long time that was the reason they had no button. The chips under the
@@ -365,13 +380,17 @@ var _controls_sig: String = ""
 # The third signature lives with the section it guards, in ReportChecklist.
 
 var _controls_row: HBoxContainer
-# The Dash panel's search / filter / sort bar. Empty and hidden outside dash mode.
-var _dash_bar: HFlowContainer
-# Kept so a change to the sort or the type can repaint the LIST without rebuilding
-# the bar the player is typing into.
-var _dash_search_box: LineEdit = null
-var _dash_count_label: Label = null
-var _dash_sort_buttons: Array = []
+# The Dash panel's search / filter / sort bar, and the widgets on it. Empty and
+# hidden outside dash mode. All four are `DashFilterBar`'s and read through, like
+# the three filter values above; nothing outside the class rebinds them.
+var _dash_bar: HFlowContainer:
+	get: return _dash.bar if _dash != null else null
+var _dash_search_box: LineEdit:
+	get: return _dash.search_box if _dash != null else null
+var _dash_count_label: Label:
+	get: return _dash.count_label if _dash != null else null
+var _dash_sort_buttons: Array:
+	get: return _dash.sort_buttons if _dash != null else []
 # The offering half of the page (heading, verbs, cards, hover preview) — hidden
 # once a game is in play, which is what frees the room for the stage below.
 var _select_box: VBoxContainer
@@ -478,6 +497,11 @@ var _last_played_game: GameData = null
 # would otherwise be reading through a null.
 func _init() -> void:
 	_drops = DropQueue.new(self)
+	# Same reason as the drop queue: it holds state the page publishes under names
+	# with SETTERS (`_dash_search`, `_dash_sort`, `_dash_type`), and a test that
+	# assigned one of those before `_ready` had run would otherwise write through a
+	# null and be silently dropped. Its BAR is still mounted in `_build_ui`.
+	_dash = DashFilterBar.new(self)
 
 func _ready() -> void:
 	# A PLACEHOLDER STREAM, not the run's. Whichever way this page is about to be
@@ -2824,7 +2848,17 @@ func _hand_chests_to_post_game() -> void:
 			_drop_queue.append({"items": offer})
 			_pump_drops()
 
-# --- overworld card / item actions (routed here by CardSystem and EffectSystem) --
+# --- what a card or a relic does to the overworld ---------------------------
+#
+# TWO MECHANICS, AND THE BANNER OVER THEM USED TO NAME BOTH WHILE HOLDING ONE.
+# `overworld card / item actions` sat over seven teleport functions and no item
+# actions at all — those lived 300 lines further down, at the tail end of
+# `arriving somewhere you did not choose`, which is not what using a relic is
+# about. So the file said the item half was somewhere it wasn't and said the
+# arrival half was about something it isn't, which is exactly how a split ends
+# up cutting a region instead of a mechanic (docs/performance-backlog.md §1).
+
+# --- card teleports (routed here by CardSystem and EffectSystem) -------------
 
 # THE THREE CARD TELEPORTS, AND RIDE THE BUS, ARE ONE MOVE WITH THREE DESTINATIONS
 # (docs/cards-design.md §5). Each names a different pool — every Deckbuilder game
@@ -2961,6 +2995,99 @@ func _teleport_into(pool: Array, flavour: String, nowhere: String,
 	# the fare bought a move, not a look at somewhere else's offering.
 	arrive_at_game(dest, landed)
 	return landed
+
+# --- using and aiming an item ------------------------------------------------
+
+# Wand of Wishing: obtain any one item — opens a RewardScreen listing the full
+# items2.0 catalog (non-starter) to pick from.
+func obtain_any_item() -> void:
+	if _reward_open:
+		return
+	_reward_open = true
+	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	screen.closed.connect(func():
+		_reward_open = false
+		_redeem_pending_chests())
+	add_child(screen)
+	screen.setup_obtain(Data.reward_item2_pool())
+
+# Fire an owned USABLE / CHARGED item from the overworld inventory panel.
+func use_item(item: ItemData) -> void:
+	if item == null or not GameState.can_fire_item(item):
+		return
+	# AN ITEM THAT AIMS IS ARMED HERE AND FIRED ON THE BOARD (Staff of Flame).
+	# Nothing is spent by this press: GameState.use_item empties a charged bar the
+	# moment it fires, so an item whose effect needs a body picked has to wait for
+	# the pick — otherwise cancelling the picker would cost the charge anyway.
+	if item.wants_target():
+		aim_item(item)
+		return
+	# A non-charged overworld active (Ride the Bus) commits immediately, so spend
+	# its use here (use_item defers the spend for cancellable pickers).
+	var spend_after: bool = not item.is_charged() and item.overworld_usable
+	GameState.use_item(item)
+	if spend_after and GameState.inventory.has(item):
+		GameState.consume_item_use(item)
+	_refresh_items()
+
+# Arm an aiming item over the board: the bodies light up, and the click on one is
+# what fires it (see _on_item_aimed). Refused — loudly, and without spending
+# anything — when there is nothing out there to point it at, which is the one
+# case the pack cannot see from where its button is.
+func aim_item(item: ItemData) -> void:
+	if _board == null or not is_instance_valid(_board):
+		return
+	_close_item_card()
+	var at_ground: bool = item.target_kind() == &"tile"
+	if not _board.begin_item_aim(item):
+		# Two different emptinesses (§17): a body-aimed relic has nobody to point
+		# at, a ground-aimed one has no square inside the columns it authored — a
+		# board narrower than its reach. Both are refused without spending
+		# anything, and both say which it was.
+		var empty: String = ("The board has no tile %s can reach." % item.display_name
+			if at_ground else "Nothing is following you — %s has nothing to aim at."
+			% item.display_name)
+		GameLog.add(empty, UITheme.TEXT_DIM)
+		Notifications.notify(empty, UITheme.TEXT_DIM)
+		return
+	Notifications.notify("Click a tile to aim %s." % item.display_name
+		if at_ground else "Click an enemy to aim %s." % item.display_name,
+		UITheme.ACCENT)
+
+# The board handing back an armed item and the body it was pointed at. THIS is
+# where it fires and where the charge goes — the instance rides `use_item`'s
+# target into the effect ctx, which is how `apply_status … target=enemy` knows
+# which body the player meant.
+func _on_item_aimed(item: ItemData, instance: int) -> void:
+	if item == null or instance <= 0 or not GameState.can_fire_item(item):
+		return
+	if not GameState.use_item(item, instance):
+		return
+	var entry: Dictionary = GameLoop2.entry_for(instance)
+	var enemy: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+	if enemy != null:
+		GameLog.add("%s is aimed at %s." % [item.display_name, enemy.display_name],
+			BASH_ORANGE)
+	_refresh_items()
+	if _board != null and is_instance_valid(_board):
+		_board.refresh()
+
+# The board handing back an armed item and the CELL it was pointed at (Red Candle,
+# §17). The twin of _on_item_aimed above, and deliberately its own function: the
+# cell rides `use_item`'s target as a Vector2i, which is how `apply_tile …
+# target=tile` knows which square the player meant, and the log names the ground
+# rather than a body.
+func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
+	if item == null or not GameState.can_fire_item(item):
+		return
+	if not GameState.use_item(item, cell):
+		return
+	GameLog.add("%s is aimed at column %d, row %d." % [
+		item.display_name, cell.x, cell.y + 1], BASH_ORANGE)
+	_refresh_items()
+	if _board != null and is_instance_valid(_board):
+		_board.refresh()
+
 
 # --- arriving somewhere you did not choose ---------------------------------
 #
@@ -3276,97 +3403,6 @@ func _take_return_choice(index: int) -> void:
 	travel_to_game(back, false)   # coming home from a detour, not teleporting off a game
 	autosave()
 
-
-# Wand of Wishing: obtain any one item — opens a RewardScreen listing the full
-# items2.0 catalog (non-starter) to pick from.
-func obtain_any_item() -> void:
-	if _reward_open:
-		return
-	_reward_open = true
-	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
-	screen.closed.connect(func():
-		_reward_open = false
-		_redeem_pending_chests())
-	add_child(screen)
-	screen.setup_obtain(Data.reward_item2_pool())
-
-# Fire an owned USABLE / CHARGED item from the overworld inventory panel.
-func use_item(item: ItemData) -> void:
-	if item == null or not GameState.can_fire_item(item):
-		return
-	# AN ITEM THAT AIMS IS ARMED HERE AND FIRED ON THE BOARD (Staff of Flame).
-	# Nothing is spent by this press: GameState.use_item empties a charged bar the
-	# moment it fires, so an item whose effect needs a body picked has to wait for
-	# the pick — otherwise cancelling the picker would cost the charge anyway.
-	if item.wants_target():
-		aim_item(item)
-		return
-	# A non-charged overworld active (Ride the Bus) commits immediately, so spend
-	# its use here (use_item defers the spend for cancellable pickers).
-	var spend_after: bool = not item.is_charged() and item.overworld_usable
-	GameState.use_item(item)
-	if spend_after and GameState.inventory.has(item):
-		GameState.consume_item_use(item)
-	_refresh_items()
-
-# Arm an aiming item over the board: the bodies light up, and the click on one is
-# what fires it (see _on_item_aimed). Refused — loudly, and without spending
-# anything — when there is nothing out there to point it at, which is the one
-# case the pack cannot see from where its button is.
-func aim_item(item: ItemData) -> void:
-	if _board == null or not is_instance_valid(_board):
-		return
-	_close_item_card()
-	var at_ground: bool = item.target_kind() == &"tile"
-	if not _board.begin_item_aim(item):
-		# Two different emptinesses (§17): a body-aimed relic has nobody to point
-		# at, a ground-aimed one has no square inside the columns it authored — a
-		# board narrower than its reach. Both are refused without spending
-		# anything, and both say which it was.
-		var empty: String = ("The board has no tile %s can reach." % item.display_name
-			if at_ground else "Nothing is following you — %s has nothing to aim at."
-			% item.display_name)
-		GameLog.add(empty, UITheme.TEXT_DIM)
-		Notifications.notify(empty, UITheme.TEXT_DIM)
-		return
-	Notifications.notify("Click a tile to aim %s." % item.display_name
-		if at_ground else "Click an enemy to aim %s." % item.display_name,
-		UITheme.ACCENT)
-
-# The board handing back an armed item and the body it was pointed at. THIS is
-# where it fires and where the charge goes — the instance rides `use_item`'s
-# target into the effect ctx, which is how `apply_status … target=enemy` knows
-# which body the player meant.
-func _on_item_aimed(item: ItemData, instance: int) -> void:
-	if item == null or instance <= 0 or not GameState.can_fire_item(item):
-		return
-	if not GameState.use_item(item, instance):
-		return
-	var entry: Dictionary = GameLoop2.entry_for(instance)
-	var enemy: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
-	if enemy != null:
-		GameLog.add("%s is aimed at %s." % [item.display_name, enemy.display_name],
-			BASH_ORANGE)
-	_refresh_items()
-	if _board != null and is_instance_valid(_board):
-		_board.refresh()
-
-# The board handing back an armed item and the CELL it was pointed at (Red Candle,
-# §17). The twin of _on_item_aimed above, and deliberately its own function: the
-# cell rides `use_item`'s target as a Vector2i, which is how `apply_tile …
-# target=tile` knows which square the player meant, and the log names the ground
-# rather than a body.
-func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
-	if item == null or not GameState.can_fire_item(item):
-		return
-	if not GameState.use_item(item, cell):
-		return
-	GameLog.add("%s is aimed at column %d, row %d." % [
-		item.display_name, cell.x, cell.y + 1], BASH_ORANGE)
-	_refresh_items()
-	if _board != null and is_instance_valid(_board):
-		_board.refresh()
-
 # --- throwing a potion at the board (docs/potions-design.md §4.2) -----------
 
 # The use modal armed a THROW. The picker goes up on the board, the modal takes
@@ -3681,60 +3717,16 @@ func _guarantee_onward(offered: Array, pool: Array) -> Array:
 # destroyed game is replaced by another game connected to the same node, not by
 # something off the route.
 # The Dash panel's list: every connected game, narrowed by the panel's own search
-# and type filter and put in the panel's own order.
-#
-# NARROWING IS NOT BASHING. What is filtered out is still connected, still
-# reachable and still there the moment the search box is cleared — this only
-# decides what is DRAWN. That is why it lives here rather than in
-# `_sorted_neighbors`, which is what the ordinary three-card offering draws from
-# and must never see a filter.
+# and type filter and put in the panel's own order. Forwards, both of them —
+# `DashFilterBar` owns the filter and the values it runs on.
 func _dash_list(nbrs: Array) -> Array:
-	var out: Array = []
-	var term: String = _dash_search.strip_edges().to_lower()
-	for gid in nbrs:
-		var game: GameData = GameLoop2.game_at(gid)
-		if game == null:
-			continue
-		if _dash_type >= 0 and int(game.type) != _dash_type:
-			continue
-		if term != "" and not term in game.display_name.to_lower():
-			continue
-		out.append(gid)
-	match _dash_sort:
-		&"distance":
-			# Fewest steps LEFT first. A game the distance map has no answer for
-			# (-1, off the run's component) sorts to the back rather than to the
-			# front, where a raw -1 would put it: "unknown" is not "nearly there".
-			out.sort_custom(func(a, b):
-				var da: int = steps_to_amulet(a)
-				var db: int = steps_to_amulet(b)
-				if da < 0:
-					da = 1 << 30
-				if db < 0:
-					db = 1 << 30
-				if da != db:
-					return da < db
-				return _by_display_name(a, b))
-		&"year":
-			out.sort_custom(func(a, b):
-				var ga: GameData = GameLoop2.game_at(a)
-				var gb: GameData = GameLoop2.game_at(b)
-				var ya: int = ga.year if ga != null else 0
-				var yb: int = gb.year if gb != null else 0
-				if ya != yb:
-					return ya > yb
-				return _by_display_name(a, b))
-		_:
-			out.sort_custom(_by_display_name)
-	return out
+	return _dash.filter(nbrs)
 
 # Take the Dash panel back to the state it opens in. Called when a Dash is opened
 # and when one is put down, so a search typed into one Dash can never quietly
 # shorten the next.
 func _reset_dash_filters() -> void:
-	_dash_search = ""
-	_dash_sort = &"name"
-	_dash_type = -1
+	_dash.reset()
 
 # What the panel is showing versus what it could show — read by the filter row's
 # count, and by the tests, so neither has to re-derive it.
@@ -4148,14 +4140,10 @@ func _render_controls() -> void:
 	var sig: String = "%s|%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
 		String(_armed_verb),
 		String(_last_played_game.id) if _last_played_game != null else ""]
-	# THE DASH BAR IS REBUILT ON THE TRANSITION AND ONLY ON IT. A dozen paths drop
-	# out of dash mode (a pick, a report, arming a verb, a teleport), and none of
-	# them should have to remember to tear the bar down — but rebuilding it on
-	# every refresh would take the focus and the caret out of the search box every
-	# time the player typed a letter. Comparing what the bar is showing against the
-	# mode is what tells the two cases apart.
-	if _dash_bar != null and _dash_bar.visible != _dash_mode:
-		_rebuild_dash_bar()
+	# The Dash bar is rebuilt on the TRANSITION and only on it — a dozen paths drop
+	# out of dash mode and none of them should have to remember to tear it down.
+	# DashFilterBar.sync_to_mode is where that comparison lives.
+	_dash.sync_to_mode(_dash_mode)
 	if sig == _controls_sig:
 		return
 	_controls_sig = sig
@@ -4197,107 +4185,25 @@ func _render_controls() -> void:
 
 # --- the Dash panel's search / filter / sort bar ------------------------------
 #
-# BUILT ONCE PER DASH, not once per refresh. Everything else on this page is torn
-# down and redrawn whenever anything changes, which is fine for labels and fatal
-# for a text field: rebuilding the LineEdit under the player mid-word takes the
-# focus and the caret with it, and the search box would be unusable. So the bar is
-# built when a Dash opens and torn down when it closes, and a change to any of its
-# three controls repaints the CARDS only (see `_apply_dash_filter`).
-
-# One of the three sort buttons. Pressed-looking when it is the one in force, so
-# the row says which order the list is in without a label.
-func _dash_sort_button(text: String, key: StringName, tip: String) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.tooltip_text = tip
-	b.toggle_mode = true
-	b.button_pressed = _dash_sort == key
-	b.add_theme_font_size_override("font_size", 12)
-	b.focus_mode = Control.FOCUS_NONE      # so tabbing stays in the search box
-	b.pressed.connect(func():
-		_dash_sort = key
-		for other in _dash_sort_buttons:
-			if is_instance_valid(other):
-				other.button_pressed = other == b
-		_apply_dash_filter())
-	_dash_sort_buttons.append(b)
-	return b
+# THE BAR IS `DashFilterBar` (docs/performance-backlog.md §1). What is left here
+# is the two entry points the page and the tests call, each passing the Dash
+# phase IN rather than letting the class read `_dash_mode` back out.
+#
+# There were three until the dead-code scan (same doc) was re-run after the split
+# and found `_refresh_dash_count` with both its callers gone into the class and no
+# test reaching for it — which is the fourth time that scan has caught a forward a
+# refactor had just orphaned. Run it after a split, not before.
 
 func _rebuild_dash_bar() -> void:
-	if _dash_bar == null:
-		return
-	_dash_sort_buttons.clear()
-	_dash_search_box = null
-	_dash_count_label = null
-	_clear(_dash_bar)
-	_dash_bar.visible = _dash_mode
-	if not _dash_mode:
-		return
-
-	_dash_search_box = LineEdit.new()
-	_dash_search_box.placeholder_text = "Search…"
-	_dash_search_box.text = _dash_search
-	_dash_search_box.custom_minimum_size = Vector2(150, 0)
-	_dash_search_box.add_theme_font_size_override("font_size", 12)
-	# Live rather than debounced: a Dash offers the games CONNECTED to where you
-	# stand — a couple of dozen at the worst hub — so re-filtering is a sort of a
-	# short list, not the Collection's sweep of 861.
-	_dash_search_box.text_changed.connect(func(t: String):
-		_dash_search = t
-		_apply_dash_filter())
-	_dash_bar.add_child(_dash_search_box)
-
-	_dash_bar.add_child(_dash_sort_button("A-Z", &"name",
-		"Alphabetical, so a game you have in mind is where you expect it."))
-	# THE ONE THIS PANEL EXISTS FOR. Every dash target is one hop from here, so
-	# the only distance worth sorting on is how much road is LEFT after taking it.
-	_dash_bar.add_child(_dash_sort_button("Closest to Amulet", &"distance",
-		"Fewest games left between there and %s." % amulet_name()))
-	_dash_bar.add_child(_dash_sort_button("Newest", &"year",
-		"Most recently released first."))
-
-	var type_opt := OptionButton.new()
-	type_opt.add_item("All types", -1)
-	for i in [GameData.GameType.ACTION, GameData.GameType.STRATEGY,
-			GameData.GameType.DECKBUILDER, GameData.GameType.TRADITIONAL]:
-		type_opt.add_item(RunGraph.type_label(i), i)
-	for i in range(type_opt.item_count):
-		if type_opt.get_item_id(i) == _dash_type:
-			type_opt.select(i)
-	type_opt.add_theme_font_size_override("font_size", 12)
-	type_opt.focus_mode = Control.FOCUS_NONE
-	type_opt.item_selected.connect(func(idx: int):
-		_dash_type = type_opt.get_item_id(idx)
-		_apply_dash_filter())
-	_dash_bar.add_child(type_opt)
-
-	_dash_count_label = Label.new()
-	_dash_count_label.add_theme_font_size_override("font_size", 11)
-	_dash_count_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	_dash_count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_dash_bar.add_child(_dash_count_label)
-	_refresh_dash_count()
-
-# "7 of 20" — and it is not decoration. A search that matches nothing leaves an
-# empty strip, which reads exactly like a dead end (the offering's own empty state
-# says "No reachable games"); this is what tells the player the games are still
-# there and the box is what is hiding them.
-func _refresh_dash_count() -> void:
-	if _dash_count_label == null or not is_instance_valid(_dash_count_label):
-		return
-	var shown: int = dash_visible_count()
-	var total: int = dash_total_count()
-	_dash_count_label.text = ("%d game%s" % [total, "" if total == 1 else "s"]
-		if shown == total else "%d of %d" % [shown, total])
+	_dash.rebuild(_dash_mode)
 
 # A control on the bar moved: redraw the CARDS and leave the bar alone, so the
-# search box keeps the focus and the caret the player is typing at.
+# search box keeps the focus and the caret the player is typing at. No caller left
+# in the page — the bar's own widgets call straight through to the class — but
+# `test_overworld2.gd` drives the panel with it after setting a filter by hand.
 func _apply_dash_filter() -> void:
-	if not _dash_mode:
-		return
-	_build_choices()
-	_render_choices()
-	_refresh_dash_count()
+	_dash.apply(_dash_mode)
+
 
 # --- the offering ------------------------------------------------------------
 #
@@ -5478,12 +5384,8 @@ func _build_ui() -> void:
 	# The Dash panel's search / filter / sort bar, on a row of its own BELOW the
 	# controls: it is only ever populated in dash mode, and its widgets are built
 	# once per Dash rather than on every refresh — a LineEdit rebuilt under the
-	# player mid-word loses both the focus and the caret (see _rebuild_dash_bar).
-	_dash_bar = HFlowContainer.new()
-	_dash_bar.add_theme_constant_override("h_separation", 6)
-	_dash_bar.add_theme_constant_override("v_separation", 4)
-	_dash_bar.visible = false
-	_select_box.add_child(_dash_bar)
+	# player mid-word loses both the focus and the caret (see DashFilterBar).
+	_dash.mount(_select_box)
 	_choices_row = HFlowContainer.new()
 	_choices_row.add_theme_constant_override("h_separation", 12)
 	_choices_row.add_theme_constant_override("v_separation", 10)
