@@ -4074,6 +4074,24 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		coins += GameState.enemy_gold_bonus()
 		GameState.change_gold(coins)
 		res["gold"] = int(res.get("gold", 0)) + coins
+	# GASOLINE lays its ground on the square the body fell in (§17), and it is laid
+	# OUTSIDE the `drop` branch above: what this reads is a defeat, not a payout, so
+	# a body cleared by a goal met games later burns exactly as one cleared at the
+	# report does. The bomb is still the exception, and needs no exception written
+	# here — a bombed body never reaches this function at all (see `bomb`), so
+	# buying your way out of a goal lays Hot Bombs' ground or none, never this.
+	#
+	# `fell` is where the loot goes (§8.2), so the tile lands under the drop rather
+	# than instead of it. OFF_FIELD means the body was never standing anywhere —
+	# an off-grid arrival (§7.3) — and there is no square to set alight.
+	var death_ground: StringName = GameState.death_tile()
+	if death_ground != &"" and fell != OFF_FIELD:
+		# Before the announcements, so anything that reacts to the defeat reads a
+		# board that has already settled. apply_tile does the rest of the work: it
+		# bites a NEIGHBOUR standing in the cell it lit (a 2x2 overlapping the
+		# square), and annihilates with a mine already there, exactly as any other
+		# way of laying that tile would.
+		apply_tile(fell, death_ground)
 	# Two announcements, and they are not the same one twice. `enemy_defeated` is
 	# the BOARD's: the overworld hangs the drop question off it. `enemy_killed` is
 	# the ITEM layer's hook (Charm of the Vampire counting bodies), fired through

@@ -312,6 +312,91 @@ func test_hot_bombs_reaches_a_landmines_blast_too() -> void:
 	assert_not_null(GameLoop2.tile_at(Vector2i(2, 0)),
 		"the mine left burning ground where it went off")
 
+# --- Gasoline: ground laid where a body was BEATEN (§17) -------------------
+#
+# The twin of Hot Bombs above, and the pair is only interesting because of what
+# separates them: one reads the blast, the other reads the defeat. A bomb is an
+# escape from a goal (§8.2) and never reaches GameLoop2._defeat, so Gasoline
+# cannot be farmed by spending charges — which is the whole reason it is a flag
+# of its own rather than a second use of bomb_tile.
+
+func test_gasoline_is_authored_as_ground_on_a_kill() -> void:
+	assert_eq(Data.get_item2(&"gasoline").death_tile, &"fire",
+		"Gasoline lays Fire where a body fell")
+	assert_eq(Data.get_item2(&"gasoline").bomb_tile, &"",
+		"and lays nothing behind a bomb — that is the distinction")
+	assert_eq(Data.get_item2(&"hot_bombs").death_tile, &"",
+		"the mirror holds: Hot Bombs answers the blast and not the kill")
+
+func test_the_death_tile_rule_reads_off_the_inventory() -> void:
+	assert_eq(GameState.death_tile(), &"", "nothing owned lays ground on a kill")
+	_give(&"gasoline")
+	assert_eq(GameState.death_tile(), &"fire", "owning it flips the rule")
+
+func test_gasoline_sets_alight_the_square_a_body_fell_in() -> void:
+	_give(&"gasoline")
+	var inst: int = _choose_solo(_enemy("Beat it", 1))
+	_park(inst, Vector2i(2, 1))
+	assert_null(GameLoop2.tile_at(Vector2i(2, 1)), "bare ground while it stands there")
+	assert_true(GameLoop2.fulfill(inst, true), "the goal was met and the body cleared")
+	assert_not_null(GameLoop2.tile_at(Vector2i(2, 1)),
+		"the square it died on is burning")
+
+func test_a_body_beaten_without_gasoline_leaves_bare_ground() -> void:
+	var inst: int = _choose_solo(_enemy("Beat it", 1))
+	_park(inst, Vector2i(2, 1))
+	assert_true(GameLoop2.fulfill(inst, true))
+	assert_null(GameLoop2.tile_at(Vector2i(2, 1)),
+		"a kill lays nothing on its own — the ground is the item's")
+
+func test_gasoline_lays_nothing_behind_a_bombed_body() -> void:
+	# The rule the item is built around. Bombing is buying your way out of a goal,
+	# and a relic that paid ground for it would make the bomb the cheapest way to
+	# set the board alight. Nothing in _defeat says so — the bomb simply never
+	# goes through it.
+	_give(&"gasoline")
+	var inst: int = _choose_solo(_enemy("Beat it", 1))
+	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var cells: Array = GameLoop2.entry_cells(entry)
+	GameState.bombs = 1
+	assert_true(GameLoop2.bomb(inst), "the bomb took the body off the board")
+	for cell in cells:
+		assert_null(GameLoop2.tile_at(cell),
+			"a bombed body is not a beaten one, so it leaves nothing")
+
+func test_gasoline_burns_a_neighbour_standing_in_the_square_it_lit() -> void:
+	# The ground goes down through apply_tile like any other, so a body whose
+	# footprint covers the dead one's square is bitten on the spot — Gasoline
+	# gets that for free rather than reimplementing it.
+	_give(&"gasoline")
+	var dying: int = _choose_solo(_enemy("Beat it", 1))
+	_park(dying, Vector2i(2, 1))
+	var bystander: int = GameLoop2.spawn_to_stack(_enemy("Beat it", 9))
+	if bystander <= 0:
+		pending("the board had no room for a second body")
+		return
+	var other: Dictionary = _park(bystander, Vector2i(2, 1))
+	assert_true(GameLoop2.fulfill(dying, true))
+	assert_eq(int(other["statuses"].get(&"burn", 0)), 1,
+		"the survivor standing on that square takes the stack now")
+
+func test_a_body_that_fell_off_the_board_sets_nothing_alight() -> void:
+	# An off-grid arrival (§7.3) was never standing anywhere, so there is no
+	# square to light. The board must come back with no ground on it at all
+	# rather than with fire at whatever OFF_FIELD happens to equal.
+	_give(&"gasoline")
+	var inst: int = _choose_solo(_enemy("Beat it", 1))
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["col"] = GameLoop2.offgrid_col()
+	entry["row"] = 0
+	assert_true(GameLoop2.entry_cells(entry).is_empty(),
+		"a body parked off-grid holds no square")
+	assert_true(GameLoop2.fulfill(inst, true))
+	for col in range(1, GameLoop2.grid_cols() + 1):
+		for row in range(GameLoop2.grid_rows()):
+			assert_null(GameLoop2.tile_at(Vector2i(col, row)),
+				"nothing was lit anywhere on the board")
+
 func test_a_bomb_spent_on_bare_ground_still_goes_off() -> void:
 	# A bomb aimed at a square rather than at a body (§17). Nothing is standing
 	# there, so nothing takes damage — and with Hot Bombs the square is left

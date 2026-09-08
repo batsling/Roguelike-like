@@ -75,9 +75,11 @@ const INSET_Y := 10.0
 # at this game all evening. Every row it gives back goes to the loot column, whose
 # 3x3 and bin are the tightest thing on the page.
 const COVER := Vector2(44, 58)
-# How wide the verdict's words are allowed to be before they wrap. It is what
-# keeps the ★ Rate button beside the game's name instead of out at the frame's
-# edge — see _header.
+# How wide the verdict's words are allowed to be before they wrap, so the
+# headline and its two autowrapping lines stay a readable column rather than
+# stretching to the frame — see _header. (It used to earn its keep by holding the
+# ★ Rate button in beside the name; that button lives in the footer now, and the
+# wrap is still worth having on its own.)
 const TITLE_W := 520
 # The gutter between the two columns, and the width the right one is pinned to —
 # the loot section's own, so the offer and the pack stay side by side (that drag
@@ -475,17 +477,12 @@ func _header() -> Control:
 	if step != "":
 		words.add_child(_wrapped(step, UITheme.GOLD, 12))
 
-	# ★ RATE, BESIDE THE COVER AND THE NAME, because this is the moment there is
-	# anything to say. It used to live on the play panel's checklist — offered
-	# while the game was still in front of you, which is the one time the player
-	# has not finished forming the opinion the button is asking for. Here the game
-	# is over, its cover is right there, and the score is the last thing the
-	# evening produces. (The select screen keeps its own "★ Rate <game>" for a
-	# game reported earlier; that one is about a different moment and stays.)
-	if g != null:
-		row.add_child(_rate_button(g))
-	# …and the slack goes here, past the button, so the header still spans the
-	# frame without pushing the score away from the game it is about.
+	# The ★ Rate button USED TO SIT HERE, beside the cover and the name — the right
+	# place by the logic of "put it next to the thing it is about", and the wrong
+	# one by the only test that matters: players did not find it. Up in a corner of
+	# a header it reads as decoration on a screen whose whole job is the haul below
+	# it. It now sits in the FOOTER, immediately left of the button everyone
+	# presses to leave (see `_footer`), where the eye already goes.
 	var tail := Control.new()
 	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(tail)
@@ -751,6 +748,17 @@ func _footer() -> Control:
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(hint)
+	# ★ RATE, IMMEDIATELY LEFT OF THE WAY OUT. This is the moment there is anything
+	# to say — the game is over and the score is the last thing the evening
+	# produces — but saying it in a corner of the header meant nobody saw it. The
+	# exit button is the one control on this screen every player looks at, so the
+	# rating rides beside it: found on the way past rather than hunted for.
+	#
+	# LEFT of the exit, never right, and never the focused one: the button that
+	# leaves is still the default action, and a rating is optional every time.
+	var g: GameData = game()
+	if g != null:
+		row.add_child(_rate_button(g))
 	_exit_btn = UITheme.confirm_button(exit_text(), Vector2(260, 42), 16)
 	_exit_btn.pressed.connect(dismiss)
 	row.add_child(_exit_btn)

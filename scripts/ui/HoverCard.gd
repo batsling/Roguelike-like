@@ -44,9 +44,14 @@ extends RefCounted
 #                           its type — what it IS, as against what it does)
 #   pips      Array         optional [{art: Texture2D, text: String, good: bool}]
 #                           drawn as a compact row under the heading
-#   lines     Array[String] the facts. KEEP IT TO TWO — this is the condensed
+#   lines     Array         the facts. KEEP IT TO TWO — this is the condensed
 #                           read, and a card that needs four lines is a card the
-#                           player should be clicking.
+#                           player should be clicking. Usually plain Strings; an
+#                           entry of {"header": "Goals"} instead draws a SECTION
+#                           HEADER, for the one card that genuinely carries two
+#                           kinds of fact at once (an enemy's goal and its
+#                           abilities, §7.6). A header is not a fact and does not
+#                           count toward the two.
 #   note      String        optional faint last line (a hint, a caveat)
 
 const ART := 44.0
@@ -64,8 +69,15 @@ static func attach(node: Control, cfg: Dictionary) -> void:
 	# the first fact is the most useful thing a plain string can be.
 	var lines: Array = cfg.get("lines", [])
 	var fallback: String = String(cfg.get("title", ""))
-	if not lines.is_empty():
-		fallback += "\n%s" % String(lines[0])
+	# The first FACT, not the first entry: a section header is a label for what
+	# follows, and "Goals" alone is a worse plain tooltip than no line at all.
+	for line in lines:
+		if line is Dictionary:
+			continue
+		var first: String = String(line).strip_edges()
+		if first != "":
+			fallback += "\n%s" % first
+			break
 	node.tooltip_text = fallback if fallback.strip_edges() != "" else " "
 
 # The card for whatever was attached to `node`, or null when nothing was — which
@@ -138,6 +150,19 @@ static func build(cfg: Dictionary) -> Control:
 			row.add_child(_pip(pip))
 
 	for line in cfg.get("lines", []):
+		# A SECTION HEADER, for a card carrying two kinds of fact. Drawn small,
+		# uppercase and faint so it reads as a label over the lines beneath rather
+		# than as another fact competing with them.
+		if line is Dictionary:
+			var section: String = String(line.get("header", "")).strip_edges()
+			if section == "":
+				continue
+			var h := Label.new()
+			h.text = section.to_upper()
+			h.add_theme_font_size_override("font_size", 10)
+			h.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+			col.add_child(h)
+			continue
 		var text: String = String(line).strip_edges()
 		if text == "":
 			continue

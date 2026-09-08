@@ -1527,8 +1527,22 @@ const HEALTH_SOURCE_ENEMY_ATTACK := "enemy_attack"
 # survive a burn. A relic that breaks "when an enemy hits you" should not be
 # destroyed by a bill the player ran up themselves.
 const HEALTH_SOURCE_STATUS := "status"
+# The Health that comes WITH a bigger pool — the fill half of `gain_max_hp`, which
+# hands you a container that arrives full. `source` is otherwise only ever read on
+# a LOSS, and this is the one tag on a gain: it is what keeps Rejuvenation Rack
+# from doubling it. A container is not a heal (see ItemData.heal_multiplier), and
+# a Rack that paid 4 Health for a "+2 Max Health" relic would be an item about
+# Max Health items rather than one about healing.
+const HEALTH_SOURCE_MAX_HP_FILL := "max_hp_fill"
 
 func change_hp(delta: int, source: String = "") -> void:
+	# Rejuvenation Rack (§8.1): a heal lands at its multiple. Applied HERE, at the
+	# one point every gain in the run passes through, so the doubling reaches a
+	# pill, a potion, an event's payment and a relic's report payout without any
+	# of them knowing the Rack exists. It scales what was ASKED for and lets
+	# set_hp cap it as usual, so doubling into a full pool is still a full pool.
+	if delta > 0 and source != HEALTH_SOURCE_MAX_HP_FILL:
+		delta *= heal_multiplier()
 	# Each in-combat HP loss is one "time you lost Health this combat" for
 	# Blood for Blood's discount — deckbuilder/action player HP loss (enemy
 	# hits, DoT ticks, self-damage cards) funnels through here. Gated on a
@@ -1700,7 +1714,7 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 	var hp_gain: int = int(stats.get("max_hp", 0))
 	if hp_gain != 0:
 		change_max_hp(hp_gain)
-		change_hp(hp_gain)
+		change_hp(hp_gain, HEALTH_SOURCE_MAX_HP_FILL)
 		applied.append("+%d Max HP" % hp_gain)
 	# Gold gets its own branch rather than a row in _LEVEL_UP_ABILITY_FIELDS: that
 	# loop writes its field with set(), and gold has to go through change_gold so
@@ -2579,6 +2593,18 @@ func bomb_tile() -> StringName:
 			return StringName(it.bomb_tile)
 	return &""
 
+# Gasoline: the TILE EFFECT a defeated enemy leaves on the square it fell in
+# (§17), or &"" while nothing in the pack does that. The first one owned wins,
+# exactly as in bomb_tile above and for the same reason: two items wanting to
+# leave different ground behind is a content question, not a runtime one. Read by
+# GameLoop2._defeat — so a bombed body, which never reaches that function, lays
+# nothing here and gets bomb_tile's answer instead.
+func death_tile() -> StringName:
+	for it in inventory:
+		if it is ItemData and StringName(it.death_tile) != &"":
+			return StringName(it.death_tile)
+	return &""
+
 # Mine-r Construction: how many columns AND rows the battlefield has grown by
 # (§7.3). This one counts rather than answering a bool — the grid is a number,
 # so a second copy is a second column and a second lane. GameLoop2.grid_cols /
@@ -2628,6 +2654,17 @@ func loot_multiplier() -> int:
 	for it in inventory:
 		if it is ItemData and it.loot_multiplier > 1:
 			mult *= it.loot_multiplier
+	return mult
+
+# Rejuvenation Rack: what every heal lands at. MULTIPLIES the copies together for
+# the same reason loot_multiplier does, and returns 1 when nothing owned changes
+# it. Read by change_hp below, which is the only caller — nothing else should
+# multiply a heal itself, or the doubling would land twice on the same points.
+func heal_multiplier() -> int:
+	var mult: int = 1
+	for it in inventory:
+		if it is ItemData and it.heal_multiplier > 1:
+			mult *= it.heal_multiplier
 	return mult
 
 # Golden Idol: the extra Gold every defeated enemy pays on top of its drop (§14).

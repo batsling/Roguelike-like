@@ -9,13 +9,18 @@ extends Control
 #      whichever system owns it, and fires Echo Chamber's copies of the last three
 #      used. Then walk the returned `requests` (identify-which / stun-which /
 #      teleport) through small pickers.
-#   3. SAY WHAT IT DID, on the screen you did it on — see `_show_outcome`.
+#   3. write what it did to the LOG and close — see `_report_outcome`. There is
+#      no "here is what happened, press Done" screen any more: it asked the player
+#      to acknowledge a thing they had just chosen to do, and it did so with a
+#      full-screen panel over the board the piece had just changed.
 #   4. emit `finished` and free itself so the page refreshes.
 #
 # IT IS ONE MODAL FOR BOTH KINDS deliberately. A pill needs fewer words than a
-# scroll, but the two need the same THREE things — a look at what you are about
-# to spend, a confirm, and somewhere for a follow-up choice to be made — and the
-# echo means either kind can hand back a request that belongs to the other.
+# scroll, but the two need the same things — a look at what you are about to
+# spend, a confirm, and somewhere for a follow-up choice to be made — and the
+# echo means either kind can hand back a request that belongs to the other. A
+# CARD is the third kind through the same door (LootSystem.use_entry routes it to
+# CardSystem.play_card), which is why playing one lost its Done screen too.
 #
 # Built entirely in code (no scene file), on its own CanvasLayer so it always
 # centers over the overworld regardless of what opened it.
@@ -40,17 +45,15 @@ var _loot_index: int = -1
 var layer_index: int = 120
 var _requests: Array = []
 # What the use turned out to have done — filled in by `_on_read` and read by
-# `_show_outcome`, which is the last screen before this modal takes itself away.
+# `_report_outcome`, which only needs to know whether it was EMPTY: every line in
+# here has already gone to the log by then, and silence is the one case that
+# still needs saying.
 var _outcome_logs: Array = []
 # The piece was a gamble and is not one any more: this use is what identified it.
 var _newly_learned: bool = false
-# Health as it stood the instant before the piece resolved, so the outcome can show
-# where it landed rather than only what was subtracted.
-var _hp_before: int = 0
-var _max_hp_before: int = 0
 # What Echo Chamber replayed on top of this use, by name. The relic's copies land
-# in the same merged `logs` as the piece's own, so without this the outcome screen
-# is four pieces' worth of effects and no account of where three of them came from.
+# in the same merged `logs` as the piece's own, so without this the log is four
+# pieces' worth of effects and no account of where three of them came from.
 var _echoed: Array = []
 var _panel: PanelContainer = null
 var _body: VBoxContainer = null
@@ -246,12 +249,10 @@ func _on_read() -> void:
 	# A LOOSE piece (`_loot_index < 0`) goes through `use_entry` instead, which is
 	# the same thing minus the slot there was never anything in.
 	#
-	# READ BEFORE, NOT AFTER. Whether this use is what taught the player the piece,
-	# and what their Health was when they took it, are both facts about the moment
-	# before it resolved — and taking a pill is precisely the thing that changes them.
+	# READ BEFORE, NOT AFTER. Whether this use is what taught the player the piece
+	# is a fact about the moment before it resolved — and taking a pill is precisely
+	# the thing that changes it.
 	var known_before: bool = LootSystem.is_identified(_entry)
-	_hp_before = GameState.hp
-	_max_hp_before = GameState.max_hp
 	# Same reason: the use joins the echo memory as it resolves, so what the echoes
 	# WERE can only be read from in front of it.
 	_echoed = _echo_names()
@@ -358,10 +359,10 @@ func throw_cancelled() -> void:
 
 func _process_next_request() -> void:
 	if _requests.is_empty():
-		# The pickers come FIRST and the summary last, because a request is part of
+		# The pickers come FIRST and the report last, because a request is part of
 		# what the piece did: a Scroll of Identify has nothing to report until you have
 		# chosen, and a Telepill has moved you by the time it does.
-		_show_outcome()
+		_report_outcome()
 		return
 	var req: Dictionary = _requests.pop_front()
 	match String(req.get("kind", "")):
@@ -675,73 +676,53 @@ func _report(line: String, log_it: bool = true) -> void:
 #     gets, so the two can never say different things.
 #   * WHERE YOUR HEALTH LANDED, when it moved. "You lose 4 Health" is the size of
 #     the hit; the number that decides what to do next is the one left afterwards.
-func _show_outcome() -> void:
-	_rebuild_panel()
-	var art: TextureRect = LootSystem.art_tex(_entry, 96)
-	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_body.add_child(art)
-	_body.add_child(_heading("%s %s" % [LootSystem.glyph(_entry),
-		LootSystem.display_name(_entry)], ACCENT, 22))
-
-	var chips: Array = [UITheme.chip(LootSystem.kind_name(_entry), LootSystem.LOOT_COLOR)]
-	var pref: String = LootSystem.preference(_entry)
-	if pref != "":
-		chips.append(UITheme.chip(pref, UITheme.preference_color(pref)))
-	_body.add_child(_chip_row(chips))
-
+# THERE IS NO OUTCOME SCREEN. There used to be one — art, name, chips, the effect
+# lines, the Health, and a Done button — and it was a whole screen asking the
+# player to acknowledge a thing they had just chosen to do. Reading a scroll is
+# one decision, and it was costing two clicks and a full-screen wipe of the board
+# the scroll had just changed. Worse, the screen COVERED that board: the fire it
+# lit, the body it stunned and the square it teleported you to were all behind the
+# report describing them.
+#
+# So the modal closes on resolve and the account goes where the run's other
+# accounts already go. That is not a downgrade: every effect line was ALREADY
+# being written to the log by `_on_read` before this screen drew it a second time.
+# What is written here is only the handful of facts the log did not already carry.
+func _report_outcome() -> void:
+	# The piece stopped being a gamble. A TOAST rather than a log line, because it
+	# is news about the player's knowledge rather than about the board, and it is
+	# the one thing on this path they might act on straight away.
 	if _newly_learned:
-		_body.add_child(_heading("You know what this one is now." if not _is_pill()
-			else "Now you know what this capsule is.", PillSystem.PILL_COLOR, 14))
+		Notifications.notify("You know what this one is now." if not _is_pill()
+			else "Now you know what this capsule is.", PillSystem.PILL_COLOR)
 
-	# WHOSE LINES THESE ARE. Echo Chamber's copies resolve into the same merged
-	# `logs` as the piece's own, so a run holding the relic reads four pieces' worth
-	# of effects here — and without this, no account of where three of them came
-	# from. Named before the lines, since it is the frame they are read in.
+	# WHOSE LINES THOSE WERE. Echo Chamber's copies resolve into the same merged
+	# `logs` as the piece's own, so a run holding the relic wrote four pieces' worth
+	# of effects to the log and, without this, no account of where three of them
+	# came from.
 	if not _echoed.is_empty():
-		_body.add_child(_muted("Echo Chamber also used: %s."
-			% ", ".join(PackedStringArray(_echoed))))
+		GameLog.add("Echo Chamber also used: %s."
+			% ", ".join(PackedStringArray(_echoed)), ACCENT)
 
-	# WHERE IT LANDED, on a throw. The lines under this say what happened; without
-	# the square they happened on, an outcome like "Fire covers 4 squares" is a
-	# report the player cannot check against the board they aimed at.
-	if _target is Vector2i:
-		_body.add_child(_muted("%s at column %d, row %d." % [
-			"Zapped" if LootSystem.is_wand(_entry) else "Thrown",
-			(_target as Vector2i).x, (_target as Vector2i).y + 1]))
-
-	# WHAT IS LEFT IN IT — the line only a wand gets, and the one thing this screen
-	# has to say that the other four kinds have no version of. Every other piece is
-	# gone by the time the outcome is read; a wand is usually still in the pack, and
-	# "5 charges left" is the answer to the question the player is actually asking,
-	# which is whether to do it again. `_entry` carries the count as it stood when
-	# the charge came off, so this is what remains rather than what there was.
+	# WHAT IS LEFT IN IT — the line only a wand gets. Every other piece is gone by
+	# now; a wand is usually still in the pack, and "5 charges left" is the answer
+	# to the question the player is actually asking, which is whether to do it
+	# again. `_entry` carries the count as it stood when the charge came off.
 	if LootSystem.is_wand(_entry):
 		var bar: Array = LootSystem.charges(_entry)
 		var left: int = int(bar[0])
-		_body.add_child(_heading(
-			"The wand is spent." if left <= 0
+		GameLog.add("The wand is spent." if left <= 0
 			else "%d of %d charges left." % [left, int(bar[1])],
-			UITheme.TEXT_DIM if left <= 0 else WandSystem.WAND_COLOR, 14))
+			UITheme.TEXT_DIM if left <= 0 else WandSystem.WAND_COLOR)
 
-	# The effect, line by line. A piece whose ops all no-opped (a charge into a pack
-	# with nothing chargeable, an Amnesia with nothing to forget) reports that
-	# itself, so the empty case here is only the piece that had nothing to say.
+	# A piece whose ops ALL no-opped (a charge into a pack with nothing chargeable,
+	# an Amnesia with nothing to forget) wrote nothing to the log, and silence
+	# after a click reads as a click that did not register. It is the one case that
+	# still needs saying out loud.
 	if _outcome_logs.is_empty():
-		_body.add_child(_muted("Nothing happens."))
-	else:
-		for line in _outcome_logs:
-			_body.add_child(_muted(String(line)))
-
-	if GameState.hp != _hp_before or GameState.max_hp != _max_hp_before:
-		var health := _heading("Health %d / %d" % [GameState.hp, GameState.max_hp],
-			UITheme.DANGER if GameState.hp < _hp_before else UITheme.SUCCESS, 16)
-		_body.add_child(health)
-
-	var done := UITheme.confirm_button("Done", Vector2(150, 36), 15)
-	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	done.pressed.connect(_finish)
-	_body.add_child(done)
-	done.grab_focus()
+		Notifications.notify("%s: nothing happens." % LootSystem.display_name(_entry),
+			UITheme.TEXT_DIM)
+	_finish()
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -983,3 +983,112 @@ func test_a_card_can_pay_a_coin_that_pays_a_max_health_but_no_further() -> void:
 	GameState.take_loot_entry(card)
 	assert_eq(GameState.gold, 1, "the card paid its coin")
 	assert_eq(GameState.max_hp, 11, "and the coin paid its Max Health, once")
+
+# --- Rejuvenation Rack / Infusion: the two halves of the Health pool -------
+#
+# One doubles what arrives IN the container, the other hands over container with
+# nothing in it, and the pair is worth testing together because the interesting
+# question is where the line between them falls. A heal is Health arriving in a
+# pool that already exists; the fill that comes WITH a bigger pool is not one.
+
+func test_the_rack_doubles_a_heal() -> void:
+	GameState.max_hp = 40
+	GameState.hp = 10
+	assert_eq(GameState.heal_multiplier(), 1, "nothing owned yet, so nothing doubles")
+	GameState.change_hp(3)
+	assert_eq(GameState.hp, 13, "the bare heal is what was asked for")
+
+	_give(&"rejuvenation_rack")
+	assert_eq(GameState.heal_multiplier(), 2, "the Rack doubles healing")
+	GameState.change_hp(3)
+	assert_eq(GameState.hp, 19, "and 3 lands as 6")
+
+func test_the_rack_reaches_a_heal_it_has_never_heard_of() -> void:
+	# Read at GameState.change_hp, the one point every gain in the run funnels
+	# through — which is the whole reason a pill, a potion and a relic's report
+	# payout all double without knowing the Rack exists.
+	_give(&"rejuvenation_rack")
+	GameState.max_hp = 40
+	GameState.hp = 10
+	EffectSystem.apply({"type": "gain_hp", "value": 4}, {})
+	assert_eq(GameState.hp, 18, "an effect-driven heal doubles like any other")
+
+func test_the_rack_leaves_damage_alone() -> void:
+	_give(&"rejuvenation_rack")
+	GameState.max_hp = 40
+	GameState.hp = 20
+	GameState.change_hp(-4)
+	assert_eq(GameState.hp, 16, "a doubler of healing is not a doubler of harm")
+
+func test_the_rack_does_not_double_the_health_a_container_arrives_with() -> void:
+	# "+4 Max Health" hands over a pool that comes full (§3). That fill is the
+	# container, not a heal — a Rack that paid 8 for it would quietly be an item
+	# about Max Health relics rather than one about healing.
+	_give(&"rejuvenation_rack")
+	GameState.max_hp = 20
+	GameState.hp = 8
+	_give(&"mango")                               # gain_max_hp 4
+	assert_eq(GameState.max_hp, 24, "the cap rose by what the item said")
+	assert_eq(GameState.hp, 12, "and filled the room it made, once")
+
+func test_the_rack_cannot_heal_past_the_pool() -> void:
+	_give(&"rejuvenation_rack")
+	GameState.max_hp = 20
+	GameState.hp = 18
+	GameState.change_hp(2)
+	assert_eq(GameState.hp, 20, "doubling into a full pool is still a full pool")
+
+func test_two_racks_quadruple_rather_than_double_twice() -> void:
+	# The Sacred Bark rule, for the same reason: "double the effect" applied
+	# twice is quadruple, and summing the copies would make the second one the
+	# weaker buy.
+	_give(&"rejuvenation_rack")
+	_give(&"rejuvenation_rack")
+	assert_eq(GameState.heal_multiplier(), 4)
+	GameState.max_hp = 40
+	GameState.hp = 10
+	GameState.change_hp(2)
+	assert_eq(GameState.hp, 18)
+
+func test_infusion_widens_the_pool_on_every_body() -> void:
+	# The container WITHOUT the Health in it, paid per kill — so Infusion is a
+	# pool that grows all run and never fills itself, which is what makes it a
+	# relic that wants a healer beside it.
+	_give(&"infusion")
+	GameState.max_hp = 20
+	GameState.hp = 20
+	TriggerBus.enemy_killed.emit({"enemy": null})
+	assert_eq(GameState.max_hp, 21, "one body, one point of room")
+	assert_eq(GameState.hp, 20, "and it arrives empty")
+	TriggerBus.enemy_killed.emit({"enemy": null})
+	assert_eq(GameState.max_hp, 22, "it pays again on the next body")
+
+func test_infusion_pays_for_a_body_beaten_on_the_board() -> void:
+	_give(&"infusion")
+	GameState.max_hp = 20
+	# A synthetic one-Health body, so the test is about the payout rather than
+	# about whatever the enemies2.0 sheet last set the first roster entry to.
+	var e := GoalEnemyData.new()
+	e.id = &"synthetic"
+	e.display_name = "Synthetic"
+	e.goal = "Beat it"
+	e.health = 1
+	e.damage = 1
+	e.difficulty = GoalEnemyData.Difficulty.LOW
+	var inst: int = _choose_solo(e)
+	assert_true(GameLoop2.fulfill(inst, true), "the goal was met and the body cleared")
+	assert_eq(GameState.max_hp, 21, "a real defeat pays it, not just the signal")
+
+func test_the_rack_can_fill_the_room_infusion_made() -> void:
+	# The two relics are the halves of one pool, and the pair only works because
+	# Infusion's room is empty: the Rack doubles the heal that fills it.
+	_give(&"infusion")
+	_give(&"rejuvenation_rack")
+	GameState.max_hp = 20
+	GameState.hp = 20
+	TriggerBus.enemy_killed.emit({"enemy": null})
+	TriggerBus.enemy_killed.emit({"enemy": null})
+	assert_eq(GameState.max_hp, 22, "two bodies, two points of room")
+	assert_eq(GameState.hp, 20, "still standing at what it was")
+	GameState.change_hp(1)
+	assert_eq(GameState.hp, 22, "and one point of healing fills both of them")

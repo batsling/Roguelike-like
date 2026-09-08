@@ -751,7 +751,7 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> bool:
 # and the other half only exists once the player has chosen. `read_scroll` returns
 # its logs before the picker has been drawn, so a fulfilment that stayed silent
 # left the reader with a scroll that reported nothing at all — see
-# LootUseModal._show_outcome, which is where these lines land.
+# LootUseModal._on_read, which is what writes these lines to the run log.
 func remove_curse_chosen(indices: Array) -> String:
 	return _lifted_line(_remove_indices(indices))
 

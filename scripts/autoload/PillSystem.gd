@@ -381,7 +381,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> 
 			# full, which is what makes Health Up worth taking at full Health.
 			var up: int = _scaled_value(op, "value", 1)
 			GameState.change_max_hp(up)
-			GameState.change_hp(up)
+			GameState.change_hp(up, GameState.HEALTH_SOURCE_MAX_HP_FILL)
 			out["logs"].append("You gain +%d Max Health." % up)
 			return true
 		"lose_max_hp":

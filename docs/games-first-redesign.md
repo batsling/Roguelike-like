@@ -408,9 +408,40 @@ mean.
 |---|---|
 | **Bash** | **Destroy a game outright — it is removed from the pool and can never show up again.** The card it vacated is **refilled from the same pool the offering is drawn from**: another game *connected to where you are standing*, with its own freshly-rolled goal-enemy (the other cards keep the enemies they were already showing). When that node has no other connection left to give, the slot simply goes — bash is destruction, not a guaranteed reroll. Two bashes are refused outright, because both end the run rather than shape it: the **Amulet game** (destroying the goal makes the run unwinnable) and the **last card on the table** with nothing to replace it. |
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 shields rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
-| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. |
+| **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. **The Dash panel is a LIST, and it has the controls a list wants** — see *Searching the Dash panel* below. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
 | **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
+
+#### Searching the Dash panel
+
+An ordinary offering is **three cards** and needs no controls at all. A Dash is a
+**menu**: a hub has twenty connections, so the question stops being *which of these
+three* and becomes *is the game I have in mind in here*. That is why the list has
+been sorted A-Z rather than shuffled for as long as it has existed, and it is why
+it now carries a **search box, a type filter and three sort orders**
+(`Overworld2._rebuild_dash_bar`, `_dash_list`) — the Collection's controls, so a
+player who has used the search there already knows how this one works.
+
+The sort worth naming is **Closest to Amulet**. Every dash target is one hop from
+where you stand, so "how far away" can only mean how much road is **left** after
+taking it — the number the whole run is counting down. A game the distance map has
+no answer for sorts to the **back**, not the front: "unknown" is not "nearly there".
+
+Two rules keep a filter from ever becoming a lie:
+
+- **Narrowing is not bashing.** What is filtered out is still connected, still
+  reachable, and back the instant the box is cleared. `_dash_list` decides what is
+  *drawn*; `_sorted_neighbors`, which the ordinary offering draws from, never sees
+  a filter.
+- **A filter never outlives the Dash that set it** (`_reset_dash_filters`, called
+  when a Dash opens *and* when one is put down). A search left standing would
+  silently shorten the next panel, and a silently shortened offering is the one
+  thing an offering must never be.
+
+A search that matches nothing says so in words, because an empty strip and a dead
+end look identical and are opposite facts: the panel prints *"No game here matches
+that — clear the search to see all N"* where the offering would print *"No
+reachable games — dead end."*
 
 ### Consumables
 | Item | Effect |
@@ -854,7 +885,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 860, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 861, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is
@@ -996,31 +1027,40 @@ The use modal opens on a **layer above** the drop modal (`USE_LAYER`) — a
 `CanvasLayer`'s order is global, so a modal opened from on top of another has to be
 told to clear it.
 
-**A use ends by saying what it did** (`LootUseModal._show_outcome`). Taking a pill
-used to close the modal the instant it resolved, which put the answer to *what did
-that do to me* into the run log on the far side of the page — the one place the
-player was not looking, having just been looking at the pill. On an **unidentified**
-capsule that is the whole minigame: the reason to swallow an unknown pill is to find
-out what it was, and finding out was happening off-screen.
+**A use ends by writing what it did and closing** (`LootUseModal._report_outcome`).
 
-So the piece gets one more screen, the same furniture as the intro said in the past
-tense: the art, the name it turned out to have, its Preference now that there is one
-to show, **what it turned out to be** when this use is what identified it (the
-capsule is right there above the line, so the colour is named without the run ever
-having to spell a colour out — see *Known this run*), **what it did** as the lines
-the effect itself reported (the same ones the log gets, so the two cannot say
-different things), and **where your Health landed** when it moved — `You lose 4
-Health` is the size of the hit, and the number that decides what to do next is the
-one left afterwards.
+There used to be one more screen here — the art, the name, the effect lines, the
+Health, and a **Done** button — and it is gone. It existed for a real reason: a use
+that closed on the spot put the answer to *what did that do to me* into the run log
+on the far side of the page, and on an **unidentified** capsule that answer is the
+whole minigame. But the cure was worse than the complaint. Reading a scroll is one
+decision, and it was costing two clicks and a full-screen panel drawn **over the
+board the scroll had just changed** — the fire it lit, the body it stunned and the
+square it teleported you to were all behind the report describing them.
 
-The **pickers come first and the summary last**: a request is part of what the piece
+So the account goes where the run's other accounts already go, and nothing is lost
+in the move: **every effect line was already written to the log by `_on_read`**
+before that screen drew it a second time. `_report_outcome` adds only what the log
+did not already carry — Echo Chamber's attribution, and a wand's remaining charges
+— and then closes.
+
+Two facts get a **toast** instead of a log line, because a toast is on screen and
+the log is not:
+
+- **What it turned out to be**, when this use is what identified the piece. This is
+  the case the old screen was really built for, and it is the one thing a player may
+  act on immediately, so it is the one thing that must not be buried.
+- **"Nothing happens"**, for a piece whose ops *all* no-opped. Silence after a click
+  reads as a click that did not register, and that piece wrote nothing to the log to
+  say otherwise.
+
+The **pickers come first and the report last**: a request is part of what the piece
 did, so a Scroll of Identify has nothing to report until you have chosen and a
 Telepill has already moved you by the time it does. **Cancel is not a use** and
-never reaches this screen. On the drop modal, a piece used from that screen now
-resolves the drop when the outcome is dismissed rather than the instant it fires.
+reports nothing at all.
 
-**Every piece has to have something to say, and three of them didn't.** The screen
-can only report what it is handed, and `read_scroll` / `take_pill` return their
+**Every piece has to have something to say, and three of them didn't.** The log
+can only carry what it is handed, and `read_scroll` / `take_pill` return their
 logs *before* a request has been fulfilled — so a scroll whose whole effect is a
 request contributed no line at all. Three pieces came out of a use reporting
 *"Nothing happens"*:
@@ -1889,6 +1929,20 @@ coin, and the coin pays a point of Max Health. See `gold_gained:` and
 `card_obtained:` below for where each fires and, just as importantly, where it
 does not.
 
+**The Risk of Rain 2 trio** are three relics about the Health pool and the
+ground, and only one of them needed a hook that already existed. **Infusion**
+(Uncommon, +1 *empty* Max Health per body defeated) is two existing halves put
+together — `enemy_killed` has been a run-scope trigger since Charm of the
+Vampire, and `gain_empty_max_hp` since Hollow Heart — so it is a pool that grows
+all run and never fills itself, which is exactly what makes it a relic that wants
+a healer beside it. **Rejuvenation Rack** (Rare, "double the effect of all
+Healing") is the healer, on the new `heal_multiplier:` flag below, and the two are
+deliberately the halves of one pool: the Rack doubles the heal that fills the room
+Infusion made. **Gasoline** (Common, Fire on the square a body fell in) is the
+odd one out — it is about the *ground* rather than the pool, and its
+`death_tile` flag is documented where the rest of the ground content lives
+(§17.3).
+
 Three more run-scope hooks and two more flags carry the Isaac relics, and they
 are listed here because each is a *moment* or a *rule* the 2.0 loop did not
 previously name:
@@ -1904,6 +1958,8 @@ previously name:
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
+| `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
+| `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |
@@ -3419,7 +3475,7 @@ sets the mine off and the blast blows the fire out. The pieces come off the boar
 finite — every detonation spends the unit that caused it — and `MAX_CHAIN` is the
 belt to that brace.
 
-### 17.3 The four pieces of content that reach them
+### 17.3 The five pieces of content that reach them
 
 - **Scroll of Fire** (§4.1) — `apply_status burn 3 player; apply_tile fire front;
   apply_status burn 3 front`. Its prose gained the middle clause and its cell
@@ -3441,6 +3497,18 @@ belt to that brace.
   survivor a stack of Burn a turn for three games. Widened by Brimstone for free,
   because what it reads is the blast rather than the target — and it reaches a
   Landmine's blast for the same reason.
+- **Gasoline** (Common, Risk of Rain 2) — `death_tile fire`. The twin of Hot
+  Bombs, and the pair is only interesting because of what separates them: one
+  reads the **blast**, this one reads the **defeat**. `death_tile` is its own
+  field rather than a second use of `bomb_tile` precisely so the two can
+  disagree — a bomb is an escape from a goal (§8.2) and never reaches
+  `GameLoop2._defeat` at all, so Gasoline **cannot be farmed by spending
+  charges**, and nothing in `_defeat` had to be written to say so. What it lays
+  is laid through `apply_tile` like any other ground, so it bites a neighbour
+  standing in the square it lit and annihilates with a mine already there for
+  free. A body that fell **off** the board (§7.3) was never standing anywhere and
+  leaves nothing. Read off the inventory by `GameState.death_tile`, first one
+  owned winning, exactly as `bomb_tile` is.
 - **Landmines** (Uncommon) — `game_beaten: apply_unit landmine
   target=random_empty`. One mine per game finished, on a cell with **nothing on it
   at all** — no body, no unit, no tile effect. That is "a random empty Tile" read

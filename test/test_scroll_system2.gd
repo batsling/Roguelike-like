@@ -391,8 +391,8 @@ func test_stun_enemies_chosen_stuns_the_target() -> void:
 #
 # `read_scroll` returns its logs BEFORE the picker has been drawn, so a scroll
 # whose whole effect is a request used to resolve reporting nothing at all — and
-# the modal's outcome screen (LootUseModal._show_outcome) can only say what it is
-# handed. These are the lines that let a Scare Monster and an Identify describe
+# the run log (LootUseModal._on_read writes it) can only carry what it is handed.
+# These are the lines that let a Scare Monster and an Identify describe
 # themselves.
 
 func test_stunning_says_which_enemy_and_what_it_cost_them() -> void:
@@ -450,7 +450,8 @@ func _scroll_with(effect: Array) -> ScrollData:
 
 func test_every_scroll_says_something_about_itself() -> void:
 	# THE SWEEP, the twin of test_pill_system's. A scroll that resolves in silence
-	# shows the outcome screen a blank, and the catalog is where a new one arrives.
+	# reaches the player as a bare "nothing happens" toast, and the catalog is where
+	# a new one arrives.
 	for scroll in Data.all_scrolls():
 		GameState.reset_run()
 		GameLoop2.reset()

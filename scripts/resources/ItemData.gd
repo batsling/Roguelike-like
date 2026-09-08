@@ -467,6 +467,18 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # since what it covers is the blast rather than the target.
 @export var bomb_tile: StringName = &""
 
+# Gasoline: the TILE EFFECT (§17) left on the square a defeated enemy fell in —
+# the twin of bomb_tile, and an id for the same reason. What separates the two is
+# WHICH defeats they answer to, and that difference is the whole item: a bomb is
+# an escape from a goal (§8.2) and never reaches GameLoop2._defeat at all, so
+# this lays ground only where a body was actually beaten. It therefore cannot be
+# farmed by spending bombs, and a stack cleared at the report leaves a burning
+# board behind it for whatever walks in next.
+#
+# Read by GameLoop2._defeat via GameState.death_tile. A body that died OFF the
+# board (an off-grid arrival, §7.3) fell on no square and leaves nothing.
+@export var death_tile: StringName = &""
+
 # Mine-r Construction: the battlefield itself grows by one column and one row
 # while this is owned (§7.3) — a deeper board to cross before anything reaches
 # the player, and one more lane to stand in. Unlike the three flags above this
@@ -504,6 +516,20 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Read by ScrollSystem through GameState.loot_multiplier, which multiplies the
 # copies together, so two Barks quadruple rather than double twice.
 @export var loot_multiplier: int = 1
+
+# Rejuvenation Rack: every HEAL lands at this multiple. 1 = no change, so callers
+# can multiply unconditionally. Multiplies across copies like Sacred Bark, and
+# for the same reason: "double the effect" applied twice is quadruple.
+#
+# A HEAL IS HEALTH ARRIVING IN A CONTAINER THAT ALREADY EXISTS. That is the line
+# this field draws, and it is why it is read at GameState.change_hp — the one
+# choke point every gain in the run funnels through (a pill, a potion, an event's
+# payment, Pummarola at the report) — rather than at each of the seventeen places
+# that heal. The Health that arrives WITH a new container is not a heal and is
+# not doubled: "+2 Max Health" hands you a bigger pool that comes full, and
+# paying 4 for it would be the Rack quietly raising Max Health items instead.
+# _h_gain_max_hp says so out loud by naming HEALTH_SOURCE_MAX_HP_FILL.
+@export var heal_multiplier: int = 1
 
 # Golden Idol: every defeated enemy pays this much extra Gold on its drop (§14).
 # Read by GameLoop2._defeat via GameState.enemy_gold_bonus, which SUMS the copies.

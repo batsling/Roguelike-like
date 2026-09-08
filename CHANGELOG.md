@@ -11,6 +11,131 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Six passes over the screens, and four of them are about a line or a click
+  that was costing more than it was worth.**
+
+  **The pace row goes silent when there is nothing to warn about.** A card that
+  leaves the board taking no extra turns after the game used to spend a line
+  saying so — "Reporting a game costs no turns there", "Still no extra turns",
+  and even "Enemies slow down — no extra turns" when backing off is what bought
+  the zero. A pace row is a WARNING, and a warning about nothing is a wasted
+  line. `turn_note` and `_start_pace_note` return an empty text instead, which
+  draws no row, so seeing one at all now means the same thing every time: this
+  game hands the enemies turns when you report it. The number is still on the
+  note, so nothing that reads it had to change.
+
+  **★ Rate this game moved to where people actually look.** It sat in a corner
+  of the haul screen's header, beside the cover and the name — the right place
+  by "put it next to the thing it is about", and the wrong one by the only test
+  that matters: nobody found it. It is in the FOOTER now, immediately left of
+  the Go to Event / Go to Shop button every player presses to leave. Left of it
+  and never focused: leaving is still the default action and a rating is still
+  optional.
+
+  **The Dash panel got the controls a list wants.** A Dash is not three cards,
+  it is a menu — a hub has twenty connections — and `_offered_ids` has said so
+  in a comment for as long as it has sorted them A-Z. It now carries a search
+  box, a type filter and three sort orders, the Collection's own controls. The
+  one worth naming is **Closest to Amulet**: every dash target is one hop away,
+  so "how far away" can only mean how much road is LEFT after taking it. Two
+  rules keep a filter from becoming a lie — narrowing is not bashing (the
+  ordinary offering never reads these fields), and a filter never outlives the
+  Dash that set it. A search that matches nothing says the games are still
+  there, because an empty strip and a dead end look identical and are opposite
+  facts.
+
+  **A use no longer ends on a screen asking you to acknowledge it.** Reading a
+  scroll or playing a card is one decision, and it was costing two clicks and a
+  full-screen panel drawn OVER the board the piece had just changed — the fire
+  it lit, the body it stunned and the square it teleported you to were all
+  behind the report describing them. Nothing is lost in the move: every effect
+  line was already going to the run log before that screen drew it a second
+  time. `_report_outcome` adds only what the log did not carry (Echo Chamber's
+  attribution, a wand's charges left) and closes. Two facts get a TOAST rather
+  than a log line, because a toast is on screen and the log is not: **what an
+  unidentified piece turned out to be** — the case the old screen was really
+  built for — and **"nothing happens"** for a piece whose ops all no-opped,
+  since silence after a click reads as a click that did not register.
+
+  **The route strip's arrows were eating themselves.** `RouteArrow` drew a flat
+  7x10 head at a flat 4px inset, which is fine at the end-of-run screen's 24px
+  and falls apart at the header strip's 15: the pads took 8 of the 15, the head
+  took the remaining 7, and what drew was a squat triangle with no shaft behind
+  it. The head is sized against the arrow now — at most half the span — so there
+  is always a line for it to sit on the end of, and the shaft stops where the
+  head begins instead of running under it.
+
+  **The enemy hover card has two headers.** It carries two kinds of fact — the
+  GOAL you must go and do, and the ABILITIES the body uses on you meanwhile —
+  and unlabelled they ran together as one stack of sentences with the ⚠ as the
+  only thing separating them. `HoverCard` learned a section header
+  (`{"header": …}` among the lines); a body with no abilities grows no Abilities
+  header, because an empty section is worse than none, and a header never
+  becomes the plain tooltip, which wants the first FACT.
+
+  Verified on screen with the `verify` skill as well as in assertions — the
+  arrows at three widths, the Dash bar and its empty state, and both hover
+  cards.
+
+- **A game, two connections and three relics off the sheet — and two of the
+  relics needed rules the loop had never had.**
+
+  The same straight port as the entry below it: what was added to
+  `tools/Roguelikes.xlsx`, run back through the generators the sheet is upstream
+  of.
+
+  **The catalog.** **Curse of Pirates** (2026) joins it, with the two connections
+  drawn to it — Vampire Survivors and Hades, both off its Steam page. 861 games
+  and 1,246 connections, and `tools/check_map_sync.py` agrees `data/games/` is
+  level with the sheet: against `Roguelikes.drawio`, the map the game is actually
+  drawn on, it is 861 nodes to 861 games with no drift in either direction. The
+  Atlas sky is re-baked with it, as it is a pure function of the catalog.
+
+  **All three relics arrived with empty Effect cells**, which generates a .tres
+  with no triggers and no flags on it — a relic that is in the pool, is drawn, is
+  described, and does nothing. One of them turned out to need nothing new:
+
+  - **Infusion** (Uncommon, Risk of Rain 2): +1 *empty* Max Health every time you
+    defeat an enemy. Two halves that already existed put together — `enemy_killed`
+    has been a run-scope trigger since Charm of the Vampire and
+    `gain_empty_max_hp` since Hollow Heart — so it is a Health pool that grows all
+    run and never fills itself, which is what makes it a relic that wants a healer
+    beside it.
+
+  The other two are the healer and the arsonist, and each is a rule rather than a
+  moment, so each is a flag on `ItemData` rather than a `TriggerBus` signal:
+
+  - **Rejuvenation Rack** (Rare): double the effect of all Healing, on the new
+    `heal_multiplier` flag. Read at `GameState.change_hp` — the one choke point
+    every gain in the run funnels through, and already where `health_lost` is
+    fired from — so a pill, a potion, an event's payment and a relic's report
+    payout all double without any of them knowing the Rack exists. The line it
+    draws is that **a heal is Health arriving in a container that already
+    exists**: the fill that comes WITH a bigger container is not one, so "+2 Max
+    Health" still pays 2 and not 4. The four places that widen the pool and then
+    fill it now say so out loud with a `HEALTH_SOURCE_MAX_HP_FILL` tag — the one
+    `source` ever read on a gain rather than on a loss. Copies multiply rather
+    than sum, like Sacred Bark: "double the effect" applied twice is quadruple.
+  - **Gasoline** (Common): the square a defeated enemy fell in is left on **Fire**,
+    on the new `death_tile` flag. It is the twin of Hot Bombs' `bomb_tile` and
+    deliberately not the same field, because the whole item is in where the two
+    disagree: a bomb is an escape from a goal, never reaches `GameLoop2._defeat`,
+    and so **cannot farm this** — and nothing in `_defeat` had to be written to
+    say so. What it lays goes down through `apply_tile` like any other ground, so
+    it bites a neighbour standing in the square it lit and annihilates with a mine
+    already there for free; a body that fell off the board was never standing
+    anywhere and leaves nothing.
+
+  The Rack and Infusion are the two halves of one pool and `test_items2.gd` pins
+  them as a pair — the Rack doubles the heal that fills the room Infusion made —
+  along with each rule's refusals: damage, a full pool, and the container's own
+  fill. `test_tiles_units.gd` pins Gasoline beside Hot Bombs, the bombed body
+  included. Hollow Heart's description also picked up the sheet's capitalisation
+  fix, which is what regenerating rather than hand-editing gets you.
+
+  Sheet edited with XML surgery (`tools/_items2_gasoline_infusion_rack_setup.py`),
+  never openpyxl: all eight charts are byte-identical afterwards.
+
 - **Three games, three connections and two relics off the sheet — and the two
   relics needed hooks the run had never named.**
 
