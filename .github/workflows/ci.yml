@@ -81,7 +81,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
+          # NO `cache: pip`. It fails the job outright on a repo with no
+          # requirements.txt or pyproject.toml — "No file matched to
+          # [**/requirements.txt or **/pyproject.toml]" — and this one has
+          # neither, because openpyxl is the only dependency and it installs in
+          # seconds. Caching it would save less time than the cache lookup costs.
 
       - run: pip install openpyxl
 
@@ -107,12 +111,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install a browser to render into
+        # `playwright` and `playwright-core` TOGETHER, and at the same version:
+        # the checker requires playwright-core, while `npx playwright install`
+        # downloads browsers for whichever playwright it runs. Pinning them to one
+        # install is what makes `chromium.executablePath()` — how the checker now
+        # finds the browser — point at something that exists.
         run: |
-          npm install --no-save playwright-core
-          npx --yes playwright@latest install --with-deps chromium
+          npm install --no-save playwright playwright-core
+          npx playwright install --with-deps chromium
 
       - name: Render obs/overlay.html and check it
         # GUT cannot see the overlay: test_obs_companion.gd pins the payload and
