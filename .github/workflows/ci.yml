@@ -19,8 +19,17 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # A second push to the same branch makes the first one's answer irrelevant.
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A second push to the same branch makes the first one's answer irrelevant —
+  # and so does the SAME push arriving twice, which is what this key is really
+  # for. A branch with an open PR fires both `push` and `pull_request` for one
+  # commit, so the whole suite ran twice per push: two GUT runs, two browser
+  # installs, for one answer.
+  #
+  # `github.ref` did not dedupe them, because it is `refs/heads/<branch>` on a
+  # push and `refs/pull/<n>/merge` on a pull_request — two different groups, both
+  # of which ran. The branch NAME is the thing the two events agree on:
+  # `ref_name` is it on a push, and the PR's own head ref is it on the other.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 env:
