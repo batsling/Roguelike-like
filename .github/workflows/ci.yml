@@ -1,0 +1,120 @@
+# CI — run the checks this project already has.
+#
+# WHY THIS EXISTS. The repo had 2,169 GUT tests, a doc-path checker, a map-sync
+# checker, a systems-graph auditor and a headless-browser overlay checker — five
+# verification tools, all run by hand, none run on push. The cost of that showed
+# up as three content rows that had been out of sync with the spreadsheet for
+# weeks (see tools/check_data_sync.py, which is the check that catches them and
+# which this workflow exists to run).
+#
+# The jobs are split so a red build says WHICH kind of thing broke without anyone
+# opening the log: `tests` is the game, `content` is the spreadsheet pipeline,
+# `overlay` is the browser page GUT cannot see.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A second push to the same branch makes the first one's answer irrelevant.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Must match project.godot's config/features. The session-start hook installs
+  # the same version, so local and CI cannot disagree about the engine.
+  GODOT_VERSION: 4.6-stable
+
+jobs:
+  tests:
+    name: GUT suite
+    runs-on: ubuntu-latest
+    # ~7 minutes locally; the ceiling is for a hang, not for a slow runner.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the engine
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/godot
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          name="Godot_v${GODOT_VERSION}_linux.x86_64"
+          mkdir -p ~/.local/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${name}.zip"
+          unzip -q -o /tmp/godot.zip -d /tmp
+          mv "/tmp/${name}" ~/.local/godot/godot
+          chmod +x ~/.local/godot/godot
+
+      - name: Import assets
+        # The first headless run otherwise pays the whole import pass inside the
+        # test timing. Best-effort: the cache rebuilds lazily if this is short.
+        run: timeout 600 ~/.local/godot/godot --headless --import || true
+
+      - name: Rescan for class_name
+        # .godot/global_script_class_cache.cfg is gitignored, so a fresh checkout
+        # has none — and a headless run against a class_name the editor has never
+        # scanned fails with "Could not find type X" in hundreds of unrelated
+        # tests. One editor pass builds it. (CLAUDE.md documents this trap.)
+        run: ~/.local/godot/godot --headless --editor --quit || true
+
+      - name: GUT
+        run: ~/.local/godot/godot --headless -s addons/gut/gut_cmdln.gd
+
+  content:
+    name: Content pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install openpyxl
+
+      - name: Every path named in a live doc exists
+        run: python3 tools/check_doc_paths.py
+
+      - name: data/ is what the sheet says
+        run: python3 tools/check_data_sync.py
+
+      - name: The drawn map and the sheet agree
+        # Reports drift in both directions and is informational by design — games
+        # get drawn before they are sheeted and vice versa — so its exit code is
+        # not the build's. The log is the point.
+        run: python3 tools/check_map_sync.py || true
+        continue-on-error: true
+
+  overlay:
+    name: OBS overlay
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install a browser to render into
+        run: |
+          npm install --no-save playwright-core
+          npx --yes playwright@latest install --with-deps chromium
+
+      - name: Render obs/overlay.html and check it
+        # GUT cannot see the overlay: test_obs_companion.gd pins the payload and
+        # stops at the file. Everything past it is a browser page.
+        run: node tools/check_overlay.js
