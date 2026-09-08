@@ -271,6 +271,8 @@ func _build_payload() -> Dictionary:
 		# gone — so it has to be written down here or a reload would quietly cancel
 		# a card the player paid a loot slot for.
 		"bank_shields_next": GameState.bank_shields_next,
+		# Echo Form's one game, armed and not yet spent (docs/cards-design.md).
+		"echo_loot_next_game": GameState.echo_loot_next_game,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -443,6 +445,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.shields = int(data.get("shields", 0))
 	GameState.bonus_shields = int(data.get("bonus_shields", 0))
 	GameState.bank_shields_next = bool(data.get("bank_shields_next", false))
+	# A save from before Echo Form existed has none, and 0 is the honest answer:
+	# its run was never promised the copies.
+	GameState.echo_loot_next_game = int(data.get("echo_loot_next_game", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))

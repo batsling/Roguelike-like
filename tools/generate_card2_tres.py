@@ -166,6 +166,16 @@ def parse_clause(s: str) -> list:
     if verb in ("teleport_hub", "teleport_start", "copy_item", "bank_shields_next"):
         return [{"op": verb}]
 
+    # Echo Form. `echo_loot_next [N]` — N extra copies of every piece of loot
+    # used, for one game; 1 when unstated, which is what "an additional copy"
+    # means. Bare rather than a kv so it reads like the rest of the DSL.
+    if verb == "echo_loot_next":
+        count = int(bare[0]) if bare else 1
+        if count < 1:
+            raise ValueError("card effect DSL: echo_loot_next needs at least one "
+                             "copy in %r" % s)
+        return [{"op": "echo_loot_next", "count": count}]
+
     if verb == "spawn_object":
         if not bare:
             raise ValueError("card effect DSL: spawn_object needs an object id in %r" % s)

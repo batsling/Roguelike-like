@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_echo_form"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"echo_form"
+display_name = "Echo Form"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Defect Rare"
+description = "Until the end of the next combat, play an additional copy of every loot you use"
+effect = [{"op": "echo_loot_next", "count": 1}]
+file = "EchoForm"
+icon = "Slay_the_Spire_Defect_Rare"

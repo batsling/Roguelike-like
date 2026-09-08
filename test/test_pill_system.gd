@@ -599,6 +599,70 @@ func test_echo_chamber_replays_the_last_three_used() -> void:
 	assert_eq(GameState.luck, 5,
 		"the use itself plus the two it remembers")
 
+# --- Echo Form, the CARD, which is a different mechanic --------------------
+
+func test_echo_form_uses_the_piece_in_your_hand_a_second_time() -> void:
+	# The card copies THIS piece; the relic replays the last three. Luck Up is the
+	# clean measurable — one use is +1, so a doubled one is +2 with nothing else in
+	# the pack and nothing in the memory to confuse it with.
+	GameState.add_pill_loot(&"luck_up")
+	GameState.luck = 0
+	GameState.echo_loot_next_game = 1
+	LootSystem.use_loot(0)
+	assert_eq(GameState.luck, 2, "the use, and the additional copy the card owes")
+
+func test_echo_form_needs_no_memory_at_all() -> void:
+	# The sharpest difference from Echo Chamber: the relic's first use on an empty
+	# memory is just itself, because there is nothing yet to replay. The card has
+	# nothing to replay either and still doubles, because what it copies is the
+	# piece being spent.
+	GameState.add_pill_loot(&"luck_up")
+	GameState.luck = 0
+	assert_true(LootSystem.used_memory().is_empty(), "a fresh run remembers nothing")
+	GameState.echo_loot_next_game = 1
+	LootSystem.use_loot(0)
+	assert_eq(GameState.luck, 2, "and it doubles anyway")
+
+func test_echo_form_and_echo_chamber_both_land() -> void:
+	# Holding both is one use, one card copy, and three replays: 5 in total. They
+	# stack because they are separate promises about separate things, and a player
+	# who has spent a Rare on top of the relic should be able to see it.
+	for _i in range(3):
+		GameState.add_pill_loot(&"luck_up")
+	LootSystem.use_loot(0)
+	LootSystem.use_loot(0)
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	GameState.luck = 0
+	GameState.echo_loot_next_game = 1
+	LootSystem.use_loot(0)
+	assert_eq(GameState.luck, 4,
+		"the use, the card's extra copy, and the relic's two remembered ones")
+
+func test_an_echo_form_copy_is_not_remembered_either() -> void:
+	# The same rule the relic's copies follow: a copy is not a use, so it does not
+	# join the history the relic reads. Otherwise one doubled pill would deepen the
+	# memory twice and the two cards would compound.
+	GameState.add_pill_loot(&"luck_up")
+	GameState.echo_loot_next_game = 1
+	LootSystem.use_loot(0)
+	assert_eq(LootSystem.used_memory().size(), 1, "one use, one memory")
+
+func test_echo_form_leaves_a_wand_alone() -> void:
+	# A wand is outside Echo Chamber in both directions (docs/wands-design.md
+	# §4.4) because it spends a CHARGE rather than a slot — doubling one would be
+	# two effects for one charge on the only kind that already fires six times.
+	# The card is the same shape of promise, so it takes the same exception.
+	var wand: WandData = Data.all_wands()[0] if not Data.all_wands().is_empty() else null
+	if wand == null:
+		pending("no wands in the catalog to check the exception against")
+		return
+	GameState.add_wand_loot(wand.id)
+	GameState.echo_loot_next_game = 1
+	var before: int = GameState.loot_items.size()
+	var out: Dictionary = LootSystem.use_loot(0)
+	assert_true(out.has("charges_left"), "it went down the wand path")
+	assert_lte(GameState.loot_items.size(), before, "and the zap resolved")
+
 func test_nothing_echoes_itself() -> void:
 	# Isaac's ordering: the copies fire off the memory as it stood BEFORE this use,
 	# and only then does this use join it. Without that, one pill on a fresh memory

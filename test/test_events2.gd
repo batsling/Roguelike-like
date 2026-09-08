@@ -1605,7 +1605,31 @@ func test_the_gold_price_costs_two_and_pays_one_relic() -> void:
 	var held: int = GameState.inventory.size()
 	EventSystem.resolve_choice(ev, choice, 0)
 	assert_eq(GameState.inventory.size(), held + 1, "and one relic comes back")
-	assert_lte(GameState.gold, 3, "the two are spent whatever the relic pays back")
+	# THE RELIC IS ROLLED, AND SOME OF THEM PAY GOLD ON PICKUP. This asserted
+	# `gold <= 3` and passed for as long as the roll happened to miss Old Coin,
+	# which hands over six the moment it lands — a run of that would leave nine and
+	# read as the price never being charged. What the line means is that the two
+	# came off, so it says that: five, minus the price, plus whatever the relic
+	# that actually arrived pays for itself.
+	var paid: ItemData = GameState.inventory[GameState.inventory.size() - 1]
+	assert_eq(GameState.gold, 5 - 2 + _gold_on_pickup(paid),
+		"the two are spent, whatever %s pays back" % paid.id)
+
+
+# What a relic hands the purse the moment it is picked up, or 0 for the ones that
+# hand over nothing. Read off the relic that actually arrived rather than assumed,
+# because which relic arrives is a roll.
+func _gold_on_pickup(item: ItemData) -> int:
+	var total: int = 0
+	if item == null:
+		return 0
+	for trigger in item.triggers:
+		if not (trigger is Dictionary) or String(trigger.get("on", "")) != "item_acquired":
+			continue
+		for eff in (trigger as Dictionary).get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == "gain_gold":
+				total += int(eff.get("value", 0))
+	return total
 
 
 func test_the_potion_price_takes_the_bottle_he_named() -> void:

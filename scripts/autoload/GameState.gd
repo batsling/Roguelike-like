@@ -486,6 +486,30 @@ var bonus_shields: int = 0
 # below is still the only reader, so GameLoop2 did not have to learn the difference.
 var bank_shields_next: bool = false
 
+# ECHO FORM (docs/cards-design.md): extra copies of every piece of loot used, for
+# ONE game. A run flag armed by the card and cleared when the next game resolves,
+# exactly like `bank_shields_next` above and for the same reason — the card is
+# spent, so what it bought cannot be read off anything the player is still
+# carrying.
+#
+# IT IS NOT ECHO CHAMBER, and the difference is the whole card. The relic replays
+# THE LAST THREE PIECES USED — a history, permanent, read off the pack
+# (`loot_echo_depth`). This copies THE PIECE IN YOUR HAND, once more, for one
+# game. Reading them as the same mechanic would make Echo Form a worse Echo
+# Chamber that expires, when the sheet says it is "an additional copy of every
+# loot you use".
+#
+# An INT rather than a bool so two of them stack the obvious way: the sheet says
+# "an additional copy", so two cards owe two additional copies rather than one
+# card silently eating the other.
+var echo_loot_next_game: int = 0
+
+# How many EXTRA copies of the piece being used are owed right now. Its own reader
+# so the loot path never touches the flag directly — the same shape
+# `banks_shields()` gives Barricade.
+func extra_loot_copies() -> int:
+	return maxi(0, echo_loot_next_game)
+
 # THE TWO POOLS' PLAYER-FACING NAMES (§3.2), in one place because they are told
 # apart by exactly one fact — whether they survive the game — and a screen that
 # invented its own word for either would be describing a third thing.
@@ -1140,6 +1164,7 @@ func reset_run() -> void:
 	shields = 0
 	bonus_shields = 0
 	bank_shields_next = false
+	echo_loot_next_game = 0
 	bash = 0
 	push = 0
 	transmute = 0

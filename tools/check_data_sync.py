@@ -57,12 +57,12 @@ DATA = os.path.join(ROOT, "data")
 # the row is still unfinished and the run still says so out loud. Delete the
 # entry when the cell is filled in; do not add one to quiet a generator that is
 # refusing for a reason you have not read.
-KNOWN_UNFINISHED = {
-    # Added to the `cards` sheet, Effect cell still empty. The catalog therefore
-    # holds 13 cards where the sheet lists 14, and Echo Form is in neither the
-    # pool nor the pack until the cell says what it does.
-    "generate_card2_tres.py": "card 'Echo Form' has no Effect authored yet",
-}
+# Empty, and that is the state to keep it in. Its one entry was Echo Form, whose
+# Effect cell has since been authored (`tools/_cards_echo_form_effect.py`), so the
+# generator runs and the card ships. An entry here is a REMINDER that something is
+# half-written, not a way to quiet a generator that is refusing for a reason
+# nobody has read.
+KNOWN_UNFINISHED = {}
 
 
 def git(*args, check=True):
