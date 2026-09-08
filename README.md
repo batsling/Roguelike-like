@@ -133,7 +133,6 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 ├── tools/                 # Shared Python tooling + design source of truth
 │   ├── Roguelikes.xlsx    #   spreadsheet that drives the importers/generators
 │   ├── Roguelikes.drawio6.svg
-│   ├── generate_game_tres.py       #   data/games from the games sheet
 │   ├── generate_item2_tres.py      #   data/items2.0
 │   ├── generate_goal_enemy_tres.py #   data/enemies2.0
 │   ├── generate_boss_tres.py       #   data/bosses2.0
@@ -1084,9 +1083,20 @@ of each script changed. If a generator ever reports zero rows, this is the first
 thing to check: openpyxl raises on a missing sheet, but a *renamed* one that
 still exists under an old name silently generates the wrong content.
 
+> **`data/games/` is NOT in this table, and that is the point.** It is written by
+> `import-games-godot.py` (below), out of the `games` and `connections` sheets.
+> There used to be a `generate_game_tres.py` beside these, named like them and
+> writing to the same folder, but reading `legacy-web/data/games-data.js` — the
+> retired HTML build — through a hardcoded 15-game subset. Running it did not
+> regenerate anything: it overwrote 15 of the 861 real files with a lossy copy,
+> dropping `influence_sources`, `influence_relations`, `owned`, `file_location`
+> and `steam_page`, and cutting `games_influenced` down to whatever was inside
+> the subset (Hades: 48 links to 8). That is the graph the Atlas is baked from.
+> It is deleted rather than fixed, because `import-games-godot.py` already does
+> the job from the sheet the rest of the pipeline uses.
+
 | Script | Generates |
 |---|---|
-| `generate_game_tres.py` | `data/games/*.tres` from the curated games subgraph |
 | `generate_item2_tres.py` | `data/items2.0/*.tres` from the 2.0 items sheet |
 | `generate_goal_enemy_tres.py` | `data/enemies2.0/*.tres` from the goal-enemy sheet |
 | `generate_boss_tres.py` | `data/bosses2.0/*.tres` from the boss sheet |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate Godot CurseData .tres files from the `cursesnew` sheet of
+Generate Godot CurseData .tres files from the `cursesold2` sheet of
 tools/Roguelikes.xlsx.
 
 Mirrors generate_card_tres.py: the spreadsheet is the source of truth, the
@@ -123,10 +123,10 @@ def curse_tres(row) -> tuple:
 
 def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
-    if "cursesnew" not in wb.sheetnames:
-        print("ERROR: 'cursesnew' sheet missing", file=sys.stderr)
+    if "cursesold2" not in wb.sheetnames:
+        print("ERROR: 'cursesold2' sheet missing", file=sys.stderr)
         sys.exit(1)
-    sheet = wb["cursesnew"]
+    sheet = wb["cursesold2"]
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(sheet):
