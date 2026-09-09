@@ -119,6 +119,7 @@ function render(s) {
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || [], s.art || {});
   drawRoad(s.road || []);
+  drawMap(s.route || {}, s.run || {});
   firstDraw = false;
 }
 /* `s.statuses` IS DELIBERATELY NOT DRAWN. It is still in the payload for anyone
@@ -358,15 +359,19 @@ function drawGoals(goals, art) {
       + (g.front && !g.done ? ' front' : '')
       + (g.addon ? ' addon' : '')
       + (g.boss ? ' boss' : '');
-    /* A row that was NOT done a moment ago and is now: flash it, so the tick is
-     * something the viewer sees happen. Never on the first draw, where every
-     * done row would flash at once. */
+    /* A row that was NOT done a moment ago and is now: flash it, so crossing it
+     * off is something the viewer sees HAPPEN rather than notices afterwards.
+     * Worth more now that there is no checkbox to flip: the resting difference
+     * between a done row and a live one is a strike-through and a drained
+     * picture, both of which are easy to miss the moment of. Never on the first
+     * draw, where every done row would flash at once. */
     if (g.done && !firstDraw && !doneRows.has(key)) li.classList.add('flash');
 
-    const tick = document.createElement('span');
-    tick.className = 'tick';
-    tick.textContent = g.done ? '✓' : '□';
-    li.appendChild(tick);
+    /* NO CHECKBOX COLUMN. Every row used to open with a `□` or a `✓` in its own
+     * 15px column, which is 21px of every row (the box and its gutter) spent
+     * saying what the row already says twice over: a done row is struck through
+     * and dimmed, and its art is drained of colour. The art is the row's left
+     * edge now, and it got the width back — see `--goal-art` in overlay.css. */
 
     /* THE ROW'S OWN ART. An `addon` row deliberately has none: a bonus and an
      * `instead` hang off the body whose row is directly above, so repeating its
@@ -521,6 +526,302 @@ function drawRoad(road) {
     strip.appendChild(box);
   });
   restartScroll('road-scroll');
+}
+
+/* ---------------------------------------------------------- the route map --
+ *
+ * THE ROAD AHEAD, at overlay.html#map: every optimal road from the game in play
+ * to the Amulet, as the layered graph the game's own RunMapModal draws.
+ *
+ * IT IS A GRAPH AND NOT A STRIP, which is the whole reason it is not just the
+ * road pointed the other way. A layer is two or three games wide — several ways
+ * on, all the same distance — and picking between them is the run's core
+ * decision. A single line would draw a forced march.
+ *
+ * NODES ARE KEYED (depth, id), NEVER id. A route forced through a pinned game
+ * walks there and then walks on, and the way on may come straight back over the
+ * games that led in: the same game legitimately holds two rungs at two depths.
+ * `RouteLadder.node_key` says the same thing in GDScript, and for the same
+ * reason — keying by id merges the two and draws arrows into a step of the route
+ * that does not exist.
+ *
+ * THE ARROWS ARE DRAWN FROM MEASURED BOXES, in an SVG behind the rows, because
+ * an edge joins two PARTICULAR games across a layer and not every box to every
+ * box. That means a second pass after layout, and it means the wires have to be
+ * redrawn whenever the geometry moves — a rebuild, a resize, or the fit below
+ * changing scale. `layoutWires` is that pass and is safe to call at any time. */
+let routeSignature = '';
+
+function drawMap(route, run) {
+  const rows = el('map-rows');
+  const note = el('map-note');
+  const sub = el('map-sub');
+  const layers = Array.isArray(route.layers) ? route.layers : [];
+
+  /* The subtitle is cheap and changes on its own clock (the hop count ticks as
+   * the run moves even when the ladder's shape does not), so it is written
+   * every payload, outside the signature check below. */
+  const amulet = (run.amulet && run.amulet.game) || '';
+  const hops = num(run.hops, -1);
+  sub.textContent = !amulet ? ''
+    : route.arrived ? 'You are standing on ' + amulet
+    : hops < 0 ? amulet + ' — no road from here'
+    : hops + (hops === 1 ? ' game to ' : ' games to ') + amulet;
+
+  const sig = [route.arrived, route.dropped, route.waypoint_depth,
+    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten]
+      .join('~')).join(',')).join('|'),
+    (route.edges || []).map(e => [e.from_depth, e.from, e.to_depth, e.to]
+      .join('~')).join(',')].join('\x01');
+  if (sig === routeSignature) return;
+  routeSignature = sig;
+
+  rows.innerHTML = '';
+  el('map-wires').innerHTML = '';
+
+  /* THE TWO EMPTY STATES ARE DIFFERENT THINGS and the panel must not draw the
+   * same blank for both. Standing on the Amulet is the run's best moment; no
+   * road at all is a dead end the streamer needs to know about. Neither is "the
+   * source is broken", which is what an empty panel reads as. */
+  if (!layers.length) {
+    note.hidden = false;
+    note.textContent = route.arrived
+      ? 'The Amulet is under your feet. Beat it and the run is won.'
+      : 'No road from here to the Amulet.';
+    return;
+  }
+
+  layers.forEach((layer, depth) => {
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    layer.forEach((n) => {
+      const box = document.createElement('div');
+      box.className = 'rung'
+        + (n.here ? ' here' : '')
+        + (n.amulet ? ' amulet' : '')
+        + (n.pinned ? ' pinned' : '')
+        + (n.beaten ? ' beaten' : '');
+      box.dataset.key = depth + '|' + n.id;
+      box.title = n.name;
+      const img = document.createElement('img');
+      img.alt = n.name;
+      setImg(img, n.cover);
+      box.appendChild(img);
+      const text = document.createElement('span');
+      text.className = 'rung-name';
+      /* An inner span so the clamp and the centring can be two different boxes —
+       * `-webkit-line-clamp` requires `display: -webkit-box` on the element it
+       * clamps, which cannot also be the flex box centring it. */
+      const label = document.createElement('span');
+      label.textContent = n.name;
+      text.appendChild(label);
+      box.appendChild(text);
+      /* WHAT THIS RUNG IS, in one word, for the three that are not just "a game
+       * on the way". Drawn rather than left to colour alone: this page's own
+       * checklist learned that lesson (six row kinds told apart by text colour
+       * with nothing saying what a colour meant), and a map read across a room
+       * through a lossy encode is the worst case for it. */
+      const tag = n.here ? 'Here' : n.amulet ? 'Amulet' : n.pinned ? 'Pinned'
+        : n.beaten ? 'Beaten' : '';
+      if (tag) {
+        const flag = document.createElement('span');
+        flag.className = 'rung-tag';
+        flag.textContent = tag;
+        box.appendChild(flag);
+      }
+      row.appendChild(box);
+    });
+    rows.appendChild(row);
+  });
+
+  /* THE FAR END, WHEN IT WAS TRIMMED. `_route` keeps the near layers — the ones
+   * a decision is made out of — so what is missing is the approach to the
+   * Amulet, and saying so is the difference between a trimmed map and a wrong
+   * one. Nothing realistic reaches it; it exists so that if it ever does, the
+   * page says it out loud. */
+  const dropped = num(route.dropped);
+  note.hidden = dropped <= 0;
+  if (dropped > 0) {
+    note.textContent = '+' + dropped + (dropped === 1 ? ' more layer' : ' more layers')
+      + ' to the Amulet, not drawn';
+  }
+
+  layoutWires(route.edges || []);
+}
+
+/* SIZE THE LADDER TO THE SOURCE, then position the arrows.
+ *
+ * THIS IS WHAT MAKES THE MAP LEGIBLE, and the bug it fixes was not the type
+ * size. Every rung used to be a flat 152px and the fit only ever scaled DOWN,
+ * so a 1920x1080 source drew exactly the ladder a 640x720 one did and put a
+ * thousand pixels of empty card around it. Going full screen made it WORSE:
+ * more emptiness, same small covers.
+ *
+ * So the rung is solved for instead. Everything in the ladder is a fraction of
+ * `--rung` (see overlay.css), so picking one number sizes the covers, the type,
+ * the gaps and the arrows together, and the ladder is the same object at 100px
+ * and at 300px rather than a different layout at each size.
+ *
+ * SOLVED ON BOTH AXES, because either can be the binding one: a shallow wide
+ * route is bound by its tallest layer and a deep narrow one by its length. The
+ * smaller of the two answers is the one that fits.
+ *
+ * AND SIZED RATHER THAN TRANSFORMED wherever there is room to grow. A
+ * `transform: scale()` above 1 resamples text, which is precisely the wrong
+ * tool for a pass about being able to read something. The transform survives
+ * only as the squeeze at the far end, for a route so deep that even the floor
+ * below does not fit — the whole route is always drawn, so something has to
+ * give, and giving it up in pixels is better than dropping layers. */
+
+/* The rung's height as a multiple of its width, which the CSS above fixes: the
+ * padding, a 3:4 cover, the gaps, two lines of name and the tag. Kept here as
+ * one number because the fit has to know it BEFORE anything is laid out. If the
+ * rung's CSS proportions change, this changes with them. */
+const RUNG_ASPECT = 1.50;
+/* THE GAP BETWEEN LAYERS IS THE ARROWS' ROOM.
+ *
+ * IT IS IN RUNGS, WHICH IS WHY WIDENING IT BARELY HELPS. A straight edge to a
+ * box two slots down a stacked layer is steep, and the obvious fix is more room
+ * to cross in — but the ladder is solved into a fixed source, so a bigger gap
+ * comes straight out of the rung: at 0.44 the gap grew 68px to 85 and the rung
+ * shrank 213 to 192, trading a tenth of every cover and every name for a few
+ * degrees of arrow. Measured side by side the steepness was hard to tell apart
+ * and the shrink was not, so it stays at 0.32 and the ARROWHEAD does the work
+ * of saying which way the road runs. */
+const LAYER_GAP = 0.32;
+const CHOICE_GAP = 0.08;  /* between the choices within one layer */
+/* The floor is a legibility floor: below about 90px a cover is a smudge and the
+ * name is unreadable, so there is no point shrinking further — past this the
+ * transform takes over and the honest answer is that the route is very long.
+ * The ceiling stops a two-layer route from being blown up into wall art. */
+const RUNG_MIN = 90;
+const RUNG_MAX = 300;
+
+let lastEdges = [];
+
+function layoutWires(edges) {
+  if (edges) lastEdges = edges;
+  const fit = el('map-fit');
+  const rows = el('map-rows');
+  const body = el('map-body');
+  const svg = el('map-wires');
+  const layers = [...rows.children];
+  if (!layers.length) return;
+
+  /* The shape to solve for: how many layers deep, and how many choices in the
+   * fattest one. */
+  const depth = layers.length;
+  const width = Math.max(...layers.map((l) => l.children.length));
+  const room = { w: body.clientWidth, h: body.clientHeight };
+  if (room.w <= 0 || room.h <= 0) return;   /* hidden — nothing to measure */
+
+  /* THE HEADING'S SIZE, FROM THE WINDOW AND NOT FROM THE LADDER. The head sits
+   * above `.map-body`, so its height is part of what is subtracted from the room
+   * solved into below — sizing it from `--rung` would put the two in a loop,
+   * each redraw nudging the other. `window.innerHeight` is the one number here
+   * that nothing on the page can move.
+   *
+   * 15px at a 720-tall source and about 30 at 1080, which is the slope this
+   * expression is: a heading that stayed 15px on a full-screen map was the same
+   * mistake as a rung that stayed 152. */
+  const head = Math.max(13, Math.min(38, window.innerHeight * 0.0417 - 15));
+  document.querySelector('.map').style.setProperty('--head', head + 'px');
+
+  const byWidth = room.w / (depth + LAYER_GAP * (depth - 1));
+  const byHeight = room.h / (RUNG_ASPECT * width + CHOICE_GAP * (width - 1));
+  const ideal = Math.min(byWidth, byHeight);
+  const rung = Math.max(RUNG_MIN, Math.min(RUNG_MAX, ideal));
+  fit.style.setProperty('--rung', rung + 'px');
+
+  /* THE SQUEEZE, and only when the floor was not enough. `ideal` is what would
+   * have fitted; if the floor overrode it, the ladder is now bigger than the
+   * panel by exactly that ratio. */
+  const scale = ideal < RUNG_MIN ? Math.max(0.35, ideal / RUNG_MIN) : 1;
+  fit.style.transform = 'scale(' + scale + ')';
+
+  const origin = rows.getBoundingClientRect();
+  const at = (key) => {
+    const n = rows.querySelector('[data-key="' + cssEscape(key) + '"]');
+    if (!n) return null;
+    const r = n.getBoundingClientRect();
+    return {
+      cy: (r.top + r.height / 2 - origin.top) / scale,
+      left: (r.left - origin.left) / scale,
+      right: (r.right - origin.left) / scale,
+    };
+  };
+
+  const w = origin.width / scale;
+  const h = origin.height / scale;
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.innerHTML = '';
+  svg.appendChild(arrowMarker());
+
+  for (const e of lastEdges) {
+    const a = at(e.from_depth + '|' + e.from);
+    const b = at(e.to_depth + '|' + e.to);
+    if (!a || !b) continue;
+    /* STRAIGHT, AND WITH A HEAD ON IT.
+     *
+     * These were cubic curves, on the reasoning that a steep diagonal leaving a
+     * box horizontally keeps its crossings in the empty band between layers.
+     * They cannot cross a box either way — every wire lives entirely inside the
+     * gap between two layers, and no box is in that gap — so the curve was
+     * buying nothing but wobble, and a road drawn in wobbly lines does not read
+     * as a road.
+     *
+     * The head is what makes it an ARROW rather than a line: this graph has a
+     * direction — towards the Amulet — and until now the only thing saying so
+     * was that the Amulet happened to be on the right. */
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M' + a.right + ' ' + a.cy + ' L' + b.left + ' ' + b.cy);
+    path.setAttribute('class', 'wire');
+    path.setAttribute('marker-end', 'url(#wire-head)');
+    svg.appendChild(path);
+  }
+}
+
+/* THE ARROWHEAD, rebuilt with the wires because the SVG is emptied on every
+ * layout.
+ *
+ * `markerUnits="strokeWidth"` is the whole trick: the head is measured in
+ * multiples of the line's own thickness, and that thickness is already a
+ * fraction of `--rung` (see overlay.css), so the head scales with the ladder for
+ * free and there is no second number to keep in step with the first.
+ *
+ * `refX` at the tip rather than behind it, so the point lands exactly on the box
+ * edge the wire is aimed at instead of overlapping it. */
+function arrowMarker() {
+  const NS = 'http://www.w3.org/2000/svg';
+  const defs = document.createElementNS(NS, 'defs');
+  const marker = document.createElementNS(NS, 'marker');
+  marker.setAttribute('id', 'wire-head');
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '10');
+  marker.setAttribute('refY', '5');
+  /* 5 stroke-widths, up from 3.6. This page is read across a room through a
+   * lossy encode, and at 3.6 the head was a detail you had to look for — which
+   * makes it decoration rather than the thing that says which way the road
+   * runs. */
+  marker.setAttribute('markerWidth', '5');
+  marker.setAttribute('markerHeight', '5');
+  marker.setAttribute('markerUnits', 'strokeWidth');
+  marker.setAttribute('orient', 'auto');
+  const head = document.createElementNS(NS, 'path');
+  head.setAttribute('d', 'M0 0 L10 5 L0 10 z');
+  head.setAttribute('class', 'wire-head');
+  marker.appendChild(head);
+  defs.appendChild(marker);
+  return defs;
+}
+
+/* `CSS.escape` is not on every CEF OBS ships (the same reason `:has()` and
+ * `color-mix()` are avoided in overlay.css), and a game id can carry a colon or
+ * a dot. Quote what a bare attribute selector cannot hold. */
+function cssEscape(s) {
+  return String(s).replace(/["\\]/g, '\\$&');
 }
 
 function drawVerdict(state) {
@@ -699,19 +1000,46 @@ function setImg(img, url) {
  * Every fragment reads the same state.js and they stay in step for free, because
  * they are the same page reading the same file. */
 function applySplit() {
-  /* Split on anything that is not a word, so `#bottom,fill`, `#bottom+fill` and
-   * `#bottom fill` all mean the same thing — a streamer typing this into an OBS
-   * URL box should not have to guess the separator. */
+  /* TWO WAYS IN, AND THE FILE IS THE ONE THAT WORKS IN OBS.
+   *
+   * `window.OBS_VIEW` is set by a one-line script in map.html, goals.html and
+   * the rest — standalone pages the game generates from this one at every boot
+   * (ObsCompanion.SPLIT_VIEWS). They exist because THE FRAGMENT DOES NOT REACH
+   * THIS PAGE THROUGH OBS. With "Local file" ticked the field is a path and not
+   * a URL, so the `#` is escaped and never becomes a fragment; unticking it and
+   * pasting a `file:///…#map` URL into the URL box does not get there either.
+   * That is not a thing this page can fix from the inside, so the split it
+   * cannot receive is baked into a file whose name a streamer can simply browse
+   * to.
+   *
+   * The hash still works, and is still the way to COMBINE — `map.html#fill` is
+   * the baked view plus the modifier, which is why these are unioned rather
+   * than one overriding the other. */
   const parts = new Set((location.hash || '').replace('#', '').toLowerCase()
     .split(/[^a-z]+/).filter(Boolean));
+  if (typeof window.OBS_VIEW === 'string') {
+    for (const w of window.OBS_VIEW.toLowerCase().split(/[^a-z]+/)) {
+      if (w) parts.add(w);
+    }
+  }
   overlay.classList.toggle('only-top', parts.has('top'));
   overlay.classList.toggle('only-bottom', parts.has('bottom'));
   overlay.classList.toggle('only-goals', parts.has('goals'));
   overlay.classList.toggle('only-road', parts.has('road'));
+  overlay.classList.toggle('only-map', parts.has('map'));
   overlay.classList.toggle('fill', parts.has('fill'));
+  /* THE MAP IS MEASURED, so it has to be re-laid the moment it becomes visible.
+   * A `display: none` ladder has no geometry at all — every box reports a zero
+   * rect — so wires drawn while the map was hidden are drawn from nothing, and
+   * switching the fragment to #map would show a ladder with no arrows on it
+   * until the route happened to change. */
+  layoutWires();
 }
 applySplit();
 window.addEventListener('hashchange', applySplit);
+/* Same reason: the source can be resized in OBS while the page is running, and
+ * both the fit and every arrow depend on the box the ladder is laid out in. */
+window.addEventListener('resize', () => layoutWires());
 
 /* The two self-scrolling boxes, registered before the first payload lands so
  * `frame` has something to walk from the very first tick. */

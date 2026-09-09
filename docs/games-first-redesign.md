@@ -2349,10 +2349,34 @@ stream — so the overlay dims only when the beat actually stops.
   watching ever sees. Keyed on `ReportChecklist.LEVELUP_KEY`, never on the string
   spelled again, so a row the overlay calls done is one the checklist has locked.
 
-  **NO HEADER ABOVE IT.** A list of ticked and unticked rows is self-evidently a
-  checklist, so "THE GOALS" named the obvious and the "3 / 9" beside it counted
-  rows the viewer can already see — both spending the card's top line on saying
-  nothing the list does not.
+  **HEADED BY THE CHAT COMMAND, THEN "THE GOALS".** The header was cut once, on
+  the grounds that a list of ticked and unticked rows is self-evidently a
+  checklist — true of a viewer who has been watching ten minutes, and false of
+  one who arrived four seconds ago, which is most of them. What the label
+  actually names is the BOUNDARY between the two cards: the run card above is
+  about the streamer, this one is a list of demands, and unlabelled the page
+  reads as one column of facts. It comes back as the label alone; the "3 / 9"
+  that used to sit beside it does not, because that really was a second way of
+  counting rows the viewer can already see.
+
+  **The chat command sits above the label** — `!roguelikelike for challenge
+  details` — because it answers the question these rows provoke. A viewer reads
+  "Reach the second boss without spending a healing item", wants to know what
+  the run's challenge *is*, and the overlay is a status readout with no way in;
+  this is the way in, and it belongs on the card that raises the question. It is
+  the only text on the page addressed to the VIEWER rather than describing the
+  run, which is why it is accent-coloured and the heaviest small text here: a
+  command has to look like something you can do. It was drafted in a monospace,
+  on the reasoning that a command is typed character by character — and the
+  measurement killed it, because a monospaced 12px line filled the column
+  exactly and dropping to 11px to buy slack put it at 4.55 against the
+  sampler's 4.5 floor. Legible over a bright capture beats uniform advance
+  widths; `check_overlay.js` samples this line and asserts its slack.
+
+  It is **text in the page, not payload** — the game does not know what anyone's
+  bot is called — so it is edited in `obs/overlay.html` or hidden from
+  `custom.css`. The two lines cost the card 42px, which is why the source the
+  README recommends went from 640 to 680 tall.
 
   **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
   *is* an enemy (§7.2), and a column of sentences never said so; with the face on
@@ -2373,7 +2397,19 @@ stream — so the overlay dims only when the beat actually stops.
   blue-status is not a distinction that survives being read across a room through
   a lossy encode. The art says it first now and the colour agrees, which is the
   same "say it twice" rule the road's stops already followed.
-- **The road**, at `overlay.html#road` — **its own source, off the default
+
+  **AND THE CHECKBOX IS GONE, so the art is the row's left edge.** Every row used
+  to open with a `□` or a `✓` in a column of its own, which spent 21px of every
+  row saying what the row already said three ways over: a finished goal is struck
+  through, dimmed and drained to greyscale, and it flashes green at the moment it
+  is crossed off. At 15px a `□` and a `✓` differ by about six pixels anyway,
+  which is not a distinction this page can rely on — the same argument the colour
+  encoding lost above. The art took the space and grew from 24px to 32px, and
+  what the box's red used to say (**the body in your face right now**) is a red
+  ring around that body's picture instead: louder, and on the thing it is about.
+  The column paid for the widening out of the same 21px and still came out ahead,
+  which is what let it narrow from 380 to 352.
+- **The road**, at `road.html` — **its own source, off the default
   column.** `RunOverScreen`'s route strip drawn live: every stop walked, a game
   stood on twice drawn twice (the road is a sequence, not a set — a badge saying
   "2" made two visits look like one), each stop **green if it was beaten on that
@@ -2392,12 +2428,89 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
+- **The route map**, at `map.html` — **the road's opposite number, and
+  the second source you toggle.** The road is where the run has *been*; this is
+  where it can *go*: every optimal road from the game in play to the Amulet.
 
-**IT RENDERS IN PIECES.** OBS cannot interleave scene items with the inside of a
-browser source, so the page renders part of itself instead and a scene points
-several sources at the same file: `#top` (the run card), `#bottom` (checklist and
-ticker), `#goals` (the checklist alone), `#road`, and the default, which is
-everything but the road. They read the same `state.js` and stay in step for free.
+  **IT IS A GRAPH AND NOT A STRIP, and that is the whole design.**
+  `RunGraph.shortest_path_dag` answers in LAYERS two or three games wide — there
+  is usually more than one equally short way on, and choosing between them (same
+  distance, different goals, different loot) is the run's core decision (§6).
+  Flattening that to a line would draw a forced march and hide the only
+  interesting thing on the map. So it is `RunMapModal`'s ladder, drawn live:
+  rungs in layers, green arrows between them — STRAIGHT lines carrying heads,
+  since a wire lives entirely within the gap between two layers and no box is in
+  that gap, so the cubic curves this shipped with were avoiding a collision that
+  cannot occur and read as wobble rather than as a road; the head is what says
+  the graph runs one way — in `RouteLadder`'s own colours —
+  blue for where you are, ember for the Amulet, purple for a pin — so the map on
+  the stream and the map on the streamer's screen are visibly one object.
+
+  **IT HONOURS THE PIN.** With a `route_waypoint` set, the road being walked is
+  the FORCED one, so that is what is drawn — `route_dag_via`, exactly as the two
+  in-game maps ask for it. Drawing the shortest path instead would show a route
+  the player has already decided against.
+
+  **NODES ARE KEYED (depth, id), NEVER id**, in the payload and on the page, for
+  the reason `RouteLadder.node_key` gives: a forced route walks to the waypoint
+  and then walks on, and the way on is free to come straight back over the games
+  that led in, so one game legitimately holds two rungs at two depths. Keying by
+  id merges them and draws arrows into a step of the route that does not exist.
+
+  **FULL SCREEN, LEFT TO RIGHT, AND OFF THE DEFAULT PAGE.** A ladder needs width
+  per layer and height per step, which the 352 column has none of. It runs left
+  to right — you on the left, the Amulet on the right, each layer's choices
+  stacked — because DISTANCE BELONGS ON THE LONG AXIS: a 14-layer route gets
+  137px per layer across 1920 and 77px down 1080. The in-game `RunMapModal` runs
+  the other way and should, being a tall modal in a 16:9 window; this is a 16:9
+  source and reads as the road strip does. Past 14 layers the payload trims the
+  far end and the page says how much it dropped.
+
+  **EVERY DIMENSION IS A FRACTION OF ONE SOLVED NUMBER**, the rung's width, which
+  the page solves from the room the source gives it on BOTH axes (a shallow wide
+  route is bound by its tallest layer, a deep narrow one by its length). Covers,
+  type, gaps and arrow weight all ride on it, so the ladder is the same object at
+  100px and at 300px, and it grows into whatever source it is given.
+
+  **THE FIRST VERSION DID NOT, AND THAT IS THE LESSON.** The rung was a flat
+  152px and the fit only ever scaled DOWN, so a full-screen source drew exactly
+  the ladder a 640-wide one did and put a thousand pixels of empty card around
+  it — going full screen made the map WORSE. Nothing caught it, because every
+  assertion was about the ladder fitting INSIDE its panel, and an under-sized
+  ladder satisfies that perfectly. "It fits" is not "it fills"; a layout check
+  that only bounds a thing from above cannot see it shrink.
+
+  Every rung is a cover AND a name — the cover is what a viewer recognises, the
+  name is what they can search — with the name held to three lines at a fixed
+  height so a layer reads as one rank of equal choices. A game already beaten is
+  drained and tagged, because a revisit is legal and rolls a fresh goal but you
+  know the game.
+
+  **THE TWO EMPTY STATES SAY DIFFERENT THINGS.** Standing on the Amulet is the
+  run's best moment; no road at all is a dead end. Neither may draw the blank
+  panel that a viewer reads as a broken source.
+
+**IT RENDERS IN PIECES, AND EACH PIECE IS A FILE.** OBS cannot interleave scene
+items with the inside of a browser source, so the page renders part of itself and
+a scene points several sources at the pieces: `top.html` (the run card),
+`bottom.html` (checklist and ticker), `goals.html` (the checklist alone),
+`road.html`, `map.html`, and `overlay.html`, which is everything but the last two.
+
+**THE PIECES ARE GENERATED FROM overlay.html AT EVERY BOOT** — each is the page
+with one line in front of it, `window.OBS_VIEW = "map"`, written by
+`ObsCompanion._install_views`. There is one copy of the markup and five pages that
+cannot drift from it.
+
+**AND THE FRAGMENT THEY REPLACE IS A LESSON WORTH KEEPING.** The original
+mechanism was `overlay.html#map`, and it is unusable in the only program it is
+for: with "Local file" ticked OBS's field is a PATH, so the `#` is escaped and
+never becomes a fragment, and unticking it to paste a `file:///…#map` URL does not
+arrive either. It worked in a browser, was asserted in `check_overlay.js`, and was
+documented in three places — every one of which tested the PAGE and none of which
+tested the PROGRAM. A mechanism the user cannot express is not a mechanism, and
+"it renders correctly in headless Chromium" says nothing about that. The hash is
+still read and still unions with the baked view, so `map.html#fill` is both, and
+`#fill` — a modifier rather than a choice — is the one worth typing. They read the same `state.js` and stay in step for free.
 
 `#goals` differs from `#bottom` by the ticker alone, and that is why it exists:
 the ticker is pinned to the **bottom of the browser source** and grows upward, so
@@ -2448,7 +2561,7 @@ said the halo could not carry.
 **AND THE HARNESS COMPOSITES THE WAY OBS DOES.** `check_overlay.js` screenshots
 with `omitBackground`, composites over a dark, a mid and a bright capture
 *outside* the page, and splits each line of text into glyph and ground by
-luminance. Worst text: **4.62:1** against an AA bar of 4.5. It also asserts
+luminance. Worst text: **4.81:1** against an AA bar of 4.5. It also asserts
 `backdrop-filter` stays `none`, so re-adding one fails there rather than looking
 right on somebody's desk.
 

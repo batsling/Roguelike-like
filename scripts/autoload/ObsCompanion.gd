@@ -90,6 +90,43 @@ const SOURCE_DIR := "res://obs"
 const PAGE_FILES := ["overlay.html", "overlay.css", "overlay.js"]
 const CUSTOM_CSS := "custom.css"
 
+# ONE STANDALONE PAGE PER VIEW, generated from overlay.html at every boot.
+#
+# THE FRAGMENT DOES NOT SURVIVE OBS, and that is why these exist. The page can
+# render part of itself — the run card, the checklist, the road, the route map —
+# and the way to ask for a part was `overlay.html#map`. A Browser Source cannot
+# express that. With "Local file" ticked the field is a PATH and not a URL, so
+# the `#` is escaped and never becomes a fragment; unticking it and pasting a
+# `file:///…#map` URL into the URL box does not arrive either. The mechanism was
+# documented, tested in a browser, and unusable in the only program it was for.
+#
+# So the split is baked into a file instead. `map.html` is overlay.html with one
+# line of script in front of it, and a streamer ticks "Local file", browses to
+# it, and is done — no URL to hand-build, no `file:///`, no backslashes to flip,
+# nothing to get wrong on a Windows path with a space in it.
+#
+# GENERATED, NOT AUTHORED, so there is exactly one copy of the markup. Six files
+# of the same page differing by one line is six files to keep in step, and the
+# five that were not being looked at would drift the first time the page changed.
+const SPLIT_VIEWS := {
+	"top.html": "top",
+	"bottom.html": "bottom",
+	"goals.html": "goals",
+	"road.html": "road",
+	"map.html": "map",
+}
+
+# WHERE THE LINE GOES: immediately before the script that reads it. `applySplit`
+# runs as overlay.js loads, so the view has to be set before that tag and after
+# nothing in particular — this is simply the last stable landmark in the file.
+#
+# If overlay.html ever stops containing it the generation is a silent no-op and
+# every view file becomes a plain copy of the default page, which looks exactly
+# like the split being broken. `test_obs_companion.gd` pins the anchor's presence
+# for that reason, and `_install_page` warns rather than writing a file that does
+# not do what its name says.
+const VIEW_ANCHOR := "<script src=\"overlay.js\"></script>"
+
 # At most four writes a second. The signal storm around a resolved turn is a
 # dozen emissions in one frame and the overlay cannot show more than the monitor
 # refreshes anyway.
@@ -118,6 +155,14 @@ const MAX_EVENTS := 8
 # pathological run putting hundreds of covers into a file written four times a
 # second. `dropped` still rides on the first stop for the day it bites.
 const MAX_ROAD := 40
+
+# THE SAME KIND OF VALVE FOR THE ROUTE MAP, and it bites sooner because a route
+# is a DAG rather than a strip: a layer is two or three games wide, so a deep
+# route is not `depth` covers but `depth × width` of them. Nine layers is what
+# RunMapModal measured a 6-8 step route at, and the map source is drawn for
+# roughly that; past this the page draws what fits and says how much it dropped,
+# the way the road's `dropped` does.
+const MAX_ROUTE_LAYERS := 14
 
 # Off switches the whole thing: no writes, no cover extraction, no page install.
 # Mirrors Settings.obs_overlay, which is where the toggle in the settings modal
@@ -277,6 +322,7 @@ func payload() -> Dictionary:
 	out["threat"] = threat
 	out["statuses"] = _statuses()
 	out["road"] = _road()
+	out["route"] = _route()
 	return out
 
 # "idle" (no run — the menus), "run", "won" or "lost". The page draws a verdict
@@ -829,6 +875,112 @@ func _road() -> Array:
 		stops[0]["dropped"] = dropped
 	return stops
 
+# ---------------------------------------------------------------------------
+# The route map — the road AHEAD (docs/games-first-redesign.md §9)
+# ---------------------------------------------------------------------------
+
+# THE OPTIMAL PATH FROM HERE TO THE AMULET, as the layered DAG the game's own map
+# draws, for `overlay.html#map`.
+#
+# IT IS NOT A LINE, AND THAT IS THE WHOLE REASON THIS SHIPS AS A LADDER. There
+# are usually SEVERAL equally short roads: `RunGraph.shortest_path_dag` answers
+# with layers two or three games wide, and the choice between them — this game or
+# that one, same distance, different goals and different loot — is the run's
+# core decision (§6). Collapsing it to one strip would draw a forced march and
+# hide the only interesting thing on the map.
+#
+# IT HONOURS THE PIN. If the run has insisted on routing through a game
+# (`GameState.route_waypoint`), that is the road the player is actually walking,
+# so it is the road drawn — `route_dag_via`, exactly as RunMapModal and
+# GameChoiceModal ask for it. Anything else would show the streamer a route they
+# have already decided against.
+#
+# NODES ARE KEYED (depth, id) AND NOT id. A pinned route walks to the waypoint
+# and then walks on, and the way on may come straight back over the games that
+# led in — the same game legitimately holds two rungs at two depths. RouteLadder
+# says the same thing in `node_key` and for the same reason: a consumer keying by
+# id alone merges the two visits and draws a road that does not exist.
+func _route() -> Dictionary:
+	var here: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	var empty: Dictionary = {"layers": [], "edges": [], "dropped": 0,
+		"waypoint_depth": -1, "arrived": here != &"" and here == amulet}
+	if here == &"" or amulet == &"":
+		return empty
+	# Standing on it: there is no road left to draw, and `arrived` lets the page
+	# say so rather than render an empty panel that reads as a broken source.
+	if here == amulet:
+		return empty
+	var dag: Dictionary = RunGraph.route_dag_via(here, GameState.route_waypoint, amulet)
+	var layers: Array = dag.get("layers", [])
+	if layers.is_empty():
+		return empty
+
+	# The valve. Kept from the FRONT — the near layers are the ones a decision is
+	# made out of, and a route deep enough to trip this is one whose far end is
+	# guesswork anyway.
+	var dropped: int = maxi(0, layers.size() - MAX_ROUTE_LAYERS)
+	var kept: int = layers.size() - dropped
+	var out_layers: Array = []
+	for d in range(kept):
+		var rungs: Array = []
+		for id in layers[d]:
+			rungs.append(_rung(StringName(id), d, layers.size() - 1))
+		out_layers.append(rungs)
+	# Edges travel with their endpoints' DEPTHS, unchanged from RunGraph, so the
+	# page can key them the same way it keys nodes. An edge into a dropped layer
+	# is dropped with it.
+	var out_edges: Array = []
+	for e in dag.get("edges", []):
+		var to_depth: int = int(e.get("to_depth", 0))
+		if to_depth >= kept:
+			continue
+		out_edges.append({
+			"from": String(e.get("from", "")),
+			"from_depth": int(e.get("from_depth", 0)),
+			"to": String(e.get("to", "")),
+			"to_depth": to_depth,
+		})
+	return {
+		"layers": out_layers,
+		"edges": out_edges,
+		# How many layers of the far end are not drawn, so the page can say "+3
+		# more" rather than quietly ending the road short of the Amulet.
+		"dropped": dropped,
+		# Which layer the pin sits on, or -1 with no pin. The page rings it.
+		"waypoint_depth": int(dag.get("waypoint_depth", -1)),
+		"arrived": false,
+	}
+
+# One rung of the route map.
+#
+# `game` is `GameLoop2.game_at`, not `Data.get_game`: a transmuted spot plays a
+# DIFFERENT game than the node is named for (§4), and the map has to show the
+# game you would actually sit down to play. The node's own id still travels, as
+# the key the edges are drawn against.
+func _rung(id: StringName, depth: int, last: int) -> Dictionary:
+	var game: GameData = GameLoop2.game_at(id)
+	if game == null:
+		game = Data.get_game(id)
+	return {
+		"id": String(id),
+		"depth": depth,
+		"name": game.display_name if game != null else String(id),
+		"cover": _cover_url(game),
+		# Depth 0 is the game under your feet — the ladder's root, drawn as
+		# you-are-here rather than as a step you might take.
+		"here": depth == 0,
+		"amulet": id == GameState.amulet_game_id,
+		# The pin, if there is one. Not `depth == waypoint_depth`: a layer can
+		# hold other games at the waypoint's depth in a route that rejoins.
+		"pinned": id == GameState.route_waypoint,
+		# ALREADY BEATEN, which is a real thing to know about a road ahead: a
+		# revisit is legal, its goal is rolled fresh, and a viewer reading the map
+		# should see which of these you have history with. The last layer is the
+		# Amulet and is never dimmed for it.
+		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
+	}
+
 func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:
 	var game: GameData = Data.get_game(id)
 	return {
@@ -1035,28 +1187,68 @@ static func _escape(segment: String) -> String:
 # ---------------------------------------------------------------------------
 
 # Put the overlay's three files next to state.js, overwriting whatever is there
-# (they ship with the game — see the const's comment), and leave an empty
-# `custom.css` beside them the first time only.
+# (they ship with the game — see the const's comment), generate one standalone
+# page per view beside them, and leave an empty `custom.css` there the first time
+# only.
 func _install_page() -> void:
 	_installed = true
 	DirAccess.make_dir_recursive_absolute(DIR)
+	var page: String = ""
 	for name in PAGE_FILES:
 		var src := FileAccess.open("%s/%s" % [SOURCE_DIR, name], FileAccess.READ)
 		if src == null:
 			push_warning("ObsCompanion: %s/%s is missing — is it in the export filter?"
 				% [SOURCE_DIR, name])
 			continue
+		var text: String = src.get_as_text()
+		if name == "overlay.html":
+			page = text
 		var dst := FileAccess.open("%s/%s" % [DIR, name], FileAccess.WRITE)
 		if dst == null:
 			continue
-		dst.store_string(src.get_as_text())
+		dst.store_string(text)
+	_install_views(page)
 	var custom: String = "%s/%s" % [DIR, CUSTOM_CSS]
 	if not FileAccess.file_exists(custom):
 		var f := FileAccess.open(custom, FileAccess.WRITE)
 		if f != null:
 			f.store_string("/* Your own styling. This file is created once and never overwritten. */\n")
 
+# ONE FILE PER VIEW, written from the page just installed.
+#
+# Each is overlay.html with a single line in front of the script that reads it —
+# `window.OBS_VIEW = "map"` — which `applySplit` unions with the fragment. The
+# fragment still works and still combines (`map.html#fill`); these exist because
+# OBS cannot pass a fragment at all (see SPLIT_VIEWS).
+#
+# A MISSING ANCHOR WRITES NOTHING, LOUDLY. Copying the page unchanged under a
+# name that promises a view is worse than not writing it: the streamer points a
+# source at map.html, gets the whole column, and has no way to tell that from the
+# map being broken. Nothing is written and the reason is pushed as a warning.
+func _install_views(page: String) -> void:
+	if page == "":
+		return
+	if not page.contains(VIEW_ANCHOR):
+		push_warning("ObsCompanion: overlay.html no longer contains %s, so the "
+			% VIEW_ANCHOR
+			+ "per-view pages cannot be generated — every OBS source pointed at "
+			+ "one of them would silently draw the whole column instead.")
+		return
+	for name in SPLIT_VIEWS:
+		var view: String = SPLIT_VIEWS[name]
+		var line: String = "<script>window.OBS_VIEW = \"%s\";</script>\n" % view
+		var f := FileAccess.open("%s/%s" % [DIR, name], FileAccess.WRITE)
+		if f == null:
+			continue
+		f.store_string(page.replace(VIEW_ANCHOR, line + VIEW_ANCHOR))
+
 # The path to hand a streamer: the overlay page itself, as an absolute OS path
 # they can paste into OBS's Browser Source "Local file" box.
 func page_path() -> String:
 	return ProjectSettings.globalize_path("%s/overlay.html" % DIR)
+
+# The folder every page sits in, which is what the settings screen should really
+# be showing: the streamer needs `overlay.html` AND `map.html` beside it, and a
+# path to one file is a path to one file.
+func page_dir() -> String:
+	return ProjectSettings.globalize_path(DIR)

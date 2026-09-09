@@ -40,7 +40,16 @@
    * them are sampled off composited pixels by check_overlay.js, where they can
    * go stale loudly instead of quietly. */
   --faint:     #dcd6cd;
-  --success:   #4dc76b;
+  /* AND `--success` WAS LIFTED TOO, from UITheme's #4dc76b, by the sampler
+   * rather than by eye — and it took a fix to the SAMPLER to notice. That check
+   * read one element per selector, so the only checklist row it ever measured
+   * was the first; sampling every match put a `bonus` row under it for the
+   * first time and the green scored 4.18 over a bright capture, under the 4.5
+   * bar, where it had been shipping for as long as those rows have existed.
+   * Bonus and `instead` rows are also 13px — an addon is smaller than the row
+   * it hangs off — and a thinner stroke is less for the halo to sit on, which
+   * is why this colour failed where the others held. */
+  --success:   #6fdc8d;
   --danger:    #f77f71;
   --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
@@ -68,7 +77,7 @@
    *
    * 0.30 IS THE SEE-THROUGH THIS PAGE CAN AFFORD, swept against the sampler in
    * check_overlay.js rather than chosen: 70% of the capture survives and the
-   * worst text on the page is 4.62 against an AA bar of 4.5. Below it the numbers
+   * worst text on the page is 4.81 against an AA bar of 4.5. Below it the numbers
    * go under (0.25 → 4.2, 0.20 → 3.9 even with the halo below at full strength).
    * It is still much more of the game than the old "glass" ever gave: that card
    * was 0.45, and with its filter inert in OBS it let 55% through while measuring
@@ -89,9 +98,18 @@
           0 0 7px rgba(0, 0, 0, 0.99), 0 0 12px rgba(0, 0, 0, 0.92),
           0 0 18px rgba(0, 0, 0, 0.7);
 
-  /* 380, down from 440. The column is a sidebar on somebody's stream, and the
-   * page is fluid — this is what the layout is tuned against, not a cage. */
-  --width:     380px;
+  /* 352, down from 380 (and 440 before that). The column is a sidebar on
+   * somebody's stream, and the page is fluid — this is what the layout is tuned
+   * against, not a cage.
+   *
+   * IT STOPS AT 352 RATHER THAN GOING ROUNDER, because 350 is where the run
+   * card's two halves stack (see the `max-width: 349px` query below) and a
+   * default that sits ON its own breakpoint is one rounding error from
+   * rendering a different layout than the one it was tuned for. The narrowing
+   * is paid for out of the checklist: dropping the checkbox column gave every
+   * row back 21px, which is more than the 28 this takes off the page minus the
+   * 8 the bigger art spends. */
+  --width:     352px;
   --radius:    10px;
 }
 
@@ -451,7 +469,7 @@ html, body {
 .now-main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
 .now-half { flex: 1 1 0; min-width: 0; }
 
-/* THE LABELS MUST NOT WRAP, or the two halves stop being one line. At 380 the
+/* THE LABELS MUST NOT WRAP, or the two halves stop being one line. At 352 the
  * destination's label ("3 GAMES TO AMULET", uppercase and tracked out) is the
  * longest text on the page relative to its column, and when it took a second
  * line it pushed that half's cover 13px below the other one — two columns that
@@ -459,7 +477,14 @@ html, body {
  * tracking and a nowrap fixes it, with an ellipsis as the backstop for a source
  * narrower still. */
 .now-half > .label {
-  letter-spacing: 0.04em;
+  /* 11px and barely tracked at all, down from 12/0.04em. The nowrap and the
+   * ellipsis below are the BACKSTOP, not the plan: at 352 the longest of these
+   * ("3 GAMES TO AMULET") ellipsised to "3 GAMES TO AMU…", which loses the one
+   * word that says what the run is for — the label's whole job. These are the
+   * page's smallest text and they are two fixed phrases, not content, so the
+   * two points buy the fit outright. */
+  font-size: 11px;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -559,6 +584,63 @@ html, body {
 
 /* ------------------------------------------------------------ checklist -- */
 
+/* THE HEAD OF THE CHECKLIST CARD: the chat command, then the list's label.
+ *
+ * Two lines and 34px, which is the most expensive thing added to this page in a
+ * while, so it is worth being clear about what buys it. The label marks the
+ * boundary between the two cards — the run card is about the streamer, this one
+ * is a list of demands — and the command is the only route OFF the overlay a
+ * viewer has. The checklist is the card that raises the question ("what IS this
+ * challenge?"), so the answer belongs at the top of it.
+ *
+ * It rides INSIDE the card, so `#goals` — the checklist as its own browser
+ * source — carries both lines too. A scene that crops to the list alone is
+ * exactly the one where a viewer has the least context. */
+.goals-head {
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  /* The same rule the rows separate themselves with, so the head reads as the
+   * top of THIS list rather than as a caption floating above it. */
+  border-bottom: 1px solid rgba(74, 63, 46, 0.4);
+}
+
+/* THE WAY IN, and the one line on this page addressed to the viewer rather than
+ * describing the run. Accent, and the only accent text outside the destination —
+ * a chat command has to look like something you can DO, not like another
+ * readout.
+ *
+ * IT WAS MONOSPACED FOR A DRAFT, on the argument that a command is typed
+ * character by character and an `l` and an `i` blur together in a proportional
+ * face. Both true, and both outweighed by two measurements. In a monospace at
+ * 12px this line rendered 304px into a 304px column — no slack at all — and the
+ * font it is MEASURED in is not the font it is DRAWN in, since that stack
+ * resolves to DejaVu Sans Mono on the Linux box this check runs on and to
+ * Consolas or Cascadia Mono on the Windows box OBS runs on. Dropping to 11px to
+ * buy room then took it to 4.55 against the sampler's 4.5 floor, which trades
+ * the thing that matters (can it be READ over a bright capture) for the thing
+ * that does not (are the glyphs the same width). The page's own font at 12/700
+ * is ~50px narrower on this string and scores with the rest of the page.
+ *
+ * `nowrap` with an ellipsis for the same reason the destination's label has one:
+ * a command broken across two lines is a command nobody types. If you rename it
+ * to something longer the card is fluid and a wider source will hold it —
+ * check_overlay.js asserts this line keeps 12px of slack at 352. */
+.lookup {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+/* The list's own label. `.label` does the work; this only takes back the 4px of
+ * bottom margin every other label on the page wants, because the rule under the
+ * head is what separates it from the first row here. */
+.goals-label { margin-bottom: 0; }
+
 /* The scroller has a fixed ceiling and overlay.js walks it when the list is
  * taller than that. Masked at whichever edge has content hidden behind it, so a
  * half-row reads as "there is more" rather than as a clipped bug.
@@ -589,7 +671,7 @@ html, body {
 /* 15px, ON A NARROWER COLUMN, and that combination is the point of this pass.
  * The density pass before it had taken the row to 13px to fit more of the list;
  * that is the wrong trade for a page read across a room, where a row you cannot
- * make out is not a row. 15 costs about one wrapped line per long goal at 380
+ * make out is not a row. 15 costs about one wrapped line per long goal at 352
  * wide, and the walker brings the rest round.
  *
  * Still variables, because "how much checklist fits" is the question this page
@@ -606,31 +688,26 @@ html, body {
 }
 .goal:last-child { border-bottom: none; }
 
-.goal .tick {
-  flex: 0 0 auto;
-  width: 15px;
-  color: var(--faint);
-  font-weight: 700;
-}
-
 /* ------------------------------------------- the art on a checklist row -- */
 
 /* THE ROW'S OWN PICTURE, and the reason this card is now the page's centre of
  * gravity. A goal IS an enemy (§7.2) and a column of sentences never said so;
  * with the face on the row, the checklist reads as the board.
  *
- * 24px, tracking the row's text back up: the art and the line it sits beside
- * have to stay in proportion or the row reads as a caption under a picture. It
- * is inside the range the swing marks were measured over (the widest art in the
- * roster — a 19x10 sprite through a 734x841 painting — rendered at 22/28/34/40
- * before choosing), and it holds at the small end because there is exactly one
- * per line rather than seven in a strip. `--goal-art` moves it. */
+ * 32px, up from 24, and the checkbox that used to sit to its left is what paid
+ * for it — the row opens on the picture now, so the art IS the left edge of the
+ * list rather than the second thing in it, and it still costs the row 11px less
+ * than the box and the art together did. It is inside the range the swing marks
+ * were measured over (the widest art in the roster — a 19x10 sprite through a
+ * 734x841 painting — rendered at 22/28/34/40 before choosing), and it holds at
+ * this size because there is exactly one per line rather than seven in a strip.
+ * `--goal-art` moves it. */
 .goal-art {
   position: relative;
   flex: 0 0 auto;
-  width: var(--goal-art, 24px);
-  height: var(--goal-art, 24px);
-  /* The art's optical centre against a 14px line of text, which sits lower than
+  width: var(--goal-art, 32px);
+  height: var(--goal-art, 32px);
+  /* The art's optical centre against a 15px line of text, which sits lower than
    * the box's top edge. */
   margin-top: -1px;
 }
@@ -650,7 +727,7 @@ html, body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--faint);
 }
@@ -661,10 +738,10 @@ html, body {
  * black for the same reason — a number must never land illegibly on the art. */
 .goal-badge {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
+  right: -3px;
+  bottom: -3px;
   line-height: 1;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 .goal-badge.dmg {
@@ -675,8 +752,8 @@ html, body {
  * binary the cost strip's corner used to carry: a shield here means this one
  * never reaches Health however big it is. */
 .goal-badge.shield img {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 2px #000);
@@ -690,7 +767,7 @@ html, body {
  * rather than repeating that body's face — which would draw one enemy two and
  * three times running and read as two and three enemies. The indent is the art
  * column's width plus its gap, so an addon's text lines up under its parent's. */
-.goal.addon { padding-left: 33px; padding-top: 2px; }
+.goal.addon { padding-left: 41px; padding-top: 2px; }
 .goal.addon .text { font-size: 13px; }
 .goal .body { flex: 1 1 auto; min-width: 0; }
 .goal .who {
@@ -708,11 +785,25 @@ html, body {
  * ones; at 0.45 over a bright capture it stopped being readable at all, which
  * throws away the seeing-what-you-crossed-off half. */
 .goal.done { opacity: 0.62; }
-.goal.done .tick { color: var(--success); }
 .goal.done .text { text-decoration: line-through; }
+/* WHAT THE GREEN TICK USED TO SAY, said by the row's own picture: a face that
+ * has been dealt with loses its colour. The strike-through is the unambiguous
+ * half and this is the half that reads from across a room, where a 15px line of
+ * text does not — which is the trade the checkbox column was never making,
+ * since a `□` and a `✓` differ by about six pixels at that size. */
+.goal.done .goal-art > img { filter: grayscale(1); }
 
-/* The body in the player's face. This is the row that costs health next. */
-.goal.front .tick { color: var(--danger); }
+/* THE BODY IN THE PLAYER'S FACE — the row that costs health next, and the one
+ * state on this list that is about RIGHT NOW rather than about the run.
+ *
+ * It was the checkbox turning red, which is gone; it rings the art instead,
+ * which is louder and in the right place. A box-shadow rather than an outline
+ * or a border: neither of those can be drawn without either moving the art (a
+ * border is in the box) or squaring off a `levelup` row's rounded portrait. */
+.goal.front .goal-art {
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--danger), 0 0 5px rgba(0, 0, 0, 0.85);
+}
 .goal.boss  .text { color: var(--gold); font-weight: 600; }
 
 /* THE LEVEL-UP ROW — the character's own standing challenge, and the only row
@@ -721,12 +812,11 @@ html, body {
  * and its art is the character's face, which is where the portrait went when the
  * hero card was folded away. */
 .goal.levelup .text { color: var(--gold); font-weight: 600; }
-.goal.levelup .tick { color: var(--gold); }
 /* Rounder than a body's square face: this one is a person, not a footprint. */
 .goal.levelup .goal-art > img { border-radius: 4px; object-fit: cover; }
 
-.goal.bonus   .tick, .goal.bonus   .text { color: var(--success); }
-.goal.instead .tick, .goal.instead .text { color: var(--success); }
+.goal.bonus   .text { color: var(--success); }
+.goal.instead .text { color: var(--success); }
 .goal.status  .text { color: #8ab6e6; }
 .goal.event   .text { color: var(--accent); }
 .goal.curse   .text { color: var(--curse); }
@@ -734,10 +824,253 @@ html, body {
 /* A row that just got ticked flashes once, so the viewer sees it happen rather
  * than noticing later that the list changed. */
 @keyframes tick-flash {
-  0%   { background: rgba(77, 199, 107, 0.45); }
+  0%   { background: rgba(111, 220, 141, 0.45); }
   100% { background: transparent; }
 }
 .goal.flash { animation: tick-flash 1.4s ease-out; }
+
+/* ------------------------------------------------------------ route map -- */
+
+/* THE ROAD AHEAD, at map.html — every optimal road from the game in play to the
+ * Amulet, as a ladder with straight, headed arrows between the layers.
+ *
+ * IT RUNS LEFT TO RIGHT: you on the left, the Amulet on the right, each layer's
+ * choices stacked above one another. The in-game RunMapModal runs top-to-bottom
+ * and this deliberately does not, because the two are read in different shapes —
+ * a modal inside a 16:9 window is tall, and a full-screen browser source is
+ * 1920 wide and 1080 tall. Distance belongs on the LONG axis: a 14-layer route
+ * gets 137px per layer across the width and 77px down the height, and the choices
+ * within a layer (never more than a handful) are what the short axis is for. It
+ * also matches the road strip, which has always run the same way.
+ *
+ * EVERYTHING IS SIZED FROM `--rung`, WHICH overlay.js SETS FROM THE SOURCE.
+ * This is the fix for the map being illegible, and the bug was not the type
+ * size: every rung was a flat 152px and the fit only ever scaled DOWN, so a
+ * 1920x1080 source drew exactly the same small ladder it drew at 640 and
+ * surrounded it with a thousand pixels of empty card. The ladder now grows into
+ * whatever room it is given, and the covers and the type grow with it because
+ * they are all fractions of the same number.
+ *
+ * SIZED, NOT TRANSFORMED, when there is room to grow. A `transform: scale()`
+ * above 1 resamples text and is exactly the wrong tool for a legibility pass;
+ * the transform is kept only for the squeeze at the other end, where a route
+ * deeper than the source can hold has to give something up. */
+.map { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+
+.map-head { flex: 0 0 auto; }
+/* THE HEADING SCALES WITH THE SOURCE TOO, off `--head`, which overlay.js sets
+ * from the window's own height.
+ *
+ * NOT off `--rung`, and that is a real constraint rather than a preference: the
+ * head's height is subtracted from the room the ladder is solved into, so a head
+ * sized from the rung would feed back into the number that sized it and the two
+ * would chase each other every time the map redrew. The window's height is the
+ * one measurement in here that nothing on the page can change.
+ *
+ * The distance and the destination are gold like the run card's `.now-game`,
+ * because they name the same thing that headline does and the two sources are
+ * read as one object. */
+.map .label { font-size: calc(var(--head, 15px) * 0.8); }
+.map-sub {
+  font-size: var(--head, 15px);
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1.25;
+}
+
+/* THE BOX THE LADDER IS SIZED INTO. `min-height: 0` because it is a flex child
+ * that must be allowed to be SHORTER than its content — without it a deep
+ * ladder stretches the card instead of being fitted, and the measurement in
+ * overlay.js reads a `clientHeight` that has already grown to fit, so the fit
+ * comes out at 1 every time and the road runs off the end of the source. */
+.map-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scaled by overlay.js only when the ladder cannot be made small enough by
+ * `--rung` alone. `center` rather than `top center` now that the ladder is
+ * centred in the panel on both axes. */
+.map-fit {
+  position: relative;
+  transform-origin: center center;
+}
+
+/* THE ARROWS, in their own layer UNDER the rungs. Absolute and
+ * `pointer-events: none` — nothing on an overlay is clickable, but a wire
+ * stretched across the panel must not be able to swallow a rung's hover title
+ * either. The SVG is sized in the ladder's own coordinates and scales with it,
+ * which is why overlay.js divides the scale back out of every measurement. */
+.map-wires {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+/* UITheme's shortest-path green, the same arrow colour RouteLadder paints
+ * (COL_ARROW) — the overlay and the in-game map are the same object. The width
+ * rides on `--rung` like everything else: a 2px wire against a 300px rung is a
+ * hair, and against a 100px one it is a rope. */
+.wire {
+  fill: none;
+  stroke: var(--success);
+  stroke-opacity: 0.85;
+  stroke-width: calc(var(--rung, 152px) * 0.018);
+  /* BUTT, NOT ROUND, now that the line ends in an arrowhead: a round cap adds
+   * half a stroke width past the end point, which pokes out from behind the
+   * head as a blunt nose on the tip of every arrow. */
+  stroke-linecap: butt;
+}
+/* The head takes its colour as a FILL, since a marker does not inherit the
+ * path's stroke. The opacity matches the line's so the arrow reads as one
+ * object rather than as a line with a brighter tip stuck on it. */
+.wire-head {
+  fill: var(--success);
+  fill-opacity: 0.85;
+}
+
+/* LAYERS ACROSS, CHOICES DOWN. The gap between layers is the arrows' room —
+ * a wire crossing from one side of a three-high layer to the other needs
+ * somewhere to bend, and at less than about a third of a rung the curves land
+ * on the boxes instead of in the band between them. */
+.map-rows {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--rung, 152px) * 0.32);
+}
+.map-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--rung, 152px) * 0.08);
+}
+
+/* ONE GAME ON THE MAP: its cover, its name, and a word for what it is.
+ *
+ * COVER PLUS NAME, not one or the other. The cover is what a viewer RECOGNISES
+ * — box art is how anyone reads a shelf — and the name is what they can
+ * actually search for, which is the point of putting the map on a stream at
+ * all.
+ *
+ * EVERY NUMBER HERE IS A FRACTION OF `--rung`, so the whole rung scales as one
+ * object: at 100px it is a thumbnail with a caption and at 300px it is a poster,
+ * and the proportions — and the two-line name — are the same at both. */
+.rung {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--rung, 152px);
+  padding: calc(var(--rung, 152px) * 0.055);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--rung, 152px) * 0.04);
+  background: rgba(37, 31, 24, 0.55);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--rung, 152px) * 0.05);
+}
+.rung > img {
+  width: calc(var(--rung, 152px) * 0.62);
+  /* 3:4, which is the shape a game cover is. Held in the CSS rather than left to
+   * the image so a stray square or wide cover cannot change one rung's height
+   * and break its layer's alignment. */
+  height: calc(var(--rung, 152px) * 0.827);
+  object-fit: cover;
+  border-radius: calc(var(--rung, 152px) * 0.026);
+  background: var(--panel);
+  display: block;
+}
+.rung > img:not([src]) { visibility: hidden; }
+.rung-name {
+  font-size: calc(var(--rung, 152px) * 0.105);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  /* THREE LINES, AND A FIXED HEIGHT FOR THEM WHETHER THEY ARE USED OR NOT.
+   *
+   * Three because two clipped the destination — "The Legend of Zelda: Tears
+   * of…" — and the Amulet is the one name on this map a viewer is most likely to
+   * want, so it is the last one that should be cut short. Real titles on this
+   * graph run long ("Vampire Survivors: Legacy of the Moonspell", "The Binding
+   * of Isaac: Rebirth") and two lines was not enough for them either.
+   *
+   * The fixed height is what keeps a layer readable as one RANK OF EQUAL
+   * CHOICES, which is the most important thing this map says. Left to itself a
+   * one-line name makes a shorter rung than a three-line one, the layer's boxes
+   * stop lining up, and the arrows arrive at different heights — the map starts
+   * implying a hierarchy between games that are all exactly the same distance
+   * from the Amulet.
+   *
+   * AND THE TEXT IS CENTRED IN THAT BOX. Left at the top, a one-word title left
+   * two empty lines hanging under it and the rung read as a box with a hole in
+   * the bottom rather than as a box with room in it. Centred, the same slack is
+   * split above and below and looks like breathing space. The clamp lives on the
+   * inner span because `-webkit-line-clamp` needs `display: -webkit-box`, which
+   * cannot also be the flex box doing the centring. */
+  height: calc(var(--rung, 152px) * 0.105 * 1.2 * 3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.rung-name > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* WHAT THIS RUNG IS, said in a word as well as in a colour — the checklist
+ * learned this lesson the hard way (six kinds of row told apart by text colour
+ * alone, with nothing anywhere saying what a colour meant). */
+.rung-tag {
+  font-size: calc(var(--rung, 152px) * 0.072);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* THE THREE RUNGS THAT ARE NOT JUST "A GAME ON THE WAY". The colours are
+ * RouteLadder's own (COL_CURRENT blue, COL_AMULET ember, COL_WAYPOINT purple),
+ * so the map on the stream and the map on the streamer's screen agree. */
+.rung.here {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px #2196f3;
+}
+.rung.here .rung-tag { color: #79c0ff; }
+
+.rung.amulet {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.rung.amulet .rung-name { color: var(--accent); }
+.rung.amulet .rung-tag { color: var(--accent); }
+
+.rung.pinned { border-color: var(--curse); }
+.rung.pinned .rung-tag { color: var(--curse); }
+
+/* A GAME YOU HAVE ALREADY BEATEN, which is a real thing to know about a road
+ * ahead: revisiting is legal and its goal is rolled fresh, but you know the
+ * game. Drained rather than dimmed — the row still has to be read, and the
+ * checklist's done rows say "dealt with" the same way. */
+.rung.beaten > img { filter: grayscale(0.85); }
+.rung.beaten .rung-name { color: var(--dim); }
+
+/* Standing on the Amulet, or no road at all. Two different facts and neither of
+ * them is "the source is broken", which is what an empty panel reads as. */
+.map-note {
+  flex: 0 0 auto;
+  font-size: calc(var(--head, 15px) * 0.9);
+  color: var(--dim);
+  text-align: center;
+}
 
 /* ----------------------------------------------------------------- road -- */
 
@@ -913,7 +1246,7 @@ html, body {
 
 /* ----------------------------------------------------------- the halves -- */
 
-/* `overlay.html#top` / `#bottom` render part of the page each, so a camera or a
+/* `top.html` / `bottom.html` render part of the page each, so a camera or a
  * chat box can be placed between them in the scene. See applySplit in overlay.js.
  *
  * THE ROAD IS THE EXCEPTION AND IS OFF BY DEFAULT — it renders only at
@@ -933,6 +1266,13 @@ html, body {
  * should still say so rather than sitting blank. */
 #overlay > .road { display: none; }
 #overlay.only-road > .road { display: block; }
+
+/* THE MAP IS OFF THE DEFAULT PAGE for the same reason the road is, and harder:
+ * it is a ladder two or three games wide and up to fourteen deep, which does not
+ * fit a 352px column at any type size that can be read. It is a source you cut
+ * to, so it only ever draws at #map. */
+#overlay > .map { display: none; }
+#overlay.only-map > .map { display: flex; }
 
 #overlay.only-top > .goals,
 #overlay.only-top > .ticker,
@@ -958,6 +1298,21 @@ html, body {
 #overlay.only-road > .run,
 #overlay.only-road > .goals,
 #overlay.only-road > .ticker { display: none; }
+
+/* THE MAP'S SOURCE IS THE MAP, and it takes the whole thing rather than being
+ * content-height: a ladder is scaled to the room it is given (see `.map-body`),
+ * so unlike every other fragment here it needs to know how much room that is.
+ * The ticker is dropped with the rest — this source is cut to for a few seconds
+ * at a time, and a toast landing on the road you are deciding between is noise
+ * exactly when it is least wanted. */
+#overlay.only-map > .run,
+#overlay.only-map > .goals,
+#overlay.only-map > .road,
+#overlay.only-map > .ticker { display: none; }
+#overlay.only-map {
+  height: 100vh;
+  padding: 12px;
+}
 
 /* ------------------------------------------------------- filling a source -- */
 

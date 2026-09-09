@@ -51,11 +51,28 @@ const path = require('path');
 const REPO = path.resolve(__dirname, '..');
 const SRC = path.join(REPO, 'obs');
 
-/* The browser source the README tells a streamer to make. 380 wide since the
- * narrow-column pass; the page is fluid, but this is the width the layout is
- * tuned against and every height below is measured at. */
-const WIDTH = 380;
+/* The browser source the README tells a streamer to make. 352 wide since the
+ * checklist dropped its checkbox column and spent the width on the art; the
+ * page is fluid, but this is the width the layout is tuned against and every
+ * height below is measured at. It is deliberately 352 and not 350: 350 is the
+ * `max-width: 349px` breakpoint where the run card's two halves stack, and a
+ * default sitting on its own breakpoint tests a layout nobody runs. */
+const WIDTH = 352;
 const HEIGHT = 828;
+
+/* THE ROUTE MAP'S OWN SOURCE, and it is the whole screen.
+ *
+ * It is not part of the column — a ladder two or three games wide and up to
+ * fourteen deep does not fit 352 at any readable type size. It was drawn for
+ * 640x720 first and that was still too small to read: a route runs LEFT TO
+ * RIGHT now, so the 1920 is the axis distance is measured along, and a
+ * full-screen source is what the README tells a streamer to make.
+ *
+ * The page is fluid and works at any size — MAP_SMALL below is a real
+ * alternative and is what the growth check measures against — but every map
+ * measurement here is taken at the recommended one. */
+const MAP_SIZE = { width: 1920, height: 1080 };
+const MAP_SMALL = { width: 640, height: 720 };
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -107,6 +124,66 @@ function findBrowser() {
     }
   }
   return null;
+}
+
+/* THE TEXT BOXES TO SAMPLE, collected IN THE PAGE. Module scope because two
+ * passes now share it — the default column and the route map's own source —
+ * and a sampler that exists in two copies is a sampler where one copy quietly
+ * stops matching the other.
+ *
+ * A RANGE, NOT THE ELEMENT BOX. An element box runs the full width of its
+ * column whatever the text in it does, so a short subtitle in a wide row is
+ * mostly empty ground, and a sampler splitting THAT by percentile finds no
+ * glyph and scores the halo against the card. A Range over the node's contents
+ * gives the line boxes the glyphs actually occupy.
+ *
+ * AND THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to work out.
+ * `.now-game`, `.dest-game` and `.rung-name` are all `-webkit-line-clamp: 2`,
+ * and a Range hands back a rect for EVERY line the text would have taken,
+ * clipped ones included — so on a long title the sampler was reading rects
+ * sitting 40px below the visible box, over the health bar and the cost line,
+ * and reporting their unrelated colours as a contrast failure of the title. The
+ * real text was scoring 8.9 to 11.3 the whole time. Any rect outside its own
+ * element's border box is not on screen and is dropped.
+ *
+ * EVERY MATCH, not the first. This took `querySelector` while every selector
+ * named something there was one of; a map has seven rungs and sampling only the
+ * first would leave the Amulet's own name — the one a viewer is most likely to
+ * be reading — unmeasured. */
+function sampleBoxes(selectors) {
+  const out = [];
+  for (const sel of selectors) {
+    for (const n of document.querySelectorAll(sel)) {
+      if (!n.textContent.trim()) continue;
+      const box = n.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) continue;
+      /* AND CLIPPED TO EVERY CLIPPING ANCESTOR, not just to the element.
+       * Sampling all matches rather than the first is what exposed this: the
+       * checklist is a 260px scroller with `overflow: hidden` and a list taller
+       * than itself, so the rows past the fold have perfectly good rects that
+       * are not on screen. Measured over a bright capture they scored 1.45 — a
+       * true reading of pixels belonging to something else entirely, reported
+       * as a contrast failure of the checklist. The map's ladder sits in the
+       * same kind of box. */
+      const clips = [box];
+      for (let a = n.parentElement; a; a = a.parentElement) {
+        const cs = getComputedStyle(a);
+        if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+          clips.push(a.getBoundingClientRect());
+        }
+      }
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) {
+        if (r.width < 20 || r.height < 7) continue;
+        if (clips.some((c) => r.top < c.top - 1 || r.bottom > c.bottom + 1
+          || r.left < c.left - 1 || r.right > c.right + 1)) continue;
+        out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height) });
+      }
+    }
+  }
+  return out;
 }
 
 /* ------------------------------------------------ reading back real pixels -- */
@@ -304,6 +381,36 @@ function fixture(dir) {
     dropped: 0,
   }));
 
+  /* THE ROUTE MAP'S FIXTURE — a deliberately AWKWARD route, because a straight
+   * line proves nothing about a ladder. Four layers: you-are-here alone, then
+   * two layers three and two wide (so edges cross the gap diagonally and the
+   * fit has real width to place), then the Amulet. One rung is pinned and one
+   * has been beaten before, which are the two states easiest to lose in a
+   * cascade. Every layer is fully connected to the next, which is the worst
+   * case for the wires: 3 × 2 + 2 × 1 + 1 × 3 crossings to lay out. */
+  const routeLayers = [
+    [{ id: 'r0', name: 'Vampire Survivors: Legacy of the Moonspell', depth: 0,
+       here: true, amulet: false, pinned: false, beaten: false }],
+    [{ id: 'r1a', name: 'Hollow Knight', depth: 1 },
+     { id: 'r1b', name: 'Slay the Spire', depth: 1, beaten: true },
+     { id: 'r1c', name: 'Dead Cells', depth: 1 }],
+    [{ id: 'r2a', name: 'The Binding of Isaac: Rebirth', depth: 2, pinned: true },
+     { id: 'r2b', name: 'Enter the Gungeon', depth: 2 }],
+    [{ id: 'r3', name: 'The Legend of Zelda: Tears of the Kingdom', depth: 3,
+       amulet: true }],
+  ].map((layer, d) => layer.map((n, i) => Object.assign({
+    here: false, amulet: false, pinned: false, beaten: false,
+    cover: games[(d * 3 + i) % games.length] || '',
+  }, n)));
+  const routeEdges = [];
+  for (let d = 0; d < routeLayers.length - 1; d++) {
+    for (const a of routeLayers[d]) {
+      for (const b of routeLayers[d + 1]) {
+        routeEdges.push({ from: a.id, from_depth: d, to: b.id, to_depth: d + 1 });
+      }
+    }
+  }
+
   return {
     v: 1, at,
     events: [{ tone: 'info', text: 'Now playing', at: at - 1 }],
@@ -332,6 +439,8 @@ function fixture(dir) {
       letter: 'S', games: i === 1 ? 2 : 0,
     })),
     road,
+    route: { layers: routeLayers, edges: routeEdges, dropped: 0,
+      waypoint_depth: 2, arrived: false },
   };
 }
 
@@ -381,7 +490,11 @@ async function main() {
   console.log('the page draws a heavy run');
   check('no uncaught page errors', errors.length === 0, errors.join(' / '));
   const drew = await page.evaluate(() => ({
-    cards: document.querySelectorAll('.card:not(.road)').length,
+    /* The cards ON THE DEFAULT PAGE. `.road` and `.map` are in the document
+     * either way — both are built on every payload and shown only at their own
+     * fragment — so both are excluded here rather than counted as page furniture
+     * this check would then have to keep renumbering. */
+    cards: document.querySelectorAll('.card:not(.road):not(.map)').length,
     goals: document.querySelectorAll('.goal').length,
     art: document.querySelectorAll('.goal-art img').length,
     badges: document.querySelectorAll('.goal-badge').length,
@@ -416,10 +529,51 @@ async function main() {
   });
   check('the two games share a line, Amulet on the right',
     pair.dy < 12 && pair.right, JSON.stringify(pair));
-  /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
-   * self-evidently a checklist. */
-  check('the checklist has no label above it',
-    await page.evaluate(() => !document.querySelector('.goals .label')));
+  /* THE HEAD OF THE CHECKLIST: the chat command, then the list's label, then the
+   * list. Asserted in that ORDER and not merely present — the command is above
+   * the label on purpose (it answers the question the rows raise), and a card
+   * that grew a header back is one where the two could be swapped by accident.
+   *
+   * The command is also asserted to be ONE LINE. It is the only thing on the
+   * page a viewer is meant to type, and a command wrapped across two lines is a
+   * command nobody types. */
+  const head = await page.evaluate(() => {
+    const box = (s) => {
+      const n = document.querySelector(s);
+      if (!n) return null;
+      const r = n.getBoundingClientRect();
+      /* THE TEXT'S OWN WIDTH, off a Range, NOT `scrollWidth`. `scrollWidth` is
+       * `max(content, client)` and so can never come back under the box —
+       * measured that way this line read "304 of 304px" both when it fit and
+       * when it was one pixel from ellipsising, which is a check that passes on
+       * the failure it was written for. A Range measures the line box the glyphs
+       * actually occupy. */
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      const rects = [...range.getClientRects()];
+      const textW = rects.length ? Math.max(...rects.map((q) => q.width)) : 0;
+      return { text: n.textContent.trim(), top: Math.round(r.top),
+               h: Math.round(r.height), w: Math.round(r.width),
+               textW: Math.round(textW) };
+    };
+    return { lookup: box('.goals .lookup'), label: box('.goals .goals-label'),
+             first: box('.goals .goal') };
+  });
+  check('the checklist is headed by the chat command and a label',
+    !!head.lookup && !!head.label && /^!\S+/.test(head.lookup.text)
+      && /goals/i.test(head.label.text), JSON.stringify(head));
+  check('…the command above the label, the label above the list',
+    head.lookup.top < head.label.top && head.label.top < head.first.top,
+    JSON.stringify([head.lookup.top, head.label.top, head.first.top]));
+  /* WITH REAL SLACK, not merely fitting. A monospaced draft of this line
+   * measured 304px into a 304px column: it fit here and was one advance width
+   * from ellipsising `…details` away on a machine whose fonts are not this
+   * one's — which is every machine OBS actually runs on. 12px of margin is the
+   * bar, so a rename has somewhere to go and a substituted font does not eat
+   * the end of the command. */
+  check('…and the command fits on one line with room to spare',
+    head.lookup.h < 20 && head.lookup.textW <= head.lookup.w - 12,
+    head.lookup.h + 'px tall, ' + head.lookup.textW + ' of ' + head.lookup.w + 'px wide');
 
   /* EVERY ROW WEARS ITS OWN ART, except the two that hang off the row above. An
    * addon repeating its parent's face read as another enemy. */
@@ -580,7 +734,7 @@ async function main() {
   check('…on one line', cost.h < 40, cost.h + 'px tall');
 
   /* 2. the road's outcome colours, including the combinations the cascade used to
-   *    lose. --success #4dc76b, --gold #ffcc66, --unbeaten #d97821. */
+   *    lose. --success #6fdc8d, --gold #ffcc66, --unbeaten #d97821. */
   console.log('the road says how each stop went');
   /* AT #road, WHICH IS WHERE THE ROAD LIVES NOW. A `display: none` scroller has
    * no scrollWidth, so the walk below cannot be measured on the default page —
@@ -610,11 +764,11 @@ async function main() {
   check('a stop walked away from is --unbeaten',
     byName('walked away').border === 'rgb(217, 120, 33)', byName('walked away').border);
   check('a beaten stop is --success',
-    byName('beaten').border === 'rgb(77, 199, 107)', byName('beaten').border);
+    byName('beaten').border === 'rgb(111, 220, 141)', byName('beaten').border);
   check('the stop being played is --gold',
     byName('standing on').border === 'rgb(255, 204, 102)', byName('standing on').border);
   check('a BEATEN Amulet keeps the beaten colour (the cascade used to eat it)',
-    byName('amulet beaten').border === 'rgb(77, 199, 107)', byName('amulet beaten').border);
+    byName('amulet beaten').border === 'rgb(111, 220, 141)', byName('amulet beaten').border);
   check('…and still rings as the destination',
     byName('amulet beaten').outline === 'rgb(255, 138, 60)', byName('amulet beaten').outline);
   check('an unreached Amulet is the destination colour',
@@ -723,7 +877,7 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 491, '#top': 203, '#bottom': 304, '#goals': 304,
+  const DOCUMENTED = { '': 532, '#top': 202, '#bottom': 346, '#goals': 346,
     '#road': 116 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
@@ -772,6 +926,313 @@ async function main() {
     JSON.stringify(only));
 
   /* ------------------------------------------------------------------------
+   * THE PER-VIEW PAGES, which are how a split is actually asked for.
+   *
+   * THE FRAGMENT DOES NOT SURVIVE OBS. Everything this file asserts about `#map`
+   * and `#goals` is true in a browser and unreachable in a Browser Source: with
+   * "Local file" ticked the field is a path, so the `#` is escaped and never
+   * becomes a fragment, and pasting a `file:///…#map` URL into the URL box does
+   * not arrive either. The split is baked into a generated file per view instead
+   * (ObsCompanion.SPLIT_VIEWS), and THAT is the mechanism a streamer uses — so
+   * it is the one that has to be rendered here rather than only reasoned about.
+   *
+   * The file is built the way the game builds it: overlay.html with one line in
+   * front of the script tag. If that rule and ObsCompanion's ever disagree, the
+   * GUT side pins the anchor and this side proves the result draws.
+   * --------------------------------------------------------------------- */
+  console.log('the per-view pages, which is how OBS asks for a split');
+  const anchor = '<script src="overlay.js"></script>';
+  const pageSrc = fs.readFileSync(path.join(dir, 'overlay.html'), 'utf8');
+  check('overlay.html carries the anchor the view pages are built on',
+    pageSrc.includes(anchor));
+  for (const [file, view] of [['map.html', 'map'], ['goals.html', 'goals']]) {
+    fs.writeFileSync(path.join(dir, file), pageSrc.replace(anchor,
+      '<script>window.OBS_VIEW = "' + view + '";</script>\n' + anchor));
+  }
+  await page.setViewportSize(MAP_SIZE);
+  await page.goto('file://' + path.join(dir, 'map.html'));
+  await sleep(1100);
+  const viaFile = await page.evaluate(() => ({
+    hash: location.hash,
+    rungs: document.querySelectorAll('.rung').length,
+    wires: document.querySelectorAll('.wire').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    goals: !!document.querySelector('.goals').getClientRects().length,
+  }));
+  /* THE POINT OF THE WHOLE MECHANISM: no fragment in the URL, and the map draws
+   * anyway. A check that allowed a hash here would pass on the broken design. */
+  check('map.html draws the map with NO fragment in the url',
+    viaFile.hash === '' && viaFile.rungs > 0 && viaFile.wires > 0,
+    JSON.stringify(viaFile));
+  check('…and nothing else from the column', !viaFile.run && !viaFile.goals,
+    JSON.stringify({ run: viaFile.run, goals: viaFile.goals }));
+  /* The wires are the half that could plausibly break here and nowhere else:
+   * they are measured, and a page that starts life already showing the map takes
+   * a different path through applySplit than one switched to it later. */
+  check('…with its arrows drawn, not left empty by the first layout',
+    viaFile.wires === fixture(dir).route.edges.length,
+    viaFile.wires + ' wires');
+
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  await page.goto('file://' + path.join(dir, 'goals.html'));
+  await sleep(900);
+  const goalsFile = await page.evaluate(() => ({
+    goals: document.querySelectorAll('.goal').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    ticker: !!document.querySelector('.ticker').getClientRects().length,
+  }));
+  check('goals.html is the checklist alone, the same as #goals was',
+    goalsFile.goals > 0 && !goalsFile.run && !goalsFile.ticker,
+    JSON.stringify(goalsFile));
+
+  /* THE FRAGMENT STILL COMBINES, which is why the baked view is UNIONED with the
+   * hash rather than replacing it: `map.html#fill` has to be both. */
+  await page.goto('file://' + path.join(dir, 'goals.html') + '#fill');
+  await sleep(900);
+  check('a view page still takes #fill on top of its own view',
+    await page.evaluate(() =>
+      document.getElementById('overlay').classList.contains('fill')
+      && document.getElementById('overlay').classList.contains('only-goals')));
+
+  /* ------------------------------------------------------------------------
+   * THE ROUTE MAP, at its own source size.
+   *
+   * The ladder is the one thing on this page whose geometry is COMPUTED rather
+   * than laid out by CSS: the arrows are drawn from measured boxes, and the
+   * whole ladder is scaled to fit the panel. Both of those are exactly the kind
+   * of thing that works on the machine it was written on and silently draws
+   * nothing everywhere else, so all of it is asserted.
+   * --------------------------------------------------------------------- */
+  console.log('the route map');
+  await page.setViewportSize(MAP_SIZE);
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#map');
+  await sleep(900);
+  const map = await page.evaluate(() => {
+    const rungs = [...document.querySelectorAll('.rung')];
+    const rows = [...document.querySelectorAll('.map-row')];
+    const fit = document.getElementById('map-fit');
+    const body = document.getElementById('map-body');
+    const wires = [...document.querySelectorAll('.wire')];
+    const box = (n) => { const r = n.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+    return {
+      rungs: rungs.length,
+      rows: rows.map((r) => r.querySelectorAll('.rung').length),
+      wires: wires.length,
+      /* Every wire must actually go somewhere: a path whose start and end are
+       * the same point is what a rect of zeroes produces, which is what
+       * measuring a hidden ladder gives you. */
+      degenerate: wires.filter((w) => {
+        const r = w.getBoundingClientRect();
+        return r.width < 0.5 && r.height < 0.5;
+      }).length,
+      here: rungs.filter((n) => n.classList.contains('here')).length,
+      amulet: rungs.filter((n) => n.classList.contains('amulet')).length,
+      pinned: rungs.filter((n) => n.classList.contains('pinned')).length,
+      hereFirst: rungs.length ? rungs[0].classList.contains('here') : false,
+      amuletLast: rungs.length
+        ? rungs[rungs.length - 1].classList.contains('amulet') : false,
+      sub: document.getElementById('map-sub').textContent,
+      transform: getComputedStyle(fit).transform,
+      ladder: box(document.getElementById('map-rows')),
+      panel: box(body),
+      run: !!document.querySelector('.run').getClientRects().length,
+      goals: !!document.querySelector('.goals').getClientRects().length,
+      ticker: !!document.querySelector('.ticker').getClientRects().length,
+      pageH: Math.round(document.getElementById('overlay').getBoundingClientRect().height),
+    };
+  });
+  check('#map draws the ladder', map.rungs > 0 && map.rows.length > 1,
+    map.rungs + ' rungs in ' + map.rows.length + ' layers');
+  /* A LAYER WIDER THAN ONE IS THE POINT OF THIS SOURCE. If the fixture ever
+   * collapses to a single column the map has stopped being a map — every check
+   * below would still pass on a strip. */
+  check('…with layers that are genuinely more than one game wide',
+    Math.max(...map.rows) > 1, map.rows.join('/'));
+  check('…and nothing else from the column', !map.run && !map.goals && !map.ticker,
+    JSON.stringify({ run: map.run, goals: map.goals, ticker: map.ticker }));
+
+  /* THE ARROWS. One per edge, and none of them degenerate — a wire measured off
+   * a hidden ladder is a zero-length path, which draws as nothing at all and is
+   * invisible in a screenshot review. */
+  const edgeCount = fixture(dir).route.edges.length;
+  check('every edge is drawn as a wire', map.wires === edgeCount,
+    map.wires + ' wires for ' + edgeCount + ' edges');
+  check('…and none of them is zero-length', map.degenerate === 0,
+    map.degenerate + ' degenerate');
+
+  /* STRAIGHT, AND WITH A HEAD ON IT. These were cubic curves once, which read as
+   * wobble rather than as a road — a wire lives entirely inside the gap between
+   * two layers and no box is in that gap, so the curve was avoiding a collision
+   * that could not happen. And the head is what makes it an ARROW: this graph
+   * has a direction, towards the Amulet, and without one the only thing saying
+   * so is that the Amulet happens to be on the right. */
+  const wires = await page.evaluate(() => {
+    const paths = [...document.querySelectorAll('.wire')];
+    return {
+      curved: paths.filter((p) => /[CSQTA]/i.test(p.getAttribute('d') || '')).length,
+      lines: paths.filter((p) => /^M[^A-Za-z]+L[^A-Za-z]+$/.test(
+        (p.getAttribute('d') || '').trim())).length,
+      headed: paths.filter((p) => p.getAttribute('marker-end')).length,
+      /* The marker itself has to exist, or `marker-end` points at nothing and
+       * every arrow silently loses its head — which looks exactly like the
+       * design before this change. */
+      marker: !!document.querySelector('marker#wire-head'),
+      headFill: (() => {
+        const h = document.querySelector('.wire-head');
+        return h ? getComputedStyle(h).fill : '';
+      })(),
+    };
+  });
+  check('every wire is a straight line, not a curve',
+    wires.curved === 0 && wires.lines === map.wires,
+    wires.lines + ' straight of ' + map.wires + ', ' + wires.curved + ' curved');
+  check('…and every one of them ends in an arrowhead that exists',
+    wires.headed === map.wires && wires.marker,
+    wires.headed + ' headed, marker ' + (wires.marker ? 'defined' : 'MISSING'));
+  /* The head is a FILL and the line is a STROKE — a marker does not inherit the
+   * path's stroke, so the two are painted by different properties and can drift
+   * apart into a green line with a black tip. */
+  check('…painted the same green as the line it ends',
+    wires.headFill === 'rgb(111, 220, 141)', wires.headFill);
+
+  /* THE THREE RUNGS THAT ARE NOT JUST A GAME ON THE WAY, and their ORDER: the
+   * game under your feet is the root and the Amulet is the last thing on the
+   * road. A ladder drawn upside down would satisfy every count above. */
+  check('here, the Amulet and the pin are each marked once',
+    map.here === 1 && map.amulet === 1 && map.pinned === 1,
+    JSON.stringify({ here: map.here, amulet: map.amulet, pinned: map.pinned }));
+  check('…with you at the top and the Amulet at the foot',
+    map.hereFirst && map.amuletLast,
+    JSON.stringify({ hereFirst: map.hereFirst, amuletLast: map.amuletLast }));
+
+  /* THE DESTINATION IS NAMED ON THE MAP ITSELF. This source is shown ALONE, so
+   * a ladder with no destination on it is a diagram of nothing. */
+  check('the distance and the destination are on the map',
+    /3 games to .*Tears of the Kingdom/.test(map.sub), map.sub);
+
+  check('the whole ladder lands inside the panel',
+    map.ladder.bottom <= map.panel.bottom + 1 && map.ladder.top >= map.panel.top - 1
+      && map.ladder.right <= map.panel.right + 1 && map.ladder.left >= map.panel.left - 1,
+    JSON.stringify({ ladder: [Math.round(map.ladder.right), Math.round(map.ladder.bottom)],
+      panel: [Math.round(map.panel.right), Math.round(map.panel.bottom)] }));
+  check('the map source is filled, not content-height',
+    map.pageH === MAP_SIZE.height, map.pageH + ' of ' + MAP_SIZE.height);
+
+  /* THE LADDER GROWS INTO THE SOURCE IT IS GIVEN, and this is the check the
+   * whole layout exists for.
+   *
+   * It used to be a flat 152px rung with a fit that only ever scaled DOWN, so a
+   * 1920x1080 source drew exactly the ladder a 640x720 one did and surrounded it
+   * with a thousand pixels of empty card — going full screen made the map WORSE,
+   * not better, and nothing here noticed because every assertion was about the
+   * ladder being inside the panel, which an under-sized ladder satisfies
+   * beautifully. So the assertion is that the rung, the cover and the NAME are
+   * all materially bigger at 1920x1080 than at 640x720, and that the ladder
+   * genuinely fills the room rather than huddling in the middle of it. */
+  const sizeAt = async (size) => {
+    await page.setViewportSize(size);
+    await sleep(700);
+    return page.evaluate(() => {
+      const rung = document.querySelector('.rung');
+      const name = document.querySelector('.rung-name');
+      const img = document.querySelector('.rung > img');
+      const rows = document.getElementById('map-rows').getBoundingClientRect();
+      const body = document.getElementById('map-body').getBoundingClientRect();
+      return {
+        rung: Math.round(rung.getBoundingClientRect().width),
+        cover: Math.round(img.getBoundingClientRect().width),
+        name: Math.round(parseFloat(getComputedStyle(name).fontSize)),
+        fillW: rows.width / body.width,
+        fillH: rows.height / body.height,
+      };
+    });
+  };
+  const small = await sizeAt(MAP_SMALL);
+  const full = await sizeAt(MAP_SIZE);
+  check('a full-screen source draws a materially bigger ladder',
+    full.rung > small.rung * 1.4 && full.cover > small.cover * 1.4,
+    'rung ' + small.rung + '->' + full.rung + 'px, cover ' + small.cover
+      + '->' + full.cover + 'px');
+  check('…and the names grow with it, which is the point',
+    full.name > small.name * 1.4, small.name + 'px -> ' + full.name + 'px');
+  /* At least 70% of one axis. A ladder that fits but uses a third of the source
+   * is the exact failure this pass is about. */
+  check('…and it fills the source rather than huddling in the middle of it',
+    Math.max(full.fillW, full.fillH) > 0.7,
+    (full.fillW * 100).toFixed(0) + '% wide, ' + (full.fillH * 100).toFixed(0) + '% tall');
+
+  /* LEFT TO RIGHT: distance on the LONG axis. A ladder that ran top-to-bottom
+   * would satisfy every size check above and still waste the 16:9 it is drawn
+   * for, so the direction is asserted rather than assumed. */
+  const flow = await page.evaluate(() => {
+    const here = document.querySelector('.rung.here').getBoundingClientRect();
+    const amulet = document.querySelector('.rung.amulet').getBoundingClientRect();
+    return { dx: Math.round(amulet.left - here.left),
+      dy: Math.round(Math.abs(amulet.top - here.top)) };
+  });
+  check('the road runs left to right, you on the left and the Amulet on the right',
+    flow.dx > 0 && flow.dx > flow.dy, JSON.stringify(flow));
+  await page.setViewportSize(MAP_SIZE);
+  await sleep(500);
+
+  /* THE EMPTY STATES ARE TWO DIFFERENT SENTENCES, and neither is a blank panel
+   * — which is what a viewer reads as a broken source. */
+  write((s) => { s.at++; s.route = { layers: [], edges: [], dropped: 0,
+    waypoint_depth: -1, arrived: true }; });
+  await sleep(900);
+  const arrived = await page.evaluate(() => ({
+    note: document.getElementById('map-note').textContent,
+    shown: getComputedStyle(document.getElementById('map-note')).display !== 'none',
+    rungs: document.querySelectorAll('.rung').length,
+  }));
+  check('standing on the Amulet says so instead of drawing nothing',
+    arrived.shown && /under your feet/.test(arrived.note) && arrived.rungs === 0,
+    JSON.stringify(arrived));
+  write((s) => { s.at++; s.route = { layers: [], edges: [], dropped: 0,
+    waypoint_depth: -1, arrived: false }; });
+  await sleep(900);
+  check('…and a dead end says THAT instead, which is a different fact',
+    /No road/.test(await page.evaluate(() =>
+      document.getElementById('map-note').textContent)));
+
+  /* A TRIMMED FAR END IS SAID OUT LOUD. `_route` keeps the near layers, so what
+   * a trim loses is the approach to the Amulet — the difference between a map
+   * that is short and a map that is wrong. */
+  write((s) => { s.at++; s.route = Object.assign({}, fixture(dir).route, { dropped: 3 }); });
+  await sleep(900);
+  const trimmed = await page.evaluate(() => ({
+    note: document.getElementById('map-note').textContent,
+    rungs: document.querySelectorAll('.rung').length,
+  }));
+  check('a trimmed route says how much of itself is missing',
+    /\+3 more layers/.test(trimmed.note) && trimmed.rungs > 0,
+    JSON.stringify(trimmed));
+
+  /* THE WIRES SURVIVE A RESIZE. They are drawn from measured boxes, so a source
+   * the streamer stretches is the case where they silently stay where they
+   * were — pointing at nothing. */
+  write((s) => { s.at++; s.route = fixture(dir).route; });
+  await sleep(900);
+  const before = await page.evaluate(() =>
+    document.querySelector('.wire').getAttribute('d'));
+  await page.setViewportSize({ width: 900, height: 720 });
+  await sleep(600);
+  const after = await page.evaluate(() => ({
+    d: document.querySelector('.wire').getAttribute('d'),
+    degenerate: [...document.querySelectorAll('.wire')].filter((w) => {
+      const r = w.getBoundingClientRect();
+      return r.width < 0.5 && r.height < 0.5;
+    }).length,
+  }));
+  check('the wires are redrawn when the source is resized',
+    after.d !== before && after.degenerate === 0,
+    'was ' + String(before).slice(0, 24) + '… now ' + String(after.d).slice(0, 24) + '…');
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(700);
+
+  /* ------------------------------------------------------------------------
    * THE TEXT HOLDS ITS GROUND OVER ANY CAPTURE.
    *
    * WHY THIS SAMPLES PIXELS INSTEAD OF DOING THE ARITHMETIC. The old page was a
@@ -816,48 +1277,50 @@ async function main() {
   console.log('the text holds its ground over any capture');
   const CAPTURES = [['dark', [16, 16, 20]], ['mid', [124, 124, 128]],
     ['bright', [246, 246, 250]]];
+
+  /* ONE SAMPLER, RUN OVER EVERY SOURCE THAT HAS TEXT OF ITS OWN. It used to be
+   * a straight-line block that only ever looked at the default page, which was
+   * fine while the default page was the only place text lived. It is not: the
+   * route map is its own browser source at its own size, and its rungs and
+   * heading never appear on the default page at all — a `display: none` ladder
+   * has no rects, so sampling it there measures nothing and reports success. */
+  async function worstText(hash, selectors, size) {
+    if (size) await page.setViewportSize(size);
+    await page.goto('file://' + path.join(dir, 'overlay.html') + hash);
+    await sleep(700);
+    const shot = { w: (size || {}).width || WIDTH, h: (size || {}).height || HEIGHT };
+    const texture = decodePng(await page.screenshot({ omitBackground: true,
+      clip: { x: 0, y: 0, width: shot.w, height: Math.min(shot.h, 720) } }));
+    const boxes = await page.evaluate(sampleBoxes, selectors);
+    let ratio = Infinity, where = 'nothing sampled';
+    for (const [name, capture] of CAPTURES) {
+      const composited = compositeOver(texture, capture);
+      for (const b of boxes) {
+        const r = glyphContrast(composited, b);
+        if (r && r < ratio) { ratio = r; where = b.sel + ' over ' + name; }
+      }
+    }
+    return { ratio, where, boxes: boxes.length, bpp: texture.bpp };
+  }
+
   await page.goto('file://' + path.join(dir, 'overlay.html'));
   await sleep(700);
   const texture = decodePng(await page.screenshot({ omitBackground: true,
     clip: { x: 0, y: 0, width: WIDTH, height: Math.min(HEIGHT, 520) } }));
   check('the page hands OBS a transparent texture, not an opaque one',
     texture.bpp === 4, texture.bpp + ' bytes per pixel');
-  /* THE RANGE'S RECTS, CLIPPED TO WHAT IS ACTUALLY ON SCREEN. Read once: the
-   * page does not change between captures now that the compositing happens out
-   * here, only the ground under it does.
+  /* THE DEFAULT COLUMN'S TEXT. `.lookup` and `.goals-label` are in here for a
+   * reason: the chat command is 12px in the accent colour and is the one line
+   * on this page a viewer is expected to read character by character and type,
+   * which is a stricter job than any other text here does. If a future pass
+   * dims the accent or lightens the card, this is what notices.
    *
-   * An element box runs the full width of its column whatever the text in it
-   * does, so a short subtitle in a wide row is mostly empty ground — a sampler
-   * splitting THAT by percentile finds no glyph and scores the halo against the
-   * card. A Range over the node's contents gives the line boxes the glyphs
-   * occupy instead.
-   *
-   * AND THEN THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to
-   * work out. `.now-game` and `.dest-game` are `-webkit-line-clamp: 2`, and a
-   * Range hands back a rect for EVERY line the text would have taken, clipped
-   * ones included — so on a long title the sampler was reading rects sitting
-   * 40px below the visible box, over the health bar and the cost line, and
-   * reporting their unrelated colours as a contrast failure of the title. The
-   * real text was scoring 8.9 to 11.3 the whole time. Any rect not inside its
-   * own element's border box is not on screen and is dropped. */
-  const boxes = await page.evaluate(() => {
-    const out = [];
-    for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
-      '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
-      const n = document.querySelector(sel);
-      if (!n || !n.textContent.trim()) continue;
-      const box = n.getBoundingClientRect();
-      const range = document.createRange();
-      range.selectNodeContents(n);
-      for (const r of range.getClientRects()) {
-        if (r.width < 20 || r.height < 7) continue;
-        if (r.top < box.top - 1 || r.bottom > box.bottom + 1) continue;
-        out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
-          w: Math.round(r.width), h: Math.round(r.height) });
-      }
-    }
-    return out;
-  });
+   * The map's rungs are NOT here — they are `display: none` on this page and
+   * would sample nothing at all. They get their own pass below, at their own
+   * source size. */
+  const boxes = await page.evaluate(sampleBoxes,
+    ['.now-game', '.dest-game', '#hops', '#now-label', '.lookup', '.goals-label',
+      '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']);
   let worstRatio = Infinity, worstWhere = '';
   for (const [name, capture] of CAPTURES) {
     const shot = compositeOver(texture, capture);
@@ -871,6 +1334,20 @@ async function main() {
    * palette colour, this is the check that notices. */
   check('the worst text on the page is still legible over any capture',
     worstRatio >= 4.5, worstRatio.toFixed(2) + ':1 — ' + worstWhere);
+
+  /* THE MAP'S OWN SOURCE, SAMPLED AT ITS OWN SIZE. Its text is nowhere on the
+   * default page, so without this pass the ladder could go unreadable over a
+   * bright capture and every check here would still be green. A rung's name is
+   * the half of the map a viewer can act on — it is what they would search —
+   * and `.rung-tag` is 10px, the smallest type anywhere on this page. */
+  const mapText = await worstText('#map',
+    ['.map-sub', '#map-rows .rung-name', '#map-rows .rung-tag', '.map .label'],
+    MAP_SIZE);
+  check('the map sampled something at all', mapText.boxes > 0,
+    mapText.boxes + ' text boxes');
+  check('…and its worst text is legible over any capture too',
+    mapText.ratio >= 4.5, mapText.ratio.toFixed(2) + ':1 — ' + mapText.where);
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
 
   console.log('the art loads from a page that is not a file:// document');
   const server = http.createServer((req, res) => {
