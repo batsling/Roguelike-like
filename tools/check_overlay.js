@@ -60,11 +60,19 @@ const SRC = path.join(REPO, 'obs');
 const WIDTH = 352;
 const HEIGHT = 828;
 
-/* THE ROUTE MAP'S OWN SOURCE. It is not part of the column — a ladder two or
- * three games wide and up to fourteen deep does not fit 352 at any readable
- * type size — so it has a shape of its own, and this is the one the README
- * tells a streamer to make and every map measurement below is taken at. */
-const MAP_SIZE = { width: 640, height: 720 };
+/* THE ROUTE MAP'S OWN SOURCE, and it is the whole screen.
+ *
+ * It is not part of the column — a ladder two or three games wide and up to
+ * fourteen deep does not fit 352 at any readable type size. It was drawn for
+ * 640x720 first and that was still too small to read: a route runs LEFT TO
+ * RIGHT now, so the 1920 is the axis distance is measured along, and a
+ * full-screen source is what the README tells a streamer to make.
+ *
+ * The page is fluid and works at any size — MAP_SMALL below is a real
+ * alternative and is what the growth check measures against — but every map
+ * measurement here is taken at the recommended one. */
+const MAP_SIZE = { width: 1920, height: 1080 };
+const MAP_SMALL = { width: 640, height: 720 };
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -1068,18 +1076,70 @@ async function main() {
   check('the distance and the destination are on the map',
     /3 games to .*Tears of the Kingdom/.test(map.sub), map.sub);
 
-  /* THE FIT. The fixture is deeper than 720px, so this route MUST be scaled —
-   * if it is not, the `min-height: 0` on `.map-body` has been lost and the card
-   * is growing to fit its content instead, which puts the foot of the road (the
-   * Amulet) off the bottom of the source where nobody sees it. */
-  check('a deep route is scaled to the panel rather than overflowing',
-    /matrix\(0\./.test(map.transform), map.transform);
-  check('…and the whole ladder lands inside the panel',
-    map.ladder.bottom <= map.panel.bottom + 1 && map.ladder.top >= map.panel.top - 1,
-    JSON.stringify({ ladder: Math.round(map.ladder.bottom),
-      panel: Math.round(map.panel.bottom) }));
+  check('the whole ladder lands inside the panel',
+    map.ladder.bottom <= map.panel.bottom + 1 && map.ladder.top >= map.panel.top - 1
+      && map.ladder.right <= map.panel.right + 1 && map.ladder.left >= map.panel.left - 1,
+    JSON.stringify({ ladder: [Math.round(map.ladder.right), Math.round(map.ladder.bottom)],
+      panel: [Math.round(map.panel.right), Math.round(map.panel.bottom)] }));
   check('the map source is filled, not content-height',
     map.pageH === MAP_SIZE.height, map.pageH + ' of ' + MAP_SIZE.height);
+
+  /* THE LADDER GROWS INTO THE SOURCE IT IS GIVEN, and this is the check the
+   * whole layout exists for.
+   *
+   * It used to be a flat 152px rung with a fit that only ever scaled DOWN, so a
+   * 1920x1080 source drew exactly the ladder a 640x720 one did and surrounded it
+   * with a thousand pixels of empty card — going full screen made the map WORSE,
+   * not better, and nothing here noticed because every assertion was about the
+   * ladder being inside the panel, which an under-sized ladder satisfies
+   * beautifully. So the assertion is that the rung, the cover and the NAME are
+   * all materially bigger at 1920x1080 than at 640x720, and that the ladder
+   * genuinely fills the room rather than huddling in the middle of it. */
+  const sizeAt = async (size) => {
+    await page.setViewportSize(size);
+    await sleep(700);
+    return page.evaluate(() => {
+      const rung = document.querySelector('.rung');
+      const name = document.querySelector('.rung-name');
+      const img = document.querySelector('.rung > img');
+      const rows = document.getElementById('map-rows').getBoundingClientRect();
+      const body = document.getElementById('map-body').getBoundingClientRect();
+      return {
+        rung: Math.round(rung.getBoundingClientRect().width),
+        cover: Math.round(img.getBoundingClientRect().width),
+        name: Math.round(parseFloat(getComputedStyle(name).fontSize)),
+        fillW: rows.width / body.width,
+        fillH: rows.height / body.height,
+      };
+    });
+  };
+  const small = await sizeAt(MAP_SMALL);
+  const full = await sizeAt(MAP_SIZE);
+  check('a full-screen source draws a materially bigger ladder',
+    full.rung > small.rung * 1.4 && full.cover > small.cover * 1.4,
+    'rung ' + small.rung + '->' + full.rung + 'px, cover ' + small.cover
+      + '->' + full.cover + 'px');
+  check('…and the names grow with it, which is the point',
+    full.name > small.name * 1.4, small.name + 'px -> ' + full.name + 'px');
+  /* At least 70% of one axis. A ladder that fits but uses a third of the source
+   * is the exact failure this pass is about. */
+  check('…and it fills the source rather than huddling in the middle of it',
+    Math.max(full.fillW, full.fillH) > 0.7,
+    (full.fillW * 100).toFixed(0) + '% wide, ' + (full.fillH * 100).toFixed(0) + '% tall');
+
+  /* LEFT TO RIGHT: distance on the LONG axis. A ladder that ran top-to-bottom
+   * would satisfy every size check above and still waste the 16:9 it is drawn
+   * for, so the direction is asserted rather than assumed. */
+  const flow = await page.evaluate(() => {
+    const here = document.querySelector('.rung.here').getBoundingClientRect();
+    const amulet = document.querySelector('.rung.amulet').getBoundingClientRect();
+    return { dx: Math.round(amulet.left - here.left),
+      dy: Math.round(Math.abs(amulet.top - here.top)) };
+  });
+  check('the road runs left to right, you on the left and the Amulet on the right',
+    flow.dx > 0 && flow.dx > flow.dy, JSON.stringify(flow));
+  await page.setViewportSize(MAP_SIZE);
+  await sleep(500);
 
   /* THE EMPTY STATES ARE TWO DIFFERENT SENTENCES, and neither is a blank panel
    * — which is what a viewer reads as a broken source. */

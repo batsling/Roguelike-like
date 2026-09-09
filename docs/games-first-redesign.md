@@ -2453,15 +2453,34 @@ stream — so the overlay dims only when the beat actually stops.
   that led in, so one game legitimately holds two rungs at two depths. Keying by
   id merges them and draws arrows into a step of the route that does not exist.
 
-  **640 × 720, ITS OWN SOURCE, AND OFF THE DEFAULT PAGE.** A ladder needs width
-  per layer and height per step: three 152px rungs and their gaps are 484, which
-  the 352 column cannot hold at any type size readable across a room. Deeper than
-  the panel and the whole ladder is SCALED to fit rather than running off the
-  bottom, down to 0.35; past 14 layers the payload trims the far end and the page
-  says how much it dropped. Every rung is a cover AND a name — the cover is what
-  a viewer recognises, the name is what they can search — and a game already
-  beaten is drained and tagged, because a revisit is legal and rolls a fresh goal
-  but you know the game.
+  **FULL SCREEN, LEFT TO RIGHT, AND OFF THE DEFAULT PAGE.** A ladder needs width
+  per layer and height per step, which the 352 column has none of. It runs left
+  to right — you on the left, the Amulet on the right, each layer's choices
+  stacked — because DISTANCE BELONGS ON THE LONG AXIS: a 14-layer route gets
+  137px per layer across 1920 and 77px down 1080. The in-game `RunMapModal` runs
+  the other way and should, being a tall modal in a 16:9 window; this is a 16:9
+  source and reads as the road strip does. Past 14 layers the payload trims the
+  far end and the page says how much it dropped.
+
+  **EVERY DIMENSION IS A FRACTION OF ONE SOLVED NUMBER**, the rung's width, which
+  the page solves from the room the source gives it on BOTH axes (a shallow wide
+  route is bound by its tallest layer, a deep narrow one by its length). Covers,
+  type, gaps and arrow weight all ride on it, so the ladder is the same object at
+  100px and at 300px, and it grows into whatever source it is given.
+
+  **THE FIRST VERSION DID NOT, AND THAT IS THE LESSON.** The rung was a flat
+  152px and the fit only ever scaled DOWN, so a full-screen source drew exactly
+  the ladder a 640-wide one did and put a thousand pixels of empty card around
+  it — going full screen made the map WORSE. Nothing caught it, because every
+  assertion was about the ladder fitting INSIDE its panel, and an under-sized
+  ladder satisfies that perfectly. "It fits" is not "it fills"; a layout check
+  that only bounds a thing from above cannot see it shrink.
+
+  Every rung is a cover AND a name — the cover is what a viewer recognises, the
+  name is what they can search — with the name held to three lines at a fixed
+  height so a layer reads as one rank of equal choices. A game already beaten is
+  drained and tagged, because a revisit is legal and rolls a fresh goal but you
+  know the game.
 
   **THE TWO EMPTY STATES SAY DIFFERENT THINGS.** Standing on the Amulet is the
   run's best moment; no road at all is a dead end. Neither may draw the blank

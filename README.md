@@ -889,7 +889,7 @@ with the inside of a browser source. So the page renders part of itself, and
 | `bottom.html` | checklist + ticker | 352 × 442 |
 | `goals.html` | the checklist, and nothing else | 352 × 352 |
 | `road.html` | the road walked so far | 352 × 116 |
-| `map.html` | the road **ahead**, as a ladder | 640 × 720 |
+| `map.html` | the road **ahead**, as a ladder | **1920 × 1080** |
 
 Add a Browser Source, tick **Local file**, browse to the one you want. Point
 **several** at different files and put whatever you like between them; they read
@@ -949,19 +949,39 @@ map. So it is drawn the way `RunMapModal` draws it in-game: rungs in layers, gre
 arrows between them, in the same colours (`RouteLadder`'s blue for where you are,
 ember for the Amulet, purple for a pin).
 
-**Make it `352 × 720`? No — `640 × 720`.** A ladder needs width per layer and
-height per step, and three 152px rungs plus their gaps come to 484. It does not
-fit the column at any type size that can be read across a room, so it is a source
-of its own, and one you **toggle**: it is what you cut to while deciding where to
-go next, not something a viewer needs on screen the whole time. Hide it in OBS,
-or put it on a between-games scene.
+**It runs left to right, and it is a full-screen source.** You on the left, the
+Amulet on the right, each layer's choices stacked above one another. The in-game
+`RunMapModal` runs top-to-bottom and this deliberately does not: distance belongs
+on the **long** axis. A 14-layer route gets 137px per layer across 1920 and only
+77px down 1080, and the choices within a layer — never more than a handful — are
+what the short axis is for. It also matches the road strip, which has always run
+the same way.
+
+It is a source you **toggle**: what you cut to while deciding where to go next,
+not something a viewer needs on screen the whole time. Hide it in OBS, or put it
+on a between-games scene.
 
 | | |
 |---|---|
-| Source size | **640 × 720** (what the layout is tuned against) |
+| Source size | **1920 × 1080** (what the layout is tuned against) |
+| Smaller sources | fine — it is fluid; 640 × 720 works and is simply smaller |
 | Depth it holds | 14 layers, then it says `+N more layers … not drawn` |
-| Deeper than the panel | the ladder is **scaled** to fit, down to 0.35 |
-| Wider source | rungs spread out; it is fluid like the rest of the page |
+| Deeper than fits | rungs shrink to a legibility floor, then the ladder scales |
+
+**Everything is sized from one number, and that is what makes it readable.** The
+rung's width is solved for from the room the source gives it — on *both* axes,
+since a shallow wide route is bound by its tallest layer and a deep narrow one by
+its length — and the covers, the type, the gaps and the arrow weight are all
+fractions of it. The ladder is the same object at 100px and at 300px.
+
+**It used to be 152px forever.** The first version had a fixed rung and a fit that
+only ever scaled *down*, so a 1920 × 1080 source drew exactly the ladder a 640
+one did and surrounded it with a thousand pixels of empty card — going full screen
+made the map **worse**. Nothing caught it, because every assertion was about the
+ladder fitting *inside* the panel, which an under-sized ladder satisfies
+perfectly. `check_overlay.js` now asserts the rung, the cover and the name are all
+materially bigger at 1920 than at 640, and that the ladder fills at least 70% of
+one axis.
 
 **Every rung is a cover and a name.** The cover is what a viewer recognises — box
 art is how anyone reads a shelf — and the name is what they can actually search
@@ -1073,7 +1093,8 @@ URLs; `tools/check_overlay.js` now serves the page over http and asserts every
 `<img>` decoded, which is the only way this class of bug is visible.
 
 **And the route map is a fourth source**, at `map.html`: the road *ahead*
-as a branching ladder, drawn for 640 × 720 and toggled on when you want it. See
+as a branching ladder, drawn full screen at 1920 × 1080 and toggled on when you
+want it. See
 "The route map" above.
 
 **It is two cards, on a 352px column that is mostly the game.** The first is the

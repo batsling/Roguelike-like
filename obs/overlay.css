@@ -831,48 +831,74 @@ html, body {
 
 /* ------------------------------------------------------------ route map -- */
 
-/* THE ROAD AHEAD, at map.html — every optimal road from the game in
- * play to the Amulet, as a layered ladder with arrows between the layers.
+/* THE ROAD AHEAD, at map.html — every optimal road from the game in play to the
+ * Amulet, as a ladder with arrows between the layers.
  *
- * DRAWN FOR ~640 × 720 AND ITS OWN SOURCE. It is the road's opposite number:
- * #road is where the run has been, one cover per stop, a sequence; this is
- * where it can go, and it is a GRAPH because there is usually more than one
- * equally short way on. That shape needs width per layer and height per step,
- * which is exactly what the 352 column has none of — and it is not something a
- * viewer needs on screen all the time. It is what you cut to while deciding.
+ * IT RUNS LEFT TO RIGHT: you on the left, the Amulet on the right, each layer's
+ * choices stacked above one another. The in-game RunMapModal runs top-to-bottom
+ * and this deliberately does not, because the two are read in different shapes —
+ * a modal inside a 16:9 window is tall, and a full-screen browser source is
+ * 1920 wide and 1080 tall. Distance belongs on the LONG axis: a 14-layer route
+ * gets 137px per layer across the width and 77px down the height, and the choices
+ * within a layer (never more than a handful) are what the short axis is for. It
+ * also matches the road strip, which has always run the same way.
  *
- * Everything below is fluid: a wider source spreads the rungs, a taller one is
- * scaled into by overlay.js rather than left empty. */
+ * EVERYTHING IS SIZED FROM `--rung`, WHICH overlay.js SETS FROM THE SOURCE.
+ * This is the fix for the map being illegible, and the bug was not the type
+ * size: every rung was a flat 152px and the fit only ever scaled DOWN, so a
+ * 1920x1080 source drew exactly the same small ladder it drew at 640 and
+ * surrounded it with a thousand pixels of empty card. The ladder now grows into
+ * whatever room it is given, and the covers and the type grow with it because
+ * they are all fractions of the same number.
+ *
+ * SIZED, NOT TRANSFORMED, when there is room to grow. A `transform: scale()`
+ * above 1 resamples text and is exactly the wrong tool for a legibility pass;
+ * the transform is kept only for the squeeze at the other end, where a route
+ * deeper than the source can hold has to give something up. */
 .map { display: flex; flex-direction: column; gap: 8px; height: 100%; }
 
 .map-head { flex: 0 0 auto; }
-/* The distance and the destination, under the label. Gold like the run card's
- * `.now-game`, because it names the same thing that headline does and the two
- * sources are read as one object. */
+/* THE HEADING SCALES WITH THE SOURCE TOO, off `--head`, which overlay.js sets
+ * from the window's own height.
+ *
+ * NOT off `--rung`, and that is a real constraint rather than a preference: the
+ * head's height is subtracted from the room the ladder is solved into, so a head
+ * sized from the rung would feed back into the number that sized it and the two
+ * would chase each other every time the map redrew. The window's height is the
+ * one measurement in here that nothing on the page can change.
+ *
+ * The distance and the destination are gold like the run card's `.now-game`,
+ * because they name the same thing that headline does and the two sources are
+ * read as one object. */
+.map .label { font-size: calc(var(--head, 15px) * 0.8); }
 .map-sub {
-  font-size: 15px;
+  font-size: var(--head, 15px);
   font-weight: 600;
   color: var(--gold);
   line-height: 1.25;
 }
 
-/* THE BOX THE LADDER IS SCALED INTO. `min-height: 0` because it is a flex child
+/* THE BOX THE LADDER IS SIZED INTO. `min-height: 0` because it is a flex child
  * that must be allowed to be SHORTER than its content — without it a deep
- * ladder stretches the card instead of being scaled, and the fit in overlay.js
- * measures a `clientHeight` that has already grown to fit, so the scale comes
- * out at 1 every time and the road runs off the bottom of the source. */
+ * ladder stretches the card instead of being fitted, and the measurement in
+ * overlay.js reads a `clientHeight` that has already grown to fit, so the fit
+ * comes out at 1 every time and the road runs off the end of the source. */
 .map-body {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Scaled by overlay.js. `top center` so a shrunken ladder stays under the
- * heading and centred, rather than drifting to a corner. */
+/* Scaled by overlay.js only when the ladder cannot be made small enough by
+ * `--rung` alone. `center` rather than `top center` now that the ladder is
+ * centred in the panel on both axes. */
 .map-fit {
   position: relative;
-  transform-origin: top center;
+  transform-origin: center center;
 }
 
 /* THE ARROWS, in their own layer UNDER the rungs. Absolute and
@@ -888,27 +914,34 @@ html, body {
   pointer-events: none;
 }
 /* UITheme's shortest-path green, the same arrow colour RouteLadder paints
- * (COL_ARROW) — the overlay and the in-game map are the same object. */
+ * (COL_ARROW) — the overlay and the in-game map are the same object. The width
+ * rides on `--rung` like everything else: a 2px wire against a 300px rung is a
+ * hair, and against a 100px one it is a rope. */
 .wire {
   fill: none;
   stroke: var(--success);
   stroke-opacity: 0.85;
-  stroke-width: 2;
+  stroke-width: calc(var(--rung, 152px) * 0.018);
   stroke-linecap: round;
 }
 
-.map-rows { position: relative; display: flex; flex-direction: column; }
-/* THE GAP IS THE ARROWS' ROOM. 34px between layers, which is where every wire
- * lives: tighter and a curve crossing from one side of a three-wide layer to
- * the other has nowhere to bend, and the crossings land on the boxes instead of
- * in the band between them. */
+/* LAYERS ACROSS, CHOICES DOWN. The gap between layers is the arrows' room —
+ * a wire crossing from one side of a three-high layer to the other needs
+ * somewhere to bend, and at less than about a third of a rung the curves land
+ * on the boxes instead of in the band between them. */
+.map-rows {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--rung, 152px) * 0.32);
+}
 .map-row {
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  gap: 14px;
-  margin-bottom: 34px;
+  gap: calc(var(--rung, 152px) * 0.08);
 }
-.map-row:last-child { margin-bottom: 0; }
 
 /* ONE GAME ON THE MAP: its cover, its name, and a word for what it is.
  *
@@ -917,44 +950,69 @@ html, body {
  * actually search for, which is the point of putting the map on a stream at
  * all.
  *
- * 152px IS RouteLadder.BOX's 150 plus its border, and it is what the widest
- * layer can afford: three rungs and their two gaps come to 484 of the 616 a
- * 640-wide source leaves inside its padding. It was 132 for one draft, which fit
- * with room to spare and spent the spare on nothing — "Vampire Survivors:…" and
- * "The Legend of Zelda: Tears of…" both clipped mid-title at two lines, and a
- * clipped title is the half of this map a viewer cannot act on. */
+ * EVERY NUMBER HERE IS A FRACTION OF `--rung`, so the whole rung scales as one
+ * object: at 100px it is a thumbnail with a caption and at 300px it is a poster,
+ * and the proportions — and the two-line name — are the same at both. */
 .rung {
   position: relative;
   flex: 0 0 auto;
-  width: 152px;
-  padding: 8px;
+  width: var(--rung, 152px);
+  padding: calc(var(--rung, 152px) * 0.055);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: calc(var(--rung, 152px) * 0.04);
   background: rgba(37, 31, 24, 0.55);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: calc(var(--rung, 152px) * 0.05);
 }
 .rung > img {
-  width: 62px;
-  height: 84px;
+  width: calc(var(--rung, 152px) * 0.62);
+  /* 3:4, which is the shape a game cover is. Held in the CSS rather than left to
+   * the image so a stray square or wide cover cannot change one rung's height
+   * and break its layer's alignment. */
+  height: calc(var(--rung, 152px) * 0.827);
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: calc(var(--rung, 152px) * 0.026);
   background: var(--panel);
   display: block;
 }
 .rung > img:not([src]) { visibility: hidden; }
 .rung-name {
-  font-size: 12px;
+  font-size: calc(var(--rung, 152px) * 0.105);
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
-  /* Two lines and then an ellipsis: a rung has to be the same height as its
-   * neighbours or the layer stops reading as one rank of equal choices, which
-   * is the single most important thing this map says. */
+  /* THREE LINES, AND A FIXED HEIGHT FOR THEM WHETHER THEY ARE USED OR NOT.
+   *
+   * Three because two clipped the destination — "The Legend of Zelda: Tears
+   * of…" — and the Amulet is the one name on this map a viewer is most likely to
+   * want, so it is the last one that should be cut short. Real titles on this
+   * graph run long ("Vampire Survivors: Legacy of the Moonspell", "The Binding
+   * of Isaac: Rebirth") and two lines was not enough for them either.
+   *
+   * The fixed height is what keeps a layer readable as one RANK OF EQUAL
+   * CHOICES, which is the most important thing this map says. Left to itself a
+   * one-line name makes a shorter rung than a three-line one, the layer's boxes
+   * stop lining up, and the arrows arrive at different heights — the map starts
+   * implying a hierarchy between games that are all exactly the same distance
+   * from the Amulet.
+   *
+   * AND THE TEXT IS CENTRED IN THAT BOX. Left at the top, a one-word title left
+   * two empty lines hanging under it and the rung read as a box with a hole in
+   * the bottom rather than as a box with room in it. Centred, the same slack is
+   * split above and below and looks like breathing space. The clamp lives on the
+   * inner span because `-webkit-line-clamp` needs `display: -webkit-box`, which
+   * cannot also be the flex box doing the centring. */
+  height: calc(var(--rung, 152px) * 0.105 * 1.2 * 3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.rung-name > span {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -962,7 +1020,7 @@ html, body {
  * learned this lesson the hard way (six kinds of row told apart by text colour
  * alone, with nothing anywhere saying what a colour meant). */
 .rung-tag {
-  font-size: 10px;
+  font-size: calc(var(--rung, 152px) * 0.072);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -974,13 +1032,13 @@ html, body {
  * so the map on the stream and the map on the streamer's screen agree. */
 .rung.here {
   border-color: #2196f3;
-  box-shadow: 0 0 0 1px #2196f3;
+  box-shadow: 0 0 0 2px #2196f3;
 }
 .rung.here .rung-tag { color: #79c0ff; }
 
 .rung.amulet {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .rung.amulet .rung-name { color: var(--accent); }
 .rung.amulet .rung-tag { color: var(--accent); }
@@ -999,7 +1057,7 @@ html, body {
  * them is "the source is broken", which is what an empty panel reads as. */
 .map-note {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: calc(var(--head, 15px) * 0.9);
   color: var(--dim);
   text-align: center;
 }

@@ -385,7 +385,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	var extras := Label.new()
 	extras.text = "In the same folder, one page per source — browse to these the same way:\n"\
 		+ "    goals.html  the checklist alone, uncropped, for a scene beside something else\n"\
-		+ "    map.html  the road AHEAD at 640 x 720: every optimal route from the game you are on to the Amulet, as a branching map. Show it when you want it\n"\
+		+ "    map.html  the road AHEAD, full screen at 1920 x 1080: every optimal route from the game you are on to the Amulet, drawn left to right as a branching map. Show it when you want it\n"\
 		+ "    road.html  the road walked so far, at 352 x 116\n"\
 		+ "    top.html / bottom.html  the run card and the checklist as separate sources, to put a camera between them"
 	extras.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

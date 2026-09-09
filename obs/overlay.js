@@ -609,7 +609,12 @@ function drawMap(route, run) {
       box.appendChild(img);
       const text = document.createElement('span');
       text.className = 'rung-name';
-      text.textContent = n.name;
+      /* An inner span so the clamp and the centring can be two different boxes —
+       * `-webkit-line-clamp` requires `display: -webkit-box` on the element it
+       * clamps, which cannot also be the flex box centring it. */
+      const label = document.createElement('span');
+      label.textContent = n.name;
+      text.appendChild(label);
       box.appendChild(text);
       /* WHAT THIS RUNG IS, in one word, for the three that are not just "a game
        * on the way". Drawn rather than left to colour alone: this page's own
@@ -644,15 +649,44 @@ function drawMap(route, run) {
   layoutWires(route.edges || []);
 }
 
-/* Position the arrows, and scale the ladder to the panel.
+/* SIZE THE LADDER TO THE SOURCE, then position the arrows.
  *
- * ORDER MATTERS: the fit is applied FIRST and the wires measured after, because
- * `getBoundingClientRect` reports post-transform pixels — measuring first and
- * scaling second would draw every arrow at the wrong length, and by a factor
- * that changes with the route's depth, which looks like a rendering bug rather
- * than a maths one. The wires are drawn in the ladder's OWN coordinate space
- * (the SVG scales with it), so the scale is divided back out of every measured
- * offset. */
+ * THIS IS WHAT MAKES THE MAP LEGIBLE, and the bug it fixes was not the type
+ * size. Every rung used to be a flat 152px and the fit only ever scaled DOWN,
+ * so a 1920x1080 source drew exactly the ladder a 640x720 one did and put a
+ * thousand pixels of empty card around it. Going full screen made it WORSE:
+ * more emptiness, same small covers.
+ *
+ * So the rung is solved for instead. Everything in the ladder is a fraction of
+ * `--rung` (see overlay.css), so picking one number sizes the covers, the type,
+ * the gaps and the arrows together, and the ladder is the same object at 100px
+ * and at 300px rather than a different layout at each size.
+ *
+ * SOLVED ON BOTH AXES, because either can be the binding one: a shallow wide
+ * route is bound by its tallest layer and a deep narrow one by its length. The
+ * smaller of the two answers is the one that fits.
+ *
+ * AND SIZED RATHER THAN TRANSFORMED wherever there is room to grow. A
+ * `transform: scale()` above 1 resamples text, which is precisely the wrong
+ * tool for a pass about being able to read something. The transform survives
+ * only as the squeeze at the far end, for a route so deep that even the floor
+ * below does not fit — the whole route is always drawn, so something has to
+ * give, and giving it up in pixels is better than dropping layers. */
+
+/* The rung's height as a multiple of its width, which the CSS above fixes: the
+ * padding, a 3:4 cover, the gaps, two lines of name and the tag. Kept here as
+ * one number because the fit has to know it BEFORE anything is laid out. If the
+ * rung's CSS proportions change, this changes with them. */
+const RUNG_ASPECT = 1.50;
+const LAYER_GAP = 0.32;   /* between layers, in rungs — the arrows' room */
+const CHOICE_GAP = 0.08;  /* between the choices within one layer */
+/* The floor is a legibility floor: below about 90px a cover is a smudge and the
+ * name is unreadable, so there is no point shrinking further — past this the
+ * transform takes over and the honest answer is that the route is very long.
+ * The ceiling stops a two-layer route from being blown up into wall art. */
+const RUNG_MIN = 90;
+const RUNG_MAX = 300;
+
 let lastEdges = [];
 
 function layoutWires(edges) {
@@ -661,15 +695,38 @@ function layoutWires(edges) {
   const rows = el('map-rows');
   const body = el('map-body');
   const svg = el('map-wires');
-  if (!rows.children.length) return;
+  const layers = [...rows.children];
+  if (!layers.length) return;
 
-  fit.style.transform = 'scale(1)';
-  const room = body.clientHeight;
-  const needed = rows.scrollHeight;
-  /* Never scale UP. A short route is drawn at full size with space under it —
-   * blowing a three-step road up to fill 720px would make the covers enormous
-   * and say nothing extra. */
-  const scale = (room > 0 && needed > room) ? Math.max(0.35, room / needed) : 1;
+  /* The shape to solve for: how many layers deep, and how many choices in the
+   * fattest one. */
+  const depth = layers.length;
+  const width = Math.max(...layers.map((l) => l.children.length));
+  const room = { w: body.clientWidth, h: body.clientHeight };
+  if (room.w <= 0 || room.h <= 0) return;   /* hidden — nothing to measure */
+
+  /* THE HEADING'S SIZE, FROM THE WINDOW AND NOT FROM THE LADDER. The head sits
+   * above `.map-body`, so its height is part of what is subtracted from the room
+   * solved into below — sizing it from `--rung` would put the two in a loop,
+   * each redraw nudging the other. `window.innerHeight` is the one number here
+   * that nothing on the page can move.
+   *
+   * 15px at a 720-tall source and about 30 at 1080, which is the slope this
+   * expression is: a heading that stayed 15px on a full-screen map was the same
+   * mistake as a rung that stayed 152. */
+  const head = Math.max(13, Math.min(38, window.innerHeight * 0.0417 - 15));
+  document.querySelector('.map').style.setProperty('--head', head + 'px');
+
+  const byWidth = room.w / (depth + LAYER_GAP * (depth - 1));
+  const byHeight = room.h / (RUNG_ASPECT * width + CHOICE_GAP * (width - 1));
+  const ideal = Math.min(byWidth, byHeight);
+  const rung = Math.max(RUNG_MIN, Math.min(RUNG_MAX, ideal));
+  fit.style.setProperty('--rung', rung + 'px');
+
+  /* THE SQUEEZE, and only when the floor was not enough. `ideal` is what would
+   * have fitted; if the floor overrode it, the ladder is now bigger than the
+   * panel by exactly that ratio. */
+  const scale = ideal < RUNG_MIN ? Math.max(0.35, ideal / RUNG_MIN) : 1;
   fit.style.transform = 'scale(' + scale + ')';
 
   const origin = rows.getBoundingClientRect();
@@ -678,9 +735,9 @@ function layoutWires(edges) {
     if (!n) return null;
     const r = n.getBoundingClientRect();
     return {
-      cx: (r.left + r.width / 2 - origin.left) / scale,
-      top: (r.top - origin.top) / scale,
-      bottom: (r.bottom - origin.top) / scale,
+      cy: (r.top + r.height / 2 - origin.top) / scale,
+      left: (r.left - origin.left) / scale,
+      right: (r.right - origin.left) / scale,
     };
   };
 
@@ -695,15 +752,15 @@ function layoutWires(edges) {
     const a = at(e.from_depth + '|' + e.from);
     const b = at(e.to_depth + '|' + e.to);
     if (!a || !b) continue;
-    /* A CURVE, NOT A STRAIGHT LINE, and not for decoration: a layer three wide
+    /* A CURVE, NOT A STRAIGHT LINE, and not for decoration: a layer three high
      * sends edges diagonally across the gap, and a straight run from one box's
-     * bottom edge to another's top crosses its neighbours' corners on the way.
-     * Leaving each box vertically and arriving vertically keeps the crossings
-     * in the empty band between rows where they can be read. */
-    const mid = (a.bottom + b.top) / 2;
+     * right edge to another's left crosses its neighbours' corners on the way.
+     * Leaving each box horizontally and arriving horizontally keeps the
+     * crossings in the empty band between layers, where they can be read. */
+    const mid = (a.right + b.left) / 2;
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M' + a.cx + ' ' + a.bottom
-      + ' C' + a.cx + ' ' + mid + ' ' + b.cx + ' ' + mid + ' ' + b.cx + ' ' + b.top);
+    path.setAttribute('d', 'M' + a.right + ' ' + a.cy
+      + ' C' + mid + ' ' + a.cy + ' ' + mid + ' ' + b.cy + ' ' + b.left + ' ' + b.cy);
     path.setAttribute('class', 'wire');
     svg.appendChild(path);
   }
