@@ -165,6 +165,25 @@ function decodePng(buf) {
   return { w, h, bpp, data: out };
 }
 
+/* THE PAGE OVER A CAPTURE, COMPOSITED HERE RATHER THAN IN THE PAGE.
+ *
+ * This is the whole point of the `omitBackground` screenshot: OBS puts the scene
+ * behind a transparent browser-source texture, so the only faithful way to model
+ * it is to take that texture and do the `src-over` ourselves. Setting a
+ * background inside the page instead is what produced years of contrast numbers
+ * that were about a situation no stream is ever in. */
+function compositeOver(png, capture) {
+  if (png.bpp !== 4) throw new Error('compositeOver needs an RGBA texture');
+  const out = Buffer.alloc(png.w * png.h * 3);
+  for (let i = 0, j = 0; i < png.data.length; i += 4, j += 3) {
+    const a = png.data[i + 3] / 255;
+    for (let k = 0; k < 3; k++) {
+      out[j + k] = Math.round(png.data[i + k] * a + capture[k] * (1 - a));
+    }
+  }
+  return { w: png.w, h: png.h, bpp: 3, data: out };
+}
+
 const srgb = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
 const relLum = (r, g, b) => 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
 
@@ -416,13 +435,17 @@ async function main() {
     rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
     JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
 
-  /* THE CARD IS ALL BUT GONE, AND THE HALO IS WHAT MAKES THAT SAFE. The card sits
-   * at 0.12 alpha so the stream really shows through, which is only legible
-   * because every glyph carries its own dark rim (`--halo`) and the backdrop
-   * filter still dims what is behind the card. None of those three may be dropped
-   * on its own: each looks completely fine on a dark game and each is what fails
-   * on a bright one. The pixel sampling below is what actually holds the line —
-   * this pair only pins the mechanism. */
+  /* THE CARD IS A TINT AND THE HALO IS WHAT MAKES THAT SAFE. Two mechanism pins;
+   * the pixel sampling further down is what actually holds the line.
+   *
+   * `backdrop-filter` MUST STAY GONE, and that is asserted rather than assumed.
+   * It does nothing in an OBS browser source — the page renders to a transparent
+   * texture and OBS composites the scene behind it afterwards, so there is no
+   * backdrop inside the page to filter — while doing something visible behind a
+   * double-clicked overlay.html. A declaration that behaves differently in the
+   * preview and on the stream is exactly how this page carried a broken
+   * legibility model through two redesigns, so re-adding one should fail here
+   * rather than look nice on somebody's desk. */
   const glass = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.card'));
     const bg = cs.backgroundColor;
@@ -431,9 +454,9 @@ async function main() {
     const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
     return { alpha: parts.length === 4 ? parts[3] : 1, filter };
   });
-  check('the card lets the stream through', glass.alpha < 0.2, 'alpha ' + glass.alpha);
-  check('…and darkens what it lets through, which is what keeps it readable',
-    /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+  check('the card lets the stream through', glass.alpha <= 0.35, 'alpha ' + glass.alpha);
+  check('…and does not rely on backdrop-filter, which is inert in OBS',
+    glass.filter === 'none', glass.filter);
   check('…and every glyph carries its own ground',
     await page.evaluate(() => {
       const sh = getComputedStyle(document.getElementById('overlay')).textShadow;
@@ -765,65 +788,84 @@ async function main() {
    * alpha the text is not read against the card, it is read against its own halo,
    * and arithmetic on the card alone scores a page that looks fine at 2.6.
    *
-   * So the page is rendered over a dark, a mid and a bright solid "capture" and
-   * the real pixels are read back. For each text element: take its box, split
-   * the pixels into the light half (glyph) and the dark half (halo and whatever
-   * is behind it), and compute the WCAG ratio between the two medians. That is a
-   * PROXY and is documented as one — it is not the ratio of a glyph to a single
-   * flat ground, because there is no longer a single flat ground — but it is
-   * measured on the thing the viewer actually sees, and it moves the moment the
-   * halo, the card, the filter or a palette colour does.
+   * AND THE COMPOSITING HAS TO HAPPEN THE WAY OBS DOES IT, which is the second
+   * thing this check got wrong and the more expensive one. The obvious way to
+   * put a capture behind the page is to set `document.body.background` — and
+   * that is what this did, and what the hand-computed 4.73 before it assumed.
+   * OBS DOES NOT WORK THAT WAY. A browser source renders to a TRANSPARENT
+   * texture and OBS composites the scene behind it afterwards, so inside the
+   * page there is nothing behind the cards at all. Measured: screenshot the page
+   * with `omitBackground` and the card pixels come back at alpha 0.122 against a
+   * `--card-bg` of 0.12 — `backdrop-filter` contributed exactly nothing.
+   *
+   * That invalidated every contrast number this page has ever had, in both
+   * directions: with a background inside the page the worst text measured 4.96,
+   * and composited the way OBS does it, 3.00. The filter has never darkened
+   * anybody's stream; it only ever darkened the white page behind a
+   * double-clicked overlay.html, which is why the design looked right to
+   * everyone who checked it that way.
+   *
+   * So: screenshot with `omitBackground` to get the texture OBS gets, composite
+   * it over each capture HERE, and sample that. For each text element take its
+   * box, split the pixels by luminance into glyph and ground, and take the WCAG
+   * ratio between them. That is a PROXY and is documented as one — there is no
+   * single flat ground behind a haloed glyph — but it is measured on what the
+   * viewer sees, and it moves the moment the halo, the card or a palette colour
+   * does.
    * --------------------------------------------------------------------- */
   console.log('the text holds its ground over any capture');
-  const CAPTURES = [['dark', '#101014'], ['mid', '#7c7c80'], ['bright', '#f6f6fa']];
-  let worstRatio = Infinity, worstWhere = '';
-  for (const [name, colour] of CAPTURES) {
-    await page.goto('file://' + path.join(dir, 'overlay.html'));
-    await page.evaluate((c) => { document.body.style.background = c; }, colour);
-    await sleep(700);
-    const shot = await page.screenshot({ clip: { x: 0, y: 0, width: WIDTH,
-      height: Math.min(HEIGHT, 520) } });
-    /* THE RANGE'S RECTS, CLIPPED TO WHAT IS ACTUALLY ON SCREEN.
-     *
-     * An element box runs the full width of its column whatever the text in it
-     * does, so a short subtitle in a wide row is mostly empty ground — a sampler
-     * splitting THAT by percentile finds no glyph and scores the halo against the
-     * card. A Range over the node's contents gives the line boxes the glyphs
-     * occupy instead.
-     *
-     * AND THEN THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to
-     * work out. `.now-game` and `.dest-game` are `-webkit-line-clamp: 2`, and a
-     * Range hands back a rect for EVERY line the text would have taken, clipped
-     * ones included — so on a long title the sampler was reading rects sitting
-     * 40px below the visible box, over the health bar and the cost line, and
-     * reporting their unrelated colours as a contrast failure of the title. The
-     * real text was scoring 8.9 to 11.3 the whole time. Any rect not inside its
-     * own element's border box is not on screen and is dropped. */
-    const boxes = await page.evaluate(() => {
-      const out = [];
-      for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
-        '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
-        const n = document.querySelector(sel);
-        if (!n || !n.textContent.trim()) continue;
-        const box = n.getBoundingClientRect();
-        const range = document.createRange();
-        range.selectNodeContents(n);
-        for (const r of range.getClientRects()) {
-          if (r.width < 20 || r.height < 7) continue;
-          if (r.top < box.top - 1 || r.bottom > box.bottom + 1) continue;
-          out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
-            w: Math.round(r.width), h: Math.round(r.height) });
-        }
+  const CAPTURES = [['dark', [16, 16, 20]], ['mid', [124, 124, 128]],
+    ['bright', [246, 246, 250]]];
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(700);
+  const texture = decodePng(await page.screenshot({ omitBackground: true,
+    clip: { x: 0, y: 0, width: WIDTH, height: Math.min(HEIGHT, 520) } }));
+  check('the page hands OBS a transparent texture, not an opaque one',
+    texture.bpp === 4, texture.bpp + ' bytes per pixel');
+  /* THE RANGE'S RECTS, CLIPPED TO WHAT IS ACTUALLY ON SCREEN. Read once: the
+   * page does not change between captures now that the compositing happens out
+   * here, only the ground under it does.
+   *
+   * An element box runs the full width of its column whatever the text in it
+   * does, so a short subtitle in a wide row is mostly empty ground — a sampler
+   * splitting THAT by percentile finds no glyph and scores the halo against the
+   * card. A Range over the node's contents gives the line boxes the glyphs
+   * occupy instead.
+   *
+   * AND THEN THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to
+   * work out. `.now-game` and `.dest-game` are `-webkit-line-clamp: 2`, and a
+   * Range hands back a rect for EVERY line the text would have taken, clipped
+   * ones included — so on a long title the sampler was reading rects sitting
+   * 40px below the visible box, over the health bar and the cost line, and
+   * reporting their unrelated colours as a contrast failure of the title. The
+   * real text was scoring 8.9 to 11.3 the whole time. Any rect not inside its
+   * own element's border box is not on screen and is dropped. */
+  const boxes = await page.evaluate(() => {
+    const out = [];
+    for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
+      '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
+      const n = document.querySelector(sel);
+      if (!n || !n.textContent.trim()) continue;
+      const box = n.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) {
+        if (r.width < 20 || r.height < 7) continue;
+        if (r.top < box.top - 1 || r.bottom > box.bottom + 1) continue;
+        out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
+          w: Math.round(r.width), h: Math.round(r.height) });
       }
-      return out;
-    });
-    const png = decodePng(shot);
+    }
+    return out;
+  });
+  let worstRatio = Infinity, worstWhere = '';
+  for (const [name, capture] of CAPTURES) {
+    const shot = compositeOver(texture, capture);
     for (const b of boxes) {
-      const r = glyphContrast(png, b);
+      const r = glyphContrast(shot, b);
       if (r && r < worstRatio) { worstRatio = r; worstWhere = b.sel + ' over ' + name; }
     }
   }
-  await page.evaluate(() => { document.body.style.background = ''; });
   /* 4.5 is AA for body text, and the page clears it by sampling rather than by
    * assertion — if a future pass lightens the card, weakens the halo or dims a
    * palette colour, this is the check that notices. */

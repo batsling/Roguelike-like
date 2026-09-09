@@ -2416,40 +2416,41 @@ takes the whole source instead and gives the slack to the checklist, the one par
 of the page that can use it. `#fill` is a modifier and combines with the fragments
 above, so the hash is parsed as a set of words rather than matched whole.
 
-**THE CARDS ARE BARELY THERE.** They sit at **0.12** alpha over a backdrop filter
-that dims what shows through by half, so **44% of the capture survives** — this
-page spends its life on top of somebody's gameplay, and a panel is a hole punched
-in their capture. It has been three things: all but opaque (0.95), glass (0.45
-over `brightness(0.30)`, 17% through), and now a tint.
+**THE CARDS ARE A TINT.** They sit at **0.30** alpha, so **70% of the capture
+survives** — this page spends its life on top of somebody's gameplay, and a panel
+is a hole punched in their capture. It has been four things: all but opaque
+(0.95), "glass" (0.45 over a backdrop filter), a near-nothing 0.12 leaning on that
+filter, and now an honest alpha.
 
-**THE ALPHA WAS NEVER THE SEE-THROUGH LEVER.** `brightness()` in the filter is,
-and that took measuring to see: at 0.45/0.30, dropping the alpha all the way to
-0.15 while holding the brightness only reached 26%, because the filter had already
-thrown away 70% of the picture before the card painted anything. Every "make it
-more see-through" edit that only touches the alpha is moving the small number.
+**`backdrop-filter` IS NOT PART OF THIS PAGE, AND NEVER WORKED WHERE IT RUNS.**
+An OBS browser source renders to a **transparent texture** and OBS composites the
+scene behind it afterwards, so inside the page there is nothing behind a card to
+filter. Measured: screenshot with `omitBackground` and the card pixels come back
+at the card's own alpha to three decimals. The filter only ever darkened the white
+page behind a **double-clicked** `overlay.html` — which is why every check of it,
+by hand or by harness, was made in the one environment where it appears to work.
 
-**WHAT PAYS FOR IT IS THE HALO**, not the card. Every glyph carries a stacked dark
-rim, so what sits behind the strokes is the halo whatever the game is doing. That
-retires the way this page used to be measured: a WCAG ratio against the composited
-CARD scores a page that looks fine at 2.6, because it measures the text against a
-ground the text is no longer read against. `check_overlay.js` now **renders the
-page over a dark, a mid and a bright capture and samples the real pixels**,
-splitting each line of text into glyph and ground by luminance. Worst text on the
-page: **4.96:1** against an AA bar of 4.5, and the brightness was swept against
-that number rather than chosen (0.55 → 4.63, 0.70 → 3.79).
+**EVERY CONTRAST FIGURE THIS PAGE HAS CARRIED WAS MEASURED THAT WRONG WAY.** The
+**4.73** in three documents and the **4.96** that briefly replaced it both put the
+capture *inside* the page. Composited the way OBS does it, the 4.96 page scored
+**3.00** and the old 0.45 glass scored **3.90**. The design has been below AA on
+every real stream it has ever run on, and looked correct on every desk it was
+checked from.
 
-The **4.73** this section used to quote came from the old model and had gone
-stale besides — recomputing it over today's palette gives 4.66 for the worst text
-colour. Sampled numbers fail loudly; computed ones sit in a document being wrong.
+So the filter is **gone** rather than kept as decoration: a declaration that does
+nothing where the page runs and something where it is previewed is how this
+survived two redesigns. Three things carry legibility now, all of which behave
+identically in a preview and on a stream — an **alpha** (0.30, swept against the
+sampler: 0.25 lands at 4.2, 0.20 at 3.9), a **halo** of hard dark shadows on every
+glyph, and **one real scrim** on the cost line, the single element the sampler
+said the halo could not carry.
 
-The two halves are still one decision, and more so at 0.12 than at 0.45: with the
-filter dropped and the card left as it is, the worst text falls to **3.03**. OBS
-ships whatever CEF its build was cut against and an unsupported filter is dropped
-in silence, exactly as `color-mix()` and `:has()` are — so `overlay.css` carries
-an `@supports not (backdrop-filter: …)` block that restores a nearly opaque card,
-and `check_overlay.js` asserts a transparent card always comes with a darkening
-filter and a halo. Separating them looks perfect on a dark game and is unreadable
-on a bright one, which is the worst kind of regression this page can have.
+**AND THE HARNESS COMPOSITES THE WAY OBS DOES.** `check_overlay.js` screenshots
+with `omitBackground`, composites over a dark, a mid and a bright capture
+*outside* the page, and splits each line of text into glyph and ground by
+luminance. Worst text: **4.62:1** against an AA bar of 4.5. It also asserts
+`backdrop-filter` stays `none`, so re-adding one fails there rather than looking
+right on somebody's desk.
 
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the

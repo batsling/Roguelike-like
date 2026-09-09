@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **`backdrop-filter` never worked in OBS, so every contrast number this overlay
+  has ever had was measured in an environment no stream is in.** Found because a
+  streamer said the transparency worked when they double-clicked the page and not
+  in OBS — the same shape as the missing covers a few entries down, and the same
+  cause: the thing that makes a browser source a browser source.
+
+  **An OBS browser source renders to a transparent texture** and OBS composites
+  the scene behind it afterwards. There is nothing behind a card *inside* the
+  page, so there is nothing for `backdrop-filter` to filter. Measured: screenshot
+  with `omitBackground` and the card pixels come back at alpha 0.122 against a
+  `--card-bg` of 0.12 — the filter contributed exactly nothing. It only ever
+  darkened the white page behind a double-clicked `overlay.html`.
+
+  **Which is where all the numbers came from.** The 4.73 quoted in three
+  documents and the 4.96 that replaced it both set the "capture" as
+  `document.body.background`, i.e. inside the page. Composited the way OBS does
+  it, that 4.96 page scores **3.00** and the old 0.45 "glass" scores **3.90**.
+  The design has been below AA on every real stream it has run on while looking
+  correct on every desk it was checked from — and the streamer's original
+  complaint that the old card was "jarring" was them seeing the truth: a flat 45%
+  brown tint, because the frosting only existed in preview.
+
+  **The filter is gone rather than kept as decoration.** A declaration that does
+  nothing where the page runs and something where it is previewed is precisely
+  how this survived two redesigns; the `@supports` fallback guarding it goes too,
+  since nothing leans on it any more and an unreachable branch is one nobody
+  maintains. Legibility is carried by three things that behave identically in
+  both places: the card's **alpha** (0.30, swept against the sampler — 0.25 lands
+  at 4.2, 0.20 at 3.9), the **halo** of hard dark shadows on every glyph, and
+  **one real scrim** on the cost line, which the sampler identified as the single
+  element the halo could not carry (4.41 while everything else cleared). 70% of
+  the capture now survives, against the 55% the old glass really gave.
+
+  **`check_overlay.js` composites the way OBS does**: `omitBackground` screenshot,
+  composited over dark/mid/bright *outside* the page, then glyph and ground split
+  by luminance. Worst text **4.62:1** against an AA bar of 4.5. It also asserts
+  `backdrop-filter` stays `none`, so re-adding one fails there rather than looking
+  right on somebody's desk.
+
 - **The overlay is a 380px column you can see the game through, and the checklist
   is readable across a room again.**
 

@@ -39,52 +39,55 @@
    * card stopped being the ground (see `--card-bg`). The numbers that replace
    * them are sampled off composited pixels by check_overlay.js, where they can
    * go stale loudly instead of quietly. */
-  --faint:     #cfc8bd;
+  --faint:     #dcd6cd;
   --success:   #4dc76b;
   --danger:    #f77f71;
   --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
   --unbeaten:  #d97821;
 
-  /* THE CARD IS ALL BUT GONE, AND THE TEXT CARRIES ITS OWN GROUND.
+  /* THE CARD IS A TINT, AND `backdrop-filter` IS NOT PART OF THIS PAGE.
    *
-   * THE ALPHA WAS NEVER THE SEE-THROUGH LEVER, which is the thing that took
-   * measuring to see. `brightness()` in the backdrop filter is: at the old
-   * 0.45/0.30 the card let 17% of the capture through, and dropping the alpha all
-   * the way to 0.15 while holding the brightness only reached 26% — the filter
-   * had already thrown away 70% of the picture before the card painted anything.
-   * Every "make it more see-through" edit that only touches the alpha is moving
-   * the small number.
+   * IT NEVER WORKED WHERE THIS PAGE RUNS. An OBS browser source renders to a
+   * TRANSPARENT texture and OBS composites the scene behind it afterwards, so
+   * inside the page there is nothing behind a card to filter. Measured:
+   * screenshot the page with `omitBackground` and the card pixels come back at
+   * the card's own alpha, to three decimal places — the filter contributed
+   * exactly nothing. It only ever darkened the white page behind a
+   * double-clicked overlay.html, which is why "glass" looked right to everyone
+   * who checked it that way and like a flat brown slab on an actual stream.
    *
-   * So this pass moves the brightness (0.30 -> 0.50) and all but deletes the card
-   * (0.45 -> 0.12): 44% of the capture survives where 17% did, and the panel
-   * reads as a tint over the game rather than a slab on top of it.
+   * Every contrast number this page has carried was measured that wrong way,
+   * including the 4.73 in three documents and a 4.96 that replaced it. Composited
+   * the way OBS does it, that 4.96 page scored 3.00.
    *
-   * WHAT PAYS FOR IT IS THE HALO, not the card. A flat WCAG ratio against a card
-   * this faint is a bad number, and it is also the WRONG number: it measures the
-   * text against a ground the text is no longer read against. `--halo` puts a
-   * hard dark rim on every glyph, so what sits behind the strokes is the halo
-   * whatever the game is doing — and `check_overlay.js` measures that by
-   * SAMPLING COMPOSITED PIXELS over a dark, a mid and a bright capture rather
-   * than doing arithmetic on the card alone.
+   * So the filter is gone rather than kept as decoration: a declaration that does
+   * nothing where the page runs, and something where it is previewed, is how this
+   * went unnoticed for two redesigns. What is left is honest — an alpha, which
+   * behaves identically in both places.
    *
-   * Measured that way the worst text on the page is 4.96:1 (`.cost-total`, over
-   * a bright capture), against an AA bar of 4.5. The brightness was swept
-   * against that number rather than guessed: 0.55 gives 4.63 and 0.70 gives
-   * 3.79, so 0.50 is the see-through this page can afford with a little left
-   * over. Two things in this block were found by that sweep and not by eye — the
-   * uppercase labels needed weight 600 to give the halo something to sit on, and
-   * `--faint` had to come up to #cfc8bd. */
-  --card-bg:   rgba(26, 20, 16, 0.12);
-  --card-blur: blur(8px) brightness(0.50) saturate(1.05);
+   * 0.30 IS THE SEE-THROUGH THIS PAGE CAN AFFORD, swept against the sampler in
+   * check_overlay.js rather than chosen: 70% of the capture survives and the
+   * worst text on the page is 4.62 against an AA bar of 4.5. Below it the numbers
+   * go under (0.25 → 4.2, 0.20 → 3.9 even with the halo below at full strength).
+   * It is still much more of the game than the old "glass" ever gave: that card
+   * was 0.45, and with its filter inert in OBS it let 55% through while measuring
+   * 3.90. */
+  --card-bg:   rgba(26, 20, 16, 0.30);
 
-  /* THE GROUND, AND IT TRAVELS WITH THE GLYPH. Four stacked shadows rather than
-   * one soft blur: the two tight ones lay an opaque rim right on the stroke edge
+  /* THE GROUND, AND IT TRAVELS WITH THE GLYPH. Seven stacked shadows rather than
+   * one soft blur: the tight ones lay an opaque rim right on the stroke edge
    * (which is what survives a lossy encode — a wide soft glow is the first thing
-   * an encoder throws away), and the two wide ones sink the few pixels around it
-   * so a light game does not close in on the letterforms. */
-  --halo: 0 0 2px #000, 0 0 3px #000, 0 1px 2px #000,
-          0 0 6px rgba(0, 0, 0, 0.95), 0 0 11px rgba(0, 0, 0, 0.8);
+   * an encoder throws away), and the wide ones sink the pixels around it so a
+   * light game does not close in on the letterforms.
+   *
+   * It grew from five when the card stopped pretending to darken anything: with
+   * `backdrop-filter` gone (see `--card-bg`) this and the alpha are the only two
+   * things holding the text up, and the alpha is the one the streamer wants
+   * spent on the game. */
+  --halo: 0 0 2px #000, 0 0 3px #000, 0 0 4px #000, 0 1px 2px #000,
+          0 0 7px rgba(0, 0, 0, 0.99), 0 0 12px rgba(0, 0, 0, 0.92),
+          0 0 18px rgba(0, 0, 0, 0.7);
 
   /* 380, down from 440. The column is a sidebar on somebody's stream, and the
    * page is fluid — this is what the layout is tuned against, not a cage. */
@@ -92,20 +95,14 @@
   --radius:    10px;
 }
 
-/* THE OLD-CEF FALLBACK, and it is not optional — it matters MORE now than it did
- * at 0.45. Everything above depends on `backdrop-filter` actually running:
- * measured with the filter dropped and the card left at 0.12, the worst text on
- * the page falls from 4.96 to 3.03 over a bright capture. OBS ships whatever CEF
- * its build was cut against and an unsupported filter is dropped IN SILENCE —
- * the same trap `color-mix()` and `:has()` are called out for below — so this is
- * a page that would look perfect to whoever shipped it and be unreadable on
- * somebody else's machine.
- *
- * A browser that cannot dim the backdrop gets a nearly opaque card instead. The
- * see-through is spent only where it can be afforded. */
-@supports not (backdrop-filter: blur(1px)) {
-  :root { --card-bg: rgba(26, 20, 16, 0.88); }
-}
+/* NO `@supports` FALLBACK ANY MORE. There used to be one restoring a nearly
+ * opaque card on a CEF too old for `backdrop-filter`, which was the right guard
+ * for a design that leaned on the filter. Nothing leans on it now, so the guard
+ * would only ever fire on browsers where the page is already correct — and a
+ * branch that cannot be reached is a branch nobody maintains. `color-mix()` and
+ * `:has()` are still avoided below for the same underlying reason: OBS ships
+ * whatever CEF its build was cut against, and an unsupported feature is dropped
+ * in silence. */
 
 * { box-sizing: border-box; }
 
@@ -186,8 +183,6 @@ html, body {
   border-radius: var(--radius);
   padding: 9px 11px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: var(--card-blur);
-  backdrop-filter: var(--card-blur);
 }
 
 /* THE WEAKEST TEXT ON THE PAGE, and the pixel sampling found it: small, thin,
@@ -258,8 +253,14 @@ html, body {
   gap: 4px 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(230, 84, 71, 0.10);
-  border: 1px solid rgba(230, 84, 71, 0.35);
+  /* A REAL SCRIM, and the only one on the page. The pixel sampling says this line
+   * is the single thing that cannot be carried by the halo: `.cost-total` is the
+   * smallest bold text in the page's lightest colour, and it measured 4.41
+   * against an AA bar of 4.5 while everything else cleared. Rather than spend
+   * see-through everywhere to rescue one line, the line gets its own dark ground
+   * — which it can afford, because it already had a box. */
+  background: rgba(48, 14, 11, 0.55);
+  border: 1px solid rgba(230, 84, 71, 0.40);
 }
 /* NOTHING IN REACH is not an alarm. The line stays — it is answering "how long
  * does this last" rather than going quiet — so it drops the red it wears when
@@ -271,8 +272,8 @@ html, body {
  * a streamer ever sees — the rule is simply dropped, and the line sits there red
  * on their machine while looking right on everyone else's. */
 .cost.quiet {
-  background: rgba(138, 182, 230, 0.08);
-  border-color: rgba(138, 182, 230, 0.30);
+  background: rgba(14, 24, 38, 0.55);
+  border-color: rgba(138, 182, 230, 0.32);
 }
 
 .cost-label {
@@ -876,8 +877,6 @@ html, body {
 
 .toast {
   background: var(--card-bg);
-  -webkit-backdrop-filter: var(--card-blur);
-  backdrop-filter: var(--card-blur);
   border-left: 3px solid var(--border);
   border-radius: 5px;
   padding: 6px 10px;
@@ -900,8 +899,6 @@ html, body {
 /* -------------------------------------------------------------- verdict -- */
 
 .verdict {
-  -webkit-backdrop-filter: var(--card-blur);
-  backdrop-filter: var(--card-blur);
   text-align: center;
   font-size: 22px;
   font-weight: 700;

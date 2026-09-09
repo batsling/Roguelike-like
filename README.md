@@ -728,44 +728,45 @@ source is harmless, just transparent.)
 canvas the page renders into; stretching the item afterwards resamples the result
 and softens the pixel art. Set 380 × 640 and leave the transform at 100%.
 
-**The cards are barely there, and the text carries its own ground.** The card
-sits at **0.12** alpha and the backdrop filter dims what shows through it by
-half, so **44% of the capture survives** where the old glass let 17% through. The
-game reads through the panel rather than under a slab.
+**The cards are a tint, and the text carries its own ground.** The card sits at
+**0.30** alpha, so **70% of the capture survives** — the panel reads as a wash
+over somebody's gameplay rather than a slab on top of it.
 
-**The alpha was never the see-through lever**, which is worth knowing before
-editing it. `brightness()` in the backdrop filter is: at the old 0.45/0.30,
-dropping the alpha all the way to 0.15 while holding the brightness still only
-reached 26%, because the filter had already thrown away 70% of the picture before
-the card painted anything.
+**`backdrop-filter` is not part of this page, and never worked where it runs.**
+An OBS Browser Source renders to a *transparent texture* and OBS composites the
+scene behind it afterwards, so inside the page there is nothing behind a card to
+filter. Measured: screenshot the page with `omitBackground` and the card pixels
+come back at the card's own alpha to three decimals — the filter contributed
+exactly nothing. It only ever darkened the white page behind a **double-clicked**
+`overlay.html`, which is why "glass" looked right to everyone who checked it that
+way and like a flat brown slab on an actual stream.
 
-**What pays for the transparency is the halo**, not the card. Every glyph carries
-a stacked dark rim (`--halo`), so what sits behind the strokes is the halo
-whatever the game is doing. That also means a flat WCAG ratio against the card no
-longer describes this page — it measures the text against a ground the text is not
-read against, and scores a page that looks fine at 2.6. So `check_overlay.js`
-**renders the page over a dark, a mid and a bright capture and samples the real
-pixels**, splitting each line of text into glyph and ground by luminance. Measured
-that way the worst text on the page is **4.96:1**, against an AA bar of 4.5, and
-the brightness was swept against that number rather than guessed (0.55 → 4.63,
-0.70 → 3.79).
+That invalidated every contrast figure this page has ever carried, the **4.73**
+quoted in three documents and the **4.96** that briefly replaced it alike: both
+were measured with the capture *inside* the page. Composited the way OBS does it,
+the 4.96 page scored **3.00**, and the old 0.45 "glass" scored **3.90** while
+letting 55% through.
 
-The two halves still cannot be separated, and it matters more at 0.12 than it did
-at 0.45: with the filter dropped and the card left as it is, the worst text falls
-to **3.03**. OBS ships whatever CEF its build was cut against and an unsupported
-filter is dropped in silence, so `overlay.css` carries an `@supports not
-(backdrop-filter: …)` block that puts the card back to nearly opaque on a browser
-that cannot do it. If you edit the glass, edit both — dropping one and keeping the
-other looks completely fine on a dark game and is unreadable on a bright one.
+So the filter is **gone** rather than kept as decoration. A declaration that does
+nothing where the page runs and something where it is previewed is precisely how
+this survived two redesigns. What is left behaves identically in both places:
 
-(The **4.73** this section used to quote was arithmetic against the card, and it
-had gone stale: recomputing the same model over today's palette gives 4.66 for the
-worst text colour. The figures above are sampled instead, so they fail loudly when
-they stop being true.)
+- **An alpha.** 0.30, swept against the sampler rather than chosen — 0.25 lands at
+  4.2 and 0.20 at 3.9 even with the halo at full strength.
+- **A halo on every glyph** (`--halo`), a stack of hard dark shadows, so what sits
+  behind the strokes travels with them whatever the game is doing.
+- **One real scrim**, on the cost line only. The sampler said `.cost-total` was
+  the single thing the halo could not carry — the smallest bold text in the
+  page's lightest colour, at 4.41 while everything else cleared — so that line
+  gets a dark ground of its own instead of the whole page spending see-through to
+  rescue it.
 
-Want it more or less see-through? `#overlay .card { background: rgba(26,20,16,.7) }`
-in `user://obs/custom.css` — up for legibility over a busy capture, down for more
-of the game.
+**`check_overlay.js` measures it the way OBS composites**: screenshot with
+`omitBackground`, composite over a dark, a mid and a bright capture *outside* the
+page, then split each line of text into glyph and ground by luminance and take
+the ratio. Worst text on the page: **4.62:1** against an AA bar of 4.5. It also
+asserts `backdrop-filter` stays `none`, so re-adding one fails here rather than
+looking nice on somebody's desk.
 
 **How tall the page gets.** It is content-height, so it grows with the run — the
 figures below are the real page measured at **380 wide** (the heavy column is the
@@ -836,13 +837,11 @@ knobs trade legibility for rows in the same space: `--goal-text` (15px) and
 `--goal-art` (24px). Shrinking the card is the right lever here; scaling the OBS
 scene item resamples the pixel art instead.
 
-**And to change how see-through it is**, `#overlay { --card-bg: rgba(26,20,16,.3) }`
-for more tint, or the backdrop filter for more game:
-`#overlay { --card-blur: blur(8px) brightness(.4) saturate(1.05) }`. The
-brightness is the lever that matters — see the glass section above — and it is
-also the one paying for legibility, so run `node tools/check_overlay.js` after
-touching it. Its contrast check samples real pixels and will tell you what you
-just spent.
+**And to change how see-through it is**, `#overlay { --card-bg: rgba(26,20,16,.2) }`
+for more game, `.45` for more tint. That alpha is the only lever — do not reach
+for `backdrop-filter`, which does nothing in OBS (above). Run
+`node tools/check_overlay.js` after touching it: the contrast check composites
+the way OBS does and will tell you exactly what you just spent.
 
 `#fill` is a *modifier*, so it combines with the fragments below and any separator
 works: `overlay.html#fill`, `#bottom,fill`, `#road+fill`.
