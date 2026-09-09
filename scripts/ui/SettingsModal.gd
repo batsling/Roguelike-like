@@ -356,19 +356,43 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	vbox.add_child(chk)
 
 	var hint := Label.new()
-	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you. Add \"#goals\" to the end of the path for a second source that is the checklist and nothing else, or \"#road\" for the road walked so far. \"#map\" is the road AHEAD — every optimal route from the game you are on to the Amulet, as a branching map; give that one a source of its own at 640 x 720 and show it when you want it."
+	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and browse to overlay.html in the folder below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 58)
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
+	# THE FOLDER, NOT THE FILE. It used to be the path to overlay.html, which was
+	# right while overlay.html was the only page — there are six now, and a
+	# streamer who wants the map has to be able to find map.html sitting beside it.
 	var path := LineEdit.new()
-	path.text = ObsCompanion.page_path()
+	path.text = ObsCompanion.page_dir()
 	path.editable = false
 	path.select_all_on_focus = true
 	path.add_theme_font_size_override("font_size", 12)
 	vbox.add_child(path)
+
+	# THE OTHER PAGES, AS FILES RATHER THAN AS URL SUFFIXES.
+	#
+	# This used to read "add #goals to the end of the path" — a mechanism that
+	# works in a browser and CANNOT BE TYPED INTO OBS. With "Local file" ticked
+	# the box is a path, so the # is escaped and never becomes a fragment, and
+	# unticking it and pasting a file:/// URL does not get there either. The
+	# instruction was correct about the page and useless about the program, which
+	# is the worst way for a setup note to be wrong. Each split is a real file in
+	# the folder above now, and this is a list of what to browse to.
+	var extras := Label.new()
+	extras.text = "In the same folder, one page per source — browse to these the same way:\n"\
+		+ "    goals.html  the checklist alone, uncropped, for a scene beside something else\n"\
+		+ "    map.html  the road AHEAD at 640 x 720: every optimal route from the game you are on to the Amulet, as a branching map. Show it when you want it\n"\
+		+ "    road.html  the road walked so far, at 352 x 116\n"\
+		+ "    top.html / bottom.html  the run card and the checklist as separate sources, to put a camera between them"
+	extras.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	extras.custom_minimum_size = Vector2(0, 92)
+	extras.add_theme_font_size_override("font_size", 13)
+	extras.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(extras)
 
 
 # Starting over as yourself: empty the profile you are playing and keep it —

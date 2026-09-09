@@ -90,6 +90,43 @@ const SOURCE_DIR := "res://obs"
 const PAGE_FILES := ["overlay.html", "overlay.css", "overlay.js"]
 const CUSTOM_CSS := "custom.css"
 
+# ONE STANDALONE PAGE PER VIEW, generated from overlay.html at every boot.
+#
+# THE FRAGMENT DOES NOT SURVIVE OBS, and that is why these exist. The page can
+# render part of itself — the run card, the checklist, the road, the route map —
+# and the way to ask for a part was `overlay.html#map`. A Browser Source cannot
+# express that. With "Local file" ticked the field is a PATH and not a URL, so
+# the `#` is escaped and never becomes a fragment; unticking it and pasting a
+# `file:///…#map` URL into the URL box does not arrive either. The mechanism was
+# documented, tested in a browser, and unusable in the only program it was for.
+#
+# So the split is baked into a file instead. `map.html` is overlay.html with one
+# line of script in front of it, and a streamer ticks "Local file", browses to
+# it, and is done — no URL to hand-build, no `file:///`, no backslashes to flip,
+# nothing to get wrong on a Windows path with a space in it.
+#
+# GENERATED, NOT AUTHORED, so there is exactly one copy of the markup. Six files
+# of the same page differing by one line is six files to keep in step, and the
+# five that were not being looked at would drift the first time the page changed.
+const SPLIT_VIEWS := {
+	"top.html": "top",
+	"bottom.html": "bottom",
+	"goals.html": "goals",
+	"road.html": "road",
+	"map.html": "map",
+}
+
+# WHERE THE LINE GOES: immediately before the script that reads it. `applySplit`
+# runs as overlay.js loads, so the view has to be set before that tag and after
+# nothing in particular — this is simply the last stable landmark in the file.
+#
+# If overlay.html ever stops containing it the generation is a silent no-op and
+# every view file becomes a plain copy of the default page, which looks exactly
+# like the split being broken. `test_obs_companion.gd` pins the anchor's presence
+# for that reason, and `_install_page` warns rather than writing a file that does
+# not do what its name says.
+const VIEW_ANCHOR := "<script src=\"overlay.js\"></script>"
+
 # At most four writes a second. The signal storm around a resolved turn is a
 # dozen emissions in one frame and the overlay cannot show more than the monitor
 # refreshes anyway.
@@ -1150,28 +1187,68 @@ static func _escape(segment: String) -> String:
 # ---------------------------------------------------------------------------
 
 # Put the overlay's three files next to state.js, overwriting whatever is there
-# (they ship with the game — see the const's comment), and leave an empty
-# `custom.css` beside them the first time only.
+# (they ship with the game — see the const's comment), generate one standalone
+# page per view beside them, and leave an empty `custom.css` there the first time
+# only.
 func _install_page() -> void:
 	_installed = true
 	DirAccess.make_dir_recursive_absolute(DIR)
+	var page: String = ""
 	for name in PAGE_FILES:
 		var src := FileAccess.open("%s/%s" % [SOURCE_DIR, name], FileAccess.READ)
 		if src == null:
 			push_warning("ObsCompanion: %s/%s is missing — is it in the export filter?"
 				% [SOURCE_DIR, name])
 			continue
+		var text: String = src.get_as_text()
+		if name == "overlay.html":
+			page = text
 		var dst := FileAccess.open("%s/%s" % [DIR, name], FileAccess.WRITE)
 		if dst == null:
 			continue
-		dst.store_string(src.get_as_text())
+		dst.store_string(text)
+	_install_views(page)
 	var custom: String = "%s/%s" % [DIR, CUSTOM_CSS]
 	if not FileAccess.file_exists(custom):
 		var f := FileAccess.open(custom, FileAccess.WRITE)
 		if f != null:
 			f.store_string("/* Your own styling. This file is created once and never overwritten. */\n")
 
+# ONE FILE PER VIEW, written from the page just installed.
+#
+# Each is overlay.html with a single line in front of the script that reads it —
+# `window.OBS_VIEW = "map"` — which `applySplit` unions with the fragment. The
+# fragment still works and still combines (`map.html#fill`); these exist because
+# OBS cannot pass a fragment at all (see SPLIT_VIEWS).
+#
+# A MISSING ANCHOR WRITES NOTHING, LOUDLY. Copying the page unchanged under a
+# name that promises a view is worse than not writing it: the streamer points a
+# source at map.html, gets the whole column, and has no way to tell that from the
+# map being broken. Nothing is written and the reason is pushed as a warning.
+func _install_views(page: String) -> void:
+	if page == "":
+		return
+	if not page.contains(VIEW_ANCHOR):
+		push_warning("ObsCompanion: overlay.html no longer contains %s, so the "
+			% VIEW_ANCHOR
+			+ "per-view pages cannot be generated — every OBS source pointed at "
+			+ "one of them would silently draw the whole column instead.")
+		return
+	for name in SPLIT_VIEWS:
+		var view: String = SPLIT_VIEWS[name]
+		var line: String = "<script>window.OBS_VIEW = \"%s\";</script>\n" % view
+		var f := FileAccess.open("%s/%s" % [DIR, name], FileAccess.WRITE)
+		if f == null:
+			continue
+		f.store_string(page.replace(VIEW_ANCHOR, line + VIEW_ANCHOR))
+
 # The path to hand a streamer: the overlay page itself, as an absolute OS path
 # they can paste into OBS's Browser Source "Local file" box.
 func page_path() -> String:
 	return ProjectSettings.globalize_path("%s/overlay.html" % DIR)
+
+# The folder every page sits in, which is what the settings screen should really
+# be showing: the streamer needs `overlay.html` AND `map.html` beside it, and a
+# path to one file is a path to one file.
+func page_dir() -> String:
+	return ProjectSettings.globalize_path(DIR)

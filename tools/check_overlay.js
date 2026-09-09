@@ -918,6 +918,75 @@ async function main() {
     JSON.stringify(only));
 
   /* ------------------------------------------------------------------------
+   * THE PER-VIEW PAGES, which are how a split is actually asked for.
+   *
+   * THE FRAGMENT DOES NOT SURVIVE OBS. Everything this file asserts about `#map`
+   * and `#goals` is true in a browser and unreachable in a Browser Source: with
+   * "Local file" ticked the field is a path, so the `#` is escaped and never
+   * becomes a fragment, and pasting a `file:///…#map` URL into the URL box does
+   * not arrive either. The split is baked into a generated file per view instead
+   * (ObsCompanion.SPLIT_VIEWS), and THAT is the mechanism a streamer uses — so
+   * it is the one that has to be rendered here rather than only reasoned about.
+   *
+   * The file is built the way the game builds it: overlay.html with one line in
+   * front of the script tag. If that rule and ObsCompanion's ever disagree, the
+   * GUT side pins the anchor and this side proves the result draws.
+   * --------------------------------------------------------------------- */
+  console.log('the per-view pages, which is how OBS asks for a split');
+  const anchor = '<script src="overlay.js"></script>';
+  const pageSrc = fs.readFileSync(path.join(dir, 'overlay.html'), 'utf8');
+  check('overlay.html carries the anchor the view pages are built on',
+    pageSrc.includes(anchor));
+  for (const [file, view] of [['map.html', 'map'], ['goals.html', 'goals']]) {
+    fs.writeFileSync(path.join(dir, file), pageSrc.replace(anchor,
+      '<script>window.OBS_VIEW = "' + view + '";</script>\n' + anchor));
+  }
+  await page.setViewportSize(MAP_SIZE);
+  await page.goto('file://' + path.join(dir, 'map.html'));
+  await sleep(1100);
+  const viaFile = await page.evaluate(() => ({
+    hash: location.hash,
+    rungs: document.querySelectorAll('.rung').length,
+    wires: document.querySelectorAll('.wire').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    goals: !!document.querySelector('.goals').getClientRects().length,
+  }));
+  /* THE POINT OF THE WHOLE MECHANISM: no fragment in the URL, and the map draws
+   * anyway. A check that allowed a hash here would pass on the broken design. */
+  check('map.html draws the map with NO fragment in the url',
+    viaFile.hash === '' && viaFile.rungs > 0 && viaFile.wires > 0,
+    JSON.stringify(viaFile));
+  check('…and nothing else from the column', !viaFile.run && !viaFile.goals,
+    JSON.stringify({ run: viaFile.run, goals: viaFile.goals }));
+  /* The wires are the half that could plausibly break here and nowhere else:
+   * they are measured, and a page that starts life already showing the map takes
+   * a different path through applySplit than one switched to it later. */
+  check('…with its arrows drawn, not left empty by the first layout',
+    viaFile.wires === fixture(dir).route.edges.length,
+    viaFile.wires + ' wires');
+
+  await page.setViewportSize({ width: WIDTH, height: HEIGHT });
+  await page.goto('file://' + path.join(dir, 'goals.html'));
+  await sleep(900);
+  const goalsFile = await page.evaluate(() => ({
+    goals: document.querySelectorAll('.goal').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    ticker: !!document.querySelector('.ticker').getClientRects().length,
+  }));
+  check('goals.html is the checklist alone, the same as #goals was',
+    goalsFile.goals > 0 && !goalsFile.run && !goalsFile.ticker,
+    JSON.stringify(goalsFile));
+
+  /* THE FRAGMENT STILL COMBINES, which is why the baked view is UNIONED with the
+   * hash rather than replacing it: `map.html#fill` has to be both. */
+  await page.goto('file://' + path.join(dir, 'goals.html') + '#fill');
+  await sleep(900);
+  check('a view page still takes #fill on top of its own view',
+    await page.evaluate(() =>
+      document.getElementById('overlay').classList.contains('fill')
+      && document.getElementById('overlay').classList.contains('only-goals')));
+
+  /* ------------------------------------------------------------------------
    * THE ROUTE MAP, at its own source size.
    *
    * The ladder is the one thing on this page whose geometry is COMPUTED rather

@@ -2409,7 +2409,7 @@ stream — so the overlay dims only when the beat actually stops.
   ring around that body's picture instead: louder, and on the thing it is about.
   The column paid for the widening out of the same 21px and still came out ahead,
   which is what let it narrow from 380 to 352.
-- **The road**, at `overlay.html#road` — **its own source, off the default
+- **The road**, at `road.html` — **its own source, off the default
   column.** `RunOverScreen`'s route strip drawn live: every stop walked, a game
   stood on twice drawn twice (the road is a sequence, not a set — a badge saying
   "2" made two visits look like one), each stop **green if it was beaten on that
@@ -2428,7 +2428,7 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
-- **The route map**, at `overlay.html#map` — **the road's opposite number, and
+- **The route map**, at `map.html` — **the road's opposite number, and
   the second source you toggle.** The road is where the run has *been*; this is
   where it can *go*: every optimal road from the game in play to the Amulet.
 
@@ -2467,11 +2467,27 @@ stream — so the overlay dims only when the beat actually stops.
   run's best moment; no road at all is a dead end. Neither may draw the blank
   panel that a viewer reads as a broken source.
 
-**IT RENDERS IN PIECES.** OBS cannot interleave scene items with the inside of a
-browser source, so the page renders part of itself instead and a scene points
-several sources at the same file: `#top` (the run card), `#bottom` (checklist and
-ticker), `#goals` (the checklist alone), `#road`, `#map` (the route map), and the
-default, which is everything but those last two. They read the same `state.js` and stay in step for free.
+**IT RENDERS IN PIECES, AND EACH PIECE IS A FILE.** OBS cannot interleave scene
+items with the inside of a browser source, so the page renders part of itself and
+a scene points several sources at the pieces: `top.html` (the run card),
+`bottom.html` (checklist and ticker), `goals.html` (the checklist alone),
+`road.html`, `map.html`, and `overlay.html`, which is everything but the last two.
+
+**THE PIECES ARE GENERATED FROM overlay.html AT EVERY BOOT** — each is the page
+with one line in front of it, `window.OBS_VIEW = "map"`, written by
+`ObsCompanion._install_views`. There is one copy of the markup and five pages that
+cannot drift from it.
+
+**AND THE FRAGMENT THEY REPLACE IS A LESSON WORTH KEEPING.** The original
+mechanism was `overlay.html#map`, and it is unusable in the only program it is
+for: with "Local file" ticked OBS's field is a PATH, so the `#` is escaped and
+never becomes a fragment, and unticking it to paste a `file:///…#map` URL does not
+arrive either. It worked in a browser, was asserted in `check_overlay.js`, and was
+documented in three places — every one of which tested the PAGE and none of which
+tested the PROGRAM. A mechanism the user cannot express is not a mechanism, and
+"it renders correctly in headless Chromium" says nothing about that. The hash is
+still read and still unions with the baked view, so `map.html#fill` is both, and
+`#fill` — a modifier rather than a choice — is the one worth typing. They read the same `state.js` and stay in step for free.
 
 `#goals` differs from `#bottom` by the ticker alone, and that is why it exists:
 the ticker is pinned to the **bottom of the browser source** and grows upward, so

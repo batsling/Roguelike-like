@@ -892,11 +892,28 @@ function setImg(img, url) {
  * Every fragment reads the same state.js and they stay in step for free, because
  * they are the same page reading the same file. */
 function applySplit() {
-  /* Split on anything that is not a word, so `#bottom,fill`, `#bottom+fill` and
-   * `#bottom fill` all mean the same thing — a streamer typing this into an OBS
-   * URL box should not have to guess the separator. */
+  /* TWO WAYS IN, AND THE FILE IS THE ONE THAT WORKS IN OBS.
+   *
+   * `window.OBS_VIEW` is set by a one-line script in map.html, goals.html and
+   * the rest — standalone pages the game generates from this one at every boot
+   * (ObsCompanion.SPLIT_VIEWS). They exist because THE FRAGMENT DOES NOT REACH
+   * THIS PAGE THROUGH OBS. With "Local file" ticked the field is a path and not
+   * a URL, so the `#` is escaped and never becomes a fragment; unticking it and
+   * pasting a `file:///…#map` URL into the URL box does not get there either.
+   * That is not a thing this page can fix from the inside, so the split it
+   * cannot receive is baked into a file whose name a streamer can simply browse
+   * to.
+   *
+   * The hash still works, and is still the way to COMBINE — `map.html#fill` is
+   * the baked view plus the modifier, which is why these are unioned rather
+   * than one overriding the other. */
   const parts = new Set((location.hash || '').replace('#', '').toLowerCase()
     .split(/[^a-z]+/).filter(Boolean));
+  if (typeof window.OBS_VIEW === 'string') {
+    for (const w of window.OBS_VIEW.toLowerCase().split(/[^a-z]+/)) {
+      if (w) parts.add(w);
+    }
+  }
   overlay.classList.toggle('only-top', parts.has('top'));
   overlay.classList.toggle('only-bottom', parts.has('bottom'));
   overlay.classList.toggle('only-goals', parts.has('goals'));

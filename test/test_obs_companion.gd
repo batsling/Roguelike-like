@@ -626,6 +626,77 @@ func test_the_page_itself_is_replaced_on_every_install() -> void:
 	assert_ne(FileAccess.get_file_as_string(path), "stale",
 		"the page is reinstalled from res://obs/ at every boot")
 
+# ----------------------------------------------------- the per-view pages ----
+#
+# THE FRAGMENT DOES NOT SURVIVE OBS. `overlay.html#map` is how the page has always
+# been asked for a part of itself, and a Browser Source cannot express it: with
+# "Local file" ticked the field is a path, so the `#` is escaped and never becomes
+# a fragment, and the URL box does not get there either. So the split is baked
+# into a file per view, generated from overlay.html at install.
+#
+# These tests are the whole safety net for that, because the failure is SILENT:
+# a generated file that lost its line is still a valid page, still draws, and
+# still looks like the split being broken rather than the generator being broken.
+
+func test_overlay_html_still_carries_the_anchor_the_views_are_built_on() -> void:
+	# The generation is one string replace. If the page stops containing the tag
+	# it keys on, every view file becomes a copy of the whole column — so the
+	# anchor is pinned here rather than discovered by a streamer.
+	var page: String = FileAccess.get_file_as_string(
+		"%s/overlay.html" % ObsCompanion.SOURCE_DIR)
+	assert_true(page.contains(ObsCompanion.VIEW_ANCHOR),
+		"res://obs/overlay.html must contain %s — ObsCompanion._install_views "
+		% ObsCompanion.VIEW_ANCHOR + "inserts the view line in front of it")
+
+func test_every_view_gets_a_page_of_its_own_that_names_its_view() -> void:
+	ObsCompanion._install_page()
+	for name in ObsCompanion.SPLIT_VIEWS:
+		var path: String = "%s/%s" % [ObsCompanion.DIR, name]
+		assert_true(FileAccess.file_exists(path),
+			"%s is what a streamer browses to in OBS — the fragment cannot be "
+			% name + "typed into a Browser Source at all")
+		var text: String = FileAccess.get_file_as_string(path)
+		var view: String = ObsCompanion.SPLIT_VIEWS[name]
+		assert_true(text.contains('window.OBS_VIEW = "%s"' % view),
+			"%s must set its own view, or it is the whole column under a name "
+			% name + "that promises otherwise")
+		# It is the SAME page, not a second copy of the markup: if these ever stop
+		# being generated from overlay.html, five files start drifting the first
+		# time the page changes and nobody is looking at them.
+		assert_true(text.contains("id=\"goal-list\"") and text.contains("id=\"map-rows\""),
+			"%s is overlay.html plus one line, so all of the page is in it" % name)
+
+func test_a_view_page_sets_its_line_before_the_script_that_reads_it() -> void:
+	# `applySplit` runs while overlay.js loads. A line written after that tag is a
+	# line the page has already finished reading — the file would look right and
+	# draw the whole column.
+	ObsCompanion._install_page()
+	var text: String = FileAccess.get_file_as_string("%s/map.html" % ObsCompanion.DIR)
+	var line: int = text.find("window.OBS_VIEW")
+	var script: int = text.find(ObsCompanion.VIEW_ANCHOR)
+	assert_gt(line, -1, "the view line is in the file")
+	assert_lt(line, script, "and it is set BEFORE overlay.js reads it")
+
+func test_the_default_page_is_not_given_a_view() -> void:
+	# overlay.html is the whole column and must stay that way: it is what the
+	# settings screen hands out and what every existing source points at.
+	ObsCompanion._install_page()
+	var text: String = FileAccess.get_file_as_string(
+		"%s/overlay.html" % ObsCompanion.DIR)
+	assert_false(text.contains("window.OBS_VIEW"),
+		"the default page draws everything but the road and the map")
+
+func test_the_view_pages_are_rewritten_on_every_install() -> void:
+	# Same contract as the page itself: they ship with the game, so a stale copy
+	# in user:// is a bug that reads as "the overlay is broken".
+	var path: String = "%s/map.html" % ObsCompanion.DIR
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string("stale")
+	f = null
+	ObsCompanion._install_page()
+	assert_ne(FileAccess.get_file_as_string(path), "stale",
+		"a view page is regenerated from res://obs/ at every boot")
+
 func test_turning_it_off_stops_the_writing() -> void:
 	ObsCompanion.flush()
 	var before: String = FileAccess.get_file_as_string(ObsCompanion.STATE_PATH)

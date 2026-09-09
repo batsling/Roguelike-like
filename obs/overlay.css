@@ -831,7 +831,7 @@ html, body {
 
 /* ------------------------------------------------------------ route map -- */
 
-/* THE ROAD AHEAD, at overlay.html#map — every optimal road from the game in
+/* THE ROAD AHEAD, at map.html — every optimal road from the game in
  * play to the Amulet, as a layered ladder with arrows between the layers.
  *
  * DRAWN FOR ~640 × 720 AND ITS OWN SOURCE. It is the road's opposite number:
@@ -1178,7 +1178,7 @@ html, body {
 
 /* ----------------------------------------------------------- the halves -- */
 
-/* `overlay.html#top` / `#bottom` render part of the page each, so a camera or a
+/* `top.html` / `bottom.html` render part of the page each, so a camera or a
  * chat box can be placed between them in the scene. See applySplit in overlay.js.
  *
  * THE ROAD IS THE EXCEPTION AND IS OFF BY DEFAULT — it renders only at
