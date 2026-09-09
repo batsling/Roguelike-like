@@ -1061,6 +1061,41 @@ async function main() {
   check('…and none of them is zero-length', map.degenerate === 0,
     map.degenerate + ' degenerate');
 
+  /* STRAIGHT, AND WITH A HEAD ON IT. These were cubic curves once, which read as
+   * wobble rather than as a road — a wire lives entirely inside the gap between
+   * two layers and no box is in that gap, so the curve was avoiding a collision
+   * that could not happen. And the head is what makes it an ARROW: this graph
+   * has a direction, towards the Amulet, and without one the only thing saying
+   * so is that the Amulet happens to be on the right. */
+  const wires = await page.evaluate(() => {
+    const paths = [...document.querySelectorAll('.wire')];
+    return {
+      curved: paths.filter((p) => /[CSQTA]/i.test(p.getAttribute('d') || '')).length,
+      lines: paths.filter((p) => /^M[^A-Za-z]+L[^A-Za-z]+$/.test(
+        (p.getAttribute('d') || '').trim())).length,
+      headed: paths.filter((p) => p.getAttribute('marker-end')).length,
+      /* The marker itself has to exist, or `marker-end` points at nothing and
+       * every arrow silently loses its head — which looks exactly like the
+       * design before this change. */
+      marker: !!document.querySelector('marker#wire-head'),
+      headFill: (() => {
+        const h = document.querySelector('.wire-head');
+        return h ? getComputedStyle(h).fill : '';
+      })(),
+    };
+  });
+  check('every wire is a straight line, not a curve',
+    wires.curved === 0 && wires.lines === map.wires,
+    wires.lines + ' straight of ' + map.wires + ', ' + wires.curved + ' curved');
+  check('…and every one of them ends in an arrowhead that exists',
+    wires.headed === map.wires && wires.marker,
+    wires.headed + ' headed, marker ' + (wires.marker ? 'defined' : 'MISSING'));
+  /* The head is a FILL and the line is a STROKE — a marker does not inherit the
+   * path's stroke, so the two are painted by different properties and can drift
+   * apart into a green line with a black tip. */
+  check('…painted the same green as the line it ends',
+    wires.headFill === 'rgb(111, 220, 141)', wires.headFill);
+
   /* THE THREE RUNGS THAT ARE NOT JUST A GAME ON THE WAY, and their ORDER: the
    * game under your feet is the root and the Amulet is the last thing on the
    * road. A ladder drawn upside down would satisfy every count above. */

@@ -2438,7 +2438,11 @@ stream — so the overlay dims only when the beat actually stops.
   distance, different goals, different loot) is the run's core decision (§6).
   Flattening that to a line would draw a forced march and hide the only
   interesting thing on the map. So it is `RunMapModal`'s ladder, drawn live:
-  rungs in layers, green arrows between them, in `RouteLadder`'s own colours —
+  rungs in layers, green arrows between them — STRAIGHT lines carrying heads,
+  since a wire lives entirely within the gap between two layers and no box is in
+  that gap, so the cubic curves this shipped with were avoiding a collision that
+  cannot occur and read as wobble rather than as a road; the head is what says
+  the graph runs one way — in `RouteLadder`'s own colours —
   blue for where you are, ember for the Amulet, purple for a pin — so the map on
   the stream and the map on the streamer's screen are visibly one object.
 

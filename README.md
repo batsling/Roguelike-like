@@ -946,7 +946,11 @@ there is usually more than one equally short way on, and choosing between them �
 same distance, different goals, different loot — is the run's core decision. A
 single line would draw a forced march and hide the only interesting thing on the
 map. So it is drawn the way `RunMapModal` draws it in-game: rungs in layers, green
-arrows between them, in the same colours (`RouteLadder`'s blue for where you are,
+arrows between them — **straight lines with heads on them**, because a wire lives
+entirely inside the gap between two layers where no box can be, so the curves this
+started with were dodging a collision that cannot happen and read as wobble. The
+head is what says the graph has a direction. Same colours as in-game
+(`RouteLadder`'s blue for where you are,
 ember for the Amulet, purple for a pin).
 
 **It runs left to right, and it is a full-screen source.** You on the left, the

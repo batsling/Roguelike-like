@@ -832,7 +832,7 @@ html, body {
 /* ------------------------------------------------------------ route map -- */
 
 /* THE ROAD AHEAD, at map.html — every optimal road from the game in play to the
- * Amulet, as a ladder with arrows between the layers.
+ * Amulet, as a ladder with straight, headed arrows between the layers.
  *
  * IT RUNS LEFT TO RIGHT: you on the left, the Amulet on the right, each layer's
  * choices stacked above one another. The in-game RunMapModal runs top-to-bottom
@@ -922,7 +922,17 @@ html, body {
   stroke: var(--success);
   stroke-opacity: 0.85;
   stroke-width: calc(var(--rung, 152px) * 0.018);
-  stroke-linecap: round;
+  /* BUTT, NOT ROUND, now that the line ends in an arrowhead: a round cap adds
+   * half a stroke width past the end point, which pokes out from behind the
+   * head as a blunt nose on the tip of every arrow. */
+  stroke-linecap: butt;
+}
+/* The head takes its colour as a FILL, since a marker does not inherit the
+ * path's stroke. The opacity matches the line's so the arrow reads as one
+ * object rather than as a line with a brighter tip stuck on it. */
+.wire-head {
+  fill: var(--success);
+  fill-opacity: 0.85;
 }
 
 /* LAYERS ACROSS, CHOICES DOWN. The gap between layers is the arrows' room —

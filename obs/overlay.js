@@ -678,7 +678,17 @@ function drawMap(route, run) {
  * one number because the fit has to know it BEFORE anything is laid out. If the
  * rung's CSS proportions change, this changes with them. */
 const RUNG_ASPECT = 1.50;
-const LAYER_GAP = 0.32;   /* between layers, in rungs — the arrows' room */
+/* THE GAP BETWEEN LAYERS IS THE ARROWS' ROOM.
+ *
+ * IT IS IN RUNGS, WHICH IS WHY WIDENING IT BARELY HELPS. A straight edge to a
+ * box two slots down a stacked layer is steep, and the obvious fix is more room
+ * to cross in — but the ladder is solved into a fixed source, so a bigger gap
+ * comes straight out of the rung: at 0.44 the gap grew 68px to 85 and the rung
+ * shrank 213 to 192, trading a tenth of every cover and every name for a few
+ * degrees of arrow. Measured side by side the steepness was hard to tell apart
+ * and the shrink was not, so it stays at 0.32 and the ARROWHEAD does the work
+ * of saying which way the road runs. */
+const LAYER_GAP = 0.32;
 const CHOICE_GAP = 0.08;  /* between the choices within one layer */
 /* The floor is a legibility floor: below about 90px a cover is a smudge and the
  * name is unreadable, so there is no point shrinking further — past this the
@@ -747,23 +757,64 @@ function layoutWires(edges) {
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);
   svg.innerHTML = '';
+  svg.appendChild(arrowMarker());
 
   for (const e of lastEdges) {
     const a = at(e.from_depth + '|' + e.from);
     const b = at(e.to_depth + '|' + e.to);
     if (!a || !b) continue;
-    /* A CURVE, NOT A STRAIGHT LINE, and not for decoration: a layer three high
-     * sends edges diagonally across the gap, and a straight run from one box's
-     * right edge to another's left crosses its neighbours' corners on the way.
-     * Leaving each box horizontally and arriving horizontally keeps the
-     * crossings in the empty band between layers, where they can be read. */
-    const mid = (a.right + b.left) / 2;
+    /* STRAIGHT, AND WITH A HEAD ON IT.
+     *
+     * These were cubic curves, on the reasoning that a steep diagonal leaving a
+     * box horizontally keeps its crossings in the empty band between layers.
+     * They cannot cross a box either way — every wire lives entirely inside the
+     * gap between two layers, and no box is in that gap — so the curve was
+     * buying nothing but wobble, and a road drawn in wobbly lines does not read
+     * as a road.
+     *
+     * The head is what makes it an ARROW rather than a line: this graph has a
+     * direction — towards the Amulet — and until now the only thing saying so
+     * was that the Amulet happened to be on the right. */
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M' + a.right + ' ' + a.cy
-      + ' C' + mid + ' ' + a.cy + ' ' + mid + ' ' + b.cy + ' ' + b.left + ' ' + b.cy);
+    path.setAttribute('d', 'M' + a.right + ' ' + a.cy + ' L' + b.left + ' ' + b.cy);
     path.setAttribute('class', 'wire');
+    path.setAttribute('marker-end', 'url(#wire-head)');
     svg.appendChild(path);
   }
+}
+
+/* THE ARROWHEAD, rebuilt with the wires because the SVG is emptied on every
+ * layout.
+ *
+ * `markerUnits="strokeWidth"` is the whole trick: the head is measured in
+ * multiples of the line's own thickness, and that thickness is already a
+ * fraction of `--rung` (see overlay.css), so the head scales with the ladder for
+ * free and there is no second number to keep in step with the first.
+ *
+ * `refX` at the tip rather than behind it, so the point lands exactly on the box
+ * edge the wire is aimed at instead of overlapping it. */
+function arrowMarker() {
+  const NS = 'http://www.w3.org/2000/svg';
+  const defs = document.createElementNS(NS, 'defs');
+  const marker = document.createElementNS(NS, 'marker');
+  marker.setAttribute('id', 'wire-head');
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '10');
+  marker.setAttribute('refY', '5');
+  /* 5 stroke-widths, up from 3.6. This page is read across a room through a
+   * lossy encode, and at 3.6 the head was a detail you had to look for — which
+   * makes it decoration rather than the thing that says which way the road
+   * runs. */
+  marker.setAttribute('markerWidth', '5');
+  marker.setAttribute('markerHeight', '5');
+  marker.setAttribute('markerUnits', 'strokeWidth');
+  marker.setAttribute('orient', 'auto');
+  const head = document.createElementNS(NS, 'path');
+  head.setAttribute('d', 'M0 0 L10 5 L0 10 z');
+  head.setAttribute('class', 'wire-head');
+  marker.appendChild(head);
+  defs.appendChild(marker);
+  return defs;
 }
 
 /* `CSS.escape` is not on every CEF OBS ships (the same reason `:has()` and
