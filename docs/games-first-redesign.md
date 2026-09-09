@@ -2373,6 +2373,18 @@ stream — so the overlay dims only when the beat actually stops.
   blue-status is not a distinction that survives being read across a room through
   a lossy encode. The art says it first now and the colour agrees, which is the
   same "say it twice" rule the road's stops already followed.
+
+  **AND THE CHECKBOX IS GONE, so the art is the row's left edge.** Every row used
+  to open with a `□` or a `✓` in a column of its own, which spent 21px of every
+  row saying what the row already said three ways over: a finished goal is struck
+  through, dimmed and drained to greyscale, and it flashes green at the moment it
+  is crossed off. At 15px a `□` and a `✓` differ by about six pixels anyway,
+  which is not a distinction this page can rely on — the same argument the colour
+  encoding lost above. The art took the space and grew from 24px to 32px, and
+  what the box's red used to say (**the body in your face right now**) is a red
+  ring around that body's picture instead: louder, and on the thing it is about.
+  The column paid for the widening out of the same 21px and still came out ahead,
+  which is what let it narrow from 380 to 352.
 - **The road**, at `overlay.html#road` — **its own source, off the default
   column.** `RunOverScreen`'s route strip drawn live: every stop walked, a game
   stood on twice drawn twice (the road is a sequence, not a set — a badge saying

@@ -51,10 +51,13 @@ const path = require('path');
 const REPO = path.resolve(__dirname, '..');
 const SRC = path.join(REPO, 'obs');
 
-/* The browser source the README tells a streamer to make. 380 wide since the
- * narrow-column pass; the page is fluid, but this is the width the layout is
- * tuned against and every height below is measured at. */
-const WIDTH = 380;
+/* The browser source the README tells a streamer to make. 352 wide since the
+ * checklist dropped its checkbox column and spent the width on the art; the
+ * page is fluid, but this is the width the layout is tuned against and every
+ * height below is measured at. It is deliberately 352 and not 350: 350 is the
+ * `max-width: 349px` breakpoint where the run card's two halves stack, and a
+ * default sitting on its own breakpoint tests a layout nobody runs. */
+const WIDTH = 352;
 const HEIGHT = 828;
 
 let failures = 0;
@@ -723,7 +726,7 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 491, '#top': 203, '#bottom': 304, '#goals': 304,
+  const DOCUMENTED = { '': 490, '#top': 202, '#bottom': 304, '#goals': 304,
     '#road': 116 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });

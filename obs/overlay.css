@@ -89,9 +89,18 @@
           0 0 7px rgba(0, 0, 0, 0.99), 0 0 12px rgba(0, 0, 0, 0.92),
           0 0 18px rgba(0, 0, 0, 0.7);
 
-  /* 380, down from 440. The column is a sidebar on somebody's stream, and the
-   * page is fluid — this is what the layout is tuned against, not a cage. */
-  --width:     380px;
+  /* 352, down from 380 (and 440 before that). The column is a sidebar on
+   * somebody's stream, and the page is fluid — this is what the layout is tuned
+   * against, not a cage.
+   *
+   * IT STOPS AT 352 RATHER THAN GOING ROUNDER, because 350 is where the run
+   * card's two halves stack (see the `max-width: 349px` query below) and a
+   * default that sits ON its own breakpoint is one rounding error from
+   * rendering a different layout than the one it was tuned for. The narrowing
+   * is paid for out of the checklist: dropping the checkbox column gave every
+   * row back 21px, which is more than the 28 this takes off the page minus the
+   * 8 the bigger art spends. */
+  --width:     352px;
   --radius:    10px;
 }
 
@@ -451,7 +460,7 @@ html, body {
 .now-main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
 .now-half { flex: 1 1 0; min-width: 0; }
 
-/* THE LABELS MUST NOT WRAP, or the two halves stop being one line. At 380 the
+/* THE LABELS MUST NOT WRAP, or the two halves stop being one line. At 352 the
  * destination's label ("3 GAMES TO AMULET", uppercase and tracked out) is the
  * longest text on the page relative to its column, and when it took a second
  * line it pushed that half's cover 13px below the other one — two columns that
@@ -459,7 +468,14 @@ html, body {
  * tracking and a nowrap fixes it, with an ellipsis as the backstop for a source
  * narrower still. */
 .now-half > .label {
-  letter-spacing: 0.04em;
+  /* 11px and barely tracked at all, down from 12/0.04em. The nowrap and the
+   * ellipsis below are the BACKSTOP, not the plan: at 352 the longest of these
+   * ("3 GAMES TO AMULET") ellipsised to "3 GAMES TO AMU…", which loses the one
+   * word that says what the run is for — the label's whole job. These are the
+   * page's smallest text and they are two fixed phrases, not content, so the
+   * two points buy the fit outright. */
+  font-size: 11px;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -589,7 +605,7 @@ html, body {
 /* 15px, ON A NARROWER COLUMN, and that combination is the point of this pass.
  * The density pass before it had taken the row to 13px to fit more of the list;
  * that is the wrong trade for a page read across a room, where a row you cannot
- * make out is not a row. 15 costs about one wrapped line per long goal at 380
+ * make out is not a row. 15 costs about one wrapped line per long goal at 352
  * wide, and the walker brings the rest round.
  *
  * Still variables, because "how much checklist fits" is the question this page
@@ -606,31 +622,26 @@ html, body {
 }
 .goal:last-child { border-bottom: none; }
 
-.goal .tick {
-  flex: 0 0 auto;
-  width: 15px;
-  color: var(--faint);
-  font-weight: 700;
-}
-
 /* ------------------------------------------- the art on a checklist row -- */
 
 /* THE ROW'S OWN PICTURE, and the reason this card is now the page's centre of
  * gravity. A goal IS an enemy (§7.2) and a column of sentences never said so;
  * with the face on the row, the checklist reads as the board.
  *
- * 24px, tracking the row's text back up: the art and the line it sits beside
- * have to stay in proportion or the row reads as a caption under a picture. It
- * is inside the range the swing marks were measured over (the widest art in the
- * roster — a 19x10 sprite through a 734x841 painting — rendered at 22/28/34/40
- * before choosing), and it holds at the small end because there is exactly one
- * per line rather than seven in a strip. `--goal-art` moves it. */
+ * 32px, up from 24, and the checkbox that used to sit to its left is what paid
+ * for it — the row opens on the picture now, so the art IS the left edge of the
+ * list rather than the second thing in it, and it still costs the row 11px less
+ * than the box and the art together did. It is inside the range the swing marks
+ * were measured over (the widest art in the roster — a 19x10 sprite through a
+ * 734x841 painting — rendered at 22/28/34/40 before choosing), and it holds at
+ * this size because there is exactly one per line rather than seven in a strip.
+ * `--goal-art` moves it. */
 .goal-art {
   position: relative;
   flex: 0 0 auto;
-  width: var(--goal-art, 24px);
-  height: var(--goal-art, 24px);
-  /* The art's optical centre against a 14px line of text, which sits lower than
+  width: var(--goal-art, 32px);
+  height: var(--goal-art, 32px);
+  /* The art's optical centre against a 15px line of text, which sits lower than
    * the box's top edge. */
   margin-top: -1px;
 }
@@ -650,7 +661,7 @@ html, body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--faint);
 }
@@ -661,10 +672,10 @@ html, body {
  * black for the same reason — a number must never land illegibly on the art. */
 .goal-badge {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
+  right: -3px;
+  bottom: -3px;
   line-height: 1;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 .goal-badge.dmg {
@@ -675,8 +686,8 @@ html, body {
  * binary the cost strip's corner used to carry: a shield here means this one
  * never reaches Health however big it is. */
 .goal-badge.shield img {
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   image-rendering: pixelated;
   display: block;
   filter: drop-shadow(0 0 2px #000);
@@ -690,7 +701,7 @@ html, body {
  * rather than repeating that body's face — which would draw one enemy two and
  * three times running and read as two and three enemies. The indent is the art
  * column's width plus its gap, so an addon's text lines up under its parent's. */
-.goal.addon { padding-left: 33px; padding-top: 2px; }
+.goal.addon { padding-left: 41px; padding-top: 2px; }
 .goal.addon .text { font-size: 13px; }
 .goal .body { flex: 1 1 auto; min-width: 0; }
 .goal .who {
@@ -708,11 +719,25 @@ html, body {
  * ones; at 0.45 over a bright capture it stopped being readable at all, which
  * throws away the seeing-what-you-crossed-off half. */
 .goal.done { opacity: 0.62; }
-.goal.done .tick { color: var(--success); }
 .goal.done .text { text-decoration: line-through; }
+/* WHAT THE GREEN TICK USED TO SAY, said by the row's own picture: a face that
+ * has been dealt with loses its colour. The strike-through is the unambiguous
+ * half and this is the half that reads from across a room, where a 15px line of
+ * text does not — which is the trade the checkbox column was never making,
+ * since a `□` and a `✓` differ by about six pixels at that size. */
+.goal.done .goal-art > img { filter: grayscale(1); }
 
-/* The body in the player's face. This is the row that costs health next. */
-.goal.front .tick { color: var(--danger); }
+/* THE BODY IN THE PLAYER'S FACE — the row that costs health next, and the one
+ * state on this list that is about RIGHT NOW rather than about the run.
+ *
+ * It was the checkbox turning red, which is gone; it rings the art instead,
+ * which is louder and in the right place. A box-shadow rather than an outline
+ * or a border: neither of those can be drawn without either moving the art (a
+ * border is in the box) or squaring off a `levelup` row's rounded portrait. */
+.goal.front .goal-art {
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--danger), 0 0 5px rgba(0, 0, 0, 0.85);
+}
 .goal.boss  .text { color: var(--gold); font-weight: 600; }
 
 /* THE LEVEL-UP ROW — the character's own standing challenge, and the only row
@@ -721,12 +746,11 @@ html, body {
  * and its art is the character's face, which is where the portrait went when the
  * hero card was folded away. */
 .goal.levelup .text { color: var(--gold); font-weight: 600; }
-.goal.levelup .tick { color: var(--gold); }
 /* Rounder than a body's square face: this one is a person, not a footprint. */
 .goal.levelup .goal-art > img { border-radius: 4px; object-fit: cover; }
 
-.goal.bonus   .tick, .goal.bonus   .text { color: var(--success); }
-.goal.instead .tick, .goal.instead .text { color: var(--success); }
+.goal.bonus   .text { color: var(--success); }
+.goal.instead .text { color: var(--success); }
 .goal.status  .text { color: #8ab6e6; }
 .goal.event   .text { color: var(--accent); }
 .goal.curse   .text { color: var(--curse); }

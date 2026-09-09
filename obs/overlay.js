@@ -358,15 +358,19 @@ function drawGoals(goals, art) {
       + (g.front && !g.done ? ' front' : '')
       + (g.addon ? ' addon' : '')
       + (g.boss ? ' boss' : '');
-    /* A row that was NOT done a moment ago and is now: flash it, so the tick is
-     * something the viewer sees happen. Never on the first draw, where every
-     * done row would flash at once. */
+    /* A row that was NOT done a moment ago and is now: flash it, so crossing it
+     * off is something the viewer sees HAPPEN rather than notices afterwards.
+     * Worth more now that there is no checkbox to flip: the resting difference
+     * between a done row and a live one is a strike-through and a drained
+     * picture, both of which are easy to miss the moment of. Never on the first
+     * draw, where every done row would flash at once. */
     if (g.done && !firstDraw && !doneRows.has(key)) li.classList.add('flash');
 
-    const tick = document.createElement('span');
-    tick.className = 'tick';
-    tick.textContent = g.done ? '✓' : '□';
-    li.appendChild(tick);
+    /* NO CHECKBOX COLUMN. Every row used to open with a `□` or a `✓` in its own
+     * 15px column, which is 21px of every row (the box and its gutter) spent
+     * saying what the row already says twice over: a done row is struck through
+     * and dimmed, and its art is drained of colour. The art is the row's left
+     * edge now, and it got the width back — see `--goal-art` in overlay.css. */
 
     /* THE ROW'S OWN ART. An `addon` row deliberately has none: a bonus and an
      * `instead` hang off the body whose row is directly above, so repeating its
