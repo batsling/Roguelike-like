@@ -11,6 +11,136 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The overlay is a 380px column you can see the game through, and the checklist
+  is readable across a room again.**
+
+  **The cards are barely there.** 0.12 alpha over a backdrop filter dimming by
+  half, so **44% of the capture survives** where the old glass let 17% through.
+  The panel reads as a tint over somebody's gameplay rather than a slab on top of
+  it.
+
+  **The alpha was never the see-through lever, and that took measuring to find.**
+  `brightness()` in the backdrop filter is: at the old 0.45/0.30, dropping the
+  alpha all the way to 0.15 while holding the brightness only reached 26%,
+  because the filter had already thrown away 70% of the picture before the card
+  painted anything. Every "make it more see-through" edit that only touches the
+  alpha is moving the small number.
+
+  **What pays for it is a halo on every glyph**, and that retires the way this
+  page was measured. A WCAG ratio against the composited card scores today's page
+  at 2.6 while it looks fine, because it measures the text against a ground the
+  text is no longer read against. `check_overlay.js` renders the page over a
+  dark, a mid and a bright capture and **samples the real pixels**, splitting each
+  line of text into glyph and ground by luminance — a minimal PNG decoder and a
+  percentile split, both in the file. Worst text on the page: **4.96:1** against
+  an AA bar of 4.5, and the brightness was swept against that number rather than
+  chosen (0.55 → 4.63, 0.70 → 3.79). The sampler found two things by measurement
+  that no one had seen by eye: the 12px uppercase labels needed weight 600 to give
+  the halo any stroke to sit on, and `--faint` had to come up to #cfc8bd.
+
+  **The 4.73 the docs quoted in three places was stale.** Recomputing the old
+  model over today's palette gives 4.66 for the worst text colour. (The lowest
+  token of any kind was `--unbeaten` at 4.06 — but that one is a border on the
+  road's thumbnails and never text, so the 4.5 text bar never applied to it.)
+  Sampled numbers fail loudly; computed ones sit in a document being wrong.
+
+  **380 wide, 15px checklist text.** The column gives the game 60px back and the
+  rows go back up from the 13px the density pass had taken them to — a row you
+  cannot read across a room is not a row. Art tracks it to 24px, the tick to 15.
+  Below **~350** the headline stops being two columns and stacks again: at 380
+  each half has ~155px for its title, and 40px less than that is one word and an
+  ellipsis on both sides. The destination's label is `nowrap` now — at 380 it
+  wrapped and pushed that half's cover 13px below the other, which is two columns
+  that no longer read as a pair.
+
+  Heights, scene layouts and source sizes are all re-measured: the default source
+  is **380 × 640**. `--card-bg`, `--card-blur`, `--goal-text`, `--goal-art` and
+  `--goal-height` are all `custom.css` knobs, and the contrast check is the thing
+  to run after touching any of them.
+
+- **The overlay's run card is a third shorter, and the checklist has a source of
+  its own.** The page came down from 608px to 477 on a heavy run, and `#top` —
+  the run card — from 258 to 187.
+
+  **The headline is two columns on one line.** The game in play and the game the
+  run is for, each with its cover to the left of its name, each under its own
+  label: CURRENT GAME, and "3 games to Amulet". It was two stacked rows, and the
+  destination's row spent its own rule and padding, an arrow and the words "to
+  the Amulet" explaining a number that had nothing above it. §9 had argued two
+  columns could not fit — 440px less the covers and the hop count leaves ~224 to
+  split between two real titles — and three changes paid for it: the hop count
+  left the line to become the destination's label, the covers came down (46×62 →
+  38×51, the Amulet's 22×30 → 30×40), and both titles clamp to two lines so the
+  halves bound each other. The truncation the old reasoning warned about is real
+  and accepted; what it buys is 71px off `#top`, which is what lets the road into
+  a scene column at full camera size.
+
+  **The cost line is a label and two numbers.** `On next loss  −2 Shields, −12
+  Health`, or `N/A` when nothing lands. It was a sentence, which read better and
+  wrapped to a second line on a busy board — at the top of the card, where a
+  height that changes is a page that moves under a viewer who looked up for two
+  seconds. The lethal badge says "Death" rather than THIS KILLS YOU. What goes
+  with it is the quiet count ("nothing reaches you for at least 2 more lost
+  runs"): `threat.turns_away` is still computed, still measured against each
+  body's own reach, still a floor, and still in the payload — it is one line of
+  `overlay.js` for anyone who wants it back.
+
+  **The checklist got denser and shorter.** 5px of row padding to 3, 14px text to
+  13, 26px art to 22 — about 8px off every row — and the scroller's ceiling from
+  320 to 260 to match, which fits about the same nine rows in less height. All
+  three are variables now (`--goal-height`, `--goal-text`, `--goal-art`), because
+  "how much checklist fits" is the question this page gets asked most and
+  `custom.css` is the seam for answering it.
+
+  **`overlay.html#goals` is the checklist and nothing else.** It differs from
+  `#bottom` by the ticker alone, which is the whole point: the ticker is pinned to
+  the bottom of the browser SOURCE and grows upward, so on a source sized to the
+  checklist a burst of toasts lands on the checklist. Fine on the full column
+  where they float over slack; wrong on a source that is the list. `check_overlay.js`
+  measures the new view alongside the others, and the README's height tables,
+  scene layouts and source sizes are all re-measured (the default source is 440 ×
+  620 now, not 850).
+
+  The settings screen's OBS hint said 440 × 1000 against a page that has not been
+  that shape for two redesigns; it now names the real size, says to leave the
+  scene item at 100%, and points at `#goals` and `#road`.
+
+- **The stream overlay's art was invisible in OBS, and only in OBS.** Every
+  picture — the two headline covers, the hero, the shields, every checklist row's
+  face, the whole road — drew nothing in the one place the overlay is ever used.
+  The text beside them was perfect, which is what made it look like an art bug
+  rather than a URL one.
+
+  **The covers travelled as absolute `file:///…` URLs and `state.js` did not.**
+  That asymmetry is the entire bug. `overlay.js` pulls `state.js` as a *sibling*,
+  and a relative URL resolves against whatever base the browser handed the
+  document — so the state always arrived. The art was written as a full path at
+  wherever the picture lay, and Chromium treats an absolute `file://` URL as a
+  **local resource load**, which it refuses from any document that is not itself
+  `file://`. OBS does not serve a local page as a `file://` document. Nothing
+  could see this: double-clicking `overlay.html` to check makes it one, so the
+  page was perfect on every desk it was ever tested on.
+
+  **The art travels the way the state does now.** `ObsCompanion._stage()` copies
+  each picture into `user://obs/covers/` beside the page and the payload carries
+  `covers/<hash>-<name>` — no scheme, no absolute path, nothing for a browser to
+  refuse. Staging used to be the packed-build branch only, with a source run
+  pointed at `res://` where it lay; it is now the one path both builds take, which
+  is also how a dev machine came to be testing what a streamer actually runs. A
+  full run stages 135 files, 33 MB. The hash prefix that kept the thirty-three
+  duplicate basenames apart is unchanged, and `_file_url` is gone with the
+  Windows drive-letter hazard it existed to dodge — a relative URL has no drive
+  letter to escape.
+
+  **Both test harnesses were pinning the broken shape.** `test_obs_companion.gd`
+  asserted every art url `begins_with("file://")` in five places, and
+  `check_overlay.js` built its fixture from absolute paths and loaded the page
+  over `file://` — between them they reproduced the working double-click case
+  exactly. The GUT assertions now go through `_assert_page_local`, and
+  `check_overlay.js` serves the same fixture **over http** and asks every `<img>`
+  whether it decoded. Run against the old URLs that check fails 39 pictures out
+  of 39, with the files sitting right beside the page.
+
 - **Six passes over the screens, and four of them are about a line or a click
   that was costing more than it was worth.**
 

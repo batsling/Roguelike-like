@@ -44,14 +44,17 @@
 'use strict';
 
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 
 const REPO = path.resolve(__dirname, '..');
 const SRC = path.join(REPO, 'obs');
 
-/* The browser source the README tells a streamer to make. */
-const WIDTH = 440;
+/* The browser source the README tells a streamer to make. 380 wide since the
+ * narrow-column pass; the page is fluid, but this is the width the layout is
+ * tuned against and every height below is measured at. */
+const WIDTH = 380;
 const HEIGHT = 828;
 
 let failures = 0;
@@ -106,25 +109,129 @@ function findBrowser() {
   return null;
 }
 
+/* ------------------------------------------------ reading back real pixels -- */
+
+/* A MINIMAL PNG DECODER, because the contrast check has to look at what was
+ * actually composited and node ships no image decoding. Playwright screenshots
+ * are non-interlaced 8-bit RGB or RGBA (colour type 2 or 6) — which of the two
+ * depends on whether the page is fully opaque, so both are handled and anything
+ * else throws rather than returning quiet nonsense.
+ *
+ * The five PNG row filters are the whole of it: each scanline is prefixed with a
+ * filter byte saying how it was predicted from the row above and the pixel to the
+ * left, and undoing them in order is the decode. */
+function decodePng(buf) {
+  let pos = 8;                        /* past the signature */
+  let w = 0, h = 0, depth = 0, type = 0;
+  const idat = [];
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const tag = buf.toString('ascii', pos + 4, pos + 8);
+    const body = buf.subarray(pos + 8, pos + 8 + len);
+    if (tag === 'IHDR') {
+      w = body.readUInt32BE(0); h = body.readUInt32BE(4);
+      depth = body[8]; type = body[9];
+    } else if (tag === 'IDAT') {
+      idat.push(body);
+    } else if (tag === 'IEND') break;
+    pos += 12 + len;                  /* length + tag + data + CRC */
+  }
+  if (depth !== 8 || (type !== 6 && type !== 2)) {
+    throw new Error('expected 8-bit RGB(A) png, got depth ' + depth + ' type ' + type);
+  }
+  const raw = require('zlib').inflateSync(Buffer.concat(idat));
+  const bpp = type === 6 ? 4 : 3;
+  const stride = w * bpp;
+  const out = Buffer.alloc(h * stride);
+  for (let y = 0; y < h; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? out[y * stride + x - bpp] : 0;          /* left */
+      const b = y > 0 ? out[(y - 1) * stride + x] : 0;             /* up */
+      const c = (x >= bpp && y > 0) ? out[(y - 1) * stride + x - bpp] : 0;
+      let v = line[x];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const p = a + b - c;
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+      }
+      out[y * stride + x] = v & 0xff;
+    }
+  }
+  return { w, h, bpp, data: out };
+}
+
+const srgb = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+const relLum = (r, g, b) => 0.2126 * srgb(r) + 0.7152 * srgb(g) + 0.0722 * srgb(b);
+
+/* THE GLYPH AGAINST WHAT IT SITS ON, read off the composited page.
+ *
+ * Inside a line of text the pixels fall into two populations: the strokes, and
+ * everything the strokes are read against (the halo, then the card, then the
+ * capture). Sorting by luminance and taking a high percentile against a low one
+ * separates them without needing to know which pixel is which. The percentiles
+ * are 98 and 25 rather than something tidier because glyph coverage inside a
+ * line box is LOW — even tight to the text a line is mostly the space between
+ * letters, so the stroke core is a thin slice at the top of the distribution and
+ * a 90th percentile lands on antialiasing.
+ *
+ * Returns null for a box with no real range in it, which the caller skips rather
+ * than scoring. */
+function glyphContrast(png, box) {
+  const lums = [];
+  const x1 = Math.min(png.w, box.x + box.w), y1 = Math.min(png.h, box.y + box.h);
+  for (let y = Math.max(0, box.y); y < y1; y++) {
+    for (let x = Math.max(0, box.x); x < x1; x++) {
+      const i = (y * png.w + x) * png.bpp;
+      lums.push(relLum(png.data[i], png.data[i + 1], png.data[i + 2]));
+    }
+  }
+  if (lums.length < 40) return null;
+  lums.sort((a, b) => a - b);
+  const at = (f) => lums[Math.min(lums.length - 1, Math.floor(lums.length * f))];
+  const ink = at(0.98), ground = at(0.25);
+  if (ink - ground < 0.02) return null;      /* nothing drawn in this box */
+  return (ink + 0.05) / (ground + 0.05);
+}
+
 /* ------------------------------------------------------------- the fixture -- */
 
 /* Real art off disk, so the sizes measured are the sizes a stream gets. A missing
- * folder is not a failure of the page — it just means this is a partial check. */
-function pick(dir, n) {
-  const full = path.join(REPO, dir);
+ * folder is not a failure of the page — it just means this is a partial check.
+ *
+ * STAGED BESIDE THE PAGE AND NAMED RELATIVELY, exactly as ObsCompanion._stage
+ * does it. This used to hand the fixture `file:///…/images2.0/games/x.png`, and
+ * that is the shape that broke OBS and could not be caught here: an absolute
+ * file:// subresource loads fine from a file:// document, which is what this
+ * harness and a double-clicked overlay.html both are, and is refused outright by
+ * a document served any other way — which is what OBS's browser source gives the
+ * page. Keeping the fixture in the producer's real shape is what lets the
+ * over-http check below mean anything. */
+function pick(stageDir, sub, n, only) {
+  const full = path.join(REPO, sub);
   if (!fs.existsSync(full)) return [];
-  const names = fs.readdirSync(full).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).sort();
+  const names = only
+    ? (fs.existsSync(path.join(full, only)) ? [only] : [])
+    : fs.readdirSync(full).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).sort();
+  const covers = path.join(stageDir, 'covers');
+  fs.mkdirSync(covers, { recursive: true });
   const out = [];
   for (let i = 0; i < n && names.length; i++) {
-    out.push('file://' + path.join(full, names[i % names.length]));
+    const name = sub.replace(/\//g, '-') + '-' + names[i % names.length];
+    fs.copyFileSync(path.join(full, names[i % names.length]), path.join(covers, name));
+    out.push('covers/' + name);
   }
   return out;
 }
 
-function fixture() {
-  const games = pick('images2.0/games', 22);
-  const enemies = pick('images2.0/enemies', 7);
-  const statuses = pick('images2.0/statuses', 6);
+function fixture(dir) {
+  const games = pick(dir, 'images2.0/games', 22);
+  const enemies = pick(dir, 'images2.0/enemies', 7);
+  const statuses = pick(dir, 'images2.0/statuses', 6);
   const at = Math.floor(Date.now() / 1000);
 
   const kinds = ['goal', 'goal', 'bonus', 'instead', 'status', 'event', 'curse', 'goal', 'goal'];
@@ -183,8 +290,8 @@ function fixture() {
     events: [{ tone: 'info', text: 'Now playing', at: at - 1 }],
     hero: { name: 'The Completionist', icon: enemies[3] || '', level: 3, levelup: '' },
     art: {
-      timer: 'file://' + path.join(REPO, 'images2.0/general/Timer.png'),
-      shield: 'file://' + path.join(REPO, 'images2.0/general/Shield.png'),
+      timer: pick(dir, 'images2.0/general', 1, 'Timer.png')[0] || '',
+      shield: pick(dir, 'images2.0/general', 1, 'Shield.png')[0] || '',
     },
     vitals: { hp: 7, max: 20, shields: 4, shields_kept: 2, shields_timed: 2 },
     run: { played: 8, beaten: 5, gold: 120, hops: 3,
@@ -237,7 +344,7 @@ async function main() {
   }
   fs.writeFileSync(path.join(dir, 'custom.css'), '');
 
-  const state = fixture();
+  const state = fixture(dir);
   const write = (mut) => {
     if (mut) mut(state);
     fs.writeFileSync(path.join(dir, 'state.js'),
@@ -275,9 +382,21 @@ async function main() {
    * has to be on the page without scrolling anything. */
   check('the Amulet is named beside the game in play', /Tears of the Kingdom/.test(drew.dest),
     drew.dest);
-  check('the distance is on the line that names where it leads',
+  /* THE DISTANCE LABELS THE DESTINATION, in the column the destination is in —
+   * that adjacency is what lets it drop the words "to the" and stay readable. */
+  check('the distance labels the destination column',
     await page.evaluate(() => document.getElementById('hops').textContent)
-      === '3 games to the Amulet');
+      === '3 games to Amulet');
+  /* THE TWO GAMES ARE ON ONE LINE. Asserted on the boxes rather than on the
+   * markup: what matters is that a viewer reads them as a pair, which means
+   * their tops line up and the Amulet's is the one on the right. */
+  const pair = await page.evaluate(() => {
+    const a = document.getElementById('now-cover').getBoundingClientRect();
+    const b = document.getElementById('dest-cover').getBoundingClientRect();
+    return { dy: Math.round(Math.abs(a.top - b.top)), right: b.left > a.left };
+  });
+  check('the two games share a line, Amulet on the right',
+    pair.dy < 12 && pair.right, JSON.stringify(pair));
   /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
    * self-evidently a checklist. */
   check('the checklist has no label above it',
@@ -297,14 +416,13 @@ async function main() {
     rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
     JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
 
-  /* THE CARD IS TRANSPARENT, AND ONLY THE BACKDROP FILTER MAKES THAT SAFE. The
-   * card sits at 0.45 alpha so the stream shows through it, which is only legible
-   * because `backdrop-filter` blurs and darkens the capture behind it first —
-   * measured, the worst contrast on the page is 4.73 with the filter and 1.20
-   * without. The two must therefore never be separated: dropping the filter while
-   * keeping the transparency is the one edit here that silently produces an
-   * unreadable overlay on a bright game, and it would look completely fine to
-   * whoever made it on a dark one. */
+  /* THE CARD IS ALL BUT GONE, AND THE HALO IS WHAT MAKES THAT SAFE. The card sits
+   * at 0.12 alpha so the stream really shows through, which is only legible
+   * because every glyph carries its own dark rim (`--halo`) and the backdrop
+   * filter still dims what is behind the card. None of those three may be dropped
+   * on its own: each looks completely fine on a dark game and each is what fails
+   * on a bright one. The pixel sampling below is what actually holds the line —
+   * this pair only pins the mechanism. */
   const glass = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.card'));
     const bg = cs.backgroundColor;
@@ -313,9 +431,14 @@ async function main() {
     const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
     return { alpha: parts.length === 4 ? parts[3] : 1, filter };
   });
-  check('the card lets the stream through', glass.alpha < 0.6, 'alpha ' + glass.alpha);
+  check('the card lets the stream through', glass.alpha < 0.2, 'alpha ' + glass.alpha);
   check('…and darkens what it lets through, which is what keeps it readable',
     /blur/.test(glass.filter) && /brightness/.test(glass.filter), glass.filter);
+  check('…and every glyph carries its own ground',
+    await page.evaluate(() => {
+      const sh = getComputedStyle(document.getElementById('overlay')).textShadow;
+      return (sh.match(/rgb/g) || []).length >= 3;
+    }), 'the halo is at least three stacked shadows');
 
   /* THE CHARACTER'S GOAL IS ON THE LIST. The portrait and the name left the hero
    * card for this row, and if it did not draw, both would simply be gone. */
@@ -352,7 +475,9 @@ async function main() {
     title: Math.round(document.getElementById('now-game').getBoundingClientRect().width),
   }));
   check('a wider source is filled, not letterboxed', wide.page === 640, wide.page + 'px');
-  check('…and the text columns are what take the slack', wide.title > 400,
+  /* The title is one of TWO columns now, so the slack it takes is half the
+   * page's — 640 wide gives each half ~290 before its cover and gutters. */
+  check('…and the text columns are what take the slack', wide.title > 200,
     wide.title + 'px of title');
   await page.setViewportSize({ width: WIDTH, height: HEIGHT });
   await sleep(500);
@@ -386,13 +511,13 @@ async function main() {
       total: document.getElementById('cost-total').textContent,
       quiet: document.getElementById('cost').classList.contains('quiet') };
   });
-  /* THE LINE NO LONGER HIDES ITSELF HERE, and that is the change: a board with
-   * nothing in reach is still a board walking towards you, and how many lost runs
-   * of quiet are left is the question that follows. What must still hide is the
-   * LETHALITY WARNING — that is the regression this file was written for, where
-   * THIS KILLS YOU sat pulsing over a safe board carrying the previous forecast. */
-  check('the cost line says how long the quiet lasts',
-    gone.cost.shown && /at least 2 more lost runs/.test(gone.total), gone.total);
+  /* THE LINE STAYS AND READS N/A, which is the state to get right: it does not
+   * hide (a row that vanishes moves everything under it) and it does not go red.
+   * What must still hide is the LETHALITY WARNING — that is the regression this
+   * file was written for, where the badge sat pulsing over a safe board still
+   * carrying the previous forecast. */
+  check('the cost line says N/A rather than hiding',
+    gone.cost.shown && gone.total.trim() === 'N/A', gone.total);
   check('…and stops being an alarm while it does', gone.quiet);
   check('the lethality warning is gone, not merely flagged', !gone.lethal.shown,
     JSON.stringify(gone.lethal));
@@ -402,13 +527,34 @@ async function main() {
   check('no shields are drawn', gone.shields === 0, gone.shields + ' drawn');
   check('…and the bar takes back the width they were using',
     gone.barW > drew.barW, drew.barW + 'px armoured -> ' + gone.barW + 'px bare');
-  /* The forecast reads the OTHER way when nothing is ever coming, rather than
-   * promising a wait of minus one turn. */
+  /* A BOARD THAT CAN NEVER CLOSE READS THE SAME N/A, and that is deliberate:
+   * `turns_away` is no longer on the line, so "nothing this turn" and "nothing
+   * ever" are one state here. It still rides in the payload. */
   write((s) => { s.at++; s.threat.turns_away = -1; });
   await sleep(900);
-  check('a board that never closes says so',
-    /nothing on the board can reach you/.test(
-      await page.evaluate(() => document.getElementById('cost-total').textContent)));
+  check('a board that never closes reads N/A too',
+    'N/A' === (await page.evaluate(() =>
+      document.getElementById('cost-total').textContent)).trim());
+
+  /* THE ARITHMETIC, when there is some: a label and two numbers, on one line.
+   *
+   * Measured WITHOUT the Death badge, because that is the resting state and the
+   * one whose height the rest of the card depends on. The lethal state is
+   * allowed to wrap and does at 380 — a badge is not a number, it arrives at the
+   * one moment the page is meant to shout, and pushing the checklist down 18px
+   * while it does is the correct trade. */
+  write((s) => { s.at++; Object.assign(s, fixture(dir)); s.threat.lethal = false;
+    s.at = Date.now(); });
+  await sleep(900);
+  const cost = await page.evaluate(() => ({
+    text: document.getElementById('cost-total').textContent.trim(),
+    h: Math.round(document.getElementById('cost').getBoundingClientRect().height),
+  }));
+  check('the cost line is the two numbers and nothing else',
+    /^−\d+ Shields?, −\d+ Health$|^−\d+ (Shields?|Health)$/.test(cost.text), cost.text);
+  /* One line is ~31px (two 11-12px runs on a baseline, 6px of padding, a
+   * border); a wrapped one is past 45. */
+  check('…on one line', cost.h < 40, cost.h + 'px tall');
 
   /* 2. the road's outcome colours, including the combinations the cascade used to
    *    lose. --success #4dc76b, --gold #ffcc66, --unbeaten #d97821. */
@@ -474,7 +620,7 @@ async function main() {
   console.log('the road walks while the run moves');
   write((s) => {
     s.at++;
-    s.road = fixture().road;   /* long again, so there is something to walk */
+    s.road = fixture(dir).road;   /* long again, so there is something to walk */
   });
   await sleep(3500);           /* clear of SCROLL_PAUSE */
   const walked = [];
@@ -499,8 +645,8 @@ async function main() {
     /* BACK TO A FULL PAGE FIRST. The checks above shrank the goals and the road to
      * make their own points, and a burst measured against a short page proves
      * nothing — it is the tall page the toasts have to fit under. */
-    Object.assign(s, { goals: fixture().goals, road: fixture().road,
-      threat: fixture().threat, vitals: fixture().vitals, statuses: fixture().statuses });
+    Object.assign(s, { goals: fixture(dir).goals, road: fixture(dir).road,
+      threat: fixture(dir).threat, vitals: fixture(dir).vitals, statuses: fixture(dir).statuses });
     s.events = ['Defeated The Wretched Cartographer', 'Took 4 damage — 2 shields broke',
       'Now playing Vampire Survivors: Legacy of the Moonspell', 'Lost a run — attempt 5',
       'Beat Hollow Knight', 'Found the Golden Idol'].map((text, i) =>
@@ -535,7 +681,7 @@ async function main() {
   }));
   check('the failure is said out loud on the page',
     broke.waiting && /could not draw/.test(broke.message), broke.message.slice(0, 60));
-  write((s) => { s.at++; s.goals = fixture().goals; });
+  write((s) => { s.at++; s.goals = fixture(dir).goals; });
   await sleep(900);
   const recovered = await page.evaluate(() => ({
     waiting: document.getElementById('overlay').classList.contains('waiting'),
@@ -554,12 +700,13 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 608, '#top': 258, '#bottom': 366, '#road': 118 };
+  const DOCUMENTED = { '': 491, '#top': 203, '#bottom': 304, '#goals': 304,
+    '#road': 116 };
   console.log('the shape the README documents');
-  write((s) => { s.at++; s.events = []; Object.assign(s, fixture()); s.at = Date.now(); });
+  write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
   for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
-    ['#road', '#road']]) {
+    ['#goals', '#goals'], ['#road', '#road']]) {
     await page.goto('file://' + path.join(dir, 'overlay.html') + hash);
     await sleep(900);
     const h = await page.evaluate(() =>
@@ -567,6 +714,149 @@ async function main() {
     check(label + ' still measures what the README says on a heavy run',
       h === DOCUMENTED[hash], h + 'px, documented ' + DOCUMENTED[hash]);
   }
+
+  /* THE PICTURES ACTUALLY LOAD WHEN THE PAGE IS NOT A file:// DOCUMENT.
+   *
+   * This is the one check in the file that is not about the page at all — it is
+   * about the URLs the producer writes, and it exists because that is what broke
+   * on a real stream. The overlay's art used to travel as absolute
+   * `file:///…/images2.0/games/x.png`. Chromium treats an absolute file:// URL as
+   * a LOCAL RESOURCE LOAD and refuses it from any document that is not itself
+   * file://; OBS's browser source does not serve local files as file:// documents,
+   * so in OBS — the only place this page is ever used — the text was perfect and
+   * EVERY picture was missing. Nothing could see it: double-clicking the page
+   * makes it a file:// document, and so did every `page.goto('file://…')` above.
+   *
+   * So the same fixture is served over http and the images are asked whether they
+   * decoded. `naturalWidth` is the question that matters — an <img> with a
+   * refused src is still in the DOM, still the size its CSS gives it, and reports
+   * 0 there. Serving it also proves the relative form resolves against a base
+   * that is not a folder path, which is the property the fix actually relies on. */
+  /* #goals IS #bottom WITHOUT THE TICKER, and that is the only difference worth
+   * asserting: the ticker is pinned to the foot of the source and would land on
+   * a checklist sized to itself. The list must still be there and still walk. */
+  console.log('the checklist on its own');
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#goals');
+  await sleep(900);
+  const only = await page.evaluate(() => ({
+    goals: document.querySelectorAll('.goal').length,
+    run: !!document.querySelector('.run').getClientRects().length,
+    ticker: !!document.querySelector('.ticker').getClientRects().length,
+    road: !!document.querySelector('.road').getClientRects().length,
+  }));
+  check('#goals draws the checklist', only.goals > 0, only.goals + ' rows');
+  check('…and nothing else', !only.run && !only.ticker && !only.road,
+    JSON.stringify(only));
+
+  /* ------------------------------------------------------------------------
+   * THE TEXT HOLDS ITS GROUND OVER ANY CAPTURE.
+   *
+   * WHY THIS SAMPLES PIXELS INSTEAD OF DOING THE ARITHMETIC. The old page was a
+   * near-opaque card, so a WCAG ratio of the text colour against the composited
+   * CARD was a fair description of it, and that is where the 4.73 in the docs
+   * came from — computed by hand, never asserted here. Two things are wrong with
+   * carrying that forward. It was never re-derived after the palette moved:
+   * recomputing the same model over today's tokens gives 4.66 for the worst TEXT
+   * colour (`--faint`), not 4.73 — the 4.73 belonged to an earlier palette and
+   * had been quoted in three documents since. (The lowest token of any kind was
+   * `--unbeaten` at 4.06, but that one is a border on the road's thumbnails and
+   * never text, so the 4.5 text bar never applied to it; against the 3:1 bar for
+   * non-text it passes.) And the model itself is now wrong outright — at 0.12
+   * alpha the text is not read against the card, it is read against its own halo,
+   * and arithmetic on the card alone scores a page that looks fine at 2.6.
+   *
+   * So the page is rendered over a dark, a mid and a bright solid "capture" and
+   * the real pixels are read back. For each text element: take its box, split
+   * the pixels into the light half (glyph) and the dark half (halo and whatever
+   * is behind it), and compute the WCAG ratio between the two medians. That is a
+   * PROXY and is documented as one — it is not the ratio of a glyph to a single
+   * flat ground, because there is no longer a single flat ground — but it is
+   * measured on the thing the viewer actually sees, and it moves the moment the
+   * halo, the card, the filter or a palette colour does.
+   * --------------------------------------------------------------------- */
+  console.log('the text holds its ground over any capture');
+  const CAPTURES = [['dark', '#101014'], ['mid', '#7c7c80'], ['bright', '#f6f6fa']];
+  let worstRatio = Infinity, worstWhere = '';
+  for (const [name, colour] of CAPTURES) {
+    await page.goto('file://' + path.join(dir, 'overlay.html'));
+    await page.evaluate((c) => { document.body.style.background = c; }, colour);
+    await sleep(700);
+    const shot = await page.screenshot({ clip: { x: 0, y: 0, width: WIDTH,
+      height: Math.min(HEIGHT, 520) } });
+    /* THE RANGE'S RECTS, CLIPPED TO WHAT IS ACTUALLY ON SCREEN.
+     *
+     * An element box runs the full width of its column whatever the text in it
+     * does, so a short subtitle in a wide row is mostly empty ground — a sampler
+     * splitting THAT by percentile finds no glyph and scores the halo against the
+     * card. A Range over the node's contents gives the line boxes the glyphs
+     * occupy instead.
+     *
+     * AND THEN THE RECTS MUST BE CLIPPED TO THE ELEMENT, which cost an hour to
+     * work out. `.now-game` and `.dest-game` are `-webkit-line-clamp: 2`, and a
+     * Range hands back a rect for EVERY line the text would have taken, clipped
+     * ones included — so on a long title the sampler was reading rects sitting
+     * 40px below the visible box, over the health bar and the cost line, and
+     * reporting their unrelated colours as a contrast failure of the title. The
+     * real text was scoring 8.9 to 11.3 the whole time. Any rect not inside its
+     * own element's border box is not on screen and is dropped. */
+    const boxes = await page.evaluate(() => {
+      const out = [];
+      for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
+        '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
+        const n = document.querySelector(sel);
+        if (!n || !n.textContent.trim()) continue;
+        const box = n.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width < 20 || r.height < 7) continue;
+          if (r.top < box.top - 1 || r.bottom > box.bottom + 1) continue;
+          out.push({ sel, x: Math.round(r.x), y: Math.round(r.y),
+            w: Math.round(r.width), h: Math.round(r.height) });
+        }
+      }
+      return out;
+    });
+    const png = decodePng(shot);
+    for (const b of boxes) {
+      const r = glyphContrast(png, b);
+      if (r && r < worstRatio) { worstRatio = r; worstWhere = b.sel + ' over ' + name; }
+    }
+  }
+  await page.evaluate(() => { document.body.style.background = ''; });
+  /* 4.5 is AA for body text, and the page clears it by sampling rather than by
+   * assertion — if a future pass lightens the card, weakens the halo or dims a
+   * palette colour, this is the check that notices. */
+  check('the worst text on the page is still legible over any capture',
+    worstRatio >= 4.5, worstRatio.toFixed(2) + ':1 — ' + worstWhere);
+
+  console.log('the art loads from a page that is not a file:// document');
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '');
+    const file = path.join(dir, rel);
+    if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+      res.writeHead(404); res.end(); return;
+    }
+    const type = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file)];
+    res.writeHead(200, { 'Content-Type': type || 'application/octet-stream' });
+    res.end(fs.readFileSync(file));
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  await page.goto('http://127.0.0.1:' + server.address().port + '/overlay.html');
+  await sleep(1200);
+  const art = await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll('img[src]')];
+    return { total: imgs.length,
+      broken: imgs.filter((i) => !i.complete || i.naturalWidth === 0).map((i) => i.getAttribute('src')),
+      absolute: imgs.map((i) => i.getAttribute('src')).filter((s) => /^[a-z]+:/i.test(s)) };
+  });
+  check('the page draws some art at all', art.total > 0, art.total + ' <img> with a src');
+  check('every picture decoded', art.broken.length === 0,
+    art.broken.length + ' broken: ' + art.broken.slice(0, 3).join(', '));
+  check('no art url carries a scheme — they are all relative to the page',
+    art.absolute.length === 0, art.absolute.slice(0, 3).join(', '));
+  await new Promise((r) => server.close(r));
 
   const shot = path.join(dir, 'overlay.png');
   await page.goto('file://' + path.join(dir, 'overlay.html'));

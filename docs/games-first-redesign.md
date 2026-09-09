@@ -2200,7 +2200,7 @@ user://obs/overlay.css    its styling       │ at EVERY boot — a stale copy
 user://obs/overlay.js     its ticker        ┘ reads as a broken overlay
 user://obs/custom.css     the streamer's own styling, created empty ONCE
 user://obs/state.js       window.OBS_STATE = { … }, rewritten as the run moves
-user://obs/covers/        covers lifted out of the .pck (exported builds only)
+user://obs/covers/        every picture the page shows, staged beside it
 ```
 
 In OBS: **Browser Source → Local file → `overlay.html`**. The settings screen
@@ -2214,7 +2214,14 @@ OBS ships) refuses every `fetch()`/XHR a `file://` page makes at a sibling file 
 no origin, so it is an unfixable CORS failure short of launching OBS with
 `--allow-file-access-from-files`. A `<script src>` has no such restriction. So
 the payload is written as an assignment, and `overlay.js` re-loads it four times
-a second with a cache-buster. Covers travel the same way, as `<img src="file://…">`.
+a second with a cache-buster.
+
+**And every URL the page uses is RELATIVE to it**, which is the same decision
+seen from the other side. An absolute `file://` URL is a local resource load, and
+Chromium refuses one from any document that is not itself `file://` — which is
+what OBS gives the page. The covers were the only absolute thing here, and so
+were the only thing that broke, invisibly, on every stream. They are staged into
+`user://obs/covers/` beside the page now and travel as `<img src="covers/…">`.
 
 Writes are **debounced to 4/sec and deduped on content**, with a **5-second
 heartbeat** underneath. The heartbeat is what lets the page tell "the run has not
@@ -2260,17 +2267,24 @@ stream — so the overlay dims only when the beat actually stops.
   back (§7.6) and counting only the front column understated the cost for every
   one of them. It is a **forecast and not a promise** (an ability can spend a
   body's turn on something else) and nothing in it mutates.
-- **How long the quiet lasts, when nothing can reach you.** The line used to hide
-  itself entirely on an empty forecast, which is honest about this turn and
-  silent about the only question that follows from it: the board is still walking
-  towards you. It now reads *"nothing reaches you for at least 2 more lost
-  runs"* — `threat.turns_away`, from `GameLoop2.turns_until_strike`, which is
-  `can_strike`'s own inequality (`_front_col <= 1 + strike_range`) rearranged so
-  the two cannot drift apart. **Measured against each body's own reach, never
-  against column 1**: counting steps to the front line would promise a quiet turn
-  to somebody a Host can already shoot, which is the one lie this page must not
-  tell. It is a **floor** — a blocked lane, a stun, a turn spent on an ability
-  all make the real wait longer and never shorter — so it is worded "at least".
+- **The cost line is a label and two numbers**: `On next loss  −2 Shields,
+  −12 Health`, or `N/A` when nothing lands. It never hides — a row that
+  disappears moves everything under it, and this line sits at the top of the card
+  — and it goes blue rather than red on an empty forecast.
+
+  It has been three things. A strip of one mark per swing, then a sentence ("2
+  shields break, −12 Health", and on an empty forecast *"nothing reaches you for
+  at least 2 more lost runs"*), and now the total alone. Each cut moved
+  information to where it was already being drawn: the swings' identities to the
+  checklist rows, and now the quiet count off the page. `threat.turns_away` is
+  still computed and still in the payload — from `GameLoop2.turns_until_strike`,
+  which is `can_strike`'s own inequality (`_front_col <= 1 + strike_range`)
+  rearranged so the two cannot drift apart, **measured against each body's own
+  reach and never against column 1** (counting steps to the front line would
+  promise a quiet turn to somebody a Host can already shoot, which is the one lie
+  this page must not tell), and a **floor**, since a blocked lane, a stun or a
+  turn spent on an ability all make the real wait longer and never shorter. It is
+  one line of `overlay.js` for anyone restyling the page who wants it back.
 - **Shields as SPRITES, on the health bar's own line** — the same art the board
   draws (`BattlefieldView.refresh_hero` → `_fill_shields`). One sprite per shield:
   the pool that stays nearest the bar and bare, the timed ones after it wearing
@@ -2292,18 +2306,28 @@ stream — so the overlay dims only when the beat actually stops.
   was a health bar, which is not a card. So the premise leads and the stake sits
   under it: the game in play, where it leads, then health, armour and what one
   lost run costs.
-- **The headline: the game in play, and the game the whole run is for.** Its
-  cover and title, then a line under it — *"→ 3 games to the Amulet"* and the
-  Amulet's own cover and name. This pair **is the premise**, and it is the one
-  thing a viewer who has just tuned in cannot get from a health bar and a
-  checklist. The Amulet used to be legible only off the right-hand end of the
-  road strip, which scrolls: measured on a 22-stop run it was fully on screen 12%
-  of the time. **A destination cannot live inside something that scrolls away from
-  it.** Side by side in two columns does not fit either — 440px less the covers
-  and the hop count leaves ~224px to split between two real game titles and both
-  truncate — so the destination is a full-width line under the game in play
-  rather than a column beside it. The attempts already spent ride here too, with
-  the game they were spent on.
+- **The headline: the game in play, and the game the whole run is for.** Two
+  columns on one line, each with its cover to the left of its name, each under
+  its own label: CURRENT GAME, and *"3 games to Amulet"*. This pair **is the
+  premise**, and it is the one thing a viewer who has just tuned in cannot get
+  from a health bar and a checklist. The Amulet used to be legible only off the
+  right-hand end of the road strip, which scrolls: measured on a 22-stop run it
+  was fully on screen 12% of the time. **A destination cannot live inside
+  something that scrolls away from it.**
+
+  It was a full-width line UNDER the game in play, on the reasoning that two
+  columns do not fit: 440px less the covers and the hop count left ~224px to
+  split between two real game titles, and both truncate. Three changes paid for
+  the column. **The hop count left the line** — it is the destination's label
+  now, above the cover it belongs to, which is also where it stopped needing the
+  words "to the" spelled out. **The covers came down** (46×62 → 38×51, and the
+  Amulet's 22×30 → 30×40, the two now peers). And **both titles clamp to two
+  lines** rather than the destination taking one ellipsised line, so whichever
+  wraps, the halves bound each other and the card is the same height either way.
+  The truncation the old reasoning warned about is real and accepted: a long
+  title takes two lines and then ellipsises. What it buys is 71px off `#top`,
+  which is what lets the road into a scene column at full camera size. The
+  attempts already spent ride under the current game.
 - **The checklist**, live, and it is the point of the whole thing: a viewer
   watching someone play Hollow Knight has no idea they are doing it to "defeat 3
   bosses without healing". Every row the report panel would draw — body goals,
@@ -2358,7 +2382,7 @@ stream — so the overlay dims only when the beat actually stops.
   are one fact — **ending on the Amulet whether or not the run got there**, drawn
   dashed until it does.
 
-  It is opt-in because **at 440px it could not be read**. It scrolls sideways on
+  It is opt-in because **at the column's width it could not be read**. It scrolls sideways on
   the same walker the checklist uses, and measured on a 22-stop run (1008px of
   strip in a 390px window) the stop the player was standing on was fully visible
   for **6 seconds in every 50**, took 42 seconds to first appear, and every change
@@ -2368,8 +2392,21 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
+
+**IT RENDERS IN PIECES.** OBS cannot interleave scene items with the inside of a
+browser source, so the page renders part of itself instead and a scene points
+several sources at the same file: `#top` (the run card), `#bottom` (checklist and
+ticker), `#goals` (the checklist alone), `#road`, and the default, which is
+everything but the road. They read the same `state.js` and stay in step for free.
+
+`#goals` differs from `#bottom` by the ticker alone, and that is why it exists:
+the ticker is pinned to the **bottom of the browser source** and grows upward, so
+on a source sized to the checklist a burst of toasts lands on the checklist. That
+is fine on the full column, where they float over the foot of a page with slack
+under it, and wrong on a source that *is* the list.
+
 **IT STRETCHES.** The page fills whatever canvas the Browser Source gives it
-rather than rendering a fixed 440 column with dead space beside it — the covers,
+rather than rendering a fixed column with dead space beside it — the covers,
 the art and the type keep their own size and the TEXT COLUMNS take the slack,
 which is what "wider" should mean for a page that is mostly sentences. (Wider is
 not bigger: the type size does not change, so a viewer who finds the overlay small
@@ -2379,24 +2416,40 @@ takes the whole source instead and gives the slack to the checklist, the one par
 of the page that can use it. `#fill` is a modifier and combines with the fragments
 above, so the hash is parsed as a set of words rather than matched whole.
 
-**THE CARDS ARE GLASS.** They sit at 0.45 alpha so the game shows through them —
-this page spends its life on top of somebody's gameplay, and an all-but-opaque
-panel is a hole punched in their capture. What makes that readable is
-`backdrop-filter`, not the alpha: it blurs and **darkens** the capture behind each
-card before the card paints over it, so the ground the text is read against stays
-dark whatever is on screen. Measured over a dark, a mid and a bright capture the
-worst ratio on the page is **4.73**, against **3.90** for the near-opaque card it
-replaced — the same pass fixed three palette colours (`faint`, `danger`, `curse`)
-that were already below AA and had simply never been checked.
+**THE CARDS ARE BARELY THERE.** They sit at **0.12** alpha over a backdrop filter
+that dims what shows through by half, so **44% of the capture survives** — this
+page spends its life on top of somebody's gameplay, and a panel is a hole punched
+in their capture. It has been three things: all but opaque (0.95), glass (0.45
+over `brightness(0.30)`, 17% through), and now a tint.
 
-The two halves are one decision. Without the filter that transparency scores
-**1.20**, and OBS ships whatever CEF its build was cut against — an unsupported
-filter is dropped in silence, exactly as `color-mix()` and `:has()` are. So
-`overlay.css` carries an `@supports not (backdrop-filter: …)` block that restores
-an opaque card (5.47), and `check_overlay.js` asserts a transparent card always
-comes with a darkening filter. Separating them looks perfect on a dark game and
-is unreadable on a bright one, which is the worst kind of regression this page
-can have.
+**THE ALPHA WAS NEVER THE SEE-THROUGH LEVER.** `brightness()` in the filter is,
+and that took measuring to see: at 0.45/0.30, dropping the alpha all the way to
+0.15 while holding the brightness only reached 26%, because the filter had already
+thrown away 70% of the picture before the card painted anything. Every "make it
+more see-through" edit that only touches the alpha is moving the small number.
+
+**WHAT PAYS FOR IT IS THE HALO**, not the card. Every glyph carries a stacked dark
+rim, so what sits behind the strokes is the halo whatever the game is doing. That
+retires the way this page used to be measured: a WCAG ratio against the composited
+CARD scores a page that looks fine at 2.6, because it measures the text against a
+ground the text is no longer read against. `check_overlay.js` now **renders the
+page over a dark, a mid and a bright capture and samples the real pixels**,
+splitting each line of text into glyph and ground by luminance. Worst text on the
+page: **4.96:1** against an AA bar of 4.5, and the brightness was swept against
+that number rather than chosen (0.55 → 4.63, 0.70 → 3.79).
+
+The **4.73** this section used to quote came from the old model and had gone
+stale besides — recomputing it over today's palette gives 4.66 for the worst text
+colour. Sampled numbers fail loudly; computed ones sit in a document being wrong.
+
+The two halves are still one decision, and more so at 0.12 than at 0.45: with the
+filter dropped and the card left as it is, the worst text falls to **3.03**. OBS
+ships whatever CEF its build was cut against and an unsupported filter is dropped
+in silence, exactly as `color-mix()` and `:has()` are — so `overlay.css` carries
+an `@supports not (backdrop-filter: …)` block that restores a nearly opaque card,
+and `check_overlay.js` asserts a transparent card always comes with a darkening
+filter and a halo. Separating them looks perfect on a dark game and is unreadable
+on a bright one, which is the worst kind of regression this page can have.
 
 - **A ticker** of what just happened (beat a game, took damage, lost a run, found
   an item), which is also what stops the overlay reading as a dead PNG during the

@@ -16,8 +16,7 @@ extends Node
 #   user://obs/overlay.css   its styling, likewise
 #   user://obs/overlay.js    its ticker, likewise
 #   user://obs/custom.css    YOURS — created empty once and never written again
-#   user://obs/covers/       covers lifted out of the .pck when they can't be
-#                            read off disk (an exported build)
+#   user://obs/covers/       every picture the page shows, staged beside it
 #
 # and OBS points a Browser Source at overlay.html in LOCAL FILE mode. The page
 # re-reads `state.js` four times a second by appending a <script> tag with a
@@ -27,8 +26,16 @@ extends Node
 # reason the design works without a server: a page served from file:// may not
 # fetch() or XHR a sibling file (Chromium answers every such request with a CORS
 # failure, and OBS ships Chromium), but it may always LOAD one as a script, a
-# stylesheet or an image. So the state travels as an assignment in a script file,
-# and the covers travel as <img src="file:///...">.
+# stylesheet or an image. So the state travels as an assignment in a script file.
+#
+# AND EVERYTHING THE PAGE ASKS FOR IS A SIBLING OF IT, which is the other half of
+# the same rule and was learned the hard way. A relative URL resolves against
+# whatever base the browser gave the document; an absolute `file:///…` one is a
+# local-resource load, which Chromium refuses outright unless the document is
+# itself a file:// document. OBS's browser source does not serve it as one, so
+# the covers — the only thing here that was absolute — were the only thing that
+# broke, and only in OBS. They are staged into user://obs/covers/ now and travel
+# as <img src="covers/…">. Nothing this page loads may point outside its folder.
 #
 # WHAT IT SHOWS is §9's list grown up into the current build: health and the
 # shields riding it as sprites, the character, and then THE HEADLINE — the game in
@@ -943,47 +950,65 @@ func _texture_url(tex: Texture2D) -> String:
 		return ""
 	return _path_url(tex.resource_path)
 
-# A res:// path as something a file:// page can put in an <img src>.
+# A res:// path as something the page can put in an <img src>.
 #
-# TWO CASES, and the second is the one that makes this more than a string
-# rewrite. Run from source, res:// IS a folder on disk and the browser can read
-# it where it lies. In an EXPORTED build res:// is inside the .pck, there is no
-# such file for the browser to open, and the bytes have to be lifted out into
-# user://obs/covers/ first. Both answers are cached, because the road redraws
-# every quarter second and the answer never changes within a session.
+# THE ANSWER IS ALWAYS RELATIVE TO THE PAGE, and that is the whole point.
+#
+# This used to answer with an absolute `file:///…` pointing at wherever the
+# picture happened to lie — straight at res:// when running from source, at
+# user://obs/covers/ when packed. Both are readable files and both work when you
+# double-click overlay.html, which is exactly why this survived: the document is
+# then a file:// document, its subresources are same-scheme, and every cover
+# loads. OBS DOES NOT SERVE THE PAGE THAT WAY. Its browser source reads a local
+# file through a handler of its own, so the document is not a file:// document,
+# and Chromium blocks every absolute file:// subresource a non-file:// page asks
+# for. The result was an overlay whose text was perfect and whose every last
+# picture was missing, in the one place the overlay is actually used.
+#
+# `state.js` never had the bug because the page pulls it as a SIBLING — a
+# relative URL resolves against whatever base OBS gave the document, whatever
+# scheme that is. So the art travels the same way now: every picture is staged
+# into user://obs/covers/ beside the page, and what goes in the payload is
+# `covers/<name>`. No scheme, no absolute path, nothing for a browser to refuse —
+# and as a bonus the Windows drive-letter hazard that `_file_url` existed to
+# dodge cannot arise, because there is no drive letter in a relative URL.
+#
+# Answers are cached: the road redraws four times a second and a staged file
+# never moves within a session.
 func _path_url(res_path: String) -> String:
 	if res_path == "":
 		return ""
 	if _art_urls.has(res_path):
 		return _art_urls[res_path]
-	var url: String = ""
-	var direct: String = ProjectSettings.globalize_path(res_path)
-	if direct != "" and FileAccess.file_exists(direct):
-		url = _file_url(direct)
-	else:
-		url = _extract(res_path)
+	var url: String = _stage(res_path)
 	_art_urls[res_path] = url
 	return url
 
-# Copy one packed file out to user://obs/covers/ and answer with its URL. Copied
-# BYTE FOR BYTE rather than loaded and re-encoded: a JPG cover stays the JPG it
-# was, and nothing here has to decode an image (see the lazy-cover note in
-# CLAUDE.md — decoding covers eagerly is what cost 5 seconds of every boot).
+# Copy one picture into user://obs/covers/ and answer with its path relative to
+# the page. Copied BYTE FOR BYTE rather than loaded and re-encoded: a JPG cover
+# stays the JPG it was, and nothing here has to decode an image (see the
+# lazy-cover note in CLAUDE.md — decoding covers eagerly is what cost 5 seconds
+# of every boot).
+#
+# EVERY PICTURE IS STAGED, from source as well as packed. It used to be the
+# packed-only branch, with a source run pointing the page at res:// where it lay;
+# see `_path_url` for why an absolute URL cannot be handed to OBS at all. Staging
+# from source costs one copy per picture per session — only the art a run
+# actually shows, a few MB at the very worst — and buys one code path that is the
+# same on a dev machine and in a streamer's export.
 #
 # THE NAME CARRIES THE WHOLE PATH, not just the file. This used to write
 # `covers/<basename>` and skip the copy when that name already existed — and
 # `images/` and `images2.0/` between them hold THIRTY-THREE duplicate basenames
 # (Clover.png, Crown.png, Isaac.png, HollowHeart.png, …), so whichever of a pair
 # was asked for first took the filename and every later request for the other one
-# was answered with the wrong picture, permanently. It could not be seen from
-# source, where `_path_url` takes the `direct` branch and never comes here, and it
-# could not be seen in the tests for the same reason: it was a bug that existed
-# only in an exported build, which is the one place nobody can attach a debugger.
-# The path's hash goes in front of the file name — unique per source path, stable
-# across runs, and still leaving the name readable in the folder.
-func _extract(res_path: String) -> String:
+# was answered with the wrong picture, permanently. The path's hash goes in front
+# of the file name — unique per source path, stable across runs, and still
+# leaving the name readable in the folder.
+func _stage(res_path: String) -> String:
 	DirAccess.make_dir_recursive_absolute(COVER_DIR)
-	var out_path: String = "%s/%d-%s" % [COVER_DIR, res_path.hash(), res_path.get_file()]
+	var name: String = "%d-%s" % [res_path.hash(), res_path.get_file()]
+	var out_path: String = "%s/%s" % [COVER_DIR, name]
 	if not FileAccess.file_exists(out_path):
 		var src := FileAccess.open(res_path, FileAccess.READ)
 		if src == null:
@@ -992,22 +1017,18 @@ func _extract(res_path: String) -> String:
 		if dst == null:
 			return ""
 		dst.store_buffer(src.get_buffer(src.get_length()))
-	return _file_url(ProjectSettings.globalize_path(out_path))
+	return "covers/" + _escape(name)
 
-# An absolute OS path as a file:// URL.
+# One path segment as something safe to sit in an `src`.
 #
-# ONLY THE FOUR CHARACTERS THAT ACTUALLY BREAK ONE ARE ESCAPED. A full
-# `uri_encode()` would also escape the drive colon of a Windows path, and
-# `file:///C%3A/…` does not resolve in Chromium — which would leave every cover
-# on the overlay broken on Windows and nowhere else, the worst possible place for
-# a bug in a tool the streamer sets up once.
-static func _file_url(abs_path: String) -> String:
-	var norm: String = abs_path.replace("\\", "/")
-	norm = norm.replace("%", "%25").replace("#", "%23") \
+# ONLY THE FOUR CHARACTERS THAT ACTUALLY BREAK A URL ARE ESCAPED, and a `%` goes
+# first so it cannot double-escape the ones written after it. A full
+# `uri_encode()` is the wrong tool here — it would also escape characters that
+# are perfectly legal in a path segment, and the point of this is to leave the
+# folder readable to the streamer who opens it.
+static func _escape(segment: String) -> String:
+	return segment.replace("%", "%25").replace("#", "%23") \
 		.replace("?", "%3F").replace(" ", "%20")
-	if not norm.begins_with("/"):
-		norm = "/" + norm   # C:/Users/… -> /C:/Users/…
-	return "file://" + norm
 
 # ---------------------------------------------------------------------------
 # Installing the page

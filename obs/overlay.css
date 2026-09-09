@@ -20,69 +20,91 @@
   --gold:      #ffcc66;
   --text:      #e6d5b8;
   /* LIGHTER THAN THE GAME'S. UITheme's TEXT_DIM (#a89c87) and TEXT_FAINT
-   * (#756e61) are read on an opaque page at desk distance; this page is
-   * semi-transparent over an arbitrary video capture and read from across a
-   * room. Measured against the card composited over a dark, a mid and a bright
-   * capture, the originals scored 2.33-3.31 for faint and 4.36-6.19 for dim —
-   * below AA at the sizes they are used, which is why the section labels and the
-   * goal subtitles washed out. These clear 4.6 and 7.3 at their worst. */
+   * (#756e61) are read on an opaque page at desk distance; this page is a tint
+   * over an arbitrary video capture and read from across a room, so both were
+   * lifted once already when the card first went translucent. `--faint` was
+   * lifted again (#a49b8c -> #cfc8bd) when the card went from translucent to
+   * nearly absent: it labels the page in 12px uppercase, which is the least
+   * stroke a halo has to work with anywhere here, and the pixel sampling in
+   * check_overlay.js found it first every time. */
   --dim:       #c4b8a2;
-  /* THREE OF THESE ARE LIGHTER THAN THE GAME'S, and it is the CARD's opacity that
-   * decides by how much — see `--card-bg` below. The card is now mostly
-   * transparent so the stream shows through it, which means a bright capture
-   * lifts the ground every one of these is read against. Measured against the
-   * card composited over a dark, a mid and a bright capture:
+  /* THESE WERE LIFTED WHEN THE CARD FIRST WENT TRANSLUCENT — faint from #9a9183,
+   * danger from #e65447, curse from #b873e6 — because a bright capture lifts the
+   * ground every one of them is read against, and `danger` had in fact been
+   * failing on the opaque card it replaced (3.90). The translucency did not
+   * introduce that; it made it impossible to keep ignoring.
    *
-   *   faint  #9a9183 -> 4.18 over bright, so #a49b8c (4.73)
-   *   danger #e65447 -> 3.54 over bright, so #f77f71 (5.09)
-   *   curse  #b873e6 -> 4.11 over bright, so #c68df0 (5.24)
-   *
-   * The other four already clear AA at this ground: text 9.02, gold 8.72, accent
-   * 5.54, success 6.00. Worth noting that `danger` was ALREADY failing on the
-   * opaque card it replaced (3.90) — the translucency did not introduce that, it
-   * just made it impossible to keep ignoring. */
-  --faint:     #a49b8c;
+   * THE RATIOS THAT USED TO BE QUOTED HERE ARE GONE, on purpose. They were
+   * arithmetic against the card, which stopped describing this page when the
+   * card stopped being the ground (see `--card-bg`). The numbers that replace
+   * them are sampled off composited pixels by check_overlay.js, where they can
+   * go stale loudly instead of quietly. */
+  --faint:     #cfc8bd;
   --success:   #4dc76b;
   --danger:    #f77f71;
   --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
   --unbeaten:  #d97821;
 
-  /* MOSTLY TRANSPARENT, AND THE GAME SHOWS THROUGH IT. This was 0.95 — all but
-   * opaque — on the reasoning that the card's alpha is the single biggest lever
-   * on legibility and the card was never meant to show the game through it. The
-   * first half is true and the second was a choice, and it is the wrong one for a
-   * thing that spends its life sitting on top of somebody's gameplay.
+  /* THE CARD IS ALL BUT GONE, AND THE TEXT CARRIES ITS OWN GROUND.
    *
-   * WHAT PAYS FOR IT IS `backdrop-filter`, not the alpha. The filter blurs and
-   * DARKENS the capture behind the card before the card paints over it, so the
-   * ground the text is read against stays dark whatever is on screen, while the
-   * shapes and motion of the game still read through. Measured over a dark, a mid
-   * and a bright capture, the worst ratio on the page is 4.73 — BETTER than the
-   * 3.90 the opaque card managed, because the pass also fixed the three colours
-   * that were quietly failing on it (see the palette above).
+   * THE ALPHA WAS NEVER THE SEE-THROUGH LEVER, which is the thing that took
+   * measuring to see. `brightness()` in the backdrop filter is: at the old
+   * 0.45/0.30 the card let 17% of the capture through, and dropping the alpha all
+   * the way to 0.15 while holding the brightness only reached 26% — the filter
+   * had already thrown away 70% of the picture before the card painted anything.
+   * Every "make it more see-through" edit that only touches the alpha is moving
+   * the small number.
    *
-   * The blur is what keeps it from being noise: a hard 45%-transparent card over
-   * a fast game is unreadable no matter what the arithmetic says, and a blurred
-   * one is a frosted panel. */
-  --card-bg:   rgba(26, 20, 16, 0.45);
-  --card-blur: blur(12px) brightness(0.30) saturate(1.05);
-  --width:     440px;
+   * So this pass moves the brightness (0.30 -> 0.50) and all but deletes the card
+   * (0.45 -> 0.12): 44% of the capture survives where 17% did, and the panel
+   * reads as a tint over the game rather than a slab on top of it.
+   *
+   * WHAT PAYS FOR IT IS THE HALO, not the card. A flat WCAG ratio against a card
+   * this faint is a bad number, and it is also the WRONG number: it measures the
+   * text against a ground the text is no longer read against. `--halo` puts a
+   * hard dark rim on every glyph, so what sits behind the strokes is the halo
+   * whatever the game is doing — and `check_overlay.js` measures that by
+   * SAMPLING COMPOSITED PIXELS over a dark, a mid and a bright capture rather
+   * than doing arithmetic on the card alone.
+   *
+   * Measured that way the worst text on the page is 4.96:1 (`.cost-total`, over
+   * a bright capture), against an AA bar of 4.5. The brightness was swept
+   * against that number rather than guessed: 0.55 gives 4.63 and 0.70 gives
+   * 3.79, so 0.50 is the see-through this page can afford with a little left
+   * over. Two things in this block were found by that sweep and not by eye — the
+   * uppercase labels needed weight 600 to give the halo something to sit on, and
+   * `--faint` had to come up to #cfc8bd. */
+  --card-bg:   rgba(26, 20, 16, 0.12);
+  --card-blur: blur(8px) brightness(0.50) saturate(1.05);
+
+  /* THE GROUND, AND IT TRAVELS WITH THE GLYPH. Four stacked shadows rather than
+   * one soft blur: the two tight ones lay an opaque rim right on the stroke edge
+   * (which is what survives a lossy encode — a wide soft glow is the first thing
+   * an encoder throws away), and the two wide ones sink the few pixels around it
+   * so a light game does not close in on the letterforms. */
+  --halo: 0 0 2px #000, 0 0 3px #000, 0 1px 2px #000,
+          0 0 6px rgba(0, 0, 0, 0.95), 0 0 11px rgba(0, 0, 0, 0.8);
+
+  /* 380, down from 440. The column is a sidebar on somebody's stream, and the
+   * page is fluid — this is what the layout is tuned against, not a cage. */
+  --width:     380px;
   --radius:    10px;
 }
 
-/* THE OLD-CEF FALLBACK, and it is not optional. Everything above depends on
- * `backdrop-filter` actually running: without it the card is just 45% of a dark
- * brown over raw video, and the worst ratio on the page collapses from 4.73 to
- * 1.20 — text that is simply not there over a bright capture. OBS ships whatever
- * CEF its build was cut against and an unsupported filter is dropped in silence,
- * which is the same trap `color-mix()` and `:has()` are called out for below.
+/* THE OLD-CEF FALLBACK, and it is not optional — it matters MORE now than it did
+ * at 0.45. Everything above depends on `backdrop-filter` actually running:
+ * measured with the filter dropped and the card left at 0.12, the worst text on
+ * the page falls from 4.96 to 3.03 over a bright capture. OBS ships whatever CEF
+ * its build was cut against and an unsupported filter is dropped IN SILENCE —
+ * the same trap `color-mix()` and `:has()` are called out for below — so this is
+ * a page that would look perfect to whoever shipped it and be unreadable on
+ * somebody else's machine.
  *
- * So the transparency is spent only where it can be afforded. A browser that
- * cannot dim the backdrop gets the opaque card instead (5.47 worst) and the
- * streamer gets a legible overlay rather than a pretty one. */
+ * A browser that cannot dim the backdrop gets a nearly opaque card instead. The
+ * see-through is spent only where it can be afforded. */
 @supports not (backdrop-filter: blur(1px)) {
-  :root { --card-bg: rgba(26, 20, 16, 0.92); }
+  :root { --card-bg: rgba(26, 20, 16, 0.88); }
 }
 
 * { box-sizing: border-box; }
@@ -114,8 +136,8 @@ html, body {
   user-select: none;
 }
 
-/* FLUID, NOT PINNED TO 440. This was `width: var(--width)`, so a browser source
- * made 600 wide rendered a 440 column with 160px of dead space beside it — the
+/* FLUID, NOT PINNED TO `--width`. This was `width: var(--width)`, so a browser
+ * source made 600 wide rendered a fixed column with dead space beside it — the
  * page could not be stretched, only surrounded. It fills whatever canvas OBS
  * gives it now: the covers, the art and the type stay their own size and the TEXT
  * COLUMNS take the slack, which is what "wider" should mean for a page that is
@@ -134,12 +156,16 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* THE OUTLINE, inherited by every piece of text on the page. A stream overlay
-   * is read at a glance, at a distance, over moving video, and often through a
-   * lossy encode that eats thin light-on-dark strokes first. A dark halo costs
-   * nothing and holds the glyph edges together through all of it — the same
-   * reason UITheme puts an outline on the board's own floating numbers. */
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.55);
+  /* THE HALO, inherited by every piece of text on the page, and since the card
+   * stopped being a panel this is what the text is actually read against. A
+   * stream overlay is read at a glance, at a distance, over moving video, and
+   * through an encode that eats thin light-on-dark strokes first. See `--halo`.
+   *
+   * It was two soft shadows, which was decoration on top of an opaque card. With
+   * the card at 0.12 it is the load-bearing part: measured by sampling pixels
+   * over a bright capture, dropping it costs the page about four points of
+   * contrast and there is nothing else holding the glyphs up. */
+  text-shadow: var(--halo);
   /* The whole overlay fades when the heartbeat stops — see .stale below. */
   transition: opacity 600ms ease;
 }
@@ -148,21 +174,29 @@ html, body {
 
 .card {
   background: var(--card-bg);
-  /* BRIGHTER THAN THE PANEL BORDER IT WAS. On an opaque card the border was a
-   * seam between two solids and `--border` was enough; on a translucent one it is
-   * the only thing separating the card from the video, and it has to hold that
-   * edge against whatever is behind it. */
-  border: 1px solid rgba(122, 106, 82, 0.55);
+  /* THE EDGE IS THE CARD NOW. With the fill at 0.12 the border is most of what
+   * says a card is there at all, so it is dimmer but not gone: bright enough to
+   * draw the shape, faint enough that the shape is a suggestion rather than a
+   * frame. It was 0.55 against a 0.45 fill; a rim that strong around a fill this
+   * weak reads as an empty box.
+   *
+   * The rim shadow does the other half — it separates the card from a light
+   * capture without the card having to be opaque to do it. */
+  border: 1px solid rgba(122, 106, 82, 0.32);
   border-radius: var(--radius);
-  padding: 10px 12px;
-  /* A dark rim so the card holds its edge over a bright game capture. */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  padding: 9px 11px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
   -webkit-backdrop-filter: var(--card-blur);
   backdrop-filter: var(--card-blur);
 }
 
+/* THE WEAKEST TEXT ON THE PAGE, and the pixel sampling found it: small, thin,
+ * uppercase and in the dimmest colour, which is the exact combination a halo has
+ * the least of to work with. 600 rather than 400 is most of the fix — a heavier
+ * stroke is more stroke for the rim to sit on — and `--faint` came up with it. */
 .label {
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--faint);
@@ -217,8 +251,11 @@ html, body {
 .cost {
   display: flex;
   align-items: baseline;
+  /* Still allowed to wrap, for the one state that can need it: the Death badge
+     arriving beside a two-part total on a narrow source. The label and the two
+     numbers on their own always fit. */
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px 8px;
   padding: 6px 8px;
   border-radius: 6px;
   background: rgba(230, 84, 71, 0.10);
@@ -244,7 +281,6 @@ html, body {
   text-transform: uppercase;
   color: var(--dim);
 }
-.cost-arrow { color: var(--faint); font-size: 12px; }
 
 .cost-total {
   font-size: 12px;
@@ -398,11 +434,71 @@ html, body {
  * spans it. */
 .run { display: flex; flex-direction: column; gap: 8px; }
 
-.now-main { display: flex; gap: 12px; align-items: center; min-width: 0; }
+/* TWO COLUMNS, ONE LINE: the game in play and the game the run is for, each
+ * under its own label, each with its cover to the left of its name.
+ *
+ * They were stacked — the current game on one row and a ruled-off destination
+ * row under it carrying an arrow, a distance and a second cover. That row cost
+ * its own padding, its own rule and a full line of the card, and the arrow and
+ * the words "to the Amulet" existed only to explain a number that had nothing
+ * above it. Side by side, the distance IS the destination's label and the
+ * explaining stops being necessary.
+ *
+ * `flex: 1 1 0` on both halves rather than `auto`: equal columns whatever the
+ * two titles are, so the card does not reflow into a different shape every time
+ * the run moves to a game with a longer name. */
+.now-main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.now-half { flex: 1 1 0; min-width: 0; }
+
+/* THE LABELS MUST NOT WRAP, or the two halves stop being one line. At 380 the
+ * destination's label ("3 GAMES TO AMULET", uppercase and tracked out) is the
+ * longest text on the page relative to its column, and when it took a second
+ * line it pushed that half's cover 13px below the other one — two columns that
+ * no longer read as a pair, on the row whose whole job is to be a pair. Tighter
+ * tracking and a nowrap fixes it, with an ellipsis as the backstop for a source
+ * narrower still. */
+.now-half > .label {
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.now-row { display: flex; gap: 8px; align-items: center; min-width: 0; }
+
+/* Ruled off from the current game rather than boxed — the same "second sentence
+ * of one card, not a second card" the destination row used to get from its
+ * border-top, turned on its side. */
+.now-half.dest {
+  padding-left: 10px;
+  border-left: 1px solid rgba(74, 63, 46, 0.5);
+}
+
+/* BELOW ~350 THE TWO COLUMNS STOP BEING TWO COLUMNS. At 380 each half has about
+ * 155px for its title, which is two comfortable words; take another 40 away and
+ * it is one word and an ellipsis on both sides, which is worse than the stacked
+ * row the columns replaced. So under 350 the halves stack again — the current
+ * game over the destination, the rule turning back from a left edge to a top
+ * one — and everything else on the page keeps working, because everything else
+ * on the page is already one column.
+ *
+ * A media query and not a container query: the browser source's viewport IS the
+ * page's width, and `@container` needs a CEF newer than OBS can be relied on to
+ * ship (the same trap `:has()` and `color-mix()` are called out for elsewhere in
+ * this file). */
+@media (max-width: 349px) {
+  .now-main { display: block; }
+  .now-half.dest {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 7px;
+    margin-top: 7px;
+    border-top: 1px solid rgba(74, 63, 46, 0.5);
+  }
+}
 
 .now-cover {
-  width: 46px;
-  height: 62px;
+  width: 38px;
+  height: 51px;
   object-fit: cover;
   border-radius: 5px;
   border: 1px solid var(--border);
@@ -422,24 +518,13 @@ html, body {
   color: var(--gold);
 }
 
-/* THE DESTINATION LINE, under the game in play and spanning the same width:
- * the arrow, how far, and the Amulet itself. Ruled off rather than boxed — it is
- * the same card's second sentence, not a second card. */
-.now-dest {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-top: 7px;
-  border-top: 1px solid rgba(74, 63, 46, 0.5);
-  min-width: 0;
-}
-
-/* Smaller, and RINGED IN ACCENT — the same colour `.stop.amulet` rings the
+/* Smaller than the game in play — the two are peers on the line, not equals in
+ * the run — and RINGED IN ACCENT, the same colour `.stop.amulet` rings the
  * destination with on the road, so the two surfaces mark the same game the same
  * way. */
 .dest-cover {
-  width: 22px;
-  height: 30px;
+  width: 30px;
+  height: 40px;
   object-fit: cover;
   border-radius: 3px;
   border: 1px solid var(--accent);
@@ -449,47 +534,27 @@ html, body {
 .dest-cover:not([src]) { visibility: hidden; }
 
 .now-text { flex: 1 1 auto; min-width: 0; }
-.now-game {
-  font-size: 18px;
+
+/* BOTH TITLES CLAMP TO TWO LINES, which is what fixes the card's height at two
+ * columns. The destination used to be one ellipsised line, on the grounds that a
+ * name long enough to wrap would set the card's height from the half it is not
+ * about; in a column half as wide that rule would ellipsise most of the roster,
+ * and the two halves now bound each other — whichever wraps, the card is the
+ * same height. */
+.now-game,
+.dest-game {
   font-weight: 600;
-  color: var(--gold);
   line-height: 1.2;
-  /* Two lines, then ellipsis — some of these titles are very long. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.dest-game {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  line-height: 1.2;
-  /* ONE line, ellipsised. The destination is context for the game above it, and a
-   * name long enough to wrap here would set this card's height from the half it
-   * is not about. Across the full card width there is room for most of them. */
-  flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-
-/* THE DISTANCE, and the number the whole run is measured in. It used to be a dim
- * 12px chip below the title — the run's entire progress toward winning, drawn as
- * the quietest thing on the page. Here it is the second thing read on the line
- * that names where it leads. */
-.now-arrow { flex: 0 0 auto; color: var(--faint); font-size: 15px; line-height: 1; }
-.now-hops {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gold);
-  white-space: nowrap;
-  /* A little air before the cover, so "3 games" is not read as part of the name
-   * that follows it. */
-  margin-right: 3px;
-}
+/* Down from 18px. It is still the largest text on the page and still the first
+ * thing read; at 18 in half the width, a two-word title was taking both lines. */
+.now-game { font-size: 15px; color: var(--gold); }
+.dest-game { font-size: 13px; color: var(--accent); }
 
 /* ------------------------------------------------------------ checklist -- */
 
@@ -503,11 +568,12 @@ html, body {
 .goal-scroll {
   --fade-top: 0px;
   --fade-bot: 0px;
-  /* 320, up from 260. Cutting the road off the default column and the status
-   * strip out of the hero card gave the page ~150px back, and the checklist is
-   * what it is for — every row this ceiling buys is a row a viewer can read
-   * standing still instead of waiting for the walker to bring it round. */
-  max-height: 320px;
+  /* THE ONE KNOB WORTH TURNING, so it is a variable: `#overlay { --goal-height:
+   * 180px }` in custom.css makes the checklist card shorter, and the walker
+   * brings the rest round. It was a flat 320 (up from 260 when the road left the
+   * default column); 260 is the default again now that the rows are denser, and
+   * the two together fit about the same nine rows in less height. */
+  max-height: var(--goal-height, 260px);
   overflow: hidden;
   -webkit-mask-image: linear-gradient(180deg,
     transparent 0, #000 var(--fade-top),
@@ -519,14 +585,23 @@ html, body {
 
 .goal-list { list-style: none; margin: 0; padding: 0; }
 
+/* 15px, ON A NARROWER COLUMN, and that combination is the point of this pass.
+ * The density pass before it had taken the row to 13px to fit more of the list;
+ * that is the wrong trade for a page read across a room, where a row you cannot
+ * make out is not a row. 15 costs about one wrapped line per long goal at 380
+ * wide, and the walker brings the rest round.
+ *
+ * Still variables, because "how much checklist fits" is the question this page
+ * gets asked most: set `--goal-text` and `--goal-art` in custom.css to trade
+ * legibility against rows on the source you actually run. */
 .goal {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  padding: 5px 0;
+  gap: 6px;
+  padding: 3px 0;
   border-bottom: 1px solid rgba(74, 63, 46, 0.4);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: var(--goal-text, 15px);
+  line-height: 1.32;
 }
 .goal:last-child { border-bottom: none; }
 
@@ -543,16 +618,17 @@ html, body {
  * gravity. A goal IS an enemy (§7.2) and a column of sentences never said so;
  * with the face on the row, the checklist reads as the board.
  *
- * 26px, between the board's 22px status pip and the 28px the cost strip used for
- * a swing. The upper end of that range is what the swing marks were measured at
- * (the widest range in the roster — a 19x10 sprite through a 734x841 painting —
- * rendered at 22/28/34/40 before choosing), and there is more room here than
- * there was in a row of seven, because there is exactly one per line. */
+ * 24px, tracking the row's text back up: the art and the line it sits beside
+ * have to stay in proportion or the row reads as a caption under a picture. It
+ * is inside the range the swing marks were measured over (the widest art in the
+ * roster — a 19x10 sprite through a 734x841 painting — rendered at 22/28/34/40
+ * before choosing), and it holds at the small end because there is exactly one
+ * per line rather than seven in a strip. `--goal-art` moves it. */
 .goal-art {
   position: relative;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: var(--goal-art, 24px);
+  height: var(--goal-art, 24px);
   /* The art's optical centre against a 14px line of text, which sits lower than
    * the box's top edge. */
   margin-top: -1px;
@@ -573,7 +649,7 @@ html, body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--faint);
 }
@@ -866,6 +942,20 @@ html, body {
 #overlay.only-top > .verdict { display: none; }
 
 #overlay.only-bottom > .run { display: none; }
+
+/* THE CHECKLIST ON ITS OWN, and the difference from `#bottom` is the ticker.
+ *
+ * The ticker is pinned to the bottom of the browser source and grows upward, so
+ * on a source sized to the checklist its toasts land ON the checklist for six
+ * seconds at a time — which is fine on the full column, where they float over
+ * the foot of the page, and not fine on a source that IS the list. `#goals` is
+ * the one to point a source at when the checklist has to sit in a scene beside
+ * something else, uncropped.
+ *
+ * The verdict stays: a run that has just ended is the one thing that outranks
+ * the list of what it needed. */
+#overlay.only-goals > .run,
+#overlay.only-goals > .ticker { display: none; }
 
 /* The road's own source is the road and the verdict, nothing else. */
 #overlay.only-road > .run,
