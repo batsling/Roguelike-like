@@ -419,10 +419,51 @@ async function main() {
   });
   check('the two games share a line, Amulet on the right',
     pair.dy < 12 && pair.right, JSON.stringify(pair));
-  /* NO HEADER ON THE CHECKLIST. A list of ticked and unticked rows is already
-   * self-evidently a checklist. */
-  check('the checklist has no label above it',
-    await page.evaluate(() => !document.querySelector('.goals .label')));
+  /* THE HEAD OF THE CHECKLIST: the chat command, then the list's label, then the
+   * list. Asserted in that ORDER and not merely present — the command is above
+   * the label on purpose (it answers the question the rows raise), and a card
+   * that grew a header back is one where the two could be swapped by accident.
+   *
+   * The command is also asserted to be ONE LINE. It is the only thing on the
+   * page a viewer is meant to type, and a command wrapped across two lines is a
+   * command nobody types. */
+  const head = await page.evaluate(() => {
+    const box = (s) => {
+      const n = document.querySelector(s);
+      if (!n) return null;
+      const r = n.getBoundingClientRect();
+      /* THE TEXT'S OWN WIDTH, off a Range, NOT `scrollWidth`. `scrollWidth` is
+       * `max(content, client)` and so can never come back under the box —
+       * measured that way this line read "304 of 304px" both when it fit and
+       * when it was one pixel from ellipsising, which is a check that passes on
+       * the failure it was written for. A Range measures the line box the glyphs
+       * actually occupy. */
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      const rects = [...range.getClientRects()];
+      const textW = rects.length ? Math.max(...rects.map((q) => q.width)) : 0;
+      return { text: n.textContent.trim(), top: Math.round(r.top),
+               h: Math.round(r.height), w: Math.round(r.width),
+               textW: Math.round(textW) };
+    };
+    return { lookup: box('.goals .lookup'), label: box('.goals .goals-label'),
+             first: box('.goals .goal') };
+  });
+  check('the checklist is headed by the chat command and a label',
+    !!head.lookup && !!head.label && /^!\S+/.test(head.lookup.text)
+      && /goals/i.test(head.label.text), JSON.stringify(head));
+  check('…the command above the label, the label above the list',
+    head.lookup.top < head.label.top && head.label.top < head.first.top,
+    JSON.stringify([head.lookup.top, head.label.top, head.first.top]));
+  /* WITH REAL SLACK, not merely fitting. A monospaced draft of this line
+   * measured 304px into a 304px column: it fit here and was one advance width
+   * from ellipsising `…details` away on a machine whose fonts are not this
+   * one's — which is every machine OBS actually runs on. 12px of margin is the
+   * bar, so a rename has somewhere to go and a substituted font does not eat
+   * the end of the command. */
+  check('…and the command fits on one line with room to spare',
+    head.lookup.h < 20 && head.lookup.textW <= head.lookup.w - 12,
+    head.lookup.h + 'px tall, ' + head.lookup.textW + ' of ' + head.lookup.w + 'px wide');
 
   /* EVERY ROW WEARS ITS OWN ART, except the two that hang off the row above. An
    * addon repeating its parent's face read as another enemy. */
@@ -726,7 +767,7 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 490, '#top': 202, '#bottom': 304, '#goals': 304,
+  const DOCUMENTED = { '': 532, '#top': 202, '#bottom': 346, '#goals': 346,
     '#road': 116 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
@@ -845,7 +886,13 @@ async function main() {
    * own element's border box is not on screen and is dropped. */
   const boxes = await page.evaluate(() => {
     const out = [];
+    /* `.lookup` AND `.goals-label` ARE IN HERE FOR A REASON. The command is
+     * 12px monospace in the accent colour — thin strokes, small, and the one
+     * line on the page a viewer is expected to READ CHARACTER BY CHARACTER and
+     * type, which is a stricter job than any other text here does. If a future
+     * pass dims the accent or lightens the card, this is what notices. */
     for (const sel of ['.now-game', '.dest-game', '#hops', '#now-label',
+      '.lookup', '.goals-label',
       '.bar-text', '.cost-label', '.cost-total', '.goal .text', '.goal .who']) {
       const n = document.querySelector(sel);
       if (!n || !n.textContent.trim()) continue;

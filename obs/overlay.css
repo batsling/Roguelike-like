@@ -68,7 +68,7 @@
    *
    * 0.30 IS THE SEE-THROUGH THIS PAGE CAN AFFORD, swept against the sampler in
    * check_overlay.js rather than chosen: 70% of the capture survives and the
-   * worst text on the page is 4.62 against an AA bar of 4.5. Below it the numbers
+   * worst text on the page is 4.81 against an AA bar of 4.5. Below it the numbers
    * go under (0.25 → 4.2, 0.20 → 3.9 even with the halo below at full strength).
    * It is still much more of the game than the old "glass" ever gave: that card
    * was 0.45, and with its filter inert in OBS it let 55% through while measuring
@@ -574,6 +574,63 @@ html, body {
 .dest-game { font-size: 13px; color: var(--accent); }
 
 /* ------------------------------------------------------------ checklist -- */
+
+/* THE HEAD OF THE CHECKLIST CARD: the chat command, then the list's label.
+ *
+ * Two lines and 34px, which is the most expensive thing added to this page in a
+ * while, so it is worth being clear about what buys it. The label marks the
+ * boundary between the two cards — the run card is about the streamer, this one
+ * is a list of demands — and the command is the only route OFF the overlay a
+ * viewer has. The checklist is the card that raises the question ("what IS this
+ * challenge?"), so the answer belongs at the top of it.
+ *
+ * It rides INSIDE the card, so `#goals` — the checklist as its own browser
+ * source — carries both lines too. A scene that crops to the list alone is
+ * exactly the one where a viewer has the least context. */
+.goals-head {
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  /* The same rule the rows separate themselves with, so the head reads as the
+   * top of THIS list rather than as a caption floating above it. */
+  border-bottom: 1px solid rgba(74, 63, 46, 0.4);
+}
+
+/* THE WAY IN, and the one line on this page addressed to the viewer rather than
+ * describing the run. Accent, and the only accent text outside the destination —
+ * a chat command has to look like something you can DO, not like another
+ * readout.
+ *
+ * IT WAS MONOSPACED FOR A DRAFT, on the argument that a command is typed
+ * character by character and an `l` and an `i` blur together in a proportional
+ * face. Both true, and both outweighed by two measurements. In a monospace at
+ * 12px this line rendered 304px into a 304px column — no slack at all — and the
+ * font it is MEASURED in is not the font it is DRAWN in, since that stack
+ * resolves to DejaVu Sans Mono on the Linux box this check runs on and to
+ * Consolas or Cascadia Mono on the Windows box OBS runs on. Dropping to 11px to
+ * buy room then took it to 4.55 against the sampler's 4.5 floor, which trades
+ * the thing that matters (can it be READ over a bright capture) for the thing
+ * that does not (are the glyphs the same width). The page's own font at 12/700
+ * is ~50px narrower on this string and scores with the rest of the page.
+ *
+ * `nowrap` with an ellipsis for the same reason the destination's label has one:
+ * a command broken across two lines is a command nobody types. If you rename it
+ * to something longer the card is fluid and a wider source will hold it —
+ * check_overlay.js asserts this line keeps 12px of slack at 352. */
+.lookup {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+/* The list's own label. `.label` does the work; this only takes back the 4px of
+ * bottom margin every other label on the page wants, because the rule under the
+ * head is what separates it from the first row here. */
+.goals-label { margin-bottom: 0; }
 
 /* The scroller has a fixed ceiling and overlay.js walks it when the list is
  * taller than that. Masked at whichever edge has content hidden behind it, so a

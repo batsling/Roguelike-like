@@ -2349,10 +2349,34 @@ stream — so the overlay dims only when the beat actually stops.
   watching ever sees. Keyed on `ReportChecklist.LEVELUP_KEY`, never on the string
   spelled again, so a row the overlay calls done is one the checklist has locked.
 
-  **NO HEADER ABOVE IT.** A list of ticked and unticked rows is self-evidently a
-  checklist, so "THE GOALS" named the obvious and the "3 / 9" beside it counted
-  rows the viewer can already see — both spending the card's top line on saying
-  nothing the list does not.
+  **HEADED BY THE CHAT COMMAND, THEN "THE GOALS".** The header was cut once, on
+  the grounds that a list of ticked and unticked rows is self-evidently a
+  checklist — true of a viewer who has been watching ten minutes, and false of
+  one who arrived four seconds ago, which is most of them. What the label
+  actually names is the BOUNDARY between the two cards: the run card above is
+  about the streamer, this one is a list of demands, and unlabelled the page
+  reads as one column of facts. It comes back as the label alone; the "3 / 9"
+  that used to sit beside it does not, because that really was a second way of
+  counting rows the viewer can already see.
+
+  **The chat command sits above the label** — `!roguelikelike for challenge
+  details` — because it answers the question these rows provoke. A viewer reads
+  "Reach the second boss without spending a healing item", wants to know what
+  the run's challenge *is*, and the overlay is a status readout with no way in;
+  this is the way in, and it belongs on the card that raises the question. It is
+  the only text on the page addressed to the VIEWER rather than describing the
+  run, which is why it is accent-coloured and the heaviest small text here: a
+  command has to look like something you can do. It was drafted in a monospace,
+  on the reasoning that a command is typed character by character — and the
+  measurement killed it, because a monospaced 12px line filled the column
+  exactly and dropping to 11px to buy slack put it at 4.55 against the
+  sampler's 4.5 floor. Legible over a bright capture beats uniform advance
+  widths; `check_overlay.js` samples this line and asserts its slack.
+
+  It is **text in the page, not payload** — the game does not know what anyone's
+  bot is called — so it is edited in `obs/overlay.html` or hidden from
+  `custom.css`. The two lines cost the card 42px, which is why the source the
+  README recommends went from 640 to 680 tall.
 
   **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
   *is* an enemy (§7.2), and a column of sentences never said so; with the face on
@@ -2460,7 +2484,7 @@ said the halo could not carry.
 **AND THE HARNESS COMPOSITES THE WAY OBS DOES.** `check_overlay.js` screenshots
 with `omitBackground`, composites over a dark, a mid and a bright capture
 *outside* the page, and splits each line of text into glyph and ground by
-luminance. Worst text: **4.62:1** against an AA bar of 4.5. It also asserts
+luminance. Worst text: **4.81:1** against an AA bar of 4.5. It also asserts
 `backdrop-filter` stays `none`, so re-adding one fails there rather than looking
 right on somebody's desk.
 

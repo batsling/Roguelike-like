@@ -718,15 +718,15 @@ user://obs/covers/        every picture the page shows, staged beside it
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **352 × 640**.
+point it at that `overlay.html`, and size it **352 × 680**.
 
-(640 rather than a round number: the page tops out at 544 on a pathological run
+(680 rather than a round number: the page tops out at 586 on a pathological run
 and the ticker needs ~91px of slack under it — see the tables below. A taller
 source is harmless, just transparent.)
 
 **Do not resize the scene item.** The Browser Source's own Width/Height is the
 canvas the page renders into; stretching the item afterwards resamples the result
-and softens the pixel art. Set 352 × 640 and leave the transform at 100%.
+and softens the pixel art. Set 352 × 680 and leave the transform at 100%.
 
 **The cards are a tint, and the text carries its own ground.** The card sits at
 **0.30** alpha, so **70% of the capture survives** — the panel reads as a wash
@@ -764,7 +764,7 @@ this survived two redesigns. What is left behaves identically in both places:
 **`check_overlay.js` measures it the way OBS composites**: screenshot with
 `omitBackground`, composite over a dark, a mid and a bright capture *outside* the
 page, then split each line of text into glyph and ground by luminance and take
-the ratio. Worst text on the page: **4.62:1** against an AA bar of 4.5. It also
+the ratio. Worst text on the page: **4.81:1** against an AA bar of 4.5. It also
 asserts `backdrop-filter` stays `none`, so re-adding one fails here rather than
 looking nice on somebody's desk.
 
@@ -775,10 +775,10 @@ up and down), and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 431 | 469 | 490 | **544** |
+| `overlay.html` | 473 | 511 | 532 | **586** |
 | `overlay.html#top` | 179 | 181 | 202 | **256** |
-| `overlay.html#bottom` | 268 | 304 | 304 | **304** |
-| `overlay.html#goals` | 268 | 304 | 304 | **304** |
+| `overlay.html#bottom` | 310 | 346 | 346 | **346** |
+| `overlay.html#goals` | 310 | 346 | 346 | **346** |
 | `overlay.html#road` | 116 | 116 | 116 | **116** |
 
 **These are taller per row than the 440 column was, and that is the trade.** The
@@ -800,7 +800,7 @@ had at 380, not less.
 **Almost nothing moves within a run size.** Everything that used to grow the page
 is gone: the hero card's status strip (every status is a checklist row now), the
 cost line's strip of swing marks (it is a label and two numbers), and the shields'
-labelled row (they sit beside the health bar). `#bottom` and `#goals` stop at 304
+labelled row (they sit beside the health bar). `#bottom` and `#goals` stop at 346
 because the scroller is capped and walks the rest, and `#road` is a fixed 116
 whatever the run's length — a longer road is a wider strip, not a taller one.
 
@@ -822,7 +822,7 @@ floats over the foot of the page instead of pushing it out the bottom of the
 source, which is what used to happen, silently, at exactly the busiest moment of a
 run.
 
-**544 + 91 is where the 640 above comes from**: at that height a burst of toasts
+**586 + 91 is where the 680 above comes from**: at that height a burst of toasts
 lands in the slack under the page and never touches it, on any run. Shorter than
 that and they float over the foot of the checklist for six seconds at a time,
 which is survivable but avoidable. Taller is transparent either way.
@@ -849,6 +849,15 @@ knobs trade legibility for rows in the same space: `--goal-text` (15px) and
 `--goal-art` (32px). Shrinking the card is the right lever here; scaling the OBS
 scene item resamples the pixel art instead.
 
+**To rename the chat command**, edit the `.lookup` line in `obs/overlay.html` —
+it is plain text in the page, not something the game sends, because the game has
+no idea what anyone's bot is called. If you would rather not touch the installed
+file (it is overwritten from `res://obs/` at every boot), hide it from
+`user://obs/custom.css` with `.lookup { display: none }` and put the command in
+an OBS text source instead. Whatever it says, keep it to **one line**: it is the
+only text on this page a viewer has to read character by character and type, and
+`check_overlay.js` fails if it wraps or clips.
+
 **And to change how see-through it is**, `#overlay { --card-bg: rgba(26,20,16,.2) }`
 for more game, `.45` for more tint. That alpha is the only lever — do not reach
 for `backdrop-filter`, which does nothing in OBS (above). Run
@@ -869,10 +878,10 @@ with the inside of a browser source. So the page can render part of itself:
 
 | URL | Shows | Height (median → ceiling) |
 |---|---|---|
-| `overlay.html` | everything except the road | 469 → 544 |
+| `overlay.html` | everything except the road | 511 → 586 |
 | `overlay.html#top` | the run card | 181 → 256 |
-| `overlay.html#bottom` | checklist + ticker | 304 (fixed) |
-| `overlay.html#goals` | the checklist, and nothing else | 304 (fixed) |
+| `overlay.html#bottom` | checklist + ticker | 346 (fixed) |
+| `overlay.html#goals` | the checklist, and nothing else | 346 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 116 (fixed) |
 | …`#fill` on any of them | as above, stretched to the source | fills |
 
@@ -914,21 +923,21 @@ between the overlay's halves, and the game keeps 81% of the width.
 | Game capture | `0, 0` | `1560 × 877` (16:9) |
 | **Overlay `#top`** | `1564, 0` | `352 × 262` |
 | Camera | `1564, 274` | `352 × 198` (16:9) |
-| **Overlay `#bottom`** | `1564, 482` | `352 × 400` |
-| **Overlay `#road`** | `1564, 894` | `352 × 116` |
+| **Overlay `#bottom`** | `1564, 482` | `352 × 442` |
+| **Overlay `#road`** | `1564, 936` | `352 × 116` |
 | Chat | `0, 885` | `1560 × 195` |
 
 **The narrower column gives the game 88px back**, which is the point of the pass:
 the capture goes from `1472` to `1560` wide, and the camera under `#top` from 248
 to 198 tall — it is 16:9 of the column, so it shrinks with it, and the room that
-frees goes to the checklist below. 262 + 198 + 400 + 116 is 976 of the 1080, gaps
-included, and the road still fits with slack to spare.
+frees goes to the checklist below. 262 + 198 + 442 + 116 is 1018 of the 1080, gaps
+included, and the road still fits.
 
 `#top` gets 262 against a ceiling of 256 — it grew from 234 when the checklist's
 text did, so this is the row with the least slack in the column. `#bottom` gets
-400 rather than its content height of 304 because the ticker is pinned to the foot
+442 rather than its content height of 346 because the ticker is pinned to the foot
 of its source: the extra 96 is where a burst of toasts lands instead of on the
-checklist. If you would rather not spend it, use **`#goals`** at `352 × 310` —
+checklist. If you would rather not spend it, use **`#goals`** at `352 × 352` —
 same list, no ticker — and give the road the difference.
 
 **Chat still cannot go in the column.** 162px of chat is still not chat. It goes in the
@@ -943,7 +952,7 @@ overlay on the right.
 | Camera | `0, 0` | `384 × 216` |
 | Chat | `0, 224` | `384 × 856` |
 | Game capture | `392, 200` | `1152 × 648` (16:9) |
-| **Overlay** | `1552, 0` | `352 × 640` |
+| **Overlay** | `1552, 0` | `352 × 680` |
 
 The game drops to 60% of the width and the middle column carries ~430px of dead
 band above and below it — the unavoidable cost of two sidebars with a fixed 16:9
@@ -951,7 +960,7 @@ rectangle between them.
 
 **B — full-bleed game, columns over its edges.** Game `0, 0` at `1920 × 1080`;
 camera `16, 16` at `384 × 216`; chat `16, 240` at `384 × 700`; overlay
-`1552, 16` at `352 × 640`. The game keeps every pixel and the columns cover ~20%
+`1552, 16` at `352 × 680`. The game keeps every pixel and the columns cover ~20%
 of the width at each edge. The games on this map are *real* games with their own
 HUDs, so check the one you are about to play — a minimap in a covered corner is
 the failure case.
@@ -1004,8 +1013,10 @@ next lost run costs** as a label and two numbers — `On next loss  −2 Shields
 **the checklist as it ticks**,
 which is the page's centre of gravity: every row wearing its own art, scrolling
 itself when there is more of it than there is room, flashing a row green as it is
-crossed off — with no header above it, because a list of ticked and unticked rows
-is self-evidently a checklist. **The road** walked so far, ending on the Amulet, is the same strip
+crossed off. It is headed by **`!roguelikelike for challenge details`** and then
+**THE GOALS** — the chat command first, because it is the answer to the question
+the rows underneath it raise, and it is the only route off this page a viewer
+has. **The road** walked so far, ending on the Amulet, is the same strip
 `RunOverScreen` draws at the end of a run — it is drawn live but lives at
 `overlay.html#road`, its own source, rather than on the default column.
 

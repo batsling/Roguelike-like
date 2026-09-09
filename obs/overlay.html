@@ -14,7 +14,7 @@
 
   In OBS: add a Browser Source, tick "Local file", and point it at
   user://obs/overlay.html (the settings screen prints the absolute path). Width
-  352, height 640 is the shape it is drawn for, with the scene item left at 100%;
+  352, height 680 is the shape it is drawn for, with the scene item left at 100%;
   "Shutdown source when not visible" is fine, "Refresh browser when scene becomes
   active" is not needed — the page re-reads the state on its own.
 
@@ -116,11 +116,34 @@
        art: a body's face, a status's pip, a curse's, an event's. Scrolls itself
        when there is more of it than there is room. -->
   <section class="card goals">
-    <!-- NO HEADER. A list of ticked and unticked rows is self-evidently a
-         checklist, so "THE GOALS" was a label naming the obvious, and the "3 / 9"
-         beside it was a second way of counting rows the viewer can already see.
-         Both were spending the card's most valuable line — the top one — on
-         saying nothing the list does not. -->
+    <!-- THE HEAD OF THE CHECKLIST: where to go for the detail, and then the
+         label for the list itself.
+
+         THE HEADER CAME BACK, and the reason is worth writing down because it
+         was cut on purpose once. The argument for cutting it was that a list of
+         ticked rows is self-evidently a checklist, so "THE GOALS" named the
+         obvious — true of a viewer who has been watching for ten minutes, and
+         false of one who arrived four seconds ago, which is most of them. What
+         it really names is the boundary between the two cards: the run card
+         above is about the streamer, this one is a list of demands, and without
+         a label the page reads as one long column of facts.
+
+         THE CHAT COMMAND SITS ABOVE IT because it is the answer to the question
+         the checklist provokes. A viewer reads "Reach the second boss without
+         spending a healing item", wants to know what the run's challenge
+         actually is, and has nowhere to go: the page is a status readout with no
+         way in. `!roguelikelike` is that way in, and it belongs at the top of
+         the card whose rows raise the question rather than at the foot of the
+         page where a burst of toasts sits over it.
+
+         IT IS TEXT IN THE PAGE, so a streamer whose bot uses another name edits
+         it here (or overrides `.lookup` in user://obs/custom.css) — it is not
+         driven by the payload, because the game does not know what anyone's
+         chat bot is called. -->
+    <div class="goals-head">
+      <div class="lookup">!roguelikelike for challenge details</div>
+      <div class="label goals-label">The goals</div>
+    </div>
     <div id="goal-scroll" class="goal-scroll">
       <ul id="goal-list" class="goal-list"></ul>
     </div>
