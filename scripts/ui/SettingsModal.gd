@@ -356,7 +356,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	vbox.add_child(chk)
 
 	var hint := Label.new()
-	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you. Add \"#goals\" to the end of the path for a second source that is the checklist and nothing else, or \"#road\" for the road walked so far."
+	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and point it at the page below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you. Add \"#goals\" to the end of the path for a second source that is the checklist and nothing else, or \"#road\" for the road walked so far. \"#map\" is the road AHEAD — every optimal route from the game you are on to the Amulet, as a branching map; give that one a source of its own at 640 x 720 and show it when you want it."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 58)
 	hint.add_theme_font_size_override("font_size", 13)

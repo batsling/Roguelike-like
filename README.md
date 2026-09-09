@@ -883,6 +883,7 @@ with the inside of a browser source. So the page can render part of itself:
 | `overlay.html#bottom` | checklist + ticker | 346 (fixed) |
 | `overlay.html#goals` | the checklist, and nothing else | 346 (fixed) |
 | `overlay.html#road` | the road, and nothing else | 116 (fixed) |
+| `overlay.html#map` | the road **ahead**, as a ladder | fills its source |
 | …`#fill` on any of them | as above, stretched to the source | fills |
 
 Point **several** browser sources at the same file with different fragments and
@@ -909,6 +910,50 @@ uniquely says (which games were beaten, which the run walked away from) is worth
 source of its own on a between-games scene, at a width where it does not have to
 scroll at all — a 22-stop run is 1008px wide. The **distance** it used to carry is
 now on the headline, in a number that never moves.
+
+#### The route map — `overlay.html#map`
+
+**The road's opposite number.** `#road` is where the run has *been*: one cover per
+stop, a sequence. `#map` is where it can *go* — every optimal road from the game
+in play to the Amulet — and it is a **graph, not a strip**, which is the whole
+reason it is not just the road pointed the other way.
+
+`RunGraph.shortest_path_dag()` answers in **layers, two or three games wide**:
+there is usually more than one equally short way on, and choosing between them —
+same distance, different goals, different loot — is the run's core decision. A
+single line would draw a forced march and hide the only interesting thing on the
+map. So it is drawn the way `RunMapModal` draws it in-game: rungs in layers, green
+arrows between them, in the same colours (`RouteLadder`'s blue for where you are,
+ember for the Amulet, purple for a pin).
+
+**Make it `352 × 720`? No — `640 × 720`.** A ladder needs width per layer and
+height per step, and three 152px rungs plus their gaps come to 484. It does not
+fit the column at any type size that can be read across a room, so it is a source
+of its own, and one you **toggle**: it is what you cut to while deciding where to
+go next, not something a viewer needs on screen the whole time. Hide it in OBS,
+or put it on a between-games scene.
+
+| | |
+|---|---|
+| Source size | **640 × 720** (what the layout is tuned against) |
+| Depth it holds | 14 layers, then it says `+N more layers … not drawn` |
+| Deeper than the panel | the ladder is **scaled** to fit, down to 0.35 |
+| Wider source | rungs spread out; it is fluid like the rest of the page |
+
+**Every rung is a cover and a name.** The cover is what a viewer recognises — box
+art is how anyone reads a shelf — and the name is what they can actually search
+for, which is most of the point of putting a map on a stream. A game you have
+**already beaten** is drained to greyscale and tagged, because revisiting is legal
+and its goal is rolled fresh, but you know the game.
+
+**It shows the road you are actually walking.** If the run has pinned a game to
+route through (`GameState.route_waypoint`), the map is the *forced* route, not the
+shortest one — the same `route_dag_via` the in-game map asks for. Drawing the
+shortest path would show a road you have already decided against.
+
+**Two empty states, two different sentences.** Standing on the Amulet says so
+("The Amulet is under your feet"); no road at all says *that* instead. Neither is
+a blank panel, which is what a viewer reads as a broken source.
 
 `#offline` is in none of these lists, so a source that is up before the game is
 still says so. The ticker rides with `#bottom` and not with `#goals`.
@@ -1003,6 +1048,10 @@ apart, and the Windows drive-letter hazard the old absolute URLs had to dodge
 cannot arise in a relative one. If you restyle the page, keep it to relative
 URLs; `tools/check_overlay.js` now serves the page over http and asserts every
 `<img>` decoded, which is the only way this class of bug is visible.
+
+**And the route map is a fourth source**, at `overlay.html#map`: the road *ahead*
+as a branching ladder, drawn for 640 × 720 and toggled on when you want it. See
+"The route map" above.
 
 **It is two cards, on a 352px column that is mostly the game.** The first is the
 run: the game in play and the game the run is for, **side by side in two columns**

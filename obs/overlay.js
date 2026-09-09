@@ -119,6 +119,7 @@ function render(s) {
   drawNow(s.now || {}, s.run || {});
   drawGoals(s.goals || [], s.art || {});
   drawRoad(s.road || []);
+  drawMap(s.route || {}, s.run || {});
   firstDraw = false;
 }
 /* `s.statuses` IS DELIBERATELY NOT DRAWN. It is still in the payload for anyone
@@ -527,6 +528,194 @@ function drawRoad(road) {
   restartScroll('road-scroll');
 }
 
+/* ---------------------------------------------------------- the route map --
+ *
+ * THE ROAD AHEAD, at overlay.html#map: every optimal road from the game in play
+ * to the Amulet, as the layered graph the game's own RunMapModal draws.
+ *
+ * IT IS A GRAPH AND NOT A STRIP, which is the whole reason it is not just the
+ * road pointed the other way. A layer is two or three games wide — several ways
+ * on, all the same distance — and picking between them is the run's core
+ * decision. A single line would draw a forced march.
+ *
+ * NODES ARE KEYED (depth, id), NEVER id. A route forced through a pinned game
+ * walks there and then walks on, and the way on may come straight back over the
+ * games that led in: the same game legitimately holds two rungs at two depths.
+ * `RouteLadder.node_key` says the same thing in GDScript, and for the same
+ * reason — keying by id merges the two and draws arrows into a step of the route
+ * that does not exist.
+ *
+ * THE ARROWS ARE DRAWN FROM MEASURED BOXES, in an SVG behind the rows, because
+ * an edge joins two PARTICULAR games across a layer and not every box to every
+ * box. That means a second pass after layout, and it means the wires have to be
+ * redrawn whenever the geometry moves — a rebuild, a resize, or the fit below
+ * changing scale. `layoutWires` is that pass and is safe to call at any time. */
+let routeSignature = '';
+
+function drawMap(route, run) {
+  const rows = el('map-rows');
+  const note = el('map-note');
+  const sub = el('map-sub');
+  const layers = Array.isArray(route.layers) ? route.layers : [];
+
+  /* The subtitle is cheap and changes on its own clock (the hop count ticks as
+   * the run moves even when the ladder's shape does not), so it is written
+   * every payload, outside the signature check below. */
+  const amulet = (run.amulet && run.amulet.game) || '';
+  const hops = num(run.hops, -1);
+  sub.textContent = !amulet ? ''
+    : route.arrived ? 'You are standing on ' + amulet
+    : hops < 0 ? amulet + ' — no road from here'
+    : hops + (hops === 1 ? ' game to ' : ' games to ') + amulet;
+
+  const sig = [route.arrived, route.dropped, route.waypoint_depth,
+    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten]
+      .join('~')).join(',')).join('|'),
+    (route.edges || []).map(e => [e.from_depth, e.from, e.to_depth, e.to]
+      .join('~')).join(',')].join('\x01');
+  if (sig === routeSignature) return;
+  routeSignature = sig;
+
+  rows.innerHTML = '';
+  el('map-wires').innerHTML = '';
+
+  /* THE TWO EMPTY STATES ARE DIFFERENT THINGS and the panel must not draw the
+   * same blank for both. Standing on the Amulet is the run's best moment; no
+   * road at all is a dead end the streamer needs to know about. Neither is "the
+   * source is broken", which is what an empty panel reads as. */
+  if (!layers.length) {
+    note.hidden = false;
+    note.textContent = route.arrived
+      ? 'The Amulet is under your feet. Beat it and the run is won.'
+      : 'No road from here to the Amulet.';
+    return;
+  }
+
+  layers.forEach((layer, depth) => {
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    layer.forEach((n) => {
+      const box = document.createElement('div');
+      box.className = 'rung'
+        + (n.here ? ' here' : '')
+        + (n.amulet ? ' amulet' : '')
+        + (n.pinned ? ' pinned' : '')
+        + (n.beaten ? ' beaten' : '');
+      box.dataset.key = depth + '|' + n.id;
+      box.title = n.name;
+      const img = document.createElement('img');
+      img.alt = n.name;
+      setImg(img, n.cover);
+      box.appendChild(img);
+      const text = document.createElement('span');
+      text.className = 'rung-name';
+      text.textContent = n.name;
+      box.appendChild(text);
+      /* WHAT THIS RUNG IS, in one word, for the three that are not just "a game
+       * on the way". Drawn rather than left to colour alone: this page's own
+       * checklist learned that lesson (six row kinds told apart by text colour
+       * with nothing saying what a colour meant), and a map read across a room
+       * through a lossy encode is the worst case for it. */
+      const tag = n.here ? 'Here' : n.amulet ? 'Amulet' : n.pinned ? 'Pinned'
+        : n.beaten ? 'Beaten' : '';
+      if (tag) {
+        const flag = document.createElement('span');
+        flag.className = 'rung-tag';
+        flag.textContent = tag;
+        box.appendChild(flag);
+      }
+      row.appendChild(box);
+    });
+    rows.appendChild(row);
+  });
+
+  /* THE FAR END, WHEN IT WAS TRIMMED. `_route` keeps the near layers — the ones
+   * a decision is made out of — so what is missing is the approach to the
+   * Amulet, and saying so is the difference between a trimmed map and a wrong
+   * one. Nothing realistic reaches it; it exists so that if it ever does, the
+   * page says it out loud. */
+  const dropped = num(route.dropped);
+  note.hidden = dropped <= 0;
+  if (dropped > 0) {
+    note.textContent = '+' + dropped + (dropped === 1 ? ' more layer' : ' more layers')
+      + ' to the Amulet, not drawn';
+  }
+
+  layoutWires(route.edges || []);
+}
+
+/* Position the arrows, and scale the ladder to the panel.
+ *
+ * ORDER MATTERS: the fit is applied FIRST and the wires measured after, because
+ * `getBoundingClientRect` reports post-transform pixels — measuring first and
+ * scaling second would draw every arrow at the wrong length, and by a factor
+ * that changes with the route's depth, which looks like a rendering bug rather
+ * than a maths one. The wires are drawn in the ladder's OWN coordinate space
+ * (the SVG scales with it), so the scale is divided back out of every measured
+ * offset. */
+let lastEdges = [];
+
+function layoutWires(edges) {
+  if (edges) lastEdges = edges;
+  const fit = el('map-fit');
+  const rows = el('map-rows');
+  const body = el('map-body');
+  const svg = el('map-wires');
+  if (!rows.children.length) return;
+
+  fit.style.transform = 'scale(1)';
+  const room = body.clientHeight;
+  const needed = rows.scrollHeight;
+  /* Never scale UP. A short route is drawn at full size with space under it —
+   * blowing a three-step road up to fill 720px would make the covers enormous
+   * and say nothing extra. */
+  const scale = (room > 0 && needed > room) ? Math.max(0.35, room / needed) : 1;
+  fit.style.transform = 'scale(' + scale + ')';
+
+  const origin = rows.getBoundingClientRect();
+  const at = (key) => {
+    const n = rows.querySelector('[data-key="' + cssEscape(key) + '"]');
+    if (!n) return null;
+    const r = n.getBoundingClientRect();
+    return {
+      cx: (r.left + r.width / 2 - origin.left) / scale,
+      top: (r.top - origin.top) / scale,
+      bottom: (r.bottom - origin.top) / scale,
+    };
+  };
+
+  const w = origin.width / scale;
+  const h = origin.height / scale;
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.innerHTML = '';
+
+  for (const e of lastEdges) {
+    const a = at(e.from_depth + '|' + e.from);
+    const b = at(e.to_depth + '|' + e.to);
+    if (!a || !b) continue;
+    /* A CURVE, NOT A STRAIGHT LINE, and not for decoration: a layer three wide
+     * sends edges diagonally across the gap, and a straight run from one box's
+     * bottom edge to another's top crosses its neighbours' corners on the way.
+     * Leaving each box vertically and arriving vertically keeps the crossings
+     * in the empty band between rows where they can be read. */
+    const mid = (a.bottom + b.top) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M' + a.cx + ' ' + a.bottom
+      + ' C' + a.cx + ' ' + mid + ' ' + b.cx + ' ' + mid + ' ' + b.cx + ' ' + b.top);
+    path.setAttribute('class', 'wire');
+    svg.appendChild(path);
+  }
+}
+
+/* `CSS.escape` is not on every CEF OBS ships (the same reason `:has()` and
+ * `color-mix()` are avoided in overlay.css), and a game id can carry a colon or
+ * a dot. Quote what a bare attribute selector cannot hold. */
+function cssEscape(s) {
+  return String(s).replace(/["\\]/g, '\\$&');
+}
+
 function drawVerdict(state) {
   const v = el('verdict');
   v.hidden = (state !== 'won' && state !== 'lost');
@@ -712,10 +901,20 @@ function applySplit() {
   overlay.classList.toggle('only-bottom', parts.has('bottom'));
   overlay.classList.toggle('only-goals', parts.has('goals'));
   overlay.classList.toggle('only-road', parts.has('road'));
+  overlay.classList.toggle('only-map', parts.has('map'));
   overlay.classList.toggle('fill', parts.has('fill'));
+  /* THE MAP IS MEASURED, so it has to be re-laid the moment it becomes visible.
+   * A `display: none` ladder has no geometry at all — every box reports a zero
+   * rect — so wires drawn while the map was hidden are drawn from nothing, and
+   * switching the fragment to #map would show a ladder with no arrows on it
+   * until the route happened to change. */
+  layoutWires();
 }
 applySplit();
 window.addEventListener('hashchange', applySplit);
+/* Same reason: the source can be resized in OBS while the page is running, and
+ * both the fit and every arrow depend on the box the ladder is laid out in. */
+window.addEventListener('resize', () => layoutWires());
 
 /* The two self-scrolling boxes, registered before the first payload lands so
  * `frame` has something to walk from the very first tick. */

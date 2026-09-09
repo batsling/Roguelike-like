@@ -2428,12 +2428,50 @@ stream — so the overlay dims only when the beat actually stops.
   away from — earns a source of its own on a between-games scene, at a width where
   it does not have to scroll at all. The **distance** it was carrying moved to the
   headline, into a number that never moves.
+- **The route map**, at `overlay.html#map` — **the road's opposite number, and
+  the second source you toggle.** The road is where the run has *been*; this is
+  where it can *go*: every optimal road from the game in play to the Amulet.
+
+  **IT IS A GRAPH AND NOT A STRIP, and that is the whole design.**
+  `RunGraph.shortest_path_dag` answers in LAYERS two or three games wide — there
+  is usually more than one equally short way on, and choosing between them (same
+  distance, different goals, different loot) is the run's core decision (§6).
+  Flattening that to a line would draw a forced march and hide the only
+  interesting thing on the map. So it is `RunMapModal`'s ladder, drawn live:
+  rungs in layers, green arrows between them, in `RouteLadder`'s own colours —
+  blue for where you are, ember for the Amulet, purple for a pin — so the map on
+  the stream and the map on the streamer's screen are visibly one object.
+
+  **IT HONOURS THE PIN.** With a `route_waypoint` set, the road being walked is
+  the FORCED one, so that is what is drawn — `route_dag_via`, exactly as the two
+  in-game maps ask for it. Drawing the shortest path instead would show a route
+  the player has already decided against.
+
+  **NODES ARE KEYED (depth, id), NEVER id**, in the payload and on the page, for
+  the reason `RouteLadder.node_key` gives: a forced route walks to the waypoint
+  and then walks on, and the way on is free to come straight back over the games
+  that led in, so one game legitimately holds two rungs at two depths. Keying by
+  id merges them and draws arrows into a step of the route that does not exist.
+
+  **640 × 720, ITS OWN SOURCE, AND OFF THE DEFAULT PAGE.** A ladder needs width
+  per layer and height per step: three 152px rungs and their gaps are 484, which
+  the 352 column cannot hold at any type size readable across a room. Deeper than
+  the panel and the whole ladder is SCALED to fit rather than running off the
+  bottom, down to 0.35; past 14 layers the payload trims the far end and the page
+  says how much it dropped. Every rung is a cover AND a name — the cover is what
+  a viewer recognises, the name is what they can search — and a game already
+  beaten is drained and tagged, because a revisit is legal and rolls a fresh goal
+  but you know the game.
+
+  **THE TWO EMPTY STATES SAY DIFFERENT THINGS.** Standing on the Amulet is the
+  run's best moment; no road at all is a dead end. Neither may draw the blank
+  panel that a viewer reads as a broken source.
 
 **IT RENDERS IN PIECES.** OBS cannot interleave scene items with the inside of a
 browser source, so the page renders part of itself instead and a scene points
 several sources at the same file: `#top` (the run card), `#bottom` (checklist and
-ticker), `#goals` (the checklist alone), `#road`, and the default, which is
-everything but the road. They read the same `state.js` and stay in step for free.
+ticker), `#goals` (the checklist alone), `#road`, `#map` (the route map), and the
+default, which is everything but those last two. They read the same `state.js` and stay in step for free.
 
 `#goals` differs from `#bottom` by the ticker alone, and that is why it exists:
 the ticker is pinned to the **bottom of the browser source** and grows upward, so

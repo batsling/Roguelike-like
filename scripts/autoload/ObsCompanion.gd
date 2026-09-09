@@ -119,6 +119,14 @@ const MAX_EVENTS := 8
 # second. `dropped` still rides on the first stop for the day it bites.
 const MAX_ROAD := 40
 
+# THE SAME KIND OF VALVE FOR THE ROUTE MAP, and it bites sooner because a route
+# is a DAG rather than a strip: a layer is two or three games wide, so a deep
+# route is not `depth` covers but `depth × width` of them. Nine layers is what
+# RunMapModal measured a 6-8 step route at, and the map source is drawn for
+# roughly that; past this the page draws what fits and says how much it dropped,
+# the way the road's `dropped` does.
+const MAX_ROUTE_LAYERS := 14
+
 # Off switches the whole thing: no writes, no cover extraction, no page install.
 # Mirrors Settings.obs_overlay, which is where the toggle in the settings modal
 # lands.
@@ -277,6 +285,7 @@ func payload() -> Dictionary:
 	out["threat"] = threat
 	out["statuses"] = _statuses()
 	out["road"] = _road()
+	out["route"] = _route()
 	return out
 
 # "idle" (no run — the menus), "run", "won" or "lost". The page draws a verdict
@@ -828,6 +837,112 @@ func _road() -> Array:
 	if not stops.is_empty():
 		stops[0]["dropped"] = dropped
 	return stops
+
+# ---------------------------------------------------------------------------
+# The route map — the road AHEAD (docs/games-first-redesign.md §9)
+# ---------------------------------------------------------------------------
+
+# THE OPTIMAL PATH FROM HERE TO THE AMULET, as the layered DAG the game's own map
+# draws, for `overlay.html#map`.
+#
+# IT IS NOT A LINE, AND THAT IS THE WHOLE REASON THIS SHIPS AS A LADDER. There
+# are usually SEVERAL equally short roads: `RunGraph.shortest_path_dag` answers
+# with layers two or three games wide, and the choice between them — this game or
+# that one, same distance, different goals and different loot — is the run's
+# core decision (§6). Collapsing it to one strip would draw a forced march and
+# hide the only interesting thing on the map.
+#
+# IT HONOURS THE PIN. If the run has insisted on routing through a game
+# (`GameState.route_waypoint`), that is the road the player is actually walking,
+# so it is the road drawn — `route_dag_via`, exactly as RunMapModal and
+# GameChoiceModal ask for it. Anything else would show the streamer a route they
+# have already decided against.
+#
+# NODES ARE KEYED (depth, id) AND NOT id. A pinned route walks to the waypoint
+# and then walks on, and the way on may come straight back over the games that
+# led in — the same game legitimately holds two rungs at two depths. RouteLadder
+# says the same thing in `node_key` and for the same reason: a consumer keying by
+# id alone merges the two visits and draws a road that does not exist.
+func _route() -> Dictionary:
+	var here: StringName = GameState.current_game_id
+	var amulet: StringName = GameState.amulet_game_id
+	var empty: Dictionary = {"layers": [], "edges": [], "dropped": 0,
+		"waypoint_depth": -1, "arrived": here != &"" and here == amulet}
+	if here == &"" or amulet == &"":
+		return empty
+	# Standing on it: there is no road left to draw, and `arrived` lets the page
+	# say so rather than render an empty panel that reads as a broken source.
+	if here == amulet:
+		return empty
+	var dag: Dictionary = RunGraph.route_dag_via(here, GameState.route_waypoint, amulet)
+	var layers: Array = dag.get("layers", [])
+	if layers.is_empty():
+		return empty
+
+	# The valve. Kept from the FRONT — the near layers are the ones a decision is
+	# made out of, and a route deep enough to trip this is one whose far end is
+	# guesswork anyway.
+	var dropped: int = maxi(0, layers.size() - MAX_ROUTE_LAYERS)
+	var kept: int = layers.size() - dropped
+	var out_layers: Array = []
+	for d in range(kept):
+		var rungs: Array = []
+		for id in layers[d]:
+			rungs.append(_rung(StringName(id), d, layers.size() - 1))
+		out_layers.append(rungs)
+	# Edges travel with their endpoints' DEPTHS, unchanged from RunGraph, so the
+	# page can key them the same way it keys nodes. An edge into a dropped layer
+	# is dropped with it.
+	var out_edges: Array = []
+	for e in dag.get("edges", []):
+		var to_depth: int = int(e.get("to_depth", 0))
+		if to_depth >= kept:
+			continue
+		out_edges.append({
+			"from": String(e.get("from", "")),
+			"from_depth": int(e.get("from_depth", 0)),
+			"to": String(e.get("to", "")),
+			"to_depth": to_depth,
+		})
+	return {
+		"layers": out_layers,
+		"edges": out_edges,
+		# How many layers of the far end are not drawn, so the page can say "+3
+		# more" rather than quietly ending the road short of the Amulet.
+		"dropped": dropped,
+		# Which layer the pin sits on, or -1 with no pin. The page rings it.
+		"waypoint_depth": int(dag.get("waypoint_depth", -1)),
+		"arrived": false,
+	}
+
+# One rung of the route map.
+#
+# `game` is `GameLoop2.game_at`, not `Data.get_game`: a transmuted spot plays a
+# DIFFERENT game than the node is named for (§4), and the map has to show the
+# game you would actually sit down to play. The node's own id still travels, as
+# the key the edges are drawn against.
+func _rung(id: StringName, depth: int, last: int) -> Dictionary:
+	var game: GameData = GameLoop2.game_at(id)
+	if game == null:
+		game = Data.get_game(id)
+	return {
+		"id": String(id),
+		"depth": depth,
+		"name": game.display_name if game != null else String(id),
+		"cover": _cover_url(game),
+		# Depth 0 is the game under your feet — the ladder's root, drawn as
+		# you-are-here rather than as a step you might take.
+		"here": depth == 0,
+		"amulet": id == GameState.amulet_game_id,
+		# The pin, if there is one. Not `depth == waypoint_depth`: a layer can
+		# hold other games at the waypoint's depth in a route that rejoins.
+		"pinned": id == GameState.route_waypoint,
+		# ALREADY BEATEN, which is a real thing to know about a road ahead: a
+		# revisit is legal, its goal is rolled fresh, and a viewer reading the map
+		# should see which of these you have history with. The last layer is the
+		# Amulet and is never dimmed for it.
+		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
+	}
 
 func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:
 	var game: GameData = Data.get_game(id)

@@ -49,7 +49,8 @@ func test_the_payload_names_a_run_that_is_under_way() -> void:
 	assert_eq(p.get("v"), ObsCompanion.PAYLOAD_VERSION,
 		"the page refuses a payload from a newer version, so it must be stamped")
 	assert_eq(p.get("state"), "run", "a run is in progress")
-	for key in ["hero", "vitals", "run", "now", "goals", "board", "statuses", "road"]:
+	for key in ["hero", "vitals", "run", "now", "goals", "board", "statuses", "road",
+			"route"]:
 		assert_true(p.has(key), "the payload is missing '%s', which overlay.js draws" % key)
 
 func test_a_run_that_has_not_started_is_idle_and_carries_nothing_else() -> void:
@@ -61,6 +62,7 @@ func test_a_run_that_has_not_started_is_idle_and_carries_nothing_else() -> void:
 	# that would be state nobody can see and everybody has to keep correct.
 	assert_false(p.has("vitals"), "an idle payload carries no run state")
 	assert_false(p.has("road"))
+	assert_false(p.has("route"))
 
 func test_every_value_survives_a_round_trip_through_json() -> void:
 	# The transport is a JSON literal in a .js file. A Resource, a StringName or a
@@ -73,6 +75,12 @@ func test_every_value_survives_a_round_trip_through_json() -> void:
 	assert_eq(int(back["v"]), ObsCompanion.PAYLOAD_VERSION)
 	assert_typeof(back["goals"], TYPE_ARRAY)
 	assert_typeof(back["road"], TYPE_ARRAY)
+	# The route is the one nested structure in the payload — layers of rungs, plus
+	# edges — so it is the likeliest place for a StringName to survive a level of
+	# nesting the round trip above would otherwise not reach.
+	assert_typeof(back["route"], TYPE_DICTIONARY)
+	assert_typeof(back["route"]["layers"], TYPE_ARRAY)
+	assert_typeof(back["route"]["edges"], TYPE_ARRAY)
 
 func test_the_vitals_are_the_health_the_run_actually_has() -> void:
 	GameState.hp = 42
@@ -386,6 +394,150 @@ func test_a_save_from_before_per_visit_outcomes_still_colours_its_road() -> void
 		got[String(stop.get("id", ""))] = bool(stop.get("beaten", false))
 	assert_false(bool(got.get("a", true)), "never beaten, so not green either way")
 	assert_true(bool(got.get("b", false)), "beaten at some point, so green")
+
+# ---------------------------------------------------------------- route ----
+#
+# THE ROAD AHEAD, which `overlay.html#map` draws as a ladder. The road is where
+# the run has BEEN; this is where it can GO, and the difference that matters to
+# these tests is that it is a GRAPH — `RunGraph.shortest_path_dag` answers with
+# layers two or three games wide, because there is usually more than one equally
+# short way on, and choosing between them is the run's core decision (§6). A test
+# that only ever saw a one-wide layer would pass on a strip.
+
+func test_the_route_starts_where_the_run_is_and_ends_on_the_amulet() -> void:
+	var route: Dictionary = ObsCompanion.payload()["route"]
+	var layers: Array = route.get("layers", [])
+	if layers.is_empty():
+		pending("this run's opening game has no road to the Amulet to draw")
+		return
+	var first: Array = layers[0]
+	assert_eq(first.size(), 1, "the game under your feet is the ladder's root, alone")
+	assert_eq(String(first[0].get("id", "")), String(GameState.current_game_id))
+	assert_true(bool(first[0].get("here", false)), "and it is marked as where you are")
+	var last: Array = layers[layers.size() - 1]
+	assert_eq(last.size(), 1, "every optimal road ends on the same one game")
+	assert_true(bool(last[0].get("amulet", false)),
+		"the ladder's foot is the Amulet — a route map with no destination on it "
+		+ "is a diagram of nothing")
+
+func test_the_route_is_as_deep_as_the_run_is_far_from_the_amulet() -> void:
+	# THE MAP AND THE HEADLINE MUST NOT DISAGREE. `run.hops` is what the overlay's
+	# run card prints and the map's own subtitle repeats; the ladder is the same
+	# distance drawn out, so a layer count that does not match it means one of the
+	# two is lying to a viewer looking at both at once.
+	var p: Dictionary = ObsCompanion.payload()
+	var layers: Array = p["route"].get("layers", [])
+	var hops: int = int(p["run"].get("hops", -1))
+	if layers.is_empty() or hops < 0:
+		pending("no road from this run's opening game to the Amulet")
+		return
+	# The parentheses are load-bearing: `%` binds tighter than `+`, so without them
+	# the format is applied to the SECOND fragment alone — a string with no
+	# placeholders handed two arguments, which fails at runtime rather than
+	# reading oddly.
+	assert_eq(layers.size(), hops + 1,
+		("a route %d hops long is %d layers of ladder, counting the game you are "
+		+ "standing on") % [hops, hops + 1])
+
+func test_every_edge_joins_two_rungs_that_are_actually_on_the_ladder() -> void:
+	# THE PAGE DRAWS AN ARROW PER EDGE, keyed (depth, id). An edge naming a rung
+	# that is not there draws nothing at all and is invisible on a stream — so it
+	# is asserted here, where it is one loop.
+	var route: Dictionary = ObsCompanion.payload()["route"]
+	var layers: Array = route.get("layers", [])
+	if layers.is_empty():
+		pending("no road to draw from this run's opening game")
+		return
+	var keys: Dictionary = {}
+	for d in range(layers.size()):
+		for rung in layers[d]:
+			keys["%d|%s" % [d, rung.get("id", "")]] = true
+	var edges: Array = route.get("edges", [])
+	assert_gt(edges.size(), 0, "a ladder more than one layer deep has arrows on it")
+	for e in edges:
+		var from_key: String = "%d|%s" % [int(e.get("from_depth", -1)), e.get("from", "")]
+		var to_key: String = "%d|%s" % [int(e.get("to_depth", -1)), e.get("to", "")]
+		assert_true(keys.has(from_key), "an edge leaves a rung that is not drawn: " + from_key)
+		assert_true(keys.has(to_key), "an edge arrives at a rung that is not drawn: " + to_key)
+		assert_eq(int(e.get("to_depth", -1)), int(e.get("from_depth", -1)) + 1,
+			"every arrow crosses exactly one layer")
+
+func test_standing_on_the_amulet_is_an_empty_route_that_says_why() -> void:
+	# THE TWO EMPTY STATES ARE DIFFERENT THINGS and the page prints a different
+	# sentence for each — "you are standing on it" is the run's best moment and a
+	# dead end is a problem. Neither may look like the other, and neither may look
+	# like a broken source.
+	GameState.current_game_id = GameState.amulet_game_id
+	var route: Dictionary = ObsCompanion.payload()["route"]
+	assert_true((route.get("layers", []) as Array).is_empty(),
+		"there is no road left to draw")
+	assert_true(bool(route.get("arrived", false)),
+		"and the page must be told WHY it is empty")
+
+func test_a_pinned_detour_is_the_road_the_map_draws() -> void:
+	# THE MAP SHOWS THE ROAD YOU ARE ACTUALLY WALKING. If the run has insisted on
+	# routing through a game, the shortest path to the Amulet is not that road —
+	# and drawing it would show the streamer a route they have already decided
+	# against. RunMapModal and GameChoiceModal both ask via route_dag_via for the
+	# same reason.
+	var plain: Array = ObsCompanion.payload()["route"].get("layers", [])
+	if plain.size() < 3:
+		pending("this run's opening game is too close to the Amulet to detour from")
+		return
+	# A game one layer off the direct road: reaching it and coming back cannot be
+	# shorter than the direct road, so the ladder must get deeper or hold it.
+	var detour: StringName = StringName(plain[1][plain[1].size() - 1].get("id", ""))
+	GameState.route_waypoint = detour
+	var route: Dictionary = ObsCompanion.payload()["route"]
+	var layers: Array = route.get("layers", [])
+	if layers.is_empty():
+		pending("the pinned game cannot reach the Amulet on this graph")
+		return
+	var pinned: int = 0
+	for layer in layers:
+		for rung in layer:
+			if bool(rung.get("pinned", false)):
+				pinned += 1
+				assert_eq(String(rung.get("id", "")), String(detour))
+	assert_gt(pinned, 0, "the game the run insisted on is marked on the map it forced")
+	assert_gte(int(route.get("waypoint_depth", -1)), 0,
+		"and the page is told which layer the detour joins at")
+
+func test_a_rung_names_the_game_you_would_actually_sit_down_to_play() -> void:
+	# `GameLoop2.game_at`, not `Data.get_game`: a transmuted spot plays a DIFFERENT
+	# game than the node is named for (§4), and a map naming the node would send a
+	# viewer off to buy the wrong game. The node's own id still travels, because it
+	# is the key the arrows are drawn against.
+	var layers: Array = ObsCompanion.payload()["route"].get("layers", [])
+	if layers.is_empty():
+		pending("no road to draw from this run's opening game")
+		return
+	for layer in layers:
+		for rung in layer:
+			var id: StringName = StringName(rung.get("id", ""))
+			var played: GameData = GameLoop2.game_at(id)
+			if played == null:
+				continue
+			assert_eq(String(rung.get("name", "")), played.display_name,
+				"a rung is named for the game it plays, not for the node it sits on")
+
+func test_the_route_hands_the_page_urls_rather_than_resource_paths() -> void:
+	# The same contract every other picture on the page is held to: a page-relative
+	# url, never an absolute file:// one, which OBS refuses in silence.
+	var layers: Array = ObsCompanion.payload()["route"].get("layers", [])
+	if layers.is_empty():
+		pending("no road to draw from this run's opening game")
+		return
+	var seen: int = 0
+	for layer in layers:
+		for rung in layer:
+			var url: String = String(rung.get("cover", ""))
+			if url == "":
+				continue
+			seen += 1
+			_assert_page_local(url, "a route rung's cover")
+	if seen == 0:
+		pending("no game on this route has a cover authored")
 
 func test_the_road_marks_where_the_run_is_standing() -> void:
 	var current: int = 0

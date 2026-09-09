@@ -40,7 +40,16 @@
    * them are sampled off composited pixels by check_overlay.js, where they can
    * go stale loudly instead of quietly. */
   --faint:     #dcd6cd;
-  --success:   #4dc76b;
+  /* AND `--success` WAS LIFTED TOO, from UITheme's #4dc76b, by the sampler
+   * rather than by eye — and it took a fix to the SAMPLER to notice. That check
+   * read one element per selector, so the only checklist row it ever measured
+   * was the first; sampling every match put a `bonus` row under it for the
+   * first time and the green scored 4.18 over a bright capture, under the 4.5
+   * bar, where it had been shipping for as long as those rows have existed.
+   * Bonus and `instead` rows are also 13px — an addon is smaller than the row
+   * it hangs off — and a thinner stroke is less for the halo to sit on, which
+   * is why this colour failed where the others held. */
+  --success:   #6fdc8d;
   --danger:    #f77f71;
   --curse:     #c68df0;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
@@ -815,10 +824,185 @@ html, body {
 /* A row that just got ticked flashes once, so the viewer sees it happen rather
  * than noticing later that the list changed. */
 @keyframes tick-flash {
-  0%   { background: rgba(77, 199, 107, 0.45); }
+  0%   { background: rgba(111, 220, 141, 0.45); }
   100% { background: transparent; }
 }
 .goal.flash { animation: tick-flash 1.4s ease-out; }
+
+/* ------------------------------------------------------------ route map -- */
+
+/* THE ROAD AHEAD, at overlay.html#map — every optimal road from the game in
+ * play to the Amulet, as a layered ladder with arrows between the layers.
+ *
+ * DRAWN FOR ~640 × 720 AND ITS OWN SOURCE. It is the road's opposite number:
+ * #road is where the run has been, one cover per stop, a sequence; this is
+ * where it can go, and it is a GRAPH because there is usually more than one
+ * equally short way on. That shape needs width per layer and height per step,
+ * which is exactly what the 352 column has none of — and it is not something a
+ * viewer needs on screen all the time. It is what you cut to while deciding.
+ *
+ * Everything below is fluid: a wider source spreads the rungs, a taller one is
+ * scaled into by overlay.js rather than left empty. */
+.map { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+
+.map-head { flex: 0 0 auto; }
+/* The distance and the destination, under the label. Gold like the run card's
+ * `.now-game`, because it names the same thing that headline does and the two
+ * sources are read as one object. */
+.map-sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gold);
+  line-height: 1.25;
+}
+
+/* THE BOX THE LADDER IS SCALED INTO. `min-height: 0` because it is a flex child
+ * that must be allowed to be SHORTER than its content — without it a deep
+ * ladder stretches the card instead of being scaled, and the fit in overlay.js
+ * measures a `clientHeight` that has already grown to fit, so the scale comes
+ * out at 1 every time and the road runs off the bottom of the source. */
+.map-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Scaled by overlay.js. `top center` so a shrunken ladder stays under the
+ * heading and centred, rather than drifting to a corner. */
+.map-fit {
+  position: relative;
+  transform-origin: top center;
+}
+
+/* THE ARROWS, in their own layer UNDER the rungs. Absolute and
+ * `pointer-events: none` — nothing on an overlay is clickable, but a wire
+ * stretched across the panel must not be able to swallow a rung's hover title
+ * either. The SVG is sized in the ladder's own coordinates and scales with it,
+ * which is why overlay.js divides the scale back out of every measurement. */
+.map-wires {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+/* UITheme's shortest-path green, the same arrow colour RouteLadder paints
+ * (COL_ARROW) — the overlay and the in-game map are the same object. */
+.wire {
+  fill: none;
+  stroke: var(--success);
+  stroke-opacity: 0.85;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.map-rows { position: relative; display: flex; flex-direction: column; }
+/* THE GAP IS THE ARROWS' ROOM. 34px between layers, which is where every wire
+ * lives: tighter and a curve crossing from one side of a three-wide layer to
+ * the other has nowhere to bend, and the crossings land on the boxes instead of
+ * in the band between them. */
+.map-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 34px;
+}
+.map-row:last-child { margin-bottom: 0; }
+
+/* ONE GAME ON THE MAP: its cover, its name, and a word for what it is.
+ *
+ * COVER PLUS NAME, not one or the other. The cover is what a viewer RECOGNISES
+ * — box art is how anyone reads a shelf — and the name is what they can
+ * actually search for, which is the point of putting the map on a stream at
+ * all.
+ *
+ * 152px IS RouteLadder.BOX's 150 plus its border, and it is what the widest
+ * layer can afford: three rungs and their two gaps come to 484 of the 616 a
+ * 640-wide source leaves inside its padding. It was 132 for one draft, which fit
+ * with room to spare and spent the spare on nothing — "Vampire Survivors:…" and
+ * "The Legend of Zelda: Tears of…" both clipped mid-title at two lines, and a
+ * clipped title is the half of this map a viewer cannot act on. */
+.rung {
+  position: relative;
+  flex: 0 0 auto;
+  width: 152px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: rgba(37, 31, 24, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rung > img {
+  width: 62px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--panel);
+  display: block;
+}
+.rung > img:not([src]) { visibility: hidden; }
+.rung-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  /* Two lines and then an ellipsis: a rung has to be the same height as its
+   * neighbours or the layer stops reading as one rank of equal choices, which
+   * is the single most important thing this map says. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* WHAT THIS RUNG IS, said in a word as well as in a colour — the checklist
+ * learned this lesson the hard way (six kinds of row told apart by text colour
+ * alone, with nothing anywhere saying what a colour meant). */
+.rung-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* THE THREE RUNGS THAT ARE NOT JUST "A GAME ON THE WAY". The colours are
+ * RouteLadder's own (COL_CURRENT blue, COL_AMULET ember, COL_WAYPOINT purple),
+ * so the map on the stream and the map on the streamer's screen agree. */
+.rung.here {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 1px #2196f3;
+}
+.rung.here .rung-tag { color: #79c0ff; }
+
+.rung.amulet {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.rung.amulet .rung-name { color: var(--accent); }
+.rung.amulet .rung-tag { color: var(--accent); }
+
+.rung.pinned { border-color: var(--curse); }
+.rung.pinned .rung-tag { color: var(--curse); }
+
+/* A GAME YOU HAVE ALREADY BEATEN, which is a real thing to know about a road
+ * ahead: revisiting is legal and its goal is rolled fresh, but you know the
+ * game. Drained rather than dimmed — the row still has to be read, and the
+ * checklist's done rows say "dealt with" the same way. */
+.rung.beaten > img { filter: grayscale(0.85); }
+.rung.beaten .rung-name { color: var(--dim); }
+
+/* Standing on the Amulet, or no road at all. Two different facts and neither of
+ * them is "the source is broken", which is what an empty panel reads as. */
+.map-note {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--dim);
+  text-align: center;
+}
 
 /* ----------------------------------------------------------------- road -- */
 
@@ -1015,6 +1199,13 @@ html, body {
 #overlay > .road { display: none; }
 #overlay.only-road > .road { display: block; }
 
+/* THE MAP IS OFF THE DEFAULT PAGE for the same reason the road is, and harder:
+ * it is a ladder two or three games wide and up to fourteen deep, which does not
+ * fit a 352px column at any type size that can be read. It is a source you cut
+ * to, so it only ever draws at #map. */
+#overlay > .map { display: none; }
+#overlay.only-map > .map { display: flex; }
+
 #overlay.only-top > .goals,
 #overlay.only-top > .ticker,
 #overlay.only-top > .verdict { display: none; }
@@ -1039,6 +1230,21 @@ html, body {
 #overlay.only-road > .run,
 #overlay.only-road > .goals,
 #overlay.only-road > .ticker { display: none; }
+
+/* THE MAP'S SOURCE IS THE MAP, and it takes the whole thing rather than being
+ * content-height: a ladder is scaled to the room it is given (see `.map-body`),
+ * so unlike every other fragment here it needs to know how much room that is.
+ * The ticker is dropped with the rest — this source is cut to for a few seconds
+ * at a time, and a toast landing on the road you are deciding between is noise
+ * exactly when it is least wanted. */
+#overlay.only-map > .run,
+#overlay.only-map > .goals,
+#overlay.only-map > .road,
+#overlay.only-map > .ticker { display: none; }
+#overlay.only-map {
+  height: 100vh;
+  padding: 12px;
+}
 
 /* ------------------------------------------------------- filling a source -- */
 

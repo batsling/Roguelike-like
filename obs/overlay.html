@@ -25,6 +25,11 @@
   ANY OF THEM CAN BE A SOURCE OF ITS OWN: #top, #bottom, #goals (the checklist
   alone, for a scene that wants it uncropped beside something else) and #road.
   See applySplit() in overlay.js.
+
+  AND #map IS A FIFTH, which is not part of the column at all: the road AHEAD, as
+  the branching ladder of every optimal route to the Amulet. Give it a source of
+  its own at 640 x 720 and toggle it on when you want it — see the .map section
+  below.
 -->
 <link rel="stylesheet" href="overlay.css">
 <!-- Yours. Loaded last so anything in it wins. -->
@@ -168,6 +173,44 @@
     <div id="road-scroll" class="road-scroll">
       <div id="road-strip" class="road-strip"></div>
     </div>
+  </section>
+
+  <!-- THE ROUTE MAP: the road AHEAD, as the layered graph of every optimal road
+       from here to the Amulet. OFF THE DEFAULT PAGE — it renders only at
+       overlay.html#map, as its own browser source, drawn for roughly 640 × 720.
+
+       IT IS THE ROAD'S OPPOSITE NUMBER. #road is where the run has BEEN, one
+       cover per stop, a sequence. This is where it can GO, and it is a graph
+       rather than a sequence because there is usually more than one equally
+       short way to the Amulet: `RunGraph.shortest_path_dag` answers in layers
+       two or three games wide, and choosing between them — same distance,
+       different goals, different loot — is the run's core decision (§6).
+       Flattening that to a line would draw a forced march and hide the only
+       interesting thing on the map.
+
+       IT IS A SOURCE YOU TOGGLE, not part of the always-on column. A ladder
+       needs width per layer and height per step; at the column's 352 it would
+       be unreadable, and it is not something a viewer needs on screen the whole
+       time — it is what you cut to while deciding where to go next. -->
+  <section class="card map">
+    <div class="map-head">
+      <div class="label">The road ahead</div>
+      <!-- The distance, and then what the far end of it is. Drawn here as well
+           as on the run card because this source is shown ALONE: a map with no
+           destination named on it is a diagram of nothing. -->
+      <div id="map-sub" class="map-sub"></div>
+    </div>
+    <!-- The ladder itself. `map-fit` is scaled by overlay.js when the route is
+         deeper than the panel, so a long road shrinks to fit rather than
+         running off the bottom of the source; the SVG under the rows carries
+         the arrows, which can only be drawn once the boxes have been measured. -->
+    <div id="map-body" class="map-body">
+      <div id="map-fit" class="map-fit">
+        <svg id="map-wires" class="map-wires"></svg>
+        <div id="map-rows" class="map-rows"></div>
+      </div>
+    </div>
+    <div id="map-note" class="map-note" hidden></div>
   </section>
 
   <!-- What just happened. Fades out on its own. -->
