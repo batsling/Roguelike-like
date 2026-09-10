@@ -296,7 +296,16 @@ node and its script.
     `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects. It is also **the only door onto the Atlas
+    Bosses, **Loot**, Events, Objects. **The detail pane is closed until you pick
+    something.** It used to be mounted open and empty, holding 380 of the page's
+    1280 for a label reading "Select an entry to view details" — a third of the
+    widest screen in the game, reserved against a click that had not happened yet,
+    which on the Games tab is the difference between five columns and eight while
+    you scan 865 covers. It opens on a click and carries a `✕` to put it away
+    again; the grid is an `HFlowContainer`, so it takes the width back by itself.
+    One property on one node covers every tab, because all eight are built by
+    `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
+    It is also **the only door onto the Atlas
     that is always open** — the Games tab's *✦ Show constellation* draws the same
     catalog as the star chart, which is why the main menu no longer carries an
     Atlas button of its own (Run History still lays its routes over the sky).
@@ -351,9 +360,7 @@ node and its script.
     is always the seed you get. See `GameState.reset_run` for what one number
     reaches: it fixes Godot's global random stream, the overworld's own generator,
     and the three systems that keep a private one.
-- **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
-  games, three genres, all 5–7 games from the amulet — and the one you take is
-  the run's first game, enemy and all), the offering of games
+- **`Overworld2.gd`** — the run itself: the offering of games
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing;
@@ -384,12 +391,13 @@ node and its script.
   **The Amulet is named from the first screen.** It used to be the run's one
   secret until a start had been committed to: the picker quoted the DISTANCE
   (`5 games from the Amulet`) and the maps drew the destination as an unnamed
-  `The Amulet — ???` box that opened no card. All of that is gone. The picker's
-  heading names it, each start card's distance line names it
+  `The Amulet — ???` box that opened no card. All of that is gone. The start
+  screen is built around it — its art and its name are the banner across the top
+  (`StartPicker`) — each road's distance line names it
   (`5 games from Guild of Dungeoneering`, via `Overworld2.amulet_name` /
-  `_start_distance_text`), and the map a start card opens names it on its last
-  rung. (That map is the ladder alone — the star chart stays down on the picker;
-  see `RouteLadder.gd`.) Choosing a start is a routing decision, and
+  `_start_distance_text`), and the ladder a road opens names it on its last
+  rung. (That ladder is the ladder alone — the star chart stays down on the
+  start screen; see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.
 
@@ -489,12 +497,96 @@ node and its script.
   - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
     chest is redeemed the moment it lands.
 
-  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu /
-  Exit game). Exit is the only entry that asks first, since a live run is
-  standing behind it — and it asks the question that is actually open, offering
-  **Save & exit** beside Exit and Cancel rather than a bare "are you sure".
-  The 🗺 Map moved into the offering's own heading row, beside the cards it is a
-  map of.
+  **The header carries no title.** It used to end in "Roguelike-like" in 20px
+  gold, between the road walked and the buttons — about 180px of the one row in
+  the game that never leaves the screen, spent naming the game the player already
+  has open. It had been moved out of the left corner once already, to make room
+  for Health, with the note that this "is also the honest ranking of the two";
+  dropping it is the end of that same argument. The road strip is `EXPAND_FILL`,
+  so it takes the width without anything else moving — and it is the thing that
+  wanted it, being clipped and ellipsised past `STRIP_MAX_STOPS`.
+
+  **`☰ Menu` is three named groups**, and it was four entries under one
+  unlabelled rule. The three reference screens were reachable only from the MAIN
+  MENU, so answering "what does this item do", "have I met this enemy" or "how
+  does this actually work" meant abandoning the run to go and look. Ordered by
+  what the entry does to the run, nearest-first:
+  - **Information** — 📖 How to Play, ▣ Collection, 🏆 Tier List. Changes nothing,
+    and it is the group opened mid-decision, so it is the one the cursor lands on.
+  - **This run** — 💾 Save run, ⟳ New run.
+  - **Game** — ⚙ Settings, ← Main menu, ⏻ Exit game. Last, and furthest from the
+    cursor, because both doors out are in it.
+
+  Each group heading is a **labelled** `add_separator`, drawn in the accent by
+  the theme's new `PopupMenu` entries — which is what turns a list of eight into
+  three lists of three. **The popup is on the palette**: `make_theme` dressed
+  Button, CheckBox, Panel, Label, LineEdit, OptionButton, the separators and the
+  scrollbars and never touched `PopupMenu`, so the menu came up as Godot's stock
+  dropdown — a flat slab with a blue selection bar and a grey-on-grey heading — on
+  a page of warm brown panels. **And it hangs from its own button**: left to
+  itself `MenuButton` drops the popup below and LEFT-aligned, and `☰ Menu` is
+  hard against the right edge of the canvas, so the popup overflowed, got clamped
+  flush against the edge with no margin, and started ~50px left of the button that
+  opened it. `Overworld2._place_menu_popup` right-aligns it to the button and
+  clamps it inside the canvas, measured in `about_to_popup` off
+  `get_contents_minimum_size` (the popup's `size` is a stale 0 before its first
+  layout).
+  **Every dropdown in the project is drawn by the same two theme entries.** There
+  are thirteen `OptionButton`s across six screens — the Collection's type and
+  record filters, the Atlas's mode and region pickers, Custom Run's four filter
+  columns, the Dash panel's type filter and Settings' display, window-size and
+  audio lists — and each is a bare `OptionButton.new()`, so the theme is the only
+  thing deciding how any of them look. `test_design_tokens.gd` fails a screen that
+  reaches for its own stylebox or font colour; a font SIZE stays a per-screen
+  choice, since the Dash filter sits on the 720p-budgeted page. A chosen row wears
+  a solid accent dot (`UITheme.popup_mark`) and an unchosen one wears nothing —
+  Godot's stock pair is drawn for a light theme, so the ticked mark was a pale
+  ring and the unticked a faint dark square, putting a smudge on every row. Exit is the only entry that asks
+  first, since a live run is standing behind it — and it asks the question that
+  is actually open, offering **Save & exit** beside Exit and Cancel rather than a
+  bare "are you sure".
+
+  **All four reference screens mount on a layer ABOVE the pinned header**
+  (`Overworld2._open_full_screen`, at `UITheme.Layer.FULL_SCREEN`). Each replaces
+  the run rather than sitting over it, and the bar floats over everything on this
+  page — including their own Close button, which is the only way off them. The
+  tier board used to answer that by standing the bar *down* for as long as it was
+  up; going over it instead is what the Atlas and the end-of-run verdict have
+  always done, and it is one less piece of state to get wrong. The layer is freed
+  with the screen, so a visit does not leave an empty `CanvasLayer` behind.
+  **`🗺 Map` and `→ Optimal Path` are two buttons, two destinations and two
+  names**, and until the layout pass they were one word for both. The header's
+  `🗺 Map` and the offering heading's `🗺 Map` both called `open_map`, so each
+  raised the whole 865-star **Atlas** — and the *ladder*, which is what actually
+  answers "where does this road go", arrived as a window on top of it. The chart
+  is the **Map** and it is the header's, open from anywhere including mid-game;
+  the ladder is the **Optimal Path** (`Overworld2.open_optimal_path`, and the
+  per-road buttons on the start screen) and it opens alone. `RunMapModal`'s own
+  title says `→ Optimal Path to the Amulet` for the same reason — it is not a map
+  of anything, it is one shortest road drawn rung by rung.
+  - **`StartPicker.gd`** — **the opening screen of a run**: what the Amulet is,
+    and which road you open on. `RunGraph.NUM_START_OPTIONS` starts, one per
+    genre, all 5–7 games from the Amulet — and the one you take is the run's
+    first game, enemy and all. The Amulet gets the top of the screen with its art
+    and its name; each road is a card with its cover, its distance
+    (`N games from <the Amulet>`), the enemy standing on it and its goal, and two
+    buttons — **→ Optimal Path** (the ladder, routed as it would be if you took
+    that road) and **⚙ Details** (the ordinary `GameChoiceModal`). Click a road to
+    select it, **Begin** to take it, the same preview-then-commit shape as
+    `CharacterPicker`.
+    It is **raised by `Overworld2` over its own page** (`_open_start_picker`),
+    which is hidden underneath it along with the pinned header — the run is still
+    rolled by `Overworld2.start_run`, because the reset that decides the seed has
+    to happen before the map is drawn from it. The screen reports an index and
+    `choose_start` does the rest, so a road taken by a player and one taken by a
+    test go through the same door.
+    This was `Phase.START_SELECT` drawn into the overworld's left column until the
+    layout pass: the right-hand half of that screen was an empty board with an
+    unpressable Push/Bomb toolbar on it, and the left half — heading, cards, hover
+    line, verb chips, checklist — measured 647–675px of the 630 a 720p window
+    leaves, so the first screen of every run opened behind a scrollbar with its
+    last line sliced in half. It was also the one phase with **no fit test on it**;
+    `test_screens_fit.gd` measures it now, over six re-rolls.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
     cover, the name and the Amulet's flag; everything else about the decision
     lives here — the **optimal path from that game drawn as the real route
@@ -514,11 +606,12 @@ node and its script.
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
     it is the only thing on screen, and there it keeps one — which is what the
-    **start picker** gets: its 🗺 Map opens the ladder ALONE, no chart. The
-    question on that panel is "which of these three roads", the ladder is the
-    answer to it, and 852 stars with nothing on them to orient by (the run has no
-    position yet) is not; the chart is one `✦ Star chart` button away on the
-    window itself.
+    **start screen** gets: its `→ Optimal Path` opens the ladder ALONE, no chart,
+    and on `StartPicker.MODAL_LAYER` so it lands above the screen that opened it
+    rather than perfectly out of sight beneath it. The question on that screen is
+    "which of these roads", the ladder is the answer to it, and 852 stars with
+    nothing on them to orient by (the run has no position yet) is not; the chart
+    is one `✦ Star chart` button away on the window itself.
     **Every rung is named, the Amulet included**: the ladder used to draw the
     destination as `The Amulet — ???` on a start-picker map, and no longer does
     (see "The Amulet is named from the first screen" below).
@@ -1832,3 +1925,16 @@ root `images/` folder, so there is exactly one image store for the whole repo.
 - Art filenames are **PascalCase** and matched to content ids by convention.
 - The spreadsheet (`tools/Roguelikes.xlsx`) drives generated content — edit it
   there and regenerate rather than hand-editing generated `.tres` in bulk.
+- **Font sizes, gaps and CanvasLayer numbers come from `UITheme`.** There is a
+  type scale (`FONT_MICRO` … `FONT_HERO`), a spacing scale (`GAP_NONE` …
+  `GAP_SECTION`) and a z-order registry (`UITheme.Layer`), and the run screens are
+  migrated onto all three. They exist because the file had a thorough colour
+  system and nothing for the other two axes: 25 distinct font sizes across the
+  project (105 uses of `12`, 71 of `11`, 62 of `13`) and ~20 separations, every
+  one typed at its call site. **The scales hold the values that were already in
+  use** — naming them was the whole change, so nothing moved and nothing needed
+  re-fitting. If the size you want is not on the list, take the nearest one.
+  `test_design_tokens.gd` reads the source of the migrated screens and fails on a
+  bare integer; genuinely off-scale values go in its `OFF_SCALE_ALLOWED` list with
+  a reason, the way `check_doc_paths.py` lists its deliberate exceptions. Most of
+  those are gaps that are load-bearing to the pixel on a page fitted to 720p.

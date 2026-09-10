@@ -954,10 +954,14 @@ static func _ch_screen() -> Dictionary:
 			_kv("What you owe", "The checklist, left column."),
 			_kv("What is chasing you", "The board, right column."),
 			_h("Elsewhere in the menus"),
-			_kv("🗺 Map", "The whole route to the Amulet, zoomable, with every "
-				+ "shop marked. It lives in the offering's heading row."),
-			_kv("✦ Atlas", "The entire influence graph as a star chart. Not a run "
-				+ "tool — a thing to look at."),
+			_kv("→ Optimal Path", "The shortest road from where you stand to the "
+				+ "Amulet, rung by rung, with every shop marked. It lives in the "
+				+ "offering's heading row, and on every offered card — a card's "
+				+ "own button routes the path as it would be if you took it."),
+			_kv("🗺 Map", "The star chart, with the road ahead drawn over it. It "
+				+ "lives in the header, so it opens from anywhere in a run."),
+			_kv("✦ Atlas", "The same star chart opened from the menus, with no run "
+				+ "on it. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "
 				+ "game, and whether you have met it."),
 			_kv("🏆 Tier List", "Your own ranking of every game you have beaten, "

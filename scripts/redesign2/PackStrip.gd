@@ -72,7 +72,7 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	# Bottom-aligned so every art tile sits on one baseline whether or not the item
 	# above it grew a Use button — a ragged row of tiles reads as a bug.
 	var col := HoverBox.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_vertical = Control.SIZE_SHRINK_END
 	# The whole column answers the hover, not only the art tile — the Use button
 	# and the battery override it with their own, so every pixel of an item says
@@ -136,7 +136,7 @@ func _counter_badge(item: ItemData) -> Control:
 		UITheme.flat(Color(0.06, 0.06, 0.09, 0.88), 3, 3, 1, UITheme.GOLD))
 	var label := Label.new()
 	label.text = str(count)
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color", UITheme.GOLD)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(label)
@@ -179,7 +179,7 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 		var btn := Button.new()
 		btn.text = "Use"
 		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-		btn.add_theme_font_size_override("font_size", 10)
+		btn.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		btn.add_theme_stylebox_override("normal",
 			UITheme.flat(Color(0.10, 0.22, 0.16, 0.95), 4, 1, 1, Color(0.4, 0.9, 0.6)))
 		btn.add_theme_stylebox_override("hover",
@@ -201,7 +201,7 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 	idle.text = "Use"
 	idle.disabled = true
 	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-	idle.add_theme_font_size_override("font_size", 10)
+	idle.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	idle.tooltip_text = "Finish reporting this game first."
 	return idle
 
@@ -291,6 +291,6 @@ static func _echo_line(item: ItemData) -> String:
 func _empty_note(text: String) -> Label:
 	var l := Label.new()
 	l.text = "  (%s)" % text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	return l

@@ -11,6 +11,184 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run's `☰ Menu` reaches the screens that used to need quitting it, and it
+  is three named groups instead of a list.** It was four entries under one
+  unlabelled rule — Save / New run, then Main menu / Exit — which is fine for
+  four and falls apart at eight. The compendium, the tier board and the manual
+  were reachable only from the MAIN MENU, so "what does this item do", "have I met
+  this enemy" and "how does this actually work" were questions you had to abandon
+  a run to answer. Settings came along for the same reason: F11 already worked
+  mid-run, so the rest of that panel may as well.
+  The groups are ordered by what the entry does to the run, nearest-first —
+  **Information** (changes nothing, and the group you open mid-decision), **This run**
+  (Save, New run), **Game** (Settings, Main menu, Exit, last and furthest from the
+  cursor because both doors out are in it). Each heading is a *labelled*
+  `add_separator`, which is what turns a list of eight into three lists of three.
+  All four screens go on a layer **above** the pinned header
+  (`_open_full_screen`): each replaces the run rather than sitting over it, and
+  the bar floats over everything on the page including their own Close button. The
+  tier board used to answer that by standing the bar *down* while it was up; going
+  over it instead is what the Atlas and the verdict already do, and it is one less
+  piece of state to get wrong.
+  **The popup is on the palette and hangs from its own button.** `make_theme`
+  dressed Button, CheckBox, Panel, Label, LineEdit, OptionButton, the separators
+  and the scrollbars, and never touched `PopupMenu` — so the menu came up as
+  Godot's stock dropdown, a flat slab with a blue selection bar and a
+  grey-on-grey heading, on a page of warm brown panels. And `MenuButton` drops
+  its popup below and LEFT-aligned by default, while `☰ Menu` is hard against
+  the right edge of the canvas: it overflowed, was clamped flush against the edge
+  with no margin, and started ~50px to the left of the button that opened it. It
+  is right-aligned to the button and clamped inside the canvas now, measured in
+  `about_to_popup` off `get_contents_minimum_size` — the popup's own `size` is a
+  stale 0 until it has been laid out once.
+  **Every dropdown in the project comes with it.** There are thirteen
+  `OptionButton`s across six screens — the Collection's type and record filters,
+  the Atlas's mode and region pickers, Custom Run's four filter columns, the Dash
+  panel's type filter and Settings' display, window-size and audio lists — and
+  every one is a bare `OptionButton.new()` that takes the theme, so they all
+  moved together. `test_design_tokens.gd` scans their source and fails a screen
+  that reaches for its own stylebox or font colour; a font SIZE stays a legitimate
+  per-screen choice (the Dash filter sits on the 720p-budgeted page).
+  **A dropdown marks its selection and nothing else.** Godot's stock pair is
+  drawn for a light theme — the same reason the CheckBox icons were replaced —
+  so on these panels the ticked mark was a pale ring and the UNTICKED one a faint
+  dark square: every row of every list wore a smudge and the selected one barely
+  stood out. Chosen is a solid accent dot now (`UITheme.popup_mark`), unchosen is
+  empty.
+
+  *Correction to the entry as first written:* it claimed the theme did not reach
+  `OptionButton` popups. It does, and always did once the `PopupMenu` entry
+  existed — the pixel under one of those popups is exactly `UITheme.PANEL`. The
+  "gap" was a misread of a screenshot; small dark panels are hard to judge by eye
+  and the right tool was sampling the rendered pixel, which is what settled it.
+
+- **The run's header carries no title.** "Roguelike-like" in 20px gold sat
+  between the road walked and the buttons — about 180px of the one row in the game
+  that never leaves the screen, spent naming the game the player already has open.
+  It had been moved out of the left corner once already to make room for Health,
+  with the note that this "is also the honest ranking of the two"; this is the end
+  of that argument. The road strip is `EXPAND_FILL` and takes the width without
+  anything else moving, which is what it wanted — it is clipped, and past
+  `STRIP_MAX_STOPS` it drops its oldest stops behind an ellipsis.
+
+- **`UITheme` has a type scale and a spacing scale, and the z-order is one list.**
+  It had a thorough colour system — eleven semantic colours, rarity, type and
+  class ramps, `chip()`, `action_button()`, `panel_box()` — and nothing at all for
+  the other two axes, so every font size and every gap in the game was an integer
+  typed at its call site. The count: **25 distinct font sizes** (105 uses of `12`,
+  71 of `11`, 62 of `13` — three sizes doing one job, with nothing to say which is
+  which) and ~20 distinct separations. That is also why the 720p fit work keeps
+  being expensive: "give this column 26px back" means auditing eight numbers by
+  hand and writing a comment explaining each.
+  **The values did not change.** The scale names the values already in use, so
+  nothing moved, nothing needed re-fitting and the fit tests stayed green. The
+  nine run screens are migrated (129 font sizes, 88 gaps); everything else adopts
+  it as it is next touched, and `test_design_tokens.gd` reads the source to say so
+  — the same trick `test_display_settings.gd` uses for glyph coverage. The gaps
+  that are deliberately off-scale are listed there with their reason: they are
+  load-bearing to the pixel on a page fitted to 720p with single digits to spare,
+  and snapping one to the nearest step is exactly the change that puts the
+  overworld behind a scrollbar.
+  The **z-order** is `UITheme.Layer`. Eleven CanvasLayer numbers spread across ten
+  files described one global invariant that could only be checked by grepping for
+  it, with the README's prose the only place the order was written down — and it
+  had already cost two bugs (the map above the haul screen, the start screen's own
+  popups below it). The list is ordered bottom to top and a test walks it.
+  **Modals are on the theme's own surface**: `ModalScaffold.PANEL_BG` was
+  `Color(0.10, 0.08, 0.12)`, a cool purple-black, on top of a game whose every
+  other surface is `#251f18` warm brown. The Collection's pane was a third
+  (`0.06, 0.06, 0.09`). Both are `UITheme.PANEL` now.
+
+- **The detail pane earns its width instead of reserving it.** The Collection and
+  the tier list both mounted theirs OPEN and EMPTY, holding 380px and 306px of the
+  page for a label reading "Select an entry to view details" — against a click
+  that had not happened yet. On the Games tab that is the difference between five
+  columns and **eight** while you scan 865 covers, which is the tab's whole job.
+  The pane is closed until something is picked and carries a `✕` to put it away
+  again; the grid is an `HFlowContainer` and the tier board measures the scroll
+  region beside it, so both take the width back by themselves. One change covers
+  all eight Collection tabs, because every one is built by `_grid_and_detail`.
+
+- **The star chart's route is the only ember on it.** `COL_EDGE_CROSS` was
+  `Color(1.0, 0.541, 0.235, 0.13)` — which is `UITheme.ACCENT` at 13% — while the
+  route ahead is `COL_TRAIL`, ember at 95%. Same hue. One link at 13% is faint,
+  but there are ~1250 of them and they overlap: they sum into an orange haze that
+  the one line the player is following has to be picked out of, and the cased-line
+  treatment was carrying that fight alone. The ambient links give up the hue
+  rather than the route giving up its own — desaturated to a parchment neutral at
+  6%, with plain influence links down from 20% to 13% and sequel links from 42% to
+  26%. The legend key went from an 11px ring with a 2px rim to 14px with 3px:
+  it carries five genre colours and three of the five read as the same dark circle
+  at the old size, which made the key that explains the sky the least legible
+  thing on it.
+
+- **The run owns what it opens.** `_open_route_map` built the map, handed it to
+  its caller and kept no reference — so it was the one screen the overworld raised
+  that it could not take back, which meant it outlived the state it was drawn
+  from: the ladder is routed from where the run STANDS, and the run moves
+  underneath it. It is held now and closed wherever the road changes (travelling,
+  reporting a game, a new run), so the map on screen is always a map of the run on
+  screen — and the haul screen, which opens on a layer below it, is no longer
+  opened underneath it. Opening a second map no longer strands the first. An
+  offered game's card goes the same way: `New run` used to drop a fresh run behind
+  a popup describing a game off the old offering.
+
+- **The choice of road is its own screen, and the Amulet is what it is about.**
+  The opening choice was `Phase.START_SELECT` drawn into the overworld's left
+  column, and the page it borrowed is built for a run that has started. At the
+  moment of the run's first decision the right-hand half was an empty 4×4 board
+  with a hero standing on no run, `EXTRA TURNS 0`, `no route to the Amulet` and a
+  Push / Bomb toolbar that could not be pressed — about 600×560 of furniture that
+  could be neither read nor used. The left half, meanwhile, did not fit: heading,
+  cards, hover line, verb chips and the standing checklist measured **647–675px of
+  the 630** a 720p window leaves, so the first screen of every run opened behind a
+  scrollbar with its last line sliced in half. And the Amulet — the thing both
+  roads end on, and the whole of what makes one road different from another — was
+  the opening clause of a wrapped sentence above two covers.
+  `StartPicker` is that screen now. The Amulet's art and name are the banner
+  across the top; each road is a card with its cover, its distance, the enemy
+  standing on it and its goal, and its own `→ Optimal Path` and `⚙ Details`.
+  Click a road to select it and **Begin** to take it — preview-then-commit, the
+  same shape as `CharacterPicker`, because a card that commits on the first click
+  cannot be read before it is answered.
+  **The run is still rolled by `Overworld2.start_run`**, which raises the screen
+  over its own hidden page: the reset that decides the seed has to happen before
+  the map is drawn from it, so booting the run from a menu screen would mean
+  either rolling the graph twice or putting run-boot somewhere with no business
+  doing it. The screen reports an index; `choose_start` is still the one door in,
+  so a road taken by a player and one taken by a test leave the page identical.
+  The heading also **counts** the roads instead of asserting a number — it said
+  "three genres" for as long as `RunGraph.NUM_START_OPTIONS` has been 2.
+
+- **`🗺 Map` and `→ Optimal Path` are two buttons, two destinations, two names.**
+  Three buttons on the old start panel said `Map`, for two different things: the
+  header's and the offering heading's both called `open_map` and raised the whole
+  865-star Atlas, while the per-card ones opened the ladder. The chart is the
+  **Map** and it is the header's, open from anywhere including mid-game; the
+  ladder is the **Optimal Path** — `Overworld2.open_optimal_path`, the per-road
+  buttons on the start screen, and `RunMapModal`'s own title, which stopped
+  calling itself `Map to the Amulet` because it is not a map of anything, it is
+  one shortest road drawn rung by rung.
+
+- **The toasts moved to the foot of the screen.** The stack was anchored
+  top-right at `offset_top = 56`, which on the one screen this game spends its run
+  on is exactly where the battlefield's pressure bar sits — so every drop, pickup
+  and arrival painted over `EXTRA TURNS`, the distance to the Amulet and the
+  board's size and tier. (The loot toggle had already been moved out from under
+  this same stack; the pressure bar simply inherited the spot.) They pile up from
+  the bottom edge now, centred, newest against the foot — the least dense band in
+  every phase — and the overworld publishes the `🛒 Shop ↓` pointer's height to
+  them so the two cannot share it.
+
+- **The screens that fit are measured, including the one that never was.**
+  `test_screens_fit.gd` skips ScrollContainers with their contents, which is right
+  for a long list and is why it could never see the overworld's page; and
+  `test_overworld2.gd::_assert_fits` only ever runs *after* `choose_start`. So the
+  opening screen fell between the two guards and overflowed for as long as it
+  existed. It is measured now, over six re-rolls — its height rides on how a run's
+  game names and goal sentences happen to wrap — along with the optimal path and
+  the road card it can open over itself.
+
 - **Rating a game and putting it in a tier are two presses now, and the second one
   is a button.** Scoring a game out of 10 used to open the tier list on submit,
   from the select screen — which meant "record what I thought of it" and "decide

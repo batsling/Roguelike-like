@@ -59,12 +59,12 @@ extends Control
 # event, then the shop, then the detour question.
 signal finished
 
-const LAYER := 128
+const LAYER := UITheme.Layer.POST_COMBAT
 # Where a card raised BY one of this screen's sections goes: above the screen and
 # still below the run's header bar (135). Nothing on the screen needs it since the
 # shelf came off, but a section that raises a card of its own will, and 131 is the
 # only value between this screen and the bar.
-const CARD_LAYER := 131
+const CARD_LAYER := UITheme.Layer.POST_COMBAT_CARD
 const ACCENT := UITheme.ACCENT
 # The frame's inset from the room it is allowed. Small, because this screen is
 # the page for as long as it is up and the loot column alone wants 586 of the

@@ -674,30 +674,73 @@ func _name_block_height() -> float:
 	return _name_height_cache
 
 const DETAIL_PANEL_W := 380
+
+# THE PANE IS CLOSED UNTIL THERE IS SOMETHING IN IT.
+#
+# It used to be mounted open and empty, holding 380 of the page's 1280 for a
+# label reading "Select an entry to view details" — a third of the widest screen
+# in the game, reserved against a click that had not happened yet. On the Games
+# tab that is the difference between five columns and seven while you scan 865
+# covers, which is the tab's whole job.
+#
+# The grid is an HFlowContainer, so it takes the width back by itself the moment
+# this is hidden and gives it up again when an entry opens. Both are one property
+# on one node because every tab is built by the same `_grid_and_detail`.
+var _detail_panel: PanelContainer = null
+
+func _set_detail_open(on: bool) -> void:
+	if _detail_panel != null and is_instance_valid(_detail_panel):
+		_detail_panel.visible = on
+
 func _new_detail_panel() -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.06, 0.09, 0.95)))
+	# The theme's own raised surface. This was Color(0.06, 0.06, 0.09) — a cool
+	# blue-black — on a screen whose every other surface is warm brown.
+	p.add_theme_stylebox_override("panel", _flat(UITheme.PANEL))
 	p.custom_minimum_size = Vector2(DETAIL_PANEL_W, 0)
+	p.visible = false
+	_detail_panel = p
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	p.add_child(col)
+	# THE WAY BACK TO THE COLUMNS. Opening an entry costs the grid two of its
+	# columns, so there has to be something that gives them back — without it the
+	# only way to close the pane is to change tab, which also throws away the
+	# filter and the scroll position.
+	var close_row := HBoxContainer.new()
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_row.add_child(spacer)
+	var close := Button.new()
+	close.text = "✕"
+	close.flat = true
+	close.tooltip_text = "Close this entry and give the grid its width back."
+	close.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	close.pressed.connect(func(): _close_detail())
+	close_row.add_child(close)
+	col.add_child(close_row)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	p.add_child(scroll)
+	col.add_child(scroll)
 	_detail_box = VBoxContainer.new()
-	_detail_box.add_theme_constant_override("separation", 6)
+	_detail_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Panel width minus the stylebox margins (10 a side) and the vertical
 	# scrollbar, so right-aligned values (Tier / Damage / Health) aren't clipped.
 	_detail_box.custom_minimum_size = Vector2(DETAIL_PANEL_W - 52, 0)
 	scroll.add_child(_detail_box)
-	_detail_placeholder("Select an entry to view details")
 	return p
 
-func _detail_placeholder(text: String) -> void:
+# Empty the pane and put it away. This replaced `_detail_placeholder`, which
+# existed only to write "Select an entry to view details" into a pane that was on
+# screen with nothing in it — there is no placeholder any more, because the pane
+# is not there when there would be one to show.
+func _close_detail() -> void:
 	_clear_children(_detail_box)
 	_detail_game = null
-	var l := _label(text, Color(0.55, 0.55, 0.6), 13)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail_box.add_child(l)
+	_set_detail_open(false)
 
 func _controls_row() -> HBoxContainer:
 	var bg := PanelContainer.new()
@@ -1122,6 +1165,7 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	return panel
 
 func _show_game_detail(g: GameData) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = g
 	var tc := _game_type_color(int(g.type))
@@ -1333,6 +1377,7 @@ func _item_cell(it: ItemData) -> Control:
 	return cell.panel
 
 func _show_item_detail(it: ItemData) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
 	var rc := _item_accent(it)
@@ -1416,6 +1461,7 @@ func _character_cell(ch: CharacterData) -> Control:
 	return cell.panel
 
 func _show_character_detail(ch: CharacterData) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
 	var green := Color(0.45, 0.82, 0.45)
@@ -1689,6 +1735,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	return panel
 
 func _show_enemy_detail(e: GoalEnemyData) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _enemy_accent(e)
 	if e.image != null:
@@ -2253,6 +2300,7 @@ func _event_cell(ev: EventData2) -> Control:
 	return cell.panel
 
 func _show_event_detail(ev: EventData2) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _event_accent(ev)
 	var tex: Texture2D = _event_art(ev)
@@ -2474,6 +2522,7 @@ func _object_cell(obj: ObjectData) -> Control:
 	return cell.panel
 
 func _show_object_detail(obj: ObjectData) -> void:
+	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _object_accent(obj)
 	var tex: Texture2D = _object_art(obj)

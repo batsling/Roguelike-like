@@ -141,8 +141,8 @@ var _body_min_h: float = EMBED_BODY_MIN_H
 # are usually an order you just placed. See _build.
 var _take_all_button: bool = false
 # The use modal opens on TOP of this one, so it needs a layer above this layer.
-const LAYER := 122
-const USE_LAYER := 130
+const LAYER := UITheme.Layer.DROP
+const USE_LAYER := UITheme.Layer.MAP
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS

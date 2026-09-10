@@ -69,30 +69,30 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	center.add_child(card)
 
 	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 0)
+	body.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	card.add_child(body)
 
 	# Header band, tinted by threat (front column red, boss orange).
 	var header := PanelContainer.new()
 	header.add_theme_stylebox_override("panel", UITheme.flat(accent.lerp(UITheme.BG, 0.72), 12, 14, 0))
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 12)
+	head_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = ("☠  " if e.is_boss() else "") + e.display_name
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.5))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_row.add_child(title)
 	var close_btn := Button.new()
 	close_btn.text = "✕"
-	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	close_btn.pressed.connect(close)
 	head_row.add_child(close_btn)
 	body.add_child(header)
 
 	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 12)
+	inner.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		pad.add_theme_constant_override(side, 16)
@@ -101,7 +101,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 
 	# Art beside the headline stats.
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 16)
+	top.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	var art_frame := PanelContainer.new()
 	art_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 10, 8, 1, accent.lerp(UITheme.BG, 0.4)))
 	art_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -112,7 +112,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	top.add_child(art_frame)
 
 	var stat_col := VBoxContainer.new()
-	stat_col.add_theme_constant_override("separation", 6)
+	stat_col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	stat_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var hp: int = int(entry.get("health", e.health))
@@ -190,7 +190,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 
 	# Type / tier / source chips.
 	var chips := HBoxContainer.new()
-	chips.add_theme_constant_override("separation", 6)
+	chips.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	chips.add_child(_chip(String(e.game_type).capitalize(), UITheme.ACCENT))
 	chips.add_child(_chip("Tier %s" % RunDifficulty.tier_name(int(e.difficulty)), UITheme.GOLD))
 	if e.is_boss():
@@ -215,10 +215,10 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		wrap.add_theme_stylebox_override("panel", UITheme.flat(
 			UITheme.BG, 8, 10, 1, ABILITY_TINT.lerp(UITheme.BG, 0.55)))
 		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 6)
+		box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 		var hdr := Label.new()
 		hdr.text = "ABILITIES"
-		hdr.add_theme_font_size_override("font_size", 11)
+		hdr.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		hdr.add_theme_color_override("font_color", ABILITY_TINT)
 		box.add_child(hdr)
 		for row in abilities:
@@ -243,7 +243,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 			if sd != null:
 				dead[sd.id] = true
 		var strip := HBoxContainer.new()
-		strip.add_theme_constant_override("separation", 8)
+		strip.add_theme_constant_override("separation", UITheme.GAP)
 		for row in statuses:
 			var st: StatusData = row["status"]
 			strip.add_child(_status_chip(st, int(row["stacks"]),
@@ -258,7 +258,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		goal_box.add_theme_constant_override("separation", 3)
 		var goal_hdr := Label.new()
 		goal_hdr.text = "GOAL  (%s)" % String(GameLoop2.entry_goal_type(entry)).capitalize()
-		goal_hdr.add_theme_font_size_override("font_size", 11)
+		goal_hdr.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		goal_hdr.add_theme_color_override("font_color", UITheme.GOLD)
 		goal_box.add_child(goal_hdr)
 		var goal_txt := Label.new()
@@ -271,7 +271,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		goal_txt.text = GameLoop2.entry_goal(entry)
 		goal_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		goal_txt.custom_minimum_size = Vector2(460, 0)
-		goal_txt.add_theme_font_size_override("font_size", 14)
+		goal_txt.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 		goal_box.add_child(goal_txt)
 		# WHAT THE STATUSES ADDED, one row each and coloured by which way it cuts
 		# (§13, UITheme.addon_row): red for a condition added to the goal — a buff on
@@ -287,7 +287,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	if e.source_game != "":
 		var src := Label.new()
 		src.text = "From %s" % e.source_game
-		src.add_theme_font_size_override("font_size", 12)
+		src.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		inner.add_child(src)
 
@@ -296,7 +296,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	if instance > 0:
 		inner.add_child(HSeparator.new())
 		var acts := HBoxContainer.new()
-		acts.add_theme_constant_override("separation", 8)
+		acts.add_theme_constant_override("separation", UITheme.GAP)
 		var can_push: bool = GameState.push > 0 and GameLoop2.can_push(instance)
 		var pb := Button.new()
 		pb.text = "⇤  Push back a column (%d)" % GameState.push
@@ -350,22 +350,22 @@ func _stat_row_art(art: Texture2D, label: String, value: String,
 
 func _stat_row(icon: String, label: String, value: String, color: Color) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var ico := Label.new()
 	ico.text = icon
-	ico.add_theme_font_size_override("font_size", 16)
+	ico.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	ico.add_theme_color_override("font_color", color)
 	ico.custom_minimum_size = Vector2(22, 0)
 	row.add_child(ico)
 	var name_lbl := Label.new()
 	name_lbl.text = label
-	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	name_lbl.custom_minimum_size = Vector2(76, 0)
 	row.add_child(name_lbl)
 	var val := Label.new()
 	val.text = value
-	val.add_theme_font_size_override("font_size", 14)
+	val.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(val)
 	return row
@@ -380,17 +380,17 @@ const ABILITY_TINT := Color(1.0, 0.78, 0.28)
 func _ability_row(row: Dictionary) -> Control:
 	var ad: AbilityData = row["ability"]
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 6)
+	head.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var mark := Label.new()
 	mark.text = "⚠"
-	mark.add_theme_font_size_override("font_size", 13)
+	mark.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	mark.add_theme_color_override("font_color", ABILITY_TINT)
 	head.add_child(mark)
 	var name_lbl := Label.new()
 	name_lbl.text = String(row["name"])
-	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	name_lbl.add_theme_color_override("font_color", ABILITY_TINT.lerp(Color.WHITE, 0.35))
 	head.add_child(name_lbl)
 	if String(ad.kind) != "":
@@ -400,7 +400,7 @@ func _ability_row(row: Dictionary) -> Control:
 	what.text = String(row["text"])
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	what.custom_minimum_size = Vector2(440, 0)
-	what.add_theme_font_size_override("font_size", 12)
+	what.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(what)
 	return col
@@ -410,7 +410,7 @@ func _chip(text: String, color: Color) -> Control:
 	wrap.add_theme_stylebox_override("panel", UITheme.flat(color.lerp(UITheme.BG, 0.72), 6, 6, 1, color.lerp(UITheme.BG, 0.35)))
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.35))
 	wrap.add_child(l)
 	return wrap
@@ -445,7 +445,7 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 	row.add_child(col)
 	var name_lbl := Label.new()
 	name_lbl.text = "%s %d" % [status.display_name, stacks]
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.35))
 	col.add_child(name_lbl)
 	var what := Label.new()
@@ -459,7 +459,7 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 		what.text = status.objective_text(StatusData.ENEMY, stacks)
 	else:
 		what.text = "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks)
-	what.add_theme_font_size_override("font_size", 11)
+	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	what.custom_minimum_size = Vector2(330, 0)

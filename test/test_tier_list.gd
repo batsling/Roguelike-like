@@ -72,10 +72,30 @@ func test_the_board_draws_a_tile_per_placed_game() -> void:
 	assert_true(ids.has(_game_a.id), "a game on the board has a tile")
 	assert_true(ids.has(_game_b.id))
 
+# THE PANE IS NOT THERE UNTIL THERE IS SOMETHING IN IT. It used to be mounted
+# open and empty, holding 306px of the screen for "Pick a game to see the score
+# and notes you left on it." beside six empty lanes — a third of the screen
+# reserved against a click that had not happened yet. The lanes take that width
+# now and give it back when a game is picked.
 func test_nothing_is_selected_until_something_is_clicked() -> void:
 	assert_eq(_screen.selected_game(), &"", "the panel starts empty")
-	assert_true(_detail_text().contains("Pick a game"),
-		"and says so, rather than showing a blank column")
+	assert_false(_screen._detail_panel.visible,
+		"and it is put away rather than standing there as a blank column")
+
+func test_picking_a_game_opens_the_pane_and_closing_it_gives_the_lanes_the_width_back() -> void:
+	await _settle()
+	var wide: float = _screen._scroll.size.x
+	_screen.select_game(_game_a.id)
+	await _settle()
+	assert_true(_screen._detail_panel.visible, "picking a game opens the pane")
+	assert_lt(_screen._scroll.size.x, wide, "and the lanes give up the width for it")
+	# What the pane's ✕ does. Clearing the SELECTION is the close: the pane is a
+	# view of `_selected`, so emptying it without clearing that closes the pane
+	# until the next repaint and then puts it straight back.
+	_screen.select_game(&"")
+	await _settle()
+	assert_false(_screen._detail_panel.visible, "closing it puts the pane away")
+	assert_almost_eq(_screen._scroll.size.x, wide, 1.0, "and the lanes have it back")
 
 # --- clicking a game --------------------------------------------------------
 
@@ -215,7 +235,16 @@ func test_a_full_board_still_fits_the_window_it_opens_in() -> void:
 	assert_gt(space, 0.0, "the board has been laid out")
 	assert_lte(_screen._rows_box.size.y, space + 1.0,
 		"sixty games are drawn inside the space the board was given, not below it")
-	assert_lt(_screen._scale, 1.0, "which took shrinking the tiles")
+	# ...and IF that took shrinking, it shrank. Asked conditionally rather than
+	# asserted outright: how many games overflow the board is a fact about how wide
+	# the lanes are, and they got ~320px wider when the detail pane stopped being
+	# mounted open and empty — at which point sixty games fit at full size and this
+	# said the fit was broken. The invariant is "overflow is answered by shrinking",
+	# which is true either way.
+	if _screen._board_height(_screen._scroll.size.x, 1.0) > space:
+		assert_lt(_screen._scale, 1.0, "which took shrinking the tiles")
+	else:
+		assert_eq(_screen._scale, 1.0, "and did not need shrinking to do it")
 
 func test_a_board_with_room_to_spare_is_not_shrunk() -> void:
 	# Two games need no shrinking, and shrinking them anyway would make the common
@@ -228,7 +257,10 @@ func test_the_fit_stops_shrinking_at_the_legibility_floor() -> void:
 	# shrinking. This is the ONE case the scroll is still there for. Asked of the
 	# fit itself rather than of a built board: eight hundred tiles is a lot of cover
 	# art to decode to find out what a division already knows.
-	_stock_board(800, false)
+	# Two thousand, not eight hundred: the lanes are ~320px wider since the detail
+	# pane stopped being mounted open, so eight hundred tiles now fit at 0.30 and
+	# never reach the floor this test is about.
+	_stock_board(2000, false)
 	await get_tree().process_frame
 	assert_eq(_screen._fit_scale(), TierListScreen.MIN_SCALE,
 		"a board that big lands on the floor rather than below it")

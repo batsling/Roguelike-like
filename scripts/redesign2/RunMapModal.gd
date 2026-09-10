@@ -128,6 +128,7 @@ func _init() -> void:
 #   preview      bool       top node reads "if you go here"; no journey trail
 #   title        String     replaces the header title
 #   atlas        AtlasView  the star chart underneath, wired to the ladder
+#   layer        int        the CanvasLayer to mount on (default 130)
 func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
 		options: Dictionary = {}) -> void:
 	_current = current
@@ -144,7 +145,12 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 		_choice_ids[StringName(id)] = true
 	UITheme.dress(self)     # a theme does not cross the CanvasLayer below
 	_layer = CanvasLayer.new()
-	_layer.layer = 130
+	# 130 unless the caller says otherwise, the same escape hatch GameChoiceModal
+	# has. The start picker is a full screen of its own and sits ABOVE the run's
+	# ordinary furniture, so the ladder it opens has to come up above IT rather
+	# than behind it — a window mounted at 130 under a screen at 136 opens
+	# perfectly and is never seen.
+	_layer.layer = int(options.get("layer", UITheme.Layer.MAP))
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)
@@ -315,7 +321,11 @@ func _build_header() -> Control:
 	title_row.add_child(grip)
 
 	var title := Label.new()
-	title.text = _title if _title != "" else "🗺  Map to the Amulet"
+	# THE WINDOW IS THE OPTIMAL PATH, so it says so. It used to be titled `Map to
+	# the Amulet` while the star chart it opens over is also called the Map — and
+	# the ladder is not a map of anything, it is the one shortest road drawn rung
+	# by rung. `🗺 Map` now means the chart and nothing else.
+	title.text = _title if _title != "" else "→  Optimal Path to the Amulet"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -487,8 +497,12 @@ func _refresh_distance_label() -> void:
 		_dist_label.text = "Route via %s: %d step%s" % [node_name(waypoint()), d,
 			"" if d == 1 else "s"]
 	else:
+		# SHORT, because this row shares a 380px floor with the zoom buttons and the
+		# ✦ Star chart button and it is the only thing on it that can give ground.
+		# "Optimal path from there" spent the whole row saying what the window's own
+		# title says, and then clipped to "Optimal …".
 		_dist_label.text = "%s: %d step%s" % [
-			"Optimal path from there" if _preview else "Shortest path",
+			"From there" if _preview else "Shortest path",
 			d, "" if d == 1 else "s"]
 
 # Build (or rebuild, on zoom) the graph canvas. The drawing is RouteLadder's —

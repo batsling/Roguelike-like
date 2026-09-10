@@ -503,12 +503,12 @@ func _build_pressure_bar() -> Control:
 	# has to honour — which is how the board ended up wider than the page. Flowing
 	# lets the strip take a second line on a narrow column instead.
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 10)
-	row.add_theme_constant_override("v_separation", 2)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
 	_pressure_panel.add_child(row)
 
 	_pressure_turns = Label.new()
-	_pressure_turns.add_theme_font_size_override("font_size", 14)
+	_pressure_turns.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	row.add_child(_pressure_turns)
 
 	# The ladder: one pip per EXTRA turn the end of a game can ever hand the board.
@@ -516,22 +516,22 @@ func _build_pressure_bar() -> Control:
 	# answerable without a tooltip — and empty out in the wilds, which is the
 	# reading that matters: nothing is owed at the end of a game there.
 	var ladder := HBoxContainer.new()
-	ladder.add_theme_constant_override("separation", 2)
+	ladder.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_pressure_rungs.clear()
 	for i in range(RunDifficulty.MAX_EXTRA_TURNS):
 		var pip := Label.new()
-		pip.add_theme_font_size_override("font_size", 15)
+		pip.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		ladder.add_child(pip)
 		_pressure_rungs.append(pip)
 	row.add_child(ladder)
 
 	_pressure_why = Label.new()
-	_pressure_why.add_theme_font_size_override("font_size", 12)
+	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_pressure_why)
 
 	_size_label = Label.new()
-	_size_label.add_theme_font_size_override("font_size", 12)
+	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_size_label)
 	return _pressure_panel
@@ -625,17 +625,17 @@ func _build_battle_toolbar() -> Control:
 	# and the two verbs add up to more than the board is wide, and as an HBox that
 	# sum became the panel's minimum width and pushed the board off the page.
 	var bar := HFlowContainer.new()
-	bar.add_theme_constant_override("h_separation", 8)
-	bar.add_theme_constant_override("v_separation", 4)
+	bar.add_theme_constant_override("h_separation", UITheme.GAP)
+	bar.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 
 	_hint_label = Label.new()
 	_hint_label.text = "Click an enemy:"
-	_hint_label.add_theme_font_size_override("font_size", 12)
+	_hint_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(_hint_label)
 
 	_target_label = Label.new()
-	_target_label.add_theme_font_size_override("font_size", 13)
+	_target_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	# Enough width that the usual "no target selected" doesn't make the verbs jump
 	# when a name lands in it, but not so much that it sets the panel's width.
 	_target_label.custom_minimum_size = Vector2(140, 0)
@@ -643,12 +643,12 @@ func _build_battle_toolbar() -> Control:
 	bar.add_child(_target_label)
 
 	push_btn = Button.new()
-	push_btn.add_theme_font_size_override("font_size", 13)
+	push_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	push_btn.pressed.connect(toggle_push_mode)
 	bar.add_child(push_btn)
 
 	bomb_btn = Button.new()
-	bomb_btn.add_theme_font_size_override("font_size", 13)
+	bomb_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	bomb_btn.pressed.connect(toggle_bomb_mode)
 	bar.add_child(bomb_btn)
 
@@ -662,7 +662,7 @@ func _build_battle_toolbar() -> Control:
 	# wraps the toolbar onto a second row and pushes the bottom of the board off
 	# the window. An empty graveyard is most of the first game of every run.
 	graveyard_btn = Button.new()
-	graveyard_btn.add_theme_font_size_override("font_size", 13)
+	graveyard_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	graveyard_btn.visible = false
 	graveyard_btn.pressed.connect(func(): graveyard_requested.emit())
 	bar.add_child(graveyard_btn)
@@ -673,7 +673,7 @@ func _build_battle_toolbar() -> Control:
 	# it onto a second row. An item is armed for a few seconds at a time, and those
 	# are the only seconds this needs to exist.
 	aim_btn = Button.new()
-	aim_btn.add_theme_font_size_override("font_size", 13)
+	aim_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	aim_btn.visible = false
 	# One Cancel for whichever ground-aiming verb is up — the button stands in the
 	# same place for both, so it disarms whichever one put it there.
@@ -1064,7 +1064,7 @@ func _build() -> void:
 	# The view stacks the combat toolbar over the field itself, and hosts the FX
 	# layer that floats damage numbers / sliding enemies above both.
 	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 10)
+	outer.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	add_child(outer)
 	outer.add_child(_build_pressure_bar())
 	outer.add_child(_build_battle_toolbar())
@@ -1083,7 +1083,7 @@ func _build() -> void:
 	# Hero column.
 	var hero_box := VBoxContainer.new()
 	hero_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	hero_box.add_theme_constant_override("separation", 4)
+	hero_box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	hero_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# Pips ABOVE the portrait: the hits you can still shrug off, in the same place
 	# the damage numbers land, so a swing that a shield eats reads as the two
@@ -1117,7 +1117,7 @@ func _build() -> void:
 	hero_box.add_child(_hero_statuses)
 	_hero_hp = Label.new()
 	_hero_hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hero_hp.add_theme_font_size_override("font_size", 14)
+	_hero_hp.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	_hero_hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
 	hero_box.add_child(_hero_hp)
 	_battlefield.add_child(hero_box)
@@ -1184,11 +1184,11 @@ func _build() -> void:
 	# game you're currently playing, whose enemy only steps onto the grid once you
 	# report the result.
 	var off_col := VBoxContainer.new()
-	off_col.add_theme_constant_override("separation", 4)
+	off_col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	off_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var off_lbl := Label.new()
 	off_lbl.text = "off field"
-	off_lbl.add_theme_font_size_override("font_size", 10)
+	off_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	off_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	off_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	off_col.add_child(off_lbl)
@@ -1854,7 +1854,7 @@ func _push_arrow(dir: Vector2i, at: Vector2, e: GoalEnemyData) -> Button:
 	b.size = Vector2(ARROW_SIZE, ARROW_SIZE)
 	b.position = at - Vector2(ARROW_SIZE, ARROW_SIZE) * 0.5
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	b.add_theme_color_override("font_color", UITheme.ACCENT)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_stylebox_override("normal",
@@ -1879,7 +1879,7 @@ func _no_room_note(centre: Vector2, e: GoalEnemyData) -> Control:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.size = Vector2(90, 16)
 	l.position = centre - Vector2(45, 8)
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.DANGER)
 	return l
 
@@ -2116,7 +2116,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# became the wrong node the moment a third one was added.
 	var stat_row := HBoxContainer.new()
 	stat_row.name = "StatRow"
-	stat_row.add_theme_constant_override("separation", 2)
+	stat_row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_row.add_child(hp_lbl)
 	# A Dexterity shield goes next to the Health it is standing in front of, and
@@ -2147,7 +2147,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		var strip := HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
 		strip.alignment = BoxContainer.ALIGNMENT_CENTER
-		strip.add_theme_constant_override("separation", 2)
+		strip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
 			_nullified_ids(entry))
 		strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
@@ -2210,7 +2210,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	if not marks.is_empty():
 		var corner := HBoxContainer.new()
 		corner.name = "CornerMarks"
-		corner.add_theme_constant_override("separation", 2)
+		corner.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		for m in marks:
 			corner.add_child(m)
@@ -2432,7 +2432,7 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 	HoverCard.attach(chip, status_hover(status, stacks, which, nullified, games))
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 2)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(row)
 	if status.image != null:
@@ -2989,7 +2989,7 @@ func _spawn_turn_counter(turn: int, turns: int, base: int, extra_turns: int,
 		lbl.text = ("⚠ PREDATORY SCENT" if hunt
 			else ("EXTRA TURN %d / %d" % [extra, extra_turns] if extra > 0
 			else "TURN %d / %d" % [turn, turns]))
-		lbl.add_theme_font_size_override("font_size", 28)
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 		lbl.add_theme_color_override("font_color", band)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 		lbl.add_theme_constant_override("outline_size", 7)
@@ -3073,7 +3073,7 @@ func _spawn_strike_flash(rect: Rect2) -> void:
 func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2) -> void:
 	var lbl := Label.new()
 	lbl.text = "-%d" % amount
-	lbl.add_theme_font_size_override("font_size", 26)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	lbl.add_theme_color_override("font_color", Color(1.0, 0.42, 0.38))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	lbl.add_theme_constant_override("outline_size", 6)

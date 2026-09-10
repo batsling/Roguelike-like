@@ -165,6 +165,68 @@ func test_the_settings_modal_fits() -> void:
 	await wait_frames(6)
 	_assert_fits("the settings modal", screen)
 
+# --- the opening screen of a run --------------------------------------------
+#
+# THIS IS THE ONE THE SUITE COULD NOT SEE. The choice of road used to be
+# `Phase.START_SELECT` drawn into the overworld's own left column, and that page
+# lives inside a ScrollContainer — which `_overflow` skips with its contents,
+# because a list longer than the window is what one is FOR. So the general guard
+# here could not measure it, and the overworld's own row-sum guard
+# (`test_overworld2.gd::_assert_fits`) never ran on that phase: every call it
+# makes happens after `choose_start`. Between the two of them the first screen of
+# every run went unmeasured, and it overflowed a 720p window by 17-45px depending
+# on how the run's names happened to wrap — a scrollbar and a half-sliced line, on
+# the opening screen, every time.
+#
+# It is `StartPicker` now, its own screen and not inside anyone's scroll region,
+# so the ordinary measurement reaches it.
+
+func _run_at_the_start_screen() -> Node:
+	var ow = load("res://scenes/redesign2/Overworld2.tscn").instantiate()
+	add_child_autofree(ow)
+	await wait_frames(8)
+	return ow
+
+func test_the_start_screen_fits() -> void:
+	var ow = await _run_at_the_start_screen()
+	if ow._start_picker == null:
+		pending("no start options rolled — an empty or heavily filtered catalog")
+		return
+	await wait_frames(8)
+	_assert_fits("the start screen", ow._start_picker)
+
+# The screen's height rides on content the run ROLLS: two game names that wrap
+# differently, a goal sentence per road that can be a clause or three lines. One
+# measurement of one seed says very little, so this re-rolls the run and measures
+# again — the same reason `test_overworld2` re-measures the page with a shop and
+# with machines on it rather than trusting the empty case.
+func test_the_start_screen_fits_whatever_the_run_rolls() -> void:
+	var ow = await _run_at_the_start_screen()
+	for i in range(6):
+		ow.start_run()
+		await wait_frames(6)
+		if ow._start_picker == null:
+			continue
+		_assert_fits("the start screen on roll %d" % i, ow._start_picker)
+
+# And the two things a road opens, which are full-screen in their own right.
+func test_what_the_start_screen_opens_fits() -> void:
+	var ow = await _run_at_the_start_screen()
+	if ow._start_picker == null:
+		pending("no start options rolled — an empty or heavily filtered catalog")
+		return
+	var ladder = ow.preview_map(ow._start_options[0]["game"].id)
+	await wait_frames(8)
+	assert_not_null(ladder, "a road opens its optimal path")
+	if ladder != null:
+		_assert_fits("the optimal path over the start screen", ladder)
+	var card = ow.open_start_choice(0)
+	await wait_frames(8)
+	assert_not_null(card, "and its own card")
+	if card != null:
+		_assert_fits("a road's card over the start screen", card)
+		card._close()
+
 # --- the compendium, every tab ---------------------------------------------
 
 func test_every_collection_tab_fits() -> void:
@@ -241,3 +303,47 @@ func test_the_atlas_legend_wraps_rather_than_widening_the_page() -> void:
 	assert_lte(row.get_combined_minimum_size().x, float(Settings.CANVAS_BASE.x),
 		"and its minimum width is inside the canvas")
 	atlas.free()
+
+# --- the detail pane earns its width ----------------------------------------
+#
+# Both the Collection and the tier list used to mount their detail pane OPEN and
+# EMPTY, holding a third of the widest screen in the game for a label reading
+# "Select an entry to view details" — against a click that had not happened yet.
+# On the Games tab that is the difference between five columns and eight while
+# you scan 865 covers, which is the tab's whole job.
+
+func test_the_collection_opens_with_its_detail_pane_closed() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	assert_not_null(col._detail_panel, "the pane exists")
+	assert_false(col._detail_panel.visible, "and it is not on screen with nothing in it")
+	_assert_fits("the Collection with no entry open", col)
+
+func test_opening_an_entry_opens_the_pane_and_closing_it_gives_the_width_back() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	var games: Array = Data.all_games()
+	if games.is_empty():
+		pending("no games in this checkout")
+		return
+	var narrow: float = col._grid.size.x
+	col._show_game_detail(games[0])
+	await wait_frames(6)
+	assert_true(col._detail_panel.visible, "picking an entry opens the pane")
+	assert_lt(col._grid.size.x, narrow, "and the grid gives up the width for it")
+	_assert_fits("the Collection with an entry open", col)
+	col._close_detail()
+	await wait_frames(6)
+	assert_false(col._detail_panel.visible, "closing it puts the pane away")
+	assert_almost_eq(col._grid.size.x, narrow, 1.0, "and the grid has its columns back")
+
+func test_the_tier_list_opens_with_its_detail_pane_closed() -> void:
+	var screen := TierListScreen.new()
+	add_child_autofree(screen)
+	await wait_frames(6)
+	assert_not_null(screen._detail_panel, "the pane exists")
+	assert_false(screen._detail_panel.visible,
+		"and an unrated board is six empty lanes, not six empty lanes and an empty pane")
+	_assert_fits("the tier list with no game open", screen)

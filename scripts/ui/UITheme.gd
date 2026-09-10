@@ -94,6 +94,87 @@ const ITEM_CLASS_COLORS := [
 const COIN_GOLD := Color(0.98, 0.74, 0.20)
 const SHOP_GREEN := Color(0.44, 0.82, 0.56)
 
+# ---------------------------------------------------------------------------
+# The type scale
+# ---------------------------------------------------------------------------
+#
+# This file had a thorough colour system and nothing at all for the other two
+# axes, so every font size and every gap in the game was a bare integer typed at
+# its call site. A count of them: 25 distinct font sizes across the project —
+# 105 uses of `12`, 71 of `11`, 62 of `13` — which is three sizes doing one job
+# with nothing to say which is which, plus a long tail of one-offs.
+#
+# THE VALUES HERE ARE THE VALUES THAT WERE ALREADY BEING USED. Naming them is the
+# whole change: nothing moves, nothing needs re-fitting, and the 720p budget the
+# run screens are built to is untouched. What it buys is that the set is now
+# countable and the next size someone reaches for is a named step rather than a
+# fresh integer.
+#
+# If the size you want is not on this list, take the nearest one. A genuine
+# one-off (a single hero line on a single screen) can stay a literal, but write
+# down why — `test_type_scale.gd` scans the run screens and will ask.
+const FONT_MICRO := 9        # a counter inside a badge
+const FONT_TINY := 10        # a card's distance line, a pack tile's count
+const FONT_SMALL := 11       # chips, badges, the second line of a row
+const FONT_BODY := 12        # the UI's default line — buttons, most labels
+const FONT_TEXT := 13        # prose meant to be READ rather than scanned
+const FONT_LABEL := 14       # a named value beside its number
+const FONT_LEAD := 15        # the first line of a block
+const FONT_SUB := 16         # a sub-heading inside a panel
+const FONT_HEAD := 18        # a panel's own heading
+const FONT_TITLE := 20       # a screen's title
+const FONT_TITLE_LG := 22    # a screen's title, where it is the subject
+const FONT_DISPLAY := 26     # a verdict, a name at full size
+const FONT_HERO := 28        # the largest thing on a screen
+
+# ---------------------------------------------------------------------------
+# The spacing scale
+# ---------------------------------------------------------------------------
+#
+# Same story: ~20 distinct separation values, 60 uses of `8`, 56 of `6`, 43 of
+# `10`. Same rule — these are the values already in use, named.
+#
+# MIND THE OFF-SCALE ONES. Several gaps on the run screens are load-bearing to
+# the pixel (`_inv_wrap`'s margin 6 and separation 3, the select panel's 6s) and
+# carry a comment saying so — the page is fitted to a 720p canvas with single
+# digits to spare. Those stay literal on purpose; snapping one to the nearest
+# step is exactly the change that puts the overworld behind a scrollbar.
+const GAP_NONE := 0
+const GAP_HAIR := 2
+const GAP_TIGHT := 4
+const GAP_SNUG := 6
+const GAP := 8               # the default gap between two things in a stack
+const GAP_WIDE := 10
+const GAP_LOOSE := 12
+const GAP_SECTION := 16      # between one section of a screen and the next
+
+# ---------------------------------------------------------------------------
+# The z-order
+# ---------------------------------------------------------------------------
+#
+# Every CanvasLayer number in the game, in one list. They were bare integers
+# spread across ten files — 122, 123, 124, 128, 130, 131, 135, 136, 138, 140,
+# 150 — describing a single global invariant that could only be checked by
+# grepping for it, and the README's prose was the only place the order was
+# written down. That has already cost something: the map opens above the haul
+# screen, which is why `Overworld2._dismiss_route_map` has to exist.
+#
+# Read it top to bottom: later entries draw over earlier ones.
+class Layer:
+	const MENU_SCREEN := 120   # a screen the MAIN MENU raises (custom run)
+	const DROP := 122          # loot drop, an object's card
+	const EVENT := 123         # the D20 event, the boss notice
+	const CHOICE := 124        # an offered game's card
+	const POST_COMBAT := 128   # the haul a game ends on
+	const MAP := 130           # the route ladder, a loot use, a reading card
+	const POST_COMBAT_CARD := 131  # a card opened off the haul screen
+	const HEADER := 135        # the run's pinned bar — over the gameplay modals
+	const START := 136         # the opening choose-a-road screen
+	const START_MODAL := 138   # what that screen opens over itself
+	const FULL_SCREEN := 140   # the star chart, a destructive confirm
+	const CONFIRM := 141       # an event's confirm, over the chart
+	const VERDICT := 150       # the run is over; nothing outranks this
+
 static func rarity_color(i: int) -> Color:
 	return RARITY[clampi(i, 0, RARITY.size() - 1)]
 
@@ -446,6 +527,36 @@ static func check_icon(ticked: bool, dim: bool = false) -> ImageTexture:
 		_stroke(img, Vector2(10.0, 17.0), Vector2(18.5, 6.5), tick, 3.0)
 	return ImageTexture.create_from_image(img)
 
+# The mark on a chosen row of a dropdown, and the nothing on an unchosen one.
+#
+# Godot's stock pair is drawn for a light theme — the same problem the CheckBox
+# icons above were replaced for. On these panels the ticked one is a pale ring
+# and the UNTICKED one is a faint dark square, so every row of an OptionButton's
+# list wore a smudge and the one that was actually selected barely stood out from
+# the ones that were not.
+#
+# Chosen is a solid accent dot; unchosen is EMPTY. A dropdown is a list of things
+# you could pick, not a set of boxes to answer, so an unpicked row wants no mark
+# at all — which also means the one with a mark is unmissable.
+const POPUP_MARK := 16
+
+static func popup_mark(on: bool) -> ImageTexture:
+	var n := POPUP_MARK
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	if on:
+		var mid := (n - 1) * 0.5
+		var r := n * 0.28
+		for y in range(n):
+			for x in range(n):
+				# Distance-based, so the dot has a soft edge instead of a staircase.
+				var d: float = Vector2(x - mid, y - mid).length()
+				if d <= r:
+					img.set_pixel(x, y, ACCENT)
+				elif d <= r + 1.0:
+					img.set_pixel(x, y, Color(ACCENT.r, ACCENT.g, ACCENT.b, r + 1.0 - d))
+	return ImageTexture.create_from_image(img)
+
 # Paint a `width`-thick line into `img` by distance-to-segment, so the diagonal
 # leg of the tick comes out even rather than stair-stepped.
 static func _stroke(img: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
@@ -653,6 +764,48 @@ static func make_theme() -> Theme:
 	t.set_stylebox("focus", "OptionButton", btn_f.duplicate())
 	t.set_color("font_color", "OptionButton", TEXT)
 	t.set_color("font_hover_color", "OptionButton", GOLD)
+
+	# --- PopupMenu ---
+	#
+	# THE LAST STOCK CONTROL IN THE GAME. This theme dressed Button, CheckBox,
+	# Panel, Label, LineEdit, OptionButton, the separators and the scrollbars, and
+	# never touched PopupMenu — so every dropdown in the project was still Godot's
+	# default: a flat near-black slab with a blue selection bar and a grey-on-grey
+	# heading, sitting on a page of warm brown panels and parchment text. That is
+	# the run's `☰ Menu`, the Collection's type and record filters, the Atlas's
+	# region picker and Custom Run's four filter columns — every one of them.
+	#
+	# Same surface as a panel, same ember hover as a button, so a dropdown looks
+	# like the thing that opened it.
+	var pop_bg := flat(PANEL, 8, 6, 1, BORDER)
+	t.set_stylebox("panel", "PopupMenu", pop_bg)
+	var pop_hover := flat(PANEL_HI, 6, 0, 1, ACCENT.lerp(BORDER, 0.35))
+	t.set_stylebox("hover", "PopupMenu", pop_hover)
+	t.set_color("font_color", "PopupMenu", TEXT)
+	t.set_color("font_hover_color", "PopupMenu", GOLD)
+	t.set_color("font_disabled_color", "PopupMenu", TEXT_FAINT)
+	# A LABELLED separator is a group heading, so it is drawn like one: the accent,
+	# not the same colour as the items under it. Godot draws the label centred on
+	# the rule, which is exactly the shape a heading wants.
+	t.set_color("font_separator_color", "PopupMenu", ACCENT)
+	t.set_font_size("separator_font_size", "PopupMenu", FONT_SMALL)
+	var pop_sep := StyleBoxLine.new()
+	pop_sep.color = BORDER
+	pop_sep.thickness = 1
+	t.set_stylebox("separator", "PopupMenu", pop_sep)
+	t.set_constant("v_separation", "PopupMenu", GAP_TIGHT)
+	t.set_constant("item_start_padding", "PopupMenu", GAP_WIDE)
+	t.set_constant("item_end_padding", "PopupMenu", GAP_WIDE)
+	# The chosen row's mark. Every OptionButton in the project draws its list
+	# through these — the Collection's type and record filters, the Atlas's mode
+	# and region pickers, Custom Run's four columns, the Dash panel's type filter,
+	# Settings' display and window-size lists — so a dropdown marks its selection
+	# the same way everywhere. See `popup_mark`: an accent dot when chosen, and
+	# nothing at all when not.
+	for on_name in ["checked", "radio_checked"]:
+		t.set_icon(on_name, "PopupMenu", popup_mark(true))
+	for off_name in ["unchecked", "radio_unchecked"]:
+		t.set_icon(off_name, "PopupMenu", popup_mark(false))
 
 	# --- Separators ---
 	var sep := StyleBoxLine.new()

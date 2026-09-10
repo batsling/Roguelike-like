@@ -13,7 +13,14 @@ extends RefCounted
 # (click-outside-to-close); pass an empty Callable for modals that must force a
 # choice and therefore only swallow the click.
 
-const PANEL_BG := Color(0.10, 0.08, 0.12, 0.98)
+# THE MODAL SURFACE IS THE THEME'S SURFACE. This was Color(0.10, 0.08, 0.12) —
+# a cool purple-black — while `UITheme.PANEL` is #251f18 and every other surface
+# in the game is warm brown against parchment text. So every full-screen modal
+# the project raises sat on a colour that is not in the palette, which reads as a
+# different application's window over the top of this one. It is the theme's
+# raised-panel colour now, at the same near-opacity the old value carried so
+# nothing behind a modal bleeds through it.
+const PANEL_BG := Color(UITheme.PANEL.r, UITheme.PANEL.g, UITheme.PANEL.b, 0.98)
 const BACKDROP_COLOR := Color(0, 0, 0, 0.72)
 const DEFAULT_SIZE := Vector2(900, 560)
 

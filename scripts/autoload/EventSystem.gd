@@ -884,7 +884,7 @@ func danger_color(choice: Dictionary, taken: int) -> Color:
 # has a layer of its own: the thing being asked about is itself a floating panel,
 # and a question parented into it draws underneath it or gets freed by its next
 # rebuild.
-const CONFIRM_LAYER := 141
+const CONFIRM_LAYER := UITheme.Layer.CONFIRM
 
 # "Are you sure?" in front of a press that can end the run.
 #

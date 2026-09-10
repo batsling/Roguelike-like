@@ -108,7 +108,7 @@ static func open(host: Node, index: int, choice: Dictionary, notes: Dictionary =
 	# last word of a move whose first words are the haul and the event from the game
 	# you were teleported out of, and those should be read first (see
 	# Overworld2._open_arrival_card).
-	modal._layer.layer = int(notes.get("layer", 124))
+	modal._layer.layer = int(notes.get("layer", UITheme.Layer.CHOICE))
 	modal._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(modal._layer)
 	modal._layer.add_child(modal)
@@ -131,7 +131,7 @@ func _build() -> void:
 	margin.add_theme_constant_override("margin_bottom", 14)
 	panel.add_child(margin)
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	margin.add_child(root)
 
 	root.add_child(_build_header(game, accent))
@@ -173,7 +173,7 @@ func _build() -> void:
 	# what it costs), the ROUTE on the right (where it leaves you). They are the
 	# two halves of the decision and they belong side by side.
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 16)
+	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 	body.add_child(_build_game_column(game, accent))
@@ -195,12 +195,12 @@ func _build_shop_row(game: GameData) -> Control:
 	if game == null or not ShopSystem.is_hub(game.id):
 		return null
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 
 	var head := Label.new()
 	head.text = "🛒  %s" % ShopSystem.headline(game.id)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	col.add_child(head)
 
@@ -210,7 +210,7 @@ func _build_shop_row(game: GameData) -> Control:
 	var instead := Label.new()
 	instead.text = "      No event fires here — the shop is what happens instead."
 	instead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	instead.add_theme_font_size_override("font_size", 11)
+	instead.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	instead.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(instead)
 
@@ -218,7 +218,7 @@ func _build_shop_row(game: GameData) -> Control:
 		var row := Label.new()
 		row.text = "      • %s" % line
 		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_theme_font_size_override("font_size", 11)
+		row.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		row.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(row)
 	return col
@@ -312,12 +312,12 @@ func _build_arrival_banner(detail: String) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(TELEPORT.lerp(UITheme.BG, 0.78), 10, 8, 2, TELEPORT))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	wrap.add_child(col)
 	var head := Label.new()
 	head.text = "→  You have been teleported here — this is the game you are playing now."
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.add_theme_font_size_override("font_size", 16)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	head.add_theme_color_override("font_color", TELEPORT.lerp(Color.WHITE, 0.5))
 	col.add_child(head)
 	# The detail is the teleport's own sentence and there is not always one (a dev
@@ -327,7 +327,7 @@ func _build_arrival_banner(detail: String) -> Control:
 		var line := Label.new()
 		line.text = detail
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.add_theme_font_size_override("font_size", 13)
+		line.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		line.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(line)
 	return wrap
@@ -336,7 +336,7 @@ func _build_arrival_banner(detail: String) -> Control:
 
 func _build_header(game: GameData, accent: Color) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var title := Label.new()
 	title.text = ("🏆 " if bool(_choice.get("amulet", false))
@@ -370,7 +370,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_stretch_ratio = 0.62
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(COVER.x + SOURCE_MIN_W + 12.0, 0)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
@@ -384,7 +384,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	conn.tooltip_text = connection_tip(game, counts)
 	conn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	conn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	conn.add_theme_font_size_override("font_size", 12)
+	conn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	conn.add_theme_color_override("font_color",
 		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
 	col.add_child(conn)
@@ -418,7 +418,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 			# read as one block that way, and a lone cover keeps the centring it has
 			# always had (the branch above).
 			var cover_row := HBoxContainer.new()
-			cover_row.add_theme_constant_override("separation", 10)
+			cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 			cover_row.alignment = BoxContainer.ALIGNMENT_CENTER
 			cover_row.add_child(frame)
 			source_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -448,7 +448,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	var chip := Label.new()
 	chip.text = "  •  ".join(meta).to_upper()
 	chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	chip.add_theme_font_size_override("font_size", 11)
+	chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 	col.add_child(chip)
 
@@ -539,14 +539,14 @@ func _build_source_block() -> Control:
 
 	var head := Label.new()
 	head.text = "🔗  SOURCE"
-	head.add_theme_font_size_override("font_size", 10)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
 
 	var claim := Label.new()
 	claim.text = "%s inspired %s" % [influencer.display_name, influenced.display_name]
 	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	claim.add_theme_font_size_override("font_size", 12)
+	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(claim)
 
@@ -557,7 +557,7 @@ func _build_source_block() -> Control:
 		var chip := Label.new()
 		chip.text = "SEQUEL / SAME DEVELOPERS"
 		chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		chip.add_theme_font_size_override("font_size", 9)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 		chip.add_theme_color_override("font_color", UITheme.GOLD)
 		box.add_child(chip)
 
@@ -572,14 +572,14 @@ func _build_source_block() -> Control:
 		open_btn.text = "🔗  Open source"
 		open_btn.tooltip_text = source
 		open_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		open_btn.add_theme_font_size_override("font_size", 10)
+		open_btn.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		open_btn.pressed.connect(func(): OS.shell_open(source))
 		box.add_child(open_btn)
 		var url := Label.new()
 		url.text = short_source(source)
 		url.tooltip_text = source
 		url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-		url.add_theme_font_size_override("font_size", 9)
+		url.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		box.add_child(url)
 	else:
@@ -617,7 +617,7 @@ func _source_note(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
 
@@ -625,12 +625,12 @@ func _source_note(text: String) -> Control:
 # actually be playing for — clauses from your own statuses included (§13).
 func _build_enemy_block(game: GameData) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var enemy: GoalEnemyData = _choice.get("enemy")
 
 	var head := Label.new()
 	head.text = "☠  THE BOSS HERE" if bool(_choice.get("boss", false)) else "WHAT'S WAITING THERE"
-	head.add_theme_font_size_override("font_size", 11)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
 
@@ -643,7 +643,7 @@ func _build_enemy_block(game: GameData) -> Control:
 		var note := Label.new()
 		note.text = String(_notes["move_note"])
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.add_theme_font_size_override("font_size", 13)
+		note.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		box.add_child(note)
 		return box
@@ -652,7 +652,7 @@ func _build_enemy_block(game: GameData) -> Control:
 		var free := Label.new()
 		free.text = "Nothing — %s is a free game." % game.display_name
 		free.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		free.add_theme_font_size_override("font_size", 13)
+		free.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		free.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		box.add_child(free)
 		return box
@@ -667,7 +667,7 @@ func _build_enemy_block(game: GameData) -> Control:
 		hidden.text = String(_notes.get("hidden_note",
 			"The Runic Dome hides what is waiting there."))
 		hidden.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hidden.add_theme_font_size_override("font_size", 13)
+		hidden.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		hidden.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		box.add_child(hidden)
 		# The escort survives the blackout: the Dome was bought to hide WHAT is
@@ -676,7 +676,7 @@ func _build_enemy_block(game: GameData) -> Control:
 		return box
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	box.add_child(row)
 	if enemy.image != null:
 		var art := TextureRect.new()
@@ -695,7 +695,7 @@ func _build_enemy_block(game: GameData) -> Control:
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 15)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	name_lbl.add_theme_color_override("font_color",
 		UITheme.DANGER if bool(_choice.get("boss", false)) else UITheme.TEXT)
 	row.add_child(name_lbl)
@@ -756,7 +756,7 @@ func _add_escort_line(box: VBoxContainer) -> void:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.DANGER)
 	box.add_child(l)
 
@@ -766,7 +766,7 @@ func _fact_line(text: String, color: Color, tip: String = "") -> Control:
 	l.tooltip_text = tip
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", color)
 	return l
 
@@ -778,7 +778,7 @@ func _fact_line(text: String, color: Color, tip: String = "") -> Control:
 # decision, not one click further away from it.
 func _build_route_column() -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.custom_minimum_size = Vector2(LADDER_MIN_W, LADDER_MIN_H)
@@ -789,14 +789,14 @@ func _build_route_column() -> Control:
 	badge.text = String(note.get("text", ""))
 	badge.tooltip_text = String(note.get("tip", ""))
 	badge.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	badge.add_theme_font_size_override("font_size", 15)
+	badge.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	badge.add_theme_color_override("font_color", note.get("color", UITheme.TEXT))
 	col.add_child(badge)
 
 	var sub := Label.new()
 	sub.text = "The optimal path to the Amulet if you take this game."
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	col.add_child(sub)
 
@@ -830,7 +830,7 @@ func _build_route_column() -> Control:
 	# is fitted to whatever height is left over.
 	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  🛒 a shop  •  ⚔ beaten there"
 	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	legend.add_theme_font_size_override("font_size", 11)
+	legend.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	legend.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	col.add_child(legend)
 	return col
@@ -1008,7 +1008,7 @@ func _set_zoom(z: float) -> void:
 # entry points, and the tests answer them here.
 func _build_actions(game: GameData, accent: Color) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1034,7 +1034,7 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	go.custom_minimum_size = Vector2(280, 44)
 	go.clip_text = true
 	go.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	go.add_theme_font_size_override("font_size", 16)
+	go.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	go.add_theme_stylebox_override("normal", UITheme.flat(accent.lerp(UITheme.BG, 0.55), 8, 8, 2, accent))
 	go.add_theme_stylebox_override("hover", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))
 	go.add_theme_stylebox_override("focus", UITheme.flat(accent.lerp(UITheme.BG, 0.38), 8, 8, 2, accent))

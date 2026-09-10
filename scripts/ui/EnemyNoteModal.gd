@@ -55,7 +55,7 @@ static func open_level_up(host: Node, game: GameData, character: CharacterData,
 # accessors onto whichever GameStats log owns the text.
 static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 	var layer := CanvasLayer.new()
-	layer.layer = 150
+	layer.layer = UITheme.Layer.VERDICT
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(layer)
 

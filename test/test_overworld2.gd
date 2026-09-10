@@ -2766,14 +2766,35 @@ func test_the_window_counts_unlearned_colours_rather_than_naming_them() -> void:
 			"an unlearned pill is never named: %s" % text)
 	assert_true(text.contains("unlearned"), "it is counted instead: %s" % text)
 
-func test_the_map_button_belongs_to_the_offering() -> void:
+# TWO BUTTONS, TWO DESTINATIONS, TWO NAMES. Both of these used to say `🗺 Map`
+# and both called `open_map`, so the offering's button and the header's button
+# raised the same 865-star chart — and the ladder that actually answers "where
+# does this road go" arrived as a window on top of it. The chart is the Map and it
+# is the header's; the ladder is the Optimal Path and it is the offering's.
+func test_the_offering_opens_the_optimal_path_and_the_header_opens_the_map() -> void:
 	var found: Button = null
 	for c in _ui._select_box.get_children():
 		if c is HBoxContainer:
 			for b in c.get_children():
-				if b is Button and String((b as Button).text).contains("Map"):
+				if b is Button and String((b as Button).text).contains("Optimal Path"):
 					found = b
-	assert_not_null(found, "the map opens from the panel it is a map of")
+	assert_not_null(found, "the offering's own button opens the road it is choosing a step of")
+	assert_false(String(found.text if found != null else "").contains("Map"),
+		"and it does not also call itself the Map")
+	assert_true(String(_ui._header_map_btn.text).contains("Map"),
+		"while the header's button is the Map: %s" % _ui._header_map_btn.text)
+
+# The Optimal Path is the LADDER ALONE — no star chart under it. The chart is one
+# button away in the header, and raising 865 stars to answer "which of these three
+# roads" is the thing that button is for, not this one.
+func test_the_optimal_path_opens_the_ladder_without_the_chart() -> void:
+	var modal = _ui.open_optimal_path()
+	assert_not_null(modal, "the offering's button opens a ladder")
+	if modal == null:
+		return
+	assert_null(modal._atlas, "and no star chart underneath it")
+	assert_true(String(modal._title if modal._title != "" else "→  Optimal Path to the Amulet")
+		.contains("Optimal Path"), "which says what it is")
 
 # …AND FROM THE HEADER, which is the only one of the two that is up mid-game: the
 # offering panel is put away the moment you commit, and "where does this game
@@ -2805,6 +2826,70 @@ func test_the_mid_game_map_stars_nothing() -> void:
 		assert_true((modal._choice_ids as Dictionary).is_empty(),
 			"no card is flagged while there is no offering: %s" % str(modal._choice_ids))
 	_leave_post_game()
+
+# --- the run owns what it opens --------------------------------------------
+#
+# `_open_route_map` used to build the window, hand it to its caller and keep no
+# reference to it, which made the map the one screen the overworld raised that it
+# could not take back. That matters because the ladder is routed from where the
+# run STANDS, and the run moves underneath it.
+
+func test_the_run_keeps_a_handle_on_the_map_it_opens() -> void:
+	var modal = _ui.open_map()
+	assert_not_null(modal, "the map opens")
+	assert_eq(_ui._route_map, modal, "and the run is holding it")
+	_ui._dismiss_route_map()
+	assert_null(_ui._route_map, "which means the run can close it again")
+	# queue_free is deferred, so the window is still in the tree this frame.
+	await wait_frames(2)
+	assert_false(is_instance_valid(modal), "and the window really went")
+
+# A map closed on its OWN terms — its Close, or the chart's — must not leave the
+# run holding a freed window, or the next dismiss is closing something gone.
+func test_a_map_that_closes_itself_is_let_go_of() -> void:
+	var modal = _ui.open_map()
+	assert_eq(_ui._route_map, modal)
+	modal._finish()
+	assert_null(_ui._route_map, "the run let go when the window did")
+
+func test_only_one_map_is_ever_open() -> void:
+	var first = _ui.open_map()
+	var second = _ui.open_map()
+	assert_ne(first, second, "the second press opens a new one")
+	assert_eq(_ui._route_map, second, "which is the one the run is holding")
+	await wait_frames(2)
+	assert_false(is_instance_valid(first), "and the first is not stranded underneath it")
+
+# THE MAP IS ROUTED FROM WHERE THE RUN STOOD, so the run moving takes it with it.
+# The haul screen is the case that made this visible: it opens on a layer BELOW
+# the map, so a map left standing sits on top of the chests and the payout.
+func test_reporting_a_game_takes_the_map_down_with_it() -> void:
+	_ui.pick(0)
+	assert_not_null(_ui.open_map(), "the map opens mid-game")
+	assert_not_null(_ui._route_map)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	_ui._board.clear_fx()
+	assert_null(_ui._route_map, "and the haul screen is not opened underneath it")
+	_leave_post_game()
+
+func test_travelling_takes_the_map_and_the_card_down_with_it() -> void:
+	assert_not_null(_ui.open_choice(0), "a card is open")
+	assert_not_null(_ui.open_map(), "and so is the map")
+	_ui.pick(0)
+	assert_null(_ui._route_map, "travelling clears the map")
+	assert_null(_ui._choice_modal, "and the card that described where you went")
+	_leave_post_game()
+
+# `New run` used to drop a fresh run behind whatever was standing over the old
+# one — a card describing a game off an offering that no longer exists.
+func test_a_new_run_clears_the_screens_that_described_the_old_one() -> void:
+	assert_not_null(_ui.open_choice(0), "a card is open on the old run")
+	assert_not_null(_ui.open_map(), "and a map of the old road")
+	_ui.start_run()
+	assert_null(_ui._choice_modal, "the card is gone")
+	assert_null(_ui._route_map, "and so is the map")
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "on a fresh run")
 
 func test_the_menu_holds_the_runs_admin() -> void:
 	# Save / New run / Main menu were three buttons parked across the top for the
@@ -4413,14 +4498,6 @@ func test_the_popup_states_where_the_game_puts_you() -> void:
 # The per-card map: the optimal path a game WOULD open, before taking it
 # ---------------------------------------------------------------------------
 
-# The START cards keep their 🗺 button: the start picker has no popup — there is
-# no run to route from yet, only three genres and a distance band.
-func _map_button(card: Node) -> Button:
-	for child in card.get_children():
-		if child is Button and String((child as Button).text).contains("Map"):
-			return child
-	return null
-
 func test_every_offered_game_draws_its_route_in_the_popup() -> void:
 	# The 🗺 button each card used to wear is gone: the map it opened is drawn
 	# INSIDE the popup now, so the road and the button that takes it are one
@@ -4447,31 +4524,140 @@ func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot),
 		"its depth is that game's own distance to the Amulet")
 
-func test_the_start_picker_names_the_amulet_everywhere_it_appears() -> void:
-	_ui.start_run()                       # back to the choose-your-start panel
-	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
-	_ui._render_start_choices()
-	var card: Node = _ui._choices_row.get_child(0)
-	assert_not_null(_map_button(card), "a start card offers its map too")
+# ---------------------------------------------------------------------------
+# The opening screen (StartPicker)
+# ---------------------------------------------------------------------------
+#
+# The choice of road is a screen of its own now, raised over this page rather than
+# drawn into its left column. The page still ROLLS the run — the reset that
+# decides the seed has to happen before the map is drawn from it — so these check
+# the seam between the two: the page hands over `_start_options`, the screen
+# reports an index back, and `choose_start` is still the one way in.
+
+func test_a_fresh_run_raises_the_start_screen_over_the_page() -> void:
+	_ui.start_run()
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "the run is waiting on a road")
+	assert_not_null(_ui._start_picker, "and the screen that asks for one is up")
+	if _ui._start_picker == null:
+		return
+	assert_false(_ui._header_layer.visible,
+		"the header stands down — it has no run to report yet")
+	assert_eq(ModalScaffold.reserved_top, 0.0,
+		"nothing is centring itself under a bar that is down")
+	# The page BEHIND it is left alone. Hiding it broke the board — a BattlefieldView
+	# inside a hidden scroll region settles at ~1703px of minimum height and, since a
+	# hidden container does not re-sort, brought that layout back with it. The start
+	# screen is opaque, so there is nothing to gain by hiding what it covers.
+	assert_true(_ui._scroll.visible,
+		"and the page under it is left laying itself out normally")
+
+func test_taking_a_road_closes_the_screen_and_gives_the_page_back() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	assert_not_null(picker)
+	if picker == null:
+		return
+	picker.chosen.emit(0)                 # what pressing Begin does
+	assert_null(_ui._start_picker, "the screen is gone")
+	assert_true(_ui._header_layer.visible, "and the header is back")
+	assert_ne(_ui._phase, OVERWORLD.Phase.START_SELECT, "the run has started")
+
+# Driving `choose_start` directly — which is what every other suite does — has to
+# leave the page in the same state as pressing the button, or the tests are
+# rehearsing a screen the player never gets.
+func test_choosing_a_start_directly_also_tears_the_screen_down() -> void:
+	_ui.start_run()
+	assert_not_null(_ui._start_picker)
+	_ui.choose_start(0)
+	assert_null(_ui._start_picker, "the screen came down with it")
+	assert_true(_ui._header_layer.visible, "and the header is back")
+
+func test_the_start_screen_selects_a_road_before_it_commits_to_one() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	if picker == null:
+		pending("no start options rolled for this run")
+		return
+	assert_eq(picker.selected_index(), 0, "one road is preselected, so Begin is never dead")
+	assert_true(String(picker._confirm.text).contains(
+		_ui._start_options[0]["game"].display_name), "and Begin names it")
+	if _ui._start_options.size() > 1:
+		picker.select(1)
+		assert_eq(picker.selected_index(), 1, "clicking the other road selects it")
+		assert_true(String(picker._confirm.text).contains(
+			_ui._start_options[1]["game"].display_name), "and Begin renames itself")
+		assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT,
+			"selecting is not choosing — nothing has been committed to")
+	else:
+		pending("this run rolled a single road, so there is nothing to switch to")
+
+func test_the_start_screen_names_the_amulet_everywhere_it_appears() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_not_null(amulet)
-	if amulet == null:
+	if amulet == null or picker == null:
 		return
-
-	# On the heading over the whole panel...
-	assert_true(_ui._select_head.text.contains(amulet.display_name),
-		"the picker's heading names the Amulet: %s" % _ui._select_head.text)
-	# ...on each card's distance line...
-	assert_true(_card_text(card).contains(amulet.display_name),
-		"and so does the card's distance line")
-	# ...and on the map the card opens.
-	var start_id: StringName = _ui._start_options[0]["game"].id
-	var modal = _ui.preview_map(start_id)
+	var text: String = _all_label_text(picker)
+	# On the banner the whole screen is built around...
+	assert_true(text.contains(amulet.display_name),
+		"the screen names the Amulet: %s" % text.substr(0, 200))
+	# ...and on the road cards' distance lines, which is the same sentence the
+	# offering's cards wear later in the run (_start_distance_text).
+	assert_true(text.contains(_ui._start_distance_text(int(_ui._start_options[0]["path_len"]))),
+		"and each road says how far it stands from it")
+	# ...and on the ladder a road opens.
+	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
 	assert_not_null(modal)
 	if modal == null:
 		return
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
 		"the destination is named, not drawn as a blank")
+
+# The heading COUNTS the roads rather than asserting a number. It said "three
+# genres" for as long as RunGraph.NUM_START_OPTIONS has been 2.
+func test_the_start_screen_counts_the_roads_it_is_offering() -> void:
+	_ui.start_run()
+	if _ui._start_picker == null:
+		pending("no start options rolled for this run")
+		return
+	var text: String = _all_label_text(_ui._start_picker)
+	assert_true(text.contains("%d genre" % _ui._start_options.size()),
+		"the heading counts what is on the table: %s" % text.substr(0, 240))
+
+# Anything a road opens has to come up ABOVE the screen that opened it — both used
+# to mount below it and open perfectly out of sight.
+func test_what_a_road_opens_lands_above_the_start_screen() -> void:
+	_ui.start_run()
+	if _ui._start_picker == null:
+		pending("no start options rolled for this run")
+		return
+	var ladder = _ui.preview_map(_ui._start_options[0]["game"].id)
+	assert_not_null(ladder)
+	if ladder != null:
+		assert_gt(ladder._layer.layer, StartPicker.LAYER,
+			"the optimal path opens over the screen, not under it")
+	var card = _ui.open_start_choice(0)
+	assert_not_null(card)
+	if card != null:
+		assert_gt(card._layer.layer, StartPicker.LAYER,
+			"and so does the road's own card")
+		card._close()
+
+# Every Label and Button caption under `root`, joined. The start screen is a
+# nested layout and which child a given line is is layout, not behaviour.
+func _all_label_text(root: Node) -> String:
+	var out: Array = []
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label:
+			out.append((n as Label).text)
+		elif n is Button:
+			out.append((n as Button).text)
+		for c in n.get_children():
+			stack.append(c)
+	return " | ".join(out)
 
 # Every label on a card, joined — the distance line is a plain Label among
 # several, and which child it is is layout, not behaviour.
@@ -5815,10 +6001,18 @@ func _open_rating_modal() -> Node:
 			return c
 	return null
 
+# One level deeper than it used to look. The screens the run puts in front of
+# itself are mounted on a CanvasLayer above the pinned header now, rather than
+# level with the page and standing the header down — so the board is a grandchild
+# of the overworld, not a child of it.
 func _tier_list_screen() -> Node:
 	for c in _ui.get_children():
 		if c is TierListScreen:
 			return c
+		if c is CanvasLayer:
+			for g in c.get_children():
+				if g is TierListScreen:
+					return g
 	return null
 
 # SCORING AND TIERING ARE TWO PRESSES. A plain Confirm records the score and
@@ -9118,3 +9312,176 @@ func test_a_hidden_event_lets_the_page_answer_for_the_loot() -> void:
 	modal.show_event()
 	modal._close()
 	await get_tree().process_frame
+
+# --- the run's own menu ------------------------------------------------------
+#
+# `☰ Menu` was four entries under one unlabelled rule: Save / New run, then Main
+# menu / Exit. The three reference screens — the compendium, the tier board and
+# the manual — were reachable only from the MAIN MENU, so answering "what does
+# this item do", "have I met this enemy" or "how does this actually work" meant
+# abandoning the run to go and look. All four screens open over the run now, in
+# three named groups ordered by what they do to it: LOOK UP, THIS RUN, GAME.
+
+func _menu_popup() -> PopupMenu:
+	for c in _ui._header.get_children():
+		if c is MenuButton:
+			return (c as MenuButton).get_popup()
+	return null
+
+func test_the_menu_reaches_the_screens_that_used_to_need_quitting_the_run() -> void:
+	var pop: PopupMenu = _menu_popup()
+	assert_not_null(pop, "the header carries the menu")
+	if pop == null:
+		return
+	var labels: Array = []
+	for i in range(pop.item_count):
+		labels.append(pop.get_item_text(i))
+	var joined: String = " | ".join(labels)
+	for wanted in ["How to Play", "Collection", "Tier List", "Save run", "New run",
+			"Settings", "Main menu", "Exit game"]:
+		assert_true(joined.contains(wanted), "%s is on the menu: %s" % [wanted, joined])
+
+# The groups are the point — eight entries in one column is a wall. Each is a
+# LABELLED separator rather than a bare rule, so the menu reads as three lists of
+# three rather than one list of eight.
+func test_the_menu_is_three_named_groups_in_run_order() -> void:
+	var pop: PopupMenu = _menu_popup()
+	if pop == null:
+		return
+	var headings: Array = []
+	for i in range(pop.item_count):
+		if pop.is_item_separator(i):
+			headings.append(pop.get_item_text(i))
+	assert_eq(headings, ["Information", "This run", "Game"],
+		"three groups, nearest-first: what changes nothing, then the run, then the way out")
+
+# Each of the four opens ABOVE the run's pinned header. The bar floats over
+# everything on the page — including a full-screen screen's own Close button,
+# which is the only way off it — so a screen mounted level with the page opens
+# with no reachable way out. The tier board used to answer that by standing the
+# bar DOWN; they all go on a layer over it now, which is what the Atlas and the
+# end-of-run verdict have always done.
+func test_every_screen_the_menu_opens_lands_over_the_header() -> void:
+	for entry in [
+			[_ui.MenuItem.COLLECTION, "the Collection"],
+			[_ui.MenuItem.TIER_LIST, "the tier list"],
+			[_ui.MenuItem.HOW_TO_PLAY, "the manual"],
+			[_ui.MenuItem.SETTINGS, "the settings panel"]]:
+		_ui.menu_action(int(entry[0]))
+		await wait_frames(2)
+		var layer: CanvasLayer = _top_canvas_layer(_ui)
+		assert_not_null(layer, "%s opened on a layer of its own" % entry[1])
+		if layer != null:
+			assert_gt(layer.layer, _ui.HEADER_LAYER,
+				"%s is over the header, not under it" % entry[1])
+			layer.free()
+		await wait_frames(1)
+
+# The highest CanvasLayer mounted directly on the page, or null.
+func _top_canvas_layer(root: Node) -> CanvasLayer:
+	var best: CanvasLayer = null
+	for c in root.get_children():
+		if c is CanvasLayer and (best == null or (c as CanvasLayer).layer > best.layer):
+			best = c
+	return best
+
+# A screen closing on its own terms must take its layer with it, or the page
+# collects an empty CanvasLayer per visit.
+func test_a_screen_closing_itself_takes_its_layer_with_it() -> void:
+	# COUNTED AFTER THE PENDING FREES HAVE LANDED. `before_each` walks the run
+	# through its opening game, which raises and dismisses several layers on the
+	# way (the haul screen, the event); `queue_free` is deferred, so counting
+	# straight away counts nodes that are already on their way out and the number
+	# drops by three under the test's feet.
+	await wait_frames(3)
+	var before: int = _canvas_layers(_ui)
+	var screen = _ui.open_collection()
+	await wait_frames(2)
+	assert_eq(_canvas_layers(_ui), before + 1, "the Collection brought a layer")
+	screen.queue_free()
+	await wait_frames(3)
+	assert_eq(_canvas_layers(_ui), before, "and took it with it on the way out")
+
+func _canvas_layers(root: Node) -> int:
+	var n: int = 0
+	for c in root.get_children():
+		if c is CanvasLayer:
+			n += 1
+	return n
+
+# THE BAR IS STATE, NOT DECORATION. It carried "Roguelike-like" in 20px gold
+# between the road walked and the buttons — ~180px of the one row that never
+# leaves the screen, spent naming the game you already have open. The road strip
+# is the thing that wanted that width: it is clipped, and past STRIP_MAX_STOPS it
+# drops its oldest stops behind an ellipsis.
+func test_the_header_spends_its_width_on_the_run_rather_than_the_title() -> void:
+	for c in _ui._header.get_children():
+		if c is Label:
+			assert_false(String((c as Label).text).contains("Roguelike-like"),
+				"the game's name is not taking room on the run's own bar")
+	assert_eq(_ui._route_strip.size_flags_horizontal, Control.SIZE_EXPAND_FILL,
+		"and the road walked is what expands into it")
+
+# --- and the way back to the run --------------------------------------------
+#
+# Each of the four is a full-screen page over the run, so the run has to still be
+# there when it closes — same phase, same offering, same board, header back on
+# top. The page underneath is deliberately never hidden (see
+# `_set_run_page_visible`), so "closing" is just the screen and its layer going
+# away; this is what says that stayed true.
+
+# The way OFF a full-screen menu screen. Not `_close_button` above — that one
+# hunts the Atlas's "Back to the run", a different word on a different screen.
+#
+# BREADTH-FIRST, and it prefers the word "Close" over a bare ✕. Both matter: the
+# Collection and the tier list each carry a SECOND ✕, on their detail pane, and a
+# depth-first walk found that one — so this pressed the pane's close, the screen
+# stayed up, and the failure read as "closing the Collection does not close it".
+# The screen's own close sits nearer the root than the pane's, so the shallower
+# match is the right one.
+func _way_out_button(root: Node) -> Button:
+	var queue: Array = [root]
+	var bare: Button = null
+	while not queue.is_empty():
+		var n: Node = queue.pop_front()
+		if n is Button:
+			var t: String = String((n as Button).text)
+			if t.contains("Close"):
+				return n
+			if bare == null and t.strip_edges() == "✕":
+				bare = n
+		for c in n.get_children():
+			queue.append(c)
+	return bare
+
+func test_each_menu_screen_has_a_way_back_to_the_run() -> void:
+	# Let before_each's own pending frees land before counting anything — it walks
+	# the run through its opening game, which raises and dismisses several layers.
+	await wait_frames(3)
+	for entry in [
+			[_ui.MenuItem.COLLECTION, "the Collection"],
+			[_ui.MenuItem.TIER_LIST, "the tier list"],
+			[_ui.MenuItem.HOW_TO_PLAY, "the manual"],
+			[_ui.MenuItem.SETTINGS, "the settings panel"]]:
+		var phase_before = _ui._phase
+		var layers_before: int = _canvas_layers(_ui)
+		_ui.menu_action(int(entry[0]))
+		await wait_frames(3)
+		assert_eq(_canvas_layers(_ui), layers_before + 1, "%s opened" % entry[1])
+		var screen: Node = _top_canvas_layer(_ui).get_child(0)
+		var close: Button = _way_out_button(screen)
+		assert_not_null(close, "%s carries a way out" % entry[1])
+		if close == null:
+			continue
+		close.pressed.emit()
+		# TWO frees deep: the screen queue_frees itself, and its `tree_exiting`
+		# is what queue_frees the layer under it — so the layer is one frame
+		# behind the screen and three frames is not always enough.
+		await wait_frames(6)
+		# The screen went, and took its layer with it...
+		assert_eq(_canvas_layers(_ui), layers_before,
+			"closing %s puts the run back on screen" % entry[1])
+		# ...and the run is exactly where it was left.
+		assert_eq(_ui._phase, phase_before, "the run is in the same phase it was")
+		assert_true(_ui._scroll.visible, "its page is up")
+		assert_true(_ui._header_layer.visible, "and its header is back on top")

@@ -143,7 +143,7 @@ func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	_event = event
 	_host = host
 	_layer = CanvasLayer.new()
-	_layer.layer = 123
+	_layer.layer = UITheme.Layer.EVENT
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)

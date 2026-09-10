@@ -161,13 +161,13 @@ func _build() -> void:
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 4)
+	root.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	margin.add_child(root)
 
 	root.add_child(_chrome_line())
 	_cards_row = HFlowContainer.new()
-	_cards_row.add_theme_constant_override("h_separation", 10)
-	_cards_row.add_theme_constant_override("v_separation", 10)
+	_cards_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	_cards_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	# Wide enough for TWO lines across, always — the same floor the machines' panel
 	# carries and for the same reason. This flow sizes to the right column, the
 	# column sizes to its widest child, and the board narrows as it shrinks to make
@@ -186,7 +186,7 @@ func _build() -> void:
 # page that has about 116px for the entire panel.
 func _chrome_line() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 
 	# CLIPPED, and it matters far more than a shop's name should.
 	#
@@ -211,7 +211,7 @@ func _chrome_line() -> Control:
 	# make every hub as wide as the longest one.
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.size_flags_stretch_ratio = 0.75
-	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
@@ -221,20 +221,20 @@ func _chrome_line() -> Control:
 	# panel's tooltip now — it is a rule to learn once, not a line to re-read at
 	# every hub.
 	_subtitle = Label.new()
-	_subtitle.add_theme_font_size_override("font_size", 11)
+	_subtitle.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_subtitle.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	_subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_subtitle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_subtitle)
 
 	_purse = Label.new()
-	_purse.add_theme_font_size_override("font_size", 12)
+	_purse.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_purse.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_purse)
 
 	_reroll_btn = Button.new()
 	_reroll_btn.custom_minimum_size = Vector2(0, 24)
-	_reroll_btn.add_theme_font_size_override("font_size", 11)
+	_reroll_btn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_reroll_btn.pressed.connect(func(): reroll())
 	row.add_child(_reroll_btn)
 
@@ -277,7 +277,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	btn.custom_minimum_size = Vector2(ROW_WIDTH, ROW_HEIGHT)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	if item == null:
 		btn.text = "(empty)"
 		btn.disabled = true
@@ -318,7 +318,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	# only thing the tooltip and the card repeat in full.
 	name_lbl.clip_text = true
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color",
 		UITheme.TEXT_FAINT if sold else tint)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -326,7 +326,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else "◉ %d" % price
-	price_lbl.add_theme_font_size_override("font_size", 13)
+	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
 		else (UITheme.COIN_GOLD if afford else UITheme.DANGER))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -372,14 +372,14 @@ func open_card(slot: int) -> Node:
 		margin.add_theme_constant_override("margin_" + side, 14)
 	panel.add_child(margin)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	margin.add_child(col)
 	col.add_child(_card(slot, shelf[slot]))
 
 	var done := Button.new()
 	done.text = "Put it back"
 	done.custom_minimum_size = Vector2(0, 32)
-	done.add_theme_font_size_override("font_size", 13)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	done.pressed.connect(close_card)
 	col.add_child(done)
 	return layer
@@ -428,7 +428,7 @@ func _card(slot: int, entry: Dictionary) -> Control:
 	wrap.modulate.a = 0.45 if sold else (1.0 if afford else 0.72)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	wrap.add_child(box)
 
 	if item == null:
@@ -447,14 +447,14 @@ func _card(slot: int, entry: Dictionary) -> Control:
 	name_lbl.text = item.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	name_lbl.add_theme_color_override("font_color", tint)
 	box.add_child(name_lbl)
 
 	var kind := Label.new()
 	kind.text = _kind_line(item)
 	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kind.add_theme_font_size_override("font_size", 10)
+	kind.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	kind.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(kind)
 
@@ -462,14 +462,14 @@ func _card(slot: int, entry: Dictionary) -> Control:
 	desc.text = item.description
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	desc.add_theme_color_override("font_color", UITheme.TEXT)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(desc)
 
 	var buy_btn := Button.new()
 	buy_btn.custom_minimum_size = Vector2(0, 32)
-	buy_btn.add_theme_font_size_override("font_size", 14)
+	buy_btn.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	if sold:
 		buy_btn.text = "Sold"
 		buy_btn.disabled = true

@@ -45,7 +45,7 @@ static func open(host: Node, did_win: bool) -> RunOverScreen:
 	var screen := RunOverScreen.new()
 	screen.won = did_win
 	screen._layer = CanvasLayer.new()
-	screen._layer.layer = 150
+	screen._layer.layer = UITheme.Layer.VERDICT
 	screen._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(screen._layer)
 	screen._layer.add_child(screen)
