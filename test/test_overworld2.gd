@@ -6001,10 +6001,18 @@ func _open_rating_modal() -> Node:
 			return c
 	return null
 
+# One level deeper than it used to look. The screens the run puts in front of
+# itself are mounted on a CanvasLayer above the pinned header now, rather than
+# level with the page and standing the header down — so the board is a grandchild
+# of the overworld, not a child of it.
 func _tier_list_screen() -> Node:
 	for c in _ui.get_children():
 		if c is TierListScreen:
 			return c
+		if c is CanvasLayer:
+			for g in c.get_children():
+				if g is TierListScreen:
+					return g
 	return null
 
 # SCORING AND TIERING ARE TWO PRESSES. A plain Confirm records the score and
@@ -9304,3 +9312,112 @@ func test_a_hidden_event_lets_the_page_answer_for_the_loot() -> void:
 	modal.show_event()
 	modal._close()
 	await get_tree().process_frame
+
+# --- the run's own menu ------------------------------------------------------
+#
+# `☰ Menu` was four entries under one unlabelled rule: Save / New run, then Main
+# menu / Exit. The three reference screens — the compendium, the tier board and
+# the manual — were reachable only from the MAIN MENU, so answering "what does
+# this item do", "have I met this enemy" or "how does this actually work" meant
+# abandoning the run to go and look. All four screens open over the run now, in
+# three named groups ordered by what they do to it: LOOK UP, THIS RUN, GAME.
+
+func _menu_popup() -> PopupMenu:
+	for c in _ui._header.get_children():
+		if c is MenuButton:
+			return (c as MenuButton).get_popup()
+	return null
+
+func test_the_menu_reaches_the_screens_that_used_to_need_quitting_the_run() -> void:
+	var pop: PopupMenu = _menu_popup()
+	assert_not_null(pop, "the header carries the menu")
+	if pop == null:
+		return
+	var labels: Array = []
+	for i in range(pop.item_count):
+		labels.append(pop.get_item_text(i))
+	var joined: String = " | ".join(labels)
+	for wanted in ["How to Play", "Collection", "Tier List", "Save run", "New run",
+			"Settings", "Main menu", "Exit game"]:
+		assert_true(joined.contains(wanted), "%s is on the menu: %s" % [wanted, joined])
+
+# The groups are the point — eight entries in one column is a wall. Each is a
+# LABELLED separator rather than a bare rule, so the menu reads as three lists of
+# three rather than one list of eight.
+func test_the_menu_is_three_named_groups_in_run_order() -> void:
+	var pop: PopupMenu = _menu_popup()
+	if pop == null:
+		return
+	var headings: Array = []
+	for i in range(pop.item_count):
+		if pop.is_item_separator(i):
+			headings.append(pop.get_item_text(i))
+	assert_eq(headings, ["Look up", "This run", "Game"],
+		"three groups, nearest-first: what changes nothing, then the run, then the way out")
+
+# Each of the four opens ABOVE the run's pinned header. The bar floats over
+# everything on the page — including a full-screen screen's own Close button,
+# which is the only way off it — so a screen mounted level with the page opens
+# with no reachable way out. The tier board used to answer that by standing the
+# bar DOWN; they all go on a layer over it now, which is what the Atlas and the
+# end-of-run verdict have always done.
+func test_every_screen_the_menu_opens_lands_over_the_header() -> void:
+	for entry in [
+			[_ui.MenuItem.COLLECTION, "the Collection"],
+			[_ui.MenuItem.TIER_LIST, "the tier list"],
+			[_ui.MenuItem.HOW_TO_PLAY, "the manual"],
+			[_ui.MenuItem.SETTINGS, "the settings panel"]]:
+		_ui.menu_action(int(entry[0]))
+		await wait_frames(2)
+		var layer: CanvasLayer = _top_canvas_layer(_ui)
+		assert_not_null(layer, "%s opened on a layer of its own" % entry[1])
+		if layer != null:
+			assert_gt(layer.layer, _ui.HEADER_LAYER,
+				"%s is over the header, not under it" % entry[1])
+			layer.free()
+		await wait_frames(1)
+
+# The highest CanvasLayer mounted directly on the page, or null.
+func _top_canvas_layer(root: Node) -> CanvasLayer:
+	var best: CanvasLayer = null
+	for c in root.get_children():
+		if c is CanvasLayer and (best == null or (c as CanvasLayer).layer > best.layer):
+			best = c
+	return best
+
+# A screen closing on its own terms must take its layer with it, or the page
+# collects an empty CanvasLayer per visit.
+func test_a_screen_closing_itself_takes_its_layer_with_it() -> void:
+	# COUNTED AFTER THE PENDING FREES HAVE LANDED. `before_each` walks the run
+	# through its opening game, which raises and dismisses several layers on the
+	# way (the haul screen, the event); `queue_free` is deferred, so counting
+	# straight away counts nodes that are already on their way out and the number
+	# drops by three under the test's feet.
+	await wait_frames(3)
+	var before: int = _canvas_layers(_ui)
+	var screen = _ui.open_collection()
+	await wait_frames(2)
+	assert_eq(_canvas_layers(_ui), before + 1, "the Collection brought a layer")
+	screen.queue_free()
+	await wait_frames(3)
+	assert_eq(_canvas_layers(_ui), before, "and took it with it on the way out")
+
+func _canvas_layers(root: Node) -> int:
+	var n: int = 0
+	for c in root.get_children():
+		if c is CanvasLayer:
+			n += 1
+	return n
+
+# THE BAR IS STATE, NOT DECORATION. It carried "Roguelike-like" in 20px gold
+# between the road walked and the buttons — ~180px of the one row that never
+# leaves the screen, spent naming the game you already have open. The road strip
+# is the thing that wanted that width: it is clipped, and past STRIP_MAX_STOPS it
+# drops its oldest stops behind an ellipsis.
+func test_the_header_spends_its_width_on_the_run_rather_than_the_title() -> void:
+	for c in _ui._header.get_children():
+		if c is Label:
+			assert_false(String((c as Label).text).contains("Roguelike-like"),
+				"the game's name is not taking room on the run's own bar")
+	assert_eq(_ui._route_strip.size_flags_horizontal, Control.SIZE_EXPAND_FILL,
+		"and the road walked is what expands into it")

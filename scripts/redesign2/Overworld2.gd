@@ -716,7 +716,8 @@ func _close_start_picker() -> void:
 
 # The pinned header stands down while the start screen is up: at that moment the
 # bar is reporting a Health pool, a purse, a character and a road walked that no
-# run has yet. It is a CanvasLayer, so hiding it costs the page below no layout.
+# run has yet. `_show_header` is the same switch the tier board used to use, so
+# there is one way to put the bar down and one way to bring it back.
 #
 # THE PAGE ITSELF IS NOT HIDDEN, and that is deliberate rather than an oversight.
 # Hiding the ScrollContainer was the obvious way to do this and it broke the board:
@@ -729,11 +730,7 @@ func _close_start_picker() -> void:
 # doing here.) The start screen is opaque and covers the whole canvas anyway, so
 # there is nothing to gain from hiding what is behind it.
 func _set_run_page_visible(on: bool) -> void:
-	if _header_layer != null and is_instance_valid(_header_layer):
-		_header_layer.visible = on
-		# Anything that centres itself on screen reads the bar's height; with the bar
-		# down it is standing on nothing.
-		_publish_header_strip(on)
+	_show_header(on)
 
 # The choose-your-start cards from a RunGraph.pick_amulet_and_starts() result: the
 # amulet is recorded on the run (hidden from the player — only the DISTANCE to it
@@ -4507,19 +4504,65 @@ func _prompt_rating(game: GameData) -> void:
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
 
-# The tier-list board over the run. Its own method so the rating flow and any
-# future entry point open it the same way, and so a headless test can drive it.
-func open_tier_list(focus_id: StringName = &"") -> TierListScreen:
-	var screen := TierListScreen.open(self, focus_id)
-	# The one screen the overworld opens that REPLACES the page rather than sitting
-	# over it: it is a full-screen board with its own header and its own way out,
-	# and the run's header bar floats above everything on this page — including
-	# that way out. So the bar stands down for as long as the board is up. (The
-	# Atlas and the end-of-run verdict need no such handling: they are mounted on
-	# layers above HEADER_LAYER and cover it on their own.)
-	_show_header(false)
-	screen.tree_exiting.connect(func(): _show_header(true))
+# --- the screens the run can put in front of itself ------------------------
+#
+# Four of them, all reachable from the `☰ Menu`: the compendium, the tier board,
+# the manual and the settings panel. Each REPLACES the run rather than sitting
+# over it — a full-screen page with its own header and its own way out — and each
+# is an ordinary Control that mounts on whatever parent it is handed.
+#
+# THE PROBLEM THEY ALL SHARE is the run's pinned header bar, which floats at
+# `UITheme.Layer.HEADER` over everything on this page, their own Close button
+# included. The tier board used to solve that by standing the bar DOWN for as
+# long as it was up, which works and is one more piece of state to get wrong.
+# They go on a layer above the bar instead and cover it themselves, which is what
+# the Atlas and the end-of-run verdict have always done.
+#
+# `build` is handed the layer to mount on and returns the screen. The layer is
+# freed with whatever it was holding, so a screen closing on its own terms (its
+# Close, an Escape) does not leave an empty CanvasLayer on the page per visit.
+func _open_full_screen(build: Callable) -> Node:
+	var layer := CanvasLayer.new()
+	layer.layer = UITheme.Layer.FULL_SCREEN
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	var screen: Node = build.call(layer)
+	if screen == null:
+		layer.queue_free()
+		return null
+	# CAPTURED BY ID, not by reference. The obvious `func(): layer.queue_free()`
+	# captures the layer itself, and this signal fires precisely when things are
+	# being torn down — so freeing the layer first (which frees the screen, which
+	# fires this) hands the lambda a dangling capture and Godot reports "Lambda
+	# capture at index 0 was freed". An int cannot dangle.
+	var layer_id: int = layer.get_instance_id()
+	screen.tree_exiting.connect(func():
+		var held: Object = instance_from_id(layer_id)
+		if held != null and is_instance_valid(held):
+			(held as Node).queue_free())
 	return screen
+
+# The tier-list board over the run. Its own method so the rating flow, the menu
+# and any future entry point open it the same way, and so a headless test can
+# drive it.
+func open_tier_list(focus_id: StringName = &"") -> TierListScreen:
+	return _open_full_screen(func(host): return TierListScreen.open(host, focus_id)) as TierListScreen
+
+# The compendium, mid-run. "What does this item do", "have I met this enemy" and
+# "what did I score that game" are questions a run raises, and answering them
+# used to mean quitting to the main menu.
+func open_collection() -> Collection:
+	return _open_full_screen(func(host): return Collection.open(host)) as Collection
+
+# The manual, mid-run — the one screen that explains the rules, previously
+# unreachable while you were playing by them.
+func open_manual(chapter: StringName = &"start") -> HowToPlayScreen:
+	return _open_full_screen(func(host): return HowToPlayScreen.open(host, chapter)) as HowToPlayScreen
+
+# Display, audio and the rest. F11 already worked mid-run; this is the rest of
+# that panel.
+func open_settings() -> SettingsModal:
+	return _open_full_screen(func(host): return SettingsModal.open(host)) as SettingsModal
 
 # Whether the pinned header bar is drawn. The page keeps its inset either way —
 # a screen standing in front of it is not a cue to reflow what is behind it.
@@ -5457,14 +5500,20 @@ func _build_ui() -> void:
 	_route_strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_route_strip.clip_contents = true
 	header.add_child(_route_strip)
-	var title := Label.new()
-	title.text = "Roguelike-like"
-	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
-	title.add_theme_color_override("font_color", UITheme.GOLD)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.size_flags_horizontal = Control.SIZE_SHRINK_END
-	header.add_child(title)
+	# NO TITLE. The bar carried "Roguelike-like" in 20px gold between the road
+	# walked and the buttons — about 180px of the one row in the game that never
+	# leaves the screen, spent telling the player which game they have open. It had
+	# already been moved once, out of the left corner to make room for Health, with
+	# the note that this "is also the honest ranking of the two"; this is the end of
+	# that same argument. The road strip is EXPAND_FILL, so it takes the width
+	# without anything else moving — and it is the thing that wanted it, being
+	# clipped and ellipsised past STRIP_MAX_STOPS.
+	#
+	# A gap instead, so the strip's last cover does not run into the buttons.
+	var head_gap := Control.new()
+	head_gap.custom_minimum_size = Vector2(UITheme.GAP_SECTION, 0)
+	head_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(head_gap)
 	# THE MAP, immediately left of the menu. There is a Map button on the offering
 	# panel already, and it stays there — it is the one the mouse is nearest when a
 	# routing decision is actually open. What it could not do is answer the question
@@ -6157,29 +6206,61 @@ func _build_map_button() -> Button:
 	_header_map_btn = b
 	return b
 
-enum MenuItem { SAVE, NEW_RUN, MAIN_MENU, EXIT_GAME }
+enum MenuItem { HOW_TO_PLAY, COLLECTION, TIER_LIST, SAVE, NEW_RUN, SETTINGS,
+	MAIN_MENU, EXIT_GAME }
 
+# THE MENU IS THREE GROUPS, AND THE GROUPS ARE NAMED.
+#
+# It was four entries under one unlabelled rule — Save / New run, then Main menu
+# / Exit — which is fine for four and falls apart at eight. The three reference
+# screens (the compendium, the tier board, the manual) were reachable only from
+# the MAIN MENU, so answering "what does this item do", "have I met this enemy"
+# or "how does this actually work" meant abandoning the run to go and look.
+#
+# The order is by what the entry does to the run, nearest-first:
+#   LOOK UP    — changes nothing. The group you open mid-decision, so it is the
+#                one the cursor lands on.
+#   THIS RUN   — Save, New run: acts on the run you are in.
+#   GAME       — Settings, Main menu, Exit: acts on the application. Last, and
+#                furthest from the cursor, because the two doors out are in it.
+#
+# `add_separator(text)` gives each group a real heading rather than a bare rule,
+# which is what turns a list of eight into three lists of three.
 func _build_menu_button() -> MenuButton:
 	var mb := MenuButton.new()
 	mb.text = "☰  Menu"
 	mb.flat = false
-	mb.tooltip_text = "Save this run, start a new one, go back to the main menu, or leave."
+	mb.tooltip_text = ("Look something up, save or restart this run, or leave.")
 	var pop: PopupMenu = mb.get_popup()
-	pop.add_item("💾   Save run", MenuItem.SAVE)
-	pop.add_item("⟳   New run", MenuItem.NEW_RUN)
-	pop.add_separator()
-	pop.add_item("←   Main menu", MenuItem.MAIN_MENU)
-	pop.add_item("⏻   Exit game", MenuItem.EXIT_GAME)
+	pop.add_separator("Look up")
+	pop.add_item("📖  How to Play", MenuItem.HOW_TO_PLAY)
+	pop.add_item("▣  Collection", MenuItem.COLLECTION)
+	pop.add_item("🏆  Tier List", MenuItem.TIER_LIST)
+	pop.add_separator("This run")
+	pop.add_item("💾  Save run", MenuItem.SAVE)
+	pop.add_item("⟳  New run", MenuItem.NEW_RUN)
+	pop.add_separator("Game")
+	pop.add_item("⚙  Settings", MenuItem.SETTINGS)
+	pop.add_item("←  Main menu", MenuItem.MAIN_MENU)
+	pop.add_item("⏻  Exit game", MenuItem.EXIT_GAME)
 	pop.id_pressed.connect(menu_action)
 	return mb
 
 # Public so a test can press a menu entry without opening the popup.
 func menu_action(id: int) -> void:
 	match id:
+		MenuItem.HOW_TO_PLAY:
+			open_manual()
+		MenuItem.COLLECTION:
+			open_collection()
+		MenuItem.TIER_LIST:
+			open_tier_list()
 		MenuItem.SAVE:
 			prompt_save()
 		MenuItem.NEW_RUN:
 			start_run()
+		MenuItem.SETTINGS:
+			open_settings()
 		MenuItem.MAIN_MENU:
 			get_tree().change_scene_to_file("res://scenes/menu/MainMenu.tscn")
 		MenuItem.EXIT_GAME:

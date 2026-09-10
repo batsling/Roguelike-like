@@ -497,10 +497,40 @@ node and its script.
   - Keys and Chests aren't shown at all — Keys are deferred and unauthored, and a
     chest is redeemed the moment it lands.
 
-  **The header is the title and one `☰ Menu`** (Save run / New run / Main menu /
-  Exit game). Exit is the only entry that asks first, since a live run is
-  standing behind it — and it asks the question that is actually open, offering
-  **Save & exit** beside Exit and Cancel rather than a bare "are you sure".
+  **The header carries no title.** It used to end in "Roguelike-like" in 20px
+  gold, between the road walked and the buttons — about 180px of the one row in
+  the game that never leaves the screen, spent naming the game the player already
+  has open. It had been moved out of the left corner once already, to make room
+  for Health, with the note that this "is also the honest ranking of the two";
+  dropping it is the end of that same argument. The road strip is `EXPAND_FILL`,
+  so it takes the width without anything else moving — and it is the thing that
+  wanted it, being clipped and ellipsised past `STRIP_MAX_STOPS`.
+
+  **`☰ Menu` is three named groups**, and it was four entries under one
+  unlabelled rule. The three reference screens were reachable only from the MAIN
+  MENU, so answering "what does this item do", "have I met this enemy" or "how
+  does this actually work" meant abandoning the run to go and look. Ordered by
+  what the entry does to the run, nearest-first:
+  - **Look up** — 📖 How to Play, ▣ Collection, 🏆 Tier List. Changes nothing,
+    and it is the group opened mid-decision, so it is the one the cursor lands on.
+  - **This run** — 💾 Save run, ⟳ New run.
+  - **Game** — ⚙ Settings, ← Main menu, ⏻ Exit game. Last, and furthest from the
+    cursor, because both doors out are in it.
+
+  Each group heading is a **labelled** `add_separator`, which is what turns a
+  list of eight into three lists of three. Exit is the only entry that asks
+  first, since a live run is standing behind it — and it asks the question that
+  is actually open, offering **Save & exit** beside Exit and Cancel rather than a
+  bare "are you sure".
+
+  **All four reference screens mount on a layer ABOVE the pinned header**
+  (`Overworld2._open_full_screen`, at `UITheme.Layer.FULL_SCREEN`). Each replaces
+  the run rather than sitting over it, and the bar floats over everything on this
+  page — including their own Close button, which is the only way off them. The
+  tier board used to answer that by standing the bar *down* for as long as it was
+  up; going over it instead is what the Atlas and the end-of-run verdict have
+  always done, and it is one less piece of state to get wrong. The layer is freed
+  with the screen, so a visit does not leave an empty `CanvasLayer` behind.
   **`🗺 Map` and `→ Optimal Path` are two buttons, two destinations and two
   names**, and until the layout pass they were one word for both. The header's
   `🗺 Map` and the offering heading's `🗺 Map` both called `open_map`, so each

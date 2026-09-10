@@ -11,6 +11,35 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run's `☰ Menu` reaches the screens that used to need quitting it, and it
+  is three named groups instead of a list.** It was four entries under one
+  unlabelled rule — Save / New run, then Main menu / Exit — which is fine for
+  four and falls apart at eight. The compendium, the tier board and the manual
+  were reachable only from the MAIN MENU, so "what does this item do", "have I met
+  this enemy" and "how does this actually work" were questions you had to abandon
+  a run to answer. Settings came along for the same reason: F11 already worked
+  mid-run, so the rest of that panel may as well.
+  The groups are ordered by what the entry does to the run, nearest-first —
+  **Look up** (changes nothing, and the group you open mid-decision), **This run**
+  (Save, New run), **Game** (Settings, Main menu, Exit, last and furthest from the
+  cursor because both doors out are in it). Each heading is a *labelled*
+  `add_separator`, which is what turns a list of eight into three lists of three.
+  All four screens go on a layer **above** the pinned header
+  (`_open_full_screen`): each replaces the run rather than sitting over it, and
+  the bar floats over everything on the page including their own Close button. The
+  tier board used to answer that by standing the bar *down* while it was up; going
+  over it instead is what the Atlas and the verdict already do, and it is one less
+  piece of state to get wrong.
+
+- **The run's header carries no title.** "Roguelike-like" in 20px gold sat
+  between the road walked and the buttons — about 180px of the one row in the game
+  that never leaves the screen, spent naming the game the player already has open.
+  It had been moved out of the left corner once already to make room for Health,
+  with the note that this "is also the honest ranking of the two"; this is the end
+  of that argument. The road strip is `EXPAND_FILL` and takes the width without
+  anything else moving, which is what it wanted — it is clipped, and past
+  `STRIP_MAX_STOPS` it drops its oldest stops behind an ellipsis.
+
 - **`UITheme` has a type scale and a spacing scale, and the z-order is one list.**
   It had a thorough colour system — eleven semantic colours, rarity, type and
   class ramps, `chip()`, `action_button()`, `panel_box()` — and nothing at all for
