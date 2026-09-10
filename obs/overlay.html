@@ -28,8 +28,9 @@
 
   AND #map IS A FIFTH, which is not part of the column at all: the road AHEAD, as
   the branching ladder of every optimal route to the Amulet. Give it a source of
-  its own at 1920 x 1080 and toggle it on when you want it — see the .map section
-  below.
+  its own — 2560 x 1440 is what it draws at, so that size renders 1:1 and you
+  scale the scene item in OBS to taste — and toggle it on when you want it. See
+  the .map section below.
 -->
 <link rel="stylesheet" href="overlay.css">
 <!-- Yours. Loaded last so anything in it wins. -->
@@ -178,7 +179,15 @@
 
   <!-- THE ROUTE MAP: the road AHEAD, as the layered graph of every optimal road
        from here to the Amulet. OFF THE DEFAULT PAGE — it renders only at
-       map.html, its own browser source, drawn full screen at 1920 × 1080.
+       map.html, its own browser source.
+
+       IT IS DRAWN AT A FIXED 2560 × 1440 AND SCALED INTO WHATEVER SOURCE IT
+       GETS, so it is the one source here you can zoom in OBS without enlarging
+       small pixels: give the browser source 2560 × 1440 for a 1:1 render, then
+       scale the scene item down to park it and up to read it. A smaller source
+       shows the whole map, scaled down — never a crop. The stage size is
+       `--stage-w` / `--stage-h` on `#overlay.only-map > .map`, overridable from
+       your own custom.css; see the `.map` block in overlay.css.
 
        IT IS THE ROAD'S OPPOSITE NUMBER. #road is where the run has BEEN, one
        cover per stop, a sequence. This is where it can GO, and it is a graph

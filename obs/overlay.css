@@ -1311,7 +1311,57 @@ html, body {
 #overlay.only-map > .ticker { display: none; }
 #overlay.only-map {
   height: 100vh;
-  padding: 12px;
+  padding: 0;
+  /* The stage below is usually WIDER than the source it is scaled into, and an
+   * overflowing absolute child is what puts scrollbars on a browser source. */
+  overflow: hidden;
+  position: relative;
+}
+
+/* ------------------------------------------------------------- the stage --
+ *
+ * THE MAP IS DRAWN AT A FIXED SIZE AND SCALED INTO WHATEVER SOURCE IT IS GIVEN.
+ *
+ * The ladder used to be solved into the SOURCE's own pixels, which is right for
+ * a panel in a column and wrong for the one source people zoom: a 480-wide
+ * browser source drew a 480-wide ladder, and cranking that source up in OBS then
+ * enlarged 480 pixels of cover and type — a blurry map is what you get when the
+ * thing being scaled was rendered small in the first place.
+ *
+ * So the map has a STAGE: 2560 x 1440 of layout, always, whatever the source is.
+ * The ladder is solved into the stage, so every cover and every name is rendered
+ * at that size, and the whole stage is then scaled by one transform to fit the
+ * source. Give the browser source 2560 x 1440 and it draws 1:1 — then scale the
+ * scene item down in OBS to park it in a corner, and back up when you want to
+ * read it, with the pixels already there either way. A smaller source still
+ * shows the WHOLE map, just scaled down; nothing is ever cropped.
+ *
+ * TO CHANGE THE STAGE, put this in user://obs/custom.css (which is yours and is
+ * never overwritten) — 4K of stage, say:
+ *
+ *   #overlay.only-map > .map { --stage-w: 3840px; --stage-h: 2160px; }
+ *
+ * Keep the stage's ASPECT the same as the source's, or the scale-to-fit leaves
+ * transparent bars on the short axis — the map is centred in the source rather
+ * than stretched to it, because stretching type is worse than a bar.
+ *
+ * `translate() scale()` in that order: the translate is read in the SOURCE's
+ * unscaled pixels, which is what makes the centring arithmetic in overlay.js
+ * (`(source - stage * scale) / 2`) land where it says it does. */
+#overlay.only-map > .map {
+  --stage-w: 2560px;
+  --stage-h: 1440px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  /* The 12px this source used to have as overlay padding, at stage scale. */
+  padding: 16px;
+  box-sizing: border-box;
+  transform-origin: top left;
+  transform: translate(var(--stage-x, 0px), var(--stage-y, 0px))
+    scale(var(--stage-scale, 1));
 }
 
 /* ------------------------------------------------------- filling a source -- */

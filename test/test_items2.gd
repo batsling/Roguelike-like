@@ -1099,3 +1099,182 @@ func test_the_rack_can_fill_the_room_infusion_made() -> void:
 	assert_eq(GameState.hp, 20, "still standing at what it was")
 	GameState.change_hp(1)
 	assert_eq(GameState.hp, 22, "and one point of healing fills both of them")
+
+# ==========================================================================
+# The two Isaac relics added after the seven — Censer and Fanny Pack (§8).
+# ==========================================================================
+
+# --- Censer: the front line loses an extra turn ---------------------------
+#
+# "Enemies in the leftmost column get -1 Extra Turns". The turns it takes off are
+# the ones the ROAD hands the board at a report (§7.4) — a distance-to-the-Amulet
+# thing — so every test here has to stand the run somewhere those exist at all.
+
+# The run standing close enough to the Amulet that reporting a game buys the board
+# turns, with one body in the front column ready to spend them on the player.
+# Returns its instance, or -1 when this run's graph could not be stood there.
+func _front_line_at_the_doorstep() -> int:
+	var amulet: StringName = &"slay_the_spire"
+	var dist: Dictionary = RunGraph.bfs_distances(amulet)
+	var stood: bool = false
+	for gid in dist.keys():
+		if int(dist[gid]) == 1:
+			GameState.amulet_game_id = amulet
+			GameState.current_game_id = gid
+			stood = true
+			break
+	if not stood:
+		return -1
+	var inst: int = _choose_solo(_fighter(2))
+	GameLoop2.beat_game(false)        # its own game; after this it is a follower
+	_march_to_front(inst)
+	GameState.hp = 20
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	return inst
+
+func test_the_censer_holds_the_front_line_off_for_a_turn() -> void:
+	var inst: int = _front_line_at_the_doorstep()
+	if inst < 0:
+		pending("this run's graph has nothing standing one hop from the Amulet")
+		return
+	if int(_entry_of(inst).get("col", -1)) != 1:
+		pending("the body did not reach the front column to be held off")
+		return
+	_give(&"censer")
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_gt(int(res.get("turns", 0)), 0, "the doorstep bought the board turns")
+	var censed: int = 0
+	var swings: int = 0
+	for a in res["attacks"]:
+		if int((a as Dictionary).get("instance", 0)) != inst:
+			continue
+		if bool((a as Dictionary).get("censed", false)):
+			censed += 1
+		if (a as Dictionary).has("damage"):
+			swings += 1
+	assert_eq(censed, 1, "the body in the front column sat one turn out")
+	assert_eq(swings, maxi(0, int(res["turns"]) - 1),
+		"and swung on every other turn it was given, not one more")
+	assert_gt(before - GameState.hp, -1, "and what it did land came off Health")
+
+func test_without_the_censer_that_same_turn_is_a_swing() -> void:
+	# The other half, and the reason the test above is not just describing the
+	# board being quiet: the SAME setup without the relic is a hit.
+	var inst: int = _front_line_at_the_doorstep()
+	if inst < 0:
+		pending("this run's graph has nothing standing one hop from the Amulet")
+		return
+	if int(_entry_of(inst).get("col", -1)) != 1:
+		pending("the body did not reach the front column to swing from")
+		return
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(false)
+	var swings: int = 0
+	for a in res["attacks"]:
+		if int((a as Dictionary).get("instance", 0)) == inst and (a as Dictionary).has("damage"):
+			swings += 1
+	assert_eq(swings, int(res["turns"]), "every turn it was given was a swing")
+	assert_lt(GameState.hp, before, "and the player paid for them")
+
+func test_the_censer_leaves_the_bodies_behind_the_front_line_alone() -> void:
+	# It is armour, not a global slow: a body still crossing the board spends its
+	# turns WALKING, and draining those would be a different (and much stronger)
+	# item. Asserted on the walk, because that is the turn it would have lost.
+	var amulet: StringName = &"slay_the_spire"
+	var dist: Dictionary = RunGraph.bfs_distances(amulet)
+	var stood: bool = false
+	for gid in dist.keys():
+		if int(dist[gid]) == 1:
+			GameState.amulet_game_id = amulet
+			GameState.current_game_id = gid
+			stood = true
+			break
+	if not stood:
+		pending("this run's graph has nothing standing one hop from the Amulet")
+		return
+	_give(&"censer")
+	var inst: int = _choose_solo(_fighter(2))
+	GameLoop2.beat_game(false)
+	var before: int = int(_entry_of(inst).get("col", -1))
+	if before <= 1:
+		pending("the body spawned already in the front column, with no walk to lose")
+		return
+	var res: Dictionary = GameLoop2.beat_game(false)
+	assert_gt(int(res.get("turns", 0)), 0, "the doorstep bought the board turns")
+	assert_lt(int(_entry_of(inst).get("col", -1)), before,
+		"a body back down the board still closed on the player")
+
+# --- Fanny Pack: loot shaken loose onto the floor -------------------------
+#
+# "50% chance to spawn 1 random loot on the grid when losing health". Two facts
+# worth pinning apart: it fires on HEALTH lost (never on a swing the shields ate,
+# the same line Piggy Bank walks), and what it pays lands ON THE BOARD rather than
+# in the pack — a piece you have to go and stand on.
+
+func test_the_fanny_pack_puts_its_loot_on_the_board_not_in_the_pack() -> void:
+	_give(&"fanny_pack")
+	_choose_solo(_fighter(1))        # a board to drop onto
+	GameState.max_hp = 40
+	GameState.hp = 40
+	var pack_before: int = GameState.loot.size()
+	# 50% a hit, so hit it until the coin lands rather than asserting on one flip.
+	var dropped: bool = false
+	for _i in range(40):
+		GameState.change_hp(-1)
+		if not GameLoop2.drop_cells().is_empty():
+			dropped = true
+			break
+	assert_true(dropped, "losing Health enough times shook something loose")
+	assert_eq(GameState.loot.size(), pack_before,
+		"and it landed on the floor, not in the pack")
+	var cell: Vector2i = GameLoop2.drop_cells()[0]
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	assert_false((held.get("loot", {}) as Dictionary).is_empty(),
+		"the square is holding a real piece of loot")
+
+func test_the_fanny_pack_ignores_a_swing_the_shields_ate() -> void:
+	_give(&"fanny_pack")
+	_choose_solo(_fighter(1))
+	GameState.max_hp = 40
+	GameState.hp = 40
+	GameState.shields = 99
+	GameState.bonus_shields = 0
+	var res: Dictionary = {}
+	for _i in range(40):
+		GameLoop2._take_hit(1, res)
+	assert_eq(GameState.hp, 40, "the shields took every one of them")
+	assert_true(GameLoop2.drop_cells().is_empty(),
+		"damage taken is not Health lost, so nothing was shaken loose")
+
+func test_nothing_is_paid_onto_a_board_with_no_room_for_it() -> void:
+	# `drop_loot_anywhere` answers OFF_FIELD on a full floor and the grant is
+	# quietly dropped. The relic must not throw, and must not put two pieces on
+	# one square.
+	_give(&"fanny_pack")
+	_choose_solo(_fighter(1))
+	GameState.max_hp = 80
+	GameState.hp = 80
+	for _i in range(60):
+		GameState.change_hp(-1)
+	var cells: Array = GameLoop2.drop_cells()
+	assert_eq(cells.size(), _unique(cells).size(), "one piece per square, never two")
+	assert_lte(cells.size(), GameLoop2.grid_cols() * GameLoop2.grid_rows(),
+		"and never more squares than the board has")
+
+func _unique(cells: Array) -> Array:
+	var seen: Array = []
+	for c in cells:
+		if not seen.has(c):
+			seen.append(c)
+	return seen
+
+# A stacked body's whole entry (col / row / health), or {} once it is gone — the
+# same one-liner test_gameloop2.gd keeps, for the same reason: the stack is a list
+# of bare Dictionaries and there is no lookup on the loop that answers by instance.
+func _entry_of(instance: int) -> Dictionary:
+	for e in GameLoop2.stack:
+		if int(e["instance"]) == instance:
+			return e
+	return {}

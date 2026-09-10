@@ -2192,10 +2192,15 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#
 	#    The turns you PAY FOR by failing are elsewhere (attempt_turn, §3.2). These
 	#    are the ones the road charges.
+	#
+	#    A CENSER IN THE PACK IS WHAT THE FRONT LINE DOES NOT GET (§8.2). It comes
+	#    off these turns and no others: they are the ones the road charges, which is
+	#    what the item's "-1 Extra Turns" names.
+	var front_drain: int = GameState.front_column_turn_drain()
 	for turn in range(turns):
 		if run_over:
 			break
-		_resolve_enemy_turn(turn, res)
+		_resolve_enemy_turn(turn, res, [], front_drain)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# 2a. PREDATORY SCENT (§7.6). A body that smells a bad evening takes ONE MORE
@@ -2331,7 +2336,14 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 # (§7.6) is a free swing for two or three specific enemies and not another beat of
 # the whole board, and the ground's own turn-start triggers do not fire twice for
 # it either. Empty (the default) is every body, which is what a real turn is.
-func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
+# `front_drain` is the Censer's (§8.2): a body standing in the FRONT column sits
+# out this turn when `turn` is inside the drain, so `front_drain` of the road's
+# extra turns never happen for the bodies in reach of the player. Passed by
+# beat_game and nothing else — the turns a LOST RUN hands the board (attempt_turn,
+# §3.2) are ones the player bought by failing, and the item is about the extra
+# turns the road charges.
+func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
+		front_drain: int = 0) -> void:
 	# a0. THE GROUND, before anything swings (§17). A body that has been parked on
 	#     a fire tile takes its stack of Burn now — so the halved damage is already
 	#     on it when it strikes this turn rather than a turn late — and this is
@@ -2369,6 +2381,17 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = []) -> void:
 		if is_stunned(entry):
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"stunned": true})
+			spent[inst] = true
+			continue
+		# THE CENSER (§8.2). Read off the body's own column rather than off a set
+		# built before the loop, because the loop MOVES bodies: something that
+		# stepped into the front line earlier this same turn is in reach now, and a
+		# list drawn up beforehand would let it swing on the turn it arrived. It is
+		# logged like a stun — a turn that visibly did not happen, so the resolve
+		# can say which body the incense held off rather than showing a gap.
+		if turn < front_drain and int(entry.get("col", offgrid_col())) == 1:
+			res["attacks"].append({"instance": inst, "turn": turn,
+				"censed": true})
 			spent[inst] = true
 			continue
 		# THE INTENT COMES FIRST (§7.6). A body with one spends its whole turn on
@@ -2880,6 +2903,33 @@ func _free_drop_cell(from: Vector2i, avoid: Vector2i = OFF_FIELD) -> Vector2i:
 				best = cell
 				best_key = key
 	return best
+
+# Put a piece of loot down SOMEWHERE — a random free square of the battlefield,
+# for loot that came from nowhere in particular (Fanny Pack, §8.2: a piece shaken
+# loose by a hit rather than dropped by a body that fell). Returns where it landed,
+# or OFF_FIELD when the floor is full and there was nowhere to put it.
+#
+# RANDOM, not the nearest free cell, and that is the difference between this and
+# every other call into `place_drop`. Loot dropped by a defeat belongs on the
+# square that body fell in — the drop is a fact ABOUT that square. This one has no
+# such square, and always laying it at the front of the board would make it a free
+# pickup rather than something the player has to go and stand on. A cell is picked
+# at random and `place_drop` does the rest, so a square that turns out to be taken
+# still finds room the way a displaced drop does.
+func drop_loot_anywhere(loot: Dictionary) -> Vector2i:
+	if loot.is_empty():
+		return OFF_FIELD
+	var free: Array = []
+	var taken: Dictionary = occupancy()
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			var cell := Vector2i(col, row)
+			if taken.has(cell) or drops.has(cell) or units.has(cell):
+				continue
+			free.append(cell)
+	if free.is_empty():
+		return OFF_FIELD
+	return place_drop(free[randi() % free.size()], loot)
 
 # Lexicographic "is a closer match than", for _free_drop_cell's sort key.
 func _key_before(a: Array, b: Array) -> bool:

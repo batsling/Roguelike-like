@@ -4331,12 +4331,15 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 	return _checklist.verify_row(text, color, emphasise, enemy, character, instance)
 
 # Open the tier-list rating prompt for `game` (1-10 + optional notes). Submitting
-# records the score via TierList (dropping the game into the Unranked tray the
-# first time) and then OPENS THE TIER LIST on top, so the score the player just
-# gave lands somewhere they can see it and drag it into a row while the game is
-# still fresh. "Maybe later" just closes, and takes them nowhere — declining to
-# rate shouldn't hand them a screen they didn't ask for. Pre-fills when already
-# rated so the player updates rather than starts over.
+# records the score via TierList, which drops the game into the Unranked tray the
+# first time. Whether the BOARD then opens is the player's call and lives on the
+# modal's second button: "Confirm" saves the score and leaves them on the select
+# screen, "★ Rank it on the tier list" saves the same score and opens the board on
+# this game so it can be put in a row while it is still fresh. Scoring and tiering
+# are two decisions and the prompt no longer makes one of them for you. "Maybe
+# later" just closes, and takes them nowhere — declining to rate shouldn't hand
+# them a screen they didn't ask for. Pre-fills when already rated so the player
+# updates rather than starts over.
 func _prompt_rating(game: GameData) -> void:
 	if game == null:
 		return
@@ -4344,15 +4347,19 @@ func _prompt_rating(game: GameData) -> void:
 	modal.setup(game.id, game)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(game.id, score, notes)
+		# ASKED BEFORE THE FREE: `wants_ranking` is state on the modal, and
+		# queue_free'ing it first would be reading through a node on its way out.
+		var rank_now: bool = modal.wants_ranking()
 		modal.queue_free()
-		open_tier_list())
+		if rank_now:
+			open_tier_list(game.id))
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
 
 # The tier-list board over the run. Its own method so the rating flow and any
 # future entry point open it the same way, and so a headless test can drive it.
-func open_tier_list() -> TierListScreen:
-	var screen := TierListScreen.open(self)
+func open_tier_list(focus_id: StringName = &"") -> TierListScreen:
+	var screen := TierListScreen.open(self, focus_id)
 	# The one screen the overworld opens that REPLACES the page rather than sitting
 	# over it: it is a full-screen board with its own header and its own way out,
 	# and the run's header bar floats above everything on this page — including

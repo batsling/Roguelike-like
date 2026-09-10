@@ -66,9 +66,21 @@ var _scale: float = 1.0
 # The game whose card is open on the right. Kept across refreshes so dropping a
 # game into a new tier doesn't close what you were reading.
 var _selected: StringName = &""
+# The game the board was OPENED on, if it was opened from a score (see `open`).
+# Kept separately from `_selected` because it survives the player clicking around
+# — it is what the "put this one somewhere" prompt is about, and it stands down
+# for good once that game has been placed.
+var _focus: StringName = &""
 
-static func open(parent: Node) -> TierListScreen:
+# `focus_id` is the game the board should open ON — the one just rated, arriving
+# from RateGameModal's "★ Rank it". Its card is open before the player touches
+# anything and, while it is still unplaced, the board says so at the top of that
+# card: the point of coming here from a score is to put THAT game in a row, and a
+# board of three hundred covers is a poor place to go looking for it.
+static func open(parent: Node, focus_id: StringName = &"") -> TierListScreen:
 	var s := TierListScreen.new()
+	s._selected = focus_id
+	s._focus = focus_id
 	parent.add_child(s)
 	return s
 
@@ -465,6 +477,23 @@ func _show_detail(game_id: StringName) -> void:
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_box.add_child(title)
 
+	# The one instruction on this screen that is about a SINGLE game: you came here
+	# from a score to file this one, and until it is in a row that is the only thing
+	# left to do. It goes away by itself the moment the game is placed — including
+	# when it is placed by a drag rather than by the buttons below — because it is
+	# asked of the live tier, not of a flag someone has to remember to clear.
+	if game_id == _focus and TierList.tier_of(game_id) < 0:
+		var call_out := PanelContainer.new()
+		call_out.add_theme_stylebox_override("panel",
+			UITheme.flat(UITheme.PANEL_HI, 6, 8, 1, UITheme.GOLD))
+		var ask := Label.new()
+		ask.text = "Scored. Now pick its tier — drag it onto a row, or use Move to below."
+		ask.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ask.add_theme_font_size_override("font_size", 12)
+		ask.add_theme_color_override("font_color", UITheme.GOLD)
+		call_out.add_child(ask)
+		_detail_box.add_child(call_out)
+
 	if gd != null and gd.cover_image != null:
 		var art := AtlasView.card_art(gd.cover_image, DETAIL_W - 60.0, 210.0)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -561,7 +590,9 @@ func _move_button(text: String, game_id: StringName, tier: int, here: bool,
 
 func _open_rating(game_id: StringName, gd: GameData) -> void:
 	var modal = preload("res://scripts/ui/RateGameModal.gd").new()
-	modal.setup(game_id, gd)
+	# NO "Rank it" BUTTON HERE: the board is already open behind this modal, so an
+	# offer to take you to it is a button that appears to do nothing.
+	modal.setup(game_id, gd, false)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(game_id, score, notes)
 		modal.queue_free())

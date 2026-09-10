@@ -1943,7 +1943,17 @@ odd one out — it is about the *ground* rather than the pool, and its
 `death_tile` flag is documented where the rest of the ground content lives
 (§17.3).
 
-Three more run-scope hooks and two more flags carry the Isaac relics, and they
+**Censer and Fanny Pack** are the two Isaac relics added after the seven, and
+each is an answer to being hit rather than a way of hitting back. **Censer**
+(Uncommon, `angel_room`) takes one of the road's extra turns off every body in the
+**front column**, so the closer the board gets to you the more it is holding back
+— armour that is worth nothing while the front line is empty and most when it is
+full. **Fanny Pack** (Uncommon) pays the other way round: half the times you
+actually lose Health, a piece of loot lands **on the battlefield floor**, which
+turns a hit into a reason to go and stand somewhere. Both needed a word the sheet
+did not have (`front_column_slow`, `drop_loot N`), and both are in the table below.
+
+Three more run-scope hooks and four more flags carry the Isaac relics, and they
 are listed here because each is a *moment* or a *rule* the 2.0 loop did not
 previously name:
 
@@ -1960,6 +1970,8 @@ previously name:
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
 | `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
 | `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
+| `front_column_slow` | **Censer.** Every body standing in the **front column** — the ones already in reach of you — sits out one of the extra turns the road hands the board at a report (§7.4). It touches that column and no other on purpose: a body further back spends its turns *walking*, so draining one there would only slow the approach, while in the front line a turn is a hit, which makes this armour that stops mattering the moment the front line is empty. Read off each body's **live** column inside the turn loop, so something that steps up mid-resolve is held off on the turn it arrives; stacks like `grid_grow` (`GameState.front_column_turn_drain` counts the copies). The turns a **lost run** buys the board (§3.2) are untouched — those are the ones you paid for by failing, and "Extra Turns" names the road's. |
+| `drop_loot N` | **Fanny Pack.** N pieces of loot rolled onto the **battlefield floor** rather than into the pack — the twin of `gain_loot`, and the difference is the whole item. A relic that paid into the pack on every hit would be flat income; one that puts the piece on a random free square turns being hit into a reason to walk somewhere, on exactly the terms loot dropped by a defeated body is on (it lies there until picked up, and the report sweeps what is left, §18). A floor with no free square pays nothing rather than stacking two pieces on one cell. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
 | `reroll_enemies` | **D10.** Re-roll every non-boss body on the battlefield at *its own* difficulty and game type, keeping the square it stands on and the statuses hung on it. Health resets to the new body's own, because Health here is goal completions and the goals just changed. Bosses shrug it off, the same way they shrug off a bomb (§7.1). |

@@ -5821,15 +5821,36 @@ func _tier_list_screen() -> Node:
 			return c
 	return null
 
-func test_submitting_a_rating_opens_the_tier_list() -> void:
+# SCORING AND TIERING ARE TWO PRESSES. A plain Confirm records the score and
+# leaves the player where they were; the board is what the modal's second button
+# asks for. The modal is driven through its own buttons here rather than by
+# emitting `submitted` by hand, because WHICH BUTTON was pressed is the whole
+# thing under test — `wants_ranking()` is set by the press, not by the signal.
+func test_confirming_a_score_leaves_the_player_where_they_were() -> void:
 	var modal := _open_rating_modal()
 	assert_not_null(modal, "the rate prompt opened")
 	assert_null(_tier_list_screen(), "and nothing else is up yet")
-	modal.submitted.emit(7, "good")
-	assert_not_null(_tier_list_screen(),
-		"a submitted score lands the player on the board it went to")
+	modal._on_score_pressed(7)
+	modal._on_confirm()
+	assert_null(_tier_list_screen(),
+		"a plain Confirm doesn't hand the player a board they didn't ask for")
 
-func test_the_score_is_recorded_before_the_board_opens() -> void:
+func test_the_rank_button_opens_the_tier_list_on_the_game_just_scored() -> void:
+	var game: GameData = Data.all_games()[0]
+	_ui._prompt_rating(game)
+	var modal: Node = null
+	for c in _ui.get_children():
+		if c is RateGameModal:
+			modal = c
+	assert_not_null(modal, "the rate prompt opened")
+	modal._on_score_pressed(7)
+	modal._on_rank()
+	var board: Node = _tier_list_screen()
+	assert_not_null(board, "'★ Rank it' lands the player on the board")
+	assert_eq(board.selected_game(), game.id,
+		"and the board opens on the game that was just scored, not on nothing")
+
+func test_the_score_is_recorded_whichever_way_out_was_taken() -> void:
 	var game: GameData = Data.all_games()[0]
 	_ui._prompt_rating(game)
 	var modal: Node = null

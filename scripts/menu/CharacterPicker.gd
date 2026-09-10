@@ -12,8 +12,9 @@ extends Control
 #
 # Layout (per UI pass): a four-column GRID of small icon tiles on the left, the
 # selected hero's FULL portrait beside its full information on the right, and a
-# Confirm button along the bottom. Selecting a tile only previews it; Confirm
-# emits `chosen` and the host starts the run.
+# Cancel / 🎲 Random / Confirm row along the bottom. Selecting a tile only
+# previews it, and so does the dice; Confirm emits `chosen` and the host starts
+# the run.
 #
 # Mounted as an ordinary Control on the menu's `%ModalLayer` rather than on a
 # CanvasLayer of its own, and that matters: the menu's Exit Game corner is drawn
@@ -33,6 +34,13 @@ const TILE_GAP := 10
 # The portrait's edge in the detail panel. Also the width its name / source /
 # Health column is laid out to, so the two columns line up.
 const CHAR_PORTRAIT_SIZE := 210
+
+# The roster as CharacterData, in the order the grid draws it, and the selection
+# callback every tile click goes through. Both exist so `roll_random` picks a hero
+# the same way a click does rather than re-implementing selection beside it.
+var _roster: Array[CharacterData] = []
+var _select: Callable = Callable()
+var _state: Dictionary = {}
 
 static func open(parent: Node) -> CharacterPicker:
 	var picker := CharacterPicker.new()
@@ -137,6 +145,18 @@ func _build() -> void:
 	cancel.custom_minimum_size = Vector2(150, 44)
 	cancel.pressed.connect(queue_free)
 	footer.add_child(cancel)
+	# THE DICE PREVIEW, THEY CONFIRM. It rolls a hero into the same `select` every
+	# tile click goes through — so the portrait, the facts and the Confirm label all
+	# come up as if it had been picked by hand — and stops there. Rolling straight
+	# into the run would make this the one button on the screen that starts one
+	# without the Confirm beside it, and would leave no way to see what you got and
+	# roll again.
+	var random_btn := Button.new()
+	random_btn.text = "🎲  Random"
+	random_btn.custom_minimum_size = Vector2(150, 44)
+	random_btn.tooltip_text = "Pick a hero at random — press again to reroll, Confirm to take it."
+	footer.add_child(random_btn)
+
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(spacer)
@@ -150,7 +170,10 @@ func _build() -> void:
 	footer.add_child(confirm)
 
 	# Selection state shared between the tiles, the detail panel, and Confirm.
+	# Kept on the node as well as in this scope so the dice button — and a test —
+	# can drive the very same selection path a tile click takes.
 	var state := {"id": &"", "tiles": {}}
+	_state = state
 	var select := func(ch: CharacterData) -> void:
 		state["id"] = ch.id
 		for tid in state["tiles"]:
@@ -159,10 +182,15 @@ func _build() -> void:
 		confirm.disabled = false
 		confirm.text = "Confirm: %s" % ch.display_name
 
+	_select = select
+
 	var roster: Array = Data.all_characters2()
 	for ch in roster:
 		if ch is CharacterData:
+			_roster.append(ch)
 			grid.add_child(_character_tile(ch, state, select))
+	random_btn.pressed.connect(func(): roll_random())
+	random_btn.disabled = _roster.size() < 2
 	confirm.pressed.connect(func():
 		if String(state["id"]) != "":
 			_confirm(StringName(state["id"])))
@@ -170,6 +198,28 @@ func _build() -> void:
 	# Preselect the first hero so the panel is never empty and Confirm is live.
 	if not roster.is_empty() and roster[0] is CharacterData:
 		select.call(roster[0])
+
+# Roll a hero into the preview and answer which one it was. Public because the
+# footer's 🎲 is not the only thing that should be able to ask for one, and
+# because a headless test can then press it without a mouse.
+#
+# NEVER THE ONE ALREADY SHOWING, as long as the roster has another to offer: a die
+# that can land on the hero you are already looking at reads as a button that did
+# nothing, and rerolling is the whole point of previewing rather than starting the
+# run. With a one-hero roster there is nothing to say, and the button is disabled.
+func roll_random() -> CharacterData:
+	if _roster.is_empty() or not _select.is_valid():
+		return null
+	var pool: Array[CharacterData] = []
+	var showing := String(_state.get("id", &""))
+	for ch in _roster:
+		if String(ch.id) != showing:
+			pool.append(ch)
+	if pool.is_empty():
+		pool = _roster
+	var pick: CharacterData = pool[randi() % pool.size()]
+	_select.call(pick)
+	return pick
 
 # Emit and stand down, the same shape CustomRunScreen._begin uses: the screen
 # says what was picked and stops existing, and what that MEANS is the host's.

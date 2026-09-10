@@ -73,6 +73,10 @@ const HEIGHT = 828;
  * measurement here is taken at the recommended one. */
 const MAP_SIZE = { width: 1920, height: 1080 };
 const MAP_SMALL = { width: 640, height: 720 };
+/* THE STAGE the map is laid out on, whatever the source turns out to be — the
+ * `--stage-w` / `--stage-h` defaults in overlay.css. A source of this size draws
+ * it 1:1; anything else is the same render, scaled. */
+const MAP_STAGE = { width: 2560, height: 1440 };
 
 let failures = 0;
 function check(name, ok, detail) {
@@ -1142,7 +1146,13 @@ async function main() {
       return {
         rung: Math.round(rung.getBoundingClientRect().width),
         cover: Math.round(img.getBoundingClientRect().width),
-        name: Math.round(parseFloat(getComputedStyle(name).fontSize)),
+        /* MEASURED ON SCREEN, NOT IN CSS. The name's type is a fraction of the
+         * rung and the rung is now solved into a FIXED stage (see MAP_STAGE), so
+         * `getComputedStyle().fontSize` is the same number at every source size —
+         * it is a layout value and the stage's transform is not part of it. What
+         * this check has always been about is whether the name is bigger for the
+         * viewer, and the drawn rect is the only thing that answers that. */
+        name: Math.round(name.getBoundingClientRect().height),
         fillW: rows.width / body.width,
         fillH: rows.height / body.height,
       };
@@ -1161,6 +1171,66 @@ async function main() {
   check('…and it fills the source rather than huddling in the middle of it',
     Math.max(full.fillW, full.fillH) > 0.7,
     (full.fillW * 100).toFixed(0) + '% wide, ' + (full.fillH * 100).toFixed(0) + '% tall');
+
+  /* THE STAGE: the map is LAID OUT at a fixed size and SCALED into the source.
+   *
+   * This is what makes it the one source here you can zoom in OBS. A ladder
+   * solved into the source's own pixels renders small in a small source, and
+   * cranking that source up in OBS then enlarges small pixels — the check above
+   * ("materially bigger at 1920 than at 640") is satisfied by exactly that
+   * behaviour, so it cannot tell the two apart. What separates them is the
+   * LAYOUT size: the stage's own box, and the rung within it, must come out
+   * IDENTICAL at both source sizes, with only the transform between them.
+   *
+   * `clientWidth` is layout and ignores transforms; `getBoundingClientRect` is
+   * what the viewer actually sees. Reading both is the whole test. */
+  const stageAt = async (size) => {
+    await page.setViewportSize(size);
+    await sleep(700);
+    return page.evaluate(() => {
+      const map = document.querySelector('.map');
+      const rung = document.querySelector('.rung');
+      const r = map.getBoundingClientRect();
+      const cs = getComputedStyle(map);
+      return {
+        /* `offsetWidth`, not `clientWidth`: the card has a 1px border and
+         * `clientWidth` leaves it out, which would read as a 2558px stage. */
+        layout: [map.offsetWidth, map.offsetHeight],
+        drawn: [Math.round(r.width), Math.round(r.height)],
+        rungLayout: Math.round(parseFloat(cs.getPropertyValue('--rung'))
+          || parseFloat(getComputedStyle(document.getElementById('map-fit'))
+            .getPropertyValue('--rung'))),
+        /* Nothing may hang off the source: an overflowing stage is what puts
+         * scrollbars on a browser source. */
+        overflow: Math.max(0, Math.round(r.right - window.innerWidth),
+          Math.round(r.bottom - window.innerHeight),
+          Math.round(-r.left), Math.round(-r.top)),
+        scrollW: document.documentElement.scrollWidth,
+      };
+    });
+  };
+  const stageSmall = await stageAt(MAP_SMALL);
+  const stageFull = await stageAt(MAP_SIZE);
+  check('the map is laid out on a fixed stage, whatever the source is',
+    stageFull.layout[0] === MAP_STAGE.width && stageFull.layout[1] === MAP_STAGE.height
+      && stageSmall.layout[0] === MAP_STAGE.width
+      && stageSmall.layout[1] === MAP_STAGE.height,
+    JSON.stringify({ small: stageSmall.layout, full: stageFull.layout }));
+  check('…so the ladder is rendered at the same size in both, and only scaled',
+    stageSmall.rungLayout === stageFull.rungLayout && stageFull.rungLayout > 0,
+    stageSmall.rungLayout + 'px vs ' + stageFull.rungLayout + 'px of stage');
+  check('…and the whole stage lands inside the source rather than overflowing it',
+    stageFull.overflow <= 1 && stageSmall.overflow <= 1
+      && stageFull.scrollW <= MAP_SIZE.width,
+    JSON.stringify({ small: stageSmall.overflow, full: stageFull.overflow,
+      scrollW: stageFull.scrollW }));
+  /* A 16:9 source takes the whole width of a 16:9 stage. This is the promise the
+   * README makes about matching the aspect, and the reason the scale is a single
+   * `min` rather than two. */
+  check('…filling a source of the same aspect edge to edge',
+    Math.abs(stageFull.drawn[0] - MAP_SIZE.width) <= 1
+      && Math.abs(stageFull.drawn[1] - MAP_SIZE.height) <= 1,
+    stageFull.drawn.join('x') + ' drawn into ' + MAP_SIZE.width + 'x' + MAP_SIZE.height);
 
   /* LEFT TO RIGHT: distance on the LONG axis. A ladder that ran top-to-bottom
    * would satisfy every size check above and still waste the 16:9 it is drawn

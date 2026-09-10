@@ -489,10 +489,16 @@ func _header() -> Control:
 	return row
 
 # The rating entry point for this screen. It does NOT go through
-# Overworld2._prompt_rating: that one opens the tier-list board on submit, which
-# is the right follow-through from the select screen and the wrong one here — it
-# would drop a full-screen board over a haul the player has not finished taking.
-# So the score is saved and the screen stays put.
+# Overworld2._prompt_rating, which is wired to the page's own tier list and its
+# header bar; this screen mounts the board itself, on the same CanvasLayer as the
+# modal, so a haul-screen ranking closes back onto the haul rather than onto the
+# page underneath it.
+#
+# CONFIRM STILL LEAVES THE HAUL ALONE. A full-screen board dropped over a haul the
+# player has not finished taking was the wrong follow-through here, and it still
+# is — which is why the board now only comes up when they press the button that
+# asks for it ("★ Rank it on the tier list"), and Confirm saves the score and
+# stays put exactly as before.
 #
 # Parented to THIS screen rather than to the page, because the page's tree is
 # under this CanvasLayer (128) and a modal added there opens behind the very
@@ -515,11 +521,14 @@ func _open_rating(g: GameData, btn: Button) -> void:
 	modal.setup(g.id, g)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(g.id, score, notes)
+		var rank_now: bool = modal.wants_ranking()
 		modal.queue_free()
 		# The button carries the score back, so pressing it again reads as an edit
 		# rather than as a rating that did not take.
 		if btn != null and is_instance_valid(btn):
-			btn.text = "★  Rated %d/10" % score)
+			btn.text = "★  Rated %d/10" % score
+		if rank_now:
+			TierListScreen.open(self, g.id))
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
 

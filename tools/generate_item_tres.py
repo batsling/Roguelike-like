@@ -33,7 +33,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N),
                   bomb_cardinal, bomb_tile <tile>, death_tile <tile>,
-                  grid_grow, grid_length, hide_spawns,
+                  grid_grow, grid_length, front_column_slow, hide_spawns,
                   spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
                   pills_positive, echo_loot N,
@@ -376,10 +376,16 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # verb the runtime answers but the generator cannot parse is a verb the sheet
     # can write and silently get nothing from — which is the exact failure
     # `rarity` sat in for two kinds before §10 caught it.
+    #
+    # `drop_loot` is `gain_loot`'s other half: N pieces rolled onto the
+    # BATTLEFIELD FLOOR instead of into the pack (Fanny Pack), which the player
+    # has to walk to before the report sweeps the board. Same reason for listing
+    # it — the bare-verb fallthrough would eat the count.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block",
-              "gain_pill", "gain_scroll", "gain_potion", "gain_loot"}
+              "gain_pill", "gain_scroll", "gain_potion", "gain_loot",
+              "drop_loot"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -926,6 +932,12 @@ def parse_item(row):
             # Mine-r Construction: the battlefield gains a column and a row.
             fields["grid_grow"] = True
             last_trigger = None
+        elif kl0 == "front_column_slow":
+            # Censer: a body in the FRONT column loses one of the extra turns the
+            # road hands the board at a report (§7.4). Bare word and stacking, like
+            # grid_grow above — two of them cost a front-line body two turns.
+            fields["front_column_slow"] = True
+            last_trigger = None
         elif kl0 == "grid_length":
             # Philosophers Stone / Runic Dome: a column and no row — distance to
             # cross without an extra lane to be attacked from.
@@ -1211,6 +1223,7 @@ def item_tres(row):
         ("bomb_tile", lambda v: '&"%s"' % gd_str(v)),
         ("death_tile", lambda v: '&"%s"' % gd_str(v)),
         ("grid_grow", lambda v: "true"),
+        ("front_column_slow", lambda v: "true"),
         ("grid_length_grow", lambda v: "true"),
         ("hide_spawns", lambda v: "true"),
         ("spawn_statuses", lambda v: gd_value(v)),

@@ -11,6 +11,83 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rating a game and putting it in a tier are two presses now, and the second one
+  is a button.** Scoring a game out of 10 used to open the tier list on submit,
+  from the select screen — which meant "record what I thought of it" and "decide
+  where it sits" were one gesture you could not take half of, and the haul screen
+  had to opt OUT of the board entirely (a full-screen tier list over a haul the
+  player has not finished taking). `RateGameModal` grew a second way out:
+  **Confirm** saves the score and leaves you where you were, **★ Rank it on the
+  tier list** saves the same score and opens the board **on that game** — its card
+  already open, with "Scored. Now pick its tier" at the top of it and the Move-to
+  buttons under it. Both press the same `submitted` signal and the difference is
+  `wants_ranking()`, so the tier list's own editor — already looking at the board —
+  needed no wiring at all. The prompt is still opt-in and still never pops itself
+  up. The call-out asks the LIVE tier rather than a flag, so it goes away by itself
+  when the game is placed, including when it is placed by a drag.
+
+- **A 🎲 Random button on character select.** It rolls into the same `select` a
+  tile click goes through, so the portrait, the facts and the Confirm label all
+  come up as if the hero had been picked by hand — and stops there. It never
+  starts the run: Confirm is still the only thing that does, which is what leaves
+  room to look at what you got and roll again. It will not land on the hero already
+  showing while the roster has another to offer (a die that can land on what you
+  are looking at reads as a button that did nothing), and it is disabled outright on
+  a one-hero roster.
+
+- **The OBS route map is drawn at a fixed stage and scaled into the source, which
+  is what makes it the one source you can zoom.** The ladder was solved into the
+  *source's own* pixels — right for a panel in a column, wrong for the map: a
+  480-wide browser source drew a 480-wide ladder, and cranking that source up in
+  OBS then enlarged 480 pixels of cover and type. The map now lays out on a
+  **2560 × 1440 stage** whatever the source is, and one transform scales the whole
+  stage to fit — so a source of that size renders 1:1, a smaller one shows the
+  whole map scaled down (never a crop), and scaling the scene item in OBS has the
+  pixels already there. The stage is `--stage-w` / `--stage-h` on
+  `#overlay.only-map > .map`, overridable from your own `custom.css`. The rung's
+  legibility floor and ceiling became fractions of the stage rather than pixel
+  constants for the same reason ("smallest a cover may be drawn" is a claim about
+  the picture), and both work out to exactly the old numbers on a 1080-tall stage.
+
+  **`check_overlay.js` could not have caught the old behaviour**, and now can: its
+  growth check ("materially bigger at 1920 than at 640") is satisfied *by* solving
+  into the source, so what separates the two is the **layout** size — the stage's
+  box and the rung inside it must come out identical at both source sizes, with
+  only the transform between them. Four checks say so, including that nothing
+  overflows the source. One existing check had to change with it: the rung name's
+  growth is now measured on the drawn rect, because `getComputedStyle().fontSize`
+  is a layout value the stage's transform is not part of.
+
+- **Censer and Fanny Pack work.** Both arrived in the `items` sheet with a
+  Description and an **empty Effect cell**, which generates a `.tres` with no
+  triggers and no flags on it — the relic is in the pool, is drawn, is described,
+  and does nothing. Same hole `_items2_gasoline_infusion_rack_setup.py` filled for
+  the three before them, and each needed one new word
+  (`tools/_items2_censer_fanny_pack_setup.py`):
+
+  **`front_column_slow`** (Censer) — every body in the **front column** sits out
+  one of the extra turns the road hands the board at a report (§7.4). It touches
+  that column and no other on purpose: a body further back spends its turns
+  *walking*, so draining one there would only slow the approach, while in the front
+  line a turn is a hit — armour that is worth nothing while the front line is empty
+  and most when it is full. Read off each body's **live** column inside the turn
+  loop rather than off a set built before it, because the loop MOVES bodies: a body
+  that steps up mid-resolve is held off on the turn it arrives. Stacks like
+  `grid_grow`. The turns a lost run buys the board (§3.2) are untouched — those you
+  paid for by failing, and "Extra Turns" names the road's.
+
+  **`drop_loot N`** (Fanny Pack) — `gain_loot`'s other half: pieces rolled onto the
+  **battlefield floor** instead of into the pack, on the same terms as loot a
+  defeated body leaves. That difference is the item: paying into the pack on every
+  hit is flat income, while a piece on a random free square turns being hit into a
+  reason to walk somewhere. `GameLoop2.drop_loot_anywhere` picks the square at
+  random rather than the nearest free one — a drop from a defeat is a fact about
+  the square a body fell in, and this one has no such square, so laying it at the
+  front of the board every time would make it a free pickup. A full floor pays
+  nothing rather than stacking two pieces on a cell. Fanny Pack's other halves
+  already existed: `health_lost` (Health actually lost, never a swing the shields
+  ate) and the ordinary `N% chance` gate.
+
 - **Four games and seven connections ported out of the workbook — and one of the
   seven only exists because `check_map_sync.py` noticed it was missing.**
   `tools/Roguelikes.xlsx` gained Sparklite, Wanderburg, Handmancers and Dragon
