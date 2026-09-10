@@ -9421,3 +9421,67 @@ func test_the_header_spends_its_width_on_the_run_rather_than_the_title() -> void
 				"the game's name is not taking room on the run's own bar")
 	assert_eq(_ui._route_strip.size_flags_horizontal, Control.SIZE_EXPAND_FILL,
 		"and the road walked is what expands into it")
+
+# --- and the way back to the run --------------------------------------------
+#
+# Each of the four is a full-screen page over the run, so the run has to still be
+# there when it closes — same phase, same offering, same board, header back on
+# top. The page underneath is deliberately never hidden (see
+# `_set_run_page_visible`), so "closing" is just the screen and its layer going
+# away; this is what says that stayed true.
+
+# The way OFF a full-screen menu screen. Not `_close_button` above — that one
+# hunts the Atlas's "Back to the run", a different word on a different screen.
+#
+# BREADTH-FIRST, and it prefers the word "Close" over a bare ✕. Both matter: the
+# Collection and the tier list each carry a SECOND ✕, on their detail pane, and a
+# depth-first walk found that one — so this pressed the pane's close, the screen
+# stayed up, and the failure read as "closing the Collection does not close it".
+# The screen's own close sits nearer the root than the pane's, so the shallower
+# match is the right one.
+func _way_out_button(root: Node) -> Button:
+	var queue: Array = [root]
+	var bare: Button = null
+	while not queue.is_empty():
+		var n: Node = queue.pop_front()
+		if n is Button:
+			var t: String = String((n as Button).text)
+			if t.contains("Close"):
+				return n
+			if bare == null and t.strip_edges() == "✕":
+				bare = n
+		for c in n.get_children():
+			queue.append(c)
+	return bare
+
+func test_each_menu_screen_has_a_way_back_to_the_run() -> void:
+	# Let before_each's own pending frees land before counting anything — it walks
+	# the run through its opening game, which raises and dismisses several layers.
+	await wait_frames(3)
+	for entry in [
+			[_ui.MenuItem.COLLECTION, "the Collection"],
+			[_ui.MenuItem.TIER_LIST, "the tier list"],
+			[_ui.MenuItem.HOW_TO_PLAY, "the manual"],
+			[_ui.MenuItem.SETTINGS, "the settings panel"]]:
+		var phase_before = _ui._phase
+		var layers_before: int = _canvas_layers(_ui)
+		_ui.menu_action(int(entry[0]))
+		await wait_frames(3)
+		assert_eq(_canvas_layers(_ui), layers_before + 1, "%s opened" % entry[1])
+		var screen: Node = _top_canvas_layer(_ui).get_child(0)
+		var close: Button = _way_out_button(screen)
+		assert_not_null(close, "%s carries a way out" % entry[1])
+		if close == null:
+			continue
+		close.pressed.emit()
+		# TWO frees deep: the screen queue_frees itself, and its `tree_exiting`
+		# is what queue_frees the layer under it — so the layer is one frame
+		# behind the screen and three frames is not always enough.
+		await wait_frames(6)
+		# The screen went, and took its layer with it...
+		assert_eq(_canvas_layers(_ui), layers_before,
+			"closing %s puts the run back on screen" % entry[1])
+		# ...and the run is exactly where it was left.
+		assert_eq(_ui._phase, phase_before, "the run is in the same phase it was")
+		assert_true(_ui._scroll.visible, "its page is up")
+		assert_true(_ui._header_layer.visible, "and its header is back on top")

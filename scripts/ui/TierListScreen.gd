@@ -156,9 +156,15 @@ func _build_shell() -> void:
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(hint)
 
+	# "✕ Close", not a bare ✕, and the word is what makes it tellable from the
+	# OTHER ✕ on this screen — the one on the detail pane, which closes the game
+	# you are reading rather than the board you are reading it on. Two identical
+	# glyphs, one of which leaves the screen, is a coin flip. It also matches the
+	# Collection and the manual, which the run's menu opens alongside this.
 	var close_btn := Button.new()
-	close_btn.text = "✕"
-	close_btn.custom_minimum_size = Vector2(40, 36)
+	close_btn.text = "✕  Close"
+	close_btn.tooltip_text = "Leave the tier list and go back to where you were."
+	close_btn.custom_minimum_size = Vector2(0, 36)
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
 
