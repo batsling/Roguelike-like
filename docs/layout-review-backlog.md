@@ -9,10 +9,11 @@ cold in a later session.
 Each item says **what** is wrong, **why it matters**, and **what it would take** —
 because the sizing is the part that is expensive to re-derive.
 
-**Eight items, of which six are open.** §1 is **decided** (keep the tier-list
-palette) and §2's font half is **done** (all 47 screens on the type scale); both
-are kept here with their reasoning rather than deleted, so neither gets asked
-again. A closed item says so in its heading.
+**Eight items, of which three are still open** — §3's b and c, §7, and the halves
+of §2 and §6 noted below. §1 is **decided**, §4, §5 and §8 are **fixed**, §2's
+font half and §6's fail-loudly half are **done**. Closed work is kept here with
+its reasoning rather than deleted, so none of it gets asked again; a closed item
+says so in its heading, and a half-closed one says which half.
 
 > Two notes for whoever picks this up.
 >
@@ -98,10 +99,14 @@ uses, so they are the decision; 30 is almost certainly just a stray.
 Three separate things on the screen where 865 covers are browsed. It is the
 second-most-used screen in the game after the run itself.
 
-**a. The grid is bottom-clipped with no scroll affordance.** The second row of
-cards is cut flat at the panel edge and nothing says more is below — there *is* a
-scrollbar, but it is a hairline you have to hunt for. A fade, a partial row, or a
-visible bar would each answer it.
+**a. ~~The grid is bottom-clipped with no scroll affordance.~~ DONE.** The second
+row was cut flat at the panel edge with nothing saying more was below — there was
+a scrollbar, but it is a slim stripe you have to hunt for. There is now a 26px
+band of the panel's own colour under the last visible row (`Collection.GRID_FADE_H`,
+`_new_grid` / `_update_grid_fade`), up only while there IS more below and stood
+down at the bottom of the list. It is a SIBLING of the ScrollContainer, not a
+child — a child scrolls with the content and slides away exactly when it is
+needed — so the two are stacked in a plain Control by anchors.
 
 **b. The beaten-checkbox sits on top of the cover art**, top-left of every cell.
 It is the one piece of state each cell carries and it is drawn over the one thing
@@ -113,32 +118,39 @@ into a fixed box, or cropping to a common ratio, would settle it. Worth checking
 what that does to pixel-art covers first (`UITheme.is_pixel_art` exists for
 exactly this kind of decision).
 
-## 4. The tier list's `Unranked` lane does not line up
+## 4. The tier list's `Unranked` lane — FIXED
 
-**What.** Its label tile is narrower than the six above it and its lane starts
-about 17px further left.
+**Closed.** Its label tile was narrower than the six above it and its lane started
+17px further left. The diagnosis in this doc was measured and held exactly:
+`_build_tier_row` puts a `LineEdit` in the label cell because a tier can be
+renamed, `_build_unranked_row` puts a plain `Label` because "Unranked" cannot,
+both set the same `custom_minimum_size` of `LABEL_CELL * _scale`, and the
+`LineEdit`'s larger intrinsic minimum pushed the six tier cells past it. Measured
+at 1280x720: tier cells **72.75px**, Unranked **55.68px** — and 55.68 is exactly
+`LABEL_CELL.x * _scale` at the 0.58 the board was fitted to, so the tray was the
+one sitting on the minimum, as described.
 
-**Why it happens** (this is the part worth not re-deriving): `_build_tier_row`
-puts a `LineEdit` in the label cell, because a tier can be renamed.
-`_build_unranked_row` puts a plain `Label` in it, because "Unranked" cannot. Both
-set the same `custom_minimum_size` of `LABEL_CELL * _scale`, but a `LineEdit` has
-a larger intrinsic minimum width, so the tier cells are pushed wider than the
-minimum and the Unranked cell sits exactly on it.
+**The fix names the real cause**: a `LineEdit`'s intrinsic width is
+`minimum_character_width` em-spaces (Godot's default is 4), so
+`add_theme_constant_override("minimum_character_width", 0)` lets the cell be the
+width the const says. All seven lanes now measure identically and every zone
+starts at the same x. It also makes `_board_height` honest, since that was
+already assuming a label cell of `LABEL_CELL.x * s` when fitting the board.
 
-**What it would take.** Measure both at runtime first — do not guess at the
-number. Then either give both cells the same computed width, or give the Unranked
-cell a control with the same intrinsic minimum.
+## 5. The tier list's empty state — FIXED
 
-## 5. The tier list has no empty state
+**Closed.** With nothing rated the board was seven empty lanes and nothing else,
+under a subtitle offering three things (click a game, drag it, rename a tier) that
+all need a game to be there already. Rating is strictly opt-in and offered from
+exactly one place, so a player could reach this board with no idea how to fill it.
 
-**What.** With nothing rated, the board is six empty lanes and (since the detail
-pane now collapses) nothing else. It does not say what puts a game on it.
-
-**Why it matters.** Rating is strictly opt-in and only ever offered from the haul
-screen's `★ Rate this game`, so a player can reach this board with no idea how to
-fill it.
-
-**What it would take.** A line in the empty region naming the one way in. Small.
+Now the subtitle becomes `Nothing rated yet` and a line under the tray names the
+one way in and where it lands: *"Finish a game and choose ★ Rate this game on the
+haul screen. It arrives in Unranked, and you drag it up from there."* Both halves
+are checked against the code — `RateGameModal` is the only entry point, and
+`TierList.ensure_present` is what puts a freshly-rated game in the tray rather
+than in a tier. `EMPTY_NOTE_H` is counted by `_board_height`, because a height the
+fit does not know about is a height the board overflows by.
 
 ## 6. `MainMenu.tscn` is authored in the editor and re-skinned in code
 
@@ -153,11 +165,21 @@ sees, so the one scene you *can* design visually lies about itself. And renaming
 a node in the editor silently disables its styling — `get_node_or_null` returns
 null and the function moves on without a word.
 
-**What it would take.** Either put the real colours in the scene and delete the
-re-skinning, or accept that the scene is a skeleton and make the lookups fail
-loudly (`get_node` rather than `get_node_or_null`, or a `@onready` with `%`
-unique names). The second is smaller; the first is the one that makes the scene
-honest.
+**HALF DONE: the lookups fail loudly now.** `_style_menu` used
+`get_node_or_null` down four hardcoded paths behind `is` checks, so a rename
+silently skipped the styling and the menu came up in raw `.tscn` colours with
+nothing said. All four are `%UniqueName` now, which does not care where the node
+sits and raises if it is genuinely gone. `Background`, `Title` and `Subtitle`
+were given `unique_name_in_owner` in the scene to match the nine nodes that
+already had it — and `StartRunBtn` was the tell that this was the right shape: it
+ALREADY had a unique name and was already reached as `%StartRunBtn` eleven lines
+above, while `_style_menu` walked a four-deep path to the same node.
+
+**Still open: the duplicated colours.** The scene still authors a background, a
+title and a subtitle colour that `_style_menu` then overwrites, so the editor
+preview shows colours no player ever sees. Closing it means putting the real
+colours in the scene and deleting the re-skinning — the larger half, and the one
+that makes the scene honest.
 
 ## 7. The main menu is the emptiest screen in the game
 
@@ -174,19 +196,29 @@ happens to the disabled Continue row, whether the profile row and How to Play
 belong where they are. Treat it the way the start screen was treated — question
 first, then build.
 
-## 8. Character picker nits
+## 8. Character picker nits — FIXED
 
-Three small things on one screen:
+All three, measured before and after at 1280x720.
 
-- **Row 1 of the roster grid is ~14px taller than rows 2 and 3**, because
-  "Antonio Belpaese" wraps to two lines and nothing sets a uniform tile height.
-  `TILE_SIZE` is a minimum, not a fixed size.
-- **The detail panel is top-aligned with roughly 180px of void beneath it.**
-- **`Cancel` / `🎲 Random` sit about 480px from `Confirm`** at the other end of
-  the footer.
-
-None is load-bearing; together they are why the screen reads as unfinished next
-to the start screen it now sits before.
+- **Row heights.** Row 1 measured 137px against 122 for rows 2 and 3 (the doc
+  guessed ~14; it was 15), because "Antonio Belpaese" wraps to two lines and
+  `TILE_SIZE` is a minimum, not a fixed size — and a `GridContainer` row is as
+  tall as its tallest cell. Fixed by `_equalise_tiles`, which levels every tile
+  to the tallest AFTER layout. Two predictions were tried first and both came up
+  exactly 7px short — `line height × 2`, and the font's own
+  `get_multiline_string_size` — because a wrapped `Label` also carries the theme's
+  line spacing, which font metrics do not report. Measuring the laid-out tiles
+  cannot be wrong that way. Spread is now 0.00.
+- **The void under the detail panel** measured 144px, not ~180. The cause was a
+  mismatch: `right` was already `SHRINK_CENTER` while `left` was `SHRINK_BEGIN`,
+  so the portrait hung from the top, the facts floated at the middle, and all the
+  slack pooled under the portrait. Both are centred now. Checked against the WHOLE
+  roster before changing it, because nothing on this panel scrolls and centring an
+  overflow would clip both ends: the tallest hero (Manager, 318px) leaves 124px.
+- **The footer gap** measured 478px. `🎲 Random` now sits beside `Confirm` with
+  `Cancel` alone on the left — which is what the dice button's own comment already
+  argued for ("would make this the one button on the screen that starts a run
+  without the Confirm beside it") and what the layout contradicted. 10px apart now.
 
 ---
 

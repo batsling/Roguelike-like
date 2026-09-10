@@ -135,6 +135,8 @@ var _grid: Container = null
 # That the cell can be sized before it is filled is what the fixed NAME_LINES
 # below buys, and it is why that clamp is load-bearing rather than cosmetic.
 var _grid_scroll: ScrollContainer = null
+# The "more below" band under the grid. See `_new_grid` / `_update_grid_fade`.
+var _grid_fade: TextureRect = null
 # Every game cell in the grid, as {cell, box, game, filled}. Ordered as the grid
 # is, so the window is a contiguous range of it.
 var _cell_slots: Array = []
@@ -267,6 +269,10 @@ func _refresh() -> void:
 		b.modulate = ACCENT if tab == _tab else Color(0.8, 0.8, 0.8)
 	_clear_children(_content)
 	_grid = null
+	# Freed with the content above; cleared here so `_update_grid_fade` cannot be
+	# left holding a dangling band from the tab that just went away.
+	_grid_scroll = null
+	_grid_fade = null
 	_detail_box = null
 	_count_lbl = null
 	match _tab:
@@ -485,10 +491,27 @@ func _label(text: String, color: Color, size: int = 12, bold_center: bool = fals
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 	return l
 
-func _new_grid() -> ScrollContainer:
+# THE GRID SAYS WHEN THERE IS MORE BELOW. The second row of covers is cut flat
+# at the panel's edge, and the only thing that said so was the scrollbar — a
+# slim stripe against a dark trough that you have to go looking for, on the
+# second-most-used screen in the game. A band of the panel's own colour under
+# the last visible row reads as "this carries on" the way a hard edge reads as
+# "this is the end".
+#
+# It is a SIBLING of the ScrollContainer, not a child: a child scrolls with the
+# content, so it would slide away the moment it was needed. The two are stacked
+# in a plain Control by anchors — the scroll filling it, the band pinned to the
+# bottom — rather than in a container, which would lay them side by side.
+const GRID_FADE_H := 26.0
+
+func _new_grid() -> Control:
+	var wrap := Control.new()
+	wrap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.clip_contents = true
+
 	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 10)
@@ -504,12 +527,53 @@ func _new_grid() -> ScrollContainer:
 	# `sort_children` is the third and the one that starts it all: it fires once
 	# the flow has placed its cells, which is the first moment the question can be
 	# answered at all.
-	scroll.get_v_scroll_bar().value_changed.connect(func(_v): _stream_cells())
-	scroll.resized.connect(_stream_cells)
+	scroll.get_v_scroll_bar().value_changed.connect(func(_v):
+		_stream_cells()
+		_update_grid_fade())
+	scroll.resized.connect(func():
+		_stream_cells()
+		_update_grid_fade())
 	flow.sort_children.connect(func():
 		_grid_laid_out = true
-		_stream_cells.call_deferred())
-	return scroll
+		_stream_cells.call_deferred()
+		_update_grid_fade.call_deferred())
+	wrap.add_child(scroll)
+
+	_grid_fade = TextureRect.new()
+	_grid_fade.texture = _fade_texture()
+	_grid_fade.stretch_mode = TextureRect.STRETCH_SCALE
+	_grid_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grid_fade.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_grid_fade.offset_top = -GRID_FADE_H
+	_grid_fade.visible = false
+	wrap.add_child(_grid_fade)
+	return wrap
+
+# Transparent at the top, the panel's own colour at the bottom, so the band reads
+# as the page continuing under the panel edge rather than as a grey bar laid over
+# it. Built from PANEL_BG so it stays right if that colour is ever retuned.
+func _fade_texture() -> GradientTexture2D:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 0.0))
+	ramp.set_color(1, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 1.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = ramp
+	tex.width = 4
+	tex.height = 64
+	tex.fill_from = Vector2(0.0, 0.0)
+	tex.fill_to = Vector2(0.0, 1.0)
+	return tex
+
+# Up only while there IS more below: at the bottom of the list, or when the whole
+# grid fits, a fade would be claiming something that is not true.
+func _update_grid_fade() -> void:
+	if _grid_fade == null or not is_instance_valid(_grid_fade):
+		return
+	if _grid_scroll == null or not is_instance_valid(_grid_scroll):
+		return
+	var bar: VScrollBar = _grid_scroll.get_v_scroll_bar()
+	var remaining: float = bar.max_value - bar.page - bar.value
+	_grid_fade.visible = bar.page > 0.0 and remaining > 1.0
 
 func _reset_cell_window() -> void:
 	_cell_slots.clear()

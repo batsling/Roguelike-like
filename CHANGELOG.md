@@ -11,6 +11,74 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Five small layout fixes off the backlog, each measured before and after
+  rather than eyeballed.** §4, §5 and §8 of
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,
+  §3's (a) and §6's fail-loudly half are done. Every number below was read off the
+  running screen at 1280x720 with the `verify` skill — which is also how two
+  wrong first attempts were caught before they shipped.
+  **The tier list's `Unranked` lane lines up.** Its label tile was narrower than
+  the six above it and its lane started 17px further left. The doc's diagnosis held
+  exactly: a tier's label cell holds a `LineEdit` because a tier can be renamed,
+  the tray's holds a plain `Label` because "Unranked" cannot, and the `LineEdit`'s
+  larger intrinsic minimum pushed the six past the shared `custom_minimum_size` —
+  measured at 72.75px against 55.68, and 55.68 is exactly `LABEL_CELL.x * _scale`
+  at the 0.58 the board was fitted to, so the tray was the one sitting on the
+  minimum. The fix names the actual cause rather than padding around it: a
+  `LineEdit`'s intrinsic width is `minimum_character_width` em-spaces (Godot
+  defaults to 4), so overriding that constant to 0 lets the cell be the width the
+  const already said. All seven lanes now measure identically, and `_board_height`
+  becomes honest as a side effect — it was already fitting the board on the
+  assumption of a `LABEL_CELL.x * s` label cell.
+  **The tier list says how to get a game onto it.** With nothing rated it was seven
+  empty lanes under a subtitle offering three things (click a game, drag it, rename
+  a tier) that all need a game to be there already. Rating is opt-in and offered
+  from exactly one place, so that board was reachable with no way to learn what
+  fills it. The subtitle now becomes `Nothing rated yet` and a line under the tray
+  names the way in AND where it lands — both checked against the code rather than
+  written from memory: `RateGameModal` is the only entry point, and
+  `TierList.ensure_present` puts a freshly-rated game in Unranked rather than in a
+  tier. `EMPTY_NOTE_H` is counted by `_board_height`, because a height the fit does
+  not know about is a height the board overflows by.
+  **The character picker's three nits.** Row 1 of the roster measured 137px against
+  122 for rows 2 and 3, because one name wraps to two lines, `TILE_SIZE` is a
+  minimum rather than a fixed size, and a `GridContainer` row is as tall as its
+  tallest cell. It is levelled after layout now (`_equalise_tiles`) — and that is
+  the second attempt twice over: `line height × 2` came up 7px short, and so did
+  the font's own `get_multiline_string_size`, because a wrapped `Label` also
+  carries the theme's line spacing, which font metrics do not report. Measuring the
+  laid-out tiles cannot be wrong that way, and it keeps working if the roster, the
+  font or the tile width change. The detail panel's void measured 144px, not the
+  ~180 the doc guessed, and the cause was a mismatch rather than an oversight:
+  `right` was already `SHRINK_CENTER` while `left` was `SHRINK_BEGIN`, so the
+  portrait hung from the top, the facts floated at the middle, and the slack pooled
+  under the portrait — both are centred now, checked against the whole roster first
+  because nothing on that panel scrolls and centring an overflow clips both ends
+  (the tallest hero leaves 124px). And `🎲 Random` now sits beside `Confirm` at
+  478px closer than it was, with `Cancel` alone on the left: that is what the dice
+  button's own comment already argued for — "the one button on the screen that
+  starts a run without the Confirm beside it" — and what the layout contradicted.
+  **The Collection's grid says when there is more below.** The second row of covers
+  was cut flat at the panel edge, and the only thing saying otherwise was a slim
+  scrollbar stripe, on the second-most-used screen in the game. There is now a 26px
+  band of the panel's own colour under the last visible row, up only while there IS
+  more below and stood down at the bottom of the list. It is a SIBLING of the
+  ScrollContainer rather than a child — a child scrolls with the content and slides
+  away exactly when it is needed — so the two are stacked in a plain Control by
+  anchors. Widening the scrollbars instead was the other option and was rejected:
+  the theme dresses every scrollbar in the game, and a fatter one eats content
+  width on screens fitted to 720p with single digits to spare.
+  **The main menu's styling fails loudly.** `_style_menu` reached four nodes with
+  `get_node_or_null` down hardcoded paths behind `is` checks, so renaming or moving
+  one in the editor did not break the menu — it silently stopped styling it and the
+  screen came up in raw `.tscn` colours with nothing said. All four are
+  `%UniqueName` now, which does not care where the node sits and raises if it is
+  genuinely gone. `StartRunBtn` was the tell that this was the right shape: it
+  already had a unique name and was already reached as `%StartRunBtn` eleven lines
+  above, while `_style_menu` walked a four-deep path to the same node. The larger
+  half of §6 stays open — the scene still authors colours that the code overwrites,
+  so the editor preview shows colours no player ever sees.
+
 - **Every font size in the project now comes from the type scale, and the tier
   list's palette is a decided question rather than an open one.** Two items off
   [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — §2's font

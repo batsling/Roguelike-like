@@ -46,27 +46,34 @@ func _ready() -> void:
 # Menu styling
 # ---------------------------------------------------------------------------
 
+# FAILS LOUDLY NOW. Every lookup here used to be `get_node_or_null` down a
+# hardcoded path (`Center/Panel/TitleBox/Title` and three more) guarded by an
+# `is` check, so renaming or moving a node in the editor did not break the
+# menu — it silently stopped styling it, and the screen came up in the raw
+# `.tscn` colours with nothing said. `StartRunBtn` was the tell: it already had
+# a unique name and was already reached as `%StartRunBtn` eleven lines above,
+# while this function walked a four-deep path to the same node.
+#
+# `%Name` is the fix the layout review called the smaller of the two (see
+# `docs/layout-review-backlog.md` §6): it does not depend on where the node sits,
+# so moving one in the editor is free, and a node that is genuinely GONE raises
+# instead of shrugging. `Background`, `Title` and `Subtitle` were given
+# `unique_name_in_owner` in the scene to match the nine nodes that already had it.
+#
+# The bigger half of §6 is still open: these colours are also authored in the
+# `.tscn`, so the editor preview shows colours no player ever sees.
 func _style_menu() -> void:
-	var bg := get_node_or_null("Background")
-	if bg is ColorRect:
-		bg.color = UITheme.BG_DEEP
-	# A subtle warm vignette panel behind the button column reads better than a
-	# flat page; add it under the centre content if not already present.
+	(%Background as ColorRect).color = UITheme.BG_DEEP
 	# The name in gold, the old title under it as a subtitle in the dim text
 	# colour — one is what the game is called, the other is what it is about, and
 	# they were the same 36px line until now.
-	var title := get_node_or_null("Center/Panel/TitleBox/Title")
-	if title is Label:
-		title.add_theme_color_override("font_color", UITheme.GOLD)
-	var subtitle := get_node_or_null("Center/Panel/TitleBox/Subtitle")
-	if subtitle is Label:
-		subtitle.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	(%Title as Label).add_theme_color_override("font_color", UITheme.GOLD)
+	(%Subtitle as Label).add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	# Make the primary action stand out.
-	var start := get_node_or_null("Center/Panel/Buttons/StartRunBtn")
-	if start is Button:
-		start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
-		start.add_theme_color_override("font_color", UITheme.GOLD)
-		start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+	var start := %StartRunBtn as Button
+	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
+	start.add_theme_color_override("font_color", UITheme.GOLD)
+	start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 
 # ---------------------------------------------------------------------------
 # Profiles — who is playing

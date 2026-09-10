@@ -151,15 +151,22 @@ func _build() -> void:
 	# into the run would make this the one button on the screen that starts one
 	# without the Confirm beside it, and would leave no way to see what you got and
 	# roll again.
+	#
+	# So it is BESIDE Confirm, which is what that reasoning asks for and what the
+	# layout used to contradict: the dice sat next to Cancel with the expanding
+	# spacer between it and the button it hands off to, measured at 478px apart on
+	# a 1280px canvas. Roll, look, roll again, confirm is now one cluster, and
+	# Cancel is alone on the left where the way out belongs.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(spacer)
+
 	var random_btn := Button.new()
 	random_btn.text = "🎲  Random"
 	random_btn.custom_minimum_size = Vector2(150, 44)
 	random_btn.tooltip_text = "Pick a hero at random — press again to reroll, Confirm to take it."
 	footer.add_child(random_btn)
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(spacer)
 	var confirm := Button.new()
 	confirm.text = "Confirm"
 	confirm.disabled = true
@@ -188,7 +195,12 @@ func _build() -> void:
 	for ch in roster:
 		if ch is CharacterData:
 			_roster.append(ch)
-			grid.add_child(_character_tile(ch, state, select))
+	for ch in _roster:
+		grid.add_child(_character_tile(ch, state, select))
+	# A wrapped name makes its own tile taller, and a GridContainer row is as tall
+	# as its tallest cell — so one two-line name ("Antonio Belpaese") made the whole
+	# first ROW 15px taller than rows 2 and 3. Levelled once the tiles have a size.
+	_equalise_tiles(grid)
 	random_btn.pressed.connect(func(): roll_random())
 	random_btn.disabled = _roster.size() < 2
 	confirm.pressed.connect(func():
@@ -262,12 +274,31 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(TILE_SIZE.x - 16, 0)
 	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	vb.add_child(name_lbl)
 	return tile
+
+# EVERY TILE AS TALL AS THE TALLEST, measured after layout rather than predicted.
+# Two predictions were tried and both came up short: `line height × 2` by 7px, and
+# the font's own `get_multiline_string_size` by the same 7px — because a wrapped
+# Label also carries the theme's line spacing, which font metrics do not report.
+# Reading the laid-out tiles cannot be wrong in that way, and it keeps working if
+# the roster, the font or the tile width ever change.
+func _equalise_tiles(grid: GridContainer) -> void:
+	if not is_instance_valid(grid):
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(grid):
+		return
+	var tallest: float = 0.0
+	for tile in grid.get_children():
+		tallest = maxf(tallest, (tile as Control).size.y)
+	for tile in grid.get_children():
+		(tile as Control).custom_minimum_size.y = tallest
 
 # Fill the right-hand detail panel with the selected hero's FULL portrait and all
 # of its information (source, Health, verbs, description, starting items, level-up).
@@ -285,7 +316,14 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 6)
 	left.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
-	left.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# CENTRED, like the column beside it. This one was SHRINK_BEGIN while `right`
+	# was SHRINK_CENTER, so the portrait hung from the top of a 442px panel, the
+	# facts floated at its middle, and the leftover — measured at 144px on nine of
+	# the eleven heroes — all pooled under the portrait. Centring both splits that
+	# space evenly and puts the prose beside the picture it is about, which is what
+	# `right`'s comment says it is for. Safe because nothing here scrolls and every
+	# hero was measured first: the tallest (Manager, 318px) still leaves 124px.
+	left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(left)
 	if ch.portrait != null:
 		var portrait := UITheme.crisp_tex(ch.portrait, CHAR_PORTRAIT_SIZE)

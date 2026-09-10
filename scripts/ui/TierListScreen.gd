@@ -58,9 +58,15 @@ const ZONE_PAD := 5.0
 # a click away.
 const BADGE_MIN_SCALE := 0.45
 
+# Height of the empty-board note (see `_build_empty_note`). A const because
+# `_board_height` has to count it before the note exists.
+const EMPTY_NOTE_H := 52.0
+
 var _rows_box: VBoxContainer
 var _detail_box: VBoxContainer
 var _scroll: ScrollContainer
+# The subtitle beside the title. Swapped by `_refresh` (see `_build_shell`).
+var _hint: Label
 # How much of full size the board is currently drawn at (1.0 = the sizes above).
 var _scale: float = 1.0
 # The game whose card is open on the right. Kept across refreshes so dropping a
@@ -146,15 +152,17 @@ func _build_shell() -> void:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
 
-	var hint := Label.new()
-	hint.text = "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename"
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.clip_text = true
-	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_child(hint)
+	# Kept as a field because it is a LIE on an empty board: all three of the
+	# things it offers need a game to already be on the board. `_refresh` swaps it
+	# for the one way in.
+	_hint = Label.new()
+	_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint.clip_text = true
+	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_hint)
 
 	# "✕ Close", not a bare ✕, and the word is what makes it tellable from the
 	# OTHER ✕ on this screen — the one on the detail pane, which closes the game
@@ -273,7 +281,45 @@ func _refresh() -> void:
 	# Unranked tray sits at the bottom, visually separated.
 	_rows_box.add_child(HSeparator.new())
 	_rows_box.add_child(_build_unranked_row(TierList.unranked))
+
+	# NOTHING RATED IS A REACHABLE STATE, and it used to say nothing. Rating is
+	# strictly opt-in and offered from exactly one place, so a player can open this
+	# board — from the main menu or the run's ☰ Menu — with no idea what puts a game
+	# on it, and find seven empty lanes under a subtitle offering three things that
+	# all need a game to be there already.
+	var empty: bool = _board_is_empty()
+	if _hint != null:
+		_hint.text = ("Nothing rated yet" if empty
+			else "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename")
+	if empty:
+		_rows_box.add_child(_build_empty_note())
 	_show_detail(_selected)
+
+func _board_is_empty() -> bool:
+	if not TierList.unranked.is_empty():
+		return false
+	for row in TierList.tiers:
+		if not (row as Array).is_empty():
+			return false
+	return true
+
+# The one way onto this board, named. `★ Rate this game` on the haul screen is
+# the only entry point (`RateGameModal`), and a rated game lands in Unranked
+# (`TierList.ensure_present`) rather than in a tier — so say both, or the tray
+# looks like somewhere games go to be forgotten rather than the starting line.
+func _build_empty_note() -> Control:
+	var note := Label.new()
+	note.text = ("Finish a game and choose  ★ Rate this game  on the haul screen. "
+		+ "It arrives in Unranked, and you drag it up from there.")
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Clear of the tray above it without claiming a lane's worth of the board.
+	note.custom_minimum_size = Vector2(0, EMPTY_NOTE_H)
+	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return note
 
 # ------------------------------------------------------------------
 # Fitting the board to the window (see MIN_SCALE)
@@ -332,8 +378,11 @@ func _board_height(width: float, s: float) -> float:
 		var lines: int = maxi(1, ceili(float((row as Array).size()) / float(per_line)))
 		var slab: float = lines * tile.y + (lines - 1) * TILE_SEP + ZONE_PAD * 2.0
 		total += maxf(slab, LABEL_CELL.y * s)
-	# The gap under each row, plus the separator above the Unranked tray.
-	return total + ROWS_SEP * (rows.size() + 1) + 8.0
+	# The gap under each row, plus the separator above the Unranked tray, plus the
+	# empty-board note when it is up — it is a row of the box like any other, and a
+	# height the fit does not know about is a height the board overflows by.
+	var note: float = (EMPTY_NOTE_H + ROWS_SEP) if _board_is_empty() else 0.0
+	return total + ROWS_SEP * (rows.size() + 1) + 8.0 + note
 
 # A scaled font size that never drops below what can be read at all.
 func _font(size: float, floor_px: int = 8) -> int:
@@ -354,6 +403,14 @@ func _build_tier_row(index: int, label_text: String, game_ids: Array) -> Control
 	name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.flat = true
 	name_edit.add_theme_font_size_override("font_size", _font(26, 11))
+	# A LineEdit's intrinsic minimum width is `minimum_character_width` em-spaces
+	# (Godot's default is 4), and that is WIDER than the label cell — so the six
+	# tier cells were pushed past `LABEL_CELL * _scale` while the Unranked row,
+	# which holds a plain Label because "Unranked" cannot be renamed, sat exactly
+	# on it. Measured: 72.75px against 55.68px, so the tray's lane started 17px
+	# left of the six above it. Zero here lets the cell be the width the const
+	# says, which is also the width `_board_height` assumes when it fits the board.
+	name_edit.add_theme_constant_override("minimum_character_width", 0)
 	name_edit.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
 	name_edit.add_theme_color_override("caret_color", Color(0.08, 0.06, 0.05))
 	name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
