@@ -41,13 +41,26 @@ For how the project is laid out and how its systems fit together, see
   is right-aligned to the button and clamped inside the canvas now, measured in
   `about_to_popup` off `get_contents_minimum_size` — the popup's own `size` is a
   stale 0 until it has been laid out once.
-  **Known gap:** the theme entry does not reach `OptionButton` dropdowns (the
-  Collection's type and record filters, the Atlas's region picker, Custom Run's
-  columns). The stylebox resolves correctly on those popups — `get_theme_stylebox`
-  returns the right one — but they still render stock, and setting the theme on
-  the popup explicitly does not change it. Same theme, same screen, different
-  result from the `MenuButton` popup, so it is something specific to how
-  `OptionButton` builds its own; not chased down yet.
+  **Every dropdown in the project comes with it.** There are thirteen
+  `OptionButton`s across six screens — the Collection's type and record filters,
+  the Atlas's mode and region pickers, Custom Run's four filter columns, the Dash
+  panel's type filter and Settings' display, window-size and audio lists — and
+  every one is a bare `OptionButton.new()` that takes the theme, so they all
+  moved together. `test_design_tokens.gd` scans their source and fails a screen
+  that reaches for its own stylebox or font colour; a font SIZE stays a legitimate
+  per-screen choice (the Dash filter sits on the 720p-budgeted page).
+  **A dropdown marks its selection and nothing else.** Godot's stock pair is
+  drawn for a light theme — the same reason the CheckBox icons were replaced —
+  so on these panels the ticked mark was a pale ring and the UNTICKED one a faint
+  dark square: every row of every list wore a smudge and the selected one barely
+  stood out. Chosen is a solid accent dot now (`UITheme.popup_mark`), unchosen is
+  empty.
+
+  *Correction to the entry as first written:* it claimed the theme did not reach
+  `OptionButton` popups. It does, and always did once the `PopupMenu` entry
+  existed — the pixel under one of those popups is exactly `UITheme.PANEL`. The
+  "gap" was a misread of a screenshot; small dark panels are hard to judge by eye
+  and the right tool was sampling the rendered pixel, which is what settled it.
 
 - **The run's header carries no title.** "Roguelike-like" in 20px gold sat
   between the road walked and the buttons — about 180px of the one row in the game

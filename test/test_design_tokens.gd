@@ -206,3 +206,63 @@ func test_the_theme_dresses_popup_menus() -> void:
 	# the same colour as the items under it.
 	assert_eq(t.get_color("font_separator_color", "PopupMenu"), UITheme.ACCENT,
 		"and a group heading is the accent, not another item")
+
+# --- every dropdown in the project looks like every other one ---------------
+#
+# There are thirteen `OptionButton`s across six screens — the Collection's type
+# and record filters on three tabs, the Atlas's mode and region pickers, Custom
+# Run's four filter columns, the Dash panel's type filter, and Settings' display,
+# window-size and audio lists — plus the run's `☰ Menu`. They are all drawn by
+# the theme's `OptionButton` and `PopupMenu` entries, which is the only reason
+# they agree; a screen that reaches for its own stylebox is a dropdown that stops
+# matching the other twelve.
+
+const DROPDOWN_SCREENS := [
+	"res://scripts/ui/Collection.gd",
+	"res://scripts/ui/SettingsModal.gd",
+	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/menu/CustomRunScreen.gd",
+	"res://scripts/redesign2/DashFilterBar.gd",
+]
+
+# A font size is a legitimate per-screen choice — the Dash panel's filter sits on
+# the 720p-budgeted page and takes FONT_BODY where a menu screen can afford the
+# theme's default. A COLOUR or a STYLEBOX is not: that is the palette, and the
+# palette is the theme's.
+func test_no_screen_repaints_its_own_dropdown() -> void:
+	var bad: Array = []
+	for path in DROPDOWN_SCREENS:
+		var lines: PackedStringArray = FileAccess.get_file_as_string(path).split("\n")
+		for i in range(lines.size()):
+			if not lines[i].contains("OptionButton.new()"):
+				continue
+			# The name it was bound to, so the scan follows THAT variable rather
+			# than any override happening to sit nearby.
+			var name: String = lines[i].strip_edges().split(" ")[1]
+			for j in range(i + 1, mini(i + 12, lines.size())):
+				var l: String = lines[j]
+				if not l.contains(name + "."):
+					continue
+				if l.contains("add_theme_stylebox_override") or l.contains("add_theme_color_override"):
+					bad.append("%s:%d repaints %s" % [path.get_file(), j + 1, name])
+	assert_eq(bad, [], "dropdowns take their palette from the theme, not from the screen: %s" % str(bad))
+
+# The mark on a chosen row. Godot's stock pair is drawn for a light theme — the
+# same reason the CheckBox icons were replaced — so on these panels the ticked
+# one was a pale ring and the UNTICKED one a faint dark square, which put a
+# smudge on every row of every dropdown and left the selected one barely
+# distinguishable from the rest.
+func test_a_dropdown_marks_its_selection_and_nothing_else() -> void:
+	var t: Theme = UITheme.shared()
+	for on_name in ["checked", "radio_checked"]:
+		assert_true(t.has_icon(on_name, "PopupMenu"), "%s is drawn by the theme" % on_name)
+	for off_name in ["unchecked", "radio_unchecked"]:
+		assert_true(t.has_icon(off_name, "PopupMenu"), "%s is drawn by the theme" % off_name)
+	# Chosen: a solid accent dot in the middle. Unchosen: nothing at all — a
+	# dropdown is a list of things you could pick, not a set of boxes to answer.
+	var on_img: Image = t.get_icon("radio_checked", "PopupMenu").get_image()
+	var off_img: Image = t.get_icon("radio_unchecked", "PopupMenu").get_image()
+	var mid := Vector2i(on_img.get_width() / 2, on_img.get_height() / 2)
+	assert_gt(on_img.get_pixelv(mid).a, 0.9, "the chosen row wears a solid mark")
+	assert_almost_eq(on_img.get_pixelv(mid).r, UITheme.ACCENT.r, 0.02, "in the accent")
+	assert_eq(off_img.get_pixelv(mid).a, 0.0, "and an unchosen row wears nothing")

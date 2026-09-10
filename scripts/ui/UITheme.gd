@@ -527,6 +527,36 @@ static func check_icon(ticked: bool, dim: bool = false) -> ImageTexture:
 		_stroke(img, Vector2(10.0, 17.0), Vector2(18.5, 6.5), tick, 3.0)
 	return ImageTexture.create_from_image(img)
 
+# The mark on a chosen row of a dropdown, and the nothing on an unchosen one.
+#
+# Godot's stock pair is drawn for a light theme — the same problem the CheckBox
+# icons above were replaced for. On these panels the ticked one is a pale ring
+# and the UNTICKED one is a faint dark square, so every row of an OptionButton's
+# list wore a smudge and the one that was actually selected barely stood out from
+# the ones that were not.
+#
+# Chosen is a solid accent dot; unchosen is EMPTY. A dropdown is a list of things
+# you could pick, not a set of boxes to answer, so an unpicked row wants no mark
+# at all — which also means the one with a mark is unmissable.
+const POPUP_MARK := 16
+
+static func popup_mark(on: bool) -> ImageTexture:
+	var n := POPUP_MARK
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	if on:
+		var mid := (n - 1) * 0.5
+		var r := n * 0.28
+		for y in range(n):
+			for x in range(n):
+				# Distance-based, so the dot has a soft edge instead of a staircase.
+				var d: float = Vector2(x - mid, y - mid).length()
+				if d <= r:
+					img.set_pixel(x, y, ACCENT)
+				elif d <= r + 1.0:
+					img.set_pixel(x, y, Color(ACCENT.r, ACCENT.g, ACCENT.b, r + 1.0 - d))
+	return ImageTexture.create_from_image(img)
+
 # Paint a `width`-thick line into `img` by distance-to-segment, so the diagonal
 # leg of the tick comes out even rather than stair-stepped.
 static func _stroke(img: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
@@ -766,6 +796,16 @@ static func make_theme() -> Theme:
 	t.set_constant("v_separation", "PopupMenu", GAP_TIGHT)
 	t.set_constant("item_start_padding", "PopupMenu", GAP_WIDE)
 	t.set_constant("item_end_padding", "PopupMenu", GAP_WIDE)
+	# The chosen row's mark. Every OptionButton in the project draws its list
+	# through these — the Collection's type and record filters, the Atlas's mode
+	# and region pickers, Custom Run's four columns, the Dash panel's type filter,
+	# Settings' display and window-size lists — so a dropdown marks its selection
+	# the same way everywhere. See `popup_mark`: an accent dot when chosen, and
+	# nothing at all when not.
+	for on_name in ["checked", "radio_checked"]:
+		t.set_icon(on_name, "PopupMenu", popup_mark(true))
+	for off_name in ["unchecked", "radio_unchecked"]:
+		t.set_icon(off_name, "PopupMenu", popup_mark(false))
 
 	# --- Separators ---
 	var sep := StyleBoxLine.new()

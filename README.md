@@ -530,7 +530,18 @@ node and its script.
   opened it. `Overworld2._place_menu_popup` right-aligns it to the button and
   clamps it inside the canvas, measured in `about_to_popup` off
   `get_contents_minimum_size` (the popup's `size` is a stale 0 before its first
-  layout). Exit is the only entry that asks
+  layout).
+  **Every dropdown in the project is drawn by the same two theme entries.** There
+  are thirteen `OptionButton`s across six screens — the Collection's type and
+  record filters, the Atlas's mode and region pickers, Custom Run's four filter
+  columns, the Dash panel's type filter and Settings' display, window-size and
+  audio lists — and each is a bare `OptionButton.new()`, so the theme is the only
+  thing deciding how any of them look. `test_design_tokens.gd` fails a screen that
+  reaches for its own stylebox or font colour; a font SIZE stays a per-screen
+  choice, since the Dash filter sits on the 720p-budgeted page. A chosen row wears
+  a solid accent dot (`UITheme.popup_mark`) and an unchosen one wears nothing —
+  Godot's stock pair is drawn for a light theme, so the ticked mark was a pale
+  ring and the unticked a faint dark square, putting a smudge on every row. Exit is the only entry that asks
   first, since a live run is standing behind it — and it asks the question that
   is actually open, offering **Save & exit** beside Exit and Cancel rather than a
   bare "are you sure".
