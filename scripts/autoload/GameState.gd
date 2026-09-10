@@ -2682,6 +2682,17 @@ func grid_growth() -> int:
 			n += 1
 	return n
 
+# Censer: how many of the road's extra turns (§7.4) a body standing in the FRONT
+# column loses. Counts rather than answering a bool, like grid_growth above and
+# for the same reason — the answer is a number of turns, so a second copy is a
+# second turn. GameLoop2.beat_game sits those bodies out.
+func front_column_turn_drain() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it.front_column_slow:
+			n += 1
+	return n
+
 # Philosophers Stone / Runic Dome: how many extra COLUMNS the battlefield has,
 # on top of grid_growth's columns-and-rows (§7.3). Length without width: more
 # ground to cross, and no extra lane — so the front line still holds grid_rows()

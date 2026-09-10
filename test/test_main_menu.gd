@@ -77,6 +77,38 @@ func test_the_menu_raises_the_character_picker_and_listens_for_the_pick() -> voi
 	assert_true(picker.chosen.is_connected(menu._begin_run),
 		"and Confirm's pick reaches the menu's _begin_run")
 
+# THE DICE PREVIEWS, IT DOES NOT START THE RUN. Two halves worth pinning: a roll
+# lands on a hero (and, with a roster this size, a DIFFERENT one each press, which
+# is what stops the button reading as broken), and it leaves the screen standing
+# with `chosen` unfired — Confirm is still the only thing that begins a run.
+func test_the_random_button_previews_a_hero_rather_than_starting_the_run() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	menu._open_character_picker()
+	await wait_frames(2)
+	var picker: CharacterPicker = null
+	for c in menu._modal_layer.get_children():
+		if c is CharacterPicker:
+			picker = c
+	if picker == null:
+		pending("the menu did not raise a picker to roll on")
+		return
+	if picker._roster.size() < 2:
+		pending("a one-hero roster has nothing to roll between")
+		return
+	var began := [false]
+	picker.chosen.connect(func(_id: StringName): began[0] = true)
+
+	var first: CharacterData = picker.roll_random()
+	assert_not_null(first, "the roll landed on a hero")
+	assert_eq(String(picker._state["id"]), String(first.id),
+		"and the preview is showing the hero it landed on")
+	var second: CharacterData = picker.roll_random()
+	assert_ne(String(second.id), String(first.id),
+		"pressing it again rerolls onto someone else rather than sitting still")
+	assert_false(began[0], "and rolling never starts the run — Confirm does that")
+	assert_true(is_instance_valid(picker), "so the picker is still standing")
+
 # The button still works when nothing is standing in front of it.
 func test_the_quit_button_is_still_wired_up() -> void:
 	var menu = _menu()

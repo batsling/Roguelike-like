@@ -9,6 +9,14 @@ extends Control
 # fields come in pre-filled so the player updates rather than starts over. A
 # "Maybe later" button dismisses without rating.
 #
+# THE SCORE AND THE TIER ARE TWO STEPS, NOT ONE. Confirming records the score and
+# leaves the player where they were; "★ Rank it" records the same score and asks
+# the host to open the tier list on this game so it can be put in a row while it
+# is still fresh. Both emit the SAME `submitted` signal — the difference is what
+# `wants_ranking()` answers afterwards — so a caller that does not care about the
+# board (the tier-list screen's own editor, which is already looking at it) needs
+# no extra wiring, and one that does reads one bool.
+#
 # Built entirely in code (no scene dependency) and runs PROCESS_MODE_ALWAYS so
 # it keeps working if the tree is paused behind it. Emits `submitted(score,
 # notes)` on confirm or `dismissed` on skip; the caller persists via TierList
@@ -21,8 +29,14 @@ const ACCENT := Color(1.0, 0.7, 0.25)
 
 var _game_id: StringName = &""
 var _score: int = 0
+# Set by the "★ Rank it" button just before `submitted` goes out. Read with
+# wants_ranking() from inside the handler — the modal is normally freed there,
+# so it is answered while the node is still alive.
+var _rank_now: bool = false
+var _offer_ranking: bool = true
 var _notes_edit: TextEdit
 var _confirm_btn: Button
+var _rank_btn: Button
 var _score_label: Label
 var _score_buttons: Array[Button] = []
 
@@ -38,9 +52,14 @@ var _built: bool = false
 
 # Safe to call before or after the node enters the tree. `gd` may be null (we
 # fall back to the id).
-func setup(game_id: StringName, gd: GameData) -> void:
+# `offer_ranking` is whether the "★ Rank it on the tier list" button is drawn at
+# all. It is false for exactly one caller — the tier-list screen's own editor,
+# which is already looking at the board, so a button offering to take you there
+# would be a button that appears to do nothing.
+func setup(game_id: StringName, gd: GameData, offer_ranking: bool = true) -> void:
 	_game_id = game_id
 	_gd = gd
+	_offer_ranking = offer_ranking
 	_existing = TierList.get_rating(game_id)
 	if not _existing.is_empty():
 		_score = int(_existing.get("score", 0))
@@ -76,7 +95,10 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	# built before being sized, which dumped the panel in the top-left corner.
 	# Tall enough for the box-art cover below without the panel outgrowing the
 	# position computed here (a 720p viewport still leaves a margin top and bottom).
-	var panel_size := Vector2(600, 640)
+	# The second way out ("★ Rank it on the tier list") is a whole button row more
+	# than this panel used to carry, and 720p is only 720: the cover and the notes
+	# box each gave up a little rather than the panel growing past the window.
+	var panel_size := Vector2(600, 668)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = panel_size
 	panel.position = (get_viewport_rect().size - panel_size) / 2.0
@@ -111,7 +133,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	if gd != null and gd.cover_image != null:
 		var cover := TextureRect.new()
 		cover.texture = gd.cover_image
-		cover.custom_minimum_size = Vector2(0, 200)
+		cover.custom_minimum_size = Vector2(0, 172)
 		cover.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		vbox.add_child(cover)
@@ -140,7 +162,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	vbox.add_child(notes_label)
 
 	_notes_edit = TextEdit.new()
-	_notes_edit.custom_minimum_size = Vector2(0, 120)
+	_notes_edit.custom_minimum_size = Vector2(0, 96)
 	_notes_edit.placeholder_text = "What did you think?"
 	_notes_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	if not existing.is_empty():
@@ -166,6 +188,23 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	_confirm_btn.pressed.connect(_on_confirm)
 	button_row.add_child(_confirm_btn)
 
+	# The second door out, on its own line because it is the longer sentence and a
+	# third button in that row squeezed all three below their labels. It saves
+	# exactly what Confirm saves — the only difference is that the host is asked
+	# for the board afterwards.
+	if not _offer_ranking:
+		_refresh_score_buttons()
+		_update_confirm_enabled()
+		return
+	_rank_btn = Button.new()
+	_rank_btn.text = "★  Rank it on the tier list"
+	_rank_btn.custom_minimum_size = Vector2(0, 44)
+	_rank_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rank_btn.tooltip_text = "Save this score and open the tier list on %s." % game_name
+	_rank_btn.add_theme_color_override("font_color", ACCENT)
+	_rank_btn.pressed.connect(_on_rank)
+	vbox.add_child(_rank_btn)
+
 	_refresh_score_buttons()
 	_update_confirm_enabled()
 
@@ -187,10 +226,24 @@ func _refresh_score_buttons() -> void:
 func _update_confirm_enabled(_unused := "") -> void:
 	# Notes are optional now; only a score is needed to confirm.
 	_confirm_btn.disabled = _score < 1
+	if _rank_btn != null:
+		_rank_btn.disabled = _score < 1
+
+# Whether the player asked for the tier list as well as the score. Answered from
+# inside a `submitted` handler; false for a plain Confirm and for a modal that
+# was dismissed.
+func wants_ranking() -> bool:
+	return _rank_now
 
 func _on_confirm() -> void:
 	if _score < 1:
 		return
+	emit_signal("submitted", _score, _notes_edit.text.strip_edges())
+
+func _on_rank() -> void:
+	if _score < 1:
+		return
+	_rank_now = true
 	emit_signal("submitted", _score, _notes_edit.text.strip_edges())
 
 func _on_dismiss() -> void:

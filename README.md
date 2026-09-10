@@ -889,7 +889,7 @@ with the inside of a browser source. So the page renders part of itself, and
 | `bottom.html` | checklist + ticker | 352 × 442 |
 | `goals.html` | the checklist, and nothing else | 352 × 352 |
 | `road.html` | the road walked so far | 352 × 116 |
-| `map.html` | the road **ahead**, as a ladder | **1920 × 1080** |
+| `map.html` | the road **ahead**, as a ladder | **2560 × 1440** (drawn 1:1 there; scale it in OBS) |
 
 Add a Browser Source, tick **Local file**, browse to the one you want. Point
 **several** at different files and put whatever you like between them; they read
@@ -967,10 +967,22 @@ on a between-games scene.
 
 | | |
 |---|---|
-| Source size | **1920 × 1080** (what the layout is tuned against) |
-| Smaller sources | fine — it is fluid; 640 × 720 works and is simply smaller |
+| Source size | **2560 × 1440** — the stage it is drawn at, so this size renders 1:1 |
+| Smaller sources | fine — the whole stage is scaled down to fit; never cropped |
+| Bigger, or zoomed in OBS | the pixels are already there, which is the point of the stage |
+| Changing the stage | `#overlay.only-map > .map { --stage-w: …; --stage-h: …; }` in your `custom.css` |
 | Depth it holds | 14 layers, then it says `+N more layers … not drawn` |
 | Deeper than fits | rungs shrink to a legibility floor, then the ladder scales |
+
+**The map is drawn at a fixed stage and scaled into the source, and it is the only
+piece here that is.** The ladder used to be solved into the *source's* own pixels,
+which is right for a panel in a column and wrong for the one source people zoom: a
+480-wide source drew a 480-wide ladder, and cranking that up in OBS enlarged 480
+pixels of cover and type. Now the layout is always 2560 × 1440 and one transform
+scales the whole stage into whatever source it is given — so scale the scene item
+down to park the map in a corner and back up to read it, with the render already at
+size either way. Keep the stage's **aspect** matching the source's, or the fit
+leaves transparent bars on the short axis; the map is centred, never stretched.
 
 **Everything is sized from one number, and that is what makes it readable.** The
 rung's width is solved for from the room the source gives it — on *both* axes,
@@ -1097,7 +1109,7 @@ URLs; `tools/check_overlay.js` now serves the page over http and asserts every
 `<img>` decoded, which is the only way this class of bug is visible.
 
 **And the route map is a fourth source**, at `map.html`: the road *ahead*
-as a branching ladder, drawn full screen at 1920 × 1080 and toggled on when you
+as a branching ladder, drawn at a fixed 2560 × 1440 stage and toggled on when you
 want it. See
 "The route map" above.
 

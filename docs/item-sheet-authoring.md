@@ -31,7 +31,7 @@ One item = `clause; clause; ...` (paren/bracket aware — a `;` inside `()`,
 | `weapon` / `verify` | `weapon_card_id` + `verification_*` | `weapon: barrel; verify: <q> => 1/2 random fish` |
 | `perfect` | `perfect_effects` / `perfect_save_chance` | `perfect: gain_hp 5` |
 | `status_amplify`, `status_immunity`, `attack_damage_bonus`, `upgrade_card_types`, `stat_mirror`, `stat_floor`, `stat_gain_bonus`, `negate_lethal`, `reroll_low_rarity`, `carries_leftover_energy`, `lower_hp_damage_mult`, `gold_spend_stat_per=N`, `level_up`, `charged (charge_cost N)` | the matching one-off `ItemData` field | `status_immunity: weak` (Ginger — the player can no longer gain that status) |
-| `bomb_stun`, `bomb_cardinal`, `grid_grow`, `pills_positive` | the games-first (2.0) run-loop rule flags — bare words, no payload | `pills_positive` (Lucky Foot: a Negative pill rerolls into a Positive one) |
+| `bomb_stun`, `bomb_cardinal`, `grid_grow`, `front_column_slow`, `pills_positive` | the games-first (2.0) run-loop rule flags — bare words, no payload | `pills_positive` (Lucky Foot: a Negative pill rerolls into a Positive one) |
 | `health_lost` | `triggers[{on:health_lost}]` (run-scope, scene-less; the PLAYER's Health went down, from any source anywhere in the run) | `health_lost: gain_gold 1` (Piggy Bank) |
 | `boss_chest_bonus: N` | `boss_chest_bonus` — chest POINTS added to a boss's drop, spent on `Data.chest_reward_sizes`' ladder | `boss_chest_bonus: 1` (There's Options: a boss's Small chest becomes a Medium, so its drop is 1-of-2) |
 
@@ -55,6 +55,7 @@ helpers) instead of firing an effect:
 | `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
 | `bomb_cardinal` | Brimstone Bombs | A bomb blasts down the target's whole row *and* column rather than hitting one body. |
 | `grid_grow` | Mine-r Construction | The battlefield gains a column and a row (§7.3). Alone among these it **stacks**: `GameState.grid_growth` counts the copies instead of answering a bool, so a second one is a second column and a second lane. |
+| `front_column_slow` | Censer | Every body standing in the **front column** (col 1) sits out one of the extra turns the road hands the board at a report (§7.4) — armour, not a global slow: a body further back would only spend that turn walking. Stacks the way `grid_grow` does (`GameState.front_column_turn_drain` counts the copies), and it is read off each body's LIVE column inside the turn loop, so something that steps into the front line mid-resolve is held off too. |
 
 The matching per-bomb *effect* hook is the `bomb_used` trigger (Blood Bombs:
 `item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`), fired once per bomb by
@@ -149,6 +150,7 @@ does not:
 | Cell | Means |
 | --- | --- |
 | `gain_pill N` / `gain_potion N` | `gain_scroll`'s siblings, one per loot type. `gain_loot N` is the kind-BLIND grant beside them — it rolls per unit across every alphabet there is, and it is what beating a game pays (§4.3). Reach for a named kind only where the row is *about* that kind of thing; `gain_loot` keeps widening for free. |
+| `drop_loot N` | `gain_loot`'s other half: N pieces rolled onto the **battlefield floor** instead of into the pack (Fanny Pack), on the same terms as loot a defeated body leaves — it lies on a random free square until the player walks to it, and the report sweeps up what was not collected (§18). A board with no free square pays nothing rather than erroring. |
 | `pills_positive` | Lucky Foot's rule flag: a Negative pill taken while it is held rerolls into a random Positive one. The colour still identifies as what it actually is. |
 | `echo_loot N` | Echo Chamber's memory depth. A count rather than a bool, in the shape `boss_chest_bonus: N` has. |
 

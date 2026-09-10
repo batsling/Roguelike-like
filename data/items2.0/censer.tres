@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_censer"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/Censer.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"censer"
+display_name = "Censer"
+kind = 0
+rarity = 1
+description = "Enemies in the leftmost column get -1 Extra Turns"
+triggers = []
+stat_bonuses = {}
+front_column_slow = true
+max_uses = -1
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("holy")
+pools = PackedStringArray("angel_room")
+image = ExtResource("2_img")

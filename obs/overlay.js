@@ -649,7 +649,8 @@ function drawMap(route, run) {
   layoutWires(route.edges || []);
 }
 
-/* SIZE THE LADDER TO THE SOURCE, then position the arrows.
+/* SIZE THE LADDER TO THE STAGE, then position the arrows. (The stage is then
+ * scaled into the source as one piece — see fitStage below.)
  *
  * THIS IS WHAT MAKES THE MAP LEGIBLE, and the bug it fixes was not the type
  * size. Every rung used to be a flat 152px and the fit only ever scaled DOWN,
@@ -690,17 +691,54 @@ const RUNG_ASPECT = 1.50;
  * of saying which way the road runs. */
 const LAYER_GAP = 0.32;
 const CHOICE_GAP = 0.08;  /* between the choices within one layer */
-/* The floor is a legibility floor: below about 90px a cover is a smudge and the
- * name is unreadable, so there is no point shrinking further — past this the
- * transform takes over and the honest answer is that the route is very long.
- * The ceiling stops a two-layer route from being blown up into wall art. */
-const RUNG_MIN = 90;
-const RUNG_MAX = 300;
+/* The floor is a legibility floor: below about 90px of a 1080-tall stage a cover
+ * is a smudge and the name is unreadable, so there is no point shrinking further
+ * — past this the transform takes over and the honest answer is that the route is
+ * very long. The ceiling stops a two-layer route from being blown up into wall
+ * art.
+ *
+ * BOTH ARE FRACTIONS OF THE STAGE, not pixel constants, because the stage is now
+ * a size the streamer picks (see `.map` in overlay.css). A flat 90px floor on a
+ * 1440-tall stage is not the same promise it was on a 1080-tall one — it is a
+ * smaller share of the picture, and "smallest a cover may be drawn" is a claim
+ * about the picture rather than about pixels. The two ratios are the old numbers
+ * over the 1080 they were measured at, so a 1080 stage draws exactly what it
+ * always did. */
+const RUNG_MIN_RATIO = 90 / 1080;
+const RUNG_MAX_RATIO = 300 / 1080;
 
 let lastEdges = [];
 
+/* THE STAGE, SCALED INTO THE SOURCE. See the `.map` block in overlay.css for why
+ * the map is drawn at a fixed size at all: the source people zoom in OBS has to
+ * have the pixels there before OBS enlarges it.
+ *
+ * This is the whole of the source-dependent arithmetic on this map. Everything
+ * below solves the ladder into the STAGE — `clientWidth`/`clientHeight` report
+ * layout pixels and a transform does not touch them, so the fit below is read in
+ * stage units whatever this scale comes out at, and the two never interact.
+ *
+ * Returns the stage's own height, which is the basis the rung's floor and ceiling
+ * are fractions of. Falls back to the window when there is no stage (the map is
+ * not the only-map source, so it has no fixed size) — the ladder is then solved
+ * into the room it has, exactly as it was before the stage existed. */
+function fitStage() {
+  const map = document.querySelector('.map');
+  if (!map) return window.innerHeight;
+  const cs = getComputedStyle(map);
+  const w = parseFloat(cs.getPropertyValue('--stage-w'));
+  const h = parseFloat(cs.getPropertyValue('--stage-h'));
+  if (!(w > 0 && h > 0)) return window.innerHeight;
+  const scale = Math.min(window.innerWidth / w, window.innerHeight / h);
+  map.style.setProperty('--stage-scale', String(scale));
+  map.style.setProperty('--stage-x', ((window.innerWidth - w * scale) / 2) + 'px');
+  map.style.setProperty('--stage-y', ((window.innerHeight - h * scale) / 2) + 'px');
+  return h;
+}
+
 function layoutWires(edges) {
   if (edges) lastEdges = edges;
+  const stageH = fitStage();
   const fit = el('map-fit');
   const rows = el('map-rows');
   const body = el('map-body');
@@ -715,28 +753,32 @@ function layoutWires(edges) {
   const room = { w: body.clientWidth, h: body.clientHeight };
   if (room.w <= 0 || room.h <= 0) return;   /* hidden — nothing to measure */
 
-  /* THE HEADING'S SIZE, FROM THE WINDOW AND NOT FROM THE LADDER. The head sits
+  /* THE HEADING'S SIZE, FROM THE STAGE AND NOT FROM THE LADDER. The head sits
    * above `.map-body`, so its height is part of what is subtracted from the room
    * solved into below — sizing it from `--rung` would put the two in a loop,
-   * each redraw nudging the other. `window.innerHeight` is the one number here
+   * each redraw nudging the other. The stage's height is the one number here
    * that nothing on the page can move.
    *
-   * 15px at a 720-tall source and about 30 at 1080, which is the slope this
+   * 15px on a 720-tall stage and 30 on a 1080 one, which is the slope this
    * expression is: a heading that stayed 15px on a full-screen map was the same
-   * mistake as a rung that stayed 152. */
-  const head = Math.max(13, Math.min(38, window.innerHeight * 0.0417 - 15));
+   * mistake as a rung that stayed 152. The clamps ride on the stage for the same
+   * reason the rung's do — they are shares of the picture, not pixel counts. */
+  const k = stageH / 1080;
+  const head = Math.max(13 * k, Math.min(38 * k, stageH * 0.0417 - 15 * k));
   document.querySelector('.map').style.setProperty('--head', head + 'px');
 
+  const rungMin = RUNG_MIN_RATIO * stageH;
+  const rungMax = RUNG_MAX_RATIO * stageH;
   const byWidth = room.w / (depth + LAYER_GAP * (depth - 1));
   const byHeight = room.h / (RUNG_ASPECT * width + CHOICE_GAP * (width - 1));
   const ideal = Math.min(byWidth, byHeight);
-  const rung = Math.max(RUNG_MIN, Math.min(RUNG_MAX, ideal));
+  const rung = Math.max(rungMin, Math.min(rungMax, ideal));
   fit.style.setProperty('--rung', rung + 'px');
 
   /* THE SQUEEZE, and only when the floor was not enough. `ideal` is what would
    * have fitted; if the floor overrode it, the ladder is now bigger than the
    * panel by exactly that ratio. */
-  const scale = ideal < RUNG_MIN ? Math.max(0.35, ideal / RUNG_MIN) : 1;
+  const scale = ideal < rungMin ? Math.max(0.35, ideal / rungMin) : 1;
   fit.style.transform = 'scale(' + scale + ')';
 
   const origin = rows.getBoundingClientRect();

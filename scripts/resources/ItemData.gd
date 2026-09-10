@@ -486,6 +486,21 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # bool, so two of them add two columns and two rows.
 @export var grid_grow: bool = false
 
+# Censer: every body standing in the FRONT column (col 1 — the ones in reach of
+# you) takes one fewer of the extra turns the road hands the board at a report
+# (§7.4). The turn is not moved or delayed: it is gone, and the body sits the
+# first one out where it would otherwise have swung.
+#
+# IT ONLY EVER TOUCHES THE FRONT COLUMN, which is what keeps it from being a flat
+# "enemies act less". A body four columns back spends its turns WALKING, so
+# draining one there would only slow its approach; in the front column a turn is a
+# hit on you, so this is armour that reads as the incense keeping them back — and
+# it stops mattering the moment the front line is empty.
+#
+# Stacks like grid_grow: GameState.front_column_turn_drain counts the copies, so
+# two Censers cost a front-line body two turns. Read by GameLoop2.beat_game.
+@export var front_column_slow: bool = false
+
 # Philosophers Stone / Runic Dome: the battlefield grows by one COLUMN only —
 # the length, not the width. The distinction is the whole of what separates them
 # from Mine-r Construction: a column is pure distance, more ground for the stack

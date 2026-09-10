@@ -238,3 +238,41 @@ func test_a_taller_board_is_fitted_at_a_smaller_scale() -> void:
 	var width: float = _screen._scroll.size.x
 	assert_gt(_screen._board_height(width, 1.0), _screen._board_height(width, 0.5),
 		"the fit's own measure shrinks with the scale it is asked about")
+
+# --- opening the board ON a game, straight off a score ----------------------
+#
+# `TierListScreen.open(parent, focus_id)` is what RateGameModal's "★ Rank it"
+# reaches: the board comes up with that game's card already open and, while it is
+# still unplaced, an instruction at the top of the card saying what is left to do.
+# A board of three hundred covers is a poor place to go looking for the one you
+# just scored.
+
+func _opened_on(id: StringName):
+	var s = SCREEN.open(self, id)
+	autofree(s)
+	return s
+
+func test_opening_on_a_game_opens_that_game_s_card() -> void:
+	var s = _opened_on(_game_a.id)
+	assert_eq(s.selected_game(), _game_a.id, "the board came up on the game it was given")
+	assert_true(_text_of(s._detail_box).contains(_game_a.display_name),
+		"and its card is the one showing")
+
+func test_an_unplaced_game_is_asked_for_a_tier() -> void:
+	TierList.place(_game_a.id, -1)          # in the Unranked tray, which is where a score leaves it
+	var s = _opened_on(_game_a.id)
+	assert_true(_text_of(s._detail_box).contains("Now pick its tier"),
+		"the card says what is left to do")
+
+func test_the_ask_goes_away_once_the_game_is_placed() -> void:
+	TierList.place(_game_a.id, -1)
+	var s = _opened_on(_game_a.id)
+	TierList.place(_game_a.id, 0)           # dragged, or moved with the buttons — same call
+	assert_false(_text_of(s._detail_box).contains("Now pick its tier"),
+		"a game that is in a row is not still being asked for one")
+
+func test_a_board_opened_on_nothing_is_the_board_it_always_was() -> void:
+	var s = _opened_on(&"")
+	assert_eq(s.selected_game(), &"", "no game, no card")
+	assert_false(_text_of(s._detail_box).contains("Now pick its tier"),
+		"and nothing is being asked of anyone")

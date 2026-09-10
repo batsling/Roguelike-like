@@ -691,20 +691,39 @@ func test_a_game_only_pays_its_event_once() -> void:
 
 func test_the_bag_deals_every_event_before_repeating_one() -> void:
 	# The whole point of the bag: no event comes round again until the rest of
-	# its rarity has been seen. Every authored event is Common today, so one pass
-	# of the bag should be the whole catalogue with no duplicate in it.
+	# its rarity has been seen.
+	#
+	# ASSERTED PER RARITY, not across the draw. This walked the COMMON pool and
+	# asserted that nothing repeated at all, and `roll_for_arrival` does not draw
+	# only Commons: Potion Lab is the whole Rare rung today, so a bag holding one
+	# event has no other answer than to deal it again ("a one-event rarity has no
+	# other answer", and see the test below, which was already written this way).
+	# One Rare draw was fine; two anywhere in the pass failed — an assertion that
+	# was only USUALLY true, of exactly the kind CLAUDE.md warns about, and it
+	# failed the moment an unrelated change moved the run's random stream.
+	#
+	# The invariant that is actually true is per rung, so that is what is checked:
+	# no event from a rarity with siblings comes round twice before its rung has
+	# been dealt out.
 	var pool: Array = _ungated_common_ids()
 	var drawn: Dictionary = {}
+	var lonely: int = 0
 	for i in range(pool.size()):
 		var node: StringName = StringName("bag_probe_%d" % i)
 		var ev: EventData2 = EventSystem.roll_for_arrival(node)
 		if ev == null:
+			continue
+		if _rarity_siblings(ev) <= 1:
+			lonely += 1
+			EventSystem.mark_fired(ev, node)
 			continue
 		assert_false(drawn.has(ev.id),
 			"%s came round again before the bag was empty" % ev.id)
 		drawn[ev.id] = true
 		EventSystem.mark_fired(ev, node)
 	assert_gt(drawn.size(), 1, "the bag dealt more than one event")
+	assert_gt(drawn.size(), lonely,
+		"and most of the pass was the rung under test, not the lone Rare")
 
 
 func test_a_fresh_bag_does_not_open_on_the_event_that_emptied_the_last_one() -> void:

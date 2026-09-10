@@ -96,6 +96,7 @@ func _register_defaults() -> void:
 	register("gain_pill", _h_gain_pill)
 	register("gain_potion", _h_gain_potion)
 	register("gain_loot", _h_gain_loot)
+	register("drop_loot", _h_drop_loot)
 	register("none", _h_none)
 	register("if_hp", _h_if_hp)
 	register("chance", _h_chance)
@@ -222,6 +223,20 @@ func _h_gain_potion(effect: Dictionary, _ctx: Dictionary) -> void:
 
 func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
 	_grant_loot("loot", int(effect.get("value", 1)))
+
+# `drop_loot N` — N pieces rolled and PUT ON THE BATTLEFIELD FLOOR, not into the
+# pack (Fanny Pack: "50% chance to spawn 1 random loot on the grid when losing
+# health"). Its sibling `gain_loot` hands the piece over; this one leaves it lying
+# on a square, which the player has to reach and pick up before the report sweeps
+# the floor (§18) — the same terms every drop a defeated body leaves is on.
+#
+# THAT DIFFERENCE IS THE ITEM. A relic that paid loot straight into the pack every
+# time you were hit would be a flat income; one that puts it on the ground turns
+# being hit into a reason to walk somewhere, and a board too full to hold it pays
+# nothing (`drop_loot_anywhere` answers OFF_FIELD, and this quietly drops it).
+func _h_drop_loot(effect: Dictionary, _ctx: Dictionary) -> void:
+	for _i in maxi(0, int(effect.get("value", 1))):
+		GameLoop2.drop_loot_anywhere(GameState.roll_loot_entry("loot"))
 
 # A grant of loot ASKS when there is a screen to ask on (§4.3). Mom's Coin Purse
 # is four pills at once, and Sacred Bark doubles what a grant pays: pushed straight
