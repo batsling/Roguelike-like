@@ -21,6 +21,19 @@ For how the project is laid out and how its systems fit together, see
   and `atlas_layout`, `_c6` and `_c12` moved with the new stars while `_owned`
   and `_downloaded` did not, since none of the four is marked Owned.
 
+  **The DQ Heroes cover arrived as `...-toronekos-...`**, the letters of "Torneko"
+  transposed, with the sheet's File column spelling it the same way — so the two
+  agreed, `find_cover` resolved it, and nothing anywhere complained. Agreeing on a
+  typo still puts it in every path in the repo, next to three neighbouring Torneko
+  games that spell it right. Renamed on both sides
+  (`tools/_games_dq_heroes_file_typo.py`), which had to go through
+  `replace_cells` rather than `write_grid`: the `games` sheet carries **1711
+  formula cells** (`Connected?` and `Influencer?` on all 865 rows), and
+  regenerating its cell data from values would replace every one of them with its
+  last cached result. `read_grid` refuses the sheet for that reason, so the
+  verify-read is openpyxl — reading is what every generator does; it is SAVING
+  with openpyxl that drops the charts.
+
   **The interesting one is Handmancers, which imported as an ORPHAN.** It came in
   with a cover, a Steam page, a `games` row and a node drawn on
   `Roguelikes.drawio` with an edge from Slay the Spire — but its `connections`
