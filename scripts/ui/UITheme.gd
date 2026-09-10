@@ -94,6 +94,87 @@ const ITEM_CLASS_COLORS := [
 const COIN_GOLD := Color(0.98, 0.74, 0.20)
 const SHOP_GREEN := Color(0.44, 0.82, 0.56)
 
+# ---------------------------------------------------------------------------
+# The type scale
+# ---------------------------------------------------------------------------
+#
+# This file had a thorough colour system and nothing at all for the other two
+# axes, so every font size and every gap in the game was a bare integer typed at
+# its call site. A count of them: 25 distinct font sizes across the project —
+# 105 uses of `12`, 71 of `11`, 62 of `13` — which is three sizes doing one job
+# with nothing to say which is which, plus a long tail of one-offs.
+#
+# THE VALUES HERE ARE THE VALUES THAT WERE ALREADY BEING USED. Naming them is the
+# whole change: nothing moves, nothing needs re-fitting, and the 720p budget the
+# run screens are built to is untouched. What it buys is that the set is now
+# countable and the next size someone reaches for is a named step rather than a
+# fresh integer.
+#
+# If the size you want is not on this list, take the nearest one. A genuine
+# one-off (a single hero line on a single screen) can stay a literal, but write
+# down why — `test_type_scale.gd` scans the run screens and will ask.
+const FONT_MICRO := 9        # a counter inside a badge
+const FONT_TINY := 10        # a card's distance line, a pack tile's count
+const FONT_SMALL := 11       # chips, badges, the second line of a row
+const FONT_BODY := 12        # the UI's default line — buttons, most labels
+const FONT_TEXT := 13        # prose meant to be READ rather than scanned
+const FONT_LABEL := 14       # a named value beside its number
+const FONT_LEAD := 15        # the first line of a block
+const FONT_SUB := 16         # a sub-heading inside a panel
+const FONT_HEAD := 18        # a panel's own heading
+const FONT_TITLE := 20       # a screen's title
+const FONT_TITLE_LG := 22    # a screen's title, where it is the subject
+const FONT_DISPLAY := 26     # a verdict, a name at full size
+const FONT_HERO := 28        # the largest thing on a screen
+
+# ---------------------------------------------------------------------------
+# The spacing scale
+# ---------------------------------------------------------------------------
+#
+# Same story: ~20 distinct separation values, 60 uses of `8`, 56 of `6`, 43 of
+# `10`. Same rule — these are the values already in use, named.
+#
+# MIND THE OFF-SCALE ONES. Several gaps on the run screens are load-bearing to
+# the pixel (`_inv_wrap`'s margin 6 and separation 3, the select panel's 6s) and
+# carry a comment saying so — the page is fitted to a 720p canvas with single
+# digits to spare. Those stay literal on purpose; snapping one to the nearest
+# step is exactly the change that puts the overworld behind a scrollbar.
+const GAP_NONE := 0
+const GAP_HAIR := 2
+const GAP_TIGHT := 4
+const GAP_SNUG := 6
+const GAP := 8               # the default gap between two things in a stack
+const GAP_WIDE := 10
+const GAP_LOOSE := 12
+const GAP_SECTION := 16      # between one section of a screen and the next
+
+# ---------------------------------------------------------------------------
+# The z-order
+# ---------------------------------------------------------------------------
+#
+# Every CanvasLayer number in the game, in one list. They were bare integers
+# spread across ten files — 122, 123, 124, 128, 130, 131, 135, 136, 138, 140,
+# 150 — describing a single global invariant that could only be checked by
+# grepping for it, and the README's prose was the only place the order was
+# written down. That has already cost something: the map opens above the haul
+# screen, which is why `Overworld2._dismiss_route_map` has to exist.
+#
+# Read it top to bottom: later entries draw over earlier ones.
+class Layer:
+	const MENU_SCREEN := 120   # a screen the MAIN MENU raises (custom run)
+	const DROP := 122          # loot drop, an object's card
+	const EVENT := 123         # the D20 event, the boss notice
+	const CHOICE := 124        # an offered game's card
+	const POST_COMBAT := 128   # the haul a game ends on
+	const MAP := 130           # the route ladder, a loot use, a reading card
+	const POST_COMBAT_CARD := 131  # a card opened off the haul screen
+	const HEADER := 135        # the run's pinned bar — over the gameplay modals
+	const START := 136         # the opening choose-a-road screen
+	const START_MODAL := 138   # what that screen opens over itself
+	const FULL_SCREEN := 140   # the star chart, a destructive confirm
+	const CONFIRM := 141       # an event's confirm, over the chart
+	const VERDICT := 150       # the run is over; nothing outranks this
+
 static func rarity_color(i: int) -> Color:
 	return RARITY[clampi(i, 0, RARITY.size() - 1)]
 

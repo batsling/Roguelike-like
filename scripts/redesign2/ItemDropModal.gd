@@ -92,7 +92,7 @@ func _start(host: Node, offer) -> void:
 		if entry is ItemData:
 			_items.append(entry)
 	_layer = CanvasLayer.new()
-	_layer.layer = 122
+	_layer.layer = UITheme.Layer.DROP
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)

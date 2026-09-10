@@ -41,11 +41,11 @@ signal cancelled
 # The layer this screen mounts on. Above the run's pinned header (135), which is
 # reporting a Health pool, a purse and a road walked that no run has yet — the
 # screen stands the bar down while it is up, and this is the belt to that braces.
-const LAYER := 136
+const LAYER := UITheme.Layer.START
 # …and what it opens on top of ITSELF. The ladder window is 130 and the game-card
 # popup is 124 by default, both of which are under this screen: without lifting
 # them, `→ Optimal Path` and `⚙ Details` open perfectly and are never seen.
-const MODAL_LAYER := 138
+const MODAL_LAYER := UITheme.Layer.START_MODAL
 
 # The Amulet's banner art, and a road card's cover. Both are deliberately smaller
 # than the covers the offering draws: this screen has to hold a banner, two road
@@ -120,7 +120,7 @@ func _build() -> void:
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(vbox)
 
 	vbox.add_child(_amulet_banner())
@@ -143,7 +143,7 @@ func _amulet_banner() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.accent_box(UITheme.GOLD, UITheme.PANEL, 14))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	wrap.add_child(row)
 
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
@@ -156,20 +156,20 @@ func _amulet_banner() -> Control:
 		row.add_child(art)
 
 	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", 2)
+	facts.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	facts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(facts)
 
 	var eyebrow := Label.new()
 	eyebrow.text = "🏆  THE AMULET — WHERE THIS RUN ENDS"
-	eyebrow.add_theme_font_size_override("font_size", 12)
+	eyebrow.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	eyebrow.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.4))
 	facts.add_child(eyebrow)
 
 	var name_lbl := Label.new()
 	name_lbl.text = _page.amulet_name()
-	name_lbl.add_theme_font_size_override("font_size", 30)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	name_lbl.add_theme_color_override("font_color", UITheme.GOLD)
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	facts.add_child(name_lbl)
@@ -180,13 +180,13 @@ func _amulet_banner() -> Control:
 		if amulet.year > 0:
 			bits.append(str(amulet.year))
 		meta.text = "  ·  ".join(bits)
-		meta.add_theme_font_size_override("font_size", 13)
+		meta.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		facts.add_child(meta)
 
 	var blurb := Label.new()
 	blurb.text = "Reach it and clear the goal standing on it, and the run is won."
-	blurb.add_theme_font_size_override("font_size", 13)
+	blurb.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	blurb.add_theme_color_override("font_color", UITheme.TEXT)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	facts.add_child(blurb)
@@ -194,7 +194,7 @@ func _amulet_banner() -> Control:
 
 func _roads_heading() -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var head := Label.new()
 	# COUNTED, not asserted. This line said "three genres" for as long as
 	# `RunGraph.NUM_START_OPTIONS` has been 2, because it was a hardcoded sentence
@@ -203,14 +203,14 @@ func _roads_heading() -> Control:
 		_options.size(),
 		"genre" if _options.size() == 1 else "genres",
 		_page.amulet_name()]
-	head.add_theme_font_size_override("font_size", 20)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(head)
 	var sub := Label.new()
 	sub.text = ("The game you take is the run's first game, enemy and all — "
 		+ "not a free move onto the board.")
-	sub.add_theme_font_size_override("font_size", 13)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(sub)
@@ -218,7 +218,7 @@ func _roads_heading() -> Control:
 
 func _roads_row() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if _options.is_empty():
@@ -242,13 +242,13 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	var wrap := PanelContainer.new()
 	wrap.custom_minimum_size = Vector2(ROAD_WIDTH, 0)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(box)
 
 	var genre := Label.new()
 	genre.text = RunGraph.type_label(int(opt["type"])).to_upper()
 	genre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	genre.add_theme_font_size_override("font_size", 13)
+	genre.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	genre.add_theme_color_override("font_color", accent)
 	box.add_child(genre)
 
@@ -274,7 +274,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	name_lbl.text = game.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 16)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(name_lbl)
 
@@ -282,7 +282,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	dist.text = _page._start_distance_text(int(opt["path_len"]))
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dist.add_theme_font_size_override("font_size", 12)
+	dist.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	dist.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(dist)
 
@@ -292,12 +292,12 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 		else "No enemy — a free game."
 	waiting.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	waiting.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	waiting.add_theme_font_size_override("font_size", 12)
+	waiting.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	waiting.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(waiting)
 
 	var tools := HBoxContainer.new()
-	tools.add_theme_constant_override("separation", 6)
+	tools.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.add_child(tools)
 	var path_btn := Button.new()
 	# OPTIMAL PATH, not `Map`. The ladder is the one shortest road drawn rung by
@@ -307,14 +307,14 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	path_btn.tooltip_text = "The shortest route to %s if you open on %s." % [
 		_page.amulet_name(), game.display_name]
 	path_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	path_btn.add_theme_font_size_override("font_size", 12)
+	path_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	path_btn.pressed.connect(func(): _page.preview_map(game.id))
 	tools.add_child(path_btn)
 	var card_btn := Button.new()
 	card_btn.text = "⚙  Details"
 	card_btn.tooltip_text = "The full card: the enemy, its goal, the shields this game grants, your record in it."
 	card_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_btn.add_theme_font_size_override("font_size", 12)
+	card_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	card_btn.pressed.connect(func(): _page.open_start_choice(index))
 	tools.add_child(card_btn)
 
@@ -323,7 +323,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 
 func _footer() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var cancel := Button.new()
 	cancel.text = "Cancel"
 	cancel.custom_minimum_size = Vector2(150, 42)
@@ -339,7 +339,7 @@ func _footer() -> Control:
 	_confirm.custom_minimum_size = Vector2(280, 42)
 	_confirm.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	_confirm.add_theme_color_override("font_color", UITheme.GOLD)
-	_confirm.add_theme_font_size_override("font_size", 17)
+	_confirm.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	_confirm.pressed.connect(func():
 		if _selected >= 0:
 			chosen.emit(_selected))

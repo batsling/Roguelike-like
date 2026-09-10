@@ -215,7 +215,7 @@ func open_card(inst: Dictionary) -> Node:
 	if _card_layer != null and is_instance_valid(_card_layer):
 		return _card_layer
 	var layer := CanvasLayer.new()
-	layer.layer = 122
+	layer.layer = UITheme.Layer.DROP
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	_card_layer = layer

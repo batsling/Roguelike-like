@@ -146,7 +146,7 @@ func populate_play_panel() -> void:
 		var win_note := Label.new()
 		win_note.text = "🏆  Completing this game wins the run — everything below is a bonus."
 		win_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		win_note.add_theme_font_size_override("font_size", 12)
+		win_note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		win_note.add_theme_color_override("font_color", UITheme.GOLD)
 		_box.add_child(win_note)
 
@@ -892,10 +892,10 @@ func _note_block(editor: TextEdit) -> Control:
 	if editor == null:
 		return null
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	var head := Label.new()
 	head.text = "🗒  Notes — how did you pull it off? (optional)"
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(head)
 	box.add_child(editor)
@@ -1048,10 +1048,10 @@ func winning_run_review() -> Control:
 	if winning_rows.is_empty():
 		return null
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var head := Label.new()
 	head.text = "%s  tick what you managed, and say how it went" % WINNING_RUN_HEAD
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(head)
 	for row in winning_rows:
@@ -1092,7 +1092,7 @@ func _review_mark(mark: Dictionary) -> Control:
 func _review_row(cb: CheckBox, label: String, note: Dictionary,
 		mark: Dictionary = {}) -> Control:
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 10)
+	line.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var icon: Control = _review_mark(mark)
 	if icon != null:
@@ -1102,7 +1102,7 @@ func _review_row(cb: CheckBox, label: String, note: Dictionary,
 	mirror.text = label
 	mirror.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mirror.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mirror.add_theme_font_size_override("font_size", 13)
+	mirror.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	# A LOCKED row is shown and not offered: it resolved under the old rules (see
 	# _arm_winning_row) and this panel must not hand the report a second claim for
 	# a reward already taken.
@@ -1611,7 +1611,7 @@ func _objective_row(text: String, color: Color, icon: Control = null,
 		color.lerp(Color.WHITE, 0.35))
 	wrap.add_theme_stylebox_override("panel", idle)
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 6)
+	line.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(line)
 	if icon != null:
 		line.add_child(icon)
@@ -1619,7 +1619,7 @@ func _objective_row(text: String, color: Color, icon: Control = null,
 		line.add_child(mark)
 	var l := Label.new()
 	l.text = "•  " + text
-	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1704,8 +1704,8 @@ func _buff_strip(entry: Dictionary) -> Control:
 	if rows.is_empty():
 		return null
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 2)
-	flow.add_theme_constant_override("v_separation", 2)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_HAIR)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
 	flow.custom_minimum_size = Vector2(BUFF_STRIP_W, 0)
 	flow.alignment = FlowContainer.ALIGNMENT_CENTER
 	# Marked so the page's fit and portrait-counting walks can tell these chips
@@ -1828,7 +1828,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
 	wrap.add_theme_stylebox_override("panel", idle)
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 8)
+	line.add_theme_constant_override("separation", UITheme.GAP)
 	wrap.add_child(line)
 	# The body's own portrait, right where its name is about to be read — or the
 	# CHARACTER's, on the level-up row, which is the one row here whose owner is the
@@ -1847,7 +1847,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		var strip: Control = _buff_strip(GameLoop2.entry_for(instance)) if instance > 0 else null
 		if strip != null:
 			var col := VBoxContainer.new()
-			col.add_theme_constant_override("separation", 2)
+			col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 			col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			# The column is as wide as the STRIP (BUFF_STRIP_W), so the picture is
 			# centred over it rather than stretched to its width — a PanelContainer
@@ -1872,7 +1872,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	# 772px and put a horizontal scrollbar under the whole page. Wrapped, the row
 	# is as tall as it needs and as wide as it is given.
 	cb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cb.add_theme_font_size_override("font_size", 13)
+	cb.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	cb.add_theme_color_override("font_color", color)
 	cb.add_theme_color_override("font_pressed_color", color)
 	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
@@ -1896,7 +1896,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 func _verify_head(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
 
@@ -1913,7 +1913,7 @@ func _verify_head(text: String) -> Label:
 # the right of it empty. The button costs the checklist no height at all.
 func _verify_head_row(text: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var head := _verify_head(text)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1931,7 +1931,7 @@ func completed_button() -> Button:
 	btn.text = "✓  %d done" % done
 	btn.tooltip_text = ("Everything you have ticked this run, under the game you "
 		+ "did it at. This list is only what is still owed.")
-	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# COSTS THE COLUMN NO HEIGHT. A default Button is a good ten pixels taller than
 	# the caption beside it, and the overworld's left column has three to give

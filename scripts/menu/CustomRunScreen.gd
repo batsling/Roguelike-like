@@ -76,7 +76,7 @@ func _init() -> void:
 static func open(host: Node) -> CustomRunScreen:
 	var screen := CustomRunScreen.new()
 	screen._layer = CanvasLayer.new()
-	screen._layer.layer = 120
+	screen._layer.layer = UITheme.Layer.MENU_SCREEN
 	screen._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(screen._layer)
 	screen._layer.add_child(screen)

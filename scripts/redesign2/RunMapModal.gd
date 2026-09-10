@@ -150,7 +150,7 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	# ordinary furniture, so the ladder it opens has to come up above IT rather
 	# than behind it — a window mounted at 130 under a screen at 136 opens
 	# perfectly and is never seen.
-	_layer.layer = int(options.get("layer", 130))
+	_layer.layer = int(options.get("layer", UITheme.Layer.MAP))
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)

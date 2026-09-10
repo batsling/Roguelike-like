@@ -11,6 +11,68 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **`UITheme` has a type scale and a spacing scale, and the z-order is one list.**
+  It had a thorough colour system — eleven semantic colours, rarity, type and
+  class ramps, `chip()`, `action_button()`, `panel_box()` — and nothing at all for
+  the other two axes, so every font size and every gap in the game was an integer
+  typed at its call site. The count: **25 distinct font sizes** (105 uses of `12`,
+  71 of `11`, 62 of `13` — three sizes doing one job, with nothing to say which is
+  which) and ~20 distinct separations. That is also why the 720p fit work keeps
+  being expensive: "give this column 26px back" means auditing eight numbers by
+  hand and writing a comment explaining each.
+  **The values did not change.** The scale names the values already in use, so
+  nothing moved, nothing needed re-fitting and the fit tests stayed green. The
+  nine run screens are migrated (129 font sizes, 88 gaps); everything else adopts
+  it as it is next touched, and `test_design_tokens.gd` reads the source to say so
+  — the same trick `test_display_settings.gd` uses for glyph coverage. The gaps
+  that are deliberately off-scale are listed there with their reason: they are
+  load-bearing to the pixel on a page fitted to 720p with single digits to spare,
+  and snapping one to the nearest step is exactly the change that puts the
+  overworld behind a scrollbar.
+  The **z-order** is `UITheme.Layer`. Eleven CanvasLayer numbers spread across ten
+  files described one global invariant that could only be checked by grepping for
+  it, with the README's prose the only place the order was written down — and it
+  had already cost two bugs (the map above the haul screen, the start screen's own
+  popups below it). The list is ordered bottom to top and a test walks it.
+  **Modals are on the theme's own surface**: `ModalScaffold.PANEL_BG` was
+  `Color(0.10, 0.08, 0.12)`, a cool purple-black, on top of a game whose every
+  other surface is `#251f18` warm brown. The Collection's pane was a third
+  (`0.06, 0.06, 0.09`). Both are `UITheme.PANEL` now.
+
+- **The detail pane earns its width instead of reserving it.** The Collection and
+  the tier list both mounted theirs OPEN and EMPTY, holding 380px and 306px of the
+  page for a label reading "Select an entry to view details" — against a click
+  that had not happened yet. On the Games tab that is the difference between five
+  columns and **eight** while you scan 865 covers, which is the tab's whole job.
+  The pane is closed until something is picked and carries a `✕` to put it away
+  again; the grid is an `HFlowContainer` and the tier board measures the scroll
+  region beside it, so both take the width back by themselves. One change covers
+  all eight Collection tabs, because every one is built by `_grid_and_detail`.
+
+- **The star chart's route is the only ember on it.** `COL_EDGE_CROSS` was
+  `Color(1.0, 0.541, 0.235, 0.13)` — which is `UITheme.ACCENT` at 13% — while the
+  route ahead is `COL_TRAIL`, ember at 95%. Same hue. One link at 13% is faint,
+  but there are ~1250 of them and they overlap: they sum into an orange haze that
+  the one line the player is following has to be picked out of, and the cased-line
+  treatment was carrying that fight alone. The ambient links give up the hue
+  rather than the route giving up its own — desaturated to a parchment neutral at
+  6%, with plain influence links down from 20% to 13% and sequel links from 42% to
+  26%. The legend key went from an 11px ring with a 2px rim to 14px with 3px:
+  it carries five genre colours and three of the five read as the same dark circle
+  at the old size, which made the key that explains the sky the least legible
+  thing on it.
+
+- **The run owns what it opens.** `_open_route_map` built the map, handed it to
+  its caller and kept no reference — so it was the one screen the overworld raised
+  that it could not take back, which meant it outlived the state it was drawn
+  from: the ladder is routed from where the run STANDS, and the run moves
+  underneath it. It is held now and closed wherever the road changes (travelling,
+  reporting a game, a new run), so the map on screen is always a map of the run on
+  screen — and the haul screen, which opens on a layer below it, is no longer
+  opened underneath it. Opening a second map no longer strands the first. An
+  offered game's card goes the same way: `New run` used to drop a fresh run behind
+  a popup describing a game off the old offering.
+
 - **The choice of road is its own screen, and the Amulet is what it is about.**
   The opening choice was `Phase.START_SELECT` drawn into the overworld's left
   column, and the page it borrowed is built for a run that has started. At the

@@ -78,8 +78,19 @@ const ZOOM_MAX := 26.0
 #   the route to the Amulet — a CASED line (dark under-stroke, bright core), the
 #     cartographic convention for a highway, which reads as special over any
 #     background and can't be confused with a selection highlight
-const COL_EDGE := Color(0.902, 0.835, 0.722, 0.20)
-const COL_EDGE_CROSS := Color(1.0, 0.541, 0.235, 0.13)
+# THE BACKGROUND LINKS RECEDE, and they did not used to. `COL_EDGE_CROSS` was
+# `Color(1.0, 0.541, 0.235, 0.13)` — which is `UITheme.ACCENT` at 13% — while the
+# route ahead is `COL_TRAIL`, ember at 95%. Same hue. A single cross-genre link at
+# 13% is faint, but there are ~1250 links on this sky and they overlap: they sum
+# into an orange haze that the one line the player is actually following has to be
+# picked out of. The casing (below) was carrying that fight on its own.
+#
+# So the ambient links give up the hue rather than the route giving up its own:
+# desaturated towards the parchment neutral and dropped well under half their old
+# alpha. Nothing else on the chart changes, and the corridor is now the only ember
+# on it.
+const COL_EDGE := Color(0.902, 0.835, 0.722, 0.13)
+const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
 const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
 const COL_HISTORY := Color(0.36, 0.85, 0.48, 0.92)       # the path actually walked — green
@@ -88,7 +99,7 @@ const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's link
 # Sequel / same-studio links. The hand-drawn draw.io map has always drawn these
 # blue and apart from plain influence; the game flattened the distinction until
 # the sheet's Dev/Series column was imported. ~112 links carry it.
-const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.42)
+const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.26)
 # Bashed: the game is destroyed for the rest of the run, so its star is struck
 # through and every link into it turns red — those routes no longer exist.
 # The player's record with a game, drawn in the CORE of its star. Genre keeps the
@@ -1550,14 +1561,18 @@ func _legend_chip(text: String, col: Color, filled: bool = false) -> Control:
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	var sw := PanelContainer.new()
-	sw.custom_minimum_size = Vector2(11, 11)
+	# 14, not 11, and a hollow ring gets a THICKER rim. The key carries five genre
+	# colours and at 11px with a 2px rim there is barely any colour in one — three
+	# of the five read as the same dark circle, which makes the key that explains
+	# the sky the least legible thing on it.
+	sw.custom_minimum_size = Vector2(14, 14)
 	sw.add_theme_stylebox_override("panel",
-		UITheme.flat(col, 6, 0, 0) if filled
-		else UITheme.flat(UITheme.BG_DEEP, 6, 0, 2, col))
+		UITheme.flat(col, 7, 0, 0) if filled
+		else UITheme.flat(UITheme.BG_DEEP, 7, 0, 3, col))
 	box.add_child(sw)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(l)
 	return box
@@ -1945,7 +1960,7 @@ func _set_card_width(width: float) -> void:
 # thing, which is when you remember how.
 func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	var layer := CanvasLayer.new()
-	layer.layer = 140
+	layer.layer = UITheme.Layer.FULL_SCREEN
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	var host := Control.new()

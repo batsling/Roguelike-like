@@ -2827,6 +2827,70 @@ func test_the_mid_game_map_stars_nothing() -> void:
 			"no card is flagged while there is no offering: %s" % str(modal._choice_ids))
 	_leave_post_game()
 
+# --- the run owns what it opens --------------------------------------------
+#
+# `_open_route_map` used to build the window, hand it to its caller and keep no
+# reference to it, which made the map the one screen the overworld raised that it
+# could not take back. That matters because the ladder is routed from where the
+# run STANDS, and the run moves underneath it.
+
+func test_the_run_keeps_a_handle_on_the_map_it_opens() -> void:
+	var modal = _ui.open_map()
+	assert_not_null(modal, "the map opens")
+	assert_eq(_ui._route_map, modal, "and the run is holding it")
+	_ui._dismiss_route_map()
+	assert_null(_ui._route_map, "which means the run can close it again")
+	# queue_free is deferred, so the window is still in the tree this frame.
+	await wait_frames(2)
+	assert_false(is_instance_valid(modal), "and the window really went")
+
+# A map closed on its OWN terms — its Close, or the chart's — must not leave the
+# run holding a freed window, or the next dismiss is closing something gone.
+func test_a_map_that_closes_itself_is_let_go_of() -> void:
+	var modal = _ui.open_map()
+	assert_eq(_ui._route_map, modal)
+	modal._finish()
+	assert_null(_ui._route_map, "the run let go when the window did")
+
+func test_only_one_map_is_ever_open() -> void:
+	var first = _ui.open_map()
+	var second = _ui.open_map()
+	assert_ne(first, second, "the second press opens a new one")
+	assert_eq(_ui._route_map, second, "which is the one the run is holding")
+	await wait_frames(2)
+	assert_false(is_instance_valid(first), "and the first is not stranded underneath it")
+
+# THE MAP IS ROUTED FROM WHERE THE RUN STOOD, so the run moving takes it with it.
+# The haul screen is the case that made this visible: it opens on a layer BELOW
+# the map, so a map left standing sits on top of the chests and the payout.
+func test_reporting_a_game_takes_the_map_down_with_it() -> void:
+	_ui.pick(0)
+	assert_not_null(_ui.open_map(), "the map opens mid-game")
+	assert_not_null(_ui._route_map)
+	_report_beat(_ui)
+	_ui._end_resolve()
+	_ui._board.clear_fx()
+	assert_null(_ui._route_map, "and the haul screen is not opened underneath it")
+	_leave_post_game()
+
+func test_travelling_takes_the_map_and_the_card_down_with_it() -> void:
+	assert_not_null(_ui.open_choice(0), "a card is open")
+	assert_not_null(_ui.open_map(), "and so is the map")
+	_ui.pick(0)
+	assert_null(_ui._route_map, "travelling clears the map")
+	assert_null(_ui._choice_modal, "and the card that described where you went")
+	_leave_post_game()
+
+# `New run` used to drop a fresh run behind whatever was standing over the old
+# one — a card describing a game off an offering that no longer exists.
+func test_a_new_run_clears_the_screens_that_described_the_old_one() -> void:
+	assert_not_null(_ui.open_choice(0), "a card is open on the old run")
+	assert_not_null(_ui.open_map(), "and a map of the old road")
+	_ui.start_run()
+	assert_null(_ui._choice_modal, "the card is gone")
+	assert_null(_ui._route_map, "and so is the map")
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "on a fresh run")
+
 func test_the_menu_holds_the_runs_admin() -> void:
 	# Save / New run / Main menu were three buttons parked across the top for the
 	# whole run. They are menu entries now, and the menu is the only header button.

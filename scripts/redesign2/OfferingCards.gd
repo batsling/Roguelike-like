@@ -134,7 +134,7 @@ func _shop_card_tooltip(game: GameData) -> String:
 func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var game: GameData = choice["game"]
 	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
+	card.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
 
 	var amulet: bool = bool(choice["amulet"])
@@ -163,7 +163,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# Side by side they are 139px of the card's 160 at their widest
 	# (`🏆 THE AMULET` + `⚡ +1 DASH`), which is the case that decided this.
 	var badge_row := HBoxContainer.new()
-	badge_row.add_theme_constant_override("separation", 4)
+	badge_row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	badge_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	badge_row.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	card.add_child(badge_row)
@@ -343,11 +343,11 @@ func beatable_row(choice: Dictionary) -> Control:
 		return null
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var label := Label.new()
 	label.text = "Beatable:"
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color", UITheme.SUCCESS)
 	row.add_child(label)
 	for enemy in proven:
@@ -375,7 +375,7 @@ func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
 	# No portrait authored — fall back to the name rather than an empty gap.
 	var chip := Label.new()
 	chip.text = enemy.display_name
-	chip.add_theme_font_size_override("font_size", 9)
+	chip.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 	chip.add_theme_color_override("font_color", UITheme.SUCCESS)
 	chip.tooltip_text = tip
 	return chip

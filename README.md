@@ -296,7 +296,16 @@ node and its script.
     `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects. It is also **the only door onto the Atlas
+    Bosses, **Loot**, Events, Objects. **The detail pane is closed until you pick
+    something.** It used to be mounted open and empty, holding 380 of the page's
+    1280 for a label reading "Select an entry to view details" — a third of the
+    widest screen in the game, reserved against a click that had not happened yet,
+    which on the Games tab is the difference between five columns and eight while
+    you scan 865 covers. It opens on a click and carries a `✕` to put it away
+    again; the grid is an `HFlowContainer`, so it takes the width back by itself.
+    One property on one node covers every tab, because all eight are built by
+    `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
+    It is also **the only door onto the Atlas
     that is always open** — the Games tab's *✦ Show constellation* draws the same
     catalog as the star chart, which is why the main menu no longer carries an
     Atlas button of its own (Run History still lays its routes over the sky).
@@ -1863,3 +1872,16 @@ root `images/` folder, so there is exactly one image store for the whole repo.
 - Art filenames are **PascalCase** and matched to content ids by convention.
 - The spreadsheet (`tools/Roguelikes.xlsx`) drives generated content — edit it
   there and regenerate rather than hand-editing generated `.tres` in bulk.
+- **Font sizes, gaps and CanvasLayer numbers come from `UITheme`.** There is a
+  type scale (`FONT_MICRO` … `FONT_HERO`), a spacing scale (`GAP_NONE` …
+  `GAP_SECTION`) and a z-order registry (`UITheme.Layer`), and the run screens are
+  migrated onto all three. They exist because the file had a thorough colour
+  system and nothing for the other two axes: 25 distinct font sizes across the
+  project (105 uses of `12`, 71 of `11`, 62 of `13`) and ~20 separations, every
+  one typed at its call site. **The scales hold the values that were already in
+  use** — naming them was the whole change, so nothing moved and nothing needed
+  re-fitting. If the size you want is not on the list, take the nearest one.
+  `test_design_tokens.gd` reads the source of the migrated screens and fails on a
+  bare integer; genuinely off-scale values go in its `OFF_SCALE_ALLOWED` list with
+  a reason, the way `check_doc_paths.py` lists its deliberate exceptions. Most of
+  those are gaps that are load-bearing to the pixel on a page fitted to 720p.

@@ -433,6 +433,10 @@ var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or n
 var _completed_popup: CompletedGoalsPanel  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
+# The open route map and the star chart under it, when there is one. Held so the
+# run can close what it opened — see _dismiss_route_map.
+var _route_map = null
+var _route_atlas: AtlasView = null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
 # The page owns the container; PackStrip fills it (see _refresh_items).
@@ -596,10 +600,15 @@ func start_run(character_id: StringName = &"") -> void:
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
 	_dismiss_post_game()
-	# …including a start screen that never got answered. `New run` from the menu
-	# lands here with the previous roll's screen still up, and `_open_start_picker`
-	# below will not replace one that already exists — so without this the player is
-	# offered the OLD run's two roads for a run that has just been rerolled.
+	# …and the three screens that describe a run rather than sitting over it: an
+	# offered game's card, the route map, and a start screen that never got
+	# answered. All three outlive the run they were drawn from, and all three were
+	# left standing by `New run` — the card describing a game off the old offering,
+	# the map routed from a position that no longer exists, and a start screen
+	# offering the OLD roll's roads (`_open_start_picker` will not replace one that
+	# already exists, so without this the player answers the wrong question).
+	_dismiss_choice_modal()
+	_dismiss_route_map()
 	_close_start_picker()
 	_resolving = false
 	_attempt_resolve = false
@@ -842,10 +851,14 @@ func choose_start(index: int) -> void:
 		return
 	var opt: Dictionary = _start_options[index]
 	var game: GameData = opt["game"]
-	# The opening screen goes, and the run's own page comes back from under it.
-	# Done here rather than in the screen's own handler so that a road taken by a
-	# test — which calls this directly — leaves the page in the same state as one
-	# taken by a player.
+	# The opening screen goes, and the run's own page comes back from under it —
+	# along with anything that screen raised over itself, since a road's card and
+	# its optimal path are both about a choice that has just been made. Done here
+	# rather than in the screen's own handler so that a road taken by a test —
+	# which calls this directly — leaves the page in the same state as one taken by
+	# a player.
+	_dismiss_choice_modal()
+	_dismiss_route_map()
 	_close_start_picker()
 	GameState.start_game_id = game.id
 	GameState.set_current_game(game.id)
@@ -1178,7 +1191,7 @@ func prompt_save(after_save: Callable = Callable()) -> void:
 	dlg.ok_button_text = "Save"
 	dlg.add_cancel_button("Cancel")
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var lbl := Label.new()
 	lbl.text = "Name this save (an existing name is overwritten):"
 	box.add_child(lbl)
@@ -1279,6 +1292,11 @@ func pick(index: int) -> void:
 		_take_return_choice(index)
 		return
 	_chosen = _choices[index]
+	# Travelling moves the run, and the map is a picture of where it stood. Both
+	# the card that opened this and any route map go with the offering they were
+	# describing.
+	_dismiss_choice_modal()
+	_dismiss_route_map()
 	# A Dash pick spends a charge (§4) — it's the "select any connected game" verb.
 	_dashed_here = _dash_mode
 	if _dash_mode:
@@ -1741,6 +1759,10 @@ func preview_map(game_id: StringName) -> Node:
 	return _open_route_map(game_id, [], opts)
 
 func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary) -> Node:
+	# One map at a time, and the run holds the handle to it (_dismiss_route_map).
+	# Opening a second over the first used to be possible and left the older one
+	# stranded underneath with no way back to it.
+	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
 	var wants_chart: bool = bool(opts.get("chart", true)) and AtlasView.load_layout() != null
 	opts.erase("chart")
@@ -1753,15 +1775,29 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 			atlas.preview_origin = origin
 		add_child(atlas)
 		opts["atlas"] = atlas
+		_route_atlas = atlas
 		var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
 		# Mounted UNDER the chart, so closing the chart takes its window with it.
 		# The window frames the route on the chart itself, once it knows how much
 		# of the sky it's covering.
 		modal.start(atlas, origin, GameState.amulet_game_id, choice_ids, opts)
+		_hold_route_map(modal)
 		return modal
 	var solo := preload("res://scripts/redesign2/RunMapModal.gd").new()
 	solo.start(self, origin, GameState.amulet_game_id, choice_ids, opts)
+	_hold_route_map(solo)
 	return solo
+
+# Remember the open map, and forget it again when it closes on its own terms —
+# its own Close, the chart's Close, or the Escape that takes either. Without the
+# `finished` hook the run would hold a freed window and `_dismiss_route_map`
+# would be closing something that had already gone.
+func _hold_route_map(modal) -> void:
+	_route_map = modal
+	modal.finished.connect(func():
+		if _route_map == modal:
+			_route_map = null
+			_route_atlas = null)
 
 # --- routing: how each offered card sits relative to the Amulet -------------
 #
@@ -2490,6 +2526,11 @@ func _open_post_game() -> void:
 	var shop_id: StringName = _pending_shop
 	if shop_id == &"" or GameLoop2.run_over or shop_id != _hub_underfoot():
 		shop_id = &""
+	# The map goes before the haul arrives. It is routed from where the run stood
+	# when it was opened, the run has just moved, and — since it is raised on a
+	# layer above this screen — it would otherwise sit on top of the haul with the
+	# chests and the payout hidden behind it.
+	_dismiss_route_map()
 	_post_screen = PostCombatScreen.open(self, snap, drops,
 		_pending_event != null, shop_id, boss_tier, bosses)
 	var screen: PostCombatScreen = _post_screen
@@ -4181,7 +4222,7 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 		blank.text = name_text.substr(0, 2)
 		blank.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		blank.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		blank.add_theme_font_size_override("font_size", 11)
+		blank.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		blank.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		frame.add_child(blank)
 	return frame
@@ -4599,7 +4640,7 @@ func _build_character_chip() -> Control:
 		UITheme.flat(UITheme.PANEL, 8, 5, 1, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(row)
 	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
 	# The token answers a hover with who it is — the name is not written out,
@@ -4615,7 +4656,7 @@ func _build_character_chip() -> Control:
 	# ride the header beside the token rather than costing the route strip a name's
 	# worth of room.
 	_level_chip = Label.new()
-	_level_chip.add_theme_font_size_override("font_size", 13)
+	_level_chip.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_level_chip.add_theme_color_override("font_color", UITheme.GOLD)
 	_level_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(_level_chip)
@@ -4656,10 +4697,10 @@ func _build_health_chip() -> Control:
 		UITheme.flat(Color(0.18, 0.06, 0.06, 0.85), 8, 8, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	wrap.add_child(row)
 	_health_chip = Label.new()
-	_health_chip.add_theme_font_size_override("font_size", 18)
+	_health_chip.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_health_chip.add_theme_color_override("font_color", Color(1.0, 0.62, 0.62))
 	_health_chip.tooltip_text = "Health. At zero the run ends."
 	row.add_child(_health_chip)
@@ -4673,7 +4714,7 @@ func _build_health_chip() -> Control:
 	_shield_chip_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_shield_chip_art)
 	_shield_chip = Label.new()
-	_shield_chip.add_theme_font_size_override("font_size", 18)
+	_shield_chip.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_shield_chip.add_theme_color_override("font_color", BattlefieldView.SHIELD_BLUE)
 	row.add_child(_shield_chip)
 	_paint_health_chip()
@@ -4691,7 +4732,7 @@ func _build_gold_chip() -> Control:
 		UITheme.flat(Color(0.16, 0.13, 0.05, 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_gold_chip = Label.new()
-	_gold_chip.add_theme_font_size_override("font_size", 18)
+	_gold_chip.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_gold_chip.add_theme_color_override("font_color", UITheme.COIN_GOLD)
 	_gold_chip.tooltip_text = ("Gold. +%d for every enemy you defeat, +%d for a boss."
 		+ "\nSpent at the shops standing on the map's biggest games."
@@ -5010,7 +5051,7 @@ func open_item_card(item: ItemData) -> void:
 # USE_LAYER (130) is the value that class picked: above the loot window and every
 # gameplay modal, below the run's header bar (135), which stays readable over
 # everything by design.
-const READING_CARD_LAYER := 130
+const READING_CARD_LAYER := UITheme.Layer.MAP
 
 func _mount_reading_card(card: Control) -> void:
 	var layer := CanvasLayer.new()
@@ -5289,6 +5330,32 @@ func _dismiss_run_over() -> void:
 		_run_over_screen._close()
 	_run_over_screen = null
 
+# The offered-game popup, taken off the wall for a reset. It is a card ABOUT a
+# card on a table that is about to be thrown away, so a run ending or restarting
+# under it leaves it describing a game that is no longer on offer — `New run` with
+# a card open used to drop a fresh run behind a popup for the old one's offering.
+func _dismiss_choice_modal() -> void:
+	if _choice_modal != null and is_instance_valid(_choice_modal):
+		_choice_modal._close()
+	_choice_modal = null
+
+# THE RUN OWNS WHAT IT OPENS. `_open_route_map` used to build the window (and the
+# chart under it, when there is one), hand it to its caller and keep no reference
+# — so nothing in the run could close the map again. It is the only screen the
+# overworld raises that it could not take back, which meant it outlived the state
+# it was drawn from: the ladder is routed from where the run stands, and the run
+# can move underneath it (a report resolving, a scroll, a new run off the menu).
+#
+# Held here and closed wherever the road changes, so the map on screen is always a
+# map of the run on screen.
+func _dismiss_route_map() -> void:
+	if _route_atlas != null and is_instance_valid(_route_atlas):
+		_route_atlas.queue_free()
+	_route_atlas = null
+	if _route_map != null and is_instance_valid(_route_map):
+		_route_map._finish()
+	_route_map = null
+
 func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
@@ -5337,7 +5404,7 @@ func _build_ui() -> void:
 	_scroll = scroll
 	var root := VBoxContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	scroll.add_child(root)
 
 	# The header is the title and ONE button. Map / Save / New run / Menu were four
@@ -5373,7 +5440,7 @@ func _build_ui() -> void:
 	# 150). The page below is inset by exactly its height (_fit_page_under_header),
 	# so nothing is ever hidden underneath it.
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	# WHO the Health belongs to, immediately left of it. The board grew the full
 	# character portrait at its head (BattlefieldView._hero_texture), and that is the
 	# right place for the figure — but the board is one panel among several, and it
@@ -5385,14 +5452,14 @@ func _build_ui() -> void:
 	header.add_child(_build_health_chip())
 	header.add_child(_build_gold_chip())
 	_route_strip = HBoxContainer.new()
-	_route_strip.add_theme_constant_override("separation", 0)
+	_route_strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	_route_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_route_strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_route_strip.clip_contents = true
 	header.add_child(_route_strip)
 	var title := Label.new()
 	title.text = "Roguelike-like"
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -5413,7 +5480,7 @@ func _build_ui() -> void:
 	_mount_header(header)
 
 	_banner = Label.new()
-	_banner.add_theme_font_size_override("font_size", 22)
+	_banner.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.hide()
 	root.add_child(_banner)
@@ -5429,7 +5496,7 @@ func _build_ui() -> void:
 	# screen together. Stacked into the left column they are, at the cost of the
 	# covers being drawn half-size (OfferingCards.COVER_SIZE).
 	var main_row := HBoxContainer.new()
-	main_row.add_theme_constant_override("separation", 12)
+	main_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	root.add_child(main_row)
 
 	# Left column: takes the room the board doesn't need.
@@ -5453,7 +5520,7 @@ func _build_ui() -> void:
 	_left_col = VBoxContainer.new()
 	_left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_left_col.add_theme_constant_override("separation", 8)
+	_left_col.add_theme_constant_override("separation", UITheme.GAP)
 	main_row.add_child(_left_col)
 
 	# Everything that belongs to CHOOSING a game, in one box the phase toggles: the
@@ -5463,7 +5530,7 @@ func _build_ui() -> void:
 	select_panel.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 8, 1))
 	_select_box = VBoxContainer.new()
-	_select_box.add_theme_constant_override("separation", 6)
+	_select_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	select_panel.add_child(_select_box)
 	_select_box.set_meta("wrap", select_panel)
 	_left_col.add_child(select_panel)
@@ -5473,7 +5540,7 @@ func _build_ui() -> void:
 	# panel rather than to the page's title bar — and a button here is one the
 	# mouse is already near when the question comes up.
 	var select_head_row := HBoxContainer.new()
-	select_head_row.add_theme_constant_override("separation", 8)
+	select_head_row.add_theme_constant_override("separation", UITheme.GAP)
 	_select_head = _section("Choose a game to travel to:")
 	_select_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_select_head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -5491,13 +5558,13 @@ func _build_ui() -> void:
 	map_btn.text = "→  Optimal Path"
 	map_btn.tooltip_text = ("The shortest road from here to the Amulet, rung by rung. "
 		+ "The star chart is the 🗺 Map button in the header.")
-	map_btn.add_theme_font_size_override("font_size", 12)
+	map_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	map_btn.pressed.connect(open_optimal_path)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
 	_controls_row = HBoxContainer.new()
-	_controls_row.add_theme_constant_override("separation", 8)
+	_controls_row.add_theme_constant_override("separation", UITheme.GAP)
 	_select_box.add_child(_controls_row)
 	# The Dash panel's search / filter / sort bar, on a row of its own BELOW the
 	# controls: it is only ever populated in dash mode, and its widgets are built
@@ -5505,8 +5572,8 @@ func _build_ui() -> void:
 	# player mid-word loses both the focus and the caret (see DashFilterBar).
 	_dash.mount(_select_box)
 	_choices_row = HFlowContainer.new()
-	_choices_row.add_theme_constant_override("h_separation", 12)
-	_choices_row.add_theme_constant_override("v_separation", 10)
+	_choices_row.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	_choices_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	_select_box.add_child(_choices_row)
 
 	# Hover preview: the enemy's PORTRAIT and one line about it, side by side.
@@ -5524,7 +5591,7 @@ func _build_ui() -> void:
 	# hovered, so running the cursor along the offering never reflows the column
 	# underneath.
 	var hover_row := HBoxContainer.new()
-	hover_row.add_theme_constant_override("separation", 8)
+	hover_row.add_theme_constant_override("separation", UITheme.GAP)
 	_preview_art = TextureRect.new()
 	# Width only. The height comes from the row — SIZE_FILL against a line whose
 	# floor the label sets — and EXPAND_IGNORE_SIZE stops the texture's own
@@ -5552,8 +5619,8 @@ func _build_ui() -> void:
 	# page — a Bash charge is only ever spent on a card in this box, and this is
 	# where it should be readable from.
 	_select_stats = HFlowContainer.new()
-	_select_stats.add_theme_constant_override("h_separation", 6)
-	_select_stats.add_theme_constant_override("v_separation", 4)
+	_select_stats.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	_select_stats.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	_select_box.add_child(_select_stats)
 
 	_report_panel = PanelContainer.new()
@@ -5561,7 +5628,7 @@ func _build_ui() -> void:
 		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT.lerp(UITheme.BORDER, 0.5), 12, 8, 1))
 	_left_col.add_child(_report_panel)
 	_play_panel = VBoxContainer.new()
-	_play_panel.add_theme_constant_override("separation", 6)
+	_play_panel.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_report_panel.add_child(_play_panel)
 
 	# Right column: the pack, then the board under it. Shrink-wrapped to the
@@ -5569,7 +5636,7 @@ func _build_ui() -> void:
 	_right_col = VBoxContainer.new()
 	_right_col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_right_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_right_col.add_theme_constant_override("separation", 8)
+	_right_col.add_theme_constant_override("separation", UITheme.GAP)
 	main_row.add_child(_right_col)
 
 	# What you're carrying, in a strip ABOVE the field it gets spent on. It used to
@@ -5602,11 +5669,11 @@ func _build_ui() -> void:
 	# the toggle on the same row, so it is one click from the relics rather than a
 	# panel that is always in the way.
 	var strip_row := HBoxContainer.new()
-	strip_row.add_theme_constant_override("separation", 6)
+	strip_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	inv_box.add_child(strip_row)
 	_items_box = HFlowContainer.new()
-	_items_box.add_theme_constant_override("h_separation", 4)
-	_items_box.add_theme_constant_override("v_separation", 4)
+	_items_box.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	_items_box.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	_items_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
@@ -5641,7 +5708,7 @@ func _build_ui() -> void:
 	_stage_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_right_col.add_child(_stage_panel)
 	var stage_box := VBoxContainer.new()
-	stage_box.add_theme_constant_override("separation", 8)
+	stage_box.add_theme_constant_override("separation", UITheme.GAP)
 	_stage_panel.add_child(stage_box)
 
 	# NO HEADER ROW OVER THE BOARD. There was a Tier / Push / Bombs row here once
@@ -5690,9 +5757,9 @@ func _build_ui() -> void:
 	# was empty space. Everything that height buys goes to the checklist.
 	_np_box = VBoxContainer.new()
 	var np_box := _np_box
-	np_box.add_theme_constant_override("separation", 8)
+	np_box.add_theme_constant_override("separation", UITheme.GAP)
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 10)
+	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	np_box.add_child(head_row)
 	_now_playing_cover = TextureRect.new()
 	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
@@ -5710,7 +5777,7 @@ func _build_ui() -> void:
 	# What you are doing with the game, and the two things you press while you do
 	# it: OPEN it, and — every time it beats you — say so.
 	var verbs := VBoxContainer.new()
-	verbs.add_theme_constant_override("separation", 6)
+	verbs.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	verbs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head_row.add_child(verbs)
@@ -5721,7 +5788,7 @@ func _build_ui() -> void:
 	# Launch-the-real-game row (populated per game — only games with a launch
 	# target gets a button) + the opt-in Rate button.
 	_launch_row = HBoxContainer.new()
-	_launch_row.add_theme_constant_override("separation", 6)
+	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	verbs.add_child(_launch_row)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
@@ -5747,7 +5814,7 @@ func _build_ui() -> void:
 	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
-	done.add_theme_font_size_override("font_size", 15)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	# Pressing it IS the claim: "I completed this game." What you did to the
 	# enemies is the checklist above it, ticked row by row — and what it raises is
 	# the winning-run review (confirm_completed_game), because those rows are the
@@ -5769,7 +5836,7 @@ func _build_ui() -> void:
 	_escape_btn.text = "🏃  Escape this game"
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_escape_btn.add_theme_font_size_override("font_size", 13)
+	_escape_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_escape_btn.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.78), 6, 8, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.45)))
 	_escape_btn.add_theme_stylebox_override("hover",
@@ -5786,7 +5853,7 @@ func _build_ui() -> void:
 	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
 	# up while the button is down; an open door needs no instructions.
 	_escape_hint = Label.new()
-	_escape_hint.add_theme_font_size_override("font_size", 11)
+	_escape_hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_escape_hint.add_theme_color_override("font_color",
 		UITheme.ACCENT.lerp(UITheme.BG, 0.45))
 	_escape_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -5798,7 +5865,7 @@ func _build_ui() -> void:
 	# third copy of a result that already fires as a toast and is already kept in
 	# GameLog, and one that pushed the board a row further down to say it.
 	_log = _panel_label()
-	_log.add_theme_font_size_override("font_size", 12)
+	_log.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_play_panel.add_child(_log)
 
 
@@ -5832,7 +5899,7 @@ func _build_ui() -> void:
 # below the two screens that stand in for the run rather than over it: the Atlas
 # (140) and the end-of-run verdict (150). A run whose Health has already hit 0
 # has nothing left for a Health chip to say, and the Atlas is a different page.
-const HEADER_LAYER := 135
+const HEADER_LAYER := UITheme.Layer.HEADER
 
 # Mount `header` on its own CanvasLayer, in a bar across the top of the screen.
 #
@@ -5917,7 +5984,7 @@ func _build_shop_hint() -> Control:
 	btn.text = "🛒  Shop      ↓"
 	btn.flat = true
 	btn.tooltip_text = "A shop is open under the battlefield — scroll down to it."
-	btn.add_theme_font_size_override("font_size", 18)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	btn.add_theme_color_override("font_color", UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.45))
 	btn.add_theme_color_override("font_hover_color", Color.WHITE)
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -5950,7 +6017,7 @@ func _build_attempt_strip() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(SHIELD_BLUE.lerp(UITheme.BG, 0.88), 6, 8, 1, SHIELD_BLUE.lerp(UITheme.BG, 0.55)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	wrap.add_child(row)
 
 	_attempt_btn = Button.new()
@@ -5966,14 +6033,14 @@ func _build_attempt_strip() -> Control:
 	# is written on it, in the terms the board is in, in the colour the board uses
 	# for a turn going against you.
 	_attempt_btn.text = "Lost a run  ⚔\n+1 Enemy Turn"
-	_attempt_btn.add_theme_font_size_override("font_size", 13)
+	_attempt_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
 	row.add_child(_attempt_btn)
 
 	_attempt_count = Label.new()
-	_attempt_count.add_theme_font_size_override("font_size", 13)
+	_attempt_count.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	row.add_child(_attempt_count)
 
 	# THERE ARE NO SHIELD PIPS ON THIS STRIP any more, and no "Shields" caption over
@@ -6053,7 +6120,7 @@ func _refresh_attempts() -> void:
 func _section(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	l.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.25))
 	return l
 
@@ -6149,6 +6216,6 @@ func quit_game() -> void:
 func _mini_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 11)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	b.pressed.connect(cb)
 	return b

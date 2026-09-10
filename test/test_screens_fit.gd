@@ -303,3 +303,47 @@ func test_the_atlas_legend_wraps_rather_than_widening_the_page() -> void:
 	assert_lte(row.get_combined_minimum_size().x, float(Settings.CANVAS_BASE.x),
 		"and its minimum width is inside the canvas")
 	atlas.free()
+
+# --- the detail pane earns its width ----------------------------------------
+#
+# Both the Collection and the tier list used to mount their detail pane OPEN and
+# EMPTY, holding a third of the widest screen in the game for a label reading
+# "Select an entry to view details" — against a click that had not happened yet.
+# On the Games tab that is the difference between five columns and eight while
+# you scan 865 covers, which is the tab's whole job.
+
+func test_the_collection_opens_with_its_detail_pane_closed() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	assert_not_null(col._detail_panel, "the pane exists")
+	assert_false(col._detail_panel.visible, "and it is not on screen with nothing in it")
+	_assert_fits("the Collection with no entry open", col)
+
+func test_opening_an_entry_opens_the_pane_and_closing_it_gives_the_width_back() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	var games: Array = Data.all_games()
+	if games.is_empty():
+		pending("no games in this checkout")
+		return
+	var narrow: float = col._grid.size.x
+	col._show_game_detail(games[0])
+	await wait_frames(6)
+	assert_true(col._detail_panel.visible, "picking an entry opens the pane")
+	assert_lt(col._grid.size.x, narrow, "and the grid gives up the width for it")
+	_assert_fits("the Collection with an entry open", col)
+	col._close_detail()
+	await wait_frames(6)
+	assert_false(col._detail_panel.visible, "closing it puts the pane away")
+	assert_almost_eq(col._grid.size.x, narrow, 1.0, "and the grid has its columns back")
+
+func test_the_tier_list_opens_with_its_detail_pane_closed() -> void:
+	var screen := TierListScreen.new()
+	add_child_autofree(screen)
+	await wait_frames(6)
+	assert_not_null(screen._detail_panel, "the pane exists")
+	assert_false(screen._detail_panel.visible,
+		"and an unrated board is six empty lanes, not six empty lanes and an empty pane")
+	_assert_fits("the tier list with no game open", screen)

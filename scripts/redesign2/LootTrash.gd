@@ -33,7 +33,7 @@ var _armed: bool = false
 const RED := Color(0.90, 0.33, 0.28)
 const HEIGHT := 40
 # Above every loot surface — see `confirm`.
-const CONFIRM_LAYER := 140
+const CONFIRM_LAYER := UITheme.Layer.FULL_SCREEN
 
 # "Are you sure?", asked the same way by both screens that draw a bin.
 #

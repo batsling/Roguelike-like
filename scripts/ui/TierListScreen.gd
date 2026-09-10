@@ -186,17 +186,49 @@ func _build_shell() -> void:
 
 	body.add_child(_build_detail_panel())
 
+# CLOSED UNTIL A GAME IS PICKED. It used to be mounted open and empty, holding
+# 306px of the screen for "Pick a game to see the score and notes you left on
+# it." — beside six empty tier lanes, on a board that has nothing on it until you
+# have rated something. The lanes take that width back: `_board_space` measures
+# the scroll region it is beside rather than assuming the pane is there.
+var _detail_panel: PanelContainer = null
+
+func _detail_open() -> bool:
+	return _detail_panel != null and is_instance_valid(_detail_panel) and _detail_panel.visible
+
 func _build_detail_panel() -> Control:
 	var panel := PanelContainer.new()
+	_detail_panel = panel
+	panel.visible = false
 	panel.custom_minimum_size = Vector2(DETAIL_W, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 8, 12, 1))
 
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	panel.add_child(col)
+	# The way back to the full board, the same as the Collection's pane.
+	var close_row := HBoxContainer.new()
+	var pad := Control.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	close_row.add_child(pad)
+	var close := Button.new()
+	close.text = "✕"
+	close.flat = true
+	close.tooltip_text = "Close this game and give the lanes their width back."
+	close.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	# `select_game`, not `_show_detail(&"")`. The pane is a view of `_selected` and
+	# `_refresh` re-opens it from there — so emptying the pane without clearing the
+	# selection closes it until the next repaint and then puts it straight back.
+	close.pressed.connect(func(): select_game(&""))
+	close_row.add_child(close)
+	col.add_child(close_row)
+
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_child(scroll)
+	col.add_child(scroll)
 
 	# A margin inside the scroll, not a narrower box: a ScrollContainer hands its
 	# child the FULL width and then draws the scrollbar on top of it, which put
@@ -274,7 +306,9 @@ func _board_space() -> Vector2:
 	var vp: Vector2 = get_viewport_rect().size
 	# 36/32 panel offsets and 18 of panel padding on each side (see _build_shell),
 	# the detail panel and its gap, and about 60px of header above the body.
-	return Vector2(vp.x - 108.0 - DETAIL_W - 14.0, vp.y - 100.0 - 60.0)
+	# The detail pane only costs the board its width while it is OPEN.
+	var pane: float = (DETAIL_W + 14.0) if _detail_open() else 0.0
+	return Vector2(vp.x - 108.0 - pane, vp.y - 100.0 - 60.0)
 
 # How tall the whole board comes out at scale `s` in a `width`-wide space. Mirrors
 # what the builders below actually construct: a row is its label cell beside a slab
@@ -458,14 +492,12 @@ func _show_detail(game_id: StringName) -> void:
 		_detail_box.remove_child(c)
 		c.queue_free()
 	if game_id == &"":
-		var placeholder := Label.new()
-		placeholder.text = "Pick a game to see the score and notes you left on it."
-		placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		placeholder.add_theme_font_size_override("font_size", 13)
-		placeholder.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-		_detail_box.add_child(placeholder)
+		# No placeholder: the pane goes away instead of standing there empty.
+		if _detail_panel != null and is_instance_valid(_detail_panel):
+			_detail_panel.visible = false
 		return
+	if _detail_panel != null and is_instance_valid(_detail_panel):
+		_detail_panel.visible = true
 
 	var gd: GameData = Data.get_game(game_id)
 	var name_text: String = gd.display_name if gd != null else String(game_id)

@@ -63,7 +63,7 @@ static func open(host: Node, tier_name: String, bosses: Array = []) -> BossNotic
 	modal._tier_name = tier_name
 	modal._bosses = bosses
 	modal._layer = CanvasLayer.new()
-	modal._layer.layer = 123
+	modal._layer.layer = UITheme.Layer.EVENT
 	modal._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(modal._layer)
 	modal._layer.add_child(modal)
