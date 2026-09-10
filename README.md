@@ -511,14 +511,26 @@ node and its script.
   MENU, so answering "what does this item do", "have I met this enemy" or "how
   does this actually work" meant abandoning the run to go and look. Ordered by
   what the entry does to the run, nearest-first:
-  - **Look up** — 📖 How to Play, ▣ Collection, 🏆 Tier List. Changes nothing,
+  - **Information** — 📖 How to Play, ▣ Collection, 🏆 Tier List. Changes nothing,
     and it is the group opened mid-decision, so it is the one the cursor lands on.
   - **This run** — 💾 Save run, ⟳ New run.
   - **Game** — ⚙ Settings, ← Main menu, ⏻ Exit game. Last, and furthest from the
     cursor, because both doors out are in it.
 
-  Each group heading is a **labelled** `add_separator`, which is what turns a
-  list of eight into three lists of three. Exit is the only entry that asks
+  Each group heading is a **labelled** `add_separator`, drawn in the accent by
+  the theme's new `PopupMenu` entries — which is what turns a list of eight into
+  three lists of three. **The popup is on the palette**: `make_theme` dressed
+  Button, CheckBox, Panel, Label, LineEdit, OptionButton, the separators and the
+  scrollbars and never touched `PopupMenu`, so the menu came up as Godot's stock
+  dropdown — a flat slab with a blue selection bar and a grey-on-grey heading — on
+  a page of warm brown panels. **And it hangs from its own button**: left to
+  itself `MenuButton` drops the popup below and LEFT-aligned, and `☰ Menu` is
+  hard against the right edge of the canvas, so the popup overflowed, got clamped
+  flush against the edge with no margin, and started ~50px left of the button that
+  opened it. `Overworld2._place_menu_popup` right-aligns it to the button and
+  clamps it inside the canvas, measured in `about_to_popup` off
+  `get_contents_minimum_size` (the popup's `size` is a stale 0 before its first
+  layout). Exit is the only entry that asks
   first, since a live run is standing behind it — and it asks the question that
   is actually open, offering **Save & exit** beside Exit and Cancel rather than a
   bare "are you sure".

@@ -6218,11 +6218,11 @@ enum MenuItem { HOW_TO_PLAY, COLLECTION, TIER_LIST, SAVE, NEW_RUN, SETTINGS,
 # or "how does this actually work" meant abandoning the run to go and look.
 #
 # The order is by what the entry does to the run, nearest-first:
-#   LOOK UP    — changes nothing. The group you open mid-decision, so it is the
-#                one the cursor lands on.
-#   THIS RUN   — Save, New run: acts on the run you are in.
-#   GAME       — Settings, Main menu, Exit: acts on the application. Last, and
-#                furthest from the cursor, because the two doors out are in it.
+#   INFORMATION — changes nothing. The group you open mid-decision, so it is the
+#                 one the cursor lands on.
+#   THIS RUN    — Save, New run: acts on the run you are in.
+#   GAME        — Settings, Main menu, Exit: acts on the application. Last, and
+#                 furthest from the cursor, because the two doors out are in it.
 #
 # `add_separator(text)` gives each group a real heading rather than a bare rule,
 # which is what turns a list of eight into three lists of three.
@@ -6232,7 +6232,8 @@ func _build_menu_button() -> MenuButton:
 	mb.flat = false
 	mb.tooltip_text = ("Look something up, save or restart this run, or leave.")
 	var pop: PopupMenu = mb.get_popup()
-	pop.add_separator("Look up")
+	_place_menu_popup(mb, pop)
+	pop.add_separator("Information")
 	pop.add_item("📖  How to Play", MenuItem.HOW_TO_PLAY)
 	pop.add_item("▣  Collection", MenuItem.COLLECTION)
 	pop.add_item("🏆  Tier List", MenuItem.TIER_LIST)
@@ -6245,6 +6246,38 @@ func _build_menu_button() -> MenuButton:
 	pop.add_item("⏻  Exit game", MenuItem.EXIT_GAME)
 	pop.id_pressed.connect(menu_action)
 	return mb
+
+# How far the popup hangs below the button, and how much of the canvas edge it
+# will not stand on.
+const MENU_POPUP_GAP := 4.0
+const MENU_POPUP_MARGIN := 12.0
+
+# WHERE THE MENU OPENS. Left to itself, `MenuButton` drops its popup below the
+# button and left-aligned to it — and the ☰ Menu is the last thing on the header,
+# hard against the right edge of the canvas. So the popup ran off the edge, got
+# clamped flush against it with no margin at all, and ended up starting ~50px to
+# the LEFT of the button that opened it: a dropdown visibly not hanging from its
+# own button.
+#
+# Right edges flush instead, which is what a menu on the right side of a bar
+# should do, then clamped inside the canvas so a longer entry can never push it
+# off. Measured in `about_to_popup` rather than at build time — the popup's size
+# is not known until it has its items, and it changes with the theme's font.
+#
+# `get_contents_minimum_size`, not `size`: on the FIRST open the popup has never
+# been laid out and reports a stale 0, which would right-align it to the button's
+# own right edge and hang the whole menu off the screen.
+func _place_menu_popup(button: MenuButton, pop: PopupMenu) -> void:
+	pop.about_to_popup.connect(func():
+		if not is_inside_tree():
+			return
+		var want: Vector2 = pop.get_contents_minimum_size()
+		var view: Vector2 = get_viewport_rect().size
+		var anchor: Rect2 = button.get_global_rect()
+		var at := Vector2(anchor.end.x - want.x, anchor.end.y + MENU_POPUP_GAP)
+		at.x = clampf(at.x, MENU_POPUP_MARGIN, maxf(MENU_POPUP_MARGIN, view.x - want.x - MENU_POPUP_MARGIN))
+		at.y = clampf(at.y, MENU_POPUP_MARGIN, maxf(MENU_POPUP_MARGIN, view.y - want.y - MENU_POPUP_MARGIN))
+		pop.position = Vector2i(at.round()))
 
 # Public so a test can press a menu entry without opening the popup.
 func menu_action(id: int) -> void:

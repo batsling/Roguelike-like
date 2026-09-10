@@ -20,7 +20,7 @@ For how the project is laid out and how its systems fit together, see
   a run to answer. Settings came along for the same reason: F11 already worked
   mid-run, so the rest of that panel may as well.
   The groups are ordered by what the entry does to the run, nearest-first —
-  **Look up** (changes nothing, and the group you open mid-decision), **This run**
+  **Information** (changes nothing, and the group you open mid-decision), **This run**
   (Save, New run), **Game** (Settings, Main menu, Exit, last and furthest from the
   cursor because both doors out are in it). Each heading is a *labelled*
   `add_separator`, which is what turns a list of eight into three lists of three.
@@ -30,6 +30,24 @@ For how the project is laid out and how its systems fit together, see
   tier board used to answer that by standing the bar *down* while it was up; going
   over it instead is what the Atlas and the verdict already do, and it is one less
   piece of state to get wrong.
+  **The popup is on the palette and hangs from its own button.** `make_theme`
+  dressed Button, CheckBox, Panel, Label, LineEdit, OptionButton, the separators
+  and the scrollbars, and never touched `PopupMenu` — so the menu came up as
+  Godot's stock dropdown, a flat slab with a blue selection bar and a
+  grey-on-grey heading, on a page of warm brown panels. And `MenuButton` drops
+  its popup below and LEFT-aligned by default, while `☰ Menu` is hard against
+  the right edge of the canvas: it overflowed, was clamped flush against the edge
+  with no margin, and started ~50px to the left of the button that opened it. It
+  is right-aligned to the button and clamped inside the canvas now, measured in
+  `about_to_popup` off `get_contents_minimum_size` — the popup's own `size` is a
+  stale 0 until it has been laid out once.
+  **Known gap:** the theme entry does not reach `OptionButton` dropdowns (the
+  Collection's type and record filters, the Atlas's region picker, Custom Run's
+  columns). The stylebox resolves correctly on those popups — `get_theme_stylebox`
+  returns the right one — but they still render stock, and setting the theme on
+  the popup explicitly does not change it. Same theme, same screen, different
+  result from the `MenuButton` popup, so it is something specific to how
+  `OptionButton` builds its own; not chased down yet.
 
 - **The run's header carries no title.** "Roguelike-like" in 20px gold sat
   between the road walked and the buttons — about 180px of the one row in the game

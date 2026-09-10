@@ -9352,7 +9352,7 @@ func test_the_menu_is_three_named_groups_in_run_order() -> void:
 	for i in range(pop.item_count):
 		if pop.is_item_separator(i):
 			headings.append(pop.get_item_text(i))
-	assert_eq(headings, ["Look up", "This run", "Game"],
+	assert_eq(headings, ["Information", "This run", "Game"],
 		"three groups, nearest-first: what changes nothing, then the run, then the way out")
 
 # Each of the four opens ABOVE the run's pinned header. The bar floats over

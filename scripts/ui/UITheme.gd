@@ -735,6 +735,38 @@ static func make_theme() -> Theme:
 	t.set_color("font_color", "OptionButton", TEXT)
 	t.set_color("font_hover_color", "OptionButton", GOLD)
 
+	# --- PopupMenu ---
+	#
+	# THE LAST STOCK CONTROL IN THE GAME. This theme dressed Button, CheckBox,
+	# Panel, Label, LineEdit, OptionButton, the separators and the scrollbars, and
+	# never touched PopupMenu — so every dropdown in the project was still Godot's
+	# default: a flat near-black slab with a blue selection bar and a grey-on-grey
+	# heading, sitting on a page of warm brown panels and parchment text. That is
+	# the run's `☰ Menu`, the Collection's type and record filters, the Atlas's
+	# region picker and Custom Run's four filter columns — every one of them.
+	#
+	# Same surface as a panel, same ember hover as a button, so a dropdown looks
+	# like the thing that opened it.
+	var pop_bg := flat(PANEL, 8, 6, 1, BORDER)
+	t.set_stylebox("panel", "PopupMenu", pop_bg)
+	var pop_hover := flat(PANEL_HI, 6, 0, 1, ACCENT.lerp(BORDER, 0.35))
+	t.set_stylebox("hover", "PopupMenu", pop_hover)
+	t.set_color("font_color", "PopupMenu", TEXT)
+	t.set_color("font_hover_color", "PopupMenu", GOLD)
+	t.set_color("font_disabled_color", "PopupMenu", TEXT_FAINT)
+	# A LABELLED separator is a group heading, so it is drawn like one: the accent,
+	# not the same colour as the items under it. Godot draws the label centred on
+	# the rule, which is exactly the shape a heading wants.
+	t.set_color("font_separator_color", "PopupMenu", ACCENT)
+	t.set_font_size("separator_font_size", "PopupMenu", FONT_SMALL)
+	var pop_sep := StyleBoxLine.new()
+	pop_sep.color = BORDER
+	pop_sep.thickness = 1
+	t.set_stylebox("separator", "PopupMenu", pop_sep)
+	t.set_constant("v_separation", "PopupMenu", GAP_TIGHT)
+	t.set_constant("item_start_padding", "PopupMenu", GAP_WIDE)
+	t.set_constant("item_end_padding", "PopupMenu", GAP_WIDE)
+
 	# --- Separators ---
 	var sep := StyleBoxLine.new()
 	sep.color = BORDER

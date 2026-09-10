@@ -183,3 +183,26 @@ func test_modals_are_drawn_on_the_themes_own_surface() -> void:
 	assert_almost_eq(bg.g, UITheme.PANEL.g, 0.001, "modal green matches")
 	assert_almost_eq(bg.b, UITheme.PANEL.b, 0.001, "modal blue matches")
 	assert_gt(bg.a, 0.9, "and it is still near-opaque, so nothing bleeds through a modal")
+
+# --- popups are on the palette too ------------------------------------------
+#
+# `make_theme` dressed Button, CheckBox, Panel, Label, LineEdit, OptionButton,
+# the separators and the scrollbars, and never touched PopupMenu — so the run's
+# `☰ Menu` came up as Godot's stock dropdown: a flat slab with a blue selection
+# bar and a grey-on-grey heading, on a page of warm brown panels.
+func test_the_theme_dresses_popup_menus() -> void:
+	var t: Theme = UITheme.shared()
+	assert_true(t.has_stylebox("panel", "PopupMenu"),
+		"a dropdown is drawn on the same surface as the thing that opened it")
+	var panel := t.get_stylebox("panel", "PopupMenu") as StyleBoxFlat
+	assert_not_null(panel)
+	if panel != null:
+		assert_almost_eq(panel.bg_color.r, UITheme.PANEL.r, 0.001, "on the theme's panel colour")
+		assert_almost_eq(panel.bg_color.g, UITheme.PANEL.g, 0.001, "")
+		assert_almost_eq(panel.bg_color.b, UITheme.PANEL.b, 0.001, "")
+	assert_eq(t.get_color("font_color", "PopupMenu"), UITheme.TEXT, "parchment text")
+	assert_eq(t.get_color("font_hover_color", "PopupMenu"), UITheme.GOLD, "gold on hover, like a button")
+	# A LABELLED separator is a group heading, so it is drawn as one rather than in
+	# the same colour as the items under it.
+	assert_eq(t.get_color("font_separator_color", "PopupMenu"), UITheme.ACCENT,
+		"and a group heading is the accent, not another item")
