@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every font size in the project now comes from the type scale, and the tier
+  list's palette is a decided question rather than an open one.** Two items off
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — §2's font
+  half, finished, and §1, closed without a code change.
+  **259 bare integers became named steps across 38 files.** `UITheme`'s type
+  scale (`FONT_MICRO` … `FONT_HERO`) had been adopted by nine run screens and the
+  other ~38 still typed their sizes at the call site: 281 literals, 86 of them
+  `12`, 52 `11`, 39 `13`. The pass was **value-preserving by construction** —
+  each integer was mapped to the token that holds exactly that integer, which was
+  itself checked against `UITheme.gd` before anything was written, and then the
+  whole diff was read back with the tokens substituted for their values to prove
+  all 265 changed lines round-trip **byte-identical** to the originals. So this
+  moved no pixel, and did not need a re-fit of anything. It also caught three
+  files that set a font size only through a parameter (`LootDropModal`,
+  `PostCombatScreen`, `UITheme` itself) and three call sites handing a helper a
+  bare number, which a search for literals alone would have walked past.
+  **`test_design_tokens.gd` now has a list per axis, because the two axes are not
+  the same job.** Fonts and gaps shared one `MIGRATED` array, and that array
+  could not express the state the project is actually in: naming a font size is a
+  free rename, while several gaps on the run screens are load-bearing to the
+  pixel against the 720p budget and have to be read one at a time. Adding a file
+  to the single list to lock in its fonts would have demanded its gaps in the same
+  commit. There are now `MIGRATED_FONTS` (all 50 screens that set a size in code)
+  and `MIGRATED_GAPS` (the original nine), with `OFF_SCALE_FONTS` /
+  `OFF_SCALE_GAPS` likewise split — the old combined allowlist turned out to sort
+  cleanly, since `24` was a font in two files and every other exception was a gap,
+  so a font exception had been quietly punching a hole in the gap check.
+  **The font list is asserted complete**, which is the hole the per-file design
+  had: the check only ever looked where it was told to, so a new screen shipping
+  bare integers passed by not being listed. A walk of `scripts/` now fails if
+  anything setting a font size is missing from `MIGRATED_FONTS` — and it earned
+  its keep immediately, by finding the three parameter-only files above.
+  **Five sizes were deliberately NOT named**, because naming them would mean
+  changing them and a restyle does not belong inside a rename: `17` (eleven uses,
+  eight of them `SettingsModal` section headings, against a `FONT_HEAD` of 18),
+  `24` (seven titles), `21` (two), `30` (`Collection`'s title, where every other
+  screen's is 20 or 22) and `34` (`RunOverScreen`'s verdict). They sit in
+  `OFF_SCALE_FONTS` with the reason, and the backlog carries them as the open
+  question with the numbers worked out — which is the second thing this kind of
+  pass is for: a value nobody chose only becomes visible once the rest are named.
+  **§1, the tier list's palette, is decided: keep it.** `TIER_COLORS` is the stock
+  tiermaker ramp in a game with a warm ember-and-parchment palette, which is real,
+  but S/A/B/C/D/F is legible *because* it is the ramp everyone else uses — the
+  borrowed look is the feature, and six warm tones buy consistency on a screen
+  outside the run at the price of six tiers that are harder to tell apart. The
+  item stays in the doc with that reasoning rather than being deleted, so it does
+  not get asked a third time; the one version worth reopening (pull the six
+  slightly toward the palette, keep the hue order) is written down there.
+
 - **The run's `☰ Menu` reaches the screens that used to need quitting it, and it
   is three named groups instead of a list.** It was four entries under one
   unlabelled rule — Save / New run, then Main menu / Exit — which is fine for

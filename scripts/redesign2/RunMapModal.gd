@@ -236,7 +236,7 @@ func _build() -> void:
 		var here: GameData = Data.get_game(_current)
 		note.text = "The shortest route to the Amulet if you take %s — every step of it, destination included." % [
 			here.display_name if here != null else String(_current)]
-		note.add_theme_font_size_override("font_size", 12)
+		note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		root.add_child(note)
@@ -246,7 +246,7 @@ func _build() -> void:
 	if not journey.is_empty():
 		var trail := Label.new()
 		trail.text = "Journey:  " + " → ".join(_names(journey)) + "  → 📍"
-		trail.add_theme_font_size_override("font_size", 12)
+		trail.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		trail.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		trail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		root.add_child(trail)
@@ -316,7 +316,7 @@ func _build_header() -> Control:
 
 	var grip := Label.new()
 	grip.text = "⣿"
-	grip.add_theme_font_size_override("font_size", 16)
+	grip.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	grip.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	title_row.add_child(grip)
 
@@ -329,7 +329,7 @@ func _build_header() -> Control:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(title)
@@ -365,7 +365,7 @@ func _build_header() -> Control:
 	_dist_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dist_label.clip_text = true
 	_dist_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_dist_label.add_theme_font_size_override("font_size", 13)
+	_dist_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_dist_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	tools.add_child(_dist_label)
 
@@ -731,13 +731,13 @@ func _build_pin_bar() -> Control:
 	bar.add_child(row)
 	_pin_label = Label.new()
 	_pin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_pin_label.add_theme_font_size_override("font_size", 12)
+	_pin_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_pin_label.add_theme_color_override("font_color", UITheme.TEXT)
 	_pin_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(_pin_label)
 	var drop := Button.new()
 	drop.text = "Drop pin"
-	drop.add_theme_font_size_override("font_size", 12)
+	drop.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	drop.pressed.connect(clear_waypoint)
 	row.add_child(drop)
 	_pin_bar = bar
@@ -777,7 +777,7 @@ func _legend() -> Control:
 	# map enough height to push a fit past the legibility floor.
 	hint.text = "🛒 = a shop  •  ⚔ = beaten here  •  click any game for details"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	stack.add_child(hint)
 	return stack
@@ -791,7 +791,7 @@ func _legend_chip(text: String, swatch: Color) -> Control:
 	box.add_child(sw)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(l)
 	return box
@@ -799,7 +799,7 @@ func _legend_chip(text: String, swatch: Color) -> Control:
 func _zoom_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 13)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	b.pressed.connect(cb)
 	return b
 

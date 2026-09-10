@@ -169,7 +169,7 @@ static func chip(entry: Dictionary) -> Control:
 		row.add_child(UITheme.crisp_tex(icon, 16))
 	var label := Label.new()
 	label.text = String(entry.get("name", ""))
-	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	label.add_theme_color_override("font_color", CHIP_TEXT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)

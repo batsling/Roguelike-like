@@ -66,7 +66,7 @@ func _style_menu() -> void:
 	if start is Button:
 		start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 		start.add_theme_color_override("font_color", UITheme.GOLD)
-		start.add_theme_font_size_override("font_size", 20)
+		start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 
 # ---------------------------------------------------------------------------
 # Profiles — who is playing
@@ -88,7 +88,7 @@ func _build_profile_row() -> void:
 	row.add_theme_constant_override("separation", 10)
 
 	_profile_lbl = Label.new()
-	_profile_lbl.add_theme_font_size_override("font_size", 15)
+	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_profile_lbl)
 
@@ -224,7 +224,7 @@ func _populate_save_list() -> void:
 		var none := Label.new()
 		none.text = "No saved runs yet — the overworld's 💾 Save button makes one."
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		_save_list_container.add_child(none)
 		_refresh_continue_button()
@@ -248,12 +248,12 @@ func _save_row(entry: Dictionary) -> Control:
 	row.add_child(text)
 	var title := Label.new()
 	title.text = String(entry.get("name", "")) if String(entry.get("name", "")) != "" else "Unnamed run"
-	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	title.add_theme_color_override("font_color", UITheme.GOLD if is_auto else UITheme.TEXT)
 	text.add_child(title)
 	var sub := Label.new()
 	sub.text = _save_subtitle(entry)
-	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	text.add_child(sub)
 
@@ -268,7 +268,7 @@ func _save_row(entry: Dictionary) -> Control:
 		tag.text = custom
 		tag.tooltip_text = "This run was built on the Custom Run screen — resuming it rebuilds that map."
 		tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		tag.add_theme_font_size_override("font_size", 10)
+		tag.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		tag.add_theme_color_override("font_color", UITheme.ACCENT)
 		text.add_child(tag)
 

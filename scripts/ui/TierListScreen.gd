@@ -142,13 +142,13 @@ func _build_shell() -> void:
 
 	var title := Label.new()
 	title.text = "Tier List"
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
 
 	var hint := Label.new()
 	hint.text = "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename"
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.clip_text = true
 	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -510,7 +510,7 @@ func _show_detail(game_id: StringName) -> void:
 
 	var title := Label.new()
 	title.text = name_text
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_box.add_child(title)
@@ -527,7 +527,7 @@ func _show_detail(game_id: StringName) -> void:
 		var ask := Label.new()
 		ask.text = "Scored. Now pick its tier — drag it onto a row, or use Move to below."
 		ask.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ask.add_theme_font_size_override("font_size", 12)
+		ask.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		ask.add_theme_color_override("font_color", UITheme.GOLD)
 		call_out.add_child(ask)
 		_detail_box.add_child(call_out)
@@ -544,7 +544,7 @@ func _show_detail(game_id: StringName) -> void:
 		meta.append(RunGraph.type_label(gd.type))
 		var chip := Label.new()
 		chip.text = "  •  ".join(meta).to_upper()
-		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		chip.add_theme_color_override("font_color", RunGraph.type_color(gd.type))
 		_detail_box.add_child(chip)
 
@@ -589,14 +589,14 @@ func _show_detail(game_id: StringName) -> void:
 
 	var rate := Button.new()
 	rate.text = "✎  Score and notes" if rating.is_empty() else "✎  Edit score and notes"
-	rate.add_theme_font_size_override("font_size", 12)
+	rate.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	rate.pressed.connect(func(): _open_rating(game_id, gd))
 	_detail_box.add_child(rate)
 
 	if gd != null and gd.has_launch_target():
 		var play := Button.new()
 		play.text = "▶  Play the real game"
-		play.add_theme_font_size_override("font_size", 12)
+		play.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		play.pressed.connect(func(): gd.launch())
 		_detail_box.add_child(play)
 
@@ -618,7 +618,7 @@ func _move_button(text: String, game_id: StringName, tier: int, here: bool,
 	b.text = text
 	b.disabled = here
 	b.custom_minimum_size = Vector2(0, 28)
-	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	b.add_theme_color_override("font_color", color)
 	b.tooltip_text = "Already there" if here else "Move %s to %s" % [
 		Data.get_game(game_id).display_name if Data.get_game(game_id) != null
@@ -645,13 +645,13 @@ func _fact(key: String, value: String) -> Control:
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	k.clip_text = true
 	k.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	k.add_theme_font_size_override("font_size", 12)
+	k.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(k)
 	var v := Label.new()
 	v.text = value
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	v.add_theme_color_override("font_color", UITheme.TEXT)
 	row.add_child(v)
 	return row
@@ -659,7 +659,7 @@ func _fact(key: String, value: String) -> Control:
 func _heading(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.GOLD)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -667,7 +667,7 @@ func _heading(text: String) -> Control:
 func _note(text: String, color: Color = UITheme.TEXT_FAINT) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l

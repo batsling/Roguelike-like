@@ -73,13 +73,13 @@ func setup() -> void:
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = "✓  Completed"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", DONE.lerp(Color.WHITE, 0.4))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_row.add_child(title)
 	var close_btn := Button.new()
 	close_btn.text = "✕"
-	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	close_btn.pressed.connect(close)
 	head_row.add_child(close_btn)
 	body.add_child(header)
@@ -98,7 +98,7 @@ func setup() -> void:
 		+ "work behind it.")
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.custom_minimum_size = Vector2(PANEL_WIDTH - 40, 0)
-	blurb.add_theme_font_size_override("font_size", 12)
+	blurb.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	blurb.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	inner.add_child(blurb)
 
@@ -115,7 +115,7 @@ func setup() -> void:
 	_empty.text = "Nothing ticked yet — the first goal you confirm lands here."
 	_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_empty.custom_minimum_size = Vector2(PANEL_WIDTH - 40, 0)
-	_empty.add_theme_font_size_override("font_size", 13)
+	_empty.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_empty.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	inner.add_child(_empty)
 
@@ -175,12 +175,12 @@ func _group_block(group: Dictionary) -> Control:
 	where.text = game.display_name if game != null else "Before the road started"
 	where.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	where.add_theme_font_size_override("font_size", 14)
+	where.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	where.add_theme_color_override("font_color", UITheme.GOLD)
 	head.add_child(where)
 	var count := Label.new()
 	count.text = "%d done" % rows.size()
-	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(count)
@@ -196,7 +196,7 @@ func _line(row: Dictionary) -> Control:
 	var l := Label.new()
 	l.text = "✓  %s" % String(row.get("text", ""))
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", tint_for(String(row.get("kind", ""))))
 	return l
 

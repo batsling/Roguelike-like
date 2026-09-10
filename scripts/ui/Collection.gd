@@ -837,7 +837,7 @@ func _build_games() -> void:
 	var constellation := Button.new()
 	constellation.text = "✦ Show constellation"
 	constellation.tooltip_text = "See the whole catalog as a star chart of influences"
-	constellation.add_theme_font_size_override("font_size", 12)
+	constellation.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	constellation.disabled = AtlasView.load_layout() == null
 	if constellation.disabled:
 		constellation.tooltip_text = "Run tools/bake_atlas.py to generate the star chart"
@@ -978,7 +978,7 @@ func _owned_badge(g: GameData) -> Control:
 	badge.position = Vector2(BADGE_INSET, BADGE_INSET)
 	badge.size = Vector2(OWNED_BADGE, OWNED_BADGE)
 	badge.focus_mode = Control.FOCUS_NONE
-	badge.add_theme_font_size_override("font_size", 13)
+	badge.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	if Ownership.is_editable():
 		badge.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		badge.pressed.connect(func() -> void:
@@ -1070,26 +1070,26 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 	var who := Label.new()
 	who.text = enemy.display_name if enemy != null else String(entry["id"])
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry["beaten"])
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 	var note_text: String = String(entry["note"]).strip_edges()
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
 	if enemy != null:
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-		edit.add_theme_font_size_override("font_size", 11)
+		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():
 			EnemyNoteModal.open(self, game, enemy, func(): _show_game_detail(game)))
 		col.add_child(edit)
@@ -1133,14 +1133,14 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	var who := Label.new()
 	who.text = ch.display_name if side == "character" else game.display_name
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(who)
 	var levels: int = int(entry.get("levels", 0))
 	if levels > 0:
 		var times := Label.new()
 		times.text = "levelled ×%d" % levels
-		times.add_theme_font_size_override("font_size", 11)
+		times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		times.add_theme_color_override("font_color", gold)
 		top.add_child(times)
 
@@ -1152,14 +1152,14 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		gold if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
 
 	var edit := Button.new()
 	edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-	edit.add_theme_font_size_override("font_size", 11)
+	edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	edit.pressed.connect(func(): EnemyNoteModal.open_level_up(self, game, ch, on_done))
 	col.add_child(edit)
 	return panel
@@ -1547,13 +1547,13 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var who := Label.new()
 	who.text = enemy.display_name
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color",
 		Color(0.95, 0.55, 0.2) if enemy.is_boss() else UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry.get("beaten", 0))
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 	if enemy.goal != "":
@@ -1707,12 +1707,12 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var name_label := Label.new()
 	name_label.text = game.display_name if game != null else String(entry["id"])
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	name_label.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(name_label)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry["beaten"])
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 
@@ -1720,7 +1720,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
@@ -1728,7 +1728,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	if game != null:
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-		edit.add_theme_font_size_override("font_size", 11)
+		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():
 			EnemyNoteModal.open(self, game, enemy, func(): _show_enemy_detail(enemy)))
 		col.add_child(edit)

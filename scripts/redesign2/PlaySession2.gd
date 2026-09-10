@@ -201,7 +201,7 @@ func _build_ui() -> void:
 	root.add_child(_log)
 
 	_banner = Label.new()
-	_banner.add_theme_font_size_override("font_size", 22)
+	_banner.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_banner.hide()
 	root.add_child(_banner)
 
@@ -265,7 +265,7 @@ func _title(text: String) -> Label:
 func _section(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	l.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
 	return l
 

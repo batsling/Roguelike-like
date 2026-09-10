@@ -143,7 +143,7 @@ func _build() -> void:
 		var head := Label.new()
 		head.text = _heading()
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		head.add_theme_font_size_override("font_size", 12 if compact else 15)
+		head.add_theme_font_size_override("font_size", UITheme.FONT_BODY if compact else UITheme.FONT_LEAD)
 		head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		box.add_child(head)
 
@@ -203,13 +203,13 @@ func _build() -> void:
 	leave.text = "Leave it" if not multi else "Leave them"
 	leave.custom_minimum_size = Vector2(110, 26) if compact else Vector2(150, 42)
 	if compact:
-		leave.add_theme_font_size_override("font_size", 12)
+		leave.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	leave.pressed.connect(func(): _answer(false))
 	row.add_child(leave)
 
 	_take_btn = Button.new()
 	_take_btn.custom_minimum_size = Vector2(150, 26) if compact else Vector2(190, 42)
-	_take_btn.add_theme_font_size_override("font_size", 12 if compact else 16)
+	_take_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY if compact else UITheme.FONT_SUB)
 	_take_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
 	_take_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.32), 8, 8, 2, UITheme.SUCCESS))
 	_take_btn.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
@@ -308,14 +308,14 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	name_lbl.text = _selected.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 18 if embedded else 22)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_HEAD if embedded else UITheme.FONT_TITLE_LG)
 	name_lbl.add_theme_color_override("font_color", tint)
 	box.add_child(name_lbl)
 
 	var kind := Label.new()
 	kind.text = _kind_line(_selected)
 	kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kind.add_theme_font_size_override("font_size", 12)
+	kind.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	kind.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(kind)
 
@@ -323,7 +323,7 @@ func _build_single(box: VBoxContainer, tint: Color) -> void:
 	desc.text = _selected.description if String(_selected.description) != "" else "A dropped relic."
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 13)
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	desc.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(desc)
 	# The KEYWORD STRIP (§17). This is the moment the item is being decided on, so
@@ -387,7 +387,7 @@ func _offer_card(item: ItemData) -> Control:
 	name_lbl.text = item.display_name
 	name_lbl.horizontal_alignment = align
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", 13 if compact else 15)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT if compact else UITheme.FONT_LEAD)
 	name_lbl.add_theme_color_override("font_color", tint)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_lbl)
@@ -396,7 +396,7 @@ func _offer_card(item: ItemData) -> Control:
 	kind.text = _kind_line(item)
 	kind.horizontal_alignment = align
 	kind.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	kind.add_theme_font_size_override("font_size", 9 if compact else 10)
+	kind.add_theme_font_size_override("font_size", UITheme.FONT_MICRO if compact else UITheme.FONT_TINY)
 	kind.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	kind.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(kind)
@@ -405,7 +405,7 @@ func _offer_card(item: ItemData) -> Control:
 	desc.text = item.description if String(item.description) != "" else "A dropped relic."
 	desc.horizontal_alignment = align
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 10 if compact else 11)
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_TINY if compact else UITheme.FONT_SMALL)
 	desc.add_theme_color_override("font_color", UITheme.TEXT)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(desc)

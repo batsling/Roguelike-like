@@ -77,13 +77,13 @@ func setup() -> void:
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = "☠  The Fallen"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", BONE.lerp(Color.WHITE, 0.4))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_row.add_child(title)
 	var close_btn := Button.new()
 	close_btn.text = "✕"
-	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	close_btn.pressed.connect(close)
 	head_row.add_child(close_btn)
 	body.add_child(header)
@@ -103,7 +103,7 @@ func setup() -> void:
 		"A Necromancer raises from this list, so what is in here can come back.")
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.custom_minimum_size = Vector2(PANEL_WIDTH - 40, 0)
-	blurb.add_theme_font_size_override("font_size", 12)
+	blurb.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	blurb.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	inner.add_child(blurb)
 
@@ -120,7 +120,7 @@ func setup() -> void:
 
 	_empty = Label.new()
 	_empty.text = "Nothing has died yet."
-	_empty.add_theme_font_size_override("font_size", 13)
+	_empty.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_empty.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	inner.add_child(_empty)
 
@@ -163,7 +163,7 @@ func _row(enemy: GoalEnemyData, game_id: StringName) -> Control:
 	# into a text box must not also throw a full-screen card over the box.
 	var open := Button.new()
 	open.flat = true
-	open.add_theme_font_size_override("font_size", 14)
+	open.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	open.text = ("☠  " if enemy.is_boss() else "") + enemy.display_name
 	open.tooltip_text = "Open its card — goal, stats and abilities."
 	open.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -181,7 +181,7 @@ func _row(enemy: GoalEnemyData, game_id: StringName) -> Control:
 	if not enemy.abilities.is_empty():
 		var mark := Label.new()
 		mark.text = "⚠"
-		mark.add_theme_font_size_override("font_size", 14)
+		mark.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 		mark.add_theme_color_override("font_color", BattlefieldView.ABILITY_MARK)
 		mark.tooltip_text = enemy.ability_text
 		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -190,7 +190,7 @@ func _row(enemy: GoalEnemyData, game_id: StringName) -> Control:
 	var game: GameData = Data.get_game(game_id)
 	var where := Label.new()
 	where.text = "fell at %s" % (game.display_name if game != null else "somewhere on the road")
-	where.add_theme_font_size_override("font_size", 11)
+	where.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	where.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(where)
 
@@ -203,7 +203,7 @@ func _row(enemy: GoalEnemyData, game_id: StringName) -> Control:
 		note.placeholder_text = "How did you do it? (saved against %s)" % (
 			game.display_name if game != null else String(game_id))
 		note.text = GameStats.enemy_note(game_id, enemy.id)
-		note.add_theme_font_size_override("font_size", 12)
+		note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# Saved on focus-out as well as on Enter: a player who types a note and
 		# clicks the ✕ has written it, and losing it there would teach them not to

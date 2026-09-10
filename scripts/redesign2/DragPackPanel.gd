@@ -70,7 +70,7 @@ func _build(on_take: Callable, on_bin: Callable) -> void:
 	var head := Label.new()
 	head.text = "Your pack — %d / %d" % [
 		GameState.loot_items.size(), GameState.loot_capacity()]
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(head)
@@ -91,7 +91,7 @@ func _build(on_take: Callable, on_bin: Callable) -> void:
 	var hint := Label.new()
 	hint.text = "Drop it in a slot." if not GameState.loot_is_full() \
 		else "No room — drop it on a piece to trade."
-	hint.add_theme_font_size_override("font_size", 10)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	hint.add_theme_color_override("font_color",
 		UITheme.TEXT_FAINT if not GameState.loot_is_full() else UITheme.GOLD)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

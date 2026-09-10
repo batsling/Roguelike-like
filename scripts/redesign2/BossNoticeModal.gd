@@ -113,7 +113,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "⚠   BOSS INCOMING   ⚠"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18 if embedded else 26)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD if embedded else UITheme.FONT_DISPLAY)
 	title.add_theme_color_override("font_color", ACCENT)
 	root.add_child(title)
 
@@ -123,7 +123,7 @@ func _build() -> void:
 		"Every game on the table now carries a boss."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	sub.add_theme_color_override("font_color", UITheme.TEXT)
 	root.add_child(sub)
 
@@ -138,7 +138,7 @@ func _build() -> void:
 		var l := Label.new()
 		l.text = "•  " + line
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		root.add_child(l)
 
@@ -152,7 +152,7 @@ func _build() -> void:
 	var go := Button.new()
 	go.text = "Face it"
 	go.custom_minimum_size = Vector2(0, 42)
-	go.add_theme_font_size_override("font_size", 16)
+	go.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	go.add_theme_stylebox_override("normal", UITheme.flat(ACCENT.lerp(UITheme.BG, 0.55), 8, 8, 2, ACCENT))
 	go.add_theme_stylebox_override("hover", UITheme.flat(ACCENT.lerp(UITheme.BG, 0.35), 8, 8, 2, ACCENT))
 	go.add_theme_stylebox_override("focus", UITheme.flat(ACCENT.lerp(UITheme.BG, 0.35), 8, 8, 2, ACCENT))
@@ -205,7 +205,7 @@ func _portrait_row() -> Control:
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name_lbl.custom_minimum_size = Vector2(art_px + 12, 0)
-		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		name_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(name_lbl)
 		row.add_child(col)

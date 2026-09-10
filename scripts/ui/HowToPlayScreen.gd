@@ -114,7 +114,7 @@ func _build_header() -> Control:
 
 	var title := Label.new()
 	title.text = "📖  How to Play"
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	row.add_child(title)
 
@@ -122,7 +122,7 @@ func _build_header() -> Control:
 	sub.text = "The dungeon is your backlog."
 	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	sub.add_theme_font_size_override("font_size", 13)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	row.add_child(sub)
 
@@ -179,7 +179,7 @@ func _build_reader() -> Control:
 	frame.add_child(col)
 
 	_title_label = Label.new()
-	_title_label.add_theme_font_size_override("font_size", 22)
+	_title_label.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_title_label.add_theme_color_override("font_color", UITheme.ACCENT)
 	col.add_child(_title_label)
 	col.add_child(HSeparator.new())
@@ -292,7 +292,7 @@ func _block(block: Dictionary) -> Control:
 			h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			h.custom_minimum_size = Vector2(0, 26)
 			h.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-			h.add_theme_font_size_override("font_size", 15)
+			h.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 			h.add_theme_color_override("font_color", UITheme.GOLD)
 			return h
 		"p":
@@ -317,7 +317,7 @@ func _prose(text: String, color: Color, indent: float) -> Control:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.custom_minimum_size = Vector2(BODY_MAX_W - indent, 0)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	lbl.add_theme_color_override("font_color", color)
 	if indent <= 0.0:
 		return lbl
@@ -338,7 +338,7 @@ func _definition(term: String, meaning: String) -> Control:
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	t.custom_minimum_size = Vector2(170, 0)
 	t.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	t.add_theme_font_size_override("font_size", 13)
+	t.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	t.add_theme_color_override("font_color", UITheme.ACCENT)
 	row.add_child(t)
 
@@ -347,7 +347,7 @@ func _definition(term: String, meaning: String) -> Control:
 	v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.custom_minimum_size = Vector2(BODY_MAX_W - 190.0, 0)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_theme_font_size_override("font_size", 13)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	v.add_theme_color_override("font_color", UITheme.TEXT)
 	row.add_child(v)
 	return row
@@ -361,7 +361,7 @@ func _callout(text: String) -> Control:
 	lbl.text = text
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.custom_minimum_size = Vector2(BODY_MAX_W - 24.0, 0)
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	frame.add_child(lbl)
 	return frame
@@ -387,7 +387,7 @@ func _table(rows: Array) -> Control:
 			lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			lbl.custom_minimum_size = Vector2(BODY_MAX_W / float(cols) - 16.0, 0)
 			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			lbl.add_theme_font_size_override("font_size", 13)
+			lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 			lbl.add_theme_color_override("font_color",
 				UITheme.TEXT_FAINT if head else UITheme.TEXT)
 			grid.add_child(lbl)

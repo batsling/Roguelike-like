@@ -151,7 +151,7 @@ func _toggle_button() -> Control:
 func _bar_label(text: String, tint: Color, loud: bool) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.6 if loud else 0.4))
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -191,11 +191,11 @@ func _panel(reporting: bool) -> Control:
 	var title := Label.new()
 	title.text = "%s  Loot  —  %d / %d carried" % [
 		"💊" if _has_pills() else "📜", GameState.loot_items.size(), GameState.loot_capacity()]
-	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	title.add_theme_color_override("font_color", ACCENT.lerp(Color.WHITE, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var close := UITheme.quiet_button("✕", Vector2.ZERO, 13)
+	var close := UITheme.quiet_button("✕", Vector2.ZERO, UITheme.FONT_TEXT)
 	close.tooltip_text = "Close the loot window."
 	close.pressed.connect(func():
 		open = false
@@ -247,7 +247,7 @@ func _panel(reporting: bool) -> Control:
 func _note(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, 0)

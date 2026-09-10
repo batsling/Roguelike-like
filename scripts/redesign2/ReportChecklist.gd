@@ -1728,7 +1728,7 @@ func _buff_strip(entry: Dictionary) -> Control:
 			false, int(row.get("games", 0))))
 		flow.add_child(chip)
 	if rows.size() > shown:
-		var more := UITheme.chip("+%d" % (rows.size() - shown), UITheme.TEXT_DIM, 9)
+		var more := UITheme.chip("+%d" % (rows.size() - shown), UITheme.TEXT_DIM, UITheme.FONT_MICRO)
 		more.tooltip_text = "%d more on this body — hover it on the board for the lot." \
 			% (rows.size() - shown)
 		flow.add_child(more)

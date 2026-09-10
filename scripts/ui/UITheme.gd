@@ -313,7 +313,7 @@ static func quiet_button(text: String, min_size: Vector2 = Vector2.ZERO, font_si
 # A small labelled plate in one colour — a rarity, a preference, a charge count.
 # Three screens had grown their own private `_chip` doing exactly this; new code
 # comes through here so a chip is one shape wherever it is drawn.
-static func chip(text: String, color: Color, font_size: int = 11) -> Control:
+static func chip(text: String, color: Color, font_size: int = FONT_SMALL) -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		flat(color.lerp(BG, 0.74), 6, 5, 1, color.lerp(BG, 0.38)))
@@ -409,7 +409,7 @@ static func addon_color(required: bool) -> Color:
 # One add-on as a row. `addon` is a `GameLoop2.goal_addons_for` entry; `width` is
 # the row's minimum, since these live in narrow columns and the phrase wraps.
 static func addon_row(addon: Dictionary, width: float = 0.0,
-		font_size: int = 12) -> Control:
+		font_size: int = FONT_BODY) -> Control:
 	var tint: Color = addon_color(bool(addon.get("required", false)))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
@@ -681,7 +681,7 @@ static func glyph_font() -> Font:
 
 static func make_theme() -> Theme:
 	var t := Theme.new()
-	t.default_font_size = 14
+	t.default_font_size = FONT_LABEL
 	# Every Control under this theme, unless it overrides its own font.
 	var glyphs: Font = glyph_font()
 	if glyphs != null:

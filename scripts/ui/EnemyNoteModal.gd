@@ -97,13 +97,13 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 	header.add_child(titles)
 	var title := Label.new()
 	title.text = "🗒  %s" % String(subject.get("title", ""))
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	titles.add_child(title)
 	var where := Label.new()
 	where.text = String(subject.get("where", ""))
 	where.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	where.add_theme_font_size_override("font_size", 12)
+	where.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	where.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	titles.add_child(where)
 

@@ -111,7 +111,7 @@ func _build_ui() -> void:
 	var display_hint := Label.new()
 	display_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	display_hint.custom_minimum_size = Vector2(0, 56)
-	display_hint.add_theme_font_size_override("font_size", 13)
+	display_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	display_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(display_hint)
 
@@ -128,7 +128,7 @@ func _build_ui() -> void:
 	var size_label := Label.new()
 	size_label.text = "Window size"
 	size_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	size_label.add_theme_font_size_override("font_size", 13)
+	size_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	size_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	size_row.add_child(size_label)
 
@@ -214,7 +214,7 @@ func _build_ui() -> void:
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 70)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
@@ -262,7 +262,7 @@ func _build_ui() -> void:
 	amulet_hint.text = "When on, runs won't target a game you've already beaten as the final amulet. Those games can still appear as stops along the way. Ignored if you've beaten every reachable amulet."
 	amulet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	amulet_hint.custom_minimum_size = Vector2(0, 60)
-	amulet_hint.add_theme_font_size_override("font_size", 13)
+	amulet_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(amulet_hint)
 
@@ -287,7 +287,7 @@ func _build_ui() -> void:
 	trad_hint.text = "A transmute normally swaps a game for another of its own type. Turn this on and a Traditional game instead becomes a random game of any OTHER type — a Traditional is the run's long haul, so trading one for another is no relief. Off by default; every other type always transmutes within its own type."
 	trad_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	trad_hint.custom_minimum_size = Vector2(0, 74)
-	trad_hint.add_theme_font_size_override("font_size", 13)
+	trad_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	trad_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(trad_hint)
 
@@ -314,7 +314,7 @@ func _build_ui() -> void:
 	dev_hint.text = "Enables the dev overlay (press ` / backtick) to add any card, curse, or item to the player."
 	dev_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dev_hint.custom_minimum_size = Vector2(0, 44)
-	dev_hint.add_theme_font_size_override("font_size", 13)
+	dev_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(dev_hint)
 
@@ -359,7 +359,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and browse to overlay.html in the folder below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 58)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
@@ -370,7 +370,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	path.text = ObsCompanion.page_dir()
 	path.editable = false
 	path.select_all_on_focus = true
-	path.add_theme_font_size_override("font_size", 12)
+	path.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	vbox.add_child(path)
 
 	# THE OTHER PAGES, AS FILES RATHER THAN AS URL SUFFIXES.
@@ -390,7 +390,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 		+ "    top.html / bottom.html  the run card and the checklist as separate sources, to put a camera between them"
 	extras.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	extras.custom_minimum_size = Vector2(0, 92)
-	extras.add_theme_font_size_override("font_size", 13)
+	extras.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	extras.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(extras)
 
@@ -411,7 +411,7 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 50)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	hint.text = "Starting over as %s: erases this profile's runs, stats, tier list, owned games and run settings. The profile itself stays, and no other profile is touched." % Profiles.active_name()
 	vbox.add_child(hint)
@@ -467,7 +467,7 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 76)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 

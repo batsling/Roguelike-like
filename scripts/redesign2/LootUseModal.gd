@@ -469,7 +469,7 @@ func _pick_cell(entry: Dictionary) -> Button:
 
 	var name := Label.new()
 	name.text = LootSystem.display_name(entry)
-	name.add_theme_font_size_override("font_size", 10)
+	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	name.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -151,7 +151,7 @@ func rebuild(dash_mode: bool) -> void:
 	search_box.placeholder_text = "Search…"
 	search_box.text = search
 	search_box.custom_minimum_size = Vector2(150, 0)
-	search_box.add_theme_font_size_override("font_size", 12)
+	search_box.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	# Live rather than debounced: a Dash offers the games CONNECTED to where you
 	# stand — a couple of dozen at the worst hub — so re-filtering is a sort of a
 	# short list, not the Collection's sweep of 865.
@@ -177,7 +177,7 @@ func rebuild(dash_mode: bool) -> void:
 	for i in range(type_opt.item_count):
 		if type_opt.get_item_id(i) == type_filter:
 			type_opt.select(i)
-	type_opt.add_theme_font_size_override("font_size", 12)
+	type_opt.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	type_opt.focus_mode = Control.FOCUS_NONE
 	type_opt.item_selected.connect(func(idx: int):
 		type_filter = type_opt.get_item_id(idx)
@@ -185,7 +185,7 @@ func rebuild(dash_mode: bool) -> void:
 	bar.add_child(type_opt)
 
 	count_label = Label.new()
-	count_label.add_theme_font_size_override("font_size", 11)
+	count_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	count_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.add_child(count_label)
@@ -209,7 +209,7 @@ func _sort_button(text: String, key: StringName, tip: String) -> Button:
 	b.tooltip_text = tip
 	b.toggle_mode = true
 	b.button_pressed = sort == key
-	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	b.focus_mode = Control.FOCUS_NONE      # so tabbing stays in the search box
 	b.pressed.connect(func():
 		sort = key

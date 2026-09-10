@@ -768,7 +768,7 @@ func _footer() -> Control:
 	var g: GameData = game()
 	if g != null:
 		row.add_child(_rate_button(g))
-	_exit_btn = UITheme.confirm_button(exit_text(), Vector2(260, 42), 16)
+	_exit_btn = UITheme.confirm_button(exit_text(), Vector2(260, 42), UITheme.FONT_SUB)
 	_exit_btn.pressed.connect(dismiss)
 	row.add_child(_exit_btn)
 	# Deferred, because this row is built before it is parented and `grab_focus` on

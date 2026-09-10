@@ -125,7 +125,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 
 	var subtitle := Label.new()
 	subtitle.text = game_name
-	subtitle.add_theme_font_size_override("font_size", 18)
+	subtitle.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	subtitle.add_theme_color_override("font_color", Color(0.9, 0.92, 1.0))
 	vbox.add_child(subtitle)
 
@@ -139,7 +139,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 		vbox.add_child(cover)
 
 	_score_label = Label.new()
-	_score_label.add_theme_font_size_override("font_size", 16)
+	_score_label.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	vbox.add_child(_score_label)
 
 	# 1-10 as ten toggle-ish buttons.
@@ -157,7 +157,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 
 	var notes_label := Label.new()
 	notes_label.text = "Notes (optional)"
-	notes_label.add_theme_font_size_override("font_size", 14)
+	notes_label.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	notes_label.add_theme_color_override("font_color", Color(0.8, 0.82, 0.88))
 	vbox.add_child(notes_label)
 

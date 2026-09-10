@@ -395,7 +395,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 
 	var name := Label.new()
 	name.text = LootSystem.display_name(entry, face_up)
-	name.add_theme_font_size_override("font_size", 10)
+	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	name.add_theme_color_override("font_color", UITheme.TEXT if known else UITheme.TEXT_FAINT)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP

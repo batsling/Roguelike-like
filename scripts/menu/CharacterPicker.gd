@@ -91,14 +91,14 @@ func _build() -> void:
 	vbox.add_child(header)
 	var title := Label.new()
 	title.text = "Choose Your Character"
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(title)
 	var hint := Label.new()
 	hint.text = "Each hero opens the run with a different Health pool and set of verbs."
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	header.add_child(hint)
 
@@ -166,7 +166,7 @@ func _build() -> void:
 	confirm.custom_minimum_size = Vector2(220, 44)
 	confirm.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	confirm.add_theme_color_override("font_color", UITheme.GOLD)
-	confirm.add_theme_font_size_override("font_size", 18)
+	confirm.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	footer.add_child(confirm)
 
 	# Selection state shared between the tiles, the detail panel, and Confirm.
@@ -264,7 +264,7 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(TILE_SIZE.x - 16, 0)
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	vb.add_child(name_lbl)
 	return tile
@@ -297,7 +297,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
-	name_lbl.add_theme_font_size_override("font_size", 22)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	name_lbl.add_theme_color_override("font_color", UITheme.GOLD)
 	left.add_child(name_lbl)
 
@@ -307,14 +307,14 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		src.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		src.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		src.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
-		src.add_theme_font_size_override("font_size", 12)
+		src.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		src.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		left.add_child(src)
 
 	var hp := Label.new()
 	hp.text = "❤ %d Health" % ch.base_max_hp
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp.add_theme_font_size_override("font_size", 15)
+	hp.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
 	left.add_child(hp)
 
@@ -337,7 +337,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		var desc := Label.new()
 		desc.text = ch.description
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.add_theme_font_size_override("font_size", 13)
+		desc.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		desc.add_theme_color_override("font_color", UITheme.TEXT.lerp(UITheme.TEXT_DIM, 0.3))
 		right.add_child(desc)
 
@@ -347,7 +347,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		var items_lbl := Label.new()
 		items_lbl.text = ", ".join(Data.item_names(ch.starting_items))
 		items_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		items_lbl.add_theme_font_size_override("font_size", 12)
+		items_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		items_lbl.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
 		right.add_child(items_lbl)
 
@@ -357,21 +357,21 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		var lu := Label.new()
 		lu.text = ch.level_up_condition
 		lu.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lu.add_theme_font_size_override("font_size", 12)
+		lu.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		lu.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))
 		right.add_child(lu)
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			var reward := Label.new()
 			reward.text = "→ %s" % ch.level_up_reward
 			reward.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			reward.add_theme_font_size_override("font_size", 12)
+			reward.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
 			right.add_child(reward)
 
 func _detail_head(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	l.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.2))
 	return l
 
@@ -390,7 +390,7 @@ func _verb_chips(ch: CharacterData) -> Control:
 		pill.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL_HI, 6, 4, 1, UITheme.BORDER))
 		var pl := Label.new()
 		pl.text = "%s %d" % [v[0], int(v[1])]
-		pl.add_theme_font_size_override("font_size", 11)
+		pl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		pl.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.3))
 		pill.add_child(pl)
 		flow.add_child(pill)
@@ -407,7 +407,7 @@ func _verb_chips(ch: CharacterData) -> Control:
 		pl.tooltip_text = ("%d point%s of Bash / Dash / Push / Transmute / Scramble / Bombs, "
 			+ "rolled fresh when the run starts.") % [
 				ch.start_random, "" if ch.start_random == 1 else "s"]
-		pl.add_theme_font_size_override("font_size", 11)
+		pl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		pl.add_theme_color_override("font_color", UITheme.GOLD)
 		pill.add_child(pl)
 		flow.add_child(pill)

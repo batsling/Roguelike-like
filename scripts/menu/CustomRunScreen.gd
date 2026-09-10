@@ -163,7 +163,7 @@ func _build() -> void:
 
 	_verdict = Label.new()
 	_verdict.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_verdict.add_theme_font_size_override("font_size", 12)
+	_verdict.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	root.add_child(_verdict)
 
 	root.add_child(_buttons())
@@ -186,7 +186,7 @@ func _header() -> Control:
 	var sub := Label.new()
 	sub.text = "Three filters, not one: what the map is made of, where you may start, and what you're looking for."
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", 12)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(sub)
 
@@ -215,7 +215,7 @@ func _filter_column(col: Dictionary) -> Control:
 
 	var head := Label.new()
 	head.text = col["title"]
-	head.add_theme_font_size_override("font_size", 13)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	box.add_child(head)
 
@@ -223,7 +223,7 @@ func _filter_column(col: Dictionary) -> Control:
 	blurb.text = col["blurb"]
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	blurb.custom_minimum_size.y = 32
-	blurb.add_theme_font_size_override("font_size", 11)
+	blurb.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	blurb.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(blurb)
 
@@ -244,7 +244,7 @@ func _filter_column(col: Dictionary) -> Control:
 	box.add_child(spacer)
 
 	var count := Label.new()
-	count.add_theme_font_size_override("font_size", 12)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	box.add_child(count)
 	_counts[key] = count
 	return frame
@@ -252,7 +252,7 @@ func _filter_column(col: Dictionary) -> Control:
 func _axis_label(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	return l
 
@@ -278,7 +278,7 @@ func _genre_row(key: String) -> Control:
 	for type_val in RunGraph.TYPE_ORDER:
 		var b := CheckBox.new()
 		b.text = RunGraph.type_label(int(type_val))
-		b.add_theme_font_size_override("font_size", 11)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		b.add_theme_color_override("font_color", RunGraph.type_color(int(type_val)))
 		b.toggled.connect(func(on):
 			var genres: Array = (_specs[key] as Dictionary)["genres"]
@@ -308,7 +308,7 @@ func _year_field(hint: String, on_change: Callable) -> LineEdit:
 	e.placeholder_text = hint
 	e.custom_minimum_size.x = 62
 	e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	e.add_theme_font_size_override("font_size", 12)
+	e.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	e.text_changed.connect(func(txt):
 		var digits: String = ""
 		for c in txt:
@@ -333,14 +333,14 @@ func _band_block() -> Control:
 
 	var head := Label.new()
 	head.text = "HOW LONG A RUN"
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	box.add_child(head)
 
 	var note := Label.new()
 	note.text = "Games from the start to the Amulet."
 	note.tooltip_text = "The opening cards are drawn from inside this band — a start is offered when it is this far from the Amulet."
-	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(note)
 
@@ -357,7 +357,7 @@ func _band_block() -> Control:
 			_min_path = _max_path))
 
 	_band_label = Label.new()
-	_band_label.add_theme_font_size_override("font_size", 12)
+	_band_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_band_label.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(_band_label)
 	return box
@@ -380,25 +380,25 @@ func _seed_block() -> Control:
 
 	var head := Label.new()
 	head.text = "SEED  (optional)"
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	box.add_child(head)
 
 	var note := Label.new()
 	note.text = "The same number deals the same run."
 	note.tooltip_text = "Leave it blank to be dealt a fresh run. Type a number a run was played on and it comes back: the same Amulet, the same opening cards, the same drops."
-	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(note)
 
 	_seed_field = LineEdit.new()
 	_seed_field.placeholder_text = "roll me one"
-	_seed_field.add_theme_font_size_override("font_size", 12)
+	_seed_field.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_seed_field.text_changed.connect(_on_seed_typed)
 	box.add_child(_seed_field)
 
 	_seed_note = Label.new()
-	_seed_note.add_theme_font_size_override("font_size", 12)
+	_seed_note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_seed_note.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(_seed_note)
 	return box
@@ -433,7 +433,7 @@ func _band_spin(label_text: String, value: int, on_change: Callable) -> Control:
 	col.add_theme_constant_override("separation", 2)
 	var l := Label.new()
 	l.text = label_text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	col.add_child(l)
 	var spin := SpinBox.new()
@@ -459,7 +459,7 @@ func _target_block() -> Control:
 
 	var head := Label.new()
 	head.text = "AIM AT A GAME  (optional)"
-	head.add_theme_font_size_override("font_size", 12)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	box.add_child(head)
 
@@ -470,13 +470,13 @@ func _target_block() -> Control:
 	_target_search = LineEdit.new()
 	_target_search.placeholder_text = "Search the catalog…"
 	_target_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_target_search.add_theme_font_size_override("font_size", 12)
+	_target_search.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_target_search.text_changed.connect(_on_target_search)
 	row.add_child(_target_search)
 
 	var clear := Button.new()
 	clear.text = "Clear"
-	clear.add_theme_font_size_override("font_size", 11)
+	clear.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	clear.pressed.connect(func():
 		_amulet_id = &""
 		_target_search.text = ""
@@ -486,7 +486,7 @@ func _target_block() -> Control:
 
 	_target_label = Label.new()
 	_target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_target_label.add_theme_font_size_override("font_size", 12)
+	_target_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	box.add_child(_target_label)
 
 	_target_results = VBoxContainer.new()
@@ -514,7 +514,7 @@ func _on_target_search(text: String) -> void:
 		var b := Button.new()
 		b.text = "%s  (%d)" % [g.display_name, g.year] if g.year > 0 else g.display_name
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 11)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		b.pressed.connect(func():
 			_amulet_id = g.id
 			_target_search.text = ""
@@ -645,7 +645,7 @@ func _buttons() -> Control:
 	_begin_btn = Button.new()
 	_begin_btn.text = "▶  Begin the run"
 	_begin_btn.custom_minimum_size = Vector2(240, 42)
-	_begin_btn.add_theme_font_size_override("font_size", 16)
+	_begin_btn.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	_begin_btn.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.55), 8, 8, 2, UITheme.ACCENT))
 	_begin_btn.add_theme_color_override("font_color", UITheme.GOLD)

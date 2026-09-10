@@ -297,7 +297,7 @@ func _header() -> Control:
 	hide_btn.text = "⌄  Hide"
 	hide_btn.tooltip_text = "Put the event away and come back to it — nothing is decided."
 	hide_btn.custom_minimum_size = Vector2(84, 26)
-	hide_btn.add_theme_font_size_override("font_size", 12)
+	hide_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	hide_btn.pressed.connect(_hide_event)
 	bar.add_child(hide_btn)
 	col.add_child(bar)
@@ -307,7 +307,7 @@ func _header() -> Control:
 		var from := Label.new()
 		from.text = "From: %s" % _event.source_game
 		from.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		from.add_theme_font_size_override("font_size", 11)
+		from.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		from.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		col.add_child(from)
 	return col
@@ -602,7 +602,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	btn.text = EventSystem.fill_name_holes(String(choice.get("text", "…")), choice)
 	btn.custom_minimum_size = Vector2(0, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.add_theme_font_size_override("font_size", 15)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	# A press that would end the run wears the warning ITSELF, not only the line
 	# under it. An event can kill you — Scrap Ooze's reach on your last point of
 	# Health, Abyssal Baths' last dip — and the red text alone sat under a button
@@ -632,7 +632,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		# Reddens as the press gets closer to lethal — Abyssal Baths' Linger
 		# climbs until it can kill, and the number on the button should look like
 		# what it is before the prose gets round to saying so.
@@ -647,7 +647,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		warn.add_theme_font_size_override("font_size", 11)
+		warn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		warn.add_theme_color_override("font_color", UITheme.DANGER)
 		col.add_child(warn)
 	return col
@@ -738,7 +738,7 @@ func _show_epilogue() -> void:
 		note.text = "You head off to a %s game…" % String(_play_request.get("tag", ""))
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.add_theme_font_size_override("font_size", 12)
+		note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		note.add_theme_color_override("font_color", UITheme.ACCENT)
 		_prose_box.add_child(note)
 	_fit.call_deferred()
@@ -746,7 +746,7 @@ func _show_epilogue() -> void:
 	var done := Button.new()
 	done.custom_minimum_size = Vector2(0, 42)
 	done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	done.add_theme_font_size_override("font_size", 16)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	done.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.6), 8, 8, 2, UITheme.ACCENT))
 	done.add_theme_stylebox_override("hover",
@@ -839,7 +839,7 @@ func _hide_event() -> void:
 	_chip.offset_top = -58
 	_chip.offset_right = -16
 	_chip.offset_bottom = -16
-	_chip.add_theme_font_size_override("font_size", 13)
+	_chip.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_chip.add_theme_color_override("font_color", UITheme.ACCENT)
 	_chip.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.BG, 8, 8, 2, UITheme.ACCENT))

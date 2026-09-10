@@ -77,7 +77,7 @@ func _build() -> void:
 	hint.text = "Each profile keeps its own runs, stats, tier list, owned games and run settings. The window and dev settings are shared."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 44)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
@@ -113,7 +113,7 @@ func _build() -> void:
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(0, 20)
-	_status.add_theme_font_size_override("font_size", 13)
+	_status.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_status.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(_status)
 
@@ -173,7 +173,7 @@ func _profile_row(p: Dictionary) -> Control:
 	if is_active:
 		var here := Label.new()
 		here.text = "playing"
-		here.add_theme_font_size_override("font_size", 12)
+		here.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		here.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 		row.add_child(here)
 	else:

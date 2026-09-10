@@ -9,6 +9,11 @@ cold in a later session.
 Each item says **what** is wrong, **why it matters**, and **what it would take** —
 because the sizing is the part that is expensive to re-derive.
 
+**Eight items, of which six are open.** §1 is **decided** (keep the tier-list
+palette) and §2's font half is **done** (all 47 screens on the type scale); both
+are kept here with their reasoning rather than deleted, so neither gets asked
+again. A closed item says so in its heading.
+
 > Two notes for whoever picks this up.
 >
 > **Colour claims need a pixel, not a screenshot.** Judging a dark surface by eye
@@ -24,42 +29,69 @@ because the sizing is the part that is expensive to re-derive.
 
 ---
 
-## 1. The tier list is on a different palette from the game
+## 1. The tier list's palette — DECIDED, keep it
 
-**What.** `TierListScreen.TIER_COLORS` is the stock tiermaker ramp — pastel
-red / orange / yellow / green / blue / purple — inside a game with a deliberate
-warm ember-and-parchment palette (`UITheme`). `UNRANKED_COLOR` is a muted brown
-that does match, which makes the six above it look more borrowed, not less.
+**Closed, not open.** `TierListScreen.TIER_COLORS` is the stock tiermaker ramp —
+pastel red / orange / yellow / green / blue / purple — inside a game with a
+deliberate warm ember-and-parchment palette, and `UNRANKED_COLOR` is a muted brown
+that does match, which makes the six above it look more borrowed rather than less.
+The question was put and the answer was **leave the colours as they are**.
 
-**Why it matters.** It is the last screen in the project drawn in colours that are
-not the project's. The modal surface (`ModalScaffold.PANEL_BG`) and every popup
-were brought onto the palette in this pass; these were not.
+**Why, so this does not get re-litigated.** S/A/B/C/D/F is legible *because* it is
+the ramp everyone else uses — the borrowed look is the feature. Recolouring it to
+six warm tones buys palette consistency on a screen that sits outside the run, and
+pays for it in six tiers that are harder to tell apart at a glance.
 
-**What it would take.** One const array. The real work is the decision, not the
-edit: S/A/B/C/D/F *as a convention* is legible precisely because it is the same
-ramp everyone else uses, so replacing it with six warm tones may cost more than
-it buys. Worth putting the question before doing it. If it changes, the tier
-buttons in `RateGameModal` and the move-to row read the same colours.
+A future pass that wants to narrow the gap anyway has one move that does not
+touch the convention: pull the six slightly toward the ember palette (desaturate,
+warm the whites) while keeping the hue ORDER recognisable. That is a different,
+smaller change from replacing the ramp, and it is the only version worth
+reopening. If it ever does change, the tier buttons in `RateGameModal` and the
+move-to row read the same const array.
 
-## 2. The type and spacing scales cover the run screens only
+## 2. The spacing scale covers the run screens only — fonts are done
 
-**What.** `UITheme` gained a type scale (`FONT_MICRO` … `FONT_HERO`), a spacing
-scale (`GAP_NONE` … `GAP_SECTION`) and a z-order registry (`UITheme.Layer`), and
-nine run screens were migrated onto them — 129 font sizes and 88 gaps. The other
-~31 screens still hold bare integers: `Collection.gd` (2518 lines),
-`AtlasView.gd` (2794), `RunOverScreen.gd`, `LootDropModal.gd`, `EventModal2.gd`
-and the rest.
+**Done: fonts, project-wide.** All 47 screens that set a font size in code now
+take it from the type scale; 259 bare integers became named steps in one pass.
+Every replacement was value-preserving by construction (each integer mapped to the
+token holding exactly that integer, and the diff was read back to prove every
+changed line round-trips byte-identical), so nothing moved and nothing needed
+re-fitting. `test_design_tokens.gd` keeps it that way with `MIGRATED_FONTS`, and
+that list is asserted **complete** against a walk of `scripts/` — a new screen
+cannot ship bare integers by not being on it.
+
+**Still open: gaps, ~38 screens.** `MIGRATED_GAPS` is the original nine run
+screens. `Collection.gd` (2518 lines), `AtlasView.gd` (2794), `RunOverScreen.gd`,
+`EventModal2.gd` and the rest still type their separations at the call site.
 
 **Why it matters.** It is the reason layout changes are expensive here. "Give this
 column 26px back" means auditing eight numbers by hand and writing a comment
 explaining each — which is exactly what the overworld's own history records.
 
-**What it would take.** Mechanical, one file at a time. The scale holds the values
-already in use, so a migration is a pure rename with no visual change and no
-re-fitting. `test_design_tokens.gd` has the machinery: add the file to `MIGRATED`
-and it will fail on any bare integer left behind; genuinely off-scale values go in
-`OFF_SCALE_ALLOWED` with a reason. Most of those are gaps that are load-bearing to
-the pixel on the 720p-budgeted page — do not snap one to the nearest step.
+**What it would take.** One file at a time, and **slower than the font pass was**:
+a gap is not a free rename. Several on the run screens are load-bearing to the
+pixel on the 720p-budgeted page, so each one has to be read before it is named —
+do not snap one to the nearest step. Add the file to `MIGRATED_GAPS` and the test
+will fail on any bare integer left behind; genuinely off-scale values go in
+`OFF_SCALE_GAPS` with a reason.
+
+**What the font pass turned up, which is the other half of this item.** Five sizes
+have no step on the scale, so they were left as literals in `OFF_SCALE_FONTS`
+rather than silently restyled — naming them means *changing* them, and a restyle
+does not belong in a rename. Each is an open question:
+
+| size | uses | where | the question |
+|---|---|---|---|
+| 17 | 11 | eight `SettingsModal` section headings, plus `AtlasView`, `RouteLadder`, `RunOverScreen` | `FONT_HEAD` is 18. Snapping is a 1px restyle on a modal nobody has re-fitted — the biggest cluster and the likeliest yes |
+| 24 | 7 | seven screen/modal titles | sits between `FONT_TITLE_LG` (22) and `FONT_DISPLAY` (26); second-biggest group |
+| 21 | 2 | `EventModal2`, `ItemInfoCard` titles | between `FONT_TITLE` (20) and `FONT_TITLE_LG` (22) |
+| 30 | 1 | `Collection`'s screen title | every other screen's title is 20 or 22, so this one is drift rather than a decision |
+| 34 | 1 | `RunOverScreen`'s verdict | the largest type in the game; a genuine one-off, and arguably fine as one |
+
+Two ways to close it: snap each to its nearest step (a real visual change — fit
+must be re-checked with the `verify` skill, not reasoned about), or promote the
+ones that are doing a job into named steps. 17 and 24 together are 18 of the 22
+uses, so they are the decision; 30 is almost certainly just a stray.
 
 ## 3. The Collection's grid
 

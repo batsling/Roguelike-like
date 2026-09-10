@@ -75,7 +75,7 @@ func _ready() -> void:
 	add_child(row)
 	var label := Label.new()
 	label.text = "Drag here to throw away"
-	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	label.add_theme_color_override("font_color", RED.lerp(Color.WHITE, 0.25))
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE

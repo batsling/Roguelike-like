@@ -234,14 +234,14 @@ func _build_ui() -> void:
 
 	_title_line = Label.new()
 	_title_line.text = _title
-	_title_line.add_theme_font_size_override("font_size", 26)
+	_title_line.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	_title_line.add_theme_color_override("font_color", Color(0.5, 1.0, 0.7))
 	_title_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_title_line)
 
 	_gold_line = Label.new()
 	_gold_line.text = "+%d gold" % _gold
-	_gold_line.add_theme_font_size_override("font_size", 18)
+	_gold_line.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_gold_line.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
 	_gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(_gold_line)
@@ -392,14 +392,14 @@ func _build_catalog_tile(item: ItemData) -> Control:
 	name_lbl.text = item.display_name
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
 	col.add_child(name_lbl)
 
 	var kind_lbl := Label.new()
 	kind_lbl.text = _catalog_kind_line(item)
 	kind_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	kind_lbl.add_theme_font_size_override("font_size", 10)
+	kind_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	kind_lbl.add_theme_color_override("font_color", Color(0.62, 0.62, 0.66))
 	col.add_child(kind_lbl)
 
@@ -433,7 +433,7 @@ func _refresh_multi() -> void:
 		var head := Label.new()
 		head.text = "%s Chest" % _size_name(int(_chest_sizes[i]))
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		head.add_theme_font_size_override("font_size", 15)
+		head.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		head.add_theme_color_override("font_color",
 			Color(0.6, 0.7, 0.6) if bool(_chest_taken[i]) else Color(1.0, 0.85, 0.4))
 		col.add_child(head)
@@ -500,7 +500,7 @@ func _build_choice_tile(item: ItemData, chest: int = -1) -> Control:
 	desc.text = item.description
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(210, 0)
-	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	desc.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(desc)
