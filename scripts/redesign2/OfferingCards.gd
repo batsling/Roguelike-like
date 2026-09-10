@@ -4,13 +4,13 @@ extends RefCounted
 # The offering — the cards you choose your next game from, and the hover line
 # under them (docs/games-first-redesign.md §4).
 #
-# Two sets of cards, because there are two choosing phases. START_SELECT draws
-# the choose-your-start cards (render_start): one per offered start, each a
-# different genre and each the same distance band from the amulet. SELECT draws
-# the ordinary offering (render): the games reachable from where the run is
-# standing, as covers with their names under them. They share the strip, the
-# hover line and every widget below the top two functions, because they are the
-# same decision asked twice.
+# ONE set of cards, and there used to be two. This also drew the
+# choose-your-start panel (`render_start`) — one card per offered start, each a
+# different genre — because the opening choice was `Phase.START_SELECT` on this
+# same page and reused this same strip. It is `StartPicker` now, its own screen
+# with its own layout, so this class is the run's offering and nothing else:
+# the games reachable from where the run is standing, as covers with their names
+# under them.
 #
 # Split out of Overworld2 (docs/performance-backlog.md §1). The page owns the
 # three containers this fills — `_choices_row`, `_preview` and `_preview_art`,
@@ -26,13 +26,6 @@ var _page: Node = null
 var _row: HFlowContainer = null      # the page's _choices_row
 var _line: RichTextLabel = null      # the page's _preview
 var _art: TextureRect = null         # the page's _preview_art
-
-# Which of the two phases drew the cards on the table. Tracked here rather than
-# read off the page's `_phase` for the reason PackStrip takes its `reporting`
-# flag as an argument: it keeps this class independent of the page's phase model,
-# and the two render entry points are the only things that can change it —
-# render_start runs only in START_SELECT and render only in SELECT.
-var _starting: bool = false
 
 # Tries the hovered card would grant, or -1 with nothing hovered. Owned here
 # because only the hover line reads it; the page resets it when it commits to a
@@ -52,115 +45,7 @@ func _init(page: Node, row: HFlowContainer, line: RichTextLabel, art: TextureRec
 func reset_hover_grant() -> void:
 	_hover_grant = -1
 
-# The choose-your-start panel (Phase.START_SELECT): one card per offered start,
-# each a different genre and each the same distance band from the amulet, so the
-# decision is "which genre do I want to open on and route from", never "which of
-# these is the short run".
-func render_start() -> void:
-	_starting = true
-	_page._clear(_row)
-	_hover_grant = -1
-	if _page._start_options.is_empty():
-		var l := Label.new()
-		l.text = "No start could be rolled — check the game filter in Settings."
-		_row.add_child(l)
-		return
-	for i in range(_page._start_options.size()):
-		_row.add_child(_make_start_card(i, _page._start_options[i]))
-	_line.text = _preview_idle_text()
-	_show_hover_art({})
-
-# One start card: the cover, the game's name, its genre, and how many games stand
-# between it and the Amulet — which is named, along with everything else on the
-# road to it (see _page.amulet_name).
-func _make_start_card(index: int, opt: Dictionary) -> Control:
-	var game: GameData = opt["game"]
-	var accent: Color = RunGraph.type_color(int(opt["type"]))
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 4)
-	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
-
-	var type_lbl := Label.new()
-	type_lbl.text = RunGraph.type_label(int(opt["type"]))
-	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	type_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
-	type_lbl.add_theme_font_size_override("font_size", 13)
-	type_lbl.add_theme_color_override("font_color", accent.lerp(UITheme.TEXT, 0.35))
-	card.add_child(type_lbl)
-
-	# The road this start opens on, before committing to it. The destination is
-	# drawn unnamed — the distance is still the only thing the picker gives away
-	# about the Amulet — but its SHAPE is exactly what makes one start different
-	# from another, so it's on the table.
-	card.add_child(_map_preview_button(game.id, game))
-
-	var btn := Button.new()
-	btn.custom_minimum_size = COVER_SIZE
-	var frame_n := UITheme.flat(UITheme.BG, 8, 4, 1, UITheme.BORDER)
-	var frame_h := UITheme.flat(UITheme.PANEL_HI, 8, 4, 2, accent)
-	btn.add_theme_stylebox_override("normal", frame_n)
-	btn.add_theme_stylebox_override("hover", frame_h)
-	btn.add_theme_stylebox_override("pressed", frame_h)
-	btn.add_theme_stylebox_override("focus", frame_h)
-	# Opens the card rather than committing: the start is a game you go and play
-	# now, so it gets the same "here is what's waiting, do you want it" popup every
-	# other game in the run gets. No tooltip, for the same reason an offered card
-	# has none — the hover line under the cards is where a start describes itself.
-	btn.pressed.connect(func(): _page.open_start_choice(index))
-	btn.mouse_entered.connect(func(): _show_start_preview(index))
-	btn.mouse_exited.connect(clear_hover_grant)
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture = game.cover_image
-		btn.add_child(art)
-	else:
-		btn.text = game.display_name
-		btn.add_theme_color_override("font_color", accent)
-	card.add_child(btn)
-
-	var name_lbl := Label.new()
-	name_lbl.text = game.display_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
-	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
-	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
-	card.add_child(name_lbl)
-
-	var dist := Label.new()
-	dist.text = _page._start_distance_text(int(opt["path_len"]))
-	dist.tooltip_text = "The shortest route from %s to %s, the game this run ends on." % [
-		game.display_name, _page.amulet_name()]
-	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE * 2 + 2)
-	dist.add_theme_font_size_override("font_size", BADGE_FONT)
-	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
-	card.add_child(dist)
-	return card
-
-func _show_start_preview(index: int) -> void:
-	if index < 0 or index >= _page._start_options.size():
-		return
-	var opt: Dictionary = _page._start_options[index]
-	# The same one-line hover the offering writes — the start is a game you play,
-	# so what is waiting at it is readable without opening the card, exactly as it
-	# is for every other card in the run.
-	_hover_grant = GameLoop2.shields_for_game(opt["game"])
-	var choice: Dictionary = _page._start_choice(index)
-	_line.text = "%s  ·  [color=#%s]%s[/color]" % [
-		_hover_line(choice), UITheme.GOLD.to_html(false),
-		_page._start_distance_text(int(opt["path_len"]))]
-	_show_hover_art(choice)
-
 func render() -> void:
-	_starting = false
 	_page._clear(_row)
 	# The cards are rebuilt, so nothing is hovered any more.
 	_hover_grant = -1
@@ -422,18 +307,6 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(name_lbl)
 	return card
 
-# The 🗺 button every offered card wears above its cover: opens the optimal path
-# from that game to the Amulet. Full width of the card, so the row of covers stays
-# in line whatever a card's route badge says.
-func _map_preview_button(slot: StringName, game: GameData) -> Button:
-	var b := Button.new()
-	b.text = "🗺  Map"
-	b.tooltip_text = "See the shortest route to the Amulet if you take %s." % game.display_name
-	b.custom_minimum_size = Vector2(COVER_SIZE.x, 24)
-	b.add_theme_font_size_override("font_size", BADGE_FONT)
-	b.pressed.connect(func(): _page.preview_map(slot))
-	return b
-
 # "Beatable:" — the enemies on the board right now that you have ALREADY beaten
 # at this game before. Not a prediction: it's your own record saying this pair
 # has worked, which is exactly what you want to know while choosing where to go
@@ -543,8 +416,6 @@ func clear_hover_grant() -> void:
 # when the two cards on the table are the ends of a detour rather than games to
 # go and play (§10).
 func _preview_idle_text() -> String:
-	if _starting:
-		return "[i]Hover a start to see what it opens on.[/i]"
 	if _page._asking_return():
 		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
 	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"

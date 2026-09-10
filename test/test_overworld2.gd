@@ -2766,14 +2766,35 @@ func test_the_window_counts_unlearned_colours_rather_than_naming_them() -> void:
 			"an unlearned pill is never named: %s" % text)
 	assert_true(text.contains("unlearned"), "it is counted instead: %s" % text)
 
-func test_the_map_button_belongs_to_the_offering() -> void:
+# TWO BUTTONS, TWO DESTINATIONS, TWO NAMES. Both of these used to say `🗺 Map`
+# and both called `open_map`, so the offering's button and the header's button
+# raised the same 865-star chart — and the ladder that actually answers "where
+# does this road go" arrived as a window on top of it. The chart is the Map and it
+# is the header's; the ladder is the Optimal Path and it is the offering's.
+func test_the_offering_opens_the_optimal_path_and_the_header_opens_the_map() -> void:
 	var found: Button = null
 	for c in _ui._select_box.get_children():
 		if c is HBoxContainer:
 			for b in c.get_children():
-				if b is Button and String((b as Button).text).contains("Map"):
+				if b is Button and String((b as Button).text).contains("Optimal Path"):
 					found = b
-	assert_not_null(found, "the map opens from the panel it is a map of")
+	assert_not_null(found, "the offering's own button opens the road it is choosing a step of")
+	assert_false(String(found.text if found != null else "").contains("Map"),
+		"and it does not also call itself the Map")
+	assert_true(String(_ui._header_map_btn.text).contains("Map"),
+		"while the header's button is the Map: %s" % _ui._header_map_btn.text)
+
+# The Optimal Path is the LADDER ALONE — no star chart under it. The chart is one
+# button away in the header, and raising 865 stars to answer "which of these three
+# roads" is the thing that button is for, not this one.
+func test_the_optimal_path_opens_the_ladder_without_the_chart() -> void:
+	var modal = _ui.open_optimal_path()
+	assert_not_null(modal, "the offering's button opens a ladder")
+	if modal == null:
+		return
+	assert_null(modal._atlas, "and no star chart underneath it")
+	assert_true(String(modal._title if modal._title != "" else "→  Optimal Path to the Amulet")
+		.contains("Optimal Path"), "which says what it is")
 
 # …AND FROM THE HEADER, which is the only one of the two that is up mid-game: the
 # offering panel is put away the moment you commit, and "where does this game
@@ -4413,14 +4434,6 @@ func test_the_popup_states_where_the_game_puts_you() -> void:
 # The per-card map: the optimal path a game WOULD open, before taking it
 # ---------------------------------------------------------------------------
 
-# The START cards keep their 🗺 button: the start picker has no popup — there is
-# no run to route from yet, only three genres and a distance band.
-func _map_button(card: Node) -> Button:
-	for child in card.get_children():
-		if child is Button and String((child as Button).text).contains("Map"):
-			return child
-	return null
-
 func test_every_offered_game_draws_its_route_in_the_popup() -> void:
 	# The 🗺 button each card used to wear is gone: the map it opened is drawn
 	# INSIDE the popup now, so the road and the button that takes it are one
@@ -4447,31 +4460,140 @@ func test_the_card_map_is_the_optimal_path_from_that_game() -> void:
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot),
 		"its depth is that game's own distance to the Amulet")
 
-func test_the_start_picker_names_the_amulet_everywhere_it_appears() -> void:
-	_ui.start_run()                       # back to the choose-your-start panel
-	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT)
-	_ui._render_start_choices()
-	var card: Node = _ui._choices_row.get_child(0)
-	assert_not_null(_map_button(card), "a start card offers its map too")
+# ---------------------------------------------------------------------------
+# The opening screen (StartPicker)
+# ---------------------------------------------------------------------------
+#
+# The choice of road is a screen of its own now, raised over this page rather than
+# drawn into its left column. The page still ROLLS the run — the reset that
+# decides the seed has to happen before the map is drawn from it — so these check
+# the seam between the two: the page hands over `_start_options`, the screen
+# reports an index back, and `choose_start` is still the one way in.
+
+func test_a_fresh_run_raises_the_start_screen_over_the_page() -> void:
+	_ui.start_run()
+	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "the run is waiting on a road")
+	assert_not_null(_ui._start_picker, "and the screen that asks for one is up")
+	if _ui._start_picker == null:
+		return
+	assert_false(_ui._header_layer.visible,
+		"the header stands down — it has no run to report yet")
+	assert_eq(ModalScaffold.reserved_top, 0.0,
+		"nothing is centring itself under a bar that is down")
+	# The page BEHIND it is left alone. Hiding it broke the board — a BattlefieldView
+	# inside a hidden scroll region settles at ~1703px of minimum height and, since a
+	# hidden container does not re-sort, brought that layout back with it. The start
+	# screen is opaque, so there is nothing to gain by hiding what it covers.
+	assert_true(_ui._scroll.visible,
+		"and the page under it is left laying itself out normally")
+
+func test_taking_a_road_closes_the_screen_and_gives_the_page_back() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	assert_not_null(picker)
+	if picker == null:
+		return
+	picker.chosen.emit(0)                 # what pressing Begin does
+	assert_null(_ui._start_picker, "the screen is gone")
+	assert_true(_ui._header_layer.visible, "and the header is back")
+	assert_ne(_ui._phase, OVERWORLD.Phase.START_SELECT, "the run has started")
+
+# Driving `choose_start` directly — which is what every other suite does — has to
+# leave the page in the same state as pressing the button, or the tests are
+# rehearsing a screen the player never gets.
+func test_choosing_a_start_directly_also_tears_the_screen_down() -> void:
+	_ui.start_run()
+	assert_not_null(_ui._start_picker)
+	_ui.choose_start(0)
+	assert_null(_ui._start_picker, "the screen came down with it")
+	assert_true(_ui._header_layer.visible, "and the header is back")
+
+func test_the_start_screen_selects_a_road_before_it_commits_to_one() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	if picker == null:
+		pending("no start options rolled for this run")
+		return
+	assert_eq(picker.selected_index(), 0, "one road is preselected, so Begin is never dead")
+	assert_true(String(picker._confirm.text).contains(
+		_ui._start_options[0]["game"].display_name), "and Begin names it")
+	if _ui._start_options.size() > 1:
+		picker.select(1)
+		assert_eq(picker.selected_index(), 1, "clicking the other road selects it")
+		assert_true(String(picker._confirm.text).contains(
+			_ui._start_options[1]["game"].display_name), "and Begin renames itself")
+		assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT,
+			"selecting is not choosing — nothing has been committed to")
+	else:
+		pending("this run rolled a single road, so there is nothing to switch to")
+
+func test_the_start_screen_names_the_amulet_everywhere_it_appears() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_not_null(amulet)
-	if amulet == null:
+	if amulet == null or picker == null:
 		return
-
-	# On the heading over the whole panel...
-	assert_true(_ui._select_head.text.contains(amulet.display_name),
-		"the picker's heading names the Amulet: %s" % _ui._select_head.text)
-	# ...on each card's distance line...
-	assert_true(_card_text(card).contains(amulet.display_name),
-		"and so does the card's distance line")
-	# ...and on the map the card opens.
-	var start_id: StringName = _ui._start_options[0]["game"].id
-	var modal = _ui.preview_map(start_id)
+	var text: String = _all_label_text(picker)
+	# On the banner the whole screen is built around...
+	assert_true(text.contains(amulet.display_name),
+		"the screen names the Amulet: %s" % text.substr(0, 200))
+	# ...and on the road cards' distance lines, which is the same sentence the
+	# offering's cards wear later in the run (_start_distance_text).
+	assert_true(text.contains(_ui._start_distance_text(int(_ui._start_options[0]["path_len"]))),
+		"and each road says how far it stands from it")
+	# ...and on the ladder a road opens.
+	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
 	assert_not_null(modal)
 	if modal == null:
 		return
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
 		"the destination is named, not drawn as a blank")
+
+# The heading COUNTS the roads rather than asserting a number. It said "three
+# genres" for as long as RunGraph.NUM_START_OPTIONS has been 2.
+func test_the_start_screen_counts_the_roads_it_is_offering() -> void:
+	_ui.start_run()
+	if _ui._start_picker == null:
+		pending("no start options rolled for this run")
+		return
+	var text: String = _all_label_text(_ui._start_picker)
+	assert_true(text.contains("%d genre" % _ui._start_options.size()),
+		"the heading counts what is on the table: %s" % text.substr(0, 240))
+
+# Anything a road opens has to come up ABOVE the screen that opened it — both used
+# to mount below it and open perfectly out of sight.
+func test_what_a_road_opens_lands_above_the_start_screen() -> void:
+	_ui.start_run()
+	if _ui._start_picker == null:
+		pending("no start options rolled for this run")
+		return
+	var ladder = _ui.preview_map(_ui._start_options[0]["game"].id)
+	assert_not_null(ladder)
+	if ladder != null:
+		assert_gt(ladder._layer.layer, StartPicker.LAYER,
+			"the optimal path opens over the screen, not under it")
+	var card = _ui.open_start_choice(0)
+	assert_not_null(card)
+	if card != null:
+		assert_gt(card._layer.layer, StartPicker.LAYER,
+			"and so does the road's own card")
+		card._close()
+
+# Every Label and Button caption under `root`, joined. The start screen is a
+# nested layout and which child a given line is is layout, not behaviour.
+func _all_label_text(root: Node) -> String:
+	var out: Array = []
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label:
+			out.append((n as Label).text)
+		elif n is Button:
+			out.append((n as Button).text)
+		for c in n.get_children():
+			stack.append(c)
+	return " | ".join(out)
 
 # Every label on a card, joined — the distance line is a plain Label among
 # several, and which child it is is layout, not behaviour.

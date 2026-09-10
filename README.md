@@ -351,9 +351,7 @@ node and its script.
     is always the seed you get. See `GameState.reset_run` for what one number
     reaches: it fixes Godot's global random stream, the overworld's own generator,
     and the three systems that keep a private one.
-- **`Overworld2.gd`** — the run itself: the opening choose-your-start panel (three
-  games, three genres, all 5–7 games from the amulet — and the one you take is
-  the run's first game, enemy and all), the offering of games
+- **`Overworld2.gd`** — the run itself: the offering of games
   (cover cards), and
   then a two-column stage — checklist on the left (the standing goals while you're
   choosing, the honour-system report step + attempt tracker while you're playing;
@@ -384,12 +382,13 @@ node and its script.
   **The Amulet is named from the first screen.** It used to be the run's one
   secret until a start had been committed to: the picker quoted the DISTANCE
   (`5 games from the Amulet`) and the maps drew the destination as an unnamed
-  `The Amulet — ???` box that opened no card. All of that is gone. The picker's
-  heading names it, each start card's distance line names it
+  `The Amulet — ???` box that opened no card. All of that is gone. The start
+  screen is built around it — its art and its name are the banner across the top
+  (`StartPicker`) — each road's distance line names it
   (`5 games from Guild of Dungeoneering`, via `Overworld2.amulet_name` /
-  `_start_distance_text`), and the map a start card opens names it on its last
-  rung. (That map is the ladder alone — the star chart stays down on the picker;
-  see `RouteLadder.gd`.) Choosing a start is a routing decision, and
+  `_start_distance_text`), and the ladder a road opens names it on its last
+  rung. (That ladder is the ladder alone — the star chart stays down on the
+  start screen; see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.
 
@@ -493,8 +492,39 @@ node and its script.
   Exit game). Exit is the only entry that asks first, since a live run is
   standing behind it — and it asks the question that is actually open, offering
   **Save & exit** beside Exit and Cancel rather than a bare "are you sure".
-  The 🗺 Map moved into the offering's own heading row, beside the cards it is a
-  map of.
+  **`🗺 Map` and `→ Optimal Path` are two buttons, two destinations and two
+  names**, and until the layout pass they were one word for both. The header's
+  `🗺 Map` and the offering heading's `🗺 Map` both called `open_map`, so each
+  raised the whole 865-star **Atlas** — and the *ladder*, which is what actually
+  answers "where does this road go", arrived as a window on top of it. The chart
+  is the **Map** and it is the header's, open from anywhere including mid-game;
+  the ladder is the **Optimal Path** (`Overworld2.open_optimal_path`, and the
+  per-road buttons on the start screen) and it opens alone. `RunMapModal`'s own
+  title says `→ Optimal Path to the Amulet` for the same reason — it is not a map
+  of anything, it is one shortest road drawn rung by rung.
+  - **`StartPicker.gd`** — **the opening screen of a run**: what the Amulet is,
+    and which road you open on. `RunGraph.NUM_START_OPTIONS` starts, one per
+    genre, all 5–7 games from the Amulet — and the one you take is the run's
+    first game, enemy and all. The Amulet gets the top of the screen with its art
+    and its name; each road is a card with its cover, its distance
+    (`N games from <the Amulet>`), the enemy standing on it and its goal, and two
+    buttons — **→ Optimal Path** (the ladder, routed as it would be if you took
+    that road) and **⚙ Details** (the ordinary `GameChoiceModal`). Click a road to
+    select it, **Begin** to take it, the same preview-then-commit shape as
+    `CharacterPicker`.
+    It is **raised by `Overworld2` over its own page** (`_open_start_picker`),
+    which is hidden underneath it along with the pinned header — the run is still
+    rolled by `Overworld2.start_run`, because the reset that decides the seed has
+    to happen before the map is drawn from it. The screen reports an index and
+    `choose_start` does the rest, so a road taken by a player and one taken by a
+    test go through the same door.
+    This was `Phase.START_SELECT` drawn into the overworld's left column until the
+    layout pass: the right-hand half of that screen was an empty board with an
+    unpressable Push/Bomb toolbar on it, and the left half — heading, cards, hover
+    line, verb chips, checklist — measured 647–675px of the 630 a 720p window
+    leaves, so the first screen of every run opened behind a scrollbar with its
+    last line sliced in half. It was also the one phase with **no fit test on it**;
+    `test_screens_fit.gd` measures it now, over six re-rolls.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
     cover, the name and the Amulet's flag; everything else about the decision
     lives here — the **optimal path from that game drawn as the real route
@@ -514,11 +544,12 @@ node and its script.
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
     it is the only thing on screen, and there it keeps one — which is what the
-    **start picker** gets: its 🗺 Map opens the ladder ALONE, no chart. The
-    question on that panel is "which of these three roads", the ladder is the
-    answer to it, and 852 stars with nothing on them to orient by (the run has no
-    position yet) is not; the chart is one `✦ Star chart` button away on the
-    window itself.
+    **start screen** gets: its `→ Optimal Path` opens the ladder ALONE, no chart,
+    and on `StartPicker.MODAL_LAYER` so it lands above the screen that opened it
+    rather than perfectly out of sight beneath it. The question on that screen is
+    "which of these roads", the ladder is the answer to it, and 852 stars with
+    nothing on them to orient by (the run has no position yet) is not; the chart
+    is one `✦ Star chart` button away on the window itself.
     **Every rung is named, the Amulet included**: the ladder used to draw the
     destination as `The Amulet — ???` on a start-picker map, and no longer does
     (see "The Amulet is named from the first screen" below).

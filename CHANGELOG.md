@@ -11,6 +11,62 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The choice of road is its own screen, and the Amulet is what it is about.**
+  The opening choice was `Phase.START_SELECT` drawn into the overworld's left
+  column, and the page it borrowed is built for a run that has started. At the
+  moment of the run's first decision the right-hand half was an empty 4×4 board
+  with a hero standing on no run, `EXTRA TURNS 0`, `no route to the Amulet` and a
+  Push / Bomb toolbar that could not be pressed — about 600×560 of furniture that
+  could be neither read nor used. The left half, meanwhile, did not fit: heading,
+  cards, hover line, verb chips and the standing checklist measured **647–675px of
+  the 630** a 720p window leaves, so the first screen of every run opened behind a
+  scrollbar with its last line sliced in half. And the Amulet — the thing both
+  roads end on, and the whole of what makes one road different from another — was
+  the opening clause of a wrapped sentence above two covers.
+  `StartPicker` is that screen now. The Amulet's art and name are the banner
+  across the top; each road is a card with its cover, its distance, the enemy
+  standing on it and its goal, and its own `→ Optimal Path` and `⚙ Details`.
+  Click a road to select it and **Begin** to take it — preview-then-commit, the
+  same shape as `CharacterPicker`, because a card that commits on the first click
+  cannot be read before it is answered.
+  **The run is still rolled by `Overworld2.start_run`**, which raises the screen
+  over its own hidden page: the reset that decides the seed has to happen before
+  the map is drawn from it, so booting the run from a menu screen would mean
+  either rolling the graph twice or putting run-boot somewhere with no business
+  doing it. The screen reports an index; `choose_start` is still the one door in,
+  so a road taken by a player and one taken by a test leave the page identical.
+  The heading also **counts** the roads instead of asserting a number — it said
+  "three genres" for as long as `RunGraph.NUM_START_OPTIONS` has been 2.
+
+- **`🗺 Map` and `→ Optimal Path` are two buttons, two destinations, two names.**
+  Three buttons on the old start panel said `Map`, for two different things: the
+  header's and the offering heading's both called `open_map` and raised the whole
+  865-star Atlas, while the per-card ones opened the ladder. The chart is the
+  **Map** and it is the header's, open from anywhere including mid-game; the
+  ladder is the **Optimal Path** — `Overworld2.open_optimal_path`, the per-road
+  buttons on the start screen, and `RunMapModal`'s own title, which stopped
+  calling itself `Map to the Amulet` because it is not a map of anything, it is
+  one shortest road drawn rung by rung.
+
+- **The toasts moved to the foot of the screen.** The stack was anchored
+  top-right at `offset_top = 56`, which on the one screen this game spends its run
+  on is exactly where the battlefield's pressure bar sits — so every drop, pickup
+  and arrival painted over `EXTRA TURNS`, the distance to the Amulet and the
+  board's size and tier. (The loot toggle had already been moved out from under
+  this same stack; the pressure bar simply inherited the spot.) They pile up from
+  the bottom edge now, centred, newest against the foot — the least dense band in
+  every phase — and the overworld publishes the `🛒 Shop ↓` pointer's height to
+  them so the two cannot share it.
+
+- **The screens that fit are measured, including the one that never was.**
+  `test_screens_fit.gd` skips ScrollContainers with their contents, which is right
+  for a long list and is why it could never see the overworld's page; and
+  `test_overworld2.gd::_assert_fits` only ever runs *after* `choose_start`. So the
+  opening screen fell between the two guards and overflowed for as long as it
+  existed. It is measured now, over six re-rolls — its height rides on how a run's
+  game names and goal sentences happen to wrap — along with the optimal path and
+  the road card it can open over itself.
+
 - **Rating a game and putting it in a tier are two presses now, and the second one
   is a button.** Scoring a game out of 10 used to open the tier list on submit,
   from the select screen — which meant "record what I thought of it" and "decide

@@ -432,6 +432,7 @@ var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when
 var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or null
 var _completed_popup: CompletedGoalsPanel  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
+var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
 # The page owns the container; PackStrip fills it (see _refresh_items).
@@ -595,6 +596,11 @@ func start_run(character_id: StringName = &"") -> void:
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
 	_dismiss_post_game()
+	# …including a start screen that never got answered. `New run` from the menu
+	# lands here with the previous roll's screen still up, and `_open_start_picker`
+	# below will not replace one that already exists — so without this the player is
+	# offered the OLD run's two roads for a run that has just been rerolled.
+	_close_start_picker()
 	_resolving = false
 	_attempt_resolve = false
 	_board.clear_fx()
@@ -658,6 +664,67 @@ func start_run(character_id: StringName = &"") -> void:
 	_phase = Phase.START_SELECT
 	_refresh()
 	_scroll_to_top()
+	_open_start_picker()
+
+# --- the opening screen ----------------------------------------------------
+#
+# The choice of road is `StartPicker`, a screen of its own raised over this page
+# rather than drawn into it. The run is rolled HERE, in `start_run`, exactly as it
+# always was — the reset that decides the seed has to happen before the map is
+# drawn from it (see the note above `GameLoop2.start_run`), and moving that into a
+# menu screen would mean either rolling the graph twice or booting the run from
+# somewhere that has no business booting one. So the page still owns the run, and
+# the screen is a view of `_start_options` that reports an index back.
+#
+# The page is hidden underneath it, and so is the pinned header: at this moment
+# the bar is reporting a Health pool, a purse, a character and a road walked that
+# no run has yet, and the page behind is a board with an empty grid on it. Both
+# come back the moment a road is taken.
+func _open_start_picker() -> void:
+	if _start_picker != null and is_instance_valid(_start_picker):
+		return
+	if _start_options.is_empty():
+		return
+	_start_picker = StartPicker.open(self)
+	_start_picker.chosen.connect(_on_start_chosen)
+	_start_picker.cancelled.connect(_on_start_cancelled)
+	_set_run_page_visible(false)
+
+func _on_start_chosen(index: int) -> void:
+	# choose_start closes the picker itself, so a road taken from a test and a road
+	# taken from the screen leave the page in the same state.
+	choose_start(index)
+
+func _on_start_cancelled() -> void:
+	_close_start_picker()
+	menu_action(MenuItem.MAIN_MENU)
+
+func _close_start_picker() -> void:
+	if _start_picker != null and is_instance_valid(_start_picker):
+		_start_picker.close()
+	_start_picker = null
+	_set_run_page_visible(true)
+
+# The pinned header stands down while the start screen is up: at that moment the
+# bar is reporting a Health pool, a purse, a character and a road walked that no
+# run has yet. It is a CanvasLayer, so hiding it costs the page below no layout.
+#
+# THE PAGE ITSELF IS NOT HIDDEN, and that is deliberate rather than an oversight.
+# Hiding the ScrollContainer was the obvious way to do this and it broke the board:
+# a `BattlefieldView` inside a hidden scroll region fits itself to a viewport it
+# can no longer measure and settles at a minimum height of ~1703px instead of
+# ~570, and because a hidden container does not re-sort, that layout was still
+# sitting there when the page came back — so the first `_refresh` after a start
+# measured a page nearly three times its real height. (`test_overworld2`'s four
+# `_assert_fits` guards all caught it, at 1703 of 625, which is what this note is
+# doing here.) The start screen is opaque and covers the whole canvas anyway, so
+# there is nothing to gain from hiding what is behind it.
+func _set_run_page_visible(on: bool) -> void:
+	if _header_layer != null and is_instance_valid(_header_layer):
+		_header_layer.visible = on
+		# Anything that centres itself on screen reads the bar's height; with the bar
+		# down it is standing on nothing.
+		_publish_header_strip(on)
 
 # The choose-your-start cards from a RunGraph.pick_amulet_and_starts() result: the
 # amulet is recorded on the run (hidden from the player — only the DISTANCE to it
@@ -715,6 +782,9 @@ func open_start_choice(index: int) -> GameChoiceModal:
 	var opt: Dictionary = _start_options[index]
 	var choice: Dictionary = _start_choice(index)
 	var modal := GameChoiceModal.open(self, index, choice, {
+		# Above the start screen, which is a full page on a layer of its own — the
+		# popup's default 124 is underneath it. See StartPicker.MODAL_LAYER.
+		"layer": StartPicker.MODAL_LAYER,
 		"route": {
 			"text": _start_distance_text(int(opt["path_len"])),
 			"tip": "The shortest route from %s to %s, the game this run ends on." % [
@@ -772,6 +842,11 @@ func choose_start(index: int) -> void:
 		return
 	var opt: Dictionary = _start_options[index]
 	var game: GameData = opt["game"]
+	# The opening screen goes, and the run's own page comes back from under it.
+	# Done here rather than in the screen's own handler so that a road taken by a
+	# test — which calls this directly — leaves the page in the same state as one
+	# taken by a player.
+	_close_start_picker()
 	GameState.start_game_id = game.id
 	GameState.set_current_game(game.id)
 	GameLog.add("Starting the run at %s (%s) — %d games from the Amulet." % [
@@ -1609,9 +1684,27 @@ func open_map() -> Node:
 			choice_ids.append(c["slot"])
 	return _open_route_map(GameState.current_game_id, choice_ids, {})
 
+# THE OPTIMAL PATH, and only that: the ladder window with no star chart under it.
+#
+# This is what the offering's own button opens, and it is the other half of a
+# split the page used to fudge. `🗺 Map` and this one were the same call, so two
+# buttons a few hundred pixels apart — one in the pinned header, one in the
+# offering's heading — both raised the whole 865-star Atlas, and the ladder that
+# actually answers "where does this road go" arrived as a window on top of it.
+# The header's Map is the door to the sky; this is the door to the route. They
+# are different questions and they now open different things, and the button says
+# which one it is rather than both saying `Map`.
+func open_optimal_path() -> Node:
+	var choice_ids: Array = []
+	if _phase == Phase.SELECT:
+		for c in _choices:
+			choice_ids.append(c["slot"])
+	return _open_route_map(GameState.current_game_id, choice_ids, {"chart": false})
+
 # The same map for a game you have NOT taken: the optimal road to the Amulet as
-# it would stand if you picked this card. Every offered game carries a 🗺 button
-# above its cover, because the whole decision is a routing decision and it
+# it would stand if you picked this card. Every offered game carries an
+# `→ Optimal Path` button above its cover, because the whole decision is a
+# routing decision and it
 # shouldn't have to be made from a single distance number.
 #
 # The START PICKER's map is the LADDER ALONE — no star chart under it.
@@ -1629,11 +1722,23 @@ func preview_map(game_id: StringName) -> Node:
 	if game_id == &"" or GameState.amulet_game_id == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
-	return _open_route_map(game_id, [], {
+	var opts: Dictionary = {
 		"preview": true,
 		"chart": _phase != Phase.START_SELECT,
-		"title": "🗺  If you take %s" % (game.display_name if game != null else String(game_id)),
-	})
+		# SHORT ON PURPOSE. The window shrinks to the width of the ladder it is
+		# drawing, floored at 380px (`RunMapModal._fit_panel`), and a single-file
+		# route sits on that floor — where the title has about 200px and clips to an
+		# ellipsis. The game is named in the note directly under this ("The shortest
+		# route to the Amulet if you take X"), so the title does not have to spend a
+		# truncated line repeating it.
+		"title": "→  Optimal Path",
+	}
+	# Opened FROM the start screen, it has to come up above it: that screen is a
+	# full page on its own layer, and a window at the default 130 would open
+	# perfectly underneath it and never be seen.
+	if _start_picker != null and is_instance_valid(_start_picker):
+		opts["layer"] = StartPicker.MODAL_LAYER
+	return _open_route_map(game_id, [], opts)
 
 func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary) -> Node:
 	var opts: Dictionary = options.duplicate()
@@ -2609,6 +2714,12 @@ func _update_shop_hint() -> void:
 		return
 	var up: bool = _shop_panel != null and is_instance_valid(_shop_panel) and not _shop_in_view()
 	_shop_hint.visible = up
+	# The toasts pile up from the bottom edge too, so tell them how much of it this
+	# pointer is standing on. Without this the two share the same band and a burst
+	# of "Acquired …" lands on top of the one control saying a shop is open.
+	if _toasts != null and is_instance_valid(_toasts):
+		var hint_h: float = maxf(_shop_hint.size.y, _shop_hint.get_combined_minimum_size().y)
+		_toasts.set_bottom_inset((hint_h + 10.0) if up else 0.0)
 	# Only worth watching while there is a shop to point at. "Has it been scrolled
 	# to yet" cannot be answered off the scroll signal alone — the value moves
 	# before the layout does, so the answer measured at that moment is one frame
@@ -3867,15 +3978,18 @@ func _refresh(_a = null) -> void:
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
 	if _phase == Phase.START_SELECT:
-		# The Amulet is NAMED here, and named first: it is the thing all three roads
-		# end on, so it belongs at the front of the sentence the roads are chosen in.
-		_select_head.text = "The Amulet is %s. Choose where to start — three genres, all the same distance from it. The run opens on the one you take:" % amulet_name()
-		# The start panel empties the controls row itself rather than going through
-		# _render_controls, so the guard has to be told: a signature describing a
-		# row that something else has since emptied is the one way it goes stale.
+		# NOTHING IS DRAWN INTO THE PAGE HERE ANY MORE. The opening choice is
+		# `StartPicker`, a screen of its own mounted over this one (see
+		# `_open_start_picker`), and the page underneath is hidden while it is up —
+		# so the heading, the start cards and the hover line this branch used to
+		# fill are all somewhere else now, drawn once.
+		#
+		# The controls row is still emptied by hand rather than through
+		# `_render_controls`, and its guard invalidated with it: a signature
+		# describing a row that something else has since emptied is the one way it
+		# goes stale.
 		_clear(_controls_row)
 		_controls_sig = ""
-		_render_start_choices()
 		_populate_standing_checklist()
 	elif _phase == Phase.SELECT:
 		_select_head.text = ("Stay here, or head back? — open either to see where it leaves you:"
@@ -4212,10 +4326,6 @@ func _apply_dash_filter() -> void:
 # containers it fills (_choices_row, _preview, _preview_art) and decides when
 # they are redrawn; these forwards keep the names the rest of this file, and the
 # tests, already call.
-
-func _render_start_choices() -> void:
-	if _offering != null:
-		_offering.render_start()
 
 func _render_choices() -> void:
 	if _offering != null:
@@ -5378,10 +5488,11 @@ func _build_ui() -> void:
 	_select_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	select_head_row.add_child(_select_head)
 	var map_btn := Button.new()
-	map_btn.text = "🗺  Map"
-	map_btn.tooltip_text = "The whole road ahead: every shortest path from here to the Amulet."
+	map_btn.text = "→  Optimal Path"
+	map_btn.tooltip_text = ("The shortest road from here to the Amulet, rung by rung. "
+		+ "The star chart is the 🗺 Map button in the header.")
 	map_btn.add_theme_font_size_override("font_size", 12)
-	map_btn.pressed.connect(open_map)
+	map_btn.pressed.connect(open_optimal_path)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
@@ -5767,8 +5878,8 @@ func _fit_page_under_header() -> void:
 	var bar: float = maxf(_header_bar.size.y, _header_bar.get_combined_minimum_size().y)
 	if _scroll != null and is_instance_valid(_scroll):
 		_scroll.offset_top = 16.0 + bar
-	if _toasts != null and is_instance_valid(_toasts):
-		_toasts.offset_top = bar
+	# The toasts are NOT inset by the bar any more: they pile up from the bottom
+	# edge now (NotificationToasts), which the header cannot reach.
 	# And the same for everything that opens OVER the page. The bar is opaque and
 	# floats above the modals, so a modal centred on the whole screen loses its top
 	# to it — which is how the game-choice popup lost its title and the Atlas lost
@@ -5973,8 +6084,8 @@ func _clear(box: Control) -> void:
 func _build_map_button() -> Button:
 	var b := Button.new()
 	b.text = "🗺  Map"
-	b.tooltip_text = ("The whole road ahead: every shortest path from here to the Amulet. "
-		+ "Open from anywhere, including mid-game.")
+	b.tooltip_text = ("The star chart: every game in the run's catalog, with the road "
+		+ "ahead drawn over it. Open from anywhere, including mid-game.")
 	b.pressed.connect(open_map)
 	_header_map_btn = b
 	return b
