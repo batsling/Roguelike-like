@@ -885,7 +885,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 861, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 865, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is

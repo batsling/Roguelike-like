@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four games and seven connections ported out of the workbook — and one of the
+  seven only exists because `check_map_sync.py` noticed it was missing.**
+  `tools/Roguelikes.xlsx` gained Sparklite, Wanderburg, Handmancers and Dragon
+  Quest Heroes: Torneko's Mystery Dungeon Classic HD, taking `data/games/` to
+  **865 games and 1253 connections**. The port itself is just
+  `tools/import-games-godot.py` and the atlas re-bake it triggers: every
+  connection name resolved, all four covers resolved out of `images2.0/games/`,
+  and `atlas_layout`, `_c6` and `_c12` moved with the new stars while `_owned`
+  and `_downloaded` did not, since none of the four is marked Owned.
+
+  **The interesting one is Handmancers, which imported as an ORPHAN.** It came in
+  with a cover, a Steam page, a `games` row and a node drawn on
+  `Roguelikes.drawio` with an edge from Slay the Spire — but its `connections`
+  row was left part-authored: row 1254 carried the Source URL and nothing else,
+  so the importer skipped it (both name cells empty, exactly as designed) and the
+  game landed in the catalogue with no edges in either direction. Nothing about
+  that is loud. 82 of the 865 games are orphans and that is legal, `RunGraph`
+  prunes to the main component, and a game no run can route to looks identical to
+  a game the sheet simply has no evidence for yet.
+
+  **What said so was the map.** `check_map_sync.py` exists because the drawio and
+  the sheet drift in both directions, and it reported the drift in the direction
+  that matters: `[influence] Slay the Spire (2017) -> Handmancers (2026)` drawn on
+  the map, missing from the sheet. The intent was on the map the whole time; only
+  the three cells were empty. `tools/_connections_handmancers_setup.py` fills them
+  in (through `_xlsx_surgery`, so the eight charts survive — verified: 178 zip
+  entries in the same order, only `sheet2.xml` and its table rewritten), and the
+  two drifts still listed are the pre-existing ones, neither touching a new game.
+
+  **The lesson is about the shape of the failure, not the row.** A part-authored
+  connections row is silent by construction at every layer downstream of it, and
+  the only thing in the repo positioned to see it is the checker that compares
+  the sheet against a *second* hand-maintained source. Run `check_map_sync.py`
+  after adding games, not just `check_data_sync.py` — the latter proved `data/`
+  matched the sheet perfectly, which it did, while the sheet was the thing that
+  was wrong.
+
 - **`backdrop-filter` never worked in OBS, so every contrast number this overlay
   has ever had was measured in an environment no stream is in.** Found because a
   streamer said the transparency worked when they double-clicked the page and not

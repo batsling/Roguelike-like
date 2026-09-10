@@ -154,7 +154,7 @@ func rebuild(dash_mode: bool) -> void:
 	search_box.add_theme_font_size_override("font_size", 12)
 	# Live rather than debounced: a Dash offers the games CONNECTED to where you
 	# stand — a couple of dozen at the worst hub — so re-filtering is a sort of a
-	# short list, not the Collection's sweep of 861.
+	# short list, not the Collection's sweep of 865.
 	search_box.text_changed.connect(func(t: String):
 		search = t
 		_repaint())
