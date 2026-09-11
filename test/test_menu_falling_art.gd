@@ -83,6 +83,36 @@ func test_nothing_falls_through_the_menus_own_column() -> void:
 			intruders.append("%.0f wide %.0f" % [pos.x, box.x])
 	assert_eq(intruders, [], "the buttons' column is left clear: %s" % str(intruders))
 
+# AND IT STAYS CLEAR OF IT ALL THE WAY DOWN, which the test above does not ask:
+# it measures the frame a piece is dealt on. A piece drifts sideways at up to
+# `DRIFT` px/s for its whole fall — twenty seconds, so ~180px — and nothing used
+# to stop that carrying a piece dealt near the inner edge across into the buttons.
+#
+# THIS IS WHAT THE ONE-IN-SOME-RUNS FAILURE WAS. The test above would occasionally
+# catch a piece a fraction of a pixel over the line and read like a rounding
+# quibble; it was the first fraction of the drift that ends up under the menu.
+func test_nothing_drifts_into_the_menus_column_on_the_way_down() -> void:
+	_seed()
+	var width: float = _art.get_viewport_rect().size.x
+	var half_band: float = width * MenuFallingArt.CLEAR_BAND * 0.5
+	var worst: float = -INF
+	var offender: String = ""
+	# Long enough that a piece drifting the whole way would have crossed several
+	# times over.
+	for _i in range(int(ceil(40.0 / MenuFallingArt.MAX_STEP))):
+		_art._process(MenuFallingArt.MAX_STEP)
+		for piece in _art._pieces:
+			var pos: Vector2 = piece["pos"]
+			var box: Vector2 = piece["box"]
+			# How far INTO the band the piece reaches; negative is clear of it.
+			var into: float = half_band + box.x * 0.5 - absf(pos.x - width * 0.5)
+			if into > worst:
+				worst = into
+				offender = "x %.1f, %.0f wide" % [pos.x, box.x]
+	assert_lt(worst, 0.0,
+		"the buttons' column stays clear for the whole fall (worst: %s, %.2fpx in)"
+			% [offender, worst])
+
 func test_it_falls_down_both_sides() -> void:
 	_seed()
 	var width: float = _art.get_viewport_rect().size.x
@@ -476,36 +506,65 @@ func test_a_hitched_frame_does_not_teleport_the_art() -> void:
 # and WHICH frames got them depended on how the queue shuffled, which is exactly
 # what "it stutters sometimes" means.
 #
-# SELF-CALIBRATING, because a wall-clock threshold written down here would mean
-# something different on every machine that ever runs it. The rule the budget
-# promises is "a frame costs at most the budget plus the one job that was already
-# running", so the test measures the worst SINGLE job on this machine, in this run,
-# and holds the worst frame to that plus the budget. Under the old three-a-frame
-# rule the worst frame was three jobs and this fails.
-func test_no_single_frame_bakes_a_pile_of_textures() -> void:
-	var worst_job: int = 0
-	# The pool was drained by `before_each`; refill the queue and measure it twice —
-	# once a job at a time, once through the real per-frame pump.
+# ASKED OF JOBS WHOSE COST IS KNOWN, not of the real pool, and that is what makes
+# it an assertion rather than a benchmark. The first version of this test measured
+# the real bake twice — once job by job, once through the pump — and held the worst
+# frame to the worst job plus the budget. It failed about one run in five when the
+# machine was busy, for two reasons that are both about the clock rather than about
+# the code: a pump can be descheduled mid-job, and the second pass loads textures
+# the first pass has already warmed, so the two passes were never measuring the
+# same work anyway.
+#
+# A stand-in that sleeps a known amount asks the question directly instead. With
+# every job costing more than the whole budget, the budget's promise is that a pump
+# takes exactly ONE of them — and a busy machine can only make a job cost MORE,
+# which is the same answer. The old three-a-frame rule takes three, whatever they
+# cost, which is the 88ms frame this is here to keep out.
+class TimedArt extends MenuFallingArt:
+	var job_usec: int = 0
+	var baked: int = 0
+	func _bake(_job: Dictionary) -> void:
+		baked += 1
+		OS.delay_usec(job_usec)
+
+func _timed_art(job_usec: int, jobs: int) -> TimedArt:
+	var art := TimedArt.new()
+	art.job_usec = job_usec
+	add_child_autofree(art)
+	art._queue.clear()
+	for i in range(jobs):
+		art._queue.append({"path": "fake_%d" % i, "kind": MenuFallingArt.Kind.SMALL, "foot": 1})
+	return art
+
+func test_a_frame_bakes_one_expensive_texture_rather_than_a_pile_of_them() -> void:
+	var art := _timed_art(MenuFallingArt.LOAD_BUDGET_USEC * 2, 6)
+	var counts: Array = []
+	while not art._queue.is_empty():
+		counts.append(art._pump_queue())
+	assert_eq(counts, [1, 1, 1, 1, 1, 1],
+		"a job that costs more than the budget is the only one its frame takes: %s"
+			% str(counts))
+	assert_eq(art.baked, 6, "and every one of them is baked")
+
+func test_a_frame_still_gets_through_a_run_of_cheap_textures() -> void:
+	# The other half of a budget: it is not a limit of one. Sixty jobs at a
+	# fiftieth of the budget each must not take sixty frames.
+	var art := _timed_art(maxi(1, MenuFallingArt.LOAD_BUDGET_USEC / 50), 60)
+	var pumps: int = 0
+	while not art._queue.is_empty():
+		art._pump_queue()
+		pumps += 1
+	assert_eq(art.baked, 60, "all of them are baked")
+	assert_lt(pumps, 30, "several to a frame, not one (%d frames for 60)" % pumps)
+
+func test_the_real_pool_is_spread_over_frames_rather_than_done_in_one() -> void:
 	_art._fill_queue()
-	var jobs: int = _art._queue.size()
-	assert_gt(jobs, 20, "there is a pool's worth of work to measure")
-	while not _art._queue.is_empty():
-		var t0: int = Time.get_ticks_usec()
-		_art._bake(_art._queue.pop_back())
-		worst_job = maxi(worst_job, Time.get_ticks_usec() - t0)
-	_art._fill_queue()
-	var worst_frame: int = 0
+	assert_gt(_art._queue.size(), 20, "there is a pool's worth of work")
 	var pumps: int = 0
 	while not _art._queue.is_empty():
-		var t0: int = Time.get_ticks_usec()
-		var done: int = _art._pump_queue()
-		worst_frame = maxi(worst_frame, Time.get_ticks_usec() - t0)
-		assert_gt(done, 0, "a pump with work left always does some of it")
+		assert_gt(_art._pump_queue(), 0, "a pump with work left always does some of it")
 		pumps += 1
-	assert_gt(pumps, 4, "the pool is spread over frames rather than done in one")
-	assert_lte(worst_frame, worst_job + MenuFallingArt.LOAD_BUDGET_USEC * 2,
-		("the worst frame (%.1fms) is one job (%.1fms) plus the budget, not a pile "
-		+ "of them") % [worst_frame / 1000.0, worst_job / 1000.0])
+	assert_gt(pumps, 4, "the pool is spread over frames rather than baked in one go")
 
 func test_the_queue_cannot_stall_on_a_job_bigger_than_the_budget() -> void:
 	# The budget is checked AFTER a job, never before, so a job that costs more than
@@ -531,21 +590,31 @@ func test_the_downscale_halves_its_way_down() -> void:
 	src.fill(Color(0.2, 0.4, 0.8))
 	var stepped: Image = Image.new()
 	stepped.copy_from(src)
-	var t0: int = Time.get_ticks_usec()
 	_art._shrink_to(stepped, 139, 186)
-	var stepped_us: int = Time.get_ticks_usec() - t0
 	assert_eq(Vector2i(stepped.get_width(), stepped.get_height()), Vector2i(139, 186),
 		"it lands on exactly the size it was asked for")
-	var plain: Image = Image.new()
-	plain.copy_from(src)
-	t0 = Time.get_ticks_usec()
-	plain.resize(139, 186, Image.INTERPOLATE_LANCZOS)
-	var plain_us: int = Time.get_ticks_usec() - t0
+	# THE BEST OF THREE, not one measurement each. A busy machine only ever adds
+	# time to a sample, so the minimum is the one estimate of the real cost that
+	# noise cannot inflate — and a test that times anything at all on a box running
+	# five other things has to be written that way or it reports the scheduler.
+	var stepped_us: int = _best_of_three(func(img: Image): _art._shrink_to(img, 139, 186), src)
+	var plain_us: int = _best_of_three(
+		func(img: Image): img.resize(139, 186, Image.INTERPOLATE_LANCZOS), src)
 	# Measured at about four times faster; held to two, so this is a regression
-	# guard rather than a benchmark that fails on a busy machine.
+	# guard rather than a benchmark.
 	assert_lt(stepped_us * 2, plain_us,
 		"and gets there faster than resampling in one jump (%.1fms vs %.1fms)"
 			% [stepped_us / 1000.0, plain_us / 1000.0])
+
+func _best_of_three(work: Callable, src: Image) -> int:
+	var best: int = 1 << 30
+	for _i in range(3):
+		var copy: Image = Image.new()
+		copy.copy_from(src)
+		var t0: int = Time.get_ticks_usec()
+		work.call(copy)
+		best = mini(best, Time.get_ticks_usec() - t0)
+	return best
 
 func test_the_downscale_leaves_a_picture_that_is_already_small_enough_alone() -> void:
 	var src: Image = Image.create(24, 24, false, Image.FORMAT_RGBA8)

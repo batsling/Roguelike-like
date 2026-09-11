@@ -470,12 +470,40 @@ func _release(piece: Dictionary) -> void:
 # token; a 3x3 enemy is three times that, and half of it reached across into the
 # buttons.
 func _column_x(size: Vector2, width: float = 0.0) -> float:
-	var half_band: float = size.x * CLEAR_BAND * 0.5
-	var margin: float = size.x * 0.5 - half_band - width * 0.5
 	# A piece wider than the whole column still has to go somewhere: pin it to the
 	# outer edge rather than letting the range invert and put it under the menu.
-	var x: float = _rng.randf_range(0.0, maxf(margin, 0.0))
+	var x: float = _rng.randf_range(0.0, maxf(_column_limit(size, width), 0.0))
 	return x if _rng.randf() < 0.5 else size.x - x
+
+# How far in from its own edge a piece of this width may have its CENTRE. Both the
+# spawn above and the per-frame clamp below are this same number, so the band is
+# one rule rather than two that have to agree.
+#
+# `BAND_GUARD` is a pixel of slack, and it is there because a piece placed exactly
+# on the limit is a piece whose position is decided by float rounding: the test
+# that guards this band asks whether the piece overlaps it, and an exact tie is
+# neither in nor out depending on the order two additions happen in.
+const BAND_GUARD := 1.0
+
+func _column_limit(size: Vector2, width: float) -> float:
+	return size.x * 0.5 - size.x * CLEAR_BAND * 0.5 - width * 0.5 - BAND_GUARD
+
+# Hold a drifting piece out of the menu's column.
+#
+# THE BAND WAS ONLY EVER GUARANTEED AT SPAWN. A piece drifts sideways at up to
+# `DRIFT` px/s for the whole of its fall — twenty seconds, so up to ~180px — and
+# nothing stopped that drift carrying a piece dealt near the inner edge straight
+# across into the text. It showed up as a one-in-some-runs test failure with the
+# intruder a fraction of a pixel inside the line, which reads like a rounding
+# quibble and is not: the same piece a few seconds later is under the buttons.
+# A piece that reaches the edge now slides down it instead.
+func _hold_clear_of_the_band(pos: Vector2, size: Vector2, box: Vector2) -> Vector2:
+	var limit: float = maxf(_column_limit(size, box.x), 0.0)
+	if pos.x < size.x * 0.5:
+		pos.x = minf(pos.x, limit)
+	else:
+		pos.x = maxf(pos.x, size.x - limit)
+	return pos
 
 func _process(delta: float) -> void:
 	if not _running:
@@ -510,8 +538,12 @@ func _process(delta: float) -> void:
 			break
 		_pieces.append(piece)
 	for piece in _pieces:
-		piece["pos"] = (piece["pos"] as Vector2) + Vector2(
-			(piece["drift"] as float) * delta, (piece["fall"] as float) * delta)
+		# Moved, then held out of the menu's column — the drift is what would carry
+		# it in there (see `_hold_clear_of_the_band`).
+		piece["pos"] = _hold_clear_of_the_band(
+			(piece["pos"] as Vector2) + Vector2(
+				(piece["drift"] as float) * delta, (piece["fall"] as float) * delta),
+			size, piece["box"])
 		piece["rot"] = (piece["rot"] as float) + (piece["spin"] as float) * delta
 		var pos: Vector2 = piece["pos"]
 		if pos.y - (piece["box"] as Vector2).y > size.y:
