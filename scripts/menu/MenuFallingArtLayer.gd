@@ -16,6 +16,14 @@ extends Control
 # invisible here: everything is drawn under 0.62 alpha on a dark ground, so an
 # overlap reads as two faint things crossing either way round.
 
+
+# THE ARRAY IS THE PARENT'S, HELD BY REFERENCE, and so is every piece in it —
+# `MenuFallingArt._redraw` refills the same two batches every frame rather than
+# building fresh dictionaries to copy them into. That is safe because of WHEN the
+# two run: the parent fills the batch in `_process` and asks for a redraw, and the
+# redraw happens at the end of that same frame, before anything clears it again.
+# A piece is drawn at `draw_alpha` — its own alpha after the bottom fade, which
+# the parent writes on the way past.
 var _pieces: Array = []
 
 func set_pieces(pieces: Array) -> void:
@@ -32,5 +40,5 @@ func _draw() -> void:
 		# at `pos`, so the rect is drawn back by half its size from there.
 		draw_set_transform(piece["pos"], piece["rot"], Vector2.ONE)
 		draw_texture_rect(tex, Rect2(-box * 0.5, box), false,
-			Color(1.0, 1.0, 1.0, piece["alpha"]))
+			Color(1.0, 1.0, 1.0, piece.get("draw_alpha", piece["alpha"])))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

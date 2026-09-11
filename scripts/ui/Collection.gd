@@ -1950,8 +1950,19 @@ func _build_loot() -> void:
 	# actually matters: a scroll hides behind a shared Unidentified art, a pill
 	# hides behind a colour, and a potion hides behind a bottle it does NOT own —
 	# so a potion's own art can be shown here where a pill's capsule cannot.
-	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11)
+	#
+	# IT WRAPS, and it has to. A Label with `autowrap_mode` OFF reports its whole
+	# line as its MINIMUM width, so this note was not sharing the row with the five
+	# buttons — it was setting the row's width, and through it the compendium's.
+	# Four of the five notes run half as long again as the scrolls one, so picking
+	# Pills, Potions, Cards or Wands took the modal's minimum width past the 1280
+	# canvas (1405 at the worst) — and a PanelContainer that cannot fit GROWS rather
+	# than shrinking, so the whole panel widened and carried its ✕ Close button off
+	# the right edge of the screen. Wrapping, the note's minimum is its longest
+	# WORD, and it takes whatever the buttons leave.
+	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11, false, true)
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	subs.add_child(note)
 

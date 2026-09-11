@@ -41,9 +41,18 @@ const SIZE_JITTER := 0.45          # +/- this much of the edge, per piece
 # Fall speed in pixels/sec, and the sideways drift that stops the columns reading
 # as rain. Constant speed on purpose: the pieces do not accelerate, because they
 # are falling PAST rather than away (that decision is in §7 of the backlog).
-const FALL_MIN := 26.0
-const FALL_MAX := 58.0
+const FALL_MIN := 38.0
+const FALL_MAX := 84.0
 const DRIFT := 9.0
+
+# The longest step one frame may take, in seconds. A piece's movement is scaled by
+# `delta`, so a frame that takes a tenth of a second moves it a tenth of a second's
+# worth — and at these speeds that is a piece visibly JUMPING, which is what a
+# stutter looks like from the player's chair whatever caused the long frame (a
+# shader compile, the window being dragged, the OS taking the CPU away). Capped at
+# a 30fps step the art falls a hair slower through a hitch instead of teleporting
+# past it, and nothing else on the menu is animating to disagree with.
+const MAX_STEP := 1.0 / 30.0
 
 # A slow lazy tumble, each piece its own rate and direction. Kept under a fifth of
 # a turn a second: fast enough to read as falling debris, slow enough that nothing
@@ -70,12 +79,25 @@ const FADE_BOTTOM := 0.34          # the height spent fading out into the dark
 # art never crowds the text it sits beside.
 const CLEAR_BAND := 0.34
 
-# How many textures to decode per frame while filling the pool. The menu has to
-# come up instantly, and baking the whole pool takes about 600ms — so it is spread
-# over frames rather than done in `_ready`, where it would be a visible hitch on
-# the project's startup screen. Three a frame clears the pool in roughly a
-# second's worth of frames.
-const LOAD_PER_FRAME := 3
+# How long a frame may spend decoding textures, in microseconds. The menu has to
+# come up instantly, and baking the whole pool is the better part of a second's
+# work — so it is spread over frames rather than done in `_ready`, where it would
+# be a visible freeze on the project's startup screen.
+#
+# A BUDGET IN TIME, NOT A COUNT OF JOBS, and the difference is the whole reason
+# this used to hitch. It was three jobs a frame, and the cost of a job is not one
+# number: measured over the real pool, the median bake is 1.9ms and the worst is
+# 38ms (a 528x704 cover: ~10ms to decode the PNG and, before `_shrink_to`, ~10ms
+# to resample it). Three of the big ones landing in one frame is 88ms — five
+# dropped frames, on the one screen in the game with something moving on it, and
+# WHICH frames get them depends on how the queue happened to shuffle. That is
+# exactly the shape of "it stutters sometimes".
+#
+# The budget is checked AFTER each job, so one job always runs however long it
+# takes (a frame that baked nothing would stall the pool forever) — the cap is on
+# how many big jobs can pile up behind each other, which is the part that was
+# multiplying a bad frame by three.
+const LOAD_BUDGET_USEC := 3000
 
 # Where the loot half of the small art comes from. Read straight off disk rather
 # than through `Data`, because what is wanted from these four folders is PICTURES,
@@ -129,10 +151,9 @@ var _free := {Kind.SMALL: [], Kind.COVER: []}
 var _pixel_layer: MenuFallingArtLayer
 var _smooth_layer: MenuFallingArtLayer
 var _running := false
-# False until the opening fill has happened. It is what tells `_spawn` whether a
-# piece should be scattered across the screen (the first fill) or dropped in from
-# above it (every one after).
-var _seeded := false
+# The two draw lists, kept and refilled rather than rebuilt (see `_redraw`).
+var _pixel_batch: Array = []
+var _smooth_batch: Array = []
 
 static func mount(parent: Node) -> MenuFallingArt:
 	var art := MenuFallingArt.new()
@@ -165,7 +186,6 @@ func _on_setting_changed(enabled: bool) -> void:
 		# Turning it off gives the textures back rather than just hiding them.
 		_pieces.clear()
 		_queue.clear()
-		_seeded = false
 		_pool = {Kind.SMALL: [], Kind.COVER: []}
 		_free = {Kind.SMALL: [], Kind.COVER: []}
 		_redraw()
@@ -317,10 +337,40 @@ func _bake(job: Dictionary) -> void:
 				_add_to_pool(kind, tex, pixel, foot)
 				return
 			var k: float = want / longest
-			img.resize(maxi(1, int(src.x * k)), maxi(1, int(src.y * k)),
-				Image.INTERPOLATE_LANCZOS)
+			_shrink_to(img, maxi(1, int(src.x * k)), maxi(1, int(src.y * k)))
 			tex = ImageTexture.create_from_image(img)
 	_add_to_pool(kind, tex, pixel, foot)
+
+# Shrink `img` to `w`x`h` IN PLACE, halving first and resampling last.
+#
+# A straight Lanczos from 528x704 down to 139x186 costs ~10ms a cover, and it is
+# the single most expensive thing this effect does — a quarter of the whole pool's
+# bake time for 34 pictures. Lanczos reads a window of the SOURCE per output pixel,
+# so its cost rides on how far the two sizes are apart; halving is a box filter over
+# four neighbours and is nearly free by comparison. Halving down to within 2x of the
+# target and resampling from there is ~2.5ms for the same cover — four times faster,
+# and if anything cleaner, because every source pixel is averaged in on the way down
+# rather than only those the final kernel happens to reach.
+func _shrink_to(img: Image, w: int, h: int) -> void:
+	while img.get_width() >= w * 2 and img.get_height() >= h * 2 \
+			and img.get_width() > 1 and img.get_height() > 1:
+		img.shrink_x2()
+	if img.get_width() != w or img.get_height() != h:
+		img.resize(w, h, Image.INTERPOLATE_LANCZOS)
+
+# Bake whatever fits in this frame's budget, and return how many jobs that was.
+# At least one runs whenever there is one to run, so the pool always advances.
+func _pump_queue() -> int:
+	if _queue.is_empty():
+		return 0
+	var started: int = Time.get_ticks_usec()
+	var done: int = 0
+	while not _queue.is_empty():
+		_bake(_queue.pop_back())
+		done += 1
+		if Time.get_ticks_usec() - started >= LOAD_BUDGET_USEC:
+			break
+	return done
 
 func _add_to_pool(kind: int, tex: Texture2D, pixel: bool, foot: int) -> void:
 	_pool[kind].append({"tex": tex, "pixel": pixel, "foot": foot})
@@ -353,7 +403,7 @@ func _is_cutout(tex: Texture2D) -> bool:
 
 # --- the pieces -------------------------------------------------------------
 
-func _spawn(above: bool) -> Dictionary:
+func _spawn() -> Dictionary:
 	var size: Vector2 = get_viewport_rect().size
 	var kind: int = Kind.COVER if _rng.randf() < COVER_SHARE else Kind.SMALL
 	# NO PICTURE TWICE AT ONCE. Take an entry nothing else is currently falling
@@ -381,14 +431,15 @@ func _spawn(above: bool) -> Dictionary:
 		var src := Vector2(tex.get_width(), tex.get_height())
 		var longest: float = maxf(src.x, src.y)
 		box = src * (edge / maxf(longest, 1.0))
-	# ENTIRELY ABOVE THE TOP EDGE when it comes in from above — the bottom of the
-	# box at or past `y = 0`, never inside the window. The range used to reach a
-	# fifth of the way down the screen, which with nothing fading in any more is a
-	# piece appearing out of thin air in the top corner. Only the opening fill
-	# scatters pieces across the visible height, and that one is a still frame
-	# nobody watches arrive.
-	var top: float = _rng.randf_range(-size.y, -box.y) if above \
-		else _rng.randf_range(0.0, size.y)
+	# ENTIRELY ABOVE THE TOP EDGE, always — the bottom of the box at or past
+	# `y = 0`, never inside the window. The range used to reach a fifth of the way
+	# down the screen, which with nothing fading in any more is a piece appearing
+	# out of thin air in the top corner.
+	#
+	# Spread over a whole screen-height above it, so the column arriving has the
+	# same density as the column on screen and the picture fills in evenly rather
+	# than as a front of art with a gap behind it.
+	var top: float = _rng.randf_range(-size.y, -box.y)
 	return {
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
@@ -419,20 +470,47 @@ func _release(piece: Dictionary) -> void:
 # token; a 3x3 enemy is three times that, and half of it reached across into the
 # buttons.
 func _column_x(size: Vector2, width: float = 0.0) -> float:
-	var half_band: float = size.x * CLEAR_BAND * 0.5
-	var margin: float = size.x * 0.5 - half_band - width * 0.5
 	# A piece wider than the whole column still has to go somewhere: pin it to the
 	# outer edge rather than letting the range invert and put it under the menu.
-	var x: float = _rng.randf_range(0.0, maxf(margin, 0.0))
+	var x: float = _rng.randf_range(0.0, maxf(_column_limit(size, width), 0.0))
 	return x if _rng.randf() < 0.5 else size.x - x
+
+# How far in from its own edge a piece of this width may have its CENTRE. Both the
+# spawn above and the per-frame clamp below are this same number, so the band is
+# one rule rather than two that have to agree.
+#
+# `BAND_GUARD` is a pixel of slack, and it is there because a piece placed exactly
+# on the limit is a piece whose position is decided by float rounding: the test
+# that guards this band asks whether the piece overlaps it, and an exact tie is
+# neither in nor out depending on the order two additions happen in.
+const BAND_GUARD := 1.0
+
+func _column_limit(size: Vector2, width: float) -> float:
+	return size.x * 0.5 - size.x * CLEAR_BAND * 0.5 - width * 0.5 - BAND_GUARD
+
+# Hold a drifting piece out of the menu's column.
+#
+# THE BAND WAS ONLY EVER GUARANTEED AT SPAWN. A piece drifts sideways at up to
+# `DRIFT` px/s for the whole of its fall — twenty seconds, so up to ~180px — and
+# nothing stopped that drift carrying a piece dealt near the inner edge straight
+# across into the text. It showed up as a one-in-some-runs test failure with the
+# intruder a fraction of a pixel inside the line, which reads like a rounding
+# quibble and is not: the same piece a few seconds later is under the buttons.
+# A piece that reaches the edge now slides down it instead.
+func _hold_clear_of_the_band(pos: Vector2, size: Vector2, box: Vector2) -> Vector2:
+	var limit: float = maxf(_column_limit(size, box.x), 0.0)
+	if pos.x < size.x * 0.5:
+		pos.x = minf(pos.x, limit)
+	else:
+		pos.x = maxf(pos.x, size.x - limit)
+	return pos
 
 func _process(delta: float) -> void:
 	if not _running:
 		return
-	for _i in range(LOAD_PER_FRAME):
-		if _queue.is_empty():
-			break
-		_bake(_queue.pop_back())
+	# A long frame must not become a long STEP (see `MAX_STEP`).
+	delta = minf(delta, MAX_STEP)
+	_pump_queue()
 	# NOTHING SPAWNS UNTIL THE POOL IS WHOLE. Filling as the textures arrived was
 	# the obvious thing and it was wrong: the pieces reach PIECE_COUNT inside the
 	# first second, so every one of them was drawn from whatever had loaded first,
@@ -446,17 +524,26 @@ func _process(delta: float) -> void:
 		return
 	var size: Vector2 = get_viewport_rect().size
 	while _pieces.size() < PIECE_COUNT:
-		# `above` false only for the opening fill, so the screen starts populated
-		# rather than empty for one screen-height of falling; every piece after
-		# that enters from above the top edge.
-		var piece: Dictionary = _spawn(_seeded)
+		# EVERY PIECE ENTERS FROM ABOVE, the opening fill included. It used to
+		# scatter that first fill across the visible height so the screen started
+		# busy, and the cost of that was the two things it started wrong: art was
+		# simply THERE when the menu came up rather than falling into it, and the
+		# pieces that landed in the bottom third of the screen were dealt straight
+		# into the fade-out band — so the menu opened on a scatter of half-faded
+		# pictures sliding off the floor. Coming in over the top edge, every piece
+		# is seen at its own alpha from the first frame it is visible, and the screen
+		# fills the way it refills for the rest of the session.
+		var piece: Dictionary = _spawn()
 		if piece.is_empty():
 			break
 		_pieces.append(piece)
-	_seeded = true
 	for piece in _pieces:
-		piece["pos"] = (piece["pos"] as Vector2) + Vector2(
-			(piece["drift"] as float) * delta, (piece["fall"] as float) * delta)
+		# Moved, then held out of the menu's column — the drift is what would carry
+		# it in there (see `_hold_clear_of_the_band`).
+		piece["pos"] = _hold_clear_of_the_band(
+			(piece["pos"] as Vector2) + Vector2(
+				(piece["drift"] as float) * delta, (piece["fall"] as float) * delta),
+			size, piece["box"])
 		piece["rot"] = (piece["rot"] as float) + (piece["spin"] as float) * delta
 		var pos: Vector2 = piece["pos"]
 		if pos.y - (piece["box"] as Vector2).y > size.y:
@@ -467,7 +554,7 @@ func _process(delta: float) -> void:
 			# replaces it may draw the same one — otherwise the pool would shrink
 			# by one every time something left the screen.
 			_release(piece)
-			var fresh: Dictionary = _spawn(true)
+			var fresh: Dictionary = _spawn()
 			if fresh.is_empty():
 				# Nothing free to take: keep falling with what it has rather than
 				# vanishing, and take the entry back off the free list so nothing
@@ -505,22 +592,33 @@ func _fade_at(y: float, height: float, base: float) -> float:
 		f = (1.0 - t) / FADE_BOTTOM
 	return base * clampf(f, 0.0, 1.0)
 
+# Hand each layer the pieces it draws, sorted by texture filter.
+#
+# NOTHING IS ALLOCATED HERE, and that is deliberate. This ran once a frame and
+# built two fresh Arrays of up to 72 fresh Dictionaries — about 8,600 dictionaries
+# a second thrown away for no reason but to copy five values out of a dictionary
+# that already had them. The batches are kept and refilled (`clear` holds its
+# capacity), and what goes in them is the PIECE ITSELF rather than a copy, so the
+# per-frame cost is two array fills and no heap churn at all.
+#
+# The faded alpha is written back onto the piece as `draw_alpha` — overwriting a
+# key that is already there costs nothing — because it is the one thing the layer
+# needs that the piece does not already carry. A piece faded out of sight is left
+# out of both batches rather than drawn at zero.
 func _redraw() -> void:
-	var pixel: Array = []
-	var smooth: Array = []
+	_pixel_batch.clear()
+	_smooth_batch.clear()
 	var height: float = get_viewport_rect().size.y
 	for piece in _pieces:
-		var pos: Vector2 = piece["pos"]
-		var a: float = _fade_at(pos.y, height, piece["alpha"])
+		var a: float = _fade_at((piece["pos"] as Vector2).y, height, piece["alpha"])
+		piece["draw_alpha"] = a
 		if a <= 0.005:
 			continue
-		var draw := {"tex": piece["tex"], "pos": pos, "box": piece["box"],
-			"rot": piece["rot"], "alpha": a}
 		if bool(piece["pixel"]):
-			pixel.append(draw)
+			_pixel_batch.append(piece)
 		else:
-			smooth.append(draw)
+			_smooth_batch.append(piece)
 	if _pixel_layer != null:
-		_pixel_layer.set_pieces(pixel)
+		_pixel_layer.set_pieces(_pixel_batch)
 	if _smooth_layer != null:
-		_smooth_layer.set_pieces(smooth)
+		_smooth_layer.set_pieces(_smooth_batch)
