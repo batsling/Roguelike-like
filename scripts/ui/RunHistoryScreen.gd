@@ -89,7 +89,7 @@ func _build() -> void:
 		var empty := Label.new()
 		empty.text = "No finished runs yet.\nWin or lose one and its route shows up here."
 		empty.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		empty.add_theme_font_size_override("font_size", 15)
+		empty.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		_rows.add_child(empty)
 		return
 
@@ -105,7 +105,7 @@ func _header() -> Control:
 
 	var title := Label.new()
 	title.text = "🕮  Run History"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	row.add_child(title)
 
@@ -117,7 +117,7 @@ func _header() -> Control:
 			wins += 1
 	count.text = "%d run%s · %d won" % [
 		GameStats.runs.size(), "" if GameStats.runs.size() == 1 else "s", wins]
-	count.add_theme_font_size_override("font_size", 12)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(count)
 
@@ -173,7 +173,7 @@ func _run_caption(run: Dictionary) -> Control:
 	var verdict := Label.new()
 	var won: bool = bool(run.get("won", false))
 	verdict.text = "★ WON" if won else "DIED"
-	verdict.add_theme_font_size_override("font_size", 12)
+	verdict.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	verdict.add_theme_color_override("font_color", UITheme.SUCCESS if won else UITheme.DANGER)
 	row.add_child(verdict)
 
@@ -190,7 +190,7 @@ func _run_caption(run: Dictionary) -> Control:
 		parts.append("%04d-%02d-%02d" % [d["year"], d["month"], d["day"]])
 	detail.text = "  ·  ".join(parts)
 	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail.add_theme_font_size_override("font_size", 12)
+	detail.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	detail.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(detail)
 
@@ -198,7 +198,7 @@ func _run_caption(run: Dictionary) -> Control:
 	if _atlas != null:
 		var show := Button.new()
 		show.text = "✦ Show on map"
-		show.add_theme_font_size_override("font_size", 11)
+		show.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		show.pressed.connect(func(): _show_on_map(run))
 		row.add_child(show)
 	return row
@@ -237,7 +237,7 @@ func _route_stop(id: StringName, is_amulet: bool, won: bool) -> Control:
 	label.custom_minimum_size.x = COVER.x
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color",
 		UITheme.GOLD if is_amulet else UITheme.TEXT_DIM)
 	col.add_child(label)

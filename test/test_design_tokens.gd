@@ -16,11 +16,75 @@ extends GutTest
 # layout function is a source fact, and it is caught here rather than by someone
 # noticing that this screen's 13 is that screen's 12.
 
-# The screens under the 720p budget, which is where the literals actually cost
-# something — a gap here is a pixel the page does not have. Everything else in
-# the project adopts the scale as it is next touched; this is the set that has
-# been done, and the list is the migration's own record of itself.
-const MIGRATED := [
+# THE TWO AXES MIGRATE SEPARATELY, so they get a list each.
+#
+# Fonts and gaps are not the same job. A font size is a free rename — the type
+# scale holds the values already in use, so naming one moves nothing. A gap is
+# not: several on the run screens are load-bearing to the pixel against a 720p
+# budget with single digits to spare, so each one has to be READ before it is
+# named. Fonts are therefore done project-wide and gaps are still per-screen,
+# and a single `MIGRATED` list could not say that — adding a file to it to lock
+# in its fonts would have demanded its gaps in the same commit.
+#
+# Every screen in the project that sets a font size in code. The list is the
+# migration's own record of itself: a file here cannot drift back to a literal.
+const MIGRATED_FONTS := [
+	"res://scripts/autoload/DevTools.gd",
+	"res://scripts/menu/CharacterPicker.gd",
+	"res://scripts/menu/CustomRunScreen.gd",
+	"res://scripts/menu/MainMenu.gd",
+	"res://scripts/menu/ProfilePicker.gd",
+	"res://scripts/menu/StartPicker.gd",
+	"res://scripts/redesign2/BattlefieldView.gd",
+	"res://scripts/redesign2/BossNoticeModal.gd",
+	"res://scripts/redesign2/CompletedGoalsPanel.gd",
+	"res://scripts/redesign2/DashFilterBar.gd",
+	"res://scripts/redesign2/DragPackPanel.gd",
+	"res://scripts/redesign2/EnemyInfoCard.gd",
+	"res://scripts/redesign2/EventModal2.gd",
+	"res://scripts/redesign2/GameChoiceModal.gd",
+	"res://scripts/redesign2/GraveyardPanel.gd",
+	"res://scripts/redesign2/ItemDropModal.gd",
+	"res://scripts/redesign2/ItemInfoCard.gd",
+	"res://scripts/redesign2/LootDiscoveries.gd",
+	"res://scripts/redesign2/LootDropModal.gd",
+	"res://scripts/redesign2/LootGrid.gd",
+	"res://scripts/redesign2/LootTrash.gd",
+	"res://scripts/redesign2/LootUseModal.gd",
+	"res://scripts/redesign2/LootWindow.gd",
+	"res://scripts/redesign2/ObjectCard.gd",
+	"res://scripts/redesign2/ObjectPanel2.gd",
+	"res://scripts/redesign2/OfferingCards.gd",
+	"res://scripts/redesign2/Overworld2.gd",
+	"res://scripts/redesign2/PackStrip.gd",
+	"res://scripts/redesign2/PlaySession2.gd",
+	"res://scripts/redesign2/PostCombatScreen.gd",
+	"res://scripts/redesign2/ReportChecklist.gd",
+	"res://scripts/redesign2/RouteLadder.gd",
+	"res://scripts/redesign2/RunMapModal.gd",
+	"res://scripts/redesign2/RunOverScreen.gd",
+	"res://scripts/redesign2/ShopPanel2.gd",
+	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/ui/Collection.gd",
+	"res://scripts/ui/ConfirmPanel.gd",
+	"res://scripts/ui/EnemyNoteModal.gd",
+	"res://scripts/ui/HoverCard.gd",
+	"res://scripts/ui/HowToPlayScreen.gd",
+	"res://scripts/ui/Keywords.gd",
+	"res://scripts/ui/NotificationToasts.gd",
+	"res://scripts/ui/RateGameModal.gd",
+	"res://scripts/ui/RewardScreen.gd",
+	"res://scripts/ui/RunHistoryScreen.gd",
+	"res://scripts/ui/SettingsModal.gd",
+	"res://scripts/ui/StatRow.gd",
+	"res://scripts/ui/TierListScreen.gd",
+	"res://scripts/ui/UITheme.gd",
+]
+
+# The screens whose GAPS are on the scale — the ones under the 720p budget, where
+# a literal actually costs something. Everything else adopts the spacing scale as
+# it is next touched.
+const MIGRATED_GAPS := [
 	"res://scripts/redesign2/Overworld2.gd",
 	"res://scripts/redesign2/BattlefieldView.gd",
 	"res://scripts/redesign2/OfferingCards.gd",
@@ -32,19 +96,37 @@ const MIGRATED := [
 	"res://scripts/menu/StartPicker.gd",
 ]
 
-# Values that are deliberately NOT on the scale, with the reason. Every one is a
-# gap on a fit-budgeted screen that is load-bearing to the pixel — the overworld
-# is fitted to a 720p canvas with single digits to spare, and snapping one of
-# these to the nearest step is exactly the change that puts the page behind a
-# scrollbar. `StartPicker` is absent on purpose: it is a new screen with room to
-# spare, so it is fully on the scale.
-const OFF_SCALE_ALLOWED := {
+# EMPTY, AND THAT IS THE POINT. Twenty-two font literals had no step on the type
+# scale and sat here as documented exceptions: 17 (eleven uses, eight of them
+# `SettingsModal` section headings), 24 (seven titles), 21 (two), 30
+# (`Collection`'s title) and 34 (`RunOverScreen`'s verdict). They were left alone
+# by the migration ON PURPOSE, because naming them meant CHANGING them and a
+# restyle does not belong inside a rename.
+#
+# They have since been snapped to their nearest step as a deliberate restyle, each
+# checked on the running screen rather than reasoned about: 17 -> FONT_HEAD, 21 and
+# 24 -> FONT_TITLE_LG (both are titles, and 24 was equidistant between 22 and 26 —
+# the tie went to the step whose comment says "a screen's title"), 30 and 34 ->
+# FONT_HERO. Every font size in the project is now on the scale.
+#
+# Kept as an empty dict rather than deleted: it is the pressure valve for the next
+# size that genuinely cannot be named, and an empty one says "there are none right
+# now" where a missing one would just look like the check had been dropped.
+const OFF_SCALE_FONTS := {}
+
+# Gaps that are deliberately NOT on the scale, with the reason. Every one is
+# load-bearing to the pixel — the overworld is fitted to a 720p canvas with
+# single digits to spare, and snapping one of these to the nearest step is
+# exactly the change that puts the page behind a scrollbar. `StartPicker` is
+# absent on purpose: it is a new screen with room to spare, so it is fully on
+# the scale.
+const OFF_SCALE_GAPS := {
 	"res://scripts/redesign2/Overworld2.gd": [3],
-	"res://scripts/redesign2/BattlefieldView.gd": [3, 5, 14, 24],
+	"res://scripts/redesign2/BattlefieldView.gd": [3, 5, 14],
 	"res://scripts/redesign2/PackStrip.gd": [1],
 	"res://scripts/redesign2/ShopPanel2.gd": [1, 7],
 	"res://scripts/redesign2/EnemyInfoCard.gd": [1, 3, 7],
-	"res://scripts/redesign2/GameChoiceModal.gd": [3, 24],
+	"res://scripts/redesign2/GameChoiceModal.gd": [3],
 }
 
 func _source(path: String) -> String:
@@ -72,22 +154,59 @@ func _literals(text: String, keys: Array) -> Array:
 				out.append([i + 1, int(digits)])
 	return out
 
-func _check(path: String, keys: Array, what: String) -> void:
-	var allowed: Array = OFF_SCALE_ALLOWED.get(path, [])
+func _check(path: String, keys: Array, what: String, off_scale: Dictionary, list_name: String) -> void:
+	var allowed: Array = off_scale.get(path, [])
 	var bad: Array = []
 	for hit in _literals(_source(path), keys):
 		if not allowed.has(int(hit[1])):
 			bad.append("%s:%d uses %d" % [path.get_file(), hit[0], hit[1]])
-	assert_eq(bad, [], "%s in %s comes off UITheme's scale (add it to OFF_SCALE_ALLOWED with a reason if it genuinely cannot): %s"
-		% [what, path.get_file(), str(bad)])
+	assert_eq(bad, [], "%s in %s comes off UITheme's scale (add it to %s with a reason if it genuinely cannot): %s"
+		% [what, path.get_file(), list_name, str(bad)])
 
 func test_the_migrated_screens_take_their_font_sizes_from_the_scale() -> void:
-	for path in MIGRATED:
-		_check(path, ["font_size"], "a font size")
+	for path in MIGRATED_FONTS:
+		_check(path, ["font_size"], "a font size", OFF_SCALE_FONTS, "OFF_SCALE_FONTS")
 
 func test_the_migrated_screens_take_their_gaps_from_the_scale() -> void:
-	for path in MIGRATED:
-		_check(path, ["separation", "h_separation", "v_separation"], "a gap")
+	for path in MIGRATED_GAPS:
+		_check(path, ["separation", "h_separation", "v_separation"], "a gap",
+			OFF_SCALE_GAPS, "OFF_SCALE_GAPS")
+
+# Every script under `scripts/` that sets a font size in code, so a NEW screen
+# cannot ship with bare integers by simply not being on the list. This is the
+# loophole the per-file lists had: the check only ever looked where it was told
+# to. Fonts are done project-wide, so the list can be asserted complete —
+# `MIGRATED_GAPS` deliberately cannot be, which is why this guards fonts only.
+func test_every_screen_that_sets_a_font_size_is_on_the_font_list() -> void:
+	var found: Array = []
+	_collect_scripts("res://scripts", found)
+	var missing: Array = []
+	for path in found:
+		if not _source(path).contains("add_theme_font_size_override"):
+			continue
+		if not MIGRATED_FONTS.has(path):
+			missing.append(path)
+	missing.sort()
+	assert_eq(missing, [], "these set a font size in code but are not in MIGRATED_FONTS, "
+		+ "so nothing checks them — put each on the scale and add it to the list: %s" % str(missing))
+
+func _collect_scripts(dir_path: String, out: Array) -> void:
+	var dir: DirAccess = DirAccess.open(dir_path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var name: String = dir.get_next()
+	while name != "":
+		if name.begins_with("."):
+			name = dir.get_next()
+			continue
+		var full: String = dir_path.path_join(name)
+		if dir.current_is_dir():
+			_collect_scripts(full, out)
+		elif name.ends_with(".gd"):
+			out.append(full)
+		name = dir.get_next()
+	dir.list_dir_end()
 
 # --- the scales themselves --------------------------------------------------
 

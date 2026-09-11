@@ -141,7 +141,7 @@ func _machine_row(inst: Dictionary) -> Control:
 	btn.custom_minimum_size = Vector2(ROW_WIDTH, ROW_HEIGHT)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	btn.add_theme_constant_override("icon_max_width", ROW_ICON)
 	# CLIPPED, so the row is the width it was given rather than the width its
 	# label wants. A Button's minimum size is its content, so one long relic name
@@ -242,7 +242,7 @@ func open_card(inst: Dictionary) -> Node:
 	var done := Button.new()
 	done.text = "Step away"
 	done.custom_minimum_size = Vector2(0, 34)
-	done.add_theme_font_size_override("font_size", 13)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	done.pressed.connect(close_card)
 	col.add_child(done)
 	return layer

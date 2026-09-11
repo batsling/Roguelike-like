@@ -595,9 +595,13 @@ func test_a_cell_gains_its_owned_tick_without_the_grid_being_rebuilt() -> void:
 	Ownership.set_manual_owned(id, false)
 	Ownership.set_source(was)
 
-func test_the_tick_sits_over_the_cover_art() -> void:
-	# "Top left of each image" — it has to be a child of the cover's own box, or
-	# it is a mark near the picture rather than on it.
+func test_the_tick_sits_clear_of_the_cover_art() -> void:
+	# THE OPPOSITE OF WHAT THIS USED TO ASSERT, on purpose. The tick was a child of
+	# the cover's own box, inset into its top-left — the one piece of state a cell
+	# carries, drawn over the one thing that identifies the game, on 865 cells
+	# (`docs/layout-review-backlog.md` §3b). It is on the stat line under the cover
+	# now, so what has to stay true is that it is NOT in with the art, and that the
+	# art is whole.
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.GAMES)
 	var with_art: StringName = &""
@@ -608,14 +612,41 @@ func test_the_tick_sits_over_the_cover_art() -> void:
 			break
 	assert_ne(with_art, &"", "the grid is showing games that have art")
 	var badge: Button = col._owned_marks[with_art]
-	var box: Node = badge.get_parent()
-	var has_cover: bool = false
-	for sib in box.get_children():
-		if sib is TextureRect:
-			has_cover = true
-	assert_true(has_cover, "the tick shares its box with the cover")
-	assert_lt(badge.position.x, float(Collection.GRID_COVER_W) * 0.5, "at the left")
-	assert_lt(badge.position.y, float(Collection.GRID_COVER_W) * 0.5, "and the top")
+	var row: Node = badge.get_parent()
+	for sib in row.get_children():
+		assert_false(sib is TextureRect,
+			"nothing in the tick's row is a cover — it is not over the art any more")
+	# It is still IN the cell, under the cover rather than beside the grid: the
+	# cover's plate and the tick's row are both children of the same cell box.
+	var cell_box: Node = row.get_parent()
+	var cover_found: bool = false
+	for child in cell_box.get_children():
+		for grandchild in (child as Node).get_children():
+			if grandchild is TextureRect:
+				cover_found = true
+	assert_true(cover_found, "the cover is in the same cell, one row above the tick")
+
+func test_the_cover_sits_on_a_plate_that_fills_the_cell_evenly() -> void:
+	# §3c: covers are 4:3, square and tall in roughly equal measure, and every one
+	# is letterboxed into the same 3:4 box. The plate behind the art is what turns
+	# the leftover into a frame instead of a gap, so every cell shows the same
+	# rectangle whatever shape its cover is.
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.GAMES)
+	var plates: Array = []
+	for slot in col._cell_slots:
+		if not bool(slot.get("filled", false)):
+			continue
+		for child in (slot["box"] as Node).get_children():
+			if child is PanelContainer:
+				plates.append(child)
+	assert_gt(plates.size(), 0, "the filled cells have cover plates")
+	var want := Vector2(Collection.GRID_COVER_W, roundi(Collection.GRID_COVER_W * 4.0 / 3.0))
+	for plate in plates:
+		assert_eq((plate as PanelContainer).custom_minimum_size, want,
+			"every plate is the same 3:4 box, whatever its cover's aspect ratio")
+		assert_true((plate as PanelContainer).clip_contents,
+			"and clips, so a square cover cannot poke past its rounded corners")
 
 func test_clicking_the_tick_marks_the_game_on_the_players_own_list() -> void:
 	var was: int = Ownership.source
@@ -634,7 +665,9 @@ func test_clicking_the_tick_marks_the_game_on_the_players_own_list() -> void:
 
 func test_the_tick_is_visible_but_lets_clicks_through_on_the_catalogs_list() -> void:
 	# Not merely disabled: a disabled button still swallows the click, which would
-	# make the top-left corner of every cover a dead spot that won't open the game.
+	# make its corner of the cell a dead spot that won't open the game. (It used to
+	# be the top-left corner of every COVER, which is what made this matter enough
+	# to test; the tick sits on the stat line now, and the rule is the same.)
 	var was: int = Ownership.source
 	Ownership.set_source(Ownership.Source.SPREADSHEET)
 	var col := _new_collection()

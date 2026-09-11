@@ -243,7 +243,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		# on screen: ⚔ is a monochrome glyph that stays sharp at 9px, while 🛒 is a
 		# colour bitmap that turns to mush. 12 is the size the same cart is drawn
 		# at in the card's shop row, so the two read as the same marker.
-		shop.add_theme_font_size_override("font_size", 12)
+		shop.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		shop.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 		shop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shop.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -277,7 +277,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 			marks.append("⛓%d" % links)
 		var badge := Label.new()
 		badge.text = " ".join(PackedStringArray(marks))
-		badge.add_theme_font_size_override("font_size", 9)
+		badge.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 		badge.add_theme_color_override("font_color", UITheme.GOLD if fought > 0
 			else UITheme.TEXT_DIM)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -358,7 +358,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	var title := Label.new()
 	title.text = String(cfg.get("name", "")) if String(cfg.get("name", "")) != "" \
 		else (game.display_name if game != null else String(id))
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
@@ -367,7 +367,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	if role_text != "":
 		var role := Label.new()
 		role.text = role_text
-		role.add_theme_font_size_override("font_size", 12)
+		role.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		role.add_theme_color_override("font_color", UITheme.ACCENT)
 		role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(role)
@@ -384,7 +384,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		meta.append(RunGraph.type_label(game.type))
 		var chip := Label.new()
 		chip.text = "  •  ".join(PackedStringArray(meta)).to_upper()
-		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 		box.add_child(chip)
 
@@ -457,13 +457,13 @@ static func card_fact(key: String, value: String) -> Control:
 	var k := Label.new()
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	k.add_theme_font_size_override("font_size", 12)
+	k.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(k)
 	var v := Label.new()
 	v.text = value
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	v.add_theme_color_override("font_color", UITheme.TEXT)
 	row.add_child(v)
 	return row
@@ -471,7 +471,7 @@ static func card_fact(key: String, value: String) -> Control:
 static func card_heading(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.GOLD)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -479,7 +479,7 @@ static func card_heading(text: String) -> Control:
 static func card_note(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -487,7 +487,7 @@ static func card_note(text: String) -> Control:
 static func card_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	b.pressed.connect(cb)
 	return b
 

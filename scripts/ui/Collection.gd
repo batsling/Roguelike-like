@@ -84,7 +84,6 @@ const DETAIL_ENEMY_SIZE := 176
 const CELL_PAD := 26
 const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
 const OWNED_BADGE := 20            # the owned tick, over the cover's top-left
-const BADGE_INSET := 4             # how far in from the cover's corner it sits
 const GRID_ITEM_SIZE := 50
 const GRID_PORTRAIT_SIZE := 60
 const GRID_ENEMY_SIZE := 58
@@ -135,6 +134,8 @@ var _grid: Container = null
 # That the cell can be sized before it is filled is what the fixed NAME_LINES
 # below buys, and it is why that clamp is load-bearing rather than cosmetic.
 var _grid_scroll: ScrollContainer = null
+# The "more below" band under the grid. See `_new_grid` / `_update_grid_fade`.
+var _grid_fade: TextureRect = null
 # Every game cell in the grid, as {cell, box, game, filled}. Ordered as the grid
 # is, so the window is a contiguous range of it.
 var _cell_slots: Array = []
@@ -222,7 +223,7 @@ func _build_shell() -> void:
 	root.add_child(header)
 	var title := Label.new()
 	title.text = "Collection"
-	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -267,6 +268,10 @@ func _refresh() -> void:
 		b.modulate = ACCENT if tab == _tab else Color(0.8, 0.8, 0.8)
 	_clear_children(_content)
 	_grid = null
+	# Freed with the content above; cleared here so `_update_grid_fade` cannot be
+	# left holding a dangling band from the tab that just went away.
+	_grid_scroll = null
+	_grid_fade = null
 	_detail_box = null
 	_count_lbl = null
 	match _tab:
@@ -381,6 +386,40 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 # Game covers are box art, not icons: drawing them in a square box wastes a third
 # of the space to letterboxing, so they get a 3:4 frame `w` wide instead — the
 # shape the art actually ships in (528x704 / 300x450).
+# THE GRID'S GUTTERS ARE A FRAME NOW, NOT A GAP. Every cover is letterboxed into
+# the same 3:4 box (`STRETCH_KEEP_ASPECT_CENTERED`), but the 865 covers are 4:3,
+# square and tall in roughly equal measure — so what filled the leftover was the
+# cell's own background, and the grid read as ragged: each cover a different shape
+# floating in a different amount of nothing.
+#
+# A plate behind the art turns that leftover into a deliberate surround. It is
+# slightly lighter than the cell so the box reads as a frame the art sits in,
+# every cell now has the same visible rectangle whatever shape its cover is, and
+# no cover is cropped — which matters when the art is 865 pieces of real box art
+# and some of them carry their title at the edge.
+const COVER_PLATE := Color(0.145, 0.132, 0.118, 1.0)
+
+func _cover_plate(tex: Texture2D) -> Control:
+	var plate := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COVER_PLATE
+	sb.set_corner_radius_all(5)
+	sb.set_content_margin_all(0)
+	plate.add_theme_stylebox_override("panel", sb)
+	plate.custom_minimum_size = Vector2(GRID_COVER_W, roundi(GRID_COVER_W * 4.0 / 3.0))
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Clicks belong to the cell underneath — clicking a cover opens the game.
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# So a square cover's corners cannot poke past the plate's rounded ones.
+	plate.clip_contents = true
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(tr)
+	return plate
+
 func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
@@ -485,10 +524,27 @@ func _label(text: String, color: Color, size: int = 12, bold_center: bool = fals
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 	return l
 
-func _new_grid() -> ScrollContainer:
+# THE GRID SAYS WHEN THERE IS MORE BELOW. The second row of covers is cut flat
+# at the panel's edge, and the only thing that said so was the scrollbar — a
+# slim stripe against a dark trough that you have to go looking for, on the
+# second-most-used screen in the game. A band of the panel's own colour under
+# the last visible row reads as "this carries on" the way a hard edge reads as
+# "this is the end".
+#
+# It is a SIBLING of the ScrollContainer, not a child: a child scrolls with the
+# content, so it would slide away the moment it was needed. The two are stacked
+# in a plain Control by anchors — the scroll filling it, the band pinned to the
+# bottom — rather than in a container, which would lay them side by side.
+const GRID_FADE_H := 26.0
+
+func _new_grid() -> Control:
+	var wrap := Control.new()
+	wrap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.clip_contents = true
+
 	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 10)
@@ -504,12 +560,53 @@ func _new_grid() -> ScrollContainer:
 	# `sort_children` is the third and the one that starts it all: it fires once
 	# the flow has placed its cells, which is the first moment the question can be
 	# answered at all.
-	scroll.get_v_scroll_bar().value_changed.connect(func(_v): _stream_cells())
-	scroll.resized.connect(_stream_cells)
+	scroll.get_v_scroll_bar().value_changed.connect(func(_v):
+		_stream_cells()
+		_update_grid_fade())
+	scroll.resized.connect(func():
+		_stream_cells()
+		_update_grid_fade())
 	flow.sort_children.connect(func():
 		_grid_laid_out = true
-		_stream_cells.call_deferred())
-	return scroll
+		_stream_cells.call_deferred()
+		_update_grid_fade.call_deferred())
+	wrap.add_child(scroll)
+
+	_grid_fade = TextureRect.new()
+	_grid_fade.texture = _fade_texture()
+	_grid_fade.stretch_mode = TextureRect.STRETCH_SCALE
+	_grid_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grid_fade.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_grid_fade.offset_top = -GRID_FADE_H
+	_grid_fade.visible = false
+	wrap.add_child(_grid_fade)
+	return wrap
+
+# Transparent at the top, the panel's own colour at the bottom, so the band reads
+# as the page continuing under the panel edge rather than as a grey bar laid over
+# it. Built from PANEL_BG so it stays right if that colour is ever retuned.
+func _fade_texture() -> GradientTexture2D:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 0.0))
+	ramp.set_color(1, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 1.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = ramp
+	tex.width = 4
+	tex.height = 64
+	tex.fill_from = Vector2(0.0, 0.0)
+	tex.fill_to = Vector2(0.0, 1.0)
+	return tex
+
+# Up only while there IS more below: at the bottom of the list, or when the whole
+# grid fits, a fade would be claiming something that is not true.
+func _update_grid_fade() -> void:
+	if _grid_fade == null or not is_instance_valid(_grid_fade):
+		return
+	if _grid_scroll == null or not is_instance_valid(_grid_scroll):
+		return
+	var bar: VScrollBar = _grid_scroll.get_v_scroll_bar()
+	var remaining: float = bar.max_value - bar.page - bar.value
+	_grid_fade.visible = bar.page > 0.0 and remaining > 1.0
 
 func _reset_cell_window() -> void:
 	_cell_slots.clear()
@@ -592,27 +689,14 @@ func _fill_cell(index: int) -> void:
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	if g.cover_path != "":
-		var tr := _cover_rect(g.cover_image, GRID_COVER_W)
-		# The cover and its owned tick share one box so the tick can sit ON the art
-		# rather than under it — a column of ticks down the left edge of the grid is
-		# the thing you read when working out what you still have to mark.
-		var stack := Control.new()
-		stack.custom_minimum_size = tr.custom_minimum_size
-		stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		stack.add_child(tr)
-		stack.add_child(_owned_badge(g))
-		box.add_child(stack)
+		box.add_child(_cover_plate(g.cover_image))
 	else:
-		# No art authored: the tick still needs somewhere to live, and top-left of
-		# the cell is the same place it would be if there were a cover. The spacer
-		# keeps the cell the same height as a cell with a picture in it, so a game
-		# with no art doesn't leave a short hole in the row.
-		var row := HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, roundi(GRID_COVER_W * 4.0 / 3.0))
-		row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		row.add_child(_owned_badge(g))
-		box.add_child(row)
+		# No art authored: a spacer of the cover's exact size, so a game with no
+		# picture doesn't leave a short hole in the row.
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(GRID_COVER_W, roundi(GRID_COVER_W * 4.0 / 3.0))
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(spacer)
 	box.add_child(_game_name_label(g.display_name, tc))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
@@ -623,7 +707,19 @@ func _fill_cell(index: int) -> void:
 	if amulets > 0:
 		stat_line += "    👑 %d" % amulets
 	var played := beaten > 0 or amulets > 0
-	box.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
+	# THE TICK SITS UNDER THE ART NOW, on the stat line rather than over the cover's
+	# top-left corner. It is still the same Button doing the same job — click it and
+	# the game is marked without opening its page — so what changed is only that the
+	# one thing identifying a game is no longer covered by the one piece of state it
+	# carries. The ticks still line up in a readable column down the grid, because
+	# every cell is the same width and the row is centred.
+	var stat_row := HBoxContainer.new()
+	stat_row.add_theme_constant_override("separation", 5)
+	stat_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	stat_row.add_child(_owned_badge(g))
+	stat_row.add_child(_label(stat_line,
+		Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, false))
+	box.add_child(stat_row)
 	slot["filled"] = true
 
 func _empty_cell(index: int) -> void:
@@ -837,7 +933,7 @@ func _build_games() -> void:
 	var constellation := Button.new()
 	constellation.text = "✦ Show constellation"
 	constellation.tooltip_text = "See the whole catalog as a star chart of influences"
-	constellation.add_theme_font_size_override("font_size", 12)
+	constellation.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	constellation.disabled = AtlasView.load_layout() == null
 	if constellation.disabled:
 		constellation.tooltip_text = "Run tools/bake_atlas.py to generate the star chart"
@@ -952,9 +1048,13 @@ func _game_cell_height() -> float:
 	if _cell_height_cache > 0.0:
 		return _cell_height_cache
 	var sep: float = 4.0                                  # _cell's vbox separation
+	# The stat line is a ROW now, with the owned tick beside the counts (see
+	# `_fill_cell`), so it is as tall as the taller of the two rather than one line
+	# of text. Counted here or the cell clips its own last row.
 	_cell_height_cache = roundi(GRID_COVER_W * 4.0 / 3.0) \
 		+ _name_block_height() \
-		+ _line_height(GRID_META_FONT) * 2.0 \
+		+ _line_height(GRID_META_FONT) \
+		+ maxf(_line_height(GRID_META_FONT), float(OWNED_BADGE)) \
 		+ sep * 3.0 \
 		+ CELL_PAD
 	return _cell_height_cache
@@ -963,9 +1063,14 @@ func _line_height(size: int) -> float:
 	var font: Font = get_theme_font("font", "Label")
 	return font.get_height(size) if font != null else float(size + 4)
 
-# The tick over a game's cover: what you own, readable straight off the grid, and
+# The tick UNDER a game's cover: what you own, readable straight off the grid, and
 # on the player's own list the fastest way to say so — click it and the game is
 # marked without opening its page at all.
+#
+# It used to sit ON the art, inset into the cover's top-left. That put the one
+# piece of state a cell carries over the one thing that identifies the game, on
+# 865 cells. It is on the stat line now, which keeps the click and frees the art;
+# the ticks still read as a column, because every cell is the same width.
 #
 # On the catalog's list it is a read-only mark. It goes further than disabling:
 # the badge stops taking mouse input entirely, so a click there falls through to
@@ -974,11 +1079,11 @@ func _line_height(size: int) -> float:
 func _owned_badge(g: GameData) -> Control:
 	var badge := Button.new()
 	badge.custom_minimum_size = Vector2(OWNED_BADGE, OWNED_BADGE)
-	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	badge.position = Vector2(BADGE_INSET, BADGE_INSET)
-	badge.size = Vector2(OWNED_BADGE, OWNED_BADGE)
+	# An ordinary child of the stat row, not an overlay pinned into the cover's
+	# corner — so no anchors, no position, and the row lays it out.
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.focus_mode = Control.FOCUS_NONE
-	badge.add_theme_font_size_override("font_size", 13)
+	badge.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	if Ownership.is_editable():
 		badge.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		badge.pressed.connect(func() -> void:
@@ -1070,26 +1175,26 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 	var who := Label.new()
 	who.text = enemy.display_name if enemy != null else String(entry["id"])
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry["beaten"])
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 	var note_text: String = String(entry["note"]).strip_edges()
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
 	if enemy != null:
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-		edit.add_theme_font_size_override("font_size", 11)
+		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():
 			EnemyNoteModal.open(self, game, enemy, func(): _show_game_detail(game)))
 		col.add_child(edit)
@@ -1133,14 +1238,14 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	var who := Label.new()
 	who.text = ch.display_name if side == "character" else game.display_name
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(who)
 	var levels: int = int(entry.get("levels", 0))
 	if levels > 0:
 		var times := Label.new()
 		times.text = "levelled ×%d" % levels
-		times.add_theme_font_size_override("font_size", 11)
+		times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		times.add_theme_color_override("font_color", gold)
 		top.add_child(times)
 
@@ -1152,14 +1257,14 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		gold if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
 
 	var edit := Button.new()
 	edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-	edit.add_theme_font_size_override("font_size", 11)
+	edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	edit.pressed.connect(func(): EnemyNoteModal.open_level_up(self, game, ch, on_done))
 	col.add_child(edit)
 	return panel
@@ -1547,13 +1652,13 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var who := Label.new()
 	who.text = enemy.display_name
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 13)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color",
 		Color(0.95, 0.55, 0.2) if enemy.is_boss() else UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry.get("beaten", 0))
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 	if enemy.goal != "":
@@ -1707,12 +1812,12 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var name_label := Label.new()
 	name_label.text = game.display_name if game != null else String(entry["id"])
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	name_label.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(name_label)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry["beaten"])
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 
@@ -1720,7 +1825,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 12)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else Color(0.55, 0.55, 0.6))
 	col.add_child(note)
@@ -1728,7 +1833,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	if game != null:
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-		edit.add_theme_font_size_override("font_size", 11)
+		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():
 			EnemyNoteModal.open(self, game, enemy, func(): _show_enemy_detail(enemy)))
 		col.add_child(edit)

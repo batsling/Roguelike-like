@@ -171,7 +171,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = headline()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", accent)
 	col.add_child(title)
 
@@ -179,7 +179,7 @@ func _build() -> void:
 	sub.text = subtitle()
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", 16)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	sub.add_theme_color_override("font_color", UITheme.TEXT)
 	col.add_child(sub)
 
@@ -216,12 +216,12 @@ func _tile(key: String, value: String, color: Color = UITheme.TEXT) -> Control:
 	box.add_theme_constant_override("separation", 2)
 	var k := Label.new()
 	k.text = key.to_upper()
-	k.add_theme_font_size_override("font_size", 10)
+	k.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	k.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(k)
 	var v := Label.new()
 	v.text = value
-	v.add_theme_font_size_override("font_size", 17)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	v.add_theme_color_override("font_color", color)
 	box.add_child(v)
 	return box
@@ -246,7 +246,7 @@ func _route_strip() -> Control:
 	var head := Label.new()
 	head.text = "The road you walked"
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_theme_font_size_override("font_size", 15)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	head.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.25))
 	head_row.add_child(head)
 	# The count, and the replays called out separately — the strip shows a game
@@ -254,7 +254,7 @@ func _route_strip() -> Control:
 	# a route of nine distinct games needs the sentence that explains it.
 	var count := Label.new()
 	count.text = _route_summary()
-	count.add_theme_font_size_override("font_size", 12)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	count.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head_row.add_child(count)
@@ -351,7 +351,7 @@ func _stop(id: StringName, is_amulet: bool, visit: int = 1,
 	label.custom_minimum_size.x = COVER.x
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color", UITheme.GOLD if is_amulet else UITheme.TEXT_DIM)
 	col.add_child(label)
 
@@ -360,7 +360,7 @@ func _stop(id: StringName, is_amulet: bool, visit: int = 1,
 		again.text = "↻ visit %d" % visit
 		again.custom_minimum_size.x = COVER.x
 		again.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		again.add_theme_font_size_override("font_size", 10)
+		again.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		again.add_theme_color_override("font_color", UITheme.ACCENT)
 		col.add_child(again)
 	return col

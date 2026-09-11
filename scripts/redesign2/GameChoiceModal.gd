@@ -343,7 +343,7 @@ func _build_header(game: GameData, accent: Color) -> Control:
 		else ("☠ " if bool(_choice.get("boss", false)) else "")) + game.display_name
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", accent)
 	row.add_child(title)
 

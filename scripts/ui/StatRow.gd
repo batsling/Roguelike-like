@@ -50,7 +50,7 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 	if stat_title != "":
 		var t := Label.new()
 		t.text = stat_title
-		t.add_theme_font_size_override("font_size", 14)
+		t.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 		t.add_theme_color_override("font_color", Color(1.0, 0.85, 0.5))
 		vb.add_child(t)
 	if stat_desc != "":
@@ -58,7 +58,7 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 		d.text = stat_desc
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(260, 0)
-		d.add_theme_font_size_override("font_size", 12)
+		d.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		d.add_theme_color_override("font_color", Color(0.85, 0.85, 0.88))
 		vb.add_child(d)
 	return panel

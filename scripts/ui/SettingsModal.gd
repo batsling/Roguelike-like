@@ -87,7 +87,7 @@ func _build_ui() -> void:
 
 	var title := Label.new()
 	title.text = "Settings"
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	vbox.add_child(title)
 
 	# --- display -----------------------------------------------------------
@@ -96,7 +96,7 @@ func _build_ui() -> void:
 	# looking at rather than what the run will do.
 	var display_heading := Label.new()
 	display_heading.text = "Display"
-	display_heading.add_theme_font_size_override("font_size", 17)
+	display_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	display_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(display_heading)
 
@@ -111,7 +111,7 @@ func _build_ui() -> void:
 	var display_hint := Label.new()
 	display_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	display_hint.custom_minimum_size = Vector2(0, 56)
-	display_hint.add_theme_font_size_override("font_size", 13)
+	display_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	display_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(display_hint)
 
@@ -128,7 +128,7 @@ func _build_ui() -> void:
 	var size_label := Label.new()
 	size_label.text = "Window size"
 	size_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	size_label.add_theme_font_size_override("font_size", 13)
+	size_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	size_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	size_row.add_child(size_label)
 
@@ -182,11 +182,30 @@ func _build_ui() -> void:
 		# common case here — the point of the button is the second half.
 		Settings.apply_display_mode())
 
+	# Under Display because it is the other setting that changes only what the
+	# player is looking at. It takes effect immediately, including from here —
+	# this panel opens OVER the menu, so the art behind it starts or stops while
+	# the box is being ticked (`Settings.menu_falling_art_changed`).
+	var fall_chk := CheckButton.new()
+	fall_chk.text = "Falling art on the main menu"
+	fall_chk.button_pressed = Settings.menu_falling_art
+	fall_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_menu_falling_art(on))
+	vbox.add_child(fall_chk)
+
+	var fall_hint := Label.new()
+	fall_hint.text = "Enemies, items, loot and game covers drift down both sides of the menu. Turn it off for a still background."
+	fall_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fall_hint.custom_minimum_size = Vector2(0, 44)
+	fall_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	fall_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(fall_hint)
+
 	vbox.add_child(HSeparator.new())
 
 	var heading := Label.new()
 	heading.text = "Games used in path selection"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -214,7 +233,7 @@ func _build_ui() -> void:
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 70)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
@@ -247,7 +266,7 @@ func _build_ui() -> void:
 
 	var amulet_heading := Label.new()
 	amulet_heading.text = "Amulet generation"
-	amulet_heading.add_theme_font_size_override("font_size", 17)
+	amulet_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	amulet_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(amulet_heading)
 
@@ -262,7 +281,7 @@ func _build_ui() -> void:
 	amulet_hint.text = "When on, runs won't target a game you've already beaten as the final amulet. Those games can still appear as stops along the way. Ignored if you've beaten every reachable amulet."
 	amulet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	amulet_hint.custom_minimum_size = Vector2(0, 60)
-	amulet_hint.add_theme_font_size_override("font_size", 13)
+	amulet_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(amulet_hint)
 
@@ -270,7 +289,7 @@ func _build_ui() -> void:
 
 	var rules_heading := Label.new()
 	rules_heading.text = "Transmute"
-	rules_heading.add_theme_font_size_override("font_size", 17)
+	rules_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	rules_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(rules_heading)
 
@@ -287,7 +306,7 @@ func _build_ui() -> void:
 	trad_hint.text = "A transmute normally swaps a game for another of its own type. Turn this on and a Traditional game instead becomes a random game of any OTHER type — a Traditional is the run's long haul, so trading one for another is no relief. Off by default; every other type always transmutes within its own type."
 	trad_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	trad_hint.custom_minimum_size = Vector2(0, 74)
-	trad_hint.add_theme_font_size_override("font_size", 13)
+	trad_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	trad_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(trad_hint)
 
@@ -299,7 +318,7 @@ func _build_ui() -> void:
 
 	var dev_heading := Label.new()
 	dev_heading.text = "Developer"
-	dev_heading.add_theme_font_size_override("font_size", 17)
+	dev_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	dev_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(dev_heading)
 
@@ -314,7 +333,7 @@ func _build_ui() -> void:
 	dev_hint.text = "Enables the dev overlay (press ` / backtick) to add any card, curse, or item to the player."
 	dev_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dev_hint.custom_minimum_size = Vector2(0, 44)
-	dev_hint.add_theme_font_size_override("font_size", 13)
+	dev_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(dev_hint)
 
@@ -344,7 +363,7 @@ func _build_ui() -> void:
 func _build_stream_section(vbox: VBoxContainer) -> void:
 	var heading := Label.new()
 	heading.text = "Stream overlay"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -359,7 +378,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and browse to overlay.html in the folder below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 58)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 
@@ -370,7 +389,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	path.text = ObsCompanion.page_dir()
 	path.editable = false
 	path.select_all_on_focus = true
-	path.add_theme_font_size_override("font_size", 12)
+	path.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	vbox.add_child(path)
 
 	# THE OTHER PAGES, AS FILES RATHER THAN AS URL SUFFIXES.
@@ -390,7 +409,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 		+ "    top.html / bottom.html  the run card and the checklist as separate sources, to put a camera between them"
 	extras.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	extras.custom_minimum_size = Vector2(0, 92)
-	extras.add_theme_font_size_override("font_size", 13)
+	extras.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	extras.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(extras)
 
@@ -404,14 +423,14 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 func _build_wipe_section(vbox: VBoxContainer) -> void:
 	var heading := Label.new()
 	heading.text = "This profile"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 50)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	hint.text = "Starting over as %s: erases this profile's runs, stats, tier list, owned games and run settings. The profile itself stays, and no other profile is touched." % Profiles.active_name()
 	vbox.add_child(hint)
@@ -449,7 +468,7 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	var heading := Label.new()
 	heading.text = "Which games you own"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -467,7 +486,7 @@ func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 76)
-	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)
 

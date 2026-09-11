@@ -70,13 +70,13 @@ func setup(item: ItemData, usable: bool) -> void:
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = item.display_name
-	title.add_theme_font_size_override("font_size", 21)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.5))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_row.add_child(title)
 	var close_btn := Button.new()
 	close_btn.text = "✕"
-	close_btn.add_theme_font_size_override("font_size", 15)
+	close_btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	close_btn.pressed.connect(close)
 	head_row.add_child(close_btn)
 	body.add_child(header)
@@ -109,7 +109,7 @@ func setup(item: ItemData, usable: bool) -> void:
 		desc.text = item.description
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.custom_minimum_size = Vector2(270, 0)
-		desc.add_theme_font_size_override("font_size", 14)
+		desc.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 		text_col.add_child(desc)
 		# The KEYWORD STRIP (§17): every status, tile effect or unit the sentence
 		# above names, as a hover chip that says what it is. This is the card's
@@ -153,7 +153,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	if item.tags.size() > 0:
 		var tags := Label.new()
 		tags.text = "Tags:  %s" % ", ".join(item.tags)
-		tags.add_theme_font_size_override("font_size", 11)
+		tags.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		tags.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		inner.add_child(tags)
 
@@ -188,7 +188,7 @@ func _echo_strip(item: ItemData) -> Control:
 	box.add_theme_constant_override("separation", 6)
 	var head := Label.new()
 	head.text = "Echoes on your next use:"
-	head.add_theme_font_size_override("font_size", 11)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(head)
 
@@ -197,7 +197,7 @@ func _echo_strip(item: ItemData) -> Control:
 	if memory.is_empty():
 		var none := Label.new()
 		none.text = "Nothing used yet — it copies the last %d pieces of loot you spend." % depth
-		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		none.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		box.add_child(none)
@@ -220,7 +220,7 @@ func _echo_strip(item: ItemData) -> Control:
 		# since then should say what it is, and one forgotten to Amnesia should have
 		# gone back to being a mystery.
 		name.text = LootSystem.display_name(entry)
-		name.add_theme_font_size_override("font_size", 10)
+		name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		name.custom_minimum_size = Vector2(62, 0)
@@ -254,7 +254,7 @@ func _chip(text: String, color: Color) -> Control:
 		UITheme.flat(color.lerp(UITheme.BG, 0.72), 6, 6, 1, color.lerp(UITheme.BG, 0.35)))
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.35))
 	wrap.add_child(l)
 	return wrap

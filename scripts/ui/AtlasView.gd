@@ -1366,7 +1366,7 @@ func _rebuild_filter_bar() -> void:
 
 	var clear := Button.new()
 	clear.text = "Clear"
-	clear.add_theme_font_size_override("font_size", 12)
+	clear.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	clear.pressed.connect(func():
 		_f_owned = 0
 		_f_type = -1
@@ -1380,7 +1380,7 @@ func _rebuild_filter_bar() -> void:
 	# No EXPAND_FILL / right-align: those pushed the count to the far end of an
 	# HBox, and in a flow they would win it a line of its own. Beside the Clear
 	# button it also sits with the filters it is counting.
-	_filter_count.add_theme_font_size_override("font_size", 12)
+	_filter_count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_filter_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_filter_count)
 	_refresh_filter_count()
@@ -1388,7 +1388,7 @@ func _rebuild_filter_bar() -> void:
 func _filter_label(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	return l
 
@@ -1423,7 +1423,7 @@ func _build_header() -> Control:
 
 	var title := Label.new()
 	title.text = "✦  Constellations" if pure_catalog else "✦  Atlas"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	row.add_child(title)
 
@@ -1435,7 +1435,7 @@ func _build_header() -> Control:
 	_hud.clip_text = true
 	_hud.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hud.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	_hud.add_theme_font_size_override("font_size", 12)
+	_hud.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	row.add_child(_hud)
 
 	_search = LineEdit.new()
@@ -1484,7 +1484,7 @@ func _frame_star(index: int) -> void:
 func _tool_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 13)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	b.pressed.connect(cb)
 	return b
 
@@ -1551,7 +1551,7 @@ func _fill_legend() -> void:
 	# No EXPAND_FILL: in the HBox this used to be, that let the note swallow the
 	# slack and drew its text at the left of it — the same place a flow puts it
 	# anyway. In a flow it would claim a line of its own instead.
-	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	row.add_child(note)
 
@@ -1588,7 +1588,7 @@ func _route_key(text: String, col: Color) -> Control:
 	box.add_child(line)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(l)
 	return box
@@ -1677,7 +1677,7 @@ func _refresh_card() -> void:
 
 	var title := Label.new()
 	title.text = name_text
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card_box.add_child(title)
@@ -1685,7 +1685,7 @@ func _refresh_card() -> void:
 	if pasted and original != null:
 		var over := Label.new()
 		over.text = "transmuted onto %s" % original.display_name
-		over.add_theme_font_size_override("font_size", 11)
+		over.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		over.add_theme_color_override("font_color", UITheme.ACCENT)
 		over.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_card_box.add_child(over)
@@ -1696,7 +1696,7 @@ func _refresh_card() -> void:
 	if game != null:
 		var chip := Label.new()
 		chip.text = RunGraph.type_label(game.type).to_upper()
-		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 		_card_box.add_child(chip)
 
@@ -1745,7 +1745,7 @@ func _refresh_card() -> void:
 	if GameStats.has_enemy_log(id):
 		var notes_btn := Button.new()
 		notes_btn.text = "🗒  Notes — beaten enemies (%d)" % GameStats.enemies_for(id).size()
-		notes_btn.add_theme_font_size_override("font_size", 12)
+		notes_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		notes_btn.pressed.connect(func(): _open_enemy_notes(id, name_text))
 		_card_box.add_child(notes_btn)
 
@@ -1758,14 +1758,14 @@ func _refresh_card() -> void:
 			else "⚑  Route through here"
 		pin.tooltip_text = "Bend the road to the Amulet through this game." \
 			if GameState.route_waypoint != id else "Go back to the shortest road."
-		pin.add_theme_font_size_override("font_size", 12)
+		pin.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		pin.pressed.connect(func(): _toggle_waypoint(id))
 		_card_box.add_child(pin)
 
 	if game != null and game.has_launch_target():
 		var play := Button.new()
 		play.text = "▶  Play the real game"
-		play.add_theme_font_size_override("font_size", 12)
+		play.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		play.pressed.connect(func(): game.launch())
 		_card_box.add_child(play)
 
@@ -1777,13 +1777,13 @@ func _refresh_card() -> void:
 		var steam := Button.new()
 		steam.text = "🎮  Steam page"
 		steam.tooltip_text = "Open %s on Steam." % game.display_name
-		steam.add_theme_font_size_override("font_size", 12)
+		steam.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		steam.pressed.connect(func(): game.open_steam_page())
 		_card_box.add_child(steam)
 
 	var dismiss := Button.new()
 	dismiss.text = "Dismiss"
-	dismiss.add_theme_font_size_override("font_size", 12)
+	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	dismiss.pressed.connect(func(): select(-1))
 	_card_box.add_child(dismiss)
 
@@ -1801,7 +1801,7 @@ func _fill_connection_card() -> void:
 
 	var heading := Label.new()
 	heading.text = "CONNECTION"
-	heading.add_theme_font_size_override("font_size", 10)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	heading.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	_card_box.add_child(heading)
 
@@ -1814,7 +1814,7 @@ func _fill_connection_card() -> void:
 	pair.add_child(_connection_side(from_game))
 	var arrow := Label.new()
 	arrow.text = "→"
-	arrow.add_theme_font_size_override("font_size", 22)
+	arrow.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	arrow.add_theme_color_override("font_color", UITheme.ACCENT)
 	arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	pair.add_child(arrow)
@@ -1824,7 +1824,7 @@ func _fill_connection_card() -> void:
 	claim.text = "%s inspired %s" % [from_game.display_name, to_game.display_name]
 	claim.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	claim.add_theme_font_size_override("font_size", 13)
+	claim.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	_card_box.add_child(claim)
 
@@ -1834,7 +1834,7 @@ func _fill_connection_card() -> void:
 		var chip := Label.new()
 		chip.text = "SEQUEL / SAME DEVELOPERS"
 		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		chip.add_theme_font_size_override("font_size", 10)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		chip.add_theme_color_override("font_color", UITheme.GOLD)
 		_card_box.add_child(chip)
 
@@ -1851,7 +1851,7 @@ func _fill_connection_card() -> void:
 		note.text = "%s is transmuted on top of %s" % [now.display_name, endpoint.display_name]
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.add_theme_font_size_override("font_size", 11)
+		note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		note.add_theme_color_override("font_color", UITheme.ACCENT)
 		_card_box.add_child(note)
 	for endpoint in [from_game, to_game]:
@@ -1861,7 +1861,7 @@ func _fill_connection_card() -> void:
 		gone.text = "%s was bashed — this route is gone" % endpoint.display_name
 		gone.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		gone.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		gone.add_theme_font_size_override("font_size", 11)
+		gone.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		gone.add_theme_color_override("font_color", COL_BASHED)
 		_card_box.add_child(gone)
 
@@ -1869,7 +1869,7 @@ func _fill_connection_card() -> void:
 
 	var proof_label := Label.new()
 	proof_label.text = "PROOF"
-	proof_label.add_theme_font_size_override("font_size", 10)
+	proof_label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	proof_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	_card_box.add_child(proof_label)
 
@@ -1879,13 +1879,13 @@ func _fill_connection_card() -> void:
 	elif GameData.is_openable_source(source):
 		var open_btn := Button.new()
 		open_btn.text = "🔗  Open source"
-		open_btn.add_theme_font_size_override("font_size", 12)
+		open_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		open_btn.pressed.connect(func(): OS.shell_open(source))
 		_card_box.add_child(open_btn)
 		var url := Label.new()
 		url.text = source
 		url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-		url.add_theme_font_size_override("font_size", 10)
+		url.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		_card_box.add_child(url)
 	else:
@@ -1895,7 +1895,7 @@ func _fill_connection_card() -> void:
 
 	var dismiss := Button.new()
 	dismiss.text = "Dismiss"
-	dismiss.add_theme_font_size_override("font_size", 12)
+	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	dismiss.pressed.connect(func(): select_edge(-1))
 	_card_box.add_child(dismiss)
 
@@ -1912,19 +1912,19 @@ func _connection_side(game: GameData) -> Control:
 	name_label.text = game.display_name
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_label.add_theme_color_override("font_color", UITheme.GOLD)
 	col.add_child(name_label)
 	var meta := Label.new()
 	meta.text = "%s · %d" % [RunGraph.type_label(game.type), game.year] if game.year > 0 \
 		else RunGraph.type_label(game.type)
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	meta.add_theme_font_size_override("font_size", 10)
+	meta.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	meta.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 	col.add_child(meta)
 	var jump := Button.new()
 	jump.text = "Inspect"
-	jump.add_theme_font_size_override("font_size", 10)
+	jump.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	jump.pressed.connect(func(): focus_game(game.id))
 	col.add_child(jump)
 	return col
@@ -1933,7 +1933,7 @@ func _proof_note(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	return l
 
@@ -1987,7 +1987,7 @@ func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	var title := Label.new()
 	title.text = "🗒  Beaten at %s" % game_name
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
 	var dismiss := Button.new()
@@ -2047,13 +2047,13 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 	var who := Label.new()
 	who.text = enemy.display_name if enemy != null else String(entry["id"])
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", 15)
+	who.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	who.add_theme_color_override("font_color", UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	var n: int = int(entry["beaten"])
 	times.text = "beaten ×%d" % n
-	times.add_theme_font_size_override("font_size", 11)
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	times.add_theme_color_override("font_color", UITheme.SUCCESS)
 	top.add_child(times)
 
@@ -2061,7 +2061,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		var goal := Label.new()
 		goal.text = enemy.goal
 		goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		goal.add_theme_font_size_override("font_size", 12)
+		goal.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		goal.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		col.add_child(goal)
 
@@ -2069,7 +2069,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 	var note := Label.new()
 	note.text = note_text if note_text != "" else "No note written for this one."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", 13)
+	note.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	note.add_theme_color_override("font_color",
 		UITheme.GOLD if note_text != "" else UITheme.TEXT_FAINT)
 	col.add_child(note)
@@ -2083,7 +2083,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		col.add_child(actions)
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-		edit.add_theme_font_size_override("font_size", 11)
+		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():
 			EnemyNoteModal.open(self, game, enemy, func():
 				if _notes_refill.is_valid():
@@ -2092,7 +2092,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		if note_text != "":
 			var wipe := Button.new()
 			wipe.text = "Delete"
-			wipe.add_theme_font_size_override("font_size", 11)
+			wipe.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 			wipe.add_theme_color_override("font_color", UITheme.DANGER)
 			wipe.pressed.connect(func():
 				GameStats.clear_enemy_note(game_id, enemy.id)
@@ -2107,14 +2107,14 @@ func _fact(key: String, value: String) -> Control:
 	var k := Label.new()
 	k.text = key
 	k.custom_minimum_size.x = 96
-	k.add_theme_font_size_override("font_size", 11)
+	k.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	k.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	row.add_child(k)
 	var v := Label.new()
 	v.text = value
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	v.add_theme_color_override("font_color", UITheme.TEXT)
 	row.add_child(v)
 	return row

@@ -11,6 +11,229 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The main menu has the game falling past it.** §7 of
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — the emptiest
+  screen in the project, a 320px column centred in a 1280px canvas in a game whose
+  whole substance is pictures. `MenuFallingArt` fills the two-thirds that said
+  nothing: enemies, items, loot and game covers drifting down BOTH sides of the
+  button column, each tumbling slowly at its own rate and in its own direction,
+  fading in at the top and out into the dark at the bottom. They fall at constant
+  speed rather than accelerating, because they are falling PAST rather than away.
+  It keeps running under the modals, so the menu behind the character picker is
+  alive rather than frozen, and there is a toggle in Settings under Display.
+  **Drawn, not scene-graphed.** Fifty-two rotating `TextureRect`s would be
+  fifty-two Controls re-sorting every frame; these are fifty-two entries in an
+  array drawn in one `_draw`. The cost of that choice is that a texture filter
+  belongs to the CANVAS ITEM rather than to the draw call, and this art spans
+  `AttackFly` at 19x10 and a game cover at 528x704 — so the pieces are split
+  across two layers, NEAREST for pixel art and LINEAR for everything else, sorted
+  by `UITheme.is_pixel_art`.
+  **Three things were wrong on the way, and none of them was visible in the
+  code.** The mix was **all one kind**: pieces filled to their count inside the
+  first second while the texture pool was still decoding, so every one came from
+  whatever had loaded first — measured at *0 covers of 52 on screen*, with the
+  intended share only arriving as pieces recycled half a minute later. Nothing
+  spawns now until the pool is whole, and the opening fill scatters across the
+  screen rather than dropping in from above. Sprites with a **baked-in background
+  fall as tiles**: all 28 of `wands_unidentified/` are 16x16 with an opaque teal
+  ground and showed as teal diamonds — they are RGBA files in which every pixel is
+  alpha 1, so having an alpha CHANNEL proves nothing, and the guard is
+  `_is_cutout` (does the border have a see-through pixel?) rather than a look at
+  the format. Seven of the 54 enemies and four of the 40 bosses are the same, so
+  dropping the folder was not the whole fix. And **covers cannot be held at source
+  size** — 336 at 528x704 is 236 MB on disk and ~1.5 MB each in memory, the exact
+  trap this project already hit once at startup — so a fixed pool of 26 is baked
+  down on the way in to about the 96px it is drawn at, a few textures per frame so
+  the startup screen never hitches.
+  **A big enemy falls as a big picture.** Sixteen enemies are 2x2 on the
+  battlefield, one is 2x3 and one 3x3 (§7.3), and at a pill's size they all read
+  as the same weight of thing. The enemy art therefore comes from
+  `GoalEnemyData` rather than from `images2.0/enemies/` — the resource carries
+  `footprint_rows()` / `footprint_cols()` beside its `image`, and the folder has
+  the pictures and knows nothing about the grid. A piece is drawn at the bounding
+  box's longest side times the base edge, so a 2x2 takes twice the edge and four
+  times the area, exactly as it does standing on the board. Measured: 1x1 at
+  25-66px, 2x2 at 90-118, 3x3 at 113-131.
+  **That immediately broke the menu's own column**, which is the kind of thing
+  only a bigger sprite finds: `_column_x` placed a piece's CENTRE at the clear
+  band's edge, so a 138px enemy reached 69px across it and into the buttons. It
+  holds back half the piece's width now. The test that should have caught it
+  did not, because it subtracted that half-width where it needed to add it — it
+  flagged a piece only once its centre was already well inside the band, which no
+  piece ever was. Both are fixed.
+  **No picture falls twice at once.** With 52 pieces drawn at random from a pool
+  near 116, duplicates were constant, and two copies of one enemy drifting past
+  each other reads as a glitch rather than as variety. Each pool entry is now
+  taken off a free list when a piece claims it and handed back when that piece
+  recycles — so the screen is 52 distinct pictures, verified stable across 600
+  recycles with the free list neither leaking nor growing.
+  `test_menu_falling_art.gd` pins the parts that were wrong: that the mix holds
+  both kinds, that nothing spawns before the pool is whole, that the button
+  column stays clear of WHOLE pieces, that both sides are used, that the tumble
+  varies in rate and direction, that an opaque sprite is rejected, that a bigger
+  footprint really is drawn bigger, and that no picture is on screen twice.
+
+- **Every font size in the game is now on the type scale, and the Collection's
+  grid shows its covers whole.** §2's fonts and all three parts of §3 in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,
+  which leaves ONE open item in that document (§7, the main menu) plus two named
+  halves.
+  **The 22 off-scale font literals are snapped.** The migration left them alone on
+  purpose — naming a size that has no step means CHANGING it, and a restyle does
+  not belong inside a rename — so they came out as a separate, deliberate pass:
+  `17` → `FONT_HEAD` (eleven uses, eight of them `SettingsModal` section headings,
+  a heading size onto the heading step), `21` and `24` → `FONT_TITLE_LG` (all nine
+  are titles; 24 sat equidistant between 22 and 26, so the tie went to the step
+  whose comment says "a screen's title"), `30` and `34` → `FONT_HERO`.
+  **Fit was checked rather than assumed**, because five of these got BIGGER:
+  `SettingsModal` already scrolls by design — 1816px of content in a 624px view —
+  so +8px across eight headings changes nothing there, and `RunOverScreen` still
+  fits with no overflow at all. The biggest single move was its verdict coming down
+  6px, and at 28 it is still comfortably the largest thing on its screen.
+  `Collection`'s title was the clearest case of drift rather than decision: it was
+  the only 30 in the project, on a screen whose siblings all title at 20 or 22, and
+  it now matches the tier board's. **`OFF_SCALE_FONTS` is an empty dict** — kept
+  rather than deleted, as the valve for the next size that genuinely cannot be
+  named.
+  **The owned tick came off the cover art.** It was inset into every cover's
+  top-left: the one piece of state a cell carries, drawn over the one thing that
+  identifies the game, 865 times. The thing worth knowing before moving it is that
+  it is not decoration — it is a Button, and on the player's own list it is the
+  fastest way to mark a game owned without opening its page. So it moved rather
+  than went: it sits on the stat line under the cover now, beside the ⚔ / 👑
+  counts, which frees the art and keeps the click. The ticks still read as a column
+  down the grid, because every cell is the same width and the row is centred, and
+  `_game_cell_height` counts that row at the taller of tick-or-text so a cell
+  cannot clip its own last line.
+  **The grid's gutters are a frame now instead of a gap.** The covers are 4:3,
+  square and tall in roughly equal measure, and the grid read as ragged — but the
+  stated cause was not quite right, and checking it first changed the fix. The
+  covers were ALREADY letterboxed into a fixed 3:4 box, so nothing was overflowing;
+  what made each one look like a different shape floating in a different amount of
+  nothing was that the leftover around it was the cell's own background. A plate
+  behind the art, a little lighter than the cell, turns that leftover into a
+  deliberate surround: every cell now shows the same rectangle whatever shape its
+  cover is. Cropping to a common ratio was the alternative and was rejected — it
+  cuts the edges off non-3:4 art, and some of the 865 covers carry their title
+  there. Nothing is cropped and nothing is scaled up.
+
+- **Five small layout fixes off the backlog, each measured before and after
+  rather than eyeballed.** §4, §5 and §8 of
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,
+  §3's (a) and §6's fail-loudly half are done. Every number below was read off the
+  running screen at 1280x720 with the `verify` skill — which is also how two
+  wrong first attempts were caught before they shipped.
+  **The tier list's `Unranked` lane lines up.** Its label tile was narrower than
+  the six above it and its lane started 17px further left. The doc's diagnosis held
+  exactly: a tier's label cell holds a `LineEdit` because a tier can be renamed,
+  the tray's holds a plain `Label` because "Unranked" cannot, and the `LineEdit`'s
+  larger intrinsic minimum pushed the six past the shared `custom_minimum_size` —
+  measured at 72.75px against 55.68, and 55.68 is exactly `LABEL_CELL.x * _scale`
+  at the 0.58 the board was fitted to, so the tray was the one sitting on the
+  minimum. The fix names the actual cause rather than padding around it: a
+  `LineEdit`'s intrinsic width is `minimum_character_width` em-spaces (Godot
+  defaults to 4), so overriding that constant to 0 lets the cell be the width the
+  const already said. All seven lanes now measure identically, and `_board_height`
+  becomes honest as a side effect — it was already fitting the board on the
+  assumption of a `LABEL_CELL.x * s` label cell.
+  **The tier list says how to get a game onto it.** With nothing rated it was seven
+  empty lanes under a subtitle offering three things (click a game, drag it, rename
+  a tier) that all need a game to be there already. Rating is opt-in and offered
+  from exactly one place, so that board was reachable with no way to learn what
+  fills it. The subtitle now becomes `Nothing rated yet` and a line under the tray
+  names the way in AND where it lands — both checked against the code rather than
+  written from memory: `RateGameModal` is the only entry point, and
+  `TierList.ensure_present` puts a freshly-rated game in Unranked rather than in a
+  tier. `EMPTY_NOTE_H` is counted by `_board_height`, because a height the fit does
+  not know about is a height the board overflows by.
+  **The character picker's three nits.** Row 1 of the roster measured 137px against
+  122 for rows 2 and 3, because one name wraps to two lines, `TILE_SIZE` is a
+  minimum rather than a fixed size, and a `GridContainer` row is as tall as its
+  tallest cell. It is levelled after layout now (`_equalise_tiles`) — and that is
+  the second attempt twice over: `line height × 2` came up 7px short, and so did
+  the font's own `get_multiline_string_size`, because a wrapped `Label` also
+  carries the theme's line spacing, which font metrics do not report. Measuring the
+  laid-out tiles cannot be wrong that way, and it keeps working if the roster, the
+  font or the tile width change. The detail panel's void measured 144px, not the
+  ~180 the doc guessed, and the cause was a mismatch rather than an oversight:
+  `right` was already `SHRINK_CENTER` while `left` was `SHRINK_BEGIN`, so the
+  portrait hung from the top, the facts floated at the middle, and the slack pooled
+  under the portrait — both are centred now, checked against the whole roster first
+  because nothing on that panel scrolls and centring an overflow clips both ends
+  (the tallest hero leaves 124px). And `🎲 Random` now sits beside `Confirm` at
+  478px closer than it was, with `Cancel` alone on the left: that is what the dice
+  button's own comment already argued for — "the one button on the screen that
+  starts a run without the Confirm beside it" — and what the layout contradicted.
+  **The Collection's grid says when there is more below.** The second row of covers
+  was cut flat at the panel edge, and the only thing saying otherwise was a slim
+  scrollbar stripe, on the second-most-used screen in the game. There is now a 26px
+  band of the panel's own colour under the last visible row, up only while there IS
+  more below and stood down at the bottom of the list. It is a SIBLING of the
+  ScrollContainer rather than a child — a child scrolls with the content and slides
+  away exactly when it is needed — so the two are stacked in a plain Control by
+  anchors. Widening the scrollbars instead was the other option and was rejected:
+  the theme dresses every scrollbar in the game, and a fatter one eats content
+  width on screens fitted to 720p with single digits to spare.
+  **The main menu's styling fails loudly.** `_style_menu` reached four nodes with
+  `get_node_or_null` down hardcoded paths behind `is` checks, so renaming or moving
+  one in the editor did not break the menu — it silently stopped styling it and the
+  screen came up in raw `.tscn` colours with nothing said. All four are
+  `%UniqueName` now, which does not care where the node sits and raises if it is
+  genuinely gone. `StartRunBtn` was the tell that this was the right shape: it
+  already had a unique name and was already reached as `%StartRunBtn` eleven lines
+  above, while `_style_menu` walked a four-deep path to the same node. The larger
+  half of §6 stays open — the scene still authors colours that the code overwrites,
+  so the editor preview shows colours no player ever sees.
+
+- **Every font size in the project now comes from the type scale, and the tier
+  list's palette is a decided question rather than an open one.** Two items off
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — §2's font
+  half, finished, and §1, closed without a code change.
+  **259 bare integers became named steps across 38 files.** `UITheme`'s type
+  scale (`FONT_MICRO` … `FONT_HERO`) had been adopted by nine run screens and the
+  other ~38 still typed their sizes at the call site: 281 literals, 86 of them
+  `12`, 52 `11`, 39 `13`. The pass was **value-preserving by construction** —
+  each integer was mapped to the token that holds exactly that integer, which was
+  itself checked against `UITheme.gd` before anything was written, and then the
+  whole diff was read back with the tokens substituted for their values to prove
+  all 265 changed lines round-trip **byte-identical** to the originals. So this
+  moved no pixel, and did not need a re-fit of anything. It also caught three
+  files that set a font size only through a parameter (`LootDropModal`,
+  `PostCombatScreen`, `UITheme` itself) and three call sites handing a helper a
+  bare number, which a search for literals alone would have walked past.
+  **`test_design_tokens.gd` now has a list per axis, because the two axes are not
+  the same job.** Fonts and gaps shared one `MIGRATED` array, and that array
+  could not express the state the project is actually in: naming a font size is a
+  free rename, while several gaps on the run screens are load-bearing to the
+  pixel against the 720p budget and have to be read one at a time. Adding a file
+  to the single list to lock in its fonts would have demanded its gaps in the same
+  commit. There are now `MIGRATED_FONTS` (all 50 screens that set a size in code)
+  and `MIGRATED_GAPS` (the original nine), with `OFF_SCALE_FONTS` /
+  `OFF_SCALE_GAPS` likewise split — the old combined allowlist turned out to sort
+  cleanly, since `24` was a font in two files and every other exception was a gap,
+  so a font exception had been quietly punching a hole in the gap check.
+  **The font list is asserted complete**, which is the hole the per-file design
+  had: the check only ever looked where it was told to, so a new screen shipping
+  bare integers passed by not being listed. A walk of `scripts/` now fails if
+  anything setting a font size is missing from `MIGRATED_FONTS` — and it earned
+  its keep immediately, by finding the three parameter-only files above.
+  **Five sizes were deliberately NOT named**, because naming them would mean
+  changing them and a restyle does not belong inside a rename: `17` (eleven uses,
+  eight of them `SettingsModal` section headings, against a `FONT_HEAD` of 18),
+  `24` (seven titles), `21` (two), `30` (`Collection`'s title, where every other
+  screen's is 20 or 22) and `34` (`RunOverScreen`'s verdict). They sit in
+  `OFF_SCALE_FONTS` with the reason, and the backlog carries them as the open
+  question with the numbers worked out — which is the second thing this kind of
+  pass is for: a value nobody chose only becomes visible once the rest are named.
+  **§1, the tier list's palette, is decided: keep it.** `TIER_COLORS` is the stock
+  tiermaker ramp in a game with a warm ember-and-parchment palette, which is real,
+  but S/A/B/C/D/F is legible *because* it is the ramp everyone else uses — the
+  borrowed look is the feature, and six warm tones buy consistency on a screen
+  outside the run at the price of six tiers that are harder to tell apart. The
+  item stays in the doc with that reasoning rather than being deleted, so it does
+  not get asked a third time; the one version worth reopening (pull the six
+  slightly toward the palette, keep the hue order) is written down there.
+
 - **The run's `☰ Menu` reaches the screens that used to need quitting it, and it
   is three named groups instead of a list.** It was four entries under one
   unlabelled rule — Save / New run, then Main menu / Exit — which is fine for

@@ -58,9 +58,15 @@ const ZONE_PAD := 5.0
 # a click away.
 const BADGE_MIN_SCALE := 0.45
 
+# Height of the empty-board note (see `_build_empty_note`). A const because
+# `_board_height` has to count it before the note exists.
+const EMPTY_NOTE_H := 52.0
+
 var _rows_box: VBoxContainer
 var _detail_box: VBoxContainer
 var _scroll: ScrollContainer
+# The subtitle beside the title. Swapped by `_refresh` (see `_build_shell`).
+var _hint: Label
 # How much of full size the board is currently drawn at (1.0 = the sizes above).
 var _scale: float = 1.0
 # The game whose card is open on the right. Kept across refreshes so dropping a
@@ -142,19 +148,21 @@ func _build_shell() -> void:
 
 	var title := Label.new()
 	title.text = "Tier List"
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
 
-	var hint := Label.new()
-	hint.text = "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename"
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.clip_text = true
-	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_child(hint)
+	# Kept as a field because it is a LIE on an empty board: all three of the
+	# things it offers need a game to already be on the board. `_refresh` swaps it
+	# for the one way in.
+	_hint = Label.new()
+	_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint.clip_text = true
+	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_hint)
 
 	# "✕ Close", not a bare ✕, and the word is what makes it tellable from the
 	# OTHER ✕ on this screen — the one on the detail pane, which closes the game
@@ -273,7 +281,45 @@ func _refresh() -> void:
 	# Unranked tray sits at the bottom, visually separated.
 	_rows_box.add_child(HSeparator.new())
 	_rows_box.add_child(_build_unranked_row(TierList.unranked))
+
+	# NOTHING RATED IS A REACHABLE STATE, and it used to say nothing. Rating is
+	# strictly opt-in and offered from exactly one place, so a player can open this
+	# board — from the main menu or the run's ☰ Menu — with no idea what puts a game
+	# on it, and find seven empty lanes under a subtitle offering three things that
+	# all need a game to be there already.
+	var empty: bool = _board_is_empty()
+	if _hint != null:
+		_hint.text = ("Nothing rated yet" if empty
+			else "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename")
+	if empty:
+		_rows_box.add_child(_build_empty_note())
 	_show_detail(_selected)
+
+func _board_is_empty() -> bool:
+	if not TierList.unranked.is_empty():
+		return false
+	for row in TierList.tiers:
+		if not (row as Array).is_empty():
+			return false
+	return true
+
+# The one way onto this board, named. `★ Rate this game` on the haul screen is
+# the only entry point (`RateGameModal`), and a rated game lands in Unranked
+# (`TierList.ensure_present`) rather than in a tier — so say both, or the tray
+# looks like somewhere games go to be forgotten rather than the starting line.
+func _build_empty_note() -> Control:
+	var note := Label.new()
+	note.text = ("Finish a game and choose  ★ Rate this game  on the haul screen. "
+		+ "It arrives in Unranked, and you drag it up from there.")
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Clear of the tray above it without claiming a lane's worth of the board.
+	note.custom_minimum_size = Vector2(0, EMPTY_NOTE_H)
+	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return note
 
 # ------------------------------------------------------------------
 # Fitting the board to the window (see MIN_SCALE)
@@ -332,8 +378,11 @@ func _board_height(width: float, s: float) -> float:
 		var lines: int = maxi(1, ceili(float((row as Array).size()) / float(per_line)))
 		var slab: float = lines * tile.y + (lines - 1) * TILE_SEP + ZONE_PAD * 2.0
 		total += maxf(slab, LABEL_CELL.y * s)
-	# The gap under each row, plus the separator above the Unranked tray.
-	return total + ROWS_SEP * (rows.size() + 1) + 8.0
+	# The gap under each row, plus the separator above the Unranked tray, plus the
+	# empty-board note when it is up — it is a row of the box like any other, and a
+	# height the fit does not know about is a height the board overflows by.
+	var note: float = (EMPTY_NOTE_H + ROWS_SEP) if _board_is_empty() else 0.0
+	return total + ROWS_SEP * (rows.size() + 1) + 8.0 + note
 
 # A scaled font size that never drops below what can be read at all.
 func _font(size: float, floor_px: int = 8) -> int:
@@ -354,6 +403,14 @@ func _build_tier_row(index: int, label_text: String, game_ids: Array) -> Control
 	name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_edit.flat = true
 	name_edit.add_theme_font_size_override("font_size", _font(26, 11))
+	# A LineEdit's intrinsic minimum width is `minimum_character_width` em-spaces
+	# (Godot's default is 4), and that is WIDER than the label cell — so the six
+	# tier cells were pushed past `LABEL_CELL * _scale` while the Unranked row,
+	# which holds a plain Label because "Unranked" cannot be renamed, sat exactly
+	# on it. Measured: 72.75px against 55.68px, so the tray's lane started 17px
+	# left of the six above it. Zero here lets the cell be the width the const
+	# says, which is also the width `_board_height` assumes when it fits the board.
+	name_edit.add_theme_constant_override("minimum_character_width", 0)
 	name_edit.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
 	name_edit.add_theme_color_override("caret_color", Color(0.08, 0.06, 0.05))
 	name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -510,7 +567,7 @@ func _show_detail(game_id: StringName) -> void:
 
 	var title := Label.new()
 	title.text = name_text
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_box.add_child(title)
@@ -527,7 +584,7 @@ func _show_detail(game_id: StringName) -> void:
 		var ask := Label.new()
 		ask.text = "Scored. Now pick its tier — drag it onto a row, or use Move to below."
 		ask.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ask.add_theme_font_size_override("font_size", 12)
+		ask.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		ask.add_theme_color_override("font_color", UITheme.GOLD)
 		call_out.add_child(ask)
 		_detail_box.add_child(call_out)
@@ -544,7 +601,7 @@ func _show_detail(game_id: StringName) -> void:
 		meta.append(RunGraph.type_label(gd.type))
 		var chip := Label.new()
 		chip.text = "  •  ".join(meta).to_upper()
-		chip.add_theme_font_size_override("font_size", 11)
+		chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		chip.add_theme_color_override("font_color", RunGraph.type_color(gd.type))
 		_detail_box.add_child(chip)
 
@@ -589,14 +646,14 @@ func _show_detail(game_id: StringName) -> void:
 
 	var rate := Button.new()
 	rate.text = "✎  Score and notes" if rating.is_empty() else "✎  Edit score and notes"
-	rate.add_theme_font_size_override("font_size", 12)
+	rate.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	rate.pressed.connect(func(): _open_rating(game_id, gd))
 	_detail_box.add_child(rate)
 
 	if gd != null and gd.has_launch_target():
 		var play := Button.new()
 		play.text = "▶  Play the real game"
-		play.add_theme_font_size_override("font_size", 12)
+		play.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		play.pressed.connect(func(): gd.launch())
 		_detail_box.add_child(play)
 
@@ -618,7 +675,7 @@ func _move_button(text: String, game_id: StringName, tier: int, here: bool,
 	b.text = text
 	b.disabled = here
 	b.custom_minimum_size = Vector2(0, 28)
-	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	b.add_theme_color_override("font_color", color)
 	b.tooltip_text = "Already there" if here else "Move %s to %s" % [
 		Data.get_game(game_id).display_name if Data.get_game(game_id) != null
@@ -645,13 +702,13 @@ func _fact(key: String, value: String) -> Control:
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	k.clip_text = true
 	k.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	k.add_theme_font_size_override("font_size", 12)
+	k.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	k.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(k)
 	var v := Label.new()
 	v.text = value
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	v.add_theme_color_override("font_color", UITheme.TEXT)
 	row.add_child(v)
 	return row
@@ -659,7 +716,7 @@ func _fact(key: String, value: String) -> Control:
 func _heading(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.GOLD)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -667,7 +724,7 @@ func _heading(text: String) -> Control:
 func _note(text: String, color: Color = UITheme.TEXT_FAINT) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l

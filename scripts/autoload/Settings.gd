@@ -156,6 +156,19 @@ var dev_mode: bool = true
 # toggle rather than a fact so a player who never streams can stop the writes.
 var obs_overlay: bool = true
 
+# Emitted when `menu_falling_art` is toggled, so the menu behind the Settings
+# modal can start or stop without being rebuilt. Deliberately NARROW rather than a
+# general `changed`: this file has no other signal, and one called `changed` that
+# only fires for one of its fifteen settings is a trap for the next caller.
+signal menu_falling_art_changed(enabled: bool)
+
+# The main menu's falling art (`MenuFallingArt`). On, because the menu is the one
+# screen in the project with nothing on it and the game is made of pictures — but
+# a toggle, because a moving background is exactly the kind of thing that is
+# charming to one player and distracting to the next. Off stops the animation and
+# frees the texture pool.
+var menu_falling_art: bool = true
+
 func _ready() -> void:
 	load_settings()
 	# The shared theme on the WINDOW, as the floor under every screen: anything
@@ -319,6 +332,13 @@ func set_obs_overlay(value: bool) -> void:
 	save_settings()
 	ObsCompanion.set_enabled(value)
 
+func set_menu_falling_art(value: bool) -> void:
+	if value == menu_falling_art:
+		return
+	menu_falling_art = value
+	save_settings()
+	menu_falling_art_changed.emit(value)
+
 func set_game_filter(value: int) -> void:
 	value = clampi(value, 0, GameFilter.DOWNLOADED)
 	if value == game_filter:
@@ -367,6 +387,7 @@ func load_settings() -> void:
 		return
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
 	obs_overlay = bool(cfg.get_value("stream", "obs_overlay", true))
+	menu_falling_art = bool(cfg.get_value("display", "menu_falling_art", true))
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
 	var stored_size = cfg.get_value("display", "windowed_size", WINDOWED_SIZE)
@@ -383,6 +404,7 @@ func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("dev", "dev_mode", dev_mode)
 	cfg.set_value("stream", "obs_overlay", obs_overlay)
+	cfg.set_value("display", "menu_falling_art", menu_falling_art)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.set_value("display", "windowed_size", windowed_size)
 	cfg.save(CONFIG_PATH)

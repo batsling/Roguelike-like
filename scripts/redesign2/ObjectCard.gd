@@ -96,7 +96,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = _data.display_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	title.add_theme_color_override("font_color", UITheme.ACCENT)
 	root.add_child(title)
 
@@ -195,7 +195,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	btn.disabled = not offered
 	btn.custom_minimum_size = Vector2(0, 32)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.add_theme_font_size_override("font_size", 14)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	# The lever that would kill you wears the warning itself, the same as an
 	# event's fatal choice does. Only while the button is actually OFFERED — a
 	# jammed machine cannot take your last point of Health, and painting its
@@ -223,7 +223,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		# The cost line reddens as the press gets closer to lethal. The Blood
 		# Donation Machine is not gated on having Health to spare — you may kill
 		# yourself on it, exactly as in Isaac — so this and the warning below are
@@ -239,7 +239,7 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		warn.add_theme_font_size_override("font_size", 11)
+		warn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		warn.add_theme_color_override("font_color", UITheme.DANGER)
 		col.add_child(warn)
 	return col

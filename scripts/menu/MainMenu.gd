@@ -22,6 +22,7 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
+	_mount_falling_art()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -46,27 +47,47 @@ func _ready() -> void:
 # Menu styling
 # ---------------------------------------------------------------------------
 
+# FAILS LOUDLY NOW. Every lookup here used to be `get_node_or_null` down a
+# hardcoded path (`Center/Panel/TitleBox/Title` and three more) guarded by an
+# `is` check, so renaming or moving a node in the editor did not break the
+# menu — it silently stopped styling it, and the screen came up in the raw
+# `.tscn` colours with nothing said. `StartRunBtn` was the tell: it already had
+# a unique name and was already reached as `%StartRunBtn` eleven lines above,
+# while this function walked a four-deep path to the same node.
+#
+# `%Name` is the fix the layout review called the smaller of the two (see
+# `docs/layout-review-backlog.md` §6): it does not depend on where the node sits,
+# so moving one in the editor is free, and a node that is genuinely GONE raises
+# instead of shrugging. `Background`, `Title` and `Subtitle` were given
+# `unique_name_in_owner` in the scene to match the nine nodes that already had it.
+#
+# The bigger half of §6 is still open: these colours are also authored in the
+# `.tscn`, so the editor preview shows colours no player ever sees.
 func _style_menu() -> void:
-	var bg := get_node_or_null("Background")
-	if bg is ColorRect:
-		bg.color = UITheme.BG_DEEP
-	# A subtle warm vignette panel behind the button column reads better than a
-	# flat page; add it under the centre content if not already present.
+	(%Background as ColorRect).color = UITheme.BG_DEEP
 	# The name in gold, the old title under it as a subtitle in the dim text
 	# colour — one is what the game is called, the other is what it is about, and
 	# they were the same 36px line until now.
-	var title := get_node_or_null("Center/Panel/TitleBox/Title")
-	if title is Label:
-		title.add_theme_color_override("font_color", UITheme.GOLD)
-	var subtitle := get_node_or_null("Center/Panel/TitleBox/Subtitle")
-	if subtitle is Label:
-		subtitle.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	(%Title as Label).add_theme_color_override("font_color", UITheme.GOLD)
+	(%Subtitle as Label).add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	# Make the primary action stand out.
-	var start := get_node_or_null("Center/Panel/Buttons/StartRunBtn")
-	if start is Button:
-		start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
-		start.add_theme_color_override("font_color", UITheme.GOLD)
-		start.add_theme_font_size_override("font_size", 20)
+	var start := %StartRunBtn as Button
+	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
+	start.add_theme_color_override("font_color", UITheme.GOLD)
+	start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+
+# The game's own art falling past, down both sides of the button column. Mounted
+# as the FIRST child so it draws under everything else in the scene — the
+# background node it sits with is a flat colour, and this goes over that and
+# under the title, the buttons and the save list.
+#
+# It deliberately keeps running while the modals are up: `%ModalLayer` is a
+# sibling above this, so the character picker and the settings panel dim it
+# rather than stop it, and the menu behind them still looks alive.
+func _mount_falling_art() -> void:
+	var art := MenuFallingArt.mount(self)
+	# Directly above the Background ColorRect, below Center and %ModalLayer.
+	move_child(art, 1)
 
 # ---------------------------------------------------------------------------
 # Profiles — who is playing
@@ -88,7 +109,7 @@ func _build_profile_row() -> void:
 	row.add_theme_constant_override("separation", 10)
 
 	_profile_lbl = Label.new()
-	_profile_lbl.add_theme_font_size_override("font_size", 15)
+	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_profile_lbl)
 
@@ -224,7 +245,7 @@ func _populate_save_list() -> void:
 		var none := Label.new()
 		none.text = "No saved runs yet — the overworld's 💾 Save button makes one."
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		_save_list_container.add_child(none)
 		_refresh_continue_button()
@@ -248,12 +269,12 @@ func _save_row(entry: Dictionary) -> Control:
 	row.add_child(text)
 	var title := Label.new()
 	title.text = String(entry.get("name", "")) if String(entry.get("name", "")) != "" else "Unnamed run"
-	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	title.add_theme_color_override("font_color", UITheme.GOLD if is_auto else UITheme.TEXT)
 	text.add_child(title)
 	var sub := Label.new()
 	sub.text = _save_subtitle(entry)
-	sub.add_theme_font_size_override("font_size", 11)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	text.add_child(sub)
 
@@ -268,7 +289,7 @@ func _save_row(entry: Dictionary) -> Control:
 		tag.text = custom
 		tag.tooltip_text = "This run was built on the Custom Run screen — resuming it rebuilds that map."
 		tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		tag.add_theme_font_size_override("font_size", 10)
+		tag.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		tag.add_theme_color_override("font_color", UITheme.ACCENT)
 		text.add_child(tag)
 

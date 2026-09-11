@@ -127,14 +127,14 @@ static func build(cfg: Dictionary) -> Control:
 	head.add_child(names)
 	var title := Label.new()
 	title.text = String(cfg.get("title", ""))
-	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	title.add_theme_color_override("font_color", accent)
 	names.add_child(title)
 	var subtitle: String = String(cfg.get("subtitle", ""))
 	if subtitle != "":
 		var sub := Label.new()
 		sub.text = subtitle
-		sub.add_theme_font_size_override("font_size", 11)
+		sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		names.add_child(sub)
 
@@ -159,7 +159,7 @@ static func build(cfg: Dictionary) -> Control:
 				continue
 			var h := Label.new()
 			h.text = section.to_upper()
-			h.add_theme_font_size_override("font_size", 10)
+			h.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 			h.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 			col.add_child(h)
 			continue
@@ -170,7 +170,7 @@ static func build(cfg: Dictionary) -> Control:
 		l.text = text
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(WRAP, 0)
-		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		l.add_theme_color_override("font_color", UITheme.TEXT)
 		col.add_child(l)
 
@@ -180,7 +180,7 @@ static func build(cfg: Dictionary) -> Control:
 		n.text = note
 		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		n.custom_minimum_size = Vector2(WRAP, 0)
-		n.add_theme_font_size_override("font_size", 11)
+		n.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		n.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		col.add_child(n)
 	return panel
@@ -202,7 +202,7 @@ static func _pip(pip: Dictionary) -> Control:
 		row.add_child(UITheme.crisp_tex(art, 14))
 	var label := Label.new()
 	label.text = String(pip.get("text", ""))
-	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color", tint)
 	row.add_child(label)
 	return chip

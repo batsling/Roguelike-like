@@ -128,7 +128,7 @@ func _build() -> void:
 
 	var title := Label.new()
 	title.text = "Dev Tools"
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	vbox.add_child(title)
 
 	var tabs := HBoxContainer.new()
@@ -154,7 +154,7 @@ func _build() -> void:
 	vbox.add_child(_search)
 
 	_hint = Label.new()
-	_hint.add_theme_font_size_override("font_size", 12)
+	_hint.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.78))
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(_hint)
@@ -296,14 +296,14 @@ func _row_button(label: String, detail: String, on_press: Callable) -> Control:
 func _section(title: String) -> Control:
 	var l := Label.new()
 	l.text = title
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	l.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35))
 	return l
 
 func _note(text: String) -> Control:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", Color(0.65, 0.65, 0.72))
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
@@ -663,7 +663,7 @@ func _board_row(entry: Dictionary) -> Control:
 		int(entry.get("row", 0))]
 	head.text = "#%d  %s   (%s, ❤%d, ⚔%d)" % [inst, e.display_name, where,
 		int(entry.get("health", e.health)), e.damage]
-	head.add_theme_font_size_override("font_size", 13)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	col.add_child(head)
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	if not statuses.is_empty():
@@ -710,7 +710,7 @@ func _board_row(entry: Dictionary) -> Control:
 func _mini(text: String, on_press: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.add_theme_font_size_override("font_size", 11)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	b.pressed.connect(on_press)
 	return b
 

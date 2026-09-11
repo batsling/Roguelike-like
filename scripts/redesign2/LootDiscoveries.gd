@@ -124,7 +124,7 @@ static func _row(heading: String, entries: Array) -> Control:
 	col.add_theme_constant_override("separation", 3)
 	var head := Label.new()
 	head.text = heading
-	head.add_theme_font_size_override("font_size", 10)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	col.add_child(head)
 	var flow := HFlowContainer.new()
@@ -155,7 +155,7 @@ static func _chip(entry: Dictionary) -> Control:
 	row.add_child(art)
 	var name := Label.new()
 	name.text = LootSystem.display_name(entry)
-	name.add_theme_font_size_override("font_size", 10)
+	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	name.add_theme_color_override("font_color", UITheme.TEXT)
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -205,7 +205,7 @@ static func known_wands() -> Array:
 static func note(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 10)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size = Vector2(WIDTH, 0)

@@ -1927,14 +1927,22 @@ root `images/` folder, so there is exactly one image store for the whole repo.
   there and regenerate rather than hand-editing generated `.tres` in bulk.
 - **Font sizes, gaps and CanvasLayer numbers come from `UITheme`.** There is a
   type scale (`FONT_MICRO` … `FONT_HERO`), a spacing scale (`GAP_NONE` …
-  `GAP_SECTION`) and a z-order registry (`UITheme.Layer`), and the run screens are
-  migrated onto all three. They exist because the file had a thorough colour
-  system and nothing for the other two axes: 25 distinct font sizes across the
-  project (105 uses of `12`, 71 of `11`, 62 of `13`) and ~20 separations, every
-  one typed at its call site. **The scales hold the values that were already in
-  use** — naming them was the whole change, so nothing moved and nothing needed
-  re-fitting. If the size you want is not on the list, take the nearest one.
-  `test_design_tokens.gd` reads the source of the migrated screens and fails on a
-  bare integer; genuinely off-scale values go in its `OFF_SCALE_ALLOWED` list with
-  a reason, the way `check_doc_paths.py` lists its deliberate exceptions. Most of
-  those are gaps that are load-bearing to the pixel on a page fitted to 720p.
+  `GAP_SECTION`) and a z-order registry (`UITheme.Layer`). They exist because the
+  file had a thorough colour system and nothing for the other two axes: 25
+  distinct font sizes across the project (105 uses of `12`, 71 of `11`, 62 of
+  `13`) and ~20 separations, every one typed at its call site. **The scales hold
+  the values that were already in use** — naming them was the whole change, so
+  nothing moved and nothing needed re-fitting. If the size you want is not on the
+  list, take the nearest one.
+- **The two axes are at different stages, and that is deliberate.** **Fonts are
+  done project-wide** — all 47 screens that set one in code, because naming a font
+  size is a free rename. **Gaps are still the nine run screens only**, because
+  several of theirs are load-bearing to the pixel against a 720p budget with
+  single digits to spare, so each one has to be read before it is named; the rest
+  adopt the spacing scale as they are next touched. `test_design_tokens.gd` reads
+  the source and fails on a bare integer, with a list per axis —
+  `MIGRATED_FONTS` / `MIGRATED_GAPS`, and `OFF_SCALE_FONTS` / `OFF_SCALE_GAPS` for
+  values that genuinely cannot be named, each with a reason, the way
+  `check_doc_paths.py` lists its deliberate exceptions. The font list is also
+  asserted **complete** against a walk of `scripts/`, so a new screen cannot ship
+  bare integers by simply not being on it — which is the hole the single list had.

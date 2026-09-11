@@ -115,7 +115,7 @@ func _build() -> void:
 
 	var head := Label.new()
 	head.text = _title
-	head.add_theme_font_size_override("font_size", 20)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	head.add_theme_color_override("font_color", Color(1, 0.72, 0.45))
 	vbox.add_child(head)
 
@@ -123,7 +123,7 @@ func _build() -> void:
 	text.text = _body
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.custom_minimum_size = Vector2(_width - 40, 0)
-	text.add_theme_font_size_override("font_size", 14)
+	text.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	text.add_theme_color_override("font_color", Color(0.86, 0.86, 0.9))
 	vbox.add_child(text)
 

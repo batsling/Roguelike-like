@@ -107,7 +107,7 @@ func _on_notified(text: String, color: Color) -> void:
 	# roughly one character, which would collapse every toast into a tall ribbon.
 	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lbl.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
-	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast.add_child(lbl)
 
