@@ -179,7 +179,7 @@ func _header() -> Control:
 
 	var title := Label.new()
 	title.text = "Custom Run"
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	col.add_child(title)
 

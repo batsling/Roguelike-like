@@ -87,7 +87,7 @@ func _build_ui() -> void:
 
 	var title := Label.new()
 	title.text = "Settings"
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	vbox.add_child(title)
 
 	# --- display -----------------------------------------------------------
@@ -96,7 +96,7 @@ func _build_ui() -> void:
 	# looking at rather than what the run will do.
 	var display_heading := Label.new()
 	display_heading.text = "Display"
-	display_heading.add_theme_font_size_override("font_size", 17)
+	display_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	display_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(display_heading)
 
@@ -186,7 +186,7 @@ func _build_ui() -> void:
 
 	var heading := Label.new()
 	heading.text = "Games used in path selection"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -247,7 +247,7 @@ func _build_ui() -> void:
 
 	var amulet_heading := Label.new()
 	amulet_heading.text = "Amulet generation"
-	amulet_heading.add_theme_font_size_override("font_size", 17)
+	amulet_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	amulet_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(amulet_heading)
 
@@ -270,7 +270,7 @@ func _build_ui() -> void:
 
 	var rules_heading := Label.new()
 	rules_heading.text = "Transmute"
-	rules_heading.add_theme_font_size_override("font_size", 17)
+	rules_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	rules_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(rules_heading)
 
@@ -299,7 +299,7 @@ func _build_ui() -> void:
 
 	var dev_heading := Label.new()
 	dev_heading.text = "Developer"
-	dev_heading.add_theme_font_size_override("font_size", 17)
+	dev_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	dev_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(dev_heading)
 
@@ -344,7 +344,7 @@ func _build_ui() -> void:
 func _build_stream_section(vbox: VBoxContainer) -> void:
 	var heading := Label.new()
 	heading.text = "Stream overlay"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -404,7 +404,7 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 func _build_wipe_section(vbox: VBoxContainer) -> void:
 	var heading := Label.new()
 	heading.text = "This profile"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 
@@ -449,7 +449,7 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
 	var heading := Label.new()
 	heading.text = "Which games you own"
-	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 	vbox.add_child(heading)
 

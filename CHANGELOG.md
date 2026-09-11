@@ -11,6 +11,50 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every font size in the game is now on the type scale, and the Collection's
+  grid shows its covers whole.** §2's fonts and all three parts of §3 in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,
+  which leaves ONE open item in that document (§7, the main menu) plus two named
+  halves.
+  **The 22 off-scale font literals are snapped.** The migration left them alone on
+  purpose — naming a size that has no step means CHANGING it, and a restyle does
+  not belong inside a rename — so they came out as a separate, deliberate pass:
+  `17` → `FONT_HEAD` (eleven uses, eight of them `SettingsModal` section headings,
+  a heading size onto the heading step), `21` and `24` → `FONT_TITLE_LG` (all nine
+  are titles; 24 sat equidistant between 22 and 26, so the tie went to the step
+  whose comment says "a screen's title"), `30` and `34` → `FONT_HERO`.
+  **Fit was checked rather than assumed**, because five of these got BIGGER:
+  `SettingsModal` already scrolls by design — 1816px of content in a 624px view —
+  so +8px across eight headings changes nothing there, and `RunOverScreen` still
+  fits with no overflow at all. The biggest single move was its verdict coming down
+  6px, and at 28 it is still comfortably the largest thing on its screen.
+  `Collection`'s title was the clearest case of drift rather than decision: it was
+  the only 30 in the project, on a screen whose siblings all title at 20 or 22, and
+  it now matches the tier board's. **`OFF_SCALE_FONTS` is an empty dict** — kept
+  rather than deleted, as the valve for the next size that genuinely cannot be
+  named.
+  **The owned tick came off the cover art.** It was inset into every cover's
+  top-left: the one piece of state a cell carries, drawn over the one thing that
+  identifies the game, 865 times. The thing worth knowing before moving it is that
+  it is not decoration — it is a Button, and on the player's own list it is the
+  fastest way to mark a game owned without opening its page. So it moved rather
+  than went: it sits on the stat line under the cover now, beside the ⚔ / 👑
+  counts, which frees the art and keeps the click. The ticks still read as a column
+  down the grid, because every cell is the same width and the row is centred, and
+  `_game_cell_height` counts that row at the taller of tick-or-text so a cell
+  cannot clip its own last line.
+  **The grid's gutters are a frame now instead of a gap.** The covers are 4:3,
+  square and tall in roughly equal measure, and the grid read as ragged — but the
+  stated cause was not quite right, and checking it first changed the fix. The
+  covers were ALREADY letterboxed into a fixed 3:4 box, so nothing was overflowing;
+  what made each one look like a different shape floating in a different amount of
+  nothing was that the leftover around it was the cell's own background. A plate
+  behind the art, a little lighter than the cell, turns that leftover into a
+  deliberate surround: every cell now shows the same rectangle whatever shape its
+  cover is. Cropping to a common ratio was the alternative and was rejected — it
+  cuts the edges off non-3:4 art, and some of the 865 covers carry their title
+  there. Nothing is cropped and nothing is scaled up.
+
 - **Five small layout fixes off the backlog, each measured before and after
   rather than eyeballed.** §4, §5 and §8 of
   [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,

@@ -358,7 +358,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	var title := Label.new()
 	title.text = String(cfg.get("name", "")) if String(cfg.get("name", "")) != "" \
 		else (game.display_name if game != null else String(id))
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)

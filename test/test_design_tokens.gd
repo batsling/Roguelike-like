@@ -96,36 +96,23 @@ const MIGRATED_GAPS := [
 	"res://scripts/menu/StartPicker.gd",
 ]
 
-# Font sizes with no step on the type scale, left as literals ON PURPOSE because
-# naming them would mean CHANGING them, and a restyle does not belong in a
-# rename. Each is a size the project reached for without a step existing for it,
-# which is the finding worth keeping rather than papering over — §2 of
-# `docs/layout-review-backlog.md` carries them as the open question.
+# EMPTY, AND THAT IS THE POINT. Twenty-two font literals had no step on the type
+# scale and sat here as documented exceptions: 17 (eleven uses, eight of them
+# `SettingsModal` section headings), 24 (seven titles), 21 (two), 30
+# (`Collection`'s title) and 34 (`RunOverScreen`'s verdict). They were left alone
+# by the migration ON PURPOSE, because naming them meant CHANGING them and a
+# restyle does not belong inside a rename.
 #
-#   17 — eight section headings in `SettingsModal` plus three elsewhere. The
-#        biggest cluster, and the one with an obvious home: `FONT_HEAD` is 18.
-#        Snapping it is a 1px restyle on a modal nobody has re-fitted, so it is
-#        a deliberate follow-up, not a side effect of this pass.
-#   21 — between `FONT_TITLE` (20) and `FONT_TITLE_LG` (22); two modal titles.
-#   24 — between `FONT_TITLE_LG` (22) and `FONT_DISPLAY` (26); seven titles, the
-#        largest off-scale group after 17.
-#   30 — `Collection`'s screen title, where every other screen's is 20 or 22.
-#   34 — `RunOverScreen`'s verdict, the largest type in the game.
-const OFF_SCALE_FONTS := {
-	"res://scripts/menu/CustomRunScreen.gd": [24],
-	"res://scripts/menu/ProfilePicker.gd": [24],
-	"res://scripts/redesign2/BattlefieldView.gd": [24],
-	"res://scripts/redesign2/EventModal2.gd": [21],
-	"res://scripts/redesign2/GameChoiceModal.gd": [24],
-	"res://scripts/redesign2/ItemInfoCard.gd": [21],
-	"res://scripts/redesign2/PlaySession2.gd": [24],
-	"res://scripts/redesign2/RouteLadder.gd": [17],
-	"res://scripts/redesign2/RunOverScreen.gd": [17, 34],
-	"res://scripts/ui/AtlasView.gd": [17],
-	"res://scripts/ui/Collection.gd": [30],
-	"res://scripts/ui/RateGameModal.gd": [24],
-	"res://scripts/ui/SettingsModal.gd": [17, 24],
-}
+# They have since been snapped to their nearest step as a deliberate restyle, each
+# checked on the running screen rather than reasoned about: 17 -> FONT_HEAD, 21 and
+# 24 -> FONT_TITLE_LG (both are titles, and 24 was equidistant between 22 and 26 —
+# the tie went to the step whose comment says "a screen's title"), 30 and 34 ->
+# FONT_HERO. Every font size in the project is now on the scale.
+#
+# Kept as an empty dict rather than deleted: it is the pressure valve for the next
+# size that genuinely cannot be named, and an empty one says "there are none right
+# now" where a missing one would just look like the check had been dropped.
+const OFF_SCALE_FONTS := {}
 
 # Gaps that are deliberately NOT on the scale, with the reason. Every one is
 # load-bearing to the pixel — the overworld is fitted to a 720p canvas with

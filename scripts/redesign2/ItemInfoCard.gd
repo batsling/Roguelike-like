@@ -70,7 +70,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = item.display_name
-	title.add_theme_font_size_override("font_size", 21)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.5))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head_row.add_child(title)

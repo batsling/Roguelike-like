@@ -259,7 +259,7 @@ func _build_ui() -> void:
 func _title(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 24)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	return l
 
 func _section(text: String) -> Label:

@@ -286,7 +286,7 @@ func _header() -> Control:
 	var title := Label.new()
 	title.text = "✦  %s" % _event.display_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 21)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", UITheme.ACCENT)
 	# Put-it-away, top right of the panel. Not a close: a closed event is resolved
 	# and gone, and this one has not been answered yet.

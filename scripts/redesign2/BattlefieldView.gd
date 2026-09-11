@@ -3029,7 +3029,7 @@ func _float_over_hero(text: String, color: Color) -> void:
 		return
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 24)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	lbl.add_theme_constant_override("outline_size", 6)

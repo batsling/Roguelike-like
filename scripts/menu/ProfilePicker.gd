@@ -69,7 +69,7 @@ func _build() -> void:
 
 	var title := Label.new()
 	title.text = "Profiles"
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	vbox.add_child(title)
 

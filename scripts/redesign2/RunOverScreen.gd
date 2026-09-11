@@ -171,7 +171,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = headline()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", accent)
 	col.add_child(title)
 
@@ -221,7 +221,7 @@ func _tile(key: String, value: String, color: Color = UITheme.TEXT) -> Control:
 	box.add_child(k)
 	var v := Label.new()
 	v.text = value
-	v.add_theme_font_size_override("font_size", 17)
+	v.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	v.add_theme_color_override("font_color", color)
 	box.add_child(v)
 	return box

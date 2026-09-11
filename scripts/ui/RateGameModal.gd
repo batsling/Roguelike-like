@@ -119,7 +119,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 
 	var title := Label.new()
 	title.text = ("Update your rating" if not existing.is_empty() else "Rate this game")
-	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", ACCENT)
 	vbox.add_child(title)
 

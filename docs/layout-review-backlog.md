@@ -9,11 +9,13 @@ cold in a later session.
 Each item says **what** is wrong, **why it matters**, and **what it would take** —
 because the sizing is the part that is expensive to re-derive.
 
-**Eight items, of which three are still open** — §3's b and c, §7, and the halves
-of §2 and §6 noted below. §1 is **decided**, §4, §5 and §8 are **fixed**, §2's
-font half and §6's fail-loudly half are **done**. Closed work is kept here with
-its reasoning rather than deleted, so none of it gets asked again; a closed item
-says so in its heading, and a half-closed one says which half.
+**Eight items, of which ONE is still open: §7, the main menu.** Everything else is
+closed or has only a named half left — §1 is **decided**, §3, §4, §5 and §8 are
+**fixed**, §2's fonts are **done** (its spacing half is the one real piece of work
+left in the document), and §6's fail-loudly half is **done** with its duplicated
+colours still open. Closed work is kept here with its reasoning rather than
+deleted, so none of it gets asked again; a closed item says so in its heading, and
+a half-closed one says which half.
 
 > Two notes for whoever picks this up.
 >
@@ -50,7 +52,7 @@ smaller change from replacing the ramp, and it is the only version worth
 reopening. If it ever does change, the tier buttons in `RateGameModal` and the
 move-to row read the same const array.
 
-## 2. The spacing scale covers the run screens only — fonts are done
+## 2. The spacing scale covers the run screens only — fonts are DONE
 
 **Done: fonts, project-wide.** All 47 screens that set a font size in code now
 take it from the type scale; 259 bare integers became named steps in one pass.
@@ -76,25 +78,26 @@ do not snap one to the nearest step. Add the file to `MIGRATED_GAPS` and the tes
 will fail on any bare integer left behind; genuinely off-scale values go in
 `OFF_SCALE_GAPS` with a reason.
 
-**What the font pass turned up, which is the other half of this item.** Five sizes
-have no step on the scale, so they were left as literals in `OFF_SCALE_FONTS`
-rather than silently restyled — naming them means *changing* them, and a restyle
-does not belong in a rename. Each is an open question:
+**The off-scale sizes are closed too.** The font pass deliberately left 22
+literals alone — naming them would have meant *changing* them, and a restyle does
+not belong inside a rename. They have since been snapped as a separate, deliberate
+pass, each checked on the running screen:
 
-| size | uses | where | the question |
+| was | uses | now | why |
 |---|---|---|---|
-| 17 | 11 | eight `SettingsModal` section headings, plus `AtlasView`, `RouteLadder`, `RunOverScreen` | `FONT_HEAD` is 18. Snapping is a 1px restyle on a modal nobody has re-fitted — the biggest cluster and the likeliest yes |
-| 24 | 7 | seven screen/modal titles | sits between `FONT_TITLE_LG` (22) and `FONT_DISPLAY` (26); second-biggest group |
-| 21 | 2 | `EventModal2`, `ItemInfoCard` titles | between `FONT_TITLE` (20) and `FONT_TITLE_LG` (22) |
-| 30 | 1 | `Collection`'s screen title | every other screen's title is 20 or 22, so this one is drift rather than a decision |
-| 34 | 1 | `RunOverScreen`'s verdict | the largest type in the game; a genuine one-off, and arguably fine as one |
+| 17 | 11 | `FONT_HEAD` (18) | eight were `SettingsModal` section headings; a heading size onto the heading step |
+| 24 | 7 | `FONT_TITLE_LG` (22) | all seven are titles. 24 was equidistant between 22 and 26, so the tie went to the step whose comment says "a screen's title" |
+| 21 | 2 | `FONT_TITLE_LG` (22) | titles again, and the nearest step |
+| 30 | 1 | `FONT_HERO` (28) | `Collection`'s title, which was drift rather than a decision — it now matches the tier board's |
+| 34 | 1 | `FONT_HERO` (28) | `RunOverScreen`'s verdict, the biggest reduction at −6px; still the largest thing on its screen |
 
-Two ways to close it: snap each to its nearest step (a real visual change — fit
-must be re-checked with the `verify` skill, not reasoned about), or promote the
-ones that are doing a job into named steps. 17 and 24 together are 18 of the 22
-uses, so they are the decision; 30 is almost certainly just a stray.
+Fit was checked rather than assumed, since five of these got BIGGER: `SettingsModal`
+already scrolls by design (1816px of content in a 624px view), so +8px across eight
+headings changes nothing there, and `RunOverScreen` still fits with no overflow.
+**`OFF_SCALE_FONTS` is now an empty dict** — kept rather than deleted, as the
+pressure valve for the next size that genuinely cannot be named.
 
-## 3. The Collection's grid
+## 3. The Collection's grid — ALL THREE DONE
 
 Three separate things on the screen where 865 covers are browsed. It is the
 second-most-used screen in the game after the run itself.
@@ -108,15 +111,30 @@ down at the bottom of the list. It is a SIBLING of the ScrollContainer, not a
 child — a child scrolls with the content and slides away exactly when it is
 needed — so the two are stacked in a plain Control by anchors.
 
-**b. The beaten-checkbox sits on top of the cover art**, top-left of every cell.
-It is the one piece of state each cell carries and it is drawn over the one thing
-that identifies the game.
+**b. ~~The beaten-checkbox sits on top of the cover art.~~ DONE.** It was inset
+into every cover's top-left: the one piece of state a cell carries, drawn over the
+one thing that identifies the game, on 865 cells. Worth knowing before touching
+it — it is not decoration, it is a BUTTON, and on the player's own list it is the
+fastest way to mark a game owned without opening its page. So it moved rather than
+went: it is on the stat line under the cover now, beside the ⚔ / 👑 counts, which
+keeps the click and frees the art. The ticks still read as a column down the grid
+because every cell is the same width and the row is centred, and
+`_game_cell_height` counts the row at the taller of tick-or-text so the cell
+cannot clip its own last line.
 
-**c. Cover aspect ratios vary wildly** — some 4:3, some square, some tall — so the
-grid is ragged. The cells are uniform; the art inside them is not. Letterboxing
-into a fixed box, or cropping to a common ratio, would settle it. Worth checking
-what that does to pixel-art covers first (`UITheme.is_pixel_art` exists for
-exactly this kind of decision).
+**c. ~~Cover aspect ratios vary wildly.~~ DONE.** Some 4:3, some square, some
+tall, so the grid read as ragged. The premise needed one correction first: the
+covers were ALREADY letterboxed into a fixed 3:4 box
+(`STRETCH_KEEP_ASPECT_CENTERED`), so the raggedness was never the art overflowing
+— it was the leftover around it being the cell's own background, which made each
+cover look like a different shape floating in a different amount of nothing.
+
+So the fix is a **plate behind the art** (`COVER_PLATE`, `_cover_plate`), slightly
+lighter than the cell, which turns that leftover into a deliberate surround: every
+cell now shows the same rectangle whatever shape its cover is. Cropping to a common
+ratio was the alternative and was rejected — it cuts the edges off non-3:4 art, and
+some of the 865 covers carry their title there. Nothing is cropped and nothing is
+scaled up, so `UITheme.is_pixel_art` does not come into it.
 
 ## 4. The tier list's `Unranked` lane — FIXED
 

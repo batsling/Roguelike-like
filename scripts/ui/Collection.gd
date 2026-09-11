@@ -84,7 +84,6 @@ const DETAIL_ENEMY_SIZE := 176
 const CELL_PAD := 26
 const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
 const OWNED_BADGE := 20            # the owned tick, over the cover's top-left
-const BADGE_INSET := 4             # how far in from the cover's corner it sits
 const GRID_ITEM_SIZE := 50
 const GRID_PORTRAIT_SIZE := 60
 const GRID_ENEMY_SIZE := 58
@@ -224,7 +223,7 @@ func _build_shell() -> void:
 	root.add_child(header)
 	var title := Label.new()
 	title.text = "Collection"
-	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -387,6 +386,40 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 # Game covers are box art, not icons: drawing them in a square box wastes a third
 # of the space to letterboxing, so they get a 3:4 frame `w` wide instead — the
 # shape the art actually ships in (528x704 / 300x450).
+# THE GRID'S GUTTERS ARE A FRAME NOW, NOT A GAP. Every cover is letterboxed into
+# the same 3:4 box (`STRETCH_KEEP_ASPECT_CENTERED`), but the 865 covers are 4:3,
+# square and tall in roughly equal measure — so what filled the leftover was the
+# cell's own background, and the grid read as ragged: each cover a different shape
+# floating in a different amount of nothing.
+#
+# A plate behind the art turns that leftover into a deliberate surround. It is
+# slightly lighter than the cell so the box reads as a frame the art sits in,
+# every cell now has the same visible rectangle whatever shape its cover is, and
+# no cover is cropped — which matters when the art is 865 pieces of real box art
+# and some of them carry their title at the edge.
+const COVER_PLATE := Color(0.145, 0.132, 0.118, 1.0)
+
+func _cover_plate(tex: Texture2D) -> Control:
+	var plate := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COVER_PLATE
+	sb.set_corner_radius_all(5)
+	sb.set_content_margin_all(0)
+	plate.add_theme_stylebox_override("panel", sb)
+	plate.custom_minimum_size = Vector2(GRID_COVER_W, roundi(GRID_COVER_W * 4.0 / 3.0))
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Clicks belong to the cell underneath — clicking a cover opens the game.
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# So a square cover's corners cannot poke past the plate's rounded ones.
+	plate.clip_contents = true
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(tr)
+	return plate
+
 func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
@@ -656,27 +689,14 @@ func _fill_cell(index: int) -> void:
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	if g.cover_path != "":
-		var tr := _cover_rect(g.cover_image, GRID_COVER_W)
-		# The cover and its owned tick share one box so the tick can sit ON the art
-		# rather than under it — a column of ticks down the left edge of the grid is
-		# the thing you read when working out what you still have to mark.
-		var stack := Control.new()
-		stack.custom_minimum_size = tr.custom_minimum_size
-		stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		stack.add_child(tr)
-		stack.add_child(_owned_badge(g))
-		box.add_child(stack)
+		box.add_child(_cover_plate(g.cover_image))
 	else:
-		# No art authored: the tick still needs somewhere to live, and top-left of
-		# the cell is the same place it would be if there were a cover. The spacer
-		# keeps the cell the same height as a cell with a picture in it, so a game
-		# with no art doesn't leave a short hole in the row.
-		var row := HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, roundi(GRID_COVER_W * 4.0 / 3.0))
-		row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		row.add_child(_owned_badge(g))
-		box.add_child(row)
+		# No art authored: a spacer of the cover's exact size, so a game with no
+		# picture doesn't leave a short hole in the row.
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(GRID_COVER_W, roundi(GRID_COVER_W * 4.0 / 3.0))
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(spacer)
 	box.add_child(_game_name_label(g.display_name, tc))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
@@ -687,7 +707,19 @@ func _fill_cell(index: int) -> void:
 	if amulets > 0:
 		stat_line += "    👑 %d" % amulets
 	var played := beaten > 0 or amulets > 0
-	box.add_child(_label(stat_line, Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, true))
+	# THE TICK SITS UNDER THE ART NOW, on the stat line rather than over the cover's
+	# top-left corner. It is still the same Button doing the same job — click it and
+	# the game is marked without opening its page — so what changed is only that the
+	# one thing identifying a game is no longer covered by the one piece of state it
+	# carries. The ticks still line up in a readable column down the grid, because
+	# every cell is the same width and the row is centred.
+	var stat_row := HBoxContainer.new()
+	stat_row.add_theme_constant_override("separation", 5)
+	stat_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	stat_row.add_child(_owned_badge(g))
+	stat_row.add_child(_label(stat_line,
+		Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, false))
+	box.add_child(stat_row)
 	slot["filled"] = true
 
 func _empty_cell(index: int) -> void:
@@ -1016,9 +1048,13 @@ func _game_cell_height() -> float:
 	if _cell_height_cache > 0.0:
 		return _cell_height_cache
 	var sep: float = 4.0                                  # _cell's vbox separation
+	# The stat line is a ROW now, with the owned tick beside the counts (see
+	# `_fill_cell`), so it is as tall as the taller of the two rather than one line
+	# of text. Counted here or the cell clips its own last row.
 	_cell_height_cache = roundi(GRID_COVER_W * 4.0 / 3.0) \
 		+ _name_block_height() \
-		+ _line_height(GRID_META_FONT) * 2.0 \
+		+ _line_height(GRID_META_FONT) \
+		+ maxf(_line_height(GRID_META_FONT), float(OWNED_BADGE)) \
 		+ sep * 3.0 \
 		+ CELL_PAD
 	return _cell_height_cache
@@ -1027,9 +1063,14 @@ func _line_height(size: int) -> float:
 	var font: Font = get_theme_font("font", "Label")
 	return font.get_height(size) if font != null else float(size + 4)
 
-# The tick over a game's cover: what you own, readable straight off the grid, and
+# The tick UNDER a game's cover: what you own, readable straight off the grid, and
 # on the player's own list the fastest way to say so — click it and the game is
 # marked without opening its page at all.
+#
+# It used to sit ON the art, inset into the cover's top-left. That put the one
+# piece of state a cell carries over the one thing that identifies the game, on
+# 865 cells. It is on the stat line now, which keeps the click and frees the art;
+# the ticks still read as a column, because every cell is the same width.
 #
 # On the catalog's list it is a read-only mark. It goes further than disabling:
 # the badge stops taking mouse input entirely, so a click there falls through to
@@ -1038,9 +1079,9 @@ func _line_height(size: int) -> float:
 func _owned_badge(g: GameData) -> Control:
 	var badge := Button.new()
 	badge.custom_minimum_size = Vector2(OWNED_BADGE, OWNED_BADGE)
-	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	badge.position = Vector2(BADGE_INSET, BADGE_INSET)
-	badge.size = Vector2(OWNED_BADGE, OWNED_BADGE)
+	# An ordinary child of the stat row, not an overlay pinned into the cover's
+	# corner — so no anchors, no position, and the row lays it out.
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.focus_mode = Control.FOCUS_NONE
 	badge.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	if Ownership.is_editable():
