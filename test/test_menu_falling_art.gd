@@ -18,8 +18,7 @@ func before_each() -> void:
 
 func _drain() -> void:
 	while not _art._queue.is_empty():
-		var job: Array = _art._queue.pop_back()
-		_art._bake(job[0], job[1])
+		_art._bake(_art._queue.pop_back())
 
 func _seed() -> void:
 	_drain()
@@ -48,22 +47,30 @@ func test_both_kinds_are_actually_falling_once_it_is_seeded() -> void:
 	assert_eq(_art._pieces.size(), MenuFallingArt.PIECE_COUNT, "the screen fills in one go")
 	var covers := 0
 	for piece in _art._pieces:
-		# A cover is the only piece drawn to a 3:4 box taller than the small edge.
-		if (piece["box"] as Vector2).y > MenuFallingArt.SMALL_EDGE * 1.6:
+		# By KIND, not by size: a 2x2 enemy is drawn bigger than a 1x1 cover would
+		# be, so "taller than the small edge" stopped meaning "is a cover" the
+		# moment the footprint scaling went in.
+		if int(piece["kind"]) == MenuFallingArt.Kind.COVER:
 			covers += 1
 	assert_gt(covers, 0, "some game covers are among the pieces")
 	assert_lt(covers, _art._pieces.size(),
 		"and they are not all covers — the mix is mostly the run's smaller furniture")
 
 func test_nothing_falls_through_the_menus_own_column() -> void:
+	# THE WHOLE piece, not its centre. A piece spans [x - w/2, x + w/2], so it
+	# overlaps the band as soon as `|x - middle|` drops below `half_band + w/2`.
+	# An earlier version of this test subtracted that half-width instead of adding
+	# it, which only caught a piece whose CENTRE was already well inside the band —
+	# and so it passed while 3x3 enemies reached across into the buttons.
 	_seed()
 	var width: float = _art.get_viewport_rect().size.x
 	var half_band: float = width * MenuFallingArt.CLEAR_BAND * 0.5
 	var intruders: Array = []
 	for piece in _art._pieces:
 		var pos: Vector2 = piece["pos"]
-		if absf(pos.x - width * 0.5) < half_band - (piece["box"] as Vector2).x * 0.5:
-			intruders.append(pos)
+		var box: Vector2 = piece["box"]
+		if absf(pos.x - width * 0.5) < half_band + box.x * 0.5:
+			intruders.append("%.0f wide %.0f" % [pos.x, box.x])
 	assert_eq(intruders, [], "the buttons' column is left clear: %s" % str(intruders))
 
 func test_it_falls_down_both_sides() -> void:
@@ -158,3 +165,82 @@ func test_it_never_swallows_a_click_meant_for_the_menu() -> void:
 	for child in _art.get_children():
 		assert_eq((child as Control).mouse_filter, Control.MOUSE_FILTER_IGNORE,
 			"nor may either draw layer")
+
+# A BIG ENEMY IS A BIG PICTURE. Sixteen enemies are 2x2, one is 2x3 and one 3x3
+# (§7.3), and falling at the same size as a pill they read as the same weight of
+# thing. The art comes from `GoalEnemyData` rather than from `images2.0/enemies/`
+# precisely so the footprint travels with it — the folder has the pictures and
+# knows nothing about the grid.
+func test_a_bigger_footprint_is_carried_into_the_pool() -> void:
+	var feet := {}
+	for entry in _art._pool[MenuFallingArt.Kind.SMALL]:
+		feet[int(entry.get("foot", 1))] = true
+	assert_true(feet.has(1), "most things stand on one cell")
+	assert_true(feet.size() > 1,
+		"and something in the pool is bigger than one cell: %s" % str(feet.keys()))
+
+func test_a_bigger_footprint_falls_bigger() -> void:
+	# Reads the box `_spawn` actually produced. An earlier version of this test
+	# recomputed `SMALL_EDGE * foot` and compared it to itself, which would have
+	# passed however `_spawn` was written.
+	_seed()
+	var checked := 0
+	var by_foot := {}
+	for piece in _art._pieces:
+		if int(piece["kind"]) != MenuFallingArt.Kind.SMALL:
+			continue
+		var entry: Dictionary = _art._pool[MenuFallingArt.Kind.SMALL][int(piece["index"])]
+		var foot: int = int(entry.get("foot", 1))
+		var box: Vector2 = piece["box"]
+		var edge: float = maxf(box.x, box.y)
+		var want: float = MenuFallingArt.SMALL_EDGE * float(foot)
+		# The only thing between the two is the per-piece size jitter.
+		assert_between(edge,
+			want * (1.0 - MenuFallingArt.SIZE_JITTER) - 0.01,
+			want * (1.0 + MenuFallingArt.SIZE_JITTER) + 0.01,
+			"a %dx%d piece is drawn around %.0fpx, not %.0fpx" % [foot, foot, want, edge])
+		by_foot[foot] = maxf(float(by_foot.get(foot, 0.0)), edge)
+		checked += 1
+	assert_gt(checked, 0, "there are small pieces on screen to measure")
+	if by_foot.size() < 2:
+		pending("only one footprint size happened to be on screen this run")
+		return
+	var feet: Array = by_foot.keys()
+	feet.sort()
+	assert_gt(float(by_foot[feet[feet.size() - 1]]), float(by_foot[feet[0]]),
+		"and the bigger footprint really does draw bigger: %s" % str(by_foot))
+
+# THE SAME PICTURE TWICE AT ONCE READS AS A GLITCH, not as variety — and with 52
+# pieces drawn from a pool near 116 it would happen constantly.
+func test_no_two_pieces_show_the_same_picture() -> void:
+	_seed()
+	var seen := {}
+	var repeats: Array = []
+	for piece in _art._pieces:
+		var key: String = "%d:%d" % [int(piece["kind"]), int(piece["index"])]
+		if seen.has(key):
+			repeats.append(key)
+		seen[key] = true
+	assert_eq(repeats, [], "every piece on screen is a different picture: %s" % str(repeats))
+	# And by texture as well as by index, in case two pool entries ever hold one.
+	var texes := {}
+	for piece in _art._pieces:
+		texes[(piece["tex"] as Texture2D).get_instance_id()] = true
+	assert_eq(texes.size(), _art._pieces.size(), "no texture is on screen twice")
+
+func test_a_recycled_piece_gives_its_picture_back() -> void:
+	_seed()
+	var before: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
+		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	# Drive it long enough that pieces fall off the bottom and are replaced.
+	for _i in range(400):
+		_art._process(0.1)
+	var after: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
+		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	assert_eq(after, before,
+		"the free list neither leaks nor grows as pieces recycle")
+	var seen := {}
+	for piece in _art._pieces:
+		var key: String = "%d:%d" % [int(piece["kind"]), int(piece["index"])]
+		assert_false(seen.has(key), "and still no picture is on screen twice")
+		seen[key] = true

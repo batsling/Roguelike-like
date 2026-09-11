@@ -19,12 +19,15 @@ the honour system.
 ## The shape of it
 
 - **The main menu has a moving background.** `MenuFallingArt` drops enemies,
-  items, loot and game covers down both sides of the button column. Two things to
+  items, loot and game covers down both sides of the button column. Four things to
   know before touching it: a texture filter belongs to the CanvasItem, so the
   pieces are split across two draw layers (NEAREST for pixel art, LINEAR for the
-  rest), and art is only used if `_is_cutout` says so — `wands_unidentified/` is
-  RGBA with every pixel opaque, and falls as teal tiles otherwise. Toggle lives in
-  Settings under Display.
+  rest); art is only used if `_is_cutout` says so — `wands_unidentified/` is RGBA
+  with every pixel opaque, and falls as teal tiles otherwise; **enemies come from
+  `GoalEnemyData`, not from `images2.0/enemies/`**, because the resource carries
+  the battlefield footprint that sizes them and the folder does not; and a pool
+  entry is handed out off a free list so one picture cannot be on screen twice.
+  Toggle lives in Settings under Display.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.

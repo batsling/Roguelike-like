@@ -83,13 +83,20 @@ const LOAD_PER_FRAME := 3
 # folder being dropped is not the whole fix: `_is_cutout` rejects the individual
 # stragglers at bake time, and will reject the next one somebody adds.
 const SMALL_DIRS := [
-	"res://images2.0/enemies/",
 	"res://images2.0/items/",
 	"res://images2.0/scrolls/",
 	"res://images2.0/pills/",
 	"res://images2.0/potions_identified/",
 ]
 const COVER_DIR := "res://images2.0/games/"
+
+# ENEMIES COME FROM `Data`, NOT FROM THEIR FOLDER, and the reason is the
+# footprint. A big enemy takes more of the battlefield grid — 16 of them are 2x2,
+# one is 2x3 and one 3x3 (§7.3) — and falling past the menu at the same size as a
+# pill it reads as the same weight of thing, which it is not. `GoalEnemyData`
+# carries `footprint_rows()` / `footprint_cols()` beside its art, so taking both
+# from the resource is the only way to size them honestly; the folder has the
+# pictures and knows nothing about the grid.
 # Covers held at once. Every one is a 528x704 PNG, so this is the number that
 # decides the effect's memory, and they are downscaled on load (see `_bake`) to
 # roughly what they are drawn at rather than kept at source size.
@@ -101,6 +108,12 @@ var _pieces: Array[Dictionary] = []
 # [path, kind] still to decode, and the textures already decoded, by kind.
 var _queue: Array = []
 var _pool := {Kind.SMALL: [], Kind.COVER: []}
+# Which pool entries are NOT currently falling. A piece takes an index from here
+# when it spawns and gives it back when it recycles, so the same picture can never
+# be on screen twice at once — which on a screen of 52 pieces drawn from a pool of
+# ~116 would otherwise happen constantly, and reads as a glitch rather than as
+# variety.
+var _free := {Kind.SMALL: [], Kind.COVER: []}
 var _pixel_layer: MenuFallingArtLayer
 var _smooth_layer: MenuFallingArtLayer
 var _running := false
@@ -142,6 +155,7 @@ func _on_setting_changed(enabled: bool) -> void:
 		_queue.clear()
 		_seeded = false
 		_pool = {Kind.SMALL: [], Kind.COVER: []}
+		_free = {Kind.SMALL: [], Kind.COVER: []}
 		_redraw()
 		return
 	_fill_queue()
@@ -152,19 +166,45 @@ func _on_setting_changed(enabled: bool) -> void:
 # menu is not the same art every launch — with 336 covers and ~145 small pieces
 # behind a pool of 26 and 90, which ones show is worth randomising.
 func _fill_queue() -> void:
+	# A queue entry is {tex OR path, kind, foot} — `foot` being the enemy's longest
+	# side in grid cells, and 1 for everything that does not stand on the grid.
 	var small: Array = []
+	for e in _enemy_jobs():
+		small.append(e)
 	for dir in SMALL_DIRS:
-		small.append_array(_pngs_in(dir))
+		for path in _pngs_in(dir):
+			small.append({"path": path, "kind": Kind.SMALL, "foot": 1})
 	small.shuffle()
-	var covers: Array = _pngs_in(COVER_DIR)
+	var covers: Array = []
+	for path in _pngs_in(COVER_DIR):
+		covers.append({"path": path, "kind": Kind.COVER, "foot": 1})
 	covers.shuffle()
 	_queue.clear()
-	for path in small.slice(0, SMALL_POOL):
-		_queue.append([path, Kind.SMALL])
-	for path in covers.slice(0, COVER_POOL):
-		_queue.append([path, Kind.COVER])
+	_queue.append_array(small.slice(0, SMALL_POOL))
+	_queue.append_array(covers.slice(0, COVER_POOL))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
+
+# Enemies and bosses straight off their resources, each carrying the footprint it
+# stands on. `image` is an ordinary eager export on `GoalEnemyData` — there are 94
+# of them, not 865 games — so the texture is already in memory and the job holds
+# it rather than a path.
+func _enemy_jobs() -> Array:
+	var out: Array = []
+	var rosters: Array = [Data.all_goal_enemies(), Data.all_bosses()]
+	for roster in rosters:
+		for e in roster:
+			if not (e is GoalEnemyData) or e.image == null:
+				continue
+			out.append({
+				"tex": e.image,
+				"kind": Kind.SMALL,
+				# The BOUNDING BOX's longest side, so a 2x2 draws twice the edge of
+				# a 1x1 and covers four times its area — the same relationship the
+				# two have on the battlefield. A 2x3 takes the 3.
+				"foot": maxi(e.footprint_rows(), e.footprint_cols()),
+			})
+	return out
 
 func _pngs_in(dir_path: String) -> Array:
 	var out: Array = []
@@ -189,11 +229,18 @@ func _pngs_in(dir_path: String) -> Array:
 # Decode one queued texture and put it in its pool, downscaled to about what it
 # will be drawn at. The downscale is the whole reason this effect can hold game
 # covers at all: a 528x704 source is 1.5 MB in memory and is drawn 72px wide.
-func _bake(path: String, kind: int) -> void:
-	var tex: Texture2D = load(path)
+func _bake(job: Dictionary) -> void:
+	var kind: int = int(job.get("kind", Kind.SMALL))
+	var foot: int = maxi(1, int(job.get("foot", 1)))
+	var tex: Texture2D = job.get("tex")
+	if tex == null:
+		tex = load(String(job.get("path", "")))
 	if tex == null:
 		return
-	var want: float = COVER_H if kind == Kind.COVER else SMALL_EDGE
+	# A 2x2 enemy is drawn at twice a 1x1's edge, so it needs twice the pixels to
+	# stay sharp — the bake target follows the footprint rather than being one
+	# size for all small art.
+	var want: float = COVER_H if kind == Kind.COVER else SMALL_EDGE * float(foot)
 	# Headroom over the draw size, so the biggest jittered piece is still sampled
 	# down rather than up.
 	want *= 1.0 + SIZE_JITTER
@@ -215,14 +262,24 @@ func _bake(path: String, kind: int) -> void:
 			# so a cover imported with VRAM compression would fail here rather
 			# than at the call site. Decompress first, or leave it at source size
 			# if it will not: a slightly heavier texture beats a broken one.
+			#
+			# The image is a COPY either way: `GoalEnemyData.image` is the same
+			# resource the battlefield draws, and resizing it in place would shrink
+			# the enemy everywhere in the game.
 			if img.is_compressed() and img.decompress() != OK:
-				_pool[kind].append({"tex": tex, "pixel": pixel})
+				_add_to_pool(kind, tex, pixel, foot)
 				return
 			var k: float = want / longest
 			img.resize(maxi(1, int(src.x * k)), maxi(1, int(src.y * k)),
 				Image.INTERPOLATE_LANCZOS)
 			tex = ImageTexture.create_from_image(img)
-	_pool[kind].append({"tex": tex, "pixel": pixel})
+	_add_to_pool(kind, tex, pixel, foot)
+
+func _add_to_pool(kind: int, tex: Texture2D, pixel: bool, foot: int) -> void:
+	_pool[kind].append({"tex": tex, "pixel": pixel, "foot": foot})
+	# Every entry starts free. `_free` is the list of pool indices nothing is
+	# currently falling with.
+	_free[kind].append(_pool[kind].size() - 1)
 
 # True when the art's border has any see-through pixel — that is, it is a sprite
 # cut out of its background rather than a tile with the background baked in.
@@ -252,24 +309,37 @@ func _is_cutout(tex: Texture2D) -> bool:
 func _spawn(above: bool) -> Dictionary:
 	var size: Vector2 = get_viewport_rect().size
 	var kind: int = Kind.COVER if _rng.randf() < COVER_SHARE else Kind.SMALL
-	if _pool[kind].is_empty():
+	# NO PICTURE TWICE AT ONCE. Take an entry nothing else is currently falling
+	# with; if this kind has none left, the other kind serves instead rather than
+	# the screen repeating itself. (With 52 pieces against a pool near 116 the
+	# fallback is rare, but a run of recycles can bunch the covers.)
+	if _free[kind].is_empty():
 		kind = Kind.SMALL if kind == Kind.COVER else Kind.COVER
-	if _pool[kind].is_empty():
+	if _free[kind].is_empty():
 		return {}
-	var entry: Dictionary = _pool[kind][_rng.randi() % _pool[kind].size()]
+	var slot: int = _rng.randi() % _free[kind].size()
+	var index: int = _free[kind][slot]
+	_free[kind].remove_at(slot)
+	var entry: Dictionary = _pool[kind][index]
 	var tex: Texture2D = entry["tex"]
 	var scale: float = 1.0 + _rng.randf_range(-SIZE_JITTER, SIZE_JITTER)
 	var box: Vector2
 	if kind == Kind.COVER:
 		box = Vector2(COVER_H * 0.75, COVER_H) * scale
 	else:
+		# The footprint is the multiplier: a 2x2 enemy falls at twice the edge of
+		# a 1x1, the same relationship they have standing on the battlefield.
+		# Everything that is not an enemy carries a footprint of 1.
+		var edge: float = SMALL_EDGE * float(entry.get("foot", 1)) * scale
 		var src := Vector2(tex.get_width(), tex.get_height())
 		var longest: float = maxf(src.x, src.y)
-		box = src * (SMALL_EDGE * scale / maxf(longest, 1.0))
+		box = src * (edge / maxf(longest, 1.0))
 	return {
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
-		"pos": Vector2(_column_x(size), _rng.randf_range(-size.y, size.y * 0.2)
+		"kind": kind,
+		"index": index,
+		"pos": Vector2(_column_x(size, box.x), _rng.randf_range(-size.y, size.y * 0.2)
 			if above else _rng.randf_range(0.0, size.y)),
 		"box": box,
 		"fall": _rng.randf_range(FALL_MIN, FALL_MAX),
@@ -280,11 +350,26 @@ func _spawn(above: bool) -> Dictionary:
 		"alpha": _rng.randf_range(ALPHA_MIN, ALPHA_MAX),
 	}
 
-# An x in one of the two columns, never in the band the menu occupies.
-func _column_x(size: Vector2) -> float:
+# Hand a piece's pool entry back, so the picture it was using can fall again.
+func _release(piece: Dictionary) -> void:
+	if not piece.has("kind") or not piece.has("index"):
+		return
+	var kind: int = int(piece["kind"])
+	var index: int = int(piece["index"])
+	if not _free[kind].has(index):
+		_free[kind].append(index)
+
+# An x in one of the two columns, with the WHOLE piece clear of the band the menu
+# occupies — `width` is the piece's, and half of it is held back from the band's
+# edge. Placing the centre on the edge was enough while everything was a 46px
+# token; a 3x3 enemy is three times that, and half of it reached across into the
+# buttons.
+func _column_x(size: Vector2, width: float = 0.0) -> float:
 	var half_band: float = size.x * CLEAR_BAND * 0.5
-	var margin: float = size.x * 0.5 - half_band
-	var x: float = _rng.randf_range(0.0, margin)
+	var margin: float = size.x * 0.5 - half_band - width * 0.5
+	# A piece wider than the whole column still has to go somewhere: pin it to the
+	# outer edge rather than letting the range invert and put it under the menu.
+	var x: float = _rng.randf_range(0.0, maxf(margin, 0.0))
 	return x if _rng.randf() < 0.5 else size.x - x
 
 func _process(delta: float) -> void:
@@ -293,8 +378,7 @@ func _process(delta: float) -> void:
 	for _i in range(LOAD_PER_FRAME):
 		if _queue.is_empty():
 			break
-		var job: Array = _queue.pop_back()
-		_bake(job[0], job[1])
+		_bake(_queue.pop_back())
 	# NOTHING SPAWNS UNTIL THE POOL IS WHOLE. Filling as the textures arrived was
 	# the obvious thing and it was wrong: the pieces reach PIECE_COUNT inside the
 	# first second, so every one of them was drawn from whatever had loaded first,
@@ -324,9 +408,22 @@ func _process(delta: float) -> void:
 		if pos.y - (piece["box"] as Vector2).y > size.y:
 			# Recycled rather than freed: the pool is fixed, so a piece that falls
 			# off the bottom is the cheapest source of the next one at the top.
+			#
+			# Its picture goes back on the free list FIRST, so the piece that
+			# replaces it may draw the same one — otherwise the pool would shrink
+			# by one every time something left the screen.
+			_release(piece)
 			var fresh: Dictionary = _spawn(true)
-			if not fresh.is_empty():
-				fresh["pos"] = Vector2(_column_x(size), -(fresh["box"] as Vector2).y)
+			if fresh.is_empty():
+				# Nothing free to take: keep falling with what it has rather than
+				# vanishing, and take the entry back off the free list so nothing
+				# else claims a picture that is still on screen.
+				piece["pos"] = Vector2(pos.x, -(piece["box"] as Vector2).y)
+				if _free[int(piece["kind"])].has(int(piece["index"])):
+					_free[int(piece["kind"])].erase(int(piece["index"]))
+			else:
+				fresh["pos"] = Vector2(_column_x(size, (fresh["box"] as Vector2).x),
+					-(fresh["box"] as Vector2).y)
 				piece.merge(fresh, true)
 	_redraw()
 

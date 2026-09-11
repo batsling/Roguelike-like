@@ -45,10 +45,33 @@ For how the project is laid out and how its systems fit together, see
   trap this project already hit once at startup — so a fixed pool of 26 is baked
   down on the way in to about the 96px it is drawn at, a few textures per frame so
   the startup screen never hitches.
+  **A big enemy falls as a big picture.** Sixteen enemies are 2x2 on the
+  battlefield, one is 2x3 and one 3x3 (§7.3), and at a pill's size they all read
+  as the same weight of thing. The enemy art therefore comes from
+  `GoalEnemyData` rather than from `images2.0/enemies/` — the resource carries
+  `footprint_rows()` / `footprint_cols()` beside its `image`, and the folder has
+  the pictures and knows nothing about the grid. A piece is drawn at the bounding
+  box's longest side times the base edge, so a 2x2 takes twice the edge and four
+  times the area, exactly as it does standing on the board. Measured: 1x1 at
+  25-66px, 2x2 at 90-118, 3x3 at 113-131.
+  **That immediately broke the menu's own column**, which is the kind of thing
+  only a bigger sprite finds: `_column_x` placed a piece's CENTRE at the clear
+  band's edge, so a 138px enemy reached 69px across it and into the buttons. It
+  holds back half the piece's width now. The test that should have caught it
+  did not, because it subtracted that half-width where it needed to add it — it
+  flagged a piece only once its centre was already well inside the band, which no
+  piece ever was. Both are fixed.
+  **No picture falls twice at once.** With 52 pieces drawn at random from a pool
+  near 116, duplicates were constant, and two copies of one enemy drifting past
+  each other reads as a glitch rather than as variety. Each pool entry is now
+  taken off a free list when a piece claims it and handed back when that piece
+  recycles — so the screen is 52 distinct pictures, verified stable across 600
+  recycles with the free list neither leaking nor growing.
   `test_menu_falling_art.gd` pins the parts that were wrong: that the mix holds
   both kinds, that nothing spawns before the pool is whole, that the button
-  column stays clear, that both sides are used, that the tumble varies in rate and
-  direction, and that an opaque sprite is rejected.
+  column stays clear of WHOLE pieces, that both sides are used, that the tumble
+  varies in rate and direction, that an opaque sprite is rejected, that a bigger
+  footprint really is drawn bigger, and that no picture is on screen twice.
 
 - **Every font size in the game is now on the type scale, and the Collection's
   grid shows its covers whole.** §2's fonts and all three parts of §3 in

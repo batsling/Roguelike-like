@@ -233,6 +233,17 @@ in code review:
   disk and ~1.5 MB each in memory. A fixed pool of 26 is baked down on the way in
   to roughly the 96px they are drawn at, and the pool is decoded a few textures
   per frame so the project's startup screen never hitches.
+- **A bigger enemy has to fall bigger**, which is why the enemy art comes from
+  `GoalEnemyData` and not from `images2.0/enemies/`: the resource carries the
+  footprint beside the picture, and the folder knows nothing about the grid. A
+  piece draws at the bounding box's longest side times the base edge. Scaling it
+  up then found a second bug — `_column_x` placed a piece's CENTRE at the clear
+  band's edge, so a 138px enemy reached half its width into the buttons, and the
+  test meant to catch that had its half-width subtracted where it should have
+  been added. Both fixed; the check is now whether the WHOLE piece clears.
+- **The same picture must not fall twice at once.** 52 pieces drawn at random
+  from a pool of ~116 duplicated constantly. Pool entries are handed out off a
+  free list and returned on recycle.
 
 **Still open from the original item:** `Continue (no saved runs)` still takes a
 full row to say nothing, and whether the profile row and How to Play belong where
