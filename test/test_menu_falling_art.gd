@@ -261,6 +261,105 @@ func test_a_folder_scan_lists_each_picture_once() -> void:
 			"%s lists %d paths for %d files" % [dir_path, paths.size(), seen.size()])
 		assert_gt(paths.size(), 0, "%s is not empty" % dir_path)
 
+# THE ROSTER IS TAKEN WHOLE, not sampled. Eleven characters against some 250
+# other small pieces would be about five of a 112-entry pool if they went through
+# the shuffle with everything else — and on an unlucky launch, none at all.
+#
+# Read off the QUEUE rather than the pool, because that is where the decision is:
+# `_bake` hands a downscaled COPY to the pool (a 750x1036 portrait is not kept at
+# source size), so a pool entry's texture is not the roster's texture and matching
+# them by identity would fail on the eight characters whose art is big enough to
+# be resized — which is a fact about the baking, not about the shuffle.
+func test_every_playable_character_is_queued() -> void:
+	_art._fill_queue()
+	var want := {}
+	for c in Data.all_characters2():
+		if c is CharacterData and c.portrait != null:
+			want[c.portrait.get_instance_id()] = c.display_name
+	assert_gt(want.size(), 0, "there is a character roster with portraits")
+	for job in _art._queue:
+		var tex: Texture2D = job.get("tex")
+		if tex != null:
+			want.erase(tex.get_instance_id())
+	assert_eq(want.values(), [],
+		"every character is queued to fall past the menu: %s missing" % str(want.values()))
+
+# A character is not a pill. Nothing here stands on the battlefield, so the size
+# is the one decision this makes on their behalf, and it is pinned because the
+# symptom of losing it is a portrait the size of a scroll icon.
+func test_a_character_falls_bigger_than_a_one_cell_piece() -> void:
+	assert_gt(MenuFallingArt.CHARACTER_FOOT, 1, "bigger than a one-cell piece")
+	var jobs: Array = _art._character_jobs()
+	assert_gt(jobs.size(), 0, "there are characters to measure")
+	for job in jobs:
+		assert_eq(int(job["foot"]), MenuFallingArt.CHARACTER_FOOT,
+			"every character carries the two-cell size into the pool")
+	# And it survives the bake: the pool's entries keep the footprint they were
+	# baked with, which is what `_spawn` multiplies the edge by.
+	var big := 0
+	for entry in _art._pool[MenuFallingArt.Kind.SMALL]:
+		if int(entry.get("foot", 1)) == MenuFallingArt.CHARACTER_FOOT:
+			big += 1
+	assert_gt(big, 0, "and the pool holds pieces at that size")
+
+# NOTHING APPEARS INSIDE THE WINDOW. The top used to fade a piece in over the
+# first tenth of the height, which hid the fact that a fresh piece could be
+# dropped up to a fifth of the way DOWN the screen: take the fade away and that
+# is art materialising in the top corner. Only the opening fill scatters pieces
+# across the visible height, and nobody watches that one arrive.
+func test_a_piece_coming_in_from_above_starts_entirely_offscreen() -> void:
+	_seed()
+	var size: Vector2 = _art.get_viewport_rect().size
+	for _i in range(40):
+		var piece: Dictionary = _art._spawn(true)
+		if piece.is_empty():
+			break
+		var pos: Vector2 = piece["pos"]
+		var box: Vector2 = piece["box"]
+		assert_lte(pos.y + box.y, 0.0,
+			"its bottom edge is at or above the top of the window (%s, %s)" % [pos, box])
+		assert_gte(pos.y, -size.y - box.y, "and it is not parked a screen and a half up")
+		_art._release(piece)
+
+# A recycled piece comes back in above the edge too, and STAGGERED — every one of
+# them used to re-enter with its bottom exactly on y = 0, which is a row of
+# arrivals on an invisible line once nothing is fading in over it.
+func test_recycled_pieces_come_back_in_above_the_edge_and_not_in_lockstep() -> void:
+	_seed()
+	# THE MOMENT OF RE-ENTRY, not any frame a piece happens to be crossing the top
+	# edge on. A piece coming in is half above and half below for a second or so —
+	# that is what entering looks like — so the thing to catch is the tick where its
+	# y JUMPS backwards, which is the recycle itself.
+	var last: Array = []
+	for piece in _art._pieces:
+		last.append(float((piece["pos"] as Vector2).y))
+	var tops := {}
+	var seen := 0
+	for _i in range(600):
+		_art._process(0.1)
+		for i in range(_art._pieces.size()):
+			var pos: Vector2 = _art._pieces[i]["pos"]
+			var box: Vector2 = _art._pieces[i]["box"]
+			if pos.y < last[i]:
+				assert_lte(pos.y + box.y, 0.0,
+					"a piece re-enters wholly above the top edge: %s box %s" % [pos, box])
+				tops["%.0f" % (pos.y + box.y)] = true
+				seen += 1
+			last[i] = pos.y
+	assert_gt(seen, 10, "pieces recycled during the run")
+	assert_gt(tops.size(), 3,
+		"and they do not all re-enter on the same line: %d distinct" % tops.size())
+
+func test_nothing_fades_in_at_the_top() -> void:
+	# A piece's alpha is its own from the moment it is visible; only the bottom
+	# fades. Read off `_fade_at` rather than off a constant, so it is the behaviour
+	# that is pinned and not the number that produces it.
+	var height := 720.0
+	var base := 0.5
+	assert_eq(_art._fade_at(0.0, height, base), base, "full alpha at the top edge")
+	assert_eq(_art._fade_at(height * 0.05, height, base), base, "and just under it")
+	assert_lt(_art._fade_at(height * 0.98, height, base), base, "the bottom still fades")
+
 func test_the_pool_holds_each_texture_once() -> void:
 	for kind in [MenuFallingArt.Kind.SMALL, MenuFallingArt.Kind.COVER]:
 		var by_tex := {}

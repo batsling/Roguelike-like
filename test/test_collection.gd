@@ -326,17 +326,51 @@ func _text_of(node: Node) -> String:
 # --- grid thumbnails -------------------------------------------------------
 #
 # The compendium's job is to let you SCAN a set — 833 games — and the grid was
-# fitting three covers across. Halving the art is what buys the extra columns, so
-# the sizes are pinned: a cell is its art plus padding, never a fixed number that
-# can drift away from the art it is sized for.
+# fitting three covers across. Shrinking the art is what bought the extra columns,
+# so the sizes are pinned: a cell is its art plus padding, never a fixed number
+# that can drift away from the art it is sized for.
+#
+# The second pass gave the picture back most of the width it had been sharing
+# with its caption. That is the pair of properties below, and the two pull against
+# each other: the art has to stay well under what the DETAIL panel shows (or there
+# is no reason to open one) while owning most of its own CELL (or the compendium
+# is a wall of captions with thumbnails). Both are asserted; neither number is
+# written down twice.
 
-func test_the_grid_art_is_half_the_size_of_the_detail_art() -> void:
+func test_the_grid_art_is_smaller_than_the_art_you_open_to_look_at() -> void:
 	assert_lt(Collection.GRID_COVER_W, Collection.DETAIL_ITEM_SIZE,
 		"the grid thumbnail is smaller than the one you open to look at")
-	assert_eq(Collection.GRID_ITEM_SIZE * 2, 100, "items: half of the old 100")
-	assert_eq(Collection.GRID_PORTRAIT_SIZE * 2, 120, "characters: half of the old 120")
-	assert_eq(Collection.GRID_ENEMY_SIZE * 2, 116, "enemies: half of the old 116")
-	assert_eq(Collection.GRID_COVER_W * 2, 190, "games: half of the old 190")
+	assert_lt(Collection.GRID_ITEM_SIZE, Collection.DETAIL_ITEM_SIZE, "items")
+	assert_lt(Collection.GRID_PORTRAIT_SIZE, Collection.DETAIL_PORTRAIT_SIZE, "characters")
+	assert_lt(Collection.GRID_ENEMY_SIZE, Collection.DETAIL_ENEMY_SIZE, "enemies")
+
+# THE CELL IS MOSTLY PICTURE. An item cell was 110px wide around 50px of art — a
+# caption with a thumbnail on it. The art is what the tab is for, so it takes the
+# majority of the width every cell reserves; `CELL_TEXT_SLACK` is the only slack
+# beyond the art and the panel's own chrome, and it is the number that used to be
+# 34 and quietly set the width on its own.
+func test_a_cell_spends_most_of_its_width_on_the_artwork() -> void:
+	for pair in [[Collection.GRID_ITEM_SIZE, "items"],
+			[Collection.GRID_PORTRAIT_SIZE, "characters"],
+			[Collection.GRID_ENEMY_SIZE, "enemies"],
+			[Collection.GRID_EVENT_SIZE, "events"]]:
+		var art: int = pair[0]
+		var cell: int = art + Collection.CELL_PAD + Collection.CELL_TEXT_SLACK
+		assert_gt(float(art) / float(cell), 0.6,
+			"%s: %dpx of art in a %dpx cell" % [pair[1], art, cell])
+
+# And it did not buy that by growing the cell: the whole point of the halving was
+# the number of columns a row fits, and a cell that grew would hand it straight
+# back.
+func test_the_cells_did_not_grow_to_make_room_for_the_bigger_art() -> void:
+	for pair in [[Collection.GRID_ITEM_SIZE, 110, "items"],
+			[Collection.GRID_PORTRAIT_SIZE, 120, "characters"],
+			[Collection.GRID_ENEMY_SIZE, 118, "enemies"],
+			[Collection.GRID_EVENT_SIZE, 118, "events"]]:
+		var cell: int = int(pair[0]) + Collection.CELL_PAD + Collection.CELL_TEXT_SLACK
+		assert_lte(cell, int(pair[1]),
+			"%s: %dpx cell, against the %dpx it was before the art grew"
+				% [pair[2], cell, int(pair[1])])
 
 func test_a_game_cell_is_no_wider_than_its_cover_needs() -> void:
 	var col := _new_collection()
@@ -349,6 +383,69 @@ func test_a_game_cell_is_no_wider_than_its_cover_needs() -> void:
 	# The old cell was 212 wide; anything near that is the halving having silently
 	# come undone.
 	assert_lt(cell.custom_minimum_size.x, 150.0, "and well under the 212 it used to be")
+
+# --- what a tile says ------------------------------------------------------
+#
+# A grid tile's caption is the picture's NAME and at most one line of the thing
+# you would sort the tab by. Everything else is in the detail panel — and every
+# line these tests forbid was once on the tile, stacking up under art that had
+# been shrunk to make room for it.
+
+func _tile_text_for(tab: int, grid_index: int) -> String:
+	var col := _new_collection()
+	col._set_tab(tab)
+	if col._grid.get_child_count() <= grid_index:
+		return ""
+	return _text_of(col._grid.get_child(grid_index))
+
+func test_an_enemy_tile_says_type_and_tier_and_nothing_else() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ENEMIES)
+	assert_gt(col._grid.get_child_count(), 0, "there are enemies to read")
+	var big: GoalEnemyData = null
+	for e in Data.all_goal_enemies():
+		if e is GoalEnemyData and (e.footprint_rows() > 1 or e.footprint_cols() > 1):
+			big = e
+			break
+	if big == null:
+		pending("no multi-cell enemy in the roster to check the footprint line against")
+		return
+	# The one with a footprint worth printing, so this cannot pass by picking an
+	# enemy that never had the line to begin with.
+	var text: String = _text_of(col._enemy_cell(big))
+	assert_true(text.contains(big.display_name), "the name is there")
+	assert_true(text.contains(_tier_word(big)), "and its tier: %s" % text)
+	assert_false(text.contains("dmg"), "damage is detail-panel material: %s" % text)
+	assert_false(text.contains("▦"), "and so is the footprint, drawn as a board: %s" % text)
+
+func _tier_word(e: GoalEnemyData) -> String:
+	return Collection.ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]
+
+func test_a_character_tile_is_a_portrait_and_a_name() -> void:
+	var text: String = _tile_text_for(Collection.Tab.CHARACTERS, 0)
+	assert_ne(text, "", "there is a character to read")
+	assert_false(text.contains("❤"), "health belongs to the detail panel: %s" % text)
+
+func test_an_event_tile_says_its_rarity_but_not_how_many_choices() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	assert_gt(col._grid.get_child_count(), 0, "there are events to read")
+	var ev: EventData2 = Data.all_events2()[0]
+	var text: String = _text_of(col._event_cell(ev))
+	assert_true(text.contains(ev.rarity.to_upper()), "the rarity is there: %s" % text)
+	assert_false(text.contains("choice"), "the choice count is not: %s" % text)
+
+# Items KEEP their rarity — it is the one thing the tab sorts and filters by, and
+# the colour on the border says it only to someone who already knows the code.
+func test_an_item_tile_keeps_its_rarity() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ITEMS)
+	assert_gt(Data.all_items2().size(), 0, "there is an item roster")
+	var it: ItemData = Data.all_items2()[0]
+	var text: String = _text_of(col._item_cell(it))
+	assert_true(text.contains(it.display_name), "the name is there")
+	assert_true(text.contains(col._item_rarity_label(it).to_upper()),
+		"and the rarity it is sorted by: %s" % text)
 
 # --- the Steam shortcut ----------------------------------------------------
 #
