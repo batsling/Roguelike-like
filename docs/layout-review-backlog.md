@@ -206,12 +206,30 @@ entire content is 865 pieces of cover art. The first screen anyone sees, and it
 said the least of any screen in the project.
 
 **What it is now.** `MenuFallingArt` fills the two-thirds that said nothing:
-enemies, items, loot and game covers drifting down BOTH sides of the button
-column, each tumbling slowly at its own rate and direction, fading in at the top
-and out into the dark at the bottom. Constant fall speed rather than accelerating
-— they fall past, not away. It keeps running under the modals, so the menu behind
-the character picker is alive, and there is a Settings toggle under Display for
+characters, enemies, items, loot and game covers drifting down BOTH sides of the
+button column, each tumbling slowly at its own rate and direction and fading out
+into the dark at the bottom. Constant fall speed rather than accelerating — they
+fall past, not away. It keeps running under the modals, so the menu behind the
+character picker is alive, and there is a Settings toggle under Display for
 anyone who wants a still background.
+
+**The second pass** (72 pieces rather than 52, a narrower clear band, and the
+pools grown to match) changed two things worth writing down:
+
+- **The playable characters fall past too**, and they come through `Data` whole
+  rather than through the shuffle. Eleven portraits against some 250 other small
+  pieces would be about five of a 112-entry pool drawn at random, and on an
+  unlucky launch none at all — a roster that shows up some nights and not others
+  is a bug nobody can reproduce. They fall at the two-cell size: a character is
+  not a pill, and nothing here stands on the grid for a footprint to be read off.
+- **The top does not fade any more.** It used to spend the first tenth of the
+  height fading a piece in, which is exactly where a piece is newest — the eye
+  that follows one down watched it appear out of nothing. Taking the fade away
+  exposed what it had been hiding: `_spawn` could drop a fresh piece a fifth of
+  the way DOWN the screen. Pieces now enter wholly above the top edge at their
+  full alpha, staggered over a third of a screen so the returns are not a row of
+  arrivals on one invisible line. The bottom fade is untouched — that one is what
+  makes the floor read as a drop rather than as an edge.
 
 **The three things that were wrong while building it**, none of which is visible
 in code review:
@@ -221,7 +239,8 @@ in code review:
   whatever had decoded first — measured at **0 covers of 52** on screen, with the
   cover share only arriving as pieces recycled about thirty seconds later. Nothing
   spawns now until the pool is whole (~1s), and the opening fill scatters pieces
-  across the screen rather than dropping them in from above.
+  across the screen rather than dropping them in from above. It is the only fill
+  that does: every piece after it enters from above the top edge.
 - **Sprites with a baked-in background fall as tiles.** All 28 of
   `wands_unidentified/` are 16x16 with an **opaque** teal ground, and they showed
   as teal diamonds. They are RGBA files in which every pixel is alpha 1 — having
@@ -230,9 +249,9 @@ in code review:
   Seven of the 54 enemies and four of the 40 bosses are the same; the folder came
   off the list and the guard catches the stragglers.
 - **Covers cannot be held at source size.** 336 of them at 528x704 is 236 MB on
-  disk and ~1.5 MB each in memory. A fixed pool of 26 is baked down on the way in
-  to roughly the 96px they are drawn at, and the pool is decoded a few textures
-  per frame so the project's startup screen never hitches.
+  disk and ~1.5 MB each in memory. A fixed pool (26 at first, 34 now) is baked
+  down on the way in to roughly the 96px they are drawn at, and the pool is
+  decoded a few textures per frame so the project's startup screen never hitches.
 - **A bigger enemy has to fall bigger**, which is why the enemy art comes from
   `GoalEnemyData` and not from `images2.0/enemies/`: the resource carries the
   footprint beside the picture, and the folder knows nothing about the grid. A
@@ -243,7 +262,10 @@ in code review:
   been added. Both fixed; the check is now whether the WHOLE piece clears.
 - **The same picture must not fall twice at once.** 52 pieces drawn at random
   from a pool of ~116 duplicated constantly. Pool entries are handed out off a
-  free list and returned on recycle.
+  free list and returned on recycle — which is also why both pools are sized off
+  `PIECE_COUNT` rather than chosen on their own: a pool only a little larger than
+  the screen holds runs the free list dry, the fallback kind takes over, and the
+  mix drifts away from `COVER_SHARE` on its own.
 
 **Still open from the original item:** `Continue (no saved runs)` still takes a
 full row to say nothing, and whether the profile row and How to Play belong where

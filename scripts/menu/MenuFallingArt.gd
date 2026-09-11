@@ -7,13 +7,13 @@ extends Control
 # The menu was the emptiest screen in the project — a 320px column centred in a
 # 1280px canvas, in a game whose whole substance is pictures of games
 # (`docs/layout-review-backlog.md` §7). This fills the two-thirds of the screen
-# that said nothing with the things a run is made of: enemies, items, loot and
-# the covers themselves.
+# that said nothing with the things a run is made of: the characters you play,
+# the enemies, the items, the loot and the covers themselves.
 #
-# DRAWN, NOT SCENE-GRAPHED. Sixty rotating TextureRects would be sixty Controls
-# re-sorting every frame; these are sixty entries in an array drawn in one
-# `_draw`, which is why the effect costs a few hundred microseconds instead of a
-# layout pass. The cost of that choice is texture filtering: a filter belongs to
+# DRAWN, NOT SCENE-GRAPHED. Seventy rotating TextureRects would be seventy
+# Controls re-sorting every frame; these are seventy entries in an array drawn in
+# one `_draw`, which is why the effect costs a few hundred microseconds instead
+# of a layout pass. The cost of that choice is texture filtering: a filter belongs to
 # the CanvasItem, not to the draw call, so the pieces are split across TWO of
 # these nodes — one NEAREST for pixel art, one LINEAR for everything else. See
 # `MenuFallingArtLayer`.
@@ -26,10 +26,10 @@ enum Kind { SMALL, COVER }
 # Pieces on screen at once, split across the two columns. Chosen with the mix
 # below: enough that the screen is busy, few enough that the cover pool stays
 # small.
-const PIECE_COUNT := 52
-# Of those, how many are game covers. The rest are enemies, items and loot — so
-# the screen reads as the run's furniture with the games falling through it,
-# rather than as a wall of box art.
+const PIECE_COUNT := 72
+# Of those, how many are game covers. The rest are characters, enemies, items and
+# loot — so the screen reads as the run's furniture with the games falling through
+# it, rather than as a wall of box art.
 const COVER_SHARE := 0.3
 
 # Draw sizes, in canvas pixels. A cover is drawn to its real 3:4; the small art
@@ -54,15 +54,21 @@ const SPIN_MAX := 20.0
 # The fade. Nothing is ever fully opaque — this is behind a menu — and everything
 # is gone before it reaches the floor, which is what makes the bottom read as a
 # drop rather than as an edge the art is sliding under.
+#
+# THE TOP DOES NOT FADE. It used to spend the first tenth of the height fading a
+# piece in, and the two together read as art materialising just under the top
+# edge rather than as art falling past the window: the fade-in band is exactly
+# where a piece is newest, so the eye that follows one down watches it appear out
+# of nothing. Pieces now enter already ABOVE the top edge at their full alpha
+# (`_spawn`), so they slide into view the way they slide out of the bottom.
 const ALPHA_MIN := 0.30
 const ALPHA_MAX := 0.62
-const FADE_TOP := 0.10             # fraction of the height spent fading in
-const FADE_BOTTOM := 0.34          # and fading out into the dark
+const FADE_BOTTOM := 0.34          # the height spent fading out into the dark
 
 # The middle of the canvas the columns leave alone, as a fraction of the width.
 # The button column is 320px of a 1280px canvas; this is wider than that so the
 # art never crowds the text it sits beside.
-const CLEAR_BAND := 0.38
+const CLEAR_BAND := 0.34
 
 # How many textures to decode per frame while filling the pool. The menu has to
 # come up instantly, and baking the whole pool takes about 600ms — so it is spread
@@ -71,9 +77,10 @@ const CLEAR_BAND := 0.38
 # second's worth of frames.
 const LOAD_PER_FRAME := 3
 
-# Where the small art comes from. Read straight off disk rather than through
-# `Data`, because what is wanted here is PICTURES, not content rows — and it keeps
-# the effect from caring whether a given enemy is still in the roster.
+# Where the loot half of the small art comes from. Read straight off disk rather
+# than through `Data`, because what is wanted from these four folders is PICTURES,
+# not content rows. The two sets that DO come through `Data` are right below, each
+# for its own reason.
 #
 # `wands_unidentified/` is NOT here, and the reason generalises: all 28 of its
 # sprites are 16x16 with an opaque teal background baked in, so falling they read
@@ -100,8 +107,13 @@ const COVER_DIR := "res://images2.0/games/"
 # Covers held at once. Every one is a 528x704 PNG, so this is the number that
 # decides the effect's memory, and they are downscaled on load (see `_bake`) to
 # roughly what they are drawn at rather than kept at source size.
-const COVER_POOL := 26
-const SMALL_POOL := 90
+#
+# BOTH ARE SIZED OFF `PIECE_COUNT`, not chosen on their own: `_spawn` refuses to
+# put a picture on screen that is already on it, so a pool only a little larger
+# than the screen holds makes the free list run dry and the fallback kind take
+# over — the mix drifts away from `COVER_SHARE` on its own.
+const COVER_POOL := 34
+const SMALL_POOL := 112
 
 var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
@@ -110,8 +122,8 @@ var _queue: Array = []
 var _pool := {Kind.SMALL: [], Kind.COVER: []}
 # Which pool entries are NOT currently falling. A piece takes an index from here
 # when it spawns and gives it back when it recycles, so the same picture can never
-# be on screen twice at once — which on a screen of 52 pieces drawn from a pool of
-# ~116 would otherwise happen constantly, and reads as a glitch rather than as
+# be on screen twice at once — which on a screen of 72 pieces drawn from a pool of
+# ~146 would otherwise happen constantly, and reads as a glitch rather than as
 # variety.
 var _free := {Kind.SMALL: [], Kind.COVER: []}
 var _pixel_layer: MenuFallingArtLayer
@@ -163,8 +175,8 @@ func _on_setting_changed(enabled: bool) -> void:
 # --- the texture pool -------------------------------------------------------
 
 # Every candidate path, shuffled and trimmed to the pool sizes. Shuffled so the
-# menu is not the same art every launch — with 336 covers and ~145 small pieces
-# behind a pool of 26 and 90, which ones show is worth randomising.
+# menu is not the same art every launch — with 336 covers and ~250 small pieces
+# behind a pool of 34 and 112, which ones show is worth randomising.
 func _fill_queue() -> void:
 	# A queue entry is {tex OR path, kind, foot} — `foot` being the enemy's longest
 	# side in grid cells, and 1 for everything that does not stand on the grid.
@@ -179,8 +191,16 @@ func _fill_queue() -> void:
 	for path in _pngs_in(COVER_DIR):
 		covers.append({"path": path, "kind": Kind.COVER, "foot": 1})
 	covers.shuffle()
+	# THE CHARACTERS ARE TAKEN WHOLE, ahead of the shuffle rather than through it.
+	# There are eleven of them against some 250 other small pieces, so a pool of 112
+	# drawn at random would hold about five — and on any given launch might hold
+	# none at all. They are the one set on this screen that is about the player
+	# rather than about what the player is up against, and a menu that shows the
+	# roster some nights and not others is just a bug nobody can reproduce.
+	var chars: Array = _character_jobs()
 	_queue.clear()
-	_queue.append_array(small.slice(0, SMALL_POOL))
+	_queue.append_array(chars)
+	_queue.append_array(small.slice(0, maxi(0, SMALL_POOL - chars.size())))
 	_queue.append_array(covers.slice(0, COVER_POOL))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
@@ -204,6 +224,27 @@ func _enemy_jobs() -> Array:
 				# two have on the battlefield. A 2x3 takes the 3.
 				"foot": maxi(e.footprint_rows(), e.footprint_cols()),
 			})
+	return out
+
+# The eleven playable characters, from `Data` for the same reason the enemies are:
+# what belongs on the menu is the ROSTER you can pick from, not whatever happens
+# to be sitting in `images2.0/characters/Full/` — a portrait whose character has
+# been cut from the sheet should stop falling with it.
+#
+# They fall at `CHARACTER_FOOT` because a character is not a pill. Nothing here
+# stands on the battlefield grid, so there is no footprint to read off the
+# resource; it is the same size an ordinary two-cell enemy falls at, which is what
+# puts a person on the same scale as the things a run points them at. Eleven is a
+# small enough set that the free list will often have all of them out at once, and
+# that is the intent — the menu should say who you can be.
+const CHARACTER_FOOT := 2
+
+func _character_jobs() -> Array:
+	var out: Array = []
+	for c in Data.all_characters2():
+		if not (c is CharacterData) or c.portrait == null:
+			continue
+		out.append({"tex": c.portrait, "kind": Kind.SMALL, "foot": CHARACTER_FOOT})
 	return out
 
 # Every distinct PNG in a folder.
@@ -317,7 +358,7 @@ func _spawn(above: bool) -> Dictionary:
 	var kind: int = Kind.COVER if _rng.randf() < COVER_SHARE else Kind.SMALL
 	# NO PICTURE TWICE AT ONCE. Take an entry nothing else is currently falling
 	# with; if this kind has none left, the other kind serves instead rather than
-	# the screen repeating itself. (With 52 pieces against a pool near 116 the
+	# the screen repeating itself. (With 72 pieces against a pool near 146 the
 	# fallback is rare, but a run of recycles can bunch the covers.)
 	if _free[kind].is_empty():
 		kind = Kind.SMALL if kind == Kind.COVER else Kind.COVER
@@ -340,13 +381,20 @@ func _spawn(above: bool) -> Dictionary:
 		var src := Vector2(tex.get_width(), tex.get_height())
 		var longest: float = maxf(src.x, src.y)
 		box = src * (edge / maxf(longest, 1.0))
+	# ENTIRELY ABOVE THE TOP EDGE when it comes in from above — the bottom of the
+	# box at or past `y = 0`, never inside the window. The range used to reach a
+	# fifth of the way down the screen, which with nothing fading in any more is a
+	# piece appearing out of thin air in the top corner. Only the opening fill
+	# scatters pieces across the visible height, and that one is a still frame
+	# nobody watches arrive.
+	var top: float = _rng.randf_range(-size.y, -box.y) if above \
+		else _rng.randf_range(0.0, size.y)
 	return {
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
 		"kind": kind,
 		"index": index,
-		"pos": Vector2(_column_x(size, box.x), _rng.randf_range(-size.y, size.y * 0.2)
-			if above else _rng.randf_range(0.0, size.y)),
+		"pos": Vector2(_column_x(size, box.x), top),
 		"box": box,
 		"fall": _rng.randf_range(FALL_MIN, FALL_MAX),
 		"drift": _rng.randf_range(-DRIFT, DRIFT),
@@ -424,24 +472,36 @@ func _process(delta: float) -> void:
 				# Nothing free to take: keep falling with what it has rather than
 				# vanishing, and take the entry back off the free list so nothing
 				# else claims a picture that is still on screen.
-				piece["pos"] = Vector2(pos.x, -(piece["box"] as Vector2).y)
+				piece["pos"] = Vector2(pos.x, _reentry_y(size, piece["box"]))
 				if _free[int(piece["kind"])].has(int(piece["index"])):
 					_free[int(piece["kind"])].erase(int(piece["index"]))
 			else:
 				fresh["pos"] = Vector2(_column_x(size, (fresh["box"] as Vector2).x),
-					-(fresh["box"] as Vector2).y)
+					_reentry_y(size, fresh["box"]))
 				piece.merge(fresh, true)
 	_redraw()
 
-# The alpha a piece is drawn at: in at the top, out into the dark at the bottom.
+# Where a piece that has just fallen off the bottom comes back on: clear of the
+# top edge, by anything up to `REENTRY_STAGGER` of a screen.
+#
+# The stagger is what keeps the top from reading as a conveyor. Every piece used
+# to re-enter with its bottom exactly on `y = 0`, which is invisible while a
+# fade-in hides the first tenth of the height and is a row of arrivals on a line
+# without one. A third of a screen is enough to break the line and short enough
+# that the screen does not visibly thin out while the returns are in flight.
+const REENTRY_STAGGER := 0.33
+
+func _reentry_y(size: Vector2, box: Vector2) -> float:
+	return -box.y - _rng.randf() * size.y * REENTRY_STAGGER
+
+# The alpha a piece is drawn at: full until it fades out into the dark at the
+# bottom.
 func _fade_at(y: float, height: float, base: float) -> float:
 	if height <= 0.0:
 		return base
 	var t: float = clampf(y / height, 0.0, 1.0)
 	var f: float = 1.0
-	if t < FADE_TOP:
-		f = t / FADE_TOP
-	elif t > 1.0 - FADE_BOTTOM:
+	if t > 1.0 - FADE_BOTTOM:
 		f = (1.0 - t) / FADE_BOTTOM
 	return base * clampf(f, 0.0, 1.0)
 

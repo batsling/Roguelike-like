@@ -11,6 +11,40 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu's art fills more of the screen, and the characters are in it.**
+  `MenuFallingArt` now carries 72 pieces rather than 52 in slightly wider columns,
+  with the pools grown to match — both are sized off `PIECE_COUNT`, because
+  `_spawn` refuses to put a picture on screen that is already on it and a pool
+  only a little larger than the screen holds runs its free list dry and lets the
+  fallback kind quietly bend the mix. Two changes worth the words:
+  - **The eleven playable characters fall past too**, taken off `Data` whole
+    rather than shuffled in with everything else. Eleven portraits against some
+    250 other small pieces is about five of a 112-entry pool drawn at random, and
+    on an unlucky launch none at all; a roster that shows up some nights and not
+    others is a bug nobody can reproduce. They fall at the two-cell size — a
+    character is not a pill, and nothing here stands on the grid for a footprint
+    to be read off.
+  - **The top no longer fades pieces in.** The fade-in band covered the first
+    tenth of the height, which is exactly where a piece is newest: the eye that
+    followed one down watched it appear out of nothing. Taking it away exposed
+    what it had been hiding — `_spawn` could drop a fresh piece a fifth of the way
+    DOWN the screen. Pieces now enter wholly above the top edge at full alpha,
+    staggered over a third of a screen so the returns are not a row of arrivals on
+    one invisible line. The BOTTOM fade is untouched; that one is what makes the
+    floor read as a drop rather than as an edge the art slides under.
+
+- **A Collection tile is a picture with a caption again.** The compendium's grid
+  had drifted into a wall of captions with thumbnails: an item was 50px of art in
+  a 110px cell, and an enemy could stack four lines of text under a 58px picture.
+  The art grew INTO the slack the caption had been holding rather than the cells
+  growing — a cell is still about as wide as it was, so a row still fits the same
+  number across — and the caption is now the name plus at most one line of
+  whatever the tab is sorted by: type and tier on an enemy or boss, the rarity on
+  an item, an event or an object, nothing at all on a character. Damage,
+  footprints, health, choice counts and tag lists all came off the tiles. Every
+  one of them is still in the DETAIL panel, where the footprint is a drawn board
+  rather than "▦ 2 x 2" — which is the reading that was worth having anyway.
+
 - **The main menu has the game falling past it.** §7 of
   [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — the emptiest
   screen in the project, a 320px column centred in a 1280px canvas in a game whose

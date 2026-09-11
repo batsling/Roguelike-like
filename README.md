@@ -305,6 +305,15 @@ node and its script.
     again; the grid is an `HFlowContainer`, so it takes the width back by itself.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
+    **A grid tile is a picture with a caption, not a stat line with a thumbnail.**
+    The art takes most of the width its cell reserves, and the caption under it is
+    the name plus at most one line of whatever the tab is sorted by — type and tier
+    on an enemy, the rarity on an item, an event or an object, nothing at all on a
+    character. Damage, footprints, health, choice counts and tag lists were all on
+    the tiles once, and between them they could stack four lines of text under a
+    58px picture. Every one of them is still in the detail panel, where the
+    footprint is a drawn board rather than "▦ 2 x 2" — which is the reading worth
+    having anyway.
     It is also **the only door onto the Atlas
     that is always open** — the Games tab's *✦ Show constellation* draws the same
     catalog as the star chart, which is why the main menu no longer carries an

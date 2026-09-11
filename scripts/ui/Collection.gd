@@ -84,14 +84,29 @@ const DETAIL_ENEMY_SIZE := 176
 const CELL_PAD := 26
 const GRID_COVER_W := 95           # game box art, drawn 3:4 (so 95x127)
 const OWNED_BADGE := 20            # the owned tick, over the cover's top-left
-const GRID_ITEM_SIZE := 50
-const GRID_PORTRAIT_SIZE := 60
-const GRID_ENEMY_SIZE := 58
-const GRID_EVENT_SIZE := 58
+const GRID_ITEM_SIZE := 72
+const GRID_PORTRAIT_SIZE := 80
+const GRID_ENEMY_SIZE := 80
+const GRID_EVENT_SIZE := 80
 # Names get a smaller face to match: a 13px title in a 95px cell wraps to three
 # lines and hands back the height the smaller art just saved.
 const GRID_NAME_FONT := 11
-const GRID_META_FONT := 10
+const GRID_META_FONT := UITheme.FONT_MICRO
+
+# The slack a non-game cell carries BEYOND its artwork and `CELL_PAD`, so a name
+# has somewhere to wrap to rather than setting the cell's width on its own.
+#
+# It was 34, and the art grew INTO it rather than the cells growing: a cell is
+# still about as wide as it was, so the grid still fits the same number across,
+# but the picture now owns most of that width instead of two-fifths of it. The
+# compendium is a wall of artwork with captions, and it had drifted into being a
+# wall of captions with thumbnails — an item was 50px of art in a 110px box.
+const CELL_TEXT_SLACK := 10
+
+# The gap between a cell's artwork and its caption lines. Tight on purpose: the
+# caption is two short lines under a picture, and at the old 4 the block of text
+# read as a paragraph sitting beside the art rather than as a label on it.
+const CELL_SEP := 2
 
 var _tab: int = Tab.GAMES
 
@@ -379,7 +394,7 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 				on_click.call())
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
+	vb.add_theme_constant_override("separation", CELL_SEP)
 	panel.add_child(vb)
 	return {"panel": panel, "vbox": vb}
 
@@ -429,8 +444,14 @@ func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
 	return tr
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
-func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false) -> Control:
-	var pad := 8
+# The frame's inset. `size` is the ART, so the pad is paid on top of it twice over
+# — at 8 an item's plate was 66px around 50px of picture, a fifth of the cell's
+# width spent on a margin inside a margin inside a margin. The detail panel, where
+# the art is the subject and has the room, keeps the roomier inset.
+const IMAGE_PAD := 4
+const DETAIL_IMAGE_PAD := 8
+func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = false,
+		pad: int = IMAGE_PAD) -> Control:
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = IMAGE_BG.lerp(border, 0.12)
@@ -1047,7 +1068,7 @@ var _cell_height_cache: float = 0.0
 func _game_cell_height() -> float:
 	if _cell_height_cache > 0.0:
 		return _cell_height_cache
-	var sep: float = 4.0                                  # _cell's vbox separation
+	var sep: float = float(CELL_SEP)                      # _cell's vbox separation
 	# The stat line is a ROW now, with the owned tick beside the counts (see
 	# `_fill_cell`), so it is as tall as the taller of the two rather than one line
 	# of text. Counted here or the cell clips its own last row.
@@ -1470,7 +1491,7 @@ func _item_rarity_label(it: ItemData) -> String:
 func _item_cell(it: ItemData) -> Control:
 	var rc := _item_accent(it)
 	var cell := _cell(rc, func(): _show_item_detail(it))
-	cell.panel.custom_minimum_size = Vector2(GRID_ITEM_SIZE + CELL_PAD + 34, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_ITEM_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if it.image != null:
@@ -1487,7 +1508,7 @@ func _show_item_detail(it: ItemData) -> void:
 	_detail_game = null
 	var rc := _item_accent(it)
 	if it.image != null:
-		var img := _image_with_bg(it.image, DETAIL_ITEM_SIZE, rc)
+		var img := _image_with_bg(it.image, DETAIL_ITEM_SIZE, rc, false, DETAIL_IMAGE_PAD)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(it.display_name, rc, 18, true))
@@ -1554,15 +1575,19 @@ func _populate_characters() -> void:
 func _character_cell(ch: CharacterData) -> Control:
 	var green := Color(0.4, 0.78, 0.4)
 	var cell := _cell(green, func(): _show_character_detail(ch))
-	cell.panel.custom_minimum_size = Vector2(GRID_PORTRAIT_SIZE + CELL_PAD + 34, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_PORTRAIT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if ch.portrait != null:
 		var tr := UITheme.crisp_tex(ch.portrait, GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(tr)
+	# The NAME AND NOTHING ELSE. Health was the one stat on the tile, and a single
+	# number is the worst thing a grid can carry: it is not enough to compare
+	# characters by and it is a second line of text under every portrait, on the one
+	# tab whose art is a person's face. It is still the first row of the detail
+	# panel's Base Stats, which is where a number is worth reading.
 	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
-	vb.add_child(_label("❤ %d" % ch.base_max_hp, Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 func _show_character_detail(ch: CharacterData) -> void:
@@ -1761,7 +1786,7 @@ func _enemy_accent(e: GoalEnemyData) -> Color:
 func _enemy_cell(e: GoalEnemyData) -> Control:
 	var ac := _enemy_accent(e)
 	var cell := _cell(ac, func(): _show_enemy_detail(e))
-	cell.panel.custom_minimum_size = Vector2(GRID_ENEMY_SIZE + CELL_PAD + 34, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_ENEMY_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	if e.image != null:
@@ -1770,15 +1795,14 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 	var nm := _label(name_text, ac, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
+	# NAME, THEN TYPE AND TIER — and that is the whole caption. Damage and the
+	# footprint used to follow it, and between them they could make a tile four
+	# lines of text under a 58px picture: the art was the smallest thing in its own
+	# box. Both are still in the detail panel, where the footprint is a drawn board
+	# rather than "▦ 2 x 2" — which is the reading that was worth having anyway.
 	var tier: String = ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
 	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
-	vb.add_child(_label("⚔ %d dmg" % e.damage, Color(0.9, 0.55, 0.5), GRID_META_FONT, true))
-	# Anything bigger than a single cell says so here as plain text; the drawn board
-	# lives in the detail panel only, so the grid stays a clean wall of artwork.
-	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
-		vb.add_child(_label("▦ %d x %d" % [e.footprint_rows(), e.footprint_cols()],
-			Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 # One game this enemy has been beaten at: its cover, how many times it fell
@@ -1844,7 +1868,7 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 	_clear_children(_detail_box)
 	var ac := _enemy_accent(e)
 	if e.image != null:
-		var img := _image_with_bg(e.image, DETAIL_ENEMY_SIZE, ac)
+		var img := _image_with_bg(e.image, DETAIL_ENEMY_SIZE, ac, false, DETAIL_IMAGE_PAD)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(("☠ " if e.is_boss() else "") + e.display_name, ac, 18, true))
@@ -2390,7 +2414,7 @@ func _event_choice_blob(ev: EventData2) -> String:
 func _event_cell(ev: EventData2) -> Control:
 	var ac := _event_accent(ev)
 	var cell := _cell(ac, func(): _show_event_detail(ev))
-	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + 34, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	var tex: Texture2D = _event_art(ev)
@@ -2399,9 +2423,10 @@ func _event_cell(ev: EventData2) -> Control:
 	var nm := _label("✦ " + ev.display_name, ac, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
+	# The rarity and no more. "3 choices" was a count of something you cannot read
+	# from the outside — every event has two or three, so it separated nothing and
+	# cost the tile a line. The choices themselves are in the detail panel, in full.
 	vb.add_child(_label(ev.rarity.to_upper(), ac, GRID_META_FONT, true))
-	vb.add_child(_label("%d choice%s" % [ev.choices.size(),
-		"" if ev.choices.size() == 1 else "s"], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 func _show_event_detail(ev: EventData2) -> void:
@@ -2410,7 +2435,7 @@ func _show_event_detail(ev: EventData2) -> void:
 	var ac := _event_accent(ev)
 	var tex: Texture2D = _event_art(ev)
 	if tex != null:
-		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac)
+		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac, false, DETAIL_IMAGE_PAD)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label("✦ " + ev.display_name, ac, 18, true))
@@ -2613,7 +2638,7 @@ func _object_choice_blob(obj: ObjectData) -> String:
 func _object_cell(obj: ObjectData) -> Control:
 	var ac := _object_accent(obj)
 	var cell := _cell(ac, func(): _show_object_detail(obj))
-	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + 34, 0)
+	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	var tex: Texture2D = _object_art(obj)
@@ -2622,8 +2647,11 @@ func _object_cell(obj: ObjectData) -> Control:
 	var nm := _label("✦ " + obj.display_name, ac, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
+	# Objects are events' neighbours on this screen and read the same way: name,
+	# rarity, done. The tag list went with the event tile's choice count — it is a
+	# comma-joined string of unbounded length under a picture, so a machine with
+	# three tags wrapped to two more lines than one with one.
 	vb.add_child(_label(obj.rarity.to_upper(), ac, GRID_META_FONT, true))
-	vb.add_child(_label(", ".join(obj.tags), Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
 	return cell.panel
 
 func _show_object_detail(obj: ObjectData) -> void:
@@ -2632,7 +2660,7 @@ func _show_object_detail(obj: ObjectData) -> void:
 	var ac := _object_accent(obj)
 	var tex: Texture2D = _object_art(obj)
 	if tex != null:
-		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac)
+		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac, false, DETAIL_IMAGE_PAD)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label("✦ " + obj.display_name, ac, 18, true))
