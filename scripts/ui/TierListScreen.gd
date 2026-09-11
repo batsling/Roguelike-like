@@ -52,11 +52,18 @@ const TILE_SEP := 6.0
 const ROW_SEP := 8.0
 const ROWS_SEP := 8.0
 const ZONE_PAD := 5.0
-# Under this, the ⚔ / 👑 badge comes off the tile: below about half size it is a
-# line of text that has stopped shrinking (the font has a floor) eating the height
-# the cover needs to stay recognisable, and the same counts are on the detail panel
-# a click away.
+# Under this, the ⚔ / 👑 badge comes off the tile. It no longer eats the cover's
+# height — it is drawn ON the cover — but the font has a floor the tile does not,
+# so below about half size the same line of text covers a bigger and bigger share
+# of a picture that is already struggling to be recognisable. The counts are on
+# the detail panel a click away.
 const BADGE_MIN_SCALE := 0.45
+# The badge is drawn ON the cover with no plate behind it, so its legibility is
+# the outline's job rather than a background's: 2px of near-black around the
+# glyphs reads over a white cover and a black one alike. `BADGE_INSET` keeps that
+# outline off the tile's own border.
+const BADGE_OUTLINE := 2
+const BADGE_INSET := 2.0
 
 # Height of the empty-board note (see `_build_empty_note`). A const because
 # `_board_height` has to count it before the note exists.
@@ -476,7 +483,11 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 	var pad: int = maxi(1, int(round(3.0 * _scale)))
 	var badge_font: int = _font(10, 8)
 	var show_badge: bool = _scale >= BADGE_MIN_SCALE
-	var art_h: float = size.y - pad * 2 - (badge_font + 4 + 2 if show_badge else 0)
+	# THE BADGE SITS ON THE COVER, so the art gets the tile's whole height. It used
+	# to be a row UNDER the cover, which cost every tile a line of text plus its
+	# separation — around a fifth of the box at board scale, taken off the one thing
+	# a tile is for. Overlaid bottom-left it costs the art nothing.
+	var art_h: float = size.y - pad * 2
 	var art_w: float = size.x - pad * 2
 
 	# The open card's game is ringed in gold, so the board and the panel agree
@@ -486,11 +497,14 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 		UITheme.flat(UITheme.PANEL_HI if chosen else UITheme.PANEL, 5, pad,
 			2 if chosen else 1, edge))
 
-	# A VBox is a Container (legal single child of PanelContainer) holding the
-	# cover above a beaten-count badge. All children IGNORE the mouse so the
+	# A plain Control, not a VBox: the cover and the badge are STACKED rather than
+	# stacked-up, so both are placed by anchors inside it. It is the single child a
+	# PanelContainer allows, and it clips — a badge placed on the bottom edge must
+	# not paint over the tile's own border. All children IGNORE the mouse so the
 	# tile itself stays the drag source AND the click target.
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(art_w, art_h)
+	box.clip_contents = true
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tile.add_child(box)
 
@@ -499,7 +513,7 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 		tex.texture = gd.cover_image
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tex.custom_minimum_size = Vector2(art_w, art_h)
+		tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(tex)
 	else:
@@ -511,20 +525,36 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 		name_lbl.clip_text = true
 		name_lbl.add_theme_font_size_override("font_size", _font(11, 8))
 		name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
-		name_lbl.custom_minimum_size = Vector2(art_w, art_h)
+		name_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(name_lbl)
 
 	# The badge comes off a heavily-shrunk board (BADGE_MIN_SCALE): the cover is
 	# what identifies a game and the counts are on the detail panel either way.
+	#
+	# NO PLATE BEHIND IT. A panel under the count would hide the corner of the art
+	# the overlay was meant to give back, so the count is drawn straight onto the
+	# cover and kept legible by an OUTLINE instead — which costs no pixels of the
+	# picture, and works over a bright cover and a dark one alike where a single
+	# font colour does not.
 	if show_badge:
 		var badge := Label.new()
 		badge.text = ("⚔ %d  👑 %d" % [beaten, amulets]) if amulets > 0 else ("⚔ %d" % beaten)
-		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		badge.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		badge.clip_text = true
 		badge.add_theme_font_size_override("font_size", badge_font)
 		badge.add_theme_color_override("font_color",
 			UITheme.GOLD if beaten > 0 or amulets > 0 else UITheme.TEXT_FAINT)
+		badge.add_theme_constant_override("outline_size", BADGE_OUTLINE)
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		# Pinned to the bottom-left corner of the art, inset by a hair so the
+		# outline is not sitting on the tile's border.
+		badge.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		badge.offset_left = BADGE_INSET
+		badge.offset_right = 0.0
+		badge.offset_top = -float(badge_font + BADGE_OUTLINE * 2)
+		badge.offset_bottom = -BADGE_INSET
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(badge)
 

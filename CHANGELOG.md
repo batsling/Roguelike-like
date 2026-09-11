@@ -11,6 +11,66 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu's art falls in from the top, a little faster, without the stutter.**
+  Four things about `MenuFallingArt`, three of them measured rather than guessed:
+  - **The opening fill comes in over the top edge like every other piece.** It
+    used to be scattered across the visible height so the menu came up busy, and
+    that cost the effect both of the things it was opening wrong: the art was
+    simply THERE when the menu appeared rather than falling into it, and the
+    pieces dealt into the bottom third landed inside the fade-out band — so the
+    menu opened on a spread of half-faded pictures sliding off the floor. That is
+    one call site (`_spawn` lost its `above` argument, because there is no longer
+    a case where it is false).
+  - **A little faster**: 26–58px/s to 38–84px/s. The slowest piece used to take
+    28 seconds to cross a 720p window, which is less "falling past" than
+    "hanging"; it now takes 19.
+  - **The bake is budgeted in TIME, not in jobs, and the resize halves first.**
+    This was the stutter. Baking was three jobs a frame, and a job's cost is not
+    one number — over the real pool the median was 1.9ms and the worst 38ms,
+    because a game cover is a 528x704 PNG to decode and resample where a pill is
+    16x16. Three big ones landing together was **88ms, five dropped frames**, and
+    which frames got them depended on how the queue happened to shuffle: exactly
+    the shape of "it stutters sometimes". Two fixes, both measured: a 3ms-per-frame
+    budget checked AFTER each job (so a job bigger than the budget still runs and
+    the pool can never stall), and `_shrink_to`, which box-halves an image to
+    within 2x of the target before it hands the rest to Lanczos — a cover's
+    resample went from 10.1ms to 2.5ms that way, and it is if anything cleaner,
+    because every source pixel is averaged in on the way down. **Together: the
+    worst frame 88ms → 12ms, and the whole pool ready in 336ms rather than 1072.**
+  - **A hitched frame no longer teleports the art, and a frame allocates nothing.**
+    Movement is delta-scaled, so any long frame — from anywhere, not just from
+    here — moved every piece that long frame's worth in one go, which is the jump
+    a player reads as a stutter; a step is now capped at 1/30s. And `_redraw` was
+    building two fresh Arrays of up to 72 fresh Dictionaries every frame, ~8,600
+    dictionaries a second thrown away to copy five values out of dictionaries that
+    already held them. The two draw batches are kept and refilled with the pieces
+    THEMSELVES, with the faded alpha written back onto each piece as `draw_alpha`:
+    the steady-state frame went from 165µs to 90µs and from 387µs to 150µs at its
+    worst.
+
+- **The tier list shows more of each cover.** The beaten count (`⚔ 3  👑 1`) was a
+  row of its own under the art, which cost every tile a line of text plus its
+  separation — around a fifth of the box, taken off the one thing a tile is for.
+  It now sits in the bottom-left corner ON the cover with no plate behind it, kept
+  readable by a 2px outline rather than by a background: an outline costs none of
+  the picture, and it works over a bright cover and a dark one alike where a
+  single font colour does not. The cover takes the tile's whole height. The badge
+  still comes off a heavily shrunk board at `BADGE_MIN_SCALE`, which is unchanged.
+
+- **The compendium's Loot sub-tabs stopped pushing their own Close button off the
+  screen.** Picking Pills, Potions, Cards or Wands widened the whole modal and
+  carried the header's ✕ Close past the right edge of the window. The cause was a
+  Label: each sub-tab writes its own one-line note into the sub-tab row, the note
+  had `autowrap_mode` OFF, and a Label that does not wrap reports its whole line
+  as its MINIMUM width — so the note was not sharing that row, it was setting it,
+  and through it the compendium's minimum width (1405px of a 1280px canvas at the
+  worst). A PanelContainer that cannot fit GROWS rather than shrinking, which is
+  why the symptom was the panel moving rather than the text clipping. The note
+  wraps now, so its minimum is its longest word. `test_screens_fit.gd` had only
+  ever measured the Loot tab in the sub-tab it opens on; it measures all five, and
+  names the ✕ Close button separately, because "the way out moved" is the whole
+  symptom.
+
 - **The menu's art fills more of the screen, and the characters are in it.**
   `MenuFallingArt` now carries 72 pieces rather than 52 in slightly wider columns,
   with the pools grown to match — both are sized off `PIECE_COUNT`, because

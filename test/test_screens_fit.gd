@@ -239,6 +239,65 @@ func test_every_collection_tab_fits() -> void:
 		await wait_frames(4)
 		_assert_fits("the Collection's %s tab" % tab_name.capitalize(), col)
 
+# AND EVERY SUB-TAB OF THE LOOT TAB, not just the one it opens on. The tab loop
+# above measured Loot on `LOOT_SCROLLS` and nothing else, which is exactly where
+# the bug hid: each sub-tab writes its own one-line note into the sub-tab row, the
+# note did not wrap, and a Label that does not wrap reports the whole line as its
+# MINIMUM width. Four of the five notes are half as long again as the scrolls one,
+# so picking Pills, Potions, Cards or Wands pushed the compendium's minimum width
+# past the canvas — and a PanelContainer that cannot fit grows instead of
+# shrinking, so the whole modal widened and took its ✕ Close button off the right
+# edge of the screen with it.
+func test_every_loot_sub_tab_fits() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	col._set_tab(Collection.Tab.LOOT)
+	await wait_frames(4)
+	for sub in [Collection.LOOT_SCROLLS, Collection.LOOT_PILLS, Collection.LOOT_POTIONS,
+			Collection.LOOT_CARDS, Collection.LOOT_WANDS]:
+		col._loot_sub = sub
+		col._refresh()
+		await wait_frames(4)
+		_assert_fits("the Collection's Loot/%s sub-tab" % sub, col)
+
+# THE BUTTON YOU LEAVE BY IS THE ONE THAT MUST NOT MOVE. `_assert_fits` measures
+# the worst control on the screen, which says a sub-tab overflowed but not that the
+# way out went with it — and "the close button is off the screen" is the whole
+# symptom a player reports. So this names it: on every sub-tab, the header's ✕
+# Close is wholly inside the canvas and still where the scrolls tab had it.
+func test_the_close_button_stays_put_across_the_loot_sub_tabs() -> void:
+	var col := Collection.new()
+	add_child_autofree(col)
+	await wait_frames(6)
+	col._set_tab(Collection.Tab.LOOT)
+	await wait_frames(4)
+	var canvas := _canvas()
+	var home: Rect2 = _close_button(col).get_global_rect()
+	for sub in [Collection.LOOT_PILLS, Collection.LOOT_POTIONS, Collection.LOOT_CARDS,
+			Collection.LOOT_WANDS]:
+		col._loot_sub = sub
+		col._refresh()
+		await wait_frames(4)
+		var r: Rect2 = _close_button(col).get_global_rect()
+		assert_lte(r.end.x, canvas.x + 1.0,
+			"✕ Close is still on screen on the %s sub-tab (right edge at %.0f of %.0f)"
+				% [sub, r.end.x, canvas.x])
+		assert_almost_eq(r.position, home.position, Vector2(1.0, 1.0),
+			"and has not moved from where the scrolls tab had it (%s)" % sub)
+
+# The compendium's header button, found by its text rather than by a path — the
+# shell is built in code and the header is three levels down from the panel.
+func _close_button(root: Node) -> Button:
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Button and String((n as Button).text).ends_with("Close"):
+			return n
+		for child in n.get_children():
+			stack.append(child)
+	return null
+
 # --- the star chart ---------------------------------------------------------
 #
 # THIS IS THE ONE THAT WAS BROKEN. The catalog view draws two chips the run view

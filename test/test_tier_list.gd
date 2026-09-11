@@ -202,6 +202,109 @@ func test_dropping_a_game_onto_a_tile_inserts_it_before_that_tile() -> void:
 	assert_eq(TierList.tiers[0], [String(_game_b.id), String(_game_a.id)],
 		"reordering within a row still works")
 
+# --- the beaten-count badge --------------------------------------------------
+#
+# THE COUNT IS DRAWN ON THE COVER, not under it. It used to be a row of its own
+# below the art, which cost every tile a line of text plus the separation above it
+# — about a fifth of the box, taken off the one thing a tile is for. Overlaid in
+# the bottom-left corner with no plate behind it, it costs the picture nothing.
+
+# The ⚔ label inside a tile, or null when the board is drawn too small to carry
+# one (`BADGE_MIN_SCALE`).
+func _badge_of(tile: Node) -> Label:
+	var stack: Array = [tile]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Label and String((n as Label).text).begins_with("⚔"):
+			return n
+		for c in n.get_children():
+			stack.append(c)
+	return null
+
+func _art_of(tile: Node) -> Control:
+	var stack: Array = [tile]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is TextureRect:
+			return n
+		for c in n.get_children():
+			stack.append(c)
+	return null
+
+func test_the_beaten_count_is_drawn_over_the_cover_rather_than_under_it() -> void:
+	await _settle()
+	var tile = _tile_for(_game_a.id)
+	assert_not_null(tile, "the game has a tile")
+	var badge: Label = _badge_of(tile)
+	if badge == null:
+		pending("the board shrank past BADGE_MIN_SCALE, so no tile carries a badge")
+		return
+	var art: Control = _art_of(tile)
+	if art == null:
+		pending("this game ships no cover, so there is no art to measure the badge against")
+		return
+	# OVERLAPPING, which is the whole change: stacked they shared an edge and no
+	# more, so the art's bottom sat at or above the badge's top.
+	var art_r: Rect2 = art.get_global_rect()
+	var badge_r: Rect2 = badge.get_global_rect()
+	assert_gt(art_r.end.y, badge_r.position.y,
+		"the badge is over the picture (art ends %.0f, badge starts %.0f)"
+			% [art_r.end.y, badge_r.position.y])
+	assert_lte(badge_r.end.y, art_r.end.y + 1.0, "and inside it, not hanging off the bottom")
+
+func test_the_beaten_count_sits_in_the_bottom_left_corner() -> void:
+	await _settle()
+	var tile = _tile_for(_game_a.id)
+	var badge: Label = _badge_of(tile)
+	if badge == null:
+		pending("the board shrank past BADGE_MIN_SCALE, so no tile carries a badge")
+		return
+	assert_eq(badge.horizontal_alignment, HORIZONTAL_ALIGNMENT_LEFT, "left, not centred")
+	assert_eq(badge.vertical_alignment, VERTICAL_ALIGNMENT_BOTTOM, "and on the bottom")
+	var tile_r: Rect2 = (tile as Control).get_global_rect()
+	var badge_r: Rect2 = badge.get_global_rect()
+	assert_lt(badge_r.position.x, tile_r.get_center().x, "in the left half of the tile")
+	assert_gt(badge_r.get_center().y, tile_r.get_center().y, "and the bottom half of it")
+
+# NO PLATE BEHIND IT, because a plate would hide exactly the corner of the art the
+# overlay was meant to give back. What keeps it readable over a bright cover is an
+# outline, which costs no pixels of the picture.
+func test_the_beaten_count_has_no_background_but_is_outlined() -> void:
+	await _settle()
+	var tile = _tile_for(_game_a.id)
+	var badge: Label = _badge_of(tile)
+	if badge == null:
+		pending("the board shrank past BADGE_MIN_SCALE, so no tile carries a badge")
+		return
+	assert_false(badge.has_theme_stylebox_override("normal"),
+		"the count is drawn straight onto the cover")
+	# And nothing opaque is standing between the badge and the art: a PanelContainer
+	# or ColorRect wrapped around it would be a background by another name.
+	var parent: Node = badge.get_parent()
+	assert_false(parent is PanelContainer, "no panel wrapped around it either")
+	assert_eq(badge.get_theme_constant("outline_size"), TierListScreen.BADGE_OUTLINE,
+		"it is outlined instead, so it reads over a white cover and a black one")
+	assert_gt(badge.get_theme_color("font_outline_color").a, 0.5,
+		"and the outline is actually opaque enough to do that")
+
+# THE POINT OF THE MOVE: the cover gets the height the badge row used to take.
+# Measured against the tile rather than against a number, so it stays true at
+# whatever scale the fit picks.
+func test_the_cover_now_fills_the_whole_tile() -> void:
+	await _settle()
+	var tile = _tile_for(_game_a.id)
+	var art: Control = _art_of(tile)
+	if art == null:
+		pending("this game ships no cover")
+		return
+	var tile_r: Rect2 = (tile as Control).get_global_rect()
+	var art_r: Rect2 = art.get_global_rect()
+	# Everything but the tile's own padding, which is 3px a side at full scale.
+	assert_gt(art_r.size.y, tile_r.size.y - 9.0,
+		"the art takes the tile's height (%.0f of %.0f)" % [art_r.size.y, tile_r.size.y])
+	assert_gt(art_r.size.x, tile_r.size.x - 9.0,
+		"and its width (%.0f of %.0f)" % [art_r.size.x, tile_r.size.x])
+
 # --- the board fits the window ----------------------------------------------
 #
 # The point of a tier list is the COMPARISON between its rows, and a row you have
