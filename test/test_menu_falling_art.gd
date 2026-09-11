@@ -244,3 +244,28 @@ func test_a_recycled_piece_gives_its_picture_back() -> void:
 		var key: String = "%d:%d" % [int(piece["kind"]), int(piece["index"])]
 		assert_false(seen.has(key), "and still no picture is on screen twice")
 		seen[key] = true
+
+# THE POOL MUST NOT HOLD ONE PICTURE TWICE, or the free list cannot keep it off
+# the screen twice however carefully it hands entries out. This shipped once:
+# every image is listed as both `Foo.png` and `Foo.png.import` in the editor
+# tree, and the first `_pngs_in` deduped only on the `.import` branch, which
+# assumes an order `DirAccess` does not promise. `items/` came back as 93 paths
+# for 61 files.
+func test_a_folder_scan_lists_each_picture_once() -> void:
+	for dir_path in MenuFallingArt.SMALL_DIRS + [MenuFallingArt.COVER_DIR]:
+		var paths: Array = _art._pngs_in(dir_path)
+		var seen := {}
+		for path in paths:
+			seen[path] = true
+		assert_eq(paths.size(), seen.size(),
+			"%s lists %d paths for %d files" % [dir_path, paths.size(), seen.size()])
+		assert_gt(paths.size(), 0, "%s is not empty" % dir_path)
+
+func test_the_pool_holds_each_texture_once() -> void:
+	for kind in [MenuFallingArt.Kind.SMALL, MenuFallingArt.Kind.COVER]:
+		var by_tex := {}
+		for entry in _art._pool[kind]:
+			by_tex[(entry["tex"] as Texture2D).get_instance_id()] = true
+		assert_eq(_art._pool[kind].size(), by_tex.size(),
+			"kind %d holds %d entries for %d distinct textures"
+				% [kind, _art._pool[kind].size(), by_tex.size()])

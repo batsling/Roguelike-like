@@ -206,25 +206,31 @@ func _enemy_jobs() -> Array:
 			})
 	return out
 
+# Every distinct PNG in a folder.
+#
+# DEDUPED THROUGH A SET, and it has to be. In the editor's tree each image is
+# listed TWICE — `Foo.png` and `Foo.png.import` — and `.import` is what a shipped
+# build actually sees, so both have to be recognised. The first version of this
+# checked for a duplicate only on the `.import` branch, which quietly assumed
+# `DirAccess` hands back `Foo.png` before `Foo.png.import`. It does not promise
+# that, and it does not do it: `items/` came back as 93 paths for 61 files. The
+# effect was a pool holding the same picture more than once, and the same picture
+# on screen twice however carefully the free list handed entries out.
 func _pngs_in(dir_path: String) -> Array:
-	var out: Array = []
+	var seen := {}
 	var dir: DirAccess = DirAccess.open(dir_path)
 	if dir == null:
-		return out
+		return []
 	dir.list_dir_begin()
 	var name: String = dir.get_next()
 	while name != "":
-		# `.import` is what a shipped build actually sees; both are listed in the
-		# editor's tree, so match on the base name rather than the extension.
 		if name.ends_with(".png"):
-			out.append(dir_path + name)
+			seen[dir_path + name] = true
 		elif name.ends_with(".png.import"):
-			var real: String = dir_path + name.trim_suffix(".import")
-			if not out.has(real):
-				out.append(real)
+			seen[dir_path + name.trim_suffix(".import")] = true
 		name = dir.get_next()
 	dir.list_dir_end()
-	return out
+	return seen.keys()
 
 # Decode one queued texture and put it in its pool, downscaled to about what it
 # will be drawn at. The downscale is the whole reason this effect can hold game
