@@ -13,11 +13,18 @@ the honour system.
 | repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. Two left: `Overworld2.gd` (6034) carries a seam table that is re-measured there rather than guessed, and the Events tab is 909 ms. Note the file this repo has never measured is the BIGGER one — `GameLoop2.gd` is 6869 and has no seam table at all |
-| what the layout pass left open | `docs/layout-review-backlog.md` — eight items, ONE still open (§7, the main menu), plus two named halves: §2's spacing scale (~38 screens, the real work left) and §6's duplicated colours. §1 is decided; §3, §4, §5 and §8 are fixed; every font size in the project is on the type scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
+| what the layout pass left open | `docs/layout-review-backlog.md` — all eight items now closed or down to a named remainder. The substantial work left is §2's SPACING scale (~38 screens; fonts are fully done and every font size in the project is on the type scale). Smaller remainders: §6's duplicated colours in `MainMenu.tscn`, and the disabled `Continue` row §7 left behind. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
 
+- **The main menu has a moving background.** `MenuFallingArt` drops enemies,
+  items, loot and game covers down both sides of the button column. Two things to
+  know before touching it: a texture filter belongs to the CanvasItem, so the
+  pieces are split across two draw layers (NEAREST for pixel art, LINEAR for the
+  rest), and art is only used if `_is_cutout` says so — `wands_unidentified/` is
+  RGBA with every pixel opaque, and falls as teal tiles otherwise. Toggle lives in
+  Settings under Display.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.

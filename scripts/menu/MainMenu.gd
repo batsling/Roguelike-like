@@ -22,6 +22,7 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
+	_mount_falling_art()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -74,6 +75,19 @@ func _style_menu() -> void:
 	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	start.add_theme_color_override("font_color", UITheme.GOLD)
 	start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+
+# The game's own art falling past, down both sides of the button column. Mounted
+# as the FIRST child so it draws under everything else in the scene — the
+# background node it sits with is a flat colour, and this goes over that and
+# under the title, the buttons and the save list.
+#
+# It deliberately keeps running while the modals are up: `%ModalLayer` is a
+# sibling above this, so the character picker and the settings panel dim it
+# rather than stop it, and the menu behind them still looks alive.
+func _mount_falling_art() -> void:
+	var art := MenuFallingArt.mount(self)
+	# Directly above the Background ColorRect, below Center and %ModalLayer.
+	move_child(art, 1)
 
 # ---------------------------------------------------------------------------
 # Profiles — who is playing

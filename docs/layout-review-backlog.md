@@ -9,11 +9,11 @@ cold in a later session.
 Each item says **what** is wrong, **why it matters**, and **what it would take** —
 because the sizing is the part that is expensive to re-derive.
 
-**Eight items, of which ONE is still open: §7, the main menu.** Everything else is
-closed or has only a named half left — §1 is **decided**, §3, §4, §5 and §8 are
-**fixed**, §2's fonts are **done** (its spacing half is the one real piece of work
-left in the document), and §6's fail-loudly half is **done** with its duplicated
-colours still open. Closed work is kept here with its reasoning rather than
+**All eight items are now closed or down to a named remainder.** §1 is **decided**;
+§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts are **done**, leaving its
+spacing scale as the one substantial piece of work left in the document; §6's
+fail-loudly half is **done** with its duplicated colours still open; and §7 leaves
+the disabled `Continue` row behind it. Closed work is kept here with its reasoning rather than
 deleted, so none of it gets asked again; a closed item says so in its heading, and
 a half-closed one says which half.
 
@@ -199,20 +199,45 @@ preview shows colours no player ever sees. Closing it means putting the real
 colours in the scene and deleting the re-skinning — the larger half, and the one
 that makes the scene honest.
 
-## 7. The main menu is the emptiest screen in the game
+## 7. The main menu — BUILT: the game's art falls past it
 
-**What.** A 320px column centred in a 1280px canvas — see the capture in the
-original pass — in a game whose entire content is 865 pieces of cover art.
-`Continue (no saved runs)` takes a full row to say nothing.
+**What it was.** A 320px column centred in a 1280px canvas, in a game whose
+entire content is 865 pieces of cover art. The first screen anyone sees, and it
+said the least of any screen in the project.
 
-**Why it matters.** It is the first screen anyone sees and it says the least of
-any screen in the project.
+**What it is now.** `MenuFallingArt` fills the two-thirds that said nothing:
+enemies, items, loot and game covers drifting down BOTH sides of the button
+column, each tumbling slowly at its own rate and direction, fading in at the top
+and out into the dark at the bottom. Constant fall speed rather than accelerating
+— they fall past, not away. It keeps running under the modals, so the menu behind
+the character picker is alive, and there is a Settings toggle under Display for
+anyone who wants a still background.
 
-**What it would take.** This is a design question, not a fix. Worth asking before
-building: whether the menu should show anything of the collection behind it, what
-happens to the disabled Continue row, whether the profile row and How to Play
-belong where they are. Treat it the way the start screen was treated — question
-first, then build.
+**The three things that were wrong while building it**, none of which is visible
+in code review:
+
+- **The mix was all one kind.** Pieces filled to `PIECE_COUNT` inside the first
+  second while the texture pool was still loading, so every one was drawn from
+  whatever had decoded first — measured at **0 covers of 52** on screen, with the
+  cover share only arriving as pieces recycled about thirty seconds later. Nothing
+  spawns now until the pool is whole (~1s), and the opening fill scatters pieces
+  across the screen rather than dropping them in from above.
+- **Sprites with a baked-in background fall as tiles.** All 28 of
+  `wands_unidentified/` are 16x16 with an **opaque** teal ground, and they showed
+  as teal diamonds. They are RGBA files in which every pixel is alpha 1 — having
+  an alpha CHANNEL proves nothing, which is why the check is `_is_cutout`
+  (does the border have any see-through pixel?) rather than a look at the format.
+  Seven of the 54 enemies and four of the 40 bosses are the same; the folder came
+  off the list and the guard catches the stragglers.
+- **Covers cannot be held at source size.** 336 of them at 528x704 is 236 MB on
+  disk and ~1.5 MB each in memory. A fixed pool of 26 is baked down on the way in
+  to roughly the 96px they are drawn at, and the pool is decoded a few textures
+  per frame so the project's startup screen never hitches.
+
+**Still open from the original item:** `Continue (no saved runs)` still takes a
+full row to say nothing, and whether the profile row and How to Play belong where
+they are was never settled. Those are untouched — this item was about the
+emptiness, and the emptiness is what got filled.
 
 ## 8. Character picker nits — FIXED
 

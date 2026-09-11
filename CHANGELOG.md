@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The main menu has the game falling past it.** §7 of
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) — the emptiest
+  screen in the project, a 320px column centred in a 1280px canvas in a game whose
+  whole substance is pictures. `MenuFallingArt` fills the two-thirds that said
+  nothing: enemies, items, loot and game covers drifting down BOTH sides of the
+  button column, each tumbling slowly at its own rate and in its own direction,
+  fading in at the top and out into the dark at the bottom. They fall at constant
+  speed rather than accelerating, because they are falling PAST rather than away.
+  It keeps running under the modals, so the menu behind the character picker is
+  alive rather than frozen, and there is a toggle in Settings under Display.
+  **Drawn, not scene-graphed.** Fifty-two rotating `TextureRect`s would be
+  fifty-two Controls re-sorting every frame; these are fifty-two entries in an
+  array drawn in one `_draw`. The cost of that choice is that a texture filter
+  belongs to the CANVAS ITEM rather than to the draw call, and this art spans
+  `AttackFly` at 19x10 and a game cover at 528x704 — so the pieces are split
+  across two layers, NEAREST for pixel art and LINEAR for everything else, sorted
+  by `UITheme.is_pixel_art`.
+  **Three things were wrong on the way, and none of them was visible in the
+  code.** The mix was **all one kind**: pieces filled to their count inside the
+  first second while the texture pool was still decoding, so every one came from
+  whatever had loaded first — measured at *0 covers of 52 on screen*, with the
+  intended share only arriving as pieces recycled half a minute later. Nothing
+  spawns now until the pool is whole, and the opening fill scatters across the
+  screen rather than dropping in from above. Sprites with a **baked-in background
+  fall as tiles**: all 28 of `wands_unidentified/` are 16x16 with an opaque teal
+  ground and showed as teal diamonds — they are RGBA files in which every pixel is
+  alpha 1, so having an alpha CHANNEL proves nothing, and the guard is
+  `_is_cutout` (does the border have a see-through pixel?) rather than a look at
+  the format. Seven of the 54 enemies and four of the 40 bosses are the same, so
+  dropping the folder was not the whole fix. And **covers cannot be held at source
+  size** — 336 at 528x704 is 236 MB on disk and ~1.5 MB each in memory, the exact
+  trap this project already hit once at startup — so a fixed pool of 26 is baked
+  down on the way in to about the 96px it is drawn at, a few textures per frame so
+  the startup screen never hitches.
+  `test_menu_falling_art.gd` pins the parts that were wrong: that the mix holds
+  both kinds, that nothing spawns before the pool is whole, that the button
+  column stays clear, that both sides are used, that the tumble varies in rate and
+  direction, and that an opaque sprite is rejected.
+
 - **Every font size in the game is now on the type scale, and the Collection's
   grid shows its covers whole.** §2's fonts and all three parts of §3 in
   [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md) are closed,

@@ -182,6 +182,25 @@ func _build_ui() -> void:
 		# common case here — the point of the button is the second half.
 		Settings.apply_display_mode())
 
+	# Under Display because it is the other setting that changes only what the
+	# player is looking at. It takes effect immediately, including from here —
+	# this panel opens OVER the menu, so the art behind it starts or stops while
+	# the box is being ticked (`Settings.menu_falling_art_changed`).
+	var fall_chk := CheckButton.new()
+	fall_chk.text = "Falling art on the main menu"
+	fall_chk.button_pressed = Settings.menu_falling_art
+	fall_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_menu_falling_art(on))
+	vbox.add_child(fall_chk)
+
+	var fall_hint := Label.new()
+	fall_hint.text = "Enemies, items, loot and game covers drift down both sides of the menu. Turn it off for a still background."
+	fall_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fall_hint.custom_minimum_size = Vector2(0, 44)
+	fall_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	fall_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(fall_hint)
+
 	vbox.add_child(HSeparator.new())
 
 	var heading := Label.new()
