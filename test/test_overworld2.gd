@@ -1642,11 +1642,33 @@ func test_an_offered_card_has_no_hover_of_its_own() -> void:
 
 # …and the PICTURE of it, beside the line. A player recognises a body by its art
 # long before they read its name, and for a while the hover had no art at all.
+# A body from the roster that HAS a picture — which most of them no longer do:
+# 223 of the 279 goal-enemies ship without art (docs/goal-enemy-candidates.md),
+# and a test about PORTRAITS that waits for the roll to hand it an arted body
+# now skips four runs in five. These tests ARRANGE the picture instead: the
+# offering's enemy is swapped for one that has art BEFORE the game is picked, so
+# GameLoop2 is handed the same body the screen is asked about.
+func _arted_enemy() -> GoalEnemyData:
+	for e in Data.all_goal_enemies():
+		var enemy: GoalEnemyData = e
+		if enemy.image != null and not enemy.is_boss():
+			return enemy
+	return null
+
+# Put an arted body on the first offering card, and answer whether there was one
+# to put there at all.
+func _stand_arted_offering() -> bool:
+	var arted: GoalEnemyData = _arted_enemy()
+	if arted == null or _ui._choices.is_empty():
+		return false
+	_ui._choices[0]["enemy"] = arted
+	return true
+
 func test_the_hover_shows_the_enemys_portrait() -> void:
+	if not _stand_arted_offering():
+		pending("no goal-enemy in the roster has art at all")
+		return
 	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
-	if enemy == null or enemy.image == null:
-		pending("the roll put no body on the board to ask about")
-		return                                    # a free game has nothing to draw
 	_ui._show_preview(0)
 	assert_true(_ui._preview_art.visible, "hovering a card shows what is waiting there")
 	assert_eq(_ui._preview_art.texture, enemy.image, "and it is that card's own enemy")
@@ -1657,9 +1679,8 @@ func test_the_hover_shows_the_enemys_portrait() -> void:
 # The Runic Dome hides what is coming, and a portrait gives that away far more
 # completely than a name does.
 func test_the_hover_portrait_respects_the_dome() -> void:
-	var enemy: GoalEnemyData = _ui._choices[0]["enemy"]
-	if enemy == null or enemy.image == null:
-		pending("the roll put no body on the board to ask about")
+	if not _stand_arted_offering():
+		pending("no goal-enemy in the roster has art at all")
 		return
 	var dome := ItemData.new()
 	dome.id = &"__test_dome__"
@@ -3482,15 +3503,16 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 		"and it keeps its portrait on the standing list it moves to")
 
 func test_an_ordinary_follower_wears_its_portrait_too() -> void:
+	# The offering is given an arted, non-boss body BEFORE the pick, so this test
+	# is about the portrait rather than about what the roll happened to produce.
+	if not _stand_arted_offering():
+		pending("no goal-enemy in the roster has art at all")
+		return
 	_pick_solo(0)
 	# Disarmed for the reason its boss-side twin above is: the portrait count is
 	# taken either side of a report, and a body's turn can put another body on the
 	# board. This test is about the SCREEN.
 	_disarm_board()
-	var e: GoalEnemyData = _ui._chosen["enemy"]
-	if e.is_boss() or e.image == null:
-		pending("the run did not reach this case (e.is_boss() or e.image == null)")
-		return                                # the boss case, and art-less content
 	# The escort left the board a moment ago (_pick_solo) and the panel is rebuilt
 	# on a later frame, so it is rebuilt here rather than counted a body stale.
 	_ui._populate_play_panel()
@@ -3504,11 +3526,10 @@ func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 # The frame around the portrait is what still separates a boss from anything else,
 # and it is a TOOLTIP rather than a badge — the picture is already the loud part.
 func test_only_a_boss_portrait_says_boss() -> void:
-	_pick_solo(0)
-	var e: GoalEnemyData = _ui._chosen["enemy"]
-	if e.is_boss() or e.image == null:
-		pending("the run did not reach this case (e.is_boss() or e.image == null)")
+	if not _stand_arted_offering():
+		pending("no goal-enemy in the roster has art at all")
 		return
+	_pick_solo(0)
 	_ui._populate_play_panel()
 	for rect in _texture_rects_under(_ui._verify_box):
 		var frame: Control = (rect as Node).get_parent()
