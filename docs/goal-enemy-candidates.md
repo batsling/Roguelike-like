@@ -1,67 +1,66 @@
-# Goal-enemies: the candidate file, and what shipped from it
+# Goal-enemies: the candidate file
 
 `docs/goal-candidates.csv` holds **316 audited candidate rows** in the exact
-column order of the `enemies` and `bosses` sheets of `tools/Roguelikes.xlsx`.
-It was built over four passes of wiki reading and, **as of this change, all
-316 rows are pasted into the workbook and generated into `data/`** — the file
-is now the record of how each row was chosen rather than a queue waiting to be
-pasted.
+column order of the `enemies` and `bosses` sheets of `tools/Roguelikes.xlsx`,
+built over four passes of wiki reading and **ready to paste**.
+
+Nothing here is wired up yet. `tools/Roguelikes.xlsx` and `data/` are untouched:
+the workbook is edited by hand and uploaded, so the paste waits for whoever owns
+it. `tools/_candidates_to_sheet.py` is the paste when that moment comes.
 
 This document is the companion: what the columns were filled in with, the rules
 a row has to pass, what the audit threw out, and what is still open.
 
 ## Status
 
-| | Before | After |
+| | Now | If the file is pasted |
 |---|---|---|
 | `enemies` sheet | 54 rows | **279** |
 | `bosses` sheet | 40 rows | **131** |
-| `data/enemies2.0/` | 54 `.tres` | **279** |
-| `data/bosses2.0/` | 40 `.tres` | **131** |
 | Games with a body in the game | 22 | **84** |
+
+The paste itself is one command, and it has been rehearsed end to end — the run
+that proved it took the sheets to 279 and 131, regenerated `data/`, and came back
+green on the full suite and every content check before being rolled back:
+
+```bash
+python3 tools/check_goal_candidates.py     # must be clean FIRST
+python3 tools/_candidates_to_sheet.py      # splits on Sheet, drops the staging columns
+python3 tools/generate_goal_enemy_tres.py
+python3 tools/generate_boss_tres.py
+```
+
+Two things the rehearsal turned up, both fixed in the code already so the paste
+does not have to carry them:
+
+- **Nothing drew a body with no picture.** `BattlefieldView` tinted a TextureRect
+  that had no texture and called it a silhouette — that paints nothing — and
+  `ReportChecklist` returned null for the portrait chip, which also left an
+  artless body's buff strip (§13) with nothing to hang under. Both now draw the
+  body's **initial**, the way the games this one is played on top of drew their
+  monsters before anybody had art. Invisible today, when all 94 bodies have art;
+  the first thing you would see the moment 316 that don't arrive.
+- **Four portrait tests and one art assertion went quiet** under an artless
+  roster. `test_obs_companion`'s "every body has a face" is a ratchet now
+  (coverage may rise, not fall), and `test_overworld2`'s four portrait tests
+  arrange an arted body rather than waiting for the roll to hand them one.
 
 Two things are deliberately NOT done, and both are their own pass:
 
-- **No art.** Every one of the 316 rows resolves to no PNG — 223 of the 279
-  goal-enemies and most of the bosses now draw a placeholder. A picture dropped
-  into `images2.0/enemies/` or `images2.0/bosses/` under the row's `File` name is
-  all it takes to light one up; that is what the `File` column is for and why it
-  is the PascalCase of the name.
-
-  **The placeholder had to be built to land this**, in two places, and the second
-  one was not cosmetic:
-
-  - `BattlefieldView` set `art.modulate = accent` on a TextureRect with no
-    texture and called that a "tinted silhouette" — a TextureRect with no
-    texture paints nothing, so an artless body was an empty square with its
-    health and damage badges floating in it.
-  - `ReportChecklist._enemy_icon_rect` returned **null** for a body with no
-    picture, and the buff strip (§13) hangs UNDER that chip — so an artless
-    body's statuses had nowhere to be drawn and its checklist row quietly
-    stopped saying what the board was saying. `test_overworld2` caught it.
-
-  Both now draw the body's **initial** — in the cell's accent on the board,
-  sized to its footprint; in the row's tint on the checklist — which is how the
-  games this one is played on top of drew their monsters before anybody had art.
-  `test_obs_companion`'s "every body has a face" assertion became a **ratchet**
-  for the same reason: art coverage may rise and may not fall (98 of 410 today),
-  which still catches art that stops resolving without asserting something the
-  project has decided is not true yet.
-- **No abilities.** `Ability` is `N/A` on all 316. Abilities are authored
-  against the `abilities` sheet (§7.6) and guessing them here would only make
-  work for whoever does that pass properly.
-
-`tools/_candidates_to_sheet.py` is the paste, kept because it is the thing that
-did it: it splits on the `Sheet` column, drops the two staging columns, and
-inserts each row after the last row sharing its Type and Difficulty so the
-sheets stay grouped the way they already were.
+- **No art.** None of the 316 rows resolves to a PNG. A picture dropped into
+  `images2.0/enemies/` or `images2.0/bosses/` under the row's `File` name is all
+  it takes to light one up; that is what the `File` column is for and why it is
+  the PascalCase of the name.
+- **No abilities.** `Ability` is `N/A` on all 316. Abilities are authored against
+  the `abilities` sheet (§7.6) and guessing them here would only make work for
+  whoever does that pass properly.
 
 ## The file
 
 | | |
 |---|---|
 | Rows | 316 — **225 enemies, 91 bosses** |
-| Games | 80, of which 62 had no body in the game before |
+| Games | 80, of which 62 have no body in the game yet |
 | Columns | `Sheet, Name, Type, Difficulty, Size, Game, Health, Damage, Goal Type, Goal, Ability, File, Tag, Phases` then two staging columns |
 | Staging columns | `Confidence` (`ok` / `?`) and `Why this pairing` — not columns the sheets have; `_candidates_to_sheet.py` drops them |
 
@@ -70,11 +69,11 @@ runs it. Every rule below that a row can break mechanically — the enums,
 `Health` 1, the Damage mapping, the Size grammar (parsed with the generator's
 own `parse_size`, not a copy of it), a duplicate `Name` / `File` / `Goal` / id
 inside the file, a `Game` the catalog does not spell that way, a `Type` that
-disagrees with the game's own — is checked there. Now that the rows have
-shipped it also checks the other direction: **every row must still match its
-sheet row cell for cell**, so the file and the workbook cannot drift apart
-without the build saying so. A row that has NOT shipped is checked the old way
-instead — it must not collide with anything already live.
+disagrees with the game's own — is checked there. It handles both sides of the
+paste: a row that has **not** shipped must not collide with anything already
+live, and a row that **has** shipped must still match its sheet row cell for
+cell, so once the paste happens the file and the workbook cannot drift apart
+without the build saying so. Today it reports `0 shipped, 316 pending`.
 `--stats` prints the tables quoted below. It was written for the second pass,
 immediately found five rows the first pass had got wrong, and has gated every
 row added since.

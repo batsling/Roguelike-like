@@ -895,19 +895,18 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 			continue
 		_assert_page_local(String(sw["icon"]), "a swing's icon")
 
-# The roster used to be 94 hand-made rows and every one of them had a picture, so
-# this asked for exactly that: no body anywhere without art. Then the audited
-# candidate file landed (docs/goal-enemy-candidates.md) and took the roster to
-# 410 bodies, 312 of which have no art yet and are documented as not having it —
-# art is its own pass, and the `File` column is the hook it will hang on.
+# This asked for an absolute: no body anywhere without art, which was true of the
+# 94 hand-made rows and their 94 pictures. It is a RATCHET instead, because the
+# roster is about to stop being 94 rows — docs/goal-candidates.csv holds 316
+# audited rows waiting to be pasted, none of which has art yet (art is its own
+# pass, and the `File` column is the hook it will hang on). An absolute would go
+# red the moment they land, for a reason the project has already decided about.
 #
-# So the guarantee became a RATCHET rather than an absolute, the way the pending()
-# budget is: the number of bodies WITH art may go up and may not go down. That
-# still catches the thing this test was written for — art that stops resolving,
-# a File renamed out from under its PNG, a folder emptied — without asserting
-# something the project has deliberately decided is not true yet. Raise the floor
+# A ratchet still catches the thing this test was written for — art that stops
+# resolving, a File renamed out from under its PNG, a folder emptied — because
+# the number of bodies WITH art may go up and may not go down. Raise the floor
 # when art lands; never lower it to make a run go green.
-const ART_FLOOR := 98
+const ART_FLOOR := 94
 
 func test_the_roster_does_not_lose_art_it_already_had() -> void:
 	var with_art: Array = []

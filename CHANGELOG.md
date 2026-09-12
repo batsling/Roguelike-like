@@ -11,18 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
-- **The candidate file shipped: 316 goal-enemies and bosses are now in the game.**
-  A fourth pass of wiki reading took `docs/goal-candidates.csv` from 301 rows to
-  **316**, closed the last of its unconfirmed rows, and then the whole file was
-  pasted into `tools/Roguelikes.xlsx` and generated into `data/`. The `enemies`
-  sheet goes **54 → 279** and `bosses` **40 → 131**; the game now has a body
-  drawn from 84 real roguelikes instead of 22.
+- **A fourth wiki pass, the last unconfirmed rows closed, and the paste rehearsed
+  and rolled back.** `docs/goal-candidates.csv` goes from 301 rows to **316**
+  across 80 games. The workbook is still edited by hand and uploaded, so
+  `tools/Roguelikes.xlsx` and `data/` are deliberately **untouched** — the paste
+  waits for whoever owns the file, and `tools/_candidates_to_sheet.py` is the one
+  command that performs it.
   - **Ten more wikis** (Shotgun King, Diablo, Wizard of Legend, Halls of Torment,
     The Last Spell, Don't Starve, Super Auto Pets, Dungeonmans, Torneko's Great
-    Adventure and POWDER) for 15 rows. Diminishing, and the doc says why: the
-    egress proxy blocks the wikis, so every row in the file was written off a
-    search summary, and the games left are the ones where you have to open the
-    bestiary.
+    Adventure and POWDER) for 15 rows. Moonlighter, Roguebook, Deck of Ashes,
+    Neon Abyss and Dicefolk were read and dropped whole rather than padded.
   - **The `Confidence` column is closed.** All 14 rows the first pass could not
     confirm were checked against a wiki page — Aleax, Voidling, Skeletal
     Juggernaut, Chicken Walker, Bamboozle, Krunker, Brogue's captive Ogre, Death
@@ -30,53 +28,40 @@ For how the project is laid out and how its systems fit together, see
     Avowed Gladiator, Ragewing Assassin. All fourteen are real and all fourteen
     kept their goal; **two were filed under the wrong game** (Avowed Gladiator
     and Ragewing Assassin are Monster Train **2** enemies). No `?` rows remain.
-  - **`tools/check_goal_candidates.py` changed sides.** It used to check that a
-    candidate did not collide with the live sheet; now that the rows ARE the live
-    sheet, a shipped row is checked the other way — it must still match its sheet
-    row **cell for cell**, so the file and the workbook cannot drift apart
-    without CI saying so. A row that has not shipped is still checked the old
-    way.
-  - **Nothing drew a body that had no picture, and now most bodies have none.**
-    Two places, and the second was not cosmetic. `BattlefieldView` set
+  - **The paste was rehearsed end to end and rolled back**, which is where the
+    rest of this entry comes from: the sheets went to 279 and 131, `data/` was
+    regenerated, and the full suite and every content check came back green
+    before the workbook was restored byte for byte. What the rehearsal found is
+    fixed in the code, so the real paste does not have to carry it.
+  - **Nothing drew a body with no picture.** `BattlefieldView` set
     `art.modulate = accent` on a TextureRect with **no texture** and called it a
-    tinted silhouette — a TextureRect with no texture paints nothing, so an
-    artless body was an empty square with its badges floating in it. And
-    `ReportChecklist._enemy_icon_rect` returned **null** for such a body, which
-    cost more than a picture: the buff strip hangs under that chip, so an
-    artless body's statuses had nowhere to be drawn and its checklist row
-    silently stopped agreeing with the board. `test_overworld2` caught that one.
-    Both now draw the body's **initial** — the way the games this one is played
-    on top of drew their monsters before anybody had art.
+    tinted silhouette — that paints nothing. And `ReportChecklist._enemy_icon_rect`
+    returned **null** for such a body, which cost more than a picture: the buff
+    strip hangs under that chip, so an artless body's statuses had nowhere to be
+    drawn and its checklist row silently stopped agreeing with the board. Both
+    now draw the body's **initial**, the way the games this one is played on top
+    of drew their monsters before anybody had art. Dormant while all 94 bodies
+    have art; the first thing you would see the moment 316 that don't arrive.
   - **`test_obs_companion`'s "every body in the roster has a face" became a
-    ratchet.** It was written when the roster was 94 hand-made rows that all had
-    art; asserting it of 410 bodies would be asserting something the project has
-    deliberately decided is not true yet. Art coverage may now rise and may not
-    fall (98 of 410 today), which still catches art that stops resolving — a
-    File renamed out from under its PNG, a folder emptied — without going red for
-    the thing that is on purpose. Its two sibling assertions (a checklist row and
-    a swing must carry their icon) now allow an empty icon **only** for a body
-    that genuinely has no art, verified by looking the body up in the roster.
-  - **`test_atlas` was failing on every SECOND run of the suite**, which this
-    change's repeated runs finally made obvious. `before_all` called
-    `AtlasView.load_layout()` with no argument, and that reads
-    `Settings.game_filter` — a **persisted** preference that the suite itself
-    writes: `test_profiles` and `test_ownership` both switch the filter to OWNED,
-    and whatever the last one leaves behind is what the next run starts from. So
+    ratchet**, and four `test_overworld2` portrait tests now **arrange** an
+    arted body instead of waiting for the roll to hand them one. Both were
+    written when the roster was 94 rows that all had art, and both would have
+    gone quiet or red under an artless one — the four portrait tests by silently
+    skipping, which this project reads as a case the suite has stopped covering.
+  - **`tools/check_goal_candidates.py` now handles both sides of the paste**: a
+    row that has not shipped must not collide with anything already live, and a
+    row that has shipped must still match its sheet row **cell for cell**. Today
+    it reports `0 shipped, 316 pending`.
+  - **`test_atlas` failed on every SECOND run of the suite**, for reasons that
+    predate all of this: `before_all` called `load_layout()` with no argument,
+    which reads a **persisted** preference that the suite itself writes
+    (`test_profiles` and `test_ownership` both switch the filter to OWNED). So
     "every game in the catalog has a star" compared 865 games against the
-    525-star owned sky and failed, which reads exactly like the atlas being
-    broken. These tests are about the full-catalog sky, so they now name it:
-    `load_layout(Settings.GameFilter.ALL)`. Nothing to do with the content paste
-    — it was true before it and would have been true after.
-  - **`docs/goal-enemy-candidates.md` was reorganised** around what it is now:
-    status first (what landed, what is deliberately not done), then the file's
-    conventions, then the six rules a row has to pass, then the numbers, then
-    where the rows came from pass by pass. Its counts are generated from the CSV
-    rather than retyped.
-  - Two gaps written down rather than papered over: **no art on any of the 316**
-    (that is the next pass, and the `File` column is the hook), and **no Insane
-    ordinary enemy for Action or Deckbuilder** — both types have Insane bosses
-    and nothing else at that rung, which the spec's tier-widening note now says
-    accurately.
+    525-star owned sky. The full-sky tests now name the full sky.
+  - **`docs/goal-enemy-candidates.md` was reorganised** around what it is: status
+    and the paste command first, then the file's conventions, the six rules a row
+    has to pass, the numbers, and where the rows came from pass by pass. Its
+    counts are generated from the CSV rather than retyped.
 
 - **Eleven more wikis in the candidate file, aimed at the pool that was still
   thin.** `docs/goal-candidates.csv` goes from 280 rows to **301**. The second
