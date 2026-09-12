@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_wallmonger"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/Wallmonger.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"wallmonger"
+display_name = "Wallmonger"
+game_type = &"action"
+difficulty = 1
+boss = true
+source_game = "Enter the Gungeon"
+health = 1
+damage = 5
+goal_type = &"feat"
+goal = "Break through a wall"
+size = "3x3"
+shape_rows = 3
+shape_cols = 3
+shape_mask = PackedInt32Array(7, 7, 7)
+file = "Wallmonger"
+image = ExtResource("2_img")

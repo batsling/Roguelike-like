@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_xi_construct"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"xi_construct"
+display_name = "Xi Construct"
+game_type = &"action"
+difficulty = 1
+source_game = "Risk of Rain 2"
+health = 1
+damage = 2
+goal_type = &"feat"
+goal = "Pilot or ride a flying machine"
+tag = &"robot"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "XiConstruct"

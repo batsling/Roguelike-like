@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://boss_fellemo"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"fellemo"
+display_name = "Fellemo"
+game_type = &"deckbuilder"
+difficulty = 1
+boss = true
+source_game = "Griftlands"
+health = 1
+damage = 5
+goal_type = &"feat"
+goal = "Turn an enemy into an ally"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "Fellemo"

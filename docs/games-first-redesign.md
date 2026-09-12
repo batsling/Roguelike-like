@@ -1243,8 +1243,9 @@ committing to it stands a second body from the same pool beside it (the escort,
 widens **down the tier ladder within the type**, one rung at a time, and never up
 or sideways: a run at High meets a High body of the right type whenever one is
 authored, and a type with nothing at that rung steps down rather than reaching for
-another genre's goal. Insane is empty in the goal-enemy pool, so an Insane run
-draws High. Only once a type is exhausted at *and below* the tier asked for does
+another genre's goal. Insane is **still empty for Action and Deckbuilder** — the
+candidate rows filled the rung for Strategy and Traditional and left those two
+with bosses only — so an Insane run on either of them draws High. Only once a type is exhausted at *and below* the tier asked for does
 the type itself give way — which nothing on today's roster reaches. Everything
 conjured **by other means** (a curse's bill, a Scroll of Create Monster) rolls
 through `roll_conjured_enemy` instead, which is stricter still: the run's tier or

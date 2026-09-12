@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_witch_doctor"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"witch_doctor"
+display_name = "Witch Doctor"
+game_type = &"action"
+difficulty = 1
+source_game = "Spelunky 2"
+health = 1
+damage = 2
+goal_type = &"feat"
+goal = "Sacrifice a creature you defeated"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "WitchDoctor"

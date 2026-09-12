@@ -1654,7 +1654,7 @@ const PORTRAIT_SIZE := 26
 func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
 		art: Texture2D = null) -> Control:
 	var picture: Texture2D = art if art != null else (enemy.image if enemy != null else null)
-	if enemy == null or picture == null:
+	if enemy == null:
 		return null
 	var boss: bool = enemy.is_boss()
 	var frame := PanelContainer.new()
@@ -1663,7 +1663,25 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
 			Color(0.95, 0.55, 0.2) if boss else tint.lerp(UITheme.BORDER, 0.45)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	frame.tooltip_text = ("Boss — %s" % enemy.display_name) if boss else enemy.display_name
-	frame.add_child(UITheme.crisp_tex(picture, PORTRAIT_SIZE))
+	if picture != null:
+		frame.add_child(UITheme.crisp_tex(picture, PORTRAIT_SIZE))
+	else:
+		# NO PICTURE, and the chip is built anyway — as the body's INITIAL, the
+		# same placeholder the board draws. This used to return null, which cost
+		# more than a picture: the buff strip (§13) hangs UNDER this chip, so an
+		# artless body's statuses had nowhere to be drawn and its row silently
+		# stopped saying what the board was saying. Most of the roster has no art
+		# yet (docs/goal-enemy-candidates.md), so "most rows" is who that was.
+		var initial := Label.new()
+		var who := String(enemy.display_name)
+		initial.text = who.substr(0, 1).to_upper() if who != "" else "?"
+		initial.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+		initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		initial.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		initial.add_theme_color_override("font_color",
+			Color(0.95, 0.55, 0.2) if boss else tint)
+		frame.add_child(initial)
 	return frame
 
 # --- the buffs a body is carrying, UNDER ITS PICTURE (§13) ------------------

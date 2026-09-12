@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://boss_seer"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"seer"
+display_name = "Seer"
+game_type = &"action"
+difficulty = 3
+boss = true
+source_game = "UnderMine"
+health = 1
+damage = 9
+goal_type = &"restriction"
+goal = "Beat a boss without healing"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "Seer"

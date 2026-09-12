@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_swine_prince"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"swine_prince"
+display_name = "Swine Prince"
+game_type = &"strategy"
+difficulty = 0
+source_game = "Darkest Dungeon"
+health = 1
+damage = 1
+goal_type = &"feat"
+goal = "Beat a boss by killing its helper first"
+tag = &"pig"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "SwinePrince"

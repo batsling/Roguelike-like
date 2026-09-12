@@ -14,7 +14,15 @@ const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 var _layout: AtlasLayout
 
 func before_all() -> void:
-	_layout = ATLAS.load_layout()
+	# THE FULL SKY, ASKED FOR BY NAME. `load_layout()` with no argument reads
+	# `Settings.game_filter`, which is a PERSISTED preference — and the suite
+	# itself writes it: test_profiles and test_ownership both switch the filter to
+	# OWNED, and whatever the last one leaves behind is what the NEXT run of the
+	# suite starts with. That made every assertion below ("every game in the
+	# catalog has a star") fail on the second run and pass on the first, which
+	# reads exactly like the atlas being broken. These tests are about the
+	# full-catalog sky, so they name it.
+	_layout = ATLAS.load_layout(Settings.GameFilter.ALL)
 
 func after_each() -> void:
 	GameState.reset_run()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`docs/goal-candidates.csv` should be pasteable into the sheet without a fight.
+"""`docs/goal-candidates.csv` and the workbook's enemy sheets should agree.
 
 WHY THIS EXISTS. The candidate file is a paste QUEUE for the `enemies` and
 `bosses` sheets of tools/Roguelikes.xlsx, and every rule it has to keep is one
@@ -17,9 +17,14 @@ It checks the file against three things:
                      conventions, the Size grammar (parsed with the REAL
                      generator, not a copy of it), and no duplicate Name, File
                      or Goal.
-  2. THE SHEET     — no Name, File or Goal that is already live in `enemies` or
-                     `bosses`, and no Name that slugifies onto a shipped id.
-  3. data/games/   — every `Game` names a game the catalog actually has.
+  2. THE SHEET     — every row is either SHIPPED or PENDING, and they get
+                     opposite checks. A shipped row (its id is on the sheet)
+                     must still match its sheet row cell for cell, which is what
+                     catches the file and the workbook drifting apart in either
+                     direction. A pending row must not collide with anything
+                     already live, on Name, File, Goal or slugified id.
+  3. data/games/   — every `Game` names a game the catalog actually has, and of
+                     the `Type` the row claims.
 
   python3 tools/check_goal_candidates.py           # report
   python3 tools/check_goal_candidates.py --stats   # + the distribution tables
@@ -130,10 +135,17 @@ def main() -> int:
         return 1
 
     wb = openpyxl.load_workbook(XLSX_PATH, read_only=True, data_only=True)
+    # A candidate row is either SHIPPED (its id is on the sheet, put there by
+    # tools/_candidates_to_sheet.py) or PENDING. The two get opposite checks:
+    # a shipped row must still MATCH its sheet row cell for cell — that is what
+    # catches the file and the workbook drifting apart, in either direction —
+    # and a pending row must not collide with anything already live.
+    live_rows = {}                                   # (sheet, id) -> sheet row
     live_names, live_files, live_goals, live_ids = {}, {}, {}, {}
     for sheet in ("enemies", "bosses"):
         for r in sheet_rows(wb, sheet):
             nm = str(r["Name"]).strip()
+            live_rows[(sheet, gen.slugify(nm))] = r
             live_names[nm.lower()] = sheet
             live_ids[gen.slugify(nm)] = sheet
             if r.get("File"):
@@ -143,6 +155,11 @@ def main() -> int:
                 if norm(g):
                     live_goals[norm(g)] = sheet
     games = catalog_games()
+    # The columns a sheet actually has; `Phases` only on bosses, and the two
+    # staging columns on neither.
+    SHARED = ["Name", "Type", "Difficulty", "Size", "Game", "Health", "Damage",
+              "Goal Type", "Goal", "Ability", "File", "Tag"]
+    shipped = 0
 
     seen_name, seen_file, seen_goal, seen_id = {}, {}, {}, {}
     for i, row in enumerate(rows, start=2):
@@ -211,22 +228,39 @@ def main() -> int:
                 flag(i, name, "duplicate %s, first seen line %d" % (what, seen[key]))
             elif key:
                 seen[key] = i
-        for key, live, what in ((name.lower(), live_names, "Name"),
-                                (f.lower(), live_files, "File"),
-                                (norm(row["Goal"]), live_goals, "Goal"),
-                                (gen.slugify(name), live_ids, "id")):
-            if key and key in live:
-                flag(i, name, "%s already shipped on the %s sheet" % (what, live[key]))
+        live = live_rows.get((sheet, gen.slugify(name)))
+        if live is not None:
+            # SHIPPED: the sheet row and this row are the same row, so every
+            # column the sheet has must still say what the file says. A
+            # difference is drift, and which side is right is a question for
+            # whoever made the edit — not something to guess at here.
+            shipped += 1
+            for col in SHARED:
+                mine = (row.get(col) or "").strip()
+                theirs = "" if live.get(col) is None else str(live[col]).strip()
+                if mine != theirs:
+                    flag(i, name, "%s: file says %r, the %s sheet says %r"
+                         % (col, mine, sheet, theirs))
+        else:
+            # PENDING: nothing live may already be using this row's identity.
+            for key, table, what in ((name.lower(), live_names, "Name"),
+                                     (f.lower(), live_files, "File"),
+                                     (norm(row["Goal"]), live_goals, "Goal"),
+                                     (gen.slugify(name), live_ids, "id")):
+                if key and key in table:
+                    flag(i, name, "%s already taken on the %s sheet by another row"
+                         % (what, table[key]))
 
-    print("goal-candidates.csv: %d rows, %d games" % (
-        len(rows), len({r["Game"] for r in rows})))
+    print("goal-candidates.csv: %d rows, %d games — %d shipped to the sheet, %d pending"
+          % (len(rows), len({r["Game"] for r in rows}), shipped, len(rows) - shipped))
     if bad:
         print("\n%d finding(s):" % len(bad))
         print("\n".join(bad))
     else:
-        print("ok — every row is pasteable: enums, Health/Damage, Size, and no "
-              "Name / File / Goal / id collision inside the file, with the live "
-              "sheet, or with data/games/")
+        print("ok — enums, Health/Damage, Size and File all hold; every shipped row "
+              "still matches its sheet row cell for cell; every pending row is "
+              "pasteable without a Name / File / Goal / id collision; and every "
+              "Game names a real catalog entry of the right type")
 
     if args.stats:
         print("\nBy sheet: %s" % dict(collections.Counter(r["Sheet"] for r in rows)))

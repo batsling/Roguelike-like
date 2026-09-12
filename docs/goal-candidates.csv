@@ -1,5 +1,5 @@
 Sheet,Name,Type,Difficulty,Size,Game,Health,Damage,Goal Type,Goal,Ability,File,Tag,Phases,Confidence,Why this pairing
-enemies,Aleax,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Pray,N/A,Aleax,,,?,A minion your god sends when you anger it — prayer made flesh
+enemies,Aleax,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Pray,N/A,Aleax,,,ok,"A hostile minion an angered lawful god sends after you — prayer gone wrong, made flesh"
 bosses,The One Who Waits,Action,4-Insane,2x2,Cult of the Lamb,1,9,Feat,Become religious,N/A,TheOneWhoWaits,god,,ok,The final boss who makes you a cult leader
 enemies,Aligned Cleric,Traditional,1-Low,1x1,NetHack,1,1,Feat,Worship at an altar,N/A,AlignedCleric,,,ok,Tends the co-aligned temple altar where worship and sacrifice happen
 bosses,Hexaghost,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Feat,Complete a ritual with multiple steps,N/A,Hexaghost,fire,,ok,"Six flames lit one per attack, then Inferno, then snuffed"
@@ -79,7 +79,7 @@ bosses,Kolmisilma,Action,1-Low,2x2,Noita,1,3,Discovery,Play a game in another la
 enemies,Chrome Pyramid,Traditional,4-Insane,1x1,Caves of Qud,1,4,Bounty,Get an achievement 5% or fewer players have,N/A,ChromePyramid,robot,,ok,Highest-level non-unique creature; killing one grants an achievement
 enemies,Hush,Action,2-Medium,1x1,The Binding of Isaac,1,2,Bounty,Obtain a new achievement,N/A,Hush,,,ok,The hidden boss behind the Blue Womb timer
 bosses,Delirium,Action,4-Insane,2x2,The Binding of Isaac,1,9,Feat,Get 10 achievements in one run,N/A,Delirium,,,ok,Shapeshifts through every boss in the game in one fight
-bosses,Voidling,Action,3-High,2x2,Risk of Rain 2,1,7,Discovery,Enter a void,N/A,Voidling,,,?,The Planetarium boss at the end of the void path
+bosses,Voidling,Action,3-High,2x2,Risk of Rain 2,1,7,Discovery,Enter a void,N/A,Voidling,,,ok,"The alternate final boss, in the Planetarium at the end of the void path"
 enemies,Ultra Greed,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Unlock a new character,N/A,UltraGreed,,,ok,"Greed Mode's finale, and the unlock engine for half the roster"
 bosses,Johannes,Action,2-Medium,2x2,Rogue Legacy,1,5,Discovery,Play as a character that looks like you,N/A,Johannes,,,ok,The final boss is your own ancestor
 bosses,The Resourceful Rat,Action,2-Medium,2x2,Enter the Gungeon,1,5,Feat,Beat a minigame inside a game,N/A,TheResourcefulRat,rat,,ok,His second phase is a Punch-Out-style boxing match
@@ -118,8 +118,8 @@ enemies,The Fanatic,Strategy,3-High,1x1,Darkest Dungeon,1,3,Feat,Keep an ally al
 enemies,Thing From The Stars,Strategy,1-Low,1x1,Darkest Dungeon,1,1,Discovery,Encounter something from space,N/A,ThingFromTheStars,alien,,ok,The Color of Madness mini-boss
 bosses,Seraph,Deckbuilder,3-High,2x2,Monster Train,1,7,Restriction,Win a fight where the enemy sets an extra rule,N/A,Seraph,god,,ok,Each Seraph variant imposes a different rule on the fight
 enemies,Lightwing,Deckbuilder,2-Medium,1x1,Monster Train,1,2,Restriction,Protect something for a whole fight,N/A,Lightwing,,,ok,Seraph spawns one every round and they go for the pyre
-enemies,Avowed Gladiator,Deckbuilder,1-Low,1x1,Monster Train,1,1,Feat,Fight on two fronts at once,N/A,AvowedGladiator,,,?,Monster Train is fought on stacked floors at the same time
-enemies,Ragewing Assassin,Deckbuilder,1-Low,1x1,Monster Train,1,1,Bounty,Defeat an enemy that ignores your front line,N/A,RagewingAssassin,,,?,Goes straight past whatever you put in front
+enemies,Avowed Gladiator,Deckbuilder,1-Low,1x1,Monster Train 2,1,1,Feat,Fight on two fronts at once,N/A,AvowedGladiator,,,ok,"The highest-health non-boss enemy in the game, on the rings where two floors are fought at once"
+enemies,Ragewing Assassin,Deckbuilder,1-Low,1x1,Monster Train 2,1,1,Bounty,Defeat an enemy that ignores your front line,N/A,RagewingAssassin,,,ok,A back-line enemy with Sweep — it never fights the thing you put in front
 enemies,Kecleon,Traditional,4-Insane,1x1,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,4,Bounty,Defeat a shopkeeper,N/A,Kecleon,,,ok,Rob the shop and the floor fills with double-speed Kecleon
 bosses,Groudon,Traditional,2-Medium,2x2,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,5,Bounty,Defeat an enemy with ten times your health,N/A,Groudon,,,ok,1600+ HP in Magma Cavern
 enemies,Zapdos,Traditional,2-Medium,1x1,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,2,Bounty,Defeat an enemy you can then recruit,N/A,Zapdos,"bird, lightning",,ok,"Beat it, then it can join you"
@@ -130,8 +130,8 @@ enemies,Shocker Zombie,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Boun
 enemies,Boomer,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Feat,Get covered in something,N/A,Boomer,"undead, zombie",,ok,Bursts and coats you in bile
 enemies,Zombie Hulk,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Bounty,Defeat an enemy that knocks you through a wall,N/A,ZombieHulk,"undead, zombie",,ok,Made from the strongest humans
 enemies,Mi-go,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Feat,Permanently change your own body,N/A,MiGo,alien,,ok,Lab and temple surgeons — the game's body horror
-enemies,Skeletal Juggernaut,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Discovery,Survive until the enemies get stronger,N/A,SkeletalJuggernaut,"undead, skeleton",,?,Zombie evolution is a real clock tied to days since the Cataclysm
-enemies,Chicken Walker,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Bounty,Defeat a walking machine,N/A,ChickenWalker,robot,,?,Military hardware still patrolling
+enemies,Skeletal Juggernaut,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Discovery,Survive until the enemies get stronger,N/A,SkeletalJuggernaut,"undead, skeleton",,ok,"A tank-sized late-evolution zombie: enormous health, enormous armour, and it only exists because time passed"
+enemies,Chicken Walker,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Bounty,Defeat a walking machine,N/A,ChickenWalker,robot,,ok,Military hardware still walking its patrol
 bosses,Behemoth,Traditional,3-High,2x2,Cogmind,1,7,Bounty,Defeat an enemy that takes up four spaces,N/A,Behemoth,robot,,ok,Behemoths occupy four tiles instead of one — the footprint goal
 enemies,Watcher,Traditional,3-High,1x1,Cogmind,1,3,Restriction,Clear a floor without being spotted,N/A,Watcher,robot,,ok,Unarmed; exists only to report you
 enemies,Programmer,Traditional,2-Medium,1x1,Cogmind,1,2,Discovery,Watch an enemy turn your ally against you,N/A,Programmer,robot,,ok,"Corrupts other robots with EM weaponry, yours included"
@@ -166,8 +166,8 @@ enemies,Blood Clot,Strategy,1-Low,1x1,Loop Hero,1,1,Bounty,Defeat an enemy made 
 enemies,Frost Jailer,Deckbuilder,1-Low,1x1,Wildfrost,1,1,Feat,Free something frozen or trapped,N/A,FrostJailer,ice,,ok,Companions are freed from ice blocks; the Jailer is what puts them there
 enemies,Truffle,Deckbuilder,1-Low,1x1,Wildfrost,1,1,Bounty,Defeat a mushroom,N/A,Truffle,mushroom,,ok,One of the game's named bosses
 bosses,Eye of the Storm,Deckbuilder,3-High,2x2,Wildfrost,1,7,Restriction,Win a fight using only status effects,N/A,EyeOfTheStorm,"ice, eye",,ok,"The final fight, decided by stacked statuses"
-bosses,Bamboozle,Deckbuilder,2-Medium,2x2,Wildfrost,1,5,Restriction,Win a fight without knowing what the enemy does,N/A,Bamboozle,,,?,A boss built on misdirection
-enemies,Krunker,Deckbuilder,2-Medium,1x1,Wildfrost,1,2,Bounty,Defeat an enemy that destroys your items,N/A,Krunker,,,?,Eats what you brought with you
+bosses,Bamboozle,Deckbuilder,2-Medium,2x2,Wildfrost,1,5,Restriction,Win a fight without knowing what the enemy does,N/A,Bamboozle,,,ok,"The Act 1 boss, named for the trick it plays, and it splits into Bam and Boozle when it dies"
+enemies,Krunker,Deckbuilder,2-Medium,1x1,Wildfrost,1,2,Bounty,Defeat an enemy that destroys your items,N/A,Krunker,,,ok,"The Act 2 boss, and a Clunker — the junk that clogs up what you brought"
 enemies,Warden,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Bounty,Defeat the enemy protecting the others,N/A,Warden,bug,,ok,Mind-links nearby enemies and hands them damage reduction
 enemies,Bulk Detonator,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Feat,Survive an explosion that fills the screen,N/A,BulkDetonator,bug,,ok,Goes off big enough to take the room
 enemies,Oppressor,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Bounty,Defeat an enemy you cannot hurt from the front,N/A,Oppressor,bug,,ok,"Armoured at the front, soft behind"
@@ -186,7 +186,7 @@ enemies,The Prospector,Deckbuilder,1-Low,1x1,Inscryption,1,1,Feat,Turn something
 bosses,Grimora,Deckbuilder,2-Medium,2x2,Inscryption,1,5,Feat,Leave a record of a character who died,N/A,Grimora,undead,,ok,The death scrybe; death cards persist into later runs
 bosses,P03,Deckbuilder,3-High,2x2,Inscryption,1,7,Discovery,Catch the game changing its own rules,N/A,P03,robot,,ok,Takes the game over from the inside
 enemies,The Unfinished Boss,Deckbuilder,1-Low,1x1,Inscryption,1,1,Bounty,Defeat an unfinished enemy,N/A,TheUnfinishedBoss,,,ok,An Uberbot P03 never completed
-enemies,Ogre,Traditional,2-Medium,1x1,Brogue,1,2,Feat,Free a caged enemy and fight beside it,N/A,Ogre,ogre,,?,Captives are chained in the early dungeon and freed by walking into them
+enemies,Ogre,Traditional,2-Medium,1x1,Brogue,1,2,Feat,Free a caged enemy and fight beside it,N/A,Ogre,ogre,,ok,"Captives are chained and caged in the early dungeon; free one and it fights beside you, and an ogre is the one worth freeing"
 enemies,Paralytic Bloat,Traditional,1-Low,1x1,Brogue,1,1,Feat,Lose a turn to paralysis and survive,N/A,ParalyticBloat,,,ok,Pops into a cloud of paralytic gas
 enemies,Phantom,Traditional,1-Low,1x1,Brogue,1,1,Feat,Fight something you cannot see,N/A,Phantom,ghost,,ok,Invisible except as a disturbance
 enemies,Goblin Conjurer,Traditional,1-Low,1x1,Brogue,1,1,Feat,Let a summon land the killing blow,N/A,GoblinConjurer,goblin,,ok,Summons spectral blades to fight for it
@@ -208,7 +208,7 @@ enemies,Mine Flayer,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat a boss 
 bosses,King Conga,Traditional,1-Low,2x2,Crypt of the NecroDancer,1,3,Fetch,Wear a crown,N/A,KingConga,monkey,,ok,A crowned gorilla king
 bosses,The Necrodancer,Traditional,3-High,2x2,Crypt of the NecroDancer,1,7,Restriction,Do not pause the game,N/A,TheNecrodancer,,,ok,The game that never stops moving to the beat
 enemies,Coral Riff,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat a musician,N/A,CoralRiff,fish,,ok,A boss made of instruments
-enemies,Death Metal,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat an armoured enemy,N/A,DeathMetal,,,?,Armour and volume
+enemies,Death Metal,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat an armoured enemy,N/A,DeathMetal,,,ok,"A boss in metal armour with a speaker in its chest, three phases deep"
 enemies,The Guardian,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Make an enemy change form,N/A,TheGuardian,robot,,ok,Mode Shift flips it between offensive and defensive
 enemies,Giant Head,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Bounty,Defeat an enemy that punishes you for being slow,N/A,GiantHead,,,ok,"Slow and Steady, then It Is Time"
 bosses,Nemesis,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Restriction,Win against something immune to half your damage,N/A,Nemesis,,,ok,Intangible halves everything you send
@@ -232,14 +232,14 @@ enemies,Monk Elite,Action,1-Low,1x1,Brotato,1,1,Bounty,Defeat an enemy that neve
 bosses,Jonah,Action,2-Medium,2x2,Rogue Legacy 2,1,5,Feat,Be swallowed whole,N/A,Jonah,fish,,ok,The whale you fight from the inside
 bosses,Cain,Action,2-Medium,2x2,Rogue Legacy 2,1,5,Bounty,Defeat a sibling,N/A,Cain,,,ok,The other half of the family
 enemies,Estuary Lamech,Action,2-Medium,1x1,Rogue Legacy 2,1,2,Restriction,Beat the first boss with no upgrades,N/A,EstuaryLamech,,,ok,"The game's first Estuary, in a game built on buying upgrades"
-enemies,Byarrrith and Halpharrr,Action,3-High,1x1,Rogue Legacy 2,1,3,Bounty,Defeat two enemies that share a health bar,N/A,ByarrrithAndHalpharrr,,,?,"The Void Beasts, fought as one"
+enemies,Byarrrith and Halpharrr,Action,3-High,1x1,Rogue Legacy 2,1,3,Bounty,Defeat two enemies that share a health bar,N/A,ByarrrithAndHalpharrr,,,ok,"A pair of skeleton pirates: hurt one and the other arrives, and they are fought as a single encounter"
 enemies,Xeroc,Traditional,1-Low,1x1,Rogue,1,1,Discovery,Be fooled by something disguised as loot,N/A,Xeroc,,,ok,Imitates an item until you touch it
 enemies,Aquator,Traditional,1-Low,1x1,Rogue,1,1,Feat,Have your armour ruined and keep going,N/A,Aquator,,,ok,Rusts armour on contact
 bosses,Praxis,Action,2-Medium,2x2,Ember Knights,1,5,Bounty,Defeat someone who sends others to fight you,N/A,Praxis,,,ok,Summons the bosses you have already beaten
-enemies,Plague Bringer,Action,2-Medium,1x1,Ember Knights,1,2,Feat,Win while poisoned,N/A,PlagueBringer,,,?,One of Praxis's summoned bosses
-bosses,The Architect,Action,2-Medium,2x2,Ember Knights,1,5,Bounty,Defeat a boss that builds its own arena,N/A,TheArchitect,,,?,The Wrath of the Architect DLC's final boss
+enemies,Plague Bringer,Action,2-Medium,1x1,Ember Knights,1,2,Feat,Win while poisoned,N/A,PlagueBringer,,,ok,One of Praxis's mini-bosses
+bosses,The Architect,Action,2-Medium,2x2,Ember Knights,1,5,Bounty,Defeat a boss that builds its own arena,N/A,TheArchitect,,,ok,"The final boss of the Wrath of the Architect DLC, fought in a realm it makes itself"
 enemies,Prickwood,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat the first boss of a run,N/A,Prickwood,plant,,ok,The first boss the game gives you
-enemies,Bee Queen,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat a bee or a wasp,N/A,BeeQueen,bug,,?,Drops honey balls into the claw machine
+enemies,Bee Queen,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat a bee or a wasp,N/A,BeeQueen,bug,,ok,Drops honey balls into the claw machine so everything they touch comes up in one sticky clump
 bosses,Daemon Master,Strategy,3-High,2x2,Forward: Escape the Fold,1,7,Bounty,Defeat the second to last boss of a run,N/A,DaemonMaster,,,ok,Always the penultimate boss — the rest are randomised
 bosses,Strong Daemon Master,Strategy,4-Insane,2x2,Forward: Escape the Fold,1,9,Bounty,Defeat a final boss on the highest difficulty,N/A,StrongDaemonMaster,,,ok,Always the last boss
 enemies,Grip,Traditional,1-Low,1x1,Angband,1,1,Bounty,Defeat a named enemy,N/A,Grip,dog,,ok,"One of Farmer Maggot's dogs, and the first unique most runs ever meet"
@@ -300,3 +300,18 @@ enemies,Archer,Traditional,1-Low,1x1,Hoplite,1,1,Feat,Beat a ranged enemy by sta
 enemies,Wizard,Traditional,2-Medium,1x1,Hoplite,1,2,Feat,Use an enemy as cover,N/A,Wizard,,,ok,Its fire beam will not fire through another demon
 enemies,Elite Kappa,Action,2-Medium,1x1,Gunfire Reborn,1,2,Bounty,Defeat a creature that lives in water,N/A,EliteKappa,,,ok,"A kappa is a river spirit, and it fights like one"
 bosses,Abyssal Serpent,Action,3-High,1x3,Gunfire Reborn,1,7,Bounty,Defeat a giant serpent,N/A,AbyssalSerpent,,,ok,"An act boss, and long enough to need the room"
+enemies,Pawn,Strategy,1-Low,1x1,Shotgun King: The Final Checkmate,1,1,Discovery,Watch a weak enemy turn into a strong one,N/A,Pawn,,,ok,"Reaches the far side and is promoted into a knight, a rook, a bishop or a queen"
+enemies,Rook,Strategy,2-Medium,1x1,Shotgun King: The Final Checkmate,1,2,Bounty,Defeat an enemy that can only move in straight lines,N/A,Rook,,,ok,It moves and attacks orthogonally and has never done anything else
+bosses,White King,Strategy,3-High,2x2,Shotgun King: The Final Checkmate,1,7,Feat,Defeat a boss that grows when it is cornered,N/A,WhiteKing,,,ok,"The last white king reaches his breaking point, goes massive and takes up four squares"
+bosses,The Butcher,Action,2-Medium,2x2,Diablo,1,5,Discovery,Meet an enemy that speaks to you,N/A,TheButcher,,,ok,"""Ah, fresh meat!"" — greeting you from a room strewn with the townsfolk he butchered"
+bosses,King Leoric,Action,3-High,2x2,Diablo,1,7,Bounty,Defeat an enemy that heals off the damage it deals,N/A,KingLeoric,"undead, skeleton",,ok,"Diablo's Skeleton King under his own name, since Ball x Pit's crowned one already has the sheet's Skeleton King; he heals for everything he takes off you"
+enemies,Chaos Cyclops,Action,3-High,1x1,Wizard of Legend,1,3,Bounty,Defeat a one-eyed enemy,N/A,ChaosCyclops,eye,,ok,"A chaos-tier body from the Chaos Trials, where every enemy has a chaos variant"
+enemies,Marching Ghost,Action,1-Low,1x1,Halls of Torment,1,1,Bounty,Defeat an enemy that moves in formation with others,N/A,MarchingGhost,undead,,ok,The Forgotten Viaduct's ghosts arrive in step and stay in step
+enemies,Possessed Effigy,Action,2-Medium,1x1,Halls of Torment,1,2,Discovery,Watch a statue come to life,N/A,PossessedEffigy,statue,,ok,An effigy that stops being scenery
+bosses,"The Archivist, King of Old",Strategy,3-High,2x2,The Last Spell,1,7,Feat,Break something a boss is standing on,N/A,TheArchivistKingOfOld,,,ok,Its throne has to come down before the boss itself can be hurt
+enemies,Treeguard,Action,2-Medium,1x1,Don't Starve,1,2,Feat,Make peace with an enemy you provoked,N/A,Treeguard,plant,,ok,"It wakes because you cut down its trees, and planting pine cones nearby settles it"
+bosses,Deerclops,Action,2-Medium,2x2,Don't Starve,1,5,Discovery,Meet an enemy that only comes out in one season,N/A,Deerclops,,,ok,"Winter only, and it walks through your camp on the way to you"
+enemies,Sloth,Strategy,1-Low,1x1,Super Auto Pets,1,1,Restriction,Win a fight with the worst unit you have,N/A,Sloth,,,ok,"Tier 1, does nothing at all, and is beloved for it"
+enemies,Gelatinous Cube,Traditional,2-Medium,1x1,Dungeonmans,1,2,Bounty,Defeat an enemy that engulfs what it touches,N/A,GelatinousCube,slime,,ok,"The dungeon's slow-moving cube, straight off the tabletop"
+enemies,Drakee,Traditional,1-Low,1x1,Torneko's Great Adventure: Mystery Dungeon,1,1,Fetch,Take an item off an enemy that was carrying it,N/A,Drakee,,,ok,Monsters here spawn holding an item and drop it when they die
+bosses,Baezl'bub,Traditional,4-Insane,2x2,Powder,1,9,Fetch,Carry a trophy from the last boss back to where you started,N/A,BaezlBub,demon,,ok,"Kill the arch-daemon on level 25, then carry his heart all the way back to the surface"

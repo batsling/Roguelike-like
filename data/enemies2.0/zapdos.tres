@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_zapdos"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"zapdos"
+display_name = "Zapdos"
+game_type = &"traditional"
+difficulty = 1
+source_game = "Pokémon Mystery Dungeon: Red and Blue Rescue Team"
+health = 1
+damage = 2
+goal_type = &"bounty"
+goal = "Defeat an enemy you can then recruit"
+tag = &"bird, lightning"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "Zapdos"

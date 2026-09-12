@@ -148,6 +148,18 @@ func test_a_goal_row_says_which_body_it_belongs_to() -> void:
 		assert_eq(ObsCompanion.payload()["goals"].size(), 0,
 			"no bodies on the board means no body rows")
 
+# The roster's picture for a body, BY DISPLAY NAME, which is what a payload row
+# names its body with. Null when that body ships without art — which most of the
+# roster does, so "no icon" is only an error when this answers non-null.
+func _roster_art(who: String) -> Texture2D:
+	if who == "":
+		return null
+	for e in Data.all_goal_enemies() + Data.all_bosses():
+		var enemy: GoalEnemyData = e
+		if String(enemy.display_name) == who:
+			return enemy.image
+	return null
+
 func test_every_goal_row_carries_its_own_art_except_the_ones_that_hang_off_one()\
 		-> void:
 	# THE LAYOUT'S ONE BIG IDEA. A goal IS an enemy (§7.2), and a column of
@@ -166,6 +178,16 @@ func test_every_goal_row_carries_its_own_art_except_the_ones_that_hang_off_one()
 			assert_eq(String(row.get("icon", "")), "",
 				"an addon row is indented under its parent, not given its face "
 				+ "again")
+			continue
+		# A `goal` row is allowed to have no icon, and ONLY because most of the
+		# roster has no art yet (see the art ratchet below) — the page draws the
+		# body's initial for one, the way the board does. It is still an error for
+		# a body that HAS art to arrive here without it, which is what the lookup
+		# checks: an empty icon has to be a body that genuinely has no picture.
+		if String(row.get("icon", "")) == "" and String(row.get("kind", "")) == "goal":
+			assert_null(_roster_art(String(row.get("who", ""))),
+				"%s has art but its checklist row arrived without it"
+					% row.get("who", "?"))
 			continue
 		assert_ne(String(row.get("icon", "")), "",
 			"a %s row with no art draws as a bare initial: %s"
@@ -865,25 +887,45 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 	assert_gt(swings.size(), 0, "the board is in the player's face")
 	for sw in swings:
 		assert_ne(String(sw.get("who", "")), "", "a swing names its body")
-		assert_ne(String(sw.get("icon", "")), "",
-			"%s has no art url — the page would fall back to a bare number"
-				% sw.get("who", "?"))
+		# Same allowance as the checklist rows: no icon is legal only for a body
+		# that has no art at all, and the page falls back to its initial.
+		if String(sw.get("icon", "")) == "":
+			assert_null(_roster_art(String(sw.get("who", ""))),
+				"%s has art but its swing arrived without it" % sw.get("who", "?"))
+			continue
 		_assert_page_local(String(sw["icon"]), "a swing's icon")
 
-func test_every_goal_enemy_in_the_roster_has_a_face_to_draw() -> void:
-	# The same guarantee the statuses get: the swing marks are pictures, so a body
-	# shipped without art is a bare number in a row of faces. The page copes, but
-	# the roster should not need it to.
-	var missing: Array = []
+# The roster used to be 94 hand-made rows and every one of them had a picture, so
+# this asked for exactly that: no body anywhere without art. Then the audited
+# candidate file landed (docs/goal-enemy-candidates.md) and took the roster to
+# 410 bodies, 312 of which have no art yet and are documented as not having it —
+# art is its own pass, and the `File` column is the hook it will hang on.
+#
+# So the guarantee became a RATCHET rather than an absolute, the way the pending()
+# budget is: the number of bodies WITH art may go up and may not go down. That
+# still catches the thing this test was written for — art that stops resolving,
+# a File renamed out from under its PNG, a folder emptied — without asserting
+# something the project has deliberately decided is not true yet. Raise the floor
+# when art lands; never lower it to make a run go green.
+const ART_FLOOR := 98
+
+func test_the_roster_does_not_lose_art_it_already_had() -> void:
+	var with_art: Array = []
+	var without: Array = []
 	# The bosses too — a boss stands on the board and swings like any other body,
 	# so it turns up in this row like any other body.
 	for e in Data.all_goal_enemies() + Data.all_bosses():
 		var enemy: GoalEnemyData = e
 		if enemy.image == null:
-			missing.append(String(enemy.id))
-	assert_eq(missing, [],
-		"these goal-enemies have no art, so their swing draws as a bare number "
-		+ "in a row of faces: %s" % str(missing))
+			without.append(String(enemy.id))
+		else:
+			with_art.append(String(enemy.id))
+	assert_gte(with_art.size(), ART_FLOOR,
+		"%d bodies have art, which is fewer than the %d that had it when this "
+		% [with_art.size(), ART_FLOOR]
+		+ "floor was recorded — art that used to resolve has stopped resolving")
+	gut.p("art coverage: %d of %d bodies (%d still to draw)"
+		% [with_art.size(), with_art.size() + without.size(), without.size()])
 
 func test_the_forecast_survives_an_empty_board() -> void:
 	GameLoop2.stack.clear()

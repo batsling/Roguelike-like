@@ -2033,7 +2033,15 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 		if portrait.get_width() < _cell or portrait.get_height() < _cell:
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
+		# NO PICTURE: draw the body's INITIAL, which is how the games this one is
+		# made of drew their monsters before anybody had art. It used to modulate
+		# the TextureRect and stop there, which paints nothing at all — a
+		# TextureRect with no texture has nothing to tint — so an artless body was
+		# an empty square with badges floating in it. That was invisible while
+		# every shipped row had a PNG and stopped being invisible the moment the
+		# candidate rows landed: most of the roster has no art yet.
 		art.modulate = accent
+		holder.add_child(_initial_glyph(entry, accent))
 	# A staggered body is DARKENED rather than given a symbol of its own. There is
 	# no art for the state and there does not need to be: the picture going dim is
 	# the state, read at a glance across a whole board without anything printed over
@@ -2052,6 +2060,33 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	node.set_meta("badges", badges)
 	_add_enemy_badges(badges, entry, e, accent, selected)
 	return node
+
+# A body with no picture, drawn as the letter it would have been in the games
+# this one is played on top of: the first character of its name, in the accent
+# the cell already uses, sized to the footprint so a 2x2 reads bigger than a 1x1.
+#
+# This is a PLACEHOLDER and it is meant to look like one — it is what says "this
+# row has no art yet" rather than "this square is empty", which is the state the
+# board was in for every artless body before it existed.
+func _initial_glyph(entry: Dictionary, accent: Color) -> Control:
+	var enemy: GoalEnemyData = entry.get("enemy")
+	var name := String(enemy.display_name) if enemy != null else ""
+	var label := Label.new()
+	label.text = name.substr(0, 1).to_upper() if name != "" else "?"
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Half the shorter side of the footprint: big enough to read across the board,
+	# small enough that a 3x3 does not overflow its own cells. The footprint is on
+	# the RESOURCE — a body on the board carries no rows/cols of its own, and
+	# `entry.get("rows", 1)` would have quietly answered 1 forever (BODY_KEYS).
+	var rows: int = maxi(1, enemy.shape_rows if enemy != null else 1)
+	var cols: int = maxi(1, enemy.shape_cols if enemy != null else 1)
+	label.add_theme_font_size_override("font_size",
+		maxi(UITheme.FONT_SUB, int(_cell * mini(rows, cols) * 0.5)))
+	label.add_theme_color_override("font_color", accent)
+	return label
 
 # Badges for one enemy, laid out around the box it holds: health bottom-left,
 # damage bottom-right, statuses under them, and the stun marker when frozen.

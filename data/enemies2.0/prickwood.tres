@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_prickwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"prickwood"
+display_name = "Prickwood"
+game_type = &"deckbuilder"
+difficulty = 0
+source_game = "Dungeon Clawler"
+health = 1
+damage = 1
+goal_type = &"bounty"
+goal = "Defeat the first boss of a run"
+tag = &"plant"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "Prickwood"

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://boss_alexander"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"alexander"
+display_name = "Alexander"
+game_type = &"action"
+difficulty = 0
+boss = true
+source_game = "Skul: The Hero Slayer"
+health = 1
+damage = 3
+goal_type = &"bounty"
+goal = "Defeat an emperor"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "Alexander"

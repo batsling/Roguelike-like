@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_the_fanatic"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_fanatic"
+display_name = "The Fanatic"
+game_type = &"strategy"
+difficulty = 2
+source_game = "Darkest Dungeon"
+health = 1
+damage = 3
+goal_type = &"feat"
+goal = "Keep an ally alive for a whole floor"
+tag = &"fire"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "TheFanatic"
