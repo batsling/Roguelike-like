@@ -120,11 +120,11 @@ bosses,Seraph,Deckbuilder,3-High,2x2,Monster Train,1,7,Restriction,Win a fight w
 enemies,Lightwing,Deckbuilder,2-Medium,1x1,Monster Train,1,2,Restriction,Protect something for a whole fight,N/A,Lightwing,,,ok,Seraph spawns one every round and they go for the pyre
 enemies,Avowed Gladiator,Deckbuilder,1-Low,1x1,Monster Train,1,1,Feat,Fight on two fronts at once,N/A,AvowedGladiator,,,?,Monster Train is fought on stacked floors at the same time
 enemies,Ragewing Assassin,Deckbuilder,1-Low,1x1,Monster Train,1,1,Bounty,Defeat an enemy that ignores your front line,N/A,RagewingAssassin,,,?,Goes straight past whatever you put in front
-enemies,Kecleon,Traditional,4-Insane,1x1,Pokemon Mystery Dungeon,1,4,Bounty,Defeat a shopkeeper,N/A,Kecleon,,,ok,Rob the shop and the floor fills with double-speed Kecleon
-bosses,Groudon,Traditional,2-Medium,2x2,Pokemon Mystery Dungeon,1,5,Bounty,Defeat an enemy with ten times your health,N/A,Groudon,,,ok,1600+ HP in Magma Cavern
-enemies,Zapdos,Traditional,2-Medium,1x1,Pokemon Mystery Dungeon,1,2,Bounty,Defeat an enemy you can then recruit,N/A,Zapdos,"bird, lightning",,ok,"Beat it, then it can join you"
-enemies,Rayquaza,Traditional,2-Medium,1x1,Pokemon Mystery Dungeon,1,2,Bounty,Beat a final boss on your first attempt,N/A,Rayquaza,dragon,,ok,"Sky Tower's wall, and the run's ending"
-bosses,Primal Dialga,Traditional,3-High,2x2,Pokemon Mystery Dungeon,1,7,Bounty,Defeat a boss that controls time,N/A,PrimalDialga,dragon,,ok,The Explorers finale
+enemies,Kecleon,Traditional,4-Insane,1x1,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,4,Bounty,Defeat a shopkeeper,N/A,Kecleon,,,ok,Rob the shop and the floor fills with double-speed Kecleon
+bosses,Groudon,Traditional,2-Medium,2x2,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,5,Bounty,Defeat an enemy with ten times your health,N/A,Groudon,,,ok,1600+ HP in Magma Cavern
+enemies,Zapdos,Traditional,2-Medium,1x1,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,2,Bounty,Defeat an enemy you can then recruit,N/A,Zapdos,"bird, lightning",,ok,"Beat it, then it can join you"
+enemies,Rayquaza,Traditional,2-Medium,1x1,Pokémon Mystery Dungeon: Red and Blue Rescue Team,1,2,Bounty,Beat a final boss on your first attempt,N/A,Rayquaza,dragon,,ok,"Sky Tower's wall, and the run's ending"
+bosses,Primal Dialga,Traditional,3-High,2x2,Pokémon Mystery Dungeon: Explorers of Sky,1,7,Bounty,Defeat a boss that controls time,N/A,PrimalDialga,dragon,,ok,The Explorers finale
 enemies,Zombie Master,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Discovery,Watch an enemy upgrade another enemy,N/A,ZombieMaster,"undead, zombie",,ok,Turns a pack of ordinary zombies into spitters and shockers
 enemies,Shocker Zombie,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Bounty,Defeat an enemy that shocks you,N/A,ShockerZombie,"undead, zombie, lightning",,ok,The zapper line's evolution
 enemies,Boomer,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Feat,Get covered in something,N/A,Boomer,"undead, zombie",,ok,Bursts and coats you in bile
@@ -242,3 +242,40 @@ enemies,Prickwood,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat the fi
 enemies,Bee Queen,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat a bee or a wasp,N/A,BeeQueen,bug,,?,Drops honey balls into the claw machine
 bosses,Daemon Master,Strategy,3-High,2x2,Forward: Escape the Fold,1,7,Bounty,Defeat the second to last boss of a run,N/A,DaemonMaster,,,ok,Always the penultimate boss — the rest are randomised
 bosses,Strong Daemon Master,Strategy,4-Insane,2x2,Forward: Escape the Fold,1,9,Bounty,Defeat a final boss on the highest difficulty,N/A,StrongDaemonMaster,,,ok,Always the last boss
+enemies,Grip,Traditional,1-Low,1x1,Angband,1,1,Bounty,Defeat a named enemy,N/A,Grip,dog,,ok,"One of Farmer Maggot's dogs, and the first unique most runs ever meet"
+enemies,Wormtongue,Traditional,2-Medium,1x1,Angband,1,2,Feat,Live through being slowed or held in place,N/A,Wormtongue,,,ok,Saruman's agent opens by slowing you and filling the floor with traps
+enemies,Boldor,Traditional,2-Medium,1x1,Angband,1,2,Bounty,Defeat the king of the feeblest creatures in the game,N/A,Boldor,,,ok,"King of the Yeeks, whose subjects are the weakest thing in the dungeon"
+bosses,Sauron,Traditional,3-High,2x2,Angband,1,7,Bounty,Defeat the boss standing between you and the last one,N/A,Sauron,,,ok,He dies on level 99 or the stairs to Morgoth never appear
+bosses,Morgoth,Traditional,4-Insane,2x2,Angband,1,9,Feat,Reach the deepest floor of the game,N/A,Morgoth,,,ok,"Waits on dungeon level 100, which is the bottom of Angband"
+enemies,Kranach,Traditional,1-Low,1x1,Ancient Domains of Mystery,1,1,Feat,Clear an optional area the run did not require,N/A,Kranach,,,ok,A raider lord in a side quest nothing forces you to take
+enemies,Keethrax,Traditional,2-Medium,1x1,Ancient Domains of Mystery,1,2,Bounty,Defeat an enemy that curses you when it hits you,N/A,Keethrax,,,ok,The evil druid of the first quest corrupts by touch
+bosses,Cat Lord,Traditional,3-High,2x2,Ancient Domains of Mystery,1,7,Restriction,Do not harm any animals,N/A,CatLord,cat,,ok,He arrives stronger and angrier for every cat the run has killed
+bosses,Emperor Lich,Traditional,4-Insane,2x2,Ancient Domains of Mystery,1,9,Bounty,Defeat an enemy that raises the dead against you,N/A,EmperorLich,undead,,ok,Summons meat shields by the screenful and paralyses on touch
+enemies,Diggle,Traditional,1-Low,1x1,Dungeons of Dredmor,1,1,Bounty,Defeat an enemy guarding its young,N/A,Diggle,bird,,ok,"The early floors' bird, found standing over its eggs"
+enemies,Blink Batty,Traditional,2-Medium,1x1,Dungeons of Dredmor,1,2,Bounty,Defeat an enemy that teleports,N/A,BlinkBatty,,,ok,A batty that blinks away the moment you swing at it
+bosses,Lord Dredmor,Traditional,3-High,2x2,Dungeons of Dredmor,1,7,Feat,Beat the boss the game is named after,N/A,LordDredmor,,,ok,The whole descent is aimed at him and nothing else
+enemies,Champion,Traditional,2-Medium,1x1,Tangledeep,1,2,Bounty,Defeat an elite version of an ordinary enemy,N/A,Champion,,,ok,Champions are rolled-up variants of the normal roster
+enemies,Mamel,Traditional,1-Low,1x1,Mystery Dungeon 2: Shiren the Wanderer,1,1,Bounty,Defeat the weakest enemy in the game,N/A,Mamel,,,ok,The first and feeblest monster a Shiren run meets
+enemies,Gitan Mamel,Traditional,2-Medium,1x1,Mystery Dungeon 2: Shiren the Wanderer,1,2,Fetch,Take a fortune off a single enemy,N/A,GitanMamel,,,ok,"Drops 2,000 gitan, and moves at double speed so it is hard to collect"
+enemies,Pacorepkin,Traditional,2-Medium,1x1,Mystery Dungeon 2: Shiren the Wanderer,1,2,Discovery,Witness an enemy move through solid wall,N/A,Pacorepkin,,,ok,Pacorepkins travel through walls
+enemies,Zoltan,Strategy,1-Low,1x1,FTL,1,1,Feat,Put up a shield that stops a hit before it lands,N/A,Zoltan,,,ok,A Zoltan shield keeps a hit — and a boarding party — off the hull entirely
+enemies,Mantis Boarder,Strategy,2-Medium,1x1,FTL,1,2,Feat,Repel an enemy that reaches your own side,N/A,MantisBoarder,,,ok,Mantis crews teleport aboard and fight you in your own rooms
+bosses,Rebel Flagship,Strategy,4-Insane,2x2,FTL,1,9,Bounty,Defeat the final boss of the game,N/A,RebelFlagship,,,ok,"The Last Stand's three-phase flagship, and the only way a run is won"
+enemies,Psion,Strategy,1-Low,1x1,Into the Breach,1,1,Bounty,Defeat the enemy that is making the others stronger,N/A,Psion,,,ok,Harmless itself; every other Vek loses its buff the moment it dies
+enemies,Scarab,Strategy,2-Medium,1x1,Into the Breach,1,2,Bounty,Defeat an enemy that outranges you,N/A,Scarab,bug,,ok,Lobs artillery from five tiles away
+bosses,Spider Leader,Strategy,2-Medium,2x2,Into the Breach,1,5,Feat,Destroy an egg before it hatches,N/A,SpiderLeader,"bug, spider",,ok,An island boss whose whole threat is the eggs it leaves behind
+enemies,Titan,Strategy,3-High,2x2,Dwarf Fortress,1,3,Bounty,Defeat an enemy that came to attack your home,N/A,Titan,,,ok,A surface megabeast that paths to your fort once it is rich enough to notice
+bosses,Forgotten Beast,Strategy,2-Medium,2x2,Dwarf Fortress,1,5,Discovery,Meet a monster the game invented for this run,N/A,ForgottenBeast,,,ok,"Procedurally generated in the caverns, and no two are ever the same"
+bosses,Bronze Colossus,Strategy,3-High,2x2,Dwarf Fortress,1,7,Bounty,Defeat an enemy made of metal,N/A,BronzeColossus,,,ok,A bronze statue that has to be worn down rather than hurt; it feels no pain
+enemies,Slime,Deckbuilder,1-Low,1x1,Dicey Dungeons,1,1,Feat,Poison an enemy,N/A,Slime,slime,,ok,"Throws slime balls, which is how most runs first meet poison"
+enemies,Snowman,Deckbuilder,2-Medium,1x1,Dicey Dungeons,1,2,Bounty,Defeat an enemy made of ice or snow,N/A,Snowman,ice,,ok,One of the game's Super enemies
+bosses,Lady Luck,Deckbuilder,3-High,2x2,Dicey Dungeons,1,7,Feat,Win a fight decided by a lucky roll,N/A,LadyLuck,,,ok,"She runs the dungeon, and the dungeon is dice"
+enemies,Stumpy Stump,Deckbuilder,1-Low,1x1,Peglin,1,1,Bounty,Defeat an enemy that is a plant,N/A,StumpyStump,plant,,ok,From the bestiary's Plants category
+bosses,Thesaurosus,Deckbuilder,2-Medium,2x2,Peglin,1,5,Discovery,Meet an enemy whose name is a pun,N/A,Thesaurosus,,,ok,A thesaurus-saurus; Peglin names every body in the game this way
+enemies,Jack of Dust,Deckbuilder,1-Low,1x1,Hand of Fate,1,1,Bounty,Defeat a bandit or a thief,N/A,JackOfDust,,,ok,"The Dust suit is human thieves, and the Jack is their elite"
+enemies,King of Scales,Deckbuilder,2-Medium,1x1,Hand of Fate,1,2,Bounty,Defeat a lizard or a reptile,N/A,KingOfScales,,,ok,Scales is the lizardman suit; the King is its heaviest card
+bosses,The Dealer,Deckbuilder,3-High,2x2,Hand of Fate,1,7,Feat,Beat the game's own narrator,N/A,TheDealer,,,ok,He deals the cards all game and is the thirteenth and last boss
+enemies,Caveman,Action,1-Low,1x1,Spelunky Classic,1,1,Bounty,Defeat an enemy that charges straight at you,N/A,Caveman,,,ok,"Runs at you and does nothing else, which is the whole of its plan"
+bosses,Selt,Action,2-Medium,2x2,UnderMine,1,5,Feat,Defeat an enemy by hitting one specific spot,N/A,Selt,,,ok,Only the tail takes damage; the rest of it is decoration
+bosses,Seer,Action,4-Insane,2x2,UnderMine,1,9,Restriction,Beat a boss without healing,N/A,Seer,,,ok,"The hardest fight in the game, and it burns you the whole way through"
+enemies,Snake,Action,1-Low,1x1,Spelunky Classic,1,1,Bounty,Defeat an enemy in the first room of a run,N/A,Snake,,,ok,"The first thing in the mines, and the first thing every run kills"

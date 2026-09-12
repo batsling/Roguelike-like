@@ -104,6 +104,14 @@ jobs:
       - name: data/ is what the sheet says
         run: python3 tools/check_data_sync.py
 
+      - name: The candidate rows are still pasteable
+        # docs/goal-candidates.csv is a paste queue for the enemies/bosses
+        # sheets, so the things that would break at paste time — a Damage that
+        # does not match the tier, a Name/File/Goal that is already live, a Game
+        # the catalog does not spell that way — are worth catching while the row
+        # is still being written rather than after it ships.
+        run: python3 tools/check_goal_candidates.py
+
       - name: The drawn map and the sheet agree
         # Reports drift in both directions and is informational by design — games
         # get drawn before they are sheeted and vice versa — so its exit code is

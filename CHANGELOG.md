@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Thirteen more wikis in the goal-enemy candidate file, and the audit is a
+  script now.** `docs/goal-candidates.csv` goes from 243 rows to **280** — 37
+  new candidates across 13 games that had never been read: Angband, ADOM,
+  Dungeons of Dredmor, Shiren the Wanderer and Tangledeep; FTL, Into the Breach
+  and Dwarf Fortress; Dicey Dungeons, Hand of Fate and Peglin; Spelunky Classic
+  and UnderMine. All 13 are owned and already in `data/games/`.
+  - **The games were chosen where the file was thinnest, not where the games are
+    famous.** Traditional was the starved pool and takes 16 of the 37 rows;
+    Strategy was the smallest at 18 rows, so three of the thirteen games went
+    there (FTL, Into the Breach, Dwarf Fortress) and it ends at 27. Action,
+    already the biggest, takes 4.
+  - **`tools/check_goal_candidates.py` is the first pass's prose audit as a
+    check**, and CI runs it: the enums, `Health` 1, the Damage-by-tier mapping,
+    the Size grammar (parsed with the generator's OWN `parse_size` rather than a
+    copy), a duplicate Name / File / Goal / slugified id inside the file or
+    against the live sheet, a `Game` the catalog does not spell that way, and a
+    `Type` that disagrees with the game's own type.
+  - **It found five wrong rows in the first pass's own work** the moment it ran:
+    Kecleon, Groudon, Zapdos, Rayquaza and Primal Dialga all named their game
+    `Pokemon Mystery Dungeon`, which is not a game — the catalog has six
+    Pokémon Mystery Dungeon titles and no such string, so `source_game` would
+    have pointed at nothing. They are now split by where each creature actually
+    lives. Nothing else in the 243 failed.
+  - **Six of the new rows were cut for reading like rows that already exist** —
+    Spelunky Classic's `Ghost` and `Olmec` (both already in the file under
+    another game), Into the Breach's `Burrower` (Magma Worm burrows already),
+    Peglin's `Knight Knight` (Death Metal is armoured already), Tangledeep's
+    `Duke Dirtbeak` and Spelunky's `King Alien Lord` — and one, UnderMine's
+    `Seer`, was reworded off Dead Cells' Concierge rather than cut. A
+    frame-stripped similarity scan over every pair is what surfaced them; the
+    ten neighbour pairs that survived it are now in the overlap ledger with the
+    reason each is not a duplicate.
+  - Still open and now written down: Tangledeep, Peglin and Spelunky Classic are
+    under-read (their wikis stopped surfacing bodies through search), UnderMine
+    gave up two bosses and no ordinary enemies, and the 14 `?` rows are all
+    still the first pass's — none of the 37 new rows needed one.
+  - `data/` and `tools/Roguelikes.xlsx` are untouched, as the candidate file has
+    always been: it is a paste queue, not content.
+
 - **The menu's art falls in from the top, a little faster, without the stutter.**
   Four things about `MenuFallingArt`, three of them measured rather than guessed:
   - **The opening fill comes in over the top edge like every other piece.** It
