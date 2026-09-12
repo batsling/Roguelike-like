@@ -279,3 +279,24 @@ enemies,Caveman,Action,1-Low,1x1,Spelunky Classic,1,1,Bounty,Defeat an enemy tha
 bosses,Selt,Action,2-Medium,2x2,UnderMine,1,5,Feat,Defeat an enemy by hitting one specific spot,N/A,Selt,,,ok,Only the tail takes damage; the rest of it is decoration
 bosses,Seer,Action,4-Insane,2x2,UnderMine,1,9,Restriction,Beat a boss without healing,N/A,Seer,,,ok,"The hardest fight in the game, and it burns you the whole way through"
 enemies,Snake,Action,1-Low,1x1,Spelunky Classic,1,1,Bounty,Defeat an enemy in the first room of a run,N/A,Snake,,,ok,"The first thing in the mines, and the first thing every run kills"
+enemies,Bones,Strategy,1-Low,1x1,Slice & Dice,1,1,Bounty,Defeat an enemy that another enemy summoned,N/A,Bones,"undead, skeleton",,ok,"The Lich's passive keeps making them, and they are all the fight is"
+enemies,Demon,Strategy,2-Medium,1x1,Slice & Dice,1,2,Bounty,Defeat a demon,N/A,Demon,demon,,ok,"Summons imps, and is the game's plain demon"
+enemies,Shielder,Strategy,1-Low,1x1,Shogun Showdown,1,1,Feat,Strip a shield off an enemy,N/A,Shielder,,,ok,Casts shields that eat one instance of damage for an ally
+enemies,Grappler,Strategy,2-Medium,1x1,Shogun Showdown,1,2,Bounty,Defeat an enemy that drags you into melee,N/A,Grappler,,,ok,Hooks the target to itself and then stabs it
+bosses,The Shogun,Strategy,4-Insane,2x2,Shogun Showdown,1,9,Feat,Beat a boss that has more than one phase,N/A,TheShogun,,,ok,"The run's target, and he has a second phase"
+enemies,Tick,Strategy,1-Low,1x1,Dome Keeper,1,1,Bounty,Defeat an enemy before it reaches you,N/A,Tick,bug,,ok,"Tiny, arrives in groups, and the whole threat is it getting to the dome"
+enemies,Driller,Strategy,2-Medium,1x1,Dome Keeper,1,2,Feat,Repair something an enemy has broken,N/A,Driller,,,ok,"Big and slow, carrying a drill that chews sustained damage into the dome"
+enemies,Barbarian,Strategy,1-Low,1x1,Legend of Keepers: Career of a Dungeon Manager,1,1,Bounty,Defeat a hero,N/A,Barbarian,,,ok,"In a game where you are the dungeon, the heroes are the monsters"
+enemies,Priestess,Strategy,2-Medium,1x1,Legend of Keepers: Career of a Dungeon Manager,1,2,Bounty,Defeat an enemy that heals the others,N/A,Priestess,,,ok,The healer in the party raiding your dungeon
+bosses,Owl,Strategy,3-High,2x2,Ring of Pain,1,7,Discovery,Reach a secret or alternate ending,N/A,Owl,bird,,ok,"The final boss of the Dark Ending, which is not the ending you get by default"
+enemies,Polar Bear,Deckbuilder,2-Medium,1x1,Backpack Hero,1,2,Bounty,Defeat a bear,N/A,PolarBear,bear,,ok,From the Frozen Heart's roster
+bosses,Farseer,Deckbuilder,3-High,2x2,Backpack Hero,1,7,Discovery,See what a room holds before you enter it,N/A,Farseer,,,ok,"A boss named for seeing what is coming, in a game about what is in the bag"
+enemies,Wolf,Deckbuilder,1-Low,1x1,Across the Obelisk,1,1,Bounty,Defeat a wolf,N/A,Wolf,wolf,,ok,The Wolf Wars' plainest body
+enemies,Houndmaster,Deckbuilder,2-Medium,1x1,Across the Obelisk,1,2,Bounty,Defeat an enemy that fights alongside an animal,N/A,Houndmaster,,,ok,Brings the wolves with him
+enemies,Former Human,Traditional,1-Low,1x1,Jupiter Hell,1,1,Bounty,Defeat someone who used to be on your side,N/A,FormerHuman,undead,,ok,"The colony's own crew, turned; the first thing the game shows you"
+enemies,Turret,Traditional,2-Medium,1x1,Jupiter Hell,1,2,Bounty,Defeat an enemy that cannot move,N/A,Turret,robot,,ok,"CalSec's bolted-down gun, which shoots and never follows"
+enemies,Prismancer,Traditional,3-High,1x1,Rift Wizard,1,3,Feat,Use three different elements in one fight,N/A,Prismancer,,,ok,"A caster of many colours, in a game where every spell carries an element tag"
+enemies,Archer,Traditional,1-Low,1x1,Hoplite,1,1,Feat,Beat a ranged enemy by standing next to it,N/A,Archer,,,ok,Range 5 and cannot attack an adjacent tile at all
+enemies,Wizard,Traditional,2-Medium,1x1,Hoplite,1,2,Feat,Use an enemy as cover,N/A,Wizard,,,ok,Its fire beam will not fire through another demon
+enemies,Elite Kappa,Action,2-Medium,1x1,Gunfire Reborn,1,2,Bounty,Defeat a creature that lives in water,N/A,EliteKappa,,,ok,"A kappa is a river spirit, and it fights like one"
+bosses,Abyssal Serpent,Action,3-High,1x3,Gunfire Reborn,1,7,Bounty,Defeat a giant serpent,N/A,AbyssalSerpent,,,ok,"An act boss, and long enough to need the room"

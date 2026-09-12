@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Eleven more wikis in the candidate file, aimed at the pool that was still
+  thin.** `docs/goal-candidates.csv` goes from 280 rows to **301**. The second
+  pass left **Strategy** the smallest pool at 27 rows, so five of this pass's
+  eleven games are Strategy — Slice & Dice, Shogun Showdown, Dome Keeper, Legend
+  of Keepers, Ring of Pain — and it ends at **37**. Deckbuilder takes Backpack
+  Hero and Across the Obelisk; Traditional takes Jupiter Hell, Rift Wizard and
+  Hoplite; Action, the biggest pool at 117, gets one game (Gunfire Reborn) and
+  two rows on purpose.
+  - **Legend of Keepers is where `Defeat a hero` finally comes from.** You play
+    the dungeon in that game, so its enemies are the heroes raiding you — a body
+    the first 280 rows had no owner for.
+  - **Hoplite gave up the two best rows of the pass** because it is small enough
+    that each demon is one rule: its Archer cannot attack an adjacent tile, so
+    the goal is *beat a ranged enemy by standing next to it*; its Wizard will not
+    fire through another demon, so the goal is *use an enemy as cover*. Neither
+    idea was anywhere in the file.
+  - **Three whole games were dropped rather than padded.** Fights in Tight Spaces
+    landed on rows that already exist (armoured, outgunned, grabs you,
+    surrounded) and its one free idea is Flaming Fatty's *push an enemy into
+    fire*; Moonlighter's mimics, repair golem and first boss are all spoken for;
+    Dicefolk never surfaced a single creature name through search. One row was
+    cut (`Elite Lobster` — *a giant crustacean* and *a giant serpent* are the
+    same row twice, from the same game) and one reworded (Dome Keeper's `Tick`,
+    off Isaac's Larry Jr.).
+  - `tools/check_goal_candidates.py` gated all of it and stayed green; the
+    frame-stripped similarity scan over every pair is what caught the Lobster and
+    the Tick. Four new overlap-ledger entries say why the pairs that survived are
+    not duplicates.
+  - Written down rather than glossed: this pass is **boss-light** (4 bosses in 21
+    rows against the file's 28%), because search surfaces a small game's ordinary
+    roster before its bosses. And the yield per game keeps falling for one
+    reason — the egress proxy blocks the wikis, so every row in this file was
+    written off a search summary, and the games left are the ones where you have
+    to open the bestiary.
+  - `data/` and `tools/Roguelikes.xlsx` remain untouched.
+
 - **Thirteen more wikis in the goal-enemy candidate file, and the audit is a
   script now.** `docs/goal-candidates.csv` goes from 243 rows to **280** — 37
   new candidates across 13 games that had never been read: Angband, ADOM,

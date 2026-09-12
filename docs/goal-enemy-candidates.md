@@ -1,6 +1,6 @@
 # Goal-enemy candidates
 
-`docs/goal-candidates.csv` is the deliverable: **280 audited candidate rows** in
+`docs/goal-candidates.csv` is the deliverable: **301 audited candidate rows** in
 the exact column order of the `enemies` and `bosses` sheets of
 `tools/Roguelikes.xlsx`, ready to paste and regenerate from. This file is the
 companion — what the columns were filled in with, what the audit threw out, and
@@ -15,15 +15,15 @@ copy of it), a duplicate `Name` / `File` / `Goal` / id inside the file or agains
 the live sheet, a `Game` the catalog does not spell that way, a `Type` that
 disagrees with the game's own — is checked there, so the next pass does not have
 to take this one's word for it. `--stats` prints the distribution tables quoted
-below. It was written for the second pass and immediately found five rows the
-first pass had got wrong (see below).
+below. It was written for the second pass, immediately found five rows the
+first pass had got wrong, and has gated every row added since.
 
 ## The file
 
 | | |
 |---|---|
-| Rows | 280 — **199 enemies, 81 bosses** |
-| Games | 58, of which 40 are new to the project |
+| Rows | 301 — **216 enemies, 85 bosses** |
+| Games | 69, of which 51 are new to the project |
 | Columns | `Sheet, Name, Type, Difficulty, Size, Game, Health, Damage, Goal Type, Goal, Ability, File, Tag, Phases` then two staging columns |
 | Staging columns | `Confidence` (`ok` / `?`) and `Why this pairing` — **delete both before pasting**; the sheet has no such columns |
 
@@ -102,6 +102,46 @@ described. Nothing else in the 243 failed: the enums, the Damage mapping, the
 Size grammar, the Name/File/Goal/id collisions and the game-type agreement were
 all exactly as the first pass claimed.
 
+## Third pass — eleven more wikis, aimed at Strategy
+
+The second pass left **Strategy** the smallest pool at 27 rows; this one spends
+five of its eleven games there and takes it to **37**. Deckbuilder gets two,
+Traditional three, and Action — the biggest pool at 117 — gets one game and two
+rows, on purpose.
+
+| Game | Type | Rows | Wiki |
+|---|---|---|---|
+| Slice & Dice | Strategy | 2 | slice-and-dice.fandom.com, minmax.wiki |
+| Shogun Showdown | Strategy | 2 + 1 boss | shogunshowdown.wiki.gg |
+| Dome Keeper | Strategy | 2 | domekeeper.wiki.gg |
+| Legend of Keepers | Strategy | 2 | legendofkeepers.fandom.com |
+| Ring of Pain | Strategy | 1 boss | ring-of-pain.fandom.com |
+| Backpack Hero | Deckbuilder | 1 + 1 | backpackhero.wiki.gg |
+| Across the Obelisk | Deckbuilder | 2 | ato.fandom.com |
+| Jupiter Hell | Traditional | 2 | jupiterhell.fandom.com |
+| Rift Wizard | Traditional | 1 | riftwizard.fandom.com, riftwizard2.wiki.gg |
+| Hoplite | Traditional | 2 | the game's own rules reference |
+| Gunfire Reborn | Action | 1 + 1 | gunfirereborn.fandom.com |
+
+**Legend of Keepers is the interesting one.** You play the dungeon, so its
+*enemies* are the heroes raiding you — which is where `Defeat a hero` finally
+comes from, a goal the first 280 rows never had a body for. Hoplite is the other
+one worth reading: it is small enough that each demon is a single rule, and two
+of those rules turn into goals nothing else in the file asks for — *beat a ranged
+enemy by standing next to it* (its Archer cannot attack an adjacent tile at all)
+and *use an enemy as cover* (its Wizard will not fire through another demon).
+
+Cut or reworded, same bar as before:
+
+| Change | Why |
+|---|---|
+| **Elite Lobster** (Gunfire Reborn) cut | *a giant crustacean* and *a giant serpent* are the same row twice, from the same game |
+| **Tick** (Dome Keeper) reworded | *defeat several enemies with one attack* is Isaac's Larry Jr., *attack 5+ enemies at once*; it is now *defeat an enemy before it reaches you*, which is what a Tick actually threatens |
+| **Fights in Tight Spaces** dropped whole | every body it has lands on a row that already exists — armoured, outgunned, grabs you, surrounded — and its one free idea (an environmental kill) is Flaming Fatty's *push an enemy into fire* |
+| **Moonlighter** dropped whole | its mimics are the file's *chest that fights back*, its repair golem is Legend of Keepers' healer, its first boss is Prickwood |
+| **Dicefolk** dropped whole | no individual creature name surfaced through search at all — 100+ chimeras and not one of them nameable from here |
+| **Warden** (Shogun Showdown), **Medusa** and **Warlock** (Jupiter Hell) | the Name is already taken in the file, by a different creature from a different game |
+
 ## What the audit checked, and what it changed
 
 Six passes over every row. The first two were the expensive ones.
@@ -167,9 +207,10 @@ The result lands on the live sheet's own shape:
 |---|---|---|---|---|
 | first pass (243) | 109 | 90 | 35 | 9 |
 | second pass (+37) | 11 | 15 | 7 | 4 |
-| candidates (280) | 120 | 105 | 42 | 13 |
+| third pass (+21) | 7 | 9 | 4 | 1 |
+| candidates (301) | 127 | 114 | 46 | 14 |
 | live sheet (94) | 43 | 32 | 15 | 4 |
-| as a share | 43% vs 46% | 38% vs 34% | 15% vs 16% | 5% vs 4% |
+| as a share | 42% vs 46% | 38% vs 34% | 15% vs 16% | 5% vs 4% |
 
 The second pass leans a tier harder than the first — 4 of its 37 rows are Insane
 against 9 of the first 243 — because the games it read are where the genre keeps
@@ -202,11 +243,19 @@ Cogmind, Cataclysm: DDA, Tales of Maj'Eyal, Pokémon Mystery Dungeon, and from
 the second pass Angband, ADOM, Dungeons of Dredmor, Shiren and Tangledeep).
 
 The second-smallest pool was **Strategy**, which the first pass left at 18 rows
-drawn almost entirely from Mewgenics and Brutal Orchestra — so the second pass
-spent three of its thirteen games there (FTL, Into the Breach, Dwarf Fortress)
-and took it to 27. Across the whole file: Action 115, Traditional 86,
-Deckbuilder 52, Strategy 27 — still the sheet's lean, with the two thin ends
-pulled up.
+drawn almost entirely from Mewgenics and Brutal Orchestra. The second pass spent
+three of its thirteen games there (FTL, Into the Breach, Dwarf Fortress) and took
+it to 27; the third spent five of eleven (Slice & Dice, Shogun Showdown, Dome
+Keeper, Legend of Keepers, Ring of Pain) and took it to **37**. Across the whole
+file: Action 117, Traditional 91, Deckbuilder 56, Strategy 37 — still the
+sheet's lean, with the thin end pulled up twice.
+
+Strategy is the pool where a goal is hardest to write, which is why it stayed
+thin: the type covers everything from a fortress sim to a four-tile tactics
+board, so a goal has to survive both. The ones that work are about POSITION and
+UPKEEP rather than about hitting things — *repair something an enemy has broken*,
+*defeat an enemy before it reaches you*, *defeat the enemy that is making the
+others stronger*.
 
 ## Overlap ledger
 
@@ -248,6 +297,10 @@ reworded.
 | Propping up the others | Warden, Action — *protecting* the others | Psion, Strategy — *making the others stronger* | a shield vs a buff |
 | Eggs | Diggle, Bounty, Low — kill the parent standing over them | Spider Leader, Feat, Med — destroy the egg itself | opposite ends of the same nest |
 | The weakest thing | Mamel, Bounty, Low — defeat it | Boldor, Bounty, Med — defeat its KING | same species, one tier apart |
+| Propping up the others | Warden *protects*, Psion *buffs* | Priestess, Bounty, Med — *heals* | three roles, three verbs; Weirdling Beast heals only ITSELF |
+| Immobile | Turret, Bounty, Med — *cannot move* | Olmec, Bounty, Med — *cannot be damaged* | what the enemy can't do is the whole difference |
+| Phases | The Shogun, Feat, Insane — a boss with more than one | Bone Hydra, Bounty — an enemy with more than one HEAD | one is a fight that restarts, one is anatomy |
+| Summoned bodies | Carcass *kill the spawner*, Dreadful Offspring *clear the room* | Bones, Bounty, Low — kill the summoned thing itself | three points on the same chain |
 
 Cut as true duplicates: a second freeze (Stygian Guard), a second splitter (Pink
 Jelly), a second thief (Brogue Monkey), a second summoner (Ogre Shaman, Brood
@@ -257,11 +310,14 @@ second no-magic (ToME antimagic), a second two-boss fight (Donu and Deca), a
 second dragon (Dragon Prince), and Brotato's `Colossus`. The second pass added
 six more: Spelunky Classic's `Ghost` and `Olmec` (both already in the file under
 another game), Into the Breach's `Burrower`, Peglin's `Knight Knight`,
-Tangledeep's `Duke Dirtbeak` and Spelunky Classic's `King Alien Lord`.
+Tangledeep's `Duke Dirtbeak` and Spelunky Classic's `King Alien Lord`. The third
+added Gunfire Reborn's `Elite Lobster`, and three whole games — Fights in Tight
+Spaces, Moonlighter and Dicefolk — that produced nothing a row did not already
+say.
 
 ## Still open
 
-- **Use star power** — no enemy in any of the 58 games carries it.
+- **Use star power** — no enemy in any of the 69 games carries it.
 - **Drink milk**, **make a cake**, **smoke something** — all three are ordinary
   Cataclysm: DDA items, but no body on its bestiary is *about* them yet.
 - **14 rows are marked `?`** in the Confidence column, all of them from the
@@ -278,6 +334,17 @@ Tangledeep's `Duke Dirtbeak` and Spelunky Classic's `King Alien Lord`.
 - **UnderMine contributed two bosses and no ordinary enemies**, which is the
   wrong shape for a game — its normal roster (the peons, the bombers, the
   gloomcaps) never surfaced with enough detail to write a goal from.
+- **The third pass is boss-light**: 4 bosses in 21 rows, against the file's
+  overall 28%. Small games have one or two bosses and search surfaces the
+  ordinary roster first, so Slice & Dice, Dome Keeper, Legend of Keepers, Across
+  the Obelisk, Jupiter Hell, Rift Wizard and Hoplite all ship enemies only. Each
+  of them has a boss worth a row when someone can read the page rather than the
+  search result.
+- **Every pass so far has been limited by the same thing**, and it is worth
+  saying once: the egress proxy blocks the wikis, so every row in this file was
+  written off a search summary. That is why the yield per game keeps falling —
+  the first pass took the games whose rosters search knows by heart, and what is
+  left is games where you have to open the bestiary.
 - Every game whose wiki lists enemies as a stub — **Dungeon Clawler** especially
   — has more to give than the two rows here.
 - **Brutal Orchestra** and **Gnomes** are on the sheet but produced nothing this
@@ -289,6 +356,36 @@ Wikis read, by game. Direct fetching is blocked from this environment — the
 egress proxy refuses fandom, wiki.gg and the rest alike — so both passes read
 these through search results rather than page by page; that is the reason for
 the `?` column, and for the three under-read games above.
+
+### Third pass
+
+Slice & Dice ([1](https://slice-and-dice.fandom.com/wiki/Category:Enemies),
+[2](https://minmax.wiki/slice-and-dice/monsters),
+[3](https://slice-and-dice.fandom.com/wiki/Lich)) ·
+Shogun Showdown ([1](https://shogunshowdown.wiki.gg/wiki/Enemies),
+[2](https://shogunshowdown.wiki.gg/wiki/Bosses),
+[3](https://shogunshowdown.wiki.gg/wiki/The_Shogun)) ·
+Dome Keeper ([1](https://domekeeper.wiki.gg/wiki/Enemies),
+[2](https://domekeeper.wiki.gg/wiki/Sortable_Enemy_List),
+[3](https://domekeeper.wiki.gg/wiki/Walker)) ·
+Legend of Keepers ([1](https://legendofkeepers.fandom.com/wiki/Monsters),
+[2](https://legendofkeepers.fandom.com/wiki/Heroes)) ·
+Ring of Pain ([1](https://ring-of-pain.fandom.com/wiki/Owl_(Boss)),
+[2](https://www.pcinvasion.com/ring-of-pain-enemy-guide/)) ·
+Backpack Hero ([1](https://backpackhero.wiki.gg/wiki/Bestiary),
+[2](https://backpackhero.wiki.gg/wiki/Frozen_Heart)) ·
+Across the Obelisk ([1](https://ato.fandom.com/wiki/Enemies),
+[2](https://ato.fandom.com/wiki/Bosses),
+[3](https://ato.fandom.com/wiki/The_Wolf_Wars)) ·
+Jupiter Hell ([1](https://jupiterhell.fandom.com/wiki/Enemies),
+[2](https://classic.jupiterhell.com/wiki/Enemies)) ·
+Rift Wizard ([1](https://riftwizard.fandom.com/wiki/Monsters),
+[2](https://riftwizard2.wiki.gg/wiki/Monsters)) ·
+Hoplite ([1](https://github.com/ychalier/hoplite/blob/master/RULES.md),
+[2](https://en.wikipedia.org/wiki/Hoplite_(video_game))) ·
+Gunfire Reborn ([1](https://gunfirereborn.fandom.com/wiki/Enemies),
+[2](https://gunfirereborn.fandom.com/wiki/Category:Bosses),
+[3](https://gunfirereborn.fandom.com/wiki/Lu_Wu))
 
 ### Second pass
 
