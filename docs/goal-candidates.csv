@@ -1,0 +1,244 @@
+Sheet,Name,Type,Difficulty,Size,Game,Health,Damage,Goal Type,Goal,Ability,File,Tag,Phases,Confidence,Why this pairing
+enemies,Aleax,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Pray,N/A,Aleax,,,?,A minion your god sends when you anger it — prayer made flesh
+bosses,The One Who Waits,Action,4-Insane,2x2,Cult of the Lamb,1,9,Feat,Become religious,N/A,TheOneWhoWaits,god,,ok,The final boss who makes you a cult leader
+enemies,Aligned Cleric,Traditional,1-Low,1x1,NetHack,1,1,Feat,Worship at an altar,N/A,AlignedCleric,,,ok,Tends the co-aligned temple altar where worship and sacrifice happen
+bosses,Hexaghost,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Feat,Complete a ritual with multiple steps,N/A,Hexaghost,fire,,ok,"Six flames lit one per attack, then Inferno, then snuffed"
+bosses,Satan,Action,3-High,2x2,The Binding of Isaac,1,7,Feat,Make a deal with a devil,N/A,Satan,god,,ok,Sheol's boss; Devil Rooms trade heart containers for items
+enemies,Krampus,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Trade health for resources,N/A,Krampus,,,ok,The Devil Room's boss — the room where items cost heart containers
+enemies,Uriel,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Deal holy damage,N/A,Uriel,,,ok,Angel Room mini-boss; fires beams of light in a cross pattern
+enemies,Skeleton,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat a skeleton,N/A,Skeleton,"undead, skeleton",,ok,The genre's baseline skeleton; the Ball x Pit three are all ball-specific
+enemies,Zombie,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat a zombie,N/A,Zombie,"undead, zombie",,ok,"Slow, relentless, never stops walking at you"
+bosses,Awakened One,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Feat,Resurrect yourself 3 times and win,N/A,AwakenedOne,undead,,ok,"Dies, then stands back up with Curiosity"
+enemies,Necromancer,Traditional,1-Low,1x1,Shattered Pixel Dungeon,1,1,Feat,Attack a deceased enemy,N/A,Necromancer,undead,,ok,Raises a skeleton from a corpse and re-raises it
+enemies,Ghost,Traditional,2-Medium,1x1,Crypt of the NecroDancer,1,2,Feat,Gain an extra life,N/A,Ghost,"undead, ghost",,ok,"Killed, then returns as the thing it was"
+enemies,Mummy,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Bury a body,N/A,Mummy,undead,,ok,Wrapped and interred; graves are a real dungeon feature you can dig
+enemies,Violet Fungus,Traditional,1-Low,1x1,NetHack,1,1,Fetch,Obtain a mushroom,N/A,VioletFungus,mushroom,,ok,A mushroom that fights back; its corpse is the mushroom
+enemies,Slime Creature,Traditional,2-Medium,1x1,Dungeon Crawl Stone Soup,1,2,Feat,Double your max health,N/A,SlimeCreature,slime,,ok,"Two merge into a large slime creature, three into a very large one"
+enemies,Monster Lord,Traditional,2-Medium,1x1,Crypt of the NecroDancer,1,2,Feat,Grow in size,N/A,MonsterLord,,,ok,"Lords are twice the size of their counterpart, with doubled HP and damage"
+enemies,Larry Jr.,Action,1-Low,1x2,The Binding of Isaac,1,1,Feat,Attack 5+ enemies at once,N/A,LarryJr,worm,,ok,A segmented worm — one enemy that is many targets
+enemies,Gremlin Nob,Deckbuilder,1-Low,2x2,Slay the Spire,1,1,Feat,Taunt an enemy,N/A,GremlinNob,gremlin,,ok,Enrage: gains Strength every time you play a Skill
+enemies,Fat Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Fetch,Have 5 of the same item,N/A,FatGremlin,gremlin,,ok,One of five drawn from the same small pool — doubles and triples are routine
+enemies,Spiker,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Bounty,Defeat an enemy that damages you back,N/A,Spiker,,,ok,Act 3 enemy sitting behind Thorns
+enemies,Mad Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Bounty,Defeat an enemy that gets stronger when hit,N/A,MadGremlin,gremlin,,ok,Gains 1 Strength whenever it takes attack damage
+enemies,Writhing Mass,Deckbuilder,3-High,1x1,Slay the Spire,1,3,Discovery,Face an enemy that changes every time you hit it,N/A,WrithingMass,,,ok,Rerolls its intent and gains block on every hit
+enemies,Mystic,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Feat,Keep an ally alive for a whole fight,N/A,Mystic,,,ok,The healer half of the Centurion pair — kill her and the pair falls apart
+enemies,Byrds,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Attack every enemy on screen at once,N/A,Byrds,bird,,ok,A flock fought as one encounter — the fight that exists to be swept
+enemies,Sentry,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Feat,Do three things in one turn,N/A,Sentry,robot,,ok,"Fought as a row of three, alternating Bolt and Beam"
+enemies,Floating Eye,Traditional,3-High,1x1,NetHack,1,3,Restriction,Win without using melee attacks,N/A,FloatingEye,eye,,ok,The never-melee-this monster: its passive gaze paralyses you
+enemies,Oklob Plant,Traditional,2-Medium,1x1,Dungeon Crawl Stone Soup,1,2,Restriction,Win a fight without moving,N/A,OklobPlant,plant,,ok,Rooted forever and still lethal
+bosses,The Concierge,Action,4-Insane,2x2,Dead Cells,1,9,Restriction,Beat a boss without taking damage,N/A,TheConcierge,,,ok,"The first boss, whose whole fight is a dodge pattern"
+enemies,Knight Bullet Kin,Action,1-Low,1x1,Enter the Gungeon,1,1,Restriction,Do not equip headgear,N/A,KnightBulletKin,gun,,ok,A bullet that survives on its helmet — shoot it off and it dies
+enemies,Nymph,Traditional,2-Medium,1x1,NetHack,1,2,Restriction,Get naked,N/A,Nymph,,,ok,"Charms you into handing over worn armour, then teleports away"
+enemies,Watchman,Traditional,2-Medium,1x1,NetHack,1,2,Restriction,Do not kill any innocents,N/A,Watchman,cop,,ok,Peaceful until you swing; killing one is a murder
+bosses,The Needle,Deckbuilder,2-Medium,1x1,Balatro,1,5,Restriction,Use only one hand,N/A,TheNeedle,,,ok,Play only 1 hand
+enemies,The Manacle,Deckbuilder,2-Medium,1x1,Balatro,1,2,Restriction,Win with a negative modifier,N/A,TheManacle,,,ok,-1 hand size for the blind
+enemies,The Water,Deckbuilder,2-Medium,1x1,Balatro,1,2,Restriction,Do not use consumables,N/A,TheWater,,,ok,Start the blind with 0 discards
+enemies,Greed,Action,1-Low,1x1,The Binding of Isaac,1,1,Restriction,Never skip an offered reward,N/A,Greed,,,ok,The boss that takes everything on offer
+enemies,Super Greed,Action,2-Medium,1x1,The Binding of Isaac,1,2,Restriction,Never buy more than 2 things in one shop,N/A,SuperGreed,,,ok,Greed's escalation — a shop-flavoured body for a shop rule
+bosses,Providence,Action,4-Insane,2x2,Risk of Rain,1,9,Restriction,Always choose the highest difficulty available,N/A,Providence,god,,ok,Final boss at the top of a bar that never stops climbing
+enemies,I.D.P.D. Elite,Action,2-Medium,1x1,Nuclear Throne,1,2,Restriction,Kill every enemy you run into,N/A,IDPDElite,cop,,ok,They come through a portal specifically to find you
+enemies,Black Pudding,Traditional,1-Low,1x1,NetHack,1,1,Feat,Upgrade a weapon or item,N/A,BlackPudding,slime,,ok,Corrodes your weapon on every hit — keeping gear upgraded becomes the run
+bosses,Gronk,Action,2-Medium,2x2,Muck,1,5,Feat,Forge a weapon,N/A,Gronk,,,ok,The boss whose drop is the crafting path to the game's best weapon
+enemies,Warlock,Traditional,2-Medium,1x1,Shattered Pixel Dungeon,1,2,Feat,Enchant an item 5+ times,N/A,Warlock,,,ok,Its darts degrade what you carry; stacking enchantment anyway is the counter
+enemies,Disenchanter,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Get an item or ability downgraded,N/A,Disenchanter,,,ok,Its touch strips enchantment off what you wield or wear
+enemies,Mind Flayer,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Lose an ability permanently and win anyway,N/A,MindFlayer,,,ok,Eats an intrinsic straight out of your head
+enemies,Keystone Kops,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Steal from a shop and escape,N/A,KeystoneKops,cop,,ok,Spawn the moment you leave without paying and chase you
+enemies,Aurelionite,Action,2-Medium,1x1,Risk of Rain 2,1,2,Fetch,Obtain 5 max tier items in one run,N/A,Aurelionite,rock,,ok,The Halcyon Seed boss you fight to top out your inventory
+enemies,Chubs 'n' Nubs,Strategy,1-Low,1x1,Mewgenics,1,1,Fetch,Get some trash,N/A,ChubsNNubs,cat,,ok,The final encounter of The Junkyard
+enemies,Golden Monkey,Action,1-Low,1x1,Spelunky 2,1,1,Fetch,Acquire a gem or a diamond,N/A,GoldenMonkey,monkey,,ok,Drops gems when killed; the only reason to chase one
+enemies,Glyphid Praetorian,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Fetch,Mine an ore,N/A,GlyphidPraetorian,bug,,ok,A large melee glyphid that digs through terrain
+enemies,Mimic,Traditional,1-Low,1x1,Shattered Pixel Dungeon,1,1,Feat,Open 10 locked doors or chests,N/A,Mimic,,,ok,A locked chest that turns out to be a monster
+enemies,Minotaur,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Feat,Break down a door,N/A,Minotaur,,,ok,Charges in a straight line and smashes through what is in the way
+bosses,Wallmonger,Action,2-Medium,3x3,Enter the Gungeon,1,5,Feat,Break through a wall,N/A,Wallmonger,,,ok,A boss that is the wall
+bosses,Treadnaught,Action,2-Medium,2x2,Enter the Gungeon,1,5,Feat,Pilot a vehicle,N/A,Treadnaught,,,ok,A tank piloted by a Tanker that got lucky and found it
+enemies,Xi Construct,Action,2-Medium,2x2,Risk of Rain 2,1,2,Feat,Pilot or ride a flying machine,N/A,XiConstruct,robot,,ok,A hovering machine that fights as a flying platform
+enemies,DM-200,Traditional,2-Medium,1x1,Shattered Pixel Dungeon,1,2,Feat,Repair a vehicle or a machine,N/A,DM200,robot,,ok,Dwarven machinery still running long after its keepers died
+bosses,DM-300,Traditional,2-Medium,2x2,Shattered Pixel Dungeon,1,5,Feat,Fix a broken machine,N/A,DM300,robot,,ok,The broken mining machine boss
+enemies,The Giant,Action,2-Medium,3x3,Dead Cells,1,2,Feat,Destroy a building,N/A,TheGiant,,,ok,Large enough that the arena is part of the fight
+enemies,Goblin Leader,Strategy,2-Medium,1x1,Loop Hero,1,2,Feat,Build a house or a base,N/A,GoblinLeader,goblin,,ok,Spawns from a goblin camp you placed — appears because you built something
+enemies,Strider,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Touch water,N/A,Strider,water,,ok,"Downpour is waist-deep water and Striders swim it, pits included"
+enemies,Dingle,Action,1-Low,1x1,The Binding of Isaac,1,1,Discovery,Enter a sewer,N/A,Dingle,,,ok,The sewage boss; Flushmaster already covers flushing
+enemies,Rainmaker,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Take a bath or a shower,N/A,Rainmaker,water,,ok,"The boss of the flooded floor, who brings the rain down on you"
+enemies,Ukko,Action,2-Medium,1x1,Noita,1,2,Feat,Change the weather,N/A,Ukko,lightning,,ok,Named for the Finnish god of the heavens; a thunder mage
+enemies,Slog of the Cloaca,Traditional,2-Medium,1x1,Caves of Qud,1,2,Fetch,Carry 4 different liquids at once,N/A,SlogOfTheCloaca,slime,,ok,"A unique made of sludge, in the game whose world model is liquids mixing"
+bosses,Ylialkemisti,Action,2-Medium,2x2,Noita,1,5,Feat,Drink a mystery liquid,N/A,Ylialkemisti,,,ok,"The high alchemist — unlabelled flasks, unpredictable results"
+enemies,Limatoukka,Action,1-Low,1x1,Noita,1,1,Feat,"Be solid, liquid and gas in one run",N/A,Limatoukka,slime,,ok,Noita's material sim is the only place this is literal
+enemies,Gas Spore,Traditional,2-Medium,1x1,NetHack,1,2,Bounty,Defeat a boss in one turn,N/A,GasSpore,,,ok,Kill it and it detonates — the whole creature resolves in one hit
+enemies,The Time Keeper,Action,2-Medium,1x1,Dead Cells,1,2,Bounty,Beat the clock,N/A,TheTimeKeeper,,,ok,The boss built around time and its reversal
+bosses,Death,Action,3-High,2x2,Vampire Survivors,1,7,Bounty,Reach level 30,N/A,Death,undead,,ok,Arrives at the 30-minute mark — the game's hard timer with a scythe
+enemies,Deep Blues,Traditional,2-Medium,1x1,Crypt of the NecroDancer,1,2,Feat,Complete a daily or weekly run,N/A,DeepBlues,,,ok,The chess boss — the same puzzle for everyone who plays that day
+bosses,Cerberus,Action,1-Low,2x2,Hades,1,3,Feat,Pet a pet,N/A,Cerberus,dog,,ok,You can pet the dog; in Hades II you fight him
+enemies,Little Dog,Traditional,1-Low,1x1,NetHack,1,1,Feat,Feed an animal,N/A,LittleDog,dog,,ok,Feeding is how a pet stays yours
+bosses,Leshy,Action,2-Medium,2x2,Cult of the Lamb,1,5,Feat,Tame an enemy,N/A,Leshy,,,ok,"Darkwood's bishop, in the game where the defeated join your flock"
+enemies,Kallamar,Action,2-Medium,1x1,Cult of the Lamb,1,2,Fetch,Catch 5 creatures,N/A,Kallamar,fish,,ok,"Anchordeep's bishop — the water region, and the fishing"
+bosses,Asterius,Action,2-Medium,2x2,Hades,1,5,Feat,Do not win alone,N/A,Asterius,,,ok,Fought alongside Theseus — a pair that will not be split
+enemies,Medusa,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Have an enemy defeat 3 enemies,N/A,Medusa,,,ok,Her gaze does not care who is looking
+enemies,Dar Blademaster,Traditional,2-Medium,1x1,Brogue,1,2,Feat,Train an ally to be stronger,N/A,DarBlademaster,,,ok,Brogue allies level up as they fight beside you
+enemies,Dracula,Action,1-Low,1x1,Dead Cells,1,1,Discovery,Encounter a character from another series,N/A,Dracula,"undead, vampire",,ok,A different studio's icon in a Dead Cells boss arena
+bosses,Kolmisilma,Action,1-Low,2x2,Noita,1,3,Discovery,Play a game in another language,N/A,Kolmisilma,eye,,ok,Every creature is named in untranslated Finnish
+enemies,Chrome Pyramid,Traditional,4-Insane,1x1,Caves of Qud,1,4,Bounty,Get an achievement 5% or fewer players have,N/A,ChromePyramid,robot,,ok,Highest-level non-unique creature; killing one grants an achievement
+enemies,Hush,Action,2-Medium,1x1,The Binding of Isaac,1,2,Bounty,Obtain a new achievement,N/A,Hush,,,ok,The hidden boss behind the Blue Womb timer
+bosses,Delirium,Action,4-Insane,2x2,The Binding of Isaac,1,9,Feat,Get 10 achievements in one run,N/A,Delirium,,,ok,Shapeshifts through every boss in the game in one fight
+bosses,Voidling,Action,3-High,2x2,Risk of Rain 2,1,7,Discovery,Enter a void,N/A,Voidling,,,?,The Planetarium boss at the end of the void path
+enemies,Ultra Greed,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Unlock a new character,N/A,UltraGreed,,,ok,"Greed Mode's finale, and the unlock engine for half the roster"
+bosses,Johannes,Action,2-Medium,2x2,Rogue Legacy,1,5,Discovery,Play as a character that looks like you,N/A,Johannes,,,ok,The final boss is your own ancestor
+bosses,The Resourceful Rat,Action,2-Medium,2x2,Enter the Gungeon,1,5,Feat,Beat a minigame inside a game,N/A,TheResourcefulRat,rat,,ok,His second phase is a Punch-Out-style boxing match
+bosses,Hand of the King,Action,4-Insane,2x2,Dead Cells,1,9,Bounty,Beat a game you would rate 8 or higher,N/A,HandOfTheKing,,,ok,The final boss of a game nobody scores below an 8
+enemies,The Fallen,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Do a push-up whenever you lose a run,N/A,TheFallen,undead,,ok,Splits into two copies when killed — charges you extra for every ending
+enemies,Shield Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Deal damage equal to your block,N/A,ShieldGremlin,gremlin,,ok,Spends its whole existence handing out block
+enemies,Amalaric Sniper,Action,2-Medium,1x1,Vampire Survivors,1,2,Feat,Reach maximum crit chance,N/A,AmalaricSniper,gun,,ok,One aimed shot from off-screen for a huge chunk
+enemies,Shotgrub,Action,2-Medium,1x1,Enter the Gungeon,1,2,Bounty,Defeat an enemy with a shotgun,N/A,Shotgrub,"gun, bug",,ok,Walks at you firing waving spreads
+bosses,Big Dog,Action,2-Medium,2x2,Nuclear Throne,1,5,Bounty,Overkill an enemy by double its health,N/A,BigDog,"robot, dog",,ok,The scrapyard boss you either delete or lose to
+enemies,Cockatrice,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Use an improvised weapon,N/A,Cockatrice,,,ok,Wield the corpse with gloves and petrify what you touch
+enemies,Blobulin,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat an enemy without violence,N/A,Blobulin,slime,,ok,What the Devolver turns enemies into — you win by making it harmless
+bosses,Violet Vessel,Deckbuilder,3-High,1x1,Balatro,1,7,Discovery,Make the number 100000 appear,N/A,VioletVessel,,,ok,A finisher blind whose requirement puts six figures on screen
+enemies,The Lamb,Action,3-High,1x1,The Binding of Isaac,1,3,Bounty,Beat a boss with 1 health left,N/A,TheLamb,god,,ok,The head keeps fighting after the body is gone
+bosses,Goo,Traditional,1-Low,2x2,Shattered Pixel Dungeon,1,3,Feat,Go from 1 health to full health,N/A,Goo,slime,,ok,Regenerates in the water it sits in
+enemies,Mega Satan,Action,3-High,1x1,The Binding of Isaac,1,3,Feat,Reduce your max health by half,N/A,MegaSatan,god,,ok,"The end of the Devil-deal road, where max health is the currency"
+bosses,Hecate,Action,2-Medium,2x2,Hades II,1,5,Feat,Get hexed or cursed,N/A,Hecate,,,ok,The Witch of the Crossroads fights with hexes
+enemies,Chub,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Puke,N/A,Chub,,,ok,Eats and spits — the boss you can feed things to
+enemies,Mom,Action,2-Medium,1x1,The Binding of Isaac,1,2,Bounty,Defeat your parent,N/A,Mom,,,ok,"The parent, in the game named for one"
+enemies,Blue Baby,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Make someone cry,N/A,BlueBaby,,,ok,A crying child who attacks with his tears
+bosses,Mithrix,Action,3-High,2x2,Risk of Rain 2,1,7,Feat,Destroy a planet or a moon,N/A,Mithrix,god,,ok,Beat him and the moon comes apart while you run for the ship
+enemies,Heket,Action,1-Low,1x1,Cult of the Lamb,1,1,Bounty,Defeat a green creature,N/A,Heket,frog,,ok,Anura's bishop — an enormous green frog
+enemies,Book of Stabbing,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Read a book,N/A,BookOfStabbing,,,ok,An Act 2 enemy that is a book
+enemies,Bullet Kin,Action,1-Low,1x1,Enter the Gungeon,1,1,Restriction,Skip the tutorial,N/A,BulletKin,gun,,ok,The first thing the tutorial teaches you to shoot
+enemies,Witch Doctor,Action,2-Medium,1x1,Spelunky 2,1,2,Feat,Sacrifice a creature you defeated,N/A,WitchDoctor,,,ok,Worth double favour at Kali's altar
+enemies,Vampire,Action,1-Low,1x1,Spelunky 2,1,1,Fetch,Drink blood,N/A,Vampire,vampire,,ok,The Kapala drinks blood; the vampire is where it comes from
+bosses,Olmec,Action,2-Medium,2x2,Spelunky 2,1,5,Bounty,Defeat an enemy you cannot damage,N/A,Olmec,rock,,ok,Indestructible — mattock and bombs do nothing
+enemies,Angry Shopkeeper,Action,2-Medium,1x1,Spelunky 2,1,2,Feat,Anger a shopkeeper and survive the floor,N/A,AngryShopkeeper,gun,,ok,Shoot one and every shopkeeper in the run hunts you
+enemies,Qilin,Action,1-Low,1x1,Spelunky 2,1,1,Feat,Ride an animal,N/A,Qilin,,,ok,"A rideable mount, not a vehicle"
+bosses,The Collector,Strategy,1-Low,2x2,Darkest Dungeon,1,3,Fetch,Fill your inventory to the last slot,N/A,TheCollector,,,ok,Ambushes when 13+ inventory slots are full — summoned by how you play
+bosses,The Shambler,Strategy,3-High,2x2,Darkest Dungeon,1,7,Restriction,Play a whole level with no light,N/A,TheShambler,,,ok,Ambushes at torch level 0
+enemies,Swine Prince,Strategy,1-Low,1x1,Darkest Dungeon,1,1,Feat,Beat a boss by killing its helper first,N/A,SwinePrince,pig,,ok,Wilbur buffs him; kill the small one and the fight collapses
+enemies,Madman,Strategy,2-Medium,1x1,Darkest Dungeon,1,2,Feat,Survive an enemy that never attacks you directly,N/A,Madman,,,ok,"Deals only stress, never damage"
+enemies,The Countess,Strategy,3-High,1x1,Darkest Dungeon,1,3,Feat,Beat a boss while diseased or cursed,N/A,TheCountess,,,ok,"Crimson Court's finale, where the curse is the fight"
+enemies,Bone Courtier,Strategy,3-High,1x1,Darkest Dungeon,1,3,Restriction,Beat a boss without letting it summon,N/A,BoneCourtier,"undead, skeleton",,ok,Shuffles the party and calls in more bones
+enemies,The Fanatic,Strategy,3-High,1x1,Darkest Dungeon,1,3,Feat,Keep an ally alive for a whole floor,N/A,TheFanatic,fire,,ok,"He burns your heroes at the stake — the threat, not the escortee"
+enemies,Thing From The Stars,Strategy,1-Low,1x1,Darkest Dungeon,1,1,Discovery,Encounter something from space,N/A,ThingFromTheStars,alien,,ok,The Color of Madness mini-boss
+bosses,Seraph,Deckbuilder,3-High,2x2,Monster Train,1,7,Restriction,Win a fight where the enemy sets an extra rule,N/A,Seraph,god,,ok,Each Seraph variant imposes a different rule on the fight
+enemies,Lightwing,Deckbuilder,2-Medium,1x1,Monster Train,1,2,Restriction,Protect something for a whole fight,N/A,Lightwing,,,ok,Seraph spawns one every round and they go for the pyre
+enemies,Avowed Gladiator,Deckbuilder,1-Low,1x1,Monster Train,1,1,Feat,Fight on two fronts at once,N/A,AvowedGladiator,,,?,Monster Train is fought on stacked floors at the same time
+enemies,Ragewing Assassin,Deckbuilder,1-Low,1x1,Monster Train,1,1,Bounty,Defeat an enemy that ignores your front line,N/A,RagewingAssassin,,,?,Goes straight past whatever you put in front
+enemies,Kecleon,Traditional,4-Insane,1x1,Pokemon Mystery Dungeon,1,4,Bounty,Defeat a shopkeeper,N/A,Kecleon,,,ok,Rob the shop and the floor fills with double-speed Kecleon
+bosses,Groudon,Traditional,2-Medium,2x2,Pokemon Mystery Dungeon,1,5,Bounty,Defeat an enemy with ten times your health,N/A,Groudon,,,ok,1600+ HP in Magma Cavern
+enemies,Zapdos,Traditional,2-Medium,1x1,Pokemon Mystery Dungeon,1,2,Bounty,Defeat an enemy you can then recruit,N/A,Zapdos,"bird, lightning",,ok,"Beat it, then it can join you"
+enemies,Rayquaza,Traditional,2-Medium,1x1,Pokemon Mystery Dungeon,1,2,Bounty,Beat a final boss on your first attempt,N/A,Rayquaza,dragon,,ok,"Sky Tower's wall, and the run's ending"
+bosses,Primal Dialga,Traditional,3-High,2x2,Pokemon Mystery Dungeon,1,7,Bounty,Defeat a boss that controls time,N/A,PrimalDialga,dragon,,ok,The Explorers finale
+enemies,Zombie Master,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Discovery,Watch an enemy upgrade another enemy,N/A,ZombieMaster,"undead, zombie",,ok,Turns a pack of ordinary zombies into spitters and shockers
+enemies,Shocker Zombie,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Bounty,Defeat an enemy that shocks you,N/A,ShockerZombie,"undead, zombie, lightning",,ok,The zapper line's evolution
+enemies,Boomer,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Feat,Get covered in something,N/A,Boomer,"undead, zombie",,ok,Bursts and coats you in bile
+enemies,Zombie Hulk,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Bounty,Defeat an enemy that knocks you through a wall,N/A,ZombieHulk,"undead, zombie",,ok,Made from the strongest humans
+enemies,Mi-go,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Feat,Permanently change your own body,N/A,MiGo,alien,,ok,Lab and temple surgeons — the game's body horror
+enemies,Skeletal Juggernaut,Traditional,2-Medium,1x1,Cataclysm: Dark Days Ahead,1,2,Discovery,Survive until the enemies get stronger,N/A,SkeletalJuggernaut,"undead, skeleton",,?,Zombie evolution is a real clock tied to days since the Cataclysm
+enemies,Chicken Walker,Traditional,1-Low,1x1,Cataclysm: Dark Days Ahead,1,1,Bounty,Defeat a walking machine,N/A,ChickenWalker,robot,,?,Military hardware still patrolling
+bosses,Behemoth,Traditional,3-High,2x2,Cogmind,1,7,Bounty,Defeat an enemy that takes up four spaces,N/A,Behemoth,robot,,ok,Behemoths occupy four tiles instead of one — the footprint goal
+enemies,Watcher,Traditional,3-High,1x1,Cogmind,1,3,Restriction,Clear a floor without being spotted,N/A,Watcher,robot,,ok,Unarmed; exists only to report you
+enemies,Programmer,Traditional,2-Medium,1x1,Cogmind,1,2,Discovery,Watch an enemy turn your ally against you,N/A,Programmer,robot,,ok,"Corrupts other robots with EM weaponry, yours included"
+enemies,Hunter,Traditional,1-Low,1x1,Cogmind,1,1,Discovery,Be hunted across floors,N/A,Hunter,robot,,ok,Works in pairs to track you down
+enemies,Swarmer,Traditional,1-Low,1x1,Cogmind,1,1,Feat,Be surrounded on every side,N/A,Swarmer,robot,,ok,Small flying bots that overwhelm in groups
+enemies,Grunt,Traditional,1-Low,1x1,Cogmind,1,1,Bounty,Defeat an enemy that outguns you,N/A,Grunt,robot,,ok,The basic front-line combat robot
+enemies,Operator,Traditional,1-Low,1x1,Cogmind,1,1,Feat,Hack or override a machine,N/A,Operator,robot,,ok,The robot that works the terminals
+enemies,Hauler,Traditional,3-High,1x1,Cogmind,1,3,Restriction,Win using only equipment taken from enemies,N/A,Hauler,robot,,ok,Carries salvage around the complex
+enemies,Recycler,Traditional,1-Low,1x1,Cogmind,1,1,Fetch,Get some scrap,N/A,Recycler,robot,,ok,Collects what is left of the dead
+bosses,Xucat',Action,3-High,2x2,Curse of the Dead Gods,1,7,Feat,Carry four curses at once,N/A,Xucat,,,ok,Four curses is the cap before the fifth and final one lands
+enemies,Xak'olchir,Action,1-Low,1x1,Curse of the Dead Gods,1,1,Feat,Pay for something with your own blood,N/A,XakOlchir,,,ok,Blood offerings are one of the three ways corruption fills
+enemies,Champion of Death,Action,1-Low,1x1,Curse of the Dead Gods,1,1,Bounty,Defeat an enemy while cursed,N/A,ChampionOfDeath,undead,,ok,Killing a champion is one of only two ways to lift a curse
+enemies,Dreadful Offspring,Action,2-Medium,1x1,Curse of the Dead Gods,1,2,Feat,Clear a room where every kill spawns more,N/A,DreadfulOffspring,,,ok,Cadaverous Infestation in a body
+enemies,Headless Guardian,Action,1-Low,1x1,Curse of the Dead Gods,1,1,Bounty,Defeat something with no head,N/A,HeadlessGuardian,undead,,ok,Still fighting without one
+bosses,The Wicked Twins,Action,2-Medium,2x2,Curse of the Dead Gods,1,5,Bounty,Defeat two bosses in one fight,N/A,TheWickedTwins,,,ok,"One encounter, two champions"
+enemies,Infernal Jaguars,Action,1-Low,1x1,Curse of the Dead Gods,1,1,Bounty,Defeat a big cat,N/A,InfernalJaguars,"cat, fire",,ok,The Jaguar temple's namesake
+enemies,Malok paal,Action,1-Low,1x1,Curse of the Dead Gods,1,1,Bounty,Defeat something stitched from other creatures,N/A,MalokPaal,,,ok,The Flesh Monstrosity
+enemies,Kashio,Deckbuilder,2-Medium,1x1,Griftlands,1,2,Feat,Resolve an encounter without fighting,N/A,Kashio,,,ok,A Spark Baron you can argue down instead of killing
+bosses,Fellemo,Deckbuilder,2-Medium,2x2,Griftlands,1,5,Feat,Turn an enemy into an ally,N/A,Fellemo,,,ok,Negotiation is a full parallel combat system here
+bosses,Plocka,Deckbuilder,2-Medium,2x2,Griftlands,1,5,Feat,Make an enemy flee or surrender,N/A,Plocka,,,ok,Break resolve rather than health
+enemies,Jake Smuggler,Deckbuilder,1-Low,1x1,Griftlands,1,1,Fetch,Complete a side quest or bounty,N/A,JakeSmuggler,,,ok,The Jakes run the jobs board
+enemies,Arint,Deckbuilder,1-Low,1x1,Griftlands,1,1,Discovery,Meet an enemy that remembers a past run,N/A,Arint,,,ok,Griftlands tracks who you wronged
+bosses,Weirdling Beast,Traditional,2-Medium,2x2,Tales of Maj'Eyal,1,5,Bounty,Defeat an enemy that heals to full,N/A,WeirdlingBeast,,,ok,"Heals to full in a few turns, and does it often"
+bosses,Ukruk the Fierce,Traditional,2-Medium,2x2,Tales of Maj'Eyal,1,5,Feat,Survive a fight you were meant to lose,N/A,UkrukTheFierce,,,ok,A scripted ambush you are not supposed to win
+enemies,Bill the Stone Troll,Traditional,2-Medium,1x1,Tales of Maj'Eyal,1,2,Feat,Unlock a permanent upgrade,N/A,BillTheStoneTroll,"troll, rock",,ok,"Drops the Transmogrification Chest, which unlocks for all future characters"
+enemies,Grand Corruptor,Traditional,3-High,1x1,Tales of Maj'Eyal,1,3,Feat,Survive a room that hurts you every turn,N/A,GrandCorruptor,,,ok,"Drags you to the Fearscape, which damages you and heals him"
+enemies,Rak'Shor Cultist,Traditional,2-Medium,1x1,Tales of Maj'Eyal,1,2,Discovery,Face an enemy that copies you,N/A,RakShorCultist,,,ok,"Spawns a shade with your appearance, stats and talents"
+bosses,The Lich,Strategy,3-High,2x2,Loop Hero,1,7,Bounty,Defeat a boss you summoned yourself,N/A,TheLich,"undead, skeleton",,ok,"Chapter I's boss, brought by the tiles you placed"
+enemies,Harpy,Strategy,1-Low,1x1,Loop Hero,1,1,Feat,Change the map to make an enemy appear,N/A,Harpy,bird,,ok,Spawns after you create a mountain peak
+enemies,Chest,Strategy,1-Low,1x1,Loop Hero,1,1,Bounty,Defeat a chest that fights back,N/A,Chest,,,ok,Spawns at the start of each loop on a battlefield
+enemies,Blood Clot,Strategy,1-Low,1x1,Loop Hero,1,1,Bounty,Defeat an enemy made of blood,N/A,BloodClot,,,ok,Spawns every 4 days on a blood path
+enemies,Frost Jailer,Deckbuilder,1-Low,1x1,Wildfrost,1,1,Feat,Free something frozen or trapped,N/A,FrostJailer,ice,,ok,Companions are freed from ice blocks; the Jailer is what puts them there
+enemies,Truffle,Deckbuilder,1-Low,1x1,Wildfrost,1,1,Bounty,Defeat a mushroom,N/A,Truffle,mushroom,,ok,One of the game's named bosses
+bosses,Eye of the Storm,Deckbuilder,3-High,2x2,Wildfrost,1,7,Restriction,Win a fight using only status effects,N/A,EyeOfTheStorm,"ice, eye",,ok,"The final fight, decided by stacked statuses"
+bosses,Bamboozle,Deckbuilder,2-Medium,2x2,Wildfrost,1,5,Restriction,Win a fight without knowing what the enemy does,N/A,Bamboozle,,,?,A boss built on misdirection
+enemies,Krunker,Deckbuilder,2-Medium,1x1,Wildfrost,1,2,Bounty,Defeat an enemy that destroys your items,N/A,Krunker,,,?,Eats what you brought with you
+enemies,Warden,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Bounty,Defeat the enemy protecting the others,N/A,Warden,bug,,ok,Mind-links nearby enemies and hands them damage reduction
+enemies,Bulk Detonator,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Feat,Survive an explosion that fills the screen,N/A,BulkDetonator,bug,,ok,Goes off big enough to take the room
+enemies,Oppressor,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Bounty,Defeat an enemy you cannot hurt from the front,N/A,Oppressor,bug,,ok,"Armoured at the front, soft behind"
+enemies,Stingtail,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Feat,Get grabbed and escape,N/A,Stingtail,bug,,ok,Grabs and drags you out of position
+enemies,Web Spitter,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Feat,Get stuck in place and break out,N/A,WebSpitter,"bug, spider",,ok,Webs the ground under you
+enemies,Gorilla,Action,1-Low,1x1,Streets of Rogue,1,1,Bounty,Defeat a beast in melee,N/A,Gorilla,monkey,,ok,"No weapons, only Primal Lunge"
+enemies,Werewolf,Action,1-Low,1x1,Streets of Rogue,1,1,Discovery,Witness an enemy transform,N/A,Werewolf,,,ok,Turns when the conditions are right
+enemies,Cop,Action,3-High,1x1,Streets of Rogue,1,3,Restriction,Finish a level without killing anyone,N/A,Cop,cop,,ok,"Knockouts are a real alternative here, and killing cops escalates"
+bosses,The First Hero,Action,3-High,2x2,Skul: The Hero Slayer,1,7,Bounty,Defeat another game's protagonist,N/A,TheFirstHero,,,ok,The hero comes down to kill you — you are the monster
+enemies,Elder Ent: Yggdrasil,Action,1-Low,1x1,Skul: The Hero Slayer,1,1,Bounty,Defeat a tree,N/A,ElderEntYggdrasil,plant,,ok,The Forest of Harmony's boss
+enemies,Distorted Goddess: Chimera,Action,1-Low,1x1,Skul: The Hero Slayer,1,1,Bounty,Defeat something made of several creatures,N/A,DistortedGoddessChimera,god,,ok,The Grand Hall's boss
+bosses,Alexander,Action,1-Low,2x2,Skul: The Hero Slayer,1,3,Bounty,Defeat an emperor,N/A,Alexander,,,ok,Emperor of Caerleon
+enemies,The Angler,Deckbuilder,1-Low,1x1,Inscryption,1,1,Bounty,Defeat an enemy that steals from you mid-fight,N/A,TheAngler,fish,,ok,Hooks your last-played card every other turn
+enemies,The Trapper,Deckbuilder,1-Low,1x1,Inscryption,1,1,Fetch,Trade a monster drop for something better,N/A,TheTrapper,,,ok,"Turns your dead cards into pelts, which the Trader buys back as creatures"
+enemies,The Prospector,Deckbuilder,1-Low,1x1,Inscryption,1,1,Feat,Turn something you own into currency,N/A,TheProspector,,,ok,Second phase turns your played cards into gold
+bosses,Grimora,Deckbuilder,2-Medium,2x2,Inscryption,1,5,Feat,Leave a record of a character who died,N/A,Grimora,undead,,ok,The death scrybe; death cards persist into later runs
+bosses,P03,Deckbuilder,3-High,2x2,Inscryption,1,7,Discovery,Catch the game changing its own rules,N/A,P03,robot,,ok,Takes the game over from the inside
+enemies,The Unfinished Boss,Deckbuilder,1-Low,1x1,Inscryption,1,1,Bounty,Defeat an unfinished enemy,N/A,TheUnfinishedBoss,,,ok,An Uberbot P03 never completed
+enemies,Ogre,Traditional,2-Medium,1x1,Brogue,1,2,Feat,Free a caged enemy and fight beside it,N/A,Ogre,ogre,,?,Captives are chained in the early dungeon and freed by walking into them
+enemies,Paralytic Bloat,Traditional,1-Low,1x1,Brogue,1,1,Feat,Lose a turn to paralysis and survive,N/A,ParalyticBloat,,,ok,Pops into a cloud of paralytic gas
+enemies,Phantom,Traditional,1-Low,1x1,Brogue,1,1,Feat,Fight something you cannot see,N/A,Phantom,ghost,,ok,Invisible except as a disturbance
+enemies,Goblin Conjurer,Traditional,1-Low,1x1,Brogue,1,1,Feat,Let a summon land the killing blow,N/A,GoblinConjurer,goblin,,ok,Summons spectral blades to fight for it
+bosses,Warden of Yendor,Traditional,3-High,2x2,Brogue,1,7,Discovery,Go deeper than the run required,N/A,WardenOfYendor,,,ok,Guards what is past the point you needed to reach
+bosses,Fenrir,Strategy,2-Medium,2x2,Mewgenics,1,5,Bounty,Defeat an enemy that hides and lays traps,N/A,Fenrir,dog,,ok,Hides in the grass and seeds traps your cats will step on
+bosses,Boris,Strategy,1-Low,2x2,Mewgenics,1,3,Bounty,Pop something swollen,N/A,Boris,cat,,ok,A grotesquely bloated 200 HP cat at the end of the Sewers
+bosses,Bob,Action,3-High,2x2,Muck,1,7,Feat,Build a vehicle and leave in it,N/A,Bob,,,ok,The last thing you kill once the boat is built and you set sail
+enemies,Woodman,Action,1-Low,1x1,Muck,1,1,Feat,Chop down a tree,N/A,Woodman,plant,,ok,The tree that hits back
+enemies,Wyvern,Action,1-Low,1x1,Muck,1,1,Bounty,Defeat a flying beast,N/A,Wyvern,dragon,,ok,Night-spawning boss
+enemies,Chief,Action,1-Low,1x1,Muck,1,1,Bounty,Defeat a leader,N/A,Chief,,,ok,One of the six bosses between you and the boat
+bosses,Skeleton King,Action,1-Low,2x2,Ball x Pit,1,3,Bounty,Defeat a crowned undead,N/A,SkeletonKing,"undead, skeleton",,ok,A stage boss with a crown on
+bosses,Sabertooth,Action,1-Low,2x2,Ball x Pit,1,3,Bounty,Defeat an extinct animal,N/A,Sabertooth,cat,,ok,A stage boss
+enemies,Lord of Owls,Action,1-Low,1x1,Ball x Pit,1,1,Bounty,Defeat a bird,N/A,LordOfOwls,bird,,ok,A stage boss
+enemies,Shroom Swarm,Action,2-Medium,1x1,Ball x Pit,1,2,Bounty,Defeat a mushroom colony,N/A,ShroomSwarm,mushroom,,ok,A stage boss made of many bodies
+enemies,Old King,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat a king and take the crown,N/A,OldKing,gun,,ok,The Abbey of the True Gun's boss
+enemies,Kill Pillars,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat four enemies that share one fight,N/A,KillPillars,,,ok,"Four pillars, one encounter"
+enemies,High Priest,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat a priest,N/A,HighPriest,gun,,ok,The Hollow's homing-bullet boss
+enemies,Mine Flayer,Action,1-Low,1x1,Enter the Gungeon,1,1,Bounty,Defeat a boss inside a mine,N/A,MineFlayer,,,ok,Black Powder Mine's Cthulhu-shaped boss
+bosses,King Conga,Traditional,1-Low,2x2,Crypt of the NecroDancer,1,3,Fetch,Wear a crown,N/A,KingConga,monkey,,ok,A crowned gorilla king
+bosses,The Necrodancer,Traditional,3-High,2x2,Crypt of the NecroDancer,1,7,Restriction,Do not pause the game,N/A,TheNecrodancer,,,ok,The game that never stops moving to the beat
+enemies,Coral Riff,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat a musician,N/A,CoralRiff,fish,,ok,A boss made of instruments
+enemies,Death Metal,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Bounty,Defeat an armoured enemy,N/A,DeathMetal,,,?,Armour and volume
+enemies,The Guardian,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Make an enemy change form,N/A,TheGuardian,robot,,ok,Mode Shift flips it between offensive and defensive
+enemies,Giant Head,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Bounty,Defeat an enemy that punishes you for being slow,N/A,GiantHead,,,ok,"Slow and Steady, then It Is Time"
+bosses,Nemesis,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Restriction,Win against something immune to half your damage,N/A,Nemesis,,,ok,Intangible halves everything you send
+enemies,Dogma,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Break a screen,N/A,Dogma,,,ok,A boss who climbs out of the television
+enemies,Gurdy,Action,1-Low,1x1,The Binding of Isaac,1,1,Bounty,Defeat an enemy made of other enemies,N/A,Gurdy,,,ok,A mound of fused bodies that spawns more
+enemies,Monstro,Action,1-Low,1x1,The Binding of Isaac,1,1,Bounty,Defeat an enemy that jumps on you,N/A,Monstro,,,ok,The first boss most players ever meet
+bosses,The Beast,Action,3-High,2x2,The Binding of Isaac,1,7,Bounty,Reach an ending most players never see,N/A,TheBeast,,,ok,Repentance's true finale
+enemies,Bone Hydra,Action,1-Low,1x1,Hades,1,1,Bounty,Defeat an enemy with more than one head,N/A,BoneHydra,"undead, skeleton",,ok,Regrows heads as you cut them off
+enemies,The Furies,Action,1-Low,1x1,Hades,1,1,Discovery,Meet the same boss with a different face,N/A,TheFuries,,,ok,"Megaera, Alecto or Tisiphone — the same fight, a different sister"
+enemies,Charybdis,Action,2-Medium,1x1,Hades II,1,2,Feat,Get swallowed,N/A,Charybdis,water,,ok,A mouth in the sea
+bosses,Wizard of Yendor,Traditional,4-Insane,2x2,NetHack,1,9,Bounty,Defeat a boss that keeps coming back,N/A,WizardOfYendor,,,ok,"Killed, and then he is back"
+enemies,Scavenger,Action,2-Medium,1x1,Risk of Rain,1,2,Bounty,Defeat an enemy carrying your items,N/A,Scavenger,,,ok,Wears a sack of the run's loot
+enemies,Magma Worm,Action,2-Medium,1x1,Risk of Rain,1,2,Bounty,Defeat an enemy that burrows,N/A,MagmaWorm,"fire, worm",,ok,Surfaces only to hit you
+bosses,Imp Overlord,Action,1-Low,2x2,Risk of Rain,1,3,Bounty,Defeat something from another dimension,N/A,ImpOverlord,,,ok,Comes through from somewhere else
+enemies,Parent,Action,1-Low,1x1,Risk of Rain,1,1,Bounty,Defeat an enemy that grabs and throws you,N/A,Parent,,,ok,Picks you up and puts you somewhere worse
+enemies,The Wall,Deckbuilder,1-Low,1x1,Balatro,1,1,Feat,Beat an encounter with double the requirement,N/A,TheWall,,,ok,An extra-large blind
+bosses,The Eye,Deckbuilder,3-High,1x1,Balatro,1,7,Restriction,Do not use the same attack twice,N/A,TheEye,eye,,ok,No repeat hand types this blind
+enemies,The Ox,Deckbuilder,1-Low,1x1,Balatro,1,1,Feat,Spend all your currency at once,N/A,TheOx,,,ok,Playing your most-played hand sets your money to 0
+bosses,The Mother,Action,1-Low,2x2,Brotato,1,3,Bounty,Defeat an enemy that fills the screen,N/A,TheMother,alien,,ok,One of the two wave-20 bosses
+enemies,Monk Elite,Action,1-Low,1x1,Brotato,1,1,Bounty,Defeat an enemy that never stops moving,N/A,MonkElite,alien,,ok,Summons rotating projectiles and area zones
+bosses,Jonah,Action,2-Medium,2x2,Rogue Legacy 2,1,5,Feat,Be swallowed whole,N/A,Jonah,fish,,ok,The whale you fight from the inside
+bosses,Cain,Action,2-Medium,2x2,Rogue Legacy 2,1,5,Bounty,Defeat a sibling,N/A,Cain,,,ok,The other half of the family
+enemies,Estuary Lamech,Action,2-Medium,1x1,Rogue Legacy 2,1,2,Restriction,Beat the first boss with no upgrades,N/A,EstuaryLamech,,,ok,"The game's first Estuary, in a game built on buying upgrades"
+enemies,Byarrrith and Halpharrr,Action,3-High,1x1,Rogue Legacy 2,1,3,Bounty,Defeat two enemies that share a health bar,N/A,ByarrrithAndHalpharrr,,,?,"The Void Beasts, fought as one"
+enemies,Xeroc,Traditional,1-Low,1x1,Rogue,1,1,Discovery,Be fooled by something disguised as loot,N/A,Xeroc,,,ok,Imitates an item until you touch it
+enemies,Aquator,Traditional,1-Low,1x1,Rogue,1,1,Feat,Have your armour ruined and keep going,N/A,Aquator,,,ok,Rusts armour on contact
+bosses,Praxis,Action,2-Medium,2x2,Ember Knights,1,5,Bounty,Defeat someone who sends others to fight you,N/A,Praxis,,,ok,Summons the bosses you have already beaten
+enemies,Plague Bringer,Action,2-Medium,1x1,Ember Knights,1,2,Feat,Win while poisoned,N/A,PlagueBringer,,,?,One of Praxis's summoned bosses
+bosses,The Architect,Action,2-Medium,2x2,Ember Knights,1,5,Bounty,Defeat a boss that builds its own arena,N/A,TheArchitect,,,?,The Wrath of the Architect DLC's final boss
+enemies,Prickwood,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat the first boss of a run,N/A,Prickwood,plant,,ok,The first boss the game gives you
+enemies,Bee Queen,Deckbuilder,1-Low,1x1,Dungeon Clawler,1,1,Bounty,Defeat a bee or a wasp,N/A,BeeQueen,bug,,?,Drops honey balls into the claw machine
+bosses,Daemon Master,Strategy,3-High,2x2,Forward: Escape the Fold,1,7,Bounty,Defeat the second to last boss of a run,N/A,DaemonMaster,,,ok,Always the penultimate boss — the rest are randomised
+bosses,Strong Daemon Master,Strategy,4-Insane,2x2,Forward: Escape the Fold,1,9,Bounty,Defeat a final boss on the highest difficulty,N/A,StrongDaemonMaster,,,ok,Always the last boss
