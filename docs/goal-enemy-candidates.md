@@ -4,9 +4,11 @@ Research notes for pairing new goal prompts with real roguelike enemies and
 bosses, in the same style as the existing rows in `data/enemies2.0/` and
 `data/bosses2.0/` (a real creature whose flavour or mechanic *is* the goal).
 
-Written against the ~120 prompts in the September 2026 batch. Nothing here is
-wired up: it is a shortlist to paste into the `enemies` / `bosses` sheets of
-`tools/Roguelikes.xlsx` and regenerate from.
+Two parts. **Part 1** answers the ~120 prompts in the September 2026 batch.
+**Part 2** goes the other way: sixteen games this project has never sourced
+from, each roster read for the goals *it* suggests, whether or not a prompt
+asked for them. Nothing here is wired up: it is a shortlist to paste into the
+`enemies` / `bosses` sheets of `tools/Roguelikes.xlsx` and regenerate from.
 
 ## How to read it
 
@@ -25,6 +27,8 @@ wired up: it is a shortlist to paste into the `enemies` / `bosses` sheets of
   named in the tie.
 
 ---
+
+# Part 1 — the prompt list
 
 ## 1. Religion, ritual, pacts
 
@@ -235,6 +239,319 @@ recommendations:
 - "Beat a run without moving" already has a body under Restrictions and is listed
   twice in the prompt list.
 
+---
+
+# Part 2 — sixteen more wikis, read for the goals they suggest
+
+Part 1 started from the prompts and went looking for bodies. This part starts
+from a roster and asks what goals it is *already* about. Every game below is one
+`data/` has never sourced from.
+
+Each row carries the four fields the sheet needs beyond name and art:
+**type** = `game_type` (action / deckbuilder / traditional / strategy),
+**tier** = `difficulty` (`LOW` / `MED` / `HIGH` / `INSANE`, the resource's four),
+**goal type**, and the goal text. `?` still means unconfirmed.
+
+> **One thing worth noticing before picking.** The live roster is 44 action,
+> 27 deckbuilder, 23 strategy and **8 traditional**. Traditional is the starved
+> pool — a run on traditional games is drawing from NetHack ×4, Crypt ×3 and
+> Rogue ×1. Six of the sixteen games below are traditional roguelikes, and
+> they are where this list pays for itself.
+
+## Spelunky 2 — action
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Kali** (altar) | HIGH | feat | Sacrifice something you were relying on | |
+| **Kapala** | LOW | fetch | Drink blood | |
+| **Olmec** | HIGH | bounty | Defeat an enemy you cannot damage | |
+| **Angry Shopkeeper** | HIGH | feat | Get marked as a thief and finish the level anyway | |
+| **Ghost** | MED | restriction | Stay on a level longer than it wants you to | |
+| **Damsel** | MED | fetch | Carry a rescued NPC all the way to the exit | |
+| **Qilin** (mount) | LOW | feat | Ride an animal | |
+| **Mech** | MED | bounty | Crush an enemy with something you are riding | |
+| **Golden Monkey** | MED | fetch | Acquire a gem or diamond | ? |
+
+Notes: Kali takes live and dead bodies for favour and pays the most for **pets** —
+that is what makes the sacrifice goal bite. The Kapala is a skullcup you drink
+blood from; it is its own goal, not a health goal. Olmec is *indestructible* —
+mattock and bombs do nothing — so "defeat what you cannot damage" is literal.
+
+## Darkest Dungeon — strategy
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **The Collector** | MED | fetch | Fill your inventory to its last slot | |
+| **The Shambler** | HIGH | restriction | Play a whole level with no light source | |
+| **Swine Prince** | MED | feat | Beat a boss by killing its small companion first | |
+| **Madman** | MED | feat | Survive an enemy that never attacks you directly | |
+| **The Countess** | HIGH | feat | Beat a boss while diseased or afflicted | |
+| **Bone Courtier** | HIGH | restriction | Beat a boss without letting it summon anything | |
+| **Occultist** | MED | feat | Heal yourself with something that can also hurt you | |
+| **The Fanatic** | HIGH | feat | Lose a party member permanently and finish anyway | |
+
+Notes: the Collector ambushes when 13+ inventory slots are full and the Shambler
+ambushes at torch level 0 — both are enemies *summoned by how you play*, which
+is exactly the shape a goal wants. The Madman only deals stress, never damage.
+
+## Monster Train — deckbuilder
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Seraph** | HIGH | restriction | Win a fight where the enemy sets an extra rule | |
+| **The Pyre** | HIGH | restriction | Defend one thing that must never be touched | |
+| **Stygian Guard frost unit** | MED | bounty | Kill an enemy with a status effect rather than a hit | |
+| **Awoken sapling** | MED | feat | Out-heal an enemy's damage for three turns straight | |
+| **Champion** (any clan) | MED | feat | Upgrade the same unit three times | |
+| **Train floor** | MED | feat | Fight on more than one battlefield at once | |
+
+Notes: Seraph is the run's final boss and comes in variants (the Temperant, the
+Chaste, the Diligent, the Patient) that each impose a different rule on the
+fight — one body, many restrictions, which suits a pool that wants variety.
+
+## Pokémon Mystery Dungeon — traditional
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Kecleon** | INSANE | bounty | Defeat a shopkeeper | |
+| **Monster House** | HIGH | feat | Survive a room that is nothing but enemies | |
+| **Recruited Pokémon** | MED | fetch | Recruit three different species in one run | |
+| **Empty Belly** | MED | feat | Let your hunger hit zero and survive it | |
+| **Rescue Team** | HIGH | discovery | Be rescued, or rescue someone else's failed run | |
+| **Trap tile** | LOW | discovery | Step on a trap you already knew was there | |
+
+Notes: rob a Kecleon shop and the floor fills with **extremely powerful Kecleon
+moving at double speed** — beating one is genuinely an INSANE-tier goal, and
+theft is the only way to recruit one. The rescue system (a failed run leaves a
+code another player can answer) has no equivalent anywhere else on this list.
+
+## Cataclysm: Dark Days Ahead — traditional
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Zombie Master** | HIGH | discovery | Watch an enemy upgrade another enemy | |
+| **Shocker Zombie** | LOW | bounty | Defeat an enemy that shocks you | |
+| **Boomer** | LOW | feat | Get covered in something and keep fighting | |
+| **Zombie Hulk** | HIGH | bounty | Defeat an enemy that can knock you through a wall | |
+| **Evolved horde** | HIGH | discovery | Play long enough that the enemies get worse | |
+| **Scrap vehicle** | INSANE | feat | Build a working vehicle out of parts | |
+| **Mutagen** | HIGH | feat | Permanently change your own body | |
+| **Water purifier** | LOW | fetch | Obtain clean drinking water | |
+
+Notes: the zombie master *transforms* ordinary zombies into spitters and
+shockers, and zombie evolution is a real clock — hordes upgrade based on how
+long it has been since the Cataclysm. CDDA is also the one game on this list
+that can honestly carry **drink milk**, **make a cake** and **smoke something**;
+all three are ordinary recipes/items there. Bodies for those three still need
+picking off the bestiary.
+
+## Cogmind — traditional
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Behemoth** | INSANE | bounty | Defeat an enemy that takes up four spaces | |
+| **Watcher** | HIGH | restriction | Clear a floor without ever being spotted | |
+| **Programmer** | HIGH | discovery | Watch an enemy turn one of your allies against you | |
+| **Hunter** | MED | discovery | Be tracked across floors by a pair that works together | |
+| **Swarmer** | LOW | feat | Be surrounded on every side at once | |
+| **Sentry** | LOW | bounty | Defeat an enemy that outguns you but cannot chase | |
+| **Terminal** | MED | feat | Hack a machine into doing what you want | |
+| **Salvaged parts** | HIGH | restriction | Win using only equipment taken off enemies | |
+| **Recycler** | LOW | fetch | Get some scrap or trash | ? |
+
+Notes: Behemoths take up **four tiles instead of one** — the cleanest fit on
+this whole list for the project's footprint system (§7.3). Watchers are unarmed
+and exist purely to report you, which is what makes a stealth restriction land.
+
+## Curse of the Dead Gods — action
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Corruption** | HIGH | feat | Carry four curses at the same time | |
+| **Blinding Greed** | MED | restriction | Win a fight while your gold rots on the floor | |
+| **Cadaverous Infestation** | HIGH | feat | Clear a room where every kill makes more enemies | |
+| **Champion** | MED | bounty | Defeat a champion to have a curse lifted | |
+| **Blood offering** | LOW | feat | Pay for something with your own blood | |
+| **Temple trap** | MED | bounty | Kill an enemy with a trap you did not place | |
+
+Notes: corruption fills by opening doors, making blood offerings and taking dark
+hits; you can hold four curses before the fifth and final one lands, and the
+only cures are killing a champion or giving up a cursed weapon. That is a whole
+family of goals off one gauge.
+
+## Griftlands — deckbuilder
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Negotiation** | MED | feat | Win an argument instead of a fight | |
+| **Sal** | HIGH | feat | Turn someone sent to kill you into an ally | |
+| **Grudge** | LOW | discovery | Make an enemy who remembers you next time | |
+| **Job board** | LOW | fetch | Take a contract and complete it | |
+| **Resolve** | HIGH | bounty | Break someone's will without hurting them | |
+
+Notes: negotiation is a full parallel combat system — losing it starts a real
+fight, winning it skips one. Griftlands is the only game here where "beat an
+enemy without violence" is a *system* rather than a trick.
+
+## Tales of Maj'Eyal — traditional
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Weirdling Beast** | HIGH | bounty | Out-damage an enemy that heals to full | |
+| **Ukruk the Fierce** | HIGH | feat | Survive a fight you were meant to lose | |
+| **Escort** | MED | restriction | Keep an NPC alive for a whole level | |
+| **Cursed artifact** | LOW | feat | Destroy a magic item on purpose | |
+| **Unlock condition** | MED | discovery | Unlock a class by doing something unrelated to it | |
+
+Notes: the Weirdling Beast heals to full in a few turns and does it often — an
+honest DPS-race goal. Ukruk appears in a scripted ambush you are *not supposed
+to win*, which is a goal all by itself.
+
+## Loop Hero — strategy
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **The Lich** | HIGH | bounty | Beat a boss you summoned yourself | |
+| **Goblin Leader** | MED | feat | Build something that spawns enemies, on purpose | |
+| **Ratwolf** | LOW | feat | Make a specific enemy appear by changing the map | |
+| **Treasury** | MED | restriction | Win by hoarding rather than by fighting | |
+| **Camp** | MED | feat | Build a house | |
+
+Notes: Loop Hero is the right home for **build a house** — the camp (War Camp,
+Smithy, Mud Hut, Field Kitchen, 23 buildings) is the between-run loop, and the
+Goblin Leader literally spawns from a camp *you* placed next to the road.
+
+## Wildfrost — deckbuilder
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Frozen Traveller** | LOW | feat | Thaw something frozen solid | |
+| **Pet** | LOW | discovery | Start a run with a companion you earned earlier | |
+| **Area boss** | MED | bounty | Defeat an enemy that gets worse the longer you wait | ? |
+| **Frost / Snow** | HIGH | restriction | Win a fight using only status effects | |
+
+Notes: companions are freed from ice blocks in the Frozen Travellers event, and
+pets are unlocked one at a time by completing set goals — the game already
+thinks in the project's own vocabulary.
+
+## Deep Rock Galactic: Survivor — action
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Glyphid Praetorian** | LOW | fetch | Mine an ore | |
+| **Warden** | MED | bounty | Defeat the enemy that is protecting the others | |
+| **Bulk Detonator** | MED | feat | Survive an explosion that fills the screen | |
+| **Drilldozer** | MED | feat | Escort a machine to where it is going | |
+| **Stingtail** | LOW | feat | Get grabbed, then get free | |
+| **Molly** | LOW | fetch | Call in a resupply | |
+
+Notes: Praetorians dig through terrain, which makes them a better body for
+**mine an ore** than Part 1's Mine Flayer guess. Wardens mind-link nearby
+enemies and hand them damage reduction — kill the linker, not the linked.
+
+## Streets of Rogue — action
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Gorilla** | LOW | bounty | Defeat a beast in melee | |
+| **Hypnotizer Mark II** | LOW | feat | Turn an enemy against its own side | |
+| **Knockout** | HIGH | restriction | Finish a level without killing anyone | |
+| **Bartender** | LOW | feat | Serve someone a drink | |
+| **Werewolf** | MED | discovery | Play as something that turns into something else | |
+| **Bank vault** | MED | feat | Blow open a locked vault | |
+
+## Skul: The Hero Slayer — action
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Little Bone** | LOW | restriction | Play a whole run as a skeleton | |
+| **Skull swap** | MED | feat | Change which character you are, mid-run | |
+| **Second head slot** | LOW | feat | Carry two loadouts and use both in one fight | |
+| **Awakened skull** | MED | feat | Upgrade an ability into its stronger form | |
+| **The Hero** | HIGH | bounty | Defeat another game's protagonist | |
+
+Notes: Skul equips **two heads at once** and swaps between them in combat, and
+each head is a different moveset — the cleanest body on the list for a
+mid-run identity change, and the obvious pairing for the headgear restriction.
+
+## Inscryption — deckbuilder
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Leshy** | HIGH | discovery | Catch the game itself cheating against you | |
+| **The Angler** | MED | bounty | Defeat an enemy that takes your things mid-fight | |
+| **The Trapper** | LOW | fetch | Trade a pelt for a creature | |
+| **The Prospector** | LOW | feat | Turn something you own into currency | |
+| **Blood cost** | LOW | feat | Sacrifice one of your own to play another | |
+| **Death card** | HIGH | feat | Leave a permanent record of a dead character | |
+
+Notes: the Trapper turns your killed cards into **pelts**, and then the Trader
+buys them back as creatures — a two-step loop no other game here has. Death
+cards persist into later runs, which is a goal about the save file, not the run.
+
+## Brogue — traditional
+
+| Pick | tier | goal type | Goal | ? |
+|---|---|---|---|---|
+| **Captive monster** | MED | feat | Free a caged enemy and fight beside it | |
+| **Paralytic Bloat** | MED | feat | Lose a full turn to paralysis and live | |
+| **Ink Eel** | LOW | feat | Fight something you cannot see | |
+| **Ally** | LOW | feat | Let an ally land the killing blow | |
+| **Lumenstone** | HIGH | discovery | Go deeper than the run required you to | |
+
+Notes: captives are found chained in the early dungeon and freed by walking into
+them — the one "recruit" in the genre that costs nothing but a detour.
+
+---
+
+# Overlap ledger
+
+Kept-on-purpose neighbours. Each pair sits on the same idea but differs in
+`goal_type`, in `difficulty`, or in what the player physically does — which is
+the bar you set. Anything that could not clear it was cut rather than reworded.
+
+| Idea | A | B | How they differ |
+|---|---|---|---|
+| Stealing | `Steal from a shop` (Charon, fetch) | Keystone Kops, feat, MED — *survive* the theft | act: taking vs escaping |
+| Stealing | Angry Shopkeeper, feat, HIGH | Kecleon, bounty, INSANE | feat vs bounty, and two tiers apart |
+| Allies | `Centurion and Mystic`, feat | Escort (ToME), restriction, MED | keeping one alive is a rule, not an act |
+| Allies | Captive monster (Brogue), feat, MED | Frozen Traveller (Wildfrost), feat, LOW | free-then-fight vs thaw-and-keep; tiers apart |
+| Taming | Leshy (CotL), feat, MED | Hypnotizer (SoR), feat, LOW | permanent convert vs turn-them-mid-fight |
+| Enemy kills enemy | `Have an enemy defeat another enemy` (Marshmallow) | Let an ally land the killing blow (Brogue), LOW | whose side the killer is on |
+| Curses | Hecate, feat, MED — *get* hexed | Corruption, feat, HIGH — hold **four** | count and tier |
+| Light | The Shambler, restriction, HIGH — no light at all | Temple torch (CotDG), restriction, MED | total vs partial; tiers apart |
+| Upgrades | Blacksmith's Apprentice, feat — a weapon | Awakened skull, feat, MED — an ability | different object |
+| Upgrades | Warlock, feat, HIGH — 5+ enchants | Champion (MT), feat, MED — 3 upgrades | count and tier |
+| Sacrifice | Kali, feat, HIGH — something you relied on | Blood cost (Inscryption), feat, LOW | stakes and tier |
+| Health as currency | `Trade health for resources` (Krampus, feat) | Blood offering (CotDG), feat, LOW | heart containers vs a blood price; tiers apart |
+| Explosions | Gas Spore, bounty — one-turn kill | Bulk Detonator, feat, MED — survive one | killing vs surviving |
+| Not killing | Watchman, restriction, MED — spare innocents | Knockout (SoR), restriction, HIGH — spare *everyone* | scope and tier |
+| Stealth | `Become undetectable` (Stalker, feat) | Watcher, restriction, HIGH — a whole floor | a moment vs a rule for the level |
+| Spawners | `Destroy an enemy spawner` (Carcass, bounty) | Cadaverous Infestation, feat, HIGH | kill the source vs clear the room anyway |
+| Water | `Touch water` (Strider, feat) | Clean water (CDDA), fetch, LOW | touching vs obtaining |
+| Hunger | `Don't eat any food` (Famine, restriction) | Empty Belly (PMD), feat, MED | a rule vs a survival act — good pair, keep both |
+| Vehicles | Treadnaught, feat — pilot | Scrap vehicle (CDDA), feat, INSANE — build | DM-200 repairs sit between them; three tiers, three verbs |
+
+Cut as true duplicates, for the record: a second "freeze an enemy" (Stygian
+Guard → reframed to status-kill), a second "defeat a splitter" (Cadaverous →
+reframed), a second thief (Brogue Monkey), a second summoner (Ogre Shaman, Brood
+Nexus), a second shrink (SoR shrink ray), a second drunk (Smith), a second
+"reach level 30" (ToME prodigies), a second "do not backtrack" (Loop Hero's
+loop), and a second "do not use magic" (ToME antimagic).
+
+# Revisions to Part 1
+
+Part 2 turned up better bodies for four rows that were guesses:
+
+- **Mine an ore** — Glyphid Praetorian (DRG: Survivor) replaces Mine Flayer.
+- **Build a house** — Loop Hero's camp replaces Shamura.
+- **Acquire a diamond** — Spelunky 2's Golden Monkey replaces Crystal Guardian.
+- **Get some trash** — Cogmind's Recycler replaces Isaac's Clog.
+
+And three of Part 1's six open prompts now have a home game, if not yet a body:
+**drink milk**, **make a cake** and **smoke something** are all ordinary
+Cataclysm: DDA items. **Use star power** is still open.
+
 ## Sources
 
 - [Hexaghost — Slay the Spire Wiki](https://slaythespire.wiki.gg/wiki/Hexaghost)
@@ -283,3 +600,42 @@ recommendations:
   [Minibosses](https://necrodancer.miraheze.org/wiki/Minibosses)
 - [Amalaric Sniper — Vampire Survivors Wiki](https://vampire.survivors.wiki/w/Amalaric_Sniper) ·
   [Enemies](https://vampire.survivors.wiki/w/Enemies)
+
+Part 2:
+
+- [Olmec — Spelunky Wiki](https://spelunky.fandom.com/wiki/Olmec_(2)) ·
+  [Kali Altar](https://spelunky.wiki/wiki/Spelunky_2:Kali_Altar) ·
+  [Shopkeeper](https://spelunky.fandom.com/wiki/Spelunky_2:Shopkeeper)
+- [Enemies — Darkest Dungeon Wiki](https://darkestdungeon.wiki.gg/wiki/Enemies_(Darkest_Dungeon)) ·
+  [Bosses](https://darkestdungeon.wiki.gg/wiki/Bosses_(Darkest_Dungeon)) ·
+  [Shambler](https://darkestdungeon.wiki.gg/wiki/Shambler_(Darkest_Dungeon))
+- [Units — Monster Train Wiki](https://monster-train.fandom.com/wiki/Units) ·
+  [Seraph](https://monster-train.fandom.com/wiki/Seraph)
+- [Kecleon Shop — Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Kecleon_Shop) ·
+  [Kecleon Shops (dungeons) — Mystery Dungeon Franchise Wiki](https://mysterydungeonwiki.com/wiki/Rescue_Team:Kecleon_Shops_(dungeons))
+- [Zombies — Cataclysm: DDA wiki](https://cataclysmdda.miraheze.org/wiki/Zombies) ·
+  [Zombie master](https://srgnis.github.io/cdda-wiki/cdda_wiki/Zombie_master.html) ·
+  [Monsters](https://srgnis.github.io/cdda-wiki/cdda_wiki/Monsters.html)
+- [Robots — Cogmind (ModDB devlog)](https://www.moddb.com/games/cogmind/news/robots) ·
+  [Cogmind — TV Tropes](https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/Cogmind)
+- [Curses — Curse of the Dead Gods Wiki](https://curseofthedeadgods.fandom.com/wiki/Curses) ·
+  [Enemies](https://curseofthedeadgods.fandom.com/wiki/Enemies)
+- [Sal — Griftlands Wiki](https://griftlands.fandom.com/wiki/Sal) ·
+  [Characters in Griftlands — TV Tropes](https://tvtropes.org/pmwiki/pmwiki.php/Characters/Griftlands)
+- [Weirdling Beast — Tales of Maj'Eyal](https://te4.org/wiki/Weirdling_Beast) ·
+  [Ukruk the Fierce](https://te4.org/wiki/Ukruk_the_Fierce) ·
+  [Monsters](https://te4.org/wiki/Category:Monsters)
+- [Enemies — Loop Hero Wiki](https://loophero.fandom.com/wiki/Enemies) ·
+  [Buildings](https://loophero.fandom.com/wiki/Buildings)
+- [Companions — Wildfrost Wiki](https://wildfrost.fandom.com/wiki/Companions) ·
+  [Pets](https://wildfrost.fandom.com/wiki/Pets) ·
+  [Bosses/minibosses](https://wildfrost.fandom.com/wiki/Bosses/minibosses)
+- [Survivor:Creatures — Deep Rock Galactic Wiki](https://deeprockgalactic.wiki.gg/wiki/Survivor:Creatures) ·
+  [Creatures](https://deeprockgalactic.wiki.gg/wiki/Creatures)
+- [Gorilla — Streets of Rogue Wiki](https://streetsofrogue.fandom.com/wiki/Gorilla) ·
+  [Streets of Rogue Wiki](https://streetsofrogue.fandom.com/wiki/Streets_of_Rogue_Wiki)
+- [Skulls — Skul: The Hero Slayer Wiki](https://skul.fandom.com/wiki/Skulls)
+- [Leshy — Inscryption Wiki](https://inscryption.fandom.com/wiki/Leshy) ·
+  [The Prospector](https://inscryption.fandom.com/wiki/The_Prospector)
+- [Monkey — Brogue Wiki](https://brogue.fandom.com/wiki/Monkey) ·
+  [Monsters](https://brogue.wiki/wiki/Category:Monster)
