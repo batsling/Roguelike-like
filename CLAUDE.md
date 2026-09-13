@@ -68,6 +68,16 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 t
   with "Could not find type X" — in hundreds of unrelated tests, because the
   script that referenced it failed to parse and its scene fell back to a bare
   Control. Run `godot --headless --editor --quit` once after adding one.
+- **New ART needs an import pass, and a `.tres` that names an unimported texture
+  does not load AT ALL.** `*.import` is gitignored like the class cache, so a PNG
+  that arrived in the last `git pull` has never been imported in your checkout —
+  and the `ExtResource` pointing at it takes the whole resource down with it, not
+  just the picture. The symptom is a content row that silently is not in the
+  game: `Data` loads 45 of 47 bosses, `test_bosses_load_and_flag` fails on a
+  count, and anything asserting about the roster (the OBS art ratchet) fails
+  next to it — all of it pointing at a file that is right there on disk and
+  parses fine. `godot --headless --import` then `--editor --quit` fixes it. CI
+  runs both before GUT, which is why this is a LOCAL red and never a CI one.
 - **A skipped case is `pending("why")`, never a bare `return`.** ~250 tests guard
   themselves against a run that did not reach their case (`if pin == &"":`,
   `if _ui._fulfil_checks.is_empty():`, `if not view.has_layout():`). They used to
