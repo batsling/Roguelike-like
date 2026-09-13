@@ -11,6 +11,36 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **`data/` regenerated from the new workbook: twelve bodies ship, five change.**
+  The uploaded `tools/Roguelikes.xlsx` carried rows the repo had not been
+  regenerated against, so `check_data_sync.py` was reporting 17 files of drift.
+  This is the regeneration, nothing hand-written — the generators' output,
+  committed as they wrote it.
+  - **Seven new bosses**: `Chubs & Nubs` (Mewgenics, *eat something smelly*),
+    `Gremlin Nob` (Slay the Spire, *taunt at someone*), `Resourceful Rat`
+    (Enter the Gungeon, *beat a mini-game inside of a game*), `The Needle`
+    (Balatro, *only use 1 hand*), `The One Who Waits` (Cult of the Lamb,
+    *enter or create a religion*), `The Rainmaker` (Isaac: Rebirth, *take a
+    shower*) and `Wallmonger` (Enter the Gungeon, *destroy a wall*). The One Who
+    Waits is the hardest body in the folder at difficulty 3 / 9 damage.
+  - **Five new goal-enemies**: `Bullat`, `King Bullat` and `Fungun` (Enter the
+    Gungeon), `Chrome Pyramid` (Caves of Qud) and `Floating Eye` (NetHack,
+    *do not use melee attacks* — the restriction the body is famous for).
+  - **The numeric bounties all halved**, uniformly: `attack_fly`, `bony`,
+    `goblin` and `spider` go from *Defeat 10+* to *Defeat 5+*. All four moved,
+    which is what tells you this is a balance pass in the sheet rather than a
+    partial drift — those four are the only `Defeat N+` goals in the roster.
+  - `keybullet_kin` gains `tag = &"bullet"`, which is the tag the three new
+    Gungeon bodies carry; it was the one bullet already shipping without it.
+  - `Bullat` and `King Bullat` share *shoot down a flying enemy*. Deliberate and
+    already the shipped pattern — *defeat a skeleton with a ball* is carried by
+    three bodies and *mute the game* by two.
+  - Checked, not assumed: every referenced PNG exists under `images2.0/`, every
+    `source_game` resolves to a real row in `data/games/`, and `Data` now loads
+    59 goal-enemies and 47 bosses (up from 54 and 40). `check_data_sync`,
+    `check_doc_paths` and `check_map_sync` are all clean afterwards, and the
+    workbook still has its eight charts.
+
 - **Seventeen picked bodies with no goal yet, written down with a proposal
   each.** `docs/goal-enemy-candidates.md` gains a **Bodies waiting for a goal**
   section — the opposite of how the rest of the file was built, which started
