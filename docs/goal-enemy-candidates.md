@@ -1,12 +1,15 @@
 # Goal-enemies: the candidate file
 
-`docs/goal-candidates.csv` holds **316 audited candidate rows** in the exact
+`docs/goal-candidates.csv` holds **307 audited candidate rows** in the exact
 column order of the `enemies` and `bosses` sheets of `tools/Roguelikes.xlsx`,
 built over four passes of wiki reading and **ready to paste**.
 
-Nothing here is wired up yet. `tools/Roguelikes.xlsx` and `data/` are untouched:
-the workbook is edited by hand and uploaded, so the paste waits for whoever owns
-it. `tools/_candidates_to_sheet.py` is the paste when that moment comes.
+The workbook is edited by hand and uploaded, so this file never writes to it —
+**nine of its rows have already shipped that way**, picked out and carried across
+by the workbook's owner (Chrome Pyramid, Floating Eye, Gremlin Nob, The Needle,
+The One Who Waits, Wallmonger, and — under slightly different names — Chubs &
+Nubs, The Rainmaker and Resourceful Rat). Those nine are no longer in the queue.
+`tools/_candidates_to_sheet.py` is there for the day the rest go in one go.
 
 This document is the companion: what the columns were filled in with, the rules
 a row has to pass, what the audit threw out, and what is still open.
@@ -15,13 +18,15 @@ a row has to pass, what the audit threw out, and what is still open.
 
 | | Now | If the file is pasted |
 |---|---|---|
-| `enemies` sheet | 54 rows | **279** |
-| `bosses` sheet | 40 rows | **131** |
-| Games with a body in the game | 22 | **84** |
+| `enemies` sheet | 59 rows | **279** |
+| `bosses` sheet | 47 rows | **138** |
+| Games with a body in the game | 24 | **84** |
 
-The paste itself is one command, and it has been rehearsed end to end — the run
-that proved it took the sheets to 279 and 131, regenerated `data/`, and came back
-green on the full suite and every content check before being rolled back:
+The paste itself is one command, and it has been rehearsed end to end — a run
+against the 94-row workbook took the sheets to 279 and 131, regenerated `data/`,
+and came back green on the full suite and every content check before being rolled
+back. Run the checker first either way: rows that have since shipped by hand are
+reported as `shipped` and are checked against the sheet rather than pasted again.
 
 ```bash
 python3 tools/check_goal_candidates.py     # must be clean FIRST
@@ -38,8 +43,8 @@ does not have to carry them:
   `ReportChecklist` returned null for the portrait chip, which also left an
   artless body's buff strip (§13) with nothing to hang under. Both now draw the
   body's **initial**, the way the games this one is played on top of drew their
-  monsters before anybody had art. Invisible today, when all 94 bodies have art;
-  the first thing you would see the moment 316 that don't arrive.
+  monsters before anybody had art. Invisible today, when all 106 bodies on the
+  sheet have art; the first thing you would see the moment 307 that don't arrive.
 - **Four portrait tests and one art assertion went quiet** under an artless
   roster. `test_obs_companion`'s "every body has a face" is a ratchet now
   (coverage may rise, not fall), and `test_overworld2`'s four portrait tests
@@ -47,11 +52,11 @@ does not have to carry them:
 
 Two things are deliberately NOT done, and both are their own pass:
 
-- **No art.** None of the 316 rows resolves to a PNG. A picture dropped into
+- **No art.** None of the 307 rows resolves to a PNG. A picture dropped into
   `images2.0/enemies/` or `images2.0/bosses/` under the row's `File` name is all
   it takes to light one up; that is what the `File` column is for and why it is
   the PascalCase of the name.
-- **No abilities.** `Ability` is `N/A` on all 316. Abilities are authored against
+- **No abilities.** `Ability` is `N/A` on all 307. Abilities are authored against
   the `abilities` sheet (§7.6) and guessing them here would only make work for
   whoever does that pass properly.
 
@@ -59,8 +64,8 @@ Two things are deliberately NOT done, and both are their own pass:
 
 | | |
 |---|---|
-| Rows | 316 — **225 enemies, 91 bosses** |
-| Games | 80, of which 62 have no body in the game yet |
+| Rows | 307 — **220 enemies, 87 bosses** |
+| Games | 80, of which 60 have no body in the game yet |
 | Columns | `Sheet, Name, Type, Difficulty, Size, Game, Health, Damage, Goal Type, Goal, Ability, File, Tag, Phases` then two staging columns |
 | Staging columns | `Confidence` (`ok` / `?`) and `Why this pairing` — not columns the sheets have; `_candidates_to_sheet.py` drops them |
 
@@ -73,14 +78,14 @@ disagrees with the game's own — is checked there. It handles both sides of the
 paste: a row that has **not** shipped must not collide with anything already
 live, and a row that **has** shipped must still match its sheet row cell for
 cell, so once the paste happens the file and the workbook cannot drift apart
-without the build saying so. Today it reports `0 shipped, 316 pending`.
+without the build saying so. Today it reports `0 shipped, 307 pending`.
 `--stats` prints the tables quoted below. It was written for the second pass,
 immediately found five rows the first pass had got wrong, and has gated every
 row added since.
 
 Conventions copied off the live rows rather than invented:
 
-- **Health** is `1` on all 94 rows that were already live, so it is `1` here.
+- **Health** is `1` on every row that was already live, so it is `1` here.
 - **Damage** is the difficulty index for enemies (1/2/3/4) and `3/5/7/9` for
   bosses. Every row follows that mapping exactly.
 - **Difficulty** is `1-Low` … `4-Insane`; **Type** is `Action` / `Deckbuilder` /
@@ -144,7 +149,7 @@ thing it is really about:
 
 **3. Boss budget.** A boss here is the tier-change slot, not "this creature is a
 boss in its own game" — the live sheet keeps about two per game. The first
-draft had 134 bosses and was cut to 67; the file now has 91 across
+draft had 134 bosses and was cut to 67; the file now has 87 across
 80 games, and no game is over three. Demotions are not losses: the
 workbook already ships elites like `Fungi Beast` and `Shelled Parasite` as
 ordinary rows.
@@ -160,9 +165,9 @@ result tracks the live sheet's own shape:
 | second pass (+37) | 11 | 15 | 7 | 4 |
 | third pass (+21) | 7 | 9 | 4 | 1 |
 | fourth pass (+15) | 4 | 6 | 4 | 1 |
-| all 316 | 131 | 120 | 50 | 15 |
+| all 307 | 128 | 117 | 49 | 13 |
 | live sheet before this (94) | 43 | 32 | 15 | 4 |
-| as a share | 41% vs 46% | 38% vs 34% | 16% vs 16% | 5% vs 4% |
+| as a share | 42% vs 46% | 38% vs 34% | 16% vs 16% | 4% vs 4% |
 
 The later passes lean a tier harder than the first, because the games they read
 are where the genre keeps its long hauls — Angband's level 100, ADOM's emperor
@@ -194,7 +199,7 @@ and Brutal Orchestra. Each later pass was aimed at whichever was thinnest:
 
 | | Action | Traditional | Deckbuilder | Strategy |
 |---|---|---|---|---|
-| candidate rows | 124 | 94 | 56 | 42 |
+| candidate rows | 120 | 92 | 54 | 41 |
 
 Strategy is the pool where a goal is hardest to write, which is why it stayed
 thin longest: the type covers everything from a fortress sim to a four-tile
@@ -401,9 +406,9 @@ Sources for the ones that needed reading:
 
 ## Still open
 
-- **Art for all 316 of them.** Nothing else in this list matters as much: a
+- **Art for all 307 of them.** Nothing else in this list matters as much: a
   goal-enemy with no picture is a placeholder on the board.
-- **Abilities.** `Ability` is `N/A` on every row, so 316 bodies walk and swing
+- **Abilities.** `Ability` is `N/A` on every row, so 307 bodies walk and swing
   and do nothing else. That is a pass against the `abilities` sheet (§7.6).
 - **The bodies above have no goal yet** — seventeen of them, and two need a
   source before anything else.

@@ -895,8 +895,8 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 			continue
 		_assert_page_local(String(sw["icon"]), "a swing's icon")
 
-# This asked for an absolute: no body anywhere without art, which was true of the
-# 94 hand-made rows and their 94 pictures. It is a RATCHET instead, because the
+# This asked for an absolute: no body anywhere without art, which is still true
+# of the 106 hand-made rows and their 106 pictures. It is a RATCHET instead, because the
 # roster is about to stop being 94 rows — docs/goal-candidates.csv holds 316
 # audited rows waiting to be pasted, none of which has art yet (art is its own
 # pass, and the `File` column is the hook it will hang on). An absolute would go
@@ -906,7 +906,7 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 # resolving, a File renamed out from under its PNG, a folder emptied — because
 # the number of bodies WITH art may go up and may not go down. Raise the floor
 # when art lands; never lower it to make a run go green.
-const ART_FLOOR := 94
+const ART_FLOOR := 106
 
 func test_the_roster_does_not_lose_art_it_already_had() -> void:
 	var with_art: Array = []
