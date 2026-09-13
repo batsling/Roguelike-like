@@ -5,6 +5,10 @@
 *.import
 *.uid
 export_presets.cfg
+# Godot imports any .csv under res:// as a TRANSLATION and writes one
+# .translation per column beside it. docs/goal-candidates.csv is a spreadsheet
+# paste queue, not a locale file, so its sixteen generated siblings are cache.
+*.translation
 
 # ── legacy-web (old HTML/JS version) ────────────────────────────────────
 node_modules/

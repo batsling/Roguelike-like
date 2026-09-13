@@ -11,6 +11,159 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seventeen picked bodies with no goal yet, written down with a proposal
+  each.** `docs/goal-enemy-candidates.md` gains a **Bodies waiting for a goal**
+  section — the opposite of how the rest of the file was built, which started
+  from a goal and went looking for a body to carry it. Each row gets a proposal,
+  a fallback, and a note on whether the line is already taken.
+  - **Three of the picks were already candidates** and want nothing: `The Lich`
+    (Loop Hero), `Book of Stabbing` (Slay the Spire) and `Mithrix` (Risk of Rain
+    2). Mithrix is worth revisiting though — *win without a single passive item*
+    describes what that fight actually does (it steals your items in its last
+    phase) better than the goal its row carries.
+  - **Four of the proposals were checked against the file and moved off a
+    collision.** Zodiac punishes movement, but *win a fight without moving* is
+    DCSS's Oklob Plant, so it takes *make an enemy fire at the square you just
+    left*. Maris puts you to sleep, and *go to sleep* is Lagavulin's, so it takes
+    the other side: *put an enemy to sleep*. Knowledge Demon's *choice* between
+    two curses is the free one — *get cursed* (Hecate) and *carry four* (Xucat')
+    are both spoken for. Crewmate is kept off Zombalatro's line, which is about
+    roguelike references specifically.
+  - **Two need a source before they need a goal**: `King Vermin` (no game named,
+    and Hades' `Gigantic Vermin` is already live) and the Downwell body that
+    would carry *stomp on something* — the goal is free, the body is not picked.
+  - Mewgenics, Nightreign, Slay the Spire 2, Uma Musume and the Vampire
+    Survivors crossover stage were read for this; the Vampire Survivors wiki
+    says its crossover names are reconstructed from internal IDs, so those two
+    need their spelling confirmed before they ship.
+
+- **A fourth wiki pass, the last unconfirmed rows closed, and the paste rehearsed
+  and rolled back.** `docs/goal-candidates.csv` goes from 301 rows to **316**
+  across 80 games. The workbook is still edited by hand and uploaded, so
+  `tools/Roguelikes.xlsx` and `data/` are deliberately **untouched** — the paste
+  waits for whoever owns the file, and `tools/_candidates_to_sheet.py` is the one
+  command that performs it.
+  - **Ten more wikis** (Shotgun King, Diablo, Wizard of Legend, Halls of Torment,
+    The Last Spell, Don't Starve, Super Auto Pets, Dungeonmans, Torneko's Great
+    Adventure and POWDER) for 15 rows. Moonlighter, Roguebook, Deck of Ashes,
+    Neon Abyss and Dicefolk were read and dropped whole rather than padded.
+  - **The `Confidence` column is closed.** All 14 rows the first pass could not
+    confirm were checked against a wiki page — Aleax, Voidling, Skeletal
+    Juggernaut, Chicken Walker, Bamboozle, Krunker, Brogue's captive Ogre, Death
+    Metal, Byarrrith and Halpharrr, Plague Bringer, The Architect, Bee Queen,
+    Avowed Gladiator, Ragewing Assassin. All fourteen are real and all fourteen
+    kept their goal; **two were filed under the wrong game** (Avowed Gladiator
+    and Ragewing Assassin are Monster Train **2** enemies). No `?` rows remain.
+  - **The paste was rehearsed end to end and rolled back**, which is where the
+    rest of this entry comes from: the sheets went to 279 and 131, `data/` was
+    regenerated, and the full suite and every content check came back green
+    before the workbook was restored byte for byte. What the rehearsal found is
+    fixed in the code, so the real paste does not have to carry it.
+  - **Nothing drew a body with no picture.** `BattlefieldView` set
+    `art.modulate = accent` on a TextureRect with **no texture** and called it a
+    tinted silhouette — that paints nothing. And `ReportChecklist._enemy_icon_rect`
+    returned **null** for such a body, which cost more than a picture: the buff
+    strip hangs under that chip, so an artless body's statuses had nowhere to be
+    drawn and its checklist row silently stopped agreeing with the board. Both
+    now draw the body's **initial**, the way the games this one is played on top
+    of drew their monsters before anybody had art. Dormant while all 94 bodies
+    have art; the first thing you would see the moment 316 that don't arrive.
+  - **`test_obs_companion`'s "every body in the roster has a face" became a
+    ratchet**, and four `test_overworld2` portrait tests now **arrange** an
+    arted body instead of waiting for the roll to hand them one. Both were
+    written when the roster was 94 rows that all had art, and both would have
+    gone quiet or red under an artless one — the four portrait tests by silently
+    skipping, which this project reads as a case the suite has stopped covering.
+  - **`tools/check_goal_candidates.py` now handles both sides of the paste**: a
+    row that has not shipped must not collide with anything already live, and a
+    row that has shipped must still match its sheet row **cell for cell**. Today
+    it reports `0 shipped, 316 pending`.
+  - **`test_atlas` failed on every SECOND run of the suite**, for reasons that
+    predate all of this: `before_all` called `load_layout()` with no argument,
+    which reads a **persisted** preference that the suite itself writes
+    (`test_profiles` and `test_ownership` both switch the filter to OWNED). So
+    "every game in the catalog has a star" compared 865 games against the
+    525-star owned sky. The full-sky tests now name the full sky.
+  - **`docs/goal-enemy-candidates.md` was reorganised** around what it is: status
+    and the paste command first, then the file's conventions, the six rules a row
+    has to pass, the numbers, and where the rows came from pass by pass. Its
+    counts are generated from the CSV rather than retyped.
+
+- **Eleven more wikis in the candidate file, aimed at the pool that was still
+  thin.** `docs/goal-candidates.csv` goes from 280 rows to **301**. The second
+  pass left **Strategy** the smallest pool at 27 rows, so five of this pass's
+  eleven games are Strategy — Slice & Dice, Shogun Showdown, Dome Keeper, Legend
+  of Keepers, Ring of Pain — and it ends at **37**. Deckbuilder takes Backpack
+  Hero and Across the Obelisk; Traditional takes Jupiter Hell, Rift Wizard and
+  Hoplite; Action, the biggest pool at 117, gets one game (Gunfire Reborn) and
+  two rows on purpose.
+  - **Legend of Keepers is where `Defeat a hero` finally comes from.** You play
+    the dungeon in that game, so its enemies are the heroes raiding you — a body
+    the first 280 rows had no owner for.
+  - **Hoplite gave up the two best rows of the pass** because it is small enough
+    that each demon is one rule: its Archer cannot attack an adjacent tile, so
+    the goal is *beat a ranged enemy by standing next to it*; its Wizard will not
+    fire through another demon, so the goal is *use an enemy as cover*. Neither
+    idea was anywhere in the file.
+  - **Three whole games were dropped rather than padded.** Fights in Tight Spaces
+    landed on rows that already exist (armoured, outgunned, grabs you,
+    surrounded) and its one free idea is Flaming Fatty's *push an enemy into
+    fire*; Moonlighter's mimics, repair golem and first boss are all spoken for;
+    Dicefolk never surfaced a single creature name through search. One row was
+    cut (`Elite Lobster` — *a giant crustacean* and *a giant serpent* are the
+    same row twice, from the same game) and one reworded (Dome Keeper's `Tick`,
+    off Isaac's Larry Jr.).
+  - `tools/check_goal_candidates.py` gated all of it and stayed green; the
+    frame-stripped similarity scan over every pair is what caught the Lobster and
+    the Tick. Four new overlap-ledger entries say why the pairs that survived are
+    not duplicates.
+  - Written down rather than glossed: this pass is **boss-light** (4 bosses in 21
+    rows against the file's 28%), because search surfaces a small game's ordinary
+    roster before its bosses. And the yield per game keeps falling for one
+    reason — the egress proxy blocks the wikis, so every row in this file was
+    written off a search summary, and the games left are the ones where you have
+    to open the bestiary.
+  - `data/` and `tools/Roguelikes.xlsx` remain untouched.
+
+- **Thirteen more wikis in the goal-enemy candidate file, and the audit is a
+  script now.** `docs/goal-candidates.csv` goes from 243 rows to **280** — 37
+  new candidates across 13 games that had never been read: Angband, ADOM,
+  Dungeons of Dredmor, Shiren the Wanderer and Tangledeep; FTL, Into the Breach
+  and Dwarf Fortress; Dicey Dungeons, Hand of Fate and Peglin; Spelunky Classic
+  and UnderMine. All 13 are owned and already in `data/games/`.
+  - **The games were chosen where the file was thinnest, not where the games are
+    famous.** Traditional was the starved pool and takes 16 of the 37 rows;
+    Strategy was the smallest at 18 rows, so three of the thirteen games went
+    there (FTL, Into the Breach, Dwarf Fortress) and it ends at 27. Action,
+    already the biggest, takes 4.
+  - **`tools/check_goal_candidates.py` is the first pass's prose audit as a
+    check**, and CI runs it: the enums, `Health` 1, the Damage-by-tier mapping,
+    the Size grammar (parsed with the generator's OWN `parse_size` rather than a
+    copy), a duplicate Name / File / Goal / slugified id inside the file or
+    against the live sheet, a `Game` the catalog does not spell that way, and a
+    `Type` that disagrees with the game's own type.
+  - **It found five wrong rows in the first pass's own work** the moment it ran:
+    Kecleon, Groudon, Zapdos, Rayquaza and Primal Dialga all named their game
+    `Pokemon Mystery Dungeon`, which is not a game — the catalog has six
+    Pokémon Mystery Dungeon titles and no such string, so `source_game` would
+    have pointed at nothing. They are now split by where each creature actually
+    lives. Nothing else in the 243 failed.
+  - **Six of the new rows were cut for reading like rows that already exist** —
+    Spelunky Classic's `Ghost` and `Olmec` (both already in the file under
+    another game), Into the Breach's `Burrower` (Magma Worm burrows already),
+    Peglin's `Knight Knight` (Death Metal is armoured already), Tangledeep's
+    `Duke Dirtbeak` and Spelunky's `King Alien Lord` — and one, UnderMine's
+    `Seer`, was reworded off Dead Cells' Concierge rather than cut. A
+    frame-stripped similarity scan over every pair is what surfaced them; the
+    ten neighbour pairs that survived it are now in the overlap ledger with the
+    reason each is not a duplicate.
+  - Still open and now written down: Tangledeep, Peglin and Spelunky Classic are
+    under-read (their wikis stopped surfacing bodies through search), UnderMine
+    gave up two bosses and no ordinary enemies, and the 14 `?` rows are all
+    still the first pass's — none of the 37 new rows needed one.
+  - `data/` and `tools/Roguelikes.xlsx` are untouched, as the candidate file has
+    always been: it is a paste queue, not content.
+
 - **The menu's art falls in from the top, a little faster, without the stutter.**
   Four things about `MenuFallingArt`, three of them measured rather than guessed:
   - **The opening fill comes in over the top edge like every other piece.** It

@@ -1,46 +1,100 @@
-# Goal-enemy candidates
+# Goal-enemies: the candidate file
 
-`docs/goal-candidates.csv` is the deliverable: **243 audited candidate rows** in
-the exact column order of the `enemies` and `bosses` sheets of
-`tools/Roguelikes.xlsx`, ready to paste and regenerate from. This file is the
-companion — what the columns were filled in with, what the audit threw out, and
-what is still unresolved.
+`docs/goal-candidates.csv` holds **316 audited candidate rows** in the exact
+column order of the `enemies` and `bosses` sheets of `tools/Roguelikes.xlsx`,
+built over four passes of wiki reading and **ready to paste**.
 
-Nothing here is wired up. `data/` is untouched.
+Nothing here is wired up yet. `tools/Roguelikes.xlsx` and `data/` are untouched:
+the workbook is edited by hand and uploaded, so the paste waits for whoever owns
+it. `tools/_candidates_to_sheet.py` is the paste when that moment comes.
+
+This document is the companion: what the columns were filled in with, the rules
+a row has to pass, what the audit threw out, and what is still open.
+
+## Status
+
+| | Now | If the file is pasted |
+|---|---|---|
+| `enemies` sheet | 54 rows | **279** |
+| `bosses` sheet | 40 rows | **131** |
+| Games with a body in the game | 22 | **84** |
+
+The paste itself is one command, and it has been rehearsed end to end — the run
+that proved it took the sheets to 279 and 131, regenerated `data/`, and came back
+green on the full suite and every content check before being rolled back:
+
+```bash
+python3 tools/check_goal_candidates.py     # must be clean FIRST
+python3 tools/_candidates_to_sheet.py      # splits on Sheet, drops the staging columns
+python3 tools/generate_goal_enemy_tres.py
+python3 tools/generate_boss_tres.py
+```
+
+Two things the rehearsal turned up, both fixed in the code already so the paste
+does not have to carry them:
+
+- **Nothing drew a body with no picture.** `BattlefieldView` tinted a TextureRect
+  that had no texture and called it a silhouette — that paints nothing — and
+  `ReportChecklist` returned null for the portrait chip, which also left an
+  artless body's buff strip (§13) with nothing to hang under. Both now draw the
+  body's **initial**, the way the games this one is played on top of drew their
+  monsters before anybody had art. Invisible today, when all 94 bodies have art;
+  the first thing you would see the moment 316 that don't arrive.
+- **Four portrait tests and one art assertion went quiet** under an artless
+  roster. `test_obs_companion`'s "every body has a face" is a ratchet now
+  (coverage may rise, not fall), and `test_overworld2`'s four portrait tests
+  arrange an arted body rather than waiting for the roll to hand them one.
+
+Two things are deliberately NOT done, and both are their own pass:
+
+- **No art.** None of the 316 rows resolves to a PNG. A picture dropped into
+  `images2.0/enemies/` or `images2.0/bosses/` under the row's `File` name is all
+  it takes to light one up; that is what the `File` column is for and why it is
+  the PascalCase of the name.
+- **No abilities.** `Ability` is `N/A` on all 316. Abilities are authored against
+  the `abilities` sheet (§7.6) and guessing them here would only make work for
+  whoever does that pass properly.
 
 ## The file
 
 | | |
 |---|---|
-| Rows | 243 — **176 enemies, 67 bosses** |
-| Games | 44, of which 24 are new to the project |
+| Rows | 316 — **225 enemies, 91 bosses** |
+| Games | 80, of which 62 have no body in the game yet |
 | Columns | `Sheet, Name, Type, Difficulty, Size, Game, Health, Damage, Goal Type, Goal, Ability, File, Tag, Phases` then two staging columns |
-| Staging columns | `Confidence` (`ok` / `?`) and `Why this pairing` — **delete both before pasting**; the sheet has no such columns |
+| Staging columns | `Confidence` (`ok` / `?`) and `Why this pairing` — not columns the sheets have; `_candidates_to_sheet.py` drops them |
 
-Split on the `Sheet` column: `enemies` rows go to the `enemies` sheet, `bosses`
-rows to `bosses` (which has the extra trailing `Phases`, left blank —
-Guillatina is currently the only multi-phase boss).
+**`python3 tools/check_goal_candidates.py` is the audit as a script**, and CI
+runs it. Every rule below that a row can break mechanically — the enums,
+`Health` 1, the Damage mapping, the Size grammar (parsed with the generator's
+own `parse_size`, not a copy of it), a duplicate `Name` / `File` / `Goal` / id
+inside the file, a `Game` the catalog does not spell that way, a `Type` that
+disagrees with the game's own — is checked there. It handles both sides of the
+paste: a row that has **not** shipped must not collide with anything already
+live, and a row that **has** shipped must still match its sheet row cell for
+cell, so once the paste happens the file and the workbook cannot drift apart
+without the build saying so. Today it reports `0 shipped, 316 pending`.
+`--stats` prints the tables quoted below. It was written for the second pass,
+immediately found five rows the first pass had got wrong, and has gated every
+row added since.
 
 Conventions copied off the live rows rather than invented:
 
-- **Health** is `1` on all 94 existing rows, so it is `1` on all 243.
+- **Health** is `1` on all 94 rows that were already live, so it is `1` here.
 - **Damage** is the difficulty index for enemies (1/2/3/4) and `3/5/7/9` for
-  bosses. Every candidate follows that mapping exactly.
+  bosses. Every row follows that mapping exactly.
 - **Difficulty** is `1-Low` … `4-Insane`; **Type** is `Action` / `Deckbuilder` /
   `Strategy` / `Traditional`; **Goal Type** is `Bounty` / `Feat` / `Fetch` /
   `Restriction` / `Discovery` — all title-case, as the generator expects.
 - **Size** defaults to `1x1`, bosses to `2x2`, with a handful of deliberate
-  exceptions (`Larry Jr.` 1x2, `Wallmonger` and `The Giant` 3x3, the Balatro
-  blinds 1x1 like the five already shipped).
-- **Ability** is `N/A` everywhere. Abilities are a separate authoring pass
-  against the `abilities` sheet (§7.6) and guessing them here would only make
-  work.
-- **File** is the PascalCase of the name. No art exists for any of these yet; a
-  missing PNG leaves `image` unset and the runtime uses a placeholder.
+  exceptions (`Larry Jr.` 1x2, `Wallmonger` and `The Giant` 3x3, `Abyssal
+  Serpent` 1x3, the Balatro blinds 1x1 like the five already shipped).
+- **File** is the PascalCase of the Name, which is where the art will hang.
 
-## What the audit checked, and what it changed
+## How a row is judged
 
-Six passes over every row. The first two were the expensive ones.
+Six rules, applied to every row in every pass. The first two are the expensive
+ones.
 
 **1. Is it a creature?** About thirty picks were not enemies or bosses at all —
 altars, items, rooms, statuses, buildings, player abilities, whole game systems,
@@ -88,42 +142,151 @@ thing it is really about:
 - **Beat a run without moving** was impossible as written in most games and is
   now **Win a fight without moving**.
 
-**3. Boss budget.** The first draft had 134 bosses. A boss here is the
-tier-change slot, not "this creature is a boss in its own game" — the live sheet
-keeps about two per game. 67 bosses now, 1.8 per game, no game over three. The
-67 demotions are all still perfectly good goal-enemies; the workbook already
-ships elites like `Fungi Beast` and `Shelled Parasite` as ordinary rows.
+**3. Boss budget.** A boss here is the tier-change slot, not "this creature is a
+boss in its own game" — the live sheet keeps about two per game. The first
+draft had 134 bosses and was cut to 67; the file now has 91 across
+80 games, and no game is over three. Demotions are not losses: the
+workbook already ships elites like `Fungi Beast` and `Shelled Parasite` as
+ordinary rows.
 
-**4. Difficulty.** Two passes. Difficulty is how hard the **goal** is in a normal
-run, not how hard the creature is in its own game — "defeat a big cat" is Low
-even when the cat is a boss, "clear a floor unseen" is High on an unarmed enemy.
-The result lands on the live sheet's own shape:
+**4. Difficulty.** Difficulty is how hard the **goal** is in a normal run, not
+how hard the creature is in its own game — "defeat a big cat" is Low even when
+the cat is a boss, "clear a floor unseen" is High on an unarmed enemy. The
+result tracks the live sheet's own shape:
 
 | | Low | Medium | High | Insane |
 |---|---|---|---|---|
-| candidates (243) | 109 | 90 | 35 | 9 |
-| live sheet (94) | 43 | 32 | 15 | 4 |
-| as a share | 45% vs 46% | 37% vs 34% | 14% vs 16% | 4% vs 4% |
+| first pass (243) | 109 | 90 | 35 | 9 |
+| second pass (+37) | 11 | 15 | 7 | 4 |
+| third pass (+21) | 7 | 9 | 4 | 1 |
+| fourth pass (+15) | 4 | 6 | 4 | 1 |
+| all 316 | 131 | 120 | 50 | 15 |
+| live sheet before this (94) | 43 | 32 | 15 | 4 |
+| as a share | 41% vs 46% | 38% vs 34% | 16% vs 16% | 5% vs 4% |
 
-**5. Collisions.** Checked by script against `data/`, and inside the candidate
-set: **no duplicate `Name`, no duplicate `File`, no duplicate `Goal`, and no
-collision with any of the 94 existing rows** on any of the three. Two near
-misses worth knowing:
+The later passes lean a tier harder than the first, because the games they read
+are where the genre keeps its long hauls — Angband's level 100, ADOM's emperor
+lich, FTL's flagship, POWDER's arch-daemon. That moves the whole file about a
+point off the sheet's old shape in each direction, which is close enough to
+leave alone rather than pad with filler Lows.
+
+**5. Collisions.** No duplicate `Name`, `File`, `Goal` or slugified id inside
+the file or against what was already live — checked by script, not by eye.
+Near misses worth knowing:
 
 - NetHack and Enter the Gungeon both have a **High Priest**. Both ship, with
   opposite verbs — NetHack's was reassigned to the **Aleax** so *pray* keeps a
   body and Gungeon's High Priest takes *defeat a priest*.
 - Brotato's `Colossus` would have collided with Risk of Rain's, already on the
   sheet. Dropped.
-- `Lich` (Gungeon, shipped) and `The Lich` (Loop Hero, candidate) generate
-  distinct ids but read alike on the HUD. Your call.
+- `Lich` (Gungeon, shipped) and `The Lich` (Loop Hero) generate distinct ids but
+  read alike on the HUD. Your call.
+- Diablo's **Skeleton King** ships as **King Leoric**, because Ball x Pit's
+  crowned undead already had the name.
+- Angband's **Grip** and Dredmor's **Diggle** are both the first thing their
+  game shows you, and both stayed: one is *defeat a named enemy*, the other
+  *defeat an enemy guarding its young*.
 
 **6. Type balance.** The starved pool was **Traditional** — 8 of 94 live rows,
-so a run on traditional games was drawing from NetHack ×4, Crypt ×3, Rogue ×1.
-The candidates add **70 traditional rows** across ten traditional roguelikes
-(NetHack, Crypt, Rogue, Brogue, DCSS, Caves of Qud, Shattered PD, Cogmind,
-Cataclysm: DDA, Tales of Maj'Eyal, Pokémon Mystery Dungeon). Action is still the
-biggest pool at 111, matching the sheet's existing lean.
+so a run on traditional games drew from NetHack ×4, Crypt ×3, Rogue ×1. The
+second-smallest was **Strategy**, 18 rows drawn almost entirely from Mewgenics
+and Brutal Orchestra. Each later pass was aimed at whichever was thinnest:
+
+| | Action | Traditional | Deckbuilder | Strategy |
+|---|---|---|---|---|
+| candidate rows | 124 | 94 | 56 | 42 |
+
+Strategy is the pool where a goal is hardest to write, which is why it stayed
+thin longest: the type covers everything from a fortress sim to a four-tile
+tactics board, so a goal has to survive both. The ones that work are about
+POSITION and UPKEEP rather than about hitting things — *repair something an
+enemy has broken*, *defeat an enemy before it reaches you*, *defeat the enemy
+that is making the others stronger*.
+
+## Where the rows came from
+
+Four passes, 80 games, every one of them **owned** and already in
+`data/games/`. Yield per game falls steadily across the passes for one reason:
+the egress proxy blocks the wikis, so every row here was written off a search
+summary. The first pass took the games whose rosters search knows by heart; what
+is left is games where you have to open the bestiary.
+
+### First pass — 243 rows, 46 games
+
+The bulk of the file, and the one that set every convention above. Its sources
+are listed at the end.
+
+### Second pass — 37 rows, 13 games
+
+Aimed at **Traditional** (16 rows) and **Strategy** (9).
+
+| Game | Type | Rows | Wiki |
+|---|---|---|---|
+| Spelunky Classic | Action | 2 enemies | spelunky.fandom.com |
+| UnderMine | Action | 2 bosses | undermine.wiki.gg |
+| Dicey Dungeons | Deckbuilder | 2 enemies, 1 boss | diceydungeons.fandom.com |
+| Hand of Fate | Deckbuilder | 2 enemies, 1 boss | handoffate.fandom.com |
+| Peglin | Deckbuilder | 1 enemy, 1 boss | peglin.wiki.gg |
+| Dwarf Fortress | Strategy | 1 enemy, 2 bosses | dwarffortresswiki.org |
+| FTL | Strategy | 2 enemies, 1 boss | ftl.fandom.com |
+| Into the Breach | Strategy | 2 enemies, 1 boss | intothebreach.fandom.com |
+| Ancient Domains of Mystery | Traditional | 2 enemies, 2 bosses | ancardia.fandom.com, adomgb.info |
+| Angband | Traditional | 3 enemies, 2 bosses | thangorodrim.net, angband.readthedocs.io |
+| Dungeons of Dredmor | Traditional | 2 enemies, 1 boss | dungeonsofdredmor.fandom.com |
+| Mystery Dungeon 2: Shiren the Wanderer | Traditional | 3 enemies | mysterydungeonwiki.com |
+| Tangledeep | Traditional | 1 enemy | tangledeep.fandom.com |
+
+### Third pass — 21 rows, 11 games
+
+Aimed at **Strategy**, five of eleven games.
+
+| Game | Type | Rows | Wiki |
+|---|---|---|---|
+| Gunfire Reborn | Action | 1 enemy, 1 boss | gunfirereborn.fandom.com |
+| Across the Obelisk | Deckbuilder | 2 enemies | ato.fandom.com |
+| Backpack Hero | Deckbuilder | 1 enemy, 1 boss | backpackhero.wiki.gg |
+| Dome Keeper | Strategy | 2 enemies | domekeeper.wiki.gg |
+| Legend of Keepers: Career of a Dungeon Manager | Strategy | 2 enemies | legendofkeepers.fandom.com |
+| Ring of Pain | Strategy | 1 boss | ring-of-pain.fandom.com |
+| Shogun Showdown | Strategy | 2 enemies, 1 boss | shogunshowdown.wiki.gg |
+| Slice & Dice | Strategy | 2 enemies | slice-and-dice.fandom.com, minmax.wiki |
+| Hoplite | Traditional | 2 enemies | the game's own rules reference |
+| Jupiter Hell | Traditional | 2 enemies | jupiterhell.fandom.com |
+| Rift Wizard | Traditional | 1 enemy | riftwizard.fandom.com |
+
+**Legend of Keepers is the one worth reading.** You play the dungeon, so its
+*enemies* are the heroes raiding you — which is where `Defeat a hero` comes
+from, a goal the file never had a body for. **Hoplite** is the other: small
+enough that each demon is a single rule, and two of those rules became goals
+nothing else asks for — *beat a ranged enemy by standing next to it* (its Archer
+cannot attack an adjacent tile at all) and *use an enemy as cover* (its Wizard
+will not fire through another demon).
+
+### Fourth pass — 15 rows, 10 games
+
+| Game | Type | Rows | Wiki |
+|---|---|---|---|
+| Diablo | Action | 2 bosses | diablo.fandom.com |
+| Don't Starve | Action | 1 enemy, 1 boss | dontstarve.wiki.gg |
+| Halls of Torment | Action | 2 enemies | hot.fandom.com |
+| Wizard of Legend | Action | 1 enemy | wizardoflegend.fandom.com |
+| Shotgun King: The Final Checkmate | Strategy | 2 enemies, 1 boss | shotgun-king.fandom.com |
+| Super Auto Pets | Strategy | 1 enemy | superautopets.fandom.com |
+| The Last Spell | Strategy | 1 boss | thelastspell.fandom.com |
+| Dungeonmans | Traditional | 1 enemy | dungeonmans.fandom.com |
+| Powder | Traditional | 1 boss | powderrl.fandom.com, roguebasin.com |
+| Torneko's Great Adventure: Mystery Dungeon | Traditional | 1 enemy | mysterydungeonwiki.com, dragonquest.fandom.com |
+
+The last pass also **closed the `Confidence` column**. Fourteen rows from the
+first pass were marked `?` — the creature or the detail could not be confirmed
+— and every one was checked against a wiki page: Aleax, Voidling, Skeletal
+Juggernaut, Chicken Walker, Bamboozle, Krunker, Brogue's captive Ogre, Death
+Metal, Byarrrith and Halpharrr, Plague Bringer, The Architect, Bee Queen,
+Avowed Gladiator and Ragewing Assassin. All fourteen turned out to be real
+creatures and all fourteen kept their goal; several `Why this pairing` notes
+were rewritten to say what the page actually says. **Two were filed under the
+wrong game**: Avowed Gladiator and Ragewing Assassin are **Monster Train 2**
+enemies, not Monster Train. The file now carries no `?` rows at all.
 
 ## Overlap ledger
 
@@ -156,33 +319,230 @@ reworded.
 | Trapped | `Trap an enemy in place` (Spider Kitten, Feat) | Web Spitter, Feat, Low | who is stuck |
 | Transform | The Guardian, Feat, Low — make it happen | Werewolf, Discovery, Low | cause vs witness |
 | Trash | Chubs 'n' Nubs, Fetch, Low (Strategy) | Recycler, Fetch, Low (Traditional) | same goal, different type pools — a run only ever sees one |
+| Made of something | Wisp *fire*, Big Chunk *stone*, Blood Clot *blood*, Gurdy *other enemies* | Bronze Colossus *metal*, Snowman *ice or snow* | an established family; each names a different material and no game has two |
+| Final bosses | Rebel Flagship, Bounty, Insane — beat it | Rayquaza *first attempt*, Strong Daemon Master *hardest difficulty* | the clause is the goal; the plain one had no owner until FTL |
+| Title bosses | Lord Dredmor, Feat, High — the boss the game is NAMED after | Rebel Flagship, Bounty, Insane — the LAST one | often not the same body, and not the same search |
+| Boss under a rule | The Concierge *no damage taken*, Bone Courtier *no summons* | Seer, Restriction, Insane — *no healing* | three different rules on the same shape of fight |
+| First thing you meet | Snake, Bounty, Low — an enemy in the first room | Prickwood, Bounty, Low — the first BOSS of a run | enemy vs boss, and two different pools |
+| Out-something-ed | Grunt, Traditional — *outguns you* | Scarab, Strategy — *outranges you* | firepower vs reach, and a run sees one pool |
+| Propping up the others | Warden, Action — *protecting* the others | Psion, Strategy — *making the others stronger* | a shield vs a buff |
+| Eggs | Diggle, Bounty, Low — kill the parent standing over them | Spider Leader, Feat, Med — destroy the egg itself | opposite ends of the same nest |
+| The weakest thing | Mamel, Bounty, Low — defeat it | Boldor, Bounty, Med — defeat its KING | same species, one tier apart |
+| Propping up the others | Warden *protects*, Psion *buffs* | Priestess, Bounty, Med — *heals* | three roles, three verbs; Weirdling Beast heals only ITSELF |
+| Immobile | Turret, Bounty, Med — *cannot move* | Olmec, Bounty, Med — *cannot be damaged* | what the enemy can't do is the whole difference |
+| Phases | The Shogun, Feat, Insane — a boss with more than one | Bone Hydra, Bounty — an enemy with more than one HEAD | one is a fight that restarts, one is anatomy |
+| Summoned bodies | Carcass *kill the spawner*, Dreadful Offspring *clear the room* | Bones, Bounty, Low — kill the summoned thing itself | three points on the same chain |
+
+## What was cut
 
 Cut as true duplicates: a second freeze (Stygian Guard), a second splitter (Pink
 Jelly), a second thief (Brogue Monkey), a second summoner (Ogre Shaman, Brood
 Nexus, Reptomancer), a second shrink (SoR shrink ray), a second drunk (Smith), a
 second level-30 (ToME prodigies), a second do-not-backtrack (Loop Hero's loop), a
 second no-magic (ToME antimagic), a second two-boss fight (Donu and Deca), a
-second dragon (Dragon Prince), and Brotato's `Colossus`.
+second dragon (Dragon Prince), and Brotato's `Colossus`. The second pass added
+six more: Spelunky Classic's `Ghost` and `Olmec` (both already in the file under
+another game), Into the Breach's `Burrower`, Peglin's `Knight Knight`,
+Tangledeep's `Duke Dirtbeak` and Spelunky Classic's `King Alien Lord`. The third
+added Gunfire Reborn's `Elite Lobster`, and three whole games — Fights in Tight
+Spaces, Moonlighter and Dicefolk — that produced nothing a row did not already
+say.
+## Bodies waiting for a goal
+
+Picked bodies with no goal written for them yet — the opposite of how the rest of
+this file was built, which started from a goal and went looking for something to
+carry it. Each row below has a **proposal and a fallback**, and neither is in
+`goal-candidates.csv`: a body is only a candidate once its goal has been checked
+for a collision, which is what the table's last column is about.
+
+Three of these are **already in the file** and want nothing:
+
+| Already a candidate | Goal it carries |
+|---|---|
+| `The Lich` (Loop Hero) | *Defeat a boss you summoned yourself* |
+| `Book of Stabbing` (Slay the Spire) | *Read a book* |
+| `Mithrix` (Risk of Rain 2) | *Destroy a planet or a moon* |
+
+Mithrix is worth a second look, though: the **no passive items** idea is a
+better fit for what that fight actually does (it steals your items in its last
+phase) than the goal the row currently carries. Either swap it, or give
+*Win a run without a single passive item* to another Risk of Rain 2 body.
+
+### The proposals
+
+| Body | Game (type) | What it does | Proposed goal | Fallback | Clear? |
+|---|---|---|---|---|---|
+| **Happy Meek** | Uma Musume: Pretty Derby (Strategy) | Trails the field, then surges late and overtakes | Feat — *Come from behind to win* | Feat — *Win after falling behind* | free |
+| **Maris, Fathom of Night** | Elden Ring Nightreign (Action) | Floats out of melee reach, puts you to sleep, fights in an underwater arena | Feat — *Put an enemy to sleep* | Discovery — *Fight somewhere that is not solid ground* | *go to sleep* is Lagavulin's, so this takes the other side of it |
+| **Knowledge Demon** | Slay the Spire 2 (Deckbuilder) | Makes you pick one of two curses, every cycle | Feat — *Be made to choose which curse you take* | Restriction — *Take the worse of two rewards on purpose* | the file has *get cursed* (Hecate) and *carry four* (Xucat'); the CHOICE is the free one |
+| **Zodiac** | Mewgenics (Strategy) | A gunman that fires at anything that changes tile | Feat — *Make an enemy fire at the square you just left* | Restriction — *Never move two turns in a row* | **not** *win a fight without moving* — that is Oklob Plant's |
+| **Radical Rat** | Mewgenics (Strategy) | Rat in sunglasses throwing bombs; the chain reaction is the threat | Feat — *Set off a chain reaction* | Bounty — *Defeat three enemies with one explosion* | free; the file's other explosions are *survive one* and *kill in one turn* |
+| **Daddy Shark** | Mewgenics (Strategy) | Hits for what may as well be infinite damage | Feat — *Survive a hit that should have killed you* | Restriction — *Beat a fight that can end you in one blow* | free |
+| **Rocky Bobo** | Mewgenics (Strategy) | Walks TOWARD whatever damages it; levitates rocks | Bounty — *Defeat an enemy that walks into your attacks* | Feat — *Make an enemy come to you* | free |
+| **The Coven** | Mewgenics (Strategy) | Works through a ritual; its demon becomes a Tormentor | Feat — **Ally yourself with a devil** (your line) | Feat — *Interrupt a ritual before it finishes* | *perform a religious act* is Cultist's, and a deal with a devil is a different act |
+| **The Bloat** | The Binding of Isaac (Action) | A Peep variant whose eyes detach and keep coming | Bounty — *Defeat an enemy that leaves a piece of itself behind* | Feat — *Kill the part before the whole* | check the wiki first — this is from memory, not a page |
+| **Zombalatro** | Vampire Survivors (Action) | A body from the Balatro crossover stage | Discovery — **Find a reference to another roguelike** (your line) | Discovery — *Meet a body borrowed from another game* | free, and the best of the lot: crossovers are everywhere in this genre |
+| **Jimbats** | Vampire Survivors (Action) | Same crossover stage, in numbers | Bounty — *Defeat a swarm that never stops arriving* | Fetch — *Survive a screen with nothing left to see through* | the wiki says these names are made up from internal IDs — confirm the spelling before shipping |
+| **Crewmate** | Vampire Survivors (Action) | The Among Us crossover body | Bounty — *Defeat an enemy pretending to be an ally* | Discovery — *Meet something that is not from this game at all* | keep it away from Zombalatro's line — that one is about ROGUELIKE references |
+| **The Seven Sins** | The Binding of Isaac (Action) | Seven themed mini-bosses, one per sin | Fetch — *Beat every member of a set* | Bounty — *Defeat an enemy named after a vice* | `Sloth` and `Gluttony` are taken as NAMES elsewhere; ship one sin, not seven |
+| **King Vermin** | *unidentified* | — | — | — | **which game?** Hades' `Gigantic Vermin` is already live; this needs a source before a goal |
+| **a Downwell body** | Downwell (Action) | The whole game is landing on things | Feat — **Stomp on something** → *Defeat an enemy by landing on it* (your line) | Feat — *Kill without ever attacking upward* | goal is free; the BODY still has to be picked out of the bestiary |
+| **a poop body** | The Binding of Isaac / The Legend of Bum-Bo | Isaac's `Dip`, and Bum-Bo's whole cast | Bounty — **Defeat an enemy made of waste** (your line) | Feat — *Destroy something everyone else walks past* | free; Bum-Bo is in the catalog as `The Legend of Bum-Bo` (Strategy), so the two games give two different pools |
+| **the Splintered Fate double boss** | TMNT: Splintered Fate (Action) | A boss fought as a pair, in a game built for co-op | Discovery — **Beat a game with another player** (your line) | Feat — *Clear a run you did not play alone* | free, and it is the only goal in the file that asks for a second person |
+
+Sources for the ones that needed reading:
+[Mewgenics](https://mewgenics.wiki.gg/wiki/Bosses) ·
+[Radical Rat](https://mewgenics.wiki.fextralife.com/Radical_Rat) ·
+[Zodiac](https://mewgenics.wiki.gg/wiki/Zodiac) ·
+[Maris](https://eldenringnightreign.wiki.fextralife.com/Maris_Fathom_of_Night) ·
+[Knowledge Demon](https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Knowledge_Demon) ·
+[Happy Meek](https://umamusume.fandom.com/wiki/Happy_Meek) ·
+[Ante Chamber](https://vampire.survivors.wiki/w/Ante_Chamber)
 
 ## Still open
 
-- **Use star power** — no enemy in any of the 44 games carries it.
+- **Art for all 316 of them.** Nothing else in this list matters as much: a
+  goal-enemy with no picture is a placeholder on the board.
+- **Abilities.** `Ability` is `N/A` on every row, so 316 bodies walk and swing
+  and do nothing else. That is a pass against the `abilities` sheet (§7.6).
+- **The bodies above have no goal yet** — seventeen of them, and two need a
+  source before anything else.
+- **Use star power** — no enemy in any of the 80 games carries it.
 - **Drink milk**, **make a cake**, **smoke something** — all three are ordinary
   Cataclysm: DDA items, but no body on its bestiary is *about* them yet.
-- **14 rows are marked `?`** in the Confidence column: the creature or the
-  detail could not be confirmed against a wiki page from this session. They are
-  spread thin (Monster Train ×2, CDDA ×2, Wildfrost ×2, Ember Knights ×2, and
-  singles elsewhere) and each needs a look before it ships.
-- Every game whose wiki lists enemies as a stub — **Dungeon Clawler** especially
-  — has more to give than the two rows here.
-- **Brutal Orchestra** and **Gnomes** are on the sheet but produced nothing this
-  pass; neither wiki surfaced a usable roster through search.
+- **Under-read games.** Tangledeep, Peglin, Spelunky Classic, Dungeon Clawler
+  and UnderMine each gave up one or two rows before search stopped surfacing
+  bodies, and each plainly has more — Tangledeep's whole Monsterpedia, Peglin's
+  Slimedrop line and its eight bosses, UnderMine's peons and bombers. A
+  search-quality limit, not a content limit.
+- **The later passes are boss-light** — the third ran 4 bosses in 21 rows —
+  because search surfaces a small game's ordinary roster before its bosses.
+- **No Insane ENEMY exists for Action or Deckbuilder.** Both types have Insane
+  bosses (7 and 1) and no ordinary body at that tier, which is how it was before
+  these rows landed too — the file added 15 Insane rows and every one went to
+  Strategy, Traditional, or a boss slot. Worth an authoring pass of its own: an
+  Insane goal on an ordinary Action body is a hard thing to write, which is
+  presumably why nobody has.
+- **Games that produced nothing**: Brutal Orchestra and Gnomes (no roster
+  surfaced), Fights in Tight Spaces, Moonlighter, Roguebook, Deck of Ashes,
+  Dicefolk and Neon Abyss (every body landed on a row that already exists, or no
+  creature could be named at all).
 
 ## Sources
 
-Wikis read for this pass, by game. Direct fetching is blocked from this
-environment, so these were read through search results rather than page by page;
-that is the reason for the `?` column.
+Wikis read, by game. Direct fetching is blocked from this environment — the
+egress proxy refuses fandom, wiki.gg and the rest alike — so all four passes
+read these through search results rather than page by page.
+
+### Fourth pass
+
+Shotgun King: The Final Checkmate ([1](https://shotgun-king.fandom.com/wiki/White_Pieces),
+[2](https://shotgun-king.fandom.com/wiki/Pawn),
+[3](https://shotgun-king.fandom.com/wiki/Queen)) ·
+Diablo ([1](https://diablo.fandom.com/wiki/The_Butcher_(Diablo_I)),
+[2](https://diablo.fandom.com/wiki/Skeleton_King_(Diablo_I)),
+[3](https://diablo-archive.fandom.com/wiki/Monsters_(Diablo_I))) ·
+Wizard of Legend ([1](https://wizardoflegend.fandom.com/wiki/Enemies),
+[2](https://wizardoflegend.fandom.com/wiki/Master_Sura)) ·
+Halls of Torment ([1](https://hot.fandom.com/wiki/Category:Boss),
+[2](https://hot.fandom.com/wiki/Forgotten_Viaduct),
+[3](https://hot.fandom.com/wiki/Haunted_Caverns)) ·
+The Last Spell ([1](https://thelastspell.fandom.com/wiki/Bosses),
+[2](https://thelastspell.fandom.com/wiki/Monsters)) ·
+Don't Starve ([1](https://dontstarve.wiki.gg/wiki/Monster),
+[2](https://dontstarve.wiki.gg/wiki/Deerclops),
+[3](https://dontstarve.wiki.gg/wiki/Category:Boss_Monsters)) ·
+Super Auto Pets ([1](https://superautopets.fandom.com/wiki/Pets),
+[2](https://superautopets.fandom.com/wiki/Whale)) ·
+Dungeonmans ([1](https://dungeonmans.fandom.com/wiki/Monsters)) ·
+Torneko's Great Adventure ([1](https://mysterydungeonwiki.com/wiki/Torneko_1:Monster),
+[2](https://dragonquest.fandom.com/wiki/Torneko%27s_Great_Adventure)) ·
+Powder ([1](https://powderrl.fandom.com/wiki/Overview),
+[2](https://www.roguebasin.com/index.php/POWDER))
+
+Pages read to close the `?` column: Wildfrost
+([1](https://wildfrost.fandom.com/wiki/Bosses/minibosses)) · Ember Knights
+([1](https://ember-knights-game.fandom.com/wiki/Praxis)) · Monster Train 2
+([1](https://monstertrain2.miraheze.org/wiki/Avowed_Gladiator),
+[2](https://monstertrain2.miraheze.org/wiki/Chosen_Assassin)) · Cataclysm: DDA
+([1](https://cddawiki.danmakudan.com/wiki/index.php/Skeletal_juggernaut)) ·
+Rogue Legacy 2 ([1](https://gamerant.com/rogue-legacy-2-how-defeat-void-beasts-byarrrith-halpharrr/)) ·
+Crypt of the NecroDancer ([1](https://necrodancer.miraheze.org/wiki/Death_Metal)) ·
+Dungeon Clawler ([1](https://dungeon-clawler.fandom.com/wiki/Enemies)) · NetHack
+([1](https://nethackwiki.com/wiki/Minion), [2](https://nethackwiki.com/wiki/Aleax)) ·
+Risk of Rain 2 ([1](https://riskofrain2.wiki.gg/wiki/Voidling)) · Brogue
+([1](https://brogue.fandom.com/wiki/Cage), [2](https://brogue.fandom.com/wiki/Allies))
+
+### Third pass
+
+Slice & Dice ([1](https://slice-and-dice.fandom.com/wiki/Category:Enemies),
+[2](https://minmax.wiki/slice-and-dice/monsters),
+[3](https://slice-and-dice.fandom.com/wiki/Lich)) ·
+Shogun Showdown ([1](https://shogunshowdown.wiki.gg/wiki/Enemies),
+[2](https://shogunshowdown.wiki.gg/wiki/Bosses),
+[3](https://shogunshowdown.wiki.gg/wiki/The_Shogun)) ·
+Dome Keeper ([1](https://domekeeper.wiki.gg/wiki/Enemies),
+[2](https://domekeeper.wiki.gg/wiki/Sortable_Enemy_List),
+[3](https://domekeeper.wiki.gg/wiki/Walker)) ·
+Legend of Keepers ([1](https://legendofkeepers.fandom.com/wiki/Monsters),
+[2](https://legendofkeepers.fandom.com/wiki/Heroes)) ·
+Ring of Pain ([1](https://ring-of-pain.fandom.com/wiki/Owl_(Boss)),
+[2](https://www.pcinvasion.com/ring-of-pain-enemy-guide/)) ·
+Backpack Hero ([1](https://backpackhero.wiki.gg/wiki/Bestiary),
+[2](https://backpackhero.wiki.gg/wiki/Frozen_Heart)) ·
+Across the Obelisk ([1](https://ato.fandom.com/wiki/Enemies),
+[2](https://ato.fandom.com/wiki/Bosses),
+[3](https://ato.fandom.com/wiki/The_Wolf_Wars)) ·
+Jupiter Hell ([1](https://jupiterhell.fandom.com/wiki/Enemies),
+[2](https://classic.jupiterhell.com/wiki/Enemies)) ·
+Rift Wizard ([1](https://riftwizard.fandom.com/wiki/Monsters),
+[2](https://riftwizard2.wiki.gg/wiki/Monsters)) ·
+Hoplite ([1](https://github.com/ychalier/hoplite/blob/master/RULES.md),
+[2](https://en.wikipedia.org/wiki/Hoplite_(video_game))) ·
+Gunfire Reborn ([1](https://gunfirereborn.fandom.com/wiki/Enemies),
+[2](https://gunfirereborn.fandom.com/wiki/Category:Bosses),
+[3](https://gunfirereborn.fandom.com/wiki/Lu_Wu))
+
+### Second pass
+
+Angband ([1](http://thangorodrim.net/spoilers/monsters_short.html),
+[2](https://angband.readthedocs.io/en/latest/guide.html)) ·
+Ancient Domains of Mystery ([1](https://ancardia.fandom.com/wiki/Cat_lord),
+[2](https://ancardia.fandom.com/wiki/Cats),
+[3](http://www.adomgb.info/adomgb-3-6.html)) ·
+Dungeons of Dredmor ([1](https://dungeonsofdredmor.fandom.com/wiki/Enemies),
+[2](https://dungeonsofdredmor.fandom.com/wiki/Diggle),
+[3](https://dungeonsofdredmor.fandom.com/wiki/Arch_Diggle)) ·
+Mystery Dungeon 2: Shiren the Wanderer ([1](https://mysterydungeonwiki.com/wiki/Shiren:Mamel_Family),
+[2](https://mysterydungeonwiki.com/wiki/Shiren:Pacorepkin_Family),
+[3](https://mysterydungeonwiki.com/wiki/Shiren:Original_Monster_Families)) ·
+Tangledeep ([1](https://tangledeep.fandom.com/wiki/Bosses),
+[2](https://tangledeep.fandom.com/wiki/Champions),
+[3](https://tangledeep.fandom.com/wiki/Monsterpedia)) ·
+FTL ([1](https://ftl.fandom.com/wiki/Enemy_Ships),
+[2](https://ftl.fandom.com/wiki/The_Rebel_Flagship),
+[3](https://ftl.fandom.com/wiki/Boarding)) ·
+Into the Breach ([1](https://intothebreach.fandom.com/wiki/Vek),
+[2](https://intothebreach.fandom.com/wiki/Spider_Leader),
+[3](https://intothebreach.fandom.com/wiki/Blobber)) ·
+Dwarf Fortress ([1](https://dwarffortresswiki.org/index.php/DF2014:Megabeast),
+[2](https://dwarffortresswiki.org/index.php/DF2014:Forgotten_beast),
+[3](https://dwarffortresswiki.org/index.php/DF2014:Titan)) ·
+Dicey Dungeons ([1](https://diceydungeons.fandom.com/wiki/Enemies),
+[2](https://wiki.diceydungeons.com/doku.php?id=enemies),
+[3](https://diceydungeons.fandom.com/wiki/Witch)) ·
+Hand of Fate ([1](https://handoffate.fandom.com/wiki/Courts),
+[2](https://hand-of-fate-2.fandom.com/wiki/Bosses),
+[3](https://hand-of-fate-2.fandom.com/wiki/Major_Suits)) ·
+Peglin ([1](https://peglin.wiki.gg/wiki/Category:Enemies),
+[2](https://peglin.wiki.gg/wiki/Category:Bosses),
+[3](https://peglin.fandom.com/wiki/Encirclepedia)) ·
+Spelunky Classic ([1](https://spelunky.fandom.com/wiki/Enemies_(Classic)),
+[2](https://spelunky.fandom.com/wiki/Category:Spelunky_Classic_Enemies)) ·
+UnderMine ([1](https://undermine.wiki.gg/wiki/Bosses_and_Mini_Bosses),
+[2](https://undermine.wiki.gg/wiki/Seer,_World's_Heart))
+
+### First pass
 
 Slay the Spire ([1](https://slaythespire.wiki.gg/wiki/Hexaghost),
 [2](https://slaythespire.wiki.gg/wiki/Gremlins),
