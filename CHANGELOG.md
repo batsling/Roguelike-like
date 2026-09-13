@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seventeen picked bodies with no goal yet, written down with a proposal
+  each.** `docs/goal-enemy-candidates.md` gains a **Bodies waiting for a goal**
+  section — the opposite of how the rest of the file was built, which started
+  from a goal and went looking for a body to carry it. Each row gets a proposal,
+  a fallback, and a note on whether the line is already taken.
+  - **Three of the picks were already candidates** and want nothing: `The Lich`
+    (Loop Hero), `Book of Stabbing` (Slay the Spire) and `Mithrix` (Risk of Rain
+    2). Mithrix is worth revisiting though — *win without a single passive item*
+    describes what that fight actually does (it steals your items in its last
+    phase) better than the goal its row carries.
+  - **Four of the proposals were checked against the file and moved off a
+    collision.** Zodiac punishes movement, but *win a fight without moving* is
+    DCSS's Oklob Plant, so it takes *make an enemy fire at the square you just
+    left*. Maris puts you to sleep, and *go to sleep* is Lagavulin's, so it takes
+    the other side: *put an enemy to sleep*. Knowledge Demon's *choice* between
+    two curses is the free one — *get cursed* (Hecate) and *carry four* (Xucat')
+    are both spoken for. Crewmate is kept off Zombalatro's line, which is about
+    roguelike references specifically.
+  - **Two need a source before they need a goal**: `King Vermin` (no game named,
+    and Hades' `Gigantic Vermin` is already live) and the Downwell body that
+    would carry *stomp on something* — the goal is free, the body is not picked.
+  - Mewgenics, Nightreign, Slay the Spire 2, Uma Musume and the Vampire
+    Survivors crossover stage were read for this; the Vampire Survivors wiki
+    says its crossover names are reconstructed from internal IDs, so those two
+    need their spelling confirmed before they ship.
+
 - **A fourth wiki pass, the last unconfirmed rows closed, and the paste rehearsed
   and rolled back.** `docs/goal-candidates.csv` goes from 301 rows to **316**
   across 80 games. The workbook is still edited by hand and uploaded, so

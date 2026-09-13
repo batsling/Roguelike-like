@@ -347,12 +347,66 @@ Tangledeep's `Duke Dirtbeak` and Spelunky Classic's `King Alien Lord`. The third
 added Gunfire Reborn's `Elite Lobster`, and three whole games — Fights in Tight
 Spaces, Moonlighter and Dicefolk — that produced nothing a row did not already
 say.
+## Bodies waiting for a goal
+
+Picked bodies with no goal written for them yet — the opposite of how the rest of
+this file was built, which started from a goal and went looking for something to
+carry it. Each row below has a **proposal and a fallback**, and neither is in
+`goal-candidates.csv`: a body is only a candidate once its goal has been checked
+for a collision, which is what the table's last column is about.
+
+Three of these are **already in the file** and want nothing:
+
+| Already a candidate | Goal it carries |
+|---|---|
+| `The Lich` (Loop Hero) | *Defeat a boss you summoned yourself* |
+| `Book of Stabbing` (Slay the Spire) | *Read a book* |
+| `Mithrix` (Risk of Rain 2) | *Destroy a planet or a moon* |
+
+Mithrix is worth a second look, though: the **no passive items** idea is a
+better fit for what that fight actually does (it steals your items in its last
+phase) than the goal the row currently carries. Either swap it, or give
+*Win a run without a single passive item* to another Risk of Rain 2 body.
+
+### The proposals
+
+| Body | Game (type) | What it does | Proposed goal | Fallback | Clear? |
+|---|---|---|---|---|---|
+| **Happy Meek** | Uma Musume: Pretty Derby (Strategy) | Trails the field, then surges late and overtakes | Feat — *Come from behind to win* | Feat — *Win after falling behind* | free |
+| **Maris, Fathom of Night** | Elden Ring Nightreign (Action) | Floats out of melee reach, puts you to sleep, fights in an underwater arena | Feat — *Put an enemy to sleep* | Discovery — *Fight somewhere that is not solid ground* | *go to sleep* is Lagavulin's, so this takes the other side of it |
+| **Knowledge Demon** | Slay the Spire 2 (Deckbuilder) | Makes you pick one of two curses, every cycle | Feat — *Be made to choose which curse you take* | Restriction — *Take the worse of two rewards on purpose* | the file has *get cursed* (Hecate) and *carry four* (Xucat'); the CHOICE is the free one |
+| **Zodiac** | Mewgenics (Strategy) | A gunman that fires at anything that changes tile | Feat — *Make an enemy fire at the square you just left* | Restriction — *Never move two turns in a row* | **not** *win a fight without moving* — that is Oklob Plant's |
+| **Radical Rat** | Mewgenics (Strategy) | Rat in sunglasses throwing bombs; the chain reaction is the threat | Feat — *Set off a chain reaction* | Bounty — *Defeat three enemies with one explosion* | free; the file's other explosions are *survive one* and *kill in one turn* |
+| **Daddy Shark** | Mewgenics (Strategy) | Hits for what may as well be infinite damage | Feat — *Survive a hit that should have killed you* | Restriction — *Beat a fight that can end you in one blow* | free |
+| **Rocky Bobo** | Mewgenics (Strategy) | Walks TOWARD whatever damages it; levitates rocks | Bounty — *Defeat an enemy that walks into your attacks* | Feat — *Make an enemy come to you* | free |
+| **The Coven** | Mewgenics (Strategy) | Works through a ritual; its demon becomes a Tormentor | Feat — **Ally yourself with a devil** (your line) | Feat — *Interrupt a ritual before it finishes* | *perform a religious act* is Cultist's, and a deal with a devil is a different act |
+| **The Bloat** | The Binding of Isaac (Action) | A Peep variant whose eyes detach and keep coming | Bounty — *Defeat an enemy that leaves a piece of itself behind* | Feat — *Kill the part before the whole* | check the wiki first — this is from memory, not a page |
+| **Zombalatro** | Vampire Survivors (Action) | A body from the Balatro crossover stage | Discovery — **Find a reference to another roguelike** (your line) | Discovery — *Meet a body borrowed from another game* | free, and the best of the lot: crossovers are everywhere in this genre |
+| **Jimbats** | Vampire Survivors (Action) | Same crossover stage, in numbers | Bounty — *Defeat a swarm that never stops arriving* | Fetch — *Survive a screen with nothing left to see through* | the wiki says these names are made up from internal IDs — confirm the spelling before shipping |
+| **Crewmate** | Vampire Survivors (Action) | The Among Us crossover body | Bounty — *Defeat an enemy pretending to be an ally* | Discovery — *Meet something that is not from this game at all* | keep it away from Zombalatro's line — that one is about ROGUELIKE references |
+| **The Seven Sins** | The Binding of Isaac (Action) | Seven themed mini-bosses, one per sin | Fetch — *Beat every member of a set* | Bounty — *Defeat an enemy named after a vice* | `Sloth` and `Gluttony` are taken as NAMES elsewhere; ship one sin, not seven |
+| **King Vermin** | *unidentified* | — | — | — | **which game?** Hades' `Gigantic Vermin` is already live; this needs a source before a goal |
+| **a Downwell body** | Downwell (Action) | The whole game is landing on things | Feat — **Stomp on something** → *Defeat an enemy by landing on it* (your line) | Feat — *Kill without ever attacking upward* | goal is free; the BODY still has to be picked out of the bestiary |
+| **a poop body** | The Binding of Isaac / The Legend of Bum-Bo | Isaac's `Dip`, and Bum-Bo's whole cast | Bounty — **Defeat an enemy made of waste** (your line) | Feat — *Destroy something everyone else walks past* | free; Bum-Bo is in the catalog as `The Legend of Bum-Bo` (Strategy), so the two games give two different pools |
+| **the Splintered Fate double boss** | TMNT: Splintered Fate (Action) | A boss fought as a pair, in a game built for co-op | Discovery — **Beat a game with another player** (your line) | Feat — *Clear a run you did not play alone* | free, and it is the only goal in the file that asks for a second person |
+
+Sources for the ones that needed reading:
+[Mewgenics](https://mewgenics.wiki.gg/wiki/Bosses) ·
+[Radical Rat](https://mewgenics.wiki.fextralife.com/Radical_Rat) ·
+[Zodiac](https://mewgenics.wiki.gg/wiki/Zodiac) ·
+[Maris](https://eldenringnightreign.wiki.fextralife.com/Maris_Fathom_of_Night) ·
+[Knowledge Demon](https://slaythespire.wiki.gg/wiki/Slay_the_Spire_2:Knowledge_Demon) ·
+[Happy Meek](https://umamusume.fandom.com/wiki/Happy_Meek) ·
+[Ante Chamber](https://vampire.survivors.wiki/w/Ante_Chamber)
+
 ## Still open
 
 - **Art for all 316 of them.** Nothing else in this list matters as much: a
   goal-enemy with no picture is a placeholder on the board.
 - **Abilities.** `Ability` is `N/A` on every row, so 316 bodies walk and swing
   and do nothing else. That is a pass against the `abilities` sheet (§7.6).
+- **The bodies above have no goal yet** — seventeen of them, and two need a
+  source before anything else.
 - **Use star power** — no enemy in any of the 80 games carries it.
 - **Drink milk**, **make a cake**, **smoke something** — all three are ordinary
   Cataclysm: DDA items, but no body on its bestiary is *about* them yet.
