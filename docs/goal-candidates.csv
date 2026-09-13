@@ -1,6 +1,5 @@
 Sheet,Name,Type,Difficulty,Size,Game,Health,Damage,Goal Type,Goal,Ability,File,Tag,Phases,Confidence,Why this pairing
 enemies,Aleax,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Pray,N/A,Aleax,,,ok,"A hostile minion an angered lawful god sends after you — prayer gone wrong, made flesh"
-bosses,The One Who Waits,Action,4-Insane,2x2,Cult of the Lamb,1,9,Feat,Become religious,N/A,TheOneWhoWaits,god,,ok,The final boss who makes you a cult leader
 enemies,Aligned Cleric,Traditional,1-Low,1x1,NetHack,1,1,Feat,Worship at an altar,N/A,AlignedCleric,,,ok,Tends the co-aligned temple altar where worship and sacrifice happen
 bosses,Hexaghost,Deckbuilder,3-High,2x2,Slay the Spire,1,7,Feat,Complete a ritual with multiple steps,N/A,Hexaghost,fire,,ok,"Six flames lit one per attack, then Inferno, then snuffed"
 bosses,Satan,Action,3-High,2x2,The Binding of Isaac,1,7,Feat,Make a deal with a devil,N/A,Satan,god,,ok,Sheol's boss; Devil Rooms trade heart containers for items
@@ -16,7 +15,6 @@ enemies,Violet Fungus,Traditional,1-Low,1x1,NetHack,1,1,Fetch,Obtain a mushroom,
 enemies,Slime Creature,Traditional,2-Medium,1x1,Dungeon Crawl Stone Soup,1,2,Feat,Double your max health,N/A,SlimeCreature,slime,,ok,"Two merge into a large slime creature, three into a very large one"
 enemies,Monster Lord,Traditional,2-Medium,1x1,Crypt of the NecroDancer,1,2,Feat,Grow in size,N/A,MonsterLord,,,ok,"Lords are twice the size of their counterpart, with doubled HP and damage"
 enemies,Larry Jr.,Action,1-Low,1x2,The Binding of Isaac,1,1,Feat,Attack 5+ enemies at once,N/A,LarryJr,worm,,ok,A segmented worm — one enemy that is many targets
-enemies,Gremlin Nob,Deckbuilder,1-Low,2x2,Slay the Spire,1,1,Feat,Taunt an enemy,N/A,GremlinNob,gremlin,,ok,Enrage: gains Strength every time you play a Skill
 enemies,Fat Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Fetch,Have 5 of the same item,N/A,FatGremlin,gremlin,,ok,One of five drawn from the same small pool — doubles and triples are routine
 enemies,Spiker,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Bounty,Defeat an enemy that damages you back,N/A,Spiker,,,ok,Act 3 enemy sitting behind Thorns
 enemies,Mad Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Bounty,Defeat an enemy that gets stronger when hit,N/A,MadGremlin,gremlin,,ok,Gains 1 Strength whenever it takes attack damage
@@ -24,13 +22,11 @@ enemies,Writhing Mass,Deckbuilder,3-High,1x1,Slay the Spire,1,3,Discovery,Face a
 enemies,Mystic,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Feat,Keep an ally alive for a whole fight,N/A,Mystic,,,ok,The healer half of the Centurion pair — kill her and the pair falls apart
 enemies,Byrds,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Attack every enemy on screen at once,N/A,Byrds,bird,,ok,A flock fought as one encounter — the fight that exists to be swept
 enemies,Sentry,Deckbuilder,2-Medium,1x1,Slay the Spire,1,2,Feat,Do three things in one turn,N/A,Sentry,robot,,ok,"Fought as a row of three, alternating Bolt and Beam"
-enemies,Floating Eye,Traditional,3-High,1x1,NetHack,1,3,Restriction,Win without using melee attacks,N/A,FloatingEye,eye,,ok,The never-melee-this monster: its passive gaze paralyses you
 enemies,Oklob Plant,Traditional,2-Medium,1x1,Dungeon Crawl Stone Soup,1,2,Restriction,Win a fight without moving,N/A,OklobPlant,plant,,ok,Rooted forever and still lethal
 bosses,The Concierge,Action,4-Insane,2x2,Dead Cells,1,9,Restriction,Beat a boss without taking damage,N/A,TheConcierge,,,ok,"The first boss, whose whole fight is a dodge pattern"
 enemies,Knight Bullet Kin,Action,1-Low,1x1,Enter the Gungeon,1,1,Restriction,Do not equip headgear,N/A,KnightBulletKin,gun,,ok,A bullet that survives on its helmet — shoot it off and it dies
 enemies,Nymph,Traditional,2-Medium,1x1,NetHack,1,2,Restriction,Get naked,N/A,Nymph,,,ok,"Charms you into handing over worn armour, then teleports away"
 enemies,Watchman,Traditional,2-Medium,1x1,NetHack,1,2,Restriction,Do not kill any innocents,N/A,Watchman,cop,,ok,Peaceful until you swing; killing one is a murder
-bosses,The Needle,Deckbuilder,2-Medium,1x1,Balatro,1,5,Restriction,Use only one hand,N/A,TheNeedle,,,ok,Play only 1 hand
 enemies,The Manacle,Deckbuilder,2-Medium,1x1,Balatro,1,2,Restriction,Win with a negative modifier,N/A,TheManacle,,,ok,-1 hand size for the blind
 enemies,The Water,Deckbuilder,2-Medium,1x1,Balatro,1,2,Restriction,Do not use consumables,N/A,TheWater,,,ok,Start the blind with 0 discards
 enemies,Greed,Action,1-Low,1x1,The Binding of Isaac,1,1,Restriction,Never skip an offered reward,N/A,Greed,,,ok,The boss that takes everything on offer
@@ -44,12 +40,10 @@ enemies,Disenchanter,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Get an item or ab
 enemies,Mind Flayer,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Lose an ability permanently and win anyway,N/A,MindFlayer,,,ok,Eats an intrinsic straight out of your head
 enemies,Keystone Kops,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Steal from a shop and escape,N/A,KeystoneKops,cop,,ok,Spawn the moment you leave without paying and chase you
 enemies,Aurelionite,Action,2-Medium,1x1,Risk of Rain 2,1,2,Fetch,Obtain 5 max tier items in one run,N/A,Aurelionite,rock,,ok,The Halcyon Seed boss you fight to top out your inventory
-enemies,Chubs 'n' Nubs,Strategy,1-Low,1x1,Mewgenics,1,1,Fetch,Get some trash,N/A,ChubsNNubs,cat,,ok,The final encounter of The Junkyard
 enemies,Golden Monkey,Action,1-Low,1x1,Spelunky 2,1,1,Fetch,Acquire a gem or a diamond,N/A,GoldenMonkey,monkey,,ok,Drops gems when killed; the only reason to chase one
 enemies,Glyphid Praetorian,Action,1-Low,1x1,Deep Rock Galactic: Survivor,1,1,Fetch,Mine an ore,N/A,GlyphidPraetorian,bug,,ok,A large melee glyphid that digs through terrain
 enemies,Mimic,Traditional,1-Low,1x1,Shattered Pixel Dungeon,1,1,Feat,Open 10 locked doors or chests,N/A,Mimic,,,ok,A locked chest that turns out to be a monster
 enemies,Minotaur,Traditional,1-Low,1x1,Crypt of the NecroDancer,1,1,Feat,Break down a door,N/A,Minotaur,,,ok,Charges in a straight line and smashes through what is in the way
-bosses,Wallmonger,Action,2-Medium,3x3,Enter the Gungeon,1,5,Feat,Break through a wall,N/A,Wallmonger,,,ok,A boss that is the wall
 bosses,Treadnaught,Action,2-Medium,2x2,Enter the Gungeon,1,5,Feat,Pilot a vehicle,N/A,Treadnaught,,,ok,A tank piloted by a Tanker that got lucky and found it
 enemies,Xi Construct,Action,2-Medium,2x2,Risk of Rain 2,1,2,Feat,Pilot or ride a flying machine,N/A,XiConstruct,robot,,ok,A hovering machine that fights as a flying platform
 enemies,DM-200,Traditional,2-Medium,1x1,Shattered Pixel Dungeon,1,2,Feat,Repair a vehicle or a machine,N/A,DM200,robot,,ok,Dwarven machinery still running long after its keepers died
@@ -58,7 +52,6 @@ enemies,The Giant,Action,2-Medium,3x3,Dead Cells,1,2,Feat,Destroy a building,N/A
 enemies,Goblin Leader,Strategy,2-Medium,1x1,Loop Hero,1,2,Feat,Build a house or a base,N/A,GoblinLeader,goblin,,ok,Spawns from a goblin camp you placed — appears because you built something
 enemies,Strider,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Touch water,N/A,Strider,water,,ok,"Downpour is waist-deep water and Striders swim it, pits included"
 enemies,Dingle,Action,1-Low,1x1,The Binding of Isaac,1,1,Discovery,Enter a sewer,N/A,Dingle,,,ok,The sewage boss; Flushmaster already covers flushing
-enemies,Rainmaker,Action,1-Low,1x1,The Binding of Isaac,1,1,Feat,Take a bath or a shower,N/A,Rainmaker,water,,ok,"The boss of the flooded floor, who brings the rain down on you"
 enemies,Ukko,Action,2-Medium,1x1,Noita,1,2,Feat,Change the weather,N/A,Ukko,lightning,,ok,Named for the Finnish god of the heavens; a thunder mage
 enemies,Slog of the Cloaca,Traditional,2-Medium,1x1,Caves of Qud,1,2,Fetch,Carry 4 different liquids at once,N/A,SlogOfTheCloaca,slime,,ok,"A unique made of sludge, in the game whose world model is liquids mixing"
 bosses,Ylialkemisti,Action,2-Medium,2x2,Noita,1,5,Feat,Drink a mystery liquid,N/A,Ylialkemisti,,,ok,"The high alchemist — unlabelled flasks, unpredictable results"
@@ -76,13 +69,11 @@ enemies,Medusa,Traditional,2-Medium,1x1,NetHack,1,2,Feat,Have an enemy defeat 3 
 enemies,Dar Blademaster,Traditional,2-Medium,1x1,Brogue,1,2,Feat,Train an ally to be stronger,N/A,DarBlademaster,,,ok,Brogue allies level up as they fight beside you
 enemies,Dracula,Action,1-Low,1x1,Dead Cells,1,1,Discovery,Encounter a character from another series,N/A,Dracula,"undead, vampire",,ok,A different studio's icon in a Dead Cells boss arena
 bosses,Kolmisilma,Action,1-Low,2x2,Noita,1,3,Discovery,Play a game in another language,N/A,Kolmisilma,eye,,ok,Every creature is named in untranslated Finnish
-enemies,Chrome Pyramid,Traditional,4-Insane,1x1,Caves of Qud,1,4,Bounty,Get an achievement 5% or fewer players have,N/A,ChromePyramid,robot,,ok,Highest-level non-unique creature; killing one grants an achievement
 enemies,Hush,Action,2-Medium,1x1,The Binding of Isaac,1,2,Bounty,Obtain a new achievement,N/A,Hush,,,ok,The hidden boss behind the Blue Womb timer
 bosses,Delirium,Action,4-Insane,2x2,The Binding of Isaac,1,9,Feat,Get 10 achievements in one run,N/A,Delirium,,,ok,Shapeshifts through every boss in the game in one fight
 bosses,Voidling,Action,3-High,2x2,Risk of Rain 2,1,7,Discovery,Enter a void,N/A,Voidling,,,ok,"The alternate final boss, in the Planetarium at the end of the void path"
 enemies,Ultra Greed,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Unlock a new character,N/A,UltraGreed,,,ok,"Greed Mode's finale, and the unlock engine for half the roster"
 bosses,Johannes,Action,2-Medium,2x2,Rogue Legacy,1,5,Discovery,Play as a character that looks like you,N/A,Johannes,,,ok,The final boss is your own ancestor
-bosses,The Resourceful Rat,Action,2-Medium,2x2,Enter the Gungeon,1,5,Feat,Beat a minigame inside a game,N/A,TheResourcefulRat,rat,,ok,His second phase is a Punch-Out-style boxing match
 bosses,Hand of the King,Action,4-Insane,2x2,Dead Cells,1,9,Bounty,Beat a game you would rate 8 or higher,N/A,HandOfTheKing,,,ok,The final boss of a game nobody scores below an 8
 enemies,The Fallen,Action,2-Medium,1x1,The Binding of Isaac,1,2,Feat,Do a push-up whenever you lose a run,N/A,TheFallen,undead,,ok,Splits into two copies when killed — charges you extra for every ending
 enemies,Shield Gremlin,Deckbuilder,1-Low,1x1,Slay the Spire,1,1,Feat,Deal damage equal to your block,N/A,ShieldGremlin,gremlin,,ok,Spends its whole existence handing out block
