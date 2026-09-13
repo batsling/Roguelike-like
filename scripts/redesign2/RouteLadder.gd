@@ -374,6 +374,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 
 	if game != null and game.cover_image != null:
 		var art := AtlasView.card_art(game.cover_image, CARD_ART_W, 190.0)
+		UITheme.attach_tier_badge(art, game.id)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		box.add_child(art)
 

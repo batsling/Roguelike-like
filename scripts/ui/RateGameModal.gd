@@ -136,6 +136,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 		cover.custom_minimum_size = Vector2(0, 172)
 		cover.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 		cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.attach_tier_badge(cover, gd.id)
 		vbox.add_child(cover)
 
 	_score_label = Label.new()

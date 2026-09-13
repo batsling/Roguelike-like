@@ -1264,6 +1264,122 @@ html, body {
  *
  * `#offline` is in none of these lists: a source that is up before the game is
  * should still say so rather than sitting blank. */
+/* ---------------------------------------------------------------- clock -- */
+
+/* THE SPLIT TIMER. Four lines: which try is being timed, this game's clock, the
+ * run's total, and the games already banked.
+ *
+ * TABULAR FIGURES ON EVERY NUMBER HERE, which is the one thing a running clock
+ * cannot do without: proportional digits are different widths, so a clock set in
+ * them twitches sideways ten times a second and the eye reads the movement
+ * instead of the number. `font-variant-numeric: tabular-nums` fixes the advance
+ * width; the monospace fallback covers a system that has no tabular figures in
+ * the UI face. */
+.timer .timer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timer-try {
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The headline. Big enough to read across a room, and the only thing on this
+ * card in the full text colour — everything else here is context for it. */
+.timer-now {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--clock-font, inherit);
+  letter-spacing: 0.01em;
+}
+
+.timer-run {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
+/* The label in this row is inline beside its number rather than stacked over it
+   — it is a footnote to the clock above, and a second stacked LABEL/number pair
+   would read as a second headline. */
+.timer-run .label { margin-bottom: 0; }
+.timer-total {
+  font-size: 15px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-scroll {
+  --fade-top: 0px;
+  --fade-bot: 0px;
+  /* Turnable from custom.css like the checklist's height, and for the same
+   * reason: how many splits fit is a question only the scene it is in can
+   * answer. Zero is a legitimate answer — a streamer who wants the clock and
+   * nothing else sets `--split-height: 0`. */
+  max-height: var(--split-height, 96px);
+  overflow: hidden;
+  margin-top: 6px;
+  -webkit-mask-image: linear-gradient(180deg,
+    transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+  mask-image: linear-gradient(180deg,
+    transparent 0, #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)), transparent 100%);
+}
+
+.timer-splits { list-style: none; margin: 0; padding: 0; }
+
+.split {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(74, 63, 46, 0.4);
+  font-size: 13px;
+}
+.split:last-child { border-bottom: none; }
+
+/* The name takes whatever room the time does not, and gives up its tail rather
+ * than wrapping: a split list that wraps stops being a column of times. */
+.split-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.split-time {
+  flex: 0 0 auto;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* How many tries that game took. Dimmer than either — it is the detail you read
+ * second, once the name and the time have landed. */
+.split-tries {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--faint);
+  opacity: 0.85;
+}
+
+/* HOW THE BOARD CLOSED, as the colour of the name — the same three-way the road
+ * strip draws its stops in, so "green means beaten" is learned once and holds
+ * across the page. */
+.split.beaten .split-name { color: var(--success); }
+.split.missed .split-name { color: var(--unbeaten); }
+.split.escaped .split-name { color: var(--accent); }
+
 #overlay > .road { display: none; }
 #overlay.only-road > .road { display: block; }
 
@@ -1278,7 +1394,13 @@ html, body {
 #overlay.only-top > .ticker,
 #overlay.only-top > .verdict { display: none; }
 
-#overlay.only-bottom > .run { display: none; }
+/* #TOP AND #BOTTOM ARE THE DEFAULT PAGE CUT IN TWO, so every card belongs to
+ * exactly one of them — a streamer running both sources would otherwise get two
+ * clocks ticking in the same scene. The clock goes with the run card: both are
+ * the header a viewer reads first, and the checklist below is a list of demands
+ * that is complete without it. */
+#overlay.only-bottom > .run,
+#overlay.only-bottom > .timer { display: none; }
 
 /* THE CHECKLIST ON ITS OWN, and the difference from `#bottom` is the ticker.
  *
@@ -1309,6 +1431,28 @@ html, body {
 #overlay.only-map > .goals,
 #overlay.only-map > .road,
 #overlay.only-map > .ticker { display: none; }
+
+/* THE CLOCK'S OWN SOURCE. Unlike the road and the map, the timer card is on the
+ * default page too — this view is for parking it somewhere else in the scene
+ * (over the game capture, in a corner) at a size the column could not give it.
+ * The verdict stays, for the reason it stays on every other fragment: a run that
+ * has just ended outranks whatever the source was showing. */
+#overlay.only-timer > .run,
+#overlay.only-timer > .goals,
+#overlay.only-timer > .road,
+#overlay.only-timer > .ticker { display: none; }
+
+/* The clock IS the source here, so it gets the size the card could not justify
+ * in a 352px column beside everything else. */
+#overlay.only-timer .timer-now { font-size: 54px; }
+#overlay.only-timer .timer-scroll { max-height: var(--split-height, 320px); }
+
+/* …and the timer card is the one thing every OTHER fragment drops. It sits in
+ * the default column and in its own source, and nowhere else: a clock on the map
+ * source would be sitting on the road being decided between. */
+#overlay.only-goals > .timer,
+#overlay.only-road > .timer,
+#overlay.only-map > .timer { display: none; }
 #overlay.only-map {
   height: 100vh;
   padding: 0;

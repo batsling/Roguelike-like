@@ -339,6 +339,7 @@ func _stop(id: StringName, is_amulet: bool, visit: int = 1,
 		art.custom_minimum_size = COVER
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.attach_tier_badge(art, game.id)
 		frame.add_child(art)
 	else:
 		var blank := ColorRect.new()

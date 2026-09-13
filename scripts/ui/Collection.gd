@@ -414,7 +414,10 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 # and some of them carry their title at the edge.
 const COVER_PLATE := Color(0.145, 0.132, 0.118, 1.0)
 
-func _cover_plate(tex: Texture2D) -> Control:
+# `game_id` is only ever the tier badge's business (UITheme.attach_tier_badge) —
+# the plate itself does not care which game it is drawing. Optional so the two
+# callers that draw a cover for something other than a game row stay as they are.
+func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	var plate := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = COVER_PLATE
@@ -433,14 +436,33 @@ func _cover_plate(tex: Texture2D) -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(tr)
-	return plate
+	if TierList.tier_of(game_id) < 0:
+		return plate
+	# THE BADGE NEEDS A PARENT THAT NEITHER LAYS OUT NOR CLIPS, and the plate is
+	# both: it is a PanelContainer, so a badge handed to it is stretched to fill
+	# the tile rather than pinned to a corner, and it clips (which is what keeps a
+	# square cover's corners inside its rounded ones) so a badge centred on the
+	# corner would come back cut into quarters.
+	#
+	# So a ranked game's cover gets one extra node: a plain Control the size of the
+	# plate, with the plate filling it and the badge hanging off the corner on top.
+	# Only a ranked game pays for it — most covers return above untouched.
+	var wrap := Control.new()
+	wrap.custom_minimum_size = plate.custom_minimum_size
+	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wrap.add_child(plate)
+	UITheme.attach_tier_badge(wrap, game_id)
+	return wrap
 
-func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
+func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
 	tr.custom_minimum_size = Vector2(w, roundi(w * 4.0 / 3.0))
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	UITheme.attach_tier_badge(tr, game_id)
 	return tr
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
@@ -710,7 +732,7 @@ func _fill_cell(index: int) -> void:
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	if g.cover_path != "":
-		box.add_child(_cover_plate(g.cover_image))
+		box.add_child(_cover_plate(g.cover_image, g.id))
 	else:
 		# No art authored: a spacer of the cover's exact size, so a game with no
 		# picture doesn't leave a short hole in the row.
@@ -1296,7 +1318,7 @@ func _show_game_detail(g: GameData) -> void:
 	_detail_game = g
 	var tc := _game_type_color(int(g.type))
 	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, 240)
+		var tr := _cover_rect(g.cover_image, 240, g.id)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(g.display_name, tc, 18, true))

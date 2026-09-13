@@ -1691,7 +1691,9 @@ func _refresh_card() -> void:
 		_card_box.add_child(over)
 
 	if game != null and game.cover_image != null:
-		_card_box.add_child(card_art(game.cover_image, CARD_ART_WIDTH))
+		var cover := card_art(game.cover_image, CARD_ART_WIDTH)
+		UITheme.attach_tier_badge(cover, game.id)
+		_card_box.add_child(cover)
 
 	if game != null:
 		var chip := Label.new()
@@ -1907,7 +1909,9 @@ func _connection_side(game: GameData) -> Control:
 	col.custom_minimum_size.x = 132
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if game.cover_image != null:
-		col.add_child(card_art(game.cover_image, 132.0, 150.0))
+		var cover := card_art(game.cover_image, 132.0, 150.0)
+		UITheme.attach_tier_badge(cover, game.id)
+		col.add_child(cover)
 	var name_label := Label.new()
 	name_label.text = game.display_name
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

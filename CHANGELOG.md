@@ -11,6 +11,82 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A speedrun clock, on the stream and in the panel.** A run is a stack of real
+  games played one after another, which is a speedrun with unusually long splits,
+  and nothing was timing it. `RunTimer` (a new autoload, the 27th) keeps three
+  numbers: this game's split, the run's total, and a banked split per game
+  finished. The overlay draws all three — the clock card is on the default page
+  and has a source of its own at `timer.html` — and the same numbers sit beside
+  the cover in the Now Playing panel, because a clock that only exists inside OBS
+  is a clock the player has to alt-tab to read.
+  - **It starts when the run STANDS ON a game, not when ▶ Play is pressed.** The
+    Play button only exists for games with a launch target authored, which is a
+    small minority of the roster — a clock hung off it would read zero for most
+    of a run. It stops when the game is reported, and all three ways a board can
+    close bank a split: beaten, missed, *escaped*. An escape that left the clock
+    running would run forever.
+  - **A lost attempt does not stop it**, it banks one. A speedrun clock counts
+    your failures, so the game clock runs straight through a reported death and
+    the attempt closes as its own split — a game's entry reads as the list of how
+    long each try took, the winning one included. Undoing an attempt hands that
+    time straight back to the running try, because `undo_attempt` puts the run
+    back to before the tick and the clock is part of "before the tick".
+  - **Time accumulates while the game is OPEN**, as a `_process` sum rather than
+    the difference of two timestamps, so a run left overnight comes back where it
+    was. It rides the save: a run played over three evenings is one run.
+  - **The page ticks it itself, and that is what keeps the file quiet.** The
+    running seconds are excluded from `ObsCompanion`'s content dedupe — they
+    change every frame, so leaving them in would have rewritten `state.js` four
+    times a second for the whole of a run in which nothing else moved — and
+    `overlay.js` counts forward from the moment each reading arrived, measured
+    against its own clock so a skew between the game's machine and OBS cancels.
+  - `check_overlay.js` is where the ticking is proven (GUT cannot see a browser):
+    that the clock counts forward with no payload written, that a stopped clock
+    stops, that an hour reads as an hour rather than as 70 minutes, and that a
+    nine-second split is padded like a thirty-minute one. Its contrast sampler
+    was clipping its screenshot at a fixed 520px, which the new card pushed the
+    checklist past — it now clips to the page, because a sampler reading outside
+    its own texture is worse than no sampler.
+
+- **Every large cover wears the tier the player put it in.** The tier list is the
+  one opinion the player has recorded about a game, and it was readable on
+  exactly one screen — so the collection, the game-choice modal, the offering
+  cards and the rest were showing games the player had already ranked and saying
+  nothing about it. `UITheme.attach_tier_badge` hangs a pill in the top-right
+  corner of the art, and every screen that draws a cover above about 72px calls
+  it: the collection grid and its detail panel, the game-choice modal, the
+  offering cards, the route ladder, the atlas card, the Now Playing panel, the
+  rate modal, and the run-over and run-history screens. The tier screen itself
+  does not — the row a game sits in already says its tier.
+  - **The colours moved to `UITheme`** from `TierListScreen`. The colour *is* the
+    content on a tier list, so a badge in a different red from the row would be
+    two answers to one question; there is one list now and both read it (the
+    screen keeps its old constant name as an alias).
+  - **A pill, not a circle, and never truncated.** Tier names are editable, so a
+    tier renamed to "Masterpiece" is drawn as "Masterpiece" — a tier the player
+    renamed is a tier they care about the wording of. An unranked game draws
+    nothing at all rather than an empty badge, which would otherwise be a pill
+    meaning "no opinion" drawn 865 times.
+  - **Centred ON the corner rather than inset inside it**, 22px tall: half of it
+    hangs outside each of the two edges it meets, which reads as a mark pinned to
+    the picture and gives back the corner of the art it was standing on. The
+    overhang is the badge's HEIGHT on both axes rather than its width, so a long
+    tier name grows leftward into the art and every corner looks alike. A cover
+    drawn inside a clipping parent — the collection's plate, which is what keeps
+    square art inside its rounded corners — gets an unclipped layer for the badge
+    rather than the clip being switched off under it.
+
+- **An incremental relic's counter stops standing on its own art.** It was a
+  rounded plate of 10px text inside a 3px content margin and a 1px border —
+  about 20px on a 34px tile, so the footnote covered better than half the picture
+  it was a footnote to, and the digit sat high in it because a Label's line box
+  is taller than its glyph. It is a 14px round pip now, sized outright rather
+  than padded, pushed 3px past the corner so it overhangs into the tile's own
+  margin instead of the art, with the digit centred in both axes. Two digits grow
+  it sideways into a capsule of the same height rather than making it taller.
+
+---
+
 - **`data/` regenerated from the new workbook: twelve bodies ship, five change.**
   The uploaded `tools/Roguelikes.xlsx` carried rows the repo had not been
   regenerated against, so `check_data_sync.py` was reporting 17 files of drift.

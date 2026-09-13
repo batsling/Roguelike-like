@@ -225,6 +225,7 @@ func _route_stop(id: StringName, is_amulet: bool, won: bool) -> Control:
 		art.custom_minimum_size = COVER
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		UITheme.attach_tier_badge(art, game.id)
 		frame.add_child(art)
 	else:
 		var blank := ColorRect.new()

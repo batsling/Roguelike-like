@@ -1278,3 +1278,62 @@ func _entry_of(instance: int) -> Dictionary:
 		if int(e["instance"]) == instance:
 			return e
 	return {}
+
+# --- the counter on the tile ------------------------------------------------
+#
+# An incremental relic's count is drawn on its own art in the pack (PackStrip,
+# Slay the Spire's relic counters, same corner and same reason). What is worth
+# pinning is that the badge FITS: it was a rounded plate of 10px text inside a
+# 3px margin and a 1px border — about 20px tall on a 34px tile, so the footnote
+# covered better than half the picture it was a footnote to.
+
+func _pip_on(item: ItemData) -> Control:
+	var strip := PackStrip.new(null, null)
+	return strip._counter_badge(item)
+
+func test_only_an_incremental_relic_carries_a_counter() -> void:
+	var charm: ItemData = _give(&"charm_of_the_vampire")
+	assert_not_null(_pip_on(charm), "it counts to three, so it shows how far it is")
+	# Almost every item, this one: a badge reading 0 on a relic that counts
+	# nothing would be a number with no meaning.
+	for item in Data.all_items2():
+		if not item.is_incremental():
+			assert_null(_pip_on(item),
+				"%s counts nothing and must draw nothing" % item.id)
+			break
+
+func test_the_counter_says_the_number_it_is_on() -> void:
+	var charm: ItemData = _give(&"charm_of_the_vampire")
+	_kill_one()
+	_kill_one()
+	var label: Label = _pip_on(charm).find_children("*", "Label", true, false)[0]
+	assert_eq(label.text, "2", "the count, not '2/3' — the threshold is in the text")
+
+func test_the_counter_is_a_pip_the_art_can_afford() -> void:
+	var charm: ItemData = _give(&"charm_of_the_vampire")
+	var pip: Control = _pip_on(charm)
+	assert_lt(pip.custom_minimum_size.y, float(PackStrip.ITEM_TOKEN) * 0.5,
+		"the badge is a footnote to the picture, not half of it")
+	assert_eq(pip.custom_minimum_size.x, pip.custom_minimum_size.y,
+		"…and a single-digit count is round, not oblong")
+	var box: StyleBoxFlat = pip.get_theme_stylebox("panel")
+	assert_eq(box.corner_radius_top_left, PackStrip.COUNTER_PIP / 2,
+		"a pip is a circle: the radius is half its height")
+	assert_eq(box.content_margin_left, 0.0,
+		"the plate is the glyph and a hairline, not the glyph and 8px of padding")
+
+func test_the_counter_hangs_off_the_corner_rather_than_standing_on_the_art() -> void:
+	var pip: Control = _pip_on(_give(&"charm_of_the_vampire"))
+	assert_eq(pip.anchor_bottom, 1.0, "pinned to the bottom of the tile")
+	assert_eq(pip.anchor_right, 1.0, "…and the right of it")
+	assert_gt(pip.offset_bottom, 0.0,
+		"and pushed PAST that corner, into the tile's own padding")
+	assert_eq(pip.offset_right, pip.offset_bottom, "by the same amount both ways")
+
+func test_the_digit_is_centred_in_the_pip() -> void:
+	# "The number sits too high" was a Label's line box being taller than its
+	# glyph — a left-and-top-aligned Label in a plate that had grown around it.
+	var label: Label = _pip_on(_give(&"charm_of_the_vampire")).find_children(
+		"*", "Label", true, false)[0]
+	assert_eq(label.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER)
+	assert_eq(label.vertical_alignment, VERTICAL_ALIGNMENT_CENTER)

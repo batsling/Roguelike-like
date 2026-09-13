@@ -120,6 +120,7 @@ function render(s) {
   drawGoals(s.goals || [], s.art || {});
   drawRoad(s.road || []);
   drawMap(s.route || {}, s.run || {});
+  drawTimer(s.timer || {});
   firstDraw = false;
 }
 /* `s.statuses` IS DELIBERATELY NOT DRAWN. It is still in the payload for anyone
@@ -920,6 +921,110 @@ function drawEvents(events) {
  * everything else about them — the pauses, the speed, the edge fades that appear
  * only where content is actually hidden — is the same behaviour, and two copies
  * of this state machine would be two places for it to drift. */
+/* ------------------------------------------------------------ the clock --- */
+
+/* THE READING THE PAGE COUNTS FORWARD FROM, and the local instant it arrived.
+ *
+ * The base is `performance.now()` at arrival rather than the payload's own `at`
+ * stamp, on purpose: `at` is the GAME's wall clock and this is the BROWSER's, and
+ * the two are not the same clock. OBS can be running with a different system time
+ * (or simply a second out), and a two-second skew would show as a clock two
+ * seconds wrong for the whole stream. Measuring from arrival makes the skew
+ * cancel — every payload re-bases the count, so the page is never further out
+ * than one heartbeat of drift. */
+let timerBase = 0;
+let timerRunning = false;
+let timerGameRunning = false;
+let timerRunSeconds = 0;
+let timerGameSeconds = 0;
+let timerAttemptSeconds = 0;
+let timerAttempts = 0;
+let splitSignature = '';
+
+function drawTimer(timer) {
+  timerRunning = !!timer.running;
+  timerGameRunning = !!timer.game_running;
+  timerRunSeconds = num(timer.run, 0);
+  timerGameSeconds = num(timer.game, 0);
+  timerAttemptSeconds = num(timer.attempt, 0);
+  timerAttempts = num(timer.attempts, 0);
+  timerBase = performance.now();
+
+  const splits = timer.splits || [];
+  /* Rebuilt only when the split LIST changed, for the reason the road and the
+   * checklist are: this runs on every payload, and rebuilding the list would
+   * reset the scroller that walks it before it ever got going. */
+  const sig = splits.map(sp => [sp.game, sp.seconds, sp.outcome, sp.attempts]
+    .join('|')).join('\x01');
+  if (sig !== splitSignature) {
+    splitSignature = sig;
+    const list = el('timer-splits');
+    list.innerHTML = '';
+    for (const sp of splits) {
+      const row = document.createElement('li');
+      row.className = 'split ' + (sp.outcome || 'beaten');
+      const name = document.createElement('span');
+      name.className = 'split-name';
+      name.textContent = sp.game || '';
+      const time = document.createElement('span');
+      time.className = 'split-time';
+      /* No tenths on a finished split: a banked time is read, not watched, and
+       * a column of numbers the same width is easier to compare down. */
+      time.textContent = clock(num(sp.seconds, 0), 0);
+      row.appendChild(name);
+      /* How many tries that game took, when it took more than one. It is the
+       * honour system's whole tension in one number, and it belongs beside the
+       * time rather than in it. */
+      const tries = num(sp.attempts, 0);
+      if (tries > 1) {
+        const badge = document.createElement('span');
+        badge.className = 'split-tries';
+        badge.textContent = '×' + tries;
+        row.appendChild(badge);
+      }
+      row.appendChild(time);
+      list.appendChild(row);
+    }
+    restartScroll('timer-scroll');
+  }
+  tickTimer();
+}
+
+/* The running numbers, redrawn every frame from the last reading plus the time
+ * since it arrived. Only the clocks that are RUNNING count forward — a stopped
+ * game clock between offerings, or a finished run, is a number that must sit
+ * still, because an overlay that keeps counting after the run is over is the one
+ * lie this page cannot afford. */
+function tickTimer() {
+  const since = timerBase > 0 ? (performance.now() - timerBase) / 1000 : 0;
+  const game = timerGameSeconds + (timerGameRunning ? since : 0);
+  const attempt = timerAttemptSeconds + (timerGameRunning ? since : 0);
+  const run = timerRunSeconds + (timerRunning ? since : 0);
+  el('timer-now').textContent = clock(game, 1);
+  el('timer-total').textContent = clock(run, 0);
+  const tryRow = el('timer-try');
+  if (timerAttempts > 0) {
+    tryRow.hidden = false;
+    tryRow.textContent = 'try ' + (timerAttempts + 1) + ' · ' + clock(attempt, 1);
+  } else {
+    tryRow.hidden = true;
+  }
+}
+
+/* H:MM:SS.d, dropping the hour under one — the split-timer convention, and the
+ * same shape RunTimer.format produces on the Godot side so the two never
+ * disagree about what a time looks like. */
+function clock(seconds, decimals) {
+  const total = Math.max(0, seconds);
+  const hours = Math.floor(total / 3600);
+  const mins = Math.floor(total / 60) % 60;
+  const secs = total - hours * 3600 - mins * 60;
+  let sec = decimals > 0 ? secs.toFixed(decimals) : String(Math.floor(secs));
+  if (secs < 10) sec = '0' + sec;
+  if (hours > 0) return hours + ':' + String(mins).padStart(2, '0') + ':' + sec;
+  return mins + ':' + sec;
+}
+
 const SCROLL_PAUSE = 2500;
 const SCROLL_SPEED = 14;      /* px per second */
 
@@ -988,6 +1093,7 @@ function stepOne(id, now) {
 
 function frame(now) {
   for (const id in scrollers) stepOne(id, now);
+  tickTimer();
   checkStale();
   requestAnimationFrame(frame);
 }
@@ -1069,6 +1175,7 @@ function applySplit() {
   overlay.classList.toggle('only-goals', parts.has('goals'));
   overlay.classList.toggle('only-road', parts.has('road'));
   overlay.classList.toggle('only-map', parts.has('map'));
+  overlay.classList.toggle('only-timer', parts.has('timer'));
   overlay.classList.toggle('fill', parts.has('fill'));
   /* THE MAP IS MEASURED, so it has to be re-laid the moment it becomes visible.
    * A `display: none` ladder has no geometry at all — every box reports a zero
@@ -1087,6 +1194,7 @@ window.addEventListener('resize', () => layoutWires());
  * `frame` has something to walk from the very first tick. */
 makeScroller('goal-scroll', 'y');
 makeScroller('road-scroll', 'x');
+makeScroller('timer-scroll', 'y');
 
 poll();
 setInterval(poll, POLL_MS);

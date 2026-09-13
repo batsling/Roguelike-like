@@ -1152,3 +1152,50 @@ func test_a_turn_that_did_nothing_at_all_says_nothing() -> void:
 	await get_tree().process_frame
 	assert_eq(ObsCompanion._events.size(), 0,
 		"a swing modded down to nothing is not an event")
+
+# ------------------------------------------------------------- the clock ---
+#
+# The payload's half of the speedrun timer. What the PAGE does with it — counting
+# forward between writes, stopping when the run does, formatting an hour — is the
+# browser's business and is checked in tools/check_overlay.js; GUT cannot see the
+# overlay at all.
+
+func test_the_clock_rides_the_payload() -> void:
+	var timer: Dictionary = ObsCompanion.payload().get("timer", {})
+	for key in ["running", "game_running", "game", "attempt", "attempts", "run", "splits"]:
+		assert_true(timer.has(key),
+			"the payload is missing timer.%s, which obs/overlay.js draws" % key)
+
+func test_a_banked_split_reaches_the_page_by_name() -> void:
+	var game: GameData = Data.all_games()[0]
+	RunTimer.start_game(game.id)
+	RunTimer.game_seconds = 630.0
+	RunTimer.finish_game(game.id, true)
+	var rows: Array = ObsCompanion.payload()["timer"]["splits"]
+	assert_eq(rows.size(), 1)
+	assert_eq(String(rows[0]["game"]), game.display_name,
+		"the page cannot ask Data for a name, so the payload carries one")
+	assert_eq(String(rows[0]["outcome"]), "beaten")
+
+func test_a_running_clock_does_not_rewrite_the_file_every_frame() -> void:
+	# THE ONE THING THE CLOCK COULD BREAK ABOUT THIS PAGE. The running seconds
+	# change on every frame, so leaving them in the dedupe would make every
+	# payload "different" and the debounce would write state.js four times a
+	# second for the whole of a run in which nothing else moved. `flush` strips
+	# them before comparing, and the page counts forward on its own instead.
+	ObsCompanion.flush()
+	var was: String = ObsCompanion._last_json
+	# A BANKED SPLIT IS A STEP, and a step is exactly what a write is for. (The
+	# game in play is already on the clock by here — `before_each` took one — so
+	# starting one would be the no-op `start_game` is designed to be.)
+	RunTimer.finish_game(GameState.current_game_id, true)
+	ObsCompanion.flush()
+	var with_clock: String = ObsCompanion._last_json
+	assert_ne(with_clock, was, "arrange: a split landing IS a change worth writing")
+	# …and now only the seconds move.
+	RunTimer.game_seconds += 12.5
+	RunTimer.run_seconds += 12.5
+	ObsCompanion._since_write = 0.0
+	ObsCompanion.flush()
+	assert_eq(ObsCompanion._last_json, with_clock,
+		"a clock ticking is not a reason to rewrite the file")

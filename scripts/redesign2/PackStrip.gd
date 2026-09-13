@@ -118,8 +118,31 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 # doubles the pixels to say the same thing. Returns null for everything that is
 # not incremental, which is almost every item.
 #
+# A ROUND PIP THAT HANGS OFF THE CORNER, not a plate sitting on the picture. It
+# was a rounded rectangle of 10px text inside a 3px content margin and a 1px
+# border — about 20px tall on a 34px tile, so the badge covered better than half
+# the height of the thing it was a footnote to, and the digit sat high in its own
+# plate because a Label's line box is taller than its glyph.
+#
+# Three changes, one intent — let the art be the art:
+#   * a CIRCLE (COUNTER_PIP across, radius half of it) rather than a rectangle,
+#     which is the shape a count wants and the same shape the tier badge over a
+#     cover uses, so the two read as one language;
+#   * SMALLER — the padding is gone and the pip is sized outright, so it is the
+#     glyph plus a hairline rather than the glyph plus 8px of plate;
+#   * LOWER AND FURTHER RIGHT — pushed COUNTER_HANG past the art's corner so it
+#     overhangs into the tile's own padding instead of standing on the picture.
+#     The tile does not clip, and the hang is smaller than the tile's margin, so
+#     nothing lands outside the panel or on the neighbouring item.
+#
+# The digit is centred in both axes rather than left to the Label's baseline,
+# which is what "the number sits too high" was.
+#
 # Public in spirit — the drop modal and the shop shelf draw the same tiles — but
 # they show TEMPLATES, whose counter is always 0, so only the pack calls it.
+const COUNTER_PIP := 14
+const COUNTER_HANG := 3
+
 func _counter_badge(item: ItemData) -> Control:
 	var spec: Dictionary = item.incremental_spec()
 	if spec.is_empty():
@@ -129,15 +152,25 @@ func _counter_badge(item: ItemData) -> Control:
 	wrap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	wrap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# The overhang. PRESET_BOTTOM_RIGHT pins both offsets to the parent's corner;
+	# moving them positive walks the pip down and right, out past the art.
+	wrap.offset_right = COUNTER_HANG
+	wrap.offset_bottom = COUNTER_HANG
+	# A pip is round whatever is in it, so it is square until a two-digit count
+	# needs the width — then it grows sideways into a capsule of the same height
+	# rather than getting taller.
+	wrap.custom_minimum_size = Vector2(COUNTER_PIP, COUNTER_PIP)
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Its own dark plate rather than bare text on the art: item art is 852 games'
 	# worth of colours and a naked glyph is illegible over half of them.
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.06, 0.06, 0.09, 0.88), 3, 3, 1, UITheme.GOLD))
+		UITheme.flat(Color(0.06, 0.06, 0.09, 0.92), COUNTER_PIP / 2, 0, 1, UITheme.GOLD))
 	var label := Label.new()
 	label.text = str(count)
 	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	label.add_theme_color_override("font_color", UITheme.GOLD)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(label)
 	return wrap

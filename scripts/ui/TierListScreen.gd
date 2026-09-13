@@ -20,10 +20,13 @@ extends Control
 # Row accent colors, S..F. Cycled if the player adds more tiers than this. This
 # is the tier-list idiom and stays loud on purpose — it's the one place in the
 # game where the colour IS the content.
-const TIER_COLORS := [
-	Color(0.95, 0.42, 0.42), Color(0.97, 0.66, 0.4), Color(0.97, 0.85, 0.42),
-	Color(0.66, 0.88, 0.5), Color(0.5, 0.78, 0.95), Color(0.76, 0.6, 0.95),
-]
+#
+# THE LIST ITSELF MOVED TO UITheme, because it is no longer only this screen's:
+# every large cover in the game now wears its tier in the corner
+# (UITheme.attach_tier_badge), and a badge in a different red from the row the
+# game sits in would be two answers to one question. Kept under its old name so
+# the screen and its tests read the same as they did.
+const TIER_COLORS := UITheme.TIER_COLORS
 const UNRANKED_COLOR := Color(0.36, 0.32, 0.26)
 
 const TILE_SIZE := Vector2(88, 104)

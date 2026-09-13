@@ -249,6 +249,7 @@ var _offering: OfferingCards = null
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
+var _play_clock: Label              # ⏱ this game's split / the run's total
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 # The checklist itself — both states of the left column, and the row-to-body
@@ -2267,6 +2268,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# (has_played_game), and it is deliberately a wider net than the beat below.
 	if played_game != null:
 		GameState.note_game_played(played_game.id)
+		# …and the same fact told to the clock. THE ONE PLACE A GAME'S SPLIT IS
+		# BANKED, for the reason the line above is here: every finished game comes
+		# through this funnel, so a beaten game, a missed goal and an escape all
+		# stop the clock and all land in the split list with which of the three it
+		# was written on them.
+		RunTimer.finish_game(played_game.id, beaten, escaped)
 
 	# BEATEN MEANS WON. This block used to sit inside the one above — any report
 	# that wasn't an escape banked the game, a missed goal included — so "⚔ Beaten
@@ -2770,11 +2777,36 @@ func _update_shop_hint() -> void:
 # set_process with only its own answer.
 func _wants_process() -> bool:
 	return (_shop_panel != null and is_instance_valid(_shop_panel)) \
-		or (_loot_panel != null and is_instance_valid(_loot_panel))
+		or (_loot_panel != null and is_instance_valid(_loot_panel)) \
+		or RunTimer.game_running
 
 func _process(_delta: float) -> void:
 	_update_shop_hint()
 	_follow_loot_overlay()
+	_update_play_clock()
+
+# The running split, redrawn at frame rate. Reads RunTimer rather than counting
+# anything itself — one clock in the build, and the number on screen is the
+# number on the stream by construction.
+#
+# Tenths on the game's split and none on the run's: the moving digit is what says
+# the clock is alive, and one of them saying it is enough.
+func _update_play_clock() -> void:
+	if _play_clock == null or not is_instance_valid(_play_clock):
+		return
+	if not RunTimer.game_running:
+		_play_clock.visible = false
+		return
+	_play_clock.visible = true
+	var line: String = "⏱  %s" % RunTimer.format(RunTimer.game_seconds)
+	if RunTimer.attempt_splits.size() > 0:
+		# The current try, when there have been others — the split list on the
+		# overlay keeps them all, and what matters here is how long THIS attempt
+		# has been going.
+		line += "   ·   try %d: %s" % [RunTimer.attempt_splits.size() + 1,
+			RunTimer.format(RunTimer.attempt_seconds)]
+	line += "   ·   run %s" % RunTimer.format(RunTimer.run_seconds, 0)
+	_play_clock.text = line
 
 # Keep the loot overlay on the board when the page moves under it. `item_rect_
 # changed` on the board is not enough: a report regrows the LEFT column, which
@@ -4045,6 +4077,21 @@ func _refresh(_a = null) -> void:
 		# on the board is on the board (see the row's own comment).
 		var game: GameData = _chosen.get("game")
 		_now_playing_cover.texture = game.cover_image if game != null else null
+		# The tier badge rides the cover here as it does everywhere else, but this
+		# TextureRect OUTLIVES the game it is drawing — the panel is built once and
+		# re-pointed at each new cover — so the old badge has to come off before the
+		# new one goes on, or a run would stack one pill per game played.
+		for old_badge in _now_playing_cover.get_children():
+			_now_playing_cover.remove_child(old_badge)
+			old_badge.queue_free()
+		if game != null:
+			UITheme.attach_tier_badge(_now_playing_cover, game.id)
+		# The clock wants the frame hook for as long as this game is in play, and
+		# _wants_process is the one gate that decides (the shop pointer and the loot
+		# overlay share it). Asked here because taking a game is the moment the
+		# answer changes.
+		_update_play_clock()
+		set_process(_wants_process())
 		# …AND THE REPORT STEP, when the goals it lists have changed under it. A D10
 		# re-rolls every non-boss body mid-game and a Create Monster conjures a new
 		# one, and until now the checklist went on asking about the board as it
@@ -5833,6 +5880,21 @@ func _build_ui() -> void:
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.add_child(_now_playing)
+
+	# THE CLOCK ON THIS GAME (RunTimer), in the panel the player is looking at
+	# while they play it. The overlay is where it is FOR — a stream wants a
+	# speedrun timer — but a number that only exists inside OBS is a number the
+	# player has to alt-tab to read, and it is their own evening it is counting.
+	#
+	# Two numbers, one line: this game's split and the whole run behind it, which
+	# is the pair a split timer always shows. Ticked from _process while a game is
+	# in play (see _update_play_clock) and hidden the rest of the time — there is
+	# nothing to count between games that the run total does not already have.
+	_play_clock = Label.new()
+	_play_clock.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_play_clock.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_play_clock.visible = false
+	verbs.add_child(_play_clock)
 
 	# Launch-the-real-game row (populated per game — only games with a launch
 	# target gets a button) + the opt-in Rate button.

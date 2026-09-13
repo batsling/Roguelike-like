@@ -33,11 +33,11 @@ the honour system.
   looking for the game's UI in it; every screen past the menu is built in code.
   `MainMenu.tscn` is the exception and always was: it lays out its 20 nodes (the
   title, the eight buttons, the save list) in the editor like an ordinary scene.
-- **26 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **27 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 26. Count them with
+  README's "Autoload singletons" table covers all 27. Count them with
   `sed -n '/^\[autoload\]/,/^\[/p' project.godot | grep -c '=\"\*res://'` rather
   than trusting this line — it has been wrong before.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,

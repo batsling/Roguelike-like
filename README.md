@@ -248,6 +248,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns what every **ability** does (§7.6) — the catalogue is `data/abilities2.0`, but the turn resolver, the mover, the spawner and the death path are all here, which is why they are one file's business and not a per-row effect string. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability BEHAVIOUR did not come with it. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
+| `RunTimer` | The **speedrun clock** (see "The speedrun clock" below). Starts on the game the run stands on (`TriggerBus.game_selected`), banks a split per lost attempt, stops when the game is reported — beaten, missed or escaped — and keeps a running total for the whole run. Time is accumulated in `_process` rather than measured between timestamps, so a run left open overnight comes back where it was. Rides the save (`SaveSystem` `timer`), drawn by the Now Playing panel and by the overlay. |
 | `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See "The stream overlay" below. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
 | `PillSystem` | Pills (`docs/games-first-redesign.md` §4.3): the per-run deal of 10 of the 13 capsule colours (three mean nothing, so the tenth pill can't be deduced), the 5% horse-dose roll on a drop, colour-scoped identification — either dose teaches both — and the ops a dose runs. Bad Trip names itself from your Health: at or below its own damage it heals to full and reads "Full Health" while that is true. |
@@ -262,7 +263,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `Settings` | Preferences, split by the profile line: **global** (window mode, window size, dev mode) in `user://settings.cfg`, **per-profile** (path filter, amulet rule, transmute rule) in the profile's own `prefs.cfg`. |
 | `Ownership` | Which real games the player owns, and where that answer comes from: the catalog's shipped `GameData.owned` column, or **the player's own list**, built by ticking the mark at the top-left of a game's cover in the Collection. `Ownership.is_owned(game)` is the single read; every owned filter, the atlas's owned rings and the settings counts go through it, and the `.tres` column is never written to. Per-profile, in the active profile's `ownership.cfg`. There is deliberately **no Steam sync** — see the note at the top of `Ownership.gd` for what was tried and why it cannot work. |
 | `RunConfig` | A **custom run**'s setup, held for the run it configures: three independent filters (**map** / **start** / **amulet**, each with library, genre, record and release-year axes), the run-length band, an optional named target game, and an optional **seed** (0 = roll one; `seed_for_run()` is what `GameState.reset_run` asks for the number the whole run is dealt from). Off by default, in which case `RunGraph` reads `Settings.game_filter` exactly as before. Written by `CustomRunScreen`, read by `RunGraph`, and saved with the run — the filters *are* the map, so a save resumed without them comes back on a different one. `RunConfig.describe()` is what the menu's Continue list prints on a custom run's row, read off that save's own stored block rather than off the loaded run. |
-| `TierList` | Cross-run tier list / ranking store that outlives any single run. |
+| `TierList` | Cross-run tier list / ranking store that outlives any single run. **Its colours live in `UITheme.TIER_COLORS`**, not on the tier screen, because every large cover in the game wears the player's tier in its top-right corner now (`UITheme.attach_tier_badge` — the collection, the game-choice modal, the offering cards, the route ladder, the atlas, the Now Playing panel, the run-over and run-history screens). A badge in a different red from the row the game sits in would be two answers to one question, so there is one list and both read it. The badge is a pill carrying the tier's own name in full — names are editable, so a renamed tier is drawn as the player wrote it — **centred on the art's top-right corner** rather than tucked inside it, so it reads as a mark pinned to the picture and gives back the corner it would otherwise cover. An unranked game draws nothing at all. Anything that draws a cover inside a clipping parent (the collection's rounded plate) hands the badge an unclipped layer of its own, or the overhang comes back cut into quarters. |
 | `GameStats` | Cross-run lifetime per-game play stats (games beaten / verified), plus the Donation Machine's bank — the one number in the build that deliberately outlives a run. |
 | `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / pills / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
 
@@ -817,7 +818,8 @@ user://obs/top.html       ┐
 user://obs/bottom.html    │ one page per source, GENERATED from overlay.html
 user://obs/goals.html     │ at every boot — this is how you ask for a part of
 user://obs/road.html      │ the page (see "One file per source" below)
-user://obs/map.html       ┘
+user://obs/map.html       │
+user://obs/timer.html     ┘
 user://obs/custom.css     yours — created empty once, never overwritten
 user://obs/state.js       the run, as `window.OBS_STATE = { … }`
 user://obs/covers/        every picture the page shows, staged beside it
@@ -825,15 +827,16 @@ user://obs/covers/        every picture the page shows, staged beside it
 
 **Setting it up.** Settings → *Stream overlay* → tick "Mirror the run for OBS",
 and copy the path it prints. In OBS: **add a Browser Source, tick "Local file"**,
-point it at that `overlay.html`, and size it **352 × 680**.
+point it at that `overlay.html`, and size it **352 × 880**.
 
-(680 rather than a round number: the page tops out at 586 on a pathological run
+(880 rather than a round number: the page tops out at ~781 on a pathological run
 and the ticker needs ~91px of slack under it — see the tables below. A taller
-source is harmless, just transparent.)
+source is harmless, just transparent. It was 680 before the speedrun clock,
+which adds a card of its own — see "The speedrun clock" below.)
 
 **Do not resize the scene item.** The Browser Source's own Width/Height is the
 canvas the page renders into; stretching the item afterwards resamples the result
-and softens the pixel art. Set 352 × 680 and leave the transform at 100%.
+and softens the pixel art. Set 352 × 880 and leave the transform at 100%.
 
 **The cards are a tint, and the text carries its own ground.** The card sits at
 **0.30** alpha, so **70% of the capture survives** — the panel reads as a wash
@@ -882,11 +885,19 @@ up and down), and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 473 | 511 | 532 | **586** |
-| `top.html` | 179 | 181 | 202 | **256** |
+| `overlay.html` | 614 | 673 | 715 | **781** |
+| `top.html` | 272 | 327 | 385 | **451** |
 | `bottom.html` | 310 | 346 | 346 | **346** |
 | `goals.html` | 310 | 346 | 346 | **346** |
 | `road.html` | 116 | 116 | 116 | **116** |
+| `timer.html` | 130 | 180 | 224 | **300** |
+
+**Only the heavy column is measured and asserted** (`check_overlay.js` pins it,
+so a card added or lost fails there rather than quietly making this table
+wrong); the rest are that fixture scaled. The clock card is 93px with no splits
+banked and grows by ~21px a split until the list hits its own cap
+(`--split-height`, 96px by default), so a run's first game costs the page about
+93px and a long run about 195.
 
 **These are taller per row than the 440 column was, and that is the trade.** The
 checklist went to 15px text on a column 88px narrower, so a long goal takes one
@@ -977,6 +988,49 @@ works: `overlay.html#fill`, `bottom.html#fill`, `map.html#fill`.
 To stop the column growing past a width you choose, put
 `#overlay { --max-width: 352px }` in `user://obs/custom.css`.
 
+#### The speedrun clock
+
+A run here is a stack of real games played one after another, which is a
+speedrun with unusually long splits — so it is timed like one. `RunTimer` keeps
+three numbers and the overlay draws all three:
+
+- **this game's split**, with tenths, because a moving digit is what tells a
+  viewer the clock is live rather than a frozen number on a dead overlay;
+- **the run's total**, which keeps running across the gaps between games (the
+  offering, a shop, an event) because those are time the run took;
+- **a banked split per game finished**, tinted by how the board closed on it —
+  green beaten, orange missed, ember escaped — with `×N` for how many tries it
+  took.
+
+**It starts when the run STANDS ON a game**, not when the ▶ Play button is
+pressed: that button only exists for games with a launch target authored
+(`GameData.has_launch_target`), a small minority of the roster, so a clock hung
+off it would read zero for most of a run. It stops when the game is reported —
+beaten, missed *or* escaped, all three being the board closing.
+
+**A lost attempt does not stop it.** A speedrun clock counts your failures. What
+happens instead is that the attempt is banked as its own split, so a game's entry
+reads as the list of how long each try at it took; undoing an attempt
+(`GameLoop2.undo_attempt`) hands that time straight back, because an undo puts
+the whole run back to before the tick and the clock is part of "before the tick".
+
+**Time accumulates only while the game is running** — a `_process` sum, not the
+difference of two timestamps — so a run left open overnight comes back where it
+was rather than eight hours heavier. It rides the save, so a run played over
+three evenings is one run.
+
+**The page ticks it itself.** The payload carries a reading, not a stream: the
+running seconds are deliberately excluded from `ObsCompanion`'s content dedupe
+(otherwise every payload would differ and `state.js` would be rewritten four
+times a second for a run in which nothing else moved), and `overlay.js` counts
+forward from the moment the reading arrived — measured against its own
+`performance.now()` rather than the payload's `at`, so a clock skew between the
+game's machine and OBS cancels instead of showing. Every write re-bases it.
+
+The same numbers are drawn beside the cover in the game's own Now Playing panel,
+because a clock that only exists inside OBS is a clock the player has to alt-tab
+to read.
+
 #### One file per source
 
 The overlay is one column, but a scene usually wants the camera partway *down*
@@ -986,12 +1040,18 @@ with the inside of a browser source. So the page renders part of itself, and
 
 | Browse to | Shows | Size |
 |---|---|---|
-| `overlay.html` | everything except the road and the map | 352 × 680 |
-| `top.html` | the run card | 352 × 262 |
+| `overlay.html` | everything except the road and the map | 352 × 880 |
+| `top.html` | the run card **and the clock** | 352 × 500 |
 | `bottom.html` | checklist + ticker | 352 × 442 |
 | `goals.html` | the checklist, and nothing else | 352 × 352 |
 | `road.html` | the road walked so far | 352 × 116 |
 | `map.html` | the road **ahead**, as a ladder | **2560 × 1440** (drawn 1:1 there; scale it in OBS) |
+| `timer.html` | the speedrun clock and its splits | 352 × 360 (bigger type here — it is a source of its own) |
+
+**`top.html` + `bottom.html` is the whole default page, exactly once.** Every
+card belongs to one of the two — the clock rides `top` with the run card — so
+running both sources side by side does not give you two clocks ticking at each
+other.
 
 Add a Browser Source, tick **Local file**, browse to the one you want. Point
 **several** at different files and put whatever you like between them; they read
@@ -1000,7 +1060,7 @@ the same `state.js`, so they stay in step for free.
 **These are generated, not authored.** Each is `overlay.html` with one line in
 front of it — `window.OBS_VIEW = "map"` — written by `ObsCompanion._install_views`
 at every boot, so there is exactly one copy of the markup in the repo and the
-five view pages cannot drift from it.
+six view pages cannot drift from it.
 
 **Why files and not `overlay.html#map`.** That was the original mechanism and it
 is unusable in the only program it was for. With **Local file** ticked the field

@@ -411,3 +411,104 @@ func test_a_board_opened_on_nothing_is_the_board_it_always_was() -> void:
 	assert_eq(s.selected_game(), &"", "no game, no card")
 	assert_false(_text_of(s._detail_box).contains("Now pick its tier"),
 		"and nothing is being asked of anyone")
+
+# --- the badge on the box art -----------------------------------------------
+#
+# WHERE THE PLAYER PUT A GAME, drawn in the corner of its cover everywhere the
+# cover is drawn big (UITheme.attach_tier_badge). The tier list is the one
+# opinion the player has recorded about a game, and until this it was readable
+# only on this screen — so every other screen was showing a game the player had
+# already ranked and saying nothing about it.
+
+# The badge hanging off `art`, or null.
+func _badge_on(art: Control) -> Control:
+	for c in art.get_children():
+		if c is PanelContainer:
+			return c
+	return null
+
+func _badge_text(art: Control) -> String:
+	var badge: Control = _badge_on(art)
+	if badge == null:
+		return ""
+	for l in badge.find_children("*", "Label", true, false):
+		return (l as Label).text
+	return ""
+
+func _cover() -> Control:
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(150, 200)
+	add_child_autofree(art)
+	return art
+
+func test_a_ranked_game_wears_its_tier() -> void:
+	TierList.place(_game_a.id, 1)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	assert_eq(_badge_text(art), TierList.tier_names[1],
+		"the badge says which tier, in the tier's own words")
+
+func test_an_unranked_game_wears_nothing() -> void:
+	# Most games, most of the time. An empty badge on every cover in the
+	# collection would be a pill that means "no opinion", drawn 865 times.
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_b.id)
+	assert_null(_badge_on(art), "a game in the Unranked tray has no tier to show")
+
+func test_the_badge_is_the_colour_the_row_is() -> void:
+	# The one failure this badge cannot survive: the colour IS the content, so a
+	# badge in a different red from the row the game sits in would be two answers
+	# to one question. One list, read by both.
+	TierList.place(_game_a.id, 0)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	var box: StyleBoxFlat = _badge_on(art).get_theme_stylebox("panel")
+	assert_eq(box.bg_color, UITheme.tier_color(0))
+	assert_eq(UITheme.tier_color(0), TierListScreen.TIER_COLORS[0],
+		"the tier screen and the badge read the same list")
+
+func test_a_renamed_tier_is_drawn_in_full() -> void:
+	# Tier names are free text. A pill rather than a fixed circle: a tier the
+	# player renamed is a tier they care about the wording of, so the badge grows
+	# sideways rather than truncating.
+	TierList.set_tier_name(0, "Masterpiece")
+	TierList.place(_game_a.id, 0)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	assert_eq(_badge_text(art), "Masterpiece")
+
+func test_a_thumbnail_keeps_its_whole_picture() -> void:
+	# Under the floor the art is too small to give a corner away — an 18px pill on
+	# a 54px row thumbnail is a label with a picture behind it.
+	TierList.place(_game_a.id, 0)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(54, 40)
+	add_child_autofree(art)
+	UITheme.attach_tier_badge(art, _game_a.id)
+	assert_null(_badge_on(art), "small art draws no badge")
+
+func test_the_badge_sits_in_the_top_right_corner() -> void:
+	# One call, one corner, everywhere — so a screen that shows a cover cannot get
+	# it subtly wrong on its own.
+	TierList.place(_game_a.id, 2)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	var badge: Control = _badge_on(art)
+	assert_eq(badge.anchor_right, 1.0, "pinned to the right edge")
+	assert_eq(badge.anchor_top, 0.0, "…and the top one")
+	assert_eq(badge.grow_horizontal, Control.GROW_DIRECTION_BEGIN,
+		"a long tier name grows INTO the art, not off the side of it")
+
+func test_the_badge_is_centred_on_the_corner_rather_than_tucked_inside_it() -> void:
+	# Half of it hangs outside the art on each of the two edges it meets, so it
+	# reads as a mark pinned TO the picture — and gives back the corner of the art
+	# it would otherwise be covering.
+	TierList.place(_game_a.id, 0)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	var badge: Control = _badge_on(art)
+	var out: float = float(UITheme.TIER_BADGE_H) * UITheme.TIER_BADGE_OUT
+	assert_eq(badge.offset_right, out, "half the badge stands past the right edge")
+	assert_eq(badge.offset_top, -out, "…and half above the top one")
+	assert_false(art.clip_contents,
+		"art that clipped would hand back a badge cut into quarters")

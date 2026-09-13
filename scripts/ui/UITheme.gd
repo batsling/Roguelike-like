@@ -326,6 +326,143 @@ static func chip(text: String, color: Color, font_size: int = FONT_SMALL) -> Con
 	wrap.add_child(l)
 	return wrap
 
+# --- Tier badges -----------------------------------------------------------
+#
+# WHERE THE PLAYER PUT THIS GAME, drawn in the top-right corner of its box art.
+# The tier list (TierList, the cross-run store) is the one opinion the player has
+# recorded about a game, and until now it was only readable on the tier-list
+# screen — so every other screen that shows a cover at any size was showing a
+# game the player had already ranked and saying nothing about it. A cover with an
+# "S" on it answers "have I played this, and what did I think" before the name is
+# read.
+#
+# THE COLOURS LIVE HERE NOW rather than on TierListScreen, which is where they
+# were. Two screens drawing the same tier in two different colours is the one
+# failure this badge cannot survive — the colour IS the content — so there is one
+# list and the tier screen reads it out of here (its own TIER_COLORS is kept as
+# an alias so nothing that named it has to change).
+const TIER_COLORS := [
+	Color(0.95, 0.42, 0.42), Color(0.97, 0.66, 0.4), Color(0.97, 0.85, 0.42),
+	Color(0.66, 0.88, 0.5), Color(0.5, 0.78, 0.95), Color(0.76, 0.6, 0.95),
+]
+
+# Cycled, because the player's tier NAMES are editable and the file may hold more
+# rows than there are colours here.
+static func tier_color(index: int) -> Color:
+	if index < 0:
+		return TEXT_FAINT
+	return TIER_COLORS[index % TIER_COLORS.size()]
+
+# The badge's height, and where it sits relative to the corner. A pill rather
+# than a fixed square: tier names are free text (§TierList.set_tier_name), so "S"
+# draws as a circle and "Masterpiece" draws as a capsule of the same height with
+# the whole word in it. The name is never truncated — a tier the player renamed
+# is a tier they care about the wording of.
+const TIER_BADGE_H := 22
+
+# CENTRED ON THE CORNER, not tucked inside it: the badge's own centre sits on the
+# art's top-right corner, so it reads as a mark pinned TO the picture rather than
+# as something printed on it, and it gives back the corner of the art it was
+# covering. 0.5 is exactly centred; 0.0 would put it back flush inside the edge.
+const TIER_BADGE_OUT := 0.5
+# Under this the art is too small to give a corner away — a cover that narrow is
+# already a thumbnail, and a 22px pill on it is a label with a picture behind it
+# rather than the other way round. It is the FLOOR and not the rule: which
+# screens carry the badge at all is each screen's own call, and this only stops a
+# 54px row thumbnail wearing one if a caller hands it over.
+const TIER_BADGE_MIN_ART := 72.0
+
+# The pill for `game_id`, or null when the player has not placed that game in a
+# tier (which is most games, most of the time — an unranked game draws nothing
+# rather than drawing an empty badge).
+static func tier_badge(game_id, height: int = TIER_BADGE_H) -> Control:
+	var tier: int = TierList.tier_of(game_id)
+	if tier < 0:
+		return null
+	var name: String = ""
+	if tier < TierList.tier_names.size():
+		name = String(TierList.tier_names[tier])
+	if name == "":
+		return null
+	var color: Color = tier_color(tier)
+	var wrap := PanelContainer.new()
+	wrap.custom_minimum_size = Vector2(height, height)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Filled with the tier's own colour rather than tinted towards the background
+	# the way `chip` is: this badge sits on box art, which is any colour at all,
+	# and the only thing that reads on all of it is a solid plate with a dark
+	# outline around it.
+	wrap.add_theme_stylebox_override("panel",
+		flat(color, height / 2, 0, 1, BG_DEEP))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 5)
+	margin.add_theme_constant_override("margin_right", 5)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(margin)
+	var l := Label.new()
+	l.text = name
+	l.add_theme_font_size_override("font_size", FONT_TEXT)
+	# Dark on the bright plate. Every tier colour is a pastel, so the readable
+	# text on all six is the same near-black rather than a per-tier choice.
+	l.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(l)
+	return wrap
+
+# Hang the badge in the top-right corner of `art` — the ONE call every screen
+# makes, so the badge is in the same corner at the same size everywhere and a
+# screen that shows a cover cannot get it subtly wrong.
+#
+# `art` is the Control the picture is drawn in (a TextureRect, usually): the
+# badge becomes its child and anchors to its corner, so it follows the art
+# wherever the layout puts it without the caller doing any arithmetic. A
+# no-op for an unranked game, a null art, or art too small to spare the corner
+# — so callers can hand it everything and let the rules decide.
+static func attach_tier_badge(art: Control, game_id, min_art: float = TIER_BADGE_MIN_ART) -> void:
+	if art == null or not is_instance_valid(art):
+		return
+	# A CONTAINER LAYS OUT EVERY CHILD IT HAS, anchors and all, so a badge added to
+	# one is not a badge in a corner — it is stretched to fill the whole box, and
+	# the first thing this drew was a solid tier-coloured rectangle over every
+	# ranked cover in the collection. The picture inside is a plain Control and
+	# anchors fine, and it has already been fitted to the container, so its corner
+	# IS the container's corner: hand the badge to it instead.
+	if art is Container:
+		for child in art.get_children():
+			if child is Control and not (child is Container):
+				attach_tier_badge(child, game_id, min_art)
+				return
+		return
+	var box: Vector2 = art.custom_minimum_size
+	if box.x <= 0.0:
+		box = art.size
+	if min_art > 0.0 and box.x > 0.0 and box.x < min_art:
+		return
+	var badge: Control = tier_badge(game_id)
+	if badge == null:
+		return
+	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	badge.grow_vertical = Control.GROW_DIRECTION_END
+	# Half the badge hangs outside the art on each of the two edges it meets, which
+	# is what "centred on the corner" means. It is the HEIGHT on both axes and not
+	# the width: a long tier name grows to the LEFT (grow_horizontal BEGIN), so the
+	# amount standing outside the right edge is the same for "S" and for
+	# "Masterpiece" and the corner always looks alike.
+	var out: float = float(TIER_BADGE_H) * TIER_BADGE_OUT
+	badge.offset_right = out
+	badge.offset_top = -out
+	# ANYTHING THAT CLIPS WOULD CUT IT IN QUARTERS. The badge deliberately overhangs
+	# now, and several of these covers sit inside a parent with `clip_contents` on
+	# (the collection's plate rounds off square art that way, the route strip and
+	# the atlas canvas scroll). Clipping is the parent's business and not something
+	# to switch off from here — so the callers that clip hand the badge a parent
+	# that does not, and this only has to not clip itself.
+	art.clip_contents = false
+	art.add_child(badge)
+
 # --- General art -----------------------------------------------------------
 #
 # images2.0/general/ is the art that belongs to no one piece of content: symbols
