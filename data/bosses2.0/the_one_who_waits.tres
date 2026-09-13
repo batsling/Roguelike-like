@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://boss_the_one_who_waits"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/bosses/TheOneWhoWaits.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"the_one_who_waits"
+display_name = "The One Who Waits"
+game_type = &"action"
+difficulty = 3
+boss = true
+source_game = "Cult of the Lamb"
+health = 1
+damage = 9
+goal_type = &"feat"
+goal = "Enter or Create a religion"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "TheOneWhoWaits"
+image = ExtResource("2_img")
