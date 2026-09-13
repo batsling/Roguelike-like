@@ -67,6 +67,14 @@ For how the project is laid out and how its systems fit together, see
     renamed is a tier they care about the wording of. An unranked game draws
     nothing at all rather than an empty badge, which would otherwise be a pill
     meaning "no opinion" drawn 865 times.
+  - **Centred ON the corner rather than inset inside it**, 22px tall: half of it
+    hangs outside each of the two edges it meets, which reads as a mark pinned to
+    the picture and gives back the corner of the art it was standing on. The
+    overhang is the badge's HEIGHT on both axes rather than its width, so a long
+    tier name grows leftward into the art and every corner looks alike. A cover
+    drawn inside a clipping parent — the collection's plate, which is what keeps
+    square art inside its rounded corners — gets an unclipped layer for the badge
+    rather than the clip being switched off under it.
 
 - **An incremental relic's counter stops standing on its own art.** It was a
   rounded plate of 10px text inside a 3px content margin and a 1px border —

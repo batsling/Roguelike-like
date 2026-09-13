@@ -498,3 +498,17 @@ func test_the_badge_sits_in_the_top_right_corner() -> void:
 	assert_eq(badge.anchor_top, 0.0, "…and the top one")
 	assert_eq(badge.grow_horizontal, Control.GROW_DIRECTION_BEGIN,
 		"a long tier name grows INTO the art, not off the side of it")
+
+func test_the_badge_is_centred_on_the_corner_rather_than_tucked_inside_it() -> void:
+	# Half of it hangs outside the art on each of the two edges it meets, so it
+	# reads as a mark pinned TO the picture — and gives back the corner of the art
+	# it would otherwise be covering.
+	TierList.place(_game_a.id, 0)
+	var art := _cover()
+	UITheme.attach_tier_badge(art, _game_a.id)
+	var badge: Control = _badge_on(art)
+	var out: float = float(UITheme.TIER_BADGE_H) * UITheme.TIER_BADGE_OUT
+	assert_eq(badge.offset_right, out, "half the badge stands past the right edge")
+	assert_eq(badge.offset_top, -out, "…and half above the top one")
+	assert_false(art.clip_contents,
+		"art that clipped would hand back a badge cut into quarters")

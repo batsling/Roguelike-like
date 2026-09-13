@@ -436,12 +436,25 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(tr)
-	# ON THE PICTURE, not on the plate. The plate is a PanelContainer, and a
-	# container lays out every child it has — a badge handed to it is stretched to
-	# fill the tile rather than pinned to a corner. `tr` is already sized to the
-	# plate, so its top-right is the plate's.
-	UITheme.attach_tier_badge(tr, game_id)
-	return plate
+	if TierList.tier_of(game_id) < 0:
+		return plate
+	# THE BADGE NEEDS A PARENT THAT NEITHER LAYS OUT NOR CLIPS, and the plate is
+	# both: it is a PanelContainer, so a badge handed to it is stretched to fill
+	# the tile rather than pinned to a corner, and it clips (which is what keeps a
+	# square cover's corners inside its rounded ones) so a badge centred on the
+	# corner would come back cut into quarters.
+	#
+	# So a ranked game's cover gets one extra node: a plain Control the size of the
+	# plate, with the plate filling it and the badge hanging off the corner on top.
+	# Only a ranked game pays for it — most covers return above untouched.
+	var wrap := Control.new()
+	wrap.custom_minimum_size = plate.custom_minimum_size
+	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wrap.add_child(plate)
+	UITheme.attach_tier_badge(wrap, game_id)
+	return wrap
 
 func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> TextureRect:
 	var tr := TextureRect.new()
