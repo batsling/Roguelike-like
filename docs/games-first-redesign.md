@@ -2340,6 +2340,26 @@ stream — so the overlay dims only when the beat actually stops.
   title takes two lines and then ellipsises. What it buys is 71px off `#top`,
   which is what lets the road into a scene column at full camera size. The
   attempts already spent ride under the current game.
+- **The speedrun clock** (`RunTimer`). A run here is a stack of real games played
+  one after another, which is a speedrun with unusually long splits, so it is
+  timed like one: this game's split with tenths on it, the run's total behind it,
+  and one banked split per game finished — tinted by how the board closed
+  (beaten / missed / escaped) and carrying how many tries it took.
+
+  **It starts on the game the run STANDS ON**, not on the "▶ Play" button: that
+  button only exists where a launch target is authored, so a clock hung off it
+  would read zero for most of a run. It stops when the game is reported, on all
+  three outcomes — an escape that left the clock running would run forever. A
+  reported loss does *not* pause it (a speedrun clock counts your failures); it
+  banks the attempt as its own split, and an undo hands that time straight back.
+
+  Time accumulates while the game is OPEN rather than between two wall-clock
+  stamps, so a run left overnight comes back where it was, and it rides the save.
+  The page counts the running seconds forward itself between writes — they are
+  excluded from the payload's dedupe, or `state.js` would be rewritten four times
+  a second for a run in which nothing else moved. It is on the default page and
+  has a source of its own (`timer.html`), and the same numbers are drawn beside
+  the cover in the game's own Now Playing panel.
 - **The checklist**, live, and it is the point of the whole thing: a viewer
   watching someone play Hollow Knight has no idea they are doing it to "defeat 3
   bosses without healing". Every row the report panel would draw — body goals,

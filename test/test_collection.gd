@@ -781,3 +781,42 @@ func test_the_tick_is_visible_but_lets_clicks_through_on_the_catalogs_list() -> 
 	assert_eq(badge.mouse_filter, Control.MOUSE_FILTER_IGNORE,
 		"and a click on it opens the game instead of doing nothing")
 	Ownership.set_source(was)
+
+# --- the tier badge on a cover ----------------------------------------------
+#
+# A game the player has ranked wears its tier in the corner of its box art
+# (UITheme.attach_tier_badge). The collection is the screen it matters most on:
+# it is 865 covers, most of them games the player has an opinion about, and
+# before this it was the one screen that knew about the tier list and said
+# nothing.
+
+func _badge_in(node: Node) -> Control:
+	for c in node.get_children():
+		if c is PanelContainer:
+			for l in (c as Control).find_children("*", "Label", true, false):
+				if TierList.tier_names.has((l as Label).text):
+					return c
+		var deeper: Control = _badge_in(c)
+		if deeper != null:
+			return deeper
+	return null
+
+func test_a_ranked_games_detail_cover_wears_its_tier() -> void:
+	var game: GameData = Data.all_games()[0]
+	var was_tier: int = TierList.tier_of(game.id)
+	TierList.place(game.id, 0)
+	var col := _new_collection()
+	col._show_game_detail(game)
+	assert_not_null(_badge_in(col._detail_box),
+		"the cover says which tier the player put this game in")
+	TierList.place(game.id, was_tier)
+
+func test_an_unranked_games_cover_says_nothing() -> void:
+	var game: GameData = Data.all_games()[1]
+	var was_tier: int = TierList.tier_of(game.id)
+	TierList.place(game.id, -1)          # the Unranked tray
+	var col := _new_collection()
+	col._show_game_detail(game)
+	assert_null(_badge_in(col._detail_box),
+		"no opinion recorded, so no badge — it is not a blank pill on every cover")
+	TierList.place(game.id, was_tier)

@@ -290,6 +290,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.texture = game.cover_image
+		UITheme.attach_tier_badge(art, game.id)
 		btn.add_child(art)
 	else:
 		btn.text = game.display_name

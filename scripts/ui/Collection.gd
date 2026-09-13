@@ -414,7 +414,10 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 # and some of them carry their title at the edge.
 const COVER_PLATE := Color(0.145, 0.132, 0.118, 1.0)
 
-func _cover_plate(tex: Texture2D) -> Control:
+# `game_id` is only ever the tier badge's business (UITheme.attach_tier_badge) —
+# the plate itself does not care which game it is drawing. Optional so the two
+# callers that draw a cover for something other than a game row stay as they are.
+func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	var plate := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = COVER_PLATE
@@ -433,14 +436,20 @@ func _cover_plate(tex: Texture2D) -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(tr)
+	# ON THE PICTURE, not on the plate. The plate is a PanelContainer, and a
+	# container lays out every child it has — a badge handed to it is stretched to
+	# fill the tile rather than pinned to a corner. `tr` is already sized to the
+	# plate, so its top-right is the plate's.
+	UITheme.attach_tier_badge(tr, game_id)
 	return plate
 
-func _cover_rect(tex: Texture2D, w: int) -> TextureRect:
+func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
 	tr.custom_minimum_size = Vector2(w, roundi(w * 4.0 / 3.0))
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	UITheme.attach_tier_badge(tr, game_id)
 	return tr
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
@@ -710,7 +719,7 @@ func _fill_cell(index: int) -> void:
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	if g.cover_path != "":
-		box.add_child(_cover_plate(g.cover_image))
+		box.add_child(_cover_plate(g.cover_image, g.id))
 	else:
 		# No art authored: a spacer of the cover's exact size, so a game with no
 		# picture doesn't leave a short hole in the row.
@@ -1296,7 +1305,7 @@ func _show_game_detail(g: GameData) -> void:
 	_detail_game = g
 	var tc := _game_type_color(int(g.type))
 	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, 240)
+		var tr := _cover_rect(g.cover_image, 240, g.id)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(tr)
 	_detail_box.add_child(_label(g.display_name, tc, 18, true))

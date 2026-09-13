@@ -445,6 +445,22 @@ function fixture(dir) {
     road,
     route: { layers: routeLayers, edges: routeEdges, dropped: 0,
       waypoint_depth: 2, arrived: false },
+    /* THE SPEEDRUN CLOCK, mid-run: a game being timed on its fifth try, with
+     * four games already banked in all three outcomes. The seconds are ugly on
+     * purpose — an hour and change on the run, a game past ten minutes, a split
+     * under ten seconds — because those are exactly the cases where a clock's
+     * padding goes wrong (`1:2:3`, `5:7.2`, an hour that never appears). */
+    timer: {
+      running: true, game_running: true,
+      game: 622.4, attempt: 91.2, attempts: 4, run: 4210.8,
+      splits: [
+        { game: 'Hollow Knight', seconds: 1840.5, attempts: 7, outcome: 'beaten' },
+        { game: 'Slay the Spire', seconds: 612.0, attempts: 1, outcome: 'beaten' },
+        { game: 'Dead Cells', seconds: 9.4, attempts: 2, outcome: 'escaped' },
+        { game: 'The Binding of Isaac: Rebirth', seconds: 1120.0, attempts: 3,
+          outcome: 'missed' },
+      ],
+    },
   };
 }
 
@@ -509,10 +525,13 @@ async function main() {
   }));
   check('every section has content', drew.goals > 0 && drew.art > 0
     && drew.stops > 0 && drew.shields > 0, JSON.stringify(drew));
-  /* TWO CARDS ON THE DEFAULT PAGE, not three: the run and the checklist. The hero
-   * card lost its portrait and name to the level-up row and had only a health bar
-   * left in it, which is not a card. */
-  check('the page is two cards', drew.cards === 2, drew.cards + ' cards');
+  /* THREE CARDS ON THE DEFAULT PAGE: the run, the clock and the checklist. It
+   * was two — the hero card lost its portrait and name to the level-up row and
+   * had only a health bar left in it, which is not a card — and the speedrun
+   * clock is the third, which earns its four lines by answering the question
+   * every long game on a stream provokes. The road and the map are excluded by
+   * the selector above: they are their own sources. */
+  check('the page is three cards', drew.cards === 3, drew.cards + ' cards');
 
   /* THE HEADLINE. The premise of the whole run — this game, that far, that game —
    * has to be on the page without scrolling anything. */
@@ -818,6 +837,105 @@ async function main() {
   await page.goto('file://' + path.join(dir, 'overlay.html'));
   await sleep(900);
 
+  /* 4b. THE SPEEDRUN CLOCK — the one part of this page that MOVES WITHOUT A
+   *     PAYLOAD, which is precisely what GUT cannot see. `test_obs_companion`
+   *     pins the numbers going into the file; whether the page counts forward
+   *     between writes, stops counting when the run does, and formats an hour
+   *     without mangling it is all only visible here.
+   *
+   *     The tolerances below are deliberately loose: this is a headless browser
+   *     on a shared runner, and the claim being checked is "the clock is running
+   *     at roughly real speed", not "requestAnimationFrame is punctual." */
+  console.log('the speedrun clock');
+  write((s) => { s.at++; Object.assign(s, fixture(dir)); s.at = Date.now(); });
+  await sleep(600);
+  const readClock = () => page.evaluate(() => ({
+    now: document.getElementById('timer-now').textContent,
+    total: document.getElementById('timer-total').textContent,
+    tryRow: document.getElementById('timer-try').hidden
+      ? '' : document.getElementById('timer-try').textContent,
+    splits: [...document.querySelectorAll('.split')].map((r) => ({
+      name: r.querySelector('.split-name').textContent,
+      time: r.querySelector('.split-time').textContent,
+      tries: r.querySelector('.split-tries') ? r.querySelector('.split-tries').textContent : '',
+      outcome: r.className.replace('split ', ''),
+    })),
+  }));
+  const parseClock = (t) => {
+    const parts = String(t).split(':').map(Number);
+    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+      : parts[0] * 60 + parts[1];
+  };
+  const first = await readClock();
+  check('the clock draws the game in play', /^10:2\d(\.\d)?$/.test(first.now),
+    first.now + ' (payload said 622.4s)');
+  /* AN HOUR APPEARS AS AN HOUR. 4210.8s is 1:10:10 — the case a clock written as
+   * mm:ss gets wrong by printing 70 minutes, and the case a clock written as
+   * hh:mm:ss gets wrong by printing 0:10:10 for everything under one. */
+  check('…and an hour-long run reads as an hour', /^1:10:1\d$/.test(first.total),
+    first.total + ' (payload said 4210.8s)');
+  check('…and the try being timed is named beside it',
+    /^try 5 · 1:3\d\.\d$/.test(first.tryRow), first.tryRow);
+  await sleep(2200);
+  const later = await readClock();
+  const moved = parseClock(later.now) - parseClock(first.now);
+  /* THE WHOLE POINT: no payload was written between those two reads. */
+  check('it counts forward between payloads, on its own',
+    moved >= 1.5 && moved <= 3.5, first.now + ' -> ' + later.now + ' (+' + moved.toFixed(1) + 's)');
+  check('…and the run total counts with it',
+    parseClock(later.total) - parseClock(first.total) >= 1,
+    first.total + ' -> ' + later.total);
+
+  /* A STOPPED CLOCK STOPS. The run ends, the payload says so, and a page that
+   * went on counting would be the one lie this overlay cannot tell. */
+  write((s) => { s.at++; s.timer.running = false; s.timer.game_running = false; });
+  await sleep(700);
+  const stopped = await readClock();
+  await sleep(1800);
+  const stillStopped = await readClock();
+  check('a stopped clock stops', stopped.now === stillStopped.now
+    && stopped.total === stillStopped.total,
+    stopped.now + '/' + stopped.total + ' -> ' + stillStopped.now + '/' + stillStopped.total);
+
+  /* The splits: every banked game, in the order it was played, each with how it
+   * ended and how many tries it took. */
+  check('every banked split is listed', stillStopped.splits.length === 4,
+    stillStopped.splits.length + ' splits');
+  check('…in the order the run played them',
+    stillStopped.splits[0].name === 'Hollow Knight'
+    && stillStopped.splits[3].name === 'The Binding of Isaac: Rebirth',
+    stillStopped.splits.map((x) => x.name).join(' → '));
+  check('…each saying how the board closed on it',
+    stillStopped.splits.map((x) => x.outcome).join(',') === 'beaten,beaten,escaped,missed',
+    stillStopped.splits.map((x) => x.outcome).join(','));
+  /* A ten-minute split and a nine-second one in the same column, both padded to
+   * two digits of seconds so the times line up down the list. */
+  check('…and a short split is padded like a long one',
+    stillStopped.splits[2].time === '0:09' && stillStopped.splits[0].time === '30:40',
+    stillStopped.splits.map((x) => x.time).join(' '));
+  check('…with the tries it took, where it took more than one',
+    stillStopped.splits[0].tries === '×7' && stillStopped.splits[1].tries === '',
+    stillStopped.splits.map((x) => x.tries || '-').join(' '));
+
+  /* ITS OWN SOURCE draws the clock and nothing else from the column. */
+  await page.goto('file://' + path.join(dir, 'overlay.html') + '#timer');
+  await sleep(900);
+  const onlyClock = await page.evaluate(() => {
+    const vis = (sel) => {
+      const n = document.querySelector(sel);
+      return !!n && n.getBoundingClientRect().height > 0;
+    };
+    return { timer: vis('.timer'), run: vis('.run'), goals: vis('.goals'),
+      size: Math.round(parseFloat(getComputedStyle(
+        document.getElementById('timer-now')).fontSize)) };
+  });
+  check('#timer draws the clock alone',
+    onlyClock.timer && !onlyClock.run && !onlyClock.goals, JSON.stringify(onlyClock));
+  check('…at a size worth a source of its own',
+    onlyClock.size >= 44, onlyClock.size + 'px');
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(900);
+
   /* 5. a burst of toasts must not push the page out of its browser source. */
   console.log('a burst of toasts');
   const base = Math.floor(Date.now() / 1000) + 50;
@@ -881,13 +999,16 @@ async function main() {
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
    * where the space is worth spending. `#road` is its own source now and is the
    * one that does NOT bound: a 22-stop strip is 1008px wide and 84 tall. */
-  const DOCUMENTED = { '': 532, '#top': 202, '#bottom': 346, '#goals': 346,
-    '#road': 116 };
+  /* The whole page grew by the clock card (183px on this fixture): the run card
+   * and the clock are `#top` now, the checklist and the ticker `#bottom`, and
+   * `#timer` is the clock alone at its own source size. */
+  const DOCUMENTED = { '': 715, '#top': 385, '#bottom': 346, '#goals': 346,
+    '#road': 116, '#timer': 224 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
   for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
-    ['#goals', '#goals'], ['#road', '#road']]) {
+    ['#goals', '#goals'], ['#road', '#road'], ['#timer', '#timer']]) {
     await page.goto('file://' + path.join(dir, 'overlay.html') + hash);
     await sleep(900);
     const h = await page.evaluate(() =>
@@ -1375,8 +1496,16 @@ async function main() {
 
   await page.goto('file://' + path.join(dir, 'overlay.html'));
   await sleep(700);
+  /* CLIPPED TO THE WHOLE COLUMN, not to a fixed 520. It WAS 520 — comfortably
+   * past the page's height at the time — and the clock card pushed the checklist
+   * past it, at which point `.goal .text` was being sampled against pixels the
+   * screenshot did not contain and reported 1.6:1 over a bright capture. A
+   * sampler that silently reads outside its own texture is worse than no
+   * sampler, so the clip follows the page. */
+  const columnH = await page.evaluate(() => Math.ceil(
+    document.getElementById('overlay').getBoundingClientRect().height));
   const texture = decodePng(await page.screenshot({ omitBackground: true,
-    clip: { x: 0, y: 0, width: WIDTH, height: Math.min(HEIGHT, 520) } }));
+    clip: { x: 0, y: 0, width: WIDTH, height: Math.min(HEIGHT, columnH) } }));
   check('the page hands OBS a transparent texture, not an opaque one',
     texture.bpp === 4, texture.bpp + ' bytes per pixel');
   /* THE DEFAULT COLUMN'S TEXT. `.lookup` and `.goals-label` are in here for a

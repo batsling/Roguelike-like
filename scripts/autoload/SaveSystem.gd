@@ -296,6 +296,10 @@ func _build_payload() -> Dictionary:
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
+		# The speedrun clock: the run's elapsed time, the split for the game in
+		# play, and every game already finished. A run played over three evenings
+		# is one run, so its clock has to survive the save the way its gold does.
+		"timer": RunTimer.serialize(),
 		# A CUSTOM RUN's filters are the run: the graph is built from them, so a save
 		# resumed without them comes back on a different map, with the saved position
 		# standing on a node the new graph may not even have.
@@ -569,6 +573,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	# against the GameState half above: the loop reads GameState.shields when it
 	# RESOLVES a game, never while restoring itself.
 	GameLoop2.restore(data.get("loop", {}))
+	# A save written before the clock existed has no "timer" key, and restores as
+	# a run with no recorded time rather than as an error (see RunTimer.restore).
+	RunTimer.restore(data.get("timer", {}))
 	GameState.emit_signal("hp_changed", GameState.hp, GameState.max_hp)
 	GameState.emit_signal("gold_changed", GameState.gold)
 	GameState.emit_signal("stats_changed")

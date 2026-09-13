@@ -857,6 +857,10 @@ func _reseat_stack(was_offgrid_from: int = -1) -> void:
 func start_run(character: CharacterData) -> void:
 	GameState.reset_run()
 	GameState.apply_character2(character)
+	# The speedrun clock back to zero. Here rather than in the overworld because
+	# this is the one door into a fresh run, and a clock that kept the last run's
+	# splits would be wrong from its first frame.
+	RunTimer.begin_run()
 	reset()
 
 # --- save / load ----------------------------------------------------------

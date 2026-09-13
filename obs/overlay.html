@@ -118,6 +118,47 @@
     </div>
   </section>
 
+  <!-- THE SPEEDRUN CLOCK. A run here is a stack of real games played one after
+       another, which is a speedrun with unusually long splits, so it is timed
+       like one: the game in play, the run behind it, and one banked split per
+       game finished.
+
+       ON THE DEFAULT PAGE, unlike the road and the map, because it costs four
+       lines and answers the question a viewer asks about any long game on
+       stream — "how long have they been on this one" — without anyone having to
+       say it out loud. It ALSO has a source of its own (timer.html) for a scene
+       that wants the clock parked over the game capture rather than in the
+       column.
+
+       IT TICKS LOCALLY. The payload carries a reading, not a stream: the game
+       writes at most four times a second and deliberately leaves the running
+       seconds out of its change detection (see ObsCompanion.flush), so the page
+       counts forward from the last reading it was given and is corrected by the
+       next one. A clock that only moved when the file did would stutter. -->
+  <section class="card timer">
+    <div class="timer-head">
+      <div class="label">This game</div>
+      <!-- Which attempt is being timed, when there has been more than one. The
+           run card's own `attempts` row says how many have been lost; this says
+           how long the current one has been going. -->
+      <div id="timer-try" class="timer-try" hidden></div>
+    </div>
+    <!-- The headline. Tenths on purpose: a moving digit is what tells a viewer
+         at a glance that the clock is live rather than a frozen number on a
+         paused overlay. -->
+    <div id="timer-now" class="timer-now">0:00.0</div>
+    <div class="timer-run">
+      <span class="label">Run</span>
+      <span id="timer-total" class="timer-total">0:00</span>
+    </div>
+    <!-- The splits, newest LAST so the list reads in the order the run was
+         played, the way a split timer's does. Scrolls itself once there are more
+         games than there is room for. -->
+    <div id="timer-scroll" class="timer-scroll">
+      <ol id="timer-splits" class="timer-splits"></ol>
+    </div>
+  </section>
+
   <!-- THE CHECKLIST, and the page's centre of gravity. Every row carries its own
        art: a body's face, a status's pip, a curse's, an event's. Scrolls itself
        when there is more of it than there is room. -->

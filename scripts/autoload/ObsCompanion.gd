@@ -114,6 +114,11 @@ const SPLIT_VIEWS := {
 	"goals.html": "goals",
 	"road.html": "road",
 	"map.html": "map",
+	# The speedrun clock on its own. A timer is the one part of this page a
+	# streamer is most likely to want somewhere else entirely — in a corner, over
+	# the game capture, at whatever size the scene has room for — so it gets its
+	# own file like the map does.
+	"timer.html": "timer",
 }
 
 # WHERE THE LINE GOES: immediately before the script that reads it. `applySplit`
@@ -226,6 +231,12 @@ func _connect_signals() -> void:
 	TriggerBus.item_acquired.connect(_on_item_acquired)
 	TriggerBus.curse_applied.connect(_on_curse_applied)
 
+	# The clock only wakes the writer when it STEPS — a split banked, a game
+	# started, the run ending. Its running seconds are not a reason to write (the
+	# page ticks those itself; see the dedupe in `flush`), which is why RunTimer
+	# deliberately does not emit per frame.
+	RunTimer.changed.connect(mark_dirty)
+
 # ---------------------------------------------------------------------------
 # The write loop
 # ---------------------------------------------------------------------------
@@ -261,8 +272,24 @@ func flush() -> void:
 	# five seconds, so an unchanged run still proves it is alive.
 	var stamp = data["at"]
 	data["at"] = 0
+	# THE CLOCK IS EXCLUDED FROM THE DEDUPE for exactly the reason the timestamp
+	# is. A running split changes every frame, so leaving it in the comparison
+	# would make every payload "different" and the debounce would write the file
+	# four times a second for the whole of a run — on a run where nothing else had
+	# moved. The page extrapolates the running numbers from `at` on its own, so
+	# what a write has to carry is the parts of the clock that STEP: whether it is
+	# running at all, and the splits it has banked.
+	var timer = data.get("timer")
+	if timer is Dictionary:
+		var live: Dictionary = (timer as Dictionary).duplicate()
+		live.erase("game")
+		live.erase("attempt")
+		live.erase("run")
+		data["timer"] = live
 	var canon: String = JSON.stringify(data)
 	data["at"] = stamp
+	if timer != null:
+		data["timer"] = timer
 	if canon == _last_json and _since_write < HEARTBEAT:
 		return
 	_last_json = canon
@@ -323,6 +350,11 @@ func payload() -> Dictionary:
 	out["statuses"] = _statuses()
 	out["road"] = _road()
 	out["route"] = _route()
+	# The speedrun clock, whole (RunTimer.payload) — the running numbers and every
+	# banked split. The page does its own ticking between writes, so what rides
+	# here is a reading taken at `at` rather than something that has to arrive
+	# sixty times a second; see the dedupe note in `flush`.
+	out["timer"] = RunTimer.payload()
 	return out
 
 # "idle" (no run — the menus), "run", "won" or "lost". The page draws a verdict
