@@ -3021,7 +3021,7 @@ func _build_splits_popup() -> Control:
 	box.add_child(scroll)
 	_split_rows = VBoxContainer.new()
 	_split_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_split_rows.add_theme_constant_override("separation", 0)
+	_split_rows.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	scroll.add_child(_split_rows)
 	_rebuild_split_rows()
 	# OPEN AT THE BOTTOM. The list grows downward and the row that is still moving

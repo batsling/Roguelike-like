@@ -57,6 +57,7 @@ const MIGRATED_FONTS := [
 	"res://scripts/redesign2/OfferingCards.gd",
 	"res://scripts/redesign2/Overworld2.gd",
 	"res://scripts/redesign2/PackStrip.gd",
+	"res://scripts/redesign2/RunLogScreen.gd",
 	"res://scripts/redesign2/PlaySession2.gd",
 	"res://scripts/redesign2/PostCombatScreen.gd",
 	"res://scripts/redesign2/ReportChecklist.gd",
