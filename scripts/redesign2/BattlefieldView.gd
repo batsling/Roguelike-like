@@ -154,12 +154,23 @@ var _hidden_parts: Array = []
 var _hero_id: StringName = &""
 var _hero_tex: Texture2D = null
 
-var selected_instance: int = 0       # clicked enemy the combat verbs target (0 = none)
+# THE BODY A PUSH IS AIMING AT, and nothing else (0 = none). A push is the one
+# verb that needs two clicks — pick the body, then pick which way it is shoved —
+# so the body it is half-way through aiming at has to live somewhere between them.
+#
+# IT USED TO BE A PERSISTENT SELECTION: every click on any body set it, it stayed
+# set for the rest of the game, the board drew that body in the selected style,
+# and a strip above the grid read "Click an enemy: > Carcass (col 3, row 2)". So
+# the board tracked the LAST THING CLICKED as if that were a decision, when the
+# click had usually just been someone reading a card — and the verbs aimed at it
+# from a distance, which is why arming one had to clear it first. Targeting is a
+# thing a verb does after it is armed now; the rest of the time a click on a body
+# is a click on a body, and opens its card.
+var push_target: int = 0
 var push_btn: Button
 var bomb_btn: Button
 var graveyard_btn: Button            # ☠ The Fallen — only once something has
 var aim_btn: Button                  # only on screen while an item is aiming
-var _target_label: Label
 var _hint_label: Label
 # PUSH MODE. The verb is armed FIRST and aimed second: pressing Push arms it,
 # clicking an enemy picks the body, and an arrow appears on every side of that
@@ -617,30 +628,26 @@ func _refresh_pressure() -> void:
 			GameLoop2.BASE_GRID_ROWS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER)]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
-# the battlefield and act on the enemy you clicked. Each button explains why it's
-# unavailable (no target / no charge / no room behind / boss) rather than vanishing,
-# so the rules stay visible.
+# the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach
+# light up, and the next click is the target. Each button explains why it's
+# unavailable (no charge, nothing on the board) rather than vanishing, so the rules
+# stay visible.
 func _build_battle_toolbar() -> Control:
-	# Flowing for the same reason the pressure strip is: the hint, the target line
-	# and the two verbs add up to more than the board is wide, and as an HBox that
-	# sum became the panel's minimum width and pushed the board off the page.
+	# Flowing for the same reason the pressure strip is: the hint and the two verbs
+	# can add up to more than the board is wide, and as an HBox that sum became the
+	# panel's minimum width and pushed the board off the page.
 	var bar := HFlowContainer.new()
 	bar.add_theme_constant_override("h_separation", UITheme.GAP)
 	bar.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 
+	# Empty and hidden until a verb is armed (see refresh) — the toolbar is the
+	# verbs, and an instruction about clicking is not one of them.
 	_hint_label = Label.new()
-	_hint_label.text = "Click an enemy:"
+	_hint_label.text = ""
+	_hint_label.visible = false
 	_hint_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(_hint_label)
-
-	_target_label = Label.new()
-	_target_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	# Enough width that the usual "no target selected" doesn't make the verbs jump
-	# when a name lands in it, but not so much that it sets the panel's width.
-	_target_label.custom_minimum_size = Vector2(140, 0)
-	_target_label.clip_text = true
-	bar.add_child(_target_label)
 
 	push_btn = Button.new()
 	push_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
@@ -699,7 +706,7 @@ func begin_push() -> void:
 	bomb_mode = false
 	aiming_item = null
 	cancel_loot_throw()
-	selected_instance = 0
+	push_target = 0
 	refresh()
 
 func cancel_push() -> void:
@@ -722,7 +729,7 @@ func begin_bomb() -> void:
 	push_mode = false
 	aiming_item = null
 	cancel_loot_throw()
-	selected_instance = 0
+	push_target = 0
 	refresh()
 
 func cancel_bomb() -> void:
@@ -759,7 +766,7 @@ func begin_item_aim(item: ItemData) -> bool:
 	push_mode = false
 	bomb_mode = false
 	cancel_loot_throw()
-	selected_instance = 0
+	push_target = 0
 	refresh()
 	return true
 
@@ -789,7 +796,7 @@ func begin_loot_throw(entry: Dictionary, index: int = -1) -> bool:
 	aiming_item = null
 	push_mode = false
 	bomb_mode = false
-	selected_instance = 0
+	push_target = 0
 	refresh()
 	return true
 
@@ -937,31 +944,18 @@ func refresh_toolbar() -> void:
 		bomb_mode = false
 	_check_aimed_item()
 	_check_thrown_loot()
-	var entry: Dictionary = _stack_entry(selected_instance)
-	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
-	if e == null:
-		# ARMED AND UNAIMED SAYS NOTHING. The instruction used to be printed here —
-		# "click an enemy" — and it is redundant now that the bodies you could click
-		# are the ones lit up on the board (ARMED_TINT). A verb that has to caption
-		# its own highlight is a highlight that isn't working.
-		_target_label.text = "" if is_aiming() else "no target selected"
-		_target_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	else:
-		_target_label.text = "▸ %s  (col %d, row %d)" % [
-			e.display_name, int(entry.get("col", GameLoop2.spawn_col())),
-			int(entry.get("row", 0)) + 1]
-		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
-
-	# The hint says which half of the verb the player is in. Both armed strings are
-	# kept SHORTER than the idle one, and so is the button below: this is an
-	# HFlowContainer inside a board that already fits its page to about ten spare
-	# pixels, so a wordier armed state wraps the toolbar onto a second row and
-	# pushes the bottom of the board off the window.
+	# THE STRIP SAYS NOTHING UNTIL A VERB IS ARMED. It used to carry an instruction
+	# ("Click an enemy:") and a readout of the last body clicked ("> Carcass (col
+	# 3, row 2)") — a caption over a board that is perfectly able to speak for
+	# itself, describing a selection that was usually just someone reading a card.
+	# Armed, it still names the verb, because THAT is the thing the board cannot
+	# show on its own: the lit cells say where you may click, not what will happen
+	# when you do.
 	if _hint_label != null:
 		if push_mode:
-			_hint_label.text = "⇤ Push:"
+			_hint_label.text = "⇤ Push — click a body:"
 		elif bomb_mode:
-			_hint_label.text = "✸ Bomb:"
+			_hint_label.text = "✸ Bomb — click a square:"
 		elif aiming_item != null:
 			# The relic's own name, because the pack it was armed from is a scroll
 			# away from here: "something is armed" is not an answer the player can
@@ -979,9 +973,9 @@ func refresh_toolbar() -> void:
 				LootSystem.glyph(throwing_loot), "Zap" if wand else "Throw",
 				LootSystem.display_name(throwing_loot)]
 		else:
-			_hint_label.text = "Click an enemy:"
-		_hint_label.add_theme_color_override("font_color",
-			UITheme.ACCENT if is_aiming() else UITheme.TEXT_DIM)
+			_hint_label.text = ""
+		_hint_label.visible = _hint_label.text != ""
+		_hint_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
 	# The armed item's Cancel, on screen only while one is aiming — and while it is,
 	# it stands in the OTHER TWO VERBS' place rather than beside them. Three buttons
@@ -1030,8 +1024,10 @@ func refresh_toolbar() -> void:
 	# the button gates on having a charge rather than on having a target.
 	#
 	# A boss is a legal target even though the damage bounces off it — that is the
-	# only way to leave Sticky Bombs' Web under one — and the tooltip carries the
-	# caveat for whichever body is currently selected.
+	# only way to leave Sticky Bombs' Web under one. The tooltip used to carry that
+	# caveat for "whichever body is currently selected", which is not a thing any
+	# more: the promise is the general one, and the per-body reading is on the body
+	# (EnemyInfoCard), where the player is looking when they aim.
 	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
 	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
 	if bomb_mode:
@@ -1040,11 +1036,11 @@ func refresh_toolbar() -> void:
 		bomb_btn.tooltip_text = "No Bomb charges left."
 	else:
 		# A bomb goes off on a SQUARE, whether or not anything is standing on it, so
-		# the promise names the ground when nothing is selected rather than telling
-		# the player to select an enemy first (which is no longer true).
+		# the promise names the ground rather than telling the player to select an
+		# enemy first (which is no longer a thing that can be done).
 		bomb_btn.tooltip_text = ("Blow up any tile on the board — press this, then "
-			+ "click the square. A body standing there takes 1 damage.") if e == null \
-			else GameLoop2.bomb_hint(e)
+			+ "click the square. A body standing there takes 1 damage, "
+			+ "and a boss takes none.")
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:
@@ -1295,8 +1291,8 @@ func refresh() -> void:
 			_offgrid_box.add_child(_offgrid_token(entry))
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
-	if selected_instance > 0 and _stack_entry(selected_instance).is_empty():
-		selected_instance = 0
+	if push_target > 0 and _stack_entry(push_target).is_empty():
+		push_target = 0
 	refresh_toolbar()
 	# After the toolbar, which is what can disarm the verb (no charges left).
 	_refresh_push_arrows()
@@ -1630,15 +1626,24 @@ func highlight(instances: Array = []) -> void:
 			(fn as Callable).call()
 
 # Clicking an enemy. What that means depends on whether a verb is armed: with a
-# Push armed it AIMS, with a Bomb armed it FIRES, and with neither it selects the
-# body and opens its info card.
+# Push armed it AIMS, with a Bomb armed it FIRES, and WITH NEITHER IT OPENS THE
+# BODY'S CARD — always, for any body, at any moment. Reading the board is not a
+# mode you can be knocked out of.
+#
+# The click used to SELECT as well, setting a target the verbs then aimed at from
+# a distance (see `push_target`). It doesn't: a verb aims after it is armed, so a
+# click with nothing armed has nothing to aim and is simply a look at a card.
 func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 	# EVERY body answers this the same way. There used to be an exemption for the
 	# enemy of the game in play — it could not be selected, bombed or pushed,
 	# because it was that game's own and shoving it would have answered the game
 	# you had just committed to. Nothing belongs to a game now
 	# (GameLoop2.arrivals), so nothing is exempt.
-	selected_instance = instance
+	#
+	# Only a PUSH holds the body it was clicked with, because only a push has a
+	# second question to ask about it.
+	if push_mode:
+		push_target = instance
 	# An armed BOMB goes off here. This click is the whole of the aiming — a bomb
 	# has no direction to pick — so it is also what spends the charge, which is why
 	# nothing was spent when the button was pressed. The verb disarms itself either
@@ -1803,9 +1808,9 @@ const ARROW_GAP: int = 3
 func _refresh_push_arrows() -> void:
 	if _arrow_layer == null:
 		return
-	if not push_mode or selected_instance <= 0:
+	if not push_mode or push_target <= 0:
 		return
-	var entry: Dictionary = _stack_entry(selected_instance)
+	var entry: Dictionary = _stack_entry(push_target)
 	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
 	if e == null:
 		return
@@ -1813,7 +1818,7 @@ func _refresh_push_arrows() -> void:
 	var col: int = int(entry.get("col", GameLoop2.spawn_col()))
 	var span: Vector2 = _span_size(e.footprint_rows(), e.footprint_cols())
 	var centre: Vector2 = _cell_pos(row, col) + span * 0.5
-	var dirs: Array = GameLoop2.push_directions(selected_instance)
+	var dirs: Array = GameLoop2.push_directions(push_target)
 	if dirs.is_empty():
 		_arrow_layer.add_child(_no_room_note(centre, e))
 		return
@@ -1864,7 +1869,7 @@ func _push_arrow(dir: Vector2i, at: Vector2, e: GoalEnemyData) -> Button:
 	b.add_theme_stylebox_override("pressed",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.2), 6, 0, 2, Color.WHITE))
 	b.set_meta("push_dir", dir)
-	var inst: int = selected_instance
+	var inst: int = push_target
 	b.pressed.connect(func():
 		# Disarmed on the way out, so one press of Push spends at most one charge
 		# and the arrows don't linger over a body that has already moved.
@@ -1942,7 +1947,7 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	var staggered: bool = GameLoop2.is_staggered(inst)
 	if staggered:
 		accent = accent.lerp(STAGGER_GREY, 0.6)
-	var selected: bool = inst > 0 and inst == selected_instance
+	var selected: bool = inst > 0 and inst == push_target
 
 	# The node covers the bounding box, but only answers the mouse over the cells
 	# the enemy really fills — an L's notch belongs to whoever stands in it.
@@ -1974,7 +1979,7 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	# beside it highlights the bodies whose goals a row belongs to (see
 	# `highlight`), and both routes have to end at the same paint.
 	var repaint := func() -> void:
-		_style_enemy_cell(frames, accent, inst == selected_instance, _is_lit(inst),
+		_style_enemy_cell(frames, accent, inst == push_target, _is_lit(inst),
 			_armed.has(inst))
 	_repaint_fns[inst] = repaint
 	repaint.call()

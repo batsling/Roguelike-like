@@ -9,10 +9,12 @@ extends Control
 #      whichever system owns it, and fires Echo Chamber's copies of the last three
 #      used. Then walk the returned `requests` (identify-which / stun-which /
 #      teleport) through small pickers.
-#   3. write what it did to the LOG and close — see `_report_outcome`. There is
-#      no "here is what happened, press Done" screen any more: it asked the player
-#      to acknowledge a thing they had just chosen to do, and it did so with a
-#      full-screen panel over the board the piece had just changed.
+#   3. write what it did to the LOG, and SAY IT ON A SCREEN — see `_report_outcome`
+#      and `_show_outcome`. What a piece did can be anything from moving you across
+#      the map to nothing at all, and a log line under a board that has just changed
+#      is not an answer the player can find again. The screen never identifies a
+#      piece the use did not: an unidentified one that gave nothing away comes back
+#      `???`.
 #   4. emit `finished` and free itself so the page refreshes.
 #
 # IT IS ONE MODAL FOR BOTH KINDS deliberately. A pill needs fewer words than a
@@ -722,10 +724,61 @@ func _report_outcome() -> void:
 	# an Amnesia with nothing to forget) wrote nothing to the log, and silence
 	# after a click reads as a click that did not register. It is the one case that
 	# still needs saying out loud.
+	_show_outcome()
+
+# THE SCREEN THAT SAYS WHAT HAPPENED, and the reason it is back.
+#
+# It was dropped because it "asked the player to acknowledge a thing they had just
+# chosen to do". That is true of a scroll whose sentence the player had just read
+# off the screen before it — and false of everything else this door opens. Using a
+# piece can move you across the map, burn three squares, charge a wand, lift a
+# curse, fire Echo Chamber's three copies of the last things you used, or do
+# nothing at all; the log line went past under a board that had changed, and a
+# player who looked away for a second had no way back to it.
+#
+# WHAT IT MAY NOT DO IS IDENTIFY THE PIECE FOR FREE. Using an unidentified pill
+# that had no visible effect must not come back "Bad Trip: -1 Health" — the mask
+# is the gamble, and this screen is not a way around it. So the words are the
+# lines the systems actually WROTE: what happened, in the terms it happened in. A
+# piece that is still unidentified and wrote nothing says so and stays a mystery,
+# which is itself the honest answer — you took it and could not tell.
+func _show_outcome() -> void:
+	_rebuild_panel()
+	var art: TextureRect = LootSystem.art_tex(_entry, 72)
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_body.add_child(art)
+	# `display_name` is already the masked one for a piece still unidentified (its
+	# colour or its material), so the heading cannot leak what the body is careful
+	# not to.
+	_body.add_child(_heading("%s %s" % [LootSystem.glyph(_entry),
+		LootSystem.display_name(_entry)], ACCENT, 20))
+	if _newly_learned:
+		_body.add_child(_chip_row([UITheme.chip("Identified", UITheme.SUCCESS)]))
+	elif not LootSystem.is_identified(_entry):
+		_body.add_child(_chip_row([UITheme.chip("Unidentified", UITheme.TEXT_DIM)]))
+
 	if _outcome_logs.is_empty():
-		Notifications.notify("%s: nothing happens." % LootSystem.display_name(_entry),
-			UITheme.TEXT_DIM)
-	_finish()
+		# NOTHING OBSERVABLE. Two different sentences, because they are two different
+		# facts: an identified piece that no-opped (a charge into a pack with nothing
+		# chargeable) really did nothing, while an unidentified one that no-opped may
+		# have done something you simply cannot see yet — and saying which it was
+		# would be the identification the player has not earned.
+		if LootSystem.is_identified(_entry):
+			_body.add_child(_muted("Nothing happens."))
+		else:
+			_body.add_child(_heading("???", UITheme.TEXT_DIM, 20))
+			_body.add_child(_muted("Nothing you can feel."))
+	else:
+		for line in _outcome_logs:
+			_body.add_child(_muted("→  %s" % line))
+	if not _echoed.is_empty():
+		_body.add_child(_muted("Echo Chamber also used: %s."
+			% ", ".join(PackedStringArray(_echoed))))
+
+	var done := UITheme.confirm_button("Done", Vector2(150, 34))
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(_finish)
+	_body.add_child(done)
 
 # ---------------------------------------------------------------------------
 # Helpers

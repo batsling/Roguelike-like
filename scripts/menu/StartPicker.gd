@@ -54,6 +54,10 @@ const MODAL_LAYER := UITheme.Layer.START_MODAL
 const AMULET_ART := Vector2(104, 104)
 const ROAD_ART := Vector2(184, 138)
 const ROAD_WIDTH := 300
+# The body waiting on a road, as art. Big enough to tell two enemies apart at a
+# glance across three cards, small enough that the row it sits in costs less than
+# the three wrapped lines of text it replaced.
+const ENEMY_ART := Vector2(52, 52)
 
 var _page: Node = null              # the Overworld2 this is choosing a start for
 var _options: Array = []            # its `_start_options`, verbatim
@@ -286,15 +290,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	dist.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(dist)
 
-	var enemy: GoalEnemyData = opt.get("enemy")
-	var waiting := Label.new()
-	waiting.text = ("☠  %s — %s" % [enemy.display_name, enemy.goal]) if enemy != null \
-		else "No enemy — a free game."
-	waiting.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	waiting.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	waiting.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	waiting.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	box.add_child(waiting)
+	box.add_child(_waiting_row(opt.get("enemy")))
 
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", UITheme.GAP_SNUG)
@@ -320,6 +316,55 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 
 	_cards.append({"panel": wrap, "accent": accent})
 	return wrap
+
+# WHAT IS WAITING ON THAT ROAD, as a PICTURE. It was a written line — "☠ Carcass —
+# Defeat 10+ spiders" — which is two facts in a sentence long enough to wrap onto
+# three lines under a card that is already carrying a cover, a name and a
+# distance. Three roads' worth of that is a wall of text at the exact moment the
+# player is trying to compare three pictures.
+#
+# So the body is its portrait and the words are on the hover, which is how every
+# other enemy on a card is drawn (OfferingCards._beatable_pip). The goal is not
+# lost: it is one hover away here and spelled out in full on ⚙ Details, which is
+# the screen for reading rather than comparing.
+#
+# A body with no portrait authored falls back to its NAME rather than to a gap —
+# an empty row under one of three cards reads as that road having no enemy, which
+# is a different and much better thing than "we have no picture of it".
+func _waiting_row(enemy: GoalEnemyData) -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	row.custom_minimum_size = Vector2(0, ENEMY_ART.y)
+	if enemy == null:
+		var free := Label.new()
+		free.text = "No enemy — a free game."
+		free.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		free.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		row.add_child(free)
+		return row
+	var tip: String = enemy.display_name
+	if enemy.goal != "":
+		tip += "\n%s" % enemy.goal
+	tip += "\n\nIt walks on with the game and follows you until its goal is cleared."
+	if enemy.image != null:
+		var art := TextureRect.new()
+		art.texture = enemy.image
+		art.custom_minimum_size = ENEMY_ART
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.tooltip_text = tip
+		art.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.add_child(art)
+	else:
+		var named := Label.new()
+		named.text = "☠  %s" % enemy.display_name
+		named.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		named.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		named.tooltip_text = tip
+		named.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.add_child(named)
+	return row
 
 func _footer() -> Control:
 	var row := HBoxContainer.new()

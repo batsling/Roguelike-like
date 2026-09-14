@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seven passes over the run's screens.**
+
+  - **The haul waits for the board again, and the offering waits for the haul.**
+    The instant-haul build put the screen over the resolve; what had actually been
+    flashing was the OFFERING coming back the moment a game was reported, dealing
+    a fresh table of games in front of a player who had not been shown what the
+    last one paid. The offering is held until the haul is walked off, so the window
+    the playback fills is the board and the checklist of the game just handed in —
+    which is what the animation is about. Order: board, haul, table.
+  - **The board stopped tracking the last thing you clicked.** A strip above the
+    grid read `Click an enemy: ▸ Carcass (col 3, row 2)` — a caption over a board
+    well able to speak for itself, describing a "selection" that was usually just
+    someone reading a card. Targeting is a thing a verb does AFTER it is armed;
+    with nothing armed a click is a click, and opens the body's card. What was
+    `selected_instance` is now `push_target` and lives only while a push is
+    half-way through aiming, because a push is the one verb with a second question
+    to ask. The strip says nothing until a verb is armed, and then names the verb —
+    the one thing the lit cells cannot say.
+  - **The start cards show the body waiting on a road as ART.** It was written out
+    — `☠ Carcass — Defeat 10+ spiders` — three wrapped lines under a card already
+    carrying a cover, a name and a distance, times three cards, at the moment the
+    player is comparing them. The words are on the hover, which is how every other
+    enemy on a card is drawn. A body with no portrait falls back to its name rather
+    than to a gap.
+  - **The clock is a split timer, and it can be stopped.** One row on the page —
+    the game being timed, the try inside it, the run — and `⏱` opens the full
+    LiveSplit list: a row per game with its time, EVERY TRY AT IT indented under
+    it (a lost run banks its own split), the game in play still moving at the
+    bottom, the run's total under a rule. The list is a popup because the column it
+    would have sat in fits 720p by about thirty pixels and a list there measured
+    832 of the 625 a window leaves. `⏸` stops both clocks and nothing else — the
+    board and the tracker still work — and rides the save, so a run paused and quit
+    comes back paused.
+  - **Using a piece of loot says what it did.** The modal used to close the instant
+    the piece resolved, leaving the answer to "what did that do to me" as a log
+    line under a board that had just changed. It ends on its outcome now — and
+    never identifies a piece the use did not: an unidentified one that gave nothing
+    away comes back **???**, because the mask is the gamble and this screen is not
+    a way around it. An identified piece that genuinely no-ops says "nothing
+    happens", which is a different fact and gets a different sentence.
+  - **A History button beside the Map.** The run already wrote everything down —
+    every game, enemy, event, item, piece of loot, shop purchase and lost run — and
+    `GameLog`'s only reader was a one-line readout showing the LAST thing that
+    happened. `RunLogScreen` reads the whole record back, newest first, grouped by
+    the game the run was standing on at the time, with each line in the colour the
+    log already gave it. Entries are stamped with that game in `GameLog.add` rather
+    than by 80 call sites; a second visit to a game is its own group, because going
+    back is a decision the player paid a Dash for.
+
 - **A boss every third encounter, closing its own tier band.** The ladder is now
   two ordinary enemies at a tier and then the boss that ends it, every band the
   same three games:

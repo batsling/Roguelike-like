@@ -3837,23 +3837,15 @@ back — the one place the run's consequences are ever *shown*. So the player
 answered "do you want this relic" over the top of the blow that had just taken
 eight Health off them.
 
-So the haul is **a screen**, and it is **the first thing the press produces**.
+So the haul is **a screen**, and it opens when the board has stopped moving.
 
-**It does not wait for the board.** It used to open from `_end_resolve`, once the
-playback had finished, which left the page sitting on the overworld — the game
-just reported, its Now Playing panel gone, nothing to do on it — for the length of
-the resolve: **~0.73s** for a bare advance, **~1.45s** when something strikes. That
-is too short to watch and too long to miss, so it read as the main screen flashing
-up before the haul rather than as an animation. The rule that the haul opens on a
-still board was written against **six popups** being pumped over a moving board one
-at a time, each with its own Take/Leave; this is one screen, it *is* the
-destination, and what the playback had to say it says in words anyway — damage
-taken and blocked are two of its numbers. So it opens on the press and the board
-finishes underneath it, and walking off it lands on a board that has settled.
-
-The **end of a run** is the exception and still waits (`_run_over_pending`): there
-is no haul screen on that path, the last blow is the last thing the run has to
-show, and a verdict cutting across it is what this rule was actually about.
+**The board plays, then the haul, then the next table.** Nothing is dropped over
+the resolve: it is the one moment the board gets — the front line striking, the
+field closing a column — and a screen over it turns that into a thing that
+happened behind a panel. The haul was opened on the press for one build, because
+the page had been sitting on the overworld for the length of the playback with the
+game already reported and nothing to do on it, and that read as a flash. **The
+flash was the offering**, not the animation filling the window: see below.
 
 **And the next offering waits for the haul.** The offering is *built* the instant
 the game is reported — a Scramble or a Dash taken off the haul screen needs a table

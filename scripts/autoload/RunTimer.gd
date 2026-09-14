@@ -59,6 +59,20 @@ var game_seconds: float = 0.0
 var attempt_seconds: float = 0.0
 var game_running: bool = false
 
+# THE PLAYER'S OWN STOP BUTTON. A speedrun clock that cannot be stopped is a clock
+# that charges you for answering the door, and this one runs for as long as the
+# app is open — a run played over three evenings is one run, so the gaps in it are
+# real time the player is not playing.
+#
+# It stops BOTH clocks, the run's and the game's, because there is no version of
+# "paused" where the run is still going. Nothing else about the run pauses: the
+# tree keeps running, the board is still clickable, the tracker still ticks. This
+# is the clock's own switch and it says so.
+#
+# It rides the save, so a run paused and quit comes back paused rather than
+# quietly resuming while the player is reading the menu.
+var paused: bool = false
+
 # Every attempt banked at the CURRENT game, oldest first, in seconds. Moved into
 # the game's split when it is reported.
 var attempt_splits: Array = []
@@ -81,6 +95,10 @@ func _process(delta: float) -> void:
 	# reading their tier list to the next run they start.
 	if GameState.character_id == &"":
 		return
+	# Stopped by hand. Checked here rather than at every call site that moves a
+	# number, so there is one place the clock can be off and no way to tick past it.
+	if paused:
+		return
 	if run_running:
 		run_seconds += delta
 	if game_running:
@@ -97,6 +115,8 @@ func _process(delta: float) -> void:
 func begin_run() -> void:
 	run_seconds = 0.0
 	run_running = true
+	# A fresh run starts running, whatever the last one was left on.
+	paused = false
 	_clear_game()
 	splits.clear()
 	changed.emit()
@@ -189,6 +209,23 @@ func finish_game(id: StringName, beaten: bool, escaped: bool = false) -> void:
 	_clear_game()
 	changed.emit()
 
+# Stop or start the clock by hand. Emits `changed` so the panel and the overlay
+# both repaint — a paused clock that still LOOKS live on the stream is the one lie
+# worth most to avoid.
+func set_paused(value: bool) -> void:
+	if paused == value:
+		return
+	paused = value
+	changed.emit()
+
+func toggle_pause() -> void:
+	set_paused(not paused)
+
+# Whether there is anything to pause. A run that has not started has no clock to
+# stop, and a button that stops nothing should say so rather than pretend.
+func can_pause() -> bool:
+	return run_running and GameState.character_id != &""
+
 func _clear_game() -> void:
 	game_id = &""
 	game_seconds = 0.0
@@ -240,7 +277,10 @@ func payload() -> Dictionary:
 		# Whether the numbers below are still moving. The page extrapolates from
 		# the payload's `at` stamp only while this is true — a stopped clock that
 		# went on counting on the stream would be the one lie the overlay tells.
-		"running": run_running,
+		"running": run_running and not paused,
+		# …and WHY it is stopped, so the overlay can say "paused" rather than just
+		# showing a number that has stopped moving for no visible reason.
+		"paused": paused,
 		"game_running": game_running,
 		"game": game_seconds,
 		"attempt": attempt_seconds,
@@ -257,6 +297,7 @@ func serialize() -> Dictionary:
 	return {
 		"run_seconds": run_seconds,
 		"run_running": run_running,
+		"paused": paused,
 		"game_id": String(game_id),
 		"game_seconds": game_seconds,
 		"attempt_seconds": attempt_seconds,
@@ -271,6 +312,7 @@ func serialize() -> Dictionary:
 func restore(data: Dictionary) -> void:
 	run_seconds = float(data.get("run_seconds", 0.0))
 	run_running = bool(data.get("run_running", false))
+	paused = bool(data.get("paused", false))
 	game_id = StringName(data.get("game_id", ""))
 	game_seconds = float(data.get("game_seconds", 0.0))
 	attempt_seconds = float(data.get("attempt_seconds", 0.0))
