@@ -29,6 +29,12 @@ For how the project is laid out and how its systems fit together, see
     with nothing in reach charges nothing and the tick is still logged — the turn
     *is* the cost, so a cleared stack has nothing to take. The one board that rule
     is about was the one board that refused the press.
+  - **It read as a FROZEN BOARD, not as a dead button**, which is the symptom worth
+    recognising. A tick and a report are the only two things that ever move a body
+    (`_resolve_enemy_turn` has exactly those two callers), so a tracker that
+    refuses is a board that cannot move: with the arrivals wanded off, whatever was
+    still following stood in the same square press after press. The bodies were
+    behaving perfectly — nothing was ever asking them to walk.
   - `has_arrivals()` keeps its old meaning and is still the right question for
     *what is standing*; the four places in `PlaySession2` that were using it to
     mean *a game is in play* now ask `game_in_play`, so a cleared board there no

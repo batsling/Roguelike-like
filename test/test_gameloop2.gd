@@ -760,6 +760,34 @@ func test_clearing_the_board_does_not_end_the_game_in_play() -> void:
 		"and the tick still costs the turn it always did — an empty board just has nothing to charge")
 	assert_eq(GameLoop2.attempts(), 1, "the tracker counted it")
 
+# THE SURVIVOR IS WHAT MAKES THE REFUSAL VISIBLE. A tick and a report are the ONLY
+# two things that ever move a body (_resolve_enemy_turn has exactly those two
+# callers), so a tracker that refuses is a board that is frozen — and with the
+# bodies the game arrived with wanded off, what the player is left looking at is
+# whatever is still following them, standing in the same square press after press.
+# That is the second half of the same bug: not just a dead button, a dead board.
+func test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off() -> void:
+	# One body from an earlier game, marched partway down the board and released by
+	# its report, so it is an ordinary follower rather than an arrival.
+	var follower: int = _choose_solo(_enemy(1))
+	_report()
+	_turn()
+	var col_before: int = _col_of(follower)
+	assert_gt(col_before, 1, "it is somewhere behind the front line")
+
+	# A new game, and the player clears everything that walked on with it.
+	var fresh: int = GameLoop2.choose_game(_enemy(1))
+	var escort: int = GameLoop2.escort_instance()
+	GameLoop2.despawn(fresh)
+	if escort > 0:
+		GameLoop2.despawn(escort)
+	assert_false(GameLoop2.has_arrivals(), "nothing that arrived is left standing")
+	assert_eq(_col_of(follower), col_before, "and the follower has not moved on its own")
+
+	assert_eq(GameLoop2.log_attempt(), "turn", "the tick lands")
+	assert_lt(_col_of(follower), col_before,
+		"and the board it bought actually closes the follower in — a press that resolves nothing is what 'it just stands there' looks like")
+
 func test_reporting_a_game_is_what_takes_it_out_of_play() -> void:
 	_choose_solo(_enemy(1))
 	assert_true(GameLoop2.game_in_play)
