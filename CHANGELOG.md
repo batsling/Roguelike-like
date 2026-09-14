@@ -45,6 +45,27 @@ For how the project is laid out and how its systems fit together, see
     path, which is what "already ticked this game" was always supposed to mean.
     The gate itself was right all along; it had simply never been asked.
 
+- **The haul screen is the first thing a report produces, and the main screen no
+  longer flashes up in front of it.** It opened from `_end_resolve`, once the board
+  had finished playing the resolve back, so the page sat on the overworld — the
+  game just reported, its Now Playing panel gone, nothing to do on it — for the
+  length of the playback. Measured: **~0.73s** for a bare advance, **~1.45s** when
+  something strikes. Too short to watch and too long to miss, which is exactly the
+  shape of a glitch. §18's rule that the haul opens on a still board was written
+  against **six popups** pumped over a moving board one at a time, each with its own
+  Take/Leave; this is one screen, it *is* the destination, and what the playback had
+  to say it says in words anyway — damage taken and blocked are two of its numbers.
+  So `report` opens it on the press and the board finishes underneath it.
+  - **The end of a run still waits.** There is no haul screen on that path, the
+    last blow is the last thing the run has to show, and a verdict cutting across
+    it is what the rule was actually about.
+  - `_open_post_game` is now reached twice per report — once from the press, once
+    when the playback lands — so it returns early on the second, which would
+    otherwise have fired the event over the top of a screen still being read. A
+    *new* report arriving with a haul still standing abandons the old screen rather
+    than being swallowed by it; a run cannot do that (the screen is modal) but a
+    caller that manages it should not silently lose its haul.
+
 - **The next offering waits for the haul screen instead of flashing up under it.**
   Reporting a game set `Phase.SELECT` and rebuilt the cards before the board had
   played a frame of the resolve, so a full table of games was dealt in front of a

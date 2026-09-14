@@ -2412,6 +2412,25 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		_pending_detour = true
 		_detour_beaten = not escaped
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
+	# THE HAUL DOES NOT WAIT FOR THE BOARD. It used to open from `_end_resolve`,
+	# which meant the page sat on the overworld — the game just reported, its Now
+	# Playing panel gone, nothing to do on it — for as long as the playback ran:
+	# measured at ~0.73s for a bare advance and ~1.45s when something strikes. That
+	# is too short to watch and too long to miss, so it read as the main screen
+	# flashing up before the haul rather than as an animation.
+	#
+	# §18's rule that the haul opens on a still board was written against SIX
+	# POPUPS being pumped over a moving board one at a time, each with its own
+	# Take/Leave. This is one screen, it is the destination, and what the playback
+	# had to say it says in words anyway — damage taken and blocked are two of its
+	# numbers. So it opens now and the board finishes underneath it; walking off it
+	# lands on a board that has already settled.
+	#
+	# The END OF A RUN is the exception and still waits (`_run_over_pending`, and
+	# the two `return`s above): there is no haul screen on that path, the last blow
+	# is the last thing the run has to show, and a verdict cutting across it is the
+	# thing §18 was actually about.
+	_open_post_game()
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -2512,6 +2531,22 @@ func _end_resolve() -> void:
 # Nothing else that reaches _end_resolve has a report behind it, and those carry
 # straight on down the chain they always did.
 func _open_post_game() -> void:
+	if _post_screen != null and is_instance_valid(_post_screen):
+		# THE DUPLICATE CALL. `report` opens the haul without waiting for the
+		# playback, so the playback landing afterwards reaches here a second time —
+		# and with the snapshot spent it would fall into the branch below and fire
+		# the event over the top of the screen the player is still reading. The
+		# chain behind the haul is `_on_post_game_finished`'s to run, once.
+		if _post_snapshot.is_empty():
+			return
+		# A NEW REPORT WITH A HAUL STILL STANDING. A run cannot do this — the screen
+		# is modal and has to be left before another game can be played — but a
+		# caller that manages it must not have the new haul silently swallowed by
+		# the old one, which is what a bare `return` here did. `abandon` rather than
+		# `dismiss`: the way out of the old screen would run a chain that belongs to
+		# a game two reports ago.
+		_post_screen.abandon()
+		_post_screen = null
 	if _post_snapshot.is_empty():
 		_open_pending_event()
 		return

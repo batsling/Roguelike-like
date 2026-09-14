@@ -4809,18 +4809,21 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 		+ _ui._board.FX_END_BREATH, 0.001,
 		"a strike, what its damage number outlives it by, and the breath after")
 
-# THE OFFERING WAITS FOR THE HAUL, and for nothing else. It is BUILT the moment
-# the game is reported — a Scramble or a Dash taken off the haul screen needs a
-# table to act on — but it is not PUT ON THE PAGE until the player has walked off
-# the screen that says what the last game paid.
+# THE HAUL IS THERE AT THE PRESS, and the offering waits behind it.
 #
-# It used to come back the instant the report landed, so the next table of games
-# was dealt in full in front of a player who had not yet been shown their haul,
-# and then the haul screen dropped over the top of it: the offering read as a
-# screen that flashed up and was snatched away. The board is not part of that and
-# still plays out under everything — the animation and the haul screen share the
-# screen, and there is still no Continue step anywhere in it.
-func test_the_offering_waits_for_the_haul_screen_rather_than_the_board() -> void:
+# Two orderings used to sit between the report and the haul. The page went back to
+# its between-games look straight away — the offering rebuilt and dealt, the Now
+# Playing panel gone — and the haul screen only opened once the board had finished
+# playing the resolve back, measured at ~0.73s for a bare advance and ~1.45s when
+# something strikes. Too short to watch, too long to miss: it read as the main
+# screen flashing up before the haul.
+#
+# Now the screen the report ends on is the first thing the press produces, and the
+# board finishes underneath it. The offering is still BUILT at the report — a
+# Scramble or a Dash taken off the haul needs a table to act on — and is put on the
+# page when the player walks off the haul, so the order is the order it happens in:
+# the report, what it paid, then the next table.
+func test_the_haul_lands_at_the_press_and_the_offering_waits_behind_it() -> void:
 	# Play a game and MISS first, which is what puts a body on the board: the
 	# chosen enemy lives in GameLoop2.arrival() while a game is being played and
 	# only joins the stack when the goal is missed. On the very first game the
@@ -4832,20 +4835,24 @@ func test_the_offering_waits_for_the_haul_screen_rather_than_the_board() -> void
 	_pick_solo(0)
 	_ui.report(false)
 	await _playback_done()                    # let the first playback finish
+	_leave_post_game()                        # …and walk off its haul, as a player does
+	_dismiss_event()
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
 	_pick_solo(0)
 	_ui.report(false)
+	assert_not_null(_ui._post_screen,
+		"the haul is up on the press, not after the board has finished")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
 	assert_gt(_ui._choices.size(), 0, "with cards a Dash or a Scramble could act on")
 	assert_false(_ui._select_box.visible,
-		"but it is not on the page yet — the haul has not been seen")
-	assert_true(_ui._resolving, "the board is still playing the resolve back")
+		"but it is not on the page yet — the haul has not been walked off")
+	assert_true(_ui._resolving, "and the board plays the resolve back underneath it")
 	await _playback_done()
 	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
-	assert_not_null(_ui._post_screen, "and hands over to the haul screen")
-	assert_false(_ui._select_box.visible, "which is what the offering is still behind")
+	assert_not_null(_ui._post_screen, "leaving the haul exactly where it was")
+	assert_false(_ui._select_box.visible, "with the offering still behind it")
 	_leave_post_game()
 	assert_true(_ui._select_box.visible, "walking off the haul is what deals the table")
 

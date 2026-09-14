@@ -3813,19 +3813,32 @@ back — the one place the run's consequences are ever *shown*. So the player
 answered "do you want this relic" over the top of the blow that had just taken
 eight Health off them.
 
-So the haul is **a screen**, and it opens when the board has stopped moving.
+So the haul is **a screen**, and it is **the first thing the press produces**.
 
-**And the next offering waits for it.** The offering is *built* the instant the
-game is reported — a Scramble or a Dash taken off the haul screen needs a table to
-act on, and the cards are dealt off the run as it stands the moment it moved — but
-it is not put on the page until the player has walked off the haul
+**It does not wait for the board.** It used to open from `_end_resolve`, once the
+playback had finished, which left the page sitting on the overworld — the game
+just reported, its Now Playing panel gone, nothing to do on it — for the length of
+the resolve: **~0.73s** for a bare advance, **~1.45s** when something strikes. That
+is too short to watch and too long to miss, so it read as the main screen flashing
+up before the haul rather than as an animation. The rule that the haul opens on a
+still board was written against **six popups** being pumped over a moving board one
+at a time, each with its own Take/Leave; this is one screen, it *is* the
+destination, and what the playback had to say it says in words anyway — damage
+taken and blocked are two of its numbers. So it opens on the press and the board
+finishes underneath it, and walking off it lands on a board that has settled.
+
+The **end of a run** is the exception and still waits (`_run_over_pending`): there
+is no haul screen on that path, the last blow is the last thing the run has to
+show, and a verdict cutting across it is what this rule was actually about.
+
+**And the next offering waits for the haul.** The offering is *built* the instant
+the game is reported — a Scramble or a Dash taken off the haul screen needs a table
+to act on, and the cards are dealt off the run as it stands the moment it moved —
+but it is not put on the page until the player has walked off the haul
 (`Overworld2._refresh_stage` holds it while `_post_snapshot` or `_post_screen` is
 set). It used to come back with the report, so a full table of games was dealt in
-front of a player who had not yet been shown what the last game paid, and then the
-haul dropped over the top of it: the offering read as a screen that flashed up and
-was snatched away, and the haul as an interruption to a choice already begun. The
-order is now the order it happens in — the report, what it paid, then the next
-table. The **board** is not part of this and still plays out under everything;
+front of a player who had not yet been shown what the last game paid. The order is
+now the order it happens in — the report, what it paid, then the next table — and
 there is still no Continue step anywhere in the chain.
 
 | Section | What it carries |
