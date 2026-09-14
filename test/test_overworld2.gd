@@ -1154,37 +1154,40 @@ func test_scramble_needs_a_charge_and_the_select_phase() -> void:
 	assert_false(_ui.scramble(), "you can't reroll a game you're already playing")
 	assert_eq(GameState.scramble, 1, "a refused scramble is not spent")
 
-func test_boss_round_on_difficulty_gate() -> void:
-	# The tier steps every GAMES_PER_TIER games; that crossing is a boss round.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+func test_boss_round_closes_the_tier_band() -> void:
+	# The LAST game of a band is the boss round — games_played is the count already
+	# played, so the band's last game is the one standing at GAMES_PER_TIER - 1.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "a games-played multiple of the tier step is a boss round")
+	assert_true(_ui._boss_round, "the last game of a tier band is a boss round")
 	for c in _ui._choices:
 		assert_true(bool(c["boss"]), "every boss-round choice spawns a boss")
 
-func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
-	# Boss rounds are every GAMES_PER_TIER games; each boss rolls at the tier the
-	# player just cleared (game-4 boss is Low), then the run advances. Once on
-	# Insane, bosses stay Insane.
+# THE WHOLE LADDER IN ONE TABLE, encounter by encounter. Two ordinary enemies at a
+# tier and then the boss that closes the band, every band the same three games:
+#     Low  Low  LOW BOSS | Med  Med  MED BOSS | High High HIGH BOSS | Insane…
+#
+# `games_played` is what has ALREADY been played, so the offering for encounter N
+# reads N - 1. The boss used to sit on the tier CROSSING instead (gp % 3 == 0),
+# which made the opening band four games long and put the first boss on encounter
+# 4; every band is three now and the first boss is encounter 3.
+func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
-	# Normal games use the plain tier.
-	GameState.games_played = 2
-	assert_eq(_ui._current_tier(), T.LOW, "games 1-3 are Low")
-	GameState.games_played = 4
-	assert_eq(_ui._current_tier(), T.MEDIUM, "games after the first boss are Medium")
-	# Boss rounds cap the tier just played.
-	GameState.games_played = 3   # game 4 boss
-	assert_true(_ui._is_boss_round())
-	assert_eq(_ui._current_tier(), T.LOW, "the game-4 boss is a Low boss")
-	GameState.games_played = 6   # game 7 boss
-	assert_eq(_ui._current_tier(), T.MEDIUM, "the next boss is Medium")
-	GameState.games_played = 9   # game 10 boss
-	assert_eq(_ui._current_tier(), T.HIGH, "then High")
-	GameState.games_played = 12  # game 13 boss
-	assert_eq(_ui._current_tier(), T.INSANE, "then Insane")
-	GameState.games_played = 15  # every 3 games on Insane
-	assert_true(_ui._is_boss_round())
-	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
+	var want: Array = [
+		T.LOW, T.LOW, T.LOW,                  # encounters 1-3, the third a boss
+		T.MEDIUM, T.MEDIUM, T.MEDIUM,         # 4-6
+		T.HIGH, T.HIGH, T.HIGH,               # 7-9
+		T.INSANE, T.INSANE, T.INSANE,         # 10-12
+		T.INSANE, T.INSANE, T.INSANE,         # 13-15, the cap repeating
+	]
+	for i in range(want.size()):
+		var encounter: int = i + 1
+		GameState.games_played = i
+		assert_eq(_ui._current_tier(), int(want[i]),
+			"encounter %d is %s" % [encounter, RunDifficulty.tier_name(int(want[i]))])
+		assert_eq(_ui._is_boss_round(), encounter % 3 == 0,
+			"encounter %d %s a boss round" % [encounter,
+				"is" if encounter % 3 == 0 else "is not"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -3490,7 +3493,7 @@ func _texture_rects_under(node: Node) -> Array:
 	return out
 
 func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER   # the gate
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1   # the band's last game
 	_ui._build_choices()
 	assert_true(_ui._boss_round, "this selection is the boss round")
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
@@ -4012,9 +4015,10 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 		assert_ne(c["slot"], bashed_id, "bashed game not re-offered")
 
 func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
-	# The boss is tied to the difficulty gate, not the game: you may bash the
-	# offered game, but whatever backfills the slot still spawns a boss.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	# The boss is tied to where the run stands in its tier band, not to the game:
+	# you may bash the offered game, but whatever backfills the slot still spawns
+	# a boss.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.bash = 1
 	_ui._build_choices()
 	var idx: int = _first_bashable()
@@ -4027,7 +4031,7 @@ func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
 		assert_true(bool(c["boss"]), "every remaining choice still spawns a boss")
 
 func test_transmute_on_boss_round_still_faces_a_boss() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.transmute = 1
 	_ui._build_choices()
 	if _ui._choices.size() < 2:
@@ -6411,11 +6415,11 @@ func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
 # ---------------------------------------------------------------------------
 
 func _force_boss_round() -> void:
-	# A boss round is the CAPSTONE of a tier: it lands on the offering drawn after
-	# the GAMES_PER_TIER'th game has been played.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	# A boss CLOSES its tier band: it is the band's last game, so it lands on the
+	# offering drawn once GAMES_PER_TIER - 1 games of that band have been played.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the next offering is the difficulty gate")
+	assert_true(_ui._boss_round, "the next offering closes the tier band")
 
 func test_a_boss_round_announces_itself_in_a_popup() -> void:
 	_force_boss_round()
@@ -6949,8 +6953,9 @@ func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
 	# A REAL boss round, arranged rather than injected: the report rebuilds the
 	# offering (and with it `_boss_round`) before the screen is built, and the
 	# resolve can land instantly now (§7.4), so there is no gap to set the flag in.
-	# One game short of a tier capstone is a boss round on the other side of it.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	# Two games short of the band's last game, so REPORTING this one is what puts
+	# the run on the boss round the haul screen has to warn about.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 2
 	_ui._build_choices()
 	_ui.pick(0)
 	_ui._boss_notice_for = -1

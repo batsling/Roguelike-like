@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A boss every third encounter, closing its own tier band.** The ladder is now
+  two ordinary enemies at a tier and then the boss that ends it, every band the
+  same three games:
+
+  | | | |
+  |---|---|---|
+  | Low enemy | Low enemy | **LOW BOSS** |
+  | Medium enemy | Medium enemy | **MEDIUM BOSS** |
+  | High enemy | High enemy | **HIGH BOSS** |
+  | Insane enemy | Insane enemy | **INSANE BOSS** |
+
+  …with the Insane band repeating once the ladder caps.
+
+  The boss used to be the game that CROSSED the gate (`games_played %
+  GAMES_PER_TIER == 0`), standing *between* two bands rather than inside one.
+  That made the opening band four games long where every later band was three,
+  and put the first boss on encounter 4. **This is the whole of what makes the
+  climb quicker**: encounter 4 is a Medium enemy where it used to be the Low
+  boss, and every rung after it arrives a game sooner. `GAMES_PER_TIER` is
+  untouched at 3 — the tier ladder itself already stepped every three games; what
+  moved is where the boss sits in it.
+  - **It also deleted a special case.** A boss on a crossing had to roll at
+    `tier_for(games_played - 1)`, one below the normal formula, because the plain
+    formula already reads the *next* tier there — which is why the old code had a
+    boss branch in `_current_tier`. A boss inside its band is simply at its band's
+    tier, so `_current_tier` is now `tier_for(games_played)` and nothing else.
+  - The cadence moved into `RunDifficulty.is_boss_game` beside the tier ladder it
+    belongs to — pure, static and unit-testable — and `Overworld2._is_boss_round`
+    delegates to it. The tests that used to arrange a boss round by writing the
+    magic `GAMES_PER_TIER` now say `GAMES_PER_TIER - 1`, and the one that needed a
+    report to *land* on a boss round says `- 2`.
+
 - **Clearing the board stopped killing the "Lost a run" button.** Kill everything
   a game walked on with — one Magic Missile over two bodies does it — and the
   tracker went dead mid-game, with no message and no way back short of a reload.

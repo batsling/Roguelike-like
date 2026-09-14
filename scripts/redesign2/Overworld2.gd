@@ -21,9 +21,10 @@ extends Control
 # fill containers this page owns and call back through its public verbs.
 #
 # Difficulty gates (§7.1): the run's tier steps up every RunDifficulty.
-# GAMES_PER_TIER games (RunDifficulty.tier_for). On the game that crosses into a
-# new tier, the offering becomes a BOSS round — a "⚠ BOSS INCOMING" popup opens
-# once (BossNoticeModal) and whichever game you pick spawns a boss.
+# GAMES_PER_TIER games (RunDifficulty.tier_for), and the LAST game of each of
+# those bands is a BOSS round — a "⚠ BOSS INCOMING" popup opens once
+# (BossNoticeModal) and whichever game you pick spawns a boss. Two ordinary
+# enemies then the boss that closes the band, at the band's own tier.
 
 # Phases of one selection. START_SELECT is the one-off opening phase: before the
 # run has a position, the player picks WHERE TO START from three games, each a
@@ -3880,23 +3881,34 @@ func show_completed_goals() -> CompletedGoalsPanel:
 
 # --- offering construction ------------------------------------------------
 
-# Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
-# up every GAMES_PER_TIER games played, so a boss round lands whenever the games-
-# played count is a positive multiple of that step.
+# Whether the upcoming selection is a boss round (§7.1). THE BOSS IS THE LAST GAME
+# OF ITS OWN TIER BAND: a band is GAMES_PER_TIER games, the first of them are
+# ordinary enemies at that tier and the last is the boss that closes it. So the
+# run reads Low, Low, LOW BOSS | Medium, Medium, MEDIUM BOSS | High, High, HIGH
+# BOSS | Insane, Insane, INSANE BOSS, and on round the band repeats at the cap.
+#
+# IT USED TO BE THE GAME THAT CROSSED THE GATE — `gp % GAMES_PER_TIER == 0`, a
+# boss standing BETWEEN two bands rather than inside one. That made the opening
+# band four games long (three Low enemies and then a Low boss) while every band
+# after it was three, and it put the first boss on encounter 4. Now every band is
+# the same three games and the first boss is encounter 3, which is the whole of
+# what makes the climb quicker: encounter 4 is a Medium enemy where it used to be
+# the Low boss, and every rung after it arrives one game sooner.
 func _is_boss_round() -> bool:
-	var gp: int = GameState.games_played
-	return gp > 0 and gp % RunDifficulty.GAMES_PER_TIER == 0
+	return RunDifficulty.is_boss_game(GameState.games_played)
 
-# The difficulty tier of the CURRENT offering. A boss round is the CAPSTONE of the
-# tier the player just cleared (§7.1): the game-4 boss is Low and beating it is
-# what advances the run to Medium, so a boss rolls at tier_for(games_played - 1),
-# one below the normal-game formula. Once the run reaches Insane the cap holds, so
-# Insane bosses keep appearing every GAMES_PER_TIER games.
+# The difficulty tier of the CURRENT offering — the plain ladder, for a boss round
+# exactly as for any other.
+#
+# THE BOSS NEEDS NO SPECIAL CASE ANY MORE, and that is the point of moving it. It
+# used to roll at `tier_for(games_played - 1)`, one below the normal formula,
+# because a boss sat on the crossing: at `gp == GAMES_PER_TIER` the plain formula
+# already reads the NEXT tier, so a boss meant to cap the band just played had to
+# be walked back a game by hand. A boss inside its band is simply at its band's
+# tier, and `tier_for` says so on its own. Once the run reaches Insane the cap
+# holds and the Insane band repeats, boss and all.
 func _current_tier() -> int:
-	var gp: int = GameState.games_played
-	if _is_boss_round():
-		return RunDifficulty.tier_for(gp - 1)
-	return RunDifficulty.tier_for(gp)
+	return RunDifficulty.tier_for(GameState.games_played)
 
 # How many game cards the offering shows: the base three plus whatever
 # "game_choices" bonus the run has been granted (never below one, or there'd be

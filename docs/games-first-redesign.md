@@ -1289,8 +1289,32 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 
 ### 7.1 Bosses
 
-**Bosses appear when the run's difficulty tier changes** (the existing
-`RunDifficulty` transitions). A boss is a heavier enemy that:
+**A boss is the LAST GAME OF EACH DIFFICULTY BAND.** A band is
+`RunDifficulty.GAMES_PER_TIER` games — three — and the boss closes it, so the run
+reads:
+
+| | | |
+|---|---|---|
+| **Low** enemy | **Low** enemy | **LOW BOSS** |
+| **Medium** enemy | **Medium** enemy | **MEDIUM BOSS** |
+| **High** enemy | **High** enemy | **HIGH BOSS** |
+| **Insane** enemy | **Insane** enemy | **INSANE BOSS** |
+
+…and the Insane band repeats once the ladder caps. **Every third encounter is a
+boss**, the first of them on encounter 3, and a boss rolls at **its own band's
+tier** (`RunDifficulty.is_boss_game`, `Overworld2._current_tier`).
+
+It used to be the game that CROSSED the gate — the boss stood *between* two bands
+rather than inside one, which made the opening band four games long where every
+later band was three, and put the first boss on encounter 4. Every band is the
+same three games now, which is what makes the climb quicker: encounter 4 is a
+Medium enemy where it used to be the Low boss, and every rung after it arrives a
+game sooner. It also removed a special case — a boss on a crossing had to be
+rolled at `tier_for(games_played - 1)`, one below the normal formula, because the
+plain formula already reads the *next* tier there; a boss inside its band just
+takes `tier_for`.
+
+A boss is a heavier enemy that:
 
 - carries a **more specific goal** (tighter than a normal enemy's — e.g. "beat the
   *true* ending," "clear it deathless" rather than just "beat a boss"),
