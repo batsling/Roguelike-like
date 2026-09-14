@@ -273,6 +273,15 @@ of a game.
   rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
+- **The gate is the GAME, never the board.** `can_log_attempt` asks
+  `GameLoop2.game_in_play` — chosen and not yet reported — and nothing about what
+  is standing. It used to ask `arrivals`, the record of which bodies walked on
+  with the game (§7.2), which is the same answer right up until a body leaves the
+  board some way other than the report: a wand, a bomb, a mine, a goal ticked
+  mid-game. Clear the two bodies a game arrived with — one Magic Missile does it —
+  and the tracker went dead mid-game with nothing said, which also made the rule
+  above unreachable: the one board that charges nothing was the one board that
+  refused the press. Clearing the board is not handing the game in.
 - **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
   breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
   Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
@@ -3805,6 +3814,19 @@ answered "do you want this relic" over the top of the blow that had just taken
 eight Health off them.
 
 So the haul is **a screen**, and it opens when the board has stopped moving.
+
+**And the next offering waits for it.** The offering is *built* the instant the
+game is reported — a Scramble or a Dash taken off the haul screen needs a table to
+act on, and the cards are dealt off the run as it stands the moment it moved — but
+it is not put on the page until the player has walked off the haul
+(`Overworld2._refresh_stage` holds it while `_post_snapshot` or `_post_screen` is
+set). It used to come back with the report, so a full table of games was dealt in
+front of a player who had not yet been shown what the last game paid, and then the
+haul dropped over the top of it: the offering read as a screen that flashed up and
+was snatched away, and the haul as an interruption to a choice already begun. The
+order is now the order it happens in — the report, what it paid, then the next
+table. The **board** is not part of this and still plays out under everything;
+there is still no Continue step anywhere in the chain.
 
 | Section | What it carries |
 |---|---|

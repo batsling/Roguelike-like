@@ -220,6 +220,13 @@ var _run_over_screen: RunOverScreen = null
 # (_open_post_game). `_post_snapshot` is what `report` recorded on the way past —
 # empty at every other moment, which is also how _end_resolve tells a report's
 # animation from any other.
+#
+# THE TWO OF THEM ALSO HOLD THE NEXT OFFERING BACK (_refresh_stage). The cards are
+# built at the report and shown when the player walks off the haul, and between
+# them these cover that whole stretch: `_post_snapshot` from the report landing
+# until the screen stands up, `_post_screen` from there until it is dismissed.
+# That is why `_open_post_game` hands over rather than clearing on the way in —
+# a moment with neither set is a moment something could deal the cards into.
 var _post_snapshot: Dictionary = {}
 var _post_screen: PostCombatScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -2366,22 +2373,16 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		GameLoop2.clear_amulet()
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 		return
-	_phase = Phase.SELECT
-	_build_choices()
-	_refresh()
-	# The run moved, so the recovery point moves with it.
-	autosave()
-	# A play_game detour ends here (§10) — but it QUEUES rather than resolving on
-	# the spot. Its payout and its stay-or-return question both belong on a screen
-	# the player can see, and at this moment the board is still playing the resolve
-	# back, so it waits behind that exactly as an event and a shop do (_end_resolve).
-	if on_detour:
-		_pending_detour = true
-		_detour_beaten = not escaped
 	# WHAT THIS REPORT WAS, for the screen the game ends on (_open_post_game).
 	# Recorded here, on the one path that survives the report — a run that ended
 	# and a run that just won have their own screen and took the two `return`s
 	# above — and read once the board has finished playing the resolve back.
+	#
+	# BEFORE THE REPAINT BELOW, not after it. This is also the flag that holds the
+	# next offering back until the haul has been seen (_refresh_stage reads it), and
+	# `_refresh` is three lines down: filled afterwards, the repaint had already
+	# dealt the new table of cards and nothing repainted again to take it away, so
+	# the offering flashed up under the haul screen exactly as before.
 	_post_snapshot = {
 		"game": played_game, "beaten": beaten, "escaped": escaped,
 		"amulet": was_amulet, "res": res,
@@ -2394,6 +2395,22 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# a report with no level in it.
 		"level_up": level_up_paid,
 	}
+	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
+	# Dash taken off the haul screen still has a table to act on, and the cards are
+	# dealt off the run as it stands the moment it moved rather than off whatever
+	# the haul screen's chain leaves behind.
+	_phase = Phase.SELECT
+	_build_choices()
+	_refresh()
+	# The run moved, so the recovery point moves with it.
+	autosave()
+	# A play_game detour ends here (§10) — but it QUEUES rather than resolving on
+	# the spot. Its payout and its stay-or-return question both belong on a screen
+	# the player can see, and at this moment the board is still playing the resolve
+	# back, so it waits behind that exactly as an event and a shop do (_end_resolve).
+	if on_detour:
+		_pending_detour = true
+		_detour_beaten = not escaped
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
@@ -2498,8 +2515,12 @@ func _open_post_game() -> void:
 	if _post_snapshot.is_empty():
 		_open_pending_event()
 		return
+	# HELD, NOT CLEARED YET. Between this and the screen actually standing up, the
+	# two of them are what keeps the next offering off the page (_refresh_stage) —
+	# dropping it here would leave a window in which neither is set, and anything
+	# below that repaints (a route map finishing, a chest handed over) would deal
+	# the cards into it. It is cleared once `_post_screen` has taken over the job.
 	var snap: Dictionary = _post_snapshot
-	_post_snapshot = {}
 	# The queue is the screen's now. It stays a queue on the page's side (an
 	# out-of-band offer still opens its own modal, see _pump_drops) — this is only
 	# what THIS report put in it.
@@ -2537,6 +2558,8 @@ func _open_post_game() -> void:
 	_dismiss_route_map()
 	_post_screen = PostCombatScreen.open(self, snap, drops,
 		_pending_event != null, shop_id, boss_tier, bosses)
+	# The screen is up, so it is the one holding the offering back now (see above).
+	_post_snapshot = {}
 	var screen: PostCombatScreen = _post_screen
 	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
 	# EVERYTHING THE GAME EARNED, ON THE ONE SCREEN. Chests banked while the game
@@ -4305,10 +4328,29 @@ func _refresh_stage() -> void:
 		return
 	# The offering box hosts the choose-your-start cards too, so it's up in both
 	# choosing phases; the scrolls panel isn't — there's nothing to read before the
-	# run has a position. Both come straight back the moment a game is reported,
-	# resolve animation or not: the board plays out beside the offering, not
-	# instead of it (_hold_for_resolve).
-	var choosing: bool = _phase == Phase.SELECT or _phase == Phase.START_SELECT
+	# run has a position.
+	#
+	# IT WAITS FOR THE HAUL. The offering used to come back the instant a game was
+	# reported — `report` sets Phase.SELECT and rebuilds the cards before the board
+	# has played a frame of the resolve — so the next table of games was dealt, in
+	# full, in front of a player who had not yet been shown what the last game paid.
+	# Then the haul screen dropped over the top of it. The offering read as a screen
+	# that flashed up and was snatched away, and the haul read as an interruption to
+	# a choice the player had already started making.
+	#
+	# So the two are put back in the order they happen in: the report, then what it
+	# paid, THEN the next table. `_post_snapshot` is the report on its way to the
+	# haul screen and is empty at every other moment (see its declaration), and
+	# `_post_screen` is that screen while it is up — between them they cover the
+	# whole wait, from the report landing to the player walking off the haul, and
+	# `_on_post_game_finished` repaints to bring the cards in.
+	#
+	# The BOARD is not part of this and still plays out under everything: the
+	# resolve is the one place the run's consequences are shown (_hold_for_resolve).
+	var haul_owed: bool = not _post_snapshot.is_empty() \
+		or (_post_screen != null and is_instance_valid(_post_screen))
+	var choosing: bool = (_phase == Phase.SELECT or _phase == Phase.START_SELECT) \
+		and not haul_owed
 	_select_box.visible = choosing
 	# The offering's frame goes with it, or an empty bordered box sits above the
 	# checklist between games.

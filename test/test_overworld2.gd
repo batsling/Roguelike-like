@@ -1264,6 +1264,23 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	_report_beat(_ui)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
 
+# CLEARING THE BOARD IS NOT REPORTING THE GAME. A wand that takes the last body
+# off the field used to close the tracker with it — the button greyed mid-game and
+# said nothing about why — because the gate read the bodies that arrived rather
+# than the run's own record of a game in play (GameLoop2.game_in_play).
+func test_the_tracker_stays_live_on_a_board_the_player_has_cleared() -> void:
+	_ui.pick(0)
+	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry["instance"]))
+	_ui._refresh()
+	assert_true(GameLoop2.stack.is_empty(), "nothing is standing")
+	assert_false(_ui._attempt_btn.disabled,
+		"but the game is still in play, so the button is still a button")
+	_ui.log_attempt()
+	_ui._end_resolve()
+	assert_eq(GameLoop2.attempts(), 1, "and pressing it still ticks")
+
 # The shields a game grants are part of the routing decision, so the hover line
 # under the offering quotes them for whatever card you're pointing at.
 func test_the_hover_line_previews_the_games_grant() -> void:
@@ -4792,10 +4809,18 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 		+ _ui._board.FX_END_BREATH, 0.001,
 		"a strike, what its damage number outlives it by, and the breath after")
 
-# The offering does NOT wait for the board: it comes straight back beside it, and
-# the resolve plays out on the board next to the cards. There is no Continue step
-# between the two — the animation and the next decision share the screen.
-func test_the_offering_comes_back_while_the_board_still_plays() -> void:
+# THE OFFERING WAITS FOR THE HAUL, and for nothing else. It is BUILT the moment
+# the game is reported — a Scramble or a Dash taken off the haul screen needs a
+# table to act on — but it is not PUT ON THE PAGE until the player has walked off
+# the screen that says what the last game paid.
+#
+# It used to come back the instant the report landed, so the next table of games
+# was dealt in full in front of a player who had not yet been shown their haul,
+# and then the haul screen dropped over the top of it: the offering read as a
+# screen that flashed up and was snatched away. The board is not part of that and
+# still plays out under everything — the animation and the haul screen share the
+# screen, and there is still no Continue step anywhere in it.
+func test_the_offering_waits_for_the_haul_screen_rather_than_the_board() -> void:
 	# Play a game and MISS first, which is what puts a body on the board: the
 	# chosen enemy lives in GameLoop2.arrival() while a game is being played and
 	# only joins the stack when the goal is missed. On the very first game the
@@ -4813,13 +4838,16 @@ func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	_pick_solo(0)
 	_ui.report(false)
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
-	assert_gt(_ui._choices.size(), 0)
-	assert_true(_ui._select_box.visible,
-		"and it is already on screen, with the board playing beside it")
+	assert_gt(_ui._choices.size(), 0, "with cards a Dash or a Scramble could act on")
+	assert_false(_ui._select_box.visible,
+		"but it is not on the page yet — the haul has not been seen")
 	assert_true(_ui._resolving, "the board is still playing the resolve back")
 	await _playback_done()
 	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
-	assert_true(_ui._select_box.visible, "leaving the offering where it was")
+	assert_not_null(_ui._post_screen, "and hands over to the haul screen")
+	assert_false(_ui._select_box.visible, "which is what the offering is still behind")
+	_leave_post_game()
+	assert_true(_ui._select_box.visible, "walking off the haul is what deals the table")
 
 func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
 	_ui.pick(0)

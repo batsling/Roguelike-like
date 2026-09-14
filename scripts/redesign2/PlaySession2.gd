@@ -47,14 +47,14 @@ func restart(character_id: StringName) -> void:
 
 # Pick a game of `game_type` — rolls + spawns its goal-enemy at the run's tier.
 func pick(game_type: StringName) -> void:
-	if GameLoop2.run_over or GameLoop2.has_arrivals():
+	if GameLoop2.run_over or GameLoop2.game_in_play:
 		return
 	GameLoop2.choose_game_of_type(game_type, -1)
 	_refresh()
 
 # Report the result of playing the chosen game (the honour-system self-report).
 func beat(goal_met: bool) -> void:
-	if GameLoop2.run_over or not GameLoop2.has_arrivals():
+	if GameLoop2.run_over or not GameLoop2.game_in_play:
 		return
 	GameLoop2.beat_game(goal_met)
 	_refresh()
@@ -88,10 +88,12 @@ func _refresh(_a = null) -> void:
 	_stack.text = _stack_text()
 	if not GameLoop2.last_result.is_empty():
 		_log.text = _result_text(GameLoop2.last_result)
-	var can_beat: bool = GameLoop2.has_arrivals() and not GameLoop2.run_over
+	# game_in_play, not has_arrivals: a game you have cleared the board of is
+	# still a game you have to hand in, and still one you may not pick over.
+	var can_beat: bool = GameLoop2.game_in_play and not GameLoop2.run_over
 	_beat_met.disabled = not can_beat
 	_beat_miss.disabled = not can_beat
-	_set_pick_enabled(not GameLoop2.has_arrivals() and not GameLoop2.run_over)
+	_set_pick_enabled(not GameLoop2.game_in_play and not GameLoop2.run_over)
 
 func _hud_text() -> String:
 	return "[b]Health[/b] %d/%d    [b]Temp Shields[/b] %d  [b]Shields[/b] %d        [b]Bash[/b] %d  [b]Dash[/b] %d  [b]Push[/b] %d  [b]Transmute[/b] %d  [b]Scramble[/b] %d  [b]Bombs[/b] %d  [b]Keys[/b] %d    [b]Chests[/b] %d" % [
@@ -101,8 +103,13 @@ func _hud_text() -> String:
 	]
 
 func _enemy_text() -> String:
-	if not GameLoop2.has_arrivals():
+	if not GameLoop2.game_in_play:
 		return "[i]No game chosen — pick a game type below to spawn its enemy.[/i]"
+	# In play, but nothing left of what walked on with it — the board was cleared
+	# before the game was handed in. There is no body to describe, and saying "no
+	# game chosen" would be a lie about a game still owed a report.
+	if not GameLoop2.has_arrivals():
+		return "[i]Now playing — the board is clear of what arrived with it. Report it below.[/i]"
 	var e: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	var boss_tag: String = "  [color=#e0b020][b]☠ BOSS[/b][/color]" if e.is_boss() else ""
 	# Who came WITH it (§7.5). Named here rather than left to be spotted in the
