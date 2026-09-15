@@ -16,6 +16,10 @@ extends Control
 # never left its starting game isn't recorded, since there's no route to draw.
 
 signal finished
+# The player threw a run onto the chart underneath (`_show_on_map`). The strip is
+# closing, but the MAP must not: it is the thing they asked to look at. Kept apart
+# from `finished` because the host closes the map on that one.
+signal handed_to_map
 
 const COVER := Vector2(84, 112)
 const ARROW_W := 26.0
@@ -252,14 +256,27 @@ func _arrow(unreached: bool = false) -> Control:
 	a.custom_minimum_size = Vector2(ARROW_W, COVER.y)
 	return a
 
+# "✦ Show on map" FRAMES THE ROUTE AND GETS OUT OF THE WAY — and for a while it
+# did neither. It framed the run, then called `_finish`, and `finished` is the
+# signal the host uses to close the MAP this screen was laid over (MainMenu
+# ._on_run_history): the button closed the chart it had just aimed, so the whole
+# feature read as a button that did nothing but shut both screens.
+#
+# So the hand-off is its OWN exit. The strip goes away, the sky stays, and
+# `finished` keeps meaning the one thing the host wired it to mean: the player is
+# done with Run History and the map behind it.
 func _show_on_map(run: Dictionary) -> void:
-	if _atlas == null:
+	if _atlas == null or not is_instance_valid(_atlas):
 		return
 	var path: Array = run.get("path", [])
 	if path.is_empty():
 		return
-	_atlas.frame_games(path)
-	_finish()
+	# Nothing to hand off to if the sky never loaded — closing the strip would
+	# leave the player looking at the menu wondering what the button did.
+	if not _atlas.frame_games(path):
+		return
+	handed_to_map.emit()
+	queue_free()
 
 func _finish() -> void:
 	finished.emit()

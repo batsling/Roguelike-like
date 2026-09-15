@@ -62,11 +62,25 @@ const ZONE_PAD := 5.0
 # the detail panel a click away.
 const BADGE_MIN_SCALE := 0.45
 # The badge is drawn ON the cover with no plate behind it, so its legibility is
-# the outline's job rather than a background's: 2px of near-black around the
-# glyphs reads over a white cover and a black one alike. `BADGE_INSET` keeps that
-# outline off the tile's own border.
-const BADGE_OUTLINE := 2
-const BADGE_INSET := 2.0
+# the outline's job rather than a background's: near-black around the glyphs reads
+# over a white cover and a black one alike. `BADGE_INSET` keeps that outline off
+# the tile's own border.
+#
+# IT WAS TOO SMALL TO READ, which is the one thing a count on a picture has to be.
+# The text was FONT_TINY scaled by the board's fit and floored at 8px — and since
+# the board sits under scale 0.8 for anything but a small collection, what
+# actually shipped was 8px of gold over cover art, with 2px of outline. Both go
+# up: the size is FONT_LABEL on the type scale with a FONT_SMALL floor (so the
+# worst case is 11px rather than 8), and the outline is 3px, which is what keeps
+# the heavier glyphs separated from a busy cover instead of merely edged.
+#
+# The badge costs the fit NOTHING at any size — it is anchored inside a bare
+# Control whose minimum is the art box, so a bigger number cannot grow a tile and
+# cannot push the board past the window (see `_build_tile`).
+const BADGE_FONT := UITheme.FONT_LABEL
+const BADGE_FONT_FLOOR := UITheme.FONT_SMALL
+const BADGE_OUTLINE := 3
+const BADGE_INSET := 3.0
 
 # Height of the empty-board note (see `_build_empty_note`). A const because
 # `_board_height` has to count it before the note exists.
@@ -484,7 +498,7 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 	# against: a child whose minimum overflowed would grow the PanelContainer and
 	# the board would come out taller than the space it was fitted to.
 	var pad: int = maxi(1, int(round(3.0 * _scale)))
-	var badge_font: int = _font(10, 8)
+	var badge_font: int = _font(BADGE_FONT, BADGE_FONT_FLOOR)
 	var show_badge: bool = _scale >= BADGE_MIN_SCALE
 	# THE BADGE SITS ON THE COVER, so the art gets the tile's whole height. It used
 	# to be a row UNDER the cover, which cost every tile a line of text plus its
@@ -550,7 +564,9 @@ func _build_tile(game_id: StringName, tier_index: int) -> Control:
 		badge.add_theme_color_override("font_color",
 			UITheme.GOLD if beaten > 0 or amulets > 0 else UITheme.TEXT_FAINT)
 		badge.add_theme_constant_override("outline_size", BADGE_OUTLINE)
-		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		# Opaque, not 0.85. A translucent outline lets a light cover through it and
+		# the gold loses its edge over exactly the art it most needs one against.
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		# Pinned to the bottom-left corner of the art, inset by a hair so the
 		# outline is not sitting on the tile's border.
 		badge.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -815,19 +831,78 @@ class Tile extends PanelContainer:
 				and not (event as InputEventMouseButton).pressed:
 			_screen.select_game(_game_id)
 
-	func _get_drag_data(_pos: Vector2):
-		var preview := TextureRect.new()
+	# WHAT THE CURSOR IS HOLDING. Godot puts a drag preview's TOP-LEFT under the
+	# mouse, so the old preview — a bare 64x64 square — hung down and to the right
+	# of the pointer with the cover's corner pinned to it. Dragging a game felt like
+	# pushing a tile around by a hook screwed into its corner rather than picking it
+	# up, and because 64x64 is not the tile's shape or size, the thing in your hand
+	# did not look like the thing you had grabbed.
+	#
+	# Two fixes, both off `at_position` — where inside the tile the press landed:
+	#
+	#   * THE PREVIEW IS THE TILE. Same box (the live rect, so it matches whatever
+	#     scale the board is fitted to), same rounded panel, same cover crop, with a
+	#     gold border so it reads as lifted off the board rather than as a second
+	#     tile that has come loose.
+	#   * IT IS HELD WHERE IT WAS GRABBED. The card sits inside a bare wrapper and
+	#     is offset by the grab point, so the pixel under the cursor when the drag
+	#     started is the pixel under it for the whole drag. Grab a cover by its
+	#     middle and you are carrying it by its middle.
+	#
+	# The wrapper is a plain Control and does not clip, so the card drawing outside
+	# its rect (which is exactly what the negative offset does) is fine.
+	func _get_drag_data(at_position: Vector2):
 		var gd: GameData = Data.get_game(_game_id)
+		# The tile's real rect while the board is laid out; TILE_SIZE at the screen's
+		# current scale is the fallback for a drag started before the first layout.
+		var box: Vector2 = size
+		if box.x < 1.0 or box.y < 1.0:
+			box = TILE_SIZE * _screen._scale
+		var pad: int = maxi(1, int(round(3.0 * _screen._scale)))
+
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel",
+			UITheme.flat(UITheme.PANEL_HI, 5, pad, 2, UITheme.GOLD))
+		card.custom_minimum_size = box
+		card.size = box
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 		if gd != null and gd.cover_image != null:
-			preview.texture = gd.cover_image
-		# Without EXPAND_IGNORE_SIZE a TextureRect draws at the texture's native
-		# resolution, so a large cover renders huge and ignores the size below.
-		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		preview.custom_minimum_size = Vector2(64, 64)
-		preview.size = Vector2(64, 64)
-		preview.modulate = Color(1, 1, 1, 0.85)
-		set_drag_preview(preview)
+			var art := TextureRect.new()
+			art.texture = gd.cover_image
+			# Without EXPAND_IGNORE_SIZE a TextureRect draws at the texture's native
+			# resolution, so a large cover renders huge and ignores the size above.
+			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(art)
+		else:
+			var name_lbl := Label.new()
+			name_lbl.text = gd.display_name if gd != null else String(_game_id)
+			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			name_lbl.clip_text = true
+			name_lbl.add_theme_font_size_override("font_size",
+				_screen._font(UITheme.FONT_SMALL, UITheme.FONT_MICRO))
+			name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
+			name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(name_lbl)
+
+		var holder := Control.new()
+		holder.custom_minimum_size = box
+		holder.size = box
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(card)
+		# Clamped: a press can be reported a hair outside the rect on the frame the
+		# drag begins, and an unclamped offset would fling the card off the cursor.
+		card.position = -Vector2(
+			clampf(at_position.x, 0.0, box.x), clampf(at_position.y, 0.0, box.y))
+		# Translucent enough to see the row you are aiming at through it, solid
+		# enough to still be the picture you picked up.
+		holder.modulate = Color(1, 1, 1, 0.88)
+
+		set_drag_preview(holder)
 		return {"game_id": String(_game_id)}
 
 	func _can_drop_data(_pos: Vector2, data) -> bool:

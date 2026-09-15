@@ -64,8 +64,22 @@ const ENEMY_TIER_NAMES := ["Low", "Medium", "High", "Insane"]
 
 # Artwork sizes in the right-hand DETAIL panel. Deliberately larger than the grid
 # cells' thumbnails — the detail pane is where you actually look at the art, and
-# the panel is wide enough (340px of content) to carry them.
+# the pane is sized to carry the biggest of them (DETAIL_PANEL_W, whose content
+# width is 248px).
 const DETAIL_ITEM_SIZE := 132
+# The Games tab's cover in the detail pane, and it is HALF what it was (240). A
+# box-art at 240 wide is 320 tall, which was the whole first screen of the pane —
+# so every fact about a game, the year included, opened below the fold. At 120 it
+# is still a cover you can recognise across a room, and it stands beside the name
+# rather than over it, which is where the rest of the height came back from.
+#
+# Every OTHER tab's art is untouched (DETAIL_ITEM_SIZE and the two below): they
+# are 132-176px square, they were never what pushed a page down, and an item you
+# opened the pane to look at is the one thing that should not shrink.
+const GAME_DETAIL_COVER := 120
+# The name beside that cover. Down from 18 because the column it sits in is now
+# about 120px wide, and 18px of a long title in 120px is five wrapped lines.
+const GAME_DETAIL_NAME_FONT := UITheme.FONT_SUB
 const DETAIL_PORTRAIT_SIZE := 152
 const DETAIL_ENEMY_SIZE := 176
 
@@ -812,15 +826,26 @@ func _name_block_height() -> float:
 		else font.get_height(GRID_NAME_FONT) * NAME_LINES
 	return _name_height_cache
 
-const DETAIL_PANEL_W := 380
+# THE PANE IS AS NARROW AS ITS WIDEST PICTURE, and no narrower. It was 380 —
+# almost a third of the widest screen in the game — because the text was allowed
+# to set it, and text in a side pane will take whatever it is given and then read
+# worse for it: a 330px measure is a newspaper column, and nothing in here is
+# longer than a sentence. 300 is sized off the ART instead, which is the thing
+# that must not shrink: the enemy portrait is the biggest of them at
+# DETAIL_ENEMY_SIZE, and it clears its frame, its padding and the scrollbar with
+# room left over. Every image in the pane is exactly the size it was; the pane
+# around them is not.
+#
+# The width it gives back goes to the grid, which is what the Collection is for:
+# on the Games tab that is another column of covers while you scan 865 of them.
+const DETAIL_PANEL_W := 300
 
 # THE PANE IS CLOSED UNTIL THERE IS SOMETHING IN IT.
 #
-# It used to be mounted open and empty, holding 380 of the page's 1280 for a
-# label reading "Select an entry to view details" — a third of the widest screen
-# in the game, reserved against a click that had not happened yet. On the Games
-# tab that is the difference between five columns and seven while you scan 865
-# covers, which is the tab's whole job.
+# It used to be mounted open and empty, holding its whole width for a label
+# reading "Select an entry to view details" — reserved against a click that had
+# not happened yet. On the Games tab that is columns of covers taken off the one
+# thing you opened the tab to do, which is scan 865 of them.
 #
 # The grid is an HFlowContainer, so it takes the width back by itself the moment
 # this is hidden and gives it up again when an entry opens. Both are one property
@@ -1312,61 +1337,117 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	col.add_child(edit)
 	return panel
 
+# THE GAME'S PAGE, and the one entry in the compendium that was mostly below the
+# fold. A game carries more than anything else here — identity, ownership, two
+# ways to launch it, a lifetime record, your ranking, both influence lists, every
+# enemy beaten there and every level-up taken there — and it opened with 320px of
+# cover art, so the pane's first screen was a picture and the first line of a
+# name. Everything that is actually a FACT about the game started below the
+# scroll line.
+#
+# Three changes, one intent — get the facts onto the first screen:
+#
+#   * THE COVER IS HALF THE SIZE and stands BESIDE the identity block rather than
+#     above it (GAME_DETAIL_COVER). That is the 320px line reclaimed twice over:
+#     once by halving it, again by putting the name, the year, the type, the tags
+#     and the record in the space beside it instead of under it.
+#   * THE RECORD IS A LINE, not a section. "📊 Tracked Stats" over "Beaten … 3"
+#     over "Amulet wins … 1" is three rows and a heading to say two numbers that
+#     fit in eleven characters, and the glyphs already say which is which — they
+#     are the same two the tier list's tiles wear.
+#   * PLAY AND STEAM SHARE A ROW. They are two answers to one question ("open the
+#     real thing"), so they read better as a pair than as a stack, and the pair
+#     costs one row instead of two.
+#
+# The owned toggle stays a DIRECT child of `_detail_box` — test_collection's
+# `_owned_toggle_of` looks for it among the box's own children and does not
+# recurse, so tucking it into a row here would quietly lose it.
 func _show_game_detail(g: GameData) -> void:
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = g
 	var tc := _game_type_color(int(g.type))
+
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, 240, g.id)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(tr)
-	_detail_box.add_child(_label(g.display_name, tc, 18, true))
+		var tr := _cover_rect(g.cover_image, GAME_DETAIL_COVER, g.id)
+		tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		head.add_child(tr)
+
+	var ident := VBoxContainer.new()
+	ident.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	ident.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# LEFT-ALIGNED, all of it. `_label`'s `bold_center` and `_detail_meta` centre
+	# their text, which was right while this block was a caption under a centred
+	# cover and is wrong now that it is a column beside one: centred lines in a
+	# narrow column give you a ragged left edge to read down.
+	#
+	# The name wraps rather than clips — it is the one string on the page that has
+	# to be readable in full, and the column beside a cover is narrow.
+	ident.add_child(_label(g.display_name, tc, GAME_DETAIL_NAME_FONT, false, true))
 	var meta_parts: Array = []
 	if g.year > 0:
 		meta_parts.append(str(g.year))
 	meta_parts.append(GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)])
-	_detail_box.add_child(_detail_meta("  •  ".join(meta_parts), tc))
+	ident.add_child(_label("  •  ".join(meta_parts), tc, 12))
+	# The lifetime record, in the two glyphs it is drawn in everywhere else.
+	var beaten: int = GameStats.beaten_count(g.id)
+	var amulets: int = GameStats.amulet_wins(g.id)
+	var record := _label("⚔ %d    👑 %d" % [beaten, amulets],
+		UITheme.GOLD if beaten > 0 or amulets > 0 else Color(0.6, 0.6, 0.65), 13)
+	record.tooltip_text = "Beaten %d time%s  ·  %d Amulet win%s" % [
+		beaten, "" if beaten == 1 else "s", amulets, "" if amulets == 1 else "s"]
+	ident.add_child(record)
 	if g.tags.size() > 0:
-		_detail_box.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+		ident.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+	head.add_child(ident)
+	_detail_box.add_child(head)
+
 	_detail_box.add_child(HSeparator.new())
 	_detail_box.add_child(_owned_toggle(g))
 
-	# "Open the real game" — launches the executable/shortcut in the game's
-	# file_location column (falling back to its store page).
+	# The two ways into the real thing, side by side. `launch()` prefers the local
+	# install, so for an owned game the store page has no other way in — and for
+	# the rest of the catalog it is the only thing behind the entry at all.
+	var launch_row := HBoxContainer.new()
+	launch_row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	launch_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if g.has_launch_target():
 		var play_btn := Button.new()
-		play_btn.text = "▶  Play %s" % g.display_name
-		play_btn.custom_minimum_size = Vector2(0, 36)
+		# "▶ Play" rather than "▶ Play <the whole name>": the name is two inches
+		# up the pane and the button is now sharing its row.
+		play_btn.text = "▶  Play"
+		play_btn.tooltip_text = "Open %s." % g.display_name
+		play_btn.custom_minimum_size = Vector2(0, 32)
+		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		play_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.22, 0.16, 0.9), Color(0.4, 0.9, 0.6), 1))
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): g.launch())
-		_detail_box.add_child(play_btn)
-
-	# The Steam page, separately from Play: `launch()` prefers the local install,
-	# so for an owned game the store page has no other way in — and for the rest of
-	# the catalog it is the only thing behind the entry at all.
+		launch_row.add_child(play_btn)
 	if g.has_steam_page():
 		var steam_btn := Button.new()
 		steam_btn.text = "🎮  Steam page"
 		steam_btn.tooltip_text = "Open %s on Steam." % g.display_name
 		steam_btn.custom_minimum_size = Vector2(0, 32)
+		steam_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		steam_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.16, 0.26, 0.9), Color(0.42, 0.68, 0.95), 1))
 		steam_btn.add_theme_color_override("font_color", Color(0.68, 0.86, 1.0))
 		steam_btn.pressed.connect(func(): g.open_steam_page())
-		_detail_box.add_child(steam_btn)
-
-	_detail_box.add_child(_detail_section("📊 Tracked Stats"))
-	_detail_box.add_child(_kv("Beaten", str(GameStats.beaten_count(g.id))))
-	_detail_box.add_child(_kv("Amulet wins", str(GameStats.amulet_wins(g.id))))
+		launch_row.add_child(steam_btn)
+	if launch_row.get_child_count() > 0:
+		_detail_box.add_child(launch_row)
 
 	if TierList.has_rating(g.id):
 		var r := TierList.get_rating(g.id)
-		_detail_box.add_child(_detail_section("Your Ranking"))
-		_detail_box.add_child(_kv("Score", "%d / 10" % int(r.get("score", 0))))
+		# Score and tier on one line under one heading — they are two halves of the
+		# same verdict and neither is a sentence.
 		var ti := TierList.tier_of(g.id)
+		var verdict: String = "%d / 10" % int(r.get("score", 0))
 		if ti >= 0 and ti < TierList.tier_names.size():
-			_detail_box.add_child(_kv("Tier", TierList.tier_names[ti]))
+			verdict += "   ·   Tier %s" % TierList.tier_names[ti]
+		_detail_box.add_child(_kv("Your ranking", verdict))
 		var notes := String(r.get("notes", ""))
 		if notes != "":
 			_detail_box.add_child(_label(notes, Color(0.82, 0.82, 0.85), 11, false, true))

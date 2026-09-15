@@ -32,6 +32,15 @@ func _a_hub() -> StringName:
 	var hubs: Array[StringName] = ShopSystem.hub_games()
 	return hubs[0] if not hubs.is_empty() else &""
 
+# A hub's shelf, BROUGHT INTO BEING rather than read. `ShopSystem.stock` reports
+# the shop as it stands and `before_each` wipes the run's shops, so a view test
+# that reaches for `stock` alone gets an empty array and skips itself — which
+# reads exactly like a hub that rolled nothing. `shop_for` is the one call that
+# rolls a shelf, and it is what the panel does on mount anyway.
+func _rolled_shelf(hub: StringName) -> Array:
+	ShopSystem.shop_for(hub)
+	return ShopSystem.stock(hub)
+
 
 # --- the hubs --------------------------------------------------------------
 
@@ -337,9 +346,13 @@ func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
 	# The row was one clipped line of "Name   ◉ 5", so a long relic name ate the
 	# price — the one number a shelf exists to show.
 	var hub: StringName = _a_hub()
-	var shelf: Array = ShopSystem.stock(hub)
+	# ROLLED, not read. `stock` reports a shop that already EXISTS and `before_each`
+	# wipes the run's shops, so reading it here found an empty array every time and
+	# the test shrugged its way to green without ever seeing a row. `shop_for` is
+	# what brings a hub's shelf into being (the panel calls it too, on mount).
+	var shelf: Array = _rolled_shelf(hub)
 	if shelf.is_empty():
-		pass_test("this hub's shop rolled nothing to price")
+		pending("this hub's shop rolled nothing to price")
 		return
 	var host := Control.new()
 	add_child_autofree(host)
@@ -354,6 +367,109 @@ func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
 					"the price is never the thing that gets trimmed")
 				priced += 1
 	assert_eq(priced, shelf.size(), "every slot on the shelf shows what it costs")
+
+# --- what a shelf row actually says -----------------------------------------
+#
+# A shop is a place you decide something in, and for a while the page gave you
+# everything about the decision except the thing you decide ON: art, a name and a
+# price, with what the relic DOES hidden behind a click. The row carries the
+# description now, and the header stopped repeating the name of the game you are
+# standing on.
+
+func test_the_header_says_shop_and_not_which_games_shop() -> void:
+	var hub: StringName = _a_hub()
+	var game: GameData = Data.get_game(hub)
+	if game == null or game.display_name == "":
+		pending("this hub has no name to have been repeating")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	assert_not_null(panel, "the hub has a shop to mount")
+	await wait_frames(1)
+	var head: String = ""
+	for node in panel.find_children("*", "Label", true, false):
+		if String((node as Label).text).begins_with("🛒"):
+			head = String((node as Label).text)
+	# "Shop", flat — unless an authored shopkeeper gives the place a name of its
+	# own, which is the one thing worth a line there (ShopPanel2._header_name).
+	assert_string_contains(head, panel._header_name(),
+		"the header names the place, not the game")
+	assert_false(head.contains(game.display_name),
+		"and it does not repeat %s — you are standing on its page, under its board"
+			% game.display_name)
+	# The rule about the shelf persisting is a thing you learn once, so it lives in
+	# the tooltip rather than in a sentence printed at every hub.
+	assert_string_contains(panel.tooltip_text, "stays here",
+		"the shelf's rule is still there to be found, just not printed")
+
+func test_a_shelf_row_says_what_the_thing_does() -> void:
+	var hub: StringName = _a_hub()
+	var shelf: Array = _rolled_shelf(hub)
+	if shelf.is_empty():
+		pending("this hub's shop rolled nothing to describe")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	await wait_frames(1)
+	var described: int = 0
+	for i in range(shelf.size()):
+		var item: ItemData = Data.get_item2(StringName(shelf[i].get("item", &"")))
+		if item == null or item.description == "":
+			continue
+		var row: Control = panel._cards_row.get_child(i)
+		for node in row.find_children("*", "Label", true, false):
+			if String((node as Label).text) == item.description:
+				described += 1
+				# Wrapped and capped rather than allowed to grow the row: the page
+				# is fitted to a 720p window and a long relic would take it off the
+				# bottom (test_overworld2's one-window tests).
+				assert_eq((node as Label).max_lines_visible, ShopPanel2.DESC_LINES,
+					"%s's description is capped at %d lines"
+						% [item.display_name, ShopPanel2.DESC_LINES])
+				assert_ne((node as Label).autowrap_mode, TextServer.AUTOWRAP_OFF,
+					"and wraps inside the row instead of setting its width")
+				break
+	assert_gt(described, 0,
+		"a shelf row says what the relic does, not just what it costs")
+
+# RARITY IS THE OUTLINE, the way the pack draws it (PackStrip._item_token). The
+# row used to say it in the colour of the NAME alone, which is the one thing on a
+# row that is allowed to be trimmed to an ellipsis.
+func test_a_shelf_row_wears_the_items_rarity_on_its_border() -> void:
+	var hub: StringName = _a_hub()
+	var shelf: Array = _rolled_shelf(hub)
+	if shelf.is_empty():
+		pending("this hub's shop rolled nothing to dress")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	await wait_frames(1)
+	var dressed: int = 0
+	for i in range(shelf.size()):
+		var item: ItemData = Data.get_item2(StringName(shelf[i].get("item", &"")))
+		if item == null:
+			continue
+		var row: Button = panel._cards_row.get_child(i)
+		var box: StyleBox = row.get_theme_stylebox("normal")
+		assert_true(box is StyleBoxFlat, "the row carries a box of its own to be edged")
+		if not (box is StyleBoxFlat):
+			continue
+		var flat := box as StyleBoxFlat
+		assert_gt(flat.border_width_left, 0, "%s's row has a border" % item.display_name)
+		# The same two lines the pack uses: the class colour pulled toward the
+		# background. Compared by hue rather than by equality so the sold/affordable
+		# dimming above is free to move without breaking this.
+		var sold: bool = bool(shelf[i].get("sold", false))
+		var want: Color = UITheme.TEXT_FAINT if sold \
+			else UITheme.item_color(item).lerp(UITheme.BG, 0.45)
+		assert_true(flat.border_color.is_equal_approx(want),
+			"%s's border is its own rarity's colour (got %s, wanted %s)"
+				% [item.display_name, flat.border_color, want])
+		dressed += 1
+	assert_gt(dressed, 0, "every slot on the shelf wears its rarity")
 
 
 # --- the shop pool: a shop item is twice as likely to be on the shelf ------

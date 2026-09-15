@@ -30,6 +30,26 @@ extends PanelContainer
 # its button says the price rather than "Buy" — the number is the reason, so the
 # number is what the button shows.
 #
+# AND THE HEADER SAYS "SHOP", NOT WHICH GAME'S SHOP. It used to be the hub's own
+# name with a sentence under it explaining that what you don't buy stays here.
+# Both were furniture: the player knows which game they just beat — they are
+# standing on its page, under its board — and the rule about the shelf persisting
+# is something you learn once, not something worth re-reading at every hub. That
+# is the panel's tooltip now, and the two lines they cost are spent on the shelf
+# instead, which is the part that changes.
+#
+# SO A SHELF ROW CARRIES WHAT AN ITEM IS. Art, name, what it DOES, and the price —
+# the description was the one thing you had to open a card to see, and it is the
+# only one of the four that tells you whether the thing is worth the gold. The
+# card is still there for the full text and the Buy button; the row is now enough
+# to shop from without it.
+#
+# RARITY IS THE OUTLINE, the way the pack draws it (PackStrip._item_token): the
+# row is tinted toward the item's class colour and edged in it, so a Legendary on
+# a shelf and the same Legendary in your bag are recognisably one thing. It reads
+# through UITheme.item_color rather than rarity_color, so a Boss relic reads as a
+# Boss relic here as well.
+#
 # Everything mechanical routes through ShopSystem; this file is the view. The two
 # public verbs (buy / reroll) are what a headless test drives.
 
@@ -56,14 +76,25 @@ const ROW_WIDTH := 166.0
 # one number a shelf exists to show could only be found by opening the item. A
 # thumbnail that small is not much of a picture either.
 #
-# So the row is a small card instead: the art at more than twice the size, and
-# the name and the PRICE on two lines beside it, with only the name ever
-# trimmed. It costs the page 30px and the board is not asked to pay it: the
-# board is already at its floor while it shares this column
-# (BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED), and the page had the room —
-# test_overworld2's one-window tests are what say so.
-const ROW_HEIGHT := 58.0
+# So the row is a small card instead: art and name and price on the top line, and
+# the item's own DESCRIPTION across the full width under them — what the thing
+# does, which is the only one of the four that answers "is this worth the gold".
+#
+# WHERE THE HEIGHT COMES FROM, because it is not obvious and it is the reason the
+# row could grow at all. The board is at its floor while it shares this column
+# (BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED clamps a 4x4 to CELL_MIN), so it
+# cannot pay. But the page's height is the taller of its two columns, and on a
+# hub's page that is the LEFT one — the checklist — by about sixty pixels. This
+# panel is in the right column, so the room was already sitting there unused.
+# `DESC_LINES` is where it is spent, and `test_the_page_still_fits_the_window_with_a_shop_on_it`
+# is what holds the whole arrangement honest: raise either number and it says so.
+const ROW_HEIGHT := 98.0
 const ROW_ICON := 44
+# How many lines of description a row shows before it ellipsizes. Three covers
+# about nine relics in ten outright (the roster's descriptions run to a 43-char
+# median and an 80-char ninetieth percentile, and this column fits ~30 a line);
+# the longest few trim, and their card carries the whole of it.
+const DESC_LINES := 3
 
 # WHICH LAYER AN OPENED ITEM'S CARD GOES ON. 122 clears the page and everything
 # mounted on it, which is right while this panel is under the board; it is NOT
@@ -142,6 +173,16 @@ func _shop_name() -> String:
 	return "%s" % (_game.display_name if _game != null else String(_game_id))
 
 
+# What the HEADER says, which is not the same question. A shop with an authored
+# shopkeeper is a place with a name and the name is worth the line; a shop without
+# one is just the storefront of the game you are standing on, and saying that game's
+# name over its own page is the screen repeating itself (see `_chrome_line`). So the
+# fallback is the flat word rather than `_shop_name`'s.
+func _header_name() -> String:
+	var keeper: String = str(ShopSystem.peek(_game_id).get("shopkeeper", ""))
+	return keeper if keeper != "" else "Shop"
+
+
 # The game this shop belongs to — the host reads it to tell "the shop already on
 # the page" from "the shop owed at the hub I just beat".
 func game_id() -> StringName:
@@ -188,27 +229,33 @@ func _chrome_line() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP)
 
-	# CLIPPED, and it matters far more than a shop's name should.
+	# JUST "SHOP". It used to be the hub's own name, and that was a mistake twice
+	# over.
 	#
-	# A Label that neither wraps nor clips reports its whole string as its MINIMUM
-	# width, and this one is a game's name. That minimum became the shop panel's,
-	# the panel's became the right column's, and the right column's took the width
-	# straight out of the LEFT one — where the checklist's goal text then wrapped
-	# onto extra lines and grew the page. So a hub with a long name was a taller
-	# page than a hub with a short one, by up to 39px on a page with four to spare:
-	# "Enter the Gungeon", "Vampire Survivors" and "The Binding of Isaac" ran the
-	# overworld off the bottom of its own 720p window, and "FTL", "Hades" and
-	# "Balatro" did not. The width the name asks for is now its own business.
+	# It said nothing: the shop is mounted on the page of the game you are standing
+	# at, under that game's board, beside that game's card. Naming it again is the
+	# screen telling you where you are for the third time.
+	#
+	# And it cost the LEFT COLUMN width. A Label that neither wraps nor clips
+	# reports its whole string as its MINIMUM width, and a game's name is a long
+	# string: that minimum became the shop panel's, the panel's became the right
+	# column's, and the right column's came straight out of the left — where the
+	# checklist's goal text then wrapped onto extra lines and grew the page. A hub
+	# with a long name was a taller page than one with a short name, by up to 39px
+	# on a page with four to spare, so "Enter the Gungeon" ran the overworld off the
+	# bottom of its window and "FTL" did not. The clip below fixed that; a constant
+	# word ends it. (The clip stays anyway — it costs nothing and it is what stopped
+	# the bug, so it should not have to be rediscovered if this ever takes a name
+	# again.)
 	var title := Label.new()
-	title.text = "🛒  %s" % _shop_name()
+	title.text = "🛒  %s" % _header_name()
 	title.tooltip_text = _shop_name()
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.custom_minimum_size.x = 0.0
 	# It ASKS FOR NOTHING and takes a share of whatever is left over, so the panel's
 	# width is set by the shelf below it (which is a fixed three rows) and never by
-	# the name. A fixed floor would be just as bad in the other direction: it would
-	# make every hub as wide as the longest one.
+	# the header.
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.size_flags_stretch_ratio = 0.75
 	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
@@ -216,10 +263,11 @@ func _chrome_line() -> Control:
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
 
-	# What is left on the shelf, and what you have to spend on it. The sentence
-	# that used to say it ("what you don't buy stays here for next time") is the
-	# panel's tooltip now — it is a rule to learn once, not a line to re-read at
-	# every hub.
+	# ONLY WHEN THERE IS NOTHING LEFT. This used to read "3 items on the shelf. What
+	# you don't buy stays here for next time." — a count of the three rows sitting
+	# directly underneath it, and a rule of the game explained at every single hub.
+	# The count is the shelf, and the rule is the panel's tooltip. What is left is
+	# the one state the shelf cannot show by itself: an empty one.
 	_subtitle = Label.new()
 	_subtitle.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_subtitle.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
@@ -258,20 +306,31 @@ func _render() -> void:
 	_paint_chrome()
 
 
-# ONE SHELF ITEM, as a line on the page.
+# ONE SHELF ITEM, as a small card on the page.
 #
-# The card below is 250px of art, name, kind, description and a Buy button, and
-# three of them put the overworld 543px past the bottom of the window — the page
-# is a fixed 1280x720 canvas with about five pixels spare, and this panel and the
-# board are sharing what is left. So the page keeps what you SHOP by — the
-# picture, the name, the price, and whether you can afford it — and the card
-# opens over it when you want to read what the thing actually does.
+# The card the row OPENS is 250px of art, name, kind, description and a Buy
+# button, and three of those put the overworld 543px past the bottom of the
+# window. So the shelf is not three cards; it is three rows carrying everything
+# you decide with — the picture, the name, what it does, and the price — with the
+# full card a click away for the Buy button and the untrimmed text.
+#
+# Laid out as a top line and a paragraph: art, name and price across the top
+# (the price is the number the whole panel exists to answer, so it never trims),
+# and the description under both of them at the row's FULL width, because 95px of
+# leftover column beside a 44px icon is not a width you can read a sentence in.
+#
+# THE ROW WEARS THE ITEM'S RARITY — a background tinted toward the class colour
+# and a border in it, the same two lines the pack uses on its tokens
+# (PackStrip._item_token). That is why the styleboxes are built here per item
+# rather than left to the theme: a Button's `normal` is what carries the outline.
 func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var item: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
 	var sold: bool = bool(entry.get("sold", false))
 	var price: int = ShopSystem.price_of(entry)
 	var afford: bool = ShopSystem.can_afford(entry)
-	var tint: Color = UITheme.rarity_color(int(item.rarity)) if item != null else UITheme.TEXT_DIM
+	# item_color, not rarity_color: a Boss relic has a class of its own and should
+	# read as one here exactly as it does in the pack and on the drop modal.
+	var tint: Color = UITheme.item_color(item)
 
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(ROW_WIDTH, ROW_HEIGHT)
@@ -282,11 +341,28 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 		btn.text = "(empty)"
 		btn.disabled = true
 		return btn
+
+	# The rarity dress. A sold slot keeps its place and loses its colour — the
+	# shelf has to stay recognisable on a second visit, which is the whole reason
+	# what you don't buy stays here.
+	var edge: Color = UITheme.TEXT_FAINT if sold else tint.lerp(UITheme.BG, 0.45)
+	var fill: Color = tint.lerp(UITheme.BG, 0.90 if sold else 0.86)
+	btn.add_theme_stylebox_override("normal", UITheme.flat(fill, 6, 0, 2, edge))
+	btn.add_theme_stylebox_override("disabled", UITheme.flat(fill, 6, 0, 2, edge))
+	# Hover and press lift the same box rather than replacing it, so the outline
+	# never changes colour under the cursor — the border means rarity and nothing
+	# else.
+	btn.add_theme_stylebox_override("hover",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 0, 2, tint))
+	btn.add_theme_stylebox_override("pressed",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 6, 0, 2, tint))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+
 	# The contents are CHILDREN of the button rather than its own icon-and-text.
 	# A Button lays those out as one line and clips the lot, which is what put the
 	# price behind the ellipsis; children can be laid out as a card, and only the
-	# name given up to the clip. They ignore the mouse, so the whole row is still
-	# one button.
+	# name and the description are ever given up to a trim. They ignore the mouse,
+	# so the whole row is still one button.
 	var pad := MarginContainer.new()
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -296,10 +372,15 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	pad.add_theme_constant_override("margin_bottom", 5)
 	btn.add_child(pad)
 
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(body)
+
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 7)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pad.add_child(line)
+	body.add_child(line)
 
 	var art := UITheme.crisp_tex(item.image, ROW_ICON)
 	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -314,10 +395,11 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 
 	var name_lbl := Label.new()
 	name_lbl.text = item.display_name
-	# The name is the one thing on the row allowed to be trimmed: it is also the
-	# only thing the tooltip and the card repeat in full.
+	# The name trims before the price does: the price is the one number the panel
+	# exists to show, and the tooltip and the card both repeat the name in full.
 	name_lbl.clip_text = true
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.custom_minimum_size.x = 0.0
 	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color",
 		UITheme.TEXT_FAINT if sold else tint)
@@ -332,10 +414,29 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(price_lbl)
 
-	# A sold slot keeps its place and loses its colour, and one you cannot afford
-	# is dimmed rather than dropped — the shelf has to stay recognisable on a
-	# second visit, which is the whole reason what you don't buy stays here.
-	btn.modulate.a = 0.45 if sold else (1.0 if afford else 0.72)
+	# WHAT THE THING DOES, across the whole row rather than in the column beside
+	# the art. Wrapped to DESC_LINES and ellipsized after them, so a long relic
+	# trims instead of growing the row and taking the page off the bottom of the
+	# window — and `custom_minimum_size.x = 0` so the sentence never reports its
+	# own length as a width the panel has to honour, which is the bug the header
+	# above used to have.
+	var desc := Label.new()
+	desc.text = item.description
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.max_lines_visible = DESC_LINES
+	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	desc.clip_text = true
+	desc.custom_minimum_size.x = 0.0
+	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	desc.add_theme_color_override("font_color",
+		UITheme.TEXT_FAINT if sold else UITheme.TEXT_DIM)
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(desc)
+
+	# One you cannot afford is dimmed rather than dropped or disabled — you can
+	# still open it and read it, you just cannot buy it yet.
+	btn.modulate.a = 0.55 if sold else (1.0 if afford else 0.78)
 	btn.tooltip_text = "%s — %s\n\n%s\n\n%s" % [
 		item.display_name, _kind_line(item), item.description,
 		"Click to look at it." if not sold else "Already bought."]
@@ -398,9 +499,7 @@ func _paint_chrome() -> void:
 			UITheme.COIN_GOLD if GameState.gold > 0 else UITheme.TEXT_FAINT)
 	if _subtitle != null and is_instance_valid(_subtitle):
 		var left: int = ShopSystem.remaining(_game_id).size()
-		_subtitle.text = ("Sold out — nothing left on the shelf." if left == 0
-			else "%d item%s on the shelf. What you don't buy stays here for next time." % [
-				left, "" if left == 1 else "s"])
+		_subtitle.text = "Sold out — nothing left on the shelf." if left == 0 else ""
 	if _reroll_btn != null and is_instance_valid(_reroll_btn):
 		var charges: int = GameState.scramble
 		_reroll_btn.text = "🎲 %d" % charges

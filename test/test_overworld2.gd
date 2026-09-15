@@ -7986,10 +7986,59 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	_leave_post_game()
 	_dismiss_event()
 
+# …AND THE BOARD DOES NOT GET ITS PARTING SHOTS. The escape a teleport forces is
+# a real escape in every way but one: the goal-enemy still follows, the game is
+# still uncredited, the evening is still spent — but the extra turns the Amulet's
+# pull charges for FINISHING a game (§7.4) are not charged, because being carried
+# off a game by a scroll is not finishing it.
+#
+# It matters most exactly where it is easiest to miss. Out in the wilds the road
+# buys the enemies nothing anyway, so the waiver is invisible; on the doorstep it
+# is two free swings at a player who spent a piece of loot to get away from them.
+# So this test STANDS THE RUN somewhere a report really would cost turns rather
+# than hoping the random graph put it there.
+func test_a_teleport_off_a_game_is_not_charged_the_roads_extra_turns() -> void:
+	_ui.pick(0)
+	# The offering rolls a RANDOM enemy, and since §7.6 an ability can spend a
+	# body's turn on something other than you — which would muddy "nobody swung".
+	_disarm_board()
+	if GameLoop2.stack.is_empty():
+		pending("this run's opening game put nothing on the board to swing at")
+		return
+	# Put the Amulet on a neighbour, which is the top of the ladder: one hop out
+	# buys the enemies two extra turns off an ordinary report.
+	var here: StringName = GameState.current_game_id
+	for n in RunGraph.neighbors(here):
+		if n != here:
+			GameState.amulet_game_id = n
+			break
+	var owed: int = GameLoop2.enemy_turns()
+	if owed <= 0:
+		pending("this run could not be stood near enough the Amulet to owe any turns")
+		return
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var before_hp: int = GameState.hp
+
+	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
+
+	var res: Dictionary = GameLoop2.last_result
+	assert_eq(int(res.get("turns", -1)), 0,
+		"the teleport's report hands the board none of the %d turns it owed" % owed)
+	assert_eq(int(res.get("extra_turns", -1)), 0, "and says so in both fields")
+	assert_eq(GameState.hp, before_hp,
+		"so being pulled out of a game costs no Health on the way")
+	_ui._end_resolve()
+	_close_arrival_card()
+	_leave_post_game()
+	_dismiss_event()
+
 # RIDE THE BUS DOES THE SAME. It moves the run and it used to do it by hand —
 # `travel_to_game` set the phase back to SELECT and that was that — so a player
-# halfway through a game could ride out of it for free: no goal-enemy following,
-# no turns for the board, no report. Every teleport pays the same fare now.
+# halfway through a game could ride out of it for nothing at all: no goal-enemy
+# following, no report, no game left uncredited. Every teleport pays the same
+# fare now — and, since they are all teleports, every one of them is likewise
+# free of the road's extra turns (the test above).
 func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
 	_ui.pick(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)

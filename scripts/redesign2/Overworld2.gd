@@ -1573,11 +1573,15 @@ func beaten_this_run() -> bool:
 # answers no.
 #
 # `force` skips the gate and nothing else. It is for the exits that are PAID FOR
-# rather than earned — a teleport off the game (loot_teleport) is the only one
-# today — so the price below is charged in full either way. The gate answers "has
+# rather than earned — every teleport off a game in play. The gate answers "has
 # this game hurt you enough to deserve a way out"; a spent piece of loot is a
-# different answer to the same question, not a way around the bill.
-func escape_game(force: bool = false) -> void:
+# different answer to the same question, not a way around the bill, so everything
+# the escape costs on the far side is charged in full either way.
+# `free_exit` is the teleport's door (loot_teleport): the run is not walking out,
+# it is being pulled out, so the board does not get the extra turns finishing a
+# game owes (§7.4). It changes nothing else — the goal-enemy still comes with you,
+# the game is still uncredited, the evening is still spent.
+func escape_game(force: bool = false, free_exit: bool = false) -> void:
 	if not force and not can_escape():
 		return
 	# Even forced, there has to BE a game in play to walk out of; report() would
@@ -1596,12 +1600,23 @@ func escape_game(force: bool = false) -> void:
 	# through the same report path a missed goal takes, below. Said out loud when
 	# there are any, because "I escaped and then got hit twice" is otherwise a
 	# surprise rather than a price.
+	#
+	# A TELEPORT IS THE EXCEPTION, and it is the door that makes it one. An ordinary
+	# escape is the player deciding to leave, and the board's parting turns are what
+	# that decision costs; a teleport is a piece of loot picking the run up and
+	# putting it somewhere else, and it was already paid for — with the scroll, or
+	# with the pill. Charging the road's turns on top made the one use a teleport
+	# has that nothing else covers, getting out of a game that is killing you, the
+	# use most likely to kill you. So the pull is free of them and says so.
 	var extra: int = GameLoop2.enemy_turns()
-	if extra > 0 and not GameLoop2.stack.is_empty():
+	if free_exit:
+		if extra > 0 and not GameLoop2.stack.is_empty():
+			msg += " You are pulled out before they can take their turns."
+	elif extra > 0 and not GameLoop2.stack.is_empty():
 		msg += " They still get %s on the way out." % RunDifficulty.extra_text(extra)
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
-	report(false, null, true)
+	report(false, null, true, free_exit)
 
 # Dash (§4): a TOTAL select — bypass the limited offering and show every connected
 # game so the player can move to any of them. Spends one dash charge on the pick.
@@ -1998,16 +2013,20 @@ func loot_teleport(req: Dictionary) -> String:
 	# IT FORCES THE ESCAPE PAST can_escape(). The ordinary gate wants the game to
 	# have drawn blood first, so the exit is earned rather than free; a teleport
 	# IS what earns it — the run spent a piece of loot on the door. What it does
-	# NOT do is discount the escape's price: the goal-enemy still walks on and
-	# follows you, the board still takes the turns finishing a game owes (§7.4),
-	# and the game is still not credited. You are buying the exit, not a pardon.
+	# NOT discount is everything the escape costs you on the far side: the
+	# goal-enemy still walks on and follows you, and the game is still not
+	# credited. You are buying the exit, not a pardon.
+	#
+	# What it DOES waive is the road's extra turns (§7.4). Those are the price of
+	# HANDING A GAME IN, and being yanked off one by a scroll is not handing it in
+	# — see `escape_game`'s `free_exit` for the whole of the reasoning.
 	#
 	# Both consumables that teleport come through here (Scroll of Teleportation
 	# and the Telepill), so both escape. One rule for moving the run off a game.
 	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
 		var leaving: GameData = _chosen.get("game")
-		escape_game(true)
+		escape_game(true, true)
 		# escape_game refuses on an empty _chosen; only claim the escape if the
 		# phase actually moved, or a fizzle below would report one that never was.
 		escaped_out = _phase != Phase.PLAYING
@@ -2136,7 +2155,10 @@ func confirm_completed_game() -> void:
 # the game answered for it (GameLoop2.arrivals). So you can beat a game and leave
 # everything on the board following you, or clear three old goals during a game
 # you never finished, and the report says exactly that.
-func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> void:
+# `free_exit` waives the road's extra turns on this report and nothing else (see
+# GameLoop2.beat_game's `road_turns`). Only a teleport off a game in play sets it.
+func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
+		free_exit: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	# The board is about to play the whole resolve back — the front line striking,
@@ -2202,7 +2224,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 	# `clear_advertised` is false and always will be from here: the overworld's
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
-	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims)
+	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
+		not free_exit)
 	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). Loot lying on the board belongs to
 	# the game being played; handing the game in ends that, so anything nobody
 	# stopped to pick up — including whatever the bodies this very report cleared
@@ -3438,7 +3461,10 @@ func _teleport_into(pool: Array, flavour: String, nowhere: String,
 	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
 		var leaving: GameData = _chosen.get("game")
-		escape_game(true)
+		# Free of the road's extra turns, like every other teleport off a game in
+		# play — see `escape_game`'s `free_exit`. A card that picks the run up and
+		# puts it somewhere else is not the run handing a game in.
+		escape_game(true, true)
 		escaped_out = _phase != Phase.PLAYING
 		if GameLoop2.run_over or _phase == Phase.OVER:
 			return "You escape %s — but you do not get out." % (
@@ -3676,11 +3702,14 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 #
 # A GAME IN PLAY IS ESCAPED ON THE WAY OUT. Ride the Bus used to change where you
 # were standing and set the phase back to SELECT by hand, which walked out of the
-# game without paying for it: the goal-enemy never followed, the board never took
-# the turns finishing a game owes (§7.4), and a player mid-game could ride out of
-# anything for free. One rule for moving the run off a game, and `escape_game(true)`
-# is it — a spent item IS what earns the exit, and it buys the door rather than a
-# pardon.
+# game without paying for it: the goal-enemy never followed, the game was still
+# credited, and a player mid-game could ride out of anything for free. One rule
+# for moving the run off a game, and `escape_game` is it — a spent item IS what
+# earns the exit, and it buys the door rather than a pardon.
+#
+# The door does NOT come with the road's extra turns, though (§7.4): those are
+# charged for handing a game in, and a teleport is the run being carried off one.
+# That is the `free_exit` argument below, and every teleport in the file passes it.
 #
 # `escape_first` is off only for the two returns from a play_game trip (§10),
 # which are not teleports: the game they came back from has already been reported.
@@ -3688,7 +3717,10 @@ func travel_to_game(game_id: StringName, escape_first: bool = true) -> void:
 	if Data.get_game(game_id) == null:
 		return
 	if escape_first and _phase == Phase.PLAYING:
-		escape_game(true)
+		# `free_exit`: the extra turns are the price of FINISHING a game (§7.4), and
+		# being carried off one is not finishing it. Same rule as every other
+		# teleport — see `escape_game`.
+		escape_game(true, true)
 		# The way out can be the thing that kills you — escaping resolves the board
 		# and the turns it hands over are real. A run that ended on the way out has
 		# nowhere left to be moved to; the win/lose screen owns the page now.

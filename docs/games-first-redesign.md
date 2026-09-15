@@ -878,18 +878,31 @@ else.
 It **forces the exit past `can_escape()`**, which ordinarily wants the game to have
 drawn blood first. That gate asks whether the game has hurt you enough to deserve a
 way out; spending a piece of loot on the door is a different answer to the same
-question. What it does **not** do is discount the price: the goal-enemy still walks
-on and follows you, the board still takes the turns finishing a game owes (§7.4),
-and the game is still not credited — an escape is not a win. You are buying the
-exit, not a pardon. Both consumables that teleport (Scroll of Teleportation and the
-Telepill) come through the one function, so both escape; one rule for moving the run
-off a game.
+question. What it does **not** do is discount what the escape costs you on the far
+side: the goal-enemy still walks on and follows you, and the game is still not
+credited — an escape is not a win. You are buying the exit, not a pardon. Both
+consumables that teleport (Scroll of Teleportation and the Telepill) come through
+the one function, so both escape; one rule for moving the run off a game.
+
+**But the road's extra turns (§7.4) are waived.** Those are the price of *finishing*
+a game, and being carried off one by a scroll is not finishing it — the run already
+paid, with the piece of loot. Charging them on top made the one thing a teleport can
+do that nothing else can, getting you out of a game that is killing you, the use
+most likely to kill you: on the Amulet's doorstep it handed the board two free
+swings at a player who had just spent a consumable to get away from it. So
+`escape_game` takes a `free_exit` flag, every teleport off a game in play passes it
+(the scroll, the pill, Ride the Bus, the card teleports), and it reaches the model as
+the last argument of `GameLoop2.beat_game` — `road_turns: false`. Everything else
+still pays, and the one report that does not has to say so at the call site. It does
+**not** touch Predatory Scent (§7.6): that is a body's own ability reacting to an
+evening you did nothing with, not the road's price for the road.
 
 **And so does every other teleport.** Ride the Bus (`teleport_to_type`) used to move
 the run by hand — `travel_to_game` set the phase back to SELECT and that was that —
-which walked the player out of a game in play for free: no goal-enemy following, no
-turns for the board, no report. It escapes first and arrives second now, exactly as
-the scroll does, so an item that moves you pays the same fare. Its one exception is
+which walked the player out of a game in play for nothing at all: no goal-enemy
+following, no report, no game left uncredited. It escapes first and arrives second
+now, exactly as the scroll does, so an item that moves you pays the same fare — and,
+being a teleport, is free of the road's extra turns on the same terms. Its one exception is
 the return leg of a `play_game` detour (§10), which is not a teleport: that game has
 already been reported by the time the run heads home.
 
@@ -1529,6 +1542,14 @@ A **turn** is one action, and every enemy takes one on each of them: a body
 touching column 1 **strikes**, everything behind it **steps** a column closer. A
 turn is exactly the strike-then-advance the loop has always resolved — an extra
 turn is that same beat, handed out for finishing a game near the Amulet.
+
+**Finishing a game is what buys them, so a TELEPORT buys none.** Walking out of a
+game on your own decision is finishing it as far as the road is concerned and pays
+the full ladder; being carried off one by a scroll, a pill or the bus is not, and
+the run already paid for that with the piece of loot. `escape_game(force,
+free_exit)` carries the waiver and it reaches here as `GameLoop2.beat_game`'s
+`road_turns: false` — see §4.1 for the whole of the reasoning. The turns a **lost
+run** buys the board (§3.2) are a different ledger and are never waived.
 
 **Zero is the floor, and that is the change.** The ladder used to be the turn
 count itself (1 / 2 / 3), so every reported game moved the board whether or not
@@ -3414,12 +3435,42 @@ so the offering can ask without rolling). `ShopSystem.headline` / `stock_lines`
 are the one place a shop is put into words, so the card's tooltip and the popup's
 block cannot disagree — the same rule `StatusData.tooltip_for` follows (§13.3).
 
+**What a shelf row says, and what the header does not.** The panel led with the
+hub game's name and a sentence explaining that what you don't buy stays here.
+Neither earned its line: the panel is mounted on that game's page, under that
+game's board, beside that game's card, so naming it again is the screen saying
+where you are for the third time — and the rule about the shelf persisting is
+something you learn once, not something worth re-reading at every hub. The header
+is `🛒 Shop`, flat, and the rule is the panel's tooltip.
+
+The row those two lines paid for carries **the art, the name, the price, and the
+item's own description** across its full width. The description is the only one of
+the four that answers *is this worth the gold*, and it used to be the one thing
+you had to open a card to see. It wraps to `ShopPanel2.DESC_LINES` and ellipsizes
+after them — the card behind a click still has the untrimmed text and the Buy
+button, which is what the row is a summary of. **Rarity is the outline**: the row
+is tinted toward `UITheme.item_color` and edged in it, the same two lines the pack
+uses on its tokens (`PackStrip._item_token`), so a Legendary on a shelf and the
+same Legendary in your bag are recognisably one thing. It used to be said in the
+colour of the *name*, which is the one thing on a row allowed to trim away.
+
+**Where the height for that came from**, because it is not where you would look.
+The board is at its floor while it shares its column
+(`BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED` clamps a 4x4 to `CELL_MIN`), so it
+had nothing to give. But a page's height is the taller of its two columns, and on
+a hub's page that is the **left** one — the report checklist, whose goal text
+wraps — by about sixty pixels. This panel is in the right column, so the room was
+already sitting there unspent. The row went 58 → 98px and the page did not move.
+`test_the_page_still_fits_the_window_with_a_shop_on_it` walks all ten hubs and is
+what holds the arrangement honest.
+
 ### 14.5 What is still to come
 
 **The shopkeepers.** `data/encounters/` already carries two combat-era ones (P
 Mart's Tracy from Mewgenics, Trorc from Enter the Gungeon) with pools and
-discounts. A `shopkeeper` field is read by `ShopPanel2` and falls back to the
-hub's own game name, so an authored roster drops in without reshaping anything.
+discounts. A `shopkeeper` field is read by `ShopPanel2` and is what a named
+shop would put in the header in place of the flat `Shop`, so an authored roster
+drops in without reshaping anything.
 
 **A wider stock.** Today a shop sells items only. The obvious next step is the
 things drops *don't* give — bombs, scrolls, verb charges, health, an extra try —

@@ -118,6 +118,59 @@ func test_showing_a_run_on_the_map_frames_it() -> void:
 	assert_true(atlas.frame_games(GameStats.runs[0]["path"]),
 		"the run's route can be framed on the map")
 
+# …AND THE SKY IS STILL THERE AFTERWARDS, which is the half the test above could
+# not see. `frame_games` was always right; the button that called it was not. It
+# framed the route and then called `_finish`, and `finished` is the signal the
+# host uses to close the MAP this screen is laid over (MainMenu._on_run_history) —
+# so "✦ Show on map" aimed the chart and shut it in the same click, and read as a
+# button that did nothing at all.
+#
+# Testing `frame_games` in isolation is exactly what let that ship: the model was
+# fine and the wiring was the bug. This drives the BUTTON'S OWN function and then
+# asks the only question that matters — is the map still up?
+func test_showing_a_run_on_the_map_leaves_the_map_up() -> void:
+	_walk(4)
+	GameStats.record_run(false)
+	var atlas = ATLAS.new()
+	add_child_autofree(atlas)
+	if not atlas.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		return
+	var screen = HISTORY.new()
+	screen._atlas = atlas
+	add_child_autofree(screen)
+	var closed_the_map: Array = [false]
+	screen.finished.connect(func(): closed_the_map[0] = true)
+	var handed: Array = [false]
+	screen.handed_to_map.connect(func(): handed[0] = true)
+
+	screen._show_on_map(GameStats.runs[0])
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	assert_true(handed[0], "the strip hands the route over to the chart")
+	assert_false(closed_the_map[0],
+		"and does NOT emit `finished` — that is what the host closes the map on")
+	assert_true(is_instance_valid(atlas), "so the map the player asked for is still up")
+	assert_false(is_instance_valid(screen), "with the strip out of the way of it")
+
+# The other half of the hand-off: with no route the sky can hold, nothing happens
+# at all. Closing the strip there would leave the player staring at an unchanged
+# chart wondering what the button did.
+func test_a_route_the_sky_cannot_hold_does_not_close_the_strip() -> void:
+	var atlas = ATLAS.new()
+	add_child_autofree(atlas)
+	if not atlas.has_layout():
+		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		return
+	var screen = HISTORY.new()
+	screen._atlas = atlas
+	add_child_autofree(screen)
+	screen._show_on_map({"path": ["not_a_game", "also_not"]})
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(is_instance_valid(screen), "the strip stays put when there is nothing to show")
+
 func test_framing_unknown_games_is_refused() -> void:
 	var atlas = ATLAS.new()
 	add_child_autofree(atlas)
