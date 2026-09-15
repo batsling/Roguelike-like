@@ -1864,6 +1864,34 @@ func test_at_the_doorstep_the_front_line_strikes_twice_for_the_report() -> void:
 			swings += 1
 	assert_eq(swings, 2, "each turn is logged as its own attack")
 
+# …UNLESS THE RUN WAS PULLED OFF THE GAME RATHER THAN HANDING IT IN.
+#
+# The extra turns are the road's price for FINISHING a game (§7.4). A teleport is
+# not finishing one: a piece of loot picked the run up and put it somewhere else,
+# and it was already paid for with the scroll or the pill. Charging the road on
+# top of that made the one thing a teleport can do that nothing else can — get you
+# out of a game that is killing you — the use most likely to kill you.
+#
+# `road_turns: false` is the whole of the waiver, and it is the LAST argument on
+# purpose: every existing caller keeps paying, and the one report that doesn't has
+# to say so out loud. Overworld2.loot_teleport is the only place it comes from.
+func test_being_teleported_off_a_game_is_not_handing_it_in() -> void:
+	if not _stand_at_hops(1):
+		pending("this run could not be stood the required distance from the Amulet")
+		return
+	var inst: int = _stacked_at_front(1)
+	assert_eq(GameLoop2.enemy_turns(), 2,
+		"the doorstep would buy two extra turns off an ordinary report")
+	var col: int = _col_of(inst)
+	GameState.hp = 10
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var res: Dictionary = GameLoop2.beat_game(false, [], {}, false)
+	assert_eq(int(res.get("turns", 0)), 0, "but the pull hands the board none of them")
+	assert_eq(int(res.get("extra_turns", 0)), 0, "and the result says so in both fields")
+	assert_eq(GameState.hp, 10, "so the front line never swings")
+	assert_eq(_col_of(inst), col, "and nobody walks a column closer either")
+
 func test_out_in_the_wilds_the_same_enemy_strikes_not_at_all() -> void:
 	if not _stand_at_hops(6):
 		pending("this run could not be stood the required distance from the Amulet")

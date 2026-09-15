@@ -2092,9 +2092,19 @@ func _board_snapshot() -> Dictionary:
 # The overworld passes false and lists everything itself, because on its checklist
 # the arrivals are ordinary rows it cannot tell from the followers — which is the
 # whole point.
+# `road_turns` is the ONE thing that can waive step 2 below — the extra turns the
+# Amulet's pull charges for finishing a game (§7.4). It is false for exactly one
+# report: a teleport off a game in play (Overworld2.loot_teleport). Everything
+# else about that report is unchanged — the goal-enemy still follows, the game is
+# still not credited — because what the loot bought was the DOOR, and a door you
+# are pulled through is not a game handed in. See the escape's own comment for why
+# the ordinary escape still pays.
+#
+# It does not touch 2a: Predatory Scent is a body's own ability reacting to an
+# evening you did nothing with (§7.6), not the road's price for the road.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
-		claims: Dictionary = {}) -> Dictionary:
-	var turns: int = enemy_turns()
+		claims: Dictionary = {}, road_turns: bool = true) -> Dictionary:
+	var turns: int = enemy_turns() if road_turns else 0
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
 		"turns": turns, "extra_turns": turns, "turn_frames": [],

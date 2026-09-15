@@ -11,6 +11,72 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A shop is a place you decide something in, so the shelf says what it sells.**
+  The shop panel led with the hub game's name and a sentence explaining that what
+  you don't buy stays here — two lines of furniture, printed at every hub, on a
+  page that is standing on that game already. Under them each shelf row carried
+  art, a name and a price, and the one thing you actually decide *on* — what the
+  relic does — was behind a click. The header is now just "🛒 Shop", the rule
+  about the shelf persisting is the panel's tooltip, and a row carries the item's
+  description across its full width under the art and the price. Rows also wear
+  their rarity the way the pack does (`UITheme.item_color`, tinted fill and a
+  matching border) instead of saying it only in the colour of the name, which was
+  the one thing on a row allowed to trim to an ellipsis.
+  - **The height came out of the LEFT column, which is where it was sitting.**
+    The board is at its floor while it shares its column
+    (`FIELD_HEIGHT_BUDGET_SHARED` clamps a 4x4 to `CELL_MIN`), so the obvious
+    source had nothing to give. But a page's height is the taller of its two
+    columns, and on a hub's page that is the checklist on the left by about sixty
+    pixels — the shop is on the right, so the room was already there unused. The
+    row went 58 → 98px and the page did not move at all.
+    `test_the_page_still_fits_the_window_with_a_shop_on_it` walks all ten hubs
+    and is what holds it.
+
+- **Teleporting out of a game is not handing the game in.** A teleport forces an
+  escape past `can_escape()` — the loot is what pays for the door — and the
+  escape was being charged the full price of finishing a game, the extra turns
+  the Amulet's pull owes included (§7.4). On the doorstep that is two free swings
+  at a player who just spent a scroll to get *away* from the board, which made
+  the one thing a teleport can do that nothing else can — get you out of a game
+  that is killing you — the use most likely to kill you. Every teleport off a
+  game in play now passes `free_exit` (the Scroll of Teleportation, the Telepill,
+  Ride the Bus, the card teleports): the goal-enemy still follows, the game is
+  still uncredited, the evening is still spent, and the board gets nothing.
+  `GameLoop2.beat_game`'s new last argument is the whole of the waiver, so every
+  other caller keeps paying and the one report that doesn't has to say so.
+
+- **"✦ Show on map" showed nothing.** Run History lays its strip over the Atlas
+  and the button frames a run's route on the sky behind it — then called
+  `_finish`, and `finished` is the signal the host closes that map on. The button
+  aimed the chart and shut it in the same click. The hand-off is its own exit now
+  (`handed_to_map`): the strip goes away, the sky stays. The reason it shipped is
+  worth keeping — the test covered `AtlasView.frame_games` in isolation, which
+  was never the broken half; there is now one that drives the button's own
+  function and asks whether the map is still up.
+
+- **The tier list's beaten count is legible, and a dragged cover is held where
+  you grabbed it.** The ⚔ badge over a tile was `FONT_TINY` scaled by the board's
+  fit and floored at 8px — and the board sits under 0.8 scale for anything but a
+  small collection, so what shipped was 8px of gold over cover art. It is
+  `FONT_LABEL` with a `FONT_SMALL` floor and a 3px opaque outline now; the badge
+  is anchored inside the art box, so a bigger number cannot grow a tile or push
+  the board past the window. The drag preview was a bare 64x64 square pinned to
+  the cursor by its top-left corner, which is neither the tile's shape nor its
+  size — it is the tile now (live rect, same panel, gold border to read as
+  lifted), offset by the grab point, so the pixel under the cursor stays under it.
+
+- **The Collection's detail pane is a pane, not a page.** It was 380px — almost a
+  third of the widest screen in the game — because the text was allowed to set
+  its width, and on the Games tab it opened with 320px of box art, so every fact
+  about a game started below the scroll line. The pane is 300px, sized off the
+  biggest picture in it rather than off a sentence; the games cover is half what
+  it was and stands *beside* the name, year, tags and lifetime record instead of
+  over them; the record is a line in the two glyphs it wears everywhere else
+  rather than a "📊 Tracked Stats" heading and two rows; and Play and Steam share
+  one row. Every other tab's art is exactly the size it was — an item you opened
+  the pane to look at is the one thing that should not shrink. The width goes
+  back to the grid, which is another column of covers while you scan 865 of them.
+
 - **A speedrun clock, on the stream and in the panel.** A run is a stack of real
   games played one after another, which is a speedrun with unusually long splits,
   and nothing was timing it. `RunTimer` (a new autoload, the 27th) keeps three

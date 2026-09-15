@@ -493,6 +493,75 @@ func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
 	assert_false(_text_of(col._detail_box).contains("Steam page"),
 		"and a game without one stays clean")
 
+# --- the detail pane is a pane, not a page ----------------------------------
+#
+# It was 380px wide and it opened, on the Games tab, with 320px of box art — so
+# the first screen of a game's entry was a picture and the first line of a name,
+# and every FACT about the game (the year, the record, the ranking, the enemies
+# beaten there) started below the scroll line. The pane is narrower, the cover is
+# half the size and stands beside the name rather than over it, and the record is
+# a line instead of a heading and two rows.
+
+func test_the_detail_pane_still_fits_its_biggest_picture() -> void:
+	# The pane is sized off the ART, which is the thing that must not shrink: the
+	# enemy portrait is the largest of them, and it has to clear its frame, the
+	# frame's padding and the scrollbar with room to spare. This is the assertion
+	# that stops the next narrowing from silently clipping a picture.
+	var widest: int = maxi(Collection.DETAIL_ENEMY_SIZE,
+		maxi(Collection.DETAIL_PORTRAIT_SIZE, Collection.DETAIL_ITEM_SIZE))
+	var usable: int = Collection.DETAIL_PANEL_W - 52
+	assert_gt(usable, widest + Collection.DETAIL_IMAGE_PAD * 2,
+		"the pane's content width (%d) clears its biggest picture (%d + padding)"
+			% [usable, widest])
+
+func test_the_games_cover_is_half_what_it_was_and_the_others_did_not_move() -> void:
+	assert_lte(Collection.GAME_DETAIL_COVER, 120,
+		"box art in the pane is about half the 240 it was")
+	# 3:4, so this is the height it costs the top of the pane.
+	assert_lt(roundi(Collection.GAME_DETAIL_COVER * 4.0 / 3.0), 200,
+		"which is a header, not a first screen")
+	# The other tabs' art is NOT part of this change: an item you opened the pane
+	# to look at is the one thing that should not have got smaller.
+	assert_eq(Collection.DETAIL_ITEM_SIZE, 132, "the item art is untouched")
+	assert_eq(Collection.DETAIL_PORTRAIT_SIZE, 152, "and the portrait")
+	assert_eq(Collection.DETAIL_ENEMY_SIZE, 176, "and the enemy")
+
+func test_a_games_facts_are_on_the_first_screen_of_its_entry() -> void:
+	var g: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(g)
+	await wait_frames(2)
+	# The identity block is BESIDE the cover, so the name shares the cover's rows
+	# rather than starting under them.
+	var head: HBoxContainer = null
+	for child in col._detail_box.get_children():
+		if child is HBoxContainer:
+			head = child
+			break
+	assert_not_null(head, "the entry opens on a cover-and-identity row")
+	if head == null:
+		return
+	assert_gte(head.get_child_count(), 1, "with the identity column in it")
+	var text: String = _text_of(head)
+	assert_string_contains(text, g.display_name, "the name is in that first row")
+	assert_string_contains(text, "⚔", "and so is the lifetime record")
+	# …which is a LINE now, not a section: "📊 Tracked Stats" over "Beaten … 3"
+	# over "Amulet wins … 1" was a heading and two rows to say two numbers.
+	assert_false(_text_of(col._detail_box).contains("Tracked Stats"),
+		"the record needs no heading of its own any more")
+
+func test_the_owned_toggle_is_still_a_direct_child_of_the_pane() -> void:
+	# `_owned_toggle_of` below does not recurse, and neither does the player's eye:
+	# tucking the tick into one of the new rows would lose it from both.
+	var g: GameData = Data.all_games()[0]
+	var col := _new_collection()
+	col._show_game_detail(g)
+	var found: bool = false
+	for child in col._detail_box.get_children():
+		if child is CheckButton or child is Label and String((child as Label).text).contains("own"):
+			found = true
+	assert_true(found, "the ownership control is a row of the pane itself")
+
 # --- the Games tab's streamed cells -----------------------------------------
 #
 # 857 games, and a cell is eight nodes. Building them all was 6,896 Controls

@@ -353,7 +353,10 @@ func _on_run_history() -> void:
 		atlas = AtlasView.open(_modal_layer)
 	var history := RunHistoryScreen.open(_modal_layer, atlas)
 	if atlas != null:
-		# Closing the history closes the map it was laid over.
+		# Closing the history closes the map it was laid over. `handed_to_map` is
+		# deliberately NOT wired here: that one means the strip stepped aside so the
+		# player can read the route on the chart, and closing the chart with it is
+		# exactly the bug that made "✦ Show on map" look like a dead button.
 		history.finished.connect(func():
 			if is_instance_valid(atlas):
 				atlas._finish())
