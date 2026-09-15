@@ -907,7 +907,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 869, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 873, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is
@@ -3323,10 +3323,14 @@ reaches is always worth walking into.
 
 A shop stands at each of the run's **ten best-connected games**
 (`RunGraph.hub_ids`). On the full catalog those are the genre's landmarks — Slay
-the Spire (141 connections), Vampire Survivors (85), The Binding of Isaac (69),
-Hades and Balatro (46), Spelunky Classic (37), FTL (36), NetHack (29), Dead Cells
-(28), Enter the Gungeon (26) — and the degree curve has a real shoulder there,
-with the eleventh game down in the low twenties and a long flat tail behind it.
+the Spire (147 connections), Vampire Survivors (91), The Binding of Isaac (71),
+Balatro (53), Hades (49), FTL (38), Spelunky Classic (37), NetHack (31), Dead
+Cells (28), Enter the Gungeon (27) — and the degree curve falls away steeply
+across the top of that list, with a long flat tail behind it. The shoulder at the
+tenth place is no longer clean, though: the eleventh game now ties the tenth at
+27, so which game takes the last hub is decided by the tiebreak rather than by a
+gap in the curve. Counts drift upward as the sheet grows; re-measure rather than
+quoting these.
 
 Hubs are measured **after the game filter and the main-component prune**, like
 every other degree question, so an OWNED run's ten are the ten biggest games on
