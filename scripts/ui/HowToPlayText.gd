@@ -833,10 +833,13 @@ static func _ch_bosses() -> Dictionary:
 				+ "that hit harder — and a bigger board to cross before they reach "
 				+ "you, which is the counterweight.") % RunDifficulty.GAMES_PER_TIER),
 			_h("Boss rounds"),
-			_p("When the tier changes, a boss round announces itself in a popup, "
-				+ "once. It shows the bosses standing on the cards, and you can "
-				+ "click any portrait to read its goal and its damage before you "
-				+ "decide anything."),
+			_p(("Every %d%s game is a BOSS — the last one of each tier, at that "
+				+ "tier. Two Low enemies then a Low boss, two Medium then a "
+				+ "Medium boss, and so on up.") % [RunDifficulty.GAMES_PER_TIER,
+				"rd" if RunDifficulty.GAMES_PER_TIER == 3 else "th"]),
+			_p("A boss round announces itself in a popup, once. It shows the "
+				+ "bosses standing on the cards, and you can click any portrait "
+				+ "to read its goal and its damage before you decide anything."),
 			_p("A boss round is a different set of rules:"),
 			_b("A boss's goal is a tighter version of an ordinary one — the true "
 				+ "ending, not the ending; deathless, not merely won."),

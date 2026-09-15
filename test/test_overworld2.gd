@@ -445,13 +445,17 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 # the combat toolbar live there, while the inspect card it asks for is opened by
 # the overworld, which owns the Push / Bomb charges.
 
-func test_clicking_an_enemy_selects_it_and_opens_its_card() -> void:
+# READING THE BOARD IS ALWAYS AVAILABLE. A click with nothing armed opens the
+# body's card and does nothing else — it used to also SELECT, leaving a target the
+# verbs would later aim at from a distance, which meant the board tracked the last
+# thing clicked as if it were a decision.
+func test_clicking_an_enemy_opens_its_card_and_selects_nothing() -> void:
 	_ui.pick(0)
 	_ui.report(false)                              # an enemy now follows
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
 	_ui._board.click_enemy(inst, entry, int(entry["col"]))
-	assert_eq(_ui._board.selected_instance, inst, "the clicked enemy is targeted")
+	assert_eq(_ui._board.push_target, 0, "nothing is armed, so nothing is aimed")
 	assert_not_null(_ui._info_popup, "its info card opened")
 	_ui._close_enemy_info()
 	assert_null(_ui._info_popup, "the card closes")
@@ -467,8 +471,7 @@ func test_the_body_that_just_arrived_is_targetable_like_any_other() -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	var inst: int = int(landed["instance"])
 	_ui._board.click_enemy(inst, landed, GameLoop2.offgrid_col())
-	assert_eq(_ui._board.selected_instance, inst, "clicking it selects it")
-	assert_not_null(_ui._info_popup, "and its card still opens")
+	assert_not_null(_ui._info_popup, "its card opens like any other body's")
 	_ui._close_enemy_info()
 	assert_true(_ui._board.armed_targets().is_empty(), "nothing armed, nothing lit")
 	GameState.bombs = 1
@@ -553,25 +556,25 @@ func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 	GameState.push = 1
 	_ui.pick(0)
 	_ui.report(false)
-	_ui._board.selected_instance = 0
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.push_btn.disabled, "a charge and no target -> Push can be armed")
 	GameState.push = 0
 	_ui._board.refresh_toolbar()
 	assert_true(_ui._board.push_btn.disabled, "no charge -> Push is unavailable")
 
-# Arming clears whatever was selected: the flow reads "press Push, then say who",
-# and a body left over from reading its card is not a target the player just
-# chose.
-func test_arming_push_clears_the_selection_and_disarms_on_cancel() -> void:
+# The flow reads "press Push, then say who". Reading a card beforehand leaves
+# nothing behind for the verb to find, so arming starts from a clean aim however
+# much of the board the player has been clicking through.
+func test_arming_push_starts_unaimed_and_disarms_on_cancel() -> void:
 	GameState.push = 1
 	_ui.pick(0)
 	_ui.report(false)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
-	_ui._board.selected_instance = inst
+	var entry: Dictionary = GameLoop2.stack[0]
+	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]))
+	_ui._close_enemy_info()
 	_ui._board.begin_push()
 	assert_true(_ui._board.push_mode, "the verb is armed")
-	assert_eq(_ui._board.selected_instance, 0, "and nothing is aimed at yet")
+	assert_eq(_ui._board.push_target, 0, "and nothing is aimed at yet")
 	assert_true(_ui._board.push_btn.text.contains("Cancel"),
 		"the button becomes the way out: %s" % _ui._board.push_btn.text)
 	_ui._board.cancel_push()
@@ -592,7 +595,7 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 	assert_eq(int(entry["col"]), GameLoop2.spawn_col(), "it is against the back edge")
 	_ui._board.begin_push()
 	_ui._board.click_enemy(inst, entry, int(entry["col"]))
-	assert_eq(_ui._board.selected_instance, inst, "the click aims rather than inspects")
+	assert_eq(_ui._board.push_target, inst, "the click aims rather than inspects")
 	assert_null(_ui._info_popup, "so no info card covers the arrows")
 	var dirs: Array = []
 	for a in _ui._board._arrow_layer.get_children():
@@ -627,19 +630,21 @@ func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 
 # --- the bomb is armed and aimed too ---------------------------------------
 #
-# It used to fire the instant its button was pressed, at whatever was still
-# `selected_instance` — routinely a body clicked several turns earlier to read
-# its card, so the charge went into an enemy the player was not looking at.
+# It used to fire the instant its button was pressed, at whatever body had last
+# been clicked — routinely one clicked several turns earlier to read its card, so
+# the charge went into an enemy the player was not looking at. Nothing is tracked
+# between clicks now, so there is nothing left over to fire at.
 
-func test_arming_the_bomb_clears_the_selection_and_spends_nothing() -> void:
+func test_arming_the_bomb_starts_unaimed_and_spends_nothing() -> void:
 	GameState.bombs = 1
 	_ui.pick(0)
 	_ui.report(false)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
-	_ui._board.selected_instance = inst
+	var entry: Dictionary = GameLoop2.stack[0]
+	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]))
+	_ui._close_enemy_info()
 	_ui._board.begin_bomb()
 	assert_true(_ui._board.bomb_mode, "the verb is armed")
-	assert_eq(_ui._board.selected_instance, 0,
+	assert_eq(_ui._board.push_target, 0,
 		"and the body left over from reading a card is NOT the target")
 	assert_eq(GameState.bombs, 1, "arming spends nothing")
 	assert_true(_ui._board.bomb_btn.text.contains("Cancel"),
@@ -659,9 +664,14 @@ func test_arming_lights_the_bodies_it_could_land_on() -> void:
 	_ui._board.begin_bomb()
 	assert_true(_ui._board.armed_targets().has(inst), "the follower is a legal target")
 	_ui._board.refresh_toolbar()
-	assert_false(_ui._board._target_label.text.to_lower().contains("click"),
-		"and the toolbar doesn't caption its own highlight: '%s'" % _ui._board._target_label.text)
+	assert_true(_ui._board._hint_label.visible,
+		"armed, the strip names the verb — the one thing the lit cells cannot say")
+	assert_true(_ui._board._hint_label.text.to_lower().contains("bomb"),
+		"and names THIS verb: '%s'" % _ui._board._hint_label.text)
 	_ui._board.cancel_bomb()
+	_ui._board.refresh_toolbar()
+	assert_false(_ui._board._hint_label.visible,
+		"disarmed, it says nothing at all: '%s'" % _ui._board._hint_label.text)
 
 # The CLICK is what spends it — one press of Bomb, one bomb.
 func test_the_click_fires_the_bomb_and_disarms_it() -> void:
@@ -721,7 +731,7 @@ func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 	boss.health = 1
 	boss.damage = 5
 	var inst: int = GameLoop2.spawn_to_stack(boss)
-	_ui._board.selected_instance = inst
+	assert_gt(inst, 0, "the boss is standing")
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.bomb_btn.disabled, "a boss can be bombed")
 	assert_true(_ui._board.bomb_btn.tooltip_text.contains("boss"),
@@ -730,15 +740,21 @@ func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 	_ui._board.refresh_toolbar()
 	assert_true(_ui._board.bomb_btn.disabled, "no charge -> no bomb")
 
-func test_selection_clears_when_the_enemy_dies() -> void:
+# A push half-way through aiming at a body that then leaves the board must not go
+# on pointing at it — the arrows would be drawn around a corpse.
+func test_a_push_aim_clears_when_its_target_dies() -> void:
 	GameState.bombs = 1
+	GameState.push = 1
 	_pick_solo(0)
 	_ui.report(false)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
-	_ui._board.selected_instance = inst
+	var entry: Dictionary = GameLoop2.stack[0]
+	var inst: int = int(entry["instance"])
+	_ui._board.begin_push()
+	_ui._board.click_enemy(inst, entry, int(entry["col"]))
+	assert_eq(_ui._board.push_target, inst, "the push is aimed at it")
 	_ui.bomb_follower(inst)
 	assert_eq(GameLoop2.stack_size(), 0, "the bomb removed it")
-	assert_eq(_ui._board.selected_instance, 0, "the dead target is deselected")
+	assert_eq(_ui._board.push_target, 0, "and the aim comes off the dead body")
 
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	_ui.pick(0)
@@ -1154,37 +1170,40 @@ func test_scramble_needs_a_charge_and_the_select_phase() -> void:
 	assert_false(_ui.scramble(), "you can't reroll a game you're already playing")
 	assert_eq(GameState.scramble, 1, "a refused scramble is not spent")
 
-func test_boss_round_on_difficulty_gate() -> void:
-	# The tier steps every GAMES_PER_TIER games; that crossing is a boss round.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+func test_boss_round_closes_the_tier_band() -> void:
+	# The LAST game of a band is the boss round — games_played is the count already
+	# played, so the band's last game is the one standing at GAMES_PER_TIER - 1.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "a games-played multiple of the tier step is a boss round")
+	assert_true(_ui._boss_round, "the last game of a tier band is a boss round")
 	for c in _ui._choices:
 		assert_true(bool(c["boss"]), "every boss-round choice spawns a boss")
 
-func test_boss_is_the_capstone_of_the_tier_just_played() -> void:
-	# Boss rounds are every GAMES_PER_TIER games; each boss rolls at the tier the
-	# player just cleared (game-4 boss is Low), then the run advances. Once on
-	# Insane, bosses stay Insane.
+# THE WHOLE LADDER IN ONE TABLE, encounter by encounter. Two ordinary enemies at a
+# tier and then the boss that closes the band, every band the same three games:
+#     Low  Low  LOW BOSS | Med  Med  MED BOSS | High High HIGH BOSS | Insane…
+#
+# `games_played` is what has ALREADY been played, so the offering for encounter N
+# reads N - 1. The boss used to sit on the tier CROSSING instead (gp % 3 == 0),
+# which made the opening band four games long and put the first boss on encounter
+# 4; every band is three now and the first boss is encounter 3.
+func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
-	# Normal games use the plain tier.
-	GameState.games_played = 2
-	assert_eq(_ui._current_tier(), T.LOW, "games 1-3 are Low")
-	GameState.games_played = 4
-	assert_eq(_ui._current_tier(), T.MEDIUM, "games after the first boss are Medium")
-	# Boss rounds cap the tier just played.
-	GameState.games_played = 3   # game 4 boss
-	assert_true(_ui._is_boss_round())
-	assert_eq(_ui._current_tier(), T.LOW, "the game-4 boss is a Low boss")
-	GameState.games_played = 6   # game 7 boss
-	assert_eq(_ui._current_tier(), T.MEDIUM, "the next boss is Medium")
-	GameState.games_played = 9   # game 10 boss
-	assert_eq(_ui._current_tier(), T.HIGH, "then High")
-	GameState.games_played = 12  # game 13 boss
-	assert_eq(_ui._current_tier(), T.INSANE, "then Insane")
-	GameState.games_played = 15  # every 3 games on Insane
-	assert_true(_ui._is_boss_round())
-	assert_eq(_ui._current_tier(), T.INSANE, "Insane bosses keep coming every 3 games")
+	var want: Array = [
+		T.LOW, T.LOW, T.LOW,                  # encounters 1-3, the third a boss
+		T.MEDIUM, T.MEDIUM, T.MEDIUM,         # 4-6
+		T.HIGH, T.HIGH, T.HIGH,               # 7-9
+		T.INSANE, T.INSANE, T.INSANE,         # 10-12
+		T.INSANE, T.INSANE, T.INSANE,         # 13-15, the cap repeating
+	]
+	for i in range(want.size()):
+		var encounter: int = i + 1
+		GameState.games_played = i
+		assert_eq(_ui._current_tier(), int(want[i]),
+			"encounter %d is %s" % [encounter, RunDifficulty.tier_name(int(want[i]))])
+		assert_eq(_ui._is_boss_round(), encounter % 3 == 0,
+			"encounter %d %s a boss round" % [encounter,
+				"is" if encounter % 3 == 0 else "is not"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -1263,6 +1282,23 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
 	_report_beat(_ui)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
+
+# CLEARING THE BOARD IS NOT REPORTING THE GAME. A wand that takes the last body
+# off the field used to close the tracker with it — the button greyed mid-game and
+# said nothing about why — because the gate read the bodies that arrived rather
+# than the run's own record of a game in play (GameLoop2.game_in_play).
+func test_the_tracker_stays_live_on_a_board_the_player_has_cleared() -> void:
+	_ui.pick(0)
+	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry["instance"]))
+	_ui._refresh()
+	assert_true(GameLoop2.stack.is_empty(), "nothing is standing")
+	assert_false(_ui._attempt_btn.disabled,
+		"but the game is still in play, so the button is still a button")
+	_ui.log_attempt()
+	_ui._end_resolve()
+	assert_eq(GameLoop2.attempts(), 1, "and pressing it still ticks")
 
 # The shields a game grants are part of the routing decision, so the hover line
 # under the offering quotes them for whatever card you're pointing at.
@@ -2282,7 +2318,10 @@ func _toasts_since(from: int) -> String:
 		out.append(String(entry.get("text", "")))
 	return "\n".join(PackedStringArray(out))
 
-func test_taking_a_pill_closes_on_the_spot_and_writes_what_it_did() -> void:
+# USING A PIECE SAYS WHAT IT DID. The modal used to close the instant the piece
+# resolved, leaving the answer to "what did that do to me" as a log line under a
+# board that had just changed — findable only by going and reading it.
+func test_taking_a_pill_says_what_it_did_before_it_closes() -> void:
 	GameState.loot_items.clear()
 	GameState.add_pill_loot(&"health_up")
 	GameState.set_max_hp(20, false)
@@ -2293,10 +2332,11 @@ func test_taking_a_pill_closes_on_the_spot_and_writes_what_it_did() -> void:
 	await wait_frames(2)
 	modal._on_read()
 	await wait_frames(2)
-	assert_false(is_instance_valid(modal),
-		"the modal goes the moment the pill resolves — no Done to press")
+	assert_true(is_instance_valid(modal), "the outcome is on a screen, not only in the log")
+	assert_string_contains(_text_of(modal).to_lower(), "health",
+		"and it names what happened")
 	assert_string_contains(_log_since(log_from), "Health",
-		"and what it did to you is in the log")
+		"which is the same thing the log got")
 
 func test_learning_a_capsule_is_said_where_the_player_is_looking() -> void:
 	# The one fact worth a TOAST rather than a log line: swallowing an unknown
@@ -2367,19 +2407,26 @@ func test_a_piece_that_does_nothing_at_all_still_says_so() -> void:
 	# to no-op: whether an Amnesia has anything to forget rides on what this run
 	# has identified, so driving the modal was testing the run's luck as much as
 	# the rule. `_outcome_logs` empty IS the empty case, by definition.
+	#
+	# IDENTIFIED on purpose. "Nothing happens" is the sentence for a piece the
+	# player KNOWS did nothing; an unidentified one that no-ops says ??? instead,
+	# because there the silence might be the piece and might be the mask (see
+	# test_an_unknown_piece_with_no_visible_effect_stays_unknown).
 	GameState.loot_items.clear()
 	GameState.add_scroll_loot(&"scroll_of_fire")
+	ScrollSystem.identify(&"scroll_of_fire", false)
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
 	modal._outcome_logs = []
 	modal._requests = []
-	var toast_from: int = Notifications.history.size()
 	modal._report_outcome()
 	await wait_frames(2)
-	assert_string_contains(_toasts_since(toast_from).to_lower(), "nothing happens",
-		"the empty case is announced rather than passing in silence")
-	assert_false(is_instance_valid(modal), "and the report is what closes it")
+	assert_true(is_instance_valid(modal),
+		"the report puts the outcome on a screen rather than closing on it")
+	assert_string_contains(_text_of(modal).to_lower(), "nothing happens",
+		"and the empty case is stated rather than passing in silence")
+	modal._finish()
 
 func test_a_piece_that_did_something_is_not_announced_as_doing_nothing() -> void:
 	# The other side of the same rule: the toast is for silence, so a piece whose
@@ -2463,10 +2510,12 @@ func test_a_carried_piece_can_be_spent_from_the_drop_screen() -> void:
 	assert_false(GameState.loot_is_full())
 	assert_false(modal._answered,
 		"and the drop is still on the table — spending is not answering it")
-	# The use modal takes itself away the moment the piece resolves; there is no
-	# outcome screen left to dismiss, so nothing here has to close it.
-	assert_false(is_instance_valid(use_modal),
-		"and it closed itself rather than waiting on a Done press")
+	# The use modal now ENDS ON ITS OUTCOME: what the piece did is a screen, so
+	# spending one from here leaves it standing until the player presses Done.
+	assert_true(is_instance_valid(use_modal),
+		"it stays up to say what the piece did")
+	use_modal._finish()
+	await wait_frames(2)
 	modal.leave()
 
 func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
@@ -2492,11 +2541,13 @@ func test_the_offered_piece_can_be_used_without_ever_being_carried() -> void:
 	await wait_frames(2)
 	assert_eq(GameState.loot_items.size(), held,
 		"it costs no slot — it never entered the pack")
-	# The use closes itself now, so the drop resolves on the same press rather
-	# than waiting for an outcome screen to be dismissed.
-	assert_false(is_instance_valid(use_modal),
-		"the spend screen is gone the moment the piece resolves")
-	assert_true(fired[0], "and using the offer resolves the drop with it")
+	# The spend screen ends on its OUTCOME, so the drop resolves when the player
+	# walks off that rather than on the press that spent the piece.
+	assert_true(is_instance_valid(use_modal),
+		"the spend screen stays up to say what the piece did")
+	use_modal._finish()
+	await wait_frames(2)
+	assert_true(fired[0], "and leaving it resolves the drop with it")
 	assert_eq(taken_answer[0], [],
 		"and nothing is reported as kept: the page has nothing to collect")
 
@@ -3473,7 +3524,7 @@ func _texture_rects_under(node: Node) -> Array:
 	return out
 
 func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER   # the gate
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1   # the band's last game
 	_ui._build_choices()
 	assert_true(_ui._boss_round, "this selection is the boss round")
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
@@ -3995,9 +4046,10 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 		assert_ne(c["slot"], bashed_id, "bashed game not re-offered")
 
 func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
-	# The boss is tied to the difficulty gate, not the game: you may bash the
-	# offered game, but whatever backfills the slot still spawns a boss.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	# The boss is tied to where the run stands in its tier band, not to the game:
+	# you may bash the offered game, but whatever backfills the slot still spawns
+	# a boss.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.bash = 1
 	_ui._build_choices()
 	var idx: int = _first_bashable()
@@ -4010,7 +4062,7 @@ func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
 		assert_true(bool(c["boss"]), "every remaining choice still spawns a boss")
 
 func test_transmute_on_boss_round_still_faces_a_boss() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.transmute = 1
 	_ui._build_choices()
 	if _ui._choices.size() < 2:
@@ -4792,10 +4844,18 @@ func test_the_board_says_how_long_its_playback_runs() -> void:
 		+ _ui._board.FX_END_BREATH, 0.001,
 		"a strike, what its damage number outlives it by, and the breath after")
 
-# The offering does NOT wait for the board: it comes straight back beside it, and
-# the resolve plays out on the board next to the cards. There is no Continue step
-# between the two — the animation and the next decision share the screen.
-func test_the_offering_comes_back_while_the_board_still_plays() -> void:
+# THE BOARD PLAYS, THEN THE HAUL, and the offering waits behind both.
+#
+# The resolve is the one moment the board gets — the front line striking, the field
+# closing a column — so nothing is dropped over it. What used to flash in that
+# window was the OFFERING: the page went back to its between-games look the instant
+# the report landed, dealing a fresh table of games in front of a player who had not
+# been shown what the last one paid, and then the haul dropped on top of that. The
+# cards are still BUILT at the report (a Scramble or a Dash taken off the haul needs
+# a table to act on) and are only PUT ON THE PAGE once the haul is walked off, so
+# the window the playback fills is the board and the checklist of the game just
+# handed in — which is what the animation is about.
+func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> void:
 	# Play a game and MISS first, which is what puts a body on the board: the
 	# chosen enemy lives in GameLoop2.arrival() while a game is being played and
 	# only joins the stack when the goal is missed. On the very first game the
@@ -4807,19 +4867,26 @@ func test_the_offering_comes_back_while_the_board_still_plays() -> void:
 	_pick_solo(0)
 	_ui.report(false)
 	await _playback_done()                    # let the first playback finish
+	_leave_post_game()                        # …and walk off its haul, as a player does
+	_dismiss_event()
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
 	_pick_solo(0)
 	_ui.report(false)
+	assert_null(_ui._post_screen,
+		"nothing is dropped over the playback — the haul waits for the board")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "the next decision is already built")
-	assert_gt(_ui._choices.size(), 0)
-	assert_true(_ui._select_box.visible,
-		"and it is already on screen, with the board playing beside it")
-	assert_true(_ui._resolving, "the board is still playing the resolve back")
+	assert_gt(_ui._choices.size(), 0, "with cards a Dash or a Scramble could act on")
+	assert_false(_ui._select_box.visible,
+		"but it is not on the page yet — the haul has not been walked off")
+	assert_true(_ui._resolving, "and the board is playing the resolve back")
 	await _playback_done()
 	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
-	assert_true(_ui._select_box.visible, "leaving the offering where it was")
+	assert_not_null(_ui._post_screen, "and THEN the haul lands")
+	assert_false(_ui._select_box.visible, "with the offering still behind it")
+	_leave_post_game()
+	assert_true(_ui._select_box.visible, "walking off the haul is what deals the table")
 
 func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
 	_ui.pick(0)
@@ -6376,11 +6443,11 @@ func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
 # ---------------------------------------------------------------------------
 
 func _force_boss_round() -> void:
-	# A boss round is the CAPSTONE of a tier: it lands on the offering drawn after
-	# the GAMES_PER_TIER'th game has been played.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	# A boss CLOSES its tier band: it is the band's last game, so it lands on the
+	# offering drawn once GAMES_PER_TIER - 1 games of that band have been played.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the next offering is the difficulty gate")
+	assert_true(_ui._boss_round, "the next offering closes the tier band")
 
 func test_a_boss_round_announces_itself_in_a_popup() -> void:
 	_force_boss_round()
@@ -6914,8 +6981,9 @@ func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
 	# A REAL boss round, arranged rather than injected: the report rebuilds the
 	# offering (and with it `_boss_round`) before the screen is built, and the
 	# resolve can land instantly now (§7.4), so there is no gap to set the flag in.
-	# One game short of a tier capstone is a boss round on the other side of it.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	# Two games short of the band's last game, so REPORTING this one is what puts
+	# the run on the boss round the haul screen has to warn about.
+	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 2
 	_ui._build_choices()
 	_ui.pick(0)
 	_ui._boss_notice_for = -1
@@ -9506,3 +9574,230 @@ func test_each_menu_screen_has_a_way_back_to_the_run() -> void:
 		assert_eq(_ui._phase, phase_before, "the run is in the same phase it was")
 		assert_true(_ui._scroll.visible, "its page is up")
 		assert_true(_ui._header_layer.visible, "and its header is back on top")
+
+# --- the start picker's road cards -----------------------------------------
+
+# THE BODY WAITING ON A ROAD IS A PICTURE, NOT A SENTENCE. It was written out —
+# "☠ Carcass — Defeat 10+ spiders" — three wrapped lines under a card already
+# carrying a cover, a name and a distance, times three cards, at the moment the
+# player is trying to compare them. The words are on the hover instead, which is
+# how every other enemy on a card is drawn.
+func test_a_start_card_shows_its_enemy_as_art_with_the_words_on_the_hover() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	assert_not_null(picker, "the run opens on the picker")
+	if picker == null:
+		return
+	var opt: Dictionary = _ui._start_options[0]
+	var enemy: GoalEnemyData = opt.get("enemy")
+	if enemy == null:
+		pending("this road rolled no enemy, so there is no portrait to draw")
+		return
+	var row: Control = picker._waiting_row(enemy)
+	assert_eq(row.get_child_count(), 1, "one thing stands for the body")
+	var shown: Control = row.get_child(0)
+	assert_true(shown.tooltip_text.contains(enemy.display_name),
+		"the hover names it: '%s'" % shown.tooltip_text)
+	if enemy.goal != "":
+		assert_true(shown.tooltip_text.contains(enemy.goal),
+			"and carries its goal: '%s'" % shown.tooltip_text)
+	if enemy.image != null:
+		assert_true(shown is TextureRect, "a body with art is drawn as art")
+		assert_eq((shown as TextureRect).texture, enemy.image, "its own portrait")
+	else:
+		# No portrait authored — the NAME, not a gap. An empty row under one of three
+		# cards reads as that road having no enemy at all.
+		assert_true(shown is Label, "a body with no art falls back to its name")
+		assert_true((shown as Label).text.contains(enemy.display_name))
+
+func test_a_road_with_no_enemy_says_so_in_words() -> void:
+	_ui.start_run()
+	var picker = _ui._start_picker
+	if picker == null:
+		return
+	var row: Control = picker._waiting_row(null)
+	assert_eq(row.get_child_count(), 1)
+	assert_true((row.get_child(0) as Label).text.to_lower().contains("no enemy"),
+		"a free game is the one case that still needs a sentence")
+
+# --- the split timer and its pause -----------------------------------------
+
+# The strip on the page is ONE ROW on purpose: the column it sits in is as tall as
+# the cover beside it, and the page fits 720p by about thirty pixels. A split LIST
+# here measured 832 of the 625 a window leaves, so the list is a popup and the
+# strip is its top line.
+func test_the_split_strip_is_one_row_and_the_list_is_a_popup() -> void:
+	_ui.pick(0)
+	_ui._refresh_split_panel()
+	assert_true(_ui._split_panel.visible, "a run in play has a clock to show")
+	assert_true(_ui._split_panel is HBoxContainer, "the strip is a single row")
+	assert_true(_ui._split_total.text.contains("RUN"), "carrying the run's total")
+	assert_null(_ui._splits_popup, "and the list is not on the page")
+	var popup = _ui.show_splits()
+	assert_not_null(popup, "⏱ opens it")
+	assert_eq(_ui.show_splits(), popup, "and a second press does not stack another")
+	_ui._dismiss_splits()
+	assert_null(_ui._splits_popup, "Close puts it away")
+
+# EVERY TRY AT A GAME IS ITS OWN SPLIT. A lost run banks one (RunTimer), so a game
+# the player died in three times reads as three tries under it — which is the
+# number a speedrunner actually wants off that game.
+func test_the_splits_list_carries_a_row_per_game_and_per_try() -> void:
+	_ui.pick(0)
+	_ui.log_attempt()
+	_ui._end_resolve()
+	_ui.log_attempt()
+	_ui._end_resolve()
+	assert_eq(RunTimer.attempt_splits.size(), 2, "two tries banked at this game")
+	_ui.show_splits()
+	var lines: Array = []
+	for row in _ui._split_rows.get_children():
+		lines.append((row.get_child(0) as Label).text)
+	# Only the tries under the GAME IN PLAY — the opening game of the run is in
+	# this list too, with its own try under it.
+	var tries: int = 0
+	var counting: bool = false
+	for l in lines:
+		if l.begins_with("▸"):
+			counting = true
+		elif counting and l.contains("try"):
+			tries += 1
+	assert_eq(tries, 3,
+		"two banked tries and the one still being played: %s" % [lines])
+	_ui._dismiss_splits()
+
+# The clock counts real time for as long as the app is open, so answering the door
+# should not cost the run twelve minutes. Nothing else about the run pauses.
+func test_the_pause_button_stops_both_clocks_and_nothing_else() -> void:
+	_ui.pick(0)
+	_ui._refresh_split_panel()
+	assert_false(RunTimer.paused, "a run starts running")
+	var run_before: float = RunTimer.run_seconds
+	var game_before: float = RunTimer.game_seconds
+	_ui.toggle_timer_pause()
+	assert_true(RunTimer.paused, "the button stops it")
+	RunTimer._process(5.0)
+	assert_eq(RunTimer.run_seconds, run_before, "and the run clock does not move")
+	assert_eq(RunTimer.game_seconds, game_before, "nor the game's")
+	assert_true(GameLoop2.can_log_attempt(),
+		"but the run itself is not paused — the tracker still works")
+	_ui.toggle_timer_pause()
+	assert_false(RunTimer.paused, "pressing it again starts it")
+	RunTimer._process(5.0)
+	assert_gt(RunTimer.run_seconds, run_before, "and the clock moves again")
+
+func test_a_paused_clock_rides_the_save() -> void:
+	_ui.pick(0)
+	_ui.toggle_timer_pause()
+	RunTimer.restore(RunTimer.serialize())
+	assert_true(RunTimer.paused,
+		"a run paused and quit comes back paused rather than quietly resuming")
+
+func test_a_fresh_run_starts_the_clock_whatever_the_last_one_was_left_on() -> void:
+	RunTimer.set_paused(true)
+	_ui.start_run()
+	assert_false(RunTimer.paused, "a new run is not inheriting the last one's pause")
+
+# --- the outcome screen never identifies a piece the use did not ------------
+
+# THE MASK IS THE GAMBLE, and this screen is not a way around it. An unidentified
+# piece whose effect gave nothing away comes back ??? — saying "Bad Trip: −1
+# Health" there would hand the player an identification they did not earn.
+func test_an_unknown_piece_with_no_visible_effect_stays_unknown() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._outcome_logs = []                     # the piece wrote nothing observable
+	modal._newly_learned = false
+	PillSystem.unidentify(&"luck_up")            # …and it stayed a mystery
+	modal._show_outcome()
+	await wait_frames(2)
+	var text: String = _text_of(modal)
+	assert_string_contains(text, "???", "the screen says it could not tell: %s" % text)
+	assert_false(text.to_lower().contains("luck"),
+		"and never names the piece it failed to identify: %s" % text)
+	modal._finish()
+
+# An IDENTIFIED piece that genuinely no-opped is a different fact, and gets the
+# sentence that says so rather than a mystery it isn't.
+func test_a_known_piece_that_does_nothing_says_nothing_happens() -> void:
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"health_up")
+	PillSystem.identify(&"health_up")
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._outcome_logs = []
+	modal._show_outcome()
+	await wait_frames(2)
+	var text: String = _text_of(modal)
+	assert_string_contains(text.to_lower(), "nothing happens",
+		"a known piece that no-ops says so plainly: %s" % text)
+	assert_false(text.contains("???"), "it is not a mystery: %s" % text)
+	modal._finish()
+
+# --- the run's own history --------------------------------------------------
+
+# THE RECORD EXISTED AND COULD NOT BE READ. Every game, enemy, event, item, piece
+# of loot, shop purchase and lost run already went to GameLog; its only reader was
+# a one-line readout showing the LAST thing that happened.
+func test_the_header_carries_a_history_button_next_to_the_map() -> void:
+	assert_not_null(_ui._header_history_btn, "the header carries it")
+	assert_true(_ui._header_history_btn.text.to_lower().contains("history"))
+	var idx_hist: int = _ui._header_history_btn.get_index()
+	var idx_map: int = _ui._header_map_btn.get_index()
+	assert_eq(idx_map, idx_hist + 1, "and it sits next to the Map")
+
+func test_the_history_screen_opens_once_and_closes() -> void:
+	var screen = _ui.open_history()
+	assert_not_null(screen, "the button opens it")
+	assert_eq(_ui.open_history(), screen, "a second press does not stack another")
+	screen.close()
+	await wait_frames(2)
+	assert_null(_ui._history_screen, "Close puts it away")
+
+# GROUPED BY THE GAME THE RUN WAS STANDING ON, newest first — a flat list of three
+# hundred lines is a wall, the same lines under the cover of the game they
+# happened at is a run you can scan.
+func test_the_history_groups_the_run_by_the_game_it_was_standing_on() -> void:
+	var here: StringName = GameState.current_game_id
+	GameLog.add("a thing that happened here")
+	var stops: Array = GameLog.by_stop()
+	assert_gt(stops.size(), 0, "the run has at least one stop")
+	assert_eq(StringName(stops[0]["game"]), here,
+		"and the newest stop is where the run is standing")
+	var texts: Array = []
+	for e in (stops[0]["lines"] as Array):
+		texts.append(String(e["text"]))
+	assert_true(texts.has("a thing that happened here"), "carrying its lines: %s" % [texts])
+
+# Going back to a game is a decision the player made and paid a Dash for, so the
+# second visit is its own group rather than being folded into the first.
+func test_a_second_visit_to_a_game_is_its_own_stop() -> void:
+	var a: StringName = GameState.current_game_id
+	var away: StringName = _neighbour_of_here()
+	if away == &"" or away == a:
+		pending("the run did not reach this case (no neighbour to step to)")
+		return
+	GameLog.add("first visit")
+	GameState.set_current_game(away)
+	GameLog.add("the trip away")
+	GameState.set_current_game(a)
+	GameLog.add("second visit")
+	var stops: Array = GameLog.by_stop()
+	var at_a: int = 0
+	for stop in stops:
+		if StringName(stop["game"]) == a:
+			at_a += 1
+	assert_eq(at_a, 2, "two separate stops at the same game, not one folded pair")
+
+func test_a_new_run_takes_the_old_ones_history_off_the_page() -> void:
+	_ui.open_history()
+	assert_not_null(_ui._history_screen)
+	_ui.start_run()
+	await wait_frames(2)
+	assert_null(_ui._history_screen,
+		"a record of a run that no longer exists does not stay on screen")

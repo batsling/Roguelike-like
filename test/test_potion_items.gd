@@ -126,12 +126,21 @@ func test_it_pays_on_every_lost_run_while_the_game_is_still_blank() -> void:
 	assert_eq(GameState.shields, before + 2,
 		"the gate is 'no goals yet', not 'once per game' — every blank try pays")
 
+# `record: true` — the SELF-REPORT's path, which is the only one that counts a
+# goal against the game (`goals_met_this_game`) and so the only one the item's
+# `if_goals=` gate can see. It used to call the one-argument form, which records
+# nothing, and passed anyway: fulfilling the only body on the board emptied
+# `arrivals`, and `can_log_attempt` read that as "no game in play" and refused the
+# tick outright. No tick, no `run_lost`, no shield — green for a reason that had
+# nothing to do with the gate this test is about. The refusal is gone
+# (GameLoop2.game_in_play), so the tick lands and the gate is actually asked.
 func test_a_goal_already_ticked_this_game_closes_it_off() -> void:
 	GameState.add_item(Data.get_item2(&"ripple_basin"))
 	var inst: int = _choose_solo()
-	GameLoop2.fulfill(inst)
+	GameLoop2.fulfill(inst, true)
+	assert_eq(GameLoop2.goals_met_this_game, 1, "the tick was recorded against the game")
 	var before: int = GameState.shields
-	GameLoop2.log_attempt()
+	assert_eq(GameLoop2.log_attempt(), "turn", "and the lost run still costs its turn")
 	assert_eq(GameState.shields, before,
 		"'before completing any goals' is the whole of the item")
 

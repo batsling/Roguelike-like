@@ -50,6 +50,28 @@ static func tier_for(games_played: int) -> int:
 	var tier: int = games_played / GAMES_PER_TIER
 	return mini(tier, MAX_TIER)
 
+# --- where the bosses stand in that ladder (§7.1) ---------------------------
+#
+# THE BOSS IS THE LAST GAME OF ITS OWN TIER BAND. A band is GAMES_PER_TIER games:
+# the first of them are ordinary enemies at that tier, the last is the boss that
+# closes it — Low, Low, LOW BOSS | Medium, Medium, MEDIUM BOSS | and so on, the
+# Insane band repeating once the ladder caps.
+#
+# `games_played` is what has ALREADY been played, so this answers "is the game
+# about to be chosen a boss": the offering for encounter N asks with N - 1, and
+# every third encounter comes back true.
+#
+# IT USED TO BE THE GAME THAT CROSSED THE GATE (`games_played % GAMES_PER_TIER
+# == 0`, guarded against 0), which put the boss BETWEEN two bands rather than
+# inside one. That made the opening band four games long where every later band
+# was three, and the first boss landed on encounter 4. It also forced the tier
+# read to special-case a boss, since the plain formula already reads the NEXT
+# tier on a crossing — a boss inside its band just takes `tier_for`.
+static func is_boss_game(games_played: int) -> bool:
+	if games_played < 0:
+		return false
+	return games_played % GAMES_PER_TIER == GAMES_PER_TIER - 1
+
 # --- the battlefield grows with the tier (§7.3) -----------------------------
 #
 # Every tier step widens the board by one COLUMN and one ROW. Low is the base

@@ -273,6 +273,15 @@ of a game.
   rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
+- **The gate is the GAME, never the board.** `can_log_attempt` asks
+  `GameLoop2.game_in_play` — chosen and not yet reported — and nothing about what
+  is standing. It used to ask `arrivals`, the record of which bodies walked on
+  with the game (§7.2), which is the same answer right up until a body leaves the
+  board some way other than the report: a wand, a bomb, a mine, a goal ticked
+  mid-game. Clear the two bodies a game arrived with — one Magic Missile does it —
+  and the tracker went dead mid-game with nothing said, which also made the rule
+  above unreachable: the one board that charges nothing was the one board that
+  refused the press. Clearing the board is not handing the game in.
 - **The undo is a restore, not a refund.** A turn walks bodies, burns ground,
   breaks the trinkets that break on a hit (§8.1) and pays out whatever losing
   Health pays out, so `GameLoop2.log_attempt` snapshots the board and the run's
@@ -885,7 +894,7 @@ the return leg of a `play_game` detour (§10), which is not a teleport: that gam
 already been reported by the time the run heads home.
 
 **And the bus runs on the ROADS.** `teleport_to_type` used to draw from
-`Data.all_games()` — all 865, the entire catalogue. The run's map is one connected
+`Data.all_games()` — all 869, the entire catalogue. The run's map is one connected
 component (`RunGraph._prune_to_main_component`); everything else is a game this run
 cannot walk to, and landing on one leaves the player on a node with no edges, in a
 game whose offering is empty and whose only way on is another teleport. Transmute is
@@ -1280,8 +1289,32 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 
 ### 7.1 Bosses
 
-**Bosses appear when the run's difficulty tier changes** (the existing
-`RunDifficulty` transitions). A boss is a heavier enemy that:
+**A boss is the LAST GAME OF EACH DIFFICULTY BAND.** A band is
+`RunDifficulty.GAMES_PER_TIER` games — three — and the boss closes it, so the run
+reads:
+
+| | | |
+|---|---|---|
+| **Low** enemy | **Low** enemy | **LOW BOSS** |
+| **Medium** enemy | **Medium** enemy | **MEDIUM BOSS** |
+| **High** enemy | **High** enemy | **HIGH BOSS** |
+| **Insane** enemy | **Insane** enemy | **INSANE BOSS** |
+
+…and the Insane band repeats once the ladder caps. **Every third encounter is a
+boss**, the first of them on encounter 3, and a boss rolls at **its own band's
+tier** (`RunDifficulty.is_boss_game`, `Overworld2._current_tier`).
+
+It used to be the game that CROSSED the gate — the boss stood *between* two bands
+rather than inside one, which made the opening band four games long where every
+later band was three, and put the first boss on encounter 4. Every band is the
+same three games now, which is what makes the climb quicker: encounter 4 is a
+Medium enemy where it used to be the Low boss, and every rung after it arrives a
+game sooner. It also removed a special case — a boss on a crossing had to be
+rolled at `tier_for(games_played - 1)`, one below the normal formula, because the
+plain formula already reads the *next* tier there; a boss inside its band just
+takes `tier_for`.
+
+A boss is a heavier enemy that:
 
 - carries a **more specific goal** (tighter than a normal enemy's — e.g. "beat the
   *true* ending," "clear it deathless" rather than just "beat a boss"),
@@ -3805,6 +3838,24 @@ answered "do you want this relic" over the top of the blow that had just taken
 eight Health off them.
 
 So the haul is **a screen**, and it opens when the board has stopped moving.
+
+**The board plays, then the haul, then the next table.** Nothing is dropped over
+the resolve: it is the one moment the board gets — the front line striking, the
+field closing a column — and a screen over it turns that into a thing that
+happened behind a panel. The haul was opened on the press for one build, because
+the page had been sitting on the overworld for the length of the playback with the
+game already reported and nothing to do on it, and that read as a flash. **The
+flash was the offering**, not the animation filling the window: see below.
+
+**And the next offering waits for the haul.** The offering is *built* the instant
+the game is reported — a Scramble or a Dash taken off the haul screen needs a table
+to act on, and the cards are dealt off the run as it stands the moment it moved —
+but it is not put on the page until the player has walked off the haul
+(`Overworld2._refresh_stage` holds it while `_post_snapshot` or `_post_screen` is
+set). It used to come back with the report, so a full table of games was dealt in
+front of a player who had not yet been shown what the last game paid. The order is
+now the order it happens in — the report, what it paid, then the next table — and
+there is still no Continue step anywhere in the chain.
 
 | Section | What it carries |
 |---|---|

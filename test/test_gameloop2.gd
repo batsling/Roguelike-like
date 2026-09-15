@@ -738,6 +738,93 @@ func test_a_lost_run_needs_a_game_in_play_to_be_lost_at() -> void:
 	assert_eq(GameLoop2.log_attempt(), "turn",
 		"and the one thing a tick ever costs is a turn")
 
+# A GAME IS IN PLAY UNTIL IT IS REPORTED, not until its bodies are dead. Clearing
+# the board is a thing the player is actively encouraged to do — one Magic Missile
+# takes the advertised enemy and its escort — and `arrivals` empties when they go.
+# can_log_attempt() used to read that list, so a cleared board meant "no game in
+# play": "Lost a run" went dead mid-game with nothing said, on the one board where
+# the player had just done well. The tick on an empty board is explicitly legal
+# (log_attempt: a stack with nothing on it simply has nothing to charge).
+func test_clearing_the_board_does_not_end_the_game_in_play() -> void:
+	var a: int = GameLoop2.choose_game(_enemy(1))
+	var escort: int = GameLoop2.escort_instance()
+	assert_true(GameLoop2.game_in_play, "a game was chosen")
+	GameLoop2.despawn(a)
+	if escort > 0:
+		GameLoop2.despawn(escort)
+	assert_true(GameLoop2.stack.is_empty(), "the board is clear")
+	assert_false(GameLoop2.has_arrivals(), "and nothing that arrived is still standing")
+	assert_true(GameLoop2.game_in_play, "but the game has not been handed in")
+	assert_true(GameLoop2.can_log_attempt(), "so a run can still be lost at it")
+	assert_eq(GameLoop2.log_attempt(), "turn",
+		"and the tick still costs the turn it always did — an empty board just has nothing to charge")
+	assert_eq(GameLoop2.attempts(), 1, "the tracker counted it")
+
+# THE SURVIVOR IS WHAT MAKES THE REFUSAL VISIBLE. A tick and a report are the ONLY
+# two things that ever move a body (_resolve_enemy_turn has exactly those two
+# callers), so a tracker that refuses is a board that is frozen — and with the
+# bodies the game arrived with wanded off, what the player is left looking at is
+# whatever is still following them, standing in the same square press after press.
+# That is the second half of the same bug: not just a dead button, a dead board.
+func test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off() -> void:
+	# One body from an earlier game, marched partway down the board and released by
+	# its report, so it is an ordinary follower rather than an arrival.
+	var follower: int = _choose_solo(_enemy(1))
+	_report()
+	_turn()
+	var col_before: int = _col_of(follower)
+	assert_gt(col_before, 1, "it is somewhere behind the front line")
+
+	# A new game, and the player clears everything that walked on with it.
+	var fresh: int = GameLoop2.choose_game(_enemy(1))
+	var escort: int = GameLoop2.escort_instance()
+	GameLoop2.despawn(fresh)
+	if escort > 0:
+		GameLoop2.despawn(escort)
+	assert_false(GameLoop2.has_arrivals(), "nothing that arrived is left standing")
+	assert_eq(_col_of(follower), col_before, "and the follower has not moved on its own")
+
+	assert_eq(GameLoop2.log_attempt(), "turn", "the tick lands")
+	assert_lt(_col_of(follower), col_before,
+		"and the board it bought actually closes the follower in — a press that resolves nothing is what 'it just stands there' looks like")
+
+func test_reporting_a_game_is_what_takes_it_out_of_play() -> void:
+	_choose_solo(_enemy(1))
+	assert_true(GameLoop2.game_in_play)
+	_report()
+	assert_false(GameLoop2.game_in_play, "handing it in is what ends it")
+	assert_false(GameLoop2.can_log_attempt(), "and there is nothing left to lose runs at")
+	assert_eq(GameLoop2.log_attempt(), "", "so the tick is refused")
+
+func test_the_game_in_play_survives_a_save_and_a_load_on_a_cleared_board() -> void:
+	var a: int = GameLoop2.choose_game(_enemy(1))
+	var escort: int = GameLoop2.escort_instance()
+	GameLoop2.despawn(a)
+	if escort > 0:
+		GameLoop2.despawn(escort)
+	GameLoop2.restore(GameLoop2.serialize())
+	assert_true(GameLoop2.game_in_play,
+		"a save taken on a cleared board comes back with the game still owed a report")
+	assert_true(GameLoop2.can_log_attempt())
+
+# An OLDER save has no `game_in_play` key, so the loader falls back to the reading
+# that build was already making. It is right for every save but the one taken on a
+# cleared board, and nothing in an old save tells those two apart.
+func test_an_older_save_without_the_flag_falls_back_to_what_arrived() -> void:
+	# A REAL enemy off the roster, not a synthetic one: a body only survives the
+	# round-trip if `Data` can still resolve its id, and this test is about what
+	# the loader reads off a restored board.
+	GameLoop2.choose_game(Data.all_goal_enemies()[0])
+	var data: Dictionary = GameLoop2.serialize()
+	data.erase("game_in_play")
+	GameLoop2.restore(data)
+	assert_true(GameLoop2.game_in_play, "a body still standing reads as a game in play")
+	GameLoop2.reset()
+	var empty: Dictionary = GameLoop2.serialize()
+	empty.erase("game_in_play")
+	GameLoop2.restore(empty)
+	assert_false(GameLoop2.game_in_play, "and nothing standing reads as nothing in play")
+
 func test_a_shield_stops_one_whole_instance_of_damage() -> void:
 	# The rule in one assertion: a 3-damage swing breaks ONE shield and lands for
 	# nothing. It used to take three points off the pool and leave it empty.

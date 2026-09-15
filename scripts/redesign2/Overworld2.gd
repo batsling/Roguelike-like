@@ -21,9 +21,10 @@ extends Control
 # fill containers this page owns and call back through its public verbs.
 #
 # Difficulty gates (§7.1): the run's tier steps up every RunDifficulty.
-# GAMES_PER_TIER games (RunDifficulty.tier_for). On the game that crosses into a
-# new tier, the offering becomes a BOSS round — a "⚠ BOSS INCOMING" popup opens
-# once (BossNoticeModal) and whichever game you pick spawns a boss.
+# GAMES_PER_TIER games (RunDifficulty.tier_for), and the LAST game of each of
+# those bands is a BOSS round — a "⚠ BOSS INCOMING" popup opens once
+# (BossNoticeModal) and whichever game you pick spawns a boss. Two ordinary
+# enemies then the boss that closes the band, at the band's own tier.
 
 # Phases of one selection. START_SELECT is the one-off opening phase: before the
 # run has a position, the player picks WHERE TO START from three games, each a
@@ -173,6 +174,9 @@ var _header: HBoxContainer = null
 # The header's Map button, left of the menu — the one way to read the road from
 # inside a game (see _build_map_button). Held so a test can press it.
 var _header_map_btn: Button = null
+# …and the History button beside it, with the screen it opens (RunLogScreen).
+var _header_history_btn: Button = null
+var _history_screen: RunLogScreen = null
 var _header_bar: PanelContainer = null
 var _header_layer: CanvasLayer = null
 # The transient-toast stack, held so it can be pushed clear of the header bar.
@@ -220,6 +224,13 @@ var _run_over_screen: RunOverScreen = null
 # (_open_post_game). `_post_snapshot` is what `report` recorded on the way past —
 # empty at every other moment, which is also how _end_resolve tells a report's
 # animation from any other.
+#
+# THE TWO OF THEM ALSO HOLD THE NEXT OFFERING BACK (_refresh_stage). The cards are
+# built at the report and shown when the player walks off the haul, and between
+# them these cover that whole stretch: `_post_snapshot` from the report landing
+# until the screen stands up, `_post_screen` from there until it is dismissed.
+# That is why `_open_post_game` hands over rather than clearing on the way in —
+# a moment with neither set is a moment something could deal the cards into.
 var _post_snapshot: Dictionary = {}
 var _post_screen: PostCombatScreen = null
 var _rng := RandomNumberGenerator.new()
@@ -249,7 +260,14 @@ var _offering: OfferingCards = null
 var _play_panel: VBoxContainer
 var _now_playing: RichTextLabel
 var _now_playing_cover: TextureRect # the chosen game's cover, beside it
-var _play_clock: Label              # ⏱ this game's split / the run's total
+# THE SPLIT PANEL (RunTimer): the run as a list of games with their times, the one
+# in play at the bottom and still moving, and the run's total under a rule. See
+# _build_split_panel.
+var _split_panel: Control = null
+var _splits_popup: Control = null
+var _split_rows: VBoxContainer = null    # one row per game, plus its tries
+var _split_total: Label = null           # the run's own line
+var _split_pause_btn: Button = null
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 # The checklist itself — both states of the left column, and the row-to-body
@@ -611,6 +629,10 @@ func start_run(character_id: StringName = &"") -> void:
 	_dismiss_choice_modal()
 	_dismiss_route_map()
 	_close_start_picker()
+	# …and the run's own record, which is about to be a record of a run that no
+	# longer exists (GameLog is cleared with the run).
+	_dismiss_history()
+	_dismiss_splits()
 	_resolving = false
 	_attempt_resolve = false
 	_board.clear_fx()
@@ -2366,22 +2388,16 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		GameLoop2.clear_amulet()
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 		return
-	_phase = Phase.SELECT
-	_build_choices()
-	_refresh()
-	# The run moved, so the recovery point moves with it.
-	autosave()
-	# A play_game detour ends here (§10) — but it QUEUES rather than resolving on
-	# the spot. Its payout and its stay-or-return question both belong on a screen
-	# the player can see, and at this moment the board is still playing the resolve
-	# back, so it waits behind that exactly as an event and a shop do (_end_resolve).
-	if on_detour:
-		_pending_detour = true
-		_detour_beaten = not escaped
 	# WHAT THIS REPORT WAS, for the screen the game ends on (_open_post_game).
 	# Recorded here, on the one path that survives the report — a run that ended
 	# and a run that just won have their own screen and took the two `return`s
 	# above — and read once the board has finished playing the resolve back.
+	#
+	# BEFORE THE REPAINT BELOW, not after it. This is also the flag that holds the
+	# next offering back until the haul has been seen (_refresh_stage reads it), and
+	# `_refresh` is three lines down: filled afterwards, the repaint had already
+	# dealt the new table of cards and nothing repainted again to take it away, so
+	# the offering flashed up under the haul screen exactly as before.
 	_post_snapshot = {
 		"game": played_game, "beaten": beaten, "escaped": escaped,
 		"amulet": was_amulet, "res": res,
@@ -2394,7 +2410,40 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false) -> v
 		# a report with no level in it.
 		"level_up": level_up_paid,
 	}
+	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
+	# Dash taken off the haul screen still has a table to act on, and the cards are
+	# dealt off the run as it stands the moment it moved rather than off whatever
+	# the haul screen's chain leaves behind.
+	_phase = Phase.SELECT
+	_build_choices()
+	_refresh()
+	# The run moved, so the recovery point moves with it.
+	autosave()
+	# A play_game detour ends here (§10) — but it QUEUES rather than resolving on
+	# the spot. Its payout and its stay-or-return question both belong on a screen
+	# the player can see, and at this moment the board is still playing the resolve
+	# back, so it waits behind that exactly as an event and a shop do (_end_resolve).
+	if on_detour:
+		_pending_detour = true
+		_detour_beaten = not escaped
 	_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
+	# THE HAUL WAITS FOR THE BOARD, and the board is the only thing it waits for.
+	# The resolve is where the run's consequences are SHOWN — the front line
+	# striking, the field closing a column — and a screen dropped over it turns the
+	# one moment the board gets into a thing that happened behind a panel.
+	#
+	# It was opened here for one build, on the press, because the page had been
+	# sitting on the overworld for the length of the playback with the game already
+	# reported and nothing to do on it, and that read as a flash. The flash was the
+	# OFFERING coming back into that window, not the animation filling it — the
+	# offering is held until the haul is walked off now (_refresh_stage), so what
+	# the playback plays over is the board and the checklist of the game just
+	# handed in, which is what the animation is about.
+	#
+	# So the order is: the board plays, then the haul. `_end_resolve` opens it, and
+	# a zero-length playback still gets there in the same frame (_hold_for_resolve
+	# ends one synchronously), so a report with nothing to animate is as instant as
+	# it ever was.
 
 # The run just stepped up a difficulty tier, which widens the battlefield by a
 # column and a row (§7.3). Reconcile the board's coordinates with its new size
@@ -2495,11 +2544,30 @@ func _end_resolve() -> void:
 # Nothing else that reaches _end_resolve has a report behind it, and those carry
 # straight on down the chain they always did.
 func _open_post_game() -> void:
+	if _post_screen != null and is_instance_valid(_post_screen):
+		# NOTHING NEW TO SHOW, so the screen already standing keeps the page: the
+		# chain behind it is `_on_post_game_finished`'s to run, once, and falling
+		# into the branch below would fire the event over the top of a haul the
+		# player is still reading.
+		if _post_snapshot.is_empty():
+			return
+		# A NEW REPORT WITH A HAUL STILL STANDING. A run cannot do this — the screen
+		# is modal and has to be left before another game can be played — but a
+		# caller that manages it must not have the new haul silently swallowed by
+		# the old one, which is what a bare `return` here did. `abandon` rather than
+		# `dismiss`: the way out of the old screen would run a chain that belongs to
+		# a game two reports ago.
+		_post_screen.abandon()
+		_post_screen = null
 	if _post_snapshot.is_empty():
 		_open_pending_event()
 		return
+	# HELD, NOT CLEARED YET. Between this and the screen actually standing up, the
+	# two of them are what keeps the next offering off the page (_refresh_stage) —
+	# dropping it here would leave a window in which neither is set, and anything
+	# below that repaints (a route map finishing, a chest handed over) would deal
+	# the cards into it. It is cleared once `_post_screen` has taken over the job.
 	var snap: Dictionary = _post_snapshot
-	_post_snapshot = {}
 	# The queue is the screen's now. It stays a queue on the page's side (an
 	# out-of-band offer still opens its own modal, see _pump_drops) — this is only
 	# what THIS report put in it.
@@ -2537,6 +2605,8 @@ func _open_post_game() -> void:
 	_dismiss_route_map()
 	_post_screen = PostCombatScreen.open(self, snap, drops,
 		_pending_event != null, shop_id, boss_tier, bosses)
+	# The screen is up, so it is the one holding the offering back now (see above).
+	_post_snapshot = {}
 	var screen: PostCombatScreen = _post_screen
 	_post_screen.finished.connect(func(): _on_post_game_finished(screen))
 	# EVERYTHING THE GAME EARNED, ON THE ONE SCREEN. Chests banked while the game
@@ -2778,35 +2848,252 @@ func _update_shop_hint() -> void:
 func _wants_process() -> bool:
 	return (_shop_panel != null and is_instance_valid(_shop_panel)) \
 		or (_loot_panel != null and is_instance_valid(_loot_panel)) \
-		or RunTimer.game_running
+		or (RunTimer.run_running and not RunTimer.paused)
 
 func _process(_delta: float) -> void:
 	_update_shop_hint()
 	_follow_loot_overlay()
-	_update_play_clock()
+	_refresh_split_panel()
 
-# The running split, redrawn at frame rate. Reads RunTimer rather than counting
-# anything itself — one clock in the build, and the number on screen is the
-# number on the stream by construction.
+# --- the split panel -------------------------------------------------------
+#
+# A RUN IS A SPEEDRUN WITH UNUSUALLY LONG SPLITS, so it is drawn like one: a row
+# per game the run has finished with its time, the game in play at the bottom of
+# the list and still moving, and the run's own total under a rule. Under each game
+# sit its TRIES — a lost run is banked as its own split (RunTimer), so a game's
+# entry reads as the list of how long each attempt at it took, which is the number
+# a speedrunner actually wants off a game they died in four times.
+#
+# It was one line — "⏱ 3:12.4 · try 2: 1:40 · run 23:47" — which is the three
+# numbers a split timer shows and none of the shape it shows them in: nothing
+# said how long the LAST game took, and a run's worth of splits existed only
+# inside OBS.
+#
+# THE LIST SCROLLS AND THE PANEL DOES NOT GROW. This lives in the left column,
+# which is the column that decides whether the page fits 720p (see _build_ui) and
+# had ~35px of slack before this was a list at all. So the rows go in a
+# ScrollContainer with a hard height, and a twelve-game run scrolls instead of
+# pushing the board off the window.
+const SPLIT_LIST_HEIGHT := 150
+
+# The strip that lives on the page: ONE ROW, because the column it sits in is as
+# tall as the cover beside it and the page it is on fits 720p by about thirty
+# pixels. A list here measured 832 of the 625 a window leaves. So the strip is the
+# split timer's TOP LINE — the game being timed, its current try, the run — and
+# the list it is the top line of opens on ⏱, over the page, where there is room
+# for every game and every try at it.
+func _build_split_strip() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	row.visible = false
+
+	_split_total = Label.new()
+	_split_total.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_split_total.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_split_total.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	row.add_child(_split_total)
+
+	_split_pause_btn = Button.new()
+	_split_pause_btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+	_split_pause_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_split_pause_btn.pressed.connect(toggle_timer_pause)
+	row.add_child(_split_pause_btn)
+
+	var list_btn := Button.new()
+	list_btn.text = "⏱"
+	list_btn.tooltip_text = "Every split this run: each game, and each try at it."
+	list_btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+	list_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	list_btn.pressed.connect(show_splits)
+	row.add_child(list_btn)
+	return row
+
+# The player's own stop button. The clock counts wall time for as long as the app
+# is open, so answering the door should not cost the run twelve minutes.
+func toggle_timer_pause() -> void:
+	RunTimer.toggle_pause()
+	# A paused clock wants no frame hook, and a resumed one wants it back — and
+	# the resumed case is why this cannot be left to the next thing that happens
+	# to re-gate: with the hook off, nothing else on this page is running to turn
+	# it on again.
+	set_process(_wants_process())
+	_refresh_split_panel()
+
+# The strip, redrawn at frame rate. Reads RunTimer rather than counting anything
+# itself — one clock in the build, and the number on screen is the number on the
+# stream by construction.
 #
 # Tenths on the game's split and none on the run's: the moving digit is what says
 # the clock is alive, and one of them saying it is enough.
-func _update_play_clock() -> void:
-	if _play_clock == null or not is_instance_valid(_play_clock):
+func _refresh_split_panel() -> void:
+	if _split_panel == null or not is_instance_valid(_split_panel):
 		return
-	if not RunTimer.game_running:
-		_play_clock.visible = false
+	if not RunTimer.run_running and RunTimer.splits.is_empty():
+		_split_panel.visible = false
 		return
-	_play_clock.visible = true
-	var line: String = "⏱  %s" % RunTimer.format(RunTimer.game_seconds)
-	if RunTimer.attempt_splits.size() > 0:
-		# The current try, when there have been others — the split list on the
-		# overlay keeps them all, and what matters here is how long THIS attempt
-		# has been going.
-		line += "   ·   try %d: %s" % [RunTimer.attempt_splits.size() + 1,
-			RunTimer.format(RunTimer.attempt_seconds)]
-	line += "   ·   run %s" % RunTimer.format(RunTimer.run_seconds, 0)
-	_play_clock.text = line
+	_split_panel.visible = true
+	_split_pause_btn.text = "▶" if RunTimer.paused else "⏸"
+	_split_pause_btn.disabled = not RunTimer.can_pause()
+	_split_pause_btn.tooltip_text = ("The clock is stopped. Nothing else about the "
+		+ "run is paused — the board and the tracker still work.") if RunTimer.paused \
+		else "Stop the clock. It counts real time, so a break costs the run nothing."
+
+	var parts: Array = []
+	if RunTimer.game_running or RunTimer.game_seconds > 0.0:
+		parts.append("▸ %s" % RunTimer.format(RunTimer.game_seconds))
+		if RunTimer.attempt_splits.size() > 0:
+			# The current try, when there have been others — what matters here is how
+			# long THIS attempt has been going; the rest are in the list.
+			parts.append("try %d  %s" % [RunTimer.attempt_splits.size() + 1,
+				RunTimer.format(RunTimer.attempt_seconds)])
+	parts.append("RUN %s" % RunTimer.format(RunTimer.run_seconds, 0))
+	if RunTimer.paused:
+		parts.append("⏸ paused")
+	_split_total.text = "   ·   ".join(parts)
+	_split_total.add_theme_color_override("font_color",
+		UITheme.GOLD if RunTimer.paused else UITheme.TEXT_DIM)
+
+# --- the full splits, over the page ----------------------------------------
+#
+# A RUN IS A SPEEDRUN WITH UNUSUALLY LONG SPLITS, so it reads like one: a row per
+# game the run has finished with its time, the game in play still moving at the
+# bottom, and the run's total under a rule. Under each game sit its TRIES — a lost
+# run is banked as its own split (RunTimer), so a game's entry is the list of how
+# long each attempt at it took, which is the number a speedrunner actually wants
+# off a game they died in four times.
+#
+# It is a POPUP rather than part of the page for the reason the strip above is one
+# row: the page has no thirty pixels to give, let alone two hundred.
+func show_splits() -> Control:
+	if _splits_popup != null and is_instance_valid(_splits_popup):
+		return _splits_popup
+	var panel := _build_splits_popup()
+	_splits_popup = panel
+	add_child(panel)
+	return panel
+
+func _scroll_splits_to_live(scroll: ScrollContainer) -> void:
+	if scroll == null or not is_instance_valid(scroll):
+		return
+	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+
+func _dismiss_history() -> void:
+	if _history_screen != null and is_instance_valid(_history_screen):
+		_history_screen.close()
+	_history_screen = null
+
+func _dismiss_splits() -> void:
+	if _splits_popup != null and is_instance_valid(_splits_popup):
+		_splits_popup.queue_free()
+	_splits_popup = null
+
+func _build_splits_popup() -> Control:
+	var root := Control.new()
+	root.top_level = true
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.62)
+	root.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var wrap := PanelContainer.new()
+	wrap.custom_minimum_size = Vector2(420, 0)
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG, UITheme.GOLD.lerp(UITheme.BORDER, 0.4), 10, 14, 2))
+	center.add_child(wrap)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	wrap.add_child(box)
+
+	var title := Label.new()
+	title.text = "⏱  SPLITS"
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	box.add_child(title)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, SPLIT_LIST_HEIGHT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	_split_rows = VBoxContainer.new()
+	_split_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_split_rows.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	scroll.add_child(_split_rows)
+	_rebuild_split_rows()
+	# OPEN AT THE BOTTOM. The list grows downward and the row that is still moving
+	# — the game in play and the try inside it — is the last one, so a long run
+	# opens this on its oldest splits with the live one below the fold. Deferred
+	# because the scroll cannot be set past a content height the container has not
+	# measured yet.
+	_scroll_splits_to_live.call_deferred(scroll)
+
+	box.add_child(HSeparator.new())
+	var total := Label.new()
+	total.text = "RUN   %s" % RunTimer.format(RunTimer.run_seconds, 0)
+	total.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	total.add_theme_color_override("font_color", UITheme.GOLD)
+	box.add_child(total)
+
+	var close := Button.new()
+	close.text = "Close"
+	close.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	close.pressed.connect(_dismiss_splits)
+	box.add_child(close)
+	return root
+
+# One row per finished game, its tries indented under it, then the game in play.
+func _rebuild_split_rows() -> void:
+	if _split_rows == null or not is_instance_valid(_split_rows):
+		return
+	_clear(_split_rows)
+	for s in RunTimer.splits:
+		var mark: String = {"beaten": "✓", "escaped": "→"}.get(
+			String(s.get("outcome", "beaten")), "✗")
+		_split_rows.add_child(_split_row("%s %s" % [mark,
+			RunTimer.split_name(s.get("id", ""))],
+			RunTimer.format(float(s.get("seconds", 0.0)), 0), false))
+		_add_try_rows(s.get("attempts", []) as Array, 0)
+	if RunTimer.game_running or RunTimer.game_seconds > 0.0:
+		_split_rows.add_child(_split_row("▸ %s" % RunTimer.split_name(RunTimer.game_id),
+			RunTimer.format(RunTimer.game_seconds), true))
+		_add_try_rows(RunTimer.attempt_splits, RunTimer.attempt_splits.size() + 1)
+	if _split_rows.get_child_count() == 0:
+		_split_rows.add_child(_split_row("no games finished yet", "", false))
+
+# The tries under one game. `live_index` > 0 adds the try still being played at
+# the end of the list, which is the one the player is inside.
+func _add_try_rows(tries: Array, live_index: int) -> void:
+	for i in range(tries.size()):
+		_split_rows.add_child(_split_row("        try %d" % (i + 1),
+			RunTimer.format(float(tries[i]), 0), false))
+	if live_index > 0:
+		_split_rows.add_child(_split_row("        try %d" % live_index,
+			RunTimer.format(RunTimer.attempt_seconds), true))
+
+# One line: a name on the left, a time hard against the right. `current` marks the
+# game (or try) in play, which is the one row worth the accent.
+func _split_row(text: String, time: String, current: bool) -> Control:
+	var row := HBoxContainer.new()
+	var name_lbl := Label.new()
+	name_lbl.text = text
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.clip_text = true
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	name_lbl.add_theme_color_override("font_color",
+		UITheme.ACCENT if current else UITheme.TEXT_DIM)
+	row.add_child(name_lbl)
+	var time_lbl := Label.new()
+	time_lbl.text = time
+	time_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	time_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	time_lbl.add_theme_color_override("font_color",
+		UITheme.TEXT if current else UITheme.TEXT_DIM)
+	row.add_child(time_lbl)
+	return row
 
 # Keep the loot overlay on the board when the page moves under it. `item_rect_
 # changed` on the board is not enough: a report regrows the LEFT column, which
@@ -3822,23 +4109,34 @@ func show_completed_goals() -> CompletedGoalsPanel:
 
 # --- offering construction ------------------------------------------------
 
-# Whether the upcoming selection crosses a difficulty gate (§7.1). The tier steps
-# up every GAMES_PER_TIER games played, so a boss round lands whenever the games-
-# played count is a positive multiple of that step.
+# Whether the upcoming selection is a boss round (§7.1). THE BOSS IS THE LAST GAME
+# OF ITS OWN TIER BAND: a band is GAMES_PER_TIER games, the first of them are
+# ordinary enemies at that tier and the last is the boss that closes it. So the
+# run reads Low, Low, LOW BOSS | Medium, Medium, MEDIUM BOSS | High, High, HIGH
+# BOSS | Insane, Insane, INSANE BOSS, and on round the band repeats at the cap.
+#
+# IT USED TO BE THE GAME THAT CROSSED THE GATE — `gp % GAMES_PER_TIER == 0`, a
+# boss standing BETWEEN two bands rather than inside one. That made the opening
+# band four games long (three Low enemies and then a Low boss) while every band
+# after it was three, and it put the first boss on encounter 4. Now every band is
+# the same three games and the first boss is encounter 3, which is the whole of
+# what makes the climb quicker: encounter 4 is a Medium enemy where it used to be
+# the Low boss, and every rung after it arrives one game sooner.
 func _is_boss_round() -> bool:
-	var gp: int = GameState.games_played
-	return gp > 0 and gp % RunDifficulty.GAMES_PER_TIER == 0
+	return RunDifficulty.is_boss_game(GameState.games_played)
 
-# The difficulty tier of the CURRENT offering. A boss round is the CAPSTONE of the
-# tier the player just cleared (§7.1): the game-4 boss is Low and beating it is
-# what advances the run to Medium, so a boss rolls at tier_for(games_played - 1),
-# one below the normal-game formula. Once the run reaches Insane the cap holds, so
-# Insane bosses keep appearing every GAMES_PER_TIER games.
+# The difficulty tier of the CURRENT offering — the plain ladder, for a boss round
+# exactly as for any other.
+#
+# THE BOSS NEEDS NO SPECIAL CASE ANY MORE, and that is the point of moving it. It
+# used to roll at `tier_for(games_played - 1)`, one below the normal formula,
+# because a boss sat on the crossing: at `gp == GAMES_PER_TIER` the plain formula
+# already reads the NEXT tier, so a boss meant to cap the band just played had to
+# be walked back a game by hand. A boss inside its band is simply at its band's
+# tier, and `tier_for` says so on its own. Once the run reaches Insane the cap
+# holds and the Insane band repeats, boss and all.
 func _current_tier() -> int:
-	var gp: int = GameState.games_played
-	if _is_boss_round():
-		return RunDifficulty.tier_for(gp - 1)
-	return RunDifficulty.tier_for(gp)
+	return RunDifficulty.tier_for(GameState.games_played)
 
 # How many game cards the offering shows: the base three plus whatever
 # "game_choices" bonus the run has been granted (never below one, or there'd be
@@ -4090,7 +4388,7 @@ func _refresh(_a = null) -> void:
 		# _wants_process is the one gate that decides (the shop pointer and the loot
 		# overlay share it). Asked here because taking a game is the moment the
 		# answer changes.
-		_update_play_clock()
+		_refresh_split_panel()
 		set_process(_wants_process())
 		# …AND THE REPORT STEP, when the goals it lists have changed under it. A D10
 		# re-rolls every non-boss body mid-game and a Create Monster conjures a new
@@ -4305,10 +4603,29 @@ func _refresh_stage() -> void:
 		return
 	# The offering box hosts the choose-your-start cards too, so it's up in both
 	# choosing phases; the scrolls panel isn't — there's nothing to read before the
-	# run has a position. Both come straight back the moment a game is reported,
-	# resolve animation or not: the board plays out beside the offering, not
-	# instead of it (_hold_for_resolve).
-	var choosing: bool = _phase == Phase.SELECT or _phase == Phase.START_SELECT
+	# run has a position.
+	#
+	# IT WAITS FOR THE HAUL. The offering used to come back the instant a game was
+	# reported — `report` sets Phase.SELECT and rebuilds the cards before the board
+	# has played a frame of the resolve — so the next table of games was dealt, in
+	# full, in front of a player who had not yet been shown what the last game paid.
+	# Then the haul screen dropped over the top of it. The offering read as a screen
+	# that flashed up and was snatched away, and the haul read as an interruption to
+	# a choice the player had already started making.
+	#
+	# So the two are put back in the order they happen in: the report, then what it
+	# paid, THEN the next table. `_post_snapshot` is the report on its way to the
+	# haul screen and is empty at every other moment (see its declaration), and
+	# `_post_screen` is that screen while it is up — between them they cover the
+	# whole wait, from the report landing to the player walking off the haul, and
+	# `_on_post_game_finished` repaints to bring the cards in.
+	#
+	# The BOARD is not part of this and still plays out under everything: the
+	# resolve is the one place the run's consequences are shown (_hold_for_resolve).
+	var haul_owed: bool = not _post_snapshot.is_empty() \
+		or (_post_screen != null and is_instance_valid(_post_screen))
+	var choosing: bool = (_phase == Phase.SELECT or _phase == Phase.START_SELECT) \
+		and not haul_owed
 	_select_box.visible = choosing
 	# The offering's frame goes with it, or an empty bordered box sits above the
 	# checklist between games.
@@ -5570,6 +5887,7 @@ func _build_ui() -> void:
 	# is worth asking, because the answer decides whether to keep grinding it or
 	# take the door out. On the header it rides the same layer Health does, so no
 	# modal and no scroll position can put it away.
+	header.add_child(_build_history_button())
 	header.add_child(_build_map_button())
 	header.add_child(_build_menu_button())
 	_header = header
@@ -5881,20 +6199,11 @@ func _build_ui() -> void:
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.add_child(_now_playing)
 
-	# THE CLOCK ON THIS GAME (RunTimer), in the panel the player is looking at
-	# while they play it. The overlay is where it is FOR — a stream wants a
-	# speedrun timer — but a number that only exists inside OBS is a number the
-	# player has to alt-tab to read, and it is their own evening it is counting.
-	#
-	# Two numbers, one line: this game's split and the whole run behind it, which
-	# is the pair a split timer always shows. Ticked from _process while a game is
-	# in play (see _update_play_clock) and hidden the rest of the time — there is
-	# nothing to count between games that the run total does not already have.
-	_play_clock = Label.new()
-	_play_clock.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	_play_clock.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	_play_clock.visible = false
-	verbs.add_child(_play_clock)
+	# THE SPLIT STRIP (RunTimer). The overlay is where the clock is FOR — a stream
+	# wants a speedrun timer — but a number that only exists inside OBS is a number
+	# the player has to alt-tab to read, and it is their own evening it is counting.
+	_split_panel = _build_split_strip()
+	verbs.add_child(_split_panel)
 
 	# Launch-the-real-game row (populated per game — only games with a launch
 	# target gets a button) + the opt-in Rate button.
@@ -6267,6 +6576,32 @@ func _build_map_button() -> Button:
 	b.pressed.connect(open_map)
 	_header_map_btn = b
 	return b
+
+# THE HISTORY BUTTON, next to the Map and for the same reason the Map is there:
+# these are the two questions a player asks about a run they have stepped away
+# from. The map says where you are; this says what has happened.
+#
+# The run has always written it all down (GameLog) — every game, every enemy that
+# walked on, every event, item, piece of loot, shop purchase and lost run — and
+# the only reader was a one-line readout showing the LAST thing that happened.
+func _build_history_button() -> Button:
+	var b := Button.new()
+	b.text = "🕮  History"
+	b.tooltip_text = ("Everything that has happened this run, newest first and "
+		+ "grouped by the game you were on. Open from anywhere, including mid-game.")
+	b.pressed.connect(open_history)
+	_header_history_btn = b
+	return b
+
+# The run's own record, over the page. One at a time — a second press while it is
+# up is the player reaching for the button they are already looking at.
+func open_history() -> RunLogScreen:
+	if _history_screen != null and is_instance_valid(_history_screen):
+		return _history_screen
+	var screen := RunLogScreen.open(self)
+	_history_screen = screen
+	screen.finished.connect(func(): _history_screen = null)
+	return screen
 
 enum MenuItem { HOW_TO_PLAY, COLLECTION, TIER_LIST, SAVE, NEW_RUN, SETTINGS,
 	MAIN_MENU, EXIT_GAME }

@@ -11,6 +11,166 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seven passes over the run's screens.**
+
+  - **The haul waits for the board again, and the offering waits for the haul.**
+    The instant-haul build put the screen over the resolve; what had actually been
+    flashing was the OFFERING coming back the moment a game was reported, dealing
+    a fresh table of games in front of a player who had not been shown what the
+    last one paid. The offering is held until the haul is walked off, so the window
+    the playback fills is the board and the checklist of the game just handed in —
+    which is what the animation is about. Order: board, haul, table.
+  - **The board stopped tracking the last thing you clicked.** A strip above the
+    grid read `Click an enemy: ▸ Carcass (col 3, row 2)` — a caption over a board
+    well able to speak for itself, describing a "selection" that was usually just
+    someone reading a card. Targeting is a thing a verb does AFTER it is armed;
+    with nothing armed a click is a click, and opens the body's card. What was
+    `selected_instance` is now `push_target` and lives only while a push is
+    half-way through aiming, because a push is the one verb with a second question
+    to ask. The strip says nothing until a verb is armed, and then names the verb —
+    the one thing the lit cells cannot say.
+  - **The start cards show the body waiting on a road as ART.** It was written out
+    — `☠ Carcass — Defeat 10+ spiders` — three wrapped lines under a card already
+    carrying a cover, a name and a distance, times three cards, at the moment the
+    player is comparing them. The words are on the hover, which is how every other
+    enemy on a card is drawn. A body with no portrait falls back to its name rather
+    than to a gap.
+  - **The clock is a split timer, and it can be stopped.** One row on the page —
+    the game being timed, the try inside it, the run — and `⏱` opens the full
+    LiveSplit list: a row per game with its time, EVERY TRY AT IT indented under
+    it (a lost run banks its own split), the game in play still moving at the
+    bottom, the run's total under a rule. The list is a popup because the column it
+    would have sat in fits 720p by about thirty pixels and a list there measured
+    832 of the 625 a window leaves. `⏸` stops both clocks and nothing else — the
+    board and the tracker still work — and rides the save, so a run paused and quit
+    comes back paused.
+  - **Using a piece of loot says what it did.** The modal used to close the instant
+    the piece resolved, leaving the answer to "what did that do to me" as a log
+    line under a board that had just changed. It ends on its outcome now — and
+    never identifies a piece the use did not: an unidentified one that gave nothing
+    away comes back **???**, because the mask is the gamble and this screen is not
+    a way around it. An identified piece that genuinely no-ops says "nothing
+    happens", which is a different fact and gets a different sentence.
+  - **A History button beside the Map.** The run already wrote everything down —
+    every game, enemy, event, item, piece of loot, shop purchase and lost run — and
+    `GameLog`'s only reader was a one-line readout showing the LAST thing that
+    happened. `RunLogScreen` reads the whole record back, newest first, grouped by
+    the game the run was standing on at the time, with each line in the colour the
+    log already gave it. Entries are stamped with that game in `GameLog.add` rather
+    than by 80 call sites; a second visit to a game is its own group, because going
+    back is a decision the player paid a Dash for.
+
+- **A boss every third encounter, closing its own tier band.** The ladder is now
+  two ordinary enemies at a tier and then the boss that ends it, every band the
+  same three games:
+
+  | | | |
+  |---|---|---|
+  | Low enemy | Low enemy | **LOW BOSS** |
+  | Medium enemy | Medium enemy | **MEDIUM BOSS** |
+  | High enemy | High enemy | **HIGH BOSS** |
+  | Insane enemy | Insane enemy | **INSANE BOSS** |
+
+  …with the Insane band repeating once the ladder caps.
+
+  The boss used to be the game that CROSSED the gate (`games_played %
+  GAMES_PER_TIER == 0`), standing *between* two bands rather than inside one.
+  That made the opening band four games long where every later band was three,
+  and put the first boss on encounter 4. **This is the whole of what makes the
+  climb quicker**: encounter 4 is a Medium enemy where it used to be the Low
+  boss, and every rung after it arrives a game sooner. `GAMES_PER_TIER` is
+  untouched at 3 — the tier ladder itself already stepped every three games; what
+  moved is where the boss sits in it.
+  - **It also deleted a special case.** A boss on a crossing had to roll at
+    `tier_for(games_played - 1)`, one below the normal formula, because the plain
+    formula already reads the *next* tier there — which is why the old code had a
+    boss branch in `_current_tier`. A boss inside its band is simply at its band's
+    tier, so `_current_tier` is now `tier_for(games_played)` and nothing else.
+  - The cadence moved into `RunDifficulty.is_boss_game` beside the tier ladder it
+    belongs to — pure, static and unit-testable — and `Overworld2._is_boss_round`
+    delegates to it. The tests that used to arrange a boss round by writing the
+    magic `GAMES_PER_TIER` now say `GAMES_PER_TIER - 1`, and the one that needed a
+    report to *land* on a boss round says `- 2`.
+
+- **Clearing the board stopped killing the "Lost a run" button.** Kill everything
+  a game walked on with — one Magic Missile over two bodies does it — and the
+  tracker went dead mid-game, with no message and no way back short of a reload.
+  `can_log_attempt` was asking `GameLoop2.arrivals`, the record of *which bodies
+  came with the game in play* (§7.2), as a stand-in for *is a game in play*. The
+  two agree right up until a body leaves the board some way other than the report,
+  which a wand, a bomb, a mine and a ticked goal all do. So the answer flipped on
+  the one board where the player had just done well.
+  - **The gate is a fact about the run now, not about the board.** `game_in_play`
+    is set by `choose_game` and cleared by `beat_game` (escaping a game reports
+    through the same path), `clear_amulet` and `reset` — nothing else. It rides
+    the save, and an older save with no such key falls back to the reading that
+    build was already making, which is right for every save but one taken on a
+    cleared board.
+  - **This also made a documented rule unreachable.** §3.2 has always said a board
+    with nothing in reach charges nothing and the tick is still logged — the turn
+    *is* the cost, so a cleared stack has nothing to take. The one board that rule
+    is about was the one board that refused the press.
+  - **It read as a FROZEN BOARD, not as a dead button**, which is the symptom worth
+    recognising. A tick and a report are the only two things that ever move a body
+    (`_resolve_enemy_turn` has exactly those two callers), so a tracker that
+    refuses is a board that cannot move: with the arrivals wanded off, whatever was
+    still following stood in the same square press after press. The bodies were
+    behaving perfectly — nothing was ever asking them to walk.
+  - `has_arrivals()` keeps its old meaning and is still the right question for
+    *what is standing*; the four places in `PlaySession2` that were using it to
+    mean *a game is in play* now ask `game_in_play`, so a cleared board there no
+    longer lets you pick a second game over an unreported one.
+  - **And the refusal was hiding a test that asserted nothing.**
+    `test_potion_items.gd::test_a_goal_already_ticked_this_game_closes_it_off`
+    checks Ripple Basin's `if_goals=` gate — no shield for a lost run once a goal
+    has been ticked. It called `GameLoop2.fulfill(inst)`, whose `record` argument
+    defaults to **false**, so no goal was ever counted against the game and the
+    gate had nothing to close on. It went green because fulfilling the only body
+    on the board emptied `arrivals`, `log_attempt` refused the tick, and a tick
+    that never happens grants no shield either. Now that the tick lands, the test
+    fails as written — and passes on `fulfill(inst, true)`, the self-report's own
+    path, which is what "already ticked this game" was always supposed to mean.
+    The gate itself was right all along; it had simply never been asked.
+
+- **The haul screen is the first thing a report produces, and the main screen no
+  longer flashes up in front of it.** It opened from `_end_resolve`, once the board
+  had finished playing the resolve back, so the page sat on the overworld — the
+  game just reported, its Now Playing panel gone, nothing to do on it — for the
+  length of the playback. Measured: **~0.73s** for a bare advance, **~1.45s** when
+  something strikes. Too short to watch and too long to miss, which is exactly the
+  shape of a glitch. §18's rule that the haul opens on a still board was written
+  against **six popups** pumped over a moving board one at a time, each with its own
+  Take/Leave; this is one screen, it *is* the destination, and what the playback had
+  to say it says in words anyway — damage taken and blocked are two of its numbers.
+  So `report` opens it on the press and the board finishes underneath it.
+  - **The end of a run still waits.** There is no haul screen on that path, the
+    last blow is the last thing the run has to show, and a verdict cutting across
+    it is what the rule was actually about.
+  - `_open_post_game` is now reached twice per report — once from the press, once
+    when the playback lands — so it returns early on the second, which would
+    otherwise have fired the event over the top of a screen still being read. A
+    *new* report arriving with a haul still standing abandons the old screen rather
+    than being swallowed by it; a run cannot do that (the screen is modal) but a
+    caller that manages it should not silently lose its haul.
+
+- **The next offering waits for the haul screen instead of flashing up under it.**
+  Reporting a game set `Phase.SELECT` and rebuilt the cards before the board had
+  played a frame of the resolve, so a full table of games was dealt in front of a
+  player who had not yet been shown what the last game paid — and then
+  `PostCombatScreen` dropped over the top of it. The offering read as a screen that
+  appeared and was snatched away, and the haul as an interruption to a choice
+  already begun. The cards are still *built* at the report (a Scramble or a Dash
+  taken off the haul needs a table to act on, dealt off the run as it stands the
+  moment it moved); they are only *shown* once the player walks off the haul.
+  `_refresh_stage` holds them while `_post_snapshot` or `_post_screen` is set,
+  which between them cover the whole wait. The board is not part of this and still
+  plays out under everything, and there is still no Continue step in the chain.
+  - The ordering has two edges worth keeping: `_post_snapshot` is now filled
+    *before* `report`'s own repaint (filled after it, the repaint had already dealt
+    the cards and nothing repainted again to take them away), and `_open_post_game`
+    holds it until `_post_screen` exists rather than clearing it on the way in, so
+    there is no window where neither is set for a stray repaint to deal into.
+
 - **A speedrun clock, on the stream and in the panel.** A run is a stack of real
   games played one after another, which is a speedrun with unusually long splits,
   and nothing was timing it. `RunTimer` (a new autoload, the 27th) keeps three

@@ -38,3 +38,38 @@ func test_tier_names() -> void:
 	assert_eq(RunDifficulty.tier_name(RunDifficulty.Tier.MEDIUM), "Medium")
 	assert_eq(RunDifficulty.tier_name(RunDifficulty.Tier.HIGH), "High")
 	assert_eq(RunDifficulty.tier_name(RunDifficulty.Tier.INSANE), "Insane")
+
+# --- where the bosses stand in the ladder (§7.1) ----------------------------
+
+# THE BOSS CLOSES ITS BAND. Two ordinary games at a tier, then the boss, then the
+# next tier — so `is_boss_game` is true on the last game of every band and the
+# ladder reads Low, Low, LOW BOSS | Medium, Medium, MEDIUM BOSS | …
+func test_the_last_game_of_every_tier_band_is_a_boss() -> void:
+	for gp in range(15):
+		assert_eq(RunDifficulty.is_boss_game(gp),
+			gp % RunDifficulty.GAMES_PER_TIER == RunDifficulty.GAMES_PER_TIER - 1,
+			"games_played %d" % gp)
+
+# Spelled out per encounter, because the off-by-one between "games already
+# played" and "the encounter about to be chosen" is the whole of this rule: the
+# offering for encounter N asks with N - 1, so every THIRD encounter is a boss.
+func test_every_third_encounter_is_the_boss() -> void:
+	var bosses: Array = []
+	for encounter in range(1, 16):
+		if RunDifficulty.is_boss_game(encounter - 1):
+			bosses.append(encounter)
+	assert_eq(bosses, [3, 6, 9, 12, 15],
+		"bosses land on every third encounter, the first on the 3rd")
+
+# A boss is at its band's OWN tier — it is inside the band, not on the crossing,
+# so nothing has to walk the tier back a game to place it.
+func test_a_boss_is_at_the_tier_of_the_band_it_closes() -> void:
+	var T := RunDifficulty.Tier
+	assert_eq(RunDifficulty.tier_for(2), T.LOW, "the 3rd encounter is the Low boss")
+	assert_eq(RunDifficulty.tier_for(5), T.MEDIUM, "the 6th is the Medium boss")
+	assert_eq(RunDifficulty.tier_for(8), T.HIGH, "the 9th is the High boss")
+	assert_eq(RunDifficulty.tier_for(11), T.INSANE, "the 12th is the Insane boss")
+
+func test_a_negative_games_played_is_not_a_boss_game() -> void:
+	assert_false(RunDifficulty.is_boss_game(-1))
+	assert_false(RunDifficulty.is_boss_game(-5))

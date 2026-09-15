@@ -192,7 +192,30 @@ var _bounds_rows: int = BASE_GRID_ROWS
 #
 # Cleared the moment the game is REPORTED (beat_game). From then on those bodies
 # are ordinary followers and nothing may reach back for them.
+#
+# IT IS NOT A FLAG FOR "A GAME IS IN PLAY" — use `game_in_play` for that. The two
+# look interchangeable because choosing a game fills this list and reporting one
+# empties it, but a BODY can leave the board without the game being handed in:
+# a wand, a bomb, a mine, a goal ticked mid-game. Kill both arrivals and this
+# list is empty while the game is still very much in play. That read cost the
+# player the "Lost a run" button — see game_in_play.
 var arrivals: Array[int] = []
+
+# Whether a game has been chosen and not yet reported (§3). The game in play as a
+# piece of RUN STATE, which is what the question "is a game in play" is actually
+# about — set by choose_game, cleared by beat_game (escaping a game goes through
+# the same report), by clear_amulet, and by reset.
+#
+# IT EXISTS BECAUSE `arrivals` WAS BEING ASKED THIS AND ANSWERING IT WRONG. The
+# two agree right up until a body leaves the board some way other than the report
+# — and clearing the board is a thing the player is actively encouraged to do.
+# Magic Missile the advertised enemy and its escort and `arrivals` empties, at
+# which point can_log_attempt() said no game was in play, "Lost a run" went dead
+# with no explanation, and the game could not be handed in. The board being empty
+# is explicitly NOT a reason to refuse the tick (see log_attempt: a cleared stack
+# simply has nothing to charge), so the gate had to stop being a fact about
+# bodies and become a fact about the run.
+var game_in_play: bool = false
 
 # Undefeated enemies following the player (§2). Each entry:
 #   {"instance": int, "enemy": GoalEnemyData, "health": int, "max_health": int,
@@ -781,6 +804,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	arrivals.clear()
+	game_in_play = false
 	stack.clear()
 	graveyard.clear()
 	# The ledger is the RUN's, not the game's, so it is dropped here and nowhere
@@ -884,6 +908,10 @@ func serialize() -> Dictionary:
 		# twice. A Scramble taken after a reload then still supersedes everything
 		# that arrived together instead of leaving the escort behind (§7.5).
 		"arrivals": arrivals.duplicate(),
+		# Whether that game has been handed in, which `arrivals` cannot be read for
+		# (see game_in_play) — a save taken on a board the player has just cleared
+		# would otherwise come back with the game silently over.
+		"game_in_play": game_in_play,
 		# Read by OLDER builds, which want the advertised body under its old names.
 		# A current build prefers `arrivals` and only falls back to these (see
 		# restore), but writing them keeps a save readable by the build before this
@@ -1061,6 +1089,13 @@ func restore(data: Dictionary) -> void:
 	for handle in saved:
 		if _index_of(int(handle)) >= 0:
 			arrivals.append(int(handle))
+	# Whether a game is in play is its own fact now (see game_in_play). An OLDER
+	# save has no such key, and the best it can be asked is the question that build
+	# was already answering — did anything arrive and is it still standing. That is
+	# the pre-fix reading, which is right for every old save except one taken on a
+	# board the player had just cleared, and nothing in an old save tells those two
+	# apart.
+	game_in_play = bool(data.get("game_in_play", not arrivals.is_empty()))
 	# The ground, restored before anything else reads it. A row naming a tile or a
 	# unit the catalog no longer knows is DROPPED, for the same reason a missing
 	# enemy id drops a whole entry: a cell carrying something undescribable would
@@ -1588,8 +1623,14 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# stood there because the game it came with did.
 	_clear_arrivals()
 	if enemy == null:
+		# Nothing was chosen, so nothing is in play — and whatever WAS in play has
+		# just been superseded off the board above.
+		game_in_play = false
 		loop_changed.emit()
 		return 0
+	# From here the game is in play until it is handed in, whatever becomes of the
+	# bodies below (see game_in_play).
+	game_in_play = true
 	# A NEW COMBAT, so Undying pays up (§7.6): anything that died last game and had
 	# a revive left walks back on at the rightmost column, one phase further on.
 	# Before the game's own enemy, so the board it arrives onto is the real one.
@@ -1693,8 +1734,13 @@ func attempts() -> int:
 # Whether a lost run can be logged at all: there has to be a game in play to be
 # losing runs of, and a run still going to lose them in. Asked by the overworld so
 # the board can be ready to animate before the tick lands.
+#
+# THE BOARD HAS NO SAY IN THIS. It used to read `arrivals`, which made an empty
+# board an empty answer: clear the two bodies a game walked on with — a wand does
+# it in one zap — and the button went dead mid-game with nothing said. An empty
+# stack is a turn in which nobody acts (see log_attempt), not a refusal.
 func can_log_attempt() -> bool:
-	return not run_over and not arrivals.is_empty()
+	return not run_over and game_in_play
 
 # ONE LOST RUN at the game being played (§3): THE ENEMIES TAKE A TURN. That is
 # the whole cost — they swing and close in, which can kill, same as an enemy hit
@@ -1824,6 +1870,11 @@ func _loop_snapshot() -> Dictionary:
 	return {
 		"stack": bodies,
 		"arrivals": arrivals.duplicate(),
+		# Carried for completeness rather than because a turn can change it: a turn
+		# never hands a game in. Left out, an undo would still restore the right
+		# value; kept in, the snapshot is the whole of the game-in-play state and
+		# nothing has to remember which half of it a turn is allowed to touch.
+		"game_in_play": game_in_play,
 		"tiles": tiles.duplicate(true),
 		"units": units.duplicate(true),
 		"drops": drops.duplicate(true),
@@ -1877,6 +1928,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	for entry in snap.get("stack", []):
 		stack.append((entry as Dictionary).duplicate(true))
 	arrivals = (snap.get("arrivals", []) as Array).duplicate()
+	game_in_play = bool(snap.get("game_in_play", game_in_play))
 	tiles = (snap.get("tiles", {}) as Dictionary).duplicate(true)
 	units = (snap.get("units", {}) as Dictionary).duplicate(true)
 	drops = (snap.get("drops", {}) as Dictionary).duplicate(true)
@@ -2185,8 +2237,11 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			_stagger(int(inst))
 	# The game is over, so whatever arrived with it is released: those bodies
 	# survived the game they spawned at, and are now ordinary followers that the
-	# NEXT game's Scramble may not touch.
+	# NEXT game's Scramble may not touch. The game itself stops being in play at
+	# the same beat — this is the hand-in, and escaping a game comes through here
+	# too (Overworld2.escape_game reports).
 	arrivals.clear()
+	game_in_play = false
 
 	# 2. THE EXTRA TURNS (§7.4). Reporting a game does not, by itself, move the
 	#    board: out in the wilds this loop runs zero times and the stack is exactly
@@ -3942,6 +3997,7 @@ func clear_amulet() -> void:
 	if run_over:
 		return
 	arrivals.clear()
+	game_in_play = false
 	loop_changed.emit()
 	_finish_run(true)
 
@@ -4218,7 +4274,13 @@ func stack_size() -> int:
 
 # Whether a game is in play with something still standing from it. Not a question
 # about ownership — see `arrivals` — just "did this game put anything on the board
-# and has it been reported yet".
+# and is it still there".
+#
+# ASK `game_in_play` INSTEAD if the question is whether a game is in play at all.
+# This one goes false the moment the last arrival leaves the board by any route
+# (a wand, a bomb, a goal ticked), which is a different and much earlier moment
+# than the report, and reading it as the game being over is the bug that killed
+# the "Lost a run" button.
 func has_arrivals() -> bool:
 	return not arrivals.is_empty()
 
