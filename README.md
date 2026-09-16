@@ -1599,6 +1599,25 @@ difference can flip. That never shows, because the unfiltered catalog is drawn
 from the baked file. Keep the two in step when either changes — the tests in
 `test/test_atlas_layout_builder.gd` assert the agreement.
 
+**Is the map still healthy after a batch of new games?**
+`tools/dump_map_health.gd` measures the run graph with the game's own code —
+`RunGraph.degree`, `hub_ids`, and `pick_amulet_and_starts` rolled a few hundred
+times — under both the ALL and OWNED filters, and prints the shape of what a
+player would be offered: how much of the catalog is on the map at all, how many
+games qualify as starts, which Amulets and which starts actually come up, and
+the spread of genres and route lengths across the cards.
+
+```bash
+MAP_HEALTH_ROLLS=200 godot --headless -s addons/gut/gut_cmdln.gd \
+    -gdir=res://tools -gprefix=dump_ -gselect=dump_map_health.gd -gexit
+```
+
+It reports rather than asserts, because "healthy" is a judgement about the
+catalog and not a property code can own: a genre that never wears a card and a
+start that wears one run in twelve are both legal outputs of the picker, and the
+number is the thing worth looking at. Adding connections moves it; a batch of
+games hung off one hub moves it a lot.
+
 ---
 
 ### Authoring an event
