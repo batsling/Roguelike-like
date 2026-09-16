@@ -6,11 +6,11 @@
 script = ExtResource("1_game")
 id = &"witchfire"
 display_name = "Witchfire"
-year = 2024
+year = 2023
 type = 0
-games_influenced = Array[StringName]([&"voin"])
-influence_sources = PackedStringArray("https://80.lv/articles/making-hack-and-slash-action-rpg-voin-as-solo-developer")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"deep_rock_galactic_rogue_core", &"voin"])
+influence_sources = PackedStringArray("https://www.gamereactor.eu/trading-rock-and-stone-for-rogue-and-like-deep-rock-galactic-rogue-core-interview-with-ghost-ship-games-1721543/", "https://80.lv/articles/making-hack-and-slash-action-rpg-voin-as-solo-developer")
+influence_relations = PackedStringArray("", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

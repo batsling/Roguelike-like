@@ -8,9 +8,9 @@ id = &"gunfire_reborn"
 display_name = "Gunfire Reborn"
 year = 2020
 type = 0
-games_influenced = Array[StringName]([&"brew", &"darkblade_ascent", &"roboquest", &"vellum", &"abyssus"])
-influence_sources = PackedStringArray("https://www.gamingfurever.com/news/editorials/brew-interview-with-ceo-of-snow-leaf-studios-isak-wahl#:~:text=JW%2C%20GF:%20What%20are%20some,us%20a%20lot%20of%20motivation.", "https://store.epicgames.com/en-US/news/darkblade-ascent-brings-the-roguelike-to-the-soulslike", "https://www.thecgview.com/p/roboquest-developer-interview", "https://rogueliker.com/vellum-inspirations/#:~:text=Vellum's%20Inspirations,chapter%20of%20the%20original%20series.", "https://steamcommunity.com/app/1721110/discussions/0/600775708393865281/")
-influence_relations = PackedStringArray("", "", "", "", "")
+games_influenced = Array[StringName]([&"abyssus", &"brew", &"darkblade_ascent", &"deep_rock_galactic_rogue_core", &"roboquest", &"vellum"])
+influence_sources = PackedStringArray("https://steamcommunity.com/app/1721110/discussions/0/600775708393865281/", "https://www.gamingfurever.com/news/editorials/brew-interview-with-ceo-of-snow-leaf-studios-isak-wahl#:~:text=JW%2C%20GF:%20What%20are%20some,us%20a%20lot%20of%20motivation.", "https://store.epicgames.com/en-US/news/darkblade-ascent-brings-the-roguelike-to-the-soulslike", "https://www.gamereactor.eu/trading-rock-and-stone-for-rogue-and-like-deep-rock-galactic-rogue-core-interview-with-ghost-ship-games-1721543/", "https://www.thecgview.com/p/roboquest-developer-interview", "https://rogueliker.com/vellum-inspirations/#:~:text=Vellum's%20Inspirations,chapter%20of%20the%20original%20series.")
+influence_relations = PackedStringArray("", "", "", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
