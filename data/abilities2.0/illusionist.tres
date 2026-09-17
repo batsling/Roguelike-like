@@ -10,4 +10,8 @@ kind = &"summoner"
 variables = "Amount, Enemy Type"
 params = PackedStringArray("amount", "enemy")
 description = "Will spend it's first turn Summoning X amount of Y Enemies and gives the Illusion Ability to Enemies Summoned"
+effect = "first_turn: summon_brood X Y illusion"
+triggers = {
+    &"first_turn": [{"op": &"summon_brood", "args": PackedStringArray("X", "Y", "illusion")}]
+}
 file = "Illusionist"

@@ -10,4 +10,8 @@ kind = &"attack"
 variables = ""
 params = PackedStringArray()
 description = "When this Enemy attacks and deals damage, it will give the player the Injury curse"
+effect = "hit: add_curse injury 1"
+triggers = {
+    &"hit": [{"op": &"add_curse", "args": PackedStringArray("injury", "1")}]
+}
 file = "Lacerator"

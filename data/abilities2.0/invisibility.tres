@@ -10,4 +10,8 @@ kind = &"buff"
 variables = ""
 params = PackedStringArray()
 description = "Spawns invisible to the player and will become visible again when it attacks"
+effect = "spawn: hide"
+triggers = {
+    &"spawn": [{"op": &"hide", "args": PackedStringArray()}]
+}
 file = "Invisibility"

@@ -896,6 +896,7 @@ func choose_start(index: int) -> void:
 		GameLoop2.choose_game(_chosen["enemy"],
 			GameLoop2.game_type_key(game), _current_tier())
 		_log_escort()
+		_remind_twitch_category(game)
 		var granted: int = GameLoop2.grant_selection_shields(game)
 		GameLog.add("%s — %s, one hit stopped each." % [
 			game.display_name, GameState.temp_shields_text(granted)],
@@ -1328,6 +1329,7 @@ func pick(index: int) -> void:
 	GameLoop2.choose_game(_chosen["enemy"],
 		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
 	_log_escort()
+	_remind_twitch_category(_chosen["game"])
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
@@ -1375,6 +1377,32 @@ func _log_escort() -> void:
 	var msg: String = "%s showed up too — it follows you until its goal is cleared." % escort.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
+
+# GO AND CHANGE YOUR TWITCH CATEGORY. Called at each of the same four places a
+# game is committed to, straight after `_log_escort`, because those are exactly
+# the moments the stream starts showing a game its category no longer names.
+#
+# This build's whole loop is leaving the program to go and play a REAL game (§1),
+# which makes a stale category a mistake with no symptom on this side of the
+# screen: the run looks right, the overlay is correct, and the only thing that is
+# wrong is the one thing the streamer cannot see from where they are sitting. It
+# goes unnoticed for as long as the game takes.
+#
+# A NOTIFICATION AND NOT A MODAL. It is a chore, not a decision — there is
+# nothing here to answer and nothing that should stop the run — so it takes the
+# same transient channel the escort does. The game's name IS the category to set
+# in the overwhelming majority of cases, so it is quoted rather than described.
+#
+# NOTHING HERE TALKS TO TWITCH. No token, no API, no network call; the program
+# never learns whether the category was changed. Saying it out loud at the one
+# moment it is wrong is the whole feature, and it is why this cannot get the
+# answer wrong or leave a credential on disk.
+func _remind_twitch_category(game: GameData) -> void:
+	if game == null or not Settings.twitch_reminder:
+		return
+	var msg: String = "📺  Switch your Twitch category to \"%s\"." % game.display_name
+	GameLog.add(msg, UITheme.ACCENT)
+	Notifications.notify(msg, UITheme.ACCENT)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. THE TICK COSTS A TURN OF THE BOARD — the enemies
@@ -3630,6 +3658,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	}
 	GameLoop2.choose_game(enemy, type_key, tier)
 	_log_escort()
+	_remind_twitch_category(game)
 	var granted: int = GameLoop2.grant_selection_shields(game)
 	GameLog.add("%s — %s, one hit stopped each." % [
 		game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
@@ -3771,6 +3800,7 @@ func _start_play_game(request: Dictionary) -> void:
 	}
 	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
 	_log_escort()
+	_remind_twitch_category(game)
 	GameLoop2.grant_selection_shields(game)
 	GameState.set_current_game(dest)
 	_dash_mode = false

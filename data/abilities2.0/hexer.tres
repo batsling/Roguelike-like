@@ -10,4 +10,8 @@ kind = &"attack"
 variables = "Amount"
 params = PackedStringArray("amount")
 description = "When this Enemy attacks and deals damage, it will give the player X amount of random curses"
+effect = "hit: add_curse random X"
+triggers = {
+    &"hit": [{"op": &"add_curse", "args": PackedStringArray("random", "X")}]
+}
 file = "Hexer"

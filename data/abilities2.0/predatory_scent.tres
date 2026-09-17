@@ -10,4 +10,8 @@ kind = &"movement"
 variables = ""
 params = PackedStringArray()
 description = "Will take an extra turn if the player doesn't complete a status goal if they have one"
+effect = "passive: extra_turn_on_unmet_status_goal"
+triggers = {
+    &"passive": [{"op": &"extra_turn_on_unmet_status_goal", "args": PackedStringArray()}]
+}
 file = "PredatoryScent"

@@ -10,4 +10,8 @@ kind = &"attack"
 variables = "Amount, Status Type"
 params = PackedStringArray("amount", "status")
 description = "When this Enemy attacks and deals damage, it will Apply X amount of Y Status to the Player"
+effect = "hit: apply_status Y X"
+triggers = {
+    &"hit": [{"op": &"apply_status", "args": PackedStringArray("Y", "X")}]
+}
 file = "Infliction"

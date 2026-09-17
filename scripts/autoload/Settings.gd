@@ -156,6 +156,18 @@ var dev_mode: bool = true
 # toggle rather than a fact so a player who never streams can stop the writes.
 var obs_overlay: bool = true
 
+# THE TWITCH CATEGORY REMINDER. Every game on the graph is a REAL game you go and
+# play (§1), so committing to one is also the moment the stream starts showing
+# something its category no longer names — and a category left on the last game is
+# the kind of mistake nobody notices from the inside, for an hour.
+#
+# It is a REMINDER AND NOTHING ELSE. There is no Twitch API here, no token to
+# store and no network call to make: the game does not know whether the category
+# was changed, and saying it out loud at the one moment it is wrong is the whole
+# feature. Default ON with the rest of the stream-first build, and off in one
+# click for anyone not streaming.
+var twitch_reminder: bool = true
+
 # Emitted when `menu_falling_art` is toggled, so the menu behind the Settings
 # modal can start or stop without being rebuilt. Deliberately NARROW rather than a
 # general `changed`: this file has no other signal, and one called `changed` that
@@ -332,6 +344,12 @@ func set_obs_overlay(value: bool) -> void:
 	save_settings()
 	ObsCompanion.set_enabled(value)
 
+func set_twitch_reminder(value: bool) -> void:
+	if value == twitch_reminder:
+		return
+	twitch_reminder = value
+	save_settings()
+
 func set_menu_falling_art(value: bool) -> void:
 	if value == menu_falling_art:
 		return
@@ -387,6 +405,7 @@ func load_settings() -> void:
 		return
 	dev_mode = bool(cfg.get_value("dev", "dev_mode", true))
 	obs_overlay = bool(cfg.get_value("stream", "obs_overlay", true))
+	twitch_reminder = bool(cfg.get_value("stream", "twitch_reminder", true))
 	menu_falling_art = bool(cfg.get_value("display", "menu_falling_art", true))
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
@@ -404,6 +423,7 @@ func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("dev", "dev_mode", dev_mode)
 	cfg.set_value("stream", "obs_overlay", obs_overlay)
+	cfg.set_value("stream", "twitch_reminder", twitch_reminder)
 	cfg.set_value("display", "menu_falling_art", menu_falling_art)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.set_value("display", "windowed_size", windowed_size)

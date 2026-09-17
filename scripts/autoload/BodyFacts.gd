@@ -51,6 +51,82 @@ static func entry_ability_amount(entry: Dictionary, id: StringName, fallback: in
 static func entry_ability_arg(entry: Dictionary, id: StringName) -> StringName:
 	return StringName(entry_ability_row(entry, id).get("arg", &""))
 
+# --- the sheet's `Effect` column, read off a body ---------------------------
+#
+# Everything below turns "what does this body do at this point in the turn" into
+# a question about the AUTHORED effect rather than about a hardcoded id. See the
+# note at the top of AbilityData.gd for why that is the seam.
+
+# Resolve one op's arguments against the body carrying it. `X` is the ability's
+# numeric slot and `Y` its named one, exactly as the sheet's Description column
+# spells them; anything else is a literal the effect wrote itself.
+#
+# THE SUBSTITUTION IS PER BODY, NOT PER ABILITY, which is the whole reason it is
+# here and not in AbilityData: "Infliction (2, Burn)" and "Infliction (1, Stun)"
+# are ONE authored row with two sets of arguments, so the catalogue cannot know
+# the answer and the body always does.
+static func resolve_op_args(entry: Dictionary, id: StringName,
+		args: PackedStringArray) -> Array:
+	var row: Dictionary = entry_ability_row(entry, id)
+	var out: Array = []
+	for a in args:
+		match a:
+			"X":
+				out.append(int(row.get("amount", 0)))
+			"Y":
+				out.append(StringName(row.get("arg", &"")))
+			_:
+				out.append(a)
+	return out
+
+# Every op this body runs at `when`, as [{id, op, args}] with the args already
+# resolved. Ordered by the body's own ability list, so a body carrying two
+# abilities that both fire here runs them in the order the enemy row wrote them.
+static func ops_at(entry: Dictionary, when: StringName) -> Array:
+	var out: Array = []
+	for row in entry_abilities(entry):
+		var id: StringName = StringName(row.get("id", &""))
+		var ability: AbilityData = Data.get_ability(id)
+		if ability == null:
+			continue
+		for op in ability.ops_on(when):
+			var spec: Dictionary = op
+			out.append({
+				"id": id,
+				"op": StringName(spec.get("op", &"")),
+				"args": resolve_op_args(entry, id,
+					spec.get("args", PackedStringArray())),
+			})
+	return out
+
+# Does this body declare `op` anywhere, at any trigger? This is how the PASSIVES
+# are asked — "is this body Immobile" is "does anything it carries declare
+# `no_move`" — so a second ability that also stops a body moving needs a sheet
+# row and nothing else.
+static func has_op(entry: Dictionary, op: StringName) -> bool:
+	return not op_row(entry, op).is_empty()
+
+# The first {id, op, args} on this body declaring `op`, or {}. The passives that
+# carry an argument (Ranged's reach, Bolster's aura) read it off this.
+static func op_row(entry: Dictionary, op: StringName) -> Dictionary:
+	for row in entry_abilities(entry):
+		var id: StringName = StringName(row.get("id", &""))
+		var ability: AbilityData = Data.get_ability(id)
+		if ability == null:
+			continue
+		for when in ability.triggers:
+			for spec in (ability.triggers[when] as Array):
+				var entry_spec: Dictionary = spec
+				if StringName(entry_spec.get("op", &"")) != op:
+					continue
+				return {
+					"id": id,
+					"op": op,
+					"args": resolve_op_args(entry, id,
+						entry_spec.get("args", PackedStringArray())),
+				}
+	return {}
+
 # Whether anything about this body is worth the board's ⚠ mark: it has an ability.
 # One question, so the badge, the hover and the card cannot disagree.
 static func entry_has_abilities(entry: Dictionary) -> bool:
@@ -79,7 +155,11 @@ static func ability_lines(entry: Dictionary) -> Array:
 # and that is the whole roster of resistances today — but it is asked as a general
 # question so the next one is a row in a match rather than a new call site.
 static func resists_status(entry: Dictionary, status_id: StringName) -> bool:
-	return status_id == &"burn" and entry_has_ability(entry, &"fireproof")
+	var row: Dictionary = op_row(entry, &"immune")
+	if row.is_empty():
+		return false
+	var args: Array = row.get("args", [])
+	return not args.is_empty() and StringName(args[0]) == status_id
 
 # --- tags -------------------------------------------------------------------
 

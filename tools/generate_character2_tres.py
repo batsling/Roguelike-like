@@ -150,6 +150,19 @@ def parse_reward(raw):
     loot = _find_amt(s, r"Loot")
     if loot:
         return stats, "loot", loot, 0
+    # A CARD, drawn off the reward pool. `CharacterData.level_up_reward_type`
+    # has documented &"card" all along and nothing here could ever produce it —
+    # so the Erratic Deck's "Gain +1 Random Card" parsed as no reward at all and
+    # a regeneration wrote her `level_up_stats` back to {} with `reward_type`
+    # &"none", which is Rodney's "+1 Loot" bug over again (see the note above it).
+    #
+    # "Random" is the adjective a full-pool draw is written with, not a second
+    # reward: matched here so "+1 Random Card" and a bare "+1 Card" are the same
+    # thing. A card drawn from ONE class's pool is `level_up_card_tag`, which no
+    # row asks for yet and which this would need a column to say.
+    card = _find_amt(s, r"(?:Random\s+)?Card")
+    if card:
+        return stats, "card", card, 0
     random_chest = _find_amt(s, r"Random Sized Chest")
     if random_chest:
         return stats, "random_sized_chest", random_chest, 0

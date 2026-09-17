@@ -35,8 +35,16 @@ func test_harness_builds_and_opens_a_run() -> void:
 	assert_false(GameLoop2.has_arrivals(), "no game chosen yet")
 
 func test_pick_spawns_enemy_and_beat_resolves() -> void:
-	_ui.restart(&"ironclad")           # Health 10, no bombs
-	assert_eq(GameState.max_hp, 10)
+	_ui.restart(&"ironclad")           # the roster's tankiest, and no bombs
+	# THE ARITHMETIC BELOW IS RELATIVE TO WHATEVER HE STARTS AT. It used to be
+	# written against a literal 10, which is a number the sheet tunes — a balance
+	# pass took him to 8 and four assertions in this one test went red, none of
+	# them about anything this test is for. What matters here is that a full bar
+	# stays full while a body closes and drops by exactly the body's damage when
+	# it arrives, so the bar's height is read once and the rest is written in
+	# terms of it.
+	var full: int = GameState.max_hp
+	assert_eq(GameState.hp, full, "Ironclad opens on a full bar")
 	_ui.pick(&"action")                # rolls an action / low enemy
 	assert_true(GameLoop2.has_arrivals())
 	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
@@ -58,7 +66,7 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	var dmg: int = enemy.damage
 	_ui.beat(false)                    # fails goal -> spawn column, one-game grace
 	assert_eq(GameLoop2.stack_size(), 1)
-	assert_eq(GameState.hp, 10, "grace: no hit the game it stacked")
+	assert_eq(GameState.hp, full, "grace: no hit the game it stacked")
 	# It closes one column per TURN of the board and only strikes once it reaches
 	# the front (§grid). Marched with turns rather than reports: out in the wilds a
 	# reported game hands the board nothing (§7.4), so the turns a lost run buys
@@ -70,9 +78,9 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 		if int(GameLoop2.stack[0].get("col", 1)) <= 1:
 			break
 		GameLoop2.attempt_turn()
-	assert_eq(GameState.hp, 10, "no hit while closing in")
+	assert_eq(GameState.hp, full, "no hit while closing in")
 	GameLoop2.attempt_turn()           # the front-line enemy now hits for dmg
-	assert_eq(GameState.hp, 10 - dmg, "the front-line enemy hits for its damage")
+	assert_eq(GameState.hp, full - dmg, "the front-line enemy hits for its damage")
 	assert_eq(GameLoop2.stack_size(), 1)
 
 func test_pick_gated_until_current_resolved() -> void:

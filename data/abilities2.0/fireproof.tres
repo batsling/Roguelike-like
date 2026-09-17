@@ -10,4 +10,8 @@ kind = &"resistance"
 variables = ""
 params = PackedStringArray()
 description = "Cannot be Burned"
+effect = "passive: immune burn"
+triggers = {
+    &"passive": [{"op": &"immune", "args": PackedStringArray("burn")}]
+}
 file = "Fireproof"

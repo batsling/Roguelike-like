@@ -10,4 +10,8 @@ kind = &"summoner"
 variables = "Amount, Enemy Type"
 params = PackedStringArray("amount", "enemy")
 description = "Will not move, but each turn will Summon X number of Y type enemies in the row in front of them in that lane if there is space"
+effect = "turn: summon_lane X Y"
+triggers = {
+    &"turn": [{"op": &"summon_lane", "args": PackedStringArray("X", "Y")}]
+}
 file = "NestedSpawner"

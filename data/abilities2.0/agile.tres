@@ -10,4 +10,8 @@ kind = &"movement"
 variables = ""
 params = PackedStringArray()
 description = "Can move diagonally if necessary"
+effect = "passive: move_diagonal"
+triggers = {
+    &"passive": [{"op": &"move_diagonal", "args": PackedStringArray()}]
+}
 file = "Agile"

@@ -10,4 +10,8 @@ kind = &"death"
 variables = "Tile Effect"
 params = PackedStringArray("tile")
 description = "On Death, will Add X Tile Effect to the Tile it died on"
+effect = "death: apply_tile Y"
+triggers = {
+    &"death": [{"op": &"apply_tile", "args": PackedStringArray("Y")}]
+}
 file = "Aftermath"
