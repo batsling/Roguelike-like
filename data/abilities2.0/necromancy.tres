@@ -10,4 +10,8 @@ kind = &"summoner"
 variables = "Amount"
 params = PackedStringArray("amount")
 description = "Will not move, but each turn will Summon X Enemies that was previously defeated in the row in front of them in that lane if there is space and gives the Undead type to Enemies Summoned"
+effect = "turn: summon_lane X defeated undead"
+triggers = {
+    &"turn": [{"op": &"summon_lane", "args": PackedStringArray("X", "defeated", "undead")}]
+}
 file = "Necromancy"

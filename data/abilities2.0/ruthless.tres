@@ -10,4 +10,8 @@ kind = &"attack"
 variables = ""
 params = PackedStringArray()
 description = "Will attack enemies in front of it to make space to hit the player"
+effect = "passive: strike_through"
+triggers = {
+    &"passive": [{"op": &"strike_through", "args": PackedStringArray()}]
+}
 file = "Ruthless"

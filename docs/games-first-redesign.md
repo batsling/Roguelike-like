@@ -1678,20 +1678,47 @@ swing, what it spends a turn on instead of you, and what it leaves behind when i
 dies. They are authored in the **`abilities`** sheet and hung on enemies through
 the `Ability` column of `enemies` / `bosses`.
 
-**The catalogue is data; the behaviour is code.** This is the one place in the
-project where those come apart, and deliberately. `data/abilities2.0/*.tres`
-(`AbilityData`) owns each ability's **name, type, argument shape and sentence** —
-generated from the sheet like everything else, so the wording a player reads is
-upstream content. What an ability *does* is written once in `GameLoop2`, keyed by
-id, because an ability reaches into the turn resolver, the mover, the spawner and
-the death path at once, which is more than the per-row effect string `tiles2.0`
-and `units2.0` use could express.
+**The sheet says WHEN and WHAT; the loop says HOW.** `data/abilities2.0/*.tres`
+(`AbilityData`) owns each ability's name, type, argument shape and sentence, and
+its **`Effect`** column — the same `trigger: op args` DSL `tiles2.0` and
+`units2.0` use — parsed into `AbilityData.triggers`. `GameLoop2` **dispatches on
+that**, not on the id.
 
-The consequence is a rule with teeth: **a row added to the sheet does nothing on
-the board until `GameLoop2` learns the id**, and
-`test_enemy_abilities.gd::test_every_authored_ability_is_one_the_loop_implements`
-fails the suite rather than letting it ship as a promise on an enemy card that
-the board never keeps. The reverse assertion is there too.
+It did not always, and the old arrangement is worth recording because it is what
+this replaced: the `Effect` column was empty in all 31 rows and every ability was
+a hardcoded branch keyed by id. That made abilities the one content type whose
+behaviour was not authored upstream — adding a row to the sheet gave you a name,
+a type and a sentence, and nothing happened on the board until someone edited a
+6869-line GDScript file, while every other system here (tiles, units, pills,
+scrolls, potions, items) reads its behaviour out of its own `Effect` column.
+
+The **triggers** are the points a turn actually has:
+
+| trigger | when |
+|---|---|
+| `spawn` | true from the moment the body lands |
+| `first_turn` | spends only its FIRST turn on this |
+| `turn` | spends EVERY turn on this |
+| `hit` | rides a swing that LANDS — a shield eats the rider with the damage |
+| `death` | fires as the body comes off the board |
+| `passive` | a rule the resolver QUERIES rather than an event it runs |
+
+**`X` and `Y` are the row's own arguments**, spelled as the `Description` column
+spells them: `X` is the numeric slot and `Y` the named one. Writing them as
+tokens is what keeps one row good for every enemy carrying the ability —
+`Infliction (2, Burn)` and `Infliction (1, Stun)` are the same effect with
+different arguments, and the substitution happens at the **body**
+(`BodyFacts.resolve_op_args`) because the catalogue cannot know the answer.
+
+**The op vocabulary is the seam.** An ability built out of ops that already
+exist is a sheet row and nothing else — author `hit: apply_status burn 2` and it
+works. One that needs a new primitive adds the op to `GameLoop2.ABILITY_OPS`
+with its implementation and to the generator's `OPS`, which is a much smaller and
+better-marked surface than "somewhere in the turn resolver". The generator
+**refuses to write** a row naming an op outside its list, and
+`test_enemy_abilities.gd` checks the two lists agree from the engine's side too,
+so an unimplemented op is caught at generation time rather than shipping as a
+silent no-op while the card goes on promising it.
 
 **The `Ability` column's grammar** is a comma list of names, each optionally
 carrying bracketed arguments: `Ranged (2), Fireproof, Infliction (1, Burn)` is

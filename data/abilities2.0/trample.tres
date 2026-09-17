@@ -10,4 +10,8 @@ kind = &"movement"
 variables = ""
 params = PackedStringArray()
 description = "When moving forward, it wil push other units to the side or behind it to go forward"
+effect = "passive: push_through"
+triggers = {
+    &"passive": [{"op": &"push_through", "args": PackedStringArray()}]
+}
 file = "Trample"

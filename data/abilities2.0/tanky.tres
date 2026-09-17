@@ -10,4 +10,8 @@ kind = &"buff"
 variables = "Stacks"
 params = PackedStringArray("amount")
 description = "Spawns with X More Max Health"
+effect = "spawn: gain_max_health X"
+triggers = {
+    &"spawn": [{"op": &"gain_max_health", "args": PackedStringArray("X")}]
+}
 file = "Tanky"

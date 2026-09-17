@@ -10,4 +10,8 @@ kind = &"death"
 variables = "Amount, Enemy Type"
 params = PackedStringArray("amount", "enemy")
 description = "On Death, Splits into X number of Y type Enemies"
+effect = "death: summon_here X Y"
+triggers = {
+    &"death": [{"op": &"summon_here", "args": PackedStringArray("X", "Y")}]
+}
 file = "Split"

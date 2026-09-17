@@ -10,4 +10,8 @@ kind = &"attack"
 variables = "Amount"
 params = PackedStringArray("amount")
 description = "When this Enemy attacks and deals damage, it will Destroy X amount of random obtained Loot"
+effect = "hit: destroy_loot X"
+triggers = {
+    &"hit": [{"op": &"destroy_loot", "args": PackedStringArray("X")}]
+}
 file = "Degradation"

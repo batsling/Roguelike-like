@@ -10,4 +10,8 @@ kind = &"attack"
 variables = "Amount, Stats"
 params = PackedStringArray("amount", "stat")
 description = "When this Enemy attacks and deals damage, decrease by X the player's Y(Max Health, Luck, Scramble, Bash, Dash, Transmute)"
+effect = "hit: drain_stat Y X"
+triggers = {
+    &"hit": [{"op": &"drain_stat", "args": PackedStringArray("Y", "X")}]
+}
 file = "Drain"

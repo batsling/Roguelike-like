@@ -247,6 +247,11 @@ var game_in_play: bool = false
 #   "stolen"      what Theft has taken and still owes back
 #   "fleeing"     Theft has its haul and is running for the back edge
 #   "tags"        tags granted at runtime (Necromancy's `undead`)
+#   "corpse"      Restless Remains left this body lying where it fell: it neither
+#                 moves nor swings, and it gets back up when the game is completed
+#   "corpse_revive" WHEN it gets back up ("game_end"), off the ability's own
+#                 `leave_corpse` op, so a later corpse on another clock does not
+#                 need a second flag
 var stack: Array = []
 
 # THE LIST ABOVE, AS SOMETHING THE GAME CAN CHECK.
@@ -285,6 +290,7 @@ const BODY_KEYS := {
 	"timed_statuses": true, "abilities": true, "turns": true, "phase": true,
 	"revives": true, "fades": true, "hidden": true, "illusionist": true,
 	"stolen": true, "fleeing": true, "tags": true,
+	"corpse": true, "corpse_revive": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -1229,6 +1235,11 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"phase": int(entry.get("phase", 0)),
 		"revives": int(entry.get("revives", 0)),
 		"fades": int(entry.get("fades", -1)),
+		# Lying on the board, and when it gets back up. Written rather than
+		# re-derived: a corpse is a body whose health was deliberately knocked to
+		# 1, and a load that rebuilt it from the sheet would stand it up whole.
+		"corpse": bool(entry.get("corpse", false)),
+		"corpse_revive": String(entry.get("corpse_revive", "")),
 		"hidden": bool(entry.get("hidden", false)),
 		"illusionist": int(entry.get("illusionist", 0)),
 		# What a thief is holding, so a reload still owes it back (§7.6). The rows
@@ -1306,6 +1317,10 @@ func _deserialize_entry(raw) -> Dictionary:
 		"phase": int(d.get("phase", 0)),
 		"revives": int(d.get("revives", 0)),
 		"fades": int(d.get("fades", -1)),
+		# A save written before Restless Remains has neither key, and `false` /
+		# "" is the right answer there: nothing in it was ever lying down.
+		"corpse": bool(d.get("corpse", false)),
+		"corpse_revive": StringName(d.get("corpse_revive", "")),
 		"hidden": bool(d.get("hidden", false)),
 		"illusionist": int(d.get("illusionist", 0)),
 		"stolen": (d.get("stolen", []) as Array).duplicate(true),
@@ -1805,6 +1820,9 @@ func attempt_turn() -> Dictionary:
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"turns": ATTEMPT_TURNS, "attempt": true,
 		"intents": [], "riders": [], "thefts": [], "escapes": [], "faded": [],
+		# …and `risen` is a Restless Remains corpse getting back up, which the
+		# player must not have to infer from the board having changed.
+		"risen": [],
 	}
 	# WHOEVER YOU HAVE ALREADY ANSWERED FOR IS STAGGERED (§2.1), and a staggered
 	# body neither swings nor walks. "Its goal was met this game" is a fact about
@@ -2366,6 +2384,12 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#     graveyard; it pays nothing, because nobody did its goal.
 	res["faded"] = _tick_fading()
 
+	#    AND WHAT WAS LYING ON THE BOARD GETS BACK UP. The same beat as the fading
+	#    clock and its exact opposite: a Fading body's evening is over, and a
+	#    Restless Remains corpse's is just beginning. It rises AFTER the fade tick
+	#    so a corpse cannot be raised and expired in the same breath.
+	res["risen"] = _raise_corpses()
+
 	# 5. AND THE BORROWED STATUSES RUN OUT (docs/potions-design.md §5.1), in the
 	#    same breath and for the same reason: a potion's buff is measured in games
 	#    too. AFTER the tiles and after step 3, so a status that expires this game
@@ -2479,7 +2503,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 			# RUTHLESS (§7.6): it cannot reach you, so it goes through whatever is
 			# in the way. Only when something IS in the way — otherwise it walks
 			# like anything else.
-			if entry_has_ability(entry, &"ruthless") and _ruthless_strike(entry, res):
+			if entry_has_op(entry, &"strike_through") and _ruthless_strike(entry, res):
 				spent[inst] = true
 			continue
 		# It swung, so an invisible body has just given itself away (§7.6).
@@ -5717,7 +5741,7 @@ func _advance_stack(spent: Dictionary = {}) -> void:
 			continue
 		# IMMOBILE (§7.6) — "cannot Move". A Host is a turret: it never closes, and
 		# it is dangerous anyway because it is also Ranged down the whole lane.
-		if entry_has_ability(entry, &"immobile"):
+		if entry_has_op(entry, &"no_move") or bool(entry.get("corpse", false)):
 			continue
 		# A body earlier in this same pass may have been taken off the board by
 		# something it walked into — a Landmine going off under it, or the blast
@@ -5762,7 +5786,7 @@ func _walk_one(entry: Dictionary, row: int, col: int) -> bool:
 	# and it shoves in the same three directions that verb offers: aside into
 	# either lane, or back the way it came. A body with nowhere to be shoved to
 	# stays, and the trampler stops behind it like anything else.
-	if entry_has_ability(entry, &"trample"):
+	if entry_has_op(entry, &"push_through"):
 		var shoved: bool = false
 		for blocker in _blockers_at(enemy, row, col - 1, inst):
 			if _shove_aside(blocker):
@@ -5776,7 +5800,7 @@ func _walk_one(entry: Dictionary, row: int, col: int) -> bool:
 	# something and slip back out again (§7.6). It is the one exception to §7.3's
 	# rule that enemies never change lanes, and it is deliberately the smallest one
 	# — a single diagonal, still forward, still one cell.
-	if entry_has_ability(entry, &"agile"):
+	if entry_has_op(entry, &"move_diagonal"):
 		for dr in _agile_rows(entry):
 			if fits_at(enemy, row + dr, col - 1, inst):
 				return _move_entry(entry, row + dr, col - 1)
@@ -5883,6 +5907,39 @@ const ABILITY_IDS := [
 	&"immobile", &"trample", &"agile", &"predatory_scent",
 	# death
 	&"aftermath", &"split", &"undying", &"fading", &"illusion",
+	&"restless_remains",
+]
+
+# EVERY OP THE SHEET MAY AUTHOR, and this list is the contract between the two.
+#
+# `tools/generate_ability_tres.py` holds the same list as `OPS` and REFUSES to
+# write a row naming anything outside it, so an ability cannot ship promising
+# something the turn resolver never does. `test_enemy_abilities.gd` checks the
+# two agree from this side as well, because a drift either way is invisible on
+# the board: the ability simply does nothing, and its card goes on saying it
+# does.
+#
+# THIS IS THE SEAM TO ADD TO. An ability built out of ops that are already here
+# is a sheet row and nothing else — no GDScript at all. One that needs a new
+# primitive adds the op here with its implementation and to the generator's list,
+# which is a much smaller and better-marked surface than "somewhere in the turn
+# resolver". Grouped by the trigger each is authored under.
+const ABILITY_OPS := [
+	# spawn — true from the moment the body lands
+	&"gain_status", &"gain_max_health", &"hide", &"set_revives", &"set_fades",
+	# intents and summoners — spend the turn
+	&"idle", &"summon_brood", &"summon_adjacent", &"summon_lane",
+	&"buff_nearest_ally",
+	# attack riders — every one needs the hit to LAND
+	&"devour", &"destroy_loot", &"add_curse", &"apply_status", &"drain_stat",
+	&"steal",
+	# death
+	&"apply_tile", &"summon_here", &"revive_next_game", &"dies_with_illusionist",
+	&"leave_corpse",
+	# passives — rules this file QUERIES rather than events it runs
+	&"reach", &"strike_through", &"no_move", &"push_through", &"move_diagonal",
+	&"immune", &"aura_status", &"flee_when_carrying",
+	&"extra_turn_on_unmet_status_goal",
 ]
 
 # --- reading a body's abilities -------------------------------------------
@@ -5908,6 +5965,26 @@ func entry_ability_amount(entry: Dictionary, id: StringName, fallback: int = 0) 
 
 func entry_ability_arg(entry: Dictionary, id: StringName) -> StringName:
 	return BodyFacts.entry_ability_arg(entry, id)
+
+# The sheet's Effect column, read off a body — see BodyFacts for what each does.
+func entry_ops_at(entry: Dictionary, when: StringName) -> Array:
+	return BodyFacts.ops_at(entry, when)
+
+func entry_has_op(entry: Dictionary, op: StringName) -> bool:
+	return BodyFacts.has_op(entry, op)
+
+func entry_op_row(entry: Dictionary, op: StringName) -> Dictionary:
+	return BodyFacts.op_row(entry, op)
+
+# The numeric argument of the first op named `op` on this body, or `fallback`.
+# The passives that carry a number (Ranged's reach) read it through here so a
+# call site does not have to unpack the row itself.
+func entry_op_amount(entry: Dictionary, op: StringName, fallback: int = 0) -> int:
+	var row: Dictionary = BodyFacts.op_row(entry, op)
+	if row.is_empty():
+		return fallback
+	var args: Array = row.get("args", [])
+	return int(args[0]) if not args.is_empty() else fallback
 
 # Hang an ability on a body that was not authored with one — an Illusionist
 # handing `illusion` to what it summons is the only user today. Refuses a
@@ -5989,13 +6066,17 @@ func _bolster_auras(exclude: int) -> Dictionary:
 	for entry in stack:
 		if int(entry.get("instance", 0)) == exclude:
 			continue          # "all OTHER enemies" — a Bolsterer never buffs itself
-		var row: Dictionary = entry_ability_row(entry, &"bolster")
+		# `aura_status Y X` — the status it hands out, and how many stacks of it.
+		var row: Dictionary = entry_op_row(entry, &"aura_status")
 		if row.is_empty():
 			continue
-		var id: StringName = StringName(row.get("arg", &""))
+		var args: Array = row.get("args", [])
+		if args.size() < 2:
+			continue
+		var id: StringName = StringName(args[0])
 		if id == &"":
 			continue
-		out[id] = int(out.get(id, 0)) + maxi(1, int(row.get("amount", 1)))
+		out[id] = int(out.get(id, 0)) + maxi(1, int(args[1]))
 	return out
 
 # --- FIREPROOF -------------------------------------------------------------
@@ -6014,15 +6095,23 @@ func resists_status(entry: Dictionary, status_id: StringName) -> bool:
 # the whole lane and are dangerous from the moment they spawn. Nothing has to be
 # closed with them; they are answered by Push, Stun, a bomb, or their goal.
 func strike_range(entry: Dictionary) -> int:
-	if not entry_has_ability(entry, &"ranged"):
+	var row: Dictionary = entry_op_row(entry, &"reach")
+	if row.is_empty():
 		return 0
-	var gap: int = entry_ability_amount(entry, &"ranged", 0)
+	var args: Array = row.get("args", [])
+	var gap: int = int(args[0]) if not args.is_empty() else 0
 	return grid_cols() if gap <= 0 else gap
 
 # Can this body swing at the player right now? Its leading edge within its reach
 # of the front column, and standing on the board at all.
 func can_strike(entry: Dictionary) -> bool:
 	if int(entry.get("col", offgrid_col())) > grid_cols():
+		return false
+	# A CORPSE DOES NOT SWING. It is lying on the square it fell on waiting for the
+	# game to end, and the whole point of the thing is that it is a body you may
+	# either finish off or walk past — a corpse that still hit you would be Undying
+	# with extra steps (see `_leave_corpse`).
+	if bool(entry.get("corpse", false)):
 		return false
 	return _front_col(entry) <= 1 + strike_range(entry)
 
@@ -6050,7 +6139,7 @@ func turns_until_strike(entry: Dictionary) -> int:
 	var short: int = _front_col(entry) - 1 - strike_range(entry)
 	if short <= 0:
 		return 0
-	if entry_has_ability(entry, &"immobile"):
+	if entry_has_op(entry, &"no_move") or bool(entry.get("corpse", false)):
 		return -1
 	return int(ceil(float(short) / float(1 + enemy_tile_move(entry))))
 
@@ -6142,68 +6231,101 @@ func _take_intent(entry: Dictionary, res: Dictionary, taken: int) -> bool:
 		_flee(entry, res)
 		return true
 
-	# DEFENSIVE STANCE — "will Gain X Dexterity on its first turn instead of
-	# moving or attacking".
-	if taken == 0 and entry_has_ability(entry, &"defensive_stance"):
-		_add_status_to(entry, &"dexterity",
-			maxi(1, entry_ability_amount(entry, &"defensive_stance", 1)))
-		_note(res, "intents", {"instance": inst, "ability": &"defensive_stance"})
-		return true
+	# A CORPSE INTENDS NOTHING. It keeps its ability list so that the body which
+	# gets back up is the body that went down (see `_leave_corpse`) — which means
+	# a felled Illusionist would otherwise go on summoning from the floor.
+	if bool(entry.get("corpse", false)):
+		return false
 
-	# RITUAL — "will not move or attack on its first turn, but every turn after
-	# that it Gains +1 Strength". Only the FIRST turn is spent; from then on the
-	# +1 rides a turn it also walks or swings on.
+	# THE INTENTS, off the sheet. `first_turn:` ops are offered only while the body
+	# has taken none (`taken == 0`) and `turn:` ops on every turn, which is exactly
+	# the distinction the two triggers were named for.
 	#
-	# The other reading — every turn spent stacking — makes the Strength pointless,
-	# because a body that never attacks never spends it. What the ability is FOR is
-	# a swing that gets worse the longer you leave it, and that needs the swing.
-	if entry_has_ability(entry, &"ritual"):
-		if taken == 0:
-			_note(res, "intents", {"instance": inst, "ability": &"ritual"})
+	# RETURNING TRUE MEANS THE TURN IS SPENT. Most intents do — that is what makes
+	# them intents — but Ritual's `turn: gain_status strength 1` and a Melee Ally
+	# Buff with nobody to walk to deliberately do not, so each op below says so for
+	# itself rather than the loop assuming it.
+	for entry_op in entry_ops_at(entry, &"first_turn"):
+		if taken != 0:
+			break                  # the whole trigger is about the first turn only
+		var spec: Dictionary = entry_op
+		if _run_intent_op(entry, res, inst, StringName(spec.get("id", &"")),
+				StringName(spec.get("op", &"")), spec.get("args", [])):
 			return true
-		_add_status_to(entry, &"strength", 1)
-		_note(res, "intents", {"instance": inst, "ability": &"ritual"})
-
-	# ILLUSIONIST — "will spend its first turn Summoning X of Y Enemies and gives
-	# the Illusion Ability to Enemies Summoned". The copies are ordinary bodies
-	# with ordinary goals and ordinary payouts; what they are not is permanent.
-	if taken == 0 and entry_has_ability(entry, &"illusionist"):
-		_summon_illusions(entry, res)
-		return true
-
-	# ENTRY SUMMON — "instead of moving or attacking on its first turn, it will
-	# Summon X amount of Y Enemies to a random adjacent tile". The Illusionist's
-	# shape (a one-turn intent, `taken == 0`) with the spawners' payload, and it is
-	# neither of them: a Nested Spawner is a wall that prints bodies forever, and
-	# this one pays its whole cost up front and then walks at you like anything
-	# else. What it buys is the ESCORT — a Gatekeeper is a body you have to reach
-	# through the skeletons it opened with.
-	#
-	# ADJACENT, not the row in front: `_brood_cell` is the spawners' single square
-	# and this one is authored to scatter, so a full lane in front of it does not
-	# stop it dead the way it stops a Nested Spawner.
-	if taken == 0 and entry_has_ability(entry, &"entry_summon"):
-		_summon_escort(entry, res)
-		return true
-
-	# NECROMANCY and NESTED SPAWNER — "will not move, but each turn will Summon…".
-	# Never anything else, ever: these two are walls that print bodies, and the
-	# whole reason they are worth walking up to is that they cannot walk to you.
-	if entry_has_ability(entry, &"necromancy"):
-		_raise_dead(entry, res)
-		return true
-	if entry_has_ability(entry, &"nested_spawner"):
-		_spawn_brood(entry, res)
-		return true
-
-	# MELEE ALLY BUFF — "if there is an Enemy present, this Enemy will use its turn
-	# and movement to move towards the nearest Enemy and if in contact, will [give]
-	# X of Y Status to them". Alone on the board it has nothing to do, so it falls
-	# through and behaves like an ordinary body.
-	if entry_has_ability(entry, &"melee_ally_buff"):
-		if _buff_nearest_ally(entry, res):
+	for entry_op2 in entry_ops_at(entry, &"turn"):
+		var spec2: Dictionary = entry_op2
+		if _run_intent_op(entry, res, inst, StringName(spec2.get("id", &"")),
+				StringName(spec2.get("op", &"")), spec2.get("args", [])):
 			return true
 
+	return false
+
+# ONE INTENT OP. Returns whether it SPENT the body's turn.
+func _run_intent_op(entry: Dictionary, res: Dictionary, inst: int,
+		aid: StringName, op: StringName, args: Array) -> bool:
+	match op:
+		&"gain_status":
+			# Two abilities share this op and they are not the same rule, which is
+			# the trigger's doing rather than the op's: Defensive Stance authors it
+			# under `first_turn` and spends the turn standing still, while Ritual
+			# authors `first_turn: idle` and then `turn: gain_status strength 1`, so
+			# its +1 rides a turn it also walks or swings on.
+			#
+			# THAT SECOND READING IS THE LOAD-BEARING ONE. Every turn spent stacking
+			# would make the Strength pointless, because a body that never attacks
+			# never spends it — what the ability is FOR is a swing that gets worse
+			# the longer you leave it, and that needs the swing.
+			#
+			# `free` is how the sheet says which of the two it means. Without it the
+			# gain COSTS the turn, because that is what an intent is; Ritual's `turn:
+			# gain_status strength 1 free` is the one row that wants the other.
+			if args.size() >= 2:
+				_add_status_to(entry, StringName(args[0]), maxi(1, int(args[1])))
+			_note(res, "intents", {"instance": inst, "ability": aid})
+			return not args.has("free")
+		&"idle":
+			# Spend the turn on nothing at all. Ritual's opening beat: the cost is
+			# paid up front and the payout starts on the turn after.
+			_note(res, "intents", {"instance": inst, "ability": aid})
+			return true
+		&"summon_brood":
+			# ILLUSIONIST — "will spend its first turn Summoning X of Y Enemies and
+			# gives the Illusion Ability to Enemies Summoned". The copies are
+			# ordinary bodies with ordinary goals and ordinary payouts; what they
+			# are not is permanent.
+			_summon_illusions(entry, res)
+			return true
+		&"summon_adjacent":
+			# ENTRY SUMMON — the Illusionist's shape (a one-turn intent) with the
+			# spawners' payload, and it is neither of them: a Nested Spawner is a
+			# wall that prints bodies forever, and this one pays its whole cost up
+			# front and then walks at you like anything else. What it buys is the
+			# ESCORT — a Gatekeeper is a body you have to reach through the
+			# skeletons it opened with.
+			#
+			# ADJACENT, not the row in front: `_brood_cell` is the spawners' single
+			# square and this one is authored to scatter, so a full lane in front of
+			# it does not stop it dead the way it stops a Nested Spawner.
+			_summon_escort(entry, res)
+			return true
+		&"summon_lane":
+			# NECROMANCY and NESTED SPAWNER — "will not move, but each turn will
+			# Summon…". Never anything else, ever: these two are walls that print
+			# bodies, and the whole reason they are worth walking up to is that they
+			# cannot walk to you. `defeated` in the first argument is Necromancy's
+			# pool — bodies this game has already put down — and anything else is an
+			# ordinary selector.
+			if not args.is_empty() and StringName(args[1] if args.size() > 1 else &"") == &"defeated":
+				_raise_dead(entry, res)
+			else:
+				_spawn_brood(entry, res)
+			return true
+		&"buff_nearest_ally":
+			# MELEE ALLY BUFF — "if there is an Enemy present, this Enemy will use
+			# its turn and movement to move towards the nearest Enemy and if in
+			# contact, will [give] X of Y Status to them". Alone on the board it has
+			# nothing to do, so it falls through and behaves like an ordinary body.
+			return _buff_nearest_ally(entry, res)
 	return false
 
 # A thief runs RIGHT — away from the player, toward the back edge — and vanishes
@@ -6510,59 +6632,70 @@ func _attack_riders(entry: Dictionary, hit: Dictionary, res: Dictionary) -> void
 	var inst: int = int(entry.get("instance", 0))
 	var fired: Array = []
 
-	# DEVOUR WHOLE — "the target is eaten and dies, including the player". A shield
-	# is the answer and the only answer: stop the instance and you are not eaten.
-	# Past one, no amount of Health matters.
-	if entry_has_ability(entry, &"devour_whole"):
-		fired.append(&"devour_whole")
-		res["devoured"] = true
-		GameState.hp = 0
-		if not run_over:
-			_finish_run(false)
-		_note(res, "riders", {"instance": inst, "fired": fired})
-		return
-
-	# INFLICTION — X stacks of a status onto the player.
-	if entry_has_ability(entry, &"infliction"):
-		var status: StringName = entry_ability_arg(entry, &"infliction")
-		var stacks: int = maxi(1, entry_ability_amount(entry, &"infliction", 1))
-		if status != &"" and Data.get_status(status) != null:
-			GameState.apply_status(status, stacks)
-			fired.append(&"infliction")
-
-	# HEXER / LACERATOR — curses. Hexer deals X random ones, Lacerator the one it
-	# is named for. A curse the run is already carrying is not dealt twice.
-	if entry_has_ability(entry, &"hexer"):
-		var dealt: int = _deal_curses(maxi(1, entry_ability_amount(entry, &"hexer", 1)))
-		if dealt > 0:
-			fired.append(&"hexer")
-	# Lacerator STACKS, unlike Hexer's spread: it is one named curse and cutting
-	# you twice is cutting you twice. It is also the whole of what the Vantom does,
-	# and a Lacerator that stopped working after its first landed hit would be a
-	# boss whose ability fires once a run.
-	if entry_has_ability(entry, &"lacerator"):
-		if GameState.add_curse_goal(&"injury"):
-			fired.append(&"lacerator")
-
-	# DEGRADATION — destroy X random pieces of carried loot.
-	if entry_has_ability(entry, &"degradation"):
-		var burned: int = _destroy_loot(maxi(1, entry_ability_amount(entry, &"degradation", 1)))
-		if burned > 0:
-			fired.append(&"degradation")
-			res["loot_destroyed"] = int(res.get("loot_destroyed", 0)) + burned
-
-	# DRAIN — take X off one of the player's own numbers, permanently.
-	if entry_has_ability(entry, &"drain"):
-		var stat: StringName = entry_ability_arg(entry, &"drain")
-		var took: int = _drain_stat(stat, maxi(1, entry_ability_amount(entry, &"drain", 1)))
-		if took > 0:
-			fired.append(&"drain")
-			res["drained"] = {"stat": stat, "amount": took}
-
-	# THEFT — take X of the named goods and RUN.
-	if entry_has_ability(entry, &"theft"):
-		if _steal(entry, res):
-			fired.append(&"theft")
+	# THE RIDERS, IN THE ORDER THE BODY'S OWN ABILITY LIST WRITES THEM. Each is an
+	# op the sheet authored under `hit:`, so a new rider is a sheet row wherever
+	# the op already exists — "hit: apply_status burn 2" needs nothing here.
+	#
+	# `fired` still records the ABILITY's id rather than the op's, because that is
+	# what the board's log and the replay name to the player: they say a Hexer
+	# cursed you, not that an `add_curse` ran.
+	for entry_op in entry_ops_at(entry, &"hit"):
+		var spec: Dictionary = entry_op
+		var aid: StringName = StringName(spec.get("id", &""))
+		var args: Array = spec.get("args", [])
+		match StringName(spec.get("op", &"")):
+			&"devour":
+				# DEVOUR WHOLE — "the target is eaten and dies, including the
+				# player". A shield is the answer and the only answer: stop the
+				# instance and you are not eaten. Past one, no amount of Health
+				# matters — and nothing after it can fire, because the run is over.
+				fired.append(aid)
+				res["devoured"] = true
+				GameState.hp = 0
+				if not run_over:
+					_finish_run(false)
+				_note(res, "riders", {"instance": inst, "fired": fired})
+				return
+			&"apply_status":
+				# X stacks of a status onto the player.
+				if args.size() >= 2:
+					var status: StringName = StringName(args[0])
+					var stacks: int = maxi(1, int(args[1]))
+					if status != &"" and Data.get_status(status) != null:
+						GameState.apply_status(status, stacks)
+						fired.append(aid)
+			&"add_curse":
+				# Hexer deals X RANDOM ones, preferring curses the run has not got;
+				# Lacerator names one and STACKS it, because it is one named curse
+				# and cutting you twice is cutting you twice. `random` is the
+				# spelling that means the spread, and anything else is an id.
+				if args.size() >= 2:
+					var which: StringName = StringName(args[0])
+					var count: int = maxi(1, int(args[1]))
+					if which == &"random":
+						if _deal_curses(count) > 0:
+							fired.append(aid)
+					elif GameState.add_curse_goal(which):
+						fired.append(aid)
+			&"destroy_loot":
+				var burned: int = _destroy_loot(maxi(1, int(args[0]) if not args.is_empty() else 1))
+				if burned > 0:
+					fired.append(aid)
+					res["loot_destroyed"] = int(res.get("loot_destroyed", 0)) + burned
+			&"drain_stat":
+				# Take X off one of the player's own numbers, permanently.
+				if args.size() >= 2:
+					var stat: StringName = StringName(args[0])
+					var took: int = _drain_stat(stat, maxi(1, int(args[1])))
+					if took > 0:
+						fired.append(aid)
+						res["drained"] = {"stat": stat, "amount": took}
+			&"steal":
+				# Take X of the named goods and RUN — `_steal` reads the body's own
+				# Theft row for both, and sets the fleeing flag that the mover then
+				# sees through the `flee_when_carrying` passive.
+				if _steal(entry, res):
+					fired.append(aid)
 
 	if not fired.is_empty():
 		_note(res, "riders", {"instance": inst, "fired": fired})
@@ -6756,39 +6889,56 @@ func _body_died(entry: Dictionary, fell: Vector2i) -> void:
 		return
 	_chain_depth += 1
 
-	# AFTERMATH — leave a tile effect on the square it died on.
-	if entry_has_ability(entry, &"aftermath") and fell != OFF_FIELD:
-		var tile: StringName = entry_ability_arg(entry, &"aftermath")
-		if tile != &"" and Data.get_tile(tile) != null:
-			apply_tile(fell, tile)
-
-	# SPLIT — X new bodies of the named type. The first takes the square it fell on
-	# when that square is free; the rest walk on the ordinary way.
-	if entry_has_ability(entry, &"split"):
-		var selector: StringName = entry_ability_arg(entry, &"split")
-		for i in range(maxi(1, entry_ability_amount(entry, &"split", 1))):
-			var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy)
-			if spawn == null:
-				continue
-			var at: Vector2i = OFF_FIELD
-			if i == 0 and fell != OFF_FIELD and fits_at(spawn, fell.y, fell.x, 0):
-				at = fell
-			summon(spawn, at)
-
-	# UNDYING — owe the board this body back at the start of the next game, one
-	# PHASE further on. It is not put back now: "revive at the rightmost column at
-	# the start of the next combat" is a whole game of respite, and it is the only
-	# thing separating a three-phase boss from a body with three times the Health.
-	var revives: int = int(entry.get("revives", entry_ability_amount(entry, &"undying", 0)))
-	if revives > 0:
-		pending_revivals.append({
-			"enemy": enemy,
-			"phase": int(entry.get("phase", 0)) + 1,
-			"revives": revives - 1,
-			# The statuses ride the body through the death, which is what makes
-			# clearing a Bolster off a phase-1 boss worth doing.
-			"statuses": (entry.get("statuses", {}) as Dictionary).duplicate(),
-		})
+	# THE DEATH OPS, off the sheet. `fell` is the square it came off, or OFF_FIELD
+	# when it was never on the board — several of these are about that square and
+	# simply do not happen without one.
+	for entry_op in entry_ops_at(entry, &"death"):
+		var spec: Dictionary = entry_op
+		var args: Array = spec.get("args", [])
+		match StringName(spec.get("op", &"")):
+			&"apply_tile":
+				# AFTERMATH — leave a tile effect on the square it died on.
+				if fell != OFF_FIELD and not args.is_empty():
+					var tile: StringName = StringName(args[0])
+					if tile != &"" and Data.get_tile(tile) != null:
+						apply_tile(fell, tile)
+			&"summon_here":
+				# SPLIT — X new bodies of the named type. The first takes the square
+				# it fell on when that square is free; the rest walk on the ordinary
+				# way.
+				if args.size() >= 2:
+					var selector: StringName = StringName(args[1])
+					for i in range(maxi(1, int(args[0]))):
+						var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy)
+						if spawn == null:
+							continue
+						var at: Vector2i = OFF_FIELD
+						if i == 0 and fell != OFF_FIELD and fits_at(spawn, fell.y, fell.x, 0):
+							at = fell
+						summon(spawn, at)
+			&"revive_next_game":
+				# UNDYING — owe the board this body back at the start of the next
+				# game, one PHASE further on. It is not put back now: "revive at the
+				# rightmost column at the start of the next combat" is a whole game
+				# of respite, and it is the only thing separating a three-phase boss
+				# from a body with three times the Health.
+				#
+				# The COUNTER is read off the entry, where `set_revives` wrote it at
+				# the spawn, so it survives a save rather than being re-read off the
+				# sheet every time it is asked for.
+				var revives: int = int(entry.get("revives",
+					entry_ability_amount(entry, &"undying", 0)))
+				if revives > 0:
+					pending_revivals.append({
+						"enemy": enemy,
+						"phase": int(entry.get("phase", 0)) + 1,
+						"revives": revives - 1,
+						# The statuses ride the body through the death, which is what
+						# makes clearing a Bolster off a phase-1 boss worth doing.
+						"statuses": (entry.get("statuses", {}) as Dictionary).duplicate(),
+					})
+			&"leave_corpse":
+				_leave_corpse(entry, enemy, fell, args)
 
 	# ILLUSION — every copy this body made goes with it. They were never really
 	# there. No payout: an illusion that pops because you killed the illusionist is
@@ -6881,6 +7031,90 @@ func _tick_fading() -> Array:
 		gone.append({"instance": int(entry.get("instance", 0)), "enemy": enemy})
 	return gone
 
+# --- RESTLESS REMAINS ------------------------------------------------------
+#
+# "On Health depletion, will leave a corpse with 1 Max Health that will revive in
+# its current tile on game completion unless fully defeated."
+#
+# IT IS NOT UNDYING, and the difference is the whole ability. Undying owes the
+# board a body back at the START OF THE NEXT GAME, at the rightmost column and a
+# phase further on — a whole game of respite and then a fresh problem at the far
+# end of the board. This leaves something lying WHERE IT FELL, right now, that
+# gets back up when you finish the game unless you spend the turns to put it down
+# properly first. Undying is a delay; this is a decision.
+#
+# THE CORPSE IS INERT. It neither moves (`enemy_steps` and `turns_to_strike` read
+# the flag alongside the `no_move` op) nor swings (`can_strike`), because a corpse
+# that still hit you would be Undying with extra steps. What it does do is take up
+# its square and answer to goals like any other body, which is what makes finishing
+# it off a real use of a turn.
+#
+# IT KEEPS ITS ABILITY LIST so that a body which gets back up is the body that went
+# down, granted abilities and all — the `corpse` flag is what makes it harmless,
+# not an emptied list. `leave_corpse` itself is not re-run when the corpse dies,
+# for the obvious reason: the flag is checked on the way in.
+func _leave_corpse(entry: Dictionary, enemy: GoalEnemyData, fell: Vector2i,
+		args: Array) -> void:
+	if enemy == null:
+		return
+	# NO SQUARE, NO CORPSE. A body that was never on the board — bombed off-grid,
+	# or killed before it walked on — has no tile to lie in, and "revive in its
+	# current tile" has no answer for it.
+	if fell == OFF_FIELD:
+		return
+	# "UNLESS FULLY DEFEATED": putting the corpse down is what ends it. Without
+	# this a Skeleton Cat could never be killed at all, only knocked over.
+	if bool(entry.get("corpse", false)):
+		return
+	var hp: int = maxi(1, int(args[0]) if not args.is_empty() else 1)
+	var when: StringName = &"game_end"
+	for a in args:
+		var text: String = String(a)
+		if text.begins_with("revive="):
+			when = StringName(text.substr(len("revive=")))
+	var inst: int = summon(enemy, fell)
+	if inst <= 0:
+		return
+	var corpse: Dictionary = entry_for(inst)
+	if corpse.is_empty():
+		return
+	corpse["health"] = hp
+	corpse["max_health"] = hp
+	corpse["corpse"] = true
+	corpse["corpse_revive"] = when
+	# The runtime list, not the sheet's, for the same reason a save stores the
+	# runtime list: an Illusion granted to this body has to go down with it and
+	# come back up with it.
+	corpse["abilities"] = (entry_abilities(entry) as Array).duplicate(true)
+	_check_body(corpse, "_leave_corpse")
+
+# Everything lying on the board gets back up, at the end of the game it fell in.
+# Called from beat_game beside `_tick_fading`, which is the same beat: the game is
+# over, and what is still standing carries on to the next one.
+#
+# Returns what rose, for the resolve log — a corpse getting up is exactly the kind
+# of thing a player must not have to infer from the board having changed.
+func _raise_corpses() -> Array:
+	var risen: Array = []
+	for entry in stack:
+		if not bool(entry.get("corpse", false)):
+			continue
+		if StringName(entry.get("corpse_revive", &"game_end")) != &"game_end":
+			continue
+		var enemy: GoalEnemyData = entry.get("enemy")
+		if enemy == null:
+			continue
+		entry.erase("corpse")
+		entry.erase("corpse_revive")
+		# BACK TO WHAT IT WAS. Health is re-read off the enemy rather than restored
+		# from a number written down at death, so a body that gets up is as hard to
+		# put down as one that walked on — the corpse's 1 was the price of leaving
+		# it lying there, not a permanent wound.
+		entry["max_health"] = effective_health(enemy)
+		entry["health"] = entry_max_health(entry)
+		risen.append({"instance": int(entry.get("instance", 0)), "enemy": enemy})
+	return risen
+
 # --- PREDATORY SCENT -------------------------------------------------------
 #
 # "Will take an extra turn if the player doesn't complete a status goal if they
@@ -6898,7 +7132,7 @@ func _predators(claims: Dictionary) -> Array:
 	if not GameState.status_objectives().is_empty() \
 			and (claims.get("status_goals", []) as Array).is_empty():
 		for entry in stack:
-			if entry_has_ability(entry, &"predatory_scent"):
+			if entry_has_op(entry, &"extra_turn_on_unmet_status_goal"):
 				out.append(int(entry.get("instance", 0)))
 	return out
 
@@ -6934,32 +7168,47 @@ func _apply_spawn_abilities(entry: Dictionary) -> void:
 # only at the spawn, and a body already standing there never spawns again. A
 # granted ability arrives complete now, exactly as a spawned one does.
 func _ability_takes_hold(entry: Dictionary, id: StringName) -> void:
-	match id:
-		&"tanky":
-			# TANKY — "spawns with X More Max Health". Health here is GOAL
-			# COMPLETIONS, so Transient's Tanky (8) is nine goals to put it down, and
-			# that is the joke: you are not meant to kill it. Its Fading (3) is the
-			# answer to it.
-			var tanky: int = entry_ability_amount(entry, &"tanky", 0)
-			if tanky > 0:
-				entry["max_health"] = entry_max_health(entry) + tanky
-				entry["health"] = int(entry.get("health", 1)) + tanky
-		&"haste":
-			# HASTE — "spawns with X Speed", which is extra columns per step (§13.4).
-			var haste: int = entry_ability_amount(entry, &"haste", 0)
-			if haste > 0:
-				_add_status_to(entry, &"speed", haste)
-		&"invisibility":
+	var ability: AbilityData = Data.get_ability(id)
+	if ability == null:
+		return
+	for op in ability.ops_on(&"spawn"):
+		var spec: Dictionary = op
+		_run_spawn_op(entry, StringName(spec.get("op", &"")),
+			BodyFacts.resolve_op_args(entry, id,
+				spec.get("args", PackedStringArray())))
+
+# ONE SPAWN OP. Split out from the loop above so the op vocabulary is a flat
+# `match` on the AUTHORED name rather than on the ability's id — which is what
+# lets a second ability reuse one. "spawns with X Speed" is `gain_status speed X`
+# whether the row is called Haste or something written next year.
+func _run_spawn_op(entry: Dictionary, op: StringName, args: Array) -> void:
+	match op:
+		&"gain_max_health":
+			# "spawns with X More Max Health". Health here is GOAL COMPLETIONS, so
+			# Transient's Tanky (8) is nine goals to put it down, and that is the
+			# joke: you are not meant to kill it. Its Fading (3) is the answer to it.
+			var more: int = int(args[0]) if not args.is_empty() else 0
+			if more > 0:
+				entry["max_health"] = entry_max_health(entry) + more
+				entry["health"] = int(entry.get("health", 1)) + more
+		&"gain_status":
+			# Haste's "spawns with X Speed" is extra columns per step (§13.4), and
+			# the op is the general one: a status and a stack count.
+			if args.size() >= 2:
+				var stacks: int = int(args[1])
+				if stacks > 0:
+					_add_status_to(entry, StringName(args[0]), stacks)
+		&"hide":
 			# INVISIBILITY — the board does not draw it until it swings.
 			entry["hidden"] = true
-		&"undying":
+		&"set_revives":
 			# UNDYING and FADING start their counters here, so the numbers survive a
 			# save rather than being re-read off the sheet every time they are asked
 			# for.
-			var undying: int = entry_ability_amount(entry, &"undying", 0)
-			if undying > 0:
-				entry["revives"] = undying
-		&"fading":
-			var fading: int = entry_ability_amount(entry, &"fading", 0)
-			if fading > 0:
-				entry["fades"] = fading
+			var revives: int = int(args[0]) if not args.is_empty() else 0
+			if revives > 0:
+				entry["revives"] = revives
+		&"set_fades":
+			var fades: int = int(args[0]) if not args.is_empty() else 0
+			if fades > 0:
+				entry["fades"] = fades

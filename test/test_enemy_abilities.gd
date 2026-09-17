@@ -844,3 +844,152 @@ func test_the_hover_and_the_card_read_the_abilities_off_the_body() -> void:
 	assert_true(names.has("Illusion"),
 		"an illusion is named, which is the whole point of naming them: %s" % str(names))
 	assert_true(String(lines[0]["text"]).contains("3"), "and the arguments are filled in")
+
+
+# === 8. the sheet's Effect column is the behaviour ==========================
+#
+# The column was empty in all 31 rows and every ability was a branch keyed by id,
+# which made abilities the one content type whose behaviour was not authored
+# upstream. These pin the new contract from both sides: nothing may be authored
+# that the loop cannot run, and nothing may be run that the sheet did not author.
+
+func test_every_ability_authors_an_effect() -> void:
+	var blank: Array = []
+	for a in Data.all_abilities():
+		var ability: AbilityData = a
+		if ability.effect.strip_edges() == "" or ability.triggers.is_empty():
+			blank.append(String(ability.id))
+	assert_eq(blank, [],
+		"an ability with an empty Effect is one the board does nothing for: %s"
+		% str(blank))
+
+# THE SEAM, CHECKED. The generator refuses to WRITE an op outside its own list;
+# this is the same check from the engine's side, so the two lists cannot drift
+# apart without the suite saying which way.
+func test_every_authored_op_is_one_the_loop_implements() -> void:
+	var unknown: Array = []
+	for a in Data.all_abilities():
+		var ability: AbilityData = a
+		for when in ability.triggers:
+			for spec in (ability.triggers[when] as Array):
+				var op: StringName = StringName((spec as Dictionary).get("op", &""))
+				if not GameLoop2.ABILITY_OPS.has(op) and not unknown.has(String(op)):
+					unknown.append(String(op))
+	assert_eq(unknown, [],
+		"an op nothing implements is a silent no-op on the board: %s" % str(unknown))
+
+func test_every_trigger_is_one_the_loop_fires() -> void:
+	var known := [&"spawn", &"first_turn", &"turn", &"hit", &"death", &"passive"]
+	var stray: Array = []
+	for a in Data.all_abilities():
+		for when in (a as AbilityData).triggers:
+			if not known.has(StringName(when)) and not stray.has(String(when)):
+				stray.append(String(when))
+	assert_eq(stray, [], "a trigger nothing fires never runs: %s" % str(stray))
+
+# X AND Y ARE THE BODY'S, NOT THE CATALOGUE'S. One authored row has to serve
+# "Infliction (2, Burn)" and "Infliction (1, Stun)", which is the whole reason the
+# substitution happens at the body.
+func test_an_effects_arguments_come_off_the_body_carrying_it() -> void:
+	var burn: Dictionary = _put(_enemy([_ability(&"infliction", 2, &"burn", "Burn")]))
+	var ops: Array = GameLoop2.entry_ops_at(burn, &"hit")
+	assert_eq(ops.size(), 1, "one hit op")
+	assert_eq((ops[0] as Dictionary)["op"], &"apply_status")
+	assert_eq((ops[0] as Dictionary)["args"], [&"burn", 2],
+		"Y became this body's status and X its count")
+	var stun: Dictionary = _put(_enemy([_ability(&"infliction", 1, &"stun", "Stun")]),
+		Vector2i(2, 0))
+	var other: Array = GameLoop2.entry_ops_at(stun, &"hit")
+	assert_eq((other[0] as Dictionary)["args"], [&"stun", 1],
+		"and the SAME authored row reads differently on a different body")
+
+# The passives are asked as "does this body declare the op", not "is it this
+# ability" — which is what makes a second ability that also stops a body moving a
+# sheet row and nothing else.
+func test_a_passive_is_read_off_the_op_and_not_off_the_id() -> void:
+	var host: Dictionary = _put(_enemy([_ability(&"immobile")]))
+	assert_true(GameLoop2.entry_has_op(host, &"no_move"), "Immobile declares no_move")
+	var walker: Dictionary = _put(_enemy([]), Vector2i(2, 0))
+	assert_false(GameLoop2.entry_has_op(walker, &"no_move"),
+		"and a body with no abilities declares nothing")
+
+
+# === 9. Restless Remains ====================================================
+#
+# "On Health depletion, will leave a corpse with 1 Max Health that will revive in
+# its current tile on game completion unless fully defeated."
+#
+# It is NOT Undying, and every test here is about that difference: Undying owes
+# the board a body back next game at the far column, while this leaves something
+# lying where it fell that gets up when you finish — unless you put it down.
+
+func _restless() -> GoalEnemyData:
+	return _enemy([_ability(&"restless_remains")], 1, 1)
+
+func test_a_felled_body_leaves_a_corpse_where_it_stood() -> void:
+	var at := Vector2i(2, 0)
+	var body: Dictionary = _put(_restless(), at)
+	GameLoop2.fulfill(int(body.get("instance", 0)))
+	assert_eq(GameLoop2.stack_size(), 1, "something is still standing there")
+	var corpse: Dictionary = GameLoop2.stack[0]
+	assert_true(bool(corpse.get("corpse", false)), "and it is a corpse")
+	assert_eq(int(corpse.get("col", -1)), at.x, "on the square it fell on")
+	assert_eq(int(corpse.get("row", -1)), at.y)
+	assert_eq(int(corpse.get("max_health", 0)), 1, "with 1 Max Health, as authored")
+
+# A CORPSE IS INERT. It neither closes nor swings — a corpse that still hit you
+# would be Undying with extra steps.
+func test_a_corpse_neither_moves_nor_swings() -> void:
+	var body: Dictionary = _put(_restless(), Vector2i(1, 0))
+	GameLoop2.fulfill(int(body.get("instance", 0)))
+	var corpse: Dictionary = GameLoop2.stack[0]
+	assert_false(GameLoop2.can_strike(corpse),
+		"it is at the front line and still does not swing")
+	var col_before: int = int(corpse.get("col", 0))
+	var hp_before: int = GameState.hp
+	_turn()
+	assert_eq(int(GameLoop2.stack[0].get("col", 0)), col_before, "it did not close")
+	assert_eq(GameState.hp, hp_before, "and it did not hit you")
+
+func test_a_corpse_gets_back_up_when_the_game_is_completed() -> void:
+	# TWO GOALS TO PUT IT DOWN, so "back to full" is a number that can be told
+	# apart from the corpse's 1. On a one-health body both are 1 and the assertion
+	# below would pass on a corpse that never healed.
+	var tough: GoalEnemyData = _enemy([_ability(&"restless_remains")], 2, 1)
+	var body: Dictionary = _put(tough, Vector2i(2, 0))
+	var inst: int = int(body.get("instance", 0))
+	GameLoop2.fulfill(inst)
+	GameLoop2.fulfill(inst)
+	assert_true(bool(GameLoop2.stack[0].get("corpse", false)), "lying down")
+	assert_eq(int(GameLoop2.stack[0].get("max_health", 0)), 1,
+		"and knocked down to the corpse's 1")
+	var res: Dictionary = GameLoop2.beat_game()
+	assert_eq((res.get("risen", []) as Array).size(), 1,
+		"the resolve log says it got up rather than leaving it to be noticed")
+	var risen: Dictionary = GameLoop2.stack[0]
+	assert_false(bool(risen.get("corpse", false)), "it is a body again")
+	# BACK TO FULL. The corpse's 1 was the price of leaving it lying there, not a
+	# permanent wound — a body that gets up is as hard to put down as one that
+	# walked on.
+	assert_eq(int(risen.get("max_health", 0)), GameLoop2.effective_health(tough),
+		"back to what it walked on with, not still on the corpse's 1")
+
+func test_a_corpse_that_is_fully_defeated_does_not_come_back() -> void:
+	var body: Dictionary = _put(_restless(), Vector2i(2, 0))
+	GameLoop2.fulfill(int(body.get("instance", 0)))
+	var corpse: Dictionary = GameLoop2.stack[0]
+	# "Unless fully defeated" — putting the corpse down is what ends it, and it
+	# must not leave a corpse of its own or a Skeleton Cat could never be killed.
+	GameLoop2.fulfill(int(corpse.get("instance", 0)))
+	assert_eq(GameLoop2.stack_size(), 0, "nothing is left lying there")
+	GameLoop2.beat_game()
+	assert_eq(GameLoop2.stack_size(), 0, "and nothing gets up at the end of the game")
+
+# A body killed before it ever stood anywhere has no tile to lie in, and "revive
+# in its current tile" has no answer for it.
+func test_a_body_that_never_reached_the_board_leaves_nothing() -> void:
+	var inst: int = GameLoop2.spawn_to_stack(_restless())
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["col"] = GameLoop2.offgrid_col()
+	GameLoop2.fulfill(inst)
+	assert_eq(GameLoop2.stack_size(), 0, "no square, no corpse")

@@ -10,4 +10,8 @@ kind = &"attack"
 variables = ""
 params = PackedStringArray()
 description = "When this Enemy attacks and deals damage, the target is eaten and dies, including the plaer"
+effect = "hit: devour"
+triggers = {
+    &"hit": [{"op": &"devour", "args": PackedStringArray()}]
+}
 file = "DevourWhole"

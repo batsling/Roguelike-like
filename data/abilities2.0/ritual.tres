@@ -10,4 +10,9 @@ kind = &"intent"
 variables = ""
 params = PackedStringArray()
 description = "Will not move or attack on it's first turn, but every turn after that it Gains +1 Strength"
+effect = "first_turn: idle; turn: gain_status strength 1 free"
+triggers = {
+    &"first_turn": [{"op": &"idle", "args": PackedStringArray()}],
+    &"turn": [{"op": &"gain_status", "args": PackedStringArray("strength", "1", "free")}]
+}
 file = "Ritual"

@@ -55,6 +55,94 @@ STATS = ("max_health", "luck", "scramble", "bash", "dash", "transmute")
 
 TIERS = ("low", "medium", "high", "insane")
 
+# --- the `Effect` column ---------------------------------------------------
+#
+# The same `trigger: op args` grammar tiles2.0 and units2.0 use, parsed into the
+# `triggers` Dictionary AbilityData carries and GameLoop2 dispatches on.
+
+# The points a turn actually has. An effect naming anything else is refused here
+# rather than parsed into a trigger nothing will ever fire.
+TRIGGERS = ("spawn", "first_turn", "turn", "hit", "death", "passive")
+
+# EVERY OP THE LOOP IMPLEMENTS, and this list is the contract. It mirrors
+# GameLoop2.ABILITY_OPS, and `test_enemy_abilities.gd` asserts the two agree —
+# from the other side, so neither can drift without the suite saying so.
+#
+# An op authored here and missing there is a silent no-op on the board: the
+# ability's card goes on promising something the turn resolver never does. That
+# is precisely the failure this column was added to make impossible, so an
+# unknown op is a hard error at generation time and not a warning.
+OPS = (
+    # spawn
+    "gain_status", "gain_max_health", "hide", "set_revives", "set_fades",
+    # intents and summoners
+    "idle", "summon_brood", "summon_adjacent", "summon_lane", "buff_nearest_ally",
+    # attack riders
+    "devour", "destroy_loot", "add_curse", "apply_status", "drain_stat", "steal",
+    # death
+    "apply_tile", "summon_here", "revive_next_game", "dies_with_illusionist",
+    "leave_corpse",
+    # passives — rules the resolver asks about rather than events it runs
+    "reach", "strike_through", "no_move", "push_through", "move_diagonal",
+    "immune", "aura_status", "flee_when_carrying",
+    "extra_turn_on_unmet_status_goal",
+)
+
+
+def parse_effect(raw, where: str = "?") -> dict:
+    """"hit: apply_status Y X; passive: reach X" -> {trigger: [{op, args}]}.
+
+    Split on `;` for the clauses and on the FIRST `:` for the trigger, so an op's
+    own arguments may contain neither. Nothing here resolves X or Y: they are the
+    ability's argument slots and the BODY carrying it is what fills them.
+    """
+    text = clean(raw)
+    if text == "":
+        return {}
+    out = {}
+    for clause in text.split(";"):
+        clause = clause.strip()
+        if not clause:
+            continue
+        if ":" not in clause:
+            raise SystemExit(
+                "%s: effect clause %r has no trigger — expected '<trigger>: <op> <args>'"
+                % (where, clause))
+        trigger, body = clause.split(":", 1)
+        trigger = trigger.strip().lower()
+        if trigger not in TRIGGERS:
+            raise SystemExit("%s: unknown trigger %r (one of %s)"
+                             % (where, trigger, ", ".join(TRIGGERS)))
+        parts = body.split()
+        if not parts:
+            raise SystemExit("%s: trigger %r names no op" % (where, trigger))
+        op, args = parts[0], parts[1:]
+        if op not in OPS:
+            raise SystemExit(
+                "%s: unknown op %r.\n"
+                "Ops are the seam between the sheet and the loop: add it to OPS "
+                "here AND to\nGameLoop2.ABILITY_OPS with an implementation, or the "
+                "ability is a no-op on\nthe board while its card goes on promising "
+                "it." % (where, op))
+        out.setdefault(trigger, []).append({"op": op, "args": args})
+    return out
+
+
+def gd_triggers(triggers: dict) -> str:
+    """The parsed triggers as a .tres Dictionary literal."""
+    if not triggers:
+        return "{}"
+    parts = []
+    for trigger in TRIGGERS:                      # a stable order, not dict order
+        if trigger not in triggers:
+            continue
+        ops = ", ".join(
+            '{"op": &"%s", "args": PackedStringArray(%s)}'
+            % (o["op"], ", ".join('"%s"' % gd_str(a) for a in o["args"]))
+            for o in triggers[trigger])
+        parts.append('&"%s": [%s]' % (trigger, ops))
+    return "{\n%s\n}" % ",\n".join("    " + p for p in parts)
+
 
 def slugify(name: str) -> str:
     s = str(name).strip().lower().replace("'", "")
@@ -272,6 +360,9 @@ def ability_tres(row) -> tuple:
         'variables = "%s"' % gd_str(raw_vars),
         "params = PackedStringArray(%s)" % ", ".join('"%s"' % p for p in params),
         'description = "%s"' % gd_str(clean(row.get("Description"))),
+        'effect = "%s"' % gd_str(clean(row.get("Effect"))),
+        "triggers = %s" % gd_triggers(
+            parse_effect(row.get("Effect"), "abilities/%s" % aid)),
         'file = "%s"' % gd_str(file),
     ]
     if stem is not None:

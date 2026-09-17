@@ -10,4 +10,8 @@ kind = &"buff"
 variables = "Amount, Status Type"
 params = PackedStringArray("amount", "status")
 description = "Grants X amount of X Status to all other Enemies and Bosses until death"
+effect = "passive: aura_status Y X"
+triggers = {
+    &"passive": [{"op": &"aura_status", "args": PackedStringArray("Y", "X")}]
+}
 file = "Bolster"

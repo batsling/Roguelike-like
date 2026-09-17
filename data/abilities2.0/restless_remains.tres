@@ -10,4 +10,8 @@ kind = &"death"
 variables = ""
 params = PackedStringArray()
 description = "On Health depletion, will leave a corpse with 1 Max Health that will revive in it's current tile on game completion unless fully defeated"
+effect = "death: leave_corpse 1 revive=game_end"
+triggers = {
+    &"death": [{"op": &"leave_corpse", "args": PackedStringArray("1", "revive=game_end")}]
+}
 file = "RestlessRemains"

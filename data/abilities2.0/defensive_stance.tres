@@ -10,4 +10,8 @@ kind = &"intent"
 variables = "Stacks"
 params = PackedStringArray("amount")
 description = "Will Gain X Dexterity on it's first turn instead of moving or attacking"
+effect = "first_turn: gain_status dexterity X"
+triggers = {
+    &"first_turn": [{"op": &"gain_status", "args": PackedStringArray("dexterity", "X")}]
+}
 file = "DefensiveStance"

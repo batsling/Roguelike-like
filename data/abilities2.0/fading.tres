@@ -10,4 +10,8 @@ kind = &"death"
 variables = "Amount"
 params = PackedStringArray("amount")
 description = "Will die at the end of X amount of combats"
+effect = "spawn: set_fades X"
+triggers = {
+    &"spawn": [{"op": &"set_fades", "args": PackedStringArray("X")}]
+}
 file = "Fading"

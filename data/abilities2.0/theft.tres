@@ -10,4 +10,9 @@ kind = &"intent"
 variables = "Amount, Goods"
 params = PackedStringArray("amount", "goods")
 description = "While attacking and dealing damage, it will steal X amount of Y(Gold, Items, Loot) until defeated in which it will drop stolen goods on the battlefield, and then will start moving to the right and if they reach the last column they disappear"
+effect = "hit: steal Y X; passive: flee_when_carrying"
+triggers = {
+    &"hit": [{"op": &"steal", "args": PackedStringArray("Y", "X")}],
+    &"passive": [{"op": &"flee_when_carrying", "args": PackedStringArray()}]
+}
 file = "Theft"

@@ -10,4 +10,8 @@ kind = &"intent"
 variables = "Amount, Status Type"
 params = PackedStringArray("amount", "status")
 description = "If there is an Enemy present, this Enemy will use it's turn and movement to move towards the nearest Enemy and if in contact, will X amount of Y Status to them"
+effect = "turn: buff_nearest_ally Y X"
+triggers = {
+    &"turn": [{"op": &"buff_nearest_ally", "args": PackedStringArray("Y", "X")}]
+}
 file = "MeleeAllyBuff"

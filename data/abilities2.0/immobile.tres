@@ -10,4 +10,8 @@ kind = &"movement"
 variables = ""
 params = PackedStringArray()
 description = "Cannot Move"
+effect = "passive: no_move"
+triggers = {
+    &"passive": [{"op": &"no_move", "args": PackedStringArray()}]
+}
 file = "Immobile"

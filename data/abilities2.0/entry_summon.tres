@@ -10,4 +10,8 @@ kind = &"summoner"
 variables = "Amount, Enemy Type"
 params = PackedStringArray("amount", "enemy")
 description = "Instead of moving or attacking on it's first turn, it will Summon X amount of Y Enemies to a random adjacent tile"
+effect = "first_turn: summon_adjacent X Y"
+triggers = {
+    &"first_turn": [{"op": &"summon_adjacent", "args": PackedStringArray("X", "Y")}]
+}
 file = "EntrySummon"

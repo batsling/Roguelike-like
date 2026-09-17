@@ -10,4 +10,8 @@ kind = &"death"
 variables = ""
 params = PackedStringArray()
 description = "Will die when it's Illusionist does"
+effect = "death: dies_with_illusionist"
+triggers = {
+    &"death": [{"op": &"dies_with_illusionist", "args": PackedStringArray()}]
+}
 file = "Illusion"

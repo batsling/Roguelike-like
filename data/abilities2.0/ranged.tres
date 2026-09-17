@@ -10,4 +10,8 @@ kind = &"attack"
 variables = "Grid Range"
 params = PackedStringArray("range")
 description = "Can Attack from X tiles away"
+effect = "passive: reach X"
+triggers = {
+    &"passive": [{"op": &"reach", "args": PackedStringArray("X")}]
+}
 file = "Ranged"

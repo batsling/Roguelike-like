@@ -10,4 +10,9 @@ kind = &"death"
 variables = "Amount"
 params = PackedStringArray("amount")
 description = "On Death, will revive at the rightmost column at the start of the next combat X times"
+effect = "spawn: set_revives X; death: revive_next_game"
+triggers = {
+    &"spawn": [{"op": &"set_revives", "args": PackedStringArray("X")}],
+    &"death": [{"op": &"revive_next_game", "args": PackedStringArray()}]
+}
 file = "Undying"

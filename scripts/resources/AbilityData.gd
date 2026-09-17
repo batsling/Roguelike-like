@@ -6,19 +6,30 @@ extends Resource
 # tools/Roguelikes.xlsx and generated into data/abilities2.0/*.tres by
 # tools/generate_ability_tres.py.
 #
-# THIS RESOURCE IS THE DESCRIPTION, NOT THE BEHAVIOUR. The sheet's `Effect` column
-# is empty for all 28 rows — unlike tiles2.0 and units2.0, which carry a small DSL
-# there — so what an ability DOES is written once in GameLoop2, keyed by `id`, and
-# what it SAYS is this file. That split is deliberate: an ability reaches into the
-# turn resolver, the mover, the spawner and the death path in ways a per-row
-# effect string could not express, but its wording is content and belongs upstream
-# in the sheet like every other line of text in the game.
+# THE SHEET SAYS WHEN AND WHAT, THE LOOP SAYS HOW. The `Effect` column carries a
+# small DSL — the same `trigger: op args` one tiles2.0 and units2.0 use — parsed
+# into `triggers` below, and GameLoop2 DISPATCHES ON IT rather than on `id`.
 #
-# The consequence to remember: adding a row to the `abilities` sheet gives you a
-# name, a type and a sentence, and NOTHING happens on the board until GameLoop2
-# learns the id. `test_enemy_abilities.gd` asserts the two sides agree, so a row
-# added without an implementation fails the suite rather than shipping as a lie on
-# an enemy card.
+# It did not always. This column was empty in all 31 rows and every ability was a
+# hardcoded branch keyed by id, which made abilities the one content type whose
+# behaviour was not authored upstream: adding a row to the sheet gave you a name,
+# a type and a sentence, and nothing whatsoever happened on the board until
+# someone edited a 6869-line GDScript file. Every other system here — tiles,
+# units, pills, scrolls, potions, items — reads its behaviour out of its own
+# Effect column, and abilities now do too.
+#
+# WHAT THAT DOES AND DOES NOT BUY. An ability composed of ops the loop already has
+# is a SHEET ROW and nothing else: author "hit: apply_status burn 2" and it works.
+# An ability that needs a genuinely new primitive still needs engine code, exactly
+# as a tile needing something past `apply_status` / `detonate` does — the op
+# vocabulary is the seam, and it is a much smaller and better-marked one than
+# "somewhere in the turn resolver".
+#
+# `GameLoop2.ABILITY_OPS` is the list of ops that exist. The generator checks
+# every authored op against it and refuses to write a row naming one that does
+# not, so an unimplemented op is caught when the sheet is regenerated rather than
+# as a silent no-op on the board. `test_enemy_abilities.gd` asserts the two sides
+# agree from the other direction too.
 
 @export var id: StringName
 @export var display_name: String
@@ -52,6 +63,54 @@ extends Resource
 # The sheet's `Description`, with `X` standing in for the first argument and `Y`
 # for the second. `describe()` fills them in.
 @export var description: String = ""
+
+# The sheet's `Effect` column VERBATIM, for the collection screen and for anyone
+# reading a .tres — the authored line beside the parsed form, exactly as
+# TileEffectData keeps `decay_text` beside its counter.
+@export var effect: String = ""
+
+# WHAT IT DOES, as trigger name -> Array of op dicts. The parsed form of `effect`,
+# and what GameLoop2 actually runs.
+#
+#   spawn       true from the moment the body lands
+#   first_turn  spends only its FIRST turn on this (the loop's `taken == 0`)
+#   turn        spends EVERY turn on this
+#   hit         rides a swing that LANDS — a swing a Shield ate fires none of
+#               these, which is what makes cover an answer to Infliction and
+#               Theft rather than only to the damage (see `needs_damage`)
+#   death       fires as the body comes off the board
+#   passive     a rule the resolver QUERIES rather than an event it runs
+#
+# Each op is {"op": StringName, "args": PackedStringArray}, with the args left as
+# the sheet wrote them:
+#   {"op": &"apply_status", "args": ["Y", "X"]}
+#   {"op": &"reach", "args": ["X"]}
+#
+# X AND Y ARE NOT RESOLVED HERE. They are the ability's own argument slots (see
+# `params`), and the body carrying the ability is what fills them — "Infliction
+# (2, Burn)" and "Infliction (1, Stun)" are one row with two sets of arguments,
+# so the substitution belongs at the body and not at the catalogue.
+# `GameLoop2.ability_op_args` does it.
+@export var triggers: Dictionary = {}
+
+# Does this ability do anything at `when`? Cheaper and clearer at the call sites
+# than digging the dictionary out, and it is the question every dispatch point in
+# the loop actually asks.
+func fires_on(when: StringName) -> bool:
+	return not (triggers.get(when, []) as Array).is_empty()
+
+# The ops this ability runs at `when`, or an empty array.
+func ops_on(when: StringName) -> Array:
+	return triggers.get(when, []) as Array
+
+# Does it declare `op` at all, at any trigger? The passives are read this way —
+# "is this body Immobile" is "does anything it carries declare `no_move`".
+func has_op(op: StringName) -> bool:
+	for when in triggers:
+		for entry in (triggers[when] as Array):
+			if StringName((entry as Dictionary).get("op", &"")) == op:
+				return true
+	return false
 
 # Art base name under res://images2.0/abilities/ (none ship today, so this
 # resolves to nothing and the UI draws the ⚠ glyph instead).
