@@ -1684,8 +1684,14 @@ func test_start_run_applies_isaac_loadout() -> void:
 	assert_true(has_d6, "Isaac starts holding the D6")
 
 func test_start_run_applies_mina_verbs() -> void:
-	GameLoop2.start_run(Data.get_character2(&"min"))
-	assert_eq(GameState.max_hp, 8, "Noita Health 8")
+	# OFF THE RESOURCE, NOT OFF A LITERAL. What this test is about is that
+	# `start_run` carries the character's OWN numbers onto the run — the health it
+	# happens to be authored at is the sheet's business, and pinning it here made
+	# the test fail on a balance pass that had nothing to do with start_run.
+	# check_data_sync.py is what guards the sheet against data/.
+	var mina: CharacterData = Data.get_character2(&"min")
+	GameLoop2.start_run(mina)
+	assert_eq(GameState.max_hp, mina.base_max_hp, "Minä's Health reaches the run")
 	assert_eq(GameState.transmute, 2, "Minä starts with 2 Transmute")
 
 # --- scramble (§4) --------------------------------------------------------

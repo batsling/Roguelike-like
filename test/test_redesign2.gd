@@ -106,7 +106,7 @@ func test_zagreus_levelup_reward_is_a_large_chest() -> void:
 	var zag: CharacterData = Data.get_character2(&"zagreus")
 	assert_not_null(zag, "zagreus.tres should load from data/characters2.0")
 	assert_eq(zag.source_game, "Hades")
-	assert_eq(zag.base_max_hp, 8, "Zagreus Health 8 -> base_max_hp")
+	assert_eq(zag.base_max_hp, 7, "Zagreus' Health reaches base_max_hp")
 	assert_eq(zag.level_up_condition, "Get help from a God")
 	assert_eq(String(zag.level_up_reward_type), "item", "a sized Chest -> item reward")
 	assert_eq(zag.level_up_reward_amount, 1)
@@ -129,7 +129,7 @@ func test_poe_ratcho_starting_loadout_and_reward() -> void:
 	var poe: CharacterData = Data.get_character2(&"poe_ratcho")
 	assert_not_null(poe, "poe_ratcho.tres should load from data/characters2.0")
 	assert_eq(poe.source_game, "Vampire Survivors")
-	assert_eq(poe.base_max_hp, 10)
+	assert_eq(poe.base_max_hp, 7)
 	assert_true(poe.starting_items.has(&"pummarola"), "Poe starts with Pummarola")
 	assert_eq(String(poe.level_up_reward_type), "random_sized_chest",
 		"Random Sized Chest -> random_sized_chest reward")
@@ -140,7 +140,7 @@ func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	var antonio: CharacterData = Data.get_character2(&"antonio_belpaese")
 	assert_not_null(antonio, "antonio_belpaese.tres should load from data/characters2.0")
 	assert_eq(antonio.source_game, "Vampire Survivors")
-	assert_eq(antonio.base_max_hp, 8)
+	assert_eq(antonio.base_max_hp, 7)
 	assert_eq(antonio.start_bash, 1, "Antonio starts with 1 Bash")
 	assert_eq(antonio.starting_items.size(), 0, "Antonio starts with no items")
 	assert_eq(String(antonio.level_up_reward_type), "random_sized_chest",
@@ -915,3 +915,32 @@ func test_every_dev_tab_builds() -> void:
 		assert_gt(DevTools._body.get_child_count(), 0, "grant/%s has contents" % kind)
 	DevTools._grant_kind = "items"
 	DevTools._close()
+
+# --- the card level-up reward ----------------------------------------------
+#
+# CharacterData has documented &"card" since the type was written, and until the
+# Erratic Deck's sheet cell asked for one NOTHING could produce it: `parse_reward`
+# had no Card branch and `grant_level_up` had no "card" arm, so the reward parsed
+# as nothing and paid nothing. Both halves are pinned here because either one
+# alone is a level-up that silently does less than the sheet promises.
+
+func test_the_erratic_decks_reward_is_a_card() -> void:
+	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
+	assert_not_null(erratic, "erratic_deck.tres loads")
+	assert_eq(String(erratic.level_up_reward_type), "card",
+		"\"Gain +1 Random Card\" -> the &\"card\" reward type")
+	assert_eq(erratic.level_up_reward_amount, 1)
+	# "Random" is the adjective a full-pool draw is written with, not a class tag.
+	assert_eq(String(erratic.level_up_card_tag), "",
+		"a random card is drawn from the whole reward pool")
+
+func test_levelling_up_on_a_card_reward_actually_pays_a_card() -> void:
+	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
+	GameLoop2.start_run(erratic)
+	var before: int = GameState.loot_items.size()
+	GameState.grant_level_up()
+	assert_gt(GameState.loot_items.size(), before,
+		"the level-up put something in the pack rather than falling through")
+	var got: Dictionary = GameState.loot_items[GameState.loot_items.size() - 1]
+	assert_eq(String(got.get("type", "")), "card",
+		"and the something is a card: %s" % [got])

@@ -413,6 +413,26 @@ func _build_stream_section(vbox: VBoxContainer) -> void:
 	extras.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(extras)
 
+	# THE CATEGORY REMINDER, in this section because it is the same job as the
+	# overlay — things the stream needs that the run cannot do for itself — and
+	# NOT a second overlay setting, so it sits under the pages rather than beside
+	# the checkbox that turns them on.
+	var twitch := CheckButton.new()
+	twitch.name = "TwitchChk"
+	twitch.text = "Remind me to change the Twitch category"
+	twitch.button_pressed = Settings.twitch_reminder
+	twitch.toggled.connect(func(on: bool) -> void:
+		Settings.set_twitch_reminder(on))
+	vbox.add_child(twitch)
+
+	var twitch_hint := Label.new()
+	twitch_hint.text = "Every game on the graph is a real game you go and play, so committing to one is the moment your category stops naming what is on screen. This posts a notification with the game's name the moment you pick it. It is a reminder only — nothing here talks to Twitch, and the game never knows whether you changed it."
+	twitch_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	twitch_hint.custom_minimum_size = Vector2(0, 50)
+	twitch_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	twitch_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(twitch_hint)
+
 
 # Starting over as yourself: empty the profile you are playing and keep it —
 # its runs, lifetime stats, tier list, owned-game list and run settings all go.

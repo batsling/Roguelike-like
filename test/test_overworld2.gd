@@ -9850,3 +9850,47 @@ func test_a_new_run_takes_the_old_ones_history_off_the_page() -> void:
 	await wait_frames(2)
 	assert_null(_ui._history_screen,
 		"a record of a run that no longer exists does not stay on screen")
+
+# --- the Twitch category reminder ------------------------------------------
+#
+# The run's whole loop is leaving the program to go and play a REAL game, so
+# committing to one is the moment the stream's category stops naming what is on
+# screen — and it is a mistake with no symptom on this side of it. These pin the
+# reminder to the COMMIT, which is the only moment it is worth saying.
+
+func _twitch_lines() -> Array:
+	var out: Array = []
+	for n in Notifications.history:
+		var text: String = String(n.get("text", ""))
+		if text.contains("Twitch category"):
+			out.append(text)
+	return out
+
+func test_picking_a_game_reminds_you_to_change_the_twitch_category() -> void:
+	Settings.twitch_reminder = true
+	Notifications.clear()
+	var target: GameData = _ui._choices[0]["game"]
+	_ui.pick(0)
+	var lines: Array = _twitch_lines()
+	assert_eq(lines.size(), 1, "exactly one reminder for one game: %s" % [lines])
+	# THE GAME'S NAME IS THE CATEGORY. A reminder that does not say what to switch
+	# TO leaves the streamer to go and look it up, which is most of the chore.
+	assert_true(String(lines[0]).contains(target.display_name),
+		"the reminder names the game being played: %s" % [lines])
+
+func test_the_reminder_is_off_when_the_setting_is() -> void:
+	Settings.twitch_reminder = false
+	Notifications.clear()
+	_ui.pick(0)
+	Settings.twitch_reminder = true
+	assert_eq(_twitch_lines(), [], "a player who does not stream is not nagged")
+
+# The reminder rides the same transient channel the escort does, so it must not
+# be the thing that stops a run: picking still commits, whatever the setting is.
+func test_the_reminder_does_not_change_what_picking_does() -> void:
+	Settings.twitch_reminder = false
+	var target: StringName = _ui._choices[0]["game"].id
+	_ui.pick(0)
+	Settings.twitch_reminder = true
+	assert_eq(GameState.current_game_id, target, "the pick still travelled")
+	assert_true(GameLoop2.has_arrivals(), "and still spawned the game's enemy")
