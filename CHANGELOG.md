@@ -11,6 +11,90 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The abilities sheet's `Effect` column is now the behaviour.** Every other
+  content type here reads what it does out of its own `Effect` column — tiles,
+  units, pills, scrolls, potions, items. Abilities did not: the column was empty
+  in all 31 rows, and each ability was a hardcoded branch in `GameLoop2` keyed by
+  id. So adding a row to the sheet gave you a name, a type and a sentence, and
+  nothing whatsoever happened on the board until someone edited a 6869-line
+  GDScript file. The column now carries the same `trigger: op args` DSL
+  `tiles2.0` and `units2.0` use, parsed into `AbilityData.triggers`, and the loop
+  dispatches on that rather than on the id.
+  - **`X` and `Y` are resolved at the BODY, not at the catalogue.** They are the
+    row's own argument slots, spelled as the `Description` column already spells
+    them, so `Infliction (2, Burn)` and `Infliction (1, Stun)` are one authored
+    row with two sets of arguments — which is exactly why the catalogue cannot do
+    the substitution and `BodyFacts.resolve_op_args` can.
+  - **The op vocabulary is the seam, and it is checked from both ends.** An
+    ability built out of ops that already exist is a sheet row and nothing else.
+    The generator *refuses to write* a row naming an op outside its list, and
+    `test_enemy_abilities.gd` checks `GameLoop2.ABILITY_OPS` agrees, so an
+    unimplemented op is caught when the sheet is regenerated rather than shipping
+    as a silent no-op while the enemy card goes on promising it.
+  - **Two of the authored effects were wrong on the first pass and the suite
+    caught both**, which is the argument for the behaviour being data. Aftermath's
+    argument is a tile and its sentence spells it `X`, but the slot is a *named*
+    one so the parsed row carries it in `arg` like every other `Y`. And a status
+    gain under `first_turn` has to spend the body's turn (Defensive Stance's
+    Dexterity *is* its turn) where Ritual's under `turn` must not, or the Strength
+    is pointless because a body that never attacks never spends it — `free` is how
+    the sheet says which it means.
+
+- **Restless Remains**, the sheet's new ability, is the first thing built that
+  way: `death: leave_corpse 1 revive=game_end`. **It is not Undying, and the
+  difference is the whole ability.** Undying owes the board a body back at the
+  start of the *next* game, at the rightmost column and a phase further on — a
+  game of respite and then a fresh problem at the far end of the board. This
+  leaves something lying *where it fell* that gets back up when you finish the
+  game, unless you spend the turns to put it down properly first. Undying is a
+  delay; this is a decision. The corpse is inert — it neither closes nor swings,
+  because a corpse that still hit you would be Undying with extra steps — and it
+  keeps its ability list so the body that gets up is the body that went down.
+  Skeleton Cat carries it.
+
+- **Five new enemies and nine retuned characters**, ported from the sheet: Pacer
+  (Isaac) and the Mewgenics family — Caveman Woman, Fetus, Skeleton Cat, Stem Cat.
+  Caveman Woman's Entry Summon names `tag:baby` and the Fetus carries that tag, so
+  the pair works as authored.
+  - **The Erratic Deck's reward needed two fixes to survive the regeneration.**
+    Her cell changed from "Gain +1 Scramble" to "Gain +1 Random Card", and neither
+    side of the pipeline could express it: `parse_reward` had no Card branch, so
+    regenerating rewrote her `level_up_stats` to `{}` with `reward_type` `&"none"`
+    — a level-up that pays nothing, which is Rodney's "+1 Loot" bug over again.
+    And `GameState.grant_level_up` had no `"card"` arm either, so even a correct
+    row would have fallen through to `_: pass`. `CharacterData` has documented
+    `&"card"` since the type was written and nothing had ever produced one.
+
+- **The overworld reminds you to change your Twitch category when you pick a
+  game.** The run's whole loop is leaving the program to go and play a real game,
+  which makes a stale category a mistake with no symptom on this side of the
+  screen: the run looks right, the overlay is correct, and the one thing that is
+  wrong is the one thing you cannot see from where you are sitting. It goes
+  unnoticed for as long as the game takes. It posts at each of the four places a
+  game is committed to, names the game, and is a notification rather than a modal
+  because it is a chore and not a decision. Nothing here talks to Twitch — no
+  token, no API, no network call — and the toggle is under Stream overlay.
+
+- **The OBS route map's arrows were landing nowhere near the rungs they join.**
+  `layoutWires` measured the boxes with `getBoundingClientRect()` — screen pixels,
+  every transform already applied — and wrote those numbers into the SVG's
+  `viewBox`, which is in *layout* pixels. It divided the `.map-fit` squeeze back
+  out but not the `.map` stage scale, so on any source that is not exactly the
+  stage's own 2560x1440 every wire was drawn at `--stage-scale` of its proper
+  length and pulled toward the middle, touching nothing. At the 1920x1080 the
+  README recommends that is 0.75, so the only size it ever looked right at was one
+  nobody runs.
+  - **Every existing check passed on it.** There were eleven wires, they were
+    straight, none was zero-length and each had an arrowhead — they simply were
+    not touching anything. `check_overlay.js` now pushes each wire's endpoints
+    through `getScreenCTM()` and asserts they land on one rung's right edge and
+    another's left. The resize check moved onto the same assertion: it used to
+    compare the path `d` before and after and expect it to *change*, which the
+    fixed stage had already made wrong — a correct `d` is the same string at every
+    source size, so that check could only pass while the bug was present. It went
+    green on the bug and red on the fix, which is the hazard of asserting on a
+    proxy.
+
 - **A shop is a place you decide something in, so the shelf says what it sells.**
   The shop panel led with the hub game's name and a sentence explaining that what
   you don't buy stays here — two lines of furniture, printed at every hub, on a
