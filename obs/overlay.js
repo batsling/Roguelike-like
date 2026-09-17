@@ -719,27 +719,34 @@ let lastEdges = [];
  * layout pixels and a transform does not touch them, so the fit below is read in
  * stage units whatever this scale comes out at, and the two never interact.
  *
- * Returns the stage's own height, which is the basis the rung's floor and ceiling
- * are fractions of. Falls back to the window when there is no stage (the map is
+ * Returns {h, scale}: the stage's own height, which is the basis the rung's floor
+ * and ceiling are fractions of, and the factor the whole stage is then squeezed
+ * into the source by. Falls back to the window when there is no stage (the map is
  * not the only-map source, so it has no fixed size) — the ladder is then solved
- * into the room it has, exactly as it was before the stage existed. */
+ * into the room it has, exactly as it was before the stage existed.
+ *
+ * THE SCALE IS RETURNED BECAUSE THE WIRES NEED IT. It is applied as a CSS
+ * `transform` on `.map`, and a transform is invisible to `clientWidth` but NOT to
+ * `getBoundingClientRect()` — which is what `layoutWires` measures the rungs
+ * with. See the note over `at()` for what that cost. */
 function fitStage() {
   const map = document.querySelector('.map');
-  if (!map) return window.innerHeight;
+  if (!map) return { h: window.innerHeight, scale: 1 };
   const cs = getComputedStyle(map);
   const w = parseFloat(cs.getPropertyValue('--stage-w'));
   const h = parseFloat(cs.getPropertyValue('--stage-h'));
-  if (!(w > 0 && h > 0)) return window.innerHeight;
+  if (!(w > 0 && h > 0)) return { h: window.innerHeight, scale: 1 };
   const scale = Math.min(window.innerWidth / w, window.innerHeight / h);
   map.style.setProperty('--stage-scale', String(scale));
   map.style.setProperty('--stage-x', ((window.innerWidth - w * scale) / 2) + 'px');
   map.style.setProperty('--stage-y', ((window.innerHeight - h * scale) / 2) + 'px');
-  return h;
+  return { h: h, scale: scale };
 }
 
 function layoutWires(edges) {
   if (edges) lastEdges = edges;
-  const stageH = fitStage();
+  const stage = fitStage();
+  const stageH = stage.h;
   const fit = el('map-fit');
   const rows = el('map-rows');
   const body = el('map-body');
@@ -782,20 +789,44 @@ function layoutWires(edges) {
   const scale = ideal < rungMin ? Math.max(0.35, ideal / rungMin) : 1;
   fit.style.transform = 'scale(' + scale + ')';
 
+  /* MEASURED IN SCREEN PIXELS, DRAWN IN LAYOUT ONES — so every measurement has
+   * to have BOTH transforms divided back out of it, not just the squeeze.
+   *
+   * `getBoundingClientRect()` reports where a box actually landed on screen,
+   * which means it has already been through every `transform` above it: the
+   * `scale()` on `.map-fit` (the squeeze, usually 1) AND the `scale()` on `.map`
+   * (the stage, `--stage-scale`). The SVG underneath is the other way around —
+   * its `viewBox` and its `width`/`height` are LAYOUT pixels, the stage's own
+   * units, because the stage transform scales the finished SVG along with
+   * everything else.
+   *
+   * Dividing by the squeeze alone left the stage's factor in, so the wires were
+   * laid out in a coordinate space a factor of `--stage-scale` away from the one
+   * they were drawn into. The stage is 2560x1440 and the README tells a streamer
+   * to make a 1920x1080 source, so that factor was 0.75 on the recommended
+   * setup and 1 only on a source of the stage's exact size: every arrow on a
+   * real stream was drawn at three quarters of its length, pulled toward the
+   * middle, touching none of the boxes it was supposed to join. The one size
+   * that looked right was the one nobody runs.
+   *
+   * `room` above is `clientWidth`/`clientHeight`, which a transform does NOT
+   * touch — those are already layout pixels and are correctly left alone. It is
+   * only the rect-measured numbers that need this. */
+  const total = scale * (stage.scale || 1);
   const origin = rows.getBoundingClientRect();
   const at = (key) => {
     const n = rows.querySelector('[data-key="' + cssEscape(key) + '"]');
     if (!n) return null;
     const r = n.getBoundingClientRect();
     return {
-      cy: (r.top + r.height / 2 - origin.top) / scale,
-      left: (r.left - origin.left) / scale,
-      right: (r.right - origin.left) / scale,
+      cy: (r.top + r.height / 2 - origin.top) / total,
+      left: (r.left - origin.left) / total,
+      right: (r.right - origin.left) / total,
     };
   };
 
-  const w = origin.width / scale;
-  const h = origin.height / scale;
+  const w = origin.width / total;
+  const h = origin.height / total;
   svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);

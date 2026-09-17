@@ -85,6 +85,51 @@ function check(name, ok, detail) {
   if (!ok) failures++;
 }
 
+/* DO THE ARROWS TOUCH THE BOXES? Run inside the page, and used twice — once on
+ * the map as drawn, and again after a resize, which is the case where wires
+ * measured from boxes go stale and point at nothing.
+ *
+ * IN SCREEN COORDINATES, VIA `getScreenCTM()`, because that is the only space
+ * the SVG and the rungs are guaranteed to share. The ladder carries two nested
+ * `scale()` transforms — the `.map-fit` squeeze and the `.map` stage — and the
+ * wires live in the SVG's own `viewBox` units underneath both, so comparing raw
+ * path coordinates against client rects is precisely the mistake that produced
+ * the bug this guards. Everything here is pushed through the CTM first and
+ * compared against `getBoundingClientRect()`, which is on the same side. */
+const WIRES_JOIN_RUNGS = () => {
+  const rows = document.getElementById('map-rows');
+  if (!rows) return { total: 0, starts: 0, ends: 0, worst: 'no ladder' };
+  const rungs = [...rows.querySelectorAll('[data-key]')].map((n) => {
+    const r = n.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  });
+  /* A tolerance in SCREEN pixels, and deliberately tight: the bug this is about
+   * moved endpoints by hundreds of pixels, while the rounding between a CTM and
+   * a client rect is well under one. */
+  const NEAR = 2;
+  const onEdge = (pt, edge) => rungs.some((r) =>
+    Math.abs(r[edge] - pt.x) <= NEAR
+    && pt.y >= r.top - NEAR && pt.y <= r.bottom + NEAR);
+  const out = { total: 0, starts: 0, ends: 0, worst: null };
+  for (const p of document.querySelectorAll('.wire')) {
+    const m = p.getScreenCTM();
+    if (!m) continue;
+    const a = p.getPointAtLength(0).matrixTransform(m);
+    const b = p.getPointAtLength(p.getTotalLength()).matrixTransform(m);
+    out.total++;
+    if (onEdge(a, 'right')) out.starts++;
+    else if (!out.worst) out.worst = 'start ' + Math.round(a.x) + ',' + Math.round(a.y);
+    if (onEdge(b, 'left')) out.ends++;
+    else if (!out.worst) out.worst = 'end ' + Math.round(b.x) + ',' + Math.round(b.y);
+  }
+  return out;
+};
+
+const joinsAll = (j) => j.total > 0 && j.starts === j.total && j.ends === j.total;
+const describeJoin = (j) =>
+  j.starts + '/' + j.total + ' leave a rung, ' + j.ends + '/' + j.total
+  + ' arrive at one' + (j.worst ? ' — stray ' + j.worst : '');
+
 /* ASK PLAYWRIGHT FIRST, GUESS SECOND.
  *
  * This used to be the directory scan alone, and the scan knew one Linux layout:
@@ -1221,6 +1266,28 @@ async function main() {
   check('…painted the same green as the line it ends',
     wires.headFill === 'rgb(111, 220, 141)', wires.headFill);
 
+  /* …AND ACTUALLY JOINING THE BOXES THEY CLAIM TO JOIN.
+   *
+   * Every check above passes on a wire drawn in the wrong place: there were
+   * eleven of them, they were straight, none was zero-length and each had a
+   * head. They simply were not touching anything. `layoutWires` measures the
+   * rungs with `getBoundingClientRect()` — screen pixels, every transform above
+   * already applied — and then writes those numbers into the SVG's `viewBox`,
+   * which is in LAYOUT pixels. It divided the `.map-fit` squeeze back out but
+   * not the `.map` stage scale, so on any source that is not exactly the
+   * stage's own 2560x1440 the whole bundle was drawn at `--stage-scale` of its
+   * proper size, pulled toward the middle of the panel. At the 1920x1080 the
+   * README recommends that is 0.75, and the only size it looked right at was
+   * one nobody runs.
+   *
+   * So this asserts the thing the picture is FOR: a wire starts on the right
+   * edge of one rung and ends on the left edge of another. Measured through
+   * `getScreenCTM()`, which is the one space the SVG and the boxes share
+   * whatever either is transformed by. */
+  const joined = await page.evaluate(WIRES_JOIN_RUNGS);
+  check('…and every wire actually joins the two rungs it runs between',
+    joinsAll(joined), describeJoin(joined));
+
   /* THE THREE RUNGS THAT ARE NOT JUST A GAME ON THE WAY, and their ORDER: the
    * game under your feet is the root and the Amulet is the last thing on the
    * road. A ladder drawn upside down would satisfy every count above. */
@@ -1402,23 +1469,31 @@ async function main() {
 
   /* THE WIRES SURVIVE A RESIZE. They are drawn from measured boxes, so a source
    * the streamer stretches is the case where they silently stay where they
-   * were — pointing at nothing. */
+   * were — pointing at nothing.
+   *
+   * ASSERTED AS "STILL JOINED", NOT AS "THE PATH DATA CHANGED". It used to be
+   * the latter, and that was a proxy for the real thing which the stage has
+   * since made WRONG: the ladder is solved into a fixed 2560x1440 stage and the
+   * source only scales it, so a correct `d` is now the SAME string at every
+   * source size, and the old check could only pass while the stage scale was
+   * leaking into the wire coordinates — i.e. exactly while they were broken. It
+   * went green on the bug and red on the fix, which is the whole hazard of
+   * asserting on a proxy. What matters is that the arrows still land on the
+   * boxes after the resize, so that is what this asks now, at a source size the
+   * map is deliberately never measured at anywhere else. */
   write((s) => { s.at++; s.route = fixture(dir).route; });
   await sleep(900);
-  const before = await page.evaluate(() =>
-    document.querySelector('.wire').getAttribute('d'));
   await page.setViewportSize({ width: 900, height: 720 });
   await sleep(600);
-  const after = await page.evaluate(() => ({
-    d: document.querySelector('.wire').getAttribute('d'),
-    degenerate: [...document.querySelectorAll('.wire')].filter((w) => {
+  const resized = await page.evaluate(WIRES_JOIN_RUNGS);
+  const stillStraight = await page.evaluate(() =>
+    [...document.querySelectorAll('.wire')].filter((w) => {
       const r = w.getBoundingClientRect();
       return r.width < 0.5 && r.height < 0.5;
-    }).length,
-  }));
-  check('the wires are redrawn when the source is resized',
-    after.d !== before && after.degenerate === 0,
-    'was ' + String(before).slice(0, 24) + '… now ' + String(after.d).slice(0, 24) + '…');
+    }).length);
+  check('the wires still join their rungs after the source is resized',
+    joinsAll(resized) && stillStraight === 0,
+    describeJoin(resized) + ', ' + stillStraight + ' degenerate');
   await page.setViewportSize({ width: WIDTH, height: HEIGHT });
   await page.goto('file://' + path.join(dir, 'overlay.html'));
   await sleep(700);
