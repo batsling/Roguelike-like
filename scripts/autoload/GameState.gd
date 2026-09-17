@@ -1840,6 +1840,14 @@ func grant_level_up(rng: RandomNumberGenerator = null) -> Array:
 			grant_chest(maxi(1, ch.level_up_reward_amount), Data.roll_chest_size_choices(r))
 		"scroll":
 			offer_loot("scroll", maxi(1, ch.level_up_reward_amount))
+		"card":
+			# A CARD OFF THE REWARD POOL — `roll_loot_entry("card")` goes to
+			# CardSystem.roll_card_loot, the same draw a card reward takes
+			# anywhere else. &"card" has been documented on CharacterData since
+			# the type was written and this arm was never here, so the Erratic
+			# Deck's "+1 Random Card" fell through to `_: pass` and her level-up
+			# paid nothing at all.
+			offer_loot("card", maxi(1, ch.level_up_reward_amount))
 		"loot":
 			# The KIND-BLIND payout: a piece of loot, and which kind it is comes off
 			# the same roll a defeated body's drop takes (roll_loot_kind) — scroll,

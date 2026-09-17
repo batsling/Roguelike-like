@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3 uid="uid://ability_restless_remains"]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"restless_remains"
+display_name = "Restless Remains"
+kind = &"death"
+variables = ""
+params = PackedStringArray()
+description = "On Health depletion, will leave a corpse with 1 Max Health that will revive in it's current tile on game completion unless fully defeated"
+file = "RestlessRemains"

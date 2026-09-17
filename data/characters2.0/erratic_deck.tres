@@ -10,7 +10,7 @@ id = &"erratic_deck"
 display_name = "Erratic Deck"
 description = "All Ranks and Suits in deck are randomized"
 source_game = "Balatro"
-base_max_hp = 8
+base_max_hp = 7
 start_gold = 3
 start_bash = 0
 start_dash = 0
@@ -23,12 +23,10 @@ start_random = 2
 starting_items = Array[StringName]([])
 starting_weapon = &""
 level_up_condition = "Randomly select your starting build"
-level_up_reward = "Gain +1 Scramble"
-level_up_stats = {
-"scramble": 1
-}
-level_up_reward_type = &"none"
-level_up_reward_amount = 0
+level_up_reward = "Gain +1 Random Card"
+level_up_stats = {}
+level_up_reward_type = &"card"
+level_up_reward_amount = 1
 file = "ErraticDeck"
 portrait = ExtResource("2_portrait")
 icon = ExtResource("3_icon")

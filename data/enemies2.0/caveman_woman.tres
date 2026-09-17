@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_caveman_woman"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+[ext_resource type="Texture2D" path="res://images2.0/enemies/CavemanWoman.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"caveman_woman"
+display_name = "Caveman Woman"
+game_type = &"strategy"
+difficulty = 1
+source_game = "Mewgenics"
+health = 1
+damage = 2
+goal_type = &"discovery"
+goal = "Witness a birth"
+abilities = [{"id": &"entry_summon", "amount": 1, "arg": &"tag:baby", "text": "baby tag"}]
+ability_text = "Entry Summon (1, baby tag)"
+size = "1x1"
+shape_rows = 1
+shape_cols = 1
+shape_mask = PackedInt32Array(1)
+file = "CavemanWoman"
+image = ExtResource("2_img")
