@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Speed's prose said a different function from the one Speed computes.** Both
+  of its `statuses` prose cells spelled the time window `(1+(1/2)^X-2))`, which
+  is wrong twice: the parens do not balance (two open, three closed) and the
+  exponent groups as `^X` with a stray `- 2` rather than `^(X-2)`. The side
+  blocks beside it were right all along
+  (`{1.0+pow((1.0/2.0), (X-2.0)):hours}`), and so was
+  `test_statuses.gd`, which has asserted the real curve — 3 hours, 2 hours,
+  1h30m, 1h15m, 1h8m — since it was written. The sheet prose was the lone
+  outlier, and now spells the identical expression so the two compare at a
+  glance (`tools/_statuses_speed_formula_fix.py`).
+
+  **This is the drift `StatusData` already warned about.** Its comment over the
+  prose fields says they are "the author's intent, so a drift between the prose
+  and the generated text is a content bug worth being able to see" — and nothing
+  reads `on_player_text` / `on_enemy_text` at runtime, so the player never saw
+  the broken formula. The author did, which is the audience that column has. It
+  surfaced from lining up every goal in the workbook side by side, which is the
+  argument for doing that on purpose.
+
 - **Four games and four connections ported out of the workbook.**
   `tools/Roguelikes.xlsx` gained Driving Rogue and Kernel Hearts (Action) and
   Insider Trading and Lexispell (Deckbuilder), all 2026, taking `data/games/` to
