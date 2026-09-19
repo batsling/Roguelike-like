@@ -11,6 +11,39 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four games and four connections ported out of the workbook.**
+  `tools/Roguelikes.xlsx` gained Driving Rogue and Kernel Hearts (Action) and
+  Insider Trading and Lexispell (Deckbuilder), all 2026, taking `data/games/` to
+  **882 games and 1286 connections**. The port is just
+  `tools/import-games-godot.py` and the atlas re-bake it triggers: every
+  connection name resolved, all four covers resolved out of `images2.0/games/`,
+  and `atlas_layout`, `_c6` and `_c12` moved with the new stars while `_owned`
+  and `_downloaded` did not, since none of the four is marked Owned.
+
+  **Three of the four hang off Balatro and the fourth off Baroque (1998)**, which
+  is the more interesting edge: Kernel Hearts is a 28-year reach back to a
+  PlayStation roguelike, sourced to a video rather than to a dev quote.
+  `check_map_sync.py` reads it as forward in time and says nothing, which is the
+  check working — its backwards-in-time list is still the same three
+  pre-existing pairs.
+
+  **The covers landed a day before the sheet did, and that is worth knowing
+  about.** The four PNGs were uploaded in one commit and the workbook carrying
+  their rows in the next, 49 seconds apart — so a clone taken between the two
+  sees four orphan covers, an unchanged `games` sheet, and a regeneration with a
+  zero diff. There is no drift there to find: `find_cover` only ever looks up a
+  cover from a sheet row, so art with no row is invisible to the importer and to
+  every checker in the repo. If a port ever looks like a no-op, check that the
+  workbook in the tree is the one that was meant, before concluding the sheet was
+  never edited.
+
+  **The prose counts were stale before this and are now current.** `CLAUDE.md`,
+  `README.md` and `docs/games-first-redesign.md` each still said 873 games —
+  four ports out of date, not one — so they now say 882. The 873 in
+  `docs/map-organization-research.md` is left alone on purpose: it counts
+  default-stroke *edges* on the hand-drawn map, and shares the number with the
+  old game count by coincidence.
+
 - **The abilities sheet's `Effect` column is now the behaviour.** Every other
   content type here reads what it does out of its own `Effect` column — tiles,
   units, pills, scrolls, potions, items. Abilities did not: the column was empty
