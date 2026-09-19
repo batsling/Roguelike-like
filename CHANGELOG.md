@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every goal in the game is now in one place: the workbook's `goals` sheet.**
+  A goal — the honour-system thing you go and do inside a real roguelike — was
+  authored in six sheets in five different column shapes, and nowhere at once:
+  `enemies`, `bosses` and `locations` each spell one as a `Goal Type` / `Goal`
+  pair, `characters` calls it `Level Up`, `curses` call it `Condition`, and a
+  status carries clauses that modify whatever goal you already hold. So "how
+  many goals are there" was not a question anyone could answer without opening
+  six sheets. `tools/generate_goals_sheet.py` builds the view: **136 goals** —
+  64 enemy, 49 boss, 11 character, 7 status, 3 curse, 2 location.
+
+  **It is a VIEW, and the script says so in capitals.** The owning sheets stay
+  the thing you edit and this is rebuilt from them, so an edit made directly to
+  `goals` is lost on the next run — the same rule `data/` lives under. `Tags`,
+  and `Type` on the 21 rows whose owner never authored one, are blank because
+  nothing upstream holds them yet; they are why this will probably be promoted
+  to a source of truth later.
+
+  **The first thing it showed was that the three duplicated goals are difficulty
+  ladders.** Lined up, "Defeat a skeleton with a ball" is Skeleton Warrior
+  (1-Low), Skeletal Brute (2-Medium) and Skeletal Bastion (3-High); "Shoot down
+  a flying enemy" is Bullat and King Bullat at 1-Low and 2-Medium; "Mute the
+  game" is Banshee and Green Banshee likewise. Three families asking for the
+  identical thing at escalating tiers, which is the case for incremental goals
+  (same verb, a count that climbs) rather than three accidents. Six sheets kept
+  that invisible; one sorted column made it obvious.
+
+  **A `Count` is filled only where the goal names a plain number of ticks** —
+  an "at least" count ("Defeat 5+ bugs") or a leading fetch ("Obtain 1 key"),
+  10 rows in all. A percentage, a clock and "Only use 1 hand" are deliberately
+  left blank, because an empty cell is visibly unauthored and a wrong number is
+  not. Statuses never get one: their X is a global that scales with intensity,
+  not a tally ticked inside a single game.
+
+  **`events` are deliberately out.** They carry goals through
+  `add_goal "<text>" for <n> games -> <reward>`, the one shape with a duration
+  and a payout attached, and they are being reworked. An event's `Requirement`
+  (`gold>=1`) was never a goal — that is a gate the engine evaluates. `amulets`
+  has an `Obtain Goals` column that is empty in all ten rows.
+
 - **Speed's prose said a different function from the one Speed computes.** Both
   of its `statuses` prose cells spelled the time window `(1+(1/2)^X-2))`, which
   is wrong twice: the parens do not balance (two open, three closed) and the
