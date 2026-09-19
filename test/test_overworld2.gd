@@ -139,6 +139,43 @@ func _pick_solo(index: int) -> void:
 func _disarm_board() -> void:
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
+	_plain_goals()
+
+# …and strip the two things the `goals` sheet now says about a goal (§7.7), for
+# exactly the same reason as the abilities above.
+#
+# A goal is authored with a `Ticked` and a `Count`, and both change what ticking
+# its row DOES. 14 of the 111 bodies are `game beaten` — their box arms instead of
+# resolving, and nothing happens until the report — and 7 are counted, drawn as a
+# `+` counter with no box to press at all. The offering rolls a RANDOM body, so a
+# screen test that ticked `_fulfil_checks[0]` and expected a resolution was true
+# on four bodies in five and false on the rest: the same only-usually-true
+# assertion the abilities used to be, and it reads exactly like a flake.
+#
+# The resource is DUPLICATED rather than edited. `entry["enemy"]` is the shared
+# GoalEnemyData that `Data` handed out, and writing to it would leave every later
+# test in the run looking at a roster this one quietly rewrote.
+#
+# Tests that are ABOUT the two modes arrange them on purpose (`_make_front_body`),
+# which is what this file's counted / game-beaten tests do.
+func _plain_goals() -> void:
+	var changed := false
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e == null or (not e.settled_by_beating() and not e.is_counted()):
+			continue
+		var plain: GoalEnemyData = e.duplicate() as GoalEnemyData
+		plain.ticked = GoalEnemyData.TICK_ANY_TIME
+		plain.goal_count = 0
+		entry["enemy"] = plain
+		entry["progress"] = 0
+		changed = true
+	# The report step was built from the bodies as they were, so a mode stripped
+	# after it went up has to be redrawn — otherwise the list still holds the
+	# counter (or the armed box) this just took away.
+	if changed and _ui != null and is_instance_valid(_ui) \
+			and _ui._phase == OVERWORLD.Phase.PLAYING and not _ui._chosen.is_empty():
+		_ui._populate_play_panel()
 
 # Wait for the board's resolve playback to hand the screen back, however long it
 # runs. NOT a fixed sleep: a playback is one beat per TURN (§7.4) and a beat is
@@ -766,8 +803,8 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
 
 func test_level_up_checkbox_grants_the_reward() -> void:
-	# Zoe's level-up is "Perfect a Game" -> +1 Dash. Ticking the level-up box on
-	# report should apply the character's level_up_stats.
+	# Zoe's level-up ("Beat a game without losing") pays +1 Dash. Ticking the
+	# level-up box on report should apply the character's level_up_stats.
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	var lvl_before: int = GameState.player_level
@@ -1481,6 +1518,10 @@ func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 
 func test_a_goal_row_carries_no_notes_button() -> void:
 	_ui.pick(0)
+	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
+	# about a PLAIN goal row, and a `game beaten` or counted one is a
+	# different control with different behaviour (§7.7).
+	_disarm_board()
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
 		return
@@ -1491,6 +1532,10 @@ func test_a_goal_row_carries_no_notes_button() -> void:
 
 func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
 	_ui.pick(0)
+	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
+	# about a PLAIN goal row, and a `game beaten` or counted one is a
+	# different control with different behaviour (§7.7).
+	_disarm_board()
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
 		return
@@ -3486,7 +3531,15 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 		return "\n".join(_labels_under(_ui._verify_box))
 	var listed: String = texts.call()
 	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
-	assert_true(listed.contains("Use sorrow or self-inflicted pain as a weapon"),
+	# READ OFF THE CHARACTER, not quoted. The goal wording is authored in the
+	# workbook's `goals` sheet and pushed out to `characters` from there (§7.7), so
+	# a pass over the goals rewrites it — this line used to quote "Use sorrow or
+	# self-inflicted pain as a weapon" and broke when Isaac's became "Beat a game
+	# while having used…". What the test is about is that the level-up is LISTED,
+	# and that is true whatever it says.
+	var isaac: CharacterData = Data.get_character2(&"isaac")
+	assert_false(isaac.level_up_condition.is_empty(), "Isaac has one to list")
+	assert_true(listed.contains(isaac.level_up_condition),
 		"the level-up challenge is listed: %s" % listed)
 	assert_true(listed.contains("Nothing is following you"), "and an empty stack says so: %s" % listed)
 	# Miss a goal so an enemy follows: its goal joins the list.
@@ -3684,6 +3737,10 @@ func test_the_checklist_boxes_are_drawn_not_left_to_the_stock_theme() -> void:
 # board beside it rather than box by box.
 func test_ticking_a_checklist_row_restyles_the_whole_row() -> void:
 	_ui.pick(0)
+	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
+	# about a PLAIN goal row, and a `game beaten` or counted one is a
+	# different control with different behaviour (§7.7).
+	_disarm_board()
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
 		return
@@ -9894,3 +9951,258 @@ func test_the_reminder_does_not_change_what_picking_does() -> void:
 	Settings.twitch_reminder = true
 	assert_eq(GameState.current_game_id, target, "the pick still travelled")
 	assert_true(GameLoop2.has_arrivals(), "and still spawned the game's enemy")
+
+# ===========================================================================
+# WHEN A GOAL CAN BE ANSWERED, AND HOW MANY TIMES (§7.7)
+#
+# The `goals` sheet is the source for every goal in the game now, and it
+# authors two things the checklist used to decide for itself:
+#
+#   Ticked   `any time` (99 goals) or `game beaten` (35). A restriction like
+#            "Beat a game without using magic" is not true until the game is
+#            beaten, so its box arms and disarms freely and the report is what
+#            cashes it — the same shape the status and level-up rows have.
+#   Count    blank, or 2+. A counted goal is a `+` counter rather than a tick
+#            box, and only the press that reaches the target resolves anything.
+#
+# These tests ARRANGE the body rather than hoping the offering rolls one: the
+# roster has 14 `game beaten` bodies and 7 counted ones out of 111, so a test
+# that waited for one would be a test that almost never ran.
+# ===========================================================================
+
+# Put `enemy_id`'s resource onto the first body standing on the board, and return
+# that body's instance. The board is otherwise left exactly as the pick made it,
+# so what is under test is the GOAL and not a hand-built board.
+func _make_front_body(enemy_id: StringName) -> int:
+	if GameLoop2.stack.is_empty():
+		return 0
+	var e: GoalEnemyData = Data.get_goal_enemy_any(enemy_id)
+	if e == null:
+		return 0
+	GameLoop2.stack[0]["enemy"] = e
+	GameLoop2.stack[0]["progress"] = 0
+	_ui._populate_play_panel()
+	return int(GameLoop2.stack[0]["instance"])
+
+# The checklist row bound to `instance`, as {check, counter buttons} — or {} when
+# no row is about that body.
+func _row_check(instance: int):
+	for f in _ui._fulfil_checks:
+		if int(f["instance"]) == instance:
+			return f["check"]
+	return null
+
+# Every Button under the checklist whose label is `glyph`.
+func _count_buttons(glyph: String) -> Array:
+	var out: Array = []
+	var stack: Array = [_ui._verify_box]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Button and (n as Button).text == glyph:
+			out.append(n)
+		for c in n.get_children():
+			stack.append(c)
+	return out
+
+func test_a_counted_goal_draws_a_counter_instead_of_a_tick_box() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")     # "Defeat 3 bugs", Count 3
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	assert_eq(GameLoop2.goal_target(inst), 3, "the sheet's Count reached the body")
+	assert_true(GameLoop2.goal_is_counted(inst), "…and it reads as counted")
+	var cb = _row_check(inst)
+	assert_not_null(cb, "the body still has a row")
+	assert_false(cb.visible,
+		"a counted row's box is state, not a control — the counter is the control")
+	assert_string_contains(_text_of(_ui._verify_box), "0 / 3",
+		"the row opens at zero of three")
+	assert_eq(_count_buttons("+").size(), 1, "one + to press")
+	assert_eq(_count_buttons("−").size(), 0,
+		"and nothing to take back at zero")
+
+func test_pressing_plus_short_of_the_target_asks_nothing_and_spends_nothing() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	var standing: int = GameLoop2.stack.size()
+	_count_buttons("+")[0].pressed.emit()
+	assert_null(_ui.get_node_or_null("Confirm"),
+		"the first of three presses has nothing irreversible to ask about")
+	assert_eq(GameLoop2.goal_progress(inst), 1, "the tally moved")
+	assert_eq(GameLoop2.stack.size(), standing, "and the body took no hit")
+	# The row is rebuilt DEFERRED (`_rebuild_soon`), and a test never reaches the
+	# frame that would flush it — so the repaint is asked for by hand here, the
+	# same way `_make_front_body` does.
+	_ui._populate_play_panel()
+	assert_string_contains(_text_of(_ui._verify_box), "1 / 3",
+		"the row says so")
+
+func test_the_press_that_reaches_the_target_confirms_and_resolves() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	_count_buttons("+")[0].pressed.emit()
+	_count_buttons("+")[0].pressed.emit()
+	assert_null(_ui.get_node_or_null("Confirm"), "two presses, no question yet")
+	assert_eq(GameLoop2.goal_progress(inst), 2)
+	_count_buttons("+")[0].pressed.emit()
+	assert_not_null(_ui.get_node_or_null("Confirm"),
+		"the third press is the irreversible one, so it asks")
+	_say_yes(_ui)
+	assert_true(GameLoop2.entry_for(inst).is_empty(),
+		"a 1-Health body answered three times is off the board")
+
+# …and saying No leaves the tally where it was, exactly as No leaves a tick box
+# unticked. The counter is the one thing on this list that has not spent
+# anything yet, so a declined confirm must not bank the press.
+func test_declining_the_last_press_leaves_the_tally_short() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	_count_buttons("+")[0].pressed.emit()
+	_count_buttons("+")[0].pressed.emit()
+	_count_buttons("+")[0].pressed.emit()
+	_say_no(_ui)
+	assert_eq(GameLoop2.goal_progress(inst), 2,
+		"the press that was declined was not banked")
+	assert_false(GameLoop2.entry_for(inst).is_empty(), "and the body is standing")
+
+func test_minus_takes_a_press_back_while_the_goal_is_unfinished() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	_count_buttons("+")[0].pressed.emit()
+	_ui._populate_play_panel()
+	assert_eq(_count_buttons("−").size(), 1, "now there is something to undo")
+	_count_buttons("−")[0].pressed.emit()
+	assert_eq(GameLoop2.goal_progress(inst), 0, "the misclick came back")
+	_ui._populate_play_panel()
+	assert_eq(_count_buttons("−").size(), 0, "and there is nothing left to undo")
+
+# A COUNTED TALLY SURVIVES THE WALK TO THE NEXT GAME. A goal can be answered in
+# any later game (§2), so three bugs need not all be in one — and a counter that
+# reset every time the player moved on would be a counter nobody could finish.
+func test_a_counted_tally_persists_into_the_next_game() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	_count_buttons("+")[0].pressed.emit()
+	assert_eq(GameLoop2.goal_progress(inst), 1)
+	_ui.report(false)                 # walked away without beating it
+	_ui._end_resolve()
+	assert_eq(GameLoop2.goal_progress(inst), 1,
+		"the bug you already killed is still killed")
+
+# …and it survives a save/load, for the same reason: the tally is something the
+# player built up, not something that can be read back off the sheet.
+func test_a_counted_tally_survives_a_reload() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"attack_fly")
+	if inst == 0:
+		pending("the board had no body to make a counted one of")
+		return
+	_count_buttons("+")[0].pressed.emit()
+	_count_buttons("+")[0].pressed.emit()
+	var saved: Dictionary = GameLoop2.serialize()
+	GameLoop2.reset()
+	GameLoop2.restore(saved)
+	assert_eq(GameLoop2.goal_progress(inst), 2,
+		"two of the three came back with the save")
+
+# --- `Ticked: game beaten` -------------------------------------------------
+
+func test_a_game_beaten_goal_does_not_resolve_when_it_is_ticked() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")   # "Beat a game without using magic"
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	var e: GoalEnemyData = GameLoop2.entry_for(inst)["enemy"]
+	assert_true(e.settled_by_beating(), "the sheet's Ticked reached the body")
+	var cb = _row_check(inst)
+	assert_not_null(cb, "it still has a row")
+	cb.button_pressed = true
+	assert_null(_ui.get_node_or_null("Confirm"),
+		"nothing is being resolved, so nothing is asked")
+	assert_false(GameLoop2.entry_for(inst).is_empty(),
+		"the body is still standing — the game has not been beaten yet")
+	assert_true(GameLoop2.row_armed("goal:%d" % inst),
+		"the tick is held, the way a winning-run row's is")
+
+# …and unticking it costs nothing, which is the whole point of arming.
+func test_a_game_beaten_goal_unticks_freely() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	var cb = _row_check(inst)
+	cb.button_pressed = true
+	cb.button_pressed = false
+	assert_false(GameLoop2.row_armed("goal:%d" % inst), "taken straight back")
+
+# THE REPORT IS WHAT CASHES IT — and only a report that beat the game.
+func test_beating_the_game_cashes_a_ticked_game_beaten_goal() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	_row_check(inst).button_pressed = true
+	_ui.report(true)
+	_ui._end_resolve()
+	assert_true(GameLoop2.entry_for(inst).is_empty(),
+		"the game was beaten, so the goal was met and the body went down")
+
+func test_losing_the_game_does_not_cash_a_ticked_game_beaten_goal() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	_row_check(inst).button_pressed = true
+	_ui.report(false)                 # did not beat it
+	_ui._end_resolve()
+	assert_false(GameLoop2.entry_for(inst).is_empty(),
+		"'Beat a game without using magic' is not answered by a game you did not beat")
+
+# The row is mirrored into the review inside the Completed Game confirm, which is
+# where these rows are last askable — the same treatment the status goals and the
+# level-up get, because they settle at the same moment.
+func test_a_game_beaten_goal_is_in_the_completed_game_review() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	var review: Control = _ui._checklist.winning_run_review()
+	assert_not_null(review, "there is a review to show")
+	var e: GoalEnemyData = GameLoop2.entry_for(inst)["enemy"]
+	assert_string_contains(_text_of(review), e.display_name,
+		"the body whose goal the win settles is in the review")
+
+# An ANY-TIME goal is untouched by all of this: it still resolves the second it
+# is confirmed, mid-game, with no wait for a win.
+func test_an_any_time_goal_still_resolves_on_the_spot() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"stalker")   # "Become undetectable", any time
+	if inst == 0:
+		pending("the board had no body to make an any-time one of")
+		return
+	var e: GoalEnemyData = GameLoop2.entry_for(inst)["enemy"]
+	assert_false(e.settled_by_beating(), "this one is any time")
+	_tick(_row_check(inst))
+	assert_true(GameLoop2.entry_for(inst).is_empty(),
+		"confirmed mid-game, resolved mid-game")

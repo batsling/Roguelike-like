@@ -253,13 +253,41 @@ func populate_play_panel() -> void:
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry["instance"])
 		var e: GoalEnemyData = entry["enemy"]
-		var row := verify_row(_goal_row_text(entry), UITheme.TEXT, false, e, null, inst)
+		# THE TWO THINGS THE SHEET NOW SAYS ABOUT A GOAL (§7.7), and they are
+		# independent: WHEN it can be answered (`Ticked`) and HOW MANY answers
+		# finish it (`Count`).
+		var at_the_end: bool = e != null and e.settled_by_beating()
+		var counted: bool = e != null and e.is_counted()
+		# A goal settled by beating the game is tinted like the level-up row — the
+		# other thing on this list the hour at the game does not settle. Its own
+		# wording is what says so out loud ("Beat a game without using magic"),
+		# which is exactly what the goals-sheet rewrite made true of every one of
+		# them, so the row needs no prefix on top of the colour.
+		var tint: Color = UITheme.GOLD if at_the_end else UITheme.TEXT
+		var row := verify_row(_goal_row_text(entry), tint, false, e, null, inst,
+			null, _goal_counter(entry) if counted else {})
 		# NEVER SUNK, even when it has been ticked: a body still on the stack after
 		# its goal was met is one with Health left over (effective_health > 1), and
 		# it is still standing on the board beside this list.
 		_add_row(row["row"])
 		fulfil_checks.append({"check": row["check"], "instance": inst})
-		_arm_goal_row(row["check"], inst, e)
+		# A COUNTED ROW IS ARMED BY ITS BUTTONS, not by its box (see `_goal_counter`),
+		# so all there is to do here is lock one that has already finished — which
+		# is the same thing `_arm_goal_row` and `_arm_goal_at_the_end` do first.
+		#
+		# COUNTED WINS OVER `game beaten` when a goal is somehow both, and that is
+		# the right way round rather than an oversight: `_count_up` still arms
+		# instead of resolving on such a body (so the report is still what cashes
+		# it), and the row stays OUT of the Completed Game review, because the
+		# review offers a box to tick and a counter is not something you can answer
+		# from another screen. No goal on the roster is both today.
+		if counted:
+			if GameLoop2.row_answered("goal:%d" % inst):
+				_lock_row(row["check"])
+		elif at_the_end:
+			_arm_goal_at_the_end(row["check"], inst, e)
+		else:
+			_arm_goal_row(row["check"], inst, e)
 		# The add-ons, each in the colour that says which kind it is: the required
 		# clauses in red first (they tighten the row above), then the ways out and
 		# the bonuses in gold. Order is the sentence's own — `goal_text_for` reads
@@ -316,38 +344,150 @@ func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
 	var name_of: String = enemy.display_name if enemy != null else "it"
 	_arm_row(cb, "goal:%d" % instance,
 		"You cleared %s's goal." % name_of,
-		func() -> void:
-			var standing: int = GameLoop2.stack.size()
-			var at_game: GameData = _page._chosen.get("game")
-			# Recorded from the entry as it stands, BEFORE the hit: `fulfill` can
-			# take the body off the board, and the goal it was carrying goes with it.
-			GameLoop2.record_completed_goal("enemy", "Cleared: %s — %s" % [
-				GameLoop2.goal_text_for(GameLoop2.entry_for(instance)), name_of])
-			GameLoop2.fulfill(instance, true)
-			# THE BODY IS DONE, so whatever was armed against it pays now (§13). A
-			# bonus row ticks to say "I did that" and waits here for the row that
-			# says the enemy is finished with — which is this one. After `fulfill`,
-			# so a body that died to the hit is a GHOST by the time the bonus asks,
-			# and `claim_enemy_bonus` reads it off the ghost exactly as it always has.
-			_cash_armed(instance)
-			var gone: bool = GameLoop2.entry_for(instance).is_empty()
-			# Banked here rather than at the report, because the report can no
-			# longer see it: the body it would have looked up is already off the
-			# board. Against the GAME it happened at and the CHARACTER who did it,
-			# exactly as report() banks the ones it resolves itself.
-			if gone and at_game != null and enemy != null:
-				_page._record_defeat(at_game, enemy)
-			_announce(
-				("%s is down — its loot is on the board." % name_of if gone
-					else "%s took the hit, and is holding its fire." % name_of),
-				UITheme.SUCCESS if gone else UITheme.GOLD)
-			# The list itself changes shape when a body leaves it, so it is rebuilt
-			# — safely, because every answered row is remembered by the loop, and
-			# DEFERRED, because the box being locked a line above is one of the
-			# children the rebuild frees.
-			if gone and standing > GameLoop2.stack.size():
-				_rebuild_soon(),
+		func() -> void: _resolve_goal_now(instance, enemy),
 		_enemy_note_hooks(enemy))
+
+# WHAT ANSWERING A BODY'S GOAL ACTUALLY DOES. Split out of `_arm_goal_row`
+# because it now has two ways in: a tick box, and the press of `+` that reaches a
+# counted goal's target (§7.7). Both are the same event — the goal was met — and
+# a second copy of this would be a second place for the bonus cash, the defeat
+# bank or the rebuild to be forgotten.
+func _resolve_goal_now(instance: int, enemy: GoalEnemyData) -> void:
+	var name_of: String = enemy.display_name if enemy != null else "it"
+	var standing: int = GameLoop2.stack.size()
+	var at_game: GameData = _page._chosen.get("game")
+	# Recorded from the entry as it stands, BEFORE the hit: `fulfill` can
+	# take the body off the board, and the goal it was carrying goes with it.
+	GameLoop2.record_completed_goal("enemy", "Cleared: %s — %s" % [
+		GameLoop2.goal_text_for(GameLoop2.entry_for(instance)), name_of])
+	GameLoop2.fulfill(instance, true)
+	# THE BODY IS DONE, so whatever was armed against it pays now (§13). A
+	# bonus row ticks to say "I did that" and waits here for the row that
+	# says the enemy is finished with — which is this one. After `fulfill`,
+	# so a body that died to the hit is a GHOST by the time the bonus asks,
+	# and `claim_enemy_bonus` reads it off the ghost exactly as it always has.
+	_cash_armed(instance)
+	var gone: bool = GameLoop2.entry_for(instance).is_empty()
+	# Banked here rather than at the report, because the report can no
+	# longer see it: the body it would have looked up is already off the
+	# board. Against the GAME it happened at and the CHARACTER who did it,
+	# exactly as report() banks the ones it resolves itself.
+	if gone and at_game != null and enemy != null:
+		_page._record_defeat(at_game, enemy)
+	_announce(
+		("%s is down — its loot is on the board." % name_of if gone
+			else "%s took the hit, and is holding its fire." % name_of),
+		UITheme.SUCCESS if gone else UITheme.GOLD)
+	# The list itself changes shape when a body leaves it, so it is rebuilt
+	# — safely, because every answered row is remembered by the loop, and
+	# DEFERRED, because the box being locked by the caller is one of the
+	# children the rebuild frees.
+	if gone and standing > GameLoop2.stack.size():
+		_rebuild_soon()
+
+# A GOAL THE GAME BEING BEATEN IS WHAT SETTLES (§7.7) — the sheet's
+# `Ticked: game beaten`.
+#
+# "Beat a game without using magic" cannot honestly be answered in the first five
+# minutes, and until the goals sheet said so it was a box you could tick then:
+# the row asked for a PROMISE where every other row on this list asks for a
+# report. So these arm instead of resolving. They behave exactly like the status
+# and level-up rows above them — on and off freely, nothing spent, and the report
+# is what cashes them — and they are mirrored into the review inside the
+# "Completed Game" confirm, which is the moment they are last askable.
+#
+# Their claim reaches the report through `ticked_fulfilments`, which has always
+# handled an enemy box still open at the report and until now never saw one.
+func _arm_goal_at_the_end(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
+	var key: String = "goal:%d" % instance
+	_arm_winning_row(cb, key)
+	if cb != null and is_instance_valid(cb) and not cb.disabled:
+		cb.tooltip_text = ("This one is settled by finishing the game — tick it "
+			+ "when you do, or confirm it on the Completed Game screen.")
+	var name_of: String = enemy.display_name if enemy != null else "it"
+	# INTO THE REVIEW with the status goals and the level-up: same list, same
+	# mirror, same notes field. The label leads with the enemy because the review
+	# is read away from the board, with no portrait column to say whose goal it is.
+	winning_rows.append({"check": cb,
+		"label": "%s — %s" % [name_of, GameLoop2.entry_goal(
+			GameLoop2.entry_for(instance))],
+		"mark": {}, "note": _enemy_note_hooks(enemy)})
+
+# === A COUNTED GOAL'S `+` (§7.7) ===========================================
+#
+# `Count: 3` on "Defeat 3 bugs" makes the row a tally instead of a tick box, and
+# the press that reaches 3 is the one that does what the box would have done.
+#
+# WHY ONLY THE LAST PRESS CONFIRMS. Every irreversible row on this list is
+# guarded by one "did you really?" (see `_arm_row`). A counted goal has exactly
+# one irreversible moment — the press that resolves it — and the two before it
+# spend nothing and can be taken straight back (`−`). Asking three times would
+# train the player to click through the question that actually matters.
+
+# The {at, target, locked, on_plus, on_minus} `verify_row` draws a counter from.
+func _goal_counter(entry: Dictionary) -> Dictionary:
+	var instance: int = int(entry.get("instance", 0))
+	var enemy: GoalEnemyData = entry.get("enemy")
+	return {
+		"at": int(entry.get("progress", 0)),
+		"target": enemy.count_target() if enemy != null else 1,
+		"locked": GameLoop2.row_answered("goal:%d" % instance),
+		"on_plus": func() -> void: _count_up(instance, enemy),
+		"on_minus": func() -> void: _count_down(instance),
+	}
+
+func _count_up(instance: int, enemy: GoalEnemyData) -> void:
+	var key: String = "goal:%d" % instance
+	if GameLoop2.row_answered(key):
+		return
+	var target: int = GameLoop2.goal_target(instance)
+	# NOT THE LAST PRESS: step the tally and repaint, and that is all. Nothing has
+	# been spent, so there is nothing to ask about.
+	if GameLoop2.goal_progress(instance) + 1 < target:
+		GameLoop2.advance_goal(instance)
+		_rebuild_soon()
+		return
+	var name_of: String = enemy.display_name if enemy != null else "it"
+	var at_the_end: bool = enemy != null and enemy.settled_by_beating()
+	var editor: TextEdit = null
+	var note: Dictionary = _enemy_note_hooks(enemy)
+	if not note.is_empty():
+		editor = _note_editor(note)
+	var on_confirm := func() -> void:
+		# Re-asked rather than trusted: the confirm is a panel the player can sit
+		# in, and a scroll or a bomb can finish this body while it is open.
+		if GameLoop2.row_answered(key) or GameLoop2.entry_for(instance).is_empty():
+			return
+		if editor != null and is_instance_valid(editor) \
+				and editor.text != String(editor.get_meta("was", "")):
+			var write: Callable = note["write"]
+			write.call(editor.text)
+		GameLoop2.advance_goal(instance)
+		# The row is done for this game either way; what differs is whether the
+		# goal RESOLVES now or waits for the game to be handed in, exactly as it
+		# does for a row that is a plain box (see `_arm_goal_at_the_end`).
+		GameLoop2.mark_row_answered(key)
+		if at_the_end:
+			GameLoop2.arm_row(key)
+			_announce("%s's goal is counted out — it settles when you complete "
+				% name_of + "the game.", UITheme.GOLD)
+			_rebuild_soon()
+		else:
+			_resolve_goal_now(instance, enemy)
+			_rebuild_soon()
+	ConfirmPanel.ask(_page, "Confirm this",
+		CONFIRM_BODY % ("That is %d of %d for %s's goal — the last one."
+			% [target, target, name_of]),
+		# NO `on_cancel`: a declined press was never banked in the first place
+		# (`advance_goal` is inside the Yes), so there is nothing to put back —
+		# unlike a tick box, which has to be un-pressed.
+		"Yes, I did it", on_confirm, Callable(), _note_block(editor))
+
+func _count_down(instance: int) -> void:
+	if GameLoop2.row_answered("goal:%d" % instance):
+		return
+	if GameLoop2.retreat_goal(instance):
+		_rebuild_soon()
 
 # The (game, enemy) note the confirm writes, as the {read, write, placeholder}
 # _arm_row wants — or {} when there is no pair to write about. The same accessors
@@ -954,6 +1094,20 @@ const WINNING_RUN_HEAD := "On a winning run:"
 # So all four kinds of settled-at-the-end row nest under WINNING_RUN_HEAD, and the
 # bodies come last under a head of their own.
 #
+# A BODY'S GOAL CAN NOW BE SETTLED AT THE END TOO (§7.7), and it still belongs
+# under THIS head. The sheet's `Ticked: game beaten` makes 14 of the 111 bodies
+# arm rather than resolve — but they are still bodies standing on the board
+# beside this list, and this section is what the board's rows are paired with
+# (bind_row_to_body), what their clauses and bonuses hang off, and what board
+# order means. Moving them away from their own add-ons to sit under a header
+# about the run would cost more than it explained.
+#
+# What tells them apart is the row itself: tinted like the level-up row, and
+# carrying a goal whose own wording says when it is answered ("Beat a game
+# without using magic"). That is the thing the goals-sheet rewrite made true of
+# every one of them — before it, the same goal read "Do not use magic" and the
+# row had no way to say it.
+#
 # NOT INDENTED, and no colon on it: the rows below this one do not nest under it
 # (see the block in populate_play_panel), so it is a label on a section rather than
 # a sentence they complete.
@@ -1355,8 +1509,18 @@ func populate_standing() -> void:
 		# "dmg N" in words: the board's ⚔ badge is a fine-detail glyph that reads as
 		# an ✕ at list-row sizes.
 		var inst: int = int(entry.get("instance", 0))
+		# HOW FAR UP A COUNTED GOAL YOU ALREADY ARE (§7.7), on the list that is read
+		# BEFORE a game is chosen. The tally persists across games because the body
+		# does, so "2 of 3" is the standing fact about this follower in exactly the
+		# way its goal and its damage are — and it is the number that decides
+		# whether this is the body worth finishing next.
+		var tally: String = ""
+		if e != null and e.is_counted():
+			tally = "   (%d / %d done)" % [int(entry.get("progress", 0)),
+				e.count_target()]
 		_box.add_child(_objective_row(
-			"%s — %s   (dmg %d)" % [GameLoop2.goal_text_for(entry), e.display_name, e.damage],
+			"%s — %s%s   (dmg %d)" % [GameLoop2.goal_text_for(entry),
+				e.display_name, tally, e.damage],
 			tint, _enemy_icon_rect(e, tint, GameLoop2.entry_image(entry)), inst))
 		# The way out of that goal, if something burned this body (§13) — read here
 		# rather than only on the report step, because it is a reason to play the
@@ -1446,8 +1610,12 @@ func _play_panel_sig() -> String:
 		# The enemy's ID, not only its name: a re-roll that landed on a different
 		# body with the same name is still a different goal, and the id is the only
 		# thing that cannot collide.
-		parts.append("%d:%s:%s" % [int(entry.get("instance", 0)),
-			String(e.id) if e != null else "", GameLoop2.goal_text_for(entry)])
+		# …and how far up a COUNTED goal it has been ticked (§7.7). The tally is on
+		# the row, so a press of `+` has to be a reason to repaint — otherwise the
+		# guard holds a "1 / 3" over a body the player has already reported twice.
+		parts.append("%d:%s:%s:%d" % [int(entry.get("instance", 0)),
+			String(e.id) if e != null else "", GameLoop2.goal_text_for(entry),
+			int(entry.get("progress", 0))])
 		for alt in GameLoop2.alternatives_for(entry):
 			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),
 				int(alt["stacks"])])
@@ -1482,9 +1650,11 @@ func _standing_checklist_sig() -> String:
 		parts.append("%s:%d" % [String(row["key"]), int(row["stacks"])])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
-		parts.append("%d:%s:%s:%d:%s" % [int(entry.get("instance", 0)),
+		# …and the counted goal's tally, which this list now prints (§7.7) and which
+		# therefore has to be a reason to repaint, the same as the goal text is.
+		parts.append("%d:%s:%s:%d:%s:%d" % [int(entry.get("instance", 0)),
 			GameLoop2.goal_text_for(entry), e.display_name, e.damage,
-			str(GameLoop2.in_front(entry))])
+			str(GameLoop2.in_front(entry)), int(entry.get("progress", 0))])
 		for alt in GameLoop2.alternatives_for(entry):
 			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),
 				int(alt["stacks"])])
@@ -1820,9 +1990,77 @@ func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) 
 # `mark` is a chip the row leads with instead of a word — today the status symbol
 # (_status_mark), handed in built rather than as a texture because what it carries
 # (its frame, its hover card) is the caller's fact, not the row's.
+# A COUNTED GOAL'S CONTROLS, in place of the row's tick box (§7.7).
+#
+# "Defeat 3 bugs" is one goal answered three times, so the row is a tally rather
+# than a promise: `−  2 / 3  +` and the goal beside it. The box is still there —
+# every accessor on this class is written in terms of it, and it is what carries
+# the row's green wash, its lock and its claim — but it is HIDDEN and driven by
+# the counter, because a box you could tick directly would be a way to answer
+# three bugs with one press.
+#
+# `counter` is {at, target, on_plus, on_minus}; empty for the 127 goals that are
+# a plain tick box, which is every caller but the counted branch of
+# populate_play_panel.
+const COUNT_BTN := 26
+
+func _counter_controls(counter: Dictionary, color: Color, locked: bool) -> Control:
+	var at: int = int(counter.get("at", 0))
+	var target: int = maxi(1, int(counter.get("target", 1)))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	# MINUS FIRST, and only once there is something to take back. A counter is the
+	# one answer on this list that can be walked back (GameLoop2.retreat_goal): it
+	# has spent nothing yet, and a stray press on a row you are going to press
+	# three times is a misclick rather than a decision. At 0 there is nothing to
+	# undo, so the button is not offered rather than offered and refused.
+	if at > 0 and not locked:
+		line.add_child(_count_button("−", UITheme.TEXT_DIM,
+			"Take one back — nothing has been spent yet.",
+			counter.get("on_minus", Callable())))
+
+	var tally := Label.new()
+	tally.text = "%d / %d" % [at, target]
+	tally.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	# THE TARGET IS ON THE ROW, not only in the goal's wording. "Defeat 3 bugs"
+	# says how many; what it cannot say is how many you have already reported, and
+	# that is the number the player is actually keeping in their head.
+	tally.add_theme_color_override("font_color",
+		UITheme.SUCCESS if at >= target else color)
+	tally.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tally.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tally.custom_minimum_size = Vector2(44, 0)
+	line.add_child(tally)
+
+	if not locked:
+		line.add_child(_count_button("+", UITheme.GOLD,
+			"One more — the press that reaches %d resolves the goal." % target,
+			counter.get("on_plus", Callable())))
+	return line
+
+func _count_button(glyph: String, tint: Color, tip: String, on_press: Callable) -> Button:
+	var b := Button.new()
+	b.text = glyph
+	b.tooltip_text = tip
+	b.custom_minimum_size = Vector2(COUNT_BTN, COUNT_BTN)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	b.add_theme_color_override("font_color", tint)
+	b.add_theme_color_override("font_hover_color", UITheme.TEXT)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(state, UITheme.flat(
+			tint.lerp(UITheme.BG, 0.78 if state == "hover" else 0.90),
+			4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
+	if on_press.is_valid():
+		b.pressed.connect(on_press)
+	return b
+
 func verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null,
-		instance: int = 0, mark: Control = null) -> Dictionary:
+		instance: int = 0, mark: Control = null,
+		counter: Dictionary = {}) -> Dictionary:
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	var width: int = 2 if emphasise else 1
@@ -1881,6 +2119,11 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		line.add_child(portrait)
 	if mark != null:
 		line.add_child(mark)
+	# A COUNTED ROW LEADS WITH ITS TALLY (§7.7), where every other row leads with
+	# its box — the counter IS this row's answer, so it sits where the answer goes.
+	if not counter.is_empty():
+		line.add_child(_counter_controls(counter, color,
+			bool(counter.get("locked", false))))
 	var cb := CheckBox.new()
 	cb.text = text
 	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1900,6 +2143,23 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		cb.add_theme_color_override("font_color",
 			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
 	line.add_child(cb)
+	# THE BOX ON A COUNTED ROW IS STATE, NOT A CONTROL. Hidden rather than absent:
+	# `_lock_row`, `_open_claim`, `_arm_row` and the green wash are all written in
+	# terms of this CheckBox, and every test on this class reads it — so a counted
+	# row keeps one and the counter drives it. A LABEL takes over the words, since
+	# a hidden box takes its text with it.
+	if not counter.is_empty():
+		cb.visible = false
+		var words := Label.new()
+		words.text = text
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		words.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		words.add_theme_color_override("font_color",
+			UITheme.SUCCESS.lerp(Color.WHITE, 0.55)
+			if bool(counter.get("locked", false)) else color)
+		line.add_child(words)
 	# NO NOTES BUTTON ON THE ROW. Every enemy row and the level-up row used to end
 	# in one, which is a second control on every line of a list whose lines are
 	# already a portrait, a symbol, a box and a wrapped sentence — and it was a

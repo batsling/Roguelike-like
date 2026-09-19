@@ -107,6 +107,15 @@ static func _ch_start() -> Dictionary:
 				+ "reward screen bigger. One you left unticked: it survives, "
 				+ "follows you, and starts hitting you after every game you play "
 				+ "from now on."),
+			_p("Two rows on that list do not behave like a plain tick box. A goal "
+				+ "that COUNTS something — Defeat 3 bugs — is a + button with a "
+				+ "running total beside it instead, and only the press that "
+				+ "reaches the number resolves anything; − takes a misclick back, "
+				+ "and the tally follows the enemy into later games, so the three "
+				+ "need not all be in one. A goal that says Beat a game without "
+				+ "something waits for the game to be beaten: tick it whenever, "
+				+ "but nothing happens until you hand the game in, and reporting "
+				+ "a loss drops the claim."),
 			_step(7, "You are offered a new set of games, connected to where you "
 				+ "stand. Choose one. Go to 3."),
 			_p("The run ends when you reach and clear the AMULET game — that is "
@@ -347,8 +356,10 @@ static func _ch_enemies() -> Dictionary:
 			_h("The three kinds of goal"),
 			_kv("Bounty", "Defeat a specific thing in the real game. Defeat an "
 				+ "enemy that splits. Defeat something that is an alien."),
-			_kv("Restriction", "A rule you impose on your own play. You must "
-				+ "randomly select your starting character."),
+			_kv("Restriction", "A rule you impose on your own play. Beat a game "
+				+ "without using magic. Most of these are settled by FINISHING "
+				+ "the game — their box waits for the report rather than "
+				+ "resolving the moment you tick it."),
 			_kv("Discovery", "See something happen. Witness an enemy kill itself."),
 			_p("Your own statuses can bolt extra clauses onto a goal, and a boss's "
 				+ "goal is a tighter version of an ordinary one — beat the true "

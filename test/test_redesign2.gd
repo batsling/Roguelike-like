@@ -32,7 +32,7 @@ func test_manager_levels_push() -> void:
 	assert_eq(manager.source_game, "Raccoin: Coin Pusher Roguelike")
 	assert_eq(manager.start_push, 2, "Manager starts with 2 Push charges")
 	assert_eq(int(manager.level_up_stats.get("push", 0)), 1, "level-up reward is +1 Push")
-	assert_eq(manager.level_up_condition, "Collect 3+ different types of currency")
+	assert_eq(manager.level_up_condition, "Beat a game while having collected 3 different types of currency")
 
 # --- the unrolled loadout (the sheet's Random column) ----------------------
 #
@@ -96,7 +96,7 @@ func test_isaac_levelup_reward_is_chest() -> void:
 	assert_eq(String(isaac.level_up_reward_type), "item", "Small Chest -> item reward")
 	assert_eq(isaac.level_up_reward_amount, 1)
 	assert_eq(isaac.level_up_reward_chest_choices, 1, "Small -> 1 item, no choice")
-	assert_eq(isaac.level_up_condition, "Use sorrow or self-inflicted pain as a weapon")
+	assert_eq(isaac.level_up_condition, "Beat a game while having used sorrow or self-inflicted pain as a weapon")
 	# "Gain +1 Small Chest and +1 Scramble" — the chest AND the stat, not one or
 	# the other: the reward parser reads the verb gain alongside the chest type.
 	assert_eq(int(isaac.level_up_stats.get("scramble", 0)), 1,
@@ -107,7 +107,7 @@ func test_zagreus_levelup_reward_is_a_large_chest() -> void:
 	assert_not_null(zag, "zagreus.tres should load from data/characters2.0")
 	assert_eq(zag.source_game, "Hades")
 	assert_eq(zag.base_max_hp, 7, "Zagreus' Health reaches base_max_hp")
-	assert_eq(zag.level_up_condition, "Get help from a God")
+	assert_eq(zag.level_up_condition, "Beat a game with the help of a God")
 	assert_eq(String(zag.level_up_reward_type), "item", "a sized Chest -> item reward")
 	assert_eq(zag.level_up_reward_amount, 1)
 	assert_eq(zag.level_up_reward_chest_choices,
@@ -134,7 +134,7 @@ func test_poe_ratcho_starting_loadout_and_reward() -> void:
 	assert_eq(String(poe.level_up_reward_type), "random_sized_chest",
 		"Random Sized Chest -> random_sized_chest reward")
 	assert_eq(poe.level_up_reward_amount, 1)
-	assert_eq(poe.level_up_condition, "Stink")
+	assert_eq(poe.level_up_condition, "Beat a game while being stinky")
 
 func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	var antonio: CharacterData = Data.get_character2(&"antonio_belpaese")
@@ -146,7 +146,7 @@ func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	assert_eq(String(antonio.level_up_reward_type), "random_sized_chest",
 		"the other Vampire Survivors chest reward parses the same way")
 	assert_eq(antonio.level_up_reward_amount, 1)
-	assert_eq(antonio.level_up_condition, "Kill an enemy with a whip")
+	assert_eq(antonio.level_up_condition, "Beat a run while having used a whip as a weapon")
 
 # Rodney's level pays LOOT, not a scroll. The sheet used to name the scroll, which
 # is narrower than "a piece of loot" was ever meant to be: loot in this game is
@@ -944,3 +944,34 @@ func test_levelling_up_on_a_card_reward_actually_pays_a_card() -> void:
 	var got: Dictionary = GameState.loot_items[GameState.loot_items.size() - 1]
 	assert_eq(String(got.get("type", "")), "card",
 		"and the something is a card: %s" % [got])
+
+# ===========================================================================
+# A LEVEL-UP THAT MEANS "PERFECTED" MUST KEEP MEANING IT (§7.7)
+#
+# `Overworld2._means_perfected` sets `GameState.last_game_perfected` off the
+# WORDING of the character's condition, because the condition has no
+# machine-readable side. That match was a bare `contains("perfect")` until the
+# goals were rewritten in one pass and Zoe's went from "Perfect a Game" to "Beat
+# a game without losing" — which contains no "perfect", errored nowhere, and
+# silently stopped setting the flag every perfect-aware relic hangs off.
+#
+# So the wording is pinned here. If a later pass over the `goals` sheet rewrites
+# Zoe's condition again, this fails and names the reason instead of the relic
+# quietly never firing.
+# ===========================================================================
+
+func test_zoes_level_up_still_reads_as_a_perfected_game() -> void:
+	var zoe: CharacterData = Data.get_character2(&"zoe")
+	assert_not_null(zoe, "zoe.tres should load from data/characters2.0")
+	assert_false(zoe.level_up_condition.is_empty(), "Zoe has a condition")
+	var page = preload("res://scripts/redesign2/Overworld2.gd").new()
+	assert_true(page._means_perfected(zoe.level_up_condition),
+		("Zoe's level-up is the perfect-game one, and the flag is set by matching "
+		+ "its wording — which reads %r. Add the new wording to "
+		+ "Overworld2.PERFECTED_WORDINGS.") % zoe.level_up_condition)
+	# …and it is not so loose that every condition trips it, which would set the
+	# flag on characters who did nothing of the kind.
+	var manager: CharacterData = Data.get_character2(&"manager")
+	assert_false(page._means_perfected(manager.level_up_condition),
+		"a currency goal is not a perfected game")
+	page.free()

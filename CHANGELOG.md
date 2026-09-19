@@ -11,6 +11,74 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The `goals` sheet is now the SOURCE, and the two columns it grew changed
+  what a goal is.** The entry below this one built `goals` as a read-only view
+  and said, in capitals, that anything typed into it was lost on the next run.
+  It also predicted its own promotion — and the promotion is what happened,
+  because the view immediately paid for itself: with 134 goals in one sorted
+  column, **34 of them were rewritten into a single voice** in one pass. "Do not
+  use magic" became "Beat a game without using magic"; "Perfect a Game" became
+  "Beat a game without losing"; the three duplicated families the view exposed
+  as difficulty ladders got the climbing counts it argued for (Skeletal Brute 2
+  and Skeletal Bastion 3 where both had said "a skeleton"; Bullat 1 and King
+  Bullat 2). That pass is not one you can do across six sheets at once, which is
+  the whole argument for where goals are authored.
+
+  So the direction is inverted. `tools/apply_goals_sheet.py` replaces
+  `generate_goals_sheet.py` (deleted — a script whose only job was to overwrite
+  the source is a loaded gun): `goals` is edited, and it is written out into the
+  five sheets the generators read, including back into a status's `On Player`
+  prose with the `Gain "…"` wrapper, the "You must", the consequence and the
+  full stop spliced around the new wording. **`--check` runs in CI**, before
+  `check_data_sync` — a goal that never reached its owner sheet cannot have
+  reached `data/` either, and this names the real cause instead of the symptom.
+
+- **A restriction stopped being tickable in the first five minutes.** The new
+  `Ticked` column says WHEN a goal can be answered: `any time` (99 goals) or
+  `game beaten` (35). It closes a hole that had been open since the checklist
+  learned to resolve on the spot — "Beat a game without using magic" is not true
+  until the game is beaten, so a box you could tick immediately was asking for a
+  **promise** where every other row on that list asks for a **report**, and
+  nothing stopped you ticking it and then going and using magic.
+
+  The fix needed no new machinery, which is the tell that the shape was already
+  right: `game beaten` rows arm and disarm freely and are cashed by the report,
+  exactly as the status goals and the level-up always were, and they are
+  mirrored into the review inside the ✓ Completed Game confirm — the moment they
+  are last askable. A claim still ticked when the player reports a **loss or an
+  escape is dropped**, because neither is a game beaten. Their own wording is
+  what says so on the row, which is precisely what the rewrite above made true
+  of all 35, so they needed a tint rather than a prefix.
+
+  The three sheets with no `Ticked` column — `characters`, `curses`, `statuses`
+  — take a **hard error** rather than a silent drop if one is authored there.
+  Those goals are already settled by the run being won; a value that vanished on
+  the way through would leave the goal behaving as it always had with the sheet
+  saying otherwise, which is the exact failure mode `BODY_KEYS` exists to catch
+  one floor down.
+
+- **Incremental goals: a `+` counter where a tick box used to be.** The `Count`
+  column is blank on 127 goals and 2-or-more on the seven that count something,
+  and a counted goal is drawn as `−  2 / 3  +` instead of a box. Three rules
+  make it a report rather than a promise, same as the above:
+
+  **Only the last press confirms.** Every irreversible row on the checklist is
+  guarded by one "did you really?", a counted goal has exactly one irreversible
+  moment, and asking three times would train the player to click straight
+  through the question that matters. **`−` takes a press back**, up until the
+  target — the one answer on the list that can be walked back, because it is the
+  only one that has spent nothing yet, and a stray press on a row you will press
+  three times is a misclick rather than a decision. **The tally persists**
+  across games and reloads: it lives on the body (`progress`, a new
+  `BODY_KEYS` entry) because the body is what persists, a goal can be answered
+  in any later game, and a counter that reset on the walk to the next game could
+  never be finished. It starts over when the goal resolves, since `health` is
+  how many more completions a body owes — a 2-Health body on "Defeat 3 bugs" is
+  six bugs in two rounds of three.
+
+  Never `1`: a counter finished on its first press is a tick box with extra
+  steps, and the sheet rejects it rather than letting one through.
+
 - **Every goal in the game is now in one place: the workbook's `goals` sheet.**
   A goal — the honour-system thing you go and do inside a real roguelike — was
   authored in six sheets in five different column shapes, and nowhere at once:

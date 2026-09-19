@@ -225,14 +225,23 @@ Up` (Health, Bash, Dash, Push, Transmute, Scramble, Bombs, Keys) are the charact
 starting stats**; `Level Up` is a per-game challenge and `Reward` is what meeting
 it grants.
 
-| Character | Level Up objective (per game) | Reward |
+All eleven, as the sheet has them — the wordings all say "Beat a game…" now
+because a level-up is settled by the run being won, and the `goals` sheet's pass
+made every goal say when it is answered (§7.7):
+
+| Character | Level Up objective | Reward |
 |---|---|---|
 | Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
-| Isaac | Unlock a new Item | +1 Small Chest |
-| Zoe | Perfect a Game | +1 Dash |
-| Minä | Craft or combine a spell or weapon | +1 Transmute |
-| Ironclad | Unlock a new difficulty | +1 Small Chest |
-| Manager | Collect 3+ different types of currency | +1 Push |
+| Isaac | Beat a game while having used sorrow or self-inflicted pain as a weapon | +1 Small Chest, +1 Scramble |
+| Zoe | Beat a game without losing | +1 Dash |
+| Minä | Beat a game while having crafted or combined a spell or weapon | +1 Transmute |
+| Ironclad | Beat a game while having made a Faustian bargain | +1 Small Chest |
+| Manager | Beat a game while having collected 3 different types of currency | +1 Push, +1 Gold |
+| Regent | Beat a game while having made a friend | +1 Small Chest |
+| Zagreus | Beat a game with the help of a God | +1 Large Chest |
+| Poe Ratcho | Beat a game while being stinky | +1 Random Sized Chest |
+| Antonio Belpaese | Beat a run while having used a whip as a weapon | +1 Random Sized Chest |
+| Erratic Deck | Beat a run while having selected a random starting build | +1 Random Card |
 
 How it already works in the project (to be kept):
 - After each game, the **post-game verification modal** asks the character's
@@ -242,8 +251,11 @@ How it already works in the project (to be kept):
 - **Crown** already exists as `bonus_level_up_chance` (roll an extra level-up);
   **Snowball** as `stat_gain_bonus` (+1 on a keyed stat gain). Both need only the
   new stat ids (transmute, bash, …) added.
-- **"Perfect a Game"** (Zoe) already exists as the `perfect_aware` /
-  `perfect_effects` verification path — reuse it.
+- **Zoe's is the perfected-game one** and feeds the `perfect_aware` /
+  `perfect_effects` verification path. Its condition now READS "Beat a game
+  without losing", and `Overworld2._means_perfected` matches that wording — it
+  used to match the bare word "perfect", which the goals rewrite removed, and the
+  flag silently stopped being set. `test_redesign2.gd` pins it.
 - Rewards draw from the same resource vocabulary as drops (Max Health, Dash,
   Transmute, Scroll, Small Chest — see §8.1 Chests).
 
@@ -419,7 +431,7 @@ mean.
 | **Transmute** | **Turn a game into a random game of the *same game type* that is *not connected to the map*.** (New verb — this is the "replace with a fresh game" role bash used to have, now type-constrained and pulling from off-graph games.) **Traditional is the exception**: it transmutes into a random game of any *other* type, drawn flat from the non-Traditional catalog. A Traditional roguelike is the run's long haul — it grants 5 shields rather than 3 — so swapping one for another is no relief, and the verb has to be able to get you out of the type. |
 | **Dash** | **As in the current project: a total select, not a skip** — pick *any* connected game and move to it (bypassing the normal limited offering). Costs 1 dash charge. See `Overworld._try_dash`. **Earned by going back**: beat a game **this run has already played** — cleared, failed, or walked away from — and it pays **+1 Dash** (`Overworld2._grant_repeat_dash`). The trip back is what earns it; the goal still has to be met on the return. The offering flags such a card with `⚡ +1 DASH`. **The Dash panel is a LIST, and it has the controls a list wants** — see *Searching the Dash panel* below. |
 | **Scramble** | **Reroll the offering** — re-draw the games filling the (base three) choice slots, each with a freshly-rolled enemy/goal. At a node with no spare neighbours the slots hold and only the enemies change. Granted by the **D6** item. |
-| **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Collect 3+ different types of currency" → +1 Push). |
+| **Push** | **Shove a following enemy one cell, in any cardinal direction.** Spends 1 push charge. *Back* is the classic use — delay its next attack by a game (§7.2), riding the same per-enemy delay counter as Stun but player-triggered. *Up / down* is a **lane change**, the one move enemies can never make for themselves, so it is how a blocked lane is opened or a clear one is plugged. *Forward* is legal too, and the player's own business. The verb is armed first and aimed second: press **⇤ Push** on the board's toolbar, click the enemy, then pick one of the arrows that appear on every side it could actually move to. Nothing is spent until an arrow is pressed. The **Manager**'s signature verb (gained on level-up: "Beat a game while having collected 3 different types of currency" → +1 Push). |
 
 #### Searching the Dash panel
 
@@ -1835,6 +1847,68 @@ standing there.
 - **The Collection sorts the Enemies and Bosses tabs by ability**, alongside A-Z,
   Tier and Damage: an ability is the one thing about a body that isn't a number,
   and it is what the roster is browsed for.
+
+### 7.7 When a goal can be answered, and how many times
+
+**Every goal in the game is authored in one place now.** The workbook's `goals`
+sheet was built as a read-only VIEW — six owning sheets in five column shapes,
+gathered so the roster could be counted — and it has been promoted to the
+**source**. `tools/apply_goals_sheet.py` writes it out into the sheets the
+generators read (`enemies`, `bosses`, `characters`' `Level Up`, `curses`'
+`Condition`, and `statuses`' `On Player` prose); `--check` is what CI runs, and
+an edit made to an owner sheet's goal column is lost on the next push.
+
+That promotion is what made a consistent pass over the goals possible: 34 of the
+134 were rewritten into one voice, and the counting ones were given honest
+numbers. Two columns came out of it.
+
+**`Ticked` — WHEN the goal can be answered.** Two values:
+
+| Value | Rows | What the checklist does |
+|---|---|---|
+| `any time` | 99 | The box resolves **on the spot** (`ReportChecklist._resolve_goal_now`): the body takes its hit, its loot lands on the square, and there are no take-backs. What every goal used to be. |
+| `game beaten` | 35 | The box **arms and disarms freely** and the **report** is what cashes it — the same shape the status goals and the level-up have always had, and it is mirrored into the review inside the ✓ Completed Game confirm. |
+
+The distinction is not cosmetic. "Beat a game without using magic" is not true
+until the game is beaten, so the old behaviour asked the player for a **promise**
+where every other row on that list asks for a **report** — a box you could tick
+in the first five minutes and then go and use magic. A `game beaten` claim that
+is still ticked when the player reports a LOSS or an ESCAPE is dropped rather
+than honoured (`Overworld2._honoured_fulfilments`), because neither is a game
+beaten. The row is tinted like the level-up row; its own wording is what says so
+out loud, which is exactly what the rewrite made true of all 35.
+
+**`Count` — HOW MANY answers finish it.** Blank on 127 goals, and 2 or more on
+the seven that count something ("Defeat 3 bugs", "Shoot down 2 flying enemies").
+A counted goal is drawn as a **`−  2 / 3  +` counter instead of a tick box**, and:
+
+- **Only the press that reaches the target confirms.** Every irreversible row on
+  the checklist is guarded by one "did you really?"; a counted goal has exactly
+  one irreversible moment, and asking three times would train the player to click
+  through the question that matters.
+- **`−` takes a press back**, up until the target is reached. It is the one
+  answer on the list that can be walked back, because it is the only one that has
+  spent nothing yet — a stray press on a row you are going to press three times
+  is a misclick, not a decision.
+- **The tally persists across games and reloads.** It lives on the body
+  (`progress` in `GameLoop2.BODY_KEYS`), because the body is what persists: a
+  goal can be answered in any later game (§2), so three bugs need not all be in
+  one, and a counter that reset on the walk to the next game could never be
+  finished. The standing checklist prints it too, since "2 of 3 done" is what
+  decides whether this is the body worth finishing next.
+- **It starts over when the goal resolves.** `health` is how many more goal
+  completions a body needs, so a 2-Health body carrying "Defeat 3 bugs" is six
+  bugs in two rounds of three.
+
+Never `1`: a counter finished on its first press is a tick box with extra steps,
+and the sheet rejects it rather than letting one through.
+
+**Three sheets carry neither column** — `characters`, `curses` and `statuses` —
+because a level-up, a curse and a status clause are already settled by the run
+being won. Authoring a `Ticked` or a `Count` on one is a **hard error** in
+`apply_goals_sheet.py` rather than a silent drop, since the value would otherwise
+vanish on the way through and the goal would keep behaving the way it always did
+with the sheet saying otherwise.
 
 ---
 
