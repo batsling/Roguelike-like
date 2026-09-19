@@ -11,6 +11,97 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every goal in the game is now in one place: the workbook's `goals` sheet.**
+  A goal — the honour-system thing you go and do inside a real roguelike — was
+  authored in six sheets in five different column shapes, and nowhere at once:
+  `enemies`, `bosses` and `locations` each spell one as a `Goal Type` / `Goal`
+  pair, `characters` calls it `Level Up`, `curses` call it `Condition`, and a
+  status carries clauses that modify whatever goal you already hold. So "how
+  many goals are there" was not a question anyone could answer without opening
+  six sheets. `tools/generate_goals_sheet.py` builds the view: **136 goals** —
+  64 enemy, 49 boss, 11 character, 7 status, 3 curse, 2 location.
+
+  **It is a VIEW, and the script says so in capitals.** The owning sheets stay
+  the thing you edit and this is rebuilt from them, so an edit made directly to
+  `goals` is lost on the next run — the same rule `data/` lives under. `Tags`,
+  and `Type` on the 21 rows whose owner never authored one, are blank because
+  nothing upstream holds them yet; they are why this will probably be promoted
+  to a source of truth later.
+
+  **The first thing it showed was that the three duplicated goals are difficulty
+  ladders.** Lined up, "Defeat a skeleton with a ball" is Skeleton Warrior
+  (1-Low), Skeletal Brute (2-Medium) and Skeletal Bastion (3-High); "Shoot down
+  a flying enemy" is Bullat and King Bullat at 1-Low and 2-Medium; "Mute the
+  game" is Banshee and Green Banshee likewise. Three families asking for the
+  identical thing at escalating tiers, which is the case for incremental goals
+  (same verb, a count that climbs) rather than three accidents. Six sheets kept
+  that invisible; one sorted column made it obvious.
+
+  **A `Count` is filled only where the goal names a plain number of ticks** —
+  an "at least" count ("Defeat 5+ bugs") or a leading fetch ("Obtain 1 key"),
+  10 rows in all. A percentage, a clock and "Only use 1 hand" are deliberately
+  left blank, because an empty cell is visibly unauthored and a wrong number is
+  not. Statuses never get one: their X is a global that scales with intensity,
+  not a tally ticked inside a single game.
+
+  **`events` are deliberately out.** They carry goals through
+  `add_goal "<text>" for <n> games -> <reward>`, the one shape with a duration
+  and a payout attached, and they are being reworked. An event's `Requirement`
+  (`gold>=1`) was never a goal — that is a gate the engine evaluates. `amulets`
+  has an `Obtain Goals` column that is empty in all ten rows.
+
+- **Speed's prose said a different function from the one Speed computes.** Both
+  of its `statuses` prose cells spelled the time window `(1+(1/2)^X-2))`, which
+  is wrong twice: the parens do not balance (two open, three closed) and the
+  exponent groups as `^X` with a stray `- 2` rather than `^(X-2)`. The side
+  blocks beside it were right all along
+  (`{1.0+pow((1.0/2.0), (X-2.0)):hours}`), and so was
+  `test_statuses.gd`, which has asserted the real curve — 3 hours, 2 hours,
+  1h30m, 1h15m, 1h8m — since it was written. The sheet prose was the lone
+  outlier, and now spells the identical expression so the two compare at a
+  glance (`tools/_statuses_speed_formula_fix.py`).
+
+  **This is the drift `StatusData` already warned about.** Its comment over the
+  prose fields says they are "the author's intent, so a drift between the prose
+  and the generated text is a content bug worth being able to see" — and nothing
+  reads `on_player_text` / `on_enemy_text` at runtime, so the player never saw
+  the broken formula. The author did, which is the audience that column has. It
+  surfaced from lining up every goal in the workbook side by side, which is the
+  argument for doing that on purpose.
+
+- **Four games and four connections ported out of the workbook.**
+  `tools/Roguelikes.xlsx` gained Driving Rogue and Kernel Hearts (Action) and
+  Insider Trading and Lexispell (Deckbuilder), all 2026, taking `data/games/` to
+  **882 games and 1286 connections**. The port is just
+  `tools/import-games-godot.py` and the atlas re-bake it triggers: every
+  connection name resolved, all four covers resolved out of `images2.0/games/`,
+  and `atlas_layout`, `_c6` and `_c12` moved with the new stars while `_owned`
+  and `_downloaded` did not, since none of the four is marked Owned.
+
+  **Three of the four hang off Balatro and the fourth off Baroque (1998)**, which
+  is the more interesting edge: Kernel Hearts is a 28-year reach back to a
+  PlayStation roguelike, sourced to a video rather than to a dev quote.
+  `check_map_sync.py` reads it as forward in time and says nothing, which is the
+  check working — its backwards-in-time list is still the same three
+  pre-existing pairs.
+
+  **The covers landed a day before the sheet did, and that is worth knowing
+  about.** The four PNGs were uploaded in one commit and the workbook carrying
+  their rows in the next, 49 seconds apart — so a clone taken between the two
+  sees four orphan covers, an unchanged `games` sheet, and a regeneration with a
+  zero diff. There is no drift there to find: `find_cover` only ever looks up a
+  cover from a sheet row, so art with no row is invisible to the importer and to
+  every checker in the repo. If a port ever looks like a no-op, check that the
+  workbook in the tree is the one that was meant, before concluding the sheet was
+  never edited.
+
+  **The prose counts were stale before this and are now current.** `CLAUDE.md`,
+  `README.md` and `docs/games-first-redesign.md` each still said 873 games —
+  four ports out of date, not one — so they now say 882. The 873 in
+  `docs/map-organization-research.md` is left alone on purpose: it counts
+  default-stroke *edges* on the hand-drawn map, and shares the number with the
+  old game count by coincidence.
+
 - **The abilities sheet's `Effect` column is now the behaviour.** Every other
   content type here reads what it does out of its own `Effect` column — tiles,
   units, pills, scrolls, potions, items. Abilities did not: the column was empty

@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_beyond_words"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_insider_trading"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"beyond_words"
-display_name = "Beyond Words"
+id = &"insider_trading"
+display_name = "Insider Trading"
 year = 2026
 type = 2
 games_influenced = Array[StringName]([])
@@ -15,7 +15,7 @@ tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
-cover_path = "res://images2.0/games/beyond-words.png"
+cover_path = "res://images2.0/games/insider-trading.png"
 owned = false
 file_location = ""
-steam_page = "https://store.steampowered.com/app/3823370/Beyond_Words/"
+steam_page = "https://store.steampowered.com/app/3166810/Insider_Trading/"
