@@ -967,7 +967,7 @@ func test_zoes_level_up_still_reads_as_a_perfected_game() -> void:
 	var page = preload("res://scripts/redesign2/Overworld2.gd").new()
 	assert_true(page._means_perfected(zoe.level_up_condition),
 		("Zoe's level-up is the perfect-game one, and the flag is set by matching "
-		+ "its wording — which reads %r. Add the new wording to "
+		+ "its wording — which reads \"%s\". Add the new wording to "
 		+ "Overworld2.PERFECTED_WORDINGS.") % zoe.level_up_condition)
 	# …and it is not so loose that every condition trips it, which would set the
 	# flag on characters who did nothing of the kind.

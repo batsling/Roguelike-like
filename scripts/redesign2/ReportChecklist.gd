@@ -406,12 +406,23 @@ func _arm_goal_at_the_end(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> 
 			+ "when you do, or confirm it on the Completed Game screen.")
 	var name_of: String = enemy.display_name if enemy != null else "it"
 	# INTO THE REVIEW with the status goals and the level-up: same list, same
-	# mirror, same notes field. The label leads with the enemy because the review
-	# is read away from the board, with no portrait column to say whose goal it is.
+	# mirror, same notes field. The label leads with the enemy's NAME because the
+	# review is read away from the board, and the goal alone names nothing.
+	#
+	# …and with the body's own PORTRAIT, because EVERY row in that review leads
+	# with the picture its checklist row leads with — a status's symbol, the
+	# character's face, and now a body's portrait. That is the whole of what makes
+	# the review read as a mirror rather than as a fresh set of questions, and
+	# `test_the_review_rows_carry_the_pictures_their_checklist_rows_do` holds the
+	# invariant. The `mark` carries the FACTS rather than a Control: the review is
+	# built when the confirm opens, and a node moved out of this list would be
+	# missing from the list behind the panel and freed with the panel.
 	winning_rows.append({"check": cb,
 		"label": "%s — %s" % [name_of, GameLoop2.entry_goal(
 			GameLoop2.entry_for(instance))],
-		"mark": {}, "note": _enemy_note_hooks(enemy)})
+		"mark": {"enemy": enemy,
+			"image": GameLoop2.entry_image(GameLoop2.entry_for(instance))},
+		"note": _enemy_note_hooks(enemy)})
 
 # === A COUNTED GOAL'S `+` (§7.7) ===========================================
 #
@@ -1237,6 +1248,11 @@ func _review_mark(mark: Dictionary) -> Control:
 	var ch: CharacterData = mark.get("character")
 	if ch != null:
 		return _character_icon_rect(ch)
+	# A BODY'S GOAL settled by beating the game (§7.7) — its portrait, with the
+	# phase art the board is showing rather than the sheet's phase 1.
+	var e: GoalEnemyData = mark.get("enemy")
+	if e != null:
+		return _enemy_icon_rect(e, UITheme.GOLD, mark.get("image"))
 	var sd: StatusData = mark.get("status")
 	if sd == null:
 		return null

@@ -10192,6 +10192,17 @@ func test_a_game_beaten_goal_is_in_the_completed_game_review() -> void:
 	var e: GoalEnemyData = GameLoop2.entry_for(inst)["enemy"]
 	assert_string_contains(_text_of(review), e.display_name,
 		"the body whose goal the win settles is in the review")
+	# …AND IT LEADS WITH THE BODY'S PORTRAIT, like every other row in there leads
+	# with the picture its checklist row leads with. Without this the mirrored row
+	# is the one line in the review with nothing in front of it, which is exactly
+	# what `test_the_review_rows_carry_the_pictures_their_checklist_rows_do`
+	# exists to stop.
+	var pictured := false
+	for line in review.get_children():
+		if line is HBoxContainer and not _texture_rects_under(line).is_empty() \
+				and _text_of(line).contains(e.display_name):
+			pictured = true
+	assert_true(pictured, "the mirrored row wears %s's own portrait" % e.display_name)
 
 # An ANY-TIME goal is untouched by all of this: it still resolves the second it
 # is confirmed, mid-game, with no wait for a win.
