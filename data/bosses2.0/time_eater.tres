@@ -15,6 +15,7 @@ health = 1
 damage = 7
 goal_type = &"restriction"
 goal = "Beat the game in 2 hours or less"
+ticked = &"game_beaten"
 abilities = [{"id": &"bolster", "amount": 3, "arg": &"speed", "text": "Speed"}]
 ability_text = "Bolster (3, Speed)"
 size = "1x1"

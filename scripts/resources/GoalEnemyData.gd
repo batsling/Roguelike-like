@@ -53,6 +53,56 @@ enum Difficulty { LOW, MEDIUM, HIGH, INSANE }
 # The challenge text shown to the player and the OBS viewer (§9).
 @export var goal: String = ""
 
+# WHEN THE GOAL CAN BE ANSWERED (§7.7) — the sheet's `Ticked` column, and the
+# reason a restriction stopped being tickable the moment it was handed out.
+#
+#   &"any_time"      the tick can be made at any point while the game is in play
+#                    and resolves on the spot: the body takes its hit, its loot
+#                    lands on the board, and you carry on playing. 99 of the 134
+#                    goals, and what every goal used to be.
+#   &"game_beaten"   the goal is only settled by FINISHING the real video game,
+#                    so it cannot honestly be answered mid-game. "Beat a game
+#                    without using magic" is true only once the game is beaten,
+#                    and a box you could tick in the first five minutes was
+#                    asking you to promise rather than to report. These rows move
+#                    to the winning-run review inside the "Completed Game"
+#                    confirm, beside the status and level-up rows that were
+#                    always settled there.
+#
+# Authored in the `goals` sheet, which is the source for every goal in the game
+# (tools/apply_goals_sheet.py pushes it into `enemies` / `bosses`). Defaulted to
+# `any_time` so a body from an older save, or one whose cell was never filled,
+# behaves exactly as it did before this column existed.
+const TICK_ANY_TIME := &"any_time"
+const TICK_GAME_BEATEN := &"game_beaten"
+@export var ticked: StringName = TICK_ANY_TIME
+
+# HOW MANY TIMES THE GOAL HAS TO BE DONE (§7.7) — the sheet's `Count` column.
+#
+# 0 (the default, and 127 of the 134 goals) means a plain tick box: one answer,
+# done. 2 or more means the row is a COUNTER instead — a `+` button starting at
+# 0 with the target beside it — and reaching the target is what does whatever the
+# tick box would have done. "Defeat 3 bugs" is three presses, not one.
+#
+# Never 1: a counter that is finished on its first press is a tick box with extra
+# steps, and `apply_goals_sheet.py` rejects it at the sheet rather than letting
+# one through to here.
+@export var goal_count: int = 0
+
+# Whether this enemy's goal is settled by beating the game rather than answered
+# on the spot.
+func settled_by_beating() -> bool:
+	return ticked == TICK_GAME_BEATEN
+
+# Whether this enemy's goal is counted up to rather than ticked once.
+func is_counted() -> bool:
+	return goal_count >= 2
+
+# The target for a counted goal, or 1 for a plain tick box — so a caller that
+# just wants "how many answers finish this" needs no special case.
+func count_target() -> int:
+	return goal_count if is_counted() else 1
+
 # === Abilities (§7.6) =====================================================
 #
 # What this enemy does BEYOND walking and swinging: how far it can strike from,
