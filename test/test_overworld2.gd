@@ -10236,3 +10236,63 @@ func test_the_winning_run_header_and_the_ledger_use_the_same_words() -> void:
 		"%s:" % GameLoop2.BEATING_A_GAME,
 		("the checklist header and the run ledger describe the same moment — "
 		+ "change both or neither"))
+
+# ===========================================================================
+# THE TWO SECTIONS ARE THE SHEET'S TWO `Ticked` VALUES (§7.7)
+#
+# The checklist splits by WHEN a row settles, not by what owns it. That used to
+# be the same thing — every body resolved on the spot, so "Enemies" and
+# "settled at the end" picked out the same rows — and stopped being the same
+# thing when `Ticked: game beaten` made 14 of the 111 bodies arm instead. Those
+# rows now sit under the header that names the moment they are answered, and the
+# other head is named for the sheet's other value.
+# ===========================================================================
+
+func test_a_game_beaten_body_sits_under_the_winning_run_header() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"chosen")
+	if inst == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	var head: int = _row_index(ReportChecklist.WINNING_RUN_HEAD)
+	var any_time: int = _row_index(ReportChecklist.ANY_TIME_HEAD)
+	var goal: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(
+		GameLoop2.entry_for(inst)))
+	assert_gt(head, -1, "the winning-run header is on the list")
+	assert_gt(goal, head, "and the body's goal is under it")
+	if any_time > -1:
+		assert_lt(goal, any_time,
+			"…above the any-time header, not below it with the rows that resolve now")
+
+func test_an_any_time_body_sits_under_the_any_time_header() -> void:
+	_pick_solo(0)
+	var inst: int = _make_front_body(&"stalker")     # "Become undetectable"
+	if inst == 0:
+		pending("the board had no body to make an any-time one of")
+		return
+	var any_time: int = _row_index(ReportChecklist.ANY_TIME_HEAD)
+	var goal: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(
+		GameLoop2.entry_for(inst)))
+	assert_gt(any_time, -1, "the any-time header is on the list")
+	assert_gt(goal, any_time, "and a goal you can answer now is under it")
+
+# THE ROWS THAT ARM WEAR A DIFFERENT BOX FROM THE ROWS THAT RESOLVE. Every box
+# on this list looked the same while one of them killed an enemy on the spot and
+# the other only held a claim — so the arming ones carry the round icon
+# (UITheme.check_icon's `armed` shape) as an override on the row itself.
+func test_an_arming_row_wears_the_round_box_and_a_resolving_one_does_not() -> void:
+	_pick_solo(0)
+	var armed: int = _make_front_body(&"chosen")
+	if armed == 0:
+		pending("the board had no body to make a game-beaten one of")
+		return
+	var armed_box: CheckBox = _row_check(armed)
+	assert_not_null(armed_box, "the game-beaten row has a box")
+	assert_true(armed_box.has_theme_icon_override("unchecked"),
+		"a row that only arms says so with its own box")
+	# …and the same body made any-time keeps the shared square one.
+	var now: int = _make_front_body(&"stalker")
+	var now_box: CheckBox = _row_check(now)
+	assert_not_null(now_box, "the any-time row has a box")
+	assert_false(now_box.has_theme_icon_override("unchecked"),
+		"a row that resolves on the spot wears the theme's own box")
