@@ -1910,6 +1910,40 @@ A counted goal is drawn as a **`−  2 / 3  +` counter instead of a tick box**, 
 Never `1`: a counter finished on its first press is a tick box with extra steps,
 and the sheet rejects it rather than letting one through.
 
+#### An enemy-side clause has to survive being bolted onto someone else's goal
+
+A status's enemy-side `clause` is **ANDed onto whatever goal the body is
+carrying** (`GameLoop2.goal_text_for`), and the body can be any of the 111 —
+`any time`, `game beaten` or counted. So the clause is not a sentence of its
+own: it is a phrase that has to read correctly after an arbitrary goal.
+
+**Give it a subject.** The two that do compose everywhere:
+
+| Status | Clause | Composed |
+|---|---|---|
+| Dexterity | "**you** must beat {X} or all bosses without getting hit" | "Become undetectable and you must beat 2 or all bosses without getting hit" |
+| Strength | "**the difficulty** must be increased {X} …" | "Defeat 3 bugs and the difficulty must be increased 2 times…" |
+
+Speed did not, and shipped as "must be beaten in {…} or less" — which composed
+into **"Become undetectable and must be beaten in 2 hours or less"**, reading as
+though the disguise is what has to be beaten. It is worst on an `any time` body,
+where the sentence contains no game for a reader to recover the subject from,
+and least bad on a `game beaten` one, which is why it survived. It now says
+"**the game** must be beaten in …".
+
+The three enemy-side **`bonus`** sides (Bleed, Marked, Stun) are exempt from this
+rule: a bonus is drawn as a row of its own rather than joined to the goal, so it
+never has to survive the composition. A **`instead`** (Burn) joins with "or
+instead" and needs no subject either, because it replaces the goal rather than
+qualifying it.
+
+**A `instead` on a `game beaten` body is a genuine mixed row, and the box shapes
+say so**: the goal's box is round (it waits for the win) while the `instead`
+below it is square (it resolves on the spot), which is exactly right — the way
+out really is available now even though the goal is not. Bosses refuse
+`instead` entirely (§7.1), and 10 of the 14 `game beaten` bodies are bosses, so
+this pairing only arises on the other four.
+
 #### A `game beaten` BOSS is a hard gate, and that is deliberate
 
 **10 of the 14 `game beaten` bodies are bosses**, and a boss is bomb-immune and

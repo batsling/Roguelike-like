@@ -11,6 +11,27 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Speed's clause had no subject, so it read as nonsense on 99 goals out of
+  134.** An enemy-side `clause` is ANDed onto whatever goal the body is carrying,
+  which can be any of the 111 — so it is not a sentence of its own but a phrase
+  that has to survive being bolted onto someone else's. Dexterity and Strength
+  name what their condition is about ("**you** must beat X bosses…", "**the
+  difficulty** must be increased…"). Speed said only "must be beaten in X hours
+  or less", and composed into
+
+      Become undetectable and must be beaten in 2 hours or less
+      Defeat 3 bugs and must be beaten in 2 hours or less
+
+  — as though the disguise, or the bugs, were the thing to be beaten. It is
+  worst on an `any time` body, where the sentence contains no game for a reader
+  to recover the subject from, and least bad on a `game beaten` one, which is
+  presumably why it survived. It now says "**the game** must be beaten in …".
+
+  Found by composing every enemy-side status onto one body of each kind and
+  reading the twenty-one resulting sentences, rather than by reading the
+  clause on its own — where it looks fine, because the missing subject is
+  supplied by the reader.
+
 - **A goal row stopped claiming to be cleared, and the dead prose fields went.**
 
   Every body row opened with **"Cleared:"** — on an unticked row, on an arming
