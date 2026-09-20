@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Node kinds and the spawn model — spec only, no code yet
+  ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §19).** Two
+  changes that only work together. A game on the map is now one of four **kinds**
+  — Enemies (60%), Event (20%), Champion (10%), Shop (10%) — assigned to every
+  graph node **at run start** and frozen there, so a card's badge can never
+  become a lie and the 🗺 map and route ladder can show the road ahead by kind.
+  All four are still a real video game you go and play; the kind decides what
+  stands on the board, not whether you play. The run's opening game is always
+  Enemies and the Amulet is always Champion (atmosphere, not a gate — §18's rule
+  that reaching and beating the Amulet wins regardless of the goal is unchanged).
+
+  And enemies no longer arrive only because you chose to fight them. **Every run
+  finished without defeating anything spawns bodies** — each lost run, and each
+  game handed in with nothing down, win or miss — at 1 / 2 / 3 read off §7.4's
+  existing hop bands. Escapes, the Amulet, and Shop and Event nodes are exempt.
+  Defeating a single body shuts the tap for that game.
+
+  Three things worth recording about why it is shaped this way.
+
+  **The failure count reads DISTANCE, not tier.** An earlier draft scaled it with
+  the tier — and because failure spawns also raise the tier, losing made the next
+  loss bigger: five losses ran to thirteen bodies and a boss. Reading it off hops
+  to the Amulet cuts the loop, because losing does not move you. The tier still
+  climbs on spawn events, but it no longer sizes anything that spawns; it picks
+  heavier bodies and grows the board, which on the crowding axis helps.
+
+  **`defeated_this_game` is the counter and `goals_met_this_game` is the trap.**
+  Stepping a counted goal up by one is not a defeat (§7.7), and *finishing* one
+  is not always a defeat either — a goal deals one hit, and a body with more
+  Health survives it Staggered (§7.2). Only `GameLoop2._defeat` increments.
+
+  **Start selection now rejects single-route maps.** A start is offered only if
+  its whole shortest-path DAG carries one Event, one Champion, one Shop,
+  `hops − 1` Enemies and more than one route. Measured over 80 sampled runs
+  before any of this: **16.9% of offered start options were a single linear
+  route**, 31.3% of runs offered at least one, 2.5% offered two — and the linear
+  set was *exactly* the set that failed the node budget, 27 of 27, since a chain
+  has `hops + 1` nodes and the budget needs `hops + 2`. So the budget is the
+  filter; the no-single-route rule is written down separately anyway so a future
+  change to the budget cannot silently retire it.
+
+  Retires the escort (§7.5 — an Enemies node lands two bodies flat, a Champion
+  one), shops at the ten hubs (§14.2 — a shop is a Shop node; §14.3's shelf is
+  unchanged), and `RunDifficulty.is_boss_game`'s every-third-*game* capstone
+  (§19.6 — every third *spawn event*, on top of whatever else was spawning, a
+  failure spawn included).
+
 - **Speed's clause had no subject, so it read as nonsense on 99 goals out of
   134.** An enemy-side `clause` is ANDed onto whatever goal the body is carrying,
   which can be any of the 111 — so it is not a sentence of its own but a phrase

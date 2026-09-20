@@ -25,10 +25,12 @@ so every number must stay small and glanceable.
 ## 2. Core loop
 
 1. **Choose a game** on the graph. Routing is the core decision (see §6).
-2. The game presents **one enemy** = one goal, plus its attack value and its
-   guaranteed loot drop. Committing to it also spawns an **escort** (§7.5) — a
-   second enemy from the same pool, with a second goal, that beating the game
-   does *not* answer for. Boss rounds are the exception and spawn solo.
+2. The game presents what its **node kind** says it does (§19.1): an Enemies node
+   stands **two** bodies on the board, each with its own goal and its own
+   guaranteed loot drop, neither of which beating the game answers for on its
+   own; a Champion node stands **one** boss; an Event or a Shop node stands
+   nothing and hands over an event or a shelf instead. All four are a real game
+   you go and play.
 3. **Go play the real game. You must beat the game to advance to the next area.**
 4. Resolve:
    - **Goal met → enemy defeated → loot drops where it fell, and its difficulty
@@ -274,7 +276,8 @@ nothing but armour. And the armour comes in two pools named for the one thing
 that separates them — **Temporary Shields** expire with the game that granted
 them, **Shields** do not.
 
-**A LOST RUN GIVES THE ENEMIES A TURN.** Every run of the game in play you lose
+**A LOST RUN GIVES THE ENEMIES A TURN** — and, if you have defeated nothing at
+this game, **a body as well** (§19.5). Every run of the game in play you lose
 is one tick of the attempt tracker, and a tick costs exactly one turn of the
 board — the same `_resolve_enemy_turn` a reported game takes `enemy_turns()` of
 (§7.4): the ground burns whoever is standing on it, every body touching the front
@@ -288,10 +291,13 @@ of a game.
   the board a tick moves is the board the *next* tick moves again.
 - **Nobody holds their fire**: the goals-met exemption is a fact about a
   *reported* game, and nothing has been reported yet.
-- **A board with nothing in reach charges nothing**, and that is the design
-  rather than an oversight: the turn *is* the cost, so a cleared stack has
+- **A board with nothing in reach charges nothing** *as a turn*, and that is the
+  design rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
-  logged — it is what the tracker shows.
+  logged — it is what the tracker shows. **This is the hole §19.5 fills**: an
+  empty board used to mean the player having the worst evening paid the least,
+  so a lost run at a game where you have defeated nothing now also *spawns*. The
+  turn is free on an empty board; the body is not.
 - **The gate is the GAME, never the board.** `can_log_attempt` asks
   `GameLoop2.game_in_play` — chosen and not yet reported — and nothing about what
   is standing. It used to ask `arrivals`, the record of which bodies walked on
@@ -601,9 +607,11 @@ across two places to keep the old shape would be worse than moving it.
 
 The offering is a **routing decision**, and a routing decision cannot be made off
 a cover. Clicking an offered card therefore **opens it** rather than taking it,
-and the card is only the **cover art, the game's name, the Amulet's flag** when
-it is the game the run is a search for — and **how far that game stands from the
-Amulet**, in its own row under the flag and over the art ("*N* games away from
+and the card is only the **cover art, the game's name, its NODE KIND** (§19.1 —
+Enemies, Event, Champion or Shop, as a badge, because what a card does to the
+board is the same decision as what it does to the distance), **the Amulet's flag**
+when it is the game the run is a search for — and **how far that game stands from
+the Amulet**, in its own row under the flag and over the art ("*N* games away from
 the Amulet"). That last one is the number the whole run is counting down: the
 card says which *way* it goes only once it has been opened, so without it the
 offering could be scanned without ever showing how much road was left. It is
@@ -1321,6 +1329,14 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 
 ### 7.1 Bosses
 
+> **THE CADENCE BELOW IS SUPERSEDED BY §19.6.** A boss is no longer the last
+> *game* of a band. It arrives from a **Champion node** (§19.1), or on **every
+> third spawn event** — where it lands on top of whatever else was spawning, a
+> failure spawn included. Bands, tiers and the table below still describe which
+> tier a boss rolls at; what changed is what counts the three.
+> Everything else in this section — the heavier bomb-immune pool, triple gold,
+> the boss's own chest — is unchanged.
+
 **A boss is the LAST GAME OF EACH DIFFICULTY BAND.** A band is
 `RunDifficulty.GAMES_PER_TIER` games — three — and the boss closes it, so the run
 reads:
@@ -1396,9 +1412,14 @@ allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
 
 ### 7.2 Enemy timing — spawn onto the board, then walk
 
-An enemy **spawns onto the battlefield the moment you choose its game**, at the
-back column, and from that moment it is an ordinary body on the board with **no
-tie to the game that rolled it**: it takes its turns, it is drawn like the rest,
+An enemy **spawns onto the battlefield the moment you choose its game** — if that
+game is an **Enemies** or a **Champion** node (§19.1); an Event or a Shop node
+stands nothing. **A body can also arrive mid-game**, off a run you lost or a game
+you handed in having defeated nothing (§19.5), and it walks on at the same back
+column on the same terms as everything else here.
+
+Whichever way it arrived, from that moment it is an ordinary body on the board
+with **no tie to the game that rolled it**: it takes its turns, it is drawn like the rest,
 it can be bombed and pushed like the rest, and its goal is one row in the report
 checklist among all the others.
 
@@ -1551,11 +1572,17 @@ moves the enemies is the runs you **lose** at a game — one turn each (§3.2) �
 what closing on the Amulet buys them is **EXTRA TURNS at the end of every game
 you report**, read off how far you are in hops over the run graph:
 
-| Hops to the Amulet | Extra turns | Band |
-|---|---|---|
-| 5 or more | 0 | Distant |
-| 3 – 4 | 1 | Closing |
-| 2 – 0 | 2 | Doorstep |
+| Hops to the Amulet | Extra turns | Bodies per failure (§19.5) | Band |
+|---|---|---|---|
+| 5 or more | 0 | 1 | Distant |
+| 3 – 4 | 1 | 2 | Closing |
+| 2 – 0 | 2 | 3 | Doorstep |
+
+**The ladder has two columns now.** The second is §19.5's — how many bodies a run
+finished without defeating anything puts on the board — and it is read off these
+same bands on purpose, so the board, the cards and the resolver cannot disagree
+about either number. Everything below is about the first column; the second
+follows the same logic, priced per failure rather than per report.
 
 A **turn** is one action, and every enemy takes one on each of them: a body
 touching column 1 **strikes**, everything behind it **steps** a column closer. A
@@ -1633,6 +1660,13 @@ no route to it, reads as Distant — nothing is closing in on a goal that isn't
 there.
 
 ### 7.5 The escort — nothing spawns alone
+
+> **SUPERSEDED BY §19.4.** The escort is retired as a concept: an Enemies node
+> lands **two bodies** flat, neither of them the game's, and a Champion node
+> lands **one** (the boss). The reasoning below is kept because §19 inherits its
+> argument — the stack must be the baseline rather than the punishment — and
+> because the boss-escort decision it records is one §19.4 explicitly overrules
+> rather than forgets.
 
 **Committing to a game puts TWO bodies on the board**: the enemy that was
 standing on it, and an **escort** rolled from the very pool that enemy came out
@@ -3568,6 +3602,12 @@ reaches is always worth walking into.
 
 ### 14.2 Where shops are: the ten hubs
 
+> **SUPERSEDED BY §19.1.** A shop stands at a **Shop node**, not at a hub. The
+> degree measurements and the "second routing axis" argument below are kept
+> because §19.2 is that argument carried through — the kinds are frozen at run
+> start for exactly the reason given here, and the road ahead can now be routed
+> on because of it. §14.3's shelf is unchanged.
+
 A shop stands at each of the run's **ten best-connected games**
 (`RunGraph.hub_ids`). On the full catalog those are the genre's landmarks — Slay
 the Spire (147 connections), Vampire Survivors (91), The Binding of Isaac (71),
@@ -3629,7 +3669,8 @@ limiter and three fresh items you still can't afford is not a windfall.
 
 ### 14.4 When it opens, and what the road can see
 
-The shop appears **after the hub's game is beaten**, queued behind the board's
+The shop appears **after a Shop node's game is beaten** (§19.1 — it was the ten
+hubs, and that is §14.2's superseded half), queued behind the board's
 resolve playback on the same path an event takes (`Overworld2._pending_shop`) —
 and it appears **on the page, under the battlefield** (`ShopPanel2`), not as a
 modal over it. A shop is not an interruption: the run's rhythm is report the
@@ -4304,3 +4345,257 @@ It sits on layer 128: **below** the run's header bar (135), so Health and Gold
 stay readable over it, and below the loot use modal (130), so spending a piece
 from the pack still opens on top. Its page is inset under the bar the same way
 every other modal is (`ModalScaffold.reserved_top`).
+
+---
+
+## 19. Node kinds, and where the enemies come from
+
+Two changes that only work together. **A game on the map is now one of four
+kinds**, and **enemies no longer arrive only because you chose to fight them**.
+The first makes routing a decision about what kind of evening you want; the
+second makes sure the second and third kinds are not simply a way of never
+fighting at all.
+
+This section supersedes **§7.5** (the escort) and **§14.2** (shops at the ten
+hubs) outright, and amends **§2**, **§3.2**, **§7.1**, **§7.2** and **§7.4**.
+Where it disagrees with them, this section is the build.
+
+### 19.1 The four kinds
+
+| Kind | On arrival | Bodies | Also |
+|---|---|---|---|
+| **Enemies** | the ordinary game | **2** | +2 gold and one random loot, banked to the haul |
+| **Event** | an event fires before you go and play | 0 | the game's own post-report event still rolls ([`event-sheet-authoring.md`](event-sheet-authoring.md)) |
+| **Champion** | a boss of the run's current tier | **1** | the boss's ordinary chest (§8.2), nothing extra |
+| **Shop** | a shelf under the board | 0 | three items, persistent for the run (§14.3) |
+
+**All four are a real video game.** Every one of them grants the selection
+shields (§3.2), ticks `GameState.games_played`, needs **✓ Completed Game** to
+advance, and pays the game's own loot. The kind decides what stands on the board
+and what you are handed — not whether you go and play. A run is still the thing
+§1 says it is, and a shop is not a square you walk over.
+
+**The distribution is 60 / 20 / 10 / 10**, enemies / event / champion / shop,
+with two overrides: **the run's opening game is always Enemies**, and **the
+Amulet is always Champion**.
+
+The Amulet's champion is **atmosphere and not a gate**. Reaching the Amulet game
+and beating it wins the run whether or not the boss standing there ever went
+down — that is the existing rule (`Overworld2.beat_game`'s `was_amulet` branch,
+which records the win even when the goal went unmet) and it is deliberate: a
+player who walked the whole road should not be held at the door by a goal they
+cannot do. The boss is there because the last game of a run should not be its
+emptiest board.
+
+### 19.2 The kind belongs to the NODE, and it is frozen at run start
+
+**Every game on the run's graph is assigned its kind when the run begins**, and
+it never changes. This is the same rule, for the same reason, as the ten hubs
+were frozen onto `GameState.hub_games` (§14.2): *a flag on an offered card that
+could change under the player is a lie, and every badge in this build is
+designed around not telling one.*
+
+Three things fall out of it, and all three are the point:
+
+- **Scramble is unaffected.** It supersedes the bodies that arrived with the
+  game in play (`GameLoop2.choose_game` → `_clear_arrivals`), and the kind is a
+  fact about the node rather than about what is standing on it. A Scramble
+  re-rolls goals, exactly as it always did, and is not a way to buy your way out
+  of a fight.
+- **Bash and Transmute are unaffected.** Bash takes a game out of the
+  **offering**, not out of the map, and Transmute "repaints which game sits on a
+  node without touching a single edge" (`RunGraph.shortest_path_dag`'s note). The
+  kind rides the **slot**, so a transmuted card plays a different game at the
+  same kind.
+- **The road ahead can be read.** The 🗺 map and the route ladder already draw
+  real nodes, so they draw the kinds too. Routing stops being only "closer or
+  further from the Amulet" and becomes "the long way takes in two shops and a
+  champion" — which is the second routing axis §14.2 wanted and never quite got.
+
+**Every node on the map gets a kind, not only the ones on a route.** A teleport,
+Ride the Bus and a `play_game` detour (§10) can all land the run somewhere off
+the optimal path, and those nodes have to answer the same question.
+
+### 19.3 What the road is guaranteed to hold
+
+A start is only offered if **its whole shortest-path DAG to the Amulet** — every
+node the route ladder draws on the start screen, not one route through it —
+carries all of:
+
+- at least **one Event**, **one Champion** and **one Shop**, with at least one
+  route through the DAG collecting all three, so the variety is reachable
+  without leaving the optimal path;
+- at least **`hops − 1` Enemies**;
+- and **more than one route**. No start may be offered whose DAG is a single
+  linear chain.
+
+The last of those is very nearly free, because **the budget already implies it**:
+a linear route has `hops + 1` nodes and the budget needs `hops + 2`, so a single
+chain fails the count on arithmetic alone. It is written down separately anyway,
+because it is the thing that was actually wanted and a future change to the
+budget must not silently retire it.
+
+**Measured, before any of this existed**: over 80 sampled runs (160 start
+options) on the full catalog, **16.9% of offered start options were a single
+linear route**, 31.3% of runs offered at least one, and only **2.5% offered two**
+— so rejecting them costs a re-draw of one card and, once in forty runs, a
+different Amulet, comfortably inside `RunGraph.AMULET_ATTEMPTS`. The linear
+options were *exactly* the set that failed the node budget, 27 of 27. A typical
+4-hop DAG carries 10.8 nodes against a floor of 6, so this is a tail to exclude
+and not a constraint the normal case feels. Re-measure rather than quoting these.
+
+A further **11 options (6.9%) sat exactly at the floor** — feasible, but with
+every node pinned by the budget and so identical every time. Those are rejected
+too: the requirement is `hops + 3` nodes, one of slack, so a guaranteed route
+still has somewhere for the ordinary distribution to say something.
+
+**The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
+routes already chosen, and the rest of the map is filled at 60/20/10/10
+afterwards. The budget is a filter on a start, never an input to choosing one —
+otherwise the panel's two cards would be picked for their node kinds rather than
+for genre and distance, which is what `RunGraph.pick_amulet_and_starts` exists to
+balance.
+
+### 19.4 The spawn model
+
+**An Enemies node lands exactly two bodies, at every tier.** This is §7.5's
+enemy-and-escort, kept as a number instead of as a rule — and the escort as a
+*concept* is retired with it. There is no named enemy and no companion: two
+bodies walk on at the back column (§7.2), both carry their own goal, both are
+old goals from the moment they land, and beating the game answers for neither of
+them on its own.
+
+**A Champion node lands one body: the boss.** This reverses §7.5's boss-escort
+decision, which was taken when every ordinary game put two bodies down and a solo
+boss made the run's biggest round its emptiest board. That argument is noted and
+overruled — a boss of the current tier is a heavy enough board on its own, and
+the every-third-spawn capstone below already puts bosses onto boards that are
+carrying other things.
+
+**Event and Shop nodes land nothing.**
+
+### 19.5 …and the enemies you get for not fighting
+
+**Every run you finish without defeating anything spawns bodies.** This is the
+other half, and without it the three non-Enemies kinds would simply be a way to
+play the whole run on an empty board.
+
+It fires on:
+
+- **every lost run** at the game in play, where nothing has been defeated this
+  game (`GameLoop2.log_attempt`);
+- **every game handed in** with nothing defeated — whether the goal was met or
+  missed.
+
+It does **not** fire on an **escape** (the player walked away and already paid
+the price §3.2 sets for it), on the **Amulet** (there is no next game for
+anything to walk into), or on a **Shop or Event node** — nothing spawned there,
+so nothing is owed, and those two kinds are genuine breathing room.
+
+**How many, read off the same ladder §7.4 uses for extra turns:**
+
+| Hops to the Amulet | Extra turns (§7.4) | Bodies per failure | Band |
+|---|---|---|---|
+| 5 or more | 0 | **1** | Distant |
+| 3 – 4 | 1 | **2** | Closing |
+| 2 – 0 | 2 | **3** | Doorstep |
+
+One ladder with two columns, on the same bands, so the strip, the cards and the
+resolver cannot disagree about either number.
+
+**`defeated_this_game` is the counter, and the distinction it draws is load-
+bearing.** It is incremented in `GameLoop2._defeat` and nowhere else, which means
+two things that look like progress are correctly *not* progress here:
+
+- **Stepping a counted goal up by one is not a defeat** (§7.7). `advance_goal`
+  moves a tally and never reaches `_defeat`; only the press that reaches the
+  target resolves anything.
+- **Finishing a counted goal is not always a defeat either.** A goal met deals
+  **one** hit, and a body with more Health than that takes the hit, survives, and
+  is **Staggered** (§7.2). It is answered but not down, so the tap stays open.
+
+`goals_met_this_game` is the tempting field here and it is the wrong one: it ticks
+for both of the above.
+
+**The escape hatch is the only brake, and that is on purpose.** Five lost runs
+opens the door (`Overworld2.ESCAPE_AFTER_LOSSES`), and three bodies down opens it
+sooner (`ESCAPE_AFTER_DEFEATS`) — and defeating even one body shuts the spawn tap
+for that game entirely. A player with no answer to the game in front of them has
+two exits and a way to stop the bleeding; one who takes none of them is meant to
+lose the run.
+
+**What makes that survivable is that the rate is flat.** An earlier draft of this
+scaled the failure spawn with the **tier**, and because failure spawns also raise
+the tier, losing made the next loss bigger — five losses ran to thirteen bodies
+and a boss. Reading the count off **hops to the Amulet** cuts that loop: losing
+does not move you, so a player stuck at a game faces the same price every time
+until they leave or win. The tier still climbs, but it no longer sizes anything
+that spawns — it picks heavier bodies and **grows the board** (§7.3), which on the
+crowding axis is help rather than harm.
+
+It also gives the run a shape it did not have. Both pressures now converge on the
+same place: at the doorstep a reported game hands the board two extra turns *and*
+every failure lands three bodies. And **routing away from the Amulet lowers your
+failure cost**, so "back off, clear the stack, come back" is a real plan rather
+than a slower way to lose — which is the long way round finally paying for itself
+the way §7.4 says it should.
+
+**Failure-spawned bodies never join `arrivals`.** They did not come with the game,
+so a Scramble cannot scrub them off the board. The undo needs nothing new: the
+spawn happens after `log_attempt` has already taken its `_run_snapshot`, so
+taking a turn back takes the body with it.
+
+### 19.6 Difficulty is now a consequence
+
+**`GameState.spawn_events` counts SPAWN EVENTS** — one per node arrival that
+landed bodies, one per failure spawn, regardless of how many bodies each put down
+— and the tier ladder reads that instead of `GameState.games_played`
+(`RunDifficulty.tier_for`). Event and Shop nodes never tick it.
+
+**Every third spawn event puts a boss on the board ON TOP of whatever else was
+spawning**, replacing `RunDifficulty.is_boss_game`'s every-third-*game* capstone.
+Champions are a second and independent source, so a fighting run meets bosses
+more often than the old ladder allowed — that is the intent.
+
+**A failure spawn can be the third one**, and then a boss walks on mid-game, off a
+lost run. A boss takes no bomb damage and leaves only by its goal (§7.1), so this
+is the sharpest thing in the section and it is aimed squarely at the player who
+keeps losing without ever clearing a body.
+
+The consequence worth stating plainly: a player who routes through events and
+shops and clears goals promptly keeps a **small board and a low tier** for much
+longer than the old clock allowed, and one who fights everything climbs faster
+than it ever did. The ladder used to be a clock the player only rode. It is
+something they steer now, in both directions.
+
+### 19.7 What this retires
+
+- **The escort (§7.5)** — absorbed into the Enemies node's count of two.
+  `GameLoop2._spawn_escort`, `current_escort`, `escort_enemy` and
+  `escort_instance` go with it, along with the card's *"One more enemy spawns with
+  it"* line, which now says how many.
+- **Shops at the ten hubs (§14.2)** — a shop is a Shop node. `ShopSystem.is_hub`,
+  `GameState.hub_games` and `RunGraph.hub_ids` stop deciding where a shelf
+  stands. §14.3's shelf itself is unchanged: three items, rolled once, persistent
+  for the run, rerolled for a Scramble.
+- **`RunDifficulty.is_boss_game`** and the `_boss_round` threading through
+  `Overworld2._build_choices`, `arrive_at_game` and `_slot_enemy_key` — a boss is
+  a Champion node or the third spawn event, and neither is a property of the
+  game count.
+- **The per-slot enemy cache** (`_slot_enemies` / `_slot_enemy_key`) keeps doing
+  its job for enemies, but it no longer has to hold the kind: the node does.
+
+### 19.8 Where the player sees it
+
+- **On every offered card**: the kind, as a badge, beside the route badge and the
+  pace note (§4.2). What a card does to the board is part of the same decision as
+  what it does to the distance.
+- **On the battlefield strip** (§7.4): beside `⏱ EXTRA TURNS N`, the failure
+  price at this distance and the count to the next boss. The player cannot decide
+  whether one more attempt is worth it without both.
+- **On the 🗺 map and the route ladder**: the kind of every node drawn, so the
+  road ahead can be routed on.
+- **In the log and a notification** when a failure spawn lands, naming what walked
+  on and why — the escort's old notice generalised. A body that appears because of
+  something the player did needs saying out loud; it is the one arrival they did
+  not choose.
