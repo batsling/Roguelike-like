@@ -4364,7 +4364,7 @@ Where it disagrees with them, this section is the build.
 
 | Kind | On arrival | Bodies | Also |
 |---|---|---|---|
-| **Enemies** | the ordinary game | **2** | +2 gold and one random loot, banked to the haul |
+| **Enemies** | the ordinary game | **2** | nothing extra — see below |
 | **Event** | an event fires before you go and play | 0 | the game's own post-report event still rolls ([`event-sheet-authoring.md`](event-sheet-authoring.md)) |
 | **Champion** | a boss of the run's current tier | **1** | the boss's ordinary chest (§8.2), nothing extra |
 | **Shop** | a shelf under the board | 0 | three items, persistent for the run (§14.3) |
@@ -4374,6 +4374,40 @@ shields (§3.2), ticks `GameState.games_played`, needs **✓ Completed Game** to
 advance, and pays the game's own loot. The kind decides what stands on the board
 and what you are handed — not whether you go and play. A run is still the thing
 §1 says it is, and a shop is not a square you walk over.
+
+**AN ENEMIES NODE PAYS NOTHING EXTRA, AND THAT IS THE POINT.** It carried a
+bonus for a while — two gold and a piece of loot for taking the harder card —
+and the bonus was redundant twice over. The bodies already pay: **+1 gold each**
+on a cleared goal (§14.1) and **a piece of loot on the square they fell in**
+(§8.2), plus their difficulty banked toward the report's chest. An Enemies node
+is therefore *already* the node that pays most, in proportion to how much of it
+you actually answered, which is a better shape than a flat fee for arriving.
+The flat fee was also a real economy change nobody asked for: a run earns
+**8–15 gold** in total (§14.1) and two gold across 60% of a 6–12 game run is
+another 7–14, roughly doubling it and undoing the "two to four purchases in a
+whole run" the whole price list is built around.
+
+So the four kinds differ in **what happens**, not in what you are handed. An
+Enemies node's reward is the two bodies standing on it.
+
+**AN EVENT NODE ALWAYS FINDS AN EVENT.** `EventSystem.roll_for_arrival` can come
+back empty — the pool is gated by `_where_allows` and `_eligible_for`, and a
+given node may simply have nothing authored that belongs there. On an Event node
+that answer is not acceptable, because the node's whole promise is the event. So
+the roll is **retried with the node gating relaxed**: an event the sheet placed
+elsewhere is shown here rather than the node doing nothing. That is a deliberate
+trade — an event may appear somewhere its author did not picture it — and it is
+worth it because a node whose badge promised an event and then delivered silence
+is the badge telling a lie, which §19.2 exists to prevent.
+
+Only if the run has genuinely exhausted every event does the node fall quiet, and
+then it is simply a game with nothing standing on it. It is still exempt from the
+failure spawn (§19.5): nothing spawned, so nothing is owed.
+
+**`games_played` keeps ticking on all four** even though the difficulty tier
+stops reading it (§19.6). It is not vestigial: `RunOverScreen` and the OBS
+overlay report it, `EventSystem` gates requirements on `"games"`, and
+`SaveSystem` derives the autosave seed from it.
 
 **The distribution is 60 / 20 / 10 / 10**, enemies / event / champion / shop,
 with two overrides: **the run's opening game is always Enemies**, and **the
@@ -4422,32 +4456,46 @@ A start is only offered if **its whole shortest-path DAG to the Amulet** — eve
 node the route ladder draws on the start screen, not one route through it —
 carries all of:
 
-- at least **one Event**, **one Champion** and **one Shop**, with at least one
-  route through the DAG collecting all three, so the variety is reachable
-  without leaving the optimal path;
-- at least **`hops − 1` Enemies**;
+- at least **one Event**, **one Shop**, and **one Champion that is not the
+  Amulet** — with at least one route through the DAG collecting all three, so the
+  variety is reachable without leaving the optimal path;
+- at least **`hops − 1` Enemies**, the forced-Enemies start node counting as one
+  of them;
 - and **more than one route**. No start may be offered whose DAG is a single
   linear chain.
 
-The last of those is very nearly free, because **the budget already implies it**:
-a linear route has `hops + 1` nodes and the budget needs `hops + 2`, so a single
-chain fails the count on arithmetic alone. It is written down separately anyway,
-because it is the thing that was actually wanted and a future change to the
-budget must not silently retire it.
+**The Champion clause says "not the Amulet" for a reason.** The Amulet is always
+a Champion (§19.1) and is always the DAG's terminal node, so "at least one
+Champion" would be satisfied by the destination itself and guarantee nothing at
+all about the road. The requirement is a boss you meet on the *way*.
 
-**Measured, before any of this existed**: over 80 sampled runs (160 start
-options) on the full catalog, **16.9% of offered start options were a single
-linear route**, 31.3% of runs offered at least one, and only **2.5% offered two**
-— so rejecting them costs a re-draw of one card and, once in forty runs, a
-different Amulet, comfortably inside `RunGraph.AMULET_ATTEMPTS`. The linear
-options were *exactly* the set that failed the node budget, 27 of 27. A typical
-4-hop DAG carries 10.8 nodes against a floor of 6, so this is a tail to exclude
-and not a constraint the normal case feels. Re-measure rather than quoting these.
+**The budget, then, is `hops + 3` nodes**: `hops − 1` Enemies, one Event, one
+Shop, one Champion, and the Amulet. **Plus one node of slack — `hops + 4`** — so
+that a guaranteed route is not *entirely* pinned by the budget and has somewhere
+for the ordinary 60/20/10/10 to say something. A route with no free node is a
+route with no surprises, and would read the same every run it came up.
 
-A further **11 options (6.9%) sat exactly at the floor** — feasible, but with
-every node pinned by the budget and so identical every time. Those are rejected
-too: the requirement is `hops + 3` nodes, one of slack, so a guaranteed route
-still has somewhere for the ordinary distribution to say something.
+The no-single-route rule is very nearly free, because **the budget already
+implies it**: a linear chain has `hops + 1` nodes and cannot reach `hops + 4`. It
+is written down separately anyway, because it is the thing that was actually
+wanted and a future change to the budget must not silently retire it.
+
+**Measured, before any of this existed**, over 120 sampled runs (240 start
+options) on the full catalog. Slack here is `DAG nodes − hops`; a linear chain is
+slack 1:
+
+| Floor | Options rejected | Runs where **both** starts fail |
+|---|---|---|
+| `hops + 2` | 15.0% | 1.7% |
+| `hops + 3` | 21.2% | 3.3% |
+| **`hops + 4`** (the rule above) | **27.1%** | **5.0%** |
+
+**27% of options sounds steep and is the wrong number to read.** The one that
+matters is the last column: a rejected option is re-drawn against the same
+Amulet, and only when *both* of a run's two starts fail does the Amulet itself
+have to change — one run in twenty, against `RunGraph.AMULET_ATTEMPTS`'s eight
+tries. 15.0% of options were a single linear route, which the floor excludes on
+arithmetic alone. Re-measure rather than quoting these.
 
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10
@@ -4502,6 +4550,12 @@ so nothing is owed, and those two kinds are genuine breathing room.
 
 One ladder with two columns, on the same bands, so the strip, the cards and the
 resolver cannot disagree about either number.
+
+**They roll from the game in play's type, at the run's current tier** — the same
+`GameLoop2.roll_enemy(game_type_key(game), tier)` an Enemies node makes, with the
+same widening. A body that turns up because you keep losing at a Deckbuilder is a
+Deckbuilder body: the board goes on describing where you are standing, and the
+failure changes how *many* walk on rather than what kind of place this is.
 
 **`defeated_this_game` is the counter, and the distinction it draws is load-
 bearing.** It is incremented in `GameLoop2._defeat` and nowhere else, which means

@@ -18,7 +18,12 @@ For how the project is laid out and how its systems fit together, see
   graph node **at run start** and frozen there, so a card's badge can never
   become a lie and the 🗺 map and route ladder can show the road ahead by kind.
   All four are still a real video game you go and play; the kind decides what
-  stands on the board, not whether you play. The run's opening game is always
+  stands on the board, not whether you play. The kinds differ in **what happens**
+  and not in what you are handed: an Enemies node pays no bonus, because its two
+  bodies already pay +1 gold each and a piece of loot on the square they fell in,
+  in proportion to how much of the node you actually answered. A flat fee on top
+  was also a silent economy change — two gold across 60% of a 6–12 game run is
+  another 7–14 against a total purse of 8–15 (§14.1). The run's opening game is always
   Enemies and the Amulet is always Champion (atmosphere, not a gate — §18's rule
   that reaching and beating the Amulet wins regardless of the goal is unchanged).
 
@@ -43,14 +48,22 @@ For how the project is laid out and how its systems fit together, see
   Health survives it Staggered (§7.2). Only `GameLoop2._defeat` increments.
 
   **Start selection now rejects single-route maps.** A start is offered only if
-  its whole shortest-path DAG carries one Event, one Champion, one Shop,
-  `hops − 1` Enemies and more than one route. Measured over 80 sampled runs
-  before any of this: **16.9% of offered start options were a single linear
-  route**, 31.3% of runs offered at least one, 2.5% offered two — and the linear
-  set was *exactly* the set that failed the node budget, 27 of 27, since a chain
-  has `hops + 1` nodes and the budget needs `hops + 2`. So the budget is the
-  filter; the no-single-route rule is written down separately anyway so a future
-  change to the budget cannot silently retire it.
+  its whole shortest-path DAG carries one Event, one Shop, one Champion *that is
+  not the Amulet*, `hops − 1` Enemies and more than one route — a floor of
+  `hops + 3` nodes, plus one of slack at `hops + 4` so a guaranteed route is not
+  entirely pinned. The "not the Amulet" clause matters: the Amulet is always a
+  Champion and always the DAG's terminal node, so a plain "one Champion" would
+  have been satisfied by the destination and guaranteed nothing about the road.
+
+  Measured over 120 sampled runs (240 start options) beforehand: **15.0% of
+  offered start options were a single linear route**, and the floors reject
+  15.0% / 21.2% / 27.1% of options at `hops + 2 / 3 / 4`. The number that matters
+  is not that one, though — a rejected option is re-drawn against the same
+  Amulet, and only when *both* of a run's two starts fail does the Amulet change:
+  **1.7% / 3.3% / 5.0% of runs**, against `RunGraph.AMULET_ATTEMPTS`'s eight
+  tries. A linear chain has `hops + 1` nodes, so the budget excludes it on
+  arithmetic alone; the rule is written down separately anyway so a future change
+  to the budget cannot silently retire it.
 
   Retires the escort (§7.5 — an Enemies node lands two bodies flat, a Champion
   one), shops at the ten hubs (§14.2 — a shop is a Shop node; §14.3's shelf is
