@@ -1910,6 +1910,51 @@ A counted goal is drawn as a **`−  2 / 3  +` counter instead of a tick box**, 
 Never `1`: a counter finished on its first press is a tick box with extra steps,
 and the sheet rejects it rather than letting one through.
 
+#### What the checklist looks like, and why
+
+**The two sections ARE the two `Ticked` values.** The report checklist splits by
+**when a row settles**, not by what owns it:
+
+| Header | Holds | Its boxes |
+|---|---|---|
+| `When beating a game:` | status goals, the level-up, event and curse rows, and every `game beaten` body | **arm** — on and off freely, nothing spent, the report cashes them |
+| `Any time:` | the bodies whose goals resolve on the spot | **resolve** — a confirm, then the hit lands and there are no take-backs |
+
+That head used to say `Enemies`, which grouped by OWNER. It picked out the same
+rows only while every body resolved instantly, and stopped doing so the moment
+`Ticked` made 14 of the 111 bodies settle on the win — those rows then sat under
+a header about bodies, a few lines below the header naming the exact moment they
+were answered, with nothing on them saying which one they obeyed. A body loses
+nothing by moving: `bind_row_to_body` does not care where a row lives, and a
+body's clauses, `instead`s and bonuses travel with it (`_add_body_rows`).
+
+**Three signals carry the difference**, and they were added together because one
+alone was doing too much work:
+
+- **The section**, above.
+- **The box shape** — `UITheme.check_icon`'s `armed` variant. A **square** box
+  resolves; a **round** one holds a claim. Applied in `_arm_winning_row`, which
+  *is* the set of rows that arm, so the rule cannot drift from the behaviour.
+- **A drawn pennant** (`UITheme.finish_flag`) badged into a `game beaten` body's
+  portrait. Drawn rather than a glyph, so it needs no
+  `tools/build_glyph_font.py` rebuild and cannot fall through to a host font
+  search.
+
+**A counted goal's controls stack**: `+` over `−`, to the left of the tally, so
+the pair reads as a spinner and costs the narrowest column on the page half the
+width two side-by-side buttons took.
+
+**Every row in a section leads with ONE thing, in a fixed-width slot**
+(`LEAD_COLUMN_W`). A status leads with its symbol, the level-up with the
+character's face, a body with its portrait — three different widths, which put
+three boxes doing the same job at three different x. The badge therefore rides
+**on** the portrait rather than beside it. Both numbers here are **measured off
+a 1280×720 render**, not guessed: see the standing note in
+[`layout-review-backlog.md`](layout-review-backlog.md) about judging colour and
+position by sampling the rendered pixel, which is what caught the first two
+attempts at this (a box 16px right of its neighbours, then one 10px left of
+them, then a 26px portrait stretched to 44).
+
 #### "run" means two different things, so it is no longer the word for either
 
 A goal settled by beating a game and an enemy-side status clause were both

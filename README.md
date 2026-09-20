@@ -378,7 +378,7 @@ node and its script.
   and lock — see spec §2.1. The exception is the **`When beating a game:`**
   section: the player's standing status goals, the character's level-up and the
   goals authored `Ticked: game beaten` (spec §7.7) nest under one header there,
-  and they ARM rather than resolve — the box goes on and off freely, there is no
+  and wear a ROUND box rather than a square one, and they ARM rather than resolve — the box goes on and off freely, there is no
   confirm, and handing the game in is what cashes it, because what they ask about
   is the game being beaten rather than the hour just spent. Their safeguard is on
   the **`✓ Completed Game`** confirm instead, which carries those rows again with

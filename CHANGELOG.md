@@ -11,6 +11,39 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The checklist splits by WHEN a row settles, not by what owns it.** A
+  `game beaten` body behaves exactly like a status goal — its box arms, nothing
+  happens until the game is handed in, the report cashes it, a loss drops it —
+  and it was sitting under a header about *bodies*, a few lines below the header
+  naming the exact moment it is answered. Nothing on the row said which one it
+  obeyed.
+
+  So `Enemies` became **`Any time:`** and the `game beaten` bodies moved up
+  under **`When beating a game:`** with the statuses and the level-up. The old
+  name grouped by OWNER, which picked out the same rows only while every body
+  resolved instantly; the new pair *is* the two values of the `Ticked` column
+  that decides which section a row lands in. Nothing is lost by moving —
+  `bind_row_to_body` does not care where a row lives, and a body's clauses and
+  bonuses travel with it.
+
+  **The box shape carries it too.** Every box on the list looked identical while
+  a square one RESOLVES (confirm, the body takes its hit, no take-backs) and a
+  round one only holds a claim. `UITheme.check_icon` grew an `armed` shape,
+  applied in `_arm_winning_row` — which *is* the set of rows that arm, so the
+  rule cannot drift from the behaviour. A `game beaten` body also wears a drawn
+  pennant badged into its portrait (no glyph, so no font rebuild), and a counted
+  goal's `+` / `−` stack to the left of its tally.
+
+  **Two of these were only found by looking at the render.** The flag first sat
+  BESIDE the portrait, which gave that row two leading elements where every
+  other row has one and put its box 16px right of the two above it — three boxes
+  doing the same job, not lining up. The fix (badge it onto the picture, centre
+  the picture in a measured `LEAD_COLUMN_W`) overcorrected to 10px LEFT on the
+  first try and stretched a 26px portrait to 44 on the second. All three states
+  were caught by sampling pixels off a 1280×720 capture rather than by reading
+  the code or squinting at a screenshot, which is exactly what the standing note
+  in `docs/layout-review-backlog.md` says to do.
+
 - **"run" was doing two jobs, so it stopped being the word for either.** A goal
   settled by beating a game and an enemy-side status clause both said "run", and
   they name different runs.
