@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Zoe's goal names the perfect, and Burn's way out says "game".** Two wording
+  edits with a reason each (`tools/_goals_zoe_and_burn_wording.py`).
+
+  Zoe's is **"Perfect a game by beating it without losing"**, which puts the word
+  back that the goals rewrite had taken out. The perfect-game flag is set by
+  matching the condition's PROSE, so the rewrite silently switched it off; the
+  entry below has the bug. Matching a paraphrase in code was the patch, and this
+  is the fix — the goal now carries BOTH wordings `PERFECTED_WORDINGS` looks for,
+  so neither is load-bearing on its own.
+
+  Burn's `On Enemy` said "or instead beat a **run** while skipping or trashing
+  4-X items/upgrades" while its `On Player` said "beat a **game**". The `goals`
+  sheet carries only the PLAYER side of a status (Relation `modifies`), so the
+  push fixed one half of a matched pair — the goal and the way out of it — and
+  left the other contradicting it across two cells. **The five other statuses
+  still say "run" in their `On Enemy` clauses** ("in the same run", "on a run
+  where you beat X bosses"); those are paraphrases that do not contradict their
+  own player side, so they are left for a deliberate pass rather than swept up.
+
 - **The `goals` sheet is now the SOURCE, and the two columns it grew changed
   what a goal is.** The entry below this one built `goals` as a read-only view
   and said, in capitals, that anything typed into it was lost on the next run.

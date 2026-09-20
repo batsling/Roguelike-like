@@ -22,7 +22,7 @@ start_keys = 0
 start_random = 0
 starting_items = Array[StringName]([])
 starting_weapon = &""
-level_up_condition = "Beat a game without losing"
+level_up_condition = "Perfect a game by beating it without losing"
 level_up_reward = "Gain +1 Dash"
 level_up_stats = {
 "dash": 1

@@ -803,8 +803,9 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
 
 func test_level_up_checkbox_grants_the_reward() -> void:
-	# Zoe's level-up ("Beat a game without losing") pays +1 Dash. Ticking the
-	# level-up box on report should apply the character's level_up_stats.
+	# Zoe's level-up ("Perfect a game by beating it without losing") pays +1 Dash.
+	# Ticking the level-up box on report should apply the character's
+	# level_up_stats.
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	var lvl_before: int = GameState.player_level
