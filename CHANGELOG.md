@@ -11,6 +11,35 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **"run" was doing two jobs, so it stopped being the word for either.** A goal
+  settled by beating a game and an enemy-side status clause both said "run", and
+  they name different runs.
+
+  A GOAL's run is the one you **win**, so all of them now say so: the last three
+  "Beat a run while…" goals (Antonio Belpaese, Erratic Deck, Snecko), Dexterity's
+  "on a winning run", the checklist header — **`When beating a game:`**, was
+  `On a winning run:` — and both ledger lines that record one of those rows. The
+  header and the two ledger lines stay three separate literals, because the loop
+  does not get to depend on the checklist and the checklist must not reach into
+  the loop for a word, and a new test asserts they agree.
+
+  AN ENEMY-SIDE CLAUSE's run is **the one you do the goal in**, which may never
+  be won: the clause rides whatever body it is on and 99 of the 134 goals are
+  `any time`. Those keep the word and say which run they mean — "in the run you
+  complete the goal in". One authored string cannot be right for both, since a
+  status's `On Enemy` is written once and attaches to any body; wording it for
+  the `any time` case is correct under both readings, where wording it for the
+  winning run would be wrong on 99 goals out of 134.
+
+  **Marked's `achivements` typo is gone**, and the reason it survived this long
+  is the same reason none of the above ever reached a player: the prose columns
+  are REFERENCE. What ships is built from the `*_Effect` columns, which have
+  always spelled it `[achievement|achievements]` and contain no "run" anywhere —
+  and `on_player_text` / `on_enemy_text` are exported and read by nothing. So
+  this pass corrected the source rather than the build, which is worth doing
+  precisely because `goals` is the source now: a source that says something
+  different from what ships is the drift every check here exists to stop.
+
 - **Zoe's goal names the perfect, and Burn's way out says "game".** Two wording
   edits with a reason each (`tools/_goals_zoe_and_burn_wording.py`).
 

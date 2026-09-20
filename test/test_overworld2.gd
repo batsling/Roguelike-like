@@ -907,7 +907,7 @@ func _row_index(prefix: String) -> int:
 func test_a_ticked_level_up_stays_where_it_is() -> void:
 	_reboot(&"isaac")
 	_ui.pick(0)
-	var head: int = _row_index("On a winning run:")
+	var head: int = _row_index(ReportChecklist.WINNING_RUN_HEAD)
 	assert_gt(head, -1, "the winning-run header is on the list")
 	var lu: int = _row_index("Leveled up")
 	assert_gt(lu, head, "and the level-up nests under it")
@@ -927,7 +927,7 @@ func test_a_ticked_status_goal_stays_where_it_is() -> void:
 	assert_false(_ui._status_goal_checks.is_empty(), "the status put a row on the list")
 	var check: CheckBox = _ui._status_goal_checks[0]["check"]
 	var row_text: String = check.text
-	assert_false(row_text.contains("On a winning run"),
+	assert_false(row_text.contains(GameLoop2.BEATING_A_GAME),
 		"the header says that once — the row carries its own sentence: %s" % row_text)
 	var was: int = _row_index(row_text)
 	assert_gt(_row_index("Cleared:"), was,
@@ -9234,7 +9234,7 @@ func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
 	assert_gt(GameLoop2.completed_goals.size(), before,
 		"the level-up went onto the ledger when the game was handed in")
 	assert_string_contains(String(GameLoop2.completed_goals.back()["text"]),
-		"On a winning run,", "in the wording the row asked it in")
+		"%s," % GameLoop2.BEATING_A_GAME, "in the wording the row asked it in")
 	var done: int = GameLoop2.completed_goals.size()
 	assert_false(GameLoop2.row_armed("levelup"),
 		"the game's ticks go with the game")
@@ -10218,3 +10218,21 @@ func test_an_any_time_goal_still_resolves_on_the_spot() -> void:
 	_tick(_row_check(inst))
 	assert_true(GameLoop2.entry_for(inst).is_empty(),
 		"confirmed mid-game, resolved mid-game")
+
+
+# THE HEADER AND THE RECORD NAME THE SAME MOMENT, so they must use the same
+# words. The checklist's section header and the two ledger lines (a status
+# objective's and the level-up's) are three separate literals ON PURPOSE — the
+# loop does not get to depend on the checklist, and the checklist must not reach
+# into the loop for a word — so nothing but this stops them drifting into three
+# different descriptions of one thing.
+#
+# They used to say "On a winning run". They say "When beating a game" now,
+# because "run" was doing two jobs: the run you WIN (this one) and the run you
+# happen to be playing when you tick an `any time` goal, which can be any run at
+# all and is what an enemy-side status clause talks about.
+func test_the_winning_run_header_and_the_ledger_use_the_same_words() -> void:
+	assert_eq(ReportChecklist.WINNING_RUN_HEAD,
+		"%s:" % GameLoop2.BEATING_A_GAME,
+		("the checklist header and the run ledger describe the same moment — "
+		+ "change both or neither"))

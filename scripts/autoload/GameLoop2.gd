@@ -671,9 +671,9 @@ var armed_bonuses: Dictionary = {}
 # bonus waits for the body it hangs off.
 #
 # WHY THEY WAIT. What those rows ask for is not settled by the hour spent at the
-# game — "on a winning run, beat every boss without getting hit" is a claim about
-# a run, and the moment there is an answer to it is the moment the game is handed
-# in. So the box goes on and off freely while you play, like an enemy's bonus box,
+# game — "when beating a game, beat every boss without getting hit" is a claim
+# about the run that WINS, and the moment there is an answer to it is the moment
+# the game is handed in. So the box goes on and off freely while you play, like an enemy's bonus box,
 # and the report is what cashes it (_resolve_status_claims, and the `leveled`
 # branch in Overworld2's report). There is no confirm on one and nothing to take
 # back: an armed row has done nothing yet.
@@ -711,6 +711,20 @@ func row_answered(key: String) -> bool:
 # Record one, once it has actually resolved.
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
+
+# HOW A SETTLED-AT-THE-END ROW NAMES THE MOMENT IT WAS SETTLED, in one place.
+#
+# The checklist's section header, the status ledger line and the level-up ledger
+# line all said "On a winning run" as three separate literals. They are one fact
+# — these rows are answered by BEATING A GAME — and the wording is now the
+# player-facing translation of it, so it is a const that all three read rather
+# than three strings that can drift into three different claims.
+#
+# "run" was the word before, and it was doing two jobs: the run you WIN (this
+# one) and the run you happen to be playing when you do a goal (an enemy-side
+# status clause, which can be any run at all). Naming the first one after the
+# thing that actually settles it is what keeps them apart.
+const BEATING_A_GAME := "When beating a game"
 
 # Write one answered row into the run's ledger (see `completed_goals`). Called as
 # a row RESOLVES, so it records the thing that happened rather than a tick that
@@ -5538,8 +5552,8 @@ func _record_player_objective(key: String) -> void:
 	var stacks: int = GameState.objective_stacks(parts[0], int(parts[1]))
 	if stacks <= 0:
 		return
-	record_completed_goal("status", "%s ×%d — On a winning run, %s" % [
-		status.display_name, stacks,
+	record_completed_goal("status", "%s ×%d — %s, %s" % [
+		status.display_name, stacks, BEATING_A_GAME,
 		status.objective_text(StatusData.PLAYER, stacks)])
 
 # The player's decaying CLAUSES shed a stack for the game just resolved, when a

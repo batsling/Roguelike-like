@@ -146,7 +146,7 @@ func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	assert_eq(String(antonio.level_up_reward_type), "random_sized_chest",
 		"the other Vampire Survivors chest reward parses the same way")
 	assert_eq(antonio.level_up_reward_amount, 1)
-	assert_eq(antonio.level_up_condition, "Beat a run while having used a whip as a weapon")
+	assert_eq(antonio.level_up_condition, "Beat a game while having used a whip as a weapon")
 
 # Rodney's level pays LOOT, not a scroll. The sheet used to name the scroll, which
 # is narrower than "a piece of loot" was ever meant to be: loot in this game is

@@ -2398,7 +2398,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		var lvl_ch: CharacterData = Data.get_character2(GameState.character_id)
 		if lvl_ch != null:
 			GameLoop2.record_completed_goal("levelup",
-				"On a winning run, levelled up — %s" % lvl_ch.level_up_condition)
+				"%s, levelled up — %s" % [GameLoop2.BEATING_A_GAME,
+					lvl_ch.level_up_condition])
 		# What it paid, kept for the haul screen (see `_post_snapshot` below) so a
 		# level-up's stat gains and its loot are reported alongside its chest
 		# instead of landing silently.

@@ -240,8 +240,8 @@ made every goal say when it is answered (§7.7):
 | Regent | Beat a game while having made a friend | +1 Small Chest |
 | Zagreus | Beat a game with the help of a God | +1 Large Chest |
 | Poe Ratcho | Beat a game while being stinky | +1 Random Sized Chest |
-| Antonio Belpaese | Beat a run while having used a whip as a weapon | +1 Random Sized Chest |
-| Erratic Deck | Beat a run while having selected a random starting build | +1 Random Card |
+| Antonio Belpaese | Beat a game while having used a whip as a weapon | +1 Random Sized Chest |
+| Erratic Deck | Beat a game while having selected a random starting build | +1 Random Card |
 
 How it already works in the project (to be kept):
 - After each game, the **post-game verification modal** asks the character's
@@ -1909,6 +1909,41 @@ A counted goal is drawn as a **`−  2 / 3  +` counter instead of a tick box**, 
 
 Never `1`: a counter finished on its first press is a tick box with extra steps,
 and the sheet rejects it rather than letting one through.
+
+#### "run" means two different things, so it is no longer the word for either
+
+A goal settled by beating a game and an enemy-side status clause were both
+saying "run", and they are not the same run:
+
+- **A GOAL's run is the one you WIN.** All 35 `game beaten` goals now say "beat
+  a game" / "when beating a game", and so does the checklist section they live
+  under — `When beating a game:` (was `On a winning run:`) — and both ledger
+  lines that record one. Those are three separate literals on purpose, because
+  the loop does not get to depend on the checklist and the checklist must not
+  reach into the loop for a word; `test_overworld2.gd` asserts they agree, so
+  drift is a failing test rather than one moment described three ways.
+- **AN ENEMY-SIDE STATUS CLAUSE's run is the one you do the goal in**, which may
+  never be won at all. A clause rides whatever body it is on, and 99 of the 134
+  goals are `any time`. So those keep the word and say which run they mean —
+  "in the run you complete the goal in".
+
+**One authored string cannot be right for both**, which is the thing worth
+knowing before touching this: a status's `On Enemy` clause is written ONCE and
+attaches to any body. On a `game beaten` body the run it names IS the winning
+run; on an `any time` body it is not. Wording it for the `any time` case is
+correct under BOTH readings — "the run you complete the goal in" is the winning
+run when the goal is completed by winning — whereas wording it for the winning
+run would be wrong on 99 goals out of 134. So the general phrasing wins and no
+per-enemy rendering is needed. If that prose is ever put ON SCREEN it would need
+one: a placeholder in the clause resolved from the body's `ticked` at draw time.
+
+**It is not on screen today.** What a player reads is built from the
+`On Player Effect` / `On Enemy Effect` columns (`StatusData.condition`, via
+`condition_text`), and none of those contain the word "run" at all.
+`on_player_text` / `on_enemy_text` carry the prose and are exported but read by
+nothing — so this pass corrected the SOURCE, not the build. Marked's
+`achivements` typo lived in exactly the same place and never reached a player
+either; the effect column had always spelled it `[achievement|achievements]`.
 
 **Three sheets carry neither column** — `characters`, `curses` and `statuses` —
 because a level-up, a curse and a status clause are already settled by the run

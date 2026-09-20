@@ -1087,10 +1087,23 @@ const LEVELUP_KEY := "levelup"
 
 # The header the section nests under, and THE ONLY PLACE THE CONDITION IS SAID.
 # The rows under it carry their own sentence and nothing else: the prefix was on
-# every one of them for a while, which put "On a winning run" three times into
-# five lines of the narrowest column on the page and wrapped rows that had fitted.
+# every one of them for a while, which put the condition three times into five
+# lines of the narrowest column on the page and wrapped rows that had fitted.
 # The indent is what ties a row to this line — that is what an indent is for.
-const WINNING_RUN_HEAD := "On a winning run:"
+#
+# IT READS "When beating a game:" rather than "On a winning run:". "run" was
+# doing two jobs in this project — the run you WIN, which is what settles
+# everything under this header, and the run you happen to be playing when you
+# tick an `any time` goal, which can be any run at all. Only the first is this
+# section, so it is named after the thing that actually settles it.
+#
+# The two LEDGER lines say the same fact (`GameLoop2.BEATING_A_GAME`), and this
+# is deliberately a separate literal rather than built from that one: the loop
+# does not get to depend on the checklist and the checklist must not reach into
+# the loop for a word. `test_overworld2.gd` asserts the two agree, so drift is a
+# failing test rather than a header and a record that describe the same moment
+# two different ways.
+const WINNING_RUN_HEAD := "When beating a game:"
 
 # THE OTHER SECTION HEAD, and the reason there are two of them.
 #
