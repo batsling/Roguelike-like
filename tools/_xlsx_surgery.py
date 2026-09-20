@@ -383,6 +383,31 @@ class Workbook:
             return
         raise KeyError("no table named %r in %s" % (display_name, self.path))
 
+    def grow_table(self, sheet_name: str, headers: list, last_ref: str) -> None:
+        """Re-author a sheet's table over MORE COLUMNS, found by the sheet it is on.
+
+        `resize_table` is the row-wise one: it moves a table's ref and leaves its
+        column list alone, which is right when the sheet grew downwards. This is
+        the column-wise one, for when `set_cells` has just authored a new column
+        past the table's right edge — Excel rejects a table whose ref spans more
+        columns than it has `<tableColumn>` children, so the ref and the list have
+        to move together.
+
+        Found via `sheet_parts` rather than by displayName, because a table's
+        display name has nothing to do with its sheet's: `enemies` carries
+        `Table34` and `bosses` carries `Table32`. That only works on a sheet with
+        ONE table (sheet_parts returns the first), which is what every sheet this
+        is pointed at has — use `resize_table` by name on a multi-table sheet.
+
+        `headers` is the table's FULL column list, old columns included, in sheet
+        order; `last_ref` is the new bottom-right cell ("N65").
+        """
+        _, table_part = self.sheet_parts(sheet_name)
+        if table_part is None:
+            raise KeyError("sheet %r has no table" % sheet_name)
+        self._write_table(table_part, headers, last_ref)
+        self._by_name[table_part] = self._dirty[table_part]
+
     def _write_table(self, table_part: str, headers: list, last_ref: str) -> None:
         xml = self._by_name[table_part].decode("utf-8")
         xml = re.sub(r'(<table[^>]*\sref=")[^"]*(")', r"\g<1>A1:%s\g<2>" % last_ref, xml)

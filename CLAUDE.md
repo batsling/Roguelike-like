@@ -48,6 +48,17 @@ the honour system.
   regenerate; don't hand-edit generated `.tres` in bulk. If you change the shape
   a `.tres` is written in, **update the generator in the same commit** or the next
   regeneration silently reverts you.
+  **…and the `goals` sheet is upstream of five of its own sheets.** Every goal in
+  the game is authored there, in one sorted list, and
+  `python3 tools/apply_goals_sheet.py` writes it out into `enemies`, `bosses`,
+  `characters` (`Level Up`), `curses` (`Condition`) and `statuses` (spliced back
+  into the `On Player` prose). So a goal is edited in `goals` and NOWHERE ELSE —
+  anything typed into an owner sheet's goal column is lost on the next push, the
+  same rule `data/` lives under. `--check` runs in CI. It went that way round
+  because the reverse (a generated view) made a one-pass rewrite of 34 goals
+  possible and then stood in the way of keeping it; the script's docstring has
+  the argument. Two columns live only in `goals` + `enemies`/`bosses`: `Ticked`
+  (`any time` / `game beaten`) and `Count` (blank, or 2+) — see §7.7 of the spec.
   **Never edit the workbook with openpyxl** — a round-trip drops its eight charts.
   `tools/_xlsx_surgery.py` rewrites one sheet's XML and copies every other zip
   entry through byte-for-byte; the `_*_setup.py` one-shots beside it are the
@@ -57,7 +68,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 36 scripts, ~2090 tests, ~9 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 43 scripts, 2417 tests, ~6 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by

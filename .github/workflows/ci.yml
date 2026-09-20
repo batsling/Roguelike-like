@@ -101,6 +101,15 @@ jobs:
       - name: Every path named in a live doc exists
         run: python3 tools/check_doc_paths.py
 
+      - name: The owner sheets are what `goals` says
+        # `goals` is the SOURCE for every goal in the game, and the five sheets
+        # the generators actually read are written from it. Drift between them is
+        # invisible otherwise: the workbook opens fine, every generator runs, and
+        # `data/` matches the sheet it was made from — which is the stale one.
+        # Run BEFORE check_data_sync, because a goal that never reached its owner
+        # sheet cannot have reached data/ either, and this names the real cause.
+        run: python3 tools/apply_goals_sheet.py --check
+
       - name: data/ is what the sheet says
         run: python3 tools/check_data_sync.py
 

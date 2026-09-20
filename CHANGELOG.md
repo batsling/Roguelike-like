@@ -11,6 +11,204 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Speed's clause had no subject, so it read as nonsense on 99 goals out of
+  134.** An enemy-side `clause` is ANDed onto whatever goal the body is carrying,
+  which can be any of the 111 — so it is not a sentence of its own but a phrase
+  that has to survive being bolted onto someone else's. Dexterity and Strength
+  name what their condition is about ("**you** must beat X bosses…", "**the
+  difficulty** must be increased…"). Speed said only "must be beaten in X hours
+  or less", and composed into
+
+      Become undetectable and must be beaten in 2 hours or less
+      Defeat 3 bugs and must be beaten in 2 hours or less
+
+  — as though the disguise, or the bugs, were the thing to be beaten. It is
+  worst on an `any time` body, where the sentence contains no game for a reader
+  to recover the subject from, and least bad on a `game beaten` one, which is
+  presumably why it survived. It now says "**the game** must be beaten in …".
+
+  Found by composing every enemy-side status onto one body of each kind and
+  reading the twenty-one resulting sentences, rather than by reading the
+  clause on its own — where it looks fine, because the missing subject is
+  supplied by the reader.
+
+- **A goal row stopped claiming to be cleared, and the dead prose fields went.**
+
+  Every body row opened with **"Cleared:"** — on an unticked row, on an arming
+  row that will not resolve until the report, and on a counter sitting at 1 of 3
+  with two bugs still alive. It was the one word on the line that was not true.
+  Rows now read "Beat a game without using magic — Chosen"; whether one is done
+  is already said by the box, the green wash and the sink to the bottom of the
+  list. **The ledger keeps the word**, because a line is only written there once
+  the goal has actually been met.
+
+  **`StatusData.on_player_text` / `on_enemy_text` are gone.** They copied the
+  sheet's prose into every status "for tooltips and the collection screen", and
+  no tooltip and no screen ever read them — the engine builds every word it
+  shows from the side blocks. That is not a tidy-up but the removal of a hiding
+  place: both content errors this area has produced lived in exactly those
+  fields and nowhere else (Marked shipped `achivements` for weeks; the player
+  and enemy sides disagreed about RUN vs GAME). Neither reached a player,
+  neither failed a test, and neither could. The prose still exists in the
+  workbook, where it is the column a goal is authored in — and it is CHECKED
+  there now rather than mirrored here, because `apply_goals_sheet.py` splices
+  the goal back into the `Gain "…"` shape and fails loudly if that shape breaks.
+
+  **A `game beaten` BOSS is a hard gate, and the spec now says so deliberately.**
+  10 of the 14 are bosses; a boss is bomb-immune and refuses `instead` clauses,
+  so the only thing that removes one is beating a game. Before `Ticked`, its
+  restriction was tickable in the first five minutes of a game you then lost,
+  which made the wall optional on the honour system. It is a wall again.
+
+- **The checklist splits by WHEN a row settles, not by what owns it.** A
+  `game beaten` body behaves exactly like a status goal — its box arms, nothing
+  happens until the game is handed in, the report cashes it, a loss drops it —
+  and it was sitting under a header about *bodies*, a few lines below the header
+  naming the exact moment it is answered. Nothing on the row said which one it
+  obeyed.
+
+  So `Enemies` became **`Any time:`** and the `game beaten` bodies moved up
+  under **`When beating a game:`** with the statuses and the level-up. The old
+  name grouped by OWNER, which picked out the same rows only while every body
+  resolved instantly; the new pair *is* the two values of the `Ticked` column
+  that decides which section a row lands in. Nothing is lost by moving —
+  `bind_row_to_body` does not care where a row lives, and a body's clauses and
+  bonuses travel with it.
+
+  **The box shape carries it too.** Every box on the list looked identical while
+  a square one RESOLVES (confirm, the body takes its hit, no take-backs) and a
+  round one only holds a claim. `UITheme.check_icon` grew an `armed` shape,
+  applied in `_arm_winning_row` — which *is* the set of rows that arm, so the
+  rule cannot drift from the behaviour. A `game beaten` body also wears a drawn
+  pennant badged into its portrait (no glyph, so no font rebuild), and a counted
+  goal's `+` / `−` stack to the left of its tally.
+
+  **Two of these were only found by looking at the render.** The flag first sat
+  BESIDE the portrait, which gave that row two leading elements where every
+  other row has one and put its box 16px right of the two above it — three boxes
+  doing the same job, not lining up. The fix (badge it onto the picture, centre
+  the picture in a measured `LEAD_COLUMN_W`) overcorrected to 10px LEFT on the
+  first try and stretched a 26px portrait to 44 on the second. All three states
+  were caught by sampling pixels off a 1280×720 capture rather than by reading
+  the code or squinting at a screenshot, which is exactly what the standing note
+  in `docs/layout-review-backlog.md` says to do.
+
+- **"run" was doing two jobs, so it stopped being the word for either.** A goal
+  settled by beating a game and an enemy-side status clause both said "run", and
+  they name different runs.
+
+  A GOAL's run is the one you **win**, so all of them now say so: the last three
+  "Beat a run while…" goals (Antonio Belpaese, Erratic Deck, Snecko), Dexterity's
+  "on a winning run", the checklist header — **`When beating a game:`**, was
+  `On a winning run:` — and both ledger lines that record one of those rows. The
+  header and the two ledger lines stay three separate literals, because the loop
+  does not get to depend on the checklist and the checklist must not reach into
+  the loop for a word, and a new test asserts they agree.
+
+  AN ENEMY-SIDE CLAUSE's run is **the one you do the goal in**, which may never
+  be won: the clause rides whatever body it is on and 99 of the 134 goals are
+  `any time`. Those keep the word and say which run they mean — "in the run you
+  complete the goal in". One authored string cannot be right for both, since a
+  status's `On Enemy` is written once and attaches to any body; wording it for
+  the `any time` case is correct under both readings, where wording it for the
+  winning run would be wrong on 99 goals out of 134.
+
+  **Marked's `achivements` typo is gone**, and the reason it survived this long
+  is the same reason none of the above ever reached a player: the prose columns
+  are REFERENCE. What ships is built from the `*_Effect` columns, which have
+  always spelled it `[achievement|achievements]` and contain no "run" anywhere —
+  and `on_player_text` / `on_enemy_text` are exported and read by nothing. So
+  this pass corrected the source rather than the build, which is worth doing
+  precisely because `goals` is the source now: a source that says something
+  different from what ships is the drift every check here exists to stop.
+
+- **Zoe's goal names the perfect, and Burn's way out says "game".** Two wording
+  edits with a reason each (`tools/_goals_zoe_and_burn_wording.py`).
+
+  Zoe's is **"Perfect a game by beating it without losing"**, which puts the word
+  back that the goals rewrite had taken out. The perfect-game flag is set by
+  matching the condition's PROSE, so the rewrite silently switched it off; the
+  entry below has the bug. Matching a paraphrase in code was the patch, and this
+  is the fix — the goal now carries BOTH wordings `PERFECTED_WORDINGS` looks for,
+  so neither is load-bearing on its own.
+
+  Burn's `On Enemy` said "or instead beat a **run** while skipping or trashing
+  4-X items/upgrades" while its `On Player` said "beat a **game**". The `goals`
+  sheet carries only the PLAYER side of a status (Relation `modifies`), so the
+  push fixed one half of a matched pair — the goal and the way out of it — and
+  left the other contradicting it across two cells. **The five other statuses
+  still say "run" in their `On Enemy` clauses** ("in the same run", "on a run
+  where you beat X bosses"); those are paraphrases that do not contradict their
+  own player side, so they are left for a deliberate pass rather than swept up.
+
+- **The `goals` sheet is now the SOURCE, and the two columns it grew changed
+  what a goal is.** The entry below this one built `goals` as a read-only view
+  and said, in capitals, that anything typed into it was lost on the next run.
+  It also predicted its own promotion — and the promotion is what happened,
+  because the view immediately paid for itself: with 134 goals in one sorted
+  column, **34 of them were rewritten into a single voice** in one pass. "Do not
+  use magic" became "Beat a game without using magic"; "Perfect a Game" became
+  "Beat a game without losing"; the three duplicated families the view exposed
+  as difficulty ladders got the climbing counts it argued for (Skeletal Brute 2
+  and Skeletal Bastion 3 where both had said "a skeleton"; Bullat 1 and King
+  Bullat 2). That pass is not one you can do across six sheets at once, which is
+  the whole argument for where goals are authored.
+
+  So the direction is inverted. `tools/apply_goals_sheet.py` replaces
+  `generate_goals_sheet.py` (deleted — a script whose only job was to overwrite
+  the source is a loaded gun): `goals` is edited, and it is written out into the
+  five sheets the generators read, including back into a status's `On Player`
+  prose with the `Gain "…"` wrapper, the "You must", the consequence and the
+  full stop spliced around the new wording. **`--check` runs in CI**, before
+  `check_data_sync` — a goal that never reached its owner sheet cannot have
+  reached `data/` either, and this names the real cause instead of the symptom.
+
+- **A restriction stopped being tickable in the first five minutes.** The new
+  `Ticked` column says WHEN a goal can be answered: `any time` (99 goals) or
+  `game beaten` (35). It closes a hole that had been open since the checklist
+  learned to resolve on the spot — "Beat a game without using magic" is not true
+  until the game is beaten, so a box you could tick immediately was asking for a
+  **promise** where every other row on that list asks for a **report**, and
+  nothing stopped you ticking it and then going and using magic.
+
+  The fix needed no new machinery, which is the tell that the shape was already
+  right: `game beaten` rows arm and disarm freely and are cashed by the report,
+  exactly as the status goals and the level-up always were, and they are
+  mirrored into the review inside the ✓ Completed Game confirm — the moment they
+  are last askable. A claim still ticked when the player reports a **loss or an
+  escape is dropped**, because neither is a game beaten. Their own wording is
+  what says so on the row, which is precisely what the rewrite above made true
+  of all 35, so they needed a tint rather than a prefix.
+
+  The three sheets with no `Ticked` column — `characters`, `curses`, `statuses`
+  — take a **hard error** rather than a silent drop if one is authored there.
+  Those goals are already settled by the run being won; a value that vanished on
+  the way through would leave the goal behaving as it always had with the sheet
+  saying otherwise, which is the exact failure mode `BODY_KEYS` exists to catch
+  one floor down.
+
+- **Incremental goals: a `+` counter where a tick box used to be.** The `Count`
+  column is blank on 127 goals and 2-or-more on the seven that count something,
+  and a counted goal is drawn as `−  2 / 3  +` instead of a box. Three rules
+  make it a report rather than a promise, same as the above:
+
+  **Only the last press confirms.** Every irreversible row on the checklist is
+  guarded by one "did you really?", a counted goal has exactly one irreversible
+  moment, and asking three times would train the player to click straight
+  through the question that matters. **`−` takes a press back**, up until the
+  target — the one answer on the list that can be walked back, because it is the
+  only one that has spent nothing yet, and a stray press on a row you will press
+  three times is a misclick rather than a decision. **The tally persists**
+  across games and reloads: it lives on the body (`progress`, a new
+  `BODY_KEYS` entry) because the body is what persists, a goal can be answered
+  in any later game, and a counter that reset on the walk to the next game could
+  never be finished. It starts over when the goal resolves, since `health` is
+  how many more completions a body owes — a 2-Health body on "Defeat 3 bugs" is
+  six bugs in two rounds of three.
+
+  Never `1`: a counter finished on its first press is a tick box with extra
+  steps, and the sheet rejects it rather than letting one through.
+
 - **Every goal in the game is now in one place: the workbook's `goals` sheet.**
   A goal — the honour-system thing you go and do inside a real roguelike — was
   authored in six sheets in five different column shapes, and nowhere at once:

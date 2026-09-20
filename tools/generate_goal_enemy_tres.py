@@ -65,6 +65,33 @@ IS_BOSS = False
 # GoalEnemyData.Difficulty enum order (LOW, MEDIUM, HIGH, INSANE).
 DIFFICULTY = {"low": 0, "medium": 1, "high": 2, "insane": 3}
 
+# The sheet's `Ticked` wording -> the StringName GoalEnemyData holds. The sheet
+# says it the way it reads on a sheet ("game beaten"); the resource says it the
+# way an id is spelled everywhere else in the project.
+TICKED = {"any time": "any_time", "game beaten": "game_beaten"}
+TICK_DEFAULT = "any_time"
+
+
+def _ticked(raw, name: str) -> str:
+    """Map a `Ticked` cell to the id GoalEnemyData holds.
+
+    An EMPTY cell is the default — a sheet row that predates the column means
+    what every goal meant before it existed. Anything else that is not one of the
+    two values is a finding rather than a fallback: a misspelt `Ticked` would
+    otherwise turn a goal that needs the game beaten into one you can tick in the
+    first five minutes, which is a content bug nothing downstream can see.
+    """
+    text = _clean(raw).lower()
+    if not text:
+        return TICK_DEFAULT
+    if text not in TICKED:
+        raise SystemExit(
+            "%s: Ticked is %r — it must be %s, or blank for %r. It is authored in "
+            "the `goals` sheet; fix it there and re-run "
+            "tools/apply_goals_sheet.py."
+            % (name, _clean(raw), " or ".join(repr(k) for k in TICKED), TICK_DEFAULT))
+    return TICKED[text]
+
 
 def _difficulty(raw) -> int:
     """Map a Difficulty cell to the enum int.
@@ -272,6 +299,22 @@ def enemy_tres(row) -> tuple:
     lines.append("damage = %d" % _int(row.get("Damage"), 1))
     lines.append('goal_type = &"%s"' % goal_types[0].lower())
     lines.append('goal = "%s"' % gd_str(goals[0]))
+    # WHEN the goal is answered and HOW MANY times (§7.7) — the `Ticked` and
+    # `Count` columns, both authored in the `goals` sheet and pushed here by
+    # tools/apply_goals_sheet.py. Written only when they are not the default, the
+    # way `boss` and `tag` are: `any_time` and a plain tick box is what a row
+    # without either column meant before they existed, and 99 of 134 goals still
+    # mean it.
+    ticked = _ticked(row.get("Ticked"), name)
+    if ticked != TICK_DEFAULT:
+        lines.append('ticked = &"%s"' % ticked)
+    count = _int(row.get("Count"), 0)
+    if count:
+        if count < 2:
+            raise SystemExit(
+                "%s: Count is %d. A counter counts to at least 2 — fix it in the "
+                "`goals` sheet, which is where it is authored." % (name, count))
+        lines.append("goal_count = %d" % count)
     # ABILITIES (§7.6) — the whole cell, parsed against the abilities sheet. The
     # raw text rides along as `ability_text` so the collection screen can show what
     # was authored without re-assembling it out of the parse.

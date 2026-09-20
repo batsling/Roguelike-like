@@ -643,7 +643,25 @@ const CHECK_BORDER := 3              # border thickness
 
 # Empty: a gold-rimmed hollow square. Ticked: green-rimmed, green-washed, with a
 # heavy pale tick across it. `dim` is the disabled pair — same shapes, drained.
-static func check_icon(ticked: bool, dim: bool = false) -> ImageTexture:
+#
+# `armed` IS THE SECOND SHAPE, and it is a ROUND box rather than a square one.
+#
+# WHY A SECOND SHAPE EXISTS AT ALL. Every box on the report checklist looked the
+# same while meaning two different things (docs/games-first-redesign.md §7.7).
+# A SQUARE box RESOLVES: pressing it raises a confirm and then the enemy takes
+# its hit, its loot lands on the board, and there are no take-backs. A ROUND box
+# only ARMS: it is a claim you are holding, it goes on and off as often as you
+# like, and handing the game in is what cashes it. That is the difference between
+# an action and a promise, and it was carried by nothing but the section header
+# the row happened to be under.
+#
+# Round for the promise is the right way round: a radio-ish ring already reads as
+# "a state I am in" where a square reads as "a button I press", which is exactly
+# the distinction being drawn. The COLOURS stay identical across both shapes, so
+# ticked still reads as ticked at a glance and only the silhouette says which
+# kind of row it is.
+static func check_icon(ticked: bool, dim: bool = false,
+		armed: bool = false) -> ImageTexture:
 	var n := CHECK_ICON
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var border: Color = SUCCESS if ticked else GOLD.lerp(TEXT_DIM, 0.30)
@@ -653,16 +671,77 @@ static func check_icon(ticked: bool, dim: bool = false) -> ImageTexture:
 		border = border.lerp(BG, 0.6)
 		fill = fill.lerp(BG, 0.6)
 		tick = tick.lerp(BG, 0.6)
-	for y in range(n):
-		for x in range(n):
-			var edge: bool = x < CHECK_BORDER or y < CHECK_BORDER \
-				or x >= n - CHECK_BORDER or y >= n - CHECK_BORDER
-			img.set_pixel(x, y, border if edge else fill)
+	if armed:
+		img.fill(Color(0, 0, 0, 0))
+		var mid: float = (n - 1) * 0.5
+		var outer: float = mid - 0.5
+		var inner: float = outer - CHECK_BORDER
+		for y in range(n):
+			for x in range(n):
+				var d: float = Vector2(x - mid, y - mid).length()
+				if d <= inner:
+					img.set_pixel(x, y, fill)
+				elif d <= outer:
+					img.set_pixel(x, y, border)
+				elif d <= outer + 1.0:
+					# One ALPHA-FADED ring on the outside, so the circle does not come
+					# out of this as a staircase next to the square's clean edges.
+					img.set_pixel(x, y, Color(border.r, border.g, border.b,
+						outer + 1.0 - d))
+	else:
+		for y in range(n):
+			for x in range(n):
+				var edge: bool = x < CHECK_BORDER or y < CHECK_BORDER \
+					or x >= n - CHECK_BORDER or y >= n - CHECK_BORDER
+				img.set_pixel(x, y, border if edge else fill)
 	if ticked:
 		# Two strokes, drawn fat: the short down-leg then the long up-stroke.
-		_stroke(img, Vector2(5.5, 12.0), Vector2(10.0, 17.0), tick, 3.0)
-		_stroke(img, Vector2(10.0, 17.0), Vector2(18.5, 6.5), tick, 3.0)
+		# Pulled in a little on the round box so the long leg stays inside the ring.
+		if armed:
+			_stroke(img, Vector2(6.5, 12.0), Vector2(10.0, 16.0), tick, 3.0)
+			_stroke(img, Vector2(10.0, 16.0), Vector2(17.0, 7.5), tick, 3.0)
+		else:
+			_stroke(img, Vector2(5.5, 12.0), Vector2(10.0, 17.0), tick, 3.0)
+			_stroke(img, Vector2(10.0, 17.0), Vector2(18.5, 6.5), tick, 3.0)
 	return ImageTexture.create_from_image(img)
+
+# THE MARK A BODY'S GOAL WEARS WHEN BEATING THE GAME IS WHAT SETTLES IT — a
+# pennant on a staff, drawn rather than shipped as a glyph.
+#
+# The rows in that section all lead with a picture that says whose goal it is: a
+# status leads with its own symbol, the level-up with the character's face. A
+# body leads with its portrait, which says which body but not which KIND of goal
+# — and in a section where every other row is settled the same way, the flag is
+# what marks the finish the row is waiting on.
+#
+# Drawn, not a glyph, so it needs no `tools/build_glyph_font.py` rebuild and
+# cannot fall through to a host font search (CLAUDE.md).
+static func finish_flag(size: int, tint: Color = GOLD) -> ImageTexture:
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var s: float = size / 22.0        # the shape is authored at 22px
+	var staff_x: float = 6.0 * s
+	_stroke(img, Vector2(staff_x, 3.5 * s), Vector2(staff_x, 18.5 * s),
+		tint, maxf(1.5, 2.0 * s))
+	# The pennant: a triangle off the top of the staff, filled by a point-in-
+	# triangle test so the diagonal is even at any size.
+	var a := Vector2(staff_x + 1.0 * s, 4.0 * s)
+	var b := Vector2(17.0 * s, 8.0 * s)
+	var c := Vector2(staff_x + 1.0 * s, 12.0 * s)
+	for y in range(size):
+		for x in range(size):
+			var p := Vector2(x, y)
+			if _in_triangle(p, a, b, c):
+				img.set_pixel(x, y, tint)
+	return ImageTexture.create_from_image(img)
+
+static func _in_triangle(p: Vector2, a: Vector2, b: Vector2, c: Vector2) -> bool:
+	var d1: float = (p - b).cross(a - b)
+	var d2: float = (p - c).cross(b - c)
+	var d3: float = (p - a).cross(c - a)
+	var neg: bool = d1 < 0.0 or d2 < 0.0 or d3 < 0.0
+	var pos: bool = d1 > 0.0 or d2 > 0.0 or d3 > 0.0
+	return not (neg and pos)
 
 # The mark on a chosen row of a dropdown, and the nothing on an unchosen one.
 #

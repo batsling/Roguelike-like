@@ -252,6 +252,14 @@ var game_in_play: bool = false
 #   "corpse_revive" WHEN it gets back up ("game_end"), off the ability's own
 #                 `leave_corpse` op, so a later corpse on another clock does not
 #                 need a second flag
+#   "progress"    how far up a COUNTED goal this body has been ticked (§7.7).
+#                 0 or absent on the 127 goals that are a plain tick box; on
+#                 "Defeat 3 bugs" it is how many of the three have been reported.
+#                 It lives ON THE BODY rather than in a per-game tally because
+#                 the body itself is what persists: a goal can be answered across
+#                 any number of later games (§2), and a counter that reset every
+#                 time you walked to the next game would be a counter nobody
+#                 could ever finish.
 var stack: Array = []
 
 # THE LIST ABOVE, AS SOMETHING THE GAME CAN CHECK.
@@ -290,7 +298,7 @@ const BODY_KEYS := {
 	"timed_statuses": true, "abilities": true, "turns": true, "phase": true,
 	"revives": true, "fades": true, "hidden": true, "illusionist": true,
 	"stolen": true, "fleeing": true, "tags": true,
-	"corpse": true, "corpse_revive": true,
+	"corpse": true, "corpse_revive": true, "progress": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -663,9 +671,9 @@ var armed_bonuses: Dictionary = {}
 # bonus waits for the body it hangs off.
 #
 # WHY THEY WAIT. What those rows ask for is not settled by the hour spent at the
-# game — "on a winning run, beat every boss without getting hit" is a claim about
-# a run, and the moment there is an answer to it is the moment the game is handed
-# in. So the box goes on and off freely while you play, like an enemy's bonus box,
+# game — "when beating a game, beat every boss without getting hit" is a claim
+# about the run that WINS, and the moment there is an answer to it is the moment
+# the game is handed in. So the box goes on and off freely while you play, like an enemy's bonus box,
 # and the report is what cashes it (_resolve_status_claims, and the `leveled`
 # branch in Overworld2's report). There is no confirm on one and nothing to take
 # back: an armed row has done nothing yet.
@@ -703,6 +711,20 @@ func row_answered(key: String) -> bool:
 # Record one, once it has actually resolved.
 func mark_row_answered(key: String) -> void:
 	answered_rows[key] = true
+
+# HOW A SETTLED-AT-THE-END ROW NAMES THE MOMENT IT WAS SETTLED, in one place.
+#
+# The checklist's section header, the status ledger line and the level-up ledger
+# line all said "On a winning run" as three separate literals. They are one fact
+# — these rows are answered by BEATING A GAME — and the wording is now the
+# player-facing translation of it, so it is a const that all three read rather
+# than three strings that can drift into three different claims.
+#
+# "run" was the word before, and it was doing two jobs: the run you WIN (this
+# one) and the run you happen to be playing when you do a goal (an enemy-side
+# status clause, which can be any run at all). Naming the first one after the
+# thing that actually settles it is what keeps them apart.
+const BEATING_A_GAME := "When beating a game"
 
 # Write one answered row into the run's ledger (see `completed_goals`). Called as
 # a row RESOLVES, so it records the thing that happened rather than a tick that
@@ -1247,6 +1269,11 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"stolen": (entry.get("stolen", []) as Array).duplicate(true),
 		"fleeing": bool(entry.get("fleeing", false)),
 		"tags": _string_keys_of(entry.get("tags", [])),
+		# How far up a counted goal this body has been ticked (§7.7). Written like
+		# `shield` and for the same reason — it is a tally the player built up, not
+		# something that can be recomputed from the sheet, and a load that dropped
+		# it would take back two of the three bugs they had already gone and killed.
+		"progress": int(entry.get("progress", 0)),
 	}
 
 # The ability rows as plain strings — StringName survives a JSON round trip as a
@@ -1326,6 +1353,9 @@ func _deserialize_entry(raw) -> Dictionary:
 		"stolen": (d.get("stolen", []) as Array).duplicate(true),
 		"fleeing": bool(d.get("fleeing", false)),
 		"tags": _names_of(d.get("tags", [])),
+		# A save written before §7.7 has no tally, and 0 is the right answer there:
+		# no goal in it was ever counted.
+		"progress": maxi(0, int(d.get("progress", 0))),
 	}
 
 func _names_of(list) -> Array:
@@ -2595,12 +2625,86 @@ func fulfill(instance: int, record: bool = false) -> bool:
 		var res := {"defeats": [], "drops": 0}
 		_defeat(e, true, res, fell)
 		_admit_offgrid()
-	elif record:
-		# It took the hit and lived — so it is STAGGERED, and done moving and
-		# swinging for this game. Only on the reporting path: a scroll firing a goal
-		# hit off its own effect (`record` false) changes nothing about the game the
-		# player is in the middle of, and that includes this.
-		_stagger(instance)
+	else:
+		# A COUNTED GOAL STARTS ITS TALLY OVER (§7.7). `health` is how many more
+		# goal completions this body needs, so a 2-Health body carrying "Defeat 3
+		# bugs" is six bugs in two rounds of three — and a tally left at 3 would
+		# make the second round already finished. The reset is on the survival
+		# branch because a body that died has nothing left to count.
+		if idx >= 0 and idx < stack.size():
+			stack[idx]["progress"] = 0
+		if record:
+			# It took the hit and lived — so it is STAGGERED, and done moving and
+			# swinging for this game. Only on the reporting path: a scroll firing a
+			# goal hit off its own effect (`record` false) changes nothing about the
+			# game the player is in the middle of, and that includes this.
+			_stagger(instance)
+	loop_changed.emit()
+	return true
+
+# === Counted goals (§7.7) ==================================================
+#
+# "Defeat 3 bugs" is not three goals, and it is not one goal you tick when you
+# feel you have done enough of it. It is ONE goal answered three times, and the
+# checklist draws it as a `+` counter rather than a box for exactly that reason:
+# the number on the row is the honest report, and only the press that reaches the
+# target does what a tick box would have done.
+#
+# The tally lives on the body (`progress` in BODY_KEYS), so it survives the walk
+# to the next game the way the body does — a goal can be answered in ANY later
+# game (§2), and the three bugs need not all be in one.
+
+# How far up its goal this body has been counted. 0 for a body carrying a plain
+# tick box, which never counts at all.
+func goal_progress(instance: int) -> int:
+	return int(entry_for(instance).get("progress", 0))
+
+# How many answers finish this body's goal: its authored `Count`, or 1 for the
+# 127 goals that are a plain tick box. Reading this rather than the resource
+# directly is what lets a caller treat both kinds the same.
+func goal_target(instance: int) -> int:
+	var e: GoalEnemyData = entry_for(instance).get("enemy")
+	return e.count_target() if e != null else 1
+
+# Whether this body's goal is counted rather than ticked once.
+func goal_is_counted(instance: int) -> bool:
+	var e: GoalEnemyData = entry_for(instance).get("enemy")
+	return e != null and e.is_counted()
+
+# One press of `+`: step the tally up by one and say whether that FINISHED it.
+#
+# It does not fulfil anything itself. Reaching the target is what the caller then
+# acts on — the checklist raises its confirm there and only there, so the "did you
+# really?" that guards an irreversible resolution is asked once, at the press that
+# resolves, rather than on each of three presses that do not.
+func advance_goal(instance: int) -> bool:
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return false
+	var target: int = goal_target(instance)
+	var at: int = mini(target, int(stack[idx].get("progress", 0)) + 1)
+	stack[idx]["progress"] = at
+	loop_changed.emit()
+	return at >= target
+
+# One press of `−`: step the tally back down, never below zero.
+#
+# THE COUNTER IS THE ONE THING ON THIS LIST THAT CAN BE TAKEN BACK, and only
+# while it is still short of its target. Every other answer resolves the moment it
+# is confirmed and locks (see ReportChecklist's "there are no take-backs"), which
+# is right for something that has already dealt a hit and dropped loot. A partial
+# count has dealt nothing: it is a note of how far along you are, and a stray
+# press on a row you will be pressing three times is a misclick rather than a
+# decision. Once the target is reached the goal resolves and the row locks with
+# the rest, so there is nothing here to undo.
+func retreat_goal(instance: int) -> bool:
+	var idx: int = _index_of(instance)
+	if idx < 0:
+		return false
+	var at: int = int(stack[idx].get("progress", 0))
+	if at <= 0:
+		return false
+	stack[idx]["progress"] = at - 1
 	loop_changed.emit()
 	return true
 
@@ -5448,8 +5552,8 @@ func _record_player_objective(key: String) -> void:
 	var stacks: int = GameState.objective_stacks(parts[0], int(parts[1]))
 	if stacks <= 0:
 		return
-	record_completed_goal("status", "%s ×%d — On a winning run, %s" % [
-		status.display_name, stacks,
+	record_completed_goal("status", "%s ×%d — %s, %s" % [
+		status.display_name, stacks, BEATING_A_GAME,
 		status.objective_text(StatusData.PLAYER, stacks)])
 
 # The player's decaying CLAUSES shed a stack for the game just resolved, when a

@@ -2195,7 +2195,18 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# doesn't come back until the playback has finished. See _end_resolve.
 	_resolving = true
 	var played_game: GameData = _chosen.get("game")
-	var fulfilled_instances: Array = fulfilled if fulfilled is Array else _ticked_fulfilments()
+	# A GOAL THE GAME BEING BEATEN SETTLES IS NOT SETTLED BY A GAME THAT WASN'T
+	# (§7.7). Those rows arm and disarm freely all game — there is nothing to
+	# resolve until the game is handed in — so a player can leave "Beat a game
+	# without using magic" ticked and then report a loss or walk away, and without
+	# this the claim would be honoured anyway.
+	#
+	# ONLY THE CHECKLIST'S OWN TICKS are filtered. A caller that passes an explicit
+	# `fulfilled` list (a scroll's effect, DevTools, a test) is STATING that those
+	# goals were met, and second-guessing that would make the argument mean
+	# something different from what it says.
+	var fulfilled_instances: Array = fulfilled if fulfilled is Array \
+		else _honoured_fulfilments(beaten and not escaped)
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
 	# Had the run been to this game before? Read BEFORE this visit is recorded, so
 	# it is the SECOND trip to a game that pays the Dash (REPEAT_BEAT_DASH).
@@ -2387,7 +2398,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		var lvl_ch: CharacterData = Data.get_character2(GameState.character_id)
 		if lvl_ch != null:
 			GameLoop2.record_completed_goal("levelup",
-				"On a winning run, levelled up — %s" % lvl_ch.level_up_condition)
+				"%s, levelled up — %s" % [GameLoop2.BEATING_A_GAME,
+					lvl_ch.level_up_condition])
 		# What it paid, kept for the haul screen (see `_post_snapshot` below) so a
 		# level-up's stat gains and its loot are reported alongside its chest
 		# instead of landing silently.
@@ -5003,6 +5015,24 @@ func _show_header(shown: bool) -> void:
 func _ticked_fulfilments() -> Array:
 	return _checklist.ticked_fulfilments() if _checklist != null else []
 
+# The same list, with the goals this report cannot honestly honour dropped
+# (§7.7). `won` is whether the game was actually beaten — a loss and an escape
+# are both false, because neither is a game beaten.
+#
+# Only the `Ticked: game beaten` rows are ever dropped. Every other tick resolved
+# the moment it was confirmed, mid-game, and has nothing to do with how the game
+# ended.
+func _honoured_fulfilments(won: bool) -> Array:
+	var ticked: Array = _ticked_fulfilments()
+	if won:
+		return ticked
+	var out: Array = []
+	for inst in ticked:
+		var e: GoalEnemyData = GameLoop2.entry_for(int(inst)).get("enemy")
+		if e == null or not e.settled_by_beating():
+			out.append(inst)
+	return out
+
 # The ticked STATUS rows, in the shape beat_game's `claims` wants (§13). Returned
 # even when nothing at all is ticked: an EMPTY report is the answer a missed
 # `demand` is billed for, and a caller handed {} could not tell "nothing was
@@ -5042,12 +5072,40 @@ func _apply_level_up() -> Dictionary:
 		if bonus_levels >= 10 or not _roll_bonus_level_up():
 			break
 		bonus_levels += 1
-	# Zoe's condition is literally "Perfect a Game" — mark the perfect flag so
-	# perfect-aware items can fire on it.
-	if ch.level_up_condition.to_lower().contains("perfect"):
+	# A LEVEL-UP THAT MEANS "PERFECTED" SETS THE FLAG, so perfect-aware items can
+	# fire on it. Zoe's is the one — and the reason this is a LIST of wordings
+	# rather than the single `contains("perfect")` it used to be is that the test
+	# below it has already caught this failing once.
+	#
+	# The goals are authored in the workbook's `goals` sheet now (§7.7) and were
+	# rewritten into one voice in a single pass; Zoe's went from "Perfect a Game"
+	# to "Beat a game without losing", which contains no "perfect" at all. Nothing
+	# errored. The flag simply stopped being set, and the symptom would have been a
+	# perfect-aware relic that never fires for the one character built around it.
+	#
+	# This is prose-matching and prose-matching is fragile, which is the honest
+	# thing to say about it: the condition has no machine-readable side and giving
+	# it one is a column on the sheet, not a change to make in passing.
+	# `test_redesign2.gd` pins Zoe's condition against this list so the next
+	# rewrite fails a test instead of failing silently.
+	if _means_perfected(ch.level_up_condition):
 		GameState.last_game_perfected = true
 	return {"levels": bonus_levels + 1, "condition": ch.level_up_condition,
 		"reward": ch.level_up_reward, "stats": stats}
+
+# The wordings a level-up condition uses to mean "you beat it without losing".
+# Lowercase, matched as substrings. See `_means_perfected`.
+const PERFECTED_WORDINGS := ["perfect", "without losing"]
+
+# Does this level-up condition mean the game was PERFECTED? Public-ish so the
+# test that pins Zoe's wording can ask the same question the level-up does,
+# rather than quoting the answer.
+func _means_perfected(condition: String) -> bool:
+	var text: String = condition.to_lower()
+	for wording in PERFECTED_WORDINGS:
+		if text.contains(wording):
+			return true
+	return false
 
 # Bank one enemy defeat against both records that care about it: the game it
 # happened at, and the character who was playing.
