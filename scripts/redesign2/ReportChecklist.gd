@@ -275,7 +275,21 @@ func populate_play_panel() -> void:
 	# …and everything finished, under everything still to do.
 	_flush_sunk()
 
-# THE WORDS ON A BODY'S GOAL ROW: the goal, and whose it is. NOT `goal_text_for`,
+# THE WORDS ON A BODY'S GOAL ROW: the goal, and whose it is.
+#
+# NO "Cleared:" PREFIX. It used to lead every one of these, and it was a claim
+# the row had not earned: an unticked row said "Cleared: Defeat 3 bugs", an
+# ARMING row says it about something that will not resolve until the game is
+# handed in, and a counter sitting at 1 of 3 said it about two bugs that are
+# still alive. What the row is FOR is the goal; whether it is done is what the
+# box, the green wash and the sink to the bottom of the list already say three
+# times over. It also reads like the rows it now sits beside, which lead with
+# their own sentence ("If the difficulty is increased …", "Leveled up — …").
+#
+# THE LEDGER KEEPS IT (`record_completed_goal` in `_resolve_goal_now`), because
+# there it is true: that line is only written when the goal has actually been
+# met, and a flat list of past sentences on another screen needs the word that
+# says what happened. NOT `goal_text_for`,
 # which joins the add-ons onto it as one run-on sentence — on this list each add-on
 # is a row of its own beneath this one, coloured for the kind it is
 # (_add_clause_rows / _add_instead_rows / _add_bonus_rows).
@@ -372,7 +386,7 @@ func _finish_mark() -> Control:
 
 func _goal_row_text(entry: Dictionary) -> String:
 	var e: GoalEnemyData = entry.get("enemy")
-	return "Cleared: %s — %s" % [GameLoop2.entry_goal(entry),
+	return "%s — %s" % [GameLoop2.entry_goal(entry),
 		e.display_name if e != null else "it"]
 
 # The rows a body defeated MID-GAME leaves behind: its own, ticked and locked, and

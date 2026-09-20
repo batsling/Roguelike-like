@@ -1061,8 +1061,6 @@ def status_tres(row) -> tuple:
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('kind = &"%s"' % kind)
     lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))
-    lines.append('on_player_text = "%s"' % gd_str(_clean(row.get("On Player"))))
-    lines.append('on_enemy_text = "%s"' % gd_str(_clean(row.get("On Enemy"))))
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
     lines.append("max_stacks = %d" % max_stacks)
     lines.append('decrease = "%s"' % gd_str(decrease))

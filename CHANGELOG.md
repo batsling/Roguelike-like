@@ -11,6 +11,34 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A goal row stopped claiming to be cleared, and the dead prose fields went.**
+
+  Every body row opened with **"Cleared:"** — on an unticked row, on an arming
+  row that will not resolve until the report, and on a counter sitting at 1 of 3
+  with two bugs still alive. It was the one word on the line that was not true.
+  Rows now read "Beat a game without using magic — Chosen"; whether one is done
+  is already said by the box, the green wash and the sink to the bottom of the
+  list. **The ledger keeps the word**, because a line is only written there once
+  the goal has actually been met.
+
+  **`StatusData.on_player_text` / `on_enemy_text` are gone.** They copied the
+  sheet's prose into every status "for tooltips and the collection screen", and
+  no tooltip and no screen ever read them — the engine builds every word it
+  shows from the side blocks. That is not a tidy-up but the removal of a hiding
+  place: both content errors this area has produced lived in exactly those
+  fields and nowhere else (Marked shipped `achivements` for weeks; the player
+  and enemy sides disagreed about RUN vs GAME). Neither reached a player,
+  neither failed a test, and neither could. The prose still exists in the
+  workbook, where it is the column a goal is authored in — and it is CHECKED
+  there now rather than mirrored here, because `apply_goals_sheet.py` splices
+  the goal back into the `Gain "…"` shape and fails loudly if that shape breaks.
+
+  **A `game beaten` BOSS is a hard gate, and the spec now says so deliberately.**
+  10 of the 14 are bosses; a boss is bomb-immune and refuses `instead` clauses,
+  so the only thing that removes one is beating a game. Before `Ticked`, its
+  restriction was tickable in the first five minutes of a game you then lost,
+  which made the wall optional on the honour system. It is a wall again.
+
 - **The checklist splits by WHEN a row settles, not by what owns it.** A
   `game beaten` body behaves exactly like a status goal — its box arms, nothing
   happens until the game is handed in, the report cashes it, a loss drops it —

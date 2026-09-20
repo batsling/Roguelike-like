@@ -1910,6 +1910,22 @@ A counted goal is drawn as a **`−  2 / 3  +` counter instead of a tick box**, 
 Never `1`: a counter finished on its first press is a tick box with extra steps,
 and the sheet rejects it rather than letting one through.
 
+#### A `game beaten` BOSS is a hard gate, and that is deliberate
+
+**10 of the 14 `game beaten` bodies are bosses**, and a boss is bomb-immune and
+refuses `instead` clauses (§7.1) — so the only thing that removes one is beating
+a game. On a losing streak it follows you and hits you after every game with no
+way to clear it.
+
+That is the intended reading, not an oversight. Before `Ticked` existed, a
+boss's "Beat a game without using magic" was tickable in the first five minutes
+of a game you then lost, which made the wall optional on the honour system. It
+is a wall again: the pressure rises the longer you go without winning, which is
+exactly the direction the run is supposed to push you.
+
+Worth knowing before authoring more of them — a `game beaten` boss is the
+strongest gate the game has, and there is no way past it but the front door.
+
 #### What the checklist looks like, and why
 
 **The two sections ARE the two `Ticked` values.** The report checklist splits by
@@ -1939,6 +1955,15 @@ alone was doing too much work:
   portrait. Drawn rather than a glyph, so it needs no
   `tools/build_glyph_font.py` rebuild and cannot fall through to a host font
   search.
+
+**A goal row leads with the goal, not with "Cleared:".** The prefix used to open
+every body row and it was a claim the row had not earned — an unticked row said
+"Cleared: Defeat 3 bugs", an arming row said it about something that will not
+resolve until the report, and a counter at 1 of 3 said it about two bugs still
+alive. Whether a row is done is already said three times over by the box, the
+green wash and the sink to the bottom of the list. **The ledger keeps the word**
+(`record_completed_goal`), because a line is only written there once the goal
+has actually been met.
 
 **A counted goal's controls stack**: `+` over `−`, to the left of the tally, so
 the pair reads as a spinner and costs the narrowest column on the page half the

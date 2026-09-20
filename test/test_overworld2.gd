@@ -911,7 +911,7 @@ func test_a_ticked_level_up_stays_where_it_is() -> void:
 	assert_gt(head, -1, "the winning-run header is on the list")
 	var lu: int = _row_index("Leveled up")
 	assert_gt(lu, head, "and the level-up nests under it")
-	assert_gt(_row_index("Cleared:"), lu,
+	assert_gt(_body_row_index(), lu,
 		"above the board, where the open goals are")
 	_tick(_ui._levelup_check)
 	_ui._populate_play_panel()
@@ -930,7 +930,7 @@ func test_a_ticked_status_goal_stays_where_it_is() -> void:
 	assert_false(row_text.contains(GameLoop2.BEATING_A_GAME),
 		"the header says that once — the row carries its own sentence: %s" % row_text)
 	var was: int = _row_index(row_text)
-	assert_gt(_row_index("Cleared:"), was,
+	assert_gt(_body_row_index(), was,
 		"it starts above the board, with the other open goals")
 	_tick(check)
 	_ui._populate_play_panel()
@@ -955,14 +955,14 @@ func test_a_buffs_clause_is_its_own_red_row_under_the_goal() -> void:
 		if String(addon["kind"]) == "clause":
 			clause = "%s %s" % [addon["joiner"], addon["text"]]
 	assert_ne(clause, "", "the Strength put a required clause on the goal")
-	var goal_row: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(entry))
+	var goal_row: int = _row_index(GameLoop2.entry_goal(entry))
 	assert_gt(goal_row, -1, "the goal row says the goal and the body's name")
 	var clause_row: int = _row_index("•  %s" % clause)
 	assert_gt(clause_row, goal_row, "and the clause is a row UNDER it")
 	# …and the goal row does not also carry it. This is the half that was said
 	# twice before the add-ons became rows.
 	for label in _labels_under(_ui._verify_box):
-		if String(label).begins_with("Cleared:"):
+		if String(label).begins_with(GameLoop2.entry_goal(entry)):
 			assert_false(String(label).contains(String(clause).substr(4)),
 				"the sentence form is not repeated on the row: %s" % label)
 
@@ -1023,11 +1023,11 @@ func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
 	entry["health"] = 3
-	var was: int = _row_index("Cleared:")
+	var was: int = _row_index(GameLoop2.entry_goal(entry))
 	GameLoop2.fulfill(inst, true)
 	_ui._populate_play_panel()
 	assert_false(GameLoop2.entry_for(inst).is_empty(), "it is still on the board")
-	assert_eq(_row_index("Cleared:"), was,
+	assert_eq(_row_index(GameLoop2.entry_goal(entry)), was,
 		"and its row has not moved out from under the board it belongs to")
 
 func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
@@ -4005,6 +4005,14 @@ func test_only_a_won_amulet_records_the_win() -> void:
 
 # Every label/button/rich-text string under a node, flattened — enough to assert
 # what a screen actually says without reaching into its layout.
+# Where the FIRST body on the board has its row. Keyed off the body's own goal
+# because a goal row no longer opens with a fixed word — "Cleared:" came off the
+# front of them (§7.7), since an unticked row had not cleared anything.
+func _body_row_index() -> int:
+	if GameLoop2.stack.is_empty():
+		return -1
+	return _row_index(GameLoop2.entry_goal(GameLoop2.stack[0]))
+
 func _text_of(node: Node) -> String:
 	var out: String = ""
 	if node is Label:
@@ -10256,8 +10264,7 @@ func test_a_game_beaten_body_sits_under_the_winning_run_header() -> void:
 		return
 	var head: int = _row_index(ReportChecklist.WINNING_RUN_HEAD)
 	var any_time: int = _row_index(ReportChecklist.ANY_TIME_HEAD)
-	var goal: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(
-		GameLoop2.entry_for(inst)))
+	var goal: int = _row_index(GameLoop2.entry_goal(GameLoop2.entry_for(inst)))
 	assert_gt(head, -1, "the winning-run header is on the list")
 	assert_gt(goal, head, "and the body's goal is under it")
 	if any_time > -1:
@@ -10271,8 +10278,7 @@ func test_an_any_time_body_sits_under_the_any_time_header() -> void:
 		pending("the board had no body to make an any-time one of")
 		return
 	var any_time: int = _row_index(ReportChecklist.ANY_TIME_HEAD)
-	var goal: int = _row_index("Cleared: %s" % GameLoop2.entry_goal(
-		GameLoop2.entry_for(inst)))
+	var goal: int = _row_index(GameLoop2.entry_goal(GameLoop2.entry_for(inst)))
 	assert_gt(any_time, -1, "the any-time header is on the list")
 	assert_gt(goal, any_time, "and a goal you can answer now is under it")
 

@@ -62,12 +62,24 @@ const ENEMY := &"enemy"
 # Informational, same role as GoalEnemyData.source_game.
 @export var source_game: String = ""
 
-# The sheet's prose for each side, kept verbatim for tooltips and the collection
-# screen. The ENGINE never parses these — it builds its own wording from the side
-# blocks below — but they are the author's intent, so a drift between the prose
-# and the generated text is a content bug worth being able to see.
-@export var on_player_text: String = ""
-@export var on_enemy_text: String = ""
+# NO `on_player_text` / `on_enemy_text`. The sheet's prose for each side used to
+# be copied in here "for tooltips and the collection screen", and in the end no
+# tooltip and no screen ever read it — the engine builds every word it shows from
+# the side blocks below (`condition_text` and friends), so those two fields were
+# generated on every build and read by nothing.
+#
+# That is not a tidy-up, it is the removal of a hiding place. Both of the content
+# errors this area has produced lived in exactly those fields and nowhere else:
+# Marked shipped `achivements` for weeks, and the player/enemy sides disagreed
+# about whether a clause meant a RUN or a GAME. Neither reached a player, neither
+# failed a test, and neither could — nothing looked at them. A field maintained
+# like content and invisible like a comment collects errors.
+#
+# THE PROSE STILL EXISTS, in the workbook, where it is the human-readable column
+# a goal is authored in. What changed is that it is now CHECKED there rather than
+# mirrored here: `tools/apply_goals_sheet.py` splices the authored goal back into
+# the `Gain "…"` shape and fails loudly if that shape breaks, and `--check` runs
+# on every push.
 
 # How the sheet says stacks combine ("Intensity" for most of the roster — a second
 # application raises X rather than starting a second timer).
