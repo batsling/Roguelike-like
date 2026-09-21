@@ -616,6 +616,148 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 	return built
 
 
+# Every game on the shortest-path DAG between `start_id` and `amulet_id`, as one
+# flat list. `shortest_path_dag` groups them by depth because that is what draws
+# a ladder; §19's budget only ever counts them, so this is the shape it wants.
+#
+# Read-only, like the DAG it flattens — the cached Dictionary is shared.
+static func dag_node_ids(start_id: StringName, amulet_id: StringName) -> Array:
+	var out: Array = []
+	for layer in (shortest_path_dag(start_id, amulet_id).get("layers", []) as Array):
+		for id in (layer as Array):
+			out.append(id)
+	return out
+
+
+# ASSIGN A KIND TO EVERY GAME ON THE MAP (§19.3), in the order the spec states:
+#
+#   1. Stamp the Amulet CHAMPION and every offered start ENEMIES.
+#   2. For each start's DAG, place the kinds that route still lacks — an EVENT
+#      and a SHOP — on RANDOM nodes of it, never the start or the Amulet.
+#   3. Roll every remaining node, so that the map as a whole lands on
+#      KIND_WEIGHTS' 60/20/10/10.
+#
+# A SHARED NODE USUALLY HELPS RATHER THAN CONFLICTING, which is why step 2 asks
+# what a route still lacks rather than placing blindly. Three cards over one
+# Amulet means three DAGs that converge near it, so an Event placed for the first
+# route is very often already standing on the second — and a node has exactly one
+# kind, so placing blindly would be the only way to make them fight.
+#
+# STEP 3 COUNTS WHAT STEP 2 PLACED. The remainder is dealt to hit the whole
+# map's target rather than rolled independently, so the odds on the tin stay true
+# of the map and the guarantee is visibly paid for somewhere: a guaranteed route
+# reads slightly richer in Event and Shop than average, the rest slightly poorer.
+#
+# `rng` carries every random choice so the map is reproducible from the run's
+# seed. Returns `game id -> NodeKind` covering every in-component game; a caller
+# that hands it an unreachable start or amulet gets whatever the DAG could still
+# be built from, never a crash.
+static func assign_node_kinds(rng: RandomNumberGenerator, amulet_id: StringName,
+		start_ids: Array) -> Dictionary:
+	var all_ids: Array = []
+	for g in Data.all_games():
+		if g is GameData and _passes_filter(g) and not is_off_map(g.id):
+			all_ids.append(g.id)
+	if all_ids.is_empty():
+		return {}
+
+	var kinds: Dictionary = {}
+	# 1. The two overrides. The Amulet first, so a start that somehow IS the
+	#    Amulet (no legal run, but the caller decides that, not this) does not
+	#    silently un-stamp the goal.
+	if amulet_id != &"":
+		kinds[amulet_id] = NodeKind.CHAMPION
+	for sid in start_ids:
+		if StringName(sid) != amulet_id:
+			kinds[StringName(sid)] = NodeKind.ENEMIES
+
+	# 2. What each route still lacks, placed at random on that route.
+	for sid in start_ids:
+		var start := StringName(sid)
+		if start == amulet_id:
+			continue
+		var route: Array = dag_node_ids(start, amulet_id)
+		for needed in [NodeKind.EVENT, NodeKind.SHOP]:
+			if _route_has_kind(route, kinds, int(needed)):
+				continue
+			var spot: StringName = _free_route_node(route, kinds, start,
+				amulet_id, rng)
+			if spot != &"":
+				kinds[spot] = needed
+
+	# 3. Everything else, dealt to land the whole map on KIND_WEIGHTS.
+	var rest: Array = []
+	for id in all_ids:
+		if not kinds.has(id):
+			rest.append(id)
+	if rest.is_empty():
+		return kinds
+	for i in range(rest.size()):
+		var j: int = rng.randi() % rest.size()
+		var swap = rest[i]
+		rest[i] = rest[j]
+		rest[j] = swap
+	var bag: Array = _kind_bag(all_ids.size(), kinds, rest.size(), rng)
+	for i in range(rest.size()):
+		kinds[rest[i]] = bag[i]
+	return kinds
+
+
+# Is any node of `route` already carrying `kind`? Step 2's "ask before placing".
+static func _route_has_kind(route: Array, kinds: Dictionary, kind: int) -> bool:
+	for id in route:
+		if kinds.has(id) and int(kinds[id]) == kind:
+			return true
+	return false
+
+
+# A random node of `route` that nothing has claimed yet, never the start or the
+# Amulet — they carry the two overrides and a guarantee landing on the terminal
+# node would guarantee nothing about the road. `&""` when the route is full,
+# which is the case §19.3's three spare nodes exist to prevent and which the
+# caller treats as "this start cannot be offered".
+static func _free_route_node(route: Array, kinds: Dictionary, start: StringName,
+		amulet: StringName, rng: RandomNumberGenerator) -> StringName:
+	var free: Array = []
+	for id in route:
+		if id == start or id == amulet or kinds.has(id):
+			continue
+		free.append(id)
+	if free.is_empty():
+		return &""
+	return StringName(free[rng.randi() % free.size()])
+
+
+# The kinds to deal across the `remaining` unassigned nodes so that the map of
+# `total` lands on KIND_WEIGHTS, given what step 2 has already placed.
+#
+# Rounding and the placements both mean the bag rarely comes out the exact size
+# needed, so it is padded or trimmed with ENEMIES — the majority kind, where one
+# node either way is least visible.
+static func _kind_bag(total: int, placed: Dictionary, remaining: int,
+		rng: RandomNumberGenerator) -> Array:
+	var want: Dictionary = {}
+	for kind in KIND_WEIGHTS.keys():
+		want[kind] = int(round(float(total) * float(KIND_WEIGHTS[kind]) / 100.0))
+	for id in placed.keys():
+		var k: int = int(placed[id])
+		want[k] = int(want.get(k, 0)) - 1
+	var bag: Array = []
+	for kind in want.keys():
+		for _i in range(maxi(0, int(want[kind]))):
+			bag.append(int(kind))
+	while bag.size() < remaining:
+		bag.append(int(NodeKind.ENEMIES))
+	if bag.is_empty():
+		return bag
+	for i in range(bag.size()):
+		var j: int = rng.randi() % bag.size()
+		var swap = bag[i]
+		bag[i] = bag[j]
+		bag[j] = swap
+	return bag.slice(0, remaining)
+
+
 static func _build_shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var d_from_start := bfs_distances(start_id)
 	if not d_from_start.has(amulet_id):
