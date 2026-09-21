@@ -4901,21 +4901,42 @@ The fallback is the known answer if the exclusions ever start to matter.
 | Full (790) | **2** | Serpentcoil Island; Touhou Genso Wanderer: Lotus Labyrinth R |
 | Owned (458) | **4** | Serpentcoil Island; Dice & Fold; Ember Knights; Everything is Crab |
 
-**And the two catalogues exclude for opposite reasons**, which is worth knowing
-before anyone "fixes" this in the sheet. The full catalogue's two are **leaves**:
-degree 1, every route funnelling through a single neighbour. The owned
-catalogue's other three are the opposite — **hub-adjacent**, degree 3 and 4, and
-all three neighbour **Slay the Spire** (degree 91). Sitting next to a mega-hub
-pulls the whole map close, so the 4–8 band is emptied of the genres that would
-have filled the panel. It is Darkest Dungeon's problem exactly (§19.3.1), minus
-the luck that rescued it: the degree-2 pool happened to hand Darkest Dungeon a
-Strategy route and does not hand these three one.
+**And the two catalogues exclude for entirely different reasons.** The full
+catalogue's two are **leaves**: degree 1, every route funnelling through a single
+neighbour, nothing to be done short of an edge or a wider ceiling.
+
+**The owned catalogue's other three are one node short, on one genre.** Not
+structurally broken at all — Dice & Fold, Ember Knights and Everything is Crab
+each have eligible starts in **all four genres** inside the band, clear Action and
+Traditional with slack to spare (9 to 28), and then come up **slack 4 against a
+floor of 5 on Strategy**. All three:
+
+| | Action | Strategy | Deckbuilder | Traditional |
+|---|---|---|---|---|
+| Dice & Fold | 9 | **4** | 1 | 28 |
+| Ember Knights | 16 | **4** | 1 | 21 |
+| Everything is Crab | 9 | **4** | 3 | 19 |
+| *Darkest Dungeon (passes)* | *11* | ***6*** | *1* | *7* |
+
+So **these three ARE the three Amulets the floor's last rung costs** — the
+`455 → 452` in §19.3.1's table, named. At `hops + 4` all of them qualify. Darkest
+Dungeon sits in the same neighbourhood with the same shape and passes on one
+node's difference in one genre.
+
+**The hub effect is real but it is the second constraint, not the first.** All
+three neighbour **Slay the Spire** (degree 91), and each has exactly *one*
+eligible Deckbuilder start in the entire band, at slack 1–3, because the
+deckbuilders cluster within 1–2 hops of that hub — **inside** the 4-hop floor. A
+mega-hub does pull its own genre out of reach. That is why there is no fourth
+genre to fall back on when Strategy comes up short; it is not why Strategy comes
+up short.
 
 Only **Serpentcoil Island** cannot field even *two* genres, in either catalogue.
 
-The consequence for the sheet: an edge added to help a leaf must reach *outward*,
-while an edge added to help a hub-adjacent game must reach somewhere *far* —
-adding another Slay-the-Spire-flavoured neighbour would make it worse.
+The consequence for the sheet: a **leaf** needs an edge reaching *outward*. A
+**one-node-short** game needs no edge at all — it needs the floor at 4, or one
+more Strategy game somewhere 4–8 hops out. Adding another Slay-the-Spire-adjacent
+neighbour helps none of them.
 
 `Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
 still keeps its no-softlock fallback. That one is a player's preference rather

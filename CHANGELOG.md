@@ -88,14 +88,24 @@ For how the project is laid out and how its systems fit together, see
   in the owned one (Serpentcoil Island, Dice & Fold, Ember Knights, Everything is
   Crab).
 
-  **The two catalogues exclude for opposite reasons**, which matters before
-  anyone "fixes" it in the sheet. The full catalogue's two are leaves — degree 1,
-  every route through one neighbour. The owned catalogue's other three are
-  hub-adjacent, degree 3-4, and all three neighbour Slay the Spire (degree 91):
-  sitting beside a mega-hub pulls the map close and empties the 4-8 band of the
-  genres that would fill the panel. So an edge added to help a leaf must reach
-  outward, while an edge added to help a hub-adjacent game must reach somewhere
-  far — another Slay-the-Spire-flavoured neighbour makes it worse.
+  **The two catalogues exclude for entirely different reasons**, which matters
+  before anyone "fixes" it in the sheet. The full catalogue's two are leaves —
+  degree 1, every route through one neighbour. The owned catalogue's other three
+  are **one node short on one genre**: Dice & Fold, Ember Knights and Everything
+  is Crab each have eligible starts in all four genres, clear Action and
+  Traditional with slack 9-28, and then come up slack 4 against a floor of 5 on
+  Strategy. They are exactly the three Amulets the floor's last rung costs
+  (455 → 452), named — at `hops + 4` all three qualify, and Darkest Dungeon sits
+  in the same neighbourhood with the same shape and passes on slack 6 rather
+  than 4.
+
+  The hub effect is real but second: all three neighbour Slay the Spire (degree
+  91) and each has exactly ONE eligible Deckbuilder start in the whole band, at
+  slack 1-3, because the deckbuilders cluster within 1-2 hops — inside the 4-hop
+  floor. That is why there is no fourth genre to fall back on, not why Strategy
+  came up short. So a leaf needs an edge reaching outward; a one-node-short game
+  needs no edge at all, just the floor at 4 or one more Strategy game 4-8 hops
+  out.
 
   **A start needs two connections, and both must lead on** (§19.3.1); the route
   floor becomes **`hops + 5`**; and the panel goes to **three cards over a 4–8
