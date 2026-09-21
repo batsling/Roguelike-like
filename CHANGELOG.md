@@ -79,6 +79,37 @@ For how the project is laid out and how its systems fit together, see
   naive per-candidate BFS at 868 ms a roll. If it is too slow, dropping the slack
   removes the only reason to compute branching scores at all.
 
+  **No Champion is guaranteed on the road** — only the Amulet, which is one.
+  An earlier draft required a non-Amulet Champion on every guaranteed route; it
+  is dropped rather than fixed, since a 10% roll puts them about anyway and every
+  node the guarantee claims is a node the ordinary distribution cannot speak for.
+  That drops the budget to `hops + 2`, so at the `hops + 5` floor each guaranteed
+  route now carries three spare nodes rather than two. No measurement changes —
+  they are all slack-based.
+
+  **Kinds are laid down in a stated order**: pick the Amulet and starts as today
+  and stamp them Champion / Enemies; place each route's required kinds on random
+  nodes excluding those two; roll the remainder at 60/20/10/10. A node shared
+  between routes usually *helps* — three cards over one Amulet means three DAGs
+  that converge, so an Event placed for one route satisfies every other route
+  containing it. Check before placing; a route that genuinely cannot be satisfied
+  sends its start back to be re-picked. The guaranteed placements COUNT against
+  the distribution rather than sitting on top, so the odds stay true of the map
+  and the guarantee is visibly paid for.
+
+  **Bash can break the guarantee, and that is allowed** — §19.3 describes the map
+  the run was dealt, not one the player has since edited. Refusing the Bash would
+  be a verb saying no for a reason the card cannot show; re-laying the kinds would
+  make a badge change under the player. Noted alongside a pre-existing wrinkle
+  §19 makes load-bearing: `shortest_path_dag` is built from `neighbors()`, which
+  does not filter bashed games, so a bashed node still draws on the route ladder
+  while being unreachable.
+
+  **A Champion node that is also the third spawn event lands two bosses.** The
+  rules compose rather than absorbing each other — "on top of whatever else was
+  spawning" is meant literally, and a rule that quietly cancelled itself on the
+  one node where it would hurt most would be the rule not meaning what it says.
+
   **There is no fallback**, so an Amulet that cannot supply the panel is not
   offered as one — it stays an ordinary node to route through and fight at. An
   earlier draft had it fall back to the best route available; the decision is to

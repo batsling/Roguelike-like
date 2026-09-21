@@ -4464,30 +4464,50 @@ Three things fall out of it, and all three are the point:
 Ride the Bus and a `play_game` detour (§10) can all land the run somewhere off
 the optimal path, and those nodes have to answer the same question.
 
+**THE GUARANTEE IS A RUN-START PROMISE, AND BASH CAN BREAK IT.** §19.3's budget
+describes the map the run was *dealt*, not one the player has since edited. A
+Bash takes a game off the board for the rest of the run (`GameLoop2.bashed`), and
+nothing stops it taking the only Event on the road ahead. That is allowed: a
+charge spent to delete a node is a choice, and its consequences are the player's.
+The alternative — refusing the Bash the way the Amulet does — would be a verb
+saying no for a reason the card cannot show, and re-laying the kinds to repair
+the promise would make a badge change under the player, which this section exists
+to prevent.
+
+One wrinkle worth knowing before drawing any of this: **`shortest_path_dag` is
+built from `neighbors()`, which does not filter bashed games** — only
+`open_degree` and the offering do. So a bashed node still draws on the route
+ladder while being unreachable. That is pre-existing, and §19 makes it visible
+rather than causing it, since the node it strands may now be a guaranteed one.
+
 ### 19.3 What the road is guaranteed to hold
 
 A start is only offered if **its whole shortest-path DAG to the Amulet** — every
 node the route ladder draws on the start screen, not one route through it —
 carries all of:
 
-- at least **one Event**, **one Shop**, and **one Champion that is not the
-  Amulet** — with at least one route through the DAG collecting all three, so the
-  variety is reachable without leaving the optimal path;
+- at least **one Event** and **one Shop**, with at least one route through the
+  DAG collecting both, so the variety is reachable without leaving the optimal
+  path;
 - at least **`hops − 1` Enemies**, the forced-Enemies start node counting as one
   of them;
 - and **at least one split** — more than one route to the Amulet. No start may be
   offered whose DAG is a single linear chain.
 
-**The Champion clause says "not the Amulet" for a reason.** The Amulet is always
-a Champion (§19.1) and is always the DAG's terminal node, so "at least one
-Champion" would be satisfied by the destination itself and guarantee nothing at
-all about the road. The requirement is a boss you meet on the *way*.
+**There is no Champion clause, and there was one.** An earlier draft required a
+Champion *other than the Amulet* on every guaranteed route — the Amulet being a
+Champion itself (§19.1) and always the DAG's terminal node, so a plain "one
+Champion" would have been satisfied by the destination and guaranteed nothing
+about the road. The requirement is dropped rather than fixed: the Amulet is the
+Champion the road is *for*, a 10% roll puts more of them about anyway, and every
+node the guarantee claims is a node the ordinary distribution does not get to
+speak for. The terminal Champion is the only one promised.
 
-**The budget, then, is `hops + 3` nodes**: `hops − 1` Enemies, one Event, one
-Shop, one Champion, and the Amulet. **The floor is `hops + 5`** — that budget
-plus **two** spare nodes. It is a MINIMUM and not a target: most routes clear it
-comfortably, and every count in this section is "Amulets with at least one route
-that clears it".
+**The budget, then, is `hops + 2` nodes**: `hops − 1` Enemies, one Event, one
+Shop, and the Amulet. **The floor is `hops + 5`** — that budget plus **three**
+spare nodes. It is a MINIMUM and not a target: most routes clear it comfortably,
+and every count in this section is "Amulets with at least one route that clears
+it".
 
 `slack` here is `DAG nodes − hops`, and the offset is not arbitrary: a single-file
 corridor already carries `hops + 1` nodes, one more than its own length, so
@@ -4683,12 +4703,35 @@ even two genres. A ceiling of 9 clears it on the current library with no
 purchases; the cheaper answer is an edge in the `connections` sheet out to the
 wider mystery-dungeon cluster rather than only to its own sequels.
 
-**The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
-routes already chosen, and the rest of the map is filled at 60/20/10/10
-afterwards. The budget is a filter on a start, never an input to choosing one —
-otherwise the panel's two cards would be picked for their node kinds rather than
-for genre and distance, which is what `RunGraph.pick_amulet_and_starts` exists to
-balance.
+**The kinds are laid down AFTER the Amulet and the starts are picked.** The
+budget is a filter on a start, never an input to choosing one — otherwise the
+panel's cards would be picked for their node kinds rather than for genre and
+distance, which is what `RunGraph.pick_amulet_and_starts` exists to balance.
+
+The order is:
+
+1. **Pick the Amulet and the start cards** exactly as today. Stamp the Amulet
+   **Champion** and every start **Enemies**.
+2. **For each offered start's DAG, place its required kinds on RANDOM nodes**,
+   excluding the start and the Amulet — they already have kinds, and a guarantee
+   that could land on the terminal node would guarantee nothing.
+3. **Roll every remaining node** at 60/20/10/10.
+
+**A shared node usually helps rather than conflicting.** Three cards mean three
+DAGs over one Amulet, and they overlap heavily near it, because every route
+converges there. When step 2 makes a shared node the Event for one route, the
+other routes that contain it are *already satisfied* — so check before placing,
+and only place what a route still lacks. The conflicting case — a route whose
+last free node is already spoken for by another kind — is what the three spare
+nodes are for; a route that genuinely cannot be satisfied sends its start back to
+be re-picked, the same answer §19.3 gives any start that fails the budget.
+
+**The guaranteed placements COUNT against the 60/20/10/10**, rather than sitting
+on top of it: step 3 rolls the remainder to hit the target across the map as a
+whole. So a guaranteed route reads slightly richer in Event and Shop than
+average and the rest of the map slightly poorer, which is the honest way round —
+the odds on the tin stay true of the map, and the guarantee is visibly paid for
+somewhere.
 
 ### 19.4 The spawn model
 
@@ -4801,6 +4844,13 @@ more often than the old ladder allowed — that is the intent.
 lost run. A boss takes no bomb damage and leaves only by its goal (§7.1), so this
 is the sharpest thing in the section and it is aimed squarely at the player who
 keeps losing without ever clearing a body.
+
+**AND A CHAMPION NODE CAN BE THE THIRD ONE TOO, FOR TWO BOSSES.** The rules
+compose rather than absorbing each other: the Champion node lands its boss, the
+capstone lands another on top, and the run's hardest node occasionally doubles.
+"On top of whatever else was spawning" is meant literally and the Champion is not
+an exception to it — a rule that quietly cancelled itself on the one node where
+it would hurt most would be the rule not meaning what it says.
 
 The consequence worth stating plainly: a player who routes through events and
 shops and clears goals promptly keeps a **small board and a low tier** for much
