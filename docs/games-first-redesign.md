@@ -4684,6 +4684,21 @@ that stops applying exactly when it is doing the most work is not a control.
 **So a short panel never happens**: any Amulet that reaches the panel already has
 its three genres, and any that does not is not an Amulet. §19.9 counts the cost.
 
+**A CUSTOM RUN IS HELD TO THE SAME RULE, AND MAY BE REFUSED.** `RunConfig` lets a
+run name its Amulet outright, and `pick_amulet_and_starts` carries a carve-out for
+exactly that — *"a named target that no reference can reach is still the run the
+player asked for: take it directly and let the start search route to it."* That
+carve-out goes. A named Amulet that cannot field three genres is **refused at the
+setup screen, with the reason**, rather than silently handing over a run whose
+road is worse than the rules promise. Telling someone their choice will not work
+is better than giving them a quietly degraded version of it.
+
+**Measured against the band the run will actually use** — `RunConfig.path_band()`
+when a custom run has set one, the default 4–8 otherwise. Checking the guarantee
+against a band the run is not going to run at would make it mean nothing, and a
+custom run that widens its band should get the Amulets that band opens up. Note
+the custom defaults are **5–8**, already not the standard pair.
+
 **THE BUDGET COSTS NO GAME ITS PLACE ON THE MAP**, which is the question to ask
 of any rule that narrows what the run generator may pick. Measured exhaustively
 — every in-component game tested against every other as a (start, amulet) pair,
@@ -4921,6 +4936,16 @@ something they steer now, in both directions.
   game count.
 - **The per-slot enemy cache** (`_slot_enemies` / `_slot_enemy_key`) keeps doing
   its job for enemies, but it no longer has to hold the kind: the node does.
+- **`pick_amulet_and_starts`'s named-target carve-out** — see §19.3.2. A named
+  Amulet is refused rather than routed to by a relaxed search.
+- **Runs saved before this section.** `SAVE_VERSION` goes to **3** and a
+  version-2 run cannot be continued, the way version 1 was retired at the 2.0
+  cut. A run already under way has no node kinds and no `spawn_events`, and
+  kinds cannot be derived after the fact: they are frozen at run start (§19.2),
+  so any value invented at load is a badge appearing on a map the player was
+  already walking. Retiring the run keeps "frozen at run start" literally true
+  rather than true-except-once. The save FILE is not lost — only the in-flight
+  run inside it.
 
 ### 19.8 Where the player sees it
 

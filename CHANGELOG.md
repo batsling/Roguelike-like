@@ -110,6 +110,25 @@ For how the project is laid out and how its systems fit together, see
   spawning" is meant literally, and a rule that quietly cancelled itself on the
   one node where it would hurt most would be the rule not meaning what it says.
 
+  **`SAVE_VERSION` goes to 3 and version-2 runs cannot be continued**, the way
+  version 1 was retired at the 2.0 cut. A run already under way has no node kinds
+  and no `spawn_events`, and kinds cannot be derived after the fact — they are
+  frozen at run start, so any value invented at load is a badge appearing on a
+  map the player was already walking. Retiring the run keeps that rule literally
+  true rather than true-except-once. The save file survives; only the in-flight
+  run inside it does not.
+
+  **A custom run is held to the same rule and may be refused.** `RunConfig` lets
+  a run name its Amulet outright, and `pick_amulet_and_starts` carries a carve-out
+  for it — "a named target that no reference can reach is still the run the player
+  asked for". That carve-out goes: a named Amulet that cannot field three genres
+  is refused at the setup screen with the reason, rather than quietly handing over
+  a run whose road is worse than the rules promise. The guarantee is measured
+  against the band the run will actually use (`RunConfig.path_band()` when set,
+  the default 4–8 otherwise) — testing it against a band the run will not run at
+  would make it mean nothing. Note the custom defaults are 5–8, already not the
+  standard pair.
+
   **The Event and the Shop land at opposite ends of the game**, which §19.1's
   table now says rather than implying they both fire on arrival. An event is a
   decision and is worth more before an evening is committed to the game under it;
