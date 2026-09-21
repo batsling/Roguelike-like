@@ -4543,12 +4543,12 @@ Note the owned catalogue loses proportionally *more* of them (13.9% against
 10.4%) — filtering the map removes edges as well as nodes, so a narrower
 catalogue fragments rather than merely shrinking.
 
-The only genuine loss is **three Amulets in the full catalogue and two in the
-owned one** — Shiren the Wanderer: Serpentcoil Island, and two Touhou Genso
-Wanderer entries in the full set. Confirmed as the budget's doing by re-running
-at `slack >= 1`, where every in-component game can be the Amulet. They sit in
-thin corners of the graph where no qualifying start has a branching approach to
-them, which is exactly the map the rule exists to refuse.
+**Three Amulets in the full catalogue and two in the owned one** have no start at
+all whose route to them clears the budget — Shiren the Wanderer: Serpentcoil
+Island, and two Touhou Genso Wanderer entries in the full set. Confirmed as the
+budget's doing by re-running at `slack >= 1`, where every in-component game
+qualifies. They are not struck off: see §19.9's fallback, which takes the best
+route available rather than losing the game as a goal.
 
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10
@@ -4706,3 +4706,57 @@ something they steer now, in both directions.
   on and why — the escort's old notice generalised. A body that appears because of
   something the player did needs saying out loud; it is the one arrival they did
   not choose.
+
+### 19.9 Amulet selection — every in-component game is a candidate
+
+§19.3's budget is a filter on the **route**, and it costs almost nothing (see the
+table there). What *does* narrow the Amulet pool, and always has, is the two
+steps before it. **Both go.**
+
+**THE THREE REFERENCE STARTS GO.** `pick_amulet_and_starts` drew
+`AMULET_REFERENCE_STARTS = 3` random eligible starts and kept every game sitting
+4–7 hops from at least one of them. Three measuring sticks is a lottery, and the
+problem is not the average but the **floor**:
+
+| | Full catalogue | Owned |
+|---|---|---|
+| In the main component | 790 | 458 |
+| Eligible starts | 246 | 124 |
+| Candidates per run, 3 references (avg of 40) | 642 — 81% | 374 — 82% |
+| **…worst run seen** | **407 — 52%** | **219 — 48%** |
+| **Scoring against every eligible start** | **789 — 99.9%** | **458 — 100%** |
+
+One draw in forty left barely half the map eligible. And because *which* half
+moves every run, a game is not reliably excluded so much as **unreliably
+included** — the worst shape for a rule nobody can see. Scoring against all
+eligible starts makes it deterministic: every in-component game is a candidate,
+every run.
+
+**AND `AMULET_SCORE_SLACK` GOES WITH IT**, having become nearly a no-op. It
+exists to drop candidates more than 2 below the best early-branching score, which
+bites hard when the best is drawn from three references. Measured against all
+246, every game finds a good reference and the cut takes **one game out of 790**,
+and none at all in the owned catalogue. Dropping it recovers that one and removes
+a constant that would otherwise look load-bearing and not be.
+
+**Re-measure the cost before keeping this shape.** It is 246 BFS plus 246
+`dag_branch_scores_from` sweeps per generation, in a file whose own notes record
+a naive per-candidate BFS at **868 ms a roll** — which is what that one-pass
+function was written to fix. If it is too slow, the way out is that dropping the
+slack removes the only reason to compute branching scores at all: what is left is
+"is this game 4–7 hops from some eligible start", which is close to a single
+multi-source sweep.
+
+**No game is struck off for being hard to reach.** The budget still decides which
+starts may be *offered*, but an Amulet with no budget-clearing start anywhere —
+the three and two of §19.3 — falls back to the best route available rather than
+leaving the pool. It is the same shape as the relaxed `in_window: false` starts
+that already fill a panel a genre short: the guarantee holds wherever it can, and
+degrades in the corner cases instead of excluding them. On a fallback route the
+kinds are placed in priority order — **Event, then Shop, then the second
+Champion** — and whatever the route cannot hold is Enemies, so the floor that
+survives longest is the one §19.5 depends on.
+
+`Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
+still keeps its no-softlock fallback. That one is a player's preference rather
+than a property of the map, which is exactly why it is the only narrowing left.

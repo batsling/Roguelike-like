@@ -63,6 +63,28 @@ For how the project is laid out and how its systems fit together, see
   **1.7% / 3.3% / 5.0% of runs**, against `RunGraph.AMULET_ATTEMPTS`'s eight
   tries.
 
+  **Every in-component game can be the Amulet** (§19.9). The narrowing was never
+  the new budget — it was the two steps before it, and both go. The three random
+  reference starts (`AMULET_REFERENCE_STARTS`) were a lottery whose problem is
+  the floor rather than the average: candidates per run averaged 642 of 790
+  (81%), but one draw in forty left **407 — barely half the map** — and because
+  which half moves every run, a game was not reliably excluded so much as
+  unreliably included. Scoring against all 246 eligible starts makes it
+  deterministic at 789 of 790. `AMULET_SCORE_SLACK` goes too, having become
+  nearly a no-op in that world: against 246 references it cuts **one game out of
+  790**, and none in the owned catalogue.
+
+  Cost to re-measure before keeping this shape: 246 BFS plus 246
+  `dag_branch_scores_from` sweeps per generation, in a file whose notes record a
+  naive per-candidate BFS at 868 ms a roll. If it is too slow, dropping the slack
+  removes the only reason to compute branching scores at all.
+
+  An Amulet with no budget-clearing start anywhere falls back to the best route
+  available rather than leaving the pool — the same shape as the relaxed
+  `in_window: false` starts that already fill a panel a genre short. The
+  guarantee degrades in the corner cases instead of excluding them, placing kinds
+  in priority order Event, Shop, second Champion, with the remainder Enemies.
+
   **The budget costs no game its place on the map.** Checked exhaustively —
   every in-component game against every other as a (start, amulet) pair, at both
   game filters. Not one startable game is lost: the pool is 246 (full) / 124
