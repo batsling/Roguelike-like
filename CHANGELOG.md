@@ -85,6 +85,27 @@ For how the project is laid out and how its systems fit together, see
   guarantee degrades in the corner cases instead of excluding them, placing kinds
   in priority order Event, Shop, second Champion, with the remainder Enemies.
 
+  **A start needs two connections, and both must lead on** (§19.3.1), and the
+  route floor rises to **`hops + 6`**. The two look opposed and are not: more
+  eligible starts means more chances one has a genuinely wide route, so the
+  stricter floor stops biting. `MIN_START_CONNECTIONS` drops 3 → 2, with the
+  condition that a degree-2 game may open a run only if both its neighbours are
+  themselves onward — measured free, since the degree-2 games whose neighbour is
+  a dead end contribute no Amulet coverage the rest of the pool doesn't already
+  provide. Start pool 246 → 419 full, 124 → 207 owned.
+
+  On the owned catalogue, moving the floor from `hops + 4` to `hops + 6` costs
+  **31** Amulets at `degree ≥ 3` and **10** at `degree ≥ 2` onward. Against the
+  shipping rules the pair trades **9 Amulets for 83 more starts** and a markedly
+  branchier road. `hops + 7` is the cliff (445 → 375) and is why the floor stops
+  at 6.
+
+  The two-card opening is accepted rather than solved: `BASE_OFFER_COUNT` is 3
+  and the offering draws from the node's neighbours, so a degree-2 start opens
+  one card short. The onward condition fixes the quality of those two cards, not
+  their number — topping up from two hops out would put a card on the table that
+  taking it cannot reach in one move.
+
   **The budget costs no game its place on the map.** Checked exhaustively —
   every in-component game against every other as a (start, amulet) pair, at both
   game filters. Not one startable game is lost: the pool is 246 (full) / 124

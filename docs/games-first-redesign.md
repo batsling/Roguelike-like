@@ -4484,38 +4484,107 @@ Champion" would be satisfied by the destination itself and guarantee nothing at
 all about the road. The requirement is a boss you meet on the *way*.
 
 **The budget, then, is `hops + 3` nodes**: `hops − 1` Enemies, one Event, one
-Shop, one Champion, and the Amulet. **Plus one node of slack — `hops + 4`** — so
-that a guaranteed route is not *entirely* pinned by the budget and has somewhere
-for the ordinary 60/20/10/10 to say something. A route with no free node is a
-route with no surprises, and would read the same every run it came up.
+Shop, one Champion, and the Amulet. **The floor is `hops + 6`** — that budget
+plus **three** spare nodes.
+
+`slack` here is `DAG nodes − hops`, and the offset is not arbitrary: a single-file
+corridor already carries `hops + 1` nodes, one more than its own length, so
+**slack 1 IS the corridor** and everything above it is games standing on
+alternative routes at the same distance. On a 4-hop run — where only the three
+middle layers can widen, the start and the Amulet being one node each — the floor
+puts **eight games across those three layers**, so most steps offer two or three
+ways on rather than one:
+
+```
+slack 1   5 nodes    S — a — b — c — A         one route, no choices
+slack 4   8 nodes    S — a — b — c — A         ~2 ways on per step
+                         a'  b'  c'
+slack 6  10 nodes    S — a — b — c — A         ~3 ways on per step
+                         a'  b'  c'
+                         a"  b"
+```
+
+Three spares rather than one, because one spare only buys the guarantee room to
+*not repeat itself*; three buy the player somewhere to go. It is written as an
+offset so it scales — a 7-hop route needs 13 nodes over six middle layers, about
+as branchy per step as the 4-hop one.
 
 **The budget implies the split, and NOT the other way round.** This is worth
 stating because the intuition runs backwards. A linear chain has `hops + 1`
-nodes and cannot reach `hops + 4`, so any start that satisfies the budget
+nodes and cannot reach `hops + 6`, so any start that satisfies the budget
 necessarily branches somewhere — the split comes free. But a start that merely
 *has* a split is not thereby able to hold the kinds: one split is `hops + 2`
-nodes, two short of the budget. **Measured: 15 of 240 options (6.2%) sat at
-exactly one split and still could not carry the required nodes.** So the split
+nodes, four short of the floor. **Measured: 15 of 240 options (6.2%) sat at
+exactly one split and could not carry the required nodes even at the old
+`hops + 4`.** So the split
 is written down as its own guarantee — it is the thing that was actually wanted,
 and a future loosening of the budget must not silently retire it — but it is the
 budget that does the work.
 
-**Measured, before any of this existed**, over 120 sampled runs (240 start
-options) on the full catalog. Slack here is `DAG nodes − hops`; a linear chain is
-slack 1:
+> **STALE — re-measure before quoting.** The table below sampled 120 runs of
+> `pick_amulet_and_starts` as it stood *before* this section: three random
+> reference starts, and `MIN_START_CONNECTIONS = 3`. §19.9 retires the first and
+> the rule below retires the second, so both columns describe a selection that no
+> longer exists. It is kept because the shape of the trade is still the argument —
+> and because the last column is the number to read, not the first.
 
 | Floor | What it buys | Options rejected | Runs where **both** starts fail |
 |---|---|---|---|
 | `hops + 2` | one split, kinds not guaranteed | 15.0% | 1.7% |
 | `hops + 3` | kinds fit, every node pinned | 21.2% | 3.3% |
-| **`hops + 4`** (the rule above) | kinds fit, one node free | **27.1%** | **5.0%** |
+| `hops + 4` | kinds fit, one node free | 27.1% | 5.0% |
 
-**27% of options sounds steep and is the wrong number to read.** The one that
-matters is the last column: a rejected option is re-drawn against the same
-Amulet, and only when *both* of a run's two starts fail does the Amulet itself
-have to change — one run in twenty, against `RunGraph.AMULET_ATTEMPTS`'s eight
-tries. 15.0% of options were a single linear route, which the floor excludes on
-arithmetic alone. Re-measure rather than quoting these.
+**A rejected option costs almost nothing**, which is why the right-hand column is
+the one that matters: it is re-drawn against the same Amulet, and only when
+*both* of a run's starts fail does the Amulet itself change — against
+`RunGraph.AMULET_ATTEMPTS`'s eight tries.
+
+### 19.3.1 A START NEEDS TWO CONNECTIONS, AND BOTH MUST LEAD ON
+
+`MIN_START_CONNECTIONS` drops from **3 to 2**, with one condition: a game with
+exactly two connections may open a run **only if both of its neighbours are
+themselves onward** (degree ≥ 2). So the opening offering may be two cards rather
+than three, but neither of them is ever a dead end.
+
+**The condition is free.** Measured across both catalogues and every slack floor,
+the degree-2 games whose neighbour is a dead end contribute **no Amulet coverage
+that the rest of the pool does not already provide** — the "onward" and "plain"
+columns below are identical at every row. Excluding them costs starts and nothing
+else.
+
+| Start pool | Eligible starts (full / owned) |
+|---|---|
+| `degree ≥ 3` (the old rule) | 246 / 124 |
+| `degree ≥ 2`, plain | 456 / 232 |
+| **`degree ≥ 2`, both neighbours onward** | **419 / 207** |
+
+**And the loosening is what makes `hops + 6` affordable.** The two rules look
+opposed — one widens the pool, the other narrows what a route may be — and they
+are not: more eligible starts means more chances that one of them has a genuinely
+wide route, so the stricter floor stops biting. Amulets able to field a full
+three-genre panel:
+
+| Floor | `degree ≥ 3` (full / owned) | **`degree ≥ 2` onward (full / owned)** |
+|---|---|---|
+| `hops + 4` | 786 / 454 | 786 / 455 |
+| `hops + 5` | 784 / 430 | 784 / 452 |
+| **`hops + 6`** (the rule) | 782 / **423** | **782 / 445** |
+| `hops + 7` | 781 / 355 | 782 / 375 |
+
+Read the owned column: at `degree ≥ 3`, moving the floor from 4 to 6 costs **31**
+Amulets. At `degree ≥ 2` onward it costs **10**. Against the shipping rules
+(`degree ≥ 3`, `hops + 4`) the pair together trades **9 Amulets for 83 more
+starts** and a markedly branchier road.
+
+`hops + 7` is the cliff in the owned catalogue — 445 down to 375 — and the reason
+the floor stops at 6.
+
+**The two-card opening is accepted, not solved.** `BASE_OFFER_COUNT` is 3 and
+`Overworld2._offered_ids` draws from the node's neighbours, so a degree-2 start
+opens the run one card short of every later turn. The onward condition fixes the
+*quality* of those two cards and not their number. Two real choices is still a
+choice, and the alternative — topping the offering up from two hops out — would
+put a card on the table that taking it cannot reach in one move.
 
 **THE BUDGET COSTS NO GAME ITS PLACE ON THE MAP**, which is the question to ask
 of any rule that narrows what the run generator may pick. Measured exhaustively
@@ -4527,15 +4596,18 @@ at both game filters:
 | Games in the catalogue | 882 | 532 |
 | In the main component | 790 | 458 |
 | **Pruned off-map** (can never appear at all) | **92** | **74** |
-| Too few edges to start (`degree < 3`) | 544 | 334 |
-| **Can be a start** | **246** | **124** |
-| …of those, lost to the budget | **0** | **0** |
-| Cannot be the Amulet under the budget | **3** | **2** |
+| **Can be a start** (§19.3.1's pool) | **419** | **207** |
+| …of those, with no Amulet clearing `hops + 6` | **0** | **0** |
+| Cannot fill a 2-card panel at `hops + 6` | **6** | **2** |
+| Cannot fill a 3-card panel at `hops + 6` | **8** | **13** |
 
-**Not one startable game is lost.** Every game with the three connections
-`MIN_START_CONNECTIONS` already demanded can find some Amulet in the hop band
-whose DAG clears `hops + 4`. The start pool is 246 / 124 either way — what
-limits it is the degree floor that was always there, not anything in §19.
+**Not one startable game is lost.** Every game in the start pool finds some
+Amulet in the hop band whose DAG clears the floor — 419 and 207, the pool size
+exactly. What limits the pool is the degree condition, not the budget.
+
+Those counts are measured at `degree ≥ 2` onward and `hops + 6`, so they
+supersede the `degree ≥ 3` / `hops + 4` figures this section carried before
+(246 / 124 startable, 3 / 2 unusable as Amulets).
 
 The **92 and 74 off-map games** are the real answer to "can any game never be
 reached": they are pruned by `_prune_to_main_component` and have been all along.
@@ -4543,12 +4615,25 @@ Note the owned catalogue loses proportionally *more* of them (13.9% against
 10.4%) — filtering the map removes edges as well as nodes, so a narrower
 catalogue fragments rather than merely shrinking.
 
-**Three Amulets in the full catalogue and two in the owned one** have no start at
-all whose route to them clears the budget — Shiren the Wanderer: Serpentcoil
-Island, and two Touhou Genso Wanderer entries in the full set. Confirmed as the
-budget's doing by re-running at `slack >= 1`, where every in-component game
-qualifies. They are not struck off: see §19.9's fallback, which takes the best
-route available rather than losing the game as a goal.
+**A handful of Amulets have no route good enough**, and raising the floor to
+`hops + 6` widens that handful rather than creating it. At the old `hops + 4` it
+was three in the full catalogue and two in the owned one — Shiren the Wanderer:
+Serpentcoil Island, and two Touhou Genso Wanderer entries in the full set, all of
+them **leaves at the tail of a series chain**, where every route funnels through
+one neighbour. At `hops + 6` it is 8 and 13 for a three-genre panel (2 and 6 for
+a two-genre one). Confirmed as the floor's doing by re-running at `slack >= 1`,
+where every in-component game qualifies.
+
+**None of them is struck off**: §19.9's fallback takes the best route available
+rather than losing the game as a goal, which is exactly why the floor can be set
+for the road's quality rather than for the worst node on the map.
+
+**Serpentcoil Island is the one to know about**, because it is not fixable by
+ownership: owning the entire 882-game catalogue still leaves it one qualifying
+genre at a 4–8 band, short of even a two-card panel. It is a *band* problem — a
+ceiling of 9 clears it on the current library with no purchases — and the cheaper
+answer is an edge in the `connections` sheet out to the wider mystery-dungeon
+cluster rather than only to its own sequels.
 
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10
@@ -4749,7 +4834,7 @@ multi-source sweep.
 
 **No game is struck off for being hard to reach.** The budget still decides which
 starts may be *offered*, but an Amulet with no budget-clearing start anywhere —
-the three and two of §19.3 — falls back to the best route available rather than
+the handful §19.3 counts — falls back to the best route available rather than
 leaving the pool. It is the same shape as the relaxed `in_window: false` starts
 that already fill a panel a genre short: the guarantee holds wherever it can, and
 degrades in the corner cases instead of excluding them. On a fallback route the
