@@ -135,12 +135,28 @@ const DAG_CACHE_MAX := 64
 # grow was a call site nobody had noticed. A cap is what makes it not depend on
 # noticing.
 #
-# A BFS on this graph is about 1 ms, and a roll wants well under ten distinct
-# origins at once, so emptying wholesale over the cap costs nothing worth an LRU.
-# Emptying is also safe while a caller holds a result: `bfs_distances` hands back
-# the Dictionary itself, and dropping the cache's reference to it does not
-# invalidate anyone else's.
-const BFS_CACHE_MAX := 64
+# A BFS on this graph is about 1 ms. Emptying wholesale over the cap is safe
+# while a caller holds a result: `bfs_distances` hands back the Dictionary
+# itself, and dropping the cache's reference to it does not invalidate anyone
+# else's.
+#
+# THE CAP WAS 64, ON THE GROUNDS THAT "a roll wants well under ten distinct
+# origins at once". §19.3's route floor retired that assumption: `route_slack`
+# needs the distances from EVERY eligible start, so one roll now wants one origin
+# per start — a couple of hundred on the full catalogue — and the amulet search
+# asks again on each of its AMULET_ATTEMPTS. At 64 the cache cleared wholesale
+# part-way through every sweep and the next amulet recomputed all of them.
+#
+# Measured: the suite went from ~460s to 759s with the cap at 64, for work that
+# is almost entirely the same BFS run over and over.
+#
+# 320 holds a whole generation — every eligible start, the amulets tried, and the
+# references — so the starts are walked once and reused across attempts. It is
+# still a bound rather than the unbounded growth this cache was capped to stop
+# (a boot once left 509,778 entries behind), and it is transient: a filter change
+# calls invalidate_cache() and the run itself never asks for this many origins
+# again.
+const BFS_CACHE_MAX := 320
 # Games that passed the filter but fell outside the main group, as a set. Pruned
 # out of _adj_cache and kept here because Transmute needs exactly this list.
 static var _off_map: Dictionary = {}         # StringName -> true
@@ -616,6 +632,66 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 	return built
 
 
+# --- the route floor (§19.3) -----------------------------------------------
+#
+# HOW MUCH ROAD A ROUTE HAS, over and above being a road at all. `slack` is the
+# shortest-path DAG's node count minus its length, and the offset is not
+# arbitrary: a single-file corridor already carries `hops + 1` nodes, one more
+# than its own length, so SLACK 1 IS THE CORRIDOR and everything above it is
+# games standing on alternative routes at the same distance.
+#
+# The floor is the kind budget (`hops + 2` — `hops - 1` Enemies, one Event, one
+# Shop, and the Amulet) plus two spare nodes, so that a guaranteed route is not
+# entirely pinned by the budget and has somewhere for the ordinary 60/20/10/10
+# to say something.
+#
+# A FIXED OFFSET IS NOT A FIXED BRANCHINESS, and the long routes are the thin
+# ones: the spares spread over however many middle layers the route has, so at
+# this floor a 4-hop route offers ~2.3 ways on per step and an 8-hop route ~1.6.
+# Kept as an offset anyway — it is one number and it is what was measured — but
+# a floor that held branchiness constant would have to scale with `hops`.
+const ROUTE_SLACK_FLOOR := 5
+
+# Returned for a pair with no route at all, so "unreachable" cannot be mistaken
+# for "thin": every real slack is at least 1.
+const NO_ROUTE := -999
+
+# DAG nodes minus hops. NO_ROUTE when the two are not connected.
+#
+# COUNTED OFF THE TWO DISTANCE MAPS RATHER THAN OFF THE DAG, which is a
+# performance decision and not a stylistic one. `shortest_path_dag` builds the
+# layer lists, a set per layer and the whole edge list, because that is what
+# draws a ladder; slack wants a node COUNT and nothing else. Worse, it memoizes
+# into a 64-entry cache that CLEARS WHOLE when it fills — and `_strict_starts_for`
+# now asks this once per eligible start per amulet attempt, which on the full
+# catalogue is a couple of thousand asks against 64 slots. Measured by its
+# absence: routing every ask through the DAG took the test suite from ~460s to
+# past 600s before it was cut short.
+#
+# `n is on the DAG` is exactly `d(s,n) + d(n,a) == d(s,a)`, so the two BFS the
+# DAG builder would have run are the whole of what is needed. They are memoized
+# separately and each start is asked for once per sweep either way.
+static func route_slack(start_id: StringName, amulet_id: StringName) -> int:
+	var d_start: Dictionary = bfs_distances(start_id)
+	if not d_start.has(amulet_id):
+		return NO_ROUTE
+	var hops: int = int(d_start[amulet_id])
+	var d_amulet: Dictionary = bfs_distances(amulet_id)
+	var nodes := 0
+	for n in d_start:
+		var ds: int = int(d_start[n])
+		if ds > hops:
+			continue
+		if d_amulet.has(n) and ds + int(d_amulet[n]) == hops:
+			nodes += 1
+	return nodes - hops
+
+
+# Does this route carry enough road to hold what §19.3 promises?
+static func route_clears_floor(start_id: StringName, amulet_id: StringName) -> bool:
+	return route_slack(start_id, amulet_id) >= ROUTE_SLACK_FLOOR
+
+
 # Every game on the shortest-path DAG between `start_id` and `amulet_id`, as one
 # flat list. `shortest_path_dag` groups them by depth because that is what draws
 # a ladder; §19's budget only ever counts them, so this is the shape it wants.
@@ -978,6 +1054,11 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 			continue
 		var path_len: int = d_to_amulet[g.id]
 		if path_len < band.x or path_len > band.y:
+			continue
+		# …and the road has to be worth walking, not merely the right length
+		# (§19.3). A route below the floor is a corridor or close to one, and it
+		# cannot hold the Event and the Shop every offered start promises.
+		if not route_clears_floor(g.id, amulet.id):
 			continue
 		var score := int(start_scores.get(g.id, 0))
 		if not by_type.has(g.type):
