@@ -232,6 +232,48 @@ func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_ne(String(GameState.amulet_game_id), "", "an amulet was picked")
 	assert_gt(_ui._choices.size(), 0, "the start's neighbours are offered as choices")
 
+# --- node kinds (§19) ------------------------------------------------------
+#
+# The map is dealt its kinds once, when the run begins, and frozen there. These
+# read the live run rather than the pure assignment function (which
+# test_node_kind_assignment covers) — the question here is whether booting a run
+# actually lays them down.
+
+func test_booting_a_run_deals_the_map_its_kinds() -> void:
+	assert_gt(GameState.node_kinds.size(), 0,
+		"a booted run has a kind for every game on its map")
+
+func test_the_amulet_is_dealt_a_champion() -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	if amulet == &"":
+		pending("this run has no amulet to check")
+		return
+	assert_eq(GameState.node_kind(amulet), RunGraph.NodeKind.CHAMPION,
+		"the Amulet carries the one Champion the road is promised")
+
+func test_the_opening_game_is_dealt_enemies() -> void:
+	var start: StringName = GameState.start_game_id
+	if start == &"":
+		pending("this run recorded no start game")
+		return
+	assert_eq(GameState.node_kind(start), RunGraph.NodeKind.ENEMIES,
+		"a run opens on a fight")
+
+# Frozen means frozen: walking the run must not re-deal anything. Takes the
+# whole map's fingerprint, plays a game, and compares.
+func test_the_kinds_do_not_move_while_the_run_is_walked() -> void:
+	var before: Dictionary = GameState.node_kinds.duplicate(true)
+	_ui.pick(0)
+	_disarm_board()
+	_ui.report(false)
+	assert_eq(GameState.node_kinds.size(), before.size(),
+		"no game gained or lost a kind by the run moving")
+	var moved := 0
+	for gid in before.keys():
+		if int(GameState.node_kinds.get(gid, -1)) != int(before[gid]):
+			moved += 1
+	assert_eq(moved, 0, "a kind that moved under the player is a badge telling a lie")
+
 func test_each_choice_has_a_game_and_a_previewable_enemy() -> void:
 	for c in _ui._choices:
 		assert_true(c["game"] is GameData, "choice carries a real game")

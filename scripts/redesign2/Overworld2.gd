@@ -782,6 +782,18 @@ func _build_start_options(pick: Dictionary) -> Array:
 			# The run has not started, so this is always the Low tier and never a boss.
 			"enemy": GameLoop2.roll_enemy(GameLoop2.game_type_key(g), _current_tier()),
 		})
+	# THE MAP'S KINDS, once the Amulet and the cards it is offered against are
+	# both known (§19.3). This is the only place they are ever assigned: they are
+	# frozen from here to the end of the run, and a load restores them off the
+	# save rather than coming back through here.
+	#
+	# It rides `_rng`, which is seeded from `GameState.run_seed` a few lines up in
+	# `_begin_run`, so the same seed deals the same map.
+	var start_ids: Array = []
+	for opt in out:
+		start_ids.append((opt["game"] as GameData).id)
+	GameState.node_kinds = RunGraph.assign_node_kinds(
+		_rng, GameState.amulet_game_id, start_ids)
 	return out
 
 # One start option in the shape the offering's cards and GameChoiceModal read, so
