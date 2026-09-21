@@ -63,6 +63,20 @@ For how the project is laid out and how its systems fit together, see
   **1.7% / 3.3% / 5.0% of runs**, against `RunGraph.AMULET_ATTEMPTS`'s eight
   tries.
 
+  **The budget costs no game its place on the map.** Checked exhaustively —
+  every in-component game against every other as a (start, amulet) pair, at both
+  game filters. Not one startable game is lost: the pool is 246 (full) / 124
+  (owned) with or without the budget, limited by the `degree >= 3` floor that
+  was always there. The only loss is three Amulets in the full catalogue and two
+  in the owned one, sitting in thin corners where no qualifying start has a
+  branching approach; confirmed as the budget's doing by re-running at slack 1,
+  where every in-component game can be the Amulet. The games that genuinely
+  cannot appear in a run are the 92 (full) / 74 (owned) pruned off-map by
+  `_prune_to_main_component`, which is unchanged and long-standing — note the
+  owned catalogue loses proportionally more of them, 13.9% against 10.4%, since
+  filtering the map removes edges as well as nodes and so fragments it rather
+  than merely shrinking it.
+
   **The budget implies the split, not the other way round**, and the intuition
   runs backwards here. A linear chain is `hops + 1` nodes so the budget excludes
   it on arithmetic alone — but a start that merely *has* a split is `hops + 2`,

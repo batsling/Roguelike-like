@@ -4517,6 +4517,39 @@ have to change — one run in twenty, against `RunGraph.AMULET_ATTEMPTS`'s eight
 tries. 15.0% of options were a single linear route, which the floor excludes on
 arithmetic alone. Re-measure rather than quoting these.
 
+**THE BUDGET COSTS NO GAME ITS PLACE ON THE MAP**, which is the question to ask
+of any rule that narrows what the run generator may pick. Measured exhaustively
+— every in-component game tested against every other as a (start, amulet) pair,
+at both game filters:
+
+| | Full catalogue | Owned |
+|---|---|---|
+| Games in the catalogue | 882 | 532 |
+| In the main component | 790 | 458 |
+| **Pruned off-map** (can never appear at all) | **92** | **74** |
+| Too few edges to start (`degree < 3`) | 544 | 334 |
+| **Can be a start** | **246** | **124** |
+| …of those, lost to the budget | **0** | **0** |
+| Cannot be the Amulet under the budget | **3** | **2** |
+
+**Not one startable game is lost.** Every game with the three connections
+`MIN_START_CONNECTIONS` already demanded can find some Amulet in the hop band
+whose DAG clears `hops + 4`. The start pool is 246 / 124 either way — what
+limits it is the degree floor that was always there, not anything in §19.
+
+The **92 and 74 off-map games** are the real answer to "can any game never be
+reached": they are pruned by `_prune_to_main_component` and have been all along.
+Note the owned catalogue loses proportionally *more* of them (13.9% against
+10.4%) — filtering the map removes edges as well as nodes, so a narrower
+catalogue fragments rather than merely shrinking.
+
+The only genuine loss is **three Amulets in the full catalogue and two in the
+owned one** — Shiren the Wanderer: Serpentcoil Island, and two Touhou Genso
+Wanderer entries in the full set. Confirmed as the budget's doing by re-running
+at `slack >= 1`, where every in-component game can be the Amulet. They sit in
+thin corners of the graph where no qualifying start has a branching approach to
+them, which is exactly the map the rule exists to refuse.
+
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10
 afterwards. The budget is a filter on a start, never an input to choosing one —
