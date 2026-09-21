@@ -61,9 +61,26 @@ For how the project is laid out and how its systems fit together, see
   is not that one, though — a rejected option is re-drawn against the same
   Amulet, and only when *both* of a run's two starts fail does the Amulet change:
   **1.7% / 3.3% / 5.0% of runs**, against `RunGraph.AMULET_ATTEMPTS`'s eight
-  tries. A linear chain has `hops + 1` nodes, so the budget excludes it on
-  arithmetic alone; the rule is written down separately anyway so a future change
-  to the budget cannot silently retire it.
+  tries.
+
+  **The budget implies the split, not the other way round**, and the intuition
+  runs backwards here. A linear chain is `hops + 1` nodes so the budget excludes
+  it on arithmetic alone — but a start that merely *has* a split is `hops + 2`,
+  still two short: **15 of 240 options (6.2%) had a genuine split and still could
+  not carry the required kinds**. The split is written down as its own guarantee
+  so a future loosening of the budget cannot silently retire it, but it is the
+  budget that does the work.
+
+  **An Event node always finds an event**, and the pool makes that nearly free:
+  all 16 events ship with a blank `where` and empty `tiers`, so nothing is
+  placement- or tier-gated today, and 7 of the 16 carry no stat requirement at
+  all. "No eligible event" is a content state that does not currently exist. If
+  it ever does, the node **re-shows an event the run has already had**. An
+  earlier draft specified relaxing the placement gate instead, which would have
+  been a fallback that could never fire against a pool that could never empty;
+  and relaxing the *stat* gates — the nine that ask for gold, keys, potions or a
+  Health band — would fire "pay 5 gold" at a player holding none, with every
+  interesting choice greyed out. A repeat is affordable and playable.
 
   Retires the escort (§7.5 — an Enemies node lands two bodies flat, a Champion
   one), shops at the ten hubs (§14.2 — a shop is a Shop node; §14.3's shelf is

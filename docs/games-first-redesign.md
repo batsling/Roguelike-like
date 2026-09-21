@@ -4390,19 +4390,33 @@ whole run" the whole price list is built around.
 So the four kinds differ in **what happens**, not in what you are handed. An
 Enemies node's reward is the two bodies standing on it.
 
-**AN EVENT NODE ALWAYS FINDS AN EVENT.** `EventSystem.roll_for_arrival` can come
-back empty — the pool is gated by `_where_allows` and `_eligible_for`, and a
-given node may simply have nothing authored that belongs there. On an Event node
-that answer is not acceptable, because the node's whole promise is the event. So
-the roll is **retried with the node gating relaxed**: an event the sheet placed
-elsewhere is shown here rather than the node doing nothing. That is a deliberate
-trade — an event may appear somewhere its author did not picture it — and it is
-worth it because a node whose badge promised an event and then delivered silence
-is the badge telling a lie, which §19.2 exists to prevent.
+**AN EVENT NODE ALWAYS FINDS AN EVENT, and the pool makes that nearly free.**
+Measured against the shipping content: **all 16 events have a blank `where` and
+empty `tiers`**, so nothing is placement-gated or tier-gated at all today —
+`_where_allows` returns true for every one of them. The only live gate is the
+stat `requirement`, and **7 of the 16 carry none whatsoever** (`abyssal_baths`,
+`battleworn_dummy`, `golden_idol`, `golden_monkey`, `jungle_maze_adventure`,
+`potion_lab`, `scrap_ooze`). "No eligible event" is therefore a content state
+that does not currently exist. Re-measure rather than trusting this.
 
-Only if the run has genuinely exhausted every event does the node fall quiet, and
-then it is simply a game with nothing standing on it. It is still exempt from the
-failure spawn (§19.5): nothing spawned, so nothing is owed.
+**If it ever does, the node re-shows an event the run has already had** rather
+than relaxing anything. The two relaxations that suggest themselves are both
+worse:
+
+- **Relaxing the placement gate does nothing**, because no event is placed. An
+  earlier draft of this section specified exactly that, which would have been a
+  fallback that could never fire against a pool that could never empty — the two
+  errors cancelling out and leaving the section saying nothing true.
+- **Relaxing the stat requirements breaks the offer.** Those gates are what keep
+  an event *affordable*: nine of the sixteen ask for gold, keys, potions or a
+  Health band before they will stage. Firing "pay 5 gold" at a player holding
+  none produces an event whose interesting choices are all greyed out, which is
+  a worse answer than a repeat.
+
+A repeat is affordable, playable, and does what the badge promised. And the
+badge is the whole reason there is a rule here at all: a node whose kind said
+*event* and then delivered silence is the badge telling a lie, which §19.2
+exists to prevent.
 
 **`games_played` keeps ticking on all four** even though the difficulty tier
 stops reading it (§19.6). It is not vestigial: `RunOverScreen` and the OBS
@@ -4461,8 +4475,8 @@ carries all of:
   variety is reachable without leaving the optimal path;
 - at least **`hops − 1` Enemies**, the forced-Enemies start node counting as one
   of them;
-- and **more than one route**. No start may be offered whose DAG is a single
-  linear chain.
+- and **at least one split** — more than one route to the Amulet. No start may be
+  offered whose DAG is a single linear chain.
 
 **The Champion clause says "not the Amulet" for a reason.** The Amulet is always
 a Champion (§19.1) and is always the DAG's terminal node, so "at least one
@@ -4475,20 +4489,26 @@ that a guaranteed route is not *entirely* pinned by the budget and has somewhere
 for the ordinary 60/20/10/10 to say something. A route with no free node is a
 route with no surprises, and would read the same every run it came up.
 
-The no-single-route rule is very nearly free, because **the budget already
-implies it**: a linear chain has `hops + 1` nodes and cannot reach `hops + 4`. It
-is written down separately anyway, because it is the thing that was actually
-wanted and a future change to the budget must not silently retire it.
+**The budget implies the split, and NOT the other way round.** This is worth
+stating because the intuition runs backwards. A linear chain has `hops + 1`
+nodes and cannot reach `hops + 4`, so any start that satisfies the budget
+necessarily branches somewhere — the split comes free. But a start that merely
+*has* a split is not thereby able to hold the kinds: one split is `hops + 2`
+nodes, two short of the budget. **Measured: 15 of 240 options (6.2%) sat at
+exactly one split and still could not carry the required nodes.** So the split
+is written down as its own guarantee — it is the thing that was actually wanted,
+and a future loosening of the budget must not silently retire it — but it is the
+budget that does the work.
 
 **Measured, before any of this existed**, over 120 sampled runs (240 start
 options) on the full catalog. Slack here is `DAG nodes − hops`; a linear chain is
 slack 1:
 
-| Floor | Options rejected | Runs where **both** starts fail |
-|---|---|---|
-| `hops + 2` | 15.0% | 1.7% |
-| `hops + 3` | 21.2% | 3.3% |
-| **`hops + 4`** (the rule above) | **27.1%** | **5.0%** |
+| Floor | What it buys | Options rejected | Runs where **both** starts fail |
+|---|---|---|---|
+| `hops + 2` | one split, kinds not guaranteed | 15.0% | 1.7% |
+| `hops + 3` | kinds fit, every node pinned | 21.2% | 3.3% |
+| **`hops + 4`** (the rule above) | kinds fit, one node free | **27.1%** | **5.0%** |
 
 **27% of options sounds steep and is the wrong number to read.** The one that
 matters is the last column: a rejected option is re-drawn against the same
