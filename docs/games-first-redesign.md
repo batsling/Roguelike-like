@@ -4362,12 +4362,20 @@ Where it disagrees with them, this section is the build.
 
 ### 19.1 The four kinds
 
-| Kind | On arrival | Bodies | Also |
-|---|---|---|---|
-| **Enemies** | the ordinary game | **2** | nothing extra — see below |
-| **Event** | an event fires before you go and play | 0 | the game's own post-report event still rolls ([`event-sheet-authoring.md`](event-sheet-authoring.md)) |
-| **Champion** | a boss of the run's current tier | **1** | the boss's ordinary chest (§8.2), nothing extra |
-| **Shop** | a shelf under the board | 0 | three items, persistent for the run (§14.3) |
+| Kind | What it does | When | Bodies | Also |
+|---|---|---|---|---|
+| **Enemies** | the ordinary game | on arrival | **2** | nothing extra — see below |
+| **Event** | an event fires | **on arrival**, before you play | 0 | the game's own post-report event still rolls ([`event-sheet-authoring.md`](event-sheet-authoring.md)) |
+| **Champion** | a boss of the run's current tier | on arrival | **1** | the boss's ordinary chest (§8.2), nothing extra |
+| **Shop** | a shelf under the board | **after the game is beaten** | 0 | three items, persistent for the run (§14.3) |
+
+**The Event and the Shop deliberately land at opposite ends of the game**, and the
+reason is the purse. An event is a decision, and a decision is worth more before
+you have committed an evening to the game it sits on. A shop is a *purchase*, and
+the gold to make one is what the game you just played pays out (§14.1) — open the
+shelf on arrival and the player shops broke, on a run that earns 8–15 gold in
+total. So the shop keeps §14.4's timing exactly: queued behind the resolve on the
+`Overworld2._pending_shop` path, mounted under the board, staying for the visit.
 
 **All four are a real video game.** Every one of them grants the selection
 shields (§3.2), ticks `GameState.games_played`, needs **✓ Completed Game** to
@@ -4844,12 +4852,35 @@ so a Scramble cannot scrub them off the board. The undo needs nothing new: the
 spawn happens after `log_attempt` has already taken its `_run_snapshot`, so
 taking a turn back takes the body with it.
 
+**A body spawned AT THE REPORT lands after the resolve**, so it does not take the
+turns that report was paying for. It walked on as the game was handed in; it acts
+from the next one, on §7.2's ordinary terms. The lost-run spawn is the same shape
+one beat earlier — it lands with the tick, and the turn that tick buys is
+resolved around it.
+
 ### 19.6 Difficulty is now a consequence
 
 **`GameState.spawn_events` counts SPAWN EVENTS** — one per node arrival that
 landed bodies, one per failure spawn, regardless of how many bodies each put down
 — and the tier ladder reads that instead of `GameState.games_played`
-(`RunDifficulty.tier_for`). Event and Shop nodes never tick it.
+(`RunDifficulty.tier_for`). Event and Shop nodes never tick it. The Amulet's own
+Champion ticks it like any other arrival that lands a body; nothing reads the
+result, because the run ends there.
+
+**THE TIER CAN NOW STEP MID-GAME, AND THE BOARD GROWS WITH IT.** A failure spawn
+is a spawn event, and a failure spawn happens on a *lost run* — so the counter
+can cross a tier boundary with a game still in play, which `games_played` never
+could. `GameLoop2.sync_grid_bounds` runs at the spawn rather than waiting for the
+report: the extra column and row appear immediately, under the bodies that just
+walked on.
+
+Growing it late would be the worse of the two. The tier is what *sized* that
+spawn's arrivals in the first place, and holding the board at its old size until
+the report would crowd the new bodies onto a grid that the rule says has already
+grown — which is the one state §7.3's off-grid queue exists to avoid rather than
+to absorb. Board resizing has only ever happened between games
+(`Overworld2._announce_difficulty_step`); this is the first thing that moves it
+mid-game, and the announcement follows it there.
 
 **Every third spawn event puts a boss on the board ON TOP of whatever else was
 spawning**, replacing `RunDifficulty.is_boss_game`'s every-third-*game* capstone.

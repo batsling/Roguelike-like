@@ -110,6 +110,21 @@ For how the project is laid out and how its systems fit together, see
   spawning" is meant literally, and a rule that quietly cancelled itself on the
   one node where it would hurt most would be the rule not meaning what it says.
 
+  **The Event and the Shop land at opposite ends of the game**, which §19.1's
+  table now says rather than implying they both fire on arrival. An event is a
+  decision and is worth more before an evening is committed to the game under it;
+  a shop is a purchase, and the gold for one is what the game just played pays
+  out — open the shelf on arrival and the player shops broke, on a run earning
+  8–15 gold in total. The shop keeps §14.4's existing timing exactly.
+
+  **The tier can now step mid-game, and the board grows with it.** A failure
+  spawn is a spawn event and happens on a lost run, so the counter can cross a
+  tier boundary with a game in play — something `games_played` never could.
+  `sync_grid_bounds` runs at the spawn rather than waiting for the report, since
+  the tier is what sized that spawn's arrivals and holding the old grid would
+  crowd them onto a board the rule says has already grown. Board resizing has
+  only ever happened between games; this is the first thing to move it mid-game.
+
   **The band is absolute**: three cards, all inside 4–8, or the Amulet is not
   used. `pick_amulet_and_starts` today fills a genre-short panel with the best
   reachable start of that genre at ANY distance (the `in_window: false` path),
