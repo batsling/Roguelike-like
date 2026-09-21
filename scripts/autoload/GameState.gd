@@ -650,6 +650,23 @@ var event_nodes_fired: Dictionary = {}
 var hub_games: Array[StringName] = []
 var shops: Dictionary = {}
 
+# ---------------------------------------------------------------------------
+# NODE KINDS (§19). What stands at each game on the run's map — Enemies, Event,
+# Champion or Shop, as `RunGraph.NodeKind`.
+#
+#   node_kinds  game id -> kind, ASSIGNED AT RUN START and never changed. Frozen
+#               for the same reason hub_games is, and the reason is the same
+#               sentence: a flag on an offered card that could move under the
+#               player is a lie. It rides the save rather than being re-derived,
+#               because re-deriving would re-roll it and the graph underneath may
+#               have been rebuilt by a filter change since.
+#
+# A game with no entry reads as ENEMIES (`node_kind`), which is what makes this
+# safe to land before anything assigns it: the map behaves exactly as it does
+# today until the assignment pass exists.
+# ---------------------------------------------------------------------------
+var node_kinds: Dictionary = {}
+
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
@@ -1196,6 +1213,8 @@ func reset_run() -> void:
 	# different filter, so the ten biggest games are re-asked rather than reused.
 	hub_games.clear()
 	shops.clear()
+	# The map's kinds go with the run that was dealt them (§19.2).
+	node_kinds.clear()
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -2427,6 +2446,26 @@ func restore_event_goals(data: Dictionary) -> void:
 # ride the save: re-deriving the hubs on load would re-ask a graph that may have
 # been rebuilt since, and re-rolling the stock would hand a player who reloaded a
 # different shop from the one they walked out of.
+
+# What stands at `game_id` (§19.1). ENEMIES for a game the run never assigned —
+# which is every game until the assignment pass runs, and is deliberately the
+# kind that behaves exactly as the build does today.
+func node_kind(game_id: StringName) -> int:
+	return int(node_kinds.get(game_id, RunGraph.NodeKind.ENEMIES))
+
+# The map's kinds, as JSON-safe data. It rides the save for the reason the hub
+# list does: re-deriving on load would re-roll against a graph a filter change
+# may have rebuilt since, and the badge the player was routing on would move.
+func serialize_node_kinds() -> Dictionary:
+	var out: Dictionary = {}
+	for gid in node_kinds.keys():
+		out[String(gid)] = int(node_kinds[gid])
+	return out
+
+func restore_node_kinds(data: Dictionary) -> void:
+	node_kinds.clear()
+	for key in data.keys():
+		node_kinds[StringName(key)] = int(data[key])
 
 func serialize_shops() -> Dictionary:
 	var hubs: Array = []

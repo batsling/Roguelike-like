@@ -59,6 +59,44 @@ const TYPE_ORDER: Array = [
 	GameData.GameType.TRADITIONAL,
 ]
 
+# --- node kinds (§19) ------------------------------------------------------
+#
+# WHAT STANDS AT A GAME, as opposed to what the game is. Every node on the run's
+# graph carries one, assigned when the run begins and never changed
+# (docs/games-first-redesign.md §19.2) — a badge on an offered card that could
+# move under the player is a lie, and every badge in this build is placed around
+# not telling one.
+#
+# The kind rides the SLOT rather than the game sitting on it, which is what makes
+# Transmute leave it alone: that verb repaints which game a node holds without
+# touching a single edge.
+#
+# Declared here because a kind is a fact about the MAP; the run's own copy of the
+# assignment lives on GameState.node_kinds, the way hub_games does, so a save
+# carries it rather than re-deriving it against a graph that may have been
+# rebuilt since.
+enum NodeKind { ENEMIES, EVENT, CHAMPION, SHOP }
+
+# The share of the map each kind takes (§19.1), before the two overrides — the
+# run's opening game is always ENEMIES and the Amulet is always CHAMPION — and
+# before the per-route guarantees, which are placed first and COUNT against these
+# odds rather than sitting on top of them (§19.3).
+const KIND_WEIGHTS: Dictionary = {
+	NodeKind.ENEMIES: 60,
+	NodeKind.EVENT: 20,
+	NodeKind.CHAMPION: 10,
+	NodeKind.SHOP: 10,
+}
+
+# One word for a kind, for a badge or a log line. Unknown values read as Enemies,
+# which is the kind a node falls back to everywhere else too.
+static func kind_label(kind: int) -> String:
+	match kind:
+		NodeKind.EVENT: return "Event"
+		NodeKind.CHAMPION: return "Champion"
+		NodeKind.SHOP: return "Shop"
+		_: return "Enemies"
+
 # ---------------------------------------------------------------------------
 # Graph access — `games_influenced` is directed in the .tres files but
 # the HTML build treats it as undirected (you can travel back along

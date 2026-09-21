@@ -290,6 +290,9 @@ func _build_payload() -> Dictionary:
 		"event_goals": GameState.serialize_event_goals(),
 		# The hub list and every shop's remaining shelf (§14).
 		"shops": GameState.serialize_shops(),
+		# What stands at each game on the map (§19) — frozen at run start, so the
+		# save carries it rather than re-deriving it.
+		"node_kinds": GameState.serialize_node_kinds(),
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
@@ -463,6 +466,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.restore_timed_statuses(data.get("timed_statuses", []))
 	GameState.restore_event_goals(data.get("event_goals", {}))
 	GameState.restore_shops(data.get("shops", {}))
+	GameState.restore_node_kinds(data.get("node_kinds", {}))
 	GameState.run_seed = int(data.get("run_seed", 0))
 	# AND PUT THE GLOBAL STREAM BACK WHERE THE SAVE LEFT IT — deterministically,
 	# which is the only sense in which it can be "put back" at all.
