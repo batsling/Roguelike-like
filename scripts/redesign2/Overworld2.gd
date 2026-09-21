@@ -893,14 +893,7 @@ func choose_start(index: int) -> void:
 	# a table to act on, and so does the return from the report.
 	_build_choices()
 	if _chosen.get("enemy") != null:
-		GameLoop2.choose_game(_chosen["enemy"],
-			GameLoop2.game_type_key(game), _current_tier())
-		_log_escort()
-		_remind_twitch_category(game)
-		var granted: int = GameLoop2.grant_selection_shields(game)
-		GameLog.add("%s — %s, one hit stopped each." % [
-			game.display_name, GameState.temp_shields_text(granted)],
-			SHIELD_BLUE)
+		_begin_game(game, _chosen["enemy"], _current_tier())
 		_phase = Phase.PLAYING
 		_populate_play_panel()
 	else:
@@ -1323,19 +1316,7 @@ func pick(index: int) -> void:
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
-	# The GAME's type and the run's tier ride along so the escort (§7.5) is rolled
-	# from the bucket this card's own enemy came out of. A transmuted card plays the
-	# replacement game, so it is that game's type the escort answers to.
-	GameLoop2.choose_game(_chosen["enemy"],
-		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
-	_log_escort()
-	_remind_twitch_category(_chosen["game"])
-	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
-	# Traditional roguelike, plus whatever "when a game is selected" items add.
-	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
-	GameLog.add("%s — %s, one hit stopped each." % [
-		_chosen["game"].display_name, GameState.temp_shields_text(granted)],
-		SHIELD_BLUE)
+	_begin_game(_chosen["game"], _chosen["enemy"], _current_tier())
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
@@ -1361,6 +1342,44 @@ func pick(index: int) -> void:
 	# Committing to a game is a move worth recovering to — the shields it granted
 	# and the lost runs you're about to log all hang off it.
 	autosave()
+
+# COMMITTING TO A GAME, in one place. Every path that puts a game into play runs
+# this and nothing else runs it: `pick` from the offering, `choose_start` at the
+# run's opening, `arrive_at_game` off a teleport, and `_start_play_game` for an
+# event's detour (§10).
+#
+# It was four copies of the same five lines, and they had already drifted: one of
+# them grants the shields without saying so in the log. Four copies is also four
+# places to edit every time what "committing" means changes, which it is about to
+# (§19 — the escort goes, the spawn count arrives, and the difficulty counter
+# ticks here).
+#
+# WHAT IT DELIBERATELY DOES NOT DO is the part the four callers genuinely disagree
+# about: where `GameState.set_current_game` sits relative to this, whether
+# `_leave_node` has anything to leave, and whether an armed verb is cancelled.
+# Two of those differences look like bugs and one is load-bearing —
+# `set_current_game` straddles `choose_game`, which runs `_pay_revivals` and fires
+# `TriggerBus.game_selected` in between — so moving them is a change to make on
+# purpose, with the suite watching, rather than smuggled into an extraction.
+#
+# `tier` is the run's tier and `game`'s own type is read off it here, so the
+# escort (§7.5) is rolled from the bucket this card's enemy came out of. A
+# transmuted card plays the replacement game, so it is that game's type the
+# escort answers to.
+#
+# `log_shields` is false for the detour alone, which is the drift noted above:
+# it grants the armour silently. Kept as it was rather than quietly fixed.
+func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
+		log_shields: bool = true) -> void:
+	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
+	_log_escort()
+	_remind_twitch_category(game)
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
+	# Traditional roguelike, plus whatever "when a game is selected" items add.
+	var granted: int = GameLoop2.grant_selection_shields(game)
+	if log_shields:
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
 
 # Say who came WITH the game's enemy (§7.5). Called at each of the three places a
 # game is committed to, straight after choose_game, because the escort is the one
@@ -3668,12 +3687,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 		"boss": _boss_round, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
-	GameLoop2.choose_game(enemy, type_key, tier)
-	_log_escort()
-	_remind_twitch_category(game)
-	var granted: int = GameLoop2.grant_selection_shields(game)
-	GameLog.add("%s — %s, one hit stopped each." % [
-		game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+	_begin_game(game, enemy, tier)
 	# You did not spend a Dash to get here, so there is nothing for the return-trip
 	# refund to give back (see `_dashed_here`).
 	_dash_mode = false
@@ -3810,10 +3824,9 @@ func _start_play_game(request: Dictionary) -> void:
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
-	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
-	_log_escort()
-	_remind_twitch_category(game)
-	GameLoop2.grant_selection_shields(game)
+	# `log_shields` false: this path has always granted the armour silently. See
+	# _begin_game — kept as it was rather than quietly fixed.
+	_begin_game(game, enemy, tier, false)
 	GameState.set_current_game(dest)
 	_dash_mode = false
 	# A detour is posted by an event, not paid for with a charge, so there is
