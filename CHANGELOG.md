@@ -79,11 +79,23 @@ For how the project is laid out and how its systems fit together, see
   naive per-candidate BFS at 868 ms a roll. If it is too slow, dropping the slack
   removes the only reason to compute branching scores at all.
 
-  An Amulet with no budget-clearing start anywhere falls back to the best route
-  available rather than leaving the pool — the same shape as the relaxed
-  `in_window: false` starts that already fill a panel a genre short. The
-  guarantee degrades in the corner cases instead of excluding them, placing kinds
-  in priority order Event, Shop, second Champion, with the remainder Enemies.
+  **There is no fallback**, so an Amulet that cannot supply the panel is not
+  offered as one — it stays an ordinary node to route through and fight at. An
+  earlier draft had it fall back to the best route available; the decision is to
+  keep the guarantee absolute for now, on the grounds that a rule with an escape
+  hatch is a rule nobody can read off the screen. It costs 2 games in the full
+  catalogue (Serpentcoil Island, Touhou Genso Wanderer: Lotus Labyrinth R) and 4
+  in the owned one (Serpentcoil Island, Dice & Fold, Ember Knights, Everything is
+  Crab).
+
+  **The two catalogues exclude for opposite reasons**, which matters before
+  anyone "fixes" it in the sheet. The full catalogue's two are leaves — degree 1,
+  every route through one neighbour. The owned catalogue's other three are
+  hub-adjacent, degree 3-4, and all three neighbour Slay the Spire (degree 91):
+  sitting beside a mega-hub pulls the map close and empties the 4-8 band of the
+  genres that would fill the panel. So an edge added to help a leaf must reach
+  outward, while an edge added to help a hub-adjacent game must reach somewhere
+  far — another Slay-the-Spire-flavoured neighbour makes it worse.
 
   **A start needs two connections, and both must lead on** (§19.3.1); the route
   floor becomes **`hops + 5`**; and the panel goes to **three cards over a 4–8

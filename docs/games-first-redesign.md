@@ -4670,23 +4670,18 @@ Note the owned catalogue loses proportionally *more* of them (13.9% against
 catalogue fragments rather than merely shrinking.
 
 **A handful of Amulets have no route good enough** — 2 in the full catalogue and
-4 in the owned one, against a component of 790 and 458. They are **leaves at the
-tail of a series chain**, where every route funnels through a single neighbour,
-so no floor and no band reaches them. Confirmed as the floor's doing by
-re-running at `slack >= 1`, where every in-component game qualifies.
-
-**None of them is struck off**: §19.9's fallback takes the best route available
-rather than losing the game as a goal, which is exactly why the floor can be set
-for the road's quality rather than for the worst node on the map.
+4 in the owned one, against a component of 790 and 458. With no fallback (§19.9)
+those are **not Amulets**; they stay ordinary nodes the run can route through and
+fight at. §19.9 names them and explains why the two catalogues exclude for
+opposite reasons — leaves in one, hub-adjacent games in the other.
 
 **Serpentcoil Island is the one to know about**, and it is the rule set's hardest
 case. At the agreed rules its best route anywhere is **slack 3** — two under the
 floor — and that holds in the FULL catalogue as well as the owned one, so **no
-amount of buying games fixes it**. A ceiling of 9 clears it on the current
-library with no purchases; the cheaper answer is an edge in the `connections`
-sheet out to the wider mystery-dungeon cluster rather than only to its own
-sequels. Until one of those happens it reaches the board through §19.9's
-fallback, like every other leaf.
+amount of buying games fixes it**. It is also the only game that cannot field
+even two genres. A ceiling of 9 clears it on the current library with no
+purchases; the cheaper answer is an edge in the `connections` sheet out to the
+wider mystery-dungeon cluster rather than only to its own sequels.
 
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10
@@ -4845,7 +4840,7 @@ something they steer now, in both directions.
   something the player did needs saying out loud; it is the one arrival they did
   not choose.
 
-### 19.9 Amulet selection — every in-component game is a candidate
+### 19.9 Amulet selection — every start is a reference, and there is no fallback
 
 §19.3's budget is a filter on the **route**, and it costs almost nothing (see the
 table there). What *does* narrow the Amulet pool, and always has, is the two
@@ -4885,15 +4880,42 @@ slack removes the only reason to compute branching scores at all: what is left i
 "is this game 4–7 hops from some eligible start", which is close to a single
 multi-source sweep.
 
-**No game is struck off for being hard to reach.** The budget still decides which
-starts may be *offered*, but an Amulet with no budget-clearing start anywhere —
-the handful §19.3 counts — falls back to the best route available rather than
-leaving the pool. It is the same shape as the relaxed `in_window: false` starts
-that already fill a panel a genre short: the guarantee holds wherever it can, and
-degrades in the corner cases instead of excluding them. On a fallback route the
-kinds are placed in priority order — **Event, then Shop, then the second
-Champion** — and whatever the route cannot hold is Enemies, so the floor that
-survives longest is the one §19.5 depends on.
+**THERE IS NO FALLBACK, AND A FEW GAMES ARE THEREFORE NOT AMULETS.** An Amulet
+that cannot supply the panel under §19.3's rules is simply not offered as one. It
+stays an ordinary node — it can be routed through, fought at, bashed, transmuted
+— it just is not a goal.
+
+This is a reversal, recorded because it was argued the other way first. An
+earlier draft of this section had such an Amulet fall back to the best route
+available, on the grounds that the guarantee should degrade in the corner cases
+rather than exclude them. The decision is to keep the guarantee absolute for now:
+a rule with an escape hatch is a rule nobody can read off the screen, and four
+games out of 458 is a cheaper price than a promise that quietly stops holding.
+The fallback is the known answer if the exclusions ever start to matter.
+
+**What it costs, at the agreed rules** (start pool `degree ≥ 2` onward, floor
+`hops + 5`, band 4–8, three cards):
+
+| Catalogue | Excluded | Which |
+|---|---|---|
+| Full (790) | **2** | Serpentcoil Island; Touhou Genso Wanderer: Lotus Labyrinth R |
+| Owned (458) | **4** | Serpentcoil Island; Dice & Fold; Ember Knights; Everything is Crab |
+
+**And the two catalogues exclude for opposite reasons**, which is worth knowing
+before anyone "fixes" this in the sheet. The full catalogue's two are **leaves**:
+degree 1, every route funnelling through a single neighbour. The owned
+catalogue's other three are the opposite — **hub-adjacent**, degree 3 and 4, and
+all three neighbour **Slay the Spire** (degree 91). Sitting next to a mega-hub
+pulls the whole map close, so the 4–8 band is emptied of the genres that would
+have filled the panel. It is Darkest Dungeon's problem exactly (§19.3.1), minus
+the luck that rescued it: the degree-2 pool happened to hand Darkest Dungeon a
+Strategy route and does not hand these three one.
+
+Only **Serpentcoil Island** cannot field even *two* genres, in either catalogue.
+
+The consequence for the sheet: an edge added to help a leaf must reach *outward*,
+while an edge added to help a hub-adjacent game must reach somewhere *far* —
+adding another Slay-the-Spire-flavoured neighbour would make it worse.
 
 `Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
 still keeps its no-softlock fallback. That one is a player's preference rather
