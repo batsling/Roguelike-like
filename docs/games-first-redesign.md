@@ -4484,37 +4484,51 @@ Champion" would be satisfied by the destination itself and guarantee nothing at
 all about the road. The requirement is a boss you meet on the *way*.
 
 **The budget, then, is `hops + 3` nodes**: `hops − 1` Enemies, one Event, one
-Shop, one Champion, and the Amulet. **The floor is `hops + 6`** — that budget
-plus **three** spare nodes.
+Shop, one Champion, and the Amulet. **The floor is `hops + 5`** — that budget
+plus **two** spare nodes. It is a MINIMUM and not a target: most routes clear it
+comfortably, and every count in this section is "Amulets with at least one route
+that clears it".
 
 `slack` here is `DAG nodes − hops`, and the offset is not arbitrary: a single-file
 corridor already carries `hops + 1` nodes, one more than its own length, so
 **slack 1 IS the corridor** and everything above it is games standing on
 alternative routes at the same distance. On a 4-hop run — where only the three
 middle layers can widen, the start and the Amulet being one node each — the floor
-puts **eight games across those three layers**, so most steps offer two or three
-ways on rather than one:
+puts **seven games across those three layers**:
 
 ```
 slack 1   5 nodes    S — a — b — c — A         one route, no choices
 slack 4   8 nodes    S — a — b — c — A         ~2 ways on per step
                          a'  b'  c'
-slack 6  10 nodes    S — a — b — c — A         ~3 ways on per step
+slack 5   9 nodes    S — a — b — c — A         the floor
                          a'  b'  c'
-                         a"  b"
+                         a"
 ```
 
-Three spares rather than one, because one spare only buys the guarantee room to
-*not repeat itself*; three buy the player somewhere to go. It is written as an
-offset so it scales — a 7-hop route needs 13 nodes over six middle layers, about
-as branchy per step as the 4-hop one.
+Two spares rather than one, because one spare only buys the guarantee room to
+*not repeat itself*; two buy the player somewhere to go.
+
+**A FIXED OFFSET IS NOT A FIXED BRANCHINESS, and the long routes are the thin
+ones.** The spares spread over however many middle layers the route has, so the
+same floor reads very differently at each end of the band:
+
+| Route | middle games / layers at `hops + 5` | ways on per step |
+|---|---|---|
+| 4 hops | 7 across 3 | **2.3** |
+| 8 hops | 11 across 7 | **1.6** |
+
+An earlier draft of this section claimed the offset "scales" so that a long route
+is about as branchy as a short one. It is the reverse. The rule is kept as an
+offset anyway — it is one number, it is what was measured, and a long run trading
+density for length is defensible — but a floor that held branchiness constant
+would have to scale with `hops`, and that is a different rule nobody has measured.
 
 **The budget implies the split, and NOT the other way round.** This is worth
 stating because the intuition runs backwards. A linear chain has `hops + 1`
-nodes and cannot reach `hops + 6`, so any start that satisfies the budget
+nodes and cannot reach `hops + 5`, so any start that satisfies the budget
 necessarily branches somewhere — the split comes free. But a start that merely
 *has* a split is not thereby able to hold the kinds: one split is `hops + 2`
-nodes, four short of the floor. **Measured: 15 of 240 options (6.2%) sat at
+nodes, three short of the floor. **Measured: 15 of 240 options (6.2%) sat at
 exactly one split and could not carry the required nodes even at the old
 `hops + 4`.** So the split
 is written down as its own guarantee — it is the thing that was actually wanted,
@@ -4558,26 +4572,32 @@ else.
 | `degree ≥ 2`, plain | 456 / 232 |
 | **`degree ≥ 2`, both neighbours onward** | **419 / 207** |
 
-**And the loosening is what makes `hops + 6` affordable.** The two rules look
+**And the loosening is what makes a higher floor affordable.** The two rules look
 opposed — one widens the pool, the other narrows what a route may be — and they
 are not: more eligible starts means more chances that one of them has a genuinely
-wide route, so the stricter floor stops biting. Amulets able to field a full
+wide route, so the stricter floor stops biting. Measured at the **4–7** band, so
+the trade is visible against the old numbers; Amulets able to field a full
 three-genre panel:
 
-| Floor | `degree ≥ 3` (full / owned) | **`degree ≥ 2` onward (full / owned)** |
+| Floor | `degree ≥ 3` (full / owned) | `degree ≥ 2` onward (full / owned) |
 |---|---|---|
 | `hops + 4` | 786 / 454 | 786 / 455 |
-| `hops + 5` | 784 / 430 | 784 / 452 |
-| **`hops + 6`** (the rule) | 782 / **423** | **782 / 445** |
+| `hops + 5` | 784 / **430** | 784 / **452** |
+| `hops + 6` | 782 / 423 | 782 / 445 |
 | `hops + 7` | 781 / 355 | 782 / 375 |
 
-Read the owned column: at `degree ≥ 3`, moving the floor from 4 to 6 costs **31**
-Amulets. At `degree ≥ 2` onward it costs **10**. Against the shipping rules
-(`degree ≥ 3`, `hops + 4`) the pair together trades **9 Amulets for 83 more
-starts** and a markedly branchier road.
+Read the owned column: at `degree ≥ 3`, moving the floor from 4 to 5 costs **24**
+Amulets. At `degree ≥ 2` onward it costs **3**. `hops + 7` is the cliff — 375 —
+and `hops + 5` sits two rungs clear of it, which matters because the catalogue
+grows and these numbers move under the rule.
 
-`hops + 7` is the cliff in the owned catalogue — 445 down to 375 — and the reason
-the floor stops at 6.
+**THE DEGREE-2 POOL FIXES DARKEST DUNGEON ON ITS OWN.** It is the section's own
+worked example of the paragraph above, and it corrects an earlier finding. At
+`degree ≥ 3` it was one of two owned games that could not field three genres — a
+hub whose deckbuilder neighbours all sit *inside* the 4-hop floor, so no wider
+band could ever reach them. With degree-2 starts admitted it reads **Action 11,
+Traditional 7, Strategy 6, Deckbuilder 1**: three genres clear `hops + 5` outright.
+The fix was never a wider band or a bought game; it was a bigger start pool.
 
 **The two-card opening is accepted, not solved.** `BASE_OFFER_COUNT` is 3 and
 `Overworld2._offered_ids` draws from the node's neighbours, so a degree-2 start
@@ -4585,6 +4605,40 @@ opens the run one card short of every later turn. The onward condition fixes the
 *quality* of those two cards and not their number. Two real choices is still a
 choice, and the alternative — topping the offering up from two hops out — would
 put a card on the table that taking it cannot reach in one move.
+
+### 19.3.2 THREE START CARDS, AND A BAND OF 4–8
+
+`NUM_START_OPTIONS` goes from **2 to 3**, and `MAX_PATH_LENGTH` from **7 to 8**
+with it. The two belong together: the panel wants its cards at **different
+distances** as well as different genres (`_spread_across_band`), and three cards
+drawn from a four-rung band leave that preference very little room. A fifth rung
+is what makes three distinct distances an ordinary outcome rather than a lucky one.
+
+Everything below is the agreed rule set — start pool `degree ≥ 2` onward, floor
+`hops + 5`, three cards — measured at both bands:
+
+| | Full 4–7 | **Full 4–8** | Owned 4–7 | **Owned 4–8** |
+|---|---|---|---|---|
+| Component | 790 | 790 | 458 | 458 |
+| Start pool | 419 | 419 | 207 | 207 |
+| Can fill 3 genres (hard) | 784 | **788** | 452 | **454** |
+| …at 3 distinct lengths (soft) | 760 | **771** | 413 | **425** |
+
+**The wider band earns its place on the soft column, not the hard one.** Three
+genres was already all but universal; what 4–8 buys is **+11 full and +12 owned**
+games whose panel can offer three genuinely different run lengths instead of
+repeating a distance. That is exactly the preference the third card puts under
+pressure, so the two changes pay for each other.
+
+A repeated distance is still the documented fallback, not a failure: 33 owned
+Amulets (458 − 425) field three genres at two distances. The panel keeps its
+three cards.
+
+**A longer ceiling is a longer evening.** Each hop is a real roguelike played
+end to end, so 4–8 raises the longest possible run from seven games to eight, and
+§7.4's pressure ladder (5+ / 3–4 / 2–0 hops) now opens one rung further out. The
+band's position was always the run-length control; widening it is a pacing change
+as much as a graph one.
 
 **THE BUDGET COSTS NO GAME ITS PLACE ON THE MAP**, which is the question to ask
 of any rule that narrows what the run generator may pick. Measured exhaustively
@@ -4597,17 +4651,17 @@ at both game filters:
 | In the main component | 790 | 458 |
 | **Pruned off-map** (can never appear at all) | **92** | **74** |
 | **Can be a start** (§19.3.1's pool) | **419** | **207** |
-| …of those, with no Amulet clearing `hops + 6` | **0** | **0** |
-| Cannot fill a 2-card panel at `hops + 6` | **6** | **2** |
-| Cannot fill a 3-card panel at `hops + 6` | **8** | **13** |
+| …of those, with no Amulet clearing the floor | **0** | **0** |
+| Cannot field 2 genres | **1** | **1** |
+| Cannot field 3 genres (the panel) | **2** | **4** |
 
 **Not one startable game is lost.** Every game in the start pool finds some
 Amulet in the hop band whose DAG clears the floor — 419 and 207, the pool size
 exactly. What limits the pool is the degree condition, not the budget.
 
-Those counts are measured at `degree ≥ 2` onward and `hops + 6`, so they
-supersede the `degree ≥ 3` / `hops + 4` figures this section carried before
-(246 / 124 startable, 3 / 2 unusable as Amulets).
+Measured at the **agreed rules**: start pool `degree ≥ 2` onward, floor
+`hops + 5`, band **4–8**. They supersede the `degree ≥ 3` / `hops + 4` / 4–7
+figures this section carried before (246 / 124 startable, 3 / 2 unusable).
 
 The **92 and 74 off-map games** are the real answer to "can any game never be
 reached": they are pruned by `_prune_to_main_component` and have been all along.
@@ -4615,25 +4669,24 @@ Note the owned catalogue loses proportionally *more* of them (13.9% against
 10.4%) — filtering the map removes edges as well as nodes, so a narrower
 catalogue fragments rather than merely shrinking.
 
-**A handful of Amulets have no route good enough**, and raising the floor to
-`hops + 6` widens that handful rather than creating it. At the old `hops + 4` it
-was three in the full catalogue and two in the owned one — Shiren the Wanderer:
-Serpentcoil Island, and two Touhou Genso Wanderer entries in the full set, all of
-them **leaves at the tail of a series chain**, where every route funnels through
-one neighbour. At `hops + 6` it is 8 and 13 for a three-genre panel (2 and 6 for
-a two-genre one). Confirmed as the floor's doing by re-running at `slack >= 1`,
-where every in-component game qualifies.
+**A handful of Amulets have no route good enough** — 2 in the full catalogue and
+4 in the owned one, against a component of 790 and 458. They are **leaves at the
+tail of a series chain**, where every route funnels through a single neighbour,
+so no floor and no band reaches them. Confirmed as the floor's doing by
+re-running at `slack >= 1`, where every in-component game qualifies.
 
 **None of them is struck off**: §19.9's fallback takes the best route available
 rather than losing the game as a goal, which is exactly why the floor can be set
 for the road's quality rather than for the worst node on the map.
 
-**Serpentcoil Island is the one to know about**, because it is not fixable by
-ownership: owning the entire 882-game catalogue still leaves it one qualifying
-genre at a 4–8 band, short of even a two-card panel. It is a *band* problem — a
-ceiling of 9 clears it on the current library with no purchases — and the cheaper
-answer is an edge in the `connections` sheet out to the wider mystery-dungeon
-cluster rather than only to its own sequels.
+**Serpentcoil Island is the one to know about**, and it is the rule set's hardest
+case. At the agreed rules its best route anywhere is **slack 3** — two under the
+floor — and that holds in the FULL catalogue as well as the owned one, so **no
+amount of buying games fixes it**. A ceiling of 9 clears it on the current
+library with no purchases; the cheaper answer is an edge in the `connections`
+sheet out to the wider mystery-dungeon cluster rather than only to its own
+sequels. Until one of those happens it reaches the board through §19.9's
+fallback, like every other leaf.
 
 **The kinds are laid down AFTER the Amulet and the starts are picked**, onto the
 routes already chosen, and the rest of the map is filled at 60/20/10/10

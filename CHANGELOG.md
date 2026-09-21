@@ -85,26 +85,48 @@ For how the project is laid out and how its systems fit together, see
   guarantee degrades in the corner cases instead of excluding them, placing kinds
   in priority order Event, Shop, second Champion, with the remainder Enemies.
 
-  **A start needs two connections, and both must lead on** (§19.3.1), and the
-  route floor rises to **`hops + 6`**. The two look opposed and are not: more
-  eligible starts means more chances one has a genuinely wide route, so the
-  stricter floor stops biting. `MIN_START_CONNECTIONS` drops 3 → 2, with the
-  condition that a degree-2 game may open a run only if both its neighbours are
-  themselves onward — measured free, since the degree-2 games whose neighbour is
-  a dead end contribute no Amulet coverage the rest of the pool doesn't already
-  provide. Start pool 246 → 419 full, 124 → 207 owned.
+  **A start needs two connections, and both must lead on** (§19.3.1); the route
+  floor becomes **`hops + 5`**; and the panel goes to **three cards over a 4–8
+  band** (§19.3.2). `MIN_START_CONNECTIONS` drops 3 → 2, with the condition that
+  a degree-2 game may open a run only if both its neighbours are themselves
+  onward — measured free, since the degree-2 games whose neighbour is a dead end
+  contribute no Amulet coverage the rest of the pool doesn't already provide.
+  Start pool 246 → 419 full, 124 → 207 owned.
 
-  On the owned catalogue, moving the floor from `hops + 4` to `hops + 6` costs
-  **31** Amulets at `degree ≥ 3` and **10** at `degree ≥ 2` onward. Against the
-  shipping rules the pair trades **9 Amulets for 83 more starts** and a markedly
-  branchier road. `hops + 7` is the cliff (445 → 375) and is why the floor stops
-  at 6.
+  The loosening and the floor look opposed and are not: more eligible starts
+  means more chances one has a genuinely wide route, so the stricter floor stops
+  biting. On the owned catalogue, moving `hops + 4` → `hops + 5` costs **24**
+  Amulets at `degree ≥ 3` and **3** at `degree ≥ 2` onward. `hops + 7` is the
+  cliff (375) and the floor sits two rungs clear of it, because the catalogue
+  grows and these numbers move under the rule.
+
+  **The degree-2 pool fixes Darkest Dungeon on its own**, which corrects an
+  earlier finding in this entry's own working. At `degree ≥ 3` it was one of two
+  owned games that could not field three genres — a hub whose deckbuilder
+  neighbours all sit *inside* the 4-hop floor, so no wider band could reach them,
+  and the answer looked like buying a game. With degree-2 starts admitted it
+  reads Action 11, Traditional 7, Strategy 6: three genres clear outright. The
+  fix was a bigger start pool, not a wider band or a purchase.
+
+  **The third card and the wider band pay for each other.** Three cards want
+  three distinct *distances* as well as genres (`_spread_across_band`), and a
+  four-rung band leaves that preference no room. 4–8 buys +11 full and +12 owned
+  Amulets whose panel can offer three genuinely different run lengths — the soft
+  column, not the hard one, since three genres was already near-universal. It
+  also raises the longest possible run from seven games to eight, each one a real
+  roguelike, so it is a pacing change as much as a graph one.
 
   The two-card opening is accepted rather than solved: `BASE_OFFER_COUNT` is 3
   and the offering draws from the node's neighbours, so a degree-2 start opens
   one card short. The onward condition fixes the quality of those two cards, not
   their number — topping up from two hops out would put a card on the table that
   taking it cannot reach in one move.
+
+  One correction recorded in §19.3: **a fixed slack offset is not a fixed
+  branchiness.** The spares spread over however many middle layers a route has,
+  so at `hops + 5` a 4-hop route offers ~2.3 ways on per step and an 8-hop route
+  ~1.6. An earlier draft claimed the offset scaled so both read alike; it is the
+  reverse, and long routes are the thin ones.
 
   **The budget costs no game its place on the map.** Checked exhaustively —
   every in-component game against every other as a (start, amulet) pair, at both
