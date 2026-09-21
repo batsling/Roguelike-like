@@ -110,6 +110,26 @@ For how the project is laid out and how its systems fit together, see
   spawning" is meant literally, and a rule that quietly cancelled itself on the
   one node where it would hurt most would be the rule not meaning what it says.
 
+  **The band is absolute**: three cards, all inside 4–8, or the Amulet is not
+  used. `pick_amulet_and_starts` today fills a genre-short panel with the best
+  reachable start of that genre at ANY distance (the `in_window: false` path),
+  and that path is retired — an Amulet that would need it is dropped instead. It
+  has no reach limit, so it quietly undoes the run-length ceiling: measured, it
+  would have offered Serpentcoil Island a start at 10 or 11 hops, a twelve-game
+  evening against a stated ceiling of nine. A control that stops applying exactly
+  when it is doing the most work is not a control. A short panel therefore never
+  happens — any Amulet reaching the panel already has its three genres.
+
+  **All four owned exclusions are the band's price, not a map defect.** Measured
+  at every distance rather than only inside the band, each has the genre it is
+  missing, clearing the floor comfortably, just outside 4–8: Dice & Fold slack 10
+  at 3 hops, Ember Knights 9 at 3, Everything is Crab 9 at 3, and Serpentcoil
+  Island Action 21 at 11h / Deckbuilder 17 at 10h / Strategy 15 at 11h. Three are
+  rescued by one hop under the floor, Serpentcoil by two or three over the
+  ceiling. Both are refused, and the refusal is the point — a 3-hop card is a
+  four-game run and an 11-hop card a twelve-game one. Recorded so nobody
+  reintroduces a distance relaxation to "fix" them.
+
   **There is no fallback**, so an Amulet that cannot supply the panel is not
   offered as one — it stays an ordinary node to route through and fight at. An
   earlier draft had it fall back to the best route available; the decision is to

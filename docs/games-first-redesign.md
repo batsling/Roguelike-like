@@ -4654,11 +4654,27 @@ A repeated distance is still the documented fallback, not a failure: 33 owned
 Amulets (458 − 425) field three genres at two distances. The panel keeps its
 three cards.
 
-**A longer ceiling is a longer evening.** Each hop is a real roguelike played
-end to end, so 4–8 raises the longest possible run from seven games to eight, and
-§7.4's pressure ladder (5+ / 3–4 / 2–0 hops) now opens one rung further out. The
-band's position was always the run-length control; widening it is a pacing change
-as much as a graph one.
+**A longer ceiling is a longer evening.** A hop is a *game* — the route is
+`hops + 1` nodes and the run plays one at each, so a 4-hop card is five games and
+an 8-hop card is nine. 4–8 therefore raises the longest possible run from eight
+games to nine, and §7.4's pressure ladder (5+ / 3–4 / 2–0 hops) opens one rung
+further out. The band's position was always the run-length control; widening it
+is a pacing change as much as a graph one.
+
+**AND THE BAND IS ABSOLUTE.** Three cards, all inside 4–8, or the Amulet is not
+used. There is no distance relaxation: `pick_amulet_and_starts` today fills a
+genre-short panel with the best reachable start of that genre at *any* distance
+(the `in_window: false` path), and that path is retired here — an Amulet that
+would need it is dropped instead.
+
+It is retired because it quietly undoes the paragraph above. The relaxation has
+no reach limit, so the card it produces can sit anywhere: measured on the owned
+catalogue, it would have offered Serpentcoil Island a start at **10 or 11 hops**
+— a twelve-game evening, on a rule set whose stated ceiling is nine. A control
+that stops applying exactly when it is doing the most work is not a control.
+
+**So a short panel never happens**: any Amulet that reaches the panel already has
+its three genres, and any that does not is not an Amulet. §19.9 counts the cost.
 
 **THE BUDGET COSTS NO GAME ITS PLACE ON THE MAP**, which is the question to ask
 of any rule that narrows what the run generator may pick. Measured exhaustively
@@ -4983,10 +4999,27 @@ up short.
 
 Only **Serpentcoil Island** cannot field even *two* genres, in either catalogue.
 
+**ALL FOUR ARE THE BAND'S PRICE, NOT A MAP DEFECT**, and this is the thing to
+know before anyone reintroduces a distance relaxation to "fix" them. Measured at
+every distance rather than only inside the band, each of them has the genre it is
+missing, clearing the floor comfortably — just outside 4–8:
+
+| | Missing genre, inside 4–8 | …at its best distance anywhere |
+|---|---|---|
+| Dice & Fold | Strategy, slack 4 | **slack 10 at 3 hops** |
+| Ember Knights | Strategy, slack 4 | **slack 9 at 3 hops** |
+| Everything is Crab | Strategy, slack 4 | **slack 9 at 3 hops** |
+| Serpentcoil Island | nothing clears | Action **21 at 11h**, Deckbuilder **17 at 10h**, Strategy **15 at 11h** |
+
+Three of them are rescued by a single hop under the floor; Serpentcoil by going
+two to three hops over the ceiling. §19.3.2 refuses both, and the refusal is the
+point — a 3-hop card is a four-game run and an 11-hop card is a twelve-game one,
+and the band exists to say what a run is.
+
 The consequence for the sheet: a **leaf** needs an edge reaching *outward*. A
-**one-node-short** game needs no edge at all — it needs the floor at 4, or one
-more Strategy game somewhere 4–8 hops out. Adding another Slay-the-Spire-adjacent
-neighbour helps none of them.
+**one-node-short** game needs no edge at all — it needs the floor at 4, a wider
+band, or one more Strategy game somewhere inside 4–8. Adding another
+Slay-the-Spire-adjacent neighbour helps none of them.
 
 `Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
 still keeps its no-softlock fallback. That one is a player's preference rather
