@@ -75,9 +75,15 @@ For how the project is laid out and how its systems fit together, see
   having become nearly a no-op in that world: against every reference it cuts
   **one game out of 790**, and none in the owned catalogue.
 
-  **The cost was the open question, and it came back at zero.** A generation
+  **The cost was the open question, and it came back below zero.** A generation
   measured 269 ms with three references, 605 ms reading all of them naively, and
-  **270 ms as shipped**. Two things pay for it, and the first is the one the spec
+  **270 ms as shipped**. Back to back on the same machine the full suite went
+  **768.3s → 658.0s** — the new shape is ~14% FASTER, with five more tests in it,
+  because the branching sweeps it retires cost more than the extra references it
+  reads. (The first comparison drawn here was against a 461.9s figure recorded on
+  a quieter box, which read as a large regression and is not one. Suite wall time
+  on this machine is not comparable across sessions; measure both sides in the
+  same one.) Two things pay for it, and the first is the one the spec
   predicted: dropping the slack removes the only reason to compute branching
   scores at all, so a reference now costs one memoized BFS and a walk of its
   result rather than that plus a whole-catalogue `dag_branch_scores_from` sweep.

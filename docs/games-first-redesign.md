@@ -5011,6 +5011,13 @@ they leave the generation exactly where it was.
 | Every eligible start, naively | 605 |
 | Every eligible start, as shipped | **270** |
 
+And the full suite, both sides measured back to back on the same machine, went
+**768.3s → 658.0s** with five more tests in it. The new shape is ~14% *faster*:
+the branching sweeps it retires cost more than the extra references it reads.
+Suite wall time on this box swings widely between sessions — an earlier 461.9s
+reading made this look like a large regression, which it is not — so compare both
+sides in one sitting or not at all.
+
 The first saving is the one the draft predicted: **dropping the slack removes the
 only reason to compute branching scores at all**, so a reference now costs one
 memoized BFS and a walk of its result rather than that plus a whole-catalogue
