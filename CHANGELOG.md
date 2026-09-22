@@ -257,6 +257,51 @@ For how the project is laid out and how its systems fit together, see
   four refusal conditions rather than a bare null: `rollable=false` named it in
   one line after two wrong guesses.
 
+  **KIND MARKS ON EVERY SURFACE THAT DRAWS A NODE** (§19.8, first pass): `!`
+  Enemies, `!!` Champion, `?` Event, `$` Shop. One or two ASCII characters rather
+  than an icon, because they sit on a badge row with 21px of its 160 left and
+  they have to read in a COLUMN — three cards side by side put their marks in a
+  row, and "? ! $" says what the table is offering before a cover has been
+  looked at. ASCII also avoids a `build_glyph_font.py` rebuild.
+  `RunGraph.kind_mark` / `kind_tip` hold the text, `UITheme.kind_color` the
+  colour (RunGraph is the pure graph layer and must not reach into the theme),
+  and `GameChoiceModal` spells the mark out in a sentence — the popup is what a
+  player opens to find out what a card MEANS, so it is the one surface that can
+  afford one.
+
+  **TWO ENEMY OBJECTS CAN SHARE ONE ID, and two intermittents were hiding
+  behind it.** A body's `enemy` is normally Data's own shared resource, which
+  made `==` look safe. It is not: `_plain_goals` (inside `_disarm_board`) hands a
+  body a `duplicate()` to strip a goal's `ticked` and `count`, which it must do
+  for the 21 of 111 bodies authored as `game beaten` or counted. So an identity
+  check against such a body is false for an enemy that IS that enemy.
+
+  That was `test_escaping_advances_the_run_and_the_enemy_follows`, failing about
+  one run in five. It also reaches the product: `_pick_by_type_tier`'s `exclude`
+  and both `fresh == old` guards compared by object — and those are the checks
+  whose stated purpose is *"a die that can hand back the exact goal you spent a
+  charge escaping is a die the player will stop pressing"*. Identity holds in
+  every shipping path today, so this was not a live bug; it would have failed
+  silently the first time one of them stopped serving Data's own object. All
+  three compare ids now, which is what "the same enemy" meant.
+
+  **AND THE OTHER INTERMITTENT IS SOLVED** —
+  `test_the_checklist_follows_a_reroll_of_the_board`, which outlived three
+  attempts and two confident wrong hypotheses (a mid-test tier crossing, a
+  board-bounds leak), both ruled out by probing the board rather than by
+  argument. `reroll_enemies` rolls each body independently, so **two bodies can
+  swap enemies with each other**: a real re-roll, two swaps reported, and the
+  board carrying the pair it started with. The checklist GROUPS by when a goal
+  settles rather than listing the stack in order, so the same two goals in the
+  other order render byte for byte the same. Caught by making the assertion print
+  the swap count and the names: `2 swapped; ["Monkey", "Floating Eye"] ->
+  ["Floating Eye", "Monkey"]`. The test stands ONE body now, where the exclusion
+  guarantees a different enemy. Twelve runs, no failures.
+
+  The lesson worth keeping is the diagnostic rather than the fix: three full runs
+  were spent guessing because the assertion printed two identical blocks of text
+  and nothing else.
+
   **THE ESCORT IS RETIRED** (§19.4, §19.7) — the number survives, the
   relationship does not. An escort was a *companion*: a body attached to the
   game's own enemy, rolled because that enemy had arrived. An Enemies node stands

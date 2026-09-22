@@ -1756,17 +1756,36 @@ func test_the_checklist_lists_the_arrivals_among_the_followers() -> void:
 # alone because it holds tick boxes — so the list went on asking about the bodies
 # that were standing there when the game began. A player who spent a charge to
 # escape a goal they could not do was still being asked to tick that goal.
+# ONE BODY ON THE BOARD, and that is the fix for an intermittent that outlived
+# three attempts to explain it.
+#
+# `reroll_enemies` rolls each body independently, so with TWO bodies up the two
+# can swap enemies WITH EACH OTHER — a real re-roll, two swaps reported, and the
+# board carrying the same pair it started with. The checklist GROUPS by when a
+# goal settles (ReportChecklist._bodies_settled_at_the_end / _bodies_settled_now)
+# rather than listing the stack in order, so the same two goals in the other
+# order render byte for byte the same. Caught in the act:
+#     2 swapped; ["Monkey", "Floating Eye"] -> ["Floating Eye", "Monkey"]
+# The panel was doing its job; "the text changed" was only USUALLY true, about
+# eleven runs in twelve.
+#
+# With one body the exclusion in `_pick_by_type_tier` guarantees the re-roll
+# lands on a DIFFERENT enemy, so a reported swap has to change what the list
+# says. That is the property this test was always about.
 func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	assert_false(GameLoop2.stack.is_empty(), "there is a body to re-roll")
+	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
+	_ui._populate_play_panel()
 	var before: String = _text_of(_ui._verify_box)
 	var names_before: Array = []
 	for entry in GameLoop2.stack:
 		names_before.append((entry["enemy"] as GoalEnemyData).display_name)
-	assert_false(names_before.is_empty(), "there is a body to re-roll")
 	var swapped: int = GameLoop2.reroll_enemies()
 	if swapped <= 0:
-		return                            # nothing else in the bucket to become
+		pending("nothing else in this body's bucket for it to become")
+		return
 	var after: String = _text_of(_ui._verify_box)
 	var names_after: Array = []
 	for entry in GameLoop2.stack:
@@ -6300,9 +6319,15 @@ func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	# gate, and a lost run at a game where nothing has gone down stands bodies of
 	# its own — the escape itself owes nothing, but the failures that bought it
 	# already did. What this test is about is the GOAL-ENEMY following you out.
+	# BY ID, NOT BY OBJECT. `_disarm_board` (inside `_pick_solo` above) replaces a
+	# body's enemy with a `duplicate()` when its goal is `game beaten` or counted
+	# — 21 of the 111 bodies — so identity here failed on roughly one run in five,
+	# on whichever runs happened to roll one of them. It read exactly like the
+	# board losing the enemy and it was the test comparing the wrong thing.
 	var followed := false
 	for entry in GameLoop2.stack:
-		if entry.get("enemy") == wanted:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.id == wanted.id:
 			followed = true
 	assert_true(followed,
 		"its goal-enemy walked onto the board, as a missed goal always does")

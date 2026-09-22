@@ -844,6 +844,7 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
 		"bodies": _bodies_note(choice),
+		"kind": _kind_of(choice),
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
 		"action_tip": "Begin the run here — you go and play this game for real, right now.",
@@ -1288,6 +1289,7 @@ func open_choice(index: int) -> GameChoiceModal:
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
 		"bodies": _bodies_note(choice),
+		"kind": _kind_of(choice),
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -3841,6 +3843,7 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 		"enemy_hidden": _enemy_hidden(_chosen),
 		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
 		"bodies": _bodies_note(_chosen),
+		"kind": _kind_of(_chosen),
 		"arrival": true,
 		"arrival_note": announce,
 		# UNDER everything the game you just left still owes: the haul screen (128),
@@ -4972,6 +4975,12 @@ func _enemy_hidden(choice: Dictionary) -> bool:
 
 func _bodies_note(choice: Dictionary) -> String:
 	return _offering.bodies_note(choice) if _offering != null else ""
+
+# The kind of the node a choice sits on, or -1 when there is no arrival to
+# describe. One question, asked through the offering so the card's mark and the
+# popup's block cannot drift apart.
+func _kind_of(choice: Dictionary) -> int:
+	return _offering.kind_of(choice) if _offering != null else -1
 
 # The Amulet, by name.
 #

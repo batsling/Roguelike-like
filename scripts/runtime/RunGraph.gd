@@ -142,6 +142,37 @@ static func kind_label(kind: int) -> String:
 		NodeKind.SHOP: return "Shop"
 		_: return "Enemies"
 
+# THE MARK A NODE WEARS (§19.8), on every surface that draws one: the offered
+# card, the popup it opens, the 🗺 map and the route ladder.
+#
+# One or two ASCII characters rather than an icon, and that is the point. These
+# sit on a 🗺 map where a node is a dot and on a badge row that fits 139px of a
+# card's 160 at its widest, so anything with width to it would have to displace
+# something already there. Punctuation also reads at a glance in a COLUMN — a
+# route ladder is a stack of nodes, and "! ! ? ! $ !!" says the shape of the road
+# ahead in one line of sight.
+#
+# ASCII deliberately: a new pictograph would need tools/build_glyph_font.py
+# re-run and a Godot re-import, and these four are in every font already.
+static func kind_mark(kind: int) -> String:
+	match kind:
+		NodeKind.EVENT: return "?"
+		NodeKind.CHAMPION: return "!!"
+		NodeKind.SHOP: return "$"
+		_: return "!"
+
+# What the mark MEANS, for the hover behind it. The mark is deliberately terse,
+# so the sentence has to carry what it costs.
+static func kind_tip(kind: int) -> String:
+	match kind:
+		NodeKind.EVENT:
+			return "Event — an event fires the moment you arrive, before you play. No bodies."
+		NodeKind.CHAMPION:
+			return "Champion — a boss of the run's current tier walks on, alone."
+		NodeKind.SHOP:
+			return "Shop — a shelf opens under the board once you have beaten the game. No bodies."
+	return "Enemies — two bodies walk on when you commit to it."
+
 # ---------------------------------------------------------------------------
 # Graph access — `games_influenced` is directed in the .tres files but
 # the HTML build treats it as undirected (you can travel back along

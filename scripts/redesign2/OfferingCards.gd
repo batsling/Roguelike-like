@@ -168,6 +168,17 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	badge_row.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	card.add_child(badge_row)
 
+	# THE KIND MARK (§19.8), first on the row and on EVERY card — which is the
+	# whole reason it is one or two characters of punctuation rather than a word.
+	# What a node does to the board is half of what routing is about, and the
+	# badge row had 21px of its 160 left; a mark this size is the only thing that
+	# fits without displacing the Amulet's flag or the Dash badge.
+	#
+	# Leftmost so the offering can be read DOWN the column: three cards side by
+	# side put their marks in a row, and "? ! $" says what the table is offering
+	# before a single cover has been looked at.
+	badge_row.add_child(_kind_mark_label(choice))
+
 	var flag := Label.new()
 	if amulet:
 		flag.text = "🏆 THE AMULET"
@@ -314,6 +325,41 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 # with a follower stuck to you.
 #
 # Returns null when there's nothing to say, so an unproven card stays clean.
+# The kind mark, as a label. Blank on a stay-or-return card, which MOVES the run
+# rather than committing it to a node — there is no arrival for a kind to
+# describe, and a mark there would be answering a question nobody asked.
+func _kind_mark_label(choice: Dictionary) -> Label:
+	var mark := Label.new()
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.custom_minimum_size = Vector2(0, BADGE_LINE)
+	mark.add_theme_font_size_override("font_size", BADGE_FONT)
+	var kind: int = kind_of(choice)
+	if kind < 0:
+		mark.text = ""
+		return mark
+	mark.text = RunGraph.kind_mark(kind)
+	mark.tooltip_text = RunGraph.kind_tip(kind)
+	mark.add_theme_color_override("font_color", UITheme.kind_color(kind))
+	return mark
+
+# The KIND of the node this choice sits on, or -1 when the choice is not an
+# arrival at all (the stay-or-return pair).
+#
+# Read off the SLOT, never off the game standing on it (§19.2): the kind rides
+# the node, so a transmuted card plays a different game at the same kind. Public
+# because the popup asks the same question and the two must not drift.
+func kind_of(choice: Dictionary) -> int:
+	if choice.is_empty() or choice.has("stay"):
+		return -1
+	var slot := StringName(choice.get("slot", &""))
+	if slot == &"":
+		var game: GameData = choice.get("game")
+		slot = game.id if game != null else &""
+	if slot == &"":
+		return -1
+	return GameState.node_kind(slot)
+
 func beatable_row(choice: Dictionary) -> Control:
 	var game: GameData = choice.get("game")
 	if game == null:
@@ -473,15 +519,10 @@ func bodies_expected(choice: Dictionary) -> int:
 		return -1
 	if Data.all_goal_enemies().is_empty():
 		return -1
-	# THE SLOT, not the game standing on it: the kind rides the node, so a
-	# transmuted card plays a different game at the same kind (§19.2).
-	var slot := StringName(choice.get("slot", &""))
-	if slot == &"":
-		var g: GameData = choice.get("game")
-		slot = g.id if g != null else &""
-	if slot == &"":
+	var kind: int = kind_of(choice)
+	if kind < 0:
 		return -1
-	match GameState.node_kind(slot):
+	match kind:
 		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
 			return 0
 		RunGraph.NodeKind.CHAMPION:

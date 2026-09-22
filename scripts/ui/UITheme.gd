@@ -193,6 +193,22 @@ static func item_color(item: ItemData) -> Color:
 static func item_class_name(item: ItemData) -> String:
 	return item.class_label() if item != null else ""
 
+# The colour a node's kind mark is drawn in (§19.8). Lives here rather than on
+# RunGraph because RunGraph is the pure graph layer and must not reach into the
+# theme; the MARK is there, the colour is here, and every surface reads both.
+#
+# Shop keeps SHOP_GREEN — the same deliberate not-a-gold the hub badge uses, so a
+# shop mark cannot be mistaken for the Amulet's flag. Champion takes DANGER
+# because it is the only kind that stands a boss. Event takes ACCENT, and an
+# ordinary Enemies node takes TEXT_DIM: it is 60% of the map, so its mark is
+# there to be skipped over rather than read.
+static func kind_color(kind: int) -> Color:
+	match kind:
+		RunGraph.NodeKind.EVENT: return ACCENT
+		RunGraph.NodeKind.CHAMPION: return DANGER
+		RunGraph.NodeKind.SHOP: return SHOP_GREEN
+	return TEXT_DIM
+
 static func type_color(i: int) -> Color:
 	return TYPE_COLORS[clampi(i, 0, TYPE_COLORS.size() - 1)]
 

@@ -1577,7 +1577,15 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 	var anything: Array = []
 	var type_tiers: Dictionary = {}    # right type, keyed by tier index
 	for e in pool:
-		if not (e is GoalEnemyData) or e == exclude:
+		# BY ID, NOT BY OBJECT. "The same enemy" means the same id, and nothing
+		# guarantees one object per id at a body: anything that hands a body a
+		# `duplicate()` of its enemy — the test harness strips a goal's `ticked`
+		# and `count` that way — leaves an `exclude` that is equal to nothing in
+		# the pool, so the one thing this argument exists to keep out comes
+		# straight back. Identity happened to hold in the shipping paths, which is
+		# exactly why it would have failed quietly the first time one of them
+		# stopped serving Data's own object.
+		if not (e is GoalEnemyData) or (exclude != null and e.id == exclude.id):
 			continue
 		anything.append(e)
 		var t: int = e.tier_index()
@@ -4090,7 +4098,9 @@ func reroll_enemies() -> int:
 		# "there is nothing else it could be" is the honest answer there.
 		var fresh: GoalEnemyData = _pick_by_type_tier(
 			pool, StringName(String(old.game_type).to_lower()), old.tier_index(), old)
-		if fresh == null or fresh == old:
+		# Again by id: a re-roll that hands back the same enemy as a different
+		# object would count as a swap and change nothing the player can see.
+		if fresh == null or fresh.id == old.id:
 			continue
 		entry["enemy"] = fresh
 		entry["health"] = effective_health(fresh)
@@ -4206,7 +4216,7 @@ func polymorph_instance(instance: int) -> GoalEnemyData:
 	var pool: Array = Data.all_goal_enemies().filter(
 		func(e): return e is GoalEnemyData and not e.is_boss())
 	var fresh: GoalEnemyData = _pick_by_type_tier(pool, &"", old.tier_index(), old)
-	if fresh == null or fresh == old:
+	if fresh == null or fresh.id == old.id:
 		return null
 	entry["enemy"] = fresh
 	entry["health"] = effective_health(fresh)
