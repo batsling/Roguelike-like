@@ -11,6 +11,34 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **§19.8 finished: the strip names what losing costs, and the map shows
+  every node's kind.** The first pass put kind marks on the offered cards and the
+  popup; this one does the other two surfaces the section lists.
+
+  **The battlefield strip** gains two readouts beside `⏱ EXTRA TURNS N`:
+  `☠ +N on a loss` and `boss in N spawns`. The strip already said what handing a
+  game in costs; since §19.5 losing one costs something too, and the two numbers
+  a player needs before trying once more are the bodies it stands up and whether
+  that spawn is the one that lands a boss. When one of §19.5's exemptions applies
+  the price reads `☠ none on a loss` and the hover card names WHICH one (a body
+  went down, an Event or Shop node, the Amulet), because "none" with no reason
+  reads as a bug. The price comes from the new `GameLoop2.failure_price`, which
+  `failure_spawn_count` now answers from too, so the strip cannot drift from the
+  spawn. The count comes from `RunDifficulty.spawns_to_boss`, and a test walks
+  four bands to check it hits 1 exactly when `is_boss_spawn` will fire.
+
+  **The 🗺 map and the route ladder** both draw through `RouteLadder.node_box`,
+  so one change covers both: every rung wears its kind mark in the top-left
+  corner, and the rung's card lists it as a `Kind` fact in words. The mark shows
+  at every zoom, where the other badges drop out on a shrunk rung, because the
+  kind is the one thing on a rung that its colour doesn't already show. It reads
+  the rung's id rather than the game played there (§19.2), the opposite of the
+  🛒 hub badge beside it. That badge stays until §19.7 retires the hubs; until
+  then a hub still sells, so a rung can honestly carry both.
+
+  The fourth bullet (log + notification when a failure spawn lands) was already
+  in `GameLoop2.spawn_for_failure`; the spec now says so.
+
 - **Node kinds and the spawn model — spec only, no code yet
   ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §19).** Two
   changes that only work together. A game on the map is now one of four **kinds**

@@ -4998,18 +4998,39 @@ something they steer now, in both directions.
 
 ### 19.8 Where the player sees it
 
+All four are **DONE**. The marks are one or two ASCII characters — `!` Enemies,
+`!!` Champion, `?` Event, `$` Shop — held by `RunGraph.kind_mark` / `kind_tip`
+and coloured by `UITheme.kind_color`, so every surface below says the same thing
+in the same colour.
+
 - **On every offered card**: the kind, as a badge, beside the route badge and the
   pace note (§4.2). What a card does to the board is part of the same decision as
-  what it does to the distance.
+  what it does to the distance. `GameChoiceModal` spells the mark out in a
+  sentence.
 - **On the battlefield strip** (§7.4): beside `⏱ EXTRA TURNS N`, the failure
   price at this distance and the count to the next boss. The player cannot decide
-  whether one more attempt is worth it without both.
+  whether one more attempt is worth it without both. The price reads
+  `☠ +N on a loss`, or `☠ none on a loss` when one of §19.5's exemptions is
+  buying it off — and the hover names WHICH, since "none" with no reason reads as
+  a bug. It comes from `GameLoop2.failure_price`, the same function
+  `failure_spawn_count` answers from, so the strip cannot promise a price the
+  spawn does not charge. The boss count reads `boss in N spawns`, turning red at
+  `boss on the next spawn` (`RunDifficulty.spawns_to_boss`). Between games the
+  price is hidden: there is nothing in play to lose at.
 - **On the 🗺 map and the route ladder**: the kind of every node drawn, so the
-  road ahead can be routed on.
+  road ahead can be routed on. Both draw through `RouteLadder.node_box`, which
+  puts the mark in the rung's top-left corner at every zoom — unlike the other
+  badges, which drop out on a shrunk rung, because the kind is the one thing on
+  it the colour does not already say. It reads the RUNG's id, not the game played
+  there (§19.2), which is the opposite of the 🛒 hub badge beside it. The rung's
+  card carries it as a `Kind` fact in words.
 - **In the log and a notification** when a failure spawn lands, naming what walked
   on and why — the escort's old notice generalised. A body that appears because of
   something the player did needs saying out loud; it is the one arrival they did
-  not choose.
+  not choose. (`GameLoop2.spawn_for_failure`; the capstone boss says it too.)
+
+**The 🛒 hub badge still stands beside the `$` mark** until §19.7 retires the
+hubs, because until then a hub still sells: a rung can honestly carry both.
 
 ### 19.9 Amulet selection — every start is a reference, and there is no fallback
 

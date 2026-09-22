@@ -2046,6 +2046,40 @@ func test_the_extra_turns_readout_carries_a_hover_card() -> void:
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
 		"Amulet", "and it says WHY the number is what it is")
 
+# §19.8: the strip says what LOSING here costs, beside what handing the game in
+# costs — and how close the next boss is, since a lost run can be the spawn that
+# lands one. Driven through the real price so the strip cannot drift off it.
+func test_the_strip_carries_the_failure_price_and_the_boss_count() -> void:
+	var board: BattlefieldView = _ui._board
+	GameLoop2.game_in_play = true
+	GameLoop2.defeated_this_game = 0
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	board.refresh()
+	var owed: int = GameLoop2.failure_spawn_count()
+	if owed > 0:
+		assert_string_contains(board._spawn_price.text, "+%d" % owed,
+			"the strip names the bodies a loss here stands up")
+	else:
+		assert_string_contains(board._spawn_price.text, "none",
+			"the strip says a loss here costs nothing")
+	assert_true(board._spawn_price.visible, "with a game in play the price is shown")
+	assert_string_contains(board._boss_count.text, "next spawn",
+		"one spawn short of the band, the strip warns the boss is next")
+
+	GameLoop2.defeated_this_game = 1
+	GameState.spawn_events = 0
+	board.refresh()
+	assert_string_contains(board._spawn_price.text, "none",
+		"one body down shuts the tap, and the strip says so")
+	assert_string_contains(board._boss_count.text, "%d spawns" % RunDifficulty.GAMES_PER_TIER,
+		"and a fresh band counts the whole way down")
+	var card: Dictionary = board._pressure_panel.get_meta(HoverCard.META)
+	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
+	assert_string_contains(lines, "went down", "the hover card gives the reason")
+	assert_string_contains(lines, "boss", "and explains the count")
+	GameLoop2.defeated_this_game = 0
+	GameState.spawn_events = 0
+
 # The offering is the one place that gets nothing: the hover line under the cards
 # already says what is waiting, and a popup over three covers being scanned is
 # the noisiest possible way to repeat it.

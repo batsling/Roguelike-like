@@ -97,6 +97,13 @@ static func is_boss_spawn(spawn_events: int) -> bool:
 		return false
 	return spawn_events % GAMES_PER_TIER == 0
 
+# How many MORE spawn events until the next one lands a boss, counting that one:
+# 1 means the very next spawn is the capstone. For the battlefield strip (§19.8),
+# which has to say it before it happens: a player deciding whether to lose one
+# more run here cannot weigh the price without knowing a boss may come with it.
+static func spawns_to_boss(spawn_events: int) -> int:
+	return GAMES_PER_TIER - (maxi(0, spawn_events) % GAMES_PER_TIER)
+
 # --- the battlefield grows with the tier (§7.3) -----------------------------
 #
 # Every tier step widens the board by one COLUMN and one ROW. Low is the base

@@ -254,6 +254,34 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		panel.tooltip_text = "%s — a shop stands here." % name_text \
 			+ ("" if not on_node.is_valid() else " Click for the details.")
 
+	# THE NODE'S KIND (§19.8), top-left beside the cart, so the road ahead can be
+	# routed on: a ladder is a stack of rungs, and "! ? ! $ !!" down one side of it
+	# says the shape of the evening before a name has been read.
+	#
+	# Read off the RUNG's id, never the game played there — the opposite of the
+	# cart above, and for the reason §19.2 gives: the kind rides the node, so a
+	# transmuted spot keeps its kind while it plays a different game.
+	#
+	# Drawn at every zoom, unlike the badges. The name is trimmed on a shrunk rung
+	# anyway, and the kind is the one thing on it the colour does not already say.
+	var kind: int = GameState.node_kind(id)
+	var mark := Label.new()
+	mark.text = RunGraph.kind_mark(kind)
+	mark.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	# White on the three filled rungs, whose name is white for the same reason: a
+	# red `!!` on the Amulet's ember fill, or a grey `!` on you-are-here blue, is
+	# a mark that is there and cannot be seen.
+	mark.add_theme_color_override("font_color", Color.WHITE
+		if (is_current or is_amulet or is_waypoint) else UITheme.kind_color(kind))
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	mark.offset_left = 4.0 + shop_w
+	mark.offset_top = 1
+	mark.name = "KindMark"
+	panel.add_child(mark)
+	var kind_w: float = 6.0 + 5.0 * mark.text.length()
+	panel.tooltip_text = "%s\n%s" % [panel.tooltip_text, RunGraph.kind_tip(kind)]
+
 	# The top-right corner: what you have DONE here, and how many ways there are
 	# on from here.
 	#
@@ -296,7 +324,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	label.text = (prefix if zoom >= 0.62 else "") + name_text
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	# The name keeps clear of the badges rather than running under them.
-	label.offset_left = 4.0 + shop_w
+	label.offset_left = 4.0 + shop_w + kind_w
 	label.offset_right = -(4.0 + badge_w)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -395,6 +423,14 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	for row in cfg.get("facts", []):
 		if row is Array and (row as Array).size() >= 2:
 			facts.add_child(card_fact(String(row[0]), String(row[1])))
+	# The kind in words, beside the rung's mark (§19.8) — the card is what a player
+	# opens to find out what a node MEANS, so it spells out what the mark abbreviates.
+	var kind_row := card_fact("Kind", "%s  %s" % [
+		RunGraph.kind_mark(GameState.node_kind(id)), RunGraph.kind_label(GameState.node_kind(id))])
+	kind_row.tooltip_text = RunGraph.kind_tip(GameState.node_kind(id))
+	(kind_row.get_child(1) as Label).add_theme_color_override("font_color",
+		UITheme.kind_color(GameState.node_kind(id)))
+	facts.add_child(kind_row)
 	# The same number the rung's ⛓ badge carries and the Atlas's card calls
 	# "Connections", spelled out in the same words on all three.
 	var links: int = RunGraph.open_degree(id)
