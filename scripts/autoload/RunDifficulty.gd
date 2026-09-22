@@ -66,27 +66,36 @@ static func tier_for(spawn_events: int) -> int:
 	var tier: int = spawn_events / GAMES_PER_TIER
 	return mini(tier, MAX_TIER)
 
-# --- where the bosses stand in that ladder (§7.1) ---------------------------
+# --- where the bosses stand in that ladder (§7.1, §19.6) --------------------
 #
-# THE BOSS IS THE LAST GAME OF ITS OWN TIER BAND. A band is GAMES_PER_TIER games:
-# the first of them are ordinary enemies at that tier, the last is the boss that
-# closes it — Low, Low, LOW BOSS | Medium, Medium, MEDIUM BOSS | and so on, the
-# Insane band repeating once the ladder caps.
+# EVERY THIRD SPAWN EVENT PUTS A BOSS ON THE BOARD, on top of whatever else was
+# spawning. `spawn_events` is the count INCLUDING the one just taken, so this
+# answers "did that spawn close a band".
 #
-# `games_played` is what has ALREADY been played, so this answers "is the game
-# about to be chosen a boss": the offering for encounter N asks with N - 1, and
-# every third encounter comes back true.
+# It replaces `is_boss_game`, which counted GAMES: the boss was the last game of
+# its own tier band, rolled onto the offering as the card's own enemy. Three
+# things change with the counter.
 #
-# IT USED TO BE THE GAME THAT CROSSED THE GATE (`games_played % GAMES_PER_TIER
-# == 0`, guarded against 0), which put the boss BETWEEN two bands rather than
-# inside one. That made the opening band four games long where every later band
-# was three, and the first boss landed on encounter 4. It also forced the tier
-# read to special-case a boss, since the plain formula already reads the NEXT
-# tier on a crossing — a boss inside its band just takes `tier_for`.
-static func is_boss_game(games_played: int) -> bool:
-	if games_played < 0:
+#   * A game that lands nothing — an Event or a Shop node — no longer brings the
+#     capstone a step closer. Bosses now arrive because the run has been
+#     fighting, which is the same sentence the tier ladder started telling.
+#   * A FAILURE SPAWN CAN BE THE THIRD ONE, so a boss walks on mid-game, off a
+#     lost run. A boss takes no bomb damage and leaves only by its goal (§7.1),
+#     which makes this the sharpest thing in §19 — and it is aimed squarely at
+#     the player who keeps losing without ever clearing a body.
+#   * A CHAMPION NODE CAN BE THE THIRD ONE TOO, for two bosses. The rules compose
+#     rather than absorbing each other: the Champion lands its boss and the
+#     capstone lands another on top. "On top of whatever else was spawning" is
+#     meant literally, and a rule that quietly cancelled itself on the one node
+#     where it would hurt most would be the rule not meaning what it says.
+#
+# The boss is no longer a CARD, which is the retirement half. It does not ride
+# the offering, so nothing has to special-case the tier read for it and the
+# player does not choose which game the boss is attached to.
+static func is_boss_spawn(spawn_events: int) -> bool:
+	if spawn_events <= 0:
 		return false
-	return games_played % GAMES_PER_TIER == GAMES_PER_TIER - 1
+	return spawn_events % GAMES_PER_TIER == 0
 
 # --- the battlefield grows with the tier (§7.3) -----------------------------
 #

@@ -263,6 +263,20 @@ func _reboot(character_id: StringName) -> void:
 # node about to be picked and leaves the rest of the map as the run dealt it, so
 # the run-start assertions above still read a real distribution. Tests that are
 # ABOUT a kind set the kind themselves and call `_ui.pick` directly.
+# Hold the ladder away from a band boundary, so the next few spawns cannot be
+# the every-third-spawn capstone (§19.6).
+#
+# Tests that COUNT BODIES need this. A capstone is a real extra body standing on
+# the board, so without it the count depends on how many games the test happened
+# to play before the one it is about — which reads as a flake and is not one.
+# Tests that are ABOUT the capstone arrange the opposite (`_force_boss_due`).
+#
+# Zero rather than some offset: it buys GAMES_PER_TIER - 1 quiet spawns, which is
+# every counting test in this file, and it says plainly that the ladder is being
+# parked rather than nudged.
+func _quiet_ladder() -> void:
+	GameState.spawn_events = 0
+
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
 		var game: GameData = _ui._choices[idx]["game"]
@@ -704,6 +718,9 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
 	# checkbox: it should be defeated (and drop) before it can hit (§2).
+	# The ladder is parked first: this counts bodies across two games, and the
+	# third spawn event of a run lands a capstone boss on top of them (§19.6).
+	_quiet_ladder()
 	_pick_enemies(0)
 	# DISARMED BEFORE THE MISS. This test counts bodies on the board across two
 	# reports, and a report is the enemies' turn: a spawner ability (Carcass lays
@@ -1470,14 +1487,20 @@ func test_scramble_needs_a_charge_and_the_select_phase() -> void:
 	assert_false(_ui.scramble(), "you can't reroll a game you're already playing")
 	assert_eq(GameState.scramble, 1, "a refused scramble is not spent")
 
-func test_boss_round_closes_the_tier_band() -> void:
-	# The LAST game of a band is the boss round — games_played is the count already
-	# played, so the band's last game is the one standing at GAMES_PER_TIER - 1.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# THE OFFERING DEALS NO BOSSES ANY MORE (§19.6). The capstone is every third
+# SPAWN EVENT and lands on the board on top of whatever else was spawning, so no
+# card advertises one — not even on the band's last spawn, which is exactly the
+# case that used to turn every card into a boss.
+func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the last game of a tier band is a boss round")
+	assert_true(_ui._boss_due_next(), "the next spawn closes the band")
 	for c in _ui._choices:
-		assert_true(bool(c["boss"]), "every boss-round choice spawns a boss")
+		assert_false(bool(c["boss"]), "no card advertises a boss")
+		var e: GoalEnemyData = c["enemy"]
+		if e != null:
+			assert_false(e.is_boss(),
+				"%s is an ordinary enemy; the boss comes with the spawn" % e.display_name)
 
 # THE WHOLE LADDER IN ONE TABLE, encounter by encounter. Two ordinary enemies at a
 # tier and then the boss that closes the band, every band the same three games:
@@ -1510,9 +1533,12 @@ func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 		GameState.spawn_events = i
 		assert_eq(_ui._current_tier(), int(want[i]),
 			"encounter %d is %s" % [encounter, RunDifficulty.tier_name(int(want[i]))])
-		assert_eq(_ui._is_boss_round(), encounter % 3 == 0,
-			"encounter %d %s a boss round" % [encounter,
-				"is" if encounter % 3 == 0 else "is not"])
+		# …and the capstone reads the SAME counter now. `_boss_due_next` asks about
+		# the spawn ahead rather than the game behind, so it is true one step
+		# earlier: standing at 2 spawns, the next one closes the band.
+		assert_eq(_ui._boss_due_next(), (i + 1) % 3 == 0,
+			"at %d spawns, the next %s the band" % [i,
+				"closes" if (i + 1) % 3 == 0 else "does not close"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -3860,20 +3886,28 @@ func _texture_rects_under(node: Node) -> Array:
 	return out
 
 func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1   # the band's last game
-	_ui._build_choices()
-	assert_true(_ui._boss_round, "this selection is the boss round")
+	# A CHAMPION NODE is where a boss comes from now (§19.1) — the offering deals
+	# none, so there is no boss round to stand on.
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
 		"nothing is following yet, so no portraits on the list")
-	_pick_enemies(0)
+	var champion: GameData = _ui._choices[0]["game"]
+	GameState.node_kinds[champion.id] = RunGraph.NodeKind.CHAMPION
+	_ui.pick(0)
+	var stood: GoalEnemyData = GameLoop2.stack[0]["enemy"] if not GameLoop2.stack.is_empty() else null
+	if stood == null or not stood.is_boss():
+		pending("no boss in the roster for this type/tier")
+		return
 	# DISARMED, because this test is about the SCREEN and not about abilities
 	# (CLAUDE.md). `with_art` is counted before the report and asserted again
 	# after it, and since §7.6 a body's turn can ADD a body to the board — a
 	# spawner between the two assertions makes the second one count a portrait the
 	# first could not have known about. Seen: 3 where 2 was counted.
 	_disarm_board()
-	var boss: GoalEnemyData = _ui._chosen["enemy"]
-	assert_true(boss.is_boss(), "the boss round spawned a boss")
+	# The CHAMPION's body, not the card's advertised enemy: a Champion node rolls
+	# its boss at commit time (§19.1), so `_chosen["enemy"]` is still the ordinary
+	# enemy the offering dealt.
+	var boss: GoalEnemyData = stood
+	assert_true(boss.is_boss(), "a Champion node stood a boss up")
 	if boss.image == null:
 		return                                # this boss ships without art
 	# One portrait per body carrying art — a boss round stands its own escort
@@ -4393,35 +4427,43 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 	for c in _ui._choices:
 		assert_ne(c["slot"], bashed_id, "bashed game not re-offered")
 
-func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
-	# The boss is tied to where the run stands in its tier band, not to the game:
-	# you may bash the offered game, but whatever backfills the slot still spawns
-	# a boss.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# A BASH DOES NOT DODGE THE CAPSTONE, and it no longer could: the boss rides the
+# SPAWN EVENT rather than the card (§19.6), so whichever game backfills the slot,
+# the third spawn still closes the band. This used to be a claim about every
+# remaining CHOICE carrying a boss; it is a claim about the board now.
+func test_bashing_does_not_dodge_the_capstone() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.bash = 1
 	_ui._build_choices()
 	var idx: int = _first_bashable()
 	var bashed_id: StringName = _ui._choices[idx]["slot"]
 	_ui.bash_choice(idx)
-	assert_eq(GameState.bash, 0, "bash is allowed on a boss round")
+	assert_eq(GameState.bash, 0, "bash is allowed with a capstone due")
 	assert_true(GameLoop2.is_bashed(bashed_id), "the game was destroyed")
-	assert_true(_ui._boss_round, "still a boss round after bashing")
-	for c in _ui._choices:
-		assert_true(bool(c["boss"]), "every remaining choice still spawns a boss")
+	assert_true(_ui._boss_due_next(), "and the band still closes on the next spawn")
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
 
-func test_transmute_on_boss_round_still_faces_a_boss() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+
+func test_transmuting_does_not_dodge_the_capstone() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.transmute = 1
 	_ui._build_choices()
 	if _ui._choices.size() < 2:
-		pass_test("graph too sparse for an off-map transmute target")
+		pending("graph too sparse for an off-map transmute target")
 		return
-	var slot: StringName = _ui._choices[0]["slot"]
 	_ui.transmute_choice(0)
-	# The slot's game may have been swapped for an off-graph game...
-	for c in _ui._choices:
-		if c["slot"] == slot:
-			assert_true(bool(c["boss"]), "the transmuted game still spawns a boss")
+	assert_true(_ui._boss_due_next(), "a transmute does not move the counter")
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
+
+
+func _a_boss_is_standing() -> bool:
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			return true
+	return false
 
 # --- helpers for the sections below ---------------------------------------
 
@@ -6854,15 +6896,21 @@ func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
 # The boss round is a popup, not a strip that shoves the page down
 # ---------------------------------------------------------------------------
 
-func _force_boss_round() -> void:
-	# A boss CLOSES its tier band: it is the band's last game, so it lands on the
-	# offering drawn once GAMES_PER_TIER - 1 games of that band have been played.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# Park the run one SPAWN EVENT short of the capstone, so the next thing that
+# lands bodies closes the band (§19.6).
+#
+# It used to set `games_played` and assert `_boss_round`, back when the boss rode
+# the offering as a card's own enemy. The capstone lands on the BOARD now and
+# belongs to the spawn, so the warning asks about the next one rather than about
+# the cards — and an Event or a Shop node, spawning nothing, does not bring it
+# closer.
+func _force_boss_due() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the next offering closes the tier band")
+	assert_true(_ui._boss_due_next(), "the next spawn closes the tier band")
 
-func test_a_boss_round_announces_itself_in_a_popup() -> void:
-	_force_boss_round()
+func test_a_coming_capstone_announces_itself_in_a_popup() -> void:
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	assert_not_null(_ui._boss_notice, "the warning is a popup")
 	_ui._boss_notice.close()
@@ -6872,17 +6920,18 @@ func test_a_boss_round_announces_itself_in_a_popup() -> void:
 # portraits open the same card the battlefield opens, so "what does it want and
 # what does it hit for" is answered where the question is asked.
 func test_the_boss_warning_opens_a_card_on_the_boss_you_click() -> void:
-	_force_boss_round()
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var notice = _ui._boss_notice
 	assert_not_null(notice, "the warning is up")
-	var boss: GoalEnemyData = null
-	for c in _ui._choices:
-		if c["enemy"] is GoalEnemyData and c["enemy"].is_boss():
-			boss = c["enemy"]
-			break
+	# ROLLED HERE rather than read off the cards. The offering deals no bosses any
+	# more (§19.6) — the capstone lands on the board when the spawn closes the
+	# band, so there is no advertised boss to pick out of `_choices`. What the
+	# notice can still do is open a card on a boss, and that is what this is about.
+	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
 	if boss == null:
-		return                     # no boss art in the roster to read
+		pending("no boss in the roster to read")
+		return
 	var card = notice.inspect_boss(boss)
 	assert_not_null(card, "the portrait opens a card")
 	assert_eq(card.get_parent(), notice,
@@ -6894,7 +6943,7 @@ func test_the_boss_warning_opens_a_card_on_the_boss_you_click() -> void:
 # the verbs that are aimed at one — Push and Bomb take an instance, and there
 # isn't one until the game is picked.
 func test_a_boss_read_off_the_warning_is_read_only() -> void:
-	_force_boss_round()
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var notice = _ui._boss_notice
 	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
@@ -6916,15 +6965,15 @@ func _buttons_under(node: Node) -> Array:
 		out.append_array(_buttons_under(child))
 	return out
 
-func test_the_boss_warning_opens_once_for_the_round() -> void:
-	_force_boss_round()
+func test_the_boss_warning_opens_once_for_the_band() -> void:
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var first = _ui._boss_notice
 	first.close()
 	# A scramble / bash redraws the offering; the warning must not come back with it.
 	_ui._build_choices()
 	_ui._maybe_announce_boss()
-	assert_null(_ui._boss_notice, "the same round warns once")
+	assert_null(_ui._boss_notice, "the same band warns once")
 
 # ---------------------------------------------------------------------------
 # The screen a game ends on (PostCombatScreen)
@@ -7389,25 +7438,24 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 # The boss warning is a banner on this screen rather than a sixth popup — a boss
 # round is announced between two games, and this screen is what stands between
 # them. Marking the round announced here is what stops the popup saying it again.
-func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
-	# A REAL boss round, arranged rather than injected: the report rebuilds the
-	# offering (and with it `_boss_round`) before the screen is built, and the
-	# resolve can land instantly now (§7.4), so there is no gap to set the flag in.
-	# Two games short of the band's last game, so REPORTING this one is what puts
-	# the run on the boss round the haul screen has to warn about.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 2
+func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
+	# A REAL one, arranged rather than injected. Two spawn events short, so the
+	# PICK below is what leaves the run one spawn from the capstone the haul
+	# screen has to warn about — the counter moves on the arrival now (§19.6), not
+	# on the report.
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 2
 	_ui._build_choices()
 	_pick_enemies(0)
 	_ui._boss_notice_for = -1
 	_report_beat(_ui)
-	assert_true(_ui._boss_round, "the game just played put the run on a boss round")
+	assert_true(_ui._boss_due_next(), "the run is one spawn from closing the band")
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
 	if screen == null:
 		return
-	assert_eq(_ui._boss_notice_for, GameState.games_played,
-		"the round is marked announced by the screen")
+	assert_eq(_ui._boss_notice_for, GameState.spawn_events,
+		"the band is marked announced by the screen")
 	_leave_post_game()
 	_dismiss_event()
 	_ui._maybe_announce_boss()

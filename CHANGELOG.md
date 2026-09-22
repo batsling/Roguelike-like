@@ -257,6 +257,46 @@ For how the project is laid out and how its systems fit together, see
   four refusal conditions rather than a bare null: `rollable=false` named it in
   one line after two wrong guesses.
 
+  **EVERY THIRD SPAWN EVENT PUTS A BOSS ON THE BOARD** (§19.6), on top of
+  whatever else was spawning — replacing `RunDifficulty.is_boss_game`'s
+  every-third-GAME capstone, which rode the offering as a card's own enemy.
+  `is_boss_spawn` counts the same band width; what it counts changed, and three
+  things follow.
+
+  A node that lands nothing — an Event or a Shop — no longer brings the capstone
+  a step closer, so bosses arrive because the run has been fighting. **A failure
+  spawn can be the third one**, so a boss walks on mid-game off a lost run: it
+  takes no bomb damage and leaves only by its goal (§7.1), which makes it the
+  sharpest thing in §19 and aims it squarely at the player who keeps losing
+  without ever clearing a body. And **a Champion node can be the third one too,
+  for two bosses** — the rules compose rather than absorbing each other, because
+  a rule that quietly cancelled itself on the one node where it would hurt most
+  would be the rule not meaning what it says.
+
+  The capstone is deliberately NOT a spawn event of its own. It belongs to the
+  event that triggered it; counting it would make every third event count double
+  and the ladder run away from the rule describing it.
+
+  **`_boss_round` is retired**, and with it the boss card. The offering deals no
+  bosses, so `_slot_enemy_key` stops carrying the flag, the teleport path stops
+  re-deciding it, and the saved view-state key is read for old saves and no
+  longer written. The warning survives, repointed: `_boss_due_next` asks whether
+  the NEXT spawn closes the band — one step ahead of the counter rather than one
+  behind it — and is keyed on `spawn_events`, so a bash, transmute or scramble
+  redrawing the offering cannot re-announce the same band. It shows no portraits
+  now, which is honest: the capstone is rolled when it lands, so there is no
+  named body to show in advance.
+
+  **The test rewrite is most of this change.** Six tests were about a mechanism
+  that no longer exists, and were re-pointed rather than deleted: the bash and
+  transmute pair now assert that neither dodges the capstone (which is true by
+  construction, since it rides the spawn), the portrait test takes its boss from
+  a Champion node, and the warning tests roll their own boss to inspect. A new
+  `_quiet_ladder` helper parks the counter for the tests that COUNT BODIES — the
+  third spawn of a run lands a capstone on top of them, so without it the count
+  depends on how many games the test happened to play first, which reads as a
+  flake and is not one.
+
   **AND THE ENEMIES YOU GET FOR NOT FIGHTING** (§19.5). Every failure at a game
   where nothing has been defeated spawns bodies — on a lost run, landing with the
   tick, and at a game handed in with nothing down whether the goal was met or

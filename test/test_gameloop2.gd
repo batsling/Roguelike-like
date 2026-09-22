@@ -2545,3 +2545,76 @@ func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> voi
 	assert_gt(landed, 1, "the doorstep lands more than one body")
 	assert_eq(GameState.spawn_events, before + 1,
 		"…and they are one spawn EVENT between them (§19.6)")
+
+# ---------------------------------------------------------------------------
+# The every-third-spawn capstone (§19.6)
+# ---------------------------------------------------------------------------
+#
+# A boss on top of whatever else was spawning, replacing the every-third-GAME
+# boss round. The composition is the part worth pinning: it does not absorb the
+# spawn that triggered it, and it does not cancel itself on a Champion.
+
+func test_the_third_spawn_event_lands_a_boss_on_top() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.game_in_play = true
+	var before: int = GameLoop2.stack_size()
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_true(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"that spawn closed the band")
+	if GameLoop2.stack_size() == before:
+		pending("no boss in the roster for this type/tier")
+		return
+	var found := false
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			found = true
+	assert_true(found, "and a boss is standing on the board because of it")
+
+
+# The capstone belongs to the event that triggered it rather than being one of
+# its own — counting it would make every third event count double and the ladder
+# run away from the rule that describes it.
+func test_the_capstone_is_not_a_spawn_event_of_its_own() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.game_in_play = true
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_eq(GameState.spawn_events, RunDifficulty.GAMES_PER_TIER,
+		"one event happened, whatever it put on the board")
+
+
+func test_an_ordinary_spawn_lands_no_boss() -> void:
+	GameState.spawn_events = 0
+	GameLoop2.game_in_play = true
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_false(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"the first spawn does not close a band")
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		assert_false(e != null and e.is_boss(),
+			"nothing put a boss up on an ordinary spawn")
+
+
+# A FAILURE SPAWN CAN BE THE THIRD ONE, so a boss walks on mid-game off a lost
+# run. It takes no bomb damage and leaves only by its goal (§7.1), which makes
+# this the sharpest thing in §19 — and it is aimed at the player who keeps losing
+# without ever clearing a body.
+func test_a_failure_spawn_can_be_the_one_that_closes_the_band() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	if GameLoop2.spawn_for_failure() == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_true(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"the failure closed the band")
+	var bosses := 0
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			bosses += 1
+	if bosses == 0:
+		pending("no boss in the roster for this type/tier")
+		return
+	assert_eq(bosses, 1, "a boss walked on off a lost run, on top of the failure's own bodies")

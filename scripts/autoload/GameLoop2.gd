@@ -1705,7 +1705,7 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# and a Champion node each count once, and an Event or a Shop node never
 	# reaches here at all — see begin_bodiless_game.
 	if is_arrival:
-		note_spawn_event()
+		note_spawn_event(escort_type, escort_tier)
 	loop_changed.emit()
 	return inst
 
@@ -1720,9 +1720,39 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 # so holding the board at its old size until the report would crowd new bodies
 # onto a grid the rule says has already grown — the one state §7.3's off-grid
 # queue exists to avoid rather than to absorb.
-func note_spawn_event() -> void:
+func note_spawn_event(type_key: StringName = &"", tier: int = -1) -> void:
 	GameState.spawn_events += 1
 	sync_grid_bounds()
+	if RunDifficulty.is_boss_spawn(GameState.spawn_events):
+		_land_capstone_boss(type_key, tier)
+
+# THE EVERY-THIRD-SPAWN CAPSTONE (§19.6): a boss, on top of whatever else this
+# spawn event was already putting down.
+#
+# It does not call note_spawn_event itself, and that is not an oversight. A
+# capstone is not a spawn event of its own — it is part of the one that triggered
+# it — and counting it would make every third event count double and the ladder
+# accelerate away from the rule that describes it.
+#
+# `type_key` is the game the spawn belongs to, passed down rather than read off
+# GameState, because an arrival commits the board before the run has finished
+# travelling and "where the player is standing" is briefly the game they left.
+# Empty falls back to the current game, which is right for a failure spawn.
+func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
+	var key: StringName = type_key
+	if key == &"":
+		key = game_type_key(Data.get_game(GameState.current_game_id))
+	var boss: GoalEnemyData = roll_boss(key, tier if tier >= 0 else RunDifficulty.current_tier())
+	if boss == null:
+		return          # an empty boss roster: the band closes without one
+	if spawn_to_stack(boss) <= 0:
+		return
+	# NOT an arrival, for the same reason a failure spawn is not one: it did not
+	# come with the game, so a Scramble must not be able to scrub it off.
+	var msg: String = "%s closes the band — a boss walks on." % boss.display_name
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
+	loop_changed.emit()
 
 # --- the enemies you get for not fighting (§19.5) ---------------------------
 #
@@ -1802,7 +1832,7 @@ func spawn_for_failure(escaped: bool = false) -> int:
 		# ONE spawn event for the failure, not one per body (§19.6) — and it can
 		# be the step that crosses a tier band with the game still in play, which
 		# is the whole reason the board grows at the spawn.
-		note_spawn_event()
+		note_spawn_event(type_key, tier)
 		loop_changed.emit()
 	return landed
 

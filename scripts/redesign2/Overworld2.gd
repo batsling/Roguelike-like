@@ -104,7 +104,11 @@ var _start_options: Array = []
 # scramble, or a difficulty-tier change (see _build_choices).
 var _slot_enemies: Dictionary = {}
 var _slot_enemy_key: String = ""
-var _boss_round: bool = false
+# Retired with §19.6's capstone: there is no such thing as a boss ROUND any more.
+# The offering deals no bosses, so nothing about the cards depends on it; what
+# replaced it is `_boss_due_next`, a question about the next SPAWN. The saved
+# view-state key is still read so a run written before this loads without
+# complaining, and is no longer written.
 var _phase: int = Phase.SELECT
 var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
 # Scramble (§4) reroll counter. The offering is drawn in a STABLE position-seeded
@@ -996,7 +1000,6 @@ func capture_view_state() -> Dictionary:
 		"start_options": starts,
 		"choices": choices,
 		"chosen": _serialize_choice(_chosen),
-		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
 		"dashed_here": _dashed_here,
 		"scramble_salt": _scramble_salt,
@@ -1076,7 +1079,6 @@ func restore_view_state(view: Dictionary) -> void:
 		if not restored.is_empty():
 			_choices.append(restored)
 	_chosen = _deserialize_choice(view.get("chosen", {}))
-	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
 	_dashed_here = bool(view.get("dashed_here", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
@@ -1112,7 +1114,7 @@ func restore_view_state(view: Dictionary) -> void:
 	# The enemies behind the restored cards are the saved ones, so seed the slot
 	# cache with them — otherwise the next repaint would roll new ones.
 	_slot_enemies.clear()
-	_slot_enemy_key = "%s|%d|%s" % [_offer_seed(), _current_tier(), str(_boss_round)]
+	_slot_enemy_key = "%s|%d" % [_offer_seed(), _current_tier()]
 	for c in _choices:
 		var cg: GameData = c["game"]
 		_slot_enemies["%s>%s" % [String(c["slot"]), String(cg.id)]] = c["enemy"]
@@ -2748,8 +2750,9 @@ func _open_post_game() -> void:
 	# what stops the popup arriving afterwards to say it again.
 	var boss_tier: String = ""
 	var bosses: Array = []
-	if _boss_round and not GameLoop2.run_over and _boss_notice_for != GameState.games_played:
-		_boss_notice_for = GameState.games_played
+	if _boss_due_next() and not GameLoop2.run_over \
+			and _boss_notice_for != GameState.spawn_events:
+		_boss_notice_for = GameState.spawn_events
 		boss_tier = RunDifficulty.tier_name(_current_tier())
 		for choice in _choices:
 			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
@@ -3311,12 +3314,12 @@ const SHOP_HINT_REVEAL := 60.0
 # report, and a warning that reopened on each of those would be a warning the
 # player learns to click through.
 func _maybe_announce_boss() -> void:
-	var due: bool = _phase == Phase.SELECT and _boss_round and not GameLoop2.run_over \
-		and _boss_notice_for != GameState.games_played and _boss_notice == null
+	var due: bool = _phase == Phase.SELECT and _boss_due_next() and not GameLoop2.run_over \
+		and _boss_notice_for != GameState.spawn_events and _boss_notice == null
 	if not due:
 		_finish_pending_detour()
 		return
-	_boss_notice_for = GameState.games_played
+	_boss_notice_for = GameState.spawn_events
 	var bosses: Array = []
 	for choice in _choices:
 		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
@@ -3763,15 +3766,14 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	GameState.set_current_game(dest)
 	var type_key: StringName = GameLoop2.game_type_key(game)
 	var tier: int = _current_tier()
-	# A boss round is a fact about the RUN, not about how you got to the game, so a
-	# teleport that lands on one still meets a boss. Anything else would make the
-	# scroll a way of skipping them.
-	_boss_round = _is_boss_round()
-	var enemy: GoalEnemyData = GameLoop2.roll_boss(type_key, tier) if _boss_round \
-		else GameLoop2.roll_enemy(type_key, tier)
+	# A TELEPORT IS NOT A WAY PAST THE BOSSES, and it no longer has to be said
+	# here. The capstone is every third SPAWN EVENT (§19.6) and lands on the board
+	# from `GameLoop2.note_spawn_event`, so arriving by scroll counts exactly like
+	# arriving on foot — this path stopped having a boss decision to make.
+	var enemy: GoalEnemyData = GameLoop2.roll_enemy(type_key, tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
-		"boss": _boss_round, "amulet": dest == GameState.amulet_game_id,
+		"boss": false, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
 	_begin_game(game, enemy, tier)
@@ -4296,8 +4298,21 @@ func show_completed_goals() -> CompletedGoalsPanel:
 # the same three games and the first boss is encounter 3, which is the whole of
 # what makes the climb quicker: encounter 4 is a Medium enemy where it used to be
 # the Low boss, and every rung after it arrives one game sooner.
-func _is_boss_round() -> bool:
-	return RunDifficulty.is_boss_game(GameState.games_played)
+# WHETHER THE NEXT SPAWN CLOSES THE BAND (§19.6) — which is what the warning is
+# for, since it has to arrive while the player can still decide something.
+#
+# It used to ask `is_boss_game(games_played)`: "is the game about to be chosen a
+# boss round", back when the boss rode the offering as a card's own enemy. The
+# capstone lands on the BOARD now and belongs to the spawn rather than to the
+# game, so the question is one step ahead of the counter rather than one behind
+# it — and an Event or a Shop node, which spawns nothing, does not bring it
+# closer.
+#
+# Keyed on `spawn_events` rather than `games_played` everywhere it is used, so a
+# bash, a transmute or a scramble redrawing the offering cannot re-announce the
+# same band.
+func _boss_due_next() -> bool:
+	return RunDifficulty.is_boss_spawn(GameState.spawn_events + 1)
 
 # The difficulty tier of the CURRENT offering — the plain ladder, for a boss round
 # exactly as for any other.
@@ -4447,13 +4462,16 @@ func _build_choices() -> void:
 	# than cached for the run — the amulet and the game filter both outlive a
 	# single draw, and neither is this screen's to assume.
 	_rebuild_amulet_distances()
-	_boss_round = _is_boss_round()
 	var tier: int = _current_tier()
 	# The enemy behind a slot is remembered for as long as the offering itself
 	# stands, so re-drawing the cards (a bash refilling a slot, a transmute swapping
 	# one) leaves the OTHER cards' enemies exactly as they were. Moving, scrambling
 	# or crossing a difficulty gate is what re-rolls them.
-	var enemy_key: String = "%s|%d|%s" % [_offer_seed(), tier, str(_boss_round)]
+	# THE BOSS IS NO LONGER PART OF THIS KEY, because a boss is no longer a card
+	# (§19.6). It used to read `_boss_round`, so crossing the every-third-GAME
+	# capstone re-rolled every slot's enemy into a boss; the capstone is every
+	# third SPAWN EVENT now and lands on the board rather than on the offering.
+	var enemy_key: String = "%s|%d" % [_offer_seed(), tier]
 	if enemy_key != _slot_enemy_key:
 		_slot_enemies.clear()
 		_slot_enemy_key = enemy_key
@@ -4466,11 +4484,16 @@ func _build_choices() -> void:
 		var slot_key: String = "%s>%s" % [String(gid), String(game.id)]
 		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
 		if enemy == null:
-			enemy = GameLoop2.roll_boss(type_key, tier) if _boss_round else GameLoop2.roll_enemy(type_key, tier)
+			enemy = GameLoop2.roll_enemy(type_key, tier)
 			_slot_enemies[slot_key] = enemy
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
-			"boss": _boss_round, "amulet": gid == amulet,
+			# `boss` stays on the record and is always false now: a Champion node
+			# stands a boss (§19.1) and the capstone spawns one, but neither is the
+			# card's advertised enemy. Kept because the card, the modal and the
+			# checklist all read it, and a key that vanishes reads as a bug rather
+			# than as a rule.
+			"boss": false, "amulet": gid == amulet,
 			# Judged on the GAME, not the slot: a transmuted card plays the
 			# replacement game, so that's the clear the Dash bonus keys off.
 			"repeat": GameState.has_played_game(game.id),
