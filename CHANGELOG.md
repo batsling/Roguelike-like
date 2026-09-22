@@ -222,6 +222,40 @@ For how the project is laid out and how its systems fit together, see
   depends on, because the verdict re-runs on every keystroke in the target search
   and costs a graph rebuild on each side.
 
+  **THE KIND NOW DECIDES WHAT STANDS ON THE BOARD** (§19.1). Committing a game
+  goes through `Overworld2._commit_board_for_kind`: an Enemies node stands two
+  bodies as before, a Champion stands one boss and nothing beside it,
+  and an Event or a Shop stands none at all. `GameLoop2.choose_game` takes a
+  `with_escort` flag for the Champion's half, defaulting true because Scramble,
+  the dev panel and the tests all commit a game without a node in hand.
+
+  The empty board is `GameLoop2.begin_bodiless_game`, deliberately NOT
+  `choose_game(null)`: that means "nothing is in play" and drops `game_in_play`,
+  which is the state the screen is in *between* games. An Event node is a game
+  you go away and play like any other — shields, `games_played`, the ✓ Completed
+  Game gate and the game's own loot are identical on all four kinds, and a test
+  asserts that of every one of them. What it does not do is put a body up.
+
+  **The Event and the Shop land at opposite ends of the game**, which is the
+  whole reason they are two kinds rather than one. The Event fires on ARRIVAL,
+  through the existing `open_event` path, because a decision is worth more before
+  you have committed an evening to the game it sits on; the Shop queues on
+  `_pending_shop` and opens AFTER, because the gold to spend is what the game you
+  just played pays out. The Shop half reads the kind off the SLOT rather than the
+  game — the kind rides the node, so a transmuted card shops at the same node —
+  where the hub rule beside it reads the game, since a hub's shop belongs to that
+  storefront. Both stand until §19.7 retires the hub one.
+
+  **233 test call sites became a 60/20/10/10 lottery, and were arranged rather
+  than hoped for.** Every `pick()` in the suite used to stand two bodies; now
+  what it stands depends on the node. A test that picks and then counts bodies
+  would have failed about two runs in five — the exact shape CLAUDE.md warns
+  about. So `_pick_enemies` forces the kind on the one node about to be picked
+  and leaves the rest of the map as the run dealt it, and it is applied across
+  seven files. The tests that are ABOUT kinds call `pick` directly; one of them,
+  `test_the_kinds_do_not_move_while_the_run_is_walked`, caught the helper being
+  used where it must not be, which is the guard working as intended.
+
   **A panel test was measuring the wrong thing, and three cards exposed it.**
   `test_the_starts_are_different_distances_when_the_graph_allows_it` required
   every card at a distinct distance whenever two or more distances existed

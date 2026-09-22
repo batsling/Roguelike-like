@@ -1383,15 +1383,70 @@ func pick(index: int) -> void:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
-	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
+	_commit_board_for_kind(game, enemy, tier)
 	_log_escort()
 	_remind_twitch_category(game)
+	_fire_arrival_event(game)
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(game)
 	if log_shields:
 		GameLog.add("%s — %s, one hit stopped each." % [
 			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+
+# WHAT STANDS ON THE BOARD, which is the node's kind and nothing else (§19.1).
+#
+# | Enemies  | 2 bodies | the game's enemy and one beside it |
+# | Champion | 1 body   | a boss of the run's tier, alone    |
+# | Event    | 0 bodies | the event is what is here           |
+# | Shop     | 0 bodies | the shelf comes after the game      |
+#
+# All four are a real video game, which is why this only decides the BOARD: the
+# shields, `games_played`, the ✓ Completed Game gate and the game's own loot are
+# the same on every one of them, and they all live outside this function.
+#
+# The Champion's boss is rolled HERE rather than carried on the card, because
+# `enemy` is whatever the offering advertised and the offering does not yet know
+# about kinds. When the roster cannot supply a boss at all, the advertised enemy
+# stands instead — a Champion node with an empty board would be the badge telling
+# a lie, and §19.1 would rather it told a smaller truth.
+# AN EVENT NODE FIRES ITS EVENT ON ARRIVAL, before the game is played (§19.1).
+#
+# The timing is the point, and it is deliberately the opposite end of the game
+# from the Shop's. An event is a DECISION, and a decision is worth more before
+# you have committed an evening to the game it sits on; a shop is a PURCHASE, and
+# the gold to make one is what the game you just played pays out (§14.1).
+#
+# This is on top of the game's own post-report event, which still rolls — an
+# Event node is a node that pays an extra one, not one that moves the ordinary
+# one forward.
+#
+# IT ALWAYS FINDS ONE. Measured against the shipping content, all 16 events have
+# a blank `where` and empty tiers, and 7 carry no stat requirement at all, so "no
+# eligible event" is a content state that does not currently exist. If it ever
+# does, `roll_for_arrival` re-shows one the run has already had rather than
+# relaxing a gate — a repeat is affordable and playable, where an event whose
+# interesting choices are all greyed out is not. Re-measure rather than trusting
+# this line.
+func _fire_arrival_event(game: GameData) -> void:
+	if game == null or GameState.node_kind(game.id) != RunGraph.NodeKind.EVENT:
+		return
+	# `open_event` refuses while a modal is up or an event is already queued behind
+	# a resolve, which is the right answer: it would otherwise silently eat the one
+	# the run had already earned.
+	open_event(EventSystem.roll_for_arrival(game.id))
+
+func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
+	var type_key: StringName = GameLoop2.game_type_key(game)
+	match GameState.node_kind(game.id):
+		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
+			GameLoop2.begin_bodiless_game()
+		RunGraph.NodeKind.CHAMPION:
+			var boss: GoalEnemyData = enemy if enemy != null and enemy.is_boss() \
+				else GameLoop2.roll_boss(type_key, tier)
+			GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false)
+		_:
+			GameLoop2.choose_game(enemy, type_key, tier)
 
 # Say who came WITH the game's enemy (§7.5). Called at each of the three places a
 # game is committed to, straight after choose_game, because the escort is the one
@@ -2363,7 +2418,13 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# exactly the same terms, and read off the GAME rather than the graph slot:
 		# a shop belongs to the storefront of a particular big game, so a node
 		# transmuted into something else is not that shop any more.
-		if ShopSystem.is_hub(played_game.id):
+		#
+		# …OR IF THE NODE'S KIND IS SHOP (§19.1), which is read off the SLOT for
+		# exactly the opposite reason: the kind rides the node, so a transmuted card
+		# plays a different game at the same kind (§19.2). The two rules stand side
+		# by side until §19.7 retires the hub one.
+		if ShopSystem.is_hub(played_game.id) \
+				or GameState.node_kind(slot_here) == RunGraph.NodeKind.SHOP:
 			_pending_shop = played_game.id
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
 		# is deliberately a wider net than the beat below: it is what paces the

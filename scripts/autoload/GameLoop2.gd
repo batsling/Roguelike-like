@@ -1654,8 +1654,14 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # `enemy`. Left out (the tests' path, and Scramble's) they fall back to the
 # enemy's own type and tier, which is the same bucket whenever the game's roll
 # did not have to widen.
+#
+# `with_escort` is what the node's KIND decides (§19.1). An Enemies node stands
+# two bodies and a Champion node stands one — the boss alone, with its ordinary
+# chest and nothing beside it — so the second body is a property of the node now
+# rather than of every committed game. It defaults to true because Scramble, the
+# dev panel and the tests all commit a game without having a node in hand.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
-		escort_tier: int = -1) -> int:
+		escort_tier: int = -1, with_escort: bool = true) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
 	# is closed out — and a fresh escape gate with it: this game has not hurt you
 	# yet, whatever the last one did (§3.2). The same for what the last game's
@@ -1684,11 +1690,34 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	arrivals = [inst]
-	var escort_inst: int = _spawn_escort(enemy, escort_type, escort_tier)
-	if escort_inst > 0:
-		arrivals.append(escort_inst)
+	if with_escort:
+		var escort_inst: int = _spawn_escort(enemy, escort_type, escort_tier)
+		if escort_inst > 0:
+			arrivals.append(escort_inst)
 	loop_changed.emit()
 	return inst
+
+# Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
+#
+# It is not `choose_game(null)`: that means "nothing is in play" and drops
+# `game_in_play`, which is the state the screen is in between games. An Event
+# node is a game you go away and play like any other — it grants the selection
+# shields, ticks `games_played`, needs ✓ Completed Game to advance and pays the
+# game's own loot (§19.1). The only thing it does not do is put something on the
+# board. So this is choose_game's whole prologue, minus the bodies.
+#
+# The revival payout stays, because it is about a NEW COMBAT beginning rather
+# than about anything arriving: a body that died last game with a revive left has
+# earned its walk back on, and an Event node is still the next game.
+func begin_bodiless_game() -> void:
+	_clear_attempts()
+	_clear_game_record()
+	hurt_this_game = false
+	_clear_arrivals()
+	game_in_play = true
+	_pay_revivals()
+	arrivals = []
+	loop_changed.emit()
 
 # Stand the escort (§7.5) next to the enemy of the game just chosen. Returns its
 # instance handle, or 0 when there is nothing to roll — an empty goal-enemy

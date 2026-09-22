@@ -74,7 +74,7 @@ func test_a_card_that_is_not_on_the_table_opens_nothing() -> void:
 	assert_null(_ui.open_choice(-1), "and below it")
 
 func test_nothing_opens_while_a_game_is_being_played() -> void:
-	_ui.pick(0)
+	_pick_enemies(_ui, 0)
 	assert_null(_ui.open_choice(0),
 		"the offering is gone once you've committed, so there is nothing to open")
 
@@ -430,3 +430,18 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 func _report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
+
+# Pick the first card, having first made sure it is an ordinary fight (§19.1).
+#
+# What a committed game stands on the board is decided by the NODE'S KIND now —
+# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
+# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
+# and then expects something to be standing there is a test whose subject is a
+# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
+# step; the rest of the map is left as the run dealt it.
+func _pick_enemies(ui, idx: int = 0) -> void:
+	if idx >= 0 and idx < ui._choices.size():
+		var game: GameData = ui._choices[idx]["game"]
+		if game != null:
+			GameState.node_kinds[game.id] = RunGraph.NodeKind.ENEMIES
+	ui.pick(idx)

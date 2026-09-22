@@ -166,7 +166,7 @@ func test_reporting_a_level_up_logs_it_against_the_game() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -188,7 +188,7 @@ func test_not_ticking_the_level_up_logs_nothing() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -207,7 +207,7 @@ func test_beating_a_goal_fills_both_records() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -233,3 +233,18 @@ func test_beating_a_goal_fills_both_records() -> void:
 func _report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
+
+# Pick the first card, having first made sure it is an ordinary fight (§19.1).
+#
+# What a committed game stands on the board is decided by the NODE'S KIND now —
+# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
+# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
+# and then expects something to be standing there is a test whose subject is a
+# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
+# step; the rest of the map is left as the run dealt it.
+func _pick_enemies(ui, idx: int = 0) -> void:
+	if idx >= 0 and idx < ui._choices.size():
+		var game: GameData = ui._choices[idx]["game"]
+		if game != null:
+			GameState.node_kinds[game.id] = RunGraph.NodeKind.ENEMIES
+	ui.pick(idx)
