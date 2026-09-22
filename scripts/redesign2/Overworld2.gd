@@ -843,7 +843,7 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		"pace": _start_pace_note(int(opt["path_len"])),
 		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
-		"escort": _escort_note(choice),
+		"bodies": _bodies_note(choice),
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
 		"action_tip": "Begin the run here — you go and play this game for real, right now.",
@@ -1287,7 +1287,7 @@ func open_choice(index: int) -> GameChoiceModal:
 		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
-		"escort": _escort_note(choice),
+		"bodies": _bodies_note(choice),
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -1377,9 +1377,9 @@ func pick(index: int) -> void:
 # purpose, with the suite watching, rather than smuggled into an extraction.
 #
 # `tier` is the run's tier and `game`'s own type is read off it here, so the
-# escort (§7.5) is rolled from the bucket this card's enemy came out of. A
-# transmuted card plays the replacement game, so it is that game's type the
-# escort answers to.
+# node's second body (§19.4) is rolled from the bucket this card's enemy came out
+# of. A transmuted card plays the replacement game, so it is that game's type
+# both bodies answer to.
 #
 # `log_shields` is false for the detour alone, which is the drift noted above:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
@@ -1396,7 +1396,7 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	_commit_board_for_kind(game, enemy, tier)
 	if not GameLoop2.run_over:
 		_announce_difficulty_step(tier_before, board_before)
-	_log_escort()
+	_log_second_body()
 	_remind_twitch_category(game)
 	_fire_arrival_event(game)
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
@@ -1445,16 +1445,35 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 # relaxing anything — see roll_for_node for why both available relaxations are
 # worse than a repeat.
 func _fire_arrival_event(game: GameData) -> void:
-	if game == null or GameState.node_kind(game.id) != RunGraph.NodeKind.EVENT:
+	if game == null or _committed_kind(game) != RunGraph.NodeKind.EVENT:
 		return
 	# `open_event` refuses while a modal is up or an event is already queued behind
 	# a resolve, which is the right answer: it would otherwise silently eat the one
 	# the run had already earned.
 	open_event(EventSystem.roll_for_node(game.id))
 
+# THE KIND OF THE NODE BEING COMMITTED TO, read off the SLOT rather than off the
+# game standing on it (§19.2).
+#
+# The difference is Transmute, which "repaints which game sits on a node without
+# touching a single edge": the kind rides the node, so a transmuted card plays a
+# different game AT THE SAME KIND. Reading the game would let a transmute change
+# what the node does, which is a badge moving under the player — the one thing
+# §19.2 exists to prevent — and it would disagree with the report path, which has
+# read the slot since the Shop node landed.
+#
+# Falls back to the game's own id when there is no slot: the play_game detour and
+# the tests both commit a game without one, and a game that is not on the map has
+# no node to inherit from.
+func _committed_kind(game: GameData) -> int:
+	if game == null:
+		return RunGraph.NodeKind.ENEMIES
+	var slot := StringName(_chosen.get("slot", &""))
+	return GameState.node_kind(slot if slot != &"" else game.id)
+
 func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
-	match GameState.node_kind(game.id):
+	match _committed_kind(game):
 		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
 			GameLoop2.begin_bodiless_game()
 		RunGraph.NodeKind.CHAMPION:
@@ -1464,24 +1483,28 @@ func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> 
 		_:
 			GameLoop2.choose_game(enemy, type_key, tier)
 
-# Say who came WITH the game's enemy (§7.5). Called at each of the three places a
-# game is committed to, straight after choose_game, because the escort is the one
-# thing about the board that the card could not tell you: it is rolled on arrival,
-# so the player finds out here or not at all.
+# Say who else walked on with this game (§19.4). Called at each of the places a
+# game is committed to, straight after choose_game, because the second body is
+# the one thing about the board that the card could not tell you: it is rolled on
+# arrival, so the player finds out here or not at all.
 #
-# It is a notification as well as a log line for that reason — the escort is the
-# only body that appears without having been chosen, and a run of the log is not
-# where a surprise should have to be noticed.
-func _log_escort() -> void:
-	var escort: GoalEnemyData = GameLoop2.escort_enemy()
-	if escort == null:
+# It is a notification as well as a log line for that reason — it is the only
+# body that appears without having been chosen, and a run of the log is not where
+# a surprise should have to be noticed.
+#
+# The wording lost the word ESCORT with §19.4. There is no companion any more:
+# an Enemies node stands two bodies and neither of them is attached to the other,
+# so this says one walked on beside the first rather than that it came with it.
+func _log_second_body() -> void:
+	var second: GoalEnemyData = GameLoop2.second_body()
+	if second == null:
 		return
-	var msg: String = "%s showed up too — it follows you until its goal is cleared." % escort.display_name
+	var msg: String = "%s walked on beside it — it follows you until its goal is cleared." % second.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 
 # GO AND CHANGE YOUR TWITCH CATEGORY. Called at each of the same four places a
-# game is committed to, straight after `_log_escort`, because those are exactly
+# game is committed to, straight after `_log_second_body`, because those are exactly
 # the moments the stream starts showing a game its category no longer names.
 #
 # This build's whole loop is leaving the program to go and play a REAL game (§1),
@@ -1492,7 +1515,7 @@ func _log_escort() -> void:
 #
 # A NOTIFICATION AND NOT A MODAL. It is a chore, not a decision — there is
 # nothing here to answer and nothing that should stop the run — so it takes the
-# same transient channel the escort does. The game's name IS the category to set
+# same transient channel the second body does. The game's name IS the category to set
 # in the overwhelming majority of cases, so it is quoted rather than described.
 #
 # NOTHING HERE TALKS TO TWITCH. No token, no API, no network call; the program
@@ -3745,7 +3768,7 @@ func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
 # game that is there.
 #
 # So an arrival commits, exactly as `pick` does — the destination's enemy is
-# rolled, the escort comes with it, the selection shields are granted, and the
+# rolled, the node stands its bodies up, the selection shields are granted, and the
 # phase goes to PLAYING — and then it puts THE CARD on top of the board: the same
 # GameChoiceModal the offering opens, with the cover, the enemy and its goal, the
 # shields, and the road on from here. The commit happens first and the card is a
@@ -3817,7 +3840,7 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 		"beatable": _beatable_row(_chosen),
 		"enemy_hidden": _enemy_hidden(_chosen),
 		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
-		"escort": _escort_note(_chosen),
+		"bodies": _bodies_note(_chosen),
 		"arrival": true,
 		"arrival_note": announce,
 		# UNDER everything the game you just left still owes: the haul screen (128),
@@ -4938,17 +4961,17 @@ func _clear_hover_grant() -> void:
 	if _offering != null:
 		_offering.clear_hover_grant()
 
-# The "you can beat this" row a card and its popup both wear, and the two lines
-# the escort warning is written as — read by the offered-game popup
-# (GameChoiceModal) as well as by the cards themselves.
+# The "you can beat this" row a card and its popup both wear, and the line that
+# says what the node stands up — read by the offered-game popup (GameChoiceModal)
+# as well as by the cards themselves.
 func _beatable_row(choice: Dictionary) -> Control:
 	return _offering.beatable_row(choice)
 
 func _enemy_hidden(choice: Dictionary) -> bool:
 	return _offering.enemy_hidden(choice) if _offering != null else false
 
-func _escort_note(choice: Dictionary) -> String:
-	return _offering.escort_note(choice) if _offering != null else ""
+func _bodies_note(choice: Dictionary) -> String:
+	return _offering.bodies_note(choice) if _offering != null else ""
 
 # The Amulet, by name.
 #

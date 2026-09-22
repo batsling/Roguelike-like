@@ -4962,10 +4962,19 @@ something they steer now, in both directions.
 
 ### 19.7 What this retires
 
-- **The escort (§7.5)** — absorbed into the Enemies node's count of two.
-  `GameLoop2._spawn_escort`, `current_escort`, `escort_enemy` and
-  `escort_instance` go with it, along with the card's *"One more enemy spawns with
-  it"* line, which now says how many.
+- **The escort (§7.5)** — absorbed into the Enemies node's count of two. **DONE.**
+  `roll_escort` → `roll_second_body`, `_spawn_escort` → `_spawn_second_body`,
+  `escort_enemy` / `escort_instance` → `second_body` / `second_body_instance`,
+  and `choose_game`'s flag is `with_second_body`. The card's *"One more enemy
+  spawns with it"* now reads *"Two bodies walk on"*, or *"A boss of this tier
+  walks on, alone"* on a Champion — the count comes off the node's KIND rather
+  than off whichever enemy was advertised (`OfferingCards.bodies_expected`).
+  `current_escort` survives as a SAVE KEY only, so an older save still restores
+  its second arrival.
+
+  The word still appears once in `GameLoop2`, for the authored **Escort ability**
+  — a Gatekeeper's opening skeletons — which is a different thing and is
+  annotated as such now that the collision is no longer ambiguous.
 - **Shops at the ten hubs (§14.2)** — a shop is a Shop node. `ShopSystem.is_hub`,
   `GameState.hub_games` and `RunGraph.hub_ids` stop deciding where a shelf
   stands. §14.3's shelf itself is unchanged: three items, rolled once, persistent

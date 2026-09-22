@@ -94,8 +94,8 @@ func _body(instance: int, enemy: GoalEnemyData, col: int, row: int,
 # the file where it is the subject rather than the noise.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 # The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
@@ -207,15 +207,15 @@ func test_choosing_again_takes_the_superseded_enemy_off_the_board() -> void:
 func test_choosing_a_game_spawns_an_escort_beside_its_enemy() -> void:
 	var inst: int = GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "the game's enemy AND an escort")
-	assert_gt(GameLoop2.escort_instance(), 0, "the escort is remembered by handle")
-	assert_ne(GameLoop2.escort_instance(), inst, "and it is a body of its own")
-	assert_not_null(GameLoop2.escort_enemy(), "which the screens can ask for by name")
+	assert_gt(GameLoop2.second_body_instance(), 0, "the escort is remembered by handle")
+	assert_ne(GameLoop2.second_body_instance(), inst, "and it is a body of its own")
+	assert_not_null(GameLoop2.second_body(), "which the screens can ask for by name")
 
 # The escort is a body like any other from the moment it lands: it spawns at the
 # back column, in a lane of its own.
 func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var entry: Dictionary = _entry(GameLoop2.escort_instance())
+	var entry: Dictionary = _entry(GameLoop2.second_body_instance())
 	assert_false(entry.is_empty(), "it is on the stack")
 	# `spawn_col_for` and not the bare `spawn_col`, because "the back column" means
 	# a body's RIGHTMOST cell lands there (§7.3): a two-wide escort starts on
@@ -230,12 +230,12 @@ func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 # point of it.
 func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.defeated_count, 1, "one defeat — the game's own enemy")
 	assert_eq(GameLoop2.stack_size(), 1, "and the escort is still standing")
 	assert_eq(int(GameLoop2.stack[0]["instance"]), escort)
-	assert_eq(GameLoop2.escort_instance(), 0,
+	assert_eq(GameLoop2.second_body_instance(), 0,
 		"but it is an ordinary follower now, not this game's escort")
 
 # A BOSS ROUND GETS AN ESCORT TOO, and an ordinary one. It used to stand alone —
@@ -244,9 +244,9 @@ func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 func test_a_boss_arrives_with_an_escort_like_any_other_game() -> void:
 	var boss: int = GameLoop2.choose_game(_enemy(3, true))
 	assert_eq(GameLoop2.stack_size(), 2, "the boss AND a body beside it")
-	assert_gt(GameLoop2.escort_instance(), 0, "which is a real escort")
-	assert_ne(GameLoop2.escort_instance(), boss, "and not the boss counted twice")
-	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	assert_gt(GameLoop2.second_body_instance(), 0, "which is a real escort")
+	assert_ne(GameLoop2.second_body_instance(), boss, "and not the boss counted twice")
+	var escort: GoalEnemyData = GameLoop2.second_body()
 	assert_not_null(escort)
 	if escort != null:
 		assert_false(escort.is_boss(),
@@ -256,11 +256,11 @@ func test_a_boss_arrives_with_an_escort_like_any_other_game() -> void:
 # Scramble charge would be a way to buy a body.
 func test_superseding_a_game_takes_its_escort_off_with_it() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var first_escort: int = GameLoop2.escort_instance()
+	var first_escort: int = GameLoop2.second_body_instance()
 	GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "still one game's worth of bodies")
 	assert_true(_entry(first_escort).is_empty(), "the superseded escort left with its enemy")
-	assert_ne(GameLoop2.escort_instance(), first_escort, "a fresh one arrived with the new game")
+	assert_ne(GameLoop2.second_body_instance(), first_escort, "a fresh one arrived with the new game")
 
 func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 	GameState.scramble = 3
@@ -274,7 +274,7 @@ func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 # may not reach back and supersede it.
 func test_a_reported_games_escort_survives_the_next_choice() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.beat_game(true)                 # its enemy dies, the escort stays
 	GameLoop2.choose_game(_enemy(2))
 	assert_false(_entry(escort).is_empty(), "the follower is still on the board")
@@ -285,13 +285,13 @@ func test_a_reported_games_escort_survives_the_next_choice() -> void:
 func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 	GameState.bombs = 1
 	var primary: int = GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	assert_gt(escort, 0, "the game brought one")
 	GameLoop2.bomb(escort)
-	assert_eq(GameLoop2.escort_instance(), 0, "nothing to reach back for")
+	assert_eq(GameLoop2.second_body_instance(), 0, "nothing to reach back for")
 	assert_true(_entry(escort).is_empty(), "and the body it named is off the board")
 	# NOT the stack size. The escort is a RANDOM body off the roster
-	# (GameLoop2.roll_escort), and some of them leave something behind when they
+	# (GameLoop2.roll_second_body), and some of them leave something behind when they
 	# are destroyed — bomb a Slime and you get two smaller Slimes, which is the
 	# body doing its job. This asserted a board exactly one deep and so failed on
 	# about one run in twenty, on nothing but which escort was rolled.
@@ -306,11 +306,11 @@ func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 # there would be no game in play on the other side to scramble.
 func test_the_escort_pairing_survives_a_save_round_trip() -> void:
 	GameLoop2.choose_game(Data.all_goal_enemies()[0])
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.reset()
 	GameLoop2.restore(blob)
-	assert_eq(GameLoop2.escort_instance(), escort, "the same body is still the escort")
+	assert_eq(GameLoop2.second_body_instance(), escort, "the same body is still the escort")
 	GameState.scramble = 1
 	GameLoop2.scramble()
 	assert_eq(GameLoop2.stack_size(), 2, "and scrambling still rerolls the pair")
@@ -319,7 +319,7 @@ func test_the_escort_pairing_survives_a_save_round_trip() -> void:
 # type + tier filter as the game's own roll.
 func test_the_escort_is_rolled_from_the_games_own_pool() -> void:
 	for _i in range(12):
-		var escort: GoalEnemyData = GameLoop2.roll_escort(&"action",
+		var escort: GoalEnemyData = GameLoop2.roll_second_body(&"action",
 			GoalEnemyData.Difficulty.LOW)
 		assert_not_null(escort)
 		assert_eq(escort.game_type, &"action", "the game's type")
@@ -337,7 +337,7 @@ func test_the_escort_avoids_being_a_copy_of_the_games_own_enemy() -> void:
 			break
 	assert_not_null(mate, "the roster has an Action/Low enemy to test against")
 	for _i in range(12):
-		assert_ne(GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.LOW, mate),
+		assert_ne(GameLoop2.roll_second_body(&"action", GoalEnemyData.Difficulty.LOW, mate),
 			mate, "the escort is not a second copy of what it spawned beside")
 
 func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
@@ -747,7 +747,7 @@ func test_a_lost_run_needs_a_game_in_play_to_be_lost_at() -> void:
 # (log_attempt: a stack with nothing on it simply has nothing to charge).
 func test_clearing_the_board_does_not_end_the_game_in_play() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	assert_true(GameLoop2.game_in_play, "a game was chosen")
 	GameLoop2.despawn(a)
 	if escort > 0:
@@ -777,7 +777,7 @@ func test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off() -> void
 
 	# A new game, and the player clears everything that walked on with it.
 	var fresh: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.despawn(fresh)
 	if escort > 0:
 		GameLoop2.despawn(escort)
@@ -798,7 +798,7 @@ func test_reporting_a_game_is_what_takes_it_out_of_play() -> void:
 
 func test_the_game_in_play_survives_a_save_and_a_load_on_a_cleared_board() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.despawn(a)
 	if escort > 0:
 		GameLoop2.despawn(escort)
@@ -1797,7 +1797,7 @@ func test_the_escort_comes_out_of_the_tier_the_game_did() -> void:
 	# §7.5: the escort is another body that could have been waiting at that game —
 	# so it answers to the run's difficulty exactly as the game's own body does.
 	for _i in range(25):
-		var e: GoalEnemyData = GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.HIGH)
+		var e: GoalEnemyData = GameLoop2.roll_second_body(&"action", GoalEnemyData.Difficulty.HIGH)
 		assert_eq(e.tier_index(), GoalEnemyData.Difficulty.HIGH)
 
 func test_roll_enemy_never_returns_a_boss() -> void:

@@ -38,8 +38,8 @@ func _enemy(goal: String = "Beat it") -> GoalEnemyData:
 
 func _choose_solo() -> int:
 	var inst: int = GameLoop2.choose_game(_enemy())
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 # ---------------------------------------------------------------------------

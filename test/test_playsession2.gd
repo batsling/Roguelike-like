@@ -26,8 +26,8 @@ func after_each() -> void:
 # through their damage arithmetic.
 func _pick_solo(game_type: StringName) -> void:
 	_ui.pick(game_type)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 
 func test_harness_builds_and_opens_a_run() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
@@ -53,7 +53,7 @@ func test_pick_spawns_enemy_and_beat_resolves() -> void:
 	# Picking spawns an escort alongside it (§7.5). Taken off here so the damage
 	# arithmetic below is ONE enemy's — see _pick_solo.
 	assert_eq(GameLoop2.stack_size(), 2, "the picked enemy, and the escort with it")
-	GameLoop2.despawn(GameLoop2.escort_instance())
+	GameLoop2.despawn(GameLoop2.second_body_instance())
 	# DISARMED, because the arithmetic below is about a body WALKING the length of
 	# the board and then striking once (§7.6). The pick rolls a RANDOM action enemy,
 	# and an ability changes both halves of that: Ranged strikes from two columns

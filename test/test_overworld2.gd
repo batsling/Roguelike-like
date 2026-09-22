@@ -123,8 +123,8 @@ func _clear_board_except(keep: int) -> void:
 # a screen, and uses this so the followers it counts are the ones it put there.
 func _pick_solo(index: int) -> void:
 	_pick_enemies(index)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	_disarm_board()
 
 # Strip the abilities (§7.6) off everything standing on the board.
@@ -279,10 +279,23 @@ func _quiet_ladder() -> void:
 
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
-		var game: GameData = _ui._choices[idx]["game"]
-		if game != null:
-			GameState.node_kinds[game.id] = RunGraph.NodeKind.ENEMIES
+		_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
 	_ui.pick(idx)
+
+# Force a choice's kind, ON THE SLOT (§19.2).
+#
+# The kind rides the NODE, not the game standing on it — that is what makes a
+# transmuted card play a different game at the same kind — so setting it against
+# the game id works for an ordinary card and silently does nothing for a
+# transmuted one, where the two differ. That is not a distinction a test should
+# have to remember, so it lives here.
+func _set_kind(choice: Dictionary, kind: int) -> void:
+	var slot := StringName(choice.get("slot", &""))
+	if slot == &"":
+		var g: GameData = choice.get("game")
+		slot = g.id if g != null else &""
+	if slot != &"":
+		GameState.node_kinds[slot] = kind
 
 func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
@@ -342,7 +355,7 @@ func test_the_kinds_do_not_move_while_the_run_is_walked() -> void:
 
 func _pick_as(kind: int, idx: int = 0) -> GameData:
 	var game: GameData = _ui._choices[idx]["game"]
-	GameState.node_kinds[game.id] = kind
+	_set_kind(_ui._choices[idx], kind)
 	_ui.pick(idx)
 	_disarm_board()
 	return game

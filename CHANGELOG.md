@@ -257,6 +257,40 @@ For how the project is laid out and how its systems fit together, see
   four refusal conditions rather than a bare null: `rollable=false` named it in
   one line after two wrong guesses.
 
+  **THE ESCORT IS RETIRED** (§19.4, §19.7) — the number survives, the
+  relationship does not. An escort was a *companion*: a body attached to the
+  game's own enemy, rolled because that enemy had arrived. An Enemies node stands
+  TWO BODIES, and neither is attached to the other — both walk on at the back
+  column, both carry their own goal, both are ordinary followers from the moment
+  they land, and beating the game answers for neither of them on its own.
+
+  `roll_escort` → `roll_second_body`, `_spawn_escort` → `_spawn_second_body`,
+  `escort_instance` / `escort_enemy` → `second_body_instance` / `second_body`,
+  and `choose_game`'s flag is `with_second_body`. The card's *"One more enemy
+  spawns with it"* is now *"Two bodies walk on"*, or *"A boss of this tier walks
+  on, alone"* on a Champion — because the count is a property of the node's KIND
+  now rather than of whichever enemy happened to be advertised. `bodies_expected`
+  returns 2 / 1 / 0, and **−1 for "nothing to say"** — a stay-or-return card or a
+  free game, which is a different fact from a node that genuinely stands nothing
+  up and is worth printing.
+
+  The one thing still called an escort in `GameLoop2` is the authored **Escort
+  ability** (a Gatekeeper's opening skeletons), which is unrelated and now
+  annotated as such — the collision was invisible while the other escort existed.
+
+  **AND THE KIND WAS BEING READ OFF THE WRONG THING.** `_commit_board_for_kind`
+  asked `GameState.node_kind(game.id)`, but §19.2 says the kind rides the SLOT:
+  that is exactly what makes a transmuted card play a different game at the same
+  kind. Reading the game would let a Transmute change what a node does, which is
+  a badge moving under the player — the one thing §19.2 exists to prevent — and
+  it already disagreed with the report path, which has read the slot since the
+  Shop node landed. Fixed via `_committed_kind`.
+
+  That fix caught the test helpers immediately: `_pick_enemies` and `_pick_as`
+  forced the kind onto the game id, which is invisible for an ordinary card and
+  silently wrong for the transmute test, where the two differ. Both now key on
+  the slot, in all seven files.
+
   **EVERY THIRD SPAWN EVENT PUTS A BOSS ON THE BOARD** (§19.6), on top of
   whatever else was spawning — replacing `RunDifficulty.is_boss_game`'s
   every-third-GAME capstone, which rode the offering as a card's own enemy.

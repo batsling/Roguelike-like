@@ -20,8 +20,8 @@ extends GutTest
 # assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 func before_each() -> void:
@@ -987,8 +987,8 @@ func _booted():
 	# The opening game stands an ESCORT beside its enemy (§7.5). Everything below
 	# is about what a status does to ONE body, so it comes straight back off —
 	# same reason as _choose_solo above.
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return ui
 
 # Strip the abilities (§7.6) off everything on the board.
@@ -1775,7 +1775,13 @@ func test_stuns_combat_line_says_it_loses_its_turn() -> void:
 # step; the rest of the map is left as the run dealt it.
 func _pick_enemies(ui, idx: int = 0) -> void:
 	if idx >= 0 and idx < ui._choices.size():
-		var game: GameData = ui._choices[idx]["game"]
-		if game != null:
-			GameState.node_kinds[game.id] = RunGraph.NodeKind.ENEMIES
+		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
+		# different game at the same kind and the game id is the wrong key.
+		var choice: Dictionary = ui._choices[idx]
+		var slot := StringName(choice.get("slot", &""))
+		if slot == &"":
+			var game: GameData = choice.get("game")
+			slot = game.id if game != null else &""
+		if slot != &"":
+			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
 	ui.pick(idx)
