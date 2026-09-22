@@ -41,14 +41,14 @@ extends Control
 #                   a boss round is announced between two games and this screen is
 #                   what is standing between them.
 #
-# THE SHOP IS NOT ONE OF ITS SECTIONS, and briefly was: a hub's shelf was mounted
+# THE SHOP IS NOT ONE OF ITS SECTIONS, and briefly was: a shop's shelf was mounted
 # into the left column and handed back to the page on the way out. It is off again
 # — see `shop_id` for why the button naming it is the reason.
 #
 # And one button out, which NAMES WHERE IT GOES: "Go to Event" when the node owes
 # one (clicking it is what opens the event, so the player leaves this screen into
 # the next thing rather than having the next thing dropped on them), "Go to Shop"
-# at a hub that owes no event, and "Travel on" when it owes neither.
+# at a Shop node, which owes no event, and "Travel on" when it owes neither.
 #
 # Built in code on its own CanvasLayer, BELOW the run's header bar (135) so Health
 # and Gold stay readable over it, and below the loot use modal (130) so spending a
@@ -96,7 +96,7 @@ var _chests: Array = []
 var _loot: Array = []
 # Whether an event is queued behind this screen, which is what the way out says.
 var _event_pending: bool = false
-# The hub this screen's exit leads to, when the game was one of the ten. Only ever
+# The Shop node this screen's exit leads to, when the game was played on one. Only ever
 # read for the button's wording — the shelf itself is the page's (see `shop_id`).
 var _shop_id: StringName = &""
 # The boss round this screen is warning about: the tier it steps to and the
@@ -534,7 +534,7 @@ func _open_rating(g: GameData, btn: Button) -> void:
 
 # The left column: the numbers, the chests, the warning and the shelf, in the
 # order they answer "what just happened". It scrolls, because a boss round at a
-# hub with a Huge chest is more than a 720p canvas holds — the loot column beside
+# shop with a Huge chest is more than a 720p canvas holds — the loot column beside
 # it does not, since the drag between its two halves is the one thing on this
 # screen that a scrollbar would get in the way of.
 func _left_column() -> Control:

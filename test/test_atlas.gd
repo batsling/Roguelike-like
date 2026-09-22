@@ -994,7 +994,7 @@ func test_path_taken_follows_the_order_the_games_were_visited() -> void:
 	# nothing at all and reported itself Risky. Starting at the best-connected game
 	# in the catalog and steering toward degree keeps the walk in territory that
 	# always has somewhere to go, so the case under test is reached every run.
-	var hubs: Array = RunGraph.hub_ids(1)
+	var hubs: Array = RunGraph.best_connected(1)
 	if hubs.is_empty():
 		pass_test("no graph to walk in this catalog")
 		return

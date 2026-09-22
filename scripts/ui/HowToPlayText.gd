@@ -632,30 +632,27 @@ static func _ch_gold() -> Dictionary:
 				+ "clearing an old goal games later pays exactly the same, because "
 				+ "the goal was the price either way. Bombing pays nothing at all."),
 			_h("Where the shops are"),
-			_p(("A shop stands at each of the run's %d best-connected games — the "
-				+ "genre's landmarks. Slay the Spire, Vampire Survivors, Isaac, "
-				+ "Hades, Balatro and the rest. They are frozen at the start of "
-				+ "the run, so a shop can never appear or vanish under you.")
-				% RunGraph.NUM_HUBS),
-			_p("This is the second routing axis and it is deliberately the "
-				+ "opposite shape to an event. An event is a dead end — a two-game "
-				+ "round trip. A hub is the MIDDLE of the map and rarely far off "
-				+ "the road, so swinging through the big node is a cheap, "
-				+ "repeatable decision rather than a committed detour."),
+			_p("A shop stands at every SHOP NODE — the `$` on a card, on the map "
+				+ "and on the route. About one game in ten on the map is one, dealt "
+				+ "when the run begins and fixed from then on, so a shop can never "
+				+ "appear or vanish under you."),
+			_p("Every start you are offered has at least one somewhere on its "
+				+ "shortest roads to the Amulet, and the map shows the rest. A shop one step off the "
+				+ "straight road is often the better way to go."),
 			_h("The shelf"),
 			_b(("%d items, rolled once, and they STAY. Buying marks a slot sold "
 				+ "rather than clearing it.") % ShopSystem.STOCK_SLOTS),
-			_b("So a hub you cleared out is a hub you know is empty, and a hub you "
-				+ "left two items at is a reason to walk back."),
-			_b("The shop opens under the board when you beat the hub's game, and "
+			_b("So a shop you cleared out is a shop you know is empty, and a shop "
+				+ "you left two items at is a reason to walk back."),
+			_b("The shop opens under the board when you beat the game there, and "
 				+ "stays for the whole visit. Travelling on is what closes it."),
 			_b("A Scramble charge rerolls the whole shelf, sold slots included."),
 			_b("A shop card shows you what is left on a shelf you have already "
 				+ "stood in — which is what makes going back a real decision. A "
 				+ "shop you have never visited only tells you it is there."),
-			_note("A hub pays NO EVENT. The shop is what happens there instead. "
-				+ "That is the one way a hub card costs differently from every "
-				+ "other card on the table."),
+			_note("A Shop node pays NO EVENT. The shop is what happens there "
+				+ "instead. Transmute the game on one and it still sells — the "
+				+ "shop belongs to the spot on the map, not to the game."),
 		],
 	}
 
@@ -675,7 +672,7 @@ static func _ch_events() -> Dictionary:
 				+ "and costs something."),
 			_b("Every game pays one, and is then spent for the rest of the run — "
 				+ "so walking a two-node loop is not a way to farm them."),
-			_b("A hub pays none. The shop is what happens there."),
+			_b("A Shop node pays none. The shop is what happens there."),
 			_b("A game you were SENT to by another event pays none, and neither "
 				+ "does the Amulet, where the run is already over."),
 			_b("Which event you get is dealt from a shuffle bag: nothing comes "

@@ -203,7 +203,8 @@ var _pending_detour: bool = false
 # lands on a game played to a verdict (an escape walks away from it).
 var _detour_beaten: bool = false
 var _event_modal: EventModal2 = null
-# The hub whose shop is owed to the player once the board stops moving (§14).
+# The Shop node whose shelf is owed to the player once the board stops moving
+# (§14, §19.1).
 # Set on the same terms an event is — the game at this node was played through
 # and not escaped — because a shop and an event are the same kind of thing:
 # what was waiting at the node, paid after the game rather than before it.
@@ -212,7 +213,7 @@ var _pending_shop: StringName = &""
 # The shop currently ON THE PAGE, under the board (ShopPanel2), and the pointer
 # that says it is down there. The shop is no longer a modal: it is mounted below
 # the battlefield and stays for the whole visit, so these live as long as the
-# player stands at that hub rather than as long as a dialog is open.
+# player stands at that node rather than as long as a dialog is open.
 var _shop_panel: ShopPanel2 = null
 var _shop_hint: Control = null
 # The machines standing at this game, in the same space and on the same terms
@@ -647,7 +648,7 @@ func start_run(character_id: StringName = &"") -> void:
 	_drop_queue.clear()
 	_slot_enemies.clear()
 	_slot_enemy_key = ""
-	# …and everything a run can be standing in the middle of: a hub's shop, a
+	# …and everything a run can be standing in the middle of: a node's shop, a
 	# detour waiting to ask where to carry on from, a boss round already announced.
 	_leave_node()
 	_pending_shop = &""
@@ -1338,7 +1339,7 @@ func pick(index: int) -> void:
 	GameState.set_current_game(_chosen["slot"])
 	if _offering != null:
 		_offering.reset_hover_grant()
-	# You have left the hub, so its shop comes off the page — the shelf itself
+	# You have left the node, so its shop comes off the page — the shelf itself
 	# survives on ShopSystem, which is what makes coming back to it a real option.
 	# The machines go too, and they do not survive: a Blood Donation Machine is
 	# not a place you can come back to.
@@ -1437,11 +1438,11 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 #
 # IT ALWAYS FINDS ONE, which is why this asks `roll_for_node` rather than the
 # `roll_for_arrival` a reported game uses. That one refuses at a node which has
-# already paid an event and at any of the ten hubs (§14.4) — right for "does this
-# arrival happen to owe one", wrong for a badge that PROMISED one. The hub gate
-# is the one that bit in practice: an Event node landing on a hub delivered
-# silence, and a node whose kind said event and then delivered nothing is the
-# badge telling a lie.
+# already paid an event and at a Shop node (§14.4) — right for "does this
+# arrival happen to owe one", wrong for a badge that PROMISED one. The shop gate
+# is the one that bit in practice, back when it was a HUB gate: an Event node
+# landing on one of the ten hubs delivered silence, and a node whose kind said
+# event and then delivered nothing is the badge telling a lie.
 #
 # Past those gates it re-shows an event the run has already had rather than
 # relaxing anything — see roll_for_node for why both available relaxations are
@@ -2455,18 +2456,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		_pending_event = EventSystem.roll_for_arrival(slot_here)
 		_pending_event_node = slot_here
 	if played_game != null and not escaped:
-		# The shop, if this was one of the run's ten hubs (§14). Queued on
-		# exactly the same terms, and read off the GAME rather than the graph slot:
-		# a shop belongs to the storefront of a particular big game, so a node
-		# transmuted into something else is not that shop any more.
-		#
-		# …OR IF THE NODE'S KIND IS SHOP (§19.1), which is read off the SLOT for
-		# exactly the opposite reason: the kind rides the node, so a transmuted card
-		# plays a different game at the same kind (§19.2). The two rules stand side
-		# by side until §19.7 retires the hub one.
-		if ShopSystem.is_hub(played_game.id) \
-				or GameState.node_kind(slot_here) == RunGraph.NodeKind.SHOP:
-			_pending_shop = played_game.id
+		# The shop, if this is a Shop node (§19.1). Read off the SLOT, not the game
+		# played there: the kind rides the node, so a transmuted Shop node plays a
+		# different game and still sells from the same shelf (§19.2). The shelf is
+		# keyed by that node id too (ShopSystem).
+		if ShopSystem.is_shop(slot_here):
+			_pending_shop = slot_here
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
 		# is deliberately a wider net than the beat below: it is what paces the
 		# "after beating a game" items, and every one of them is balanced around
@@ -2705,9 +2700,9 @@ func _end_resolve() -> void:
 	if _run_over_pending:
 		_run_over_pending = false
 		# A run that just ended has no room for either. The shop matters as much as
-		# the event here: the Amulet game can itself be a hub (they are the
-		# best-connected games on the map, so it is not a rare pairing), and
-		# winning the run is not a cue to go shopping.
+		# the event here. The Amulet is always a Champion node (§19.1), so it
+		# cannot owe a shop today — this stays as the guard for the day that rule
+		# moves, because winning the run is not a cue to go shopping.
 		_pending_event = null
 		_pending_event_node = &""
 		_pending_shop = &""
@@ -2728,7 +2723,7 @@ func _end_resolve() -> void:
 # --- the screen a game ends on (PostCombatScreen) ---------------------------
 
 # Hand the haul over to one screen: the relics that fell, the loot the game paid,
-# the hub's shelf, the boss warning, and the numbers behind all of it.
+# the shop's shelf, the boss warning, and the numbers behind all of it.
 #
 # It opens HERE and nowhere earlier, which is the whole point. The drops are
 # queued in the middle of `GameLoop2.beat_game` and used to be pumped straight
@@ -2793,7 +2788,7 @@ func _open_post_game() -> void:
 	# player is actually STANDING — so the button never promises a shop that method
 	# is about to turn down.
 	var shop_id: StringName = _pending_shop
-	if shop_id == &"" or GameLoop2.run_over or shop_id != _hub_underfoot():
+	if shop_id == &"" or GameLoop2.run_over or shop_id != GameState.current_game_id:
 		shop_id = &""
 	# The map goes before the haul arrives. It is routed from where the run stood
 	# when it was opened, the run has just moved, and — since it is raised on a
@@ -2825,7 +2820,7 @@ func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 
 # `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
 # reparented it under the board. Nothing borrows the shelf now — the screen knows
-# only the hub's id, so its exit button can name it — and `_mount_shop` builds the
+# only the shop's node id, so its exit button can name it — and `_mount_shop` builds the
 # panel in its own turn down the chain, which is what it always did on every path
 # that did not go through a haul screen.
 
@@ -2844,7 +2839,7 @@ func _dismiss_post_game() -> void:
 #
 # A node never owes both any more. The shop still opens behind the event here,
 # and the ordering is kept deliberately rather than collapsed into one path: a
-# hub pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
+# Shop node pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
 # `_pending_shop` is set on, and the fall-through below is the whole story. It
 # stays written as an order because the day something else queues an event on an
 # arrival — an item, a scroll — the shop should still come second: an event is a
@@ -2905,7 +2900,7 @@ func _on_event_finished(play_request: Dictionary) -> void:
 		return
 	_open_pending_shop()
 
-# Mount the shop owed at this hub, if any (§14) — under the board, where it stays
+# Mount the shop owed at this node, if any (§14, §19.1) — under the board, where it stays
 # for the whole visit. Nothing is blocked by it and nothing waits on it, so the
 # chain carries straight on to the boss notice.
 func _open_pending_shop() -> void:
@@ -2915,19 +2910,13 @@ func _open_pending_shop() -> void:
 	# anywhere; as a place on the page it cannot, and the one path that gets here
 	# from somewhere else is a node that owed both an event and a shop, where the
 	# event posted the run off to another game (§10). The spec calls that pairing
-	# unreal (every authored event is `Where: Dead End`, and a hub is the opposite
-	# of one), and a shop mounted under the board while the run stands two games
-	# away from it would be a worse answer than no shop.
-	if gid != &"" and not GameLoop2.run_over and gid == _hub_underfoot():
+	# unreal (a Shop node pays no event of its own), and a shop mounted under the
+	# board while the run stands two games away from it would be a worse answer
+	# than no shop. The shelf is keyed by NODE, so "standing on it" is simply the
+	# node the run is on.
+	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
 		_mount_shop(gid)
 	_maybe_announce_boss()
-
-# The id of the game the run is standing on, read through the transmute map — a
-# transmuted node plays a different game, and a shop belongs to the storefront of
-# a particular big game rather than to the spot (§14).
-func _hub_underfoot() -> StringName:
-	var game: GameData = GameLoop2.game_at(GameState.current_game_id)
-	return game.id if game != null else &""
 
 # --- the shop on the page (§14) --------------------------------------------
 
@@ -2950,10 +2939,10 @@ func _mount_shop(gid: StringName) -> void:
 	_update_shop_hint()
 	_update_shop_hint.call_deferred()
 
-# Everything mounted under the board because the run is STANDING HERE: the hub's
+# Everything mounted under the board because the run is STANDING HERE: the node's
 # shop and any machines. Both have the same lifetime — travelling on ends them —
 # and they differ in what survives it. A shop's shelf lives on in ShopSystem, so
-# coming back to a hub is a real option; a machine is simply gone, and the next
+# coming back to a Shop node is a real option; a machine is simply gone, and the next
 # one you meet is a different machine with its own press counts.
 func _leave_node() -> void:
 	_clear_shop()
@@ -3527,16 +3516,16 @@ func _hand_chests_to_post_game() -> void:
 
 # THE THREE CARD TELEPORTS, AND RIDE THE BUS, ARE ONE MOVE WITH THREE DESTINATIONS
 # (docs/cards-design.md §5). Each names a different pool — every Deckbuilder game
-# on the map, every hub, the game the run started on — and everything after that
+# on the map, the nearest Shop node, the game the run started on — and everything after that
 # is identical: escape whatever is in play, pick, log, land ON the game. Written
 # once, so the day the escape rule changes it changes for all four.
 #
-# `req.dest` is "type" (with `game_type`), "hub" or "start".
+# `req.dest` is "type" (with `game_type`), "shop" or "start".
 func card_teleport(req: Dictionary) -> String:
 	match String(req.get("dest", "")):
-		"hub":
-			return _teleport_into(_hub_pool(), "hub",
-				"There is no Hub Game on the map to reach.")
+		"shop":
+			return _teleport_into(_shop_pool(), "shop",
+				"There is no shop on the map to reach.")
 		"start":
 			# THE ONE FIZZLE THAT IS NOT AN EMPTY MAP. Playing The Fool where the run
 			# began is a card spent on a journey of nought steps, and "there is no
@@ -3579,20 +3568,21 @@ func _type_pool(type_key: StringName) -> Array:
 			out.append(g.id)
 	return out
 
-# THE HERMIT GOES TO THE NEAREST HUB, and "nearest" is measured in ROADS rather
-# than in anything the map is drawn with: the hub the fewest steps from where you
-# are standing. Ties are left in the pool and drawn between, because two hubs two
-# steps away are two equally good answers and picking the first by array order
-# would make the card quietly deterministic.
+# THE HERMIT GOES TO THE NEAREST SHOP NODE, and "nearest" is measured in ROADS
+# rather than in anything the map is drawn with: the Shop node the fewest steps
+# from where you are standing. Ties are left in the pool and drawn between,
+# because two shops two steps away are two equally good answers and picking the
+# first by array order would make the card quietly deterministic.
 #
-# A hub is where the shops are (ShopSystem.is_hub), so this is the one teleport in
-# the game with a destination the player wants for a reason other than distance.
-func _hub_pool() -> Array:
+# It went to the nearest of the ten HUB games until §19.7 moved the shops onto
+# Shop nodes. The card was always about the shop rather than the landmark, so it
+# follows the shops.
+func _shop_pool() -> Array:
 	var here: StringName = GameState.current_game_id
 	var dist: Dictionary = RunGraph.bfs_distances(here)
 	var best: int = -1
 	var out: Array = []
-	for gid in ShopSystem.hub_games():
+	for gid in ShopSystem.shop_nodes():
 		if not _reachable(gid) or not dist.has(gid):
 			continue
 		var d: int = int(dist[gid])
@@ -3647,8 +3637,8 @@ func _teleport_into(pool: Array, flavour: String, nowhere: String,
 	var name: String = g.display_name if g != null else String(dest)
 	var landed: String = ""
 	match flavour:
-		"hub":
-			landed = "Walked the quiet road to %s — a Hub Game." % name
+		"shop":
+			landed = "Walked the quiet road to %s — a shop stands there." % name
 		"start":
 			landed = "Back to where it started: %s." % name
 		_:
@@ -5983,7 +5973,7 @@ func _show_run_over() -> void:
 	# An event can now be the thing that KILLS you (a Health cost taken on the
 	# last point of it), and it is still standing open over the board when it
 	# does. Dismissed rather than closed: closing an event runs the chain that
-	# follows one — refresh, autosave, the hub's shop — and the run it belonged
+	# follows one — refresh, autosave, the node's shop — and the run it belonged
 	# to is over.
 	if _event_modal != null and is_instance_valid(_event_modal):
 		_event_modal.dismiss()

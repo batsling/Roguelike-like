@@ -2,7 +2,7 @@ class_name ObjectPanel2
 extends PanelContainer
 
 # The machines standing at this game, mounted UNDER THE BOARD — the same place on
-# the page a hub's shop takes (docs/object-sheet-authoring.md).
+# the page a Shop node's shelf takes (docs/object-sheet-authoring.md).
 #
 # This is the half of the object story that is NOT an event. When an event spawns
 # machines they are drawn inside its modal, because the Arcade Room is a room you

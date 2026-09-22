@@ -154,7 +154,7 @@ var regeneration: int = 0
 # Gold (docs/games-first-redesign.md §14). RUN-SCOPE: it is never carried between
 # runs, so what a run opens with is entirely the character's `start_gold` (3
 # across the roster today — exactly one Common item). It is earned a coin at a
-# time off defeated enemies (1, or 3 for a boss) and spent at the hub shops.
+# time off defeated enemies (1, or 3 for a boss) and spent at the shops.
 #
 # The numbers are deliberately tiny. This started at 99 with shop prices in the
 # tens, inherited from the combat build; the whole HUD is designed to stay
@@ -649,24 +649,19 @@ var event_nodes_fired: Dictionary = {}
 # SHOPS (docs/games-first-redesign.md §14). The logic lives in ShopSystem; this
 # is the run-scope state it reads and writes, on the same split EventSystem uses.
 #
-#   hub_games   The run's ten shop games, FROZEN at the first ask and never
-#               recomputed. RunGraph.hub_ids() is a live read of the graph, and
-#               the graph can be rebuilt underneath a run (the game filter does
-#               exactly that), so asking it twice is not guaranteed to give the
-#               same ten. A shop that appeared or vanished mid-route would make
-#               the flag on an offered card a lie, which is the one thing the
-#               placement of every other badge in this build is designed around.
+#   WHERE the shops are is not state of its own any more: a shop stands at every
+#   Shop node (§19.1), so `node_kinds` below answers it. The run's ten HUB games
+#   used to be frozen here as `hub_games`; §19.7 retired them.
 #
-#   shops       game id -> that hub's shop, and it PERSISTS for the whole run:
+#   shops       NODE id -> that node's shop, and it PERSISTS for the whole run:
 #                 {"stock": [{item, price, sold}, …], "seen": bool}
 #               Buying marks a slot sold rather than removing it, so what is left
-#               can be listed on the card's popup next time the hub comes around
+#               can be listed on the card's popup next time the node comes around
 #               (§14) — a returning player is shopping from the same shelf they
 #               left. `seen` is what separates "a shop is here" from "here is
 #               what's in it": stock is only quoted once the player has stood in
 #               it, so the first visit is still a discovery.
 # ---------------------------------------------------------------------------
-var hub_games: Array[StringName] = []
 var shops: Dictionary = {}
 
 # ---------------------------------------------------------------------------
@@ -674,8 +669,7 @@ var shops: Dictionary = {}
 # Champion or Shop, as `RunGraph.NodeKind`.
 #
 #   node_kinds  game id -> kind, ASSIGNED AT RUN START and never changed. Frozen
-#               for the same reason hub_games is, and the reason is the same
-#               sentence: a flag on an offered card that could move under the
+#               because a flag on an offered card that could move under the
 #               player is a lie. It rides the save rather than being re-derived,
 #               because re-deriving would re-roll it and the graph underneath may
 #               have been rebuilt by a filter change since.
@@ -1229,9 +1223,7 @@ func reset_run() -> void:
 	# been spawned. Not the Donation Machine's bank, which is the one thing here
 	# that outlives a run on purpose (GameStats).
 	ObjectSystem.reset_run()
-	# The shops go with the run, and so does the hub list — a new run may be on a
-	# different filter, so the ten biggest games are re-asked rather than reused.
-	hub_games.clear()
+	# The shops go with the run.
 	shops.clear()
 	# The map's kinds go with the run that was dealt them (§19.2).
 	node_kinds.clear()
@@ -2462,10 +2454,9 @@ func restore_event_goals(data: Dictionary) -> void:
 
 # --- shops (§14) -----------------------------------------------------------
 #
-# The frozen hub list and every shop's shelf, as JSON-safe data. Both have to
-# ride the save: re-deriving the hubs on load would re-ask a graph that may have
-# been rebuilt since, and re-rolling the stock would hand a player who reloaded a
-# different shop from the one they walked out of.
+# Every shop's shelf, as JSON-safe data. It has to ride the save: re-rolling the
+# stock would hand a player who reloaded a different shop from the one they
+# walked out of.
 
 # What stands at `game_id` (§19.1). ENEMIES for a game the run never assigned —
 # which is every game until the assignment pass runs, and is deliberately the
@@ -2473,8 +2464,7 @@ func restore_event_goals(data: Dictionary) -> void:
 func node_kind(game_id: StringName) -> int:
 	return int(node_kinds.get(game_id, RunGraph.NodeKind.ENEMIES))
 
-# The map's kinds, as JSON-safe data. It rides the save for the reason the hub
-# list does: re-deriving on load would re-roll against a graph a filter change
+# The map's kinds, as JSON-safe data. It rides the save because re-deriving on load would re-roll against a graph a filter change
 # may have rebuilt since, and the badge the player was routing on would move.
 func serialize_node_kinds() -> Dictionary:
 	var out: Dictionary = {}
@@ -2488,19 +2478,15 @@ func restore_node_kinds(data: Dictionary) -> void:
 		node_kinds[StringName(key)] = int(data[key])
 
 func serialize_shops() -> Dictionary:
-	var hubs: Array = []
-	for gid in hub_games:
-		hubs.append(String(gid))
 	var shelves: Dictionary = {}
 	for gid in shops.keys():
 		shelves[String(gid)] = (shops[gid] as Dictionary).duplicate(true)
-	return {"hubs": hubs, "shops": shelves}
+	return {"shops": shelves}
 
+# A save written while the hubs stood also carries a `hubs` list. It is ignored:
+# where the shops are is the node kinds now, which ride their own blob.
 func restore_shops(data: Dictionary) -> void:
-	hub_games.clear()
 	shops.clear()
-	for raw in data.get("hubs", []):
-		hub_games.append(StringName(raw))
 	var shelves: Dictionary = data.get("shops", {})
 	for key in shelves.keys():
 		var shelf = shelves[key]

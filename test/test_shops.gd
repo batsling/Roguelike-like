@@ -1,7 +1,7 @@
 extends GutTest
 
 # Tests for CURRENCY AND SHOPS (docs/games-first-redesign.md §14): the gold a
-# defeated enemy pays, the hub games a shop stands at, the price ladder, the
+# defeated enemy pays, the node games a shop stands at, the price ladder, the
 # shelf that persists across a run, buying, the Scramble reroll, and the whole
 # lot surviving a save/load round-trip.
 #
@@ -26,64 +26,81 @@ func _enemy(boss := false) -> GoalEnemyData:
 	e.boss = boss
 	return e
 
-# The first hub of the run — every shop test needs some hub to stand at, and
-# which one it is doesn't matter to any of them.
-func _a_hub() -> StringName:
-	var hubs: Array[StringName] = ShopSystem.hub_games()
-	return hubs[0] if not hubs.is_empty() else &""
+# A Shop node to stand at — every shop test needs one, and which it is doesn't
+# matter to any of them. `before_each` resets the run, which clears the node
+# kinds, so this STAMPS a real on-map game as a Shop rather than hoping the deal
+# put one somewhere findable (§19.1). Returns &"" only on an empty catalogue.
+func _a_shop() -> StringName:
+	for g in Data.all_games():
+		if g is GameData and not RunGraph.is_off_map(g.id):
+			GameState.node_kinds[g.id] = RunGraph.NodeKind.SHOP
+			return g.id
+	return &""
 
-# A hub's shelf, BROUGHT INTO BEING rather than read. `ShopSystem.stock` reports
+# A shop's shelf, BROUGHT INTO BEING rather than read. `ShopSystem.stock` reports
 # the shop as it stands and `before_each` wipes the run's shops, so a view test
 # that reaches for `stock` alone gets an empty array and skips itself — which
-# reads exactly like a hub that rolled nothing. `shop_for` is the one call that
+# reads exactly like a shop that rolled nothing. `shop_for` is the one call that
 # rolls a shelf, and it is what the panel does on mount anyway.
-func _rolled_shelf(hub: StringName) -> Array:
-	ShopSystem.shop_for(hub)
-	return ShopSystem.stock(hub)
+func _rolled_shelf(shop_node: StringName) -> Array:
+	ShopSystem.shop_for(shop_node)
+	return ShopSystem.stock(shop_node)
 
 
-# --- the hubs --------------------------------------------------------------
+# --- where the shops are (§19.1, §19.7) -------------------------------------
 
-func test_the_run_has_ten_hubs_and_they_are_the_best_connected_games() -> void:
-	var hubs: Array[StringName] = ShopSystem.hub_games()
-	assert_eq(hubs.size(), RunGraph.NUM_HUBS, "ten hubs")
-	# Ordered biggest-first, and every one of them at least as connected as the
-	# next. This is the property the whole idea rests on: a shop stands where the
-	# map is busiest, so a detour to one is short.
-	for i in range(hubs.size() - 1):
-		assert_true(RunGraph.degree(hubs[i]) >= RunGraph.degree(hubs[i + 1]),
-			"hub %d is at least as connected as hub %d" % [i, i + 1])
-	# And nothing outside the list out-connects the smallest game in it.
-	var floor_degree: int = RunGraph.degree(hubs[hubs.size() - 1])
-	for gid in RunGraph.neighbors(hubs[0]):
-		if hubs.has(gid):
-			continue
-		assert_true(RunGraph.degree(gid) <= floor_degree,
-			"%s is not a hub, so it can't out-connect the smallest one" % gid)
-
-func test_hub_order_is_stable_across_calls() -> void:
-	# Ties break on the id inside the comparator rather than relying on the sort
-	# being stable, so asking twice has to give the identical list.
-	var first: Array = RunGraph.hub_ids().duplicate()
-	RunGraph.invalidate_cache()
-	var second: Array = RunGraph.hub_ids().duplicate()
-	assert_eq(first, second, "the same catalog yields the same ten hubs")
-
-func test_the_hub_list_is_frozen_for_the_run() -> void:
-	var frozen: Array = ShopSystem.hub_games().duplicate()
-	assert_false(frozen.is_empty(), "the run froze a hub list")
-	# Whatever happens to the live graph, the RUN's hubs do not move — a shop
-	# that appeared or vanished mid-route would make a card's flag a lie.
-	GameState.hub_games[0] = &"__sentinel__"
-	assert_eq(ShopSystem.hub_games()[0], StringName("__sentinel__"),
-		"the frozen list is read, not RunGraph")
-	assert_true(ShopSystem.is_hub(&"__sentinel__"), "and is_hub reads it too")
-
-func test_only_hubs_have_shops() -> void:
+func test_a_shop_stands_at_a_shop_node_and_nowhere_else() -> void:
+	var shop_node: StringName = _a_shop()
+	assert_true(ShopSystem.is_shop(shop_node), "a Shop node sells")
+	assert_false(ShopSystem.shop_for(shop_node).is_empty(), "and has a shelf")
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
+			RunGraph.NodeKind.CHAMPION]:
+		GameState.node_kinds[shop_node] = int(kind)
+		assert_false(ShopSystem.is_shop(shop_node),
+			"a %s node does not" % RunGraph.kind_label(int(kind)))
+	GameState.node_kinds.erase(shop_node)
+	assert_false(ShopSystem.is_shop(shop_node),
+		"nor does a game the run never dealt a kind, which reads as Enemies")
+	assert_false(ShopSystem.is_shop(&""), "and neither does nowhere")
 	assert_true(ShopSystem.shop_for(&"__not_a_game__").is_empty(),
-		"a game that isn't a hub has no shop")
-	assert_false(ShopSystem.is_hub(&"__not_a_game__"))
-	assert_false(ShopSystem.is_hub(&""), "and neither has nowhere")
+		"a node that isn't a Shop has no shop")
+
+
+# THE HUBS ARE GONE (§19.7). The best-connected game on the map used to sell
+# whatever its kind; now it sells only if its node was dealt Shop.
+func test_the_best_connected_game_does_not_sell_unless_it_is_a_shop_node() -> void:
+	var biggest: Array = RunGraph.best_connected(1)
+	if biggest.is_empty():
+		pending("no graph in this catalogue")
+		return
+	GameState.node_kinds[StringName(biggest[0])] = RunGraph.NodeKind.ENEMIES
+	assert_false(ShopSystem.is_shop(StringName(biggest[0])),
+		"the old first node is an ordinary node now")
+	assert_true(ShopSystem.shop_for(StringName(biggest[0])).is_empty())
+
+
+func test_shop_nodes_lists_every_shop_node_and_only_those() -> void:
+	GameState.node_kinds.clear()
+	GameState.node_kinds[&"b_game"] = RunGraph.NodeKind.SHOP
+	GameState.node_kinds[&"a_game"] = RunGraph.NodeKind.SHOP
+	GameState.node_kinds[&"c_game"] = RunGraph.NodeKind.EVENT
+	assert_eq(ShopSystem.shop_nodes(), [&"a_game", &"b_game"] as Array[StringName],
+		"both Shop nodes, in a stable order, and not the Event")
+
+
+# A save written while the hubs stood carries a `hubs` list beside the shelves.
+# It loads, the shelves come back, and the list is simply not read — where the
+# shops are is the node kinds now, which ride a blob of their own.
+func test_a_save_from_the_hub_era_still_restores_its_shelves() -> void:
+	var shop_node: StringName = _a_shop()
+	ShopSystem.shop_for(shop_node)
+	var blob: Dictionary = GameState.serialize_shops()
+	assert_false(blob.has("hubs"), "a new save writes no hub list")
+	blob["hubs"] = ["slay_the_spire", "vampire_survivors"]
+	var shelf_before: Array = ShopSystem.stock(shop_node).duplicate(true)
+	GameState.shops.clear()
+	GameState.restore_shops(blob)
+	assert_eq(ShopSystem.stock(shop_node), shelf_before, "the shelf came back")
 
 
 # --- gold ------------------------------------------------------------------
@@ -166,8 +183,8 @@ func test_the_rarity_ladder_has_no_holes_in_it() -> void:
 # --- the shelf -------------------------------------------------------------
 
 func test_a_shop_stocks_three_distinct_items_at_their_price() -> void:
-	var hub: StringName = _a_hub()
-	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
+	var shop_node: StringName = _a_shop()
+	var shelf: Array = ShopSystem.shop_for(shop_node).get("stock", [])
 	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "three slots")
 	var seen: Dictionary = {}
 	for entry in shelf:
@@ -180,147 +197,142 @@ func test_a_shop_stocks_three_distinct_items_at_their_price() -> void:
 		assert_false(bool(entry["sold"]), "and starts unsold")
 
 func test_the_stock_is_rolled_once_and_kept() -> void:
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	# shop_for, not stock: `stock` reads through `peek`, which deliberately does
 	# NOT roll, so comparing two unrolled reads would pass by both being empty.
-	var first: Array = ShopSystem.shop_for(hub)["stock"].duplicate(true)
+	var first: Array = ShopSystem.shop_for(shop_node)["stock"].duplicate(true)
 	assert_eq(first.size(), ShopSystem.STOCK_SLOTS, "there is a shelf to compare")
-	var again: Array = ShopSystem.stock(hub)
+	var again: Array = ShopSystem.stock(shop_node)
 	assert_eq(first, again, "asking twice does not re-roll the shelf")
 
 func test_peeking_does_not_bring_a_shop_into_existence() -> void:
 	# The offering redraws constantly; drawing a card must not decide what is in
 	# a shop the player has not walked into.
-	var hub: StringName = _a_hub()
-	assert_true(ShopSystem.peek(hub).is_empty(), "nothing rolled yet")
-	assert_true(ShopSystem.stock(hub).is_empty(), "and no stock to read")
-	assert_false(GameState.shops.has(hub), "the state is untouched")
+	var shop_node: StringName = _a_shop()
+	assert_true(ShopSystem.peek(shop_node).is_empty(), "nothing rolled yet")
+	assert_true(ShopSystem.stock(shop_node).is_empty(), "and no stock to read")
+	assert_false(GameState.shops.has(shop_node), "the state is untouched")
 
 func test_a_shop_says_nothing_about_its_stock_until_it_has_been_seen() -> void:
-	var hub: StringName = _a_hub()
-	ShopSystem.shop_for(hub)
-	assert_false(ShopSystem.has_seen(hub), "not been in yet")
-	assert_eq(ShopSystem.stock_lines(hub), [], "so it quotes nothing")
-	assert_string_contains(ShopSystem.headline(hub), "shop stands here")
+	var shop_node: StringName = _a_shop()
+	ShopSystem.shop_for(shop_node)
+	assert_false(ShopSystem.has_seen(shop_node), "not been in yet")
+	assert_eq(ShopSystem.stock_lines(shop_node), [], "so it quotes nothing")
+	assert_string_contains(ShopSystem.headline(shop_node), "shop stands here")
 
-	ShopSystem.mark_seen(hub)
-	assert_true(ShopSystem.has_seen(hub))
-	assert_eq(ShopSystem.stock_lines(hub).size(), ShopSystem.STOCK_SLOTS,
+	ShopSystem.mark_seen(shop_node)
+	assert_true(ShopSystem.has_seen(shop_node))
+	assert_eq(ShopSystem.stock_lines(shop_node).size(), ShopSystem.STOCK_SLOTS,
 		"now it lists the shelf")
 
 
 # --- buying ----------------------------------------------------------------
 
 func test_buying_takes_the_gold_marks_the_slot_and_hands_over_the_item() -> void:
-	var hub: StringName = _a_hub()
-	var entry: Dictionary = ShopSystem.shop_for(hub)["stock"][0]
+	var shop_node: StringName = _a_shop()
+	var entry: Dictionary = ShopSystem.shop_for(shop_node)["stock"][0]
 	var price: int = ShopSystem.price_of(entry)
 	GameState.gold = price
 	var before: int = GameState.inventory.size()
 
-	var bought: ItemData = ShopSystem.buy(hub, 0)
+	var bought: ItemData = ShopSystem.buy(shop_node, 0)
 	assert_not_null(bought, "the purchase went through")
 	assert_eq(GameState.gold, 0, "the gold is spent")
 	assert_eq(GameState.inventory.size(), before + 1, "the item is in the pack")
-	assert_true(bool(ShopSystem.shop_for(hub)["stock"][0]["sold"]), "the slot is sold")
+	assert_true(bool(ShopSystem.shop_for(shop_node)["stock"][0]["sold"]), "the slot is sold")
 
 func test_a_sold_slot_keeps_its_place_on_the_shelf() -> void:
 	# The shelf persists, and the modal draws sold slots greyed rather than
 	# reflowing — so a return visit shows the shop you left.
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.gold = 99
-	ShopSystem.buy(hub, 0)
-	assert_eq(ShopSystem.stock(hub).size(), ShopSystem.STOCK_SLOTS,
+	ShopSystem.buy(shop_node, 0)
+	assert_eq(ShopSystem.stock(shop_node).size(), ShopSystem.STOCK_SLOTS,
 		"still three slots")
-	assert_eq(ShopSystem.remaining(hub).size(), ShopSystem.STOCK_SLOTS - 1,
+	assert_eq(ShopSystem.remaining(shop_node).size(), ShopSystem.STOCK_SLOTS - 1,
 		"two of them still buyable")
 
 func test_you_cannot_buy_what_you_cannot_afford() -> void:
-	var hub: StringName = _a_hub()
-	var entry: Dictionary = ShopSystem.shop_for(hub)["stock"][0]
+	var shop_node: StringName = _a_shop()
+	var entry: Dictionary = ShopSystem.shop_for(shop_node)["stock"][0]
 	GameState.gold = ShopSystem.price_of(entry) - 1
-	assert_null(ShopSystem.buy(hub, 0), "one gold short is short")
+	assert_null(ShopSystem.buy(shop_node, 0), "one gold short is short")
 	assert_eq(GameState.gold, ShopSystem.price_of(entry) - 1, "and nothing was taken")
-	assert_false(bool(ShopSystem.shop_for(hub)["stock"][0]["sold"]))
+	assert_false(bool(ShopSystem.shop_for(shop_node)["stock"][0]["sold"]))
 
 func test_a_slot_cannot_be_bought_twice() -> void:
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.gold = 99
-	assert_not_null(ShopSystem.buy(hub, 0))
+	assert_not_null(ShopSystem.buy(shop_node, 0))
 	var after_first: int = GameState.gold
-	assert_null(ShopSystem.buy(hub, 0), "already sold")
+	assert_null(ShopSystem.buy(shop_node, 0), "already sold")
 	assert_eq(GameState.gold, after_first, "and charged nothing for the refusal")
 
 func test_buying_a_bad_slot_is_refused() -> void:
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.gold = 99
-	ShopSystem.shop_for(hub)
-	assert_null(ShopSystem.buy(hub, -1), "no negative slots")
-	assert_null(ShopSystem.buy(hub, 99), "and none off the end")
+	ShopSystem.shop_for(shop_node)
+	assert_null(ShopSystem.buy(shop_node, -1), "no negative slots")
+	assert_null(ShopSystem.buy(shop_node, 99), "and none off the end")
 	assert_eq(GameState.gold, 99, "nothing spent either way")
 
 
 # --- rerolling -------------------------------------------------------------
 
 func test_rerolling_spends_a_scramble_and_redraws_the_whole_shelf() -> void:
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.scramble = 1
-	var before: Array = ShopSystem.shop_for(hub)["stock"].duplicate(true)
-	assert_true(ShopSystem.reroll(hub), "the reroll happened")
+	var before: Array = ShopSystem.shop_for(shop_node)["stock"].duplicate(true)
+	assert_true(ShopSystem.reroll(shop_node), "the reroll happened")
 	assert_eq(GameState.scramble, 0, "it cost a Scramble")
-	assert_eq(ShopSystem.stock(hub).size(), ShopSystem.STOCK_SLOTS, "still three")
-	assert_ne(ShopSystem.stock(hub), before, "and they are not the same three")
+	assert_eq(ShopSystem.stock(shop_node).size(), ShopSystem.STOCK_SLOTS, "still three")
+	assert_ne(ShopSystem.stock(shop_node), before, "and they are not the same three")
 
 func test_rerolling_refills_sold_slots() -> void:
 	# The generous reading, deliberately: gold is the real limiter, so a reroll
 	# handing back three fresh items you still have to afford is not a faucet.
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.gold = 99
 	GameState.scramble = 1
-	ShopSystem.buy(hub, 0)
-	assert_eq(ShopSystem.remaining(hub).size(), ShopSystem.STOCK_SLOTS - 1)
-	ShopSystem.reroll(hub)
-	assert_eq(ShopSystem.remaining(hub).size(), ShopSystem.STOCK_SLOTS,
+	ShopSystem.buy(shop_node, 0)
+	assert_eq(ShopSystem.remaining(shop_node).size(), ShopSystem.STOCK_SLOTS - 1)
+	ShopSystem.reroll(shop_node)
+	assert_eq(ShopSystem.remaining(shop_node).size(), ShopSystem.STOCK_SLOTS,
 		"the whole shelf is buyable again")
 
 func test_no_scramble_means_no_reroll() -> void:
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	GameState.scramble = 0
-	var before: Array = ShopSystem.shop_for(hub)["stock"].duplicate(true)
-	assert_false(ShopSystem.can_reroll(hub))
-	assert_false(ShopSystem.reroll(hub), "refused")
-	assert_eq(ShopSystem.stock(hub), before, "and the shelf is untouched")
+	var before: Array = ShopSystem.shop_for(shop_node)["stock"].duplicate(true)
+	assert_false(ShopSystem.can_reroll(shop_node))
+	assert_false(ShopSystem.reroll(shop_node), "refused")
+	assert_eq(ShopSystem.stock(shop_node), before, "and the shelf is untouched")
 
 
 # --- persistence -----------------------------------------------------------
 
-func test_the_shelf_and_the_hubs_survive_a_save_round_trip() -> void:
-	var hub: StringName = _a_hub()
+func test_the_shelf_survives_a_save_round_trip() -> void:
+	var shop_node: StringName = _a_shop()
 	GameState.gold = 99
-	ShopSystem.buy(hub, 0)
-	ShopSystem.mark_seen(hub)
-	var hubs_before: Array = ShopSystem.hub_games().duplicate()
-	var shelf_before: Array = ShopSystem.stock(hub).duplicate(true)
+	ShopSystem.buy(shop_node, 0)
+	ShopSystem.mark_seen(shop_node)
+	var shelf_before: Array = ShopSystem.stock(shop_node).duplicate(true)
 
 	var blob: Dictionary = GameState.serialize_shops()
-	GameState.hub_games.clear()
 	GameState.shops.clear()
 	GameState.restore_shops(blob)
 
-	assert_eq(ShopSystem.hub_games(), hubs_before, "the same ten hubs came back")
-	assert_eq(ShopSystem.stock(hub), shelf_before, "the same shelf came back")
-	assert_true(ShopSystem.has_seen(hub), "and it remembers being visited")
-	assert_true(bool(ShopSystem.stock(hub)[0]["sold"]),
+	assert_eq(ShopSystem.stock(shop_node), shelf_before, "the same shelf came back")
+	assert_true(ShopSystem.has_seen(shop_node), "and it remembers being visited")
+	assert_true(bool(ShopSystem.stock(shop_node)[0]["sold"]),
 		"a reload does not put back what was bought")
 
 func test_a_new_run_clears_the_shops() -> void:
-	var hub: StringName = _a_hub()
-	ShopSystem.shop_for(hub)
+	var shop_node: StringName = _a_shop()
+	ShopSystem.shop_for(shop_node)
 	assert_false(GameState.shops.is_empty())
 	GameState.reset_run()
 	assert_true(GameState.shops.is_empty(), "shops go with the run")
-	assert_true(GameState.hub_games.is_empty(),
-		"and the hubs are re-asked, since a new run may be on a different filter")
 
 # --- the panel keeps up with the charge it spends ---------------------------
 
@@ -329,13 +341,13 @@ func test_the_reroll_lights_up_the_moment_a_scramble_arrives() -> void:
 	# Scramble. The reroll button is bought with Scramble and had no way of
 	# hearing about it, so the charge the player had just spent an item to get
 	# could not be spent here until something else repainted the shop.
-	var hub: StringName = _a_hub()
-	ShopSystem.shop_for(hub)
+	var shop_node: StringName = _a_shop()
+	ShopSystem.shop_for(shop_node)
 	GameState.scramble = 0
 	var host := Control.new()
 	add_child_autofree(host)
-	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
-	assert_not_null(panel, "the hub has a shop to mount")
+	var panel: ShopPanel2 = ShopPanel2.mount(host, shop_node)
+	assert_not_null(panel, "the node has a shop to mount")
 	await wait_frames(1)
 	assert_true(panel._reroll_btn.disabled, "no charge, no reroll")
 	GameState.grant_run_stat("scramble", 1)
@@ -345,18 +357,18 @@ func test_the_reroll_lights_up_the_moment_a_scramble_arrives() -> void:
 func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
 	# The row was one clipped line of "Name   ◉ 5", so a long relic name ate the
 	# price — the one number a shelf exists to show.
-	var hub: StringName = _a_hub()
+	var shop_node: StringName = _a_shop()
 	# ROLLED, not read. `stock` reports a shop that already EXISTS and `before_each`
 	# wipes the run's shops, so reading it here found an empty array every time and
 	# the test shrugged its way to green without ever seeing a row. `shop_for` is
-	# what brings a hub's shelf into being (the panel calls it too, on mount).
-	var shelf: Array = _rolled_shelf(hub)
+	# what brings a node's shelf into being (the panel calls it too, on mount).
+	var shelf: Array = _rolled_shelf(shop_node)
 	if shelf.is_empty():
-		pending("this hub's shop rolled nothing to price")
+		pending("this node's shop rolled nothing to price")
 		return
 	var host := Control.new()
 	add_child_autofree(host)
-	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, shop_node)
 	await wait_frames(1)
 	var priced: int = 0
 	for row in panel._cards_row.get_children():
@@ -377,15 +389,15 @@ func test_a_shelf_row_never_hides_the_price_behind_the_name() -> void:
 # standing on.
 
 func test_the_header_says_shop_and_not_which_games_shop() -> void:
-	var hub: StringName = _a_hub()
-	var game: GameData = Data.get_game(hub)
+	var shop_node: StringName = _a_shop()
+	var game: GameData = Data.get_game(shop_node)
 	if game == null or game.display_name == "":
-		pending("this hub has no name to have been repeating")
+		pending("this node has no name to have been repeating")
 		return
 	var host := Control.new()
 	add_child_autofree(host)
-	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
-	assert_not_null(panel, "the hub has a shop to mount")
+	var panel: ShopPanel2 = ShopPanel2.mount(host, shop_node)
+	assert_not_null(panel, "the node has a shop to mount")
 	await wait_frames(1)
 	var head: String = ""
 	for node in panel.find_children("*", "Label", true, false):
@@ -399,19 +411,19 @@ func test_the_header_says_shop_and_not_which_games_shop() -> void:
 		"and it does not repeat %s — you are standing on its page, under its board"
 			% game.display_name)
 	# The rule about the shelf persisting is a thing you learn once, so it lives in
-	# the tooltip rather than in a sentence printed at every hub.
+	# the tooltip rather than in a sentence printed at every node.
 	assert_string_contains(panel.tooltip_text, "stays here",
 		"the shelf's rule is still there to be found, just not printed")
 
 func test_a_shelf_row_says_what_the_thing_does() -> void:
-	var hub: StringName = _a_hub()
-	var shelf: Array = _rolled_shelf(hub)
+	var shop_node: StringName = _a_shop()
+	var shelf: Array = _rolled_shelf(shop_node)
 	if shelf.is_empty():
-		pending("this hub's shop rolled nothing to describe")
+		pending("this node's shop rolled nothing to describe")
 		return
 	var host := Control.new()
 	add_child_autofree(host)
-	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, shop_node)
 	await wait_frames(1)
 	var described: int = 0
 	for i in range(shelf.size()):
@@ -438,14 +450,14 @@ func test_a_shelf_row_says_what_the_thing_does() -> void:
 # row used to say it in the colour of the NAME alone, which is the one thing on a
 # row that is allowed to be trimmed to an ellipsis.
 func test_a_shelf_row_wears_the_items_rarity_on_its_border() -> void:
-	var hub: StringName = _a_hub()
-	var shelf: Array = _rolled_shelf(hub)
+	var shop_node: StringName = _a_shop()
+	var shelf: Array = _rolled_shelf(shop_node)
 	if shelf.is_empty():
-		pending("this hub's shop rolled nothing to dress")
+		pending("this node's shop rolled nothing to dress")
 		return
 	var host := Control.new()
 	add_child_autofree(host)
-	var panel: ShopPanel2 = ShopPanel2.mount(host, hub)
+	var panel: ShopPanel2 = ShopPanel2.mount(host, shop_node)
 	await wait_frames(1)
 	var dressed: int = 0
 	for i in range(shelf.size()):
@@ -476,7 +488,7 @@ func test_a_shelf_row_wears_the_items_rarity_on_its_border() -> void:
 #
 # The sheet's `pools` column, which is WHERE a relic is drawn from as opposed to
 # what it is about (`tags`). Only `shop` is wired up: it doubles the item's weight
-# when a shelf is rolled, so Piggy Bank and There's Options turn up at hubs more
+# when a shelf is rolled, so Piggy Bank and There's Options turn up on shelves more
 # often than the rest of their rarity — without ever being the ONLY things a shelf
 # can hold, which is what a filter would have made them.
 

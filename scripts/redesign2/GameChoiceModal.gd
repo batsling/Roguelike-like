@@ -158,14 +158,19 @@ func _build() -> void:
 	# pays one now, so the line was on all but two kinds of card and said nothing
 	# on any of them: a fact that is always true is not information.
 	#
-	# The shop, if this game is one of the run's hubs (§14), is the row that
-	# earned its place — and it is now also the row that says an event is NOT
-	# coming, because a hub's event is the shop (§12). One step further than a
-	# badge, too: a shop the player has ALREADY been to lists what is still on its
-	# shelf, because the decision "is it worth walking back to that hub" is
-	# unanswerable without knowing what is left there and what it costs. This is
-	# the only place in the run that question gets asked.
-	var shop_row: Control = _build_shop_row(game)
+	# The shop, if this is a Shop node (§14, §19.1), is the row that earned its
+	# place — and it is also the row that says an event is NOT coming, because a
+	# Shop node's event is the shop (§14.4). One step further than a badge, too: a
+	# shop the player has ALREADY been to lists what is still on its shelf,
+	# because the decision "is it worth walking back there" is unanswerable
+	# without knowing what is left and what it costs. This is the only place in
+	# the run that question gets asked.
+	#
+	# Asked of the NODE (the slot), not the game on it (§19.2).
+	var shop_node: StringName = StringName(_choice.get("slot", &""))
+	if shop_node == &"" and game != null:
+		shop_node = game.id
+	var shop_row: Control = _build_shop_row(shop_node)
 	if shop_row != null:
 		root.add_child(shop_row)
 
@@ -184,29 +189,28 @@ func _build() -> void:
 	# panel out; until then the scroll area reports nothing to fit it against.
 	_settle.call_deferred()
 
-# Null off a hub, so an ordinary card stays clean. On one: the headline, then the
+# Null off a Shop node, so an ordinary card stays clean. On one: the headline, then the
 # remaining shelf as one priced line per item — but only once the player has
 # stood in the shop. An unvisited shop says a shop is here and stops, because
 # opening a card must not spoil a roll the player hasn't earned the sight of.
 #
 # Both the wording and the stock come from ShopSystem, which is also what the
 # card's flag tooltip reads, so the two cannot disagree.
-func _build_shop_row(game: GameData) -> Control:
-	if game == null or not ShopSystem.is_hub(game.id):
+func _build_shop_row(node_id: StringName) -> Control:
+	if not ShopSystem.is_shop(node_id):
 		return null
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 
 	var head := Label.new()
-	head.text = "🛒  %s" % ShopSystem.headline(game.id)
+	head.text = "🛒  %s" % ShopSystem.headline(node_id)
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	col.add_child(head)
 
 	# The trade, said once where the routing decision is made: a shop stands here
-	# INSTEAD of an event (§14.4), which is the only way a hub costs differently
-	# from every other card on the board.
+	# INSTEAD of an event (§14.4).
 	var instead := Label.new()
 	instead.text = "      No event fires here — the shop is what happens instead."
 	instead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -214,7 +218,7 @@ func _build_shop_row(game: GameData) -> Control:
 	instead.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	col.add_child(instead)
 
-	for line in ShopSystem.stock_lines(game.id):
+	for line in ShopSystem.stock_lines(node_id):
 		var row := Label.new()
 		row.text = "      • %s" % line
 		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -250,10 +254,10 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 		# played, so this counts the neighbours the run has not already taken one
 		# from, which is the number that actually shapes where to go next.
 		#
-		# A hub is not one of them. A shop is what happens at a hub, INSTEAD of an
-		# event (§12), so counting it under both headings would promise the same
-		# neighbour twice and overstate the events on offer.
-		if ShopSystem.is_hub(n):
+		# A Shop node is not one of them. A shop is what happens there, INSTEAD of
+		# an event (§14.4), so counting it under both headings would promise the
+		# same neighbour twice and overstate the events on offer.
+		if ShopSystem.is_shop(n):
 			out["shops"] += 1
 		elif not GameState.event_nodes_fired.has(n):
 			out["events"] += 1
@@ -276,7 +280,7 @@ static func connection_text(counts: Dictionary) -> String:
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var name_text: String = game.display_name if game != null else "this game"
 	return ("%d games connect to %s — the pool the next offering is drawn from. "
-		+ "%d of them still owe an event; %d are shop hubs, where the shop is "
+		+ "%d of them still owe an event; %d are Shop nodes, where the shop is "
 		+ "what happens instead of one.") % [
 		int(counts.get("total", 0)), name_text,
 		int(counts.get("events", 0)), int(counts.get("shops", 0))]

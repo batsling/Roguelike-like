@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The hubs are retired: a shop is a Shop node, and only a Shop node (§19.7).**
+  Shops stood at the run's ten best-connected games until §19 dealt a Shop kind
+  onto 10% of the map. For one pass the two rules ran side by side, so a rung
+  could carry both a 🛒 and a `$`. Now `ShopSystem.is_shop(node)` reads the node's
+  kind and nothing else, and `hub_games`, `is_hub` and `NUM_HUBS` are gone.
+  `hub_ids` survives as `RunGraph.best_connected`, a plain degree sort that a test
+  and `tools/dump_map_health.gd` still ask for.
+
+  **The shelf is keyed by NODE id now, and that reverses a rule.** The hub rule
+  read the game PLAYED at a node: transmute a hub and the off-map game pasted
+  over it was never a hub, so the shop left with the game and the spot went back
+  to paying an event. With a `$` on the card that would be a badge that stopped
+  meaning what it said, which §19.2 exists to prevent. So a transmuted Shop node
+  plays a different game, still sells from the same shelf, and still pays no
+  event (`EventSystem.roll_for_arrival` asks `is_shop` of the node). The panel is
+  still named after the game you actually played there.
+
+  **The Hermit goes to the nearest Shop node**, measured in roads, ties drawn
+  between. The op is `teleport_shop` (was `teleport_hub`), and the card reads
+  "Teleport to the nearest Shop". The text was changed in the `cards` sheet with
+  `_xlsx_surgery.replace_cells` and regenerated, which moved only
+  `ix_the_hermit.tres`.
+
+  **What went with them.** The rung's 🛒 cart, which the `$` kind mark now says
+  (the map legend reads `$ = a shop`). The manual's "ten best-connected games"
+  section, rewritten around Shop nodes. `RouteLadder.played_id`, whose only
+  remaining caller was the cart.
+
+  **Saves.** A save from the hub era still loads. Its `hubs` list is ignored, and
+  its shelves, keyed by what were hub ids, sit unused. `SAVE_VERSION` did not
+  move: nothing in the run is misread, it just stops selling where the hubs
+  were.
+
+  **Tests.** The hub-list tests became Shop-node tests. Every shop test now
+  STAMPS a node Shop rather than looking for one, so none rides on where the deal
+  put them. The page-fit test walked all ten hubs because a long hub NAME once
+  overflowed the page. The header is a flat "Shop" now, so it mounts the shop
+  underfoot and the longest-named Shop node on the map instead. The "Event node
+  on a hub" test can't happen any more (a node has one kind), so it now covers
+  the other gate an Event node steps over: a node that has already paid its
+  event.
+
 - **§19.8 finished: the strip names what losing costs, and the map shows
   every node's kind.** The first pass put kind marks on the offered cards and the
   popup; this one does the other two surfaces the section lists.

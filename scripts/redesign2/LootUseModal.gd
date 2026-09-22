@@ -579,8 +579,8 @@ func _do_teleport(req: Dictionary) -> void:
 		_report("It fizzles — you do not move.")
 	_process_next_request()
 
-# The three CARD teleports (docs/cards-design.md §5) — the bus, the hub, the
-# starting game. Separate from `_do_teleport` above because they are a different
+# The three CARD teleports (docs/cards-design.md §5) — the bus, the nearest
+# shop, the starting game. Separate from `_do_teleport` above because they are a different
 # question of the overworld: that one is measured in steps from the Amulet and
 # these name a destination outright. Same shape of answer, and the same reason it
 # has to come back from whoever moved you.

@@ -901,7 +901,7 @@ func _end_objects() -> void:
 
 
 # Take the event off the screen WITHOUT answering it. `finished` is the chain
-# that runs when an event is over — refresh, autosave, open the shop the hub
+# that runs when an event is over — refresh, autosave, open the shop the node
 # owes, start the game a `play_game` sent you to — and none of that should
 # happen when what ended the event was the run ending under it. The player died
 # on a press in here; there is no shop to walk into afterwards and no save to

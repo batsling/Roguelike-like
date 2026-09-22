@@ -282,8 +282,9 @@ func test_the_popup_counts_the_connections_the_game_opens_onto() -> void:
 	modal._close()
 
 func test_the_connection_line_breaks_out_events_and_shops() -> void:
-	# The two headings are EXCLUSIVE: a shop is what happens at a hub, instead of
-	# an event (§14.4), so a hub neighbour is counted under 🛒 and never under ✦.
+	# The two headings are EXCLUSIVE: a shop is what happens at a Shop node,
+	# instead of an event (§14.4), so a Shop neighbour is counted under 🛒 and
+	# never under ✦.
 	# Counting it under both promised the same neighbour twice.
 	for i in range(_ui._choices.size()):
 		var slot: StringName = StringName(_ui._choices[i]["slot"])
@@ -293,12 +294,12 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 		for n in RunGraph.neighbors(slot):
 			if GameLoop2.is_bashed(n):
 				continue
-			if ShopSystem.is_hub(n):
+			if ShopSystem.is_shop(n):
 				shops += 1
 			elif not GameState.event_nodes_fired.has(n):
 				events += 1
 		assert_eq(int(counts["events"]), events, "events counted off the same rule")
-		assert_eq(int(counts["shops"]), shops, "shops counted off the same hub list")
+		assert_eq(int(counts["shops"]), shops, "shops counted off the same node kinds")
 		var line: String = GameChoiceModal.connection_text(counts)
 		if events > 0:
 			assert_true(line.contains("%d event" % events), "the line names them: %s" % line)

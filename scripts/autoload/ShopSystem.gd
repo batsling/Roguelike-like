@@ -1,25 +1,27 @@
 extends Node
 
-# SHOPS (docs/games-first-redesign.md §14) — what the gold is for.
+# SHOPS (docs/games-first-redesign.md §14, §19.1) — what the gold is for.
 #
-# A shop stands at each of the run's ten HUB games: the best-connected games on
-# the route, which on the full catalog are the genre's landmarks (Slay the Spire,
-# Vampire Survivors, Isaac, Hades, Balatro, Spelunky, FTL, NetHack, Dead Cells,
-# Enter the Gungeon). Beating a hub's game opens its shop.
+# A shop stands at every SHOP NODE: one of §19's four node kinds, dealt across
+# the map at run start (10% of it) and frozen there, so a card's `$` can never
+# become a lie. Beating the game on one opens its shelf under the board.
 #
-# The point of hanging them off the hubs specifically is that it gives ROUTING a
-# second axis. Until now every step was measured against one question — does this
-# take me closer to the Amulet — with events (docs/event-sheet-authoring.md)
-# answering it for the dead ends. Hubs are the opposite shape of detour: they are
-# the middle of the map rather than its edges, so a hub is rarely far off the
-# road, and "swing through the big node" is a cheap, repeatable decision rather
-# than a leaf's two-game round trip.
+# It used to stand at the run's ten HUB games instead — the ten best-connected,
+# the genre's landmarks — and §19.7 retired that. The hubs gave routing a second
+# axis, but a fixed ten on a fixed map meant the same ten shops every run; the
+# kinds give the same axis with a road that is different each time, and §19.3
+# guarantees one on every start's route.
+#
+# THE SHOP BELONGS TO THE NODE, not to the game played there (§19.2). Every
+# function here takes a NODE id — the map spot — so a transmuted Shop node plays
+# a different game and still sells from the shelf it had. That is the opposite of
+# the hub rule, which read the game played and let the shop leave with it.
 #
 # THREE THINGS DEFINE THE SHAPE, and each is a deliberate answer to "what stops
 # this being a second, slower version of the drops":
 #
 #   * The shelf PERSISTS. Stock is rolled once and kept for the whole run, so
-#     buying one of three leaves two standing. Come back to that hub later and
+#     buying one of three leaves two standing. Come back to that node later and
 #     you are shopping from the shelf you left, which is what makes a return trip
 #     something you can plan — and what lets the game's card quote its remaining
 #     stock before you commit to going (§14).
@@ -27,13 +29,13 @@ extends Node
 #     everywhere else (§4 — "re-draw the offering"), so a shelf of three items
 #     you don't want is the same kind of problem as an offering of three games
 #     you don't want, and it takes the same answer. Pricing it in gold instead
-#     would have let a rich player grind the whole 21-item catalog at one hub.
+#     would have let a rich player grind the whole 21-item catalog at one shop.
 #   * GOLD is scarce and small. A run earns 8-15 (GameLoop2.GOLD_PER_ENEMY /
 #     GOLD_PER_BOSS) against prices of 3-6, so a shop is two-to-four purchases a
 #     run in total, not per visit.
 #
-# THE SPLIT: this autoload is the LOGIC. The state — the frozen hub list and each
-# shop's shelf — lives on GameState (run-scope, saved, reset), the same division
+# THE SPLIT: this autoload is the LOGIC. The state — each shop's shelf — lives on
+# GameState, and where the shops ARE is GameState.node_kinds (run-scope, saved, reset), the same division
 # EventSystem and ScrollSystem use.
 
 # What a shop puts on the shelf. Three is the same number as the base offering
@@ -53,7 +55,7 @@ const BASE_PRICE := 3
 # Rerolling the shelf, in Scramble charges.
 const REROLL_COST := 1
 
-# Stock rolls are seeded off the run and the hub rather than drawn live, so a
+# Stock rolls are seeded off the run and the node rather than drawn live, so a
 # save reloaded mid-shop puts the same three things back on the shelf.
 const _STOCK_SALT := "shop-stock"
 
@@ -63,20 +65,25 @@ signal shop_changed(game_id: StringName)
 
 
 # ---------------------------------------------------------------------------
-# Hubs
+# Where the shops are
 # ---------------------------------------------------------------------------
 
-# The run's hub games, frozen on first ask (see GameState.hub_games for why it is
-# frozen rather than re-derived). Ordered biggest-first, so callers that want
-# "the biggest one" can take the head.
-func hub_games() -> Array[StringName]:
-	if GameState.hub_games.is_empty():
-		GameState.hub_games = RunGraph.hub_ids()
-	return GameState.hub_games
+# Whether a shop stands at this NODE: its kind is Shop (§19.1). Read off the map
+# spot, never the game played there — see the header.
+func is_shop(node_id: StringName) -> bool:
+	return node_id != &"" and GameState.node_kinds.has(node_id) \
+		and GameState.node_kind(node_id) == RunGraph.NodeKind.SHOP
 
 
-func is_hub(game_id: StringName) -> bool:
-	return game_id != &"" and hub_games().has(game_id)
+# Every Shop node on the map, in a stable order (the kinds are a Dictionary, and
+# a teleport drawing from its key order would ride insertion order).
+func shop_nodes() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for gid in GameState.node_kinds.keys():
+		if int(GameState.node_kinds[gid]) == RunGraph.NodeKind.SHOP:
+			out.append(StringName(gid))
+	out.sort()
+	return out
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +102,10 @@ func price_of(entry: Dictionary) -> int:
 # The shelf
 # ---------------------------------------------------------------------------
 
-# This hub's shop, rolling its stock if this is the first time anyone has asked.
+# This node's shop, rolling its stock if this is the first time anyone has asked.
 # Returns {} for a game with no shop, so callers can use it as the test.
 func shop_for(game_id: StringName) -> Dictionary:
-	if not is_hub(game_id):
+	if not is_shop(game_id):
 		return {}
 	if not GameState.shops.has(game_id):
 		GameState.shops[game_id] = {
@@ -132,7 +139,7 @@ func mark_seen(game_id: StringName) -> void:
 	# Lord's Parasol resolves HERE — the moment the player stands in the shop for
 	# the first time — because "when encountering a shop" is a moment, and this is
 	# the only place that moment is recorded. Behind the `seen` guard, so a second
-	# visit to a hub does not re-sweep a shelf that was rerolled since.
+	# visit to a shop does not re-sweep a shelf that was rerolled since.
 	sweep(game_id)
 
 
@@ -266,7 +273,7 @@ func reroll(game_id: StringName) -> bool:
 # Before they have stood in it, that is deliberately only that a shop is here —
 # the stock is what the first visit is FOR (§14).
 func headline(game_id: StringName) -> String:
-	if not is_hub(game_id):
+	if not is_shop(game_id):
 		return ""
 	if not has_seen(game_id):
 		return "A shop stands here. Beat this game and it opens."
@@ -297,7 +304,7 @@ func stock_lines(game_id: StringName) -> Array:
 
 # STOCK_SLOTS items, each rolled on the game's standard rarity ladder
 # (Data.roll_item_rarity — 75/20/5 with a 10% bump off the top), seeded off the
-# run + hub + reroll number so the same shelf comes back after a reload.
+# run + node + reroll number so the same shelf comes back after a reload.
 #
 # Two preferences shape the draw, both aimed at the same problem: 21 authored
 # items against a run that already gets one free per defeated enemy.
@@ -327,12 +334,12 @@ func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
 
 
 # What an item in the `shop` pool counts for when a shelf is drawn. Two, so a
-# relic authored as a shop item is twice as likely to be standing at a hub as
+# relic authored as a shop item is twice as likely to be standing on a shelf as
 # anything else of its rarity (Piggy Bank, There's Options).
 #
 # A WEIGHT AND NOT A FILTER, deliberately. Isaac's shop pool is a separate table
 # and nothing else reaches it; here the catalogue is 30 relics against a run that
-# visits at most ten hubs, and a shop that could only ever stock two of them would
+# visits a handful of shops, and a shop that could only ever stock two of them would
 # be the same two every run. Doubling the weight says "this belongs in a shop"
 # without saying "and nowhere else" — a shop item still drops off a body, and a
 # shelf can still come up three ordinary relics.

@@ -289,7 +289,7 @@ const FIELD_WIDTH_BUDGET: int = 470
 # of one. It binds on nothing but the big boards — a 4x4 is capped by CELL_MAX
 # long before either budget is the constraint.
 const FIELD_HEIGHT_BUDGET: int = 384
-# …and what it drops to when something is mounted UNDER the board — a hub's shop,
+# …and what it drops to when something is mounted UNDER the board — a node's shop,
 # or the machines standing at this game. The right column is 626px of a 688px
 # page with about five pixels to spare, so a panel below the board has nowhere to
 # come from: it has to come out of the board. At 190 a 4x4 still draws at a

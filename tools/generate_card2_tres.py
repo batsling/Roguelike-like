@@ -23,7 +23,7 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
                                 -> {op:double_stat, stat, floor?}
     gain_loot <kind> <n>        -> {op:gain_loot, kind, count:n}
     teleport_type <game_type>   -> {op:teleport_type, game_type}
-    teleport_hub                -> {op:teleport_hub}
+    teleport_shop               -> {op:teleport_shop}
     teleport_start              -> {op:teleport_start}
     spawn_object <object_id>    -> {op:spawn_object, object}
     copy_item                   -> {op:copy_item}
@@ -163,7 +163,7 @@ def parse_clause(s: str) -> list:
             raise ValueError("card effect DSL: teleport_type needs a game type in %r" % s)
         return [{"op": "teleport_type", "game_type": bare[0].lower()}]
 
-    if verb in ("teleport_hub", "teleport_start", "copy_item", "bank_shields_next"):
+    if verb in ("teleport_shop", "teleport_start", "copy_item", "bank_shields_next"):
         return [{"op": verb}]
 
     # Echo Form. `echo_loot_next [N]` — N extra copies of every piece of loot
