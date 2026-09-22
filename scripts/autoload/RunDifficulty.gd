@@ -153,6 +153,31 @@ static func extra_turns_for_hops(hops: int) -> int:
 		return EXTRA_MID
 	return EXTRA_NEAR
 
+# …and the SAME LADDER'S OTHER COLUMN: how many bodies a failure spawns at this
+# distance (§19.5). 1 in the wilds, 2 closing, 3 on the doorstep.
+#
+# It is written as the turn count plus one rather than as a second table, and
+# that is the whole point of putting it here: one ladder with two columns, on the
+# same bands, so the strip, the cards and the resolver cannot disagree about
+# either number. Widen a band and both move together.
+#
+# THE COUNT IS READ OFF HOPS AND NOT OFF THE TIER, which is what keeps a losing
+# run survivable. An earlier draft scaled it with the tier — and because failure
+# spawns also RAISE the tier, losing made the next loss bigger: five losses ran
+# to thirteen bodies and a boss. Hops cuts that loop, because losing does not
+# move you: a player stuck at a game faces the same price every time until they
+# leave or win it. The tier still climbs, but it no longer sizes anything that
+# spawns — it picks heavier bodies and GROWS THE BOARD (§7.3), which on the
+# crowding axis is help rather than harm.
+#
+# The shape it gives the run is the reward: both pressures converge on the
+# doorstep, where a reported game hands the board two extra turns AND every
+# failure lands three bodies — and routing AWAY from the Amulet lowers your
+# failure price, so "back off, clear the stack, come back" is a real plan rather
+# than a slower way to lose.
+static func failure_bodies_for_hops(hops: int) -> int:
+	return extra_turns_for_hops(hops) + 1
+
 # The band's name, for anything that has to SAY which rung of the ladder the run
 # is standing on. One source of words so the board, the cards and the log agree.
 static func band_name(extra: int) -> String:

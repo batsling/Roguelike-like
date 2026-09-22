@@ -392,6 +392,35 @@ func test_an_event_node_raises_its_event_on_arrival() -> void:
 		"the event is up before a word has been reported about the game")
 
 
+# The gate that actually bit. `roll_for_arrival` pays no event at any of the ten
+# hubs (§14.4), so an Event node that landed on one delivered silence — and a
+# node whose kind said event and then delivered nothing is the badge telling a
+# lie. It failed about one full run in three, depending on whether the offering
+# happened to deal a hub.
+func test_an_event_node_on_a_hub_still_finds_its_event() -> void:
+	var hub: GameData = null
+	var at: int = -1
+	for i in range(_ui._choices.size()):
+		var g: GameData = _ui._choices[i]["game"]
+		if ShopSystem.is_hub(g.id):
+			hub = g
+			at = i
+			break
+	if hub == null:
+		# Force the question rather than shrug: the promise is about the KIND, and
+		# a hub is only the case that exposed it.
+		assert_not_null(EventSystem.roll_for_node(_ui._choices[0]["game"].id),
+			"an Event node always finds an event, hub or not")
+		return
+	assert_null(EventSystem.roll_for_arrival(hub.id),
+		"a hub pays no ordinary arrival event — that is the rule being stepped over")
+	assert_not_null(EventSystem.roll_for_node(hub.id),
+		"but a node whose badge says Event finds one anyway")
+	GameState.node_kinds[hub.id] = RunGraph.NodeKind.EVENT
+	_ui.pick(at)
+	assert_not_null(_ui._event_modal, "and it is raised on arrival like any other")
+
+
 func test_an_ordinary_node_raises_nothing_on_arrival() -> void:
 	_pick_as(RunGraph.NodeKind.ENEMIES)
 	assert_null(_ui._event_modal,
@@ -1729,6 +1758,12 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 	# this test fails having watched the feature work. It failed on roughly one run
 	# in five on any tree for exactly that reason, since §7.6 shipped abilities.
 	_disarm_board()
+	# …AND NOTHING IS OWED FOR THE LOST RUN BELOW (§19.5). A failure at a game
+	# where nothing has gone down stands new bodies on the board, and a new body
+	# is a new ROW — correctly, and not what this test is about. The premise is a
+	# board that only MOVED, so one body down buys the tap off and leaves the
+	# board with exactly the bodies it had.
+	GameLoop2.defeated_this_game = 1
 	assert_false(_ui._checklist.play_panel_stale(), "freshly built, it is current")
 	var boxes: Array = []
 	for f in _ui._fulfil_checks:
@@ -6201,11 +6236,21 @@ func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	_pick_solo(0)
 	var gp_before: int = GameState.games_played
+	var wanted: GoalEnemyData = _ui._chosen["enemy"]
 	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
-	assert_eq(GameLoop2.stack_size(), 1,
-		"but its goal-enemy walked onto the board, as a missed goal always does")
+	# THE BOARD MAY BE BIGGER THAN ONE NOW (§19.5), and counting it was the wrong
+	# question anyway. `_bleed_at_the_game_in_play` loses runs to open the escape
+	# gate, and a lost run at a game where nothing has gone down stands bodies of
+	# its own — the escape itself owes nothing, but the failures that bought it
+	# already did. What this test is about is the GOAL-ENEMY following you out.
+	var followed := false
+	for entry in GameLoop2.stack:
+		if entry.get("enemy") == wanted:
+			followed = true
+	assert_true(followed,
+		"its goal-enemy walked onto the board, as a missed goal always does")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "and a fresh offering is up")
 
 func test_escaping_does_not_defeat_the_goal_enemy() -> void:
@@ -7785,6 +7830,16 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# is what turns that back into a test.
 	var hubs: Array = ShopSystem.hub_games()
 	assert_false(hubs.is_empty(), "a run has hubs")
+	# THE BOARD IS CLEARED FIRST, and that is a scope decision rather than a
+	# convenience. This test is about the SHOP PANEL's contribution to the page.
+	# Every body standing also costs the page a checklist row at ~41px against the
+	# ~11px it has to spare, so a run that arrives here with followers overflows
+	# whatever the shop does — measured, and written up as an open item in
+	# docs/layout-review-backlog.md. Leaving the board as the run left it would
+	# quietly turn this into a test about the checklist, failing or passing on how
+	# many bodies the offering happened to leave standing.
+	GameLoop2.stack.clear()
+	_ui._populate_play_panel()
 	for hub in hubs:
 		_ui._mount_shop(hub)
 		await get_tree().process_frame

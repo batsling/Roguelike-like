@@ -4407,8 +4407,18 @@ stat `requirement`, and **7 of the 16 carry none whatsoever** (`abyssal_baths`,
 `potion_lab`, `scrap_ooze`). "No eligible event" is therefore a content state
 that does not currently exist. Re-measure rather than trusting this.
 
-**If it ever does, the node re-shows an event the run has already had** rather
-than relaxing anything. The two relaxations that suggest themselves are both
+**AND THE PROMISE NEEDED ITS OWN ROLL, WHICH IS THE PART THAT WAS MISSED.**
+`EventSystem.roll_for_arrival` — the roll a reported game uses — refuses at a
+node that has already paid an event and at any of the **ten hubs** (§14.4). Both
+are right for "does this arrival happen to owe one" and wrong for a badge that
+promised one, and the hub gate is the one that bit in practice: an Event node
+landing on a hub delivered silence. It depended on whether the offering happened
+to deal a hub, so it reproduced in about one full suite run in three and passed
+in isolation every time. `EventSystem.roll_for_node` steps over both gates and is
+what §19.1 means here.
+
+**If nothing is eligible, the node re-shows an event the run has already had**
+rather than relaxing anything. The two relaxations that suggest themselves are both
 worse:
 
 - **Relaxing the placement gate does nothing**, because no event is placed. An

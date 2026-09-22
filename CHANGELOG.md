@@ -222,6 +222,91 @@ For how the project is laid out and how its systems fit together, see
   depends on, because the verdict re-runs on every keystroke in the target search
   and costs a graph rebuild on each side.
 
+  **AND IT SURFACED A LAYOUT PROBLEM THAT IS NOT MINE TO CLOSE HERE.** With a
+  hub's shop mounted, the page measures 614px of the 625 a 720p window leaves —
+  and each body standing adds a checklist row at ~41px. The page therefore fits
+  ZERO followers with a shop on it. That is not caused by failure spawns; it was
+  survivable only while a missed goal was the one way to accumulate bodies and
+  the test happened to run on an empty board. It is written up with its
+  measurements as an open item in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md), including the
+  attempt that made it worse: wrapping the checklist in a `ScrollContainer` sized
+  to `min(content, cap)` took an EMPTY board's page to 1928px, because inside a
+  scroll the box loses its width constraint and its combined minimum is computed
+  against unwrapped text. Nothing is clipped — the page is already in a scroll —
+  so this is a fit rule rather than a breakage. Meanwhile
+  `test_the_page_still_fits_the_window_with_a_shop_on_it` clears the board first,
+  so it measures the shop panel's own contribution as it was written to rather
+  than silently becoming a test about the checklist.
+
+  **AN EVENT NODE ON A HUB WAS DELIVERING SILENCE**, and that is the badge
+  telling a lie — which is the one thing §19.2 exists to prevent. `roll_for_arrival`
+  refuses at a node that already paid an event and at any of the ten hubs
+  (§14.4), both right for "does this arrival happen to owe one" and wrong for a
+  card that PROMISED one. The hub gate is the one that bit: it depended on
+  whether the offering happened to deal a hub, so it failed about one full run in
+  three and passed in isolation every time. An Event node now asks
+  `EventSystem.roll_for_node`, which steps over both gates and, when nothing is
+  eligible, re-shows an event the run has already had rather than relaxing
+  anything — relaxing the placement gate would do nothing (no shipping event is
+  placed at all), and relaxing the stat requirements produces an event whose
+  interesting choices are all greyed out, which is worse than a repeat.
+
+  It took three full runs to find, because two of my own new tests alternated
+  which one failed. The thing that found it was making the assertion print all
+  four refusal conditions rather than a bare null: `rollable=false` named it in
+  one line after two wrong guesses.
+
+  **AND THE ENEMIES YOU GET FOR NOT FIGHTING** (§19.5). Every failure at a game
+  where nothing has been defeated spawns bodies — on a lost run, landing with the
+  tick, and at a game handed in with nothing down whether the goal was met or
+  missed. This is the other half of the node kinds rather than a punishment
+  bolted on beside them: without it, the three non-Enemies kinds would simply be
+  a way to play a whole run on an empty board.
+
+  Four things buy it off. **Defeating anything** shuts the tap for the rest of
+  the game — one body down is the player answering the board, and the rule is
+  about a player who never does. **An escape** owes nothing, since they walked
+  away and already paid §3.2's price. **The Amulet** owes nothing, since there is
+  no next game for anything to walk into. And **an Event or a Shop node** owes
+  nothing, since nothing spawned there — those two kinds are genuine breathing
+  room and this would take it back.
+
+  `defeated_this_game` is the counter and the distinction it draws is
+  load-bearing: it moves in `_defeat` and nowhere else, so stepping a counted
+  goal up by one (§7.7) is not progress here, and nor is meeting a goal against a
+  body with more Health than the single hit it deals — that leaves it Staggered,
+  answered but not down. `goals_met_this_game` is the tempting field and it ticks
+  for both.
+
+  **The count is the turn ladder's other column**, written as
+  `extra_turns_for_hops(hops) + 1` rather than as a second table so a widened
+  band moves both together: 1 in the wilds, 2 closing, 3 on the doorstep. Reading
+  it off HOPS rather than the tier is what keeps a losing run survivable — failure
+  spawns raise the tier, so a tier-scaled price would make each loss bigger than
+  the last, and the draft that did it ran five losses to thirteen bodies. Losing
+  does not move you, so the price at a given game is flat. It also gives the run
+  a shape: both pressures converge on the doorstep, and routing AWAY from the
+  Amulet lowers your failure price, so "back off, clear the stack, come back" is
+  a real plan rather than a slower way to lose.
+
+  The bodies roll from the game in play's own type, so a body that turns up
+  because you keep losing at a Deckbuilder is a Deckbuilder body. **They never
+  join `arrivals`**, which is what stops a Scramble scrubbing them off — that
+  would make the failure price refundable for a D6 charge. The undo needs nothing
+  new: at a lost run the spawn happens after `log_attempt` has taken its
+  snapshot. At a report they land after the resolve, so they do not take the
+  turns that report was paying for.
+
+  **Two tests met the new rule head-on and were arranged rather than loosened.**
+  `test_the_checklist_does_not_rebuild_when_the_board_only_moves` lost a run and
+  got new rows, correctly — its premise is a board that only MOVED, so it now
+  puts one body down first and buys the tap off.
+  `test_escaping_advances_the_run_and_the_enemy_follows` asserted `stack_size()
+  == 1` after an escape; the escape owes nothing, but the lost runs that opened
+  the escape gate do, so it asks the question it actually meant — is the
+  goal-enemy among the bodies that followed you out.
+
   **DIFFICULTY IS A CONSEQUENCE NOW, NOT A CLOCK** (§19.6). `GameState.spawn_events`
   counts one per node arrival that landed bodies and one per failure spawn —
   regardless of how many bodies each put down — and `RunDifficulty.current_tier`

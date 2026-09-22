@@ -2418,3 +2418,130 @@ func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
 	assert_true(GameLoop2.has_drop(ahead),
 		"so the piece is lying where it lay before the turn happened")
 	assert_eq(GameLoop2.drop_cells().size(), 1, "and only there")
+
+# ---------------------------------------------------------------------------
+# …and the enemies you get for not fighting (§19.5)
+# ---------------------------------------------------------------------------
+#
+# Every failure at a game where nothing has been defeated spawns bodies. Without
+# it the three non-Enemies kinds would simply be a way to play a whole run on an
+# empty board, so this is the other half of §19.1 rather than a punishment bolted
+# on beside it.
+#
+# These drive `failure_spawn_count` directly wherever the question is "does this
+# failure owe anything", and go through the real spawn where the question is what
+# lands. The run is stood at a known rung first, because the COUNT is the ladder.
+
+# Put the run at `hops` from the Amulet on a node of `kind`, with a real game
+# under it so the roll has a type to ask for.
+func _stand_for_failure(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> bool:
+	if not _stand_at_hops(hops):
+		return false
+	GameState.node_kinds[GameState.current_game_id] = kind
+	GameLoop2.game_in_play = true
+	GameLoop2.defeated_this_game = 0
+	return true
+
+
+func test_the_failure_ladder_is_the_turn_ladder_plus_one() -> void:
+	# One ladder, two columns (§19.5) — written as `extra_turns + 1` so a widened
+	# band moves both together rather than letting the two tables drift.
+	for pair in [[6, 1], [5, 1], [4, 2], [3, 2], [2, 3], [1, 3], [0, 3]]:
+		assert_eq(RunDifficulty.failure_bodies_for_hops(int(pair[0])), int(pair[1]),
+			"%d hops from the Amulet costs %d bodies" % [int(pair[0]), int(pair[1])])
+	assert_eq(RunDifficulty.failure_bodies_for_hops(-1), 1,
+		"no route to the Amulet reads as the calmest band, like the turns do")
+
+
+func test_the_price_is_read_off_hops_and_not_off_the_tier() -> void:
+	# The anti-spiral rule. Failure spawns RAISE the tier, so a price that scaled
+	# with the tier would make each loss bigger than the last — five losses ran to
+	# thirteen bodies in the draft that did. Losing does not move you, so the
+	# price at a given game is flat however far the ladder has climbed.
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var at_low: int = GameLoop2.failure_spawn_count()
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "the ladder is at the top")
+	assert_eq(GameLoop2.failure_spawn_count(), at_low,
+		"the same game charges the same whatever the tier has climbed to")
+
+
+func test_defeating_anything_shuts_the_tap_for_the_game() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	assert_gt(GameLoop2.failure_spawn_count(), 0, "a game with nothing down owes bodies")
+	GameLoop2.defeated_this_game = 1
+	assert_eq(GameLoop2.failure_spawn_count(), 0,
+		"one body down is the player answering the board, and that is enough")
+
+
+func test_an_escape_owes_nothing() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	assert_eq(GameLoop2.failure_spawn_count(true), 0,
+		"they walked away and already paid §3.2's price for it")
+
+
+func test_the_amulet_owes_nothing() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameState.amulet_game_id = GameState.current_game_id
+	assert_eq(GameLoop2.failure_spawn_count(), 0,
+		"there is no next game for anything to walk into")
+
+
+func test_the_quiet_kinds_owe_nothing() -> void:
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		if not _stand_for_failure(2, int(kind)):
+			pending("the catalog could not stand the run 2 hops out")
+			return
+		assert_eq(GameLoop2.failure_spawn_count(), 0,
+			"%s: nothing spawned there, so nothing is owed — it is breathing room"
+				% RunGraph.kind_label(int(kind)))
+
+
+func test_a_failure_spawn_stands_the_bodies_the_ladder_asks_for() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var want: int = GameLoop2.failure_spawn_count()
+	var before: int = GameLoop2.stack_size()
+	var landed: int = GameLoop2.spawn_for_failure()
+	if landed == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_eq(landed, want, "the doorstep charges %d" % want)
+	assert_eq(GameLoop2.stack_size(), before + landed, "and they are on the board")
+
+
+func test_a_failure_spawn_is_not_an_arrival() -> void:
+	# They did not come with the game, so a Scramble must not be able to scrub
+	# them off — that would make the failure price refundable for a D6 charge.
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameLoop2.arrivals = []
+	if GameLoop2.spawn_for_failure() == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_eq(GameLoop2.arrivals.size(), 0,
+		"nothing a failure stood up belongs to the game that was chosen")
+
+
+func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var before: int = GameState.spawn_events
+	var landed: int = GameLoop2.spawn_for_failure()
+	if landed == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_gt(landed, 1, "the doorstep lands more than one body")
+	assert_eq(GameState.spawn_events, before + 1,
+		"…and they are one spawn EVENT between them (§19.6)")

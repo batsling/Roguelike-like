@@ -1724,6 +1724,88 @@ func note_spawn_event() -> void:
 	GameState.spawn_events += 1
 	sync_grid_bounds()
 
+# --- the enemies you get for not fighting (§19.5) ---------------------------
+#
+# Every failure at a game where nothing has been defeated spawns bodies. This is
+# the other half of the node kinds: without it, the three non-Enemies kinds would
+# simply be a way to play a whole run on an empty board.
+#
+# HOW MANY THIS FAILURE OWES, or 0 when it owes none. Four things buy it off:
+#
+#   * DEFEATING ANYTHING this game shuts the tap for the rest of it. One body
+#     down is the player answering the board, and the rule is about a player who
+#     never does.
+#   * AN ESCAPE, because they walked away and already paid §3.2's price for it.
+#   * THE AMULET, because there is no next game for anything to walk into.
+#   * AN EVENT OR A SHOP NODE, because nothing spawned there so nothing is owed —
+#     those two kinds are genuine breathing room and this would take it back.
+#
+# `defeated_this_game` is the counter and the distinction it draws is load-
+# bearing. It moves in `_defeat` and nowhere else, so two things that look like
+# progress are correctly NOT progress here: stepping a counted goal up by one
+# (§7.7 — `advance_goal` moves a tally and never reaches `_defeat`), and meeting
+# a goal against a body with more Health than the single hit it deals, which
+# leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
+# tempting field and it is the wrong one: it ticks for both.
+func failure_spawn_count(escaped: bool = false) -> int:
+	if not game_in_play or run_over or escaped:
+		return 0
+	if defeated_this_game > 0:
+		return 0
+	var here: StringName = GameState.current_game_id
+	if here == &"" or here == GameState.amulet_game_id:
+		return 0
+	match GameState.node_kind(here):
+		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
+			return 0
+	return RunDifficulty.failure_bodies_for_hops(hops_to_amulet())
+
+# Stand this failure's bodies on the board. Returns how many actually landed.
+#
+# They roll from the GAME IN PLAY's type at the run's current tier — the same
+# roll an Enemies node makes, with the same widening — so a body that turns up
+# because you keep losing at a Deckbuilder is a Deckbuilder body. The board goes
+# on describing where you are standing; the failure changes how MANY walk on
+# rather than what kind of place this is.
+#
+# THEY NEVER JOIN `arrivals`. They did not come with the game, so a Scramble
+# cannot scrub them off the board — which would otherwise make the failure price
+# refundable for a D6 charge. The undo needs nothing new: at a lost run this is
+# called after `log_attempt` has already taken its snapshot, so taking the turn
+# back takes the body with it.
+func spawn_for_failure(escaped: bool = false) -> int:
+	var want: int = failure_spawn_count(escaped)
+	if want <= 0:
+		return 0
+	var game: GameData = Data.get_game(GameState.current_game_id)
+	var type_key: StringName = game_type_key(game)
+	var tier: int = RunDifficulty.current_tier()
+	var landed := 0
+	var names: Array = []
+	for _i in range(want):
+		var enemy: GoalEnemyData = roll_enemy(type_key, tier)
+		if enemy == null:
+			break        # an empty roster: the failure is free rather than fatal
+		if spawn_to_stack(enemy) > 0:
+			landed += 1
+			names.append(enemy.display_name)
+	if landed > 0:
+		# SAID OUT LOUD, in the log and as a notification (§19.8) — the escort's
+		# old notice generalised. These are the one arrival the player did not
+		# choose, so the notice names what walked on AND why: a body that appears
+		# because of something you did needs saying, or the board simply grows.
+		var msg: String = "%s walked on — nothing went down at %s." % [
+			", ".join(PackedStringArray(names)),
+			game.display_name if game != null else "this game"]
+		GameLog.add(msg, UITheme.DANGER)
+		Notifications.notify(msg, UITheme.DANGER)
+		# ONE spawn event for the failure, not one per body (§19.6) — and it can
+		# be the step that crosses a tier band with the game still in play, which
+		# is the whole reason the board grows at the spawn.
+		note_spawn_event()
+		loop_changed.emit()
+	return landed
+
 # Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
 #
 # It is not `choose_game(null)`: that means "nothing is in play" and drops
@@ -1866,6 +1948,11 @@ func log_attempt() -> String:
 	# the Health, the ground it walks onto, a trinket the hit shatters — is what
 	# the undo has to put back (see _run_snapshot).
 	_attempt_snapshots.append(_run_snapshot())
+	# THE PRICE OF A LOST RUN WHERE NOTHING WENT DOWN (§19.5), landing with the
+	# tick and BEFORE the turn that tick buys — so the turn is resolved around the
+	# new bodies rather than a beat ahead of them. After the snapshot above, which
+	# is what makes the undo take them back with it.
+	spawn_for_failure()
 	last_attempt_turn = attempt_turn()
 	# One entry per tick, all of them "turn" now that there is only one thing a
 	# tick can cost. Kept as the list rather than collapsed to a count because it
@@ -2259,7 +2346,8 @@ func _board_snapshot() -> Dictionary:
 # It does not touch 2a: Predatory Scent is a body's own ability reacting to an
 # evening you did nothing with (§7.6), not the road's price for the road.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
-		claims: Dictionary = {}, road_turns: bool = true) -> Dictionary:
+		claims: Dictionary = {}, road_turns: bool = true,
+		escaped: bool = false) -> Dictionary:
 	var turns: int = enemy_turns() if road_turns else 0
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
@@ -2482,6 +2570,17 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    has had its full say on the goals, the clauses and the damage above —
 	#    what it bought you was this game, and this game is only over now.
 	res["statuses_expired"] = _expire_timed_statuses()
+
+	# 5. AND THE PRICE OF A GAME HANDED IN WITH NOTHING DEFEATED (§19.5), whether
+	#    the goal was met or missed. AFTER the resolve above, so the bodies that
+	#    just walked on do not take the turns this report was paying for — they
+	#    arrived as the game was handed in and act from the next one, on §7.2's
+	#    ordinary terms.
+	#
+	#    Before `_clear_game_record` below, which is what wipes the counter this
+	#    reads. An ESCAPE owes nothing: the player walked away and already paid
+	#    §3.2's price for it.
+	res["failure_spawns"] = spawn_for_failure(escaped)
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).

@@ -1431,20 +1431,24 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 # Event node is a node that pays an extra one, not one that moves the ordinary
 # one forward.
 #
-# IT ALWAYS FINDS ONE. Measured against the shipping content, all 16 events have
-# a blank `where` and empty tiers, and 7 carry no stat requirement at all, so "no
-# eligible event" is a content state that does not currently exist. If it ever
-# does, `roll_for_arrival` re-shows one the run has already had rather than
-# relaxing a gate — a repeat is affordable and playable, where an event whose
-# interesting choices are all greyed out is not. Re-measure rather than trusting
-# this line.
+# IT ALWAYS FINDS ONE, which is why this asks `roll_for_node` rather than the
+# `roll_for_arrival` a reported game uses. That one refuses at a node which has
+# already paid an event and at any of the ten hubs (§14.4) — right for "does this
+# arrival happen to owe one", wrong for a badge that PROMISED one. The hub gate
+# is the one that bit in practice: an Event node landing on a hub delivered
+# silence, and a node whose kind said event and then delivered nothing is the
+# badge telling a lie.
+#
+# Past those gates it re-shows an event the run has already had rather than
+# relaxing anything — see roll_for_node for why both available relaxations are
+# worse than a repeat.
 func _fire_arrival_event(game: GameData) -> void:
 	if game == null or GameState.node_kind(game.id) != RunGraph.NodeKind.EVENT:
 		return
 	# `open_event` refuses while a modal is up or an event is already queued behind
 	# a resolve, which is the right answer: it would otherwise silently eat the one
 	# the run had already earned.
-	open_event(EventSystem.roll_for_arrival(game.id))
+	open_event(EventSystem.roll_for_node(game.id))
 
 func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
@@ -2360,7 +2364,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
-		not free_exit)
+		not free_exit, escaped)
 	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). Loot lying on the board belongs to
 	# the game being played; handing the game in ends that, so anything nobody
 	# stopped to pick up — including whatever the bodies this very report cleared
