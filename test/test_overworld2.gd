@@ -4255,7 +4255,7 @@ func test_the_two_starts_are_different_distances_when_the_graph_allows_it() -> v
 		for g in Data.all_games():
 			if not (g is GameData) or g.id == amulet:
 				continue
-			if RunGraph.neighbors(g.id).size() < RunGraph.MIN_START_CONNECTIONS:
+			if not RunGraph.is_eligible_start(g.id):
 				continue
 			var hops: int = int(d_to.get(g.id, -1))
 			if hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH:

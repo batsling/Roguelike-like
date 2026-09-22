@@ -30,21 +30,63 @@ extends RefCounted
 # exactly what puts a game within 5 hops of everything. Lowering the floor only
 # ever widens that pool, so 4 is safe where 6 was not.
 #
-# The CEILING is not what governs it. With ~100 eligible starts any game 8 hops
-# from one of them is <= 7 from another, so sweeping the ceiling out does not add
-# a single Amulet — which is also why pulling it in to 7 does not cost one.
+# The CEILING is not what governs the Amulet POOL. With ~100 eligible starts any
+# game 8 hops from one of them is <= 7 from another, so sweeping the ceiling out
+# does not add a single Amulet.
+#
+# It governs something the note above did not consider: ROUTE QUALITY. A game can
+# be reachable at 7 and only get a BRANCHING route at 8, which §19.3's floor
+# cares about and the old reasoning did not. It also governs run length — a hop
+# is a game, the route is `hops + 1` nodes, so this band is runs of five to nine
+# games.
+#
+# THE CEILING IS 8 because the panel now offers three cards and wants them at
+# three different DISTANCES as well as three genres (_spread_across_band). Three
+# cards drawn from a four-rung band leave that preference almost no room; a fifth
+# rung makes three distinct distances an ordinary outcome instead of a lucky one.
+#
 # These are the DEFAULT band. A custom run may move it (RunConfig.path_band), so
 # every place the band is tested reads that rather than these two directly — the
 # consts are what an ordinary run's band resolves to, not the band itself.
 const MIN_PATH_LENGTH := 4
-const MAX_PATH_LENGTH := 7
+const MAX_PATH_LENGTH := 8
 const EARLY_LAYERS_FOR_SCORE := 3
 # How many starts the choose-your-start panel offers. Each comes from a DIFFERENT
-# game type (see TYPE_ORDER), so the two cards are always two genres.
-const NUM_START_OPTIONS := 2
-# Minimum outgoing connections a game needs to qualify as a "start".
+# game type (see TYPE_ORDER), so the three cards are always three genres.
+const NUM_START_OPTIONS := 3
+
+# Minimum connections a game needs to qualify as a "start" — see
+# `is_eligible_start`, which is the question this number is only half of.
 # Falls back to any-game on sparse graphs (see pick_amulet_and_starts).
-const MIN_START_CONNECTIONS := 3
+const MIN_START_CONNECTIONS := 2
+
+# MAY THIS GAME OPEN A RUN? (§19.3.1)
+#
+# Two connections rather than three, WITH a condition: a game with exactly two
+# may start only if both of its neighbours lead on somewhere themselves. The
+# opening offering is drawn from the start's neighbours
+# (`Overworld2._offered_ids`), so a degree-2 start opens the run with two cards
+# instead of three — and this condition is what stops either of them being a dead
+# end you have to walk back out of.
+#
+# The condition is free. Measured across both catalogues and every slack floor,
+# the degree-2 games whose neighbour is a dead end contribute NO Amulet coverage
+# the rest of the pool does not already provide; excluding them costs starts and
+# nothing else. Dropping the floor from three to two takes the pool from 246 to
+# 419 on the full catalogue, 124 to 207 owned.
+#
+# The two-card opening is accepted rather than solved: this fixes the QUALITY of
+# those two cards, not their number.
+static func is_eligible_start(game_id: StringName) -> bool:
+	var degree: int = neighbors(game_id).size()
+	if degree >= 3:
+		return true
+	if degree < MIN_START_CONNECTIONS:
+		return false
+	for nb in neighbors(game_id):
+		if neighbors(nb).size() < 2:
+			return false
+	return true
 
 # Game-type ordering used to pick "one start per type" for the
 # choose-your-start panel. All four authored types are eligible, and
@@ -1222,11 +1264,12 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	if startable.is_empty():
 		startable = all
 
-	# Starts must have >= MIN_START_CONNECTIONS connections; fall back to
-	# "any" if the graph is too sparse (mirrors the JS fallback path).
+	# Starts must clear `is_eligible_start` — two connections that both lead on,
+	# or three of any kind (§19.3.1); fall back to "any" if the graph is too
+	# sparse (mirrors the JS fallback path).
 	var eligible_starts: Array[GameData] = []
 	for g in startable:
-		if neighbors(g.id).size() >= MIN_START_CONNECTIONS:
+		if is_eligible_start(g.id):
 			eligible_starts.append(g)
 	if eligible_starts.is_empty():
 		# Sparse graph (e.g. a restrictive game filter): accept any *connected*
@@ -1243,7 +1286,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# effect of a preference about the opening cards.
 	var start_pool: Array[GameData] = []
 	for g in all:
-		if neighbors(g.id).size() >= MIN_START_CONNECTIONS:
+		if is_eligible_start(g.id):
 			start_pool.append(g)
 	if start_pool.is_empty():
 		start_pool = eligible_starts

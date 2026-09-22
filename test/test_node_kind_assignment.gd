@@ -36,7 +36,7 @@ func _a_real_run(want: int = 3) -> Dictionary:
 			var h: int = int(d[other.id])
 			if h < band.x or h > band.y:
 				continue
-			if RunGraph.neighbors(other.id).size() < RunGraph.MIN_START_CONNECTIONS:
+			if not RunGraph.is_eligible_start(other.id):
 				continue
 			starts.append(other.id)
 			if starts.size() >= want:

@@ -8,6 +8,56 @@ extends GutTest
 # node than its own length. Get that offset wrong and every threshold in the
 # section moves by one.
 
+# --- start eligibility (§19.3.1) -------------------------------------------
+
+func test_the_connection_floor_is_two() -> void:
+	assert_eq(RunGraph.MIN_START_CONNECTIONS, 2)
+
+
+func test_the_panel_offers_three_cards_over_a_four_to_eight_band() -> void:
+	assert_eq(RunGraph.NUM_START_OPTIONS, 3)
+	assert_eq(RunGraph.MIN_PATH_LENGTH, 4)
+	assert_eq(RunGraph.MAX_PATH_LENGTH, 8)
+
+
+# The rule with the actual logic in it: three connections qualify outright, two
+# qualify only if BOTH lead on, and one never does.
+func test_eligibility_reads_the_neighbours_not_just_the_count() -> void:
+	var three := 0
+	var two_onward := 0
+	var two_dead := 0
+	var ones := 0
+	for g in Data.all_games():
+		if not (g is GameData) or not RunGraph.passes_filter(g):
+			continue
+		if RunGraph.is_off_map(g.id):
+			continue
+		var nbrs: Array = RunGraph.neighbors(g.id)
+		var eligible: bool = RunGraph.is_eligible_start(g.id)
+		if nbrs.size() >= 3:
+			assert_true(eligible, "%s has %d connections and must qualify" % [
+				g.id, nbrs.size()])
+			three += 1
+		elif nbrs.size() == 2:
+			var all_onward := true
+			for nb in nbrs:
+				if RunGraph.neighbors(nb).size() < 2:
+					all_onward = false
+			assert_eq(eligible, all_onward,
+				"%s has two connections; it qualifies exactly when both lead on" % g.id)
+			if all_onward:
+				two_onward += 1
+			else:
+				two_dead += 1
+		else:
+			assert_false(eligible,
+				"%s has %d connections and cannot open a run" % [g.id, nbrs.size()])
+			ones += 1
+	# The catalogue should actually contain each case, or this test is vacuous.
+	assert_gt(three, 0, "no games with three or more connections?")
+	assert_gt(two_onward + two_dead, 0, "no degree-2 games to exercise the condition")
+
+
 func test_no_route_is_told_apart_from_a_thin_one() -> void:
 	# An id that is not on the map at all has no route, and that must not read as
 	# a very thin one — every real slack is at least 1.

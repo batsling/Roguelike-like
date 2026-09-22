@@ -15,7 +15,7 @@ func _reference_starts(n: int) -> Array:
 	rng.seed = 20260907
 	var pool: Array = []
 	for g in Data.all_games():
-		if g is GameData and RunGraph.neighbors(g.id).size() >= RunGraph.MIN_START_CONNECTIONS:
+		if g is GameData and RunGraph.is_eligible_start(g.id):
 			pool.append(g)
 	var out: Array = []
 	for i in n:
