@@ -101,10 +101,10 @@ func test_slack_matches_the_dag_it_is_read_from() -> void:
 		pending("no start options came back to check")
 
 
-# The filter's whole job: an offered IN-WINDOW start clears the floor. A relaxed
-# out-of-band card is the one thing that can sit below it, and §19.3.2 retires
-# that path — but it still exists today, so this only asserts the in-window ones.
-func test_every_in_window_start_offered_clears_the_floor() -> void:
+# The filter's whole job: an offered start clears the floor. This used to exempt
+# the relaxed out-of-band card, which was the one thing that could sit below it;
+# §19.3.2 retired that card, so the claim is now about every card on the panel.
+func test_every_start_offered_clears_the_floor() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 13579
 	var offered := 0
@@ -117,14 +117,56 @@ func test_every_in_window_start_offered_clears_the_floor() -> void:
 			continue
 		var amulet := StringName(pick.get("amulet_id", ""))
 		for opt in pick.get("options", []):
-			if not bool(opt.get("in_window", false)):
-				continue
+			assert_true(bool(opt.get("in_window", false)),
+				"every card is in window now; %s is not" % opt.get("start_id", ""))
 			offered += 1
 			if not RunGraph.route_clears_floor(StringName(opt.get("start_id", "")), amulet):
 				thin += 1
 	if offered == 0:
-		pending("no in-window starts were offered across the sampled runs")
+		pending("no starts were offered across the sampled runs")
 		return
 	assert_eq(thin, 0,
-		"%d of %d in-window starts were offered on a road below the floor" % [
-			thin, offered])
+		"%d of %d starts were offered on a road below the floor" % [thin, offered])
+
+
+# --- the band is absolute (§19.3.2) ----------------------------------------
+
+# A panel is three genres or it is no panel. The three relaxations that used to
+# fill a short one are gone, so a run that reaches the picker reaches it whole.
+func test_a_panel_is_never_short() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 24680
+	var seen := 0
+	for _i in range(4):
+		var pick: Dictionary = RunGraph.pick_amulet_and_starts(rng)
+		if pick.is_empty():
+			continue    # a legitimate outcome now — it just is not this test's case
+		var options: Array = pick.get("options", [])
+		assert_eq(options.size(), RunGraph.NUM_START_OPTIONS,
+			"a panel that reaches the player has all its cards")
+		var genres := {}
+		for opt in options:
+			genres[int(opt.get("type", -1))] = true
+		assert_eq(genres.size(), options.size(), "one card per genre, all different")
+		seen += 1
+	if seen == 0:
+		pending("the catalogue produced no panel at all across four rolls")
+
+
+# The generator's own answer has to agree with the one the setup screen shows,
+# or a target is refused for a reason the run would not have hit (§19.3.2).
+func test_the_screen_and_the_generator_ask_the_same_question() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 112358
+	var pick: Dictionary = RunGraph.pick_amulet_and_starts(rng)
+	if pick.is_empty():
+		pending("the catalogue could not supply a run")
+		return
+	var amulet := StringName(pick.get("amulet_id", ""))
+	assert_gte(RunGraph.panel_genres(amulet), RunGraph.NUM_START_OPTIONS,
+		"%s supplied a panel, so the screen must not refuse it" % amulet)
+
+
+func test_a_game_off_the_map_supplies_no_panel() -> void:
+	assert_eq(RunGraph.panel_genres(&"not_a_game_at_all"), 0,
+		"a game that is not on the map cannot be opened on anything")

@@ -67,6 +67,11 @@ var _target_search: LineEdit = null
 var _target_results: VBoxContainer = null
 var _verdict: Label = null
 var _begin_btn: Button = null
+# Answers to "can this named target supply the panel", keyed by the whole
+# configuration the answer depends on. _update_verdict runs on every refresh —
+# including every keystroke in the target search — and the answer costs a graph
+# rebuild, so asking it uncached would make the screen type at a crawl.
+var _panel_genre_cache: Dictionary = {}
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -602,6 +607,22 @@ func _update_verdict() -> void:
 		problems.append("No game on the map passes the Amulet filter.")
 	if _amulet_id != &"" and not RunConfig.spec_passes(_specs["map"], Data.get_game(_amulet_id)):
 		problems.append("The target game is not on the map its own filter describes.")
+	# …and it has to be able to SUPPLY THE PANEL, which is the rule a custom run is
+	# held to exactly like an ordinary one (§19.3.2). There used to be a carve-out
+	# in `pick_amulet_and_starts` — a named target no reference could reach was
+	# taken directly and routed to at any distance — and it is gone, so a target
+	# that cannot field three genres would now produce a run with no opening panel
+	# at all. Saying so here is better than handing over a quietly degraded run.
+	elif _amulet_id != &"" and problems.is_empty():
+		var genres: int = _target_panel_genres()
+		if genres < RunGraph.NUM_START_OPTIONS:
+			var target: GameData = Data.get_game(_amulet_id)
+			problems.append(
+				"%s can only be opened on %d genre%s at %d–%d hops; the panel needs %d. Widen the band, the map or the start filter — or pick another target."
+				% [target.display_name if target != null else String(_amulet_id),
+					genres, "" if genres == 1 else "s",
+					mini(_min_path, _max_path), maxi(_min_path, _max_path),
+					RunGraph.NUM_START_OPTIONS])
 
 	if not problems.is_empty():
 		_verdict.text = "⚠  %s" % " ".join(PackedStringArray(problems))
@@ -614,6 +635,27 @@ func _update_verdict() -> void:
 		_verdict.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	if _begin_btn != null:
 		_begin_btn.disabled = not problems.is_empty()
+
+# How many genres the named target could open on, under THIS configuration.
+#
+# RunGraph reads the live RunConfig — the map filter decides which games are even
+# nodes — so the pending configuration has to be applied before the question
+# means anything, and put back afterwards because the player has not pressed
+# Begin yet. Both apply() and reset() invalidate the graph cache, which is the
+# expensive part and the reason for the cache above: the answer only moves when
+# the configuration does.
+func _target_panel_genres() -> int:
+	var key: String = "%s|%d|%d|%s|%s" % [
+		_amulet_id, mini(_min_path, _max_path), maxi(_min_path, _max_path),
+		JSON.stringify(_specs["map"]), JSON.stringify(_specs["start"])]
+	if _panel_genre_cache.has(key):
+		return int(_panel_genre_cache[key])
+	var was: Dictionary = RunConfig.serialize()
+	RunConfig.apply(config())
+	var genres: int = RunGraph.panel_genres(_amulet_id)
+	RunConfig.restore(was)
+	_panel_genre_cache[key] = genres
+	return genres
 
 # Public so a test can ask without reading the label.
 func is_runnable() -> bool:

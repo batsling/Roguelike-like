@@ -154,11 +154,13 @@ func test_the_run_length_band_is_what_the_starts_are_drawn_from() -> void:
 	if pick.is_empty():
 		pass_test("nothing routable at this band")
 		return
+	# EVERY card, not just the in-window ones. §19.3.2 retired the relaxed card, so
+	# the band a custom run asks for is now the band it gets or it gets no panel.
 	for opt in pick.get("options", []):
-		if not bool(opt.get("in_window", false)):
-			continue     # a relaxed card fills the panel; it says so
+		assert_true(bool(opt.get("in_window", false)),
+			"there is no such thing as an out-of-band card any more")
 		var plen: int = int(opt.get("path_len", 0))
-		assert_between(plen, 3, 4, "an in-window start sits inside the band asked for")
+		assert_between(plen, 3, 4, "a start sits inside the band asked for")
 
 func test_a_start_filter_that_empties_the_pool_costs_the_preference_not_the_run() -> void:
 	# A start filter nothing satisfies should give the run back its ordinary
@@ -304,6 +306,59 @@ func test_the_screen_refuses_a_target_its_own_map_excludes() -> void:
 	s._refresh()
 	assert_false(s.is_runnable(),
 		"aiming at a game the map filter has removed is not a run")
+
+# §19.3.2: a custom run is held to the panel rule like any other. The carve-out
+# that used to take a named target directly and route to it at any distance is
+# gone, so a target that cannot field three genres would now open on no panel at
+# all — and the screen says so rather than handing that over.
+func test_the_screen_refuses_a_target_that_cannot_field_the_panel() -> void:
+	var target: GameData = null
+	for g in Data.all_games():
+		if g is GameData and RunGraph.passes_filter(g) and not RunGraph.is_off_map(g.id):
+			target = g
+			break
+	if target == null:
+		pass_test("no game on the map to aim at")
+		return
+	var s = _screen()
+	s._amulet_id = target.id
+	# A band of one rung at the very bottom: almost nothing sits exactly there in
+	# three different genres, so this is the refusal without contriving a catalogue.
+	s._min_path = RunConfig.PATH_FLOOR
+	s._max_path = RunConfig.PATH_FLOOR
+	s._refresh()
+	var genres: int = s._target_panel_genres()
+	if genres >= RunGraph.NUM_START_OPTIONS:
+		pending("%s fields the whole panel even at one rung — no refusal to test"
+			% target.id)
+		return
+	assert_false(s.is_runnable(),
+		"a target that can only be opened on %d genre%s is refused, not degraded"
+			% [genres, "" if genres == 1 else "s"])
+	assert_true(s._verdict.text.contains(target.display_name),
+		"and the refusal names the target: %s" % s._verdict.text)
+
+# Asking the question must not leave the configuration applied — the player has
+# not pressed Begin. A screen that quietly enabled RunConfig would change the
+# main menu's map behind it.
+func test_asking_about_a_target_does_not_apply_the_configuration() -> void:
+	RunConfig.reset()
+	var target: GameData = null
+	for g in Data.all_games():
+		if g is GameData and RunGraph.passes_filter(g) and not RunGraph.is_off_map(g.id):
+			target = g
+			break
+	if target == null:
+		pass_test("no game on the map to aim at")
+		return
+	var s = _screen()
+	s._amulet_id = target.id
+	s._specs["map"]["genres"] = [GameData.GameType.DECKBUILDER]
+	s._refresh()
+	assert_false(RunConfig.enabled,
+		"the verdict is a question, not a commitment")
+	assert_eq(String(RunConfig.amulet_id), "",
+		"and it left no target behind either")
 
 func test_the_three_columns_are_the_three_questions() -> void:
 	var s = _screen()

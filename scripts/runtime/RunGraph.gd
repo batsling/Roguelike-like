@@ -10,12 +10,15 @@ extends RefCounted
 # games from the Amulet — so picking a start is a choice of genre, route, AND run
 # length. The length is not flavour: enemies get BONUS turns at the end of a game
 # the closer the run stands to the Amulet (RunDifficulty.extra_turns_for_hops,
-# FAR_HOPS = 5), so a start 7 hops out opens with three games in the calm +0 band
+# FAR_HOPS = 5), so a start 8 hops out opens with four games in the calm +0 band
 # while a start 4 hops out gets NONE — it begins already inside the +1 band.
 # Starting far is a longer run fought slowly; starting near is a short run fought
 # fast.
 #
-# The band was 6..8, then 5..8, and is now 4..7 — the whole window slid down one.
+# The band was 6..8, then 5..8, then 4..7, and is now 4..8 — §19.3.2 put the
+# ceiling back once the panel went to three cards, because three cards drawn from
+# four rungs leave the spread almost no room. A hop is a GAME, so the ceiling is
+# also the longest evening the run can ask for: 4..8 is runs of five to nine.
 # The reason is that the route the player actually walks is rarely the optimal
 # one: the more connections a game has, the smaller the chance that the neighbour
 # you want is among the ones offered, so a nominal 5-hop run costs more games than
@@ -1138,6 +1141,67 @@ static func amulet_candidates_from(start_pool: Array, all_games: Array) -> Dicti
 # from. Deciding the spread here, with every length still on the table, is what
 # keeps the cost of the rule down to the handful of Amulets that genuinely have
 # no two lengths to offer.
+# The games this run may OPEN on, drawn out of `all` (already map-filtered).
+#
+# Split out of pick_amulet_and_starts so the setup screen can ask the same
+# question the generator will (§19.3.2): a named Amulet is refused there if it
+# cannot field NUM_START_OPTIONS genres, and a refusal computed off a different
+# start pool than the run uses would be a refusal about nothing.
+static func eligible_starts_from(all: Array) -> Array[GameData]:
+	# A custom run may narrow WHERE IT STARTS separately from what the map is made
+	# of (RunConfig): "a deckbuilder map, opening on something I have never beaten"
+	# is two different questions and the setup screen asks them separately. Applied
+	# before the connection rule below, so the fallbacks widen within the player's
+	# choice rather than out of it — and skipped entirely if it empties the pool,
+	# since a start filter nothing satisfies should cost the run its opening
+	# preference, not the run itself.
+	var startable: Array[GameData] = []
+	for g in all:
+		if RunConfig.start_passes(g):
+			startable.append(g)
+	if startable.is_empty():
+		startable.assign(all)
+
+	# Starts must clear `is_eligible_start` — two connections that both lead on,
+	# or three of any kind (§19.3.1); fall back to "any" if the graph is too
+	# sparse (mirrors the JS fallback path).
+	var out: Array[GameData] = []
+	for g in startable:
+		if is_eligible_start(g.id):
+			out.append(g)
+	if out.is_empty():
+		# Sparse graph (e.g. a restrictive game filter): accept any *connected*
+		# game before falling back to the full pool, so we don't pick an
+		# isolated reference start that can't reach an amulet.
+		for g in startable:
+			if neighbors(g.id).size() > 0:
+				out.append(g)
+	if out.is_empty():
+		out = startable
+	return out
+
+# How many GENRES this game could field a start in, under the rules as they
+# stand: a start inside RunConfig.path_band() on a road clearing the floor. The
+# panel needs NUM_START_OPTIONS of them (§19.3.2).
+#
+# This is the question the setup screen puts to a NAMED target, so the refusal
+# can be shown with its reason rather than discovered as a run whose road is
+# worse than the rules promise. It reads the live graph, so a caller asking about
+# a configuration that is not applied yet has to apply it first.
+static func panel_genres(amulet_id: StringName) -> int:
+	var amulet: GameData = Data.get_game(amulet_id)
+	if amulet == null or not _passes_filter(amulet):
+		return 0
+	_build_adj()
+	if not _adj_cache.has(amulet_id):
+		return 0    # off the main component: no route reaches it at all
+	var all: Array[GameData] = []
+	for g in Data.all_games():
+		if g is GameData and _passes_filter(g):
+			all.append(g)
+	return _strict_starts_for(amulet, eligible_starts_from(all),
+		bfs_distances(amulet_id)).size()
+
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		d_to_amulet: Dictionary) -> Dictionary:
 	var by_type: Dictionary = {}
@@ -1210,24 +1274,26 @@ static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 # Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
 # DISTANCES from the Amulet wherever the graph allows it.
 #
-# Distance is a real choice across the 4..7 band: enemies get bonus turns on the
+# Distance is a real choice across the 4..8 band: enemies get bonus turns on the
 # end of a game the closer the run stands to the Amulet
-# (RunDifficulty.extra_turns_for_hops), so a 7-hop card opens with three games in
+# (RunDifficulty.extra_turns_for_hops), so an 8-hop card opens with four games in
 # the calm band and a 4-hop card starts already out of it. Two cards at the same distance offer a genre and nothing else.
 #
-# It is a PREFERENCE, not a requirement. A few Amulets have every in-band start at
-# one single distance — no differing-length pair exists at any price — and
-# dropping them from the Amulet pool to enforce a presentation rule is the worse
-# trade. The 4..7 band all but retired the case: sweeping every amulet on the
-# owned catalog, ONE has no differing-length pair (it was 16 at 5..8) and none
-# fails to field two genres at all (21 did). Those fall back to repeating a
-# length rather than shrinking the panel, the same way a sparse graph falls back
-# to an out-of-band start rather than offering fewer cards.
+# It is a PREFERENCE, not a requirement, and the ONLY one left in the panel — the
+# genre count and the band are both absolute now (§19.3.2). A few Amulets have
+# every in-band start at one single distance, no differing-length pair existing at
+# any price, and dropping them to enforce a presentation rule is the worse trade.
+# The wider band all but retired the case: sweeping every amulet on the owned
+# catalog, 33 field their three genres at only two distances (425 of 458 manage
+# three). Those repeat a length rather than shrinking the panel.
 #
-# Selections are compared on, in order: how many cards are in-window (the band is
-# the panel's first promise), then how many DISTINCT lengths they cover, then
-# total branching. Exhaustive over at most 4 genres x 4 lengths, so a few hundred
-# leaves at worst, run once per amulet attempt.
+# Selections are compared on, in order: how many cards are in-window, then how
+# many DISTINCT lengths they cover, then total branching. The first key is
+# constant now that a relaxed card cannot exist — it is kept because it is the
+# rank that ENCODES the promise, and a tie-break that never fires costs nothing
+# next to a reader wondering where the promise went. Exhaustive over at most 4
+# genres x 5 lengths, so a few hundred leaves at worst, run once per amulet
+# attempt.
 static func _spread_across_band(by_type: Dictionary, count: int) -> Array:
 	var types: Array = []
 	for type_val in TYPE_ORDER:
@@ -1291,16 +1357,21 @@ static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int
 #     ]
 #   }
 # One option per game type, NUM_START_OPTIONS of them, each `path_len` inside
-# MIN..MAX_PATH_LENGTH — `in_window` is false only on the sparse-graph fallbacks
-# that fill a slot no in-band start could.
+# MIN..MAX_PATH_LENGTH and each on a road clearing ROUTE_SLACK_FLOOR. `in_window`
+# is therefore always true (§19.3.2 retired every path that could make it false);
+# it is reported rather than dropped because it is what states that the band held.
 #
 # The options are also spread across the band: different genres AND different
 # distances from the Amulet, longest first, so the panel is a choice of how long
-# the run is as well as what it is played in (see _spread_across_band). Where the
-# graph has no two lengths to offer — one Amulet on the owned catalog at the 4..7
-# band — the cards repeat a distance rather than the panel losing one.
-# Returns {} if no valid pair could be found (extremely unlikely with
-# the current data set but the JS guards it too).
+# the run is as well as what it is played in (see _spread_across_band). That one
+# is a preference — where the graph has no two lengths to offer, the cards repeat
+# a distance rather than the panel losing one.
+#
+# RETURNS {} WHEN NO AMULET CAN SUPPLY THE PANEL, and that is now a real outcome
+# rather than a guard against the impossible: a genre-short amulet is dropped
+# instead of being offered a relaxed card (§19.3.2), so a heavily filtered
+# catalogue can legitimately have no panel in it. The caller falls through to an
+# ordinary offering.
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	var all: Array[GameData] = []
 	for g in Data.all_games():
@@ -1316,29 +1387,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# choice rather than out of it — and skipped entirely if it empties the pool,
 	# since a start filter nothing satisfies should cost the run its opening
 	# preference, not the run itself.
-	var startable: Array[GameData] = []
-	for g in all:
-		if RunConfig.start_passes(g):
-			startable.append(g)
-	if startable.is_empty():
-		startable = all
-
-	# Starts must clear `is_eligible_start` — two connections that both lead on,
-	# or three of any kind (§19.3.1); fall back to "any" if the graph is too
-	# sparse (mirrors the JS fallback path).
-	var eligible_starts: Array[GameData] = []
-	for g in startable:
-		if is_eligible_start(g.id):
-			eligible_starts.append(g)
-	if eligible_starts.is_empty():
-		# Sparse graph (e.g. a restrictive game filter): accept any *connected*
-		# game before falling back to the full pool, so we don't pick an
-		# isolated reference start that can't reach an amulet.
-		for g in startable:
-			if neighbors(g.id).size() > 0:
-				eligible_starts.append(g)
-	if eligible_starts.is_empty():
-		eligible_starts = startable
+	var eligible_starts: Array[GameData] = eligible_starts_from(all)
 	# The REFERENCE starts the amulet band is measured from are drawn from the whole
 	# map, not from the start filter: they are a measuring stick, and measuring the
 	# catalog with only never-beaten deckbuilders would move the amulet as a side
@@ -1351,36 +1400,21 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		start_pool = eligible_starts
 
 	# EVERY eligible start is a reference (§19.9) — see amulet_candidates_from.
-	var band: Vector2i = RunConfig.path_band()
-	var by_id: Dictionary = {}           # StringName -> GameData
-	for g in all:
-		by_id[g.id] = g
+	#
+	# TWO FALLBACKS USED TO STAND HERE AND BOTH ARE GONE (§19.3.2). One widened the
+	# band when nothing sat inside it; the other took a NAMED target directly —
+	# "a named target that no reference can reach is still the run the player asked
+	# for" — and let the start search route to it at any distance. The band is the
+	# run-length control, so a fallback that suspends it does its damage exactly
+	# when the control is working hardest: measured, the relaxation would have
+	# offered Serpentcoil Island a start at 10 or 11 hops, a twelve-game evening on
+	# a rule set whose stated ceiling is nine. A named amulet that cannot be
+	# reached under the rules is refused with the reason instead, which is better
+	# than a quietly degraded version of what was asked for.
 	var cand_game: Dictionary = amulet_candidates_from(start_pool, all)
 	var amulet_candidates: Array[GameData] = []
 	for id in cand_game:
 		amulet_candidates.append(cand_game[id])
-	if amulet_candidates.is_empty():
-		# Looser fallback: anything reachable from any reference. Still inside the
-		# amulet filter — the band is what gets relaxed here, and a named target is
-		# the player's answer to "which game", which no fallback may overrule.
-		for r in start_pool:
-			var d_ref: Dictionary = bfs_distances(r.id)
-			for id in d_ref:
-				if id == r.id or cand_game.has(id):
-					continue
-				var g: GameData = by_id.get(id, null) as GameData
-				if g == null or not RunConfig.amulet_passes(g):
-					continue
-				cand_game[id] = g
-				amulet_candidates.append(g)
-	if amulet_candidates.is_empty():
-		# A named target that no reference can reach is still the run the player
-		# asked for: take it directly and let the start search route to it. Only a
-		# target that is off the map entirely (or filtered out of it) has no run.
-		var named: GameData = Data.get_game(RunConfig.amulet_id) if RunConfig.amulet_id != &"" else null
-		if named != null and _adj_cache.has(named.id):
-			cand_game[named.id] = named
-			amulet_candidates.append(named)
 	if amulet_candidates.is_empty():
 		return {}
 
@@ -1407,12 +1441,19 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# route the player will actually walk rather than the best route from a random
 	# reference.
 	var amulet_finalists: Array[GameData] = amulet_candidates
-	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
-	# each with a start inside the 6..8 band. Most amulets can; the odd one leaves a
-	# genre short, and rather than quietly offering a 4-hop start we try another
-	# amulet from the same finalist pool. bfs_distances is memoized, so an extra
-	# attempt is nearly free after the first. The best attempt seen is what we keep
-	# if none of them fills the panel outright.
+	# Pick an amulet that can actually SUPPLY the panel: NUM_START_OPTIONS genres,
+	# each with a start inside the band and on a road that clears the floor. An
+	# amulet that cannot is NOT USED (§19.3.2) — it stays an ordinary node, routed
+	# through and fought at, it just is not a goal. Measured, that costs 2 games of
+	# 790 on the full catalogue and 4 of 458 owned.
+	#
+	# This is the half of the loop that changed. It used to keep the BEST attempt
+	# and hand it over short, which is how a genre-short panel reached the
+	# relaxation below; now a short attempt is only remembered so the search can
+	# tell "no amulet qualifies" from "the pool was empty", and it is never
+	# offered. bfs_distances is memoized, so a second attempt is nearly free after
+	# the first — and with 788 of 790 amulets qualifying, a second attempt is
+	# already rare.
 	var amulet: GameData = null
 	var best_per_type: Dictionary = {}     # GameType -> {start, score, path_len}
 	var d_to_amulet: Dictionary = {}
@@ -1425,41 +1466,16 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		untried.remove_at(idx)
 		var d_to_cand := bfs_distances(candidate.id)
 		var per_type := _strict_starts_for(candidate, eligible_starts, d_to_cand)
-		if amulet == null or per_type.size() > best_per_type.size():
+		if per_type.size() >= NUM_START_OPTIONS:
 			amulet = candidate
 			best_per_type = per_type
 			d_to_amulet = d_to_cand
-		if best_per_type.size() >= NUM_START_OPTIONS:
 			break
 	if amulet == null:
-		amulet = amulet_finalists[rng.randi() % amulet_finalists.size()]
-		d_to_amulet = bfs_distances(amulet.id)
-
-	# Guarantee one start per *distinct genre* on the panel. The strict pass
-	# above only keeps a type when it has a start inside the MIN..MAX path
-	# window; sparse graphs can leave us short. For every type still missing,
-	# relax the path-length window and take the best-scoring reachable start of
-	# that genre so the player always gets a pick from each live genre. These
-	# carry in_window = false, and the ranking below puts every in-window option
-	# ahead of them, so a relaxed start is only ever offered to FILL the panel.
-	if best_per_type.size() < NUM_START_OPTIONS:
-		for type_val in TYPE_ORDER:
-			if best_per_type.has(type_val):
-				continue
-			var relaxed: Dictionary = {}
-			for g in eligible_starts:
-				if g.type != type_val or g.id == amulet.id:
-					continue
-				var d_from := bfs_distances(g.id)
-				if not d_from.has(amulet.id):
-					continue
-				var path_len: int = d_from[amulet.id]
-				var score := dag_branch_score_early(d_from, amulet.id, EARLY_LAYERS_FOR_SCORE, d_to_amulet)
-				if relaxed.is_empty() or score > int(relaxed.get("score", -1)):
-					relaxed = {"start": g, "score": score, "path_len": path_len,
-						"in_window": false, "pool": [{"game": g, "score": score}]}
-			if not relaxed.is_empty():
-				best_per_type[type_val] = {int(relaxed["path_len"]): relaxed}
+		# Every attempt came up a genre short. There is no panel to offer under the
+		# rules, and offering one anyway is exactly what §19.3.2 retires, so the
+		# caller gets nothing and falls through to an ordinary offering.
+		return {}
 
 	# Choose the cards: one genre each, spread across the band where it can be.
 	# _spread_across_band already prefers in-window records over relaxed ones and
@@ -1476,42 +1492,26 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			"path_len": int(rec["path_len"]),
 			"in_window": bool(rec.get("in_window", false)),
 		})
-	# In-window cards first (the 4..7 band is the promise the panel makes), then
-	# the LONGER route, then branching. Distance leads the display order because it
-	# is the choice the spread exists to offer — the first card is the long way
-	# round, the second the short one, every time, so the panel reads the same way
-	# twice rather than reshuffling on score.
+	# The LONGER route first, then branching. Distance leads the display order
+	# because it is the choice the spread exists to offer — the first card is the
+	# long way round, the last the short one, every time, so the panel reads the
+	# same way twice rather than reshuffling on score.
+	#
+	# `in_window` used to lead this sort, because a relaxed card had to rank below
+	# every real one. Every card is in window now (§19.3.2), so the key is constant
+	# and the sort no longer reads it. The key itself stays in the record: it is
+	# what says out loud that the band held, and a reader who stops finding it will
+	# assume nobody checked rather than that nobody had to.
 	options.sort_custom(func(a, b):
-		if bool(a["in_window"]) != bool(b["in_window"]):
-			return bool(a["in_window"])
 		if int(a["path_len"]) != int(b["path_len"]):
 			return int(a["path_len"]) > int(b["path_len"])
 		return int(a["score"]) > int(b["score"]))
-	if options.is_empty():
-		# Sparse-graph fallback: ignore the path-length window and just pick
-		# any reachable game(s) that aren't the amulet. Prefer one per type
-		# if possible so the panel still looks varied.
-		var by_type: Dictionary = {}
-		for g in eligible_starts:
-			if g.id == amulet.id:
-				continue
-			var d := bfs_distances(g.id)
-			if not d.has(amulet.id):
-				continue
-			if not by_type.has(g.type):
-				var plen: int = int(d[amulet.id])
-				by_type[g.type] = {
-					"type": g.type,
-					"start_id": g.id,
-					"score": 0,
-					"path_len": plen,
-					"in_window": plen >= band.x and plen <= band.y,
-				}
-		for type_val in TYPE_ORDER:
-			if by_type.has(type_val):
-				options.append(by_type[type_val])
-			if options.size() >= NUM_START_OPTIONS:
-				break
+	# A SPARSE-GRAPH FALLBACK STOOD HERE and is gone with the others. It ignored
+	# the window outright and offered any reachable game that was not the amulet,
+	# one per genre — the widest of the three relaxations, reached exactly when the
+	# map was least able to absorb it. A caller that gets {} back falls through to
+	# an ordinary offering, which is a run without a start panel rather than a run
+	# with a dishonest one.
 	if options.is_empty():
 		return {}
 	return {"amulet_id": amulet.id, "options": options}

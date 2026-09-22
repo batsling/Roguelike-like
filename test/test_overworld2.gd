@@ -1500,7 +1500,12 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 	if swapped <= 0:
 		return                            # nothing else in the bucket to become
 	var after: String = _text_of(_ui._verify_box)
-	assert_ne(after, before, "the checklist is not describing the old board")
+	var names_after: Array = []
+	for entry in GameLoop2.stack:
+		names_after.append((entry["enemy"] as GoalEnemyData).display_name)
+	assert_ne(after, before,
+		"the checklist is not describing the old board (%d swapped; %s -> %s)" % [
+			swapped, str(names_before), str(names_after)])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		assert_string_contains(after, e.display_name,
@@ -4241,34 +4246,72 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 # single distance (one does on the owned catalog at 4..7, and 16 did at 5..8) — so
 # the assertion is that the panel took a spread WHERE ONE EXISTED, which is
 # checked against the graph rather than assumed.
-func test_the_two_starts_are_different_distances_when_the_graph_allows_it() -> void:
+func test_the_starts_are_different_distances_when_the_graph_allows_it() -> void:
 	for _attempt in range(12):
 		_ui.start_run()
 		var amulet: StringName = GameState.amulet_game_id
+		if _ui._start_options.size() < 2:
+			continue
 		var lens: Dictionary = {}
 		for opt in _ui._start_options:
 			lens[int(opt["path_len"])] = true
-		# What the graph could have offered: every distance an eligible start of
-		# any genre sits at from this amulet.
-		var available: Dictionary = {}
-		var d_to: Dictionary = RunGraph.bfs_distances(amulet)
-		for g in Data.all_games():
-			if not (g is GameData) or g.id == amulet:
-				continue
-			if not RunGraph.is_eligible_start(g.id):
-				continue
-			var hops: int = int(d_to.get(g.id, -1))
-			if hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH:
-				available[hops] = true
-		if _ui._start_options.size() < 2:
+		assert_eq(lens.size(), _best_spread(amulet, _ui._start_options.size()),
+			"the panel took every distinct distance its genres could reach")
+
+
+# The most distinct distances a panel of `want` cards could POSSIBLY show against
+# this Amulet — which is the only honest thing to compare the panel against.
+#
+# It used to be compared against "how many distances exist at all", and that was
+# wrong in two ways that only surfaced once the panel went to three cards. The
+# spread takes ONE CARD PER GENRE, so a distance nothing of the right genre sits
+# at is a distance the panel cannot use: §19.3.2 measured 33 owned Amulets that
+# field their three genres at only two distances. And a start has to clear the
+# route floor (§19.3) to be offered at all, which the old count ignored entirely.
+#
+# So this is a maximum matching of genres to distances, brute-forced over at most
+# 4 genres — the same thing _spread_across_band maximises, stated independently
+# rather than by calling it.
+func _best_spread(amulet: StringName, want: int) -> int:
+	var band: Vector2i = RunConfig.path_band()
+	var d_to: Dictionary = RunGraph.bfs_distances(amulet)
+	var all: Array[GameData] = []
+	for g in Data.all_games():
+		if g is GameData and RunGraph.passes_filter(g):
+			all.append(g)
+	var by_genre: Dictionary = {}        # genre -> {distance: true}
+	for g in RunGraph.eligible_starts_from(all):
+		if g.id == amulet:
 			continue
-		if available.size() >= 2:
-			assert_eq(lens.size(), _ui._start_options.size(),
-				"%d distances were on offer, so the two cards must not share one" %
-				available.size())
-		else:
-			assert_eq(lens.size(), 1,
-				"only one distance exists here, so repeating it is the fallback")
+		var hops: int = int(d_to.get(g.id, -1))
+		if hops < band.x or hops > band.y:
+			continue
+		if not RunGraph.route_clears_floor(g.id, amulet):
+			continue
+		if not by_genre.has(int(g.type)):
+			by_genre[int(g.type)] = {}
+		(by_genre[int(g.type)] as Dictionary)[hops] = true
+	var genres: Array = by_genre.keys()
+	return _match_spread(genres, by_genre, 0, {}, 0, mini(want, genres.size()))
+
+
+# Pick `want` of the remaining genres and count the distinct distances they can
+# cover between them; return the best any choice manages.
+func _match_spread(genres: Array, by_genre: Dictionary, at: int, used: Dictionary,
+		picked: int, want: int) -> int:
+	if picked == want:
+		return used.size()
+	if at >= genres.size():
+		return used.size()
+	var best := 0
+	# Take this genre, at each distance it could sit at…
+	for hops in (by_genre[genres[at]] as Dictionary).keys():
+		var next: Dictionary = used.duplicate()
+		next[hops] = true
+		best = maxi(best, _match_spread(genres, by_genre, at + 1, next, picked + 1, want))
+	# …or skip it, when another genre spreads further.
+	best = maxi(best, _match_spread(genres, by_genre, at + 1, used, picked, want))
+	return best
 
 func test_the_panel_keeps_both_cards_when_no_spread_is_possible() -> void:
 	# The fallback is the point: an Amulet with nothing to spread across must

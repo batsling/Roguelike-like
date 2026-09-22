@@ -4670,10 +4670,26 @@ further out. The band's position was always the run-length control; widening it
 is a pacing change as much as a graph one.
 
 **AND THE BAND IS ABSOLUTE.** Three cards, all inside 4–8, or the Amulet is not
-used. There is no distance relaxation: `pick_amulet_and_starts` today fills a
+used. There is no distance relaxation: `pick_amulet_and_starts` used to fill a
 genre-short panel with the best reachable start of that genre at *any* distance
-(the `in_window: false` path), and that path is retired here — an Amulet that
-would need it is dropped instead.
+(the `in_window: false` path), and that path is retired — an Amulet that would
+need it is dropped instead.
+
+**THERE WERE THREE OF THEM, NOT ONE, AND ALL THREE ARE GONE.** The per-genre
+relaxation above was the visible one; behind it sat a band-widening fallback for
+when nothing at all sat inside the window, and behind *that* a sparse-graph
+fallback that offered any reachable game that was not the Amulet, one per genre,
+window ignored entirely. They were ordered widest-last, so the one that did the
+most damage was reached exactly when the map was least able to absorb it. What
+replaces all three is one line: an Amulet that cannot supply the panel is not
+used, and if none can, `pick_amulet_and_starts` returns `{}` and the caller opens
+an ordinary offering. A run without a start panel is a smaller loss than a run
+whose panel lies about the rules.
+
+`in_window` survives in the option record as a constant `true`. It is what states
+that the band held, and a reader who stops finding it will assume nobody checked
+rather than that nobody had to. The same reasoning keeps `_spread_key`'s
+in-window rank, which can no longer break a tie.
 
 It is retired because it quietly undoes the paragraph above. The relaxation has
 no reach limit, so the card it produces can sit anywhere: measured on the owned
@@ -4692,6 +4708,20 @@ carve-out goes. A named Amulet that cannot field three genres is **refused at th
 setup screen, with the reason**, rather than silently handing over a run whose
 road is worse than the rules promise. Telling someone their choice will not work
 is better than giving them a quietly degraded version of it.
+
+`RunGraph.panel_genres(id)` is the question, and `CustomRunScreen._update_verdict`
+asks it as a *problem* (Begin is disabled) rather than a warning. Two details are
+load-bearing. It reads the **live** graph, since the map filter decides which
+games are even nodes, so the screen applies the pending configuration, asks, and
+restores — a verdict is a question, not a commitment, and a test asserts the
+screen leaves `RunConfig` exactly as it found it. And the start pool it measures
+against is built by `RunGraph.eligible_starts_from`, the same function the
+generator uses, because a refusal computed off a different pool than the run uses
+is a refusal about nothing.
+
+It is also **cached on the whole configuration it depends on**. `_update_verdict`
+runs on every refresh — including every keystroke in the target search box — and
+the answer costs a graph rebuild on each side of it.
 
 **Measured against the band the run will actually use** — `RunConfig.path_band()`
 when a custom run has set one, the default 4–8 otherwise. Checking the guarantee

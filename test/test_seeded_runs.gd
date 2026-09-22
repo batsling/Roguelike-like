@@ -235,6 +235,33 @@ func test_a_save_is_written_whole_or_not_at_all() -> void:
 	assert_eq(int((parsed as Dictionary).get("save_version", 0)), SaveSystem.SAVE_VERSION,
 		"and it is this version's shape, not a truncated prefix of it")
 
+# §19.7: a version-2 run has no node kinds, and §19.2 freezes those at run start,
+# so there is no value to invent at load — the run is retired rather than resumed
+# onto a map whose badges appeared after the fact. The FILE survives; only the
+# in-flight run inside it is gone.
+func test_a_run_older_than_the_kinds_is_not_offered_for_resume() -> void:
+	assert_eq(SaveSystem.MIN_RESUMABLE_VERSION, SaveSystem.SAVE_VERSION,
+		"both retirements so far were of the immediately preceding version")
+	GameState.reset_run()
+	GameState.save_name = "stale-version-test"
+	assert_true(SaveSystem.save_named("stale-version-test"), "a current save lands")
+	var path: String = SaveSystem.named_save_path("stale-version-test")
+	var raw = JSON.parse_string(FileAccess.open(path, FileAccess.READ).get_as_text())
+	assert_true(raw is Dictionary, "the save is readable")
+	# Age it by one version, exactly as a save written before §19 would read.
+	(raw as Dictionary)["save_version"] = SaveSystem.MIN_RESUMABLE_VERSION - 1
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(raw))
+	f.close()
+	var still_listed := false
+	for entry in SaveSystem.list_resumable():
+		if String(entry.get("name", "")) == "stale-version-test":
+			still_listed = true
+	var on_disk: bool = FileAccess.file_exists(path)
+	SaveSystem.clear_all_saves()
+	assert_false(still_listed, "a run a version behind is not offered for resume")
+	assert_true(on_disk, "and the file itself is left alone — only the run retires")
+
 func test_a_failed_save_leaves_the_previous_one_standing() -> void:
 	# The point of writing beside and renaming over: the old save is untouched
 	# until the new one is complete. An unwritable directory is the reachable

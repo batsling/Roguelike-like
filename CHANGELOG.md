@@ -189,8 +189,72 @@ For how the project is laid out and how its systems fit together, see
   four-game run and an 11-hop card a twelve-game one. Recorded so nobody
   reintroduces a distance relaxation to "fix" them.
 
-  **There is no fallback**, so an Amulet that cannot supply the panel is not
-  offered as one — it stays an ordinary node to route through and fight at. An
+  **There is no fallback — and there were three of them, not one.** The visible
+  one filled a genre-short panel with the best reachable start of that genre at
+  *any* distance (the `in_window: false` card); behind it sat a band-widening
+  fallback for when nothing sat inside the window at all, and behind that a
+  sparse-graph fallback offering any reachable game that was not the Amulet, one
+  per genre, window ignored. They were ordered widest-last, so the one that did
+  the most damage was reached exactly when the map was least able to absorb it —
+  measured, the first alone would have offered Serpentcoil Island a start at 10
+  or 11 hops, a twelve-game evening on a rule set whose stated ceiling is nine.
+  All three are replaced by one line: an Amulet that cannot supply the panel is
+  not used, and when none can, `pick_amulet_and_starts` returns `{}` and the
+  caller opens an ordinary offering. A run without a start panel is a smaller
+  loss than a run whose panel lies about the rules.
+
+  `in_window` stays in the option record as a constant `true`, and `_spread_key`
+  keeps an in-window rank that can no longer break a tie. Both are what state
+  that the band held; a reader who stops finding them will assume nobody checked
+  rather than that nobody had to.
+
+  **A custom run is refused at the setup screen rather than degraded.**
+  `pick_amulet_and_starts` carried a carve-out taking a named target directly and
+  routing to it at any distance; with it gone, such a target would open on no
+  panel at all. `RunGraph.panel_genres(id)` is the new question and
+  `CustomRunScreen` asks it as a *problem* — Begin disabled, with the reason and
+  the target's name. Two details are load-bearing: it reads the live graph, so
+  the screen applies the pending configuration, asks, and restores (a test
+  asserts the verdict leaves `RunConfig` exactly as it found it), and the start
+  pool comes from `RunGraph.eligible_starts_from`, the same function the
+  generator uses — a refusal computed off a different pool than the run uses is a
+  refusal about nothing. The answer is cached on the whole configuration it
+  depends on, because the verdict re-runs on every keystroke in the target search
+  and costs a graph rebuild on each side.
+
+  **A panel test was measuring the wrong thing, and three cards exposed it.**
+  `test_the_starts_are_different_distances_when_the_graph_allows_it` required
+  every card at a distinct distance whenever two or more distances existed
+  *anywhere* against the Amulet. The spread takes ONE CARD PER GENRE, so a
+  distance no start of the right genre sits at is a distance the panel cannot
+  use — §19.3.2's own table counts 33 owned Amulets fielding three genres at only
+  two distances — and the old count ignored the route floor as well. It now
+  compares the panel against a maximum matching of genres to distances,
+  brute-forced over at most four genres: the same objective `_spread_across_band`
+  maximises, stated independently rather than by calling it. With two cards the
+  old assertion was almost always true, which is why it survived until the third.
+
+  **One failure in this batch is unexplained rather than fixed.**
+  `test_the_checklist_follows_a_reroll_of_the_board` failed once in a full run
+  and has not reproduced since — not alone (539/539 twice) and not in the full
+  suite after. Two hypotheses were ruled out by measurement rather than argument:
+  the play panel's repaint signature does include each body's `display_name`, and
+  a sweep of all 13 (type, tier) re-roll buckets found no two enemies that would
+  render an identical row, so "re-rolled into something that reads the same" is
+  out. The assertion now carries the swap count and the before/after body names,
+  so the next occurrence says what happened instead of printing two identical
+  blocks of text. Do not assume it was the amulet change: that touches which
+  games the run offers, not the checklist.
+
+  **`SAVE_VERSION` goes to 3 and version-2 runs retire** (§19.7), gated by a
+  named `MIN_RESUMABLE_VERSION` rather than the bare `>= 2` in two places. A
+  version-2 run has no node kinds, and §19.2 freezes those at run start, so any
+  value invented at load is a badge appearing on a map the player was already
+  walking. The save FILE is untouched — only the in-flight run inside it — the
+  way version 1 was retired at the 2.0 cut, and a test asserts both halves.
+
+  An Amulet that cannot supply the panel stays an ordinary node to route through
+  and fight at. An
   earlier draft had it fall back to the best route available; the decision is to
   keep the guarantee absolute for now, on the grounds that a rule with an escape
   hatch is a rule nobody can read off the screen. It costs 2 games in the full
