@@ -7931,6 +7931,60 @@ func test_the_page_still_fits_the_window_with_machines_standing_on_it() -> void:
 	_assert_fits("the page with three machines under the board")
 	ObjectSystem.clear()
 
+# Give the page the window the project SHIPS. The headless harness hands it
+# 1280x1280, and the checklist's ceiling is read off the live page (it is right
+# for a taller window to get a taller checklist), so a test about the ceiling has
+# to stand in the 1280x720 box `_assert_fits` measures against. Sized on this
+# test's own page rather than on the harness window, so nothing outlives it.
+func _at_720p() -> void:
+	_ui.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_ui.position = Vector2.ZERO
+	_ui.size = Vector2(1280, 720)
+
+# Stand `n` more bodies on the board, rolled for the game in play, and rebuild the
+# checklist around them. Past the board's own room they queue off the field, and
+# still take a checklist row each — which is the growth under test.
+func _crowd_board(n: int) -> void:
+	var key: StringName = GameLoop2.game_type_key(Data.get_game(GameState.current_game_id))
+	for _i in range(n):
+		var e: GoalEnemyData = GameLoop2.roll_enemy(key, RunDifficulty.current_tier())
+		if e != null:
+			GameLoop2.spawn_to_stack(e)
+	_ui._populate_play_panel()
+
+# THE CHECKLIST HAS A CEILING (docs/layout-review-backlog.md). A row per body and
+# no upper bound on the bodies used to put the page past a 720p window at four;
+# now the checklist scrolls inside whatever the left column has left.
+func test_a_crowded_board_does_not_push_the_page_past_the_window() -> void:
+	_at_720p()
+	_pick_enemies(0)
+	_crowd_board(10)
+	_ui._refresh()
+	for _i in range(4):
+		await get_tree().process_frame
+	_assert_fits("the report screen with %d bodies standing" % GameLoop2.stack.size())
+	var shown: float = _ui._verify_scroll.size.y
+	var content: float = _ui._verify_box.get_combined_minimum_size().y
+	assert_lt(shown, content,
+		"the checklist scrolls rather than growing (%.0f shown of %.0f)" % [shown, content])
+	assert_gte(shown, minf(content, OVERWORLD.CHECKLIST_FLOOR),
+		"and it is never squeezed below its floor")
+	# The box keeps the PANEL's width — the load-bearing half of the fix. Laid
+	# out at its minimum width instead (~130px), every goal wraps a word a line.
+	# Less the scrollbar's lane, which it has now because the list scrolls.
+	var lane: float = _ui._verify_scroll.get_v_scroll_bar().size.x
+	assert_almost_eq(_ui._verify_box.size.x, _ui._verify_scroll.size.x - lane, 1.0,
+		"the rows are as wide as the panel they sit in, less the scrollbar")
+
+func test_a_short_checklist_is_not_given_a_scrollbar() -> void:
+	_pick_enemies(0)
+	_ui._refresh()
+	for _i in range(4):
+		await get_tree().process_frame
+	assert_almost_eq(_ui._verify_scroll.size.y,
+		_ui._verify_box.get_combined_minimum_size().y, 1.0,
+		"a checklist that fits is drawn at its full height")
+
 func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# The shop shares the machines' slot and had the same disease, worse: its
 	# three cards ran the page to 1231px of a 688px window, and that predates
@@ -7943,6 +7997,7 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# or failed on the seed. The header is the flat word "Shop" now, but the
 	# panel still knows its game, and the longest name any Shop node carries is
 	# the case that bit; the hubs are gone, so that is the roster worth walking.
+	_at_720p()
 	var shops: Array = [_a_shop()]
 	var longest: StringName = &""
 	for gid in ShopSystem.shop_nodes():
@@ -7952,16 +8007,13 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 			longest = gid
 	if longest != &"" and longest != shops[0]:
 		shops.append(longest)
-	# THE BOARD IS CLEARED FIRST, and that is a scope decision rather than a
-	# convenience. This test is about the SHOP PANEL's contribution to the page.
-	# Every body standing also costs the page a checklist row at ~41px against the
-	# ~11px it has to spare, so a run that arrives here with followers overflows
-	# whatever the shop does — measured, and written up as an open item in
-	# docs/layout-review-backlog.md. Leaving the board as the run left it would
-	# quietly turn this into a test about the checklist, failing or passing on how
-	# many bodies the offering happened to leave standing.
-	GameLoop2.stack.clear()
-	_ui._populate_play_panel()
+	# A CROWDED BOARD, on purpose. This test used to clear the board first,
+	# because every body standing added a checklist row the page had no room for
+	# and the shop page fitted ZERO of them. The checklist is capped to the room
+	# the window leaves now (Overworld2._fit_checklist), so the case that used to
+	# be scoped out is the one worth standing here.
+	_pick_enemies(0)
+	_crowd_board(8)
 	for node in shops:
 		_ui._mount_shop(node)
 		await get_tree().process_frame

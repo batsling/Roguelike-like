@@ -298,48 +298,50 @@ All three, measured before and after at 1280x720.
 
 ---
 
-## OPEN: the play panel grows 41px per body, against 11px of slack
+## FIXED: the checklist grew a row per body, with no ceiling
 
 Found by `test_the_page_still_fits_the_window_with_a_shop_on_it` when §19.5's
 failure spawns landed. **Not caused by them** — they only made it common.
 
-Measured at 720p with a hub's shop mounted under the board:
+**Re-measured before fixing, and the write-up had the wrong trigger.** It blamed
+the shop. At the time of the fix the shop panel made no difference: the right
+column measured 565–591px either way. What overflowed was the LEFT column on its
+own, at 720p:
 
-| Bodies on the board | Page height | Room |
-|---|---|---|
-| 0 | **614** | 625 |
-| 1 | 655 | 625 |
-| 2 | 696 | 625 |
-| 4 | 778 | 625 |
+| Bodies | Left column (before) | Page (before) | Page (after) |
+|---|---|---|---|
+| 0 | 403 | 591 | 591 |
+| 3 | 576 | 591 | 601 |
+| 4 | 627 | **627** | 625 |
+| 5 | 678 | **678** | 625 |
+| 8 | — | — | 625 |
 
-Each body standing adds a checklist row at **~41px**, and the page has about
-**11px** to spare once everything else has had its share — so the page fits
-**zero** followers with a shop on it. That was survivable while a missed goal was
-the only way to accumulate bodies and this test happened to run on an empty
-board; §19.5 makes a growing board the ordinary case, and the stack has no upper
-bound at all.
+Room is 625. Each body adds a checklist row of **~51px**, so the page went over
+at four bodies, shop or no shop, and the stack has no upper bound.
 
-Nothing is CLIPPED — the page is in a `ScrollContainer` — so this is a fit rule
-rather than a breakage, which is why it is here rather than blocking.
+**The fix is a ceiling, and the load-bearing line is one flag.** `_verify_box`
+sits in its own `ScrollContainer` (`Overworld2._verify_scroll`), whose height
+`_fit_checklist` sets to the smaller of the checklist and the room the left column
+has left under the window, never less than `CHECKLIST_FLOOR` (~two rows). The
+earlier attempt at exactly this took an empty board's page to 1928px. The cause
+was the scroll's **horizontal mode**: left on AUTO, the scroll lays its child out
+at its minimum width, every autowrapped goal wraps a word a line, and the height
+the cap is computed from is nonsense. With `SCROLL_MODE_DISABLED` the scroll hands
+the box its own width. `test_a_crowded_board_does_not_push_the_page_past_the_window`
+asserts that directly (the box is as wide as the scroll), because it is the half
+that fails without anyone noticing.
 
-**The fix is a ceiling on the checklist, and it is not a five-minute change.**
-An attempt to wrap `_verify_box` in a `ScrollContainer` and size it to
-`min(content, cap)` made things dramatically worse: inside a scroll the box loses
-its width constraint, so its combined minimum size is computed against unwrapped
-text and the measurement that drives the cap is meaningless — the page went to
-1928px on an EMPTY board. Whatever the eventual shape, it has to keep the box's
-width tied to the panel's, and it has to be checked against a rendered screen
-(the `verify` skill) rather than reasoned about. Two standing notes at the top of
-this document apply directly.
+The budget is read off the live page rather than a constant: the scroll's height,
+less the page outside the two columns, less the rest of the left column. A taller
+window gets a taller checklist, and anything else in the left column that grows
+is paid for out of the checklist. It refits on the box's and the left column's
+`minimum_size_changed` and on the page scroll's `resized`, deferred and coalesced.
+A change under a pixel is ignored, so its own resize settles in one step.
 
-Shrinking the row is the obvious alternative and is the worse trade: it buys a
-fixed number of extra bodies, then loses to the same arithmetic, and it costs
-legibility on every run to pay for the crowded ones. The page has already given
-up 26px of its own chrome for this test once and there is no second 26px to find.
+Shrinking the row was the alternative and was rejected, as before: it buys a fixed
+number of bodies and then loses to the same arithmetic.
 
-Until it is done, `test_the_page_still_fits_the_window_with_a_shop_on_it` clears
-the board first, so it measures what it was written to measure — the shop panel's
-own contribution — rather than silently becoming a test about the checklist.
+The shop fit test now stands **eight** extra bodies instead of clearing the board.
 
 ---
 

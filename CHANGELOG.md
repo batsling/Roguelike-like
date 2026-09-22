@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The report checklist has a ceiling, so a crowded board no longer pushes the
+  page past a 720p window.** Every body standing adds a goal row of ~51px and the
+  stack has no upper bound. Measured before the fix, the page went over at four
+  bodies (627 of 625px), shop or no shop. The backlog blamed the shop, which
+  turned out to make no difference. The checklist now sits in a scroll capped to
+  what the left column has left under the window
+  (`Overworld2._fit_checklist`, floor of about two rows), so the page stops at
+  625 however many bodies stand. ✓ Completed Game and Escape stay on screen under
+  it.
+
+  A previous attempt at the same fix took an empty board to 1928px. The
+  difference is the scroll's horizontal mode: on AUTO the box is laid out at its
+  minimum width and every goal wraps a word a line; DISABLED hands it the panel's
+  width. A test asserts that, alongside the fit, and the shop fit test stands
+  eight extra bodies rather than clearing the board. Closed in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md).
+
 - **The hubs are retired: a shop is a Shop node, and only a Shop node (§19.7).**
   Shops stood at the run's ten best-connected games until §19 dealt a Shop kind
   onto 10% of the map. For one pass the two rules ran side by side, so a rung

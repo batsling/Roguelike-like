@@ -275,6 +275,13 @@ var _split_total: Label = null           # the run's own line
 var _split_pause_btn: Button = null
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
+var _verify_scroll: ScrollContainer  # _verify_box's frame, capped by _fit_checklist
+var _fit_checklist_queued: bool = false
+# The least the checklist is ever squeezed to, however little room the page has:
+# about two rows. Below it the cap stops helping — a checklist you have to scroll
+# a row at a time is worse than a page that scrolls — so past this the page is
+# allowed to grow instead.
+const CHECKLIST_FLOOR := 110.0
 # The checklist itself — both states of the left column, and the row-to-body
 # pairing (ReportChecklist). Built in _build_ui, once the two containers it fills
 # exist. Everything below is a READ-ONLY VIEW of the state it owns, kept on the
@@ -2917,6 +2924,54 @@ func _open_pending_shop() -> void:
 	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
 		_mount_shop(gid)
 	_maybe_announce_boss()
+
+# --- the checklist's ceiling ----------------------------------------------
+#
+# The checklist is the one thing on the page with no upper bound: a row per body
+# standing, and §19.5 stands more of them every time a game is lost with nothing
+# down. So it gets whatever height the LEFT COLUMN has left under the window and
+# scrolls inside that, rather than pushing the page past it.
+#
+# The budget is read off the live page, not off a constant: the room is the page
+# scroll's height, less every row of the page outside the two columns, less
+# everything in the left column that is not the checklist. A taller window (the
+# canvas is 1280x720 at least, and "expand" can hand back more) is a taller
+# checklist, and a left column that grows for any other reason — an offering name
+# wrapping, the attempt strip — is paid for out of the checklist rather than out
+# of the window.
+#
+# Only ever the left column's business. The page is the taller of the two
+# columns, and when the RIGHT one binds, squeezing the checklist would buy
+# nothing, so the budget is measured against the window and not against the
+# board beside it.
+func _queue_fit_checklist() -> void:
+	if _fit_checklist_queued:
+		return
+	_fit_checklist_queued = true
+	_fit_checklist.call_deferred()
+
+func _fit_checklist() -> void:
+	_fit_checklist_queued = false
+	if _verify_scroll == null or not is_instance_valid(_verify_scroll) \
+			or _scroll == null or _left_col == null:
+		return
+	var content: float = _verify_box.get_combined_minimum_size().y
+	var room: float = _scroll.size.y
+	var want: float = content
+	if room > 0.0 and _scroll.get_child_count() > 0:
+		var page: Control = _scroll.get_child(0)
+		var main_row: Control = _left_col.get_parent()
+		# What the page spends outside the two columns (the banner, the gaps).
+		var outside: float = page.get_combined_minimum_size().y \
+			- main_row.get_combined_minimum_size().y
+		# What the left column spends that is not the checklist.
+		var beside: float = _left_col.get_combined_minimum_size().y \
+			- _verify_scroll.custom_minimum_size.y
+		var budget: float = room - outside - beside
+		want = clampf(budget, minf(content, CHECKLIST_FLOOR), content)
+	want = floorf(maxf(want, 0.0))
+	if absf(want - _verify_scroll.custom_minimum_size.y) >= 1.0:
+		_verify_scroll.custom_minimum_size.y = want
 
 # --- the shop on the page (§14) --------------------------------------------
 
@@ -6486,7 +6541,27 @@ func _build_ui() -> void:
 	# what you did, then press the single Completed Game button below.
 	_verify_box = VBoxContainer.new()
 	_verify_box.add_theme_constant_override("separation", 3)
-	_play_panel.add_child(_verify_box)
+	_verify_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# IN ITS OWN SCROLL, CAPPED TO THE ROOM THE PAGE HAS LEFT (_fit_checklist).
+	# Every body standing adds a row of ~51px, and the stack has no upper bound —
+	# §19.5's failure spawns make a crowded board the ordinary case — so an
+	# uncapped checklist pushed the whole page past the window at four bodies.
+	#
+	# HORIZONTAL SCROLLING IS DISABLED, AND THAT IS THE LOAD-BEARING LINE. It is
+	# what makes the scroll hand the box its OWN width; left on AUTO, the box is
+	# laid out at its minimum width, every autowrapped goal wraps a word a line,
+	# and the height the cap is computed from is nonsense — an earlier attempt at
+	# exactly this took an EMPTY board's page to 1928px that way.
+	_verify_scroll = ScrollContainer.new()
+	_verify_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_verify_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_verify_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_verify_scroll.add_child(_verify_box)
+	_play_panel.add_child(_verify_scroll)
+	_verify_box.minimum_size_changed.connect(_queue_fit_checklist)
+	_left_col.minimum_size_changed.connect(_queue_fit_checklist)
+	# …and the window: a resize is a different amount of room.
+	_scroll.resized.connect(_queue_fit_checklist)
 	# Built here rather than in _ready: it fills these two containers, so it cannot
 	# exist before they do.
 	_checklist = ReportChecklist.new(self, _verify_box, _launch_row)
