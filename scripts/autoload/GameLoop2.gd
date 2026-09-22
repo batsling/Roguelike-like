@@ -1660,8 +1660,15 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # chest and nothing beside it — so the second body is a property of the node now
 # rather than of every committed game. It defaults to true because Scramble, the
 # dev panel and the tests all commit a game without having a node in hand.
+#
+# `is_arrival` is what tells a node ARRIVAL from a REPLACEMENT. Scramble comes
+# through here too — it supersedes what arrived, with a new instance — and §19.2
+# is explicit that a Scramble is not a way to buy your way out of a fight. If it
+# ticked the spawn counter it would be a way to buy your way INTO one: a charge
+# spent, the same bodies standing there, and the tier a third of a step higher.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
-		escort_tier: int = -1, with_escort: bool = true) -> int:
+		escort_tier: int = -1, with_escort: bool = true,
+		is_arrival: bool = true) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
 	# is closed out — and a fresh escape gate with it: this game has not hurt you
 	# yet, whatever the last one did (§3.2). The same for what the last game's
@@ -1694,8 +1701,28 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		var escort_inst: int = _spawn_escort(enemy, escort_type, escort_tier)
 		if escort_inst > 0:
 			arrivals.append(escort_inst)
+	# ONE SPAWN EVENT, however many bodies just walked on (§19.6). An Enemies node
+	# and a Champion node each count once, and an Event or a Shop node never
+	# reaches here at all — see begin_bodiless_game.
+	if is_arrival:
+		note_spawn_event()
 	loop_changed.emit()
 	return inst
+
+# A SPAWN EVENT HAPPENED (§19.6): a node arrival that landed bodies, or a failure
+# spawn. One per event, not one per body — two bodies on an Enemies node and one
+# on a Champion are the same single step up the ladder, because what the tier
+# measures is how often the run is putting things on the board rather than how
+# crowded it got.
+#
+# The board is grown HERE rather than at the report, which is the first thing in
+# the build to resize it mid-game. The tier is what SIZED this spawn's arrivals,
+# so holding the board at its old size until the report would crowd new bodies
+# onto a grid the rule says has already grown — the one state §7.3's off-grid
+# queue exists to avoid rather than to absorb.
+func note_spawn_event() -> void:
+	GameState.spawn_events += 1
+	sync_grid_bounds()
 
 # Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
 #
@@ -3891,7 +3918,9 @@ func scramble() -> GoalEnemyData:
 	if fresh == null:
 		return null
 	GameState.scramble -= 1
-	choose_game(fresh)  # supersedes what arrived, with a new instance
+	# NOT an arrival: this supersedes what arrived, with a new instance, so it must
+	# not tick the spawn counter (§19.2).
+	choose_game(fresh, &"", -1, true, false)
 	return fresh
 
 # D10 (§8): re-roll every NON-BOSS body on the battlefield where it stands.

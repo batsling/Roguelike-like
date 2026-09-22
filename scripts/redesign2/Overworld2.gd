@@ -1383,7 +1383,17 @@ func pick(index: int) -> void:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
+	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
+	# events, and an arrival that lands bodies IS one — so committing a game can
+	# cross a band with nothing reported yet, which `games_played` never could.
+	# GameLoop2.note_spawn_event has already grown the board by the time this
+	# returns; the announcement follows the growth rather than waiting for a report
+	# that would describe it a game late.
+	var tier_before: int = _current_tier()
+	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_commit_board_for_kind(game, enemy, tier)
+	if not GameLoop2.run_over:
+		_announce_difficulty_step(tier_before, board_before)
 	_log_escort()
 	_remind_twitch_category(game)
 	_fire_arrival_event(game)
@@ -2609,7 +2619,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 # The new cells light up and pulse on the board itself (BattlefieldView's
 # _rebuild_cells) — this is the words that go with them.
 func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void:
-	var tier_now: int = RunDifficulty.tier_for(GameState.games_played)
+	var tier_now: int = RunDifficulty.current_tier()
 	if tier_now == tier_before:
 		return
 	# Re-seat anything the old bounds had parked off-grid: a wider board is
@@ -4296,7 +4306,7 @@ func _is_boss_round() -> bool:
 # tier, and `tier_for` says so on its own. Once the run reaches Insane the cap
 # holds and the Insane band repeats, boss and all.
 func _current_tier() -> int:
-	return RunDifficulty.tier_for(GameState.games_played)
+	return RunDifficulty.current_tier()
 
 # How many game cards the offering shows: the base three plus whatever
 # "game_choices" bonus the run has been granted (never below one, or there'd be

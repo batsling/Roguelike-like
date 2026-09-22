@@ -191,6 +191,29 @@ func _plain_goals() -> void:
 func _playback_done() -> void:
 	await wait_until(func(): return not _ui._resolving, 5.0)
 
+# Put the Amulet two hops from where the run is STANDING, so reporting a game
+# buys the board turns and there is therefore a playback to watch.
+#
+# The band above is why: a report hands the board nothing at all beyond 5 hops,
+# so a test that asserts the resolve plays back is really asserting that the
+# random graph happened to open the run near its goal. That is a coin flip, and
+# it is the kind that reads as a flake — it passed for as long as it did because
+# nothing had perturbed which cards the offering deals.
+#
+# It moves the GOAL rather than the player, which is the cheap half: where the
+# run stands is UI state with a board and an offering hanging off it, where the
+# Amulet is a run-level fact that only the badges and this ladder read.
+func _stand_near_the_amulet(hops: int = 2) -> bool:
+	var here: StringName = GameState.current_game_id
+	if here == &"":
+		return false
+	var dist: Dictionary = RunGraph.bfs_distances(here)
+	for gid in dist.keys():
+		if int(dist[gid]) == hops:
+			GameState.amulet_game_id = gid
+			return GameLoop2.enemy_turns() > 0
+	return false
+
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
 # through the modal's own path rather than freed, so the chain behind it still
@@ -373,6 +396,74 @@ func test_an_ordinary_node_raises_nothing_on_arrival() -> void:
 	_pick_as(RunGraph.NodeKind.ENEMIES)
 	assert_null(_ui._event_modal,
 		"only an Event node pays an event at the front of the game")
+
+
+# --- difficulty is a consequence (§19.6) ------------------------------------
+#
+# The tier reads `spawn_events`, not `games_played`: one per arrival that landed
+# bodies, one per failure spawn. An Event or a Shop node lands nothing and so
+# ticks nothing, which is what turns the ladder from a clock the player rides
+# into something they steer.
+
+func test_a_node_that_lands_bodies_is_one_spawn_event() -> void:
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.CHAMPION]:
+		_reboot(&"ironclad")
+		var before: int = GameState.spawn_events
+		_pick_as(int(kind))
+		assert_eq(GameState.spawn_events, before + 1,
+			"%s: one event, however many bodies walked on" % RunGraph.kind_label(int(kind)))
+
+
+func test_a_node_that_lands_nothing_ticks_nothing() -> void:
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		_reboot(&"ironclad")
+		var before: int = GameState.spawn_events
+		_pick_as(int(kind))
+		assert_eq(GameState.spawn_events, before,
+			"%s: nothing spawned, so nothing is owed to the ladder"
+				% RunGraph.kind_label(int(kind)))
+
+
+# Routing through the quiet kinds really does hold the tier. This is the claim
+# §19.6 makes in prose, asked of the numbers.
+func test_routing_through_quiet_nodes_holds_the_tier() -> void:
+	var start_tier: int = RunDifficulty.current_tier()
+	for _i in range(RunDifficulty.GAMES_PER_TIER + 1):
+		if _ui._choices.is_empty():
+			break
+		_pick_as(RunGraph.NodeKind.EVENT)
+		if _ui._event_modal != null:
+			_ui._event_modal.queue_free()
+			_ui._event_modal = null
+		_ui.report(false)
+	assert_eq(RunDifficulty.current_tier(), start_tier,
+		"a run that fights nothing climbs nothing")
+	assert_gt(GameState.games_played, 0,
+		"…and it was still out there playing games all the while")
+
+
+func test_a_scramble_does_not_buy_its_way_up_the_ladder() -> void:
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	GameState.scramble = 1
+	var before: int = GameState.spawn_events
+	if GameLoop2.scramble() == null:
+		pending("nothing else in the bucket to scramble into")
+		return
+	assert_eq(GameState.spawn_events, before,
+		"a Scramble supersedes what arrived; it is not a fresh arrival")
+
+
+# The board grows AT the spawn rather than waiting for the report, because the
+# tier is what sized that spawn's arrivals — see GameLoop2.note_spawn_event.
+func test_crossing_a_tier_on_arrival_grows_the_board_there_and_then() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.sync_grid_bounds()
+	var cols_before: int = GameLoop2.grid_cols()
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_eq(GameState.spawn_events, RunDifficulty.GAMES_PER_TIER,
+		"the arrival crossed the band")
+	assert_eq(GameLoop2.grid_cols(), cols_before + 1,
+		"and the column is there already, under the bodies that just walked on")
 
 func test_each_choice_has_a_game_and_a_previewable_enemy() -> void:
 	for c in _ui._choices:
@@ -1367,6 +1458,14 @@ func test_boss_round_closes_the_tier_band() -> void:
 # reads N - 1. The boss used to sit on the tier CROSSING instead (gp % 3 == 0),
 # which made the opening band four games long and put the first boss on encounter
 # 4; every band is three now and the first boss is encounter 3.
+#
+# THE TWO HALVES NOW READ DIFFERENT COUNTERS (§19.6). The tier is off
+# `spawn_events` — one per arrival that landed bodies — while the boss cadence is
+# still off `games_played`, so this sets both and the table holds for a run where
+# every node is a fight. It stops holding for a run that routes through events and
+# shops, which is the entire point of the change: the ladder is steered now. The
+# boss half goes when §19.7 retires `is_boss_game` for the every-third-SPAWN
+# capstone, and then this table is one counter again.
 func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
 	var want: Array = [
@@ -1379,6 +1478,7 @@ func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	for i in range(want.size()):
 		var encounter: int = i + 1
 		GameState.games_played = i
+		GameState.spawn_events = i
 		assert_eq(_ui._current_tier(), int(want[i]),
 			"encounter %d is %s" % [encounter, RunDifficulty.tier_name(int(want[i]))])
 		assert_eq(_ui._is_boss_round(), encounter % 3 == 0,
@@ -3270,7 +3370,7 @@ func test_the_play_verbs_sit_beside_the_cover() -> void:
 func test_the_biggest_board_still_fits_one_window() -> void:
 	# The board gains a column AND a row per difficulty step; the top of the
 	# ladder is the case that used to run off the bottom of the window.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
 	_ui._build_choices()
 	_ui._refresh()
 	assert_gt(GameLoop2.grid_rows(), GameLoop2.BASE_GRID_COLS, "the board really did grow")
@@ -3932,7 +4032,7 @@ func test_the_stage_fits_the_viewport_at_every_board_size() -> void:
 	var page: float = get_viewport().get_visible_rect().size.x - 32.0  # scroll margins
 	assert_gt(page, 0.0)
 	for growth in range(0, RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER) + 1):
-		GameState.games_played = growth * RunDifficulty.GAMES_PER_TIER
+		GameState.spawn_events = growth * RunDifficulty.GAMES_PER_TIER
 		GameLoop2.sync_grid_bounds()
 		_ui._refresh()
 		await get_tree().process_frame
@@ -5115,6 +5215,13 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# which left _resolving false and failed this test on roughly one run in four.
 	# The SECOND game is the one with a board to play back, which is what this
 	# test is actually about.
+	#
+	# AND THE RUN IS STOOD NEAR ITS GOAL, because a playback is one beat per TURN
+	# and a report beyond 5 hops from the Amulet buys the board NO turns at all
+	# (§7.4) — so out in the wilds there is nothing to play back, _hold_for_resolve
+	# ends synchronously, and the haul drops straight away. That is correct
+	# behaviour and it is not what this test is about; leaving it to the graph
+	# means asserting that the run happened to open near its goal.
 	_pick_solo(0)
 	_ui.report(false)
 	await _playback_done()                    # let the first playback finish
@@ -5123,6 +5230,9 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
+	if not _stand_near_the_amulet():
+		pending("the graph could not put the run inside the band that buys turns")
+		return
 	_pick_solo(0)
 	_ui.report(false)
 	assert_null(_ui._post_screen,
@@ -5615,10 +5725,16 @@ func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 # ---------------------------------------------------------------------------
 
 func test_crossing_a_tier_grows_the_board_and_says_so() -> void:
-	# Park the run one game short of a tier step, then play that game: the board
-	# is a column and a row wider on the other side of the report, and the run log
-	# carries the news (the new cells light up on the board itself).
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	# Park the run one SPAWN EVENT short of a tier step, then play a game that
+	# lands bodies: the board is a column and a row wider, and the run log carries
+	# the news (the new cells light up on the board itself).
+	#
+	# The step now happens at the ARRIVAL rather than at the report (§19.6) — the
+	# counter is spawn events, and committing a game that lands bodies is one — so
+	# the growth is already done by the time the report runs. This walks both
+	# halves anyway, because what the test is about is that it happened and was
+	# said, not which beat it happened on.
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
 	var rows_before: int = GameLoop2.grid_rows()

@@ -222,6 +222,54 @@ For how the project is laid out and how its systems fit together, see
   depends on, because the verdict re-runs on every keystroke in the target search
   and costs a graph rebuild on each side.
 
+  **DIFFICULTY IS A CONSEQUENCE NOW, NOT A CLOCK** (§19.6). `GameState.spawn_events`
+  counts one per node arrival that landed bodies and one per failure spawn —
+  regardless of how many bodies each put down — and `RunDifficulty.current_tier`
+  reads that instead of `games_played`. An Event or a Shop node lands nothing and
+  ticks nothing, so a player who routes through them and clears goals promptly
+  keeps a small board and a low tier for far longer than the old count allowed,
+  while one who fights everything climbs faster than it ever did. The ladder used
+  to be something the player rode; it is something they steer, in both directions.
+
+  `games_played` is not vestigial and keeps ticking on all four kinds:
+  `RunOverScreen` and the OBS overlay report it, `EventSystem` gates requirements
+  on `"games"`, and `SaveSystem` derives the autosave seed from it.
+
+  **A Scramble does not tick it**, and the exemption is the point. Scramble comes
+  through `choose_game` too — it supersedes what arrived, with a new instance — so
+  without an `is_arrival` flag it would be a way to buy your way INTO a fight: a
+  charge spent, the same bodies standing there, and the tier a third of a step
+  higher. §19.2 says a Scramble is not a way to buy your way out of one; this is
+  the same sentence read from the other side.
+
+  **THE TIER CAN STEP MID-RUN, AND THE BOARD GROWS AT THE SPAWN.** `games_played`
+  could only cross a band at a report; a spawn event crosses it at the arrival.
+  `GameLoop2.note_spawn_event` calls `sync_grid_bounds` there rather than waiting,
+  because the tier is what SIZED that spawn's arrivals — holding the board at its
+  old size until the report would crowd new bodies onto a grid the rule says has
+  already grown, which is the one state §7.3's off-grid queue exists to avoid
+  rather than to absorb. The announcement follows the growth to the arrival.
+
+  **Two tests were only usually true and my change moved the dice under them.**
+  Both are recorded because the diagnosis mattered more than the fix.
+  `test_the_board_plays_then_the_haul_and_the_offering_waits_for_both` asserts the
+  resolve plays back — but a playback is one beat per TURN, and a report beyond 5
+  hops from the Amulet buys the board no turns at all (§7.4), so out in the wilds
+  there is nothing to play and the haul drops straight away. It was really
+  asserting that the random graph happened to open the run near its goal, and it
+  held only until something perturbed which cards the offering deals. It now
+  stands the run inside the band first, via a new `_stand_near_the_amulet` that
+  moves the GOAL rather than the player — the cheap half, since where the run
+  stands is UI state with a board and an offering hanging off it.
+  `test_every_third_encounter_is_a_boss_at_its_own_tier` now sets both counters,
+  because its two halves read different ones until §19.7 retires `is_boss_game`.
+
+  I was wrong about the first one twice before getting it right — a tier crossing
+  landing mid-test, then a board-bounds leak — and both were ruled out by probing
+  the actual board state rather than by argument. The bodies sitting at "col 4 on
+  a 4-column board" that looked like the smoking gun were the back column: the
+  grid is 1-based, melee at 1.
+
   **THE KIND NOW DECIDES WHAT STANDS ON THE BOARD** (§19.1). Committing a game
   goes through `Overworld2._commit_board_for_kind`: an Enemies node stands two
   bodies as before, a Champion stands one boss and nothing beside it,

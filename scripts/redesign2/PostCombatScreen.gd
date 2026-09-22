@@ -270,7 +270,7 @@ func step_line() -> String:
 	return line
 
 func _tier_now() -> int:
-	return RunDifficulty.tier_for(GameState.games_played)
+	return RunDifficulty.current_tier()
 
 # ---------------------------------------------------------------------------
 # Why the chest is the size it is

@@ -2151,7 +2151,7 @@ func test_lost_runs_until_strike_counts_the_walking() -> void:
 
 func test_the_board_gains_a_column_and_a_row_per_tier() -> void:
 	for tier in range(4):
-		GameState.games_played = tier * RunDifficulty.GAMES_PER_TIER
+		GameState.spawn_events = tier * RunDifficulty.GAMES_PER_TIER
 		assert_eq(RunDifficulty.current_tier(), tier, "tier %d" % tier)
 		assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + tier,
 			"%s widens the board to %d columns" % [RunDifficulty.tier_name(tier),
@@ -2161,7 +2161,7 @@ func test_the_board_gains_a_column_and_a_row_per_tier() -> void:
 				GameLoop2.BASE_GRID_ROWS + tier])
 
 func test_the_board_stops_growing_with_the_tier_ladder() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * 40
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * 40
 	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "Insane is the top")
 	assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + RunDifficulty.MAX_TIER,
 		"a very long run doesn't run off the edge of the screen")
@@ -2170,10 +2170,10 @@ func test_the_board_stops_growing_with_the_tier_ladder() -> void:
 func test_a_wider_board_spawns_enemies_further_out() -> void:
 	# The counterweight: the tier that makes the enemies heavier also gives you
 	# more ground to lose before they arrive.
-	GameState.games_played = 0
+	GameState.spawn_events = 0
 	GameLoop2.reset()
 	var near: int = GameLoop2.spawn_col_for(_enemy(1))
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
 	GameLoop2.reset()
 	assert_eq(GameLoop2.spawn_col_for(_enemy(1)), near + RunDifficulty.MAX_TIER,
 		"Insane spawns them %d columns further back than Low" % RunDifficulty.MAX_TIER)
@@ -2181,13 +2181,13 @@ func test_a_wider_board_spawns_enemies_further_out() -> void:
 func test_growing_the_board_walks_the_overflow_queue_on() -> void:
 	# Enough bodies to jam a Low board, then a tier step: the new column is
 	# somewhere for the queue to finally stand.
-	GameState.games_played = 0
+	GameState.spawn_events = 0
 	GameLoop2.reset()
 	for _i in range(GameLoop2.grid_rows() + 2):
 		GameLoop2.spawn_to_stack(_shaped(1, GameLoop2.grid_rows(), 1))
 	var waiting: int = GameLoop2.offgrid_count()
 	assert_gt(waiting, 0, "the board is jammed and some are waiting off it")
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER
 	GameLoop2.sync_grid_bounds()
 	assert_lt(GameLoop2.offgrid_count(), waiting,
 		"the tier's new column takes some of the queue")

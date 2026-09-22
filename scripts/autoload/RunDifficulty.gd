@@ -7,12 +7,20 @@ extends RefCounted
 # `@export var difficulty: Difficulty` fields and cascading compile
 # failures through everything that depends on them.
 #
-# Pure, scene-free difficulty model. The run's difficulty tier steps up
-# every GAMES_PER_TIER games the player *plays* (see GameState.games_played).
+# Pure, scene-free difficulty model. The run's difficulty tier steps up every
+# GAMES_PER_TIER SPAWN EVENTS (see GameState.spawn_events) — one per node arrival
+# that landed bodies, one per failure spawn.
 #
 # This mirrors the HTML build's tier ladder (Easy/Medium/Hard/Insane) but:
 #   * advances on games PLAYED rather than beaten, and
 #   * steps every 3 games instead of 4.
+#
+# …and then §19.6 moved the count off games played entirely. The ladder used to
+# be a clock: three games, one step, whatever the player did in them. It is a
+# CONSEQUENCE now — an Event or a Shop node lands nothing and ticks nothing, so
+# routing through them holds the tier where it is, while a run that fights
+# everything climbs faster than the old clock ever allowed. The constant is still
+# called GAMES_PER_TIER because the band width did not change; what it counts did.
 #
 # The tier feeds the goal-enemy / boss roll, the action-floor room count (see
 # IsaacFloorGenerator), and — as of the amulet-pressure pass — the SIZE OF THE
@@ -41,13 +49,21 @@ const MAX_TIER := Tier.INSANE
 static func tier_value(tier: int) -> int:
 	return clampi(tier, Tier.LOW, MAX_TIER) + 1
 
-# Maps a games-played count to a tier. Clamped at MAX_TIER so an
-# arbitrarily long run can't exceed Insane.
-static func tier_for(games_played: int) -> int:
-	if games_played < 0:
-		games_played = 0
+# Maps a SPAWN-EVENT count to a tier. Clamped at MAX_TIER so an arbitrarily long
+# run can't exceed Insane.
+#
+# It used to be handed `GameState.games_played`, and §19.6 moved it onto
+# `GameState.spawn_events` — one per node arrival that landed bodies, one per
+# failure spawn. The function itself did not have to change, because it was
+# always "a count, divided into bands"; what changed is WHICH count, and with it
+# whether the tier is a clock the player rides or a consequence they steer. An
+# Event or a Shop node never ticks it, so routing through them holds the tier
+# where it is.
+static func tier_for(spawn_events: int) -> int:
+	if spawn_events < 0:
+		spawn_events = 0
 	@warning_ignore("integer_division")
-	var tier: int = games_played / GAMES_PER_TIER
+	var tier: int = spawn_events / GAMES_PER_TIER
 	return mini(tier, MAX_TIER)
 
 # --- where the bosses stand in that ladder (§7.1) ---------------------------
@@ -200,7 +216,7 @@ static func tier_from_name(name: String) -> int:
 
 # Convenience: the current run's tier, read straight off GameState.
 static func current_tier() -> int:
-	return tier_for(GameState.games_played)
+	return tier_for(GameState.spawn_events)
 
 # Convenience: the current run's tier value (1..4).
 static func current_tier_value() -> int:
