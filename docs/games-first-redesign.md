@@ -4981,6 +4981,11 @@ problem is not the average but the **floor**:
 | **…worst run seen** | **407 — 52%** | **219 — 48%** |
 | **Scoring against every eligible start** | **789 — 99.9%** | **458 — 100%** |
 
+*(Measured before §19.3.1 lowered `MIN_START_CONNECTIONS` to 2, so the start pool
+is the degree-3 one — 419 on the full catalogue now, not 246. That widening only
+sharpens the argument: more sticks to draw three of, so a narrow draw is no rarer
+and the map it sees is no wider. The shipped pool is 790 of 790.)*
+
 One draw in forty left barely half the map eligible. And because *which* half
 moves every run, a game is not reliably excluded so much as **unreliably
 included** — the worst shape for a rule nobody can see. Scoring against all
@@ -4989,18 +4994,41 @@ every run.
 
 **AND `AMULET_SCORE_SLACK` GOES WITH IT**, having become nearly a no-op. It
 exists to drop candidates more than 2 below the best early-branching score, which
-bites hard when the best is drawn from three references. Measured against all
-246, every game finds a good reference and the cut takes **one game out of 790**,
-and none at all in the owned catalogue. Dropping it recovers that one and removes
+bites hard when the best is drawn from three references. Measured against every
+eligible start, every game finds a good reference and the cut takes **one game
+out of 790**, and none at all in the owned catalogue. Dropping it recovers that one and removes
 a constant that would otherwise look load-bearing and not be.
 
-**Re-measure the cost before keeping this shape.** It is 246 BFS plus 246
-`dag_branch_scores_from` sweeps per generation, in a file whose own notes record
-a naive per-candidate BFS at **868 ms a roll** — which is what that one-pass
-function was written to fix. If it is too slow, the way out is that dropping the
-slack removes the only reason to compute branching scores at all: what is left is
-"is this game 4–7 hops from some eligible start", which is close to a single
-multi-source sweep.
+**MEASURED, AND IT IS FREE.** The worry was cost: a BFS plus a
+`dag_branch_scores_from` sweep per eligible start per generation, in a file whose
+own notes record a naive per-candidate BFS at **868 ms a roll**. Both halves of
+the way out in the original draft turned out to be the right ones, and together
+they leave the generation exactly where it was.
+
+| | ms per generation |
+|---|---|
+| Three random reference starts (before) | **269** |
+| Every eligible start, naively | 605 |
+| Every eligible start, as shipped | **270** |
+
+The first saving is the one the draft predicted: **dropping the slack removes the
+only reason to compute branching scores at all**, so a reference now costs one
+memoized BFS and a walk of its result rather than that plus a whole-catalogue
+sweep. The second is an **early exit**, and it is worth being precise about why
+it is not a sample. The loop stops when every game that *could* be a candidate is
+one — past that point no remaining start can change the answer, so it is the same
+set, not an approximation of it. On the shipping catalogue that arrives after
+**27 of the 419** eligible starts, because a hub sees most of the map at 4–8 hops
+by itself. If a future catalogue has a game no start can reach in band, the exit
+never fires and the sweep simply runs to the end, still correct.
+
+The pool this produces is **790 of 790** — the whole main component, every run,
+rather than the 789 predicted at the old 4–7 band. `test_amulet_pool.gd` asserts
+that against the live graph rather than sampling runs, which is the only way to
+tell a stable pool from a lucky one. It also pins the trap this rewrite had to
+step around: the old code excluded its three references from candidacy, which is
+harmless at three sticks and, at all of them, would quietly take **the entire
+start pool** out of the amulet draw.
 
 **THERE IS NO FALLBACK, AND A FEW GAMES ARE THEREFORE NOT AMULETS.** An Amulet
 that cannot supply the panel under §19.3's rules is simply not offered as one. It

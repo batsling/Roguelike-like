@@ -69,15 +69,34 @@ For how the project is laid out and how its systems fit together, see
   the floor rather than the average: candidates per run averaged 642 of 790
   (81%), but one draw in forty left **407 — barely half the map** — and because
   which half moves every run, a game was not reliably excluded so much as
-  unreliably included. Scoring against all 246 eligible starts makes it
-  deterministic at 789 of 790. `AMULET_SCORE_SLACK` goes too, having become
-  nearly a no-op in that world: against 246 references it cuts **one game out of
-  790**, and none in the owned catalogue.
+  unreliably included. Reading every eligible start makes it deterministic, and
+  as shipped it is **790 of 790** — the whole main component, every run, rather
+  than the 789 predicted at the old 4–7 band. `AMULET_SCORE_SLACK` goes too,
+  having become nearly a no-op in that world: against every reference it cuts
+  **one game out of 790**, and none in the owned catalogue.
 
-  Cost to re-measure before keeping this shape: 246 BFS plus 246
-  `dag_branch_scores_from` sweeps per generation, in a file whose notes record a
-  naive per-candidate BFS at 868 ms a roll. If it is too slow, dropping the slack
-  removes the only reason to compute branching scores at all.
+  **The cost was the open question, and it came back at zero.** A generation
+  measured 269 ms with three references, 605 ms reading all of them naively, and
+  **270 ms as shipped**. Two things pay for it, and the first is the one the spec
+  predicted: dropping the slack removes the only reason to compute branching
+  scores at all, so a reference now costs one memoized BFS and a walk of its
+  result rather than that plus a whole-catalogue `dag_branch_scores_from` sweep.
+  The second is an early exit, and it is **not a sample** — the loop stops once
+  every game that *could* be a candidate is one, past which no remaining start
+  can change the answer, so it is the same set rather than an approximation of
+  it. On the shipping catalogue that arrives after 27 of the 419 eligible starts,
+  because a hub sees most of the map at 4–8 hops by itself; on a catalogue with a
+  game no start reaches in band, the exit never fires and the sweep runs to the
+  end.
+
+  The sweep is split out as `RunGraph.amulet_candidates_from` so the property can
+  be asserted against the live graph rather than inferred from sampled runs —
+  which is the only way to tell a stable pool from a lucky one. The new
+  `test_amulet_pool.gd` pins full coverage, order-independence, that one
+  reference really does see less than all of them, and the trap this rewrite had
+  to step around: the old code excluded its three references from candidacy,
+  which is harmless at three sticks and, at all of them, would have taken **the
+  entire start pool** out of the amulet draw.
 
   **No Champion is guaranteed on the road** — only the Amulet, which is one.
   An earlier draft required a non-Amulet Champion on every guaranteed route; it

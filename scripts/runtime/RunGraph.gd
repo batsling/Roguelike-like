@@ -508,6 +508,12 @@ static func dag_branch_score_early(d_from_start: Dictionary, amulet_id: StringNa
 #
 # Returns {game id: score}. Equivalence with the per-candidate function above is
 # asserted over the whole catalog in test_run_graph_scoring.gd.
+#
+# NOTE: this direction has no caller in the run generator any more — the amulet
+# draw that used it was the thing AMULET_SCORE_SLACK cut against, and §19.9
+# retired both. It is kept because it is the readable half of the pair (the `_to`
+# variant below is written against it and tested by comparison), and because the
+# scores it produces are the same ones the route ladder is ranked on.
 static func dag_branch_scores_from(d_from_start: Dictionary,
 		early_layers: int = EARLY_LAYERS_FOR_SCORE) -> Dictionary:
 	_build_adj()
@@ -1026,17 +1032,14 @@ static func route_length_via(start_id: StringName, waypoint_id: StringName,
 # pick_amulet_and_starts).
 const AMULET_ATTEMPTS := 8
 
-# How many reference starts the Amulet pool is drawn from before the pick.
+# There is no AMULET_REFERENCE_STARTS any more, and this is where it was.
 #
-# It used to be one, and which one it was mattered enormously: the number of
-# games sitting in-band from a single eligible start ranges 21..318 across the
-# owned catalog (measured at the then-current 5..8), median 77, against a union of
-# 393 over every start. A run that
-# rolled a narrow reference was offered a fifteenth of the goals another run
-# would see, for no reason the player could observe. Unioning a few references
-# flattens that, and costs one BFS each — bfs_distances is memoized, so every
-# later lookup against the same start is free.
-const AMULET_REFERENCE_STARTS := 3
+# The amulet pool was drawn from a sample of reference starts — one at first,
+# then three, each widening it because WHICH stick you measured with mattered
+# enormously (the number of games in band from a single eligible start ranges
+# 21..318 across the owned catalog). Three was still a lottery. §19.9 reads every
+# eligible start instead, which is the end of that line rather than another step
+# along it: the pool stops depending on the roll at all.
 
 # How far below its cell's best score a START may sit and still be drawn.
 #
@@ -1056,15 +1059,71 @@ const AMULET_REFERENCE_STARTS := 3
 # the panel offers does not move — only which game wears the card.
 const START_SCORE_SLACK := 3
 
-# How far below the best early-branching score an Amulet candidate may sit and
-# still make the final draw.
+# Every game that may BE the goal, as {id: GameData}: one sitting inside the
+# path band from at least one eligible start (§19.9). Measured on the shipping
+# catalogue at the agreed rules, that is all 790 games in the main component,
+# every run.
 #
-# The filter is there so the goal has a route worth walking, not so that the same
-# handful of well-connected games are the goal every run — at a slack of 1 the
-# top ten Amulets took 18% of 600 sampled runs on the owned catalog. Widening it
-# spreads the draw across the pool while still excluding candidates whose
-# approach has no branching in it at all.
-const AMULET_SCORE_SLACK := 2
+# The point is that it does not depend on WHICH starts are sampled, because they
+# all are. The draw used to take AMULET_REFERENCE_STARTS = 3 random sticks and
+# measure the catalog with those; the average was fine (642 of 790) and the FLOOR
+# was not — one draw in forty left barely half the map eligible, and because
+# which half moved every run, a game was not reliably excluded so much as
+# unreliably included, the worst shape for a rule nobody can see.
+#
+# It is CHEAPER than the shape it replaces, not dearer, for two reasons. The
+# branching score went with the slack, so what is left per reference is one
+# memoized BFS and a walk of its result rather than that plus a whole-catalog
+# dag_branch_scores_from sweep. And the loop stops the moment every game that
+# could be a candidate is one: that is not a sample of "every start" but the
+# point past which no remaining start can change the answer, and it arrives after
+# 27 of the 419 eligible starts, because a hub sees most of the map at 4..8 hops
+# on its own. Without the early exit a generation measured 605 ms against a
+# three-stick baseline of 269; with it, 270 — the whole change is free.
+#
+# Split out of pick_amulet_and_starts so the property the section is about can be
+# asserted against the live graph rather than inferred from sampled runs.
+static func amulet_candidates_from(start_pool: Array, all_games: Array) -> Dictionary:
+	_build_adj()
+	var by_id: Dictionary = {}           # StringName -> GameData
+	var possible := 0                    # games the band could ever admit
+	for g in all_games:
+		by_id[g.id] = g
+		if _adj_cache.has(g.id) and RunConfig.amulet_passes(g):
+			possible += 1
+	var out: Dictionary = {}
+	var band: Vector2i = RunConfig.path_band()
+	var lo: int = band.x
+	var hi: int = band.y
+	for r in start_pool:
+		if out.size() >= possible:
+			break
+		var d_ref: Dictionary = bfs_distances((r as GameData).id)
+		for id in d_ref:
+			var d: int = d_ref[id]
+			if d < lo or d > hi:
+				# Distance 0 is how a reference excludes ITSELF, and the band does it
+				# for free. Excluding every reference OUTRIGHT — which is what the old
+				# three-stick code's ref_ids check becomes at this scale — would take
+				# the entire start pool out of the amulet draw.
+				continue
+			if out.has(id):
+				continue
+			var g: GameData = by_id.get(id, null) as GameData
+			# A custom run may say which games are allowed to BE the goal — or name
+			# one outright, in which case this is the only game that passes.
+			if g == null or not RunConfig.amulet_passes(g):
+				continue
+			out[id] = g
+	return out
+
+# AMULET_SCORE_SLACK stood here, and went with the reference starts (§19.9).
+#
+# It cut amulet candidates more than 2 below the best early-branching score, so
+# that the goal had a route worth walking. Both halves of that reasoning have
+# moved on: the score it cut against was the best from three random sticks, and
+# against all of them the cut takes one game out of 790. "A route worth walking"
+# is now ROUTE_SLACK_FLOOR, asked of the road the player is actually offered.
 
 # Every in-window start worth offering, as type -> (path_len -> record): for each
 # genre, the best-branching eligible start AT EACH DISTANCE its routes to `amulet`
@@ -1291,47 +1350,12 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	if start_pool.is_empty():
 		start_pool = eligible_starts
 
-	# Pick the amulet from the games sitting in the band from ANY OF SEVERAL
-	# reference starts, then score each by early-branching. Candidates within
-	# AMULET_SCORE_SLACK of the best advance to the random pick.
-	var refs: Array[GameData] = []
-	var ref_pool: Array[GameData] = start_pool.duplicate()
-	for _i in range(mini(AMULET_REFERENCE_STARTS, ref_pool.size())):
-		var ri: int = rng.randi() % ref_pool.size()
-		refs.append(ref_pool[ri])
-		ref_pool.remove_at(ri)
-	var ref_ids: Dictionary = {}
-	for r in refs:
-		ref_ids[r.id] = true
-	var ref_dists: Array = []
-	for r in refs:
-		ref_dists.append(bfs_distances(r.id))
-
-	# A game keeps its BEST score across the references it is in band from — it
-	# only has to be a good goal from somewhere, not from all of them.
-	var cand_game: Dictionary = {}       # StringName -> GameData
-	var cand_score: Dictionary = {}      # StringName -> int
+	# EVERY eligible start is a reference (§19.9) — see amulet_candidates_from.
 	var band: Vector2i = RunConfig.path_band()
-	for i in range(refs.size()):
-		var d_ref: Dictionary = ref_dists[i]
-		# Every candidate's score from this reference, in ONE pass. Asking per
-		# candidate meant a whole-catalog BFS each (868 ms a roll, and a memo that
-		# grew for the life of the process) — see dag_branch_scores_from.
-		var ref_scores: Dictionary = dag_branch_scores_from(d_ref)
-		for g in all:
-			if ref_ids.has(g.id) or not d_ref.has(g.id):
-				continue
-			# A custom run may say which games are allowed to BE the goal — or name
-			# one outright, in which case this is the only game that passes.
-			if not RunConfig.amulet_passes(g):
-				continue
-			var d: int = d_ref[g.id]
-			if d < band.x or d > band.y:
-				continue
-			var s := int(ref_scores.get(g.id, 0))
-			if not cand_score.has(g.id) or s > int(cand_score[g.id]):
-				cand_score[g.id] = s
-				cand_game[g.id] = g
+	var by_id: Dictionary = {}           # StringName -> GameData
+	for g in all:
+		by_id[g.id] = g
+	var cand_game: Dictionary = amulet_candidates_from(start_pool, all)
 	var amulet_candidates: Array[GameData] = []
 	for id in cand_game:
 		amulet_candidates.append(cand_game[id])
@@ -1339,14 +1363,15 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		# Looser fallback: anything reachable from any reference. Still inside the
 		# amulet filter — the band is what gets relaxed here, and a named target is
 		# the player's answer to "which game", which no fallback may overrule.
-		for i in range(refs.size()):
-			var d_ref: Dictionary = ref_dists[i]
-			for g in all:
-				if ref_ids.has(g.id) or not d_ref.has(g.id) or cand_score.has(g.id):
+		for r in start_pool:
+			var d_ref: Dictionary = bfs_distances(r.id)
+			for id in d_ref:
+				if id == r.id or cand_game.has(id):
 					continue
-				if not RunConfig.amulet_passes(g):
+				var g: GameData = by_id.get(id, null) as GameData
+				if g == null or not RunConfig.amulet_passes(g):
 					continue
-				cand_score[g.id] = 0
+				cand_game[id] = g
 				amulet_candidates.append(g)
 	if amulet_candidates.is_empty():
 		# A named target that no reference can reach is still the run the player
@@ -1354,7 +1379,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		# target that is off the map entirely (or filtered out of it) has no run.
 		var named: GameData = Data.get_game(RunConfig.amulet_id) if RunConfig.amulet_id != &"" else null
 		if named != null and _adj_cache.has(named.id):
-			cand_score[named.id] = 0
+			cand_game[named.id] = named
 			amulet_candidates.append(named)
 	if amulet_candidates.is_empty():
 		return {}
@@ -1374,16 +1399,14 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		if not unbeaten.is_empty():
 			amulet_candidates = unbeaten
 
-	var best_amulet_score := 0
-	for g in amulet_candidates:
-		best_amulet_score = maxi(best_amulet_score, int(cand_score.get(g.id, 0)))
-	var amulet_finalists: Array[GameData] = []
-	if best_amulet_score > 0:
-		for g in amulet_candidates:
-			if int(cand_score.get(g.id, 0)) >= best_amulet_score - AMULET_SCORE_SLACK:
-				amulet_finalists.append(g)
-	else:
-		amulet_finalists = amulet_candidates
+	# Every candidate advances (§19.9). AMULET_SCORE_SLACK used to cut those more
+	# than 2 below the best early-branching score seen; measured against every
+	# eligible start the cut took ONE game out of 790, and none at all in the
+	# owned catalog, because with every stick on the table every game finds a good
+	# one. §19.3's route floor is what judges the approach now, and it judges the
+	# route the player will actually walk rather than the best route from a random
+	# reference.
+	var amulet_finalists: Array[GameData] = amulet_candidates
 	# Pick the amulet, then check it can actually SUPPLY the panel: three genres
 	# each with a start inside the 6..8 band. Most amulets can; the odd one leaves a
 	# genre short, and rather than quietly offering a 4-hop start we try another
