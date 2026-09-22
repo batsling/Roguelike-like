@@ -60,6 +60,44 @@ func roll_for_arrival(game_id: StringName) -> EventData2:
 	var here: GameData = GameLoop2.game_at(game_id)
 	if here != null and ShopSystem.is_hub(here.id):
 		return null
+	return _draw_for(game_id)
+
+# THE EVENT AN *EVENT NODE* STANDS UP (§19.1), which is a different question from
+# the one a game pays on the way out, and the difference is a promise.
+#
+# `roll_for_arrival` above asks "does this arrival happen to owe an event", and
+# its two gates are right for that and wrong here: a node that already paid one
+# does not pay twice, and a HUB pays none at all (§14.4). An Event node's badge
+# is a promise about this node — the card said event — so neither applies. The
+# hub gate is the one that actually bit: an Event node that happened to land on
+# one of the ten hubs delivered silence, which is the badge telling a lie, and
+# §19.2 exists to prevent exactly that.
+#
+# AND IT ALWAYS FINDS ONE. When nothing is eligible the node RE-SHOWS an event
+# the run has already had rather than relaxing a gate. Both relaxations that
+# suggest themselves are worse. Relaxing the PLACEMENT gate does nothing, because
+# no shipping event is placed at all — all 16 have a blank `where` and empty
+# tiers — so it would be a fallback that could never fire. Relaxing the STAT
+# requirements breaks the offer: those gates are what keep an event affordable,
+# and firing "pay 5 gold" at a player holding none produces an event whose
+# interesting choices are all greyed out. A repeat is affordable, playable, and
+# does what the badge promised.
+func roll_for_node(game_id: StringName) -> EventData2:
+	if game_id == &"":
+		return null
+	var ev: EventData2 = _draw_for(game_id)
+	if ev != null:
+		return ev
+	var all: Array = Data.all_events2()
+	if all.is_empty():
+		return null         # no events exist at all; nothing can be promised
+	var seen: Array = all.filter(func(e): return GameState.events_seen.has(e.id))
+	var from: Array = seen if not seen.is_empty() else all
+	from.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	return from[_roll_rng().randi_range(0, from.size() - 1)]
+
+# The draw itself, once the caller's own gates have had their say.
+func _draw_for(game_id: StringName) -> EventData2:
 	var pool: Array = _pool_at_rolled_rarity(game_id)
 	if pool.is_empty():
 		return null

@@ -20,8 +20,8 @@ extends GutTest
 # assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 func before_each() -> void:
@@ -987,8 +987,8 @@ func _booted():
 	# The opening game stands an ESCORT beside its enemy (§7.5). Everything below
 	# is about what a status does to ONE body, so it comes straight back off —
 	# same reason as _choose_solo above.
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return ui
 
 # Strip the abilities (§7.6) off everything on the board.
@@ -1089,7 +1089,7 @@ func test_the_report_offers_the_way_out_as_a_row_of_its_own() -> void:
 	# Two rows for one body: the goal, and the alternative to it. They are separate
 	# because the run records them differently — see the test below.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	ui._populate_play_panel()
 	assert_eq(ui._instead_checks.size(), 1, "one way-out row, for the burned body")
@@ -1102,7 +1102,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# The whole reason the two are separate lists: the enemy's condition was never
 	# set, so nothing about it goes on the record it would have gone on.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var game: GameData = ui._chosen["game"]
 	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
@@ -1119,7 +1119,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 
 func test_the_staff_arms_the_board_rather_than_firing_where_it_stands() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)                       # a body walks onto the board
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1129,7 +1129,7 @@ func test_the_staff_arms_the_board_rather_than_firing_where_it_stands() -> void:
 
 func test_putting_the_staff_away_costs_nothing() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1139,7 +1139,7 @@ func test_putting_the_staff_away_costs_nothing() -> void:
 
 func test_clicking_a_body_with_the_staff_armed_sets_it_alight() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1167,7 +1167,7 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 	# about a goal you didn't do. `_verify_row` grows the button only when it is
 	# handed the enemy, so this row is built without one.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	ui._populate_play_panel()
 	var row: Node = ui._instead_checks[0]["check"].get_parent()
@@ -1179,7 +1179,7 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 
 func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	ui.report(false)                      # it walks onto the board carrying Marked
 	ui._board.refresh()
@@ -1297,7 +1297,7 @@ func test_the_bonus_lands_before_the_multiplier() -> void:
 
 func test_strength_raises_what_an_enemy_hits_for() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var base: int = int(GameLoop2.arrival()["enemy"].damage)
 	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), base, "unbuffed, it is the stat")
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
@@ -1305,7 +1305,7 @@ func test_strength_raises_what_an_enemy_hits_for() -> void:
 
 func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)                       # it walks onto the board and starts closing
 	GameState.shields = 0                  # no tries left, so every point lands on Health
 	GameLoop2.apply_enemy_status(&"strength", 3, "all")
@@ -1333,7 +1333,7 @@ func test_the_damage_badge_quotes_the_buffed_number() -> void:
 	# A badge reading the base stat would be telling the player the board is safer
 	# than it is.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	GameLoop2.apply_enemy_status(&"strength", 2, "all")
@@ -1344,14 +1344,14 @@ func test_the_damage_badge_quotes_the_buffed_number() -> void:
 
 func test_dexterity_grants_shield_points_when_it_lands() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 2, "one point per stack")
 
 func test_a_shield_absorbs_a_hit_instead_of_the_body_taking_it() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	var health: int = int(GameLoop2.arrival()["health"])
@@ -1365,7 +1365,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 	# The shield is what Dexterity GAVE the body, not a reading of how much
 	# Dexterity it has — so soaking a hit costs a point that stays gone.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	GameLoop2.beat_game(true)
@@ -1375,7 +1375,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 
 func test_a_second_application_tops_the_shield_up() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 3,
@@ -1383,7 +1383,7 @@ func test_a_second_application_tops_the_shield_up() -> void:
 
 func test_a_shielded_body_dies_once_the_shield_is_gone() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.beat_game(true)              # shield 1 -> 0
@@ -1395,7 +1395,7 @@ func test_a_shield_survives_a_save() -> void:
 	# Recomputing it from the stacks on load would hand back the point the body
 	# already spent, which is why it is saved beside Health.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 3, "current")
 	GameLoop2.beat_game(true)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
@@ -1409,7 +1409,7 @@ func test_a_shield_survives_a_save() -> void:
 
 func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	# Alien Baby makes a body take two goals to put down; Marked puts it down in
 	# one, which is the whole point of the status.
@@ -1420,7 +1420,7 @@ func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 
 func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 5, "current")
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
@@ -1432,7 +1432,7 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	# The rule that makes EnemyOnly worth having: a debuff is felt by whoever is
 	# carrying it, Shields included.
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
@@ -1477,7 +1477,7 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 
 func test_an_unmarked_player_still_blocks_with_shields_first() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
@@ -1509,7 +1509,7 @@ func _turns_then_report(turns: int) -> Dictionary:
 
 func test_speed_closes_extra_columns_per_turn() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
@@ -1520,7 +1520,7 @@ func test_speed_closes_extra_columns_per_turn() -> void:
 
 func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = 2
@@ -1530,7 +1530,7 @@ func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 
 func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
 	var ui = _booted()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
@@ -1764,3 +1764,24 @@ func test_the_combat_line_says_the_rolls_rather_than_an_average() -> void:
 
 func test_stuns_combat_line_says_it_loses_its_turn() -> void:
 	assert_string_contains(Data.get_status(&"stun").combat_line(1), "loses its turn")
+
+# Pick the first card, having first made sure it is an ordinary fight (§19.1).
+#
+# What a committed game stands on the board is decided by the NODE'S KIND now —
+# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
+# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
+# and then expects something to be standing there is a test whose subject is a
+# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
+# step; the rest of the map is left as the run dealt it.
+func _pick_enemies(ui, idx: int = 0) -> void:
+	if idx >= 0 and idx < ui._choices.size():
+		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
+		# different game at the same kind and the game id is the wrong key.
+		var choice: Dictionary = ui._choices[idx]
+		var slot := StringName(choice.get("slot", &""))
+		if slot == &"":
+			var game: GameData = choice.get("game")
+			slot = game.id if game != null else &""
+		if slot != &"":
+			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
+	ui.pick(idx)

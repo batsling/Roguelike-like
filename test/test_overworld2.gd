@@ -122,9 +122,9 @@ func _clear_board_except(keep: int) -> void:
 # and use `_ui.pick` directly; every other test here is about a verb, a panel or
 # a screen, and uses this so the followers it counts are the ones it put there.
 func _pick_solo(index: int) -> void:
-	_ui.pick(index)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	_pick_enemies(index)
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	_disarm_board()
 
 # Strip the abilities (§7.6) off everything standing on the board.
@@ -191,6 +191,29 @@ func _plain_goals() -> void:
 func _playback_done() -> void:
 	await wait_until(func(): return not _ui._resolving, 5.0)
 
+# Put the Amulet two hops from where the run is STANDING, so reporting a game
+# buys the board turns and there is therefore a playback to watch.
+#
+# The band above is why: a report hands the board nothing at all beyond 5 hops,
+# so a test that asserts the resolve plays back is really asserting that the
+# random graph happened to open the run near its goal. That is a coin flip, and
+# it is the kind that reads as a flake — it passed for as long as it did because
+# nothing had perturbed which cards the offering deals.
+#
+# It moves the GOAL rather than the player, which is the cheap half: where the
+# run stands is UI state with a board and an offering hanging off it, where the
+# Amulet is a run-level fact that only the badges and this ladder read.
+func _stand_near_the_amulet(hops: int = 2) -> bool:
+	var here: StringName = GameState.current_game_id
+	if here == &"":
+		return false
+	var dist: Dictionary = RunGraph.bfs_distances(here)
+	for gid in dist.keys():
+		if int(dist[gid]) == hops:
+			GameState.amulet_game_id = gid
+			return GameLoop2.enemy_turns() > 0
+	return false
+
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
 # through the modal's own path rather than freed, so the chain behind it still
@@ -226,11 +249,277 @@ func _reboot(character_id: StringName) -> void:
 	_ui.start_run(character_id)
 	_open_at_first_offering()
 
+# PICK A CARD, HAVING FIRST MADE SURE IT IS AN ORDINARY FIGHT (§19.1).
+#
+# Since the node kinds landed, what stands on the board when a game is committed
+# is decided by the KIND of the node picked: an Enemies node stands two bodies, a
+# Champion one boss, and an Event or a Shop none at all. The offering deals those
+# at 60/20/10/10, so a test that simply picks and then counts bodies is a test
+# whose subject is decided by a die roll — the exact shape this file's header
+# warns about, and one that would fail roughly two runs in five rather than
+# reliably.
+#
+# So forcing the kind is the ARRANGE step, not a workaround. It touches the one
+# node about to be picked and leaves the rest of the map as the run dealt it, so
+# the run-start assertions above still read a real distribution. Tests that are
+# ABOUT a kind set the kind themselves and call `_ui.pick` directly.
+# Hold the ladder away from a band boundary, so the next few spawns cannot be
+# the every-third-spawn capstone (§19.6).
+#
+# Tests that COUNT BODIES need this. A capstone is a real extra body standing on
+# the board, so without it the count depends on how many games the test happened
+# to play before the one it is about — which reads as a flake and is not one.
+# Tests that are ABOUT the capstone arrange the opposite (`_force_boss_due`).
+#
+# Zero rather than some offset: it buys GAMES_PER_TIER - 1 quiet spawns, which is
+# every counting test in this file, and it says plainly that the ladder is being
+# parked rather than nudged.
+func _quiet_ladder() -> void:
+	GameState.spawn_events = 0
+
+func _pick_enemies(idx: int = 0) -> void:
+	if idx >= 0 and idx < _ui._choices.size():
+		_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
+	_ui.pick(idx)
+
+# Force a choice's kind, ON THE SLOT (§19.2).
+#
+# The kind rides the NODE, not the game standing on it — that is what makes a
+# transmuted card play a different game at the same kind — so setting it against
+# the game id works for an ordinary card and silently does nothing for a
+# transmuted one, where the two differ. That is not a distinction a test should
+# have to remember, so it lives here.
+func _set_kind(choice: Dictionary, kind: int) -> void:
+	var slot := StringName(choice.get("slot", &""))
+	if slot == &"":
+		var g: GameData = choice.get("game")
+		slot = g.id if g != null else &""
+	if slot != &"":
+		GameState.node_kinds[slot] = kind
+
 func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
 	assert_ne(String(GameState.current_game_id), "", "player placed on a start game")
 	assert_ne(String(GameState.amulet_game_id), "", "an amulet was picked")
 	assert_gt(_ui._choices.size(), 0, "the start's neighbours are offered as choices")
+
+# --- node kinds (§19) ------------------------------------------------------
+#
+# The map is dealt its kinds once, when the run begins, and frozen there. These
+# read the live run rather than the pure assignment function (which
+# test_node_kind_assignment covers) — the question here is whether booting a run
+# actually lays them down.
+
+func test_booting_a_run_deals_the_map_its_kinds() -> void:
+	assert_gt(GameState.node_kinds.size(), 0,
+		"a booted run has a kind for every game on its map")
+
+func test_the_amulet_is_dealt_a_champion() -> void:
+	var amulet: StringName = GameState.amulet_game_id
+	if amulet == &"":
+		pending("this run has no amulet to check")
+		return
+	assert_eq(GameState.node_kind(amulet), RunGraph.NodeKind.CHAMPION,
+		"the Amulet carries the one Champion the road is promised")
+
+func test_the_opening_game_is_dealt_enemies() -> void:
+	var start: StringName = GameState.start_game_id
+	if start == &"":
+		pending("this run recorded no start game")
+		return
+	assert_eq(GameState.node_kind(start), RunGraph.NodeKind.ENEMIES,
+		"a run opens on a fight")
+
+# Frozen means frozen: walking the run must not re-deal anything. Takes the
+# whole map's fingerprint, plays a game, and compares.
+func test_the_kinds_do_not_move_while_the_run_is_walked() -> void:
+	var before: Dictionary = GameState.node_kinds.duplicate(true)
+	_ui.pick(0)                     # NOT _pick_enemies: forcing a kind is what this test detects
+	_disarm_board()
+	_ui.report(false)
+	assert_eq(GameState.node_kinds.size(), before.size(),
+		"no game gained or lost a kind by the run moving")
+	var moved := 0
+	for gid in before.keys():
+		if int(GameState.node_kinds.get(gid, -1)) != int(before[gid]):
+			moved += 1
+	assert_eq(moved, 0, "a kind that moved under the player is a badge telling a lie")
+
+
+# --- what each kind puts on the board (§19.1) -------------------------------
+#
+# Enemies 2, Champion 1, Event 0, Shop 0. These set the kind on the node about to
+# be picked and then pick it, which is the only way to ask the question without
+# waiting for a 10% roll to come up. Disarmed, because an ability can add a body
+# on the board's own turn and the subject here is what the COMMIT stood up.
+
+func _pick_as(kind: int, idx: int = 0) -> GameData:
+	var game: GameData = _ui._choices[idx]["game"]
+	_set_kind(_ui._choices[idx], kind)
+	_ui.pick(idx)
+	_disarm_board()
+	return game
+
+
+func test_an_enemies_node_stands_two_bodies() -> void:
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_eq(GameLoop2.stack_size(), 2,
+		"the game's own enemy and one beside it")
+
+
+func test_a_champion_node_stands_one_boss_and_nothing_beside_it() -> void:
+	_pick_as(RunGraph.NodeKind.CHAMPION)
+	assert_eq(GameLoop2.stack_size(), 1,
+		"a Champion is the boss alone — the escort exemption is the whole point")
+	var body: Dictionary = GameLoop2.stack[0]
+	var e: GoalEnemyData = body["enemy"]
+	assert_not_null(e, "and there is a body there")
+	# The roster could in principle fail to supply a boss of this type and tier, in
+	# which case §19.1 says the advertised enemy stands rather than an empty board.
+	if not e.is_boss():
+		pending("no boss in the roster for this type/tier; the advertised enemy stood")
+		return
+	assert_true(e.is_boss(), "and it is a boss")
+
+
+func test_an_event_node_stands_no_body() -> void:
+	_pick_as(RunGraph.NodeKind.EVENT)
+	assert_eq(GameLoop2.stack_size(), 0, "the event is what is here, not a fight")
+
+
+func test_a_shop_node_stands_no_body() -> void:
+	_pick_as(RunGraph.NodeKind.SHOP)
+	assert_eq(GameLoop2.stack_size(), 0, "a shelf is not a fight either")
+
+
+# All four are a real video game (§19.1) — the kind decides what stands on the
+# board, not whether you go and play. This is the claim the whole section rests
+# on, so it is asked of every kind rather than of the interesting ones.
+func test_every_kind_is_still_a_game_you_go_and_play() -> void:
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
+			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
+		_reboot(&"ironclad")
+		var played_before: int = GameState.games_played
+		var game: GameData = _pick_as(int(kind))
+		assert_true(GameLoop2.game_in_play,
+			"%s: the game is in play" % RunGraph.kind_label(int(kind)))
+		assert_eq(GameState.current_game_id, game.id,
+			"%s: the run travelled to it" % RunGraph.kind_label(int(kind)))
+		_ui.report(false)
+		assert_eq(GameState.games_played, played_before + 1,
+			"%s: it counts as a game played" % RunGraph.kind_label(int(kind)))
+
+
+# An Event node fires ON ARRIVAL, before the game is played — the opposite end of
+# the game from the Shop, because a decision is worth more before you have spent
+# the evening and a purchase needs the gold that evening pays out.
+func test_an_event_node_raises_its_event_on_arrival() -> void:
+	_pick_as(RunGraph.NodeKind.EVENT)
+	assert_not_null(_ui._event_modal,
+		"the event is up before a word has been reported about the game")
+
+
+# The gate that actually bit. `roll_for_arrival` pays no event at any of the ten
+# hubs (§14.4), so an Event node that landed on one delivered silence — and a
+# node whose kind said event and then delivered nothing is the badge telling a
+# lie. It failed about one full run in three, depending on whether the offering
+# happened to deal a hub.
+func test_an_event_node_on_a_hub_still_finds_its_event() -> void:
+	var hub: GameData = null
+	var at: int = -1
+	for i in range(_ui._choices.size()):
+		var g: GameData = _ui._choices[i]["game"]
+		if ShopSystem.is_hub(g.id):
+			hub = g
+			at = i
+			break
+	if hub == null:
+		# Force the question rather than shrug: the promise is about the KIND, and
+		# a hub is only the case that exposed it.
+		assert_not_null(EventSystem.roll_for_node(_ui._choices[0]["game"].id),
+			"an Event node always finds an event, hub or not")
+		return
+	assert_null(EventSystem.roll_for_arrival(hub.id),
+		"a hub pays no ordinary arrival event — that is the rule being stepped over")
+	assert_not_null(EventSystem.roll_for_node(hub.id),
+		"but a node whose badge says Event finds one anyway")
+	GameState.node_kinds[hub.id] = RunGraph.NodeKind.EVENT
+	_ui.pick(at)
+	assert_not_null(_ui._event_modal, "and it is raised on arrival like any other")
+
+
+func test_an_ordinary_node_raises_nothing_on_arrival() -> void:
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_null(_ui._event_modal,
+		"only an Event node pays an event at the front of the game")
+
+
+# --- difficulty is a consequence (§19.6) ------------------------------------
+#
+# The tier reads `spawn_events`, not `games_played`: one per arrival that landed
+# bodies, one per failure spawn. An Event or a Shop node lands nothing and so
+# ticks nothing, which is what turns the ladder from a clock the player rides
+# into something they steer.
+
+func test_a_node_that_lands_bodies_is_one_spawn_event() -> void:
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.CHAMPION]:
+		_reboot(&"ironclad")
+		var before: int = GameState.spawn_events
+		_pick_as(int(kind))
+		assert_eq(GameState.spawn_events, before + 1,
+			"%s: one event, however many bodies walked on" % RunGraph.kind_label(int(kind)))
+
+
+func test_a_node_that_lands_nothing_ticks_nothing() -> void:
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		_reboot(&"ironclad")
+		var before: int = GameState.spawn_events
+		_pick_as(int(kind))
+		assert_eq(GameState.spawn_events, before,
+			"%s: nothing spawned, so nothing is owed to the ladder"
+				% RunGraph.kind_label(int(kind)))
+
+
+# Routing through the quiet kinds really does hold the tier. This is the claim
+# §19.6 makes in prose, asked of the numbers.
+func test_routing_through_quiet_nodes_holds_the_tier() -> void:
+	var start_tier: int = RunDifficulty.current_tier()
+	for _i in range(RunDifficulty.GAMES_PER_TIER + 1):
+		if _ui._choices.is_empty():
+			break
+		_pick_as(RunGraph.NodeKind.EVENT)
+		if _ui._event_modal != null:
+			_ui._event_modal.queue_free()
+			_ui._event_modal = null
+		_ui.report(false)
+	assert_eq(RunDifficulty.current_tier(), start_tier,
+		"a run that fights nothing climbs nothing")
+	assert_gt(GameState.games_played, 0,
+		"…and it was still out there playing games all the while")
+
+
+func test_a_scramble_does_not_buy_its_way_up_the_ladder() -> void:
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	GameState.scramble = 1
+	var before: int = GameState.spawn_events
+	if GameLoop2.scramble() == null:
+		pending("nothing else in the bucket to scramble into")
+		return
+	assert_eq(GameState.spawn_events, before,
+		"a Scramble supersedes what arrived; it is not a fresh arrival")
+
+
+# The board grows AT the spawn rather than waiting for the report, because the
+# tier is what sized that spawn's arrivals — see GameLoop2.note_spawn_event.
+func test_crossing_a_tier_on_arrival_grows_the_board_there_and_then() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.sync_grid_bounds()
+	var cols_before: int = GameLoop2.grid_cols()
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_eq(GameState.spawn_events, RunDifficulty.GAMES_PER_TIER,
+		"the arrival crossed the band")
+	assert_eq(GameLoop2.grid_cols(), cols_before + 1,
+		"and the column is there already, under the bodies that just walked on")
 
 func test_each_choice_has_a_game_and_a_previewable_enemy() -> void:
 	for c in _ui._choices:
@@ -239,7 +528,7 @@ func test_each_choice_has_a_game_and_a_previewable_enemy() -> void:
 
 func test_pick_then_report_advances_the_loop() -> void:
 	var target: StringName = _ui._choices[0]["game"].id
-	_ui.pick(0)
+	_pick_enemies(0)
 	# Disarmed: this counts BODIES, and since §7.6 a spawner ability can add one on
 	# the board's own turn. "The enemy and its escort" is a claim about what the
 	# loop leaves behind, not about what an ability did while it ran.
@@ -256,7 +545,7 @@ func test_pick_then_report_advances_the_loop() -> void:
 # A game played perfectly still leaves the escort (§7.5): the goal answered for
 # the game's OWN enemy, and the escort's goal is a debt for a later game.
 func test_report_goal_met_defeats_and_drops() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# Disarmed: the count is the subject, and a spawner adding a body — or a Split
 	# leaving two where the defeated one stood — makes it 2 for a reason this test
 	# is not about.
@@ -276,7 +565,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 # than a popup of its own, so the relic, the loot and the numbers are read as the
 # one haul they are. Taking it still adds the item and clears the drop.
 func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_null(_ui._drop_modal,
 		"the kill does NOT open a modal of its own over the board")
@@ -316,7 +605,7 @@ func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 # the guard. `_resolving` is the whole condition `_pump_drops` spends, so the page
 # is put in that state and asked to pump — both ways round.
 func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()                           # land the playback, so the test owns the flag
 	_leave_post_game()
@@ -339,7 +628,7 @@ func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
 # …and the whole queue goes to the haul screen when the playback does land, so
 # nothing is left behind on the page to open afterwards.
 func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	# The playback can be instantaneous now — out in the wilds a report hands the
 	# board no turns at all (§7.4), so there may be nothing to animate and
@@ -401,7 +690,7 @@ func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 	modal.leave()
 
 func test_leaving_a_drop_discards_it() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var chest = _ui._post_screen.chest()
@@ -419,7 +708,7 @@ func test_leaving_a_drop_discards_it() -> void:
 # wearing one answer is not a question anybody can read. They queue INSIDE the
 # haul screen now, with the loot and the numbers on it the whole time.
 func test_drops_are_asked_about_one_at_a_time() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# Queued before the report, which is when the whole queue is handed over — the
 	# resolve can land instantly now (§7.4).
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
@@ -442,7 +731,10 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
 	# checkbox: it should be defeated (and drop) before it can hit (§2).
-	_ui.pick(0)
+	# The ladder is parked first: this counts bodies across two games, and the
+	# third spawn event of a run lands a capstone boss on top of them (§19.6).
+	_quiet_ladder()
+	_pick_enemies(0)
 	# DISARMED BEFORE THE MISS. This test counts bodies on the board across two
 	# reports, and a report is the enemies' turn: a spawner ability (Carcass lays
 	# one, Obscura makes two) puts a THIRD body on the stack and the counts below
@@ -457,7 +749,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
 	var hp_before: int = GameState.hp
 	GameLoop2.drops.clear()
-	_ui.pick(0)                                  # play another game
+	_pick_enemies(0)                                  # play another game
 	_disarm_board()
 	# THREE rows: the old follower, and both bodies this game walked on. The
 	# advertised one used to be missing from this list — it had the Goal box
@@ -487,7 +779,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 # verbs would later aim at from a distance, which meant the board tracked the last
 # thing clicked as if it were a decision.
 func test_clicking_an_enemy_opens_its_card_and_selects_nothing() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)                              # an enemy now follows
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -504,7 +796,7 @@ func test_clicking_an_enemy_opens_its_card_and_selects_nothing() -> void:
 # own and shoving it would have answered the game just committed to. Nothing is a
 # game's own enemy now (GameLoop2.arrivals).
 func test_the_body_that_just_arrived_is_targetable_like_any_other() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var landed: Dictionary = GameLoop2.arrival()
 	var inst: int = int(landed["instance"])
 	_ui._board.click_enemy(inst, landed, GameLoop2.offgrid_col())
@@ -526,7 +818,7 @@ func test_the_body_that_just_arrived_is_targetable_like_any_other() -> void:
 
 func test_an_armed_bomb_lights_up_every_square_of_the_board() -> void:
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_true(_ui._board.target_cells().is_empty(), "nothing armed, no ground lit")
 	_ui._board.begin_bomb()
@@ -538,7 +830,7 @@ func test_an_armed_bomb_lights_up_every_square_of_the_board() -> void:
 func test_a_bomb_can_be_spent_on_empty_ground() -> void:
 	# The point of it: with Hot Bombs this is how fire is laid in front of the
 	# stack, and the charge is spent on the square whether or not anybody is on it.
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	GameState.bombs = 1
 	var empty: Array = GameLoop2.empty_cells()
@@ -552,7 +844,7 @@ func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
 	# The two are one press to the player, so an occupied square routes through the
 	# body-aimed path — which is the only one that carries the target into the
 	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	# Stood on a known square rather than wherever the walk left it: a body out in
@@ -575,7 +867,7 @@ func test_the_lit_squares_are_drawn_where_the_rule_says() -> void:
 	# Buttons, which skip their stylebox entirely, so the picker was a set of
 	# invisible squares that were legal to click and impossible to see.
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	_ui._board.begin_bomb()
 	_ui._board.refresh()
@@ -591,7 +883,7 @@ func test_the_lit_squares_are_drawn_where_the_rule_says() -> void:
 # "select an enemy" is what the mode is for, not a precondition of entering it.
 func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.push_btn.disabled, "a charge and no target -> Push can be armed")
@@ -604,7 +896,7 @@ func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 # much of the board the player has been clicking through.
 func test_arming_push_starts_unaimed_and_disarms_on_cancel() -> void:
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]))
@@ -622,7 +914,7 @@ func test_arming_push_starts_unaimed_and_disarms_on_cancel() -> void:
 # spawn column has nothing behind it, so it never gets a back arrow.
 func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -648,7 +940,7 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 # body the way the arrow points.
 func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -674,7 +966,7 @@ func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 
 func test_arming_the_bomb_starts_unaimed_and_spends_nothing() -> void:
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]))
@@ -694,7 +986,7 @@ func test_arming_the_bomb_starts_unaimed_and_spends_nothing() -> void:
 # verb could land on, and the toolbar stops telling you to click one.
 func test_arming_lights_the_bodies_it_could_land_on() -> void:
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	assert_true(_ui._board.armed_targets().is_empty(), "nothing is lit while idle")
@@ -713,7 +1005,7 @@ func test_arming_lights_the_bodies_it_could_land_on() -> void:
 # The CLICK is what spends it — one press of Bomb, one bomb.
 func test_the_click_fires_the_bomb_and_disarms_it() -> void:
 	GameState.bombs = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -735,7 +1027,7 @@ func test_the_click_fires_the_bomb_and_disarms_it() -> void:
 func test_arming_one_verb_disarms_the_other() -> void:
 	GameState.bombs = 1
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	_ui._board.begin_push()
 	_ui._board.begin_bomb()
@@ -748,7 +1040,7 @@ func test_arming_one_verb_disarms_the_other() -> void:
 # Nothing is drawn while the verb is idle — the arrows are a mode, not furniture.
 func test_no_arrows_when_the_push_is_not_armed() -> void:
 	GameState.push = 1
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	_ui._board.click_enemy(int(entry["instance"]), entry, int(entry["col"]))
@@ -794,10 +1086,10 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	assert_eq(_ui._board.push_target, 0, "and the aim comes off the dead body")
 
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false, [inst])                    # explicit list bypasses the checkboxes
 	for entry in GameLoop2.stack:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
@@ -809,7 +1101,7 @@ func test_level_up_checkbox_grants_the_reward() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	var lvl_before: int = GameState.player_level
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
 	_tick(_ui._levelup_check)
 	_report_beat(_ui)
@@ -819,7 +1111,7 @@ func test_level_up_checkbox_grants_the_reward() -> void:
 func test_level_up_not_applied_when_unchecked() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
@@ -839,7 +1131,7 @@ func test_level_up_not_applied_when_unchecked() -> void:
 func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	_reboot(&"isaac")                       # reward_type item -> Small Chest
 	var chests_before: int = GameState.pending_chests
-	_ui.pick(0)
+	_pick_enemies(0)
 	_tick(_ui._levelup_check)
 	assert_eq(GameState.pending_chests, chests_before,
 		"nothing is banked while the game is still on — the row is only armed")
@@ -856,7 +1148,7 @@ func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
-	_ui.pick(0)
+	_pick_enemies(0)
 	_tick(_ui._levelup_check)
 	# WATCHED RATHER THAN READ AFTERWARDS. The report takes the level, banks the
 	# chest and — once the board's resolve playback lands, which is immediately in a
@@ -906,7 +1198,7 @@ func _row_index(prefix: String) -> int:
 # them, so a ticked one is still a live question and belongs where it was.
 func test_a_ticked_level_up_stays_where_it_is() -> void:
 	_reboot(&"isaac")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var head: int = _row_index(ReportChecklist.WINNING_RUN_HEAD)
 	assert_gt(head, -1, "the winning-run header is on the list")
 	var lu: int = _row_index("Leveled up")
@@ -923,7 +1215,7 @@ func test_a_ticked_level_up_stays_where_it_is() -> void:
 func test_a_ticked_status_goal_stays_where_it_is() -> void:
 	_reboot(&"isaac")
 	GameState.apply_status(&"strength", 1)
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_false(_ui._status_goal_checks.is_empty(), "the status put a row on the list")
 	var check: CheckBox = _ui._status_goal_checks[0]["check"]
 	var row_text: String = check.text
@@ -946,7 +1238,7 @@ func test_a_buffs_clause_is_its_own_red_row_under_the_goal() -> void:
 	# red, because the one question a player asks of a goal line is which half of
 	# it a buff put there.
 	_reboot(&"isaac")
-	_ui.pick(0)
+	_pick_enemies(0)
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	_ui._populate_play_panel()
 	var entry: Dictionary = GameLoop2.arrival()
@@ -968,7 +1260,7 @@ func test_a_buffs_clause_is_its_own_red_row_under_the_goal() -> void:
 
 func test_a_required_clause_row_is_drawn_in_the_danger_colour() -> void:
 	_reboot(&"isaac")
-	_ui.pick(0)
+	_pick_enemies(0)
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	_ui._populate_play_panel()
 	var want: Color = UITheme.addon_color(true)
@@ -986,7 +1278,7 @@ func test_a_buffed_body_wears_its_statuses_under_its_checklist_portrait() -> voi
 	# The board draws a body's statuses beneath it; so does its row here, so the
 	# two halves of the screen say the same thing in the same way.
 	_reboot(&"isaac")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_strips_under(_ui._verify_box).size(), 0,
 		"an unbuffed board puts no strip on any row")
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
@@ -1016,7 +1308,7 @@ func test_an_enemy_that_survived_its_goal_keeps_its_place() -> void:
 	# ANSWERED without being FINISHED — it is still standing on the board beside
 	# the list, so its row stays in board order rather than sinking.
 	_reboot(&"isaac")
-	_ui.pick(0)
+	_pick_enemies(0)
 	if GameLoop2.stack.size() < 2:
 		pending("the run did not reach this case (GameLoop2.stack.size() < 2)")
 		return
@@ -1043,7 +1335,7 @@ func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	assert_eq(_ui._choices.size(), all_nbrs, "dash offers every connected game")
 	if all_nbrs > _ui.offer_count():
 		assert_gt(_ui._choices.size(), capped, "dash exceeds the normal cap")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameState.dash_charges, 0, "the dash pick spent the charge")
 	assert_false(_ui._dash_mode, "dash mode cleared after the pick")
 
@@ -1164,7 +1456,7 @@ func test_game_choices_bonus_widens_the_offering() -> void:
 	# Walk to a node with room to grow, so the cap is what's limiting the count.
 	var attempts: int = 0
 	while RunGraph.neighbors(GameState.current_game_id).size() <= 3 and attempts < 12:
-		_ui.pick(0)
+		_pick_enemies(0)
 		_ui.report(false)
 		attempts += 1
 	if RunGraph.neighbors(GameState.current_game_id).size() <= 3:
@@ -1204,18 +1496,24 @@ func test_scramble_needs_a_charge_and_the_select_phase() -> void:
 	GameState.scramble = 0
 	assert_false(_ui.scramble(), "no charge -> no reroll")
 	GameState.scramble = 1
-	_ui.pick(0)                                   # -> Phase.PLAYING
+	_pick_enemies(0)                                   # -> Phase.PLAYING
 	assert_false(_ui.scramble(), "you can't reroll a game you're already playing")
 	assert_eq(GameState.scramble, 1, "a refused scramble is not spent")
 
-func test_boss_round_closes_the_tier_band() -> void:
-	# The LAST game of a band is the boss round — games_played is the count already
-	# played, so the band's last game is the one standing at GAMES_PER_TIER - 1.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# THE OFFERING DEALS NO BOSSES ANY MORE (§19.6). The capstone is every third
+# SPAWN EVENT and lands on the board on top of whatever else was spawning, so no
+# card advertises one — not even on the band's last spawn, which is exactly the
+# case that used to turn every card into a boss.
+func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the last game of a tier band is a boss round")
+	assert_true(_ui._boss_due_next(), "the next spawn closes the band")
 	for c in _ui._choices:
-		assert_true(bool(c["boss"]), "every boss-round choice spawns a boss")
+		assert_false(bool(c["boss"]), "no card advertises a boss")
+		var e: GoalEnemyData = c["enemy"]
+		if e != null:
+			assert_false(e.is_boss(),
+				"%s is an ordinary enemy; the boss comes with the spawn" % e.display_name)
 
 # THE WHOLE LADDER IN ONE TABLE, encounter by encounter. Two ordinary enemies at a
 # tier and then the boss that closes the band, every band the same three games:
@@ -1225,6 +1523,14 @@ func test_boss_round_closes_the_tier_band() -> void:
 # reads N - 1. The boss used to sit on the tier CROSSING instead (gp % 3 == 0),
 # which made the opening band four games long and put the first boss on encounter
 # 4; every band is three now and the first boss is encounter 3.
+#
+# THE TWO HALVES NOW READ DIFFERENT COUNTERS (§19.6). The tier is off
+# `spawn_events` — one per arrival that landed bodies — while the boss cadence is
+# still off `games_played`, so this sets both and the table holds for a run where
+# every node is a fight. It stops holding for a run that routes through events and
+# shops, which is the entire point of the change: the ladder is steered now. The
+# boss half goes when §19.7 retires `is_boss_game` for the every-third-SPAWN
+# capstone, and then this table is one counter again.
 func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
 	var want: Array = [
@@ -1237,11 +1543,15 @@ func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 	for i in range(want.size()):
 		var encounter: int = i + 1
 		GameState.games_played = i
+		GameState.spawn_events = i
 		assert_eq(_ui._current_tier(), int(want[i]),
 			"encounter %d is %s" % [encounter, RunDifficulty.tier_name(int(want[i]))])
-		assert_eq(_ui._is_boss_round(), encounter % 3 == 0,
-			"encounter %d %s a boss round" % [encounter,
-				"is" if encounter % 3 == 0 else "is not"])
+		# …and the capstone reads the SAME counter now. `_boss_due_next` asks about
+		# the spawn ahead rather than the game behind, so it is true one step
+		# earlier: standing at 2 spawns, the next one closes the band.
+		assert_eq(_ui._boss_due_next(), (i + 1) % 3 == 0,
+			"at %d spawns, the next %s the band" % [i,
+				"closes" if (i + 1) % 3 == 0 else "does not close"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -1249,7 +1559,7 @@ func test_picking_a_game_grants_its_shields() -> void:
 	assert_eq(GameState.shields, 0, "no shields before a game is selected")
 	var game: GameData = _ui._choices[0]["game"]
 	var expected: int = GameLoop2.shields_for_game(game)
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameState.shields, expected,
 		"%s granted its %d shields" % [game.display_name, expected])
 	assert_eq(expected, 5 if game.type == GameData.GameType.TRADITIONAL else 3,
@@ -1258,12 +1568,12 @@ func test_picking_a_game_grants_its_shields() -> void:
 func test_anchor_adds_a_try_on_top_of_the_grant() -> void:
 	GameState.add_item(Data.get_item2(&"anchor"))
 	var game: GameData = _ui._choices[0]["game"]
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameState.shields, GameLoop2.shields_for_game(game) + 1,
 		"Anchor's shield lands on selection, before you go and play")
 
 func test_shields_expire_when_the_game_is_reported() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_gt(GameState.shields, 0)
 	_report_beat(_ui)
 	assert_eq(GameState.shields, 0, "the armour belonged to that game")
@@ -1271,7 +1581,7 @@ func test_shields_expire_when_the_game_is_reported() -> void:
 # --- the attempt tracker ---------------------------------------------------
 
 func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# THE BOARD IS EMPTIED FIRST, and that is the whole point of the test rather
 	# than a convenience. A tick gives the enemies a TURN (GameLoop2.log_attempt),
 	# and a body that can reach you swings on its turn and breaks a shield doing it
@@ -1304,7 +1614,7 @@ func test_ticking_an_attempt_gives_the_board_a_turn_and_leaves_the_shields() -> 
 # snapshots it restores from are runtime-only and a reloaded run has none — but
 # the loop's take-back is still there and still a restore rather than a refund.
 func test_undoing_an_attempt_takes_the_turn_back() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var shields: int = GameState.shields
 	_ui.log_attempt()
 	_ui._end_resolve()
@@ -1316,7 +1626,7 @@ func test_undoing_an_attempt_takes_the_turn_back() -> void:
 
 func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
 	_report_beat(_ui)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
@@ -1326,7 +1636,7 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 # said nothing about why — because the gate read the bodies that arrived rather
 # than the run's own record of a game in play (GameLoop2.game_in_play).
 func test_the_tracker_stays_live_on_a_board_the_player_has_cleared() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
 	for entry in GameLoop2.stack.duplicate():
 		GameLoop2.despawn(int(entry["instance"]))
@@ -1426,9 +1736,9 @@ func test_the_pack_has_no_heading() -> void:
 # follower like every other body.
 
 func test_the_checklist_lists_the_arrivals_among_the_followers() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)                     # something is following now
-	_ui.pick(0)                           # …and this game walks more on
+	_pick_enemies(0)                           # …and this game walks more on
 	var rows: int = _ui._fulfil_checks.size()
 	assert_eq(rows, GameLoop2.stack.size(),
 		"one tick box per body on the board, arrivals included")
@@ -1446,19 +1756,43 @@ func test_the_checklist_lists_the_arrivals_among_the_followers() -> void:
 # alone because it holds tick boxes — so the list went on asking about the bodies
 # that were standing there when the game began. A player who spent a charge to
 # escape a goal they could not do was still being asked to tick that goal.
+# ONE BODY ON THE BOARD, and that is the fix for an intermittent that outlived
+# three attempts to explain it.
+#
+# `reroll_enemies` rolls each body independently, so with TWO bodies up the two
+# can swap enemies WITH EACH OTHER — a real re-roll, two swaps reported, and the
+# board carrying the same pair it started with. The checklist GROUPS by when a
+# goal settles (ReportChecklist._bodies_settled_at_the_end / _bodies_settled_now)
+# rather than listing the stack in order, so the same two goals in the other
+# order render byte for byte the same. Caught in the act:
+#     2 swapped; ["Monkey", "Floating Eye"] -> ["Floating Eye", "Monkey"]
+# The panel was doing its job; "the text changed" was only USUALLY true, about
+# eleven runs in twelve.
+#
+# With one body the exclusion in `_pick_by_type_tier` guarantees the re-roll
+# lands on a DIFFERENT enemy, so a reported swap has to change what the list
+# says. That is the property this test was always about.
 func test_the_checklist_follows_a_reroll_of_the_board() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
+	assert_false(GameLoop2.stack.is_empty(), "there is a body to re-roll")
+	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
+	_ui._populate_play_panel()
 	var before: String = _text_of(_ui._verify_box)
 	var names_before: Array = []
 	for entry in GameLoop2.stack:
 		names_before.append((entry["enemy"] as GoalEnemyData).display_name)
-	assert_false(names_before.is_empty(), "there is a body to re-roll")
 	var swapped: int = GameLoop2.reroll_enemies()
 	if swapped <= 0:
-		return                            # nothing else in the bucket to become
+		pending("nothing else in this body's bucket for it to become")
+		return
 	var after: String = _text_of(_ui._verify_box)
-	assert_ne(after, before, "the checklist is not describing the old board")
+	var names_after: Array = []
+	for entry in GameLoop2.stack:
+		names_after.append((entry["enemy"] as GoalEnemyData).display_name)
+	assert_ne(after, before,
+		"the checklist is not describing the old board (%d swapped; %s -> %s)" % [
+			swapped, str(names_before), str(names_after)])
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry["enemy"]
 		assert_string_contains(after, e.display_name,
@@ -1472,7 +1806,7 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 # the play panel has a signature of its own rather than borrowing the standing
 # list's, which counts `in_front`.)
 func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	# DISARMED, because "the board only moves" is the premise and an ability is how
 	# it does something else. A body with Infliction hands the player or another
@@ -1482,6 +1816,12 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 	# this test fails having watched the feature work. It failed on roughly one run
 	# in five on any tree for exactly that reason, since §7.6 shipped abilities.
 	_disarm_board()
+	# …AND NOTHING IS OWED FOR THE LOST RUN BELOW (§19.5). A failure at a game
+	# where nothing has gone down stands new bodies on the board, and a new body
+	# is a new ROW — correctly, and not what this test is about. The premise is a
+	# board that only MOVED, so one body down buys the tap off and leaves the
+	# board with exactly the bodies it had.
+	GameLoop2.defeated_this_game = 1
 	assert_false(_ui._checklist.play_panel_stale(), "freshly built, it is current")
 	var boxes: Array = []
 	for f in _ui._fulfil_checks:
@@ -1499,7 +1839,7 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 # A body CONJURED onto the stack mid-game is the same story from the other end —
 # Scroll of Create Monster, and the list has to grow a row for it.
 func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	var rows_before: int = _ui._fulfil_checks.size()
 	var conjured: GoalEnemyData = GameLoop2.roll_conjured_enemy()
@@ -1518,7 +1858,7 @@ func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 # the same moment as the box beside it. The confirm asks for both at once now.
 
 func test_a_goal_row_carries_no_notes_button() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
 	# about a PLAIN goal row, and a `game beaten` or counted one is a
 	# different control with different behaviour (§7.7).
@@ -1532,7 +1872,7 @@ func test_a_goal_row_carries_no_notes_button() -> void:
 			"no Notes button on the row: %s" % (btn as Button).text)
 
 func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
 	# about a PLAIN goal row, and a `game beaten` or counted one is a
 	# different control with different behaviour (§7.7).
@@ -1562,7 +1902,7 @@ func test_ticking_an_enemy_asks_for_the_note_in_the_same_breath() -> void:
 		"saying yes banks the note against the pair, where the Atlas reads it")
 
 func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
 		return
@@ -1593,7 +1933,7 @@ func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
 		"a No is a No about the whole thing — the row and the note")
 
 func test_there_is_no_emphasised_goal_row() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var text: String = _text_of(_ui._verify_box)
 	assert_false(text.contains("Goal —"),
 		"no box claims to be the game's own goal: %s" % text)
@@ -1604,7 +1944,7 @@ func test_there_is_no_emphasised_goal_row() -> void:
 # "Completed Game" says you played it; the tick boxes say what you did to the
 # bodies.
 func test_beating_the_game_clears_nothing_by_itself() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# Disarmed for the reason above: a spawner adds a body during the report, and
 	# "none of them was ticked" is a claim about ticking, not about spawning.
 	_disarm_board()
@@ -1617,7 +1957,7 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 		"but the GAME is recorded as beaten")
 
 func test_ticking_an_arrival_is_what_clears_it() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var landed: Dictionary = GameLoop2.arrival()
 	if landed.is_empty():
 		pending("the run did not reach this case (landed.is_empty())")
@@ -1641,7 +1981,7 @@ func _last_played_id() -> StringName:
 # They carry a condensed version of that card now (HoverCard).
 
 func test_a_body_on_the_board_carries_a_hover_card() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	var node: Control = _ui._board._enemy_nodes.get(inst)
@@ -1660,7 +2000,7 @@ func test_a_body_on_the_board_carries_a_hover_card() -> void:
 
 # The statuses ride as PIPS rather than as three more lines of prose.
 func test_a_bodys_statuses_ride_its_hover_card_as_pips() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	_ui.report(false)
 	_ui._board.refresh()
@@ -1839,7 +2179,7 @@ func test_the_header_says_what_level_the_character_is() -> void:
 # The board says where a body is by DRAWING it there. A hover that also counts the
 # squares in words is the board reading itself back, so the timing line is gone.
 func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_false(GameLoop2.stack.is_empty(), "something walked on")
 	if GameLoop2.stack.is_empty():
 		return
@@ -1868,7 +2208,7 @@ func _hover_headers(card: Dictionary) -> Array:
 	return out
 
 func test_the_enemy_hover_heads_its_goal_section() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	if GameLoop2.stack.is_empty():
 		pending("nothing walked on to hover over")
 		return
@@ -2927,7 +3267,7 @@ func test_the_map_opens_from_the_header_while_a_game_is_in_play() -> void:
 			menu_at = i
 	assert_gt(map_at, -1, "it is in the header row")
 	assert_eq(map_at, menu_at - 1, "immediately left of the menu")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	assert_true(_ui._header_map_btn.visible, "and the button is still there")
 	var modal = _ui.open_map()
@@ -2937,7 +3277,7 @@ func test_the_map_opens_from_the_header_while_a_game_is_in_play() -> void:
 # The header's mid-game map must not star the last offering's cards: those three
 # games are not on offer any more, and the map's whole job is where you go NEXT.
 func test_the_mid_game_map_stars_nothing() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var modal = _ui.open_map()
 	assert_not_null(modal)
 	if modal != null:
@@ -2982,7 +3322,7 @@ func test_only_one_map_is_ever_open() -> void:
 # The haul screen is the case that made this visible: it opens on a layer BELOW
 # the map, so a map left standing sits on top of the chests and the payout.
 func test_reporting_a_game_takes_the_map_down_with_it() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_not_null(_ui.open_map(), "the map opens mid-game")
 	assert_not_null(_ui._route_map)
 	_report_beat(_ui)
@@ -2994,7 +3334,7 @@ func test_reporting_a_game_takes_the_map_down_with_it() -> void:
 func test_travelling_takes_the_map_and_the_card_down_with_it() -> void:
 	assert_not_null(_ui.open_choice(0), "a card is open")
 	assert_not_null(_ui.open_map(), "and so is the map")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_null(_ui._route_map, "travelling clears the map")
 	assert_null(_ui._choice_modal, "and the card that described where you went")
 	_leave_post_game()
@@ -3101,7 +3441,7 @@ func test_the_offering_screen_fits_one_window() -> void:
 	_assert_fits("the choosing screen")
 
 func test_the_playing_screen_fits_one_window() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._refresh()
 	_assert_fits("the report screen")
 
@@ -3110,7 +3450,7 @@ func test_the_playing_screen_fits_one_window() -> void:
 # reason the panel exists is the checklist paying for the paperwork; beside the
 # art the pair costs the panel nothing but the height the cover already had.
 func test_the_play_verbs_sit_beside_the_cover() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._refresh()
 	await get_tree().process_frame
 	var cover: Control = _ui._now_playing_cover
@@ -3123,7 +3463,7 @@ func test_the_play_verbs_sit_beside_the_cover() -> void:
 func test_the_biggest_board_still_fits_one_window() -> void:
 	# The board gains a column AND a row per difficulty step; the top of the
 	# ladder is the case that used to run off the bottom of the window.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
 	_ui._build_choices()
 	_ui._refresh()
 	assert_gt(GameLoop2.grid_rows(), GameLoop2.BASE_GRID_COLS, "the board really did grow")
@@ -3190,7 +3530,7 @@ func test_the_title_and_the_menu_keep_the_right_edge_before_a_game_is_picked() -
 # the next stop on the road. The road ahead has two screens of its own.
 
 func test_the_road_walked_carries_only_games_the_run_has_reached() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	_leave_post_game()
@@ -3403,7 +3743,7 @@ func test_dashing_back_to_a_game_you_played_leaves_you_a_dash_up() -> void:
 	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	var before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameState.dash_charges, before - 1, "the trip itself cost a charge")
 	_report_beat(_ui)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
@@ -3415,7 +3755,7 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	var before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameState.dash_charges, before, "an ordinary pick costs nothing")
 	_report_beat(_ui)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
@@ -3438,7 +3778,7 @@ func _curse_checks() -> Array:
 
 func test_a_curse_row_reads_as_the_thing_to_do_with_its_price_after_it() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var checks: Array = _curse_checks()
 	assert_eq(checks.size(), 1, "the curse is on the checklist")
 	if checks.is_empty():
@@ -3460,7 +3800,7 @@ func test_a_negatively_authored_curse_is_not_negated_twice() -> void:
 
 func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
+	_pick_enemies(0)
 	for check in _curse_checks():
 		assert_false((check as CheckBox).button_pressed,
 			"an empty box means 'I did not do this' on every row of the list")
@@ -3504,7 +3844,7 @@ func test_the_stage_keeps_its_shape_in_both_phases() -> void:
 	assert_false(_ui._done_btn.visible, "but there's no game to complete yet")
 	assert_false(_ui._attempt_wrap.visible, "and no runs to be losing")
 	assert_false(_ui._np_box.visible, "and nothing being played")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._stage_panel.get_parent(), _ui._right_col, "the board hasn't moved")
 	assert_eq(_ui._inv_wrap.get_index(), 0, "still under the pack strip in that column")
 	assert_true(_ui._play_panel.visible, "the checklist is now the report step")
@@ -3578,20 +3918,28 @@ func _texture_rects_under(node: Node) -> Array:
 	return out
 
 func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1   # the band's last game
-	_ui._build_choices()
-	assert_true(_ui._boss_round, "this selection is the boss round")
+	# A CHAMPION NODE is where a boss comes from now (§19.1) — the offering deals
+	# none, so there is no boss round to stand on.
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
 		"nothing is following yet, so no portraits on the list")
+	var champion: GameData = _ui._choices[0]["game"]
+	GameState.node_kinds[champion.id] = RunGraph.NodeKind.CHAMPION
 	_ui.pick(0)
+	var stood: GoalEnemyData = GameLoop2.stack[0]["enemy"] if not GameLoop2.stack.is_empty() else null
+	if stood == null or not stood.is_boss():
+		pending("no boss in the roster for this type/tier")
+		return
 	# DISARMED, because this test is about the SCREEN and not about abilities
 	# (CLAUDE.md). `with_art` is counted before the report and asserted again
 	# after it, and since §7.6 a body's turn can ADD a body to the board — a
 	# spawner between the two assertions makes the second one count a portrait the
 	# first could not have known about. Seen: 3 where 2 was counted.
 	_disarm_board()
-	var boss: GoalEnemyData = _ui._chosen["enemy"]
-	assert_true(boss.is_boss(), "the boss round spawned a boss")
+	# The CHAMPION's body, not the card's advertised enemy: a Champion node rolls
+	# its boss at commit time (§19.1), so `_chosen["enemy"]` is still the ordinary
+	# enemy the offering dealt.
+	var boss: GoalEnemyData = stood
+	assert_true(boss.is_boss(), "a Champion node stood a boss up")
 	if boss.image == null:
 		return                                # this boss ships without art
 	# One portrait per body carrying art — a boss round stands its own escort
@@ -3652,7 +4000,7 @@ func test_the_standing_checklist_has_no_tick_boxes() -> void:
 # The stage is two columns: what you tick on the left, what you look at on the
 # right — the pack strip first, the board under it.
 func test_the_checklist_sits_left_of_the_board_with_the_pack_above() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._left_col.get_parent(), _ui._right_col.get_parent(), "one row holds both columns")
 	assert_lt(_ui._left_col.get_index(), _ui._right_col.get_index(),
 		"the checklist column comes first — it's on the left")
@@ -3712,7 +4060,7 @@ func test_the_page_never_shows_a_horizontal_scrollbar() -> void:
 	assert_eq(_ui._scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_SHOW_NEVER,
 		"the page's sideways bar is never drawn")
 	assert_false(_ui._scroll.get_h_scroll_bar().visible, "so it is not on screen")
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_false(_ui._scroll.get_h_scroll_bar().visible,
 		"nor after a game, when the checklist is at its longest")
@@ -3737,7 +4085,7 @@ func test_the_checklist_boxes_are_drawn_not_left_to_the_stock_theme() -> void:
 # A ticked row restyles itself, so a part-filled checklist is readable from the
 # board beside it rather than box by box.
 func test_ticking_a_checklist_row_restyles_the_whole_row() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# The rolled body's goal mode is stripped (`_plain_goals`): this test is
 	# about a PLAIN goal row, and a `game beaten` or counted one is a
 	# different control with different behaviour (§7.7).
@@ -3785,7 +4133,7 @@ func test_the_stage_fits_the_viewport_at_every_board_size() -> void:
 	var page: float = get_viewport().get_visible_rect().size.x - 32.0  # scroll margins
 	assert_gt(page, 0.0)
 	for growth in range(0, RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER) + 1):
-		GameState.games_played = growth * RunDifficulty.GAMES_PER_TIER
+		GameState.spawn_events = growth * RunDifficulty.GAMES_PER_TIER
 		GameLoop2.sync_grid_bounds()
 		_ui._refresh()
 		await get_tree().process_frame
@@ -3840,7 +4188,7 @@ func test_the_pack_is_one_small_token_per_item() -> void:
 func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "choosing: the pack is on the right")
 	assert_true(_ui._inv_wrap.visible, "and the inventory never goes away")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_true(_ui._right_col.is_ancestor_of(_ui._inv_wrap), "playing: it stays there")
 	assert_true(_ui._inv_wrap.visible)
 
@@ -3852,7 +4200,7 @@ func test_the_pack_stays_in_the_right_column_in_both_phases() -> void:
 # A missed goal leaves two of them: the game's enemy and the escort that spawned
 # with it (§7.5).
 func test_a_missed_goal_leaves_both_bodies_following() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# DISARMED, because this counts BODIES either side of a report and this test is
 	# about the loop rather than about abilities (CLAUDE.md). Since §7.6 a body's
 	# turn can add a body to the board — a spawner taking its turn during the
@@ -3877,13 +4225,13 @@ func _rating_modal():
 	return null
 
 func test_reporting_a_game_never_pops_the_rating_modal() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_null(_rating_modal(), "finishing a game doesn't force the rating prompt")
 
 func test_the_played_game_stays_rateable_from_a_button() -> void:
 	var played: GameData = _ui._choices[0]["game"]
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_eq(_ui._last_played_game, played, "the reported game is remembered for rating")
 	# The select-screen controls row offers it as a button.
@@ -3909,7 +4257,7 @@ func test_first_clear_records_the_game_and_grants_no_dash() -> void:
 	var played: GameData = _ui._choices[0]["game"]
 	var dash_before: int = GameState.dash_charges
 	var lifetime_before: int = GameStats.beaten_count(played.id)
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_true(GameState.has_beaten_game(played.id), "the clear is banked on the run")
 	assert_eq(GameState.dash_charges, dash_before, "a first clear pays nothing extra")
@@ -3925,7 +4273,7 @@ func test_going_back_to_a_game_and_beating_it_grants_a_dash() -> void:
 	assert_eq(_ui._choices[0]["game"], target, "the offering is stable for the position")
 	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a return")
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"going back and beating it granted a Dash")
@@ -3940,7 +4288,7 @@ func test_the_return_dash_asks_only_that_you_went_there_before() -> void:
 	_ui._build_choices()
 	assert_true(bool(_ui._choices[0]["repeat"]), "and the card still flags the return")
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"beating it this time pays, even though last time did not")
@@ -3951,7 +4299,7 @@ func test_a_game_played_but_not_beaten_pays_nothing_until_you_beat_it() -> void:
 	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_eq(GameState.dash_charges, dash_before,
 		"a second visit that misses the goal again is not a return worth paying for")
@@ -3967,7 +4315,7 @@ func test_a_missed_goal_is_not_a_beat() -> void:
 	var played: GameData = _ui._choices[0]["game"]
 	var lifetime_before: int = GameStats.beaten_count(played.id)
 	var run_before: int = GameState.total_games_beaten
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_false(GameState.has_beaten_game(played.id),
 		"failing a game does not put it on the run's beaten list")
@@ -3990,7 +4338,7 @@ func test_failing_a_game_you_beat_earlier_pays_no_dash() -> void:
 	GameState.note_game_beaten(target.id)
 	_ui._build_choices()
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_eq(GameState.dash_charges, dash_before,
 		"the repeat Dash is for beating it again, not for failing it again")
@@ -3998,7 +4346,7 @@ func test_failing_a_game_you_beat_earlier_pays_no_dash() -> void:
 func test_only_a_won_amulet_records_the_win() -> void:
 	var played: GameData = _ui._choices[0]["game"]
 	var wins_before: int = GameStats.amulet_wins(played.id)
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_eq(GameStats.amulet_wins(played.id), wins_before,
 		"a missed goal is not an amulet win either")
@@ -4111,35 +4459,43 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 	for c in _ui._choices:
 		assert_ne(c["slot"], bashed_id, "bashed game not re-offered")
 
-func test_bash_allowed_on_boss_round_still_faces_a_boss() -> void:
-	# The boss is tied to where the run stands in its tier band, not to the game:
-	# you may bash the offered game, but whatever backfills the slot still spawns
-	# a boss.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# A BASH DOES NOT DODGE THE CAPSTONE, and it no longer could: the boss rides the
+# SPAWN EVENT rather than the card (§19.6), so whichever game backfills the slot,
+# the third spawn still closes the band. This used to be a claim about every
+# remaining CHOICE carrying a boss; it is a claim about the board now.
+func test_bashing_does_not_dodge_the_capstone() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.bash = 1
 	_ui._build_choices()
 	var idx: int = _first_bashable()
 	var bashed_id: StringName = _ui._choices[idx]["slot"]
 	_ui.bash_choice(idx)
-	assert_eq(GameState.bash, 0, "bash is allowed on a boss round")
+	assert_eq(GameState.bash, 0, "bash is allowed with a capstone due")
 	assert_true(GameLoop2.is_bashed(bashed_id), "the game was destroyed")
-	assert_true(_ui._boss_round, "still a boss round after bashing")
-	for c in _ui._choices:
-		assert_true(bool(c["boss"]), "every remaining choice still spawns a boss")
+	assert_true(_ui._boss_due_next(), "and the band still closes on the next spawn")
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
 
-func test_transmute_on_boss_round_still_faces_a_boss() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+
+func test_transmuting_does_not_dodge_the_capstone() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.transmute = 1
 	_ui._build_choices()
 	if _ui._choices.size() < 2:
-		pass_test("graph too sparse for an off-map transmute target")
+		pending("graph too sparse for an off-map transmute target")
 		return
-	var slot: StringName = _ui._choices[0]["slot"]
 	_ui.transmute_choice(0)
-	# The slot's game may have been swapped for an off-graph game...
-	for c in _ui._choices:
-		if c["slot"] == slot:
-			assert_true(bool(c["boss"]), "the transmuted game still spawns a boss")
+	assert_true(_ui._boss_due_next(), "a transmute does not move the counter")
+	_pick_as(RunGraph.NodeKind.ENEMIES)
+	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
+
+
+func _a_boss_is_standing() -> bool:
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			return true
+	return false
 
 # --- helpers for the sections below ---------------------------------------
 
@@ -4199,34 +4555,72 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 # single distance (one does on the owned catalog at 4..7, and 16 did at 5..8) — so
 # the assertion is that the panel took a spread WHERE ONE EXISTED, which is
 # checked against the graph rather than assumed.
-func test_the_two_starts_are_different_distances_when_the_graph_allows_it() -> void:
+func test_the_starts_are_different_distances_when_the_graph_allows_it() -> void:
 	for _attempt in range(12):
 		_ui.start_run()
 		var amulet: StringName = GameState.amulet_game_id
+		if _ui._start_options.size() < 2:
+			continue
 		var lens: Dictionary = {}
 		for opt in _ui._start_options:
 			lens[int(opt["path_len"])] = true
-		# What the graph could have offered: every distance an eligible start of
-		# any genre sits at from this amulet.
-		var available: Dictionary = {}
-		var d_to: Dictionary = RunGraph.bfs_distances(amulet)
-		for g in Data.all_games():
-			if not (g is GameData) or g.id == amulet:
-				continue
-			if RunGraph.neighbors(g.id).size() < RunGraph.MIN_START_CONNECTIONS:
-				continue
-			var hops: int = int(d_to.get(g.id, -1))
-			if hops >= RunGraph.MIN_PATH_LENGTH and hops <= RunGraph.MAX_PATH_LENGTH:
-				available[hops] = true
-		if _ui._start_options.size() < 2:
+		assert_eq(lens.size(), _best_spread(amulet, _ui._start_options.size()),
+			"the panel took every distinct distance its genres could reach")
+
+
+# The most distinct distances a panel of `want` cards could POSSIBLY show against
+# this Amulet — which is the only honest thing to compare the panel against.
+#
+# It used to be compared against "how many distances exist at all", and that was
+# wrong in two ways that only surfaced once the panel went to three cards. The
+# spread takes ONE CARD PER GENRE, so a distance nothing of the right genre sits
+# at is a distance the panel cannot use: §19.3.2 measured 33 owned Amulets that
+# field their three genres at only two distances. And a start has to clear the
+# route floor (§19.3) to be offered at all, which the old count ignored entirely.
+#
+# So this is a maximum matching of genres to distances, brute-forced over at most
+# 4 genres — the same thing _spread_across_band maximises, stated independently
+# rather than by calling it.
+func _best_spread(amulet: StringName, want: int) -> int:
+	var band: Vector2i = RunConfig.path_band()
+	var d_to: Dictionary = RunGraph.bfs_distances(amulet)
+	var all: Array[GameData] = []
+	for g in Data.all_games():
+		if g is GameData and RunGraph.passes_filter(g):
+			all.append(g)
+	var by_genre: Dictionary = {}        # genre -> {distance: true}
+	for g in RunGraph.eligible_starts_from(all):
+		if g.id == amulet:
 			continue
-		if available.size() >= 2:
-			assert_eq(lens.size(), _ui._start_options.size(),
-				"%d distances were on offer, so the two cards must not share one" %
-				available.size())
-		else:
-			assert_eq(lens.size(), 1,
-				"only one distance exists here, so repeating it is the fallback")
+		var hops: int = int(d_to.get(g.id, -1))
+		if hops < band.x or hops > band.y:
+			continue
+		if not RunGraph.route_clears_floor(g.id, amulet):
+			continue
+		if not by_genre.has(int(g.type)):
+			by_genre[int(g.type)] = {}
+		(by_genre[int(g.type)] as Dictionary)[hops] = true
+	var genres: Array = by_genre.keys()
+	return _match_spread(genres, by_genre, 0, {}, 0, mini(want, genres.size()))
+
+
+# Pick `want` of the remaining genres and count the distinct distances they can
+# cover between them; return the best any choice manages.
+func _match_spread(genres: Array, by_genre: Dictionary, at: int, used: Dictionary,
+		picked: int, want: int) -> int:
+	if picked == want:
+		return used.size()
+	if at >= genres.size():
+		return used.size()
+	var best := 0
+	# Take this genre, at each distance it could sit at…
+	for hops in (by_genre[genres[at]] as Dictionary).keys():
+		var next: Dictionary = used.duplicate()
+		next[hops] = true
+		best = maxi(best, _match_spread(genres, by_genre, at + 1, next, picked + 1, want))
+	# …or skip it, when another genre spreads further.
+	best = maxi(best, _match_spread(genres, by_genre, at + 1, used, picked, want))
+	return best
 
 func test_the_panel_keeps_both_cards_when_no_spread_is_possible() -> void:
 	# The fallback is the point: an Amulet with nothing to spread across must
@@ -4302,7 +4696,7 @@ func _modal_text(node: Node) -> String:
 
 func test_the_start_picker_ignores_a_travel_pick() -> void:
 	_ui.start_run()
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT, "travel is not a thing yet")
 	assert_false(GameLoop2.has_arrivals(), "and nothing spawned")
 
@@ -4410,9 +4804,9 @@ func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
 	var idx: int = _first_bashable()
 	var destroyed: StringName = _ui._choices[idx]["slot"]
 	_ui.bash_choice(idx)
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)                       # a missed goal leaves an enemy following
-	_ui.pick(0)                             # and a game is now in play
+	_pick_enemies(0)                             # and a game is now in play
 	GameState.bombs = 2
 	var expect_game: StringName = GameState.current_game_id
 	var expect_hp: int = GameState.hp
@@ -4462,7 +4856,7 @@ func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
 	assert_eq(int(back["instance"]), int(expect["instance"]), "under the same instance handle")
 
 func test_a_load_with_no_overworld_mounted_parks_the_view_for_the_next_one() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_true(SaveSystem.save_named("parked"))
 	GameState.clear_overworld_context(_ui)
 	assert_true(SaveSystem.load_named("parked"))
@@ -4510,7 +4904,7 @@ func test_a_reload_keeps_the_scroll_titles_the_run_dealt() -> void:
 		"ZELGO MER is still ZELGO MER after the reload")
 
 func test_reporting_a_game_keeps_the_run_recoverable() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_true(SaveSystem.has_autosave(), "the run keeps a recovery point")
 	var summaries: Array = SaveSystem.list_resumable()
@@ -4526,7 +4920,7 @@ func _board_into_reach() -> void:
 		entry["col"] = 1
 
 func test_a_lost_run_clears_its_recovery_point() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_true(SaveSystem.has_autosave(), "there is something to clear")
 	GameState.shields = 0
 	GameState.bonus_shields = 0
@@ -4852,7 +5246,7 @@ func _badge_texts(instance: int) -> Array:
 # means the Amulet is close, which means the board is at its widest and the cells
 # at their smallest. One row can't overlap itself.
 func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	var badges: Control = _ui._board._badges_for_instance(inst)
@@ -4892,7 +5286,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 				"the ⚔ badge is where the count went")
 
 func test_the_board_says_how_long_its_playback_runs() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	assert_eq(_ui._board.animate_resolve(before, {"attacks": []}), 0.0,
 		"nothing to show, nothing to wait for")
@@ -4930,6 +5324,13 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# which left _resolving false and failed this test on roughly one run in four.
 	# The SECOND game is the one with a board to play back, which is what this
 	# test is actually about.
+	#
+	# AND THE RUN IS STOOD NEAR ITS GOAL, because a playback is one beat per TURN
+	# and a report beyond 5 hops from the Amulet buys the board NO turns at all
+	# (§7.4) — so out in the wilds there is nothing to play back, _hold_for_resolve
+	# ends synchronously, and the haul drops straight away. That is correct
+	# behaviour and it is not what this test is about; leaving it to the graph
+	# means asserting that the run happened to open near its goal.
 	_pick_solo(0)
 	_ui.report(false)
 	await _playback_done()                    # let the first playback finish
@@ -4938,6 +5339,9 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
+	if not _stand_near_the_amulet():
+		pending("the graph could not put the run inside the band that buys turns")
+		return
 	_pick_solo(0)
 	_ui.report(false)
 	assert_null(_ui._post_screen,
@@ -4955,7 +5359,7 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	assert_true(_ui._select_box.visible, "walking off the haul is what deals the table")
 
 func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._resolving = true                    # as it is between a report and its playback
 	GameLoop2._finish_run(false)
 	assert_null(_end_screen(), "the verdict doesn't land on top of the animation")
@@ -4975,7 +5379,7 @@ func _end_screen():
 	return null
 
 func test_a_lost_run_ends_on_a_verdict_screen() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	GameState.hp = 1
@@ -5028,7 +5432,7 @@ func test_a_won_run_ends_on_the_amulet_screen() -> void:
 	assert_eq(int(screen.stats()["steps_left"]), 0, "you were standing on it")
 
 func test_the_verdict_waits_for_the_killing_blow_to_finish_playing() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._resolving = true                    # as it is between a report and its playback
 	GameLoop2._finish_run(false)
 	assert_null(_end_screen(), "the verdict doesn't land on top of the animation")
@@ -5054,7 +5458,7 @@ func test_a_new_run_clears_the_last_ones_verdict() -> void:
 # so the board has to be drawing the enemy at its new square by the time the
 # playback asks where it is.
 func test_an_enemy_that_walks_onto_the_grid_reads_as_having_moved() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# DISARMED, because this test is about the SCREEN. Since §7.6 an ability can
 	# spend a body's whole turn on something other than stepping — a Defensive
 	# Stance, a Ritual, a spawner — and a body that legitimately stood still would
@@ -5093,7 +5497,7 @@ func test_beating_the_amulet_game_wins_the_run() -> void:
 	var idx: int = _offer_the_amulet_next_door()
 	assert_gt(idx, -1, "the Amulet is offered once it's reachable")
 	assert_true(bool(_ui._choices[idx]["amulet"]), "and the card knows what it is")
-	_ui.pick(idx)
+	_pick_enemies(idx)
 	_report_beat(_ui)                          # the goal is met — that's the run
 	assert_true(GameLoop2.run_over, "clearing the Amulet game ends the run")
 	assert_true(GameLoop2.won, "as a win")
@@ -5112,7 +5516,7 @@ func test_the_win_is_banked_on_the_amulet_game() -> void:
 	var idx: int = _offer_the_amulet_next_door()
 	var amulet: StringName = GameState.amulet_game_id
 	var wins_before: int = GameStats.amulet_wins(amulet)
-	_ui.pick(idx)
+	_pick_enemies(idx)
 	_report_beat(_ui)
 	assert_eq(GameStats.amulet_wins(amulet), wins_before + 1,
 		"the game you won on carries the crown afterwards")
@@ -5126,7 +5530,7 @@ func test_the_win_is_banked_on_the_amulet_game() -> void:
 # carry on as though nothing had happened.
 func test_finishing_the_amulet_game_wins_even_without_the_goal() -> void:
 	var idx: int = _offer_the_amulet_next_door()
-	_ui.pick(idx)
+	_pick_enemies(idx)
 	_ui.report(false)                         # played it; the goal box unticked
 	assert_true(GameLoop2.run_over, "the Amulet game is the run, goal or no goal")
 	assert_true(GameLoop2.won, "and it ends as a win")
@@ -5140,7 +5544,7 @@ func test_the_win_is_banked_even_when_the_amulet_goal_was_missed() -> void:
 	var idx: int = _offer_the_amulet_next_door()
 	var amulet: StringName = GameState.amulet_game_id
 	var wins_before: int = GameStats.amulet_wins(amulet)
-	_ui.pick(idx)
+	_pick_enemies(idx)
 	_ui.report(false)
 	assert_eq(GameStats.amulet_wins(amulet), wins_before + 1,
 		"the game you won the run on carries the crown either way")
@@ -5150,7 +5554,7 @@ func test_the_win_is_banked_even_when_the_amulet_goal_was_missed() -> void:
 # tick as the thing that ends the run.
 func test_the_amulet_report_says_the_goal_is_a_bonus() -> void:
 	var idx: int = _offer_the_amulet_next_door()
-	_ui.pick(idx)
+	_pick_enemies(idx)
 	var said: String = _text_of(_ui._verify_box)
 	assert_true(said.contains("bonus"),
 		"the Amulet's goal row is marked a bonus: %s" % said)
@@ -5430,15 +5834,21 @@ func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 # ---------------------------------------------------------------------------
 
 func test_crossing_a_tier_grows_the_board_and_says_so() -> void:
-	# Park the run one game short of a tier step, then play that game: the board
-	# is a column and a row wider on the other side of the report, and the run log
-	# carries the news (the new cells light up on the board itself).
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+	# Park the run one SPAWN EVENT short of a tier step, then play a game that
+	# lands bodies: the board is a column and a row wider, and the run log carries
+	# the news (the new cells light up on the board itself).
+	#
+	# The step now happens at the ARRIVAL rather than at the report (§19.6) — the
+	# counter is spawn events, and committing a game that lands bodies is one — so
+	# the growth is already done by the time the report runs. This walks both
+	# halves anyway, because what the test is about is that it happened and was
+	# said, not which beat it happened on.
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
 	var rows_before: int = GameLoop2.grid_rows()
 	var log_before: int = GameLog.messages.size()
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_eq(GameLoop2.grid_cols(), cols_before + 1, "the step widened the board")
 	assert_eq(GameLoop2.grid_rows(), rows_before + 1, "in both dimensions")
@@ -5452,7 +5862,7 @@ func test_an_ordinary_game_leaves_the_board_alone() -> void:
 	GameState.games_played = 0
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	assert_eq(GameLoop2.grid_cols(), cols_before,
 		"a game that crosses no gate changes nothing about the board")
@@ -5461,7 +5871,7 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 	# Three turns of enemy action have to be SHOWN as three, not collapsed into a
 	# single slide — watching the same beat land three times is how the amulet
 	# ladder is felt rather than merely read (§7.4).
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	assert_gt(before.size(), 0, "the picked game put an enemy on the board")
 	var inst: int = int(before.keys()[0])
@@ -5520,7 +5930,7 @@ func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
 	assert_ne(GameState.hp, hp_before, "the run itself already paid the bill")
 
 func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 0
@@ -5541,7 +5951,7 @@ func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
 		"and when the playback ends the line is the run's own Health again")
 
 func test_a_blow_a_shield_swallowed_moves_no_health() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	var hp_before: int = GameState.hp
@@ -5558,7 +5968,7 @@ func test_a_blow_a_shield_swallowed_moves_no_health() -> void:
 # the one thing never shown happening.
 
 func test_the_shield_row_opens_on_the_armour_that_was_standing() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 2
@@ -5572,7 +5982,7 @@ func test_the_shield_row_opens_on_the_armour_that_was_standing() -> void:
 		"the playback opens on the two that were standing and breaks one on the blow")
 
 func test_an_unblocked_blow_breaks_no_shield() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 2
@@ -5584,7 +5994,7 @@ func test_an_unblocked_blow_breaks_no_shield() -> void:
 		"a blow nothing stopped costs no armour")
 
 func test_the_temporary_shields_break_before_the_ones_that_stay() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 1
@@ -5601,7 +6011,7 @@ func test_the_temporary_shields_break_before_the_ones_that_stay() -> void:
 		"and it is the TEMPORARY one that broke — what is left wears no clock")
 
 func test_the_playback_hands_the_shield_row_back_when_it_ends() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 3
@@ -5615,7 +6025,7 @@ func test_the_playback_hands_the_shield_row_back_when_it_ends() -> void:
 		"the row is the run's own again — and the run has none")
 
 func test_a_cut_short_playback_hands_the_shield_row_back() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	GameState.shields = 2
@@ -5628,7 +6038,7 @@ func test_a_cut_short_playback_hands_the_shield_row_back() -> void:
 		"a playback wiped mid-flight leaves no stale armour behind")
 
 func test_a_cut_short_playback_hands_the_health_line_back() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	_ui._board.animate_resolve(before,
@@ -5641,7 +6051,7 @@ func test_a_resolve_from_before_the_ladder_still_plays() -> void:
 	# A result with no turn/turn_frames fields — a save restored from before the
 	# ladder existed, or a test building one by hand — is one turn's worth of
 	# playback rather than nothing at all.
-	_ui.pick(0)
+	_pick_enemies(0)
 	var before: Dictionary = _ui._board.capture_positions()
 	var inst: int = int(before.keys()[0])
 	assert_almost_eq(_ui._board.animate_resolve(before,
@@ -5789,7 +6199,7 @@ func _mark_beaten_this_run(game: GameData) -> void:
 # tally (a win last week is not a fact about this run), so nothing off disk can
 # make these tests flap.
 func _pick_an_unplayed_game() -> GameData:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen["game"]
 	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
@@ -5841,7 +6251,7 @@ func test_a_status_bill_is_not_the_hit_that_opens_the_door() -> void:
 # door is a tax on the least interesting thing in the run.
 
 func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen["game"]
 	_mark_beaten_this_run(game)
 	assert_true(_ui.beaten_this_run(), "the run knows it already beat this one")
@@ -5869,7 +6279,7 @@ func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
 	# Walking away is not a pause: the board takes whatever the road charges for
 	# finishing a game (§7.4) — none of it out in the wilds, up to two turns on the
 	# Amulet's doorstep — and the enemy comes with you either way.
-	_ui.pick(0)
+	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	# ONE named body, followed by instance: the second escape stands another one on
@@ -5877,7 +6287,7 @@ func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	var col_before: int = int(GameLoop2.stack[0]["col"])
 	# Take the next game the same way, so a second resolve runs.
-	_ui.pick(0)
+	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	# DISARMED, because this test asserts that the body WALKED (§7.6). The offering
 	# rolls a random enemy, and an ability can spend a whole turn on something other
@@ -5900,15 +6310,31 @@ func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	_pick_solo(0)
 	var gp_before: int = GameState.games_played
+	var wanted: GoalEnemyData = _ui._chosen["enemy"]
 	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
-	assert_eq(GameLoop2.stack_size(), 1,
-		"but its goal-enemy walked onto the board, as a missed goal always does")
+	# THE BOARD MAY BE BIGGER THAN ONE NOW (§19.5), and counting it was the wrong
+	# question anyway. `_bleed_at_the_game_in_play` loses runs to open the escape
+	# gate, and a lost run at a game where nothing has gone down stands bodies of
+	# its own — the escape itself owes nothing, but the failures that bought it
+	# already did. What this test is about is the GOAL-ENEMY following you out.
+	# BY ID, NOT BY OBJECT. `_disarm_board` (inside `_pick_solo` above) replaces a
+	# body's enemy with a `duplicate()` when its goal is `game beaten` or counted
+	# — 21 of the 111 bodies — so identity here failed on roughly one run in five,
+	# on whichever runs happened to roll one of them. It read exactly like the
+	# board losing the enemy and it was the test comparing the wrong thing.
+	var followed := false
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.id == wanted.id:
+			followed = true
+	assert_true(followed,
+		"its goal-enemy walked onto the board, as a missed goal always does")
 	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "and a fresh offering is up")
 
 func test_escaping_does_not_defeat_the_goal_enemy() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen["game"]
 	var enemy: GoalEnemyData = _ui._chosen["enemy"]
 	# GameStats is a LIFETIME store that outlives the run and the test, so the
@@ -5923,7 +6349,7 @@ func test_escaping_does_not_defeat_the_goal_enemy() -> void:
 # long-standing behaviour and deliberately untouched; walking away is the case
 # that isn't allowed to count.
 func test_escaping_does_not_count_the_game_as_beaten() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen["game"]
 	var lifetime_before: int = GameStats.beaten_count(game.id)
 	var run_before: int = GameState.total_games_beaten
@@ -5942,7 +6368,7 @@ func test_escaping_pays_no_repeat_beat_dash() -> void:
 	var target: GameData = _ui._choices[0]["game"]
 	GameState.note_game_beaten(target.id)
 	_ui._build_choices()
-	_ui.pick(0)
+	_pick_enemies(0)
 	var dash_before: int = GameState.dash_charges
 	_bleed_at_the_game_in_play()
 	_ui.escape_game()
@@ -5952,7 +6378,7 @@ func test_escaping_pays_no_repeat_beat_dash() -> void:
 func test_escaping_still_advances_the_run_clock() -> void:
 	# Withholding the CREDIT doesn't stall the run: the time was spent and the
 	# board closed in, so the difficulty clock moves either way.
-	_ui.pick(0)
+	_pick_enemies(0)
 	var gp_before: int = GameState.games_played
 	_bleed_at_the_game_in_play()
 	_ui.escape_game()
@@ -5964,7 +6390,7 @@ func test_escaping_still_advances_the_run_clock() -> void:
 # What separates an escape from a miss is no longer the beat (neither is one);
 # it is the item trigger and the event, which a miss still earns.
 func test_a_missed_report_is_not_a_beat_either() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen["game"]
 	_ui.report(false)
 	assert_false(GameState.has_beaten_game(game.id),
@@ -6031,7 +6457,7 @@ func test_the_kill_count_is_per_game() -> void:
 		assert_eq(GameLoop2.defeated_this_game, 0,
 			"the count still went with the game that was handed in")
 		return
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(GameLoop2.defeated_this_game, 0, "the next game starts the count over")
 	# …and with the count back at zero the kill door is shut. Only the kill door:
 	# a game this run has already beaten is escapable from the first second on its
@@ -6108,7 +6534,7 @@ func test_escaping_still_owes_the_road_its_extra_turns() -> void:
 	if near == &"":
 		pending("the run did not reach this case (near == &'')")
 		return
-	_ui.pick(0)
+	_pick_enemies(0)
 	GameState.set_current_game(near)
 	assert_eq(GameLoop2.enemy_turns(), 2, "one hop out is two extra turns")
 	_mark_beaten_this_run(_ui._chosen["game"])
@@ -6133,7 +6559,7 @@ func test_the_door_closes_again_on_the_next_game() -> void:
 	_bleed_at_the_game_in_play()
 	assert_true(_ui.can_escape())
 	_ui.escape_game()
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_false(GameLoop2.hurt_this_game, "a new game has not hurt you yet")
 	# …so THIS door is shut. The other one is independent and the offering can
 	# legitimately hand back a game the run has already beaten (the graph allows
@@ -6296,7 +6722,7 @@ func test_dev_mode_offers_only_the_2_0_item_set() -> void:
 # The handler's job is to restore the body's draw order, so it called move_child
 # on a parent mid-removal: "Parent node is busy setting up children".
 func test_a_hover_handler_does_not_reorder_the_board_mid_repaint() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var board = _ui._board
 	assert_gt(GameLoop2.stack_size(), 0, "there is a body on the board")
@@ -6320,7 +6746,7 @@ func test_a_hover_handler_does_not_reorder_the_board_mid_repaint() -> void:
 func test_clicking_an_enemy_repaints_without_a_detached_reorder() -> void:
 	# The real sequence from the crash report: a click repaints the board, which
 	# frees the very node whose handler is about to run.
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var board = _ui._board
 	var entry: Dictionary = GameLoop2.stack[0]
@@ -6362,7 +6788,7 @@ func _note_game_beaten(_ctx: Dictionary) -> void:
 	_beaten_signals += 1
 
 func test_escaping_fires_no_game_beaten_trigger() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])   # so the escape is available at once
 	_watch_game_beaten()
 	_ui.escape_game()
@@ -6373,7 +6799,7 @@ func test_escaping_fires_no_game_beaten_trigger() -> void:
 func test_escaping_pays_no_harvesting_gold() -> void:
 	GameState.harvesting = 5
 	assert_eq(Stats.get_value(&"harvesting"), 5, "the payout stat is really set")
-	_ui.pick(0)
+	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	var gold_before: int = GameState.gold
 	_ui.escape_game()
@@ -6391,7 +6817,7 @@ func test_escaping_does_not_recharge_a_charged_item() -> void:
 		return
 	var inst: ItemData = GameState.add_item(charged)
 	inst.current_charge = 0
-	_ui.pick(0)
+	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	_ui.escape_game()
 	assert_eq(inst.current_charge, 0, "leaving does not tick the recharge")
@@ -6400,7 +6826,7 @@ func test_escaping_does_not_recharge_a_charged_item() -> void:
 # pairing that makes the test above mean something: the guard is on escaping, not
 # on the trigger existing.
 func test_finishing_a_game_does_fire_the_trigger() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_watch_game_beaten()
 	_ui.report(false)
 	assert_eq(_game_beaten_count(), 1,
@@ -6416,7 +6842,7 @@ func test_finishing_a_game_does_fire_the_trigger() -> void:
 # these four lines is that thing" without reading names.
 
 func test_hovering_a_goal_row_lights_the_body_it_belongs_to() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)                      # the enemy is a follower now
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	assert_true(_ui._row_paints.has(inst),
@@ -6431,7 +6857,7 @@ func test_hovering_a_goal_row_lights_the_body_it_belongs_to() -> void:
 # ancestors, so a row bound only on its frame lit up from a few pixels of padding
 # and stayed dark everywhere a player actually points — which is the whole row.
 func test_every_part_of_a_goal_row_lights_the_body_not_just_its_border() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	var made: Dictionary = _ui._verify_row("Goal — %s" % GameLoop2.goal_text_for(GameLoop2.arrival()),
@@ -6458,7 +6884,7 @@ func test_every_part_of_a_goal_row_lights_the_body_not_just_its_border() -> void
 # fires an exit and an enter in the same frame and the row was never left. Here
 # the pointer is nowhere near it, which is the other half of that rule.
 func test_leaving_a_row_altogether_puts_the_highlight_out() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	var made: Dictionary = _ui._verify_row("Goal — something", UITheme.TEXT, false,
 		GameLoop2.arrival()["enemy"], null, inst)
@@ -6476,7 +6902,7 @@ func test_leaving_a_row_altogether_puts_the_highlight_out() -> void:
 		"and a pointer that is not on the row anywhere puts it out")
 
 func test_hovering_a_body_lights_the_goal_row_it_is_written_on() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	# What the board emits when the mouse crosses a body.
@@ -6489,14 +6915,14 @@ func test_hovering_a_body_lights_the_goal_row_it_is_written_on() -> void:
 func test_a_row_about_no_body_lights_nothing() -> void:
 	# The level-up challenge, event goals and player statuses belong to no enemy,
 	# so they bind nothing rather than lighting an arbitrary body.
-	_ui.pick(0)
+	_pick_enemies(0)
 	var bound: int = _ui._row_paints.size()
 	assert_lte(bound, GameLoop2.stack.size(),
 		"only the rows written about a body are bound: %d bound, %d bodies" % [
 			bound, GameLoop2.stack.size()])
 
 func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	_ui._light_bodies([inst])
 	assert_true(_ui._board._is_lit(inst))
@@ -6508,15 +6934,21 @@ func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
 # The boss round is a popup, not a strip that shoves the page down
 # ---------------------------------------------------------------------------
 
-func _force_boss_round() -> void:
-	# A boss CLOSES its tier band: it is the band's last game, so it lands on the
-	# offering drawn once GAMES_PER_TIER - 1 games of that band have been played.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 1
+# Park the run one SPAWN EVENT short of the capstone, so the next thing that
+# lands bodies closes the band (§19.6).
+#
+# It used to set `games_played` and assert `_boss_round`, back when the boss rode
+# the offering as a card's own enemy. The capstone lands on the BOARD now and
+# belongs to the spawn, so the warning asks about the next one rather than about
+# the cards — and an Event or a Shop node, spawning nothing, does not bring it
+# closer.
+func _force_boss_due() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
-	assert_true(_ui._boss_round, "the next offering closes the tier band")
+	assert_true(_ui._boss_due_next(), "the next spawn closes the tier band")
 
-func test_a_boss_round_announces_itself_in_a_popup() -> void:
-	_force_boss_round()
+func test_a_coming_capstone_announces_itself_in_a_popup() -> void:
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	assert_not_null(_ui._boss_notice, "the warning is a popup")
 	_ui._boss_notice.close()
@@ -6526,17 +6958,18 @@ func test_a_boss_round_announces_itself_in_a_popup() -> void:
 # portraits open the same card the battlefield opens, so "what does it want and
 # what does it hit for" is answered where the question is asked.
 func test_the_boss_warning_opens_a_card_on_the_boss_you_click() -> void:
-	_force_boss_round()
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var notice = _ui._boss_notice
 	assert_not_null(notice, "the warning is up")
-	var boss: GoalEnemyData = null
-	for c in _ui._choices:
-		if c["enemy"] is GoalEnemyData and c["enemy"].is_boss():
-			boss = c["enemy"]
-			break
+	# ROLLED HERE rather than read off the cards. The offering deals no bosses any
+	# more (§19.6) — the capstone lands on the board when the spawn closes the
+	# band, so there is no advertised boss to pick out of `_choices`. What the
+	# notice can still do is open a card on a boss, and that is what this is about.
+	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
 	if boss == null:
-		return                     # no boss art in the roster to read
+		pending("no boss in the roster to read")
+		return
 	var card = notice.inspect_boss(boss)
 	assert_not_null(card, "the portrait opens a card")
 	assert_eq(card.get_parent(), notice,
@@ -6548,7 +6981,7 @@ func test_the_boss_warning_opens_a_card_on_the_boss_you_click() -> void:
 # the verbs that are aimed at one — Push and Bomb take an instance, and there
 # isn't one until the game is picked.
 func test_a_boss_read_off_the_warning_is_read_only() -> void:
-	_force_boss_round()
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var notice = _ui._boss_notice
 	var boss: GoalEnemyData = GameLoop2.roll_boss(&"", 0)
@@ -6570,15 +7003,15 @@ func _buttons_under(node: Node) -> Array:
 		out.append_array(_buttons_under(child))
 	return out
 
-func test_the_boss_warning_opens_once_for_the_round() -> void:
-	_force_boss_round()
+func test_the_boss_warning_opens_once_for_the_band() -> void:
+	_force_boss_due()
 	_ui._maybe_announce_boss()
 	var first = _ui._boss_notice
 	first.close()
 	# A scramble / bash redraws the offering; the warning must not come back with it.
 	_ui._build_choices()
 	_ui._maybe_announce_boss()
-	assert_null(_ui._boss_notice, "the same round warns once")
+	assert_null(_ui._boss_notice, "the same band warns once")
 
 # ---------------------------------------------------------------------------
 # The screen a game ends on (PostCombatScreen)
@@ -6595,7 +7028,7 @@ func _haul() -> PostCombatScreen:
 # game and clear nothing, miss the goal in one you finished, or walk away, and
 # the screen has to say which of those happened.
 func test_the_haul_screen_says_which_report_this_was() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var played: GameData = _ui._chosen.get("game")
 	_report_beat(_ui)
 	_ui._end_resolve()
@@ -6610,14 +7043,14 @@ func test_the_haul_screen_says_which_report_this_was() -> void:
 	_leave_post_game()
 
 func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	_ui._end_resolve()
 	assert_eq(_haul().verdict(), "missed", "played it, goal unmet")
 	_leave_post_game()
 	_dismiss_event()
 	_clear_board()
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false, [], true)                  # escaped
 	_ui._end_resolve()
 	assert_eq(_haul().verdict(), "escaped", "walked away from it")
@@ -6636,7 +7069,7 @@ func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
 # chest, and the sum says exactly that rather than leaving the term out.
 func test_the_chest_sum_starts_with_the_point_the_win_is_worth() -> void:
 	_clear_board()
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6656,7 +7089,7 @@ func test_the_chest_sum_starts_with_the_point_the_win_is_worth() -> void:
 # the chest the player was actually handed. That is the whole point of showing the
 # arithmetic: a breakdown that did not total the payout would be worse than none.
 func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6687,7 +7120,7 @@ func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
 # No chest, no explanation. A missed goal and a walk-away bank nothing from the
 # bodies (§8.2), so there is no size to justify and the section is not drawn.
 func test_a_report_that_earns_no_chest_explains_nothing() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.report(false)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6702,7 +7135,7 @@ func test_a_report_that_earns_no_chest_explains_nothing() -> void:
 # ★ RATE MOVED HERE from the play panel's checklist, where it offered the score
 # while the game was still in front of the player. It sits beside the cover now.
 func test_the_haul_screen_carries_the_rate_button() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var played: GameData = _ui._chosen.get("game")
 	_report_beat(_ui)
 	_ui._end_resolve()
@@ -6726,7 +7159,7 @@ func test_the_haul_screen_carries_the_rate_button() -> void:
 # CanvasLayer under the page, so a search of the page's tree with the haul up
 # would find the button this test is checking has gone.
 func test_the_play_panel_no_longer_asks_for_a_score_mid_game() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	assert_null(_ui._post_screen, "and no haul screen to borrow a button from")
 	# ReportChecklist is a RefCounted that builds into containers the PAGE owns —
@@ -6742,7 +7175,7 @@ func test_the_play_panel_no_longer_asks_for_a_score_mid_game() -> void:
 # The numbers out of beat_game's result, which used to be thrown away the moment
 # the animation had played them: what it cost you, and what is still on your tail.
 func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6767,7 +7200,7 @@ func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
 	if events.is_empty():
 		pending("the run did not reach this case (events.is_empty())")
 		return
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._pending_event = events[0]
 	var screen := PostCombatScreen.open(_ui,
 		{"game": _ui._chosen["game"], "beaten": true, "escaped": false,
@@ -6801,7 +7234,7 @@ func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
 # A Legendary left on the ground should be a decision and not a side effect of
 # pressing Continue.
 func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6817,7 +7250,7 @@ func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
 # is the REAL one — the same live 3x3, the same bin, the same "use it where you
 # stand" — so a piece taken here lands in the pack exactly as it does anywhere.
 func test_the_payout_is_a_column_of_the_haul_screen() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6851,7 +7284,7 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 # land together, which is what the OTHERS are, and whether there is an order worth
 # taking them in.
 func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# Queued BEFORE the report: the resolve can land instantly now (§7.4), and
 	# whenever it lands it takes the whole queue with it.
 	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0]]})
@@ -6874,7 +7307,7 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 # `item.image` was non-null, so an unarted row would come up as a name over a gap
 # on the screen where the player is deciding whether to take it.
 func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6912,7 +7345,7 @@ func test_an_unarted_relic_draws_a_stand_in_rather_than_a_gap() -> void:
 # ordinary child of the page, BELOW this screen's CanvasLayer, so a level-up's
 # reward was invisible until the player had already left.
 func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -6946,7 +7379,7 @@ func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 # behind a screen nobody has left yet would hide the payout until after the
 # decision that earned it.
 func test_loot_granted_on_the_screen_lands_on_its_own_table() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
@@ -7043,25 +7476,24 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 # The boss warning is a banner on this screen rather than a sixth popup — a boss
 # round is announced between two games, and this screen is what stands between
 # them. Marking the round announced here is what stops the popup saying it again.
-func test_a_boss_round_warns_on_the_haul_screen_and_not_twice() -> void:
-	# A REAL boss round, arranged rather than injected: the report rebuilds the
-	# offering (and with it `_boss_round`) before the screen is built, and the
-	# resolve can land instantly now (§7.4), so there is no gap to set the flag in.
-	# Two games short of the band's last game, so REPORTING this one is what puts
-	# the run on the boss round the haul screen has to warn about.
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER - 2
+func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
+	# A REAL one, arranged rather than injected. Two spawn events short, so the
+	# PICK below is what leaves the run one spawn from the capstone the haul
+	# screen has to warn about — the counter moves on the arrival now (§19.6), not
+	# on the report.
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 2
 	_ui._build_choices()
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._boss_notice_for = -1
 	_report_beat(_ui)
-	assert_true(_ui._boss_round, "the game just played put the run on a boss round")
+	assert_true(_ui._boss_due_next(), "the run is one spawn from closing the band")
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
 	if screen == null:
 		return
-	assert_eq(_ui._boss_notice_for, GameState.games_played,
-		"the round is marked announced by the screen")
+	assert_eq(_ui._boss_notice_for, GameState.spawn_events,
+		"the band is marked announced by the screen")
 	_leave_post_game()
 	_dismiss_event()
 	_ui._maybe_announce_boss()
@@ -7105,7 +7537,7 @@ func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
 		return
 	ShopSystem.shop_for(hub)
 	_ui._mount_shop(hub)
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_null(_ui._shop_panel, "picking the next game walks out of the shop")
 	assert_false(ShopSystem.shop_for(hub).is_empty(),
 		"but the shelf is still there to come back to")
@@ -7151,7 +7583,7 @@ func test_staying_keeps_the_run_where_the_detour_left_it() -> void:
 		return
 	var here: StringName = GameState.current_game_id
 	_ui._ask_stay_or_return(back)
-	_ui.pick(0)                            # the "stay here" card
+	_pick_enemies(0)                            # the "stay here" card
 	assert_false(_ui._asking_return())
 	assert_eq(GameState.current_game_id, here, "the run carries on from the detour")
 	assert_gt(_ui._choices.size(), 0, "with an ordinary offering back on the table")
@@ -7190,7 +7622,7 @@ func test_a_detour_hands_over_no_event_of_its_own() -> void:
 	if node == &"":
 		pending("the run did not reach this case (node == &'')")
 		return
-	_ui.pick(0)
+	_pick_enemies(0)
 	# The game being reported is a detour's destination, standing on a node that
 	# does carry an event.
 	_ui._chosen["slot"] = node
@@ -7206,7 +7638,7 @@ func test_an_ordinary_arrival_still_hands_over_its_event() -> void:
 	if node == &"":
 		pending("the run did not reach this case (node == &'')")
 		return
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._chosen["slot"] = node
 	_ui.report(false)
 	assert_not_null(_ui._pending_event, "an event still fires where the run routed to")
@@ -7484,6 +7916,16 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# is what turns that back into a test.
 	var hubs: Array = ShopSystem.hub_games()
 	assert_false(hubs.is_empty(), "a run has hubs")
+	# THE BOARD IS CLEARED FIRST, and that is a scope decision rather than a
+	# convenience. This test is about the SHOP PANEL's contribution to the page.
+	# Every body standing also costs the page a checklist row at ~41px against the
+	# ~11px it has to spare, so a run that arrives here with followers overflows
+	# whatever the shop does — measured, and written up as an open item in
+	# docs/layout-review-backlog.md. Leaving the board as the run left it would
+	# quietly turn this into a test about the checklist, failing or passing on how
+	# many bodies the offering happened to leave standing.
+	GameLoop2.stack.clear()
+	_ui._populate_play_panel()
 	for hub in hubs:
 		_ui._mount_shop(hub)
 		await get_tree().process_frame
@@ -7631,7 +8073,7 @@ func test_a_card_can_stand_a_machine_up_with_a_game_in_play() -> void:
 	# than per phase, so the panel that mounts here survives the phase it mounted in
 	# — but a card is spendable mid-game (spec §4.3), so this is the case that has
 	# to hold rather than a fact about the column.
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	GameState.add_card_loot(&"xiv_temperance")
 	LootSystem.use_loot(0)
@@ -7894,7 +8336,7 @@ func test_the_report_step_hands_the_checklist_back_intact() -> void:
 	_ui._populate_standing_checklist()
 	var standing: String = _text_of(_ui._verify_box)
 	assert_true(standing.contains("What you need to do"), "the standing list is up")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var playing: String = _text_of(_ui._verify_box)
 	assert_true(playing.contains("Tick what you did this game"),
 		"the report step took the box over: %s" % playing)
@@ -7955,7 +8397,7 @@ func test_a_wand_in_the_pack_is_spendable_with_a_game_in_play() -> void:
 	# they want it, so the Zap button under a carried wand is live mid-game — which
 	# is the rule the `overworld_usable` flag existed to reproduce for relics.
 	GameState.add_wand_loot(&"wand_of_wishing")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	assert_eq(GameState.loot_items.size(), 1, "the wand is in the pack")
 	assert_false(LootSystem.is_wand(GameState.loot_items[0]) \
@@ -8018,7 +8460,7 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	PillSystem.ensure_colors()
 	PillSystem.unidentify(&"telepills")
 	ScrollSystem.unidentify(&"scroll_of_teleportation")
-	_ui.pick(0)                                  # a game is now in play
+	_pick_enemies(0)                                  # a game is now in play
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	# The game actually IN PLAY, read off _chosen — `pick` moves the run onto it, so
 	# the id standing before the pick is the node it came from and not what this
@@ -8064,7 +8506,7 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 # So this test STANDS THE RUN somewhere a report really would cost turns rather
 # than hoping the random graph put it there.
 func test_a_teleport_off_a_game_is_not_charged_the_roads_extra_turns() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	# The offering rolls a RANDOM enemy, and since §7.6 an ability can spend a
 	# body's turn on something other than you — which would muddy "nobody swung".
 	_disarm_board()
@@ -8106,7 +8548,7 @@ func test_a_teleport_off_a_game_is_not_charged_the_roads_extra_turns() -> void:
 # fare now — and, since they are all teleports, every one of them is likewise
 # free of the road's extra turns (the test above).
 func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	var played: GameData = _ui._chosen.get("game")
 	assert_not_null(played)
@@ -8182,7 +8624,7 @@ func _close_arrival_card() -> void:
 # straight onto a board with an enemy already on it, with no idea what game it
 # even is, is the version of this that reads as a bug. So the card opens over it.
 func test_an_arrival_opens_the_games_card_over_the_board() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var played: GameData = _ui._chosen.get("game")
 	var here: StringName = GameState.current_game_id
 	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
@@ -8227,7 +8669,7 @@ func test_an_arrival_opens_the_games_card_over_the_board() -> void:
 # An arrival card has NO WAY BACK, because there is nowhere to go back to: the
 # teleport already moved the run and already spawned what is waiting.
 func test_the_arrival_card_offers_no_way_back() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	var here: StringName = GameState.current_game_id
 	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 	# Asserted before the guard so the test always says something (see above).
@@ -8307,7 +8749,7 @@ func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
 func test_the_rate_button_appears_once_a_game_has_been_reported() -> void:
 	# _last_played_game is the controls row's only content for most of a run, and
 	# it moves on a report rather than on anything the row itself can see.
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	_leave_post_game()
@@ -8795,7 +9237,7 @@ func test_a_curse_row_arms_rather_than_confirming() -> void:
 	# winning-run rows now — on and off freely, and the tick survives a repaint
 	# because the LOOP holds it.
 	GameState.add_curse_goal(&"poor_sleep")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
 		pending("the run did not reach this case (checks.is_empty())")
@@ -8885,7 +9327,7 @@ func _review_notes_fields(panel) -> Array:
 
 func test_completed_game_asks_before_it_reports() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var played: int = GameState.games_played
 	_ui.confirm_completed_game()
 	assert_not_null(_ui.get_node_or_null("Confirm"),
@@ -8898,7 +9340,7 @@ func test_completed_game_asks_before_it_reports() -> void:
 func test_the_confirm_carries_the_winning_run_rows_and_their_notes() -> void:
 	_reboot(&"zoe")
 	GameState.apply_status(&"strength", 1)
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.confirm_completed_game()
 	var panel = _ui.get_node_or_null("Confirm")
 	assert_not_null(panel)
@@ -8918,7 +9360,7 @@ func test_the_confirm_carries_the_winning_run_rows_and_their_notes() -> void:
 # what goes in with the game.
 func test_the_review_box_writes_through_to_the_checklist_row() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	assert_not_null(_ui._levelup_check)
 	if _ui._levelup_check == null:
 		return
@@ -8941,7 +9383,7 @@ func test_the_review_box_writes_through_to_the_checklist_row() -> void:
 # the checklist an hour ago is already ticked when the panel comes up.
 func test_the_review_opens_showing_what_is_already_ticked() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	_tick(_ui._levelup_check)
 	_ui.confirm_completed_game()
 	var boxes: Array = _review_boxes(_ui.get_node_or_null("Confirm"))
@@ -8956,7 +9398,7 @@ func test_the_review_opens_showing_what_is_already_ticked() -> void:
 # note was when it rode their own confirm.
 func test_the_review_note_is_written_on_yes() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen.get("game")
 	assert_not_null(game)
 	if game == null:
@@ -8977,7 +9419,7 @@ func test_the_review_note_is_written_on_yes() -> void:
 
 func test_the_review_note_is_dropped_on_no() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	var game: GameData = _ui._chosen.get("game")
 	if game == null:
 		pending("the run did not reach a game to ask about")
@@ -9003,7 +9445,7 @@ func test_the_review_note_is_dropped_on_no() -> void:
 func test_the_review_rows_carry_the_pictures_their_checklist_rows_do() -> void:
 	_reboot(&"isaac")                     # Isaac has a level-up condition
 	GameState.apply_status(&"strength", 1)  # …and this is a standing status goal
-	_ui.pick(0)
+	_pick_enemies(0)
 	var review: Control = _ui._checklist.winning_run_review()
 	assert_not_null(review, "there is something to review")
 	if review == null:
@@ -9038,7 +9480,7 @@ func _character_icons_under(node: Node) -> Array:
 # review, and the confirm is then just the question.
 func test_the_confirm_still_asks_when_there_is_nothing_to_review() -> void:
 	_reboot(&"erratic_deck")
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._checklist.winning_rows.clear()
 	assert_null(_ui._checklist.winning_run_review(),
 		"no rows, no review block")
@@ -9053,7 +9495,7 @@ func test_the_confirm_still_asks_when_there_is_nothing_to_review() -> void:
 # screen that exists to say what the evening earned.
 func test_the_haul_screen_says_what_the_level_up_paid() -> void:
 	_reboot(&"zoe")                          # +1 Dash, no chest
-	_ui.pick(0)
+	_pick_enemies(0)
 	_tick(_ui._levelup_check)
 	_report_beat(_ui)
 	_ui._end_resolve()
@@ -9072,7 +9514,7 @@ func test_the_haul_screen_says_what_the_level_up_paid() -> void:
 # is asked about instead of swallowing the surplus.
 func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
 	_reboot(&"rodney")
-	_ui.pick(0)
+	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
 		return
@@ -9092,7 +9534,7 @@ func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
 
 func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
 	_reboot(&"zoe")
-	_ui.pick(0)
+	_pick_enemies(0)
 	_report_beat(_ui)                        # box left unticked
 	_ui._end_resolve()
 	if _ui._post_screen == null:
@@ -9110,7 +9552,7 @@ func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
 func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
 		return
@@ -9127,7 +9569,7 @@ func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
-	_ui.pick(0)
+	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
 		return
@@ -9305,7 +9747,7 @@ func test_nothing_ticked_is_an_empty_panel_rather_than_no_panel() -> void:
 # of the stack cleared away: these tests are about the ROWS, not about whichever
 # enemy the offering rolled.
 func _solo_with_bonus() -> int:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_disarm_board()
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_clear_board_except(inst)
@@ -9742,7 +10184,7 @@ func test_a_road_with_no_enemy_says_so_in_words() -> void:
 # here measured 832 of the 625 a window leaves, so the list is a popup and the
 # strip is its top line.
 func test_the_split_strip_is_one_row_and_the_list_is_a_popup() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._refresh_split_panel()
 	assert_true(_ui._split_panel.visible, "a run in play has a clock to show")
 	assert_true(_ui._split_panel is HBoxContainer, "the strip is a single row")
@@ -9758,7 +10200,7 @@ func test_the_split_strip_is_one_row_and_the_list_is_a_popup() -> void:
 # the player died in three times reads as three tries under it — which is the
 # number a speedrunner actually wants off that game.
 func test_the_splits_list_carries_a_row_per_game_and_per_try() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.log_attempt()
 	_ui._end_resolve()
 	_ui.log_attempt()
@@ -9784,7 +10226,7 @@ func test_the_splits_list_carries_a_row_per_game_and_per_try() -> void:
 # The clock counts real time for as long as the app is open, so answering the door
 # should not cost the run twelve minutes. Nothing else about the run pauses.
 func test_the_pause_button_stops_both_clocks_and_nothing_else() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui._refresh_split_panel()
 	assert_false(RunTimer.paused, "a run starts running")
 	var run_before: float = RunTimer.run_seconds
@@ -9802,7 +10244,7 @@ func test_the_pause_button_stops_both_clocks_and_nothing_else() -> void:
 	assert_gt(RunTimer.run_seconds, run_before, "and the clock moves again")
 
 func test_a_paused_clock_rides_the_save() -> void:
-	_ui.pick(0)
+	_pick_enemies(0)
 	_ui.toggle_timer_pause()
 	RunTimer.restore(RunTimer.serialize())
 	assert_true(RunTimer.paused,
@@ -9936,7 +10378,7 @@ func test_picking_a_game_reminds_you_to_change_the_twitch_category() -> void:
 	Settings.twitch_reminder = true
 	Notifications.clear()
 	var target: GameData = _ui._choices[0]["game"]
-	_ui.pick(0)
+	_pick_enemies(0)
 	var lines: Array = _twitch_lines()
 	assert_eq(lines.size(), 1, "exactly one reminder for one game: %s" % [lines])
 	# THE GAME'S NAME IS THE CATEGORY. A reminder that does not say what to switch
@@ -9947,7 +10389,7 @@ func test_picking_a_game_reminds_you_to_change_the_twitch_category() -> void:
 func test_the_reminder_is_off_when_the_setting_is() -> void:
 	Settings.twitch_reminder = false
 	Notifications.clear()
-	_ui.pick(0)
+	_pick_enemies(0)
 	Settings.twitch_reminder = true
 	assert_eq(_twitch_lines(), [], "a player who does not stream is not nagged")
 
@@ -9956,7 +10398,7 @@ func test_the_reminder_is_off_when_the_setting_is() -> void:
 func test_the_reminder_does_not_change_what_picking_does() -> void:
 	Settings.twitch_reminder = false
 	var target: StringName = _ui._choices[0]["game"].id
-	_ui.pick(0)
+	_pick_enemies(0)
 	Settings.twitch_reminder = true
 	assert_eq(GameState.current_game_id, target, "the pick still travelled")
 	assert_true(GameLoop2.has_arrivals(), "and still spawned the game's enemy")

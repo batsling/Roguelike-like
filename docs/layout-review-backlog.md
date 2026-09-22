@@ -298,6 +298,51 @@ All three, measured before and after at 1280x720.
 
 ---
 
+## OPEN: the play panel grows 41px per body, against 11px of slack
+
+Found by `test_the_page_still_fits_the_window_with_a_shop_on_it` when §19.5's
+failure spawns landed. **Not caused by them** — they only made it common.
+
+Measured at 720p with a hub's shop mounted under the board:
+
+| Bodies on the board | Page height | Room |
+|---|---|---|
+| 0 | **614** | 625 |
+| 1 | 655 | 625 |
+| 2 | 696 | 625 |
+| 4 | 778 | 625 |
+
+Each body standing adds a checklist row at **~41px**, and the page has about
+**11px** to spare once everything else has had its share — so the page fits
+**zero** followers with a shop on it. That was survivable while a missed goal was
+the only way to accumulate bodies and this test happened to run on an empty
+board; §19.5 makes a growing board the ordinary case, and the stack has no upper
+bound at all.
+
+Nothing is CLIPPED — the page is in a `ScrollContainer` — so this is a fit rule
+rather than a breakage, which is why it is here rather than blocking.
+
+**The fix is a ceiling on the checklist, and it is not a five-minute change.**
+An attempt to wrap `_verify_box` in a `ScrollContainer` and size it to
+`min(content, cap)` made things dramatically worse: inside a scroll the box loses
+its width constraint, so its combined minimum size is computed against unwrapped
+text and the measurement that drives the cap is meaningless — the page went to
+1928px on an EMPTY board. Whatever the eventual shape, it has to keep the box's
+width tied to the panel's, and it has to be checked against a rendered screen
+(the `verify` skill) rather than reasoned about. Two standing notes at the top of
+this document apply directly.
+
+Shrinking the row is the obvious alternative and is the worse trade: it buys a
+fixed number of extra bodies, then loses to the same arithmetic, and it costs
+legibility on every run to pay for the crowded ones. The page has already given
+up 26px of its own chrome for this test once and there is no second 26px to find.
+
+Until it is done, `test_the_page_still_fits_the_window_with_a_shop_on_it` clears
+the board first, so it measures what it was written to measure — the shop panel's
+own contribution — rather than silently becoming a test about the checklist.
+
+---
+
 ## Where the fixed items are written up
 
 The original pass and everything it changed are in [`CHANGELOG.md`](../CHANGELOG.md),

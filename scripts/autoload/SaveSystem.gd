@@ -32,8 +32,21 @@ const NUM_SLOTS := 5
 # The slot the run's own recovery point lives in.
 const AUTOSAVE_SLOT := 0
 # Bumped when the payload shape changes. 1 = the pre-2.0 combat-era shape (no
-# games-first loop state); 2 = the games-first run.
-const SAVE_VERSION := 2
+# games-first loop state); 2 = the games-first run; 3 = the same with node kinds
+# and spawn events on it (§19).
+const SAVE_VERSION := 3
+
+# The oldest version this build will RESUME. It tracks SAVE_VERSION because both
+# retirements so far were for the same reason: a run whose shape cannot be
+# invented after the fact.
+#
+# Version 2 goes at §19.7. A version-2 run has no node kinds, and kinds are
+# frozen at run start (§19.2) — so any value chosen at load is a badge appearing
+# on a map the player was already walking, and "frozen at run start" becomes
+# true-except-once. Retiring the run keeps it literally true. THE SAVE FILE IS
+# NOT LOST: only the in-flight run inside it, the way version 1 was retired at
+# the 2.0 cut. A file below this simply does not appear in the Continue list.
+const MIN_RESUMABLE_VERSION := 3
 
 # The overworld view state of a just-loaded save, waiting for an overworld to boot
 # and claim it (see take_pending_view_state). Empty when nothing is pending.
@@ -144,16 +157,18 @@ static func describe_run_config(entry: Dictionary) -> String:
 
 # The Continue list: the run's own recovery point first (it's the most recent
 # thing that happened by definition), then every named save, newest first. A
-# version-1 save (the pre-2.0 combat era) is skipped — it has no games-first run
-# in it to resume.
+# save below MIN_RESUMABLE_VERSION is skipped — version 1 (the pre-2.0 combat
+# era) has no games-first run in it to resume, and version 2 has no node kinds,
+# which §19.2 freezes at run start and so cannot be invented at load.
 func list_resumable() -> Array:
 	var out: Array = []
 	if has_autosave():
 		var auto_data := _read(AUTOSAVE_SLOT)
-		if not auto_data.is_empty() and int(auto_data.get("save_version", 1)) >= 2:
+		if not auto_data.is_empty() \
+				and int(auto_data.get("save_version", 1)) >= MIN_RESUMABLE_VERSION:
 			out.append(_summary(auto_data, "Autosave", AUTOSAVE_SLOT))
 	for entry in list_named():
-		if int(entry.get("version", 1)) >= 2:
+		if int(entry.get("version", 1)) >= MIN_RESUMABLE_VERSION:
 			out.append(entry)
 	return out
 
@@ -179,6 +194,7 @@ func _build_payload() -> Dictionary:
 		"played_games": _stringnames_to_strings(GameState.played_games),
 		"total_games_beaten": GameState.total_games_beaten,
 		"games_played": GameState.games_played,
+		"spawn_events": GameState.spawn_events,
 		"player_level": GameState.player_level,
 		# Save the BASE vitals (without item contribution). The item
 		# bonuses are re-applied on load through _recompute_item_bonuses,
@@ -290,6 +306,9 @@ func _build_payload() -> Dictionary:
 		"event_goals": GameState.serialize_event_goals(),
 		# The hub list and every shop's remaining shelf (§14).
 		"shops": GameState.serialize_shops(),
+		# What stands at each game on the map (§19) — frozen at run start, so the
+		# save carries it rather than re-deriving it.
+		"node_kinds": GameState.serialize_node_kinds(),
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
@@ -405,6 +424,7 @@ func _apply_save_data(data: Dictionary) -> void:
 		data.get("played_games", data.get("beaten_games", [])))
 	GameState.total_games_beaten = data.get("total_games_beaten", 0)
 	GameState.games_played = data.get("games_played", 0)
+	GameState.spawn_events = data.get("spawn_events", 0)
 	GameState.player_level = data.get("player_level", 1)
 	GameState.max_hp = data.get("max_hp", 75)
 	GameState.hp = data.get("hp", GameState.max_hp)
@@ -463,6 +483,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.restore_timed_statuses(data.get("timed_statuses", []))
 	GameState.restore_event_goals(data.get("event_goals", {}))
 	GameState.restore_shops(data.get("shops", {}))
+	GameState.restore_node_kinds(data.get("node_kinds", {}))
 	GameState.run_seed = int(data.get("run_seed", 0))
 	# AND PUT THE GLOBAL STREAM BACK WHERE THE SAVE LEFT IT — deterministically,
 	# which is the only sense in which it can be "put back" at all.

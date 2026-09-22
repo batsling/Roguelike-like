@@ -563,7 +563,7 @@ func test_the_route_set_is_rebuilt_when_the_run_moves() -> void:
 	ui._end_resolve()
 	if ui._post_screen != null and is_instance_valid(ui._post_screen):
 		ui._post_screen.dismiss()
-	ui.pick(0)
+	_pick_enemies(ui, 0)
 	ui.report(false)
 	view._build_trail()
 	view._build_history()
@@ -2120,3 +2120,24 @@ func test_left_drag_still_pans() -> void:
 func _report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
+
+# Pick the first card, having first made sure it is an ordinary fight (§19.1).
+#
+# What a committed game stands on the board is decided by the NODE'S KIND now —
+# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
+# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
+# and then expects something to be standing there is a test whose subject is a
+# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
+# step; the rest of the map is left as the run dealt it.
+func _pick_enemies(ui, idx: int = 0) -> void:
+	if idx >= 0 and idx < ui._choices.size():
+		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
+		# different game at the same kind and the game id is the wrong key.
+		var choice: Dictionary = ui._choices[idx]
+		var slot := StringName(choice.get("slot", &""))
+		if slot == &"":
+			var game: GameData = choice.get("game")
+			slot = game.id if game != null else &""
+		if slot != &"":
+			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
+	ui.pick(idx)

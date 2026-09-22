@@ -71,10 +71,29 @@ var beaten_games: Array[StringName] = []
 var played_games: Array[StringName] = []
 var total_games_beaten: int = 0
 # Count of games the player has *played* (entered + resolved, win or
-# lose), as opposed to beaten. Drives the difficulty tier — see
-# RunDifficulty.gd. The tier steps up every RunDifficulty.GAMES_PER_TIER
-# games played.
+# lose), as opposed to beaten.
+#
+# IT NO LONGER DRIVES THE DIFFICULTY TIER — `spawn_events` does (§19.6). It is
+# not vestigial for that: RunOverScreen and the OBS overlay report it,
+# EventSystem gates requirements on "games", and SaveSystem derives the autosave
+# seed from it. It keeps ticking on all four node kinds.
 var games_played: int = 0
+# SPAWN EVENTS — one per node arrival that landed bodies, one per failure spawn,
+# regardless of how many bodies each put down (§19.6). This is what the tier
+# ladder reads now (RunDifficulty.current_tier).
+#
+# The point of moving it off `games_played` is that difficulty becomes a
+# CONSEQUENCE rather than a clock. Event and Shop nodes never tick it, so a
+# player who routes through them and clears goals promptly keeps a small board
+# and a low tier for far longer than the old count allowed; one who fights
+# everything climbs faster than it ever did. The ladder used to be something the
+# player rode. It is something they steer now, in both directions.
+#
+# It also means THE TIER CAN STEP MID-GAME, which `games_played` never could: a
+# failure spawn is a spawn event and happens on a lost run, so the counter can
+# cross a boundary with a game still in play. GameLoop2 grows the board at the
+# spawn rather than waiting for the report — see sync_grid_bounds there.
+var spawn_events: int = 0
 # One number that identifies THIS run, drawn at reset_run and saved with it.
 # Anything that has to be stable for a run but different between runs hashes
 # against it — the offering's per-slot enemies are the first such thing,
@@ -650,6 +669,23 @@ var event_nodes_fired: Dictionary = {}
 var hub_games: Array[StringName] = []
 var shops: Dictionary = {}
 
+# ---------------------------------------------------------------------------
+# NODE KINDS (§19). What stands at each game on the run's map — Enemies, Event,
+# Champion or Shop, as `RunGraph.NodeKind`.
+#
+#   node_kinds  game id -> kind, ASSIGNED AT RUN START and never changed. Frozen
+#               for the same reason hub_games is, and the reason is the same
+#               sentence: a flag on an offered card that could move under the
+#               player is a lie. It rides the save rather than being re-derived,
+#               because re-deriving would re-roll it and the graph underneath may
+#               have been rebuilt by a filter change since.
+#
+# A game with no entry reads as ENEMIES (`node_kind`), which is what makes this
+# safe to land before anything assigns it: the map behaves exactly as it does
+# today until the assignment pass exists.
+# ---------------------------------------------------------------------------
+var node_kinds: Dictionary = {}
+
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
@@ -1069,6 +1105,7 @@ func reset_run() -> void:
 	played_games.clear()
 	total_games_beaten = 0
 	games_played = 0
+	spawn_events = 0
 	# THE RUN'S SEED, AND THE STREAM IT DEALS. `run_seed` has existed and been
 	# saved since the shops needed something stable to hash their stock against,
 	# but nothing else read it: every other roll in the game came off Godot's
@@ -1196,6 +1233,8 @@ func reset_run() -> void:
 	# different filter, so the ten biggest games are re-asked rather than reused.
 	hub_games.clear()
 	shops.clear()
+	# The map's kinds go with the run that was dealt them (§19.2).
+	node_kinds.clear()
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -2427,6 +2466,26 @@ func restore_event_goals(data: Dictionary) -> void:
 # ride the save: re-deriving the hubs on load would re-ask a graph that may have
 # been rebuilt since, and re-rolling the stock would hand a player who reloaded a
 # different shop from the one they walked out of.
+
+# What stands at `game_id` (§19.1). ENEMIES for a game the run never assigned —
+# which is every game until the assignment pass runs, and is deliberately the
+# kind that behaves exactly as the build does today.
+func node_kind(game_id: StringName) -> int:
+	return int(node_kinds.get(game_id, RunGraph.NodeKind.ENEMIES))
+
+# The map's kinds, as JSON-safe data. It rides the save for the reason the hub
+# list does: re-deriving on load would re-roll against a graph a filter change
+# may have rebuilt since, and the badge the player was routing on would move.
+func serialize_node_kinds() -> Dictionary:
+	var out: Dictionary = {}
+	for gid in node_kinds.keys():
+		out[String(gid)] = int(node_kinds[gid])
+	return out
+
+func restore_node_kinds(data: Dictionary) -> void:
+	node_kinds.clear()
+	for key in data.keys():
+		node_kinds[StringName(key)] = int(data[key])
 
 func serialize_shops() -> Dictionary:
 	var hubs: Array = []

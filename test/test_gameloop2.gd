@@ -94,8 +94,8 @@ func _body(instance: int, enemy: GoalEnemyData, col: int, row: int,
 # the file where it is the subject rather than the noise.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 # The front (leftmost) grid column a stacked enemy occupies (1 = front/melee,
@@ -207,15 +207,15 @@ func test_choosing_again_takes_the_superseded_enemy_off_the_board() -> void:
 func test_choosing_a_game_spawns_an_escort_beside_its_enemy() -> void:
 	var inst: int = GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "the game's enemy AND an escort")
-	assert_gt(GameLoop2.escort_instance(), 0, "the escort is remembered by handle")
-	assert_ne(GameLoop2.escort_instance(), inst, "and it is a body of its own")
-	assert_not_null(GameLoop2.escort_enemy(), "which the screens can ask for by name")
+	assert_gt(GameLoop2.second_body_instance(), 0, "the escort is remembered by handle")
+	assert_ne(GameLoop2.second_body_instance(), inst, "and it is a body of its own")
+	assert_not_null(GameLoop2.second_body(), "which the screens can ask for by name")
 
 # The escort is a body like any other from the moment it lands: it spawns at the
 # back column, in a lane of its own.
 func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var entry: Dictionary = _entry(GameLoop2.escort_instance())
+	var entry: Dictionary = _entry(GameLoop2.second_body_instance())
 	assert_false(entry.is_empty(), "it is on the stack")
 	# `spawn_col_for` and not the bare `spawn_col`, because "the back column" means
 	# a body's RIGHTMOST cell lands there (§7.3): a two-wide escort starts on
@@ -230,12 +230,12 @@ func test_the_escort_spawns_on_the_board_like_any_other_body() -> void:
 # point of it.
 func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.defeated_count, 1, "one defeat — the game's own enemy")
 	assert_eq(GameLoop2.stack_size(), 1, "and the escort is still standing")
 	assert_eq(int(GameLoop2.stack[0]["instance"]), escort)
-	assert_eq(GameLoop2.escort_instance(), 0,
+	assert_eq(GameLoop2.second_body_instance(), 0,
 		"but it is an ordinary follower now, not this game's escort")
 
 # A BOSS ROUND GETS AN ESCORT TOO, and an ordinary one. It used to stand alone —
@@ -244,9 +244,9 @@ func test_beating_the_game_defeats_its_enemy_and_leaves_the_escort() -> void:
 func test_a_boss_arrives_with_an_escort_like_any_other_game() -> void:
 	var boss: int = GameLoop2.choose_game(_enemy(3, true))
 	assert_eq(GameLoop2.stack_size(), 2, "the boss AND a body beside it")
-	assert_gt(GameLoop2.escort_instance(), 0, "which is a real escort")
-	assert_ne(GameLoop2.escort_instance(), boss, "and not the boss counted twice")
-	var escort: GoalEnemyData = GameLoop2.escort_enemy()
+	assert_gt(GameLoop2.second_body_instance(), 0, "which is a real escort")
+	assert_ne(GameLoop2.second_body_instance(), boss, "and not the boss counted twice")
+	var escort: GoalEnemyData = GameLoop2.second_body()
 	assert_not_null(escort)
 	if escort != null:
 		assert_false(escort.is_boss(),
@@ -256,11 +256,11 @@ func test_a_boss_arrives_with_an_escort_like_any_other_game() -> void:
 # Scramble charge would be a way to buy a body.
 func test_superseding_a_game_takes_its_escort_off_with_it() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var first_escort: int = GameLoop2.escort_instance()
+	var first_escort: int = GameLoop2.second_body_instance()
 	GameLoop2.choose_game(_enemy(2))
 	assert_eq(GameLoop2.stack_size(), 2, "still one game's worth of bodies")
 	assert_true(_entry(first_escort).is_empty(), "the superseded escort left with its enemy")
-	assert_ne(GameLoop2.escort_instance(), first_escort, "a fresh one arrived with the new game")
+	assert_ne(GameLoop2.second_body_instance(), first_escort, "a fresh one arrived with the new game")
 
 func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 	GameState.scramble = 3
@@ -274,7 +274,7 @@ func test_scramble_rerolls_the_escort_rather_than_stacking_them() -> void:
 # may not reach back and supersede it.
 func test_a_reported_games_escort_survives_the_next_choice() -> void:
 	GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.beat_game(true)                 # its enemy dies, the escort stays
 	GameLoop2.choose_game(_enemy(2))
 	assert_false(_entry(escort).is_empty(), "the follower is still on the board")
@@ -285,13 +285,13 @@ func test_a_reported_games_escort_survives_the_next_choice() -> void:
 func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 	GameState.bombs = 1
 	var primary: int = GameLoop2.choose_game(_enemy(2))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	assert_gt(escort, 0, "the game brought one")
 	GameLoop2.bomb(escort)
-	assert_eq(GameLoop2.escort_instance(), 0, "nothing to reach back for")
+	assert_eq(GameLoop2.second_body_instance(), 0, "nothing to reach back for")
 	assert_true(_entry(escort).is_empty(), "and the body it named is off the board")
 	# NOT the stack size. The escort is a RANDOM body off the roster
-	# (GameLoop2.roll_escort), and some of them leave something behind when they
+	# (GameLoop2.roll_second_body), and some of them leave something behind when they
 	# are destroyed — bomb a Slime and you get two smaller Slimes, which is the
 	# body doing its job. This asserted a board exactly one deep and so failed on
 	# about one run in twenty, on nothing but which escort was rolled.
@@ -306,11 +306,11 @@ func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 # there would be no game in play on the other side to scramble.
 func test_the_escort_pairing_survives_a_save_round_trip() -> void:
 	GameLoop2.choose_game(Data.all_goal_enemies()[0])
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.reset()
 	GameLoop2.restore(blob)
-	assert_eq(GameLoop2.escort_instance(), escort, "the same body is still the escort")
+	assert_eq(GameLoop2.second_body_instance(), escort, "the same body is still the escort")
 	GameState.scramble = 1
 	GameLoop2.scramble()
 	assert_eq(GameLoop2.stack_size(), 2, "and scrambling still rerolls the pair")
@@ -319,7 +319,7 @@ func test_the_escort_pairing_survives_a_save_round_trip() -> void:
 # type + tier filter as the game's own roll.
 func test_the_escort_is_rolled_from_the_games_own_pool() -> void:
 	for _i in range(12):
-		var escort: GoalEnemyData = GameLoop2.roll_escort(&"action",
+		var escort: GoalEnemyData = GameLoop2.roll_second_body(&"action",
 			GoalEnemyData.Difficulty.LOW)
 		assert_not_null(escort)
 		assert_eq(escort.game_type, &"action", "the game's type")
@@ -337,7 +337,7 @@ func test_the_escort_avoids_being_a_copy_of_the_games_own_enemy() -> void:
 			break
 	assert_not_null(mate, "the roster has an Action/Low enemy to test against")
 	for _i in range(12):
-		assert_ne(GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.LOW, mate),
+		assert_ne(GameLoop2.roll_second_body(&"action", GoalEnemyData.Difficulty.LOW, mate),
 			mate, "the escort is not a second copy of what it spawned beside")
 
 func test_failed_enemy_does_not_attack_the_game_it_stacks() -> void:
@@ -747,7 +747,7 @@ func test_a_lost_run_needs_a_game_in_play_to_be_lost_at() -> void:
 # (log_attempt: a stack with nothing on it simply has nothing to charge).
 func test_clearing_the_board_does_not_end_the_game_in_play() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	assert_true(GameLoop2.game_in_play, "a game was chosen")
 	GameLoop2.despawn(a)
 	if escort > 0:
@@ -777,7 +777,7 @@ func test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off() -> void
 
 	# A new game, and the player clears everything that walked on with it.
 	var fresh: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.despawn(fresh)
 	if escort > 0:
 		GameLoop2.despawn(escort)
@@ -798,7 +798,7 @@ func test_reporting_a_game_is_what_takes_it_out_of_play() -> void:
 
 func test_the_game_in_play_survives_a_save_and_a_load_on_a_cleared_board() -> void:
 	var a: int = GameLoop2.choose_game(_enemy(1))
-	var escort: int = GameLoop2.escort_instance()
+	var escort: int = GameLoop2.second_body_instance()
 	GameLoop2.despawn(a)
 	if escort > 0:
 		GameLoop2.despawn(escort)
@@ -1797,7 +1797,7 @@ func test_the_escort_comes_out_of_the_tier_the_game_did() -> void:
 	# §7.5: the escort is another body that could have been waiting at that game —
 	# so it answers to the run's difficulty exactly as the game's own body does.
 	for _i in range(25):
-		var e: GoalEnemyData = GameLoop2.roll_escort(&"action", GoalEnemyData.Difficulty.HIGH)
+		var e: GoalEnemyData = GameLoop2.roll_second_body(&"action", GoalEnemyData.Difficulty.HIGH)
 		assert_eq(e.tier_index(), GoalEnemyData.Difficulty.HIGH)
 
 func test_roll_enemy_never_returns_a_boss() -> void:
@@ -2151,7 +2151,7 @@ func test_lost_runs_until_strike_counts_the_walking() -> void:
 
 func test_the_board_gains_a_column_and_a_row_per_tier() -> void:
 	for tier in range(4):
-		GameState.games_played = tier * RunDifficulty.GAMES_PER_TIER
+		GameState.spawn_events = tier * RunDifficulty.GAMES_PER_TIER
 		assert_eq(RunDifficulty.current_tier(), tier, "tier %d" % tier)
 		assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + tier,
 			"%s widens the board to %d columns" % [RunDifficulty.tier_name(tier),
@@ -2161,7 +2161,7 @@ func test_the_board_gains_a_column_and_a_row_per_tier() -> void:
 				GameLoop2.BASE_GRID_ROWS + tier])
 
 func test_the_board_stops_growing_with_the_tier_ladder() -> void:
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * 40
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * 40
 	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "Insane is the top")
 	assert_eq(GameLoop2.grid_cols(), GameLoop2.BASE_GRID_COLS + RunDifficulty.MAX_TIER,
 		"a very long run doesn't run off the edge of the screen")
@@ -2170,10 +2170,10 @@ func test_the_board_stops_growing_with_the_tier_ladder() -> void:
 func test_a_wider_board_spawns_enemies_further_out() -> void:
 	# The counterweight: the tier that makes the enemies heavier also gives you
 	# more ground to lose before they arrive.
-	GameState.games_played = 0
+	GameState.spawn_events = 0
 	GameLoop2.reset()
 	var near: int = GameLoop2.spawn_col_for(_enemy(1))
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
 	GameLoop2.reset()
 	assert_eq(GameLoop2.spawn_col_for(_enemy(1)), near + RunDifficulty.MAX_TIER,
 		"Insane spawns them %d columns further back than Low" % RunDifficulty.MAX_TIER)
@@ -2181,13 +2181,13 @@ func test_a_wider_board_spawns_enemies_further_out() -> void:
 func test_growing_the_board_walks_the_overflow_queue_on() -> void:
 	# Enough bodies to jam a Low board, then a tier step: the new column is
 	# somewhere for the queue to finally stand.
-	GameState.games_played = 0
+	GameState.spawn_events = 0
 	GameLoop2.reset()
 	for _i in range(GameLoop2.grid_rows() + 2):
 		GameLoop2.spawn_to_stack(_shaped(1, GameLoop2.grid_rows(), 1))
 	var waiting: int = GameLoop2.offgrid_count()
 	assert_gt(waiting, 0, "the board is jammed and some are waiting off it")
-	GameState.games_played = RunDifficulty.GAMES_PER_TIER
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER
 	GameLoop2.sync_grid_bounds()
 	assert_lt(GameLoop2.offgrid_count(), waiting,
 		"the tier's new column takes some of the queue")
@@ -2418,3 +2418,203 @@ func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
 	assert_true(GameLoop2.has_drop(ahead),
 		"so the piece is lying where it lay before the turn happened")
 	assert_eq(GameLoop2.drop_cells().size(), 1, "and only there")
+
+# ---------------------------------------------------------------------------
+# …and the enemies you get for not fighting (§19.5)
+# ---------------------------------------------------------------------------
+#
+# Every failure at a game where nothing has been defeated spawns bodies. Without
+# it the three non-Enemies kinds would simply be a way to play a whole run on an
+# empty board, so this is the other half of §19.1 rather than a punishment bolted
+# on beside it.
+#
+# These drive `failure_spawn_count` directly wherever the question is "does this
+# failure owe anything", and go through the real spawn where the question is what
+# lands. The run is stood at a known rung first, because the COUNT is the ladder.
+
+# Put the run at `hops` from the Amulet on a node of `kind`, with a real game
+# under it so the roll has a type to ask for.
+func _stand_for_failure(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> bool:
+	if not _stand_at_hops(hops):
+		return false
+	GameState.node_kinds[GameState.current_game_id] = kind
+	GameLoop2.game_in_play = true
+	GameLoop2.defeated_this_game = 0
+	return true
+
+
+func test_the_failure_ladder_is_the_turn_ladder_plus_one() -> void:
+	# One ladder, two columns (§19.5) — written as `extra_turns + 1` so a widened
+	# band moves both together rather than letting the two tables drift.
+	for pair in [[6, 1], [5, 1], [4, 2], [3, 2], [2, 3], [1, 3], [0, 3]]:
+		assert_eq(RunDifficulty.failure_bodies_for_hops(int(pair[0])), int(pair[1]),
+			"%d hops from the Amulet costs %d bodies" % [int(pair[0]), int(pair[1])])
+	assert_eq(RunDifficulty.failure_bodies_for_hops(-1), 1,
+		"no route to the Amulet reads as the calmest band, like the turns do")
+
+
+func test_the_price_is_read_off_hops_and_not_off_the_tier() -> void:
+	# The anti-spiral rule. Failure spawns RAISE the tier, so a price that scaled
+	# with the tier would make each loss bigger than the last — five losses ran to
+	# thirteen bodies in the draft that did. Losing does not move you, so the
+	# price at a given game is flat however far the ladder has climbed.
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var at_low: int = GameLoop2.failure_spawn_count()
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
+	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "the ladder is at the top")
+	assert_eq(GameLoop2.failure_spawn_count(), at_low,
+		"the same game charges the same whatever the tier has climbed to")
+
+
+func test_defeating_anything_shuts_the_tap_for_the_game() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	assert_gt(GameLoop2.failure_spawn_count(), 0, "a game with nothing down owes bodies")
+	GameLoop2.defeated_this_game = 1
+	assert_eq(GameLoop2.failure_spawn_count(), 0,
+		"one body down is the player answering the board, and that is enough")
+
+
+func test_an_escape_owes_nothing() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	assert_eq(GameLoop2.failure_spawn_count(true), 0,
+		"they walked away and already paid §3.2's price for it")
+
+
+func test_the_amulet_owes_nothing() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameState.amulet_game_id = GameState.current_game_id
+	assert_eq(GameLoop2.failure_spawn_count(), 0,
+		"there is no next game for anything to walk into")
+
+
+func test_the_quiet_kinds_owe_nothing() -> void:
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		if not _stand_for_failure(2, int(kind)):
+			pending("the catalog could not stand the run 2 hops out")
+			return
+		assert_eq(GameLoop2.failure_spawn_count(), 0,
+			"%s: nothing spawned there, so nothing is owed — it is breathing room"
+				% RunGraph.kind_label(int(kind)))
+
+
+func test_a_failure_spawn_stands_the_bodies_the_ladder_asks_for() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var want: int = GameLoop2.failure_spawn_count()
+	var before: int = GameLoop2.stack_size()
+	var landed: int = GameLoop2.spawn_for_failure()
+	if landed == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_eq(landed, want, "the doorstep charges %d" % want)
+	assert_eq(GameLoop2.stack_size(), before + landed, "and they are on the board")
+
+
+func test_a_failure_spawn_is_not_an_arrival() -> void:
+	# They did not come with the game, so a Scramble must not be able to scrub
+	# them off — that would make the failure price refundable for a D6 charge.
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameLoop2.arrivals = []
+	if GameLoop2.spawn_for_failure() == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_eq(GameLoop2.arrivals.size(), 0,
+		"nothing a failure stood up belongs to the game that was chosen")
+
+
+func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var before: int = GameState.spawn_events
+	var landed: int = GameLoop2.spawn_for_failure()
+	if landed == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_gt(landed, 1, "the doorstep lands more than one body")
+	assert_eq(GameState.spawn_events, before + 1,
+		"…and they are one spawn EVENT between them (§19.6)")
+
+# ---------------------------------------------------------------------------
+# The every-third-spawn capstone (§19.6)
+# ---------------------------------------------------------------------------
+#
+# A boss on top of whatever else was spawning, replacing the every-third-GAME
+# boss round. The composition is the part worth pinning: it does not absorb the
+# spawn that triggered it, and it does not cancel itself on a Champion.
+
+func test_the_third_spawn_event_lands_a_boss_on_top() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.game_in_play = true
+	var before: int = GameLoop2.stack_size()
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_true(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"that spawn closed the band")
+	if GameLoop2.stack_size() == before:
+		pending("no boss in the roster for this type/tier")
+		return
+	var found := false
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			found = true
+	assert_true(found, "and a boss is standing on the board because of it")
+
+
+# The capstone belongs to the event that triggered it rather than being one of
+# its own — counting it would make every third event count double and the ladder
+# run away from the rule that describes it.
+func test_the_capstone_is_not_a_spawn_event_of_its_own() -> void:
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.game_in_play = true
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_eq(GameState.spawn_events, RunDifficulty.GAMES_PER_TIER,
+		"one event happened, whatever it put on the board")
+
+
+func test_an_ordinary_spawn_lands_no_boss() -> void:
+	GameState.spawn_events = 0
+	GameLoop2.game_in_play = true
+	GameLoop2.note_spawn_event(&"action", 0)
+	assert_false(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"the first spawn does not close a band")
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		assert_false(e != null and e.is_boss(),
+			"nothing put a boss up on an ordinary spawn")
+
+
+# A FAILURE SPAWN CAN BE THE THIRD ONE, so a boss walks on mid-game off a lost
+# run. It takes no bomb damage and leaves only by its goal (§7.1), which makes
+# this the sharpest thing in §19 — and it is aimed at the player who keeps losing
+# without ever clearing a body.
+func test_a_failure_spawn_can_be_the_one_that_closes_the_band() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	if GameLoop2.spawn_for_failure() == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_true(RunDifficulty.is_boss_spawn(GameState.spawn_events),
+		"the failure closed the band")
+	var bosses := 0
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and e.is_boss():
+			bosses += 1
+	if bosses == 0:
+		pending("no boss in the roster for this type/tier")
+		return
+	assert_eq(bosses, 1, "a boss walked on off a lost run, on top of the failure's own bodies")

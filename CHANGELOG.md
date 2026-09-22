@@ -11,6 +11,644 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Node kinds and the spawn model — spec only, no code yet
+  ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §19).** Two
+  changes that only work together. A game on the map is now one of four **kinds**
+  — Enemies (60%), Event (20%), Champion (10%), Shop (10%) — assigned to every
+  graph node **at run start** and frozen there, so a card's badge can never
+  become a lie and the 🗺 map and route ladder can show the road ahead by kind.
+  All four are still a real video game you go and play; the kind decides what
+  stands on the board, not whether you play. The kinds differ in **what happens**
+  and not in what you are handed: an Enemies node pays no bonus, because its two
+  bodies already pay +1 gold each and a piece of loot on the square they fell in,
+  in proportion to how much of the node you actually answered. A flat fee on top
+  was also a silent economy change — two gold across 60% of a 6–12 game run is
+  another 7–14 against a total purse of 8–15 (§14.1). The run's opening game is always
+  Enemies and the Amulet is always Champion (atmosphere, not a gate — §18's rule
+  that reaching and beating the Amulet wins regardless of the goal is unchanged).
+
+  And enemies no longer arrive only because you chose to fight them. **Every run
+  finished without defeating anything spawns bodies** — each lost run, and each
+  game handed in with nothing down, win or miss — at 1 / 2 / 3 read off §7.4's
+  existing hop bands. Escapes, the Amulet, and Shop and Event nodes are exempt.
+  Defeating a single body shuts the tap for that game.
+
+  Three things worth recording about why it is shaped this way.
+
+  **The failure count reads DISTANCE, not tier.** An earlier draft scaled it with
+  the tier — and because failure spawns also raise the tier, losing made the next
+  loss bigger: five losses ran to thirteen bodies and a boss. Reading it off hops
+  to the Amulet cuts the loop, because losing does not move you. The tier still
+  climbs on spawn events, but it no longer sizes anything that spawns; it picks
+  heavier bodies and grows the board, which on the crowding axis helps.
+
+  **`defeated_this_game` is the counter and `goals_met_this_game` is the trap.**
+  Stepping a counted goal up by one is not a defeat (§7.7), and *finishing* one
+  is not always a defeat either — a goal deals one hit, and a body with more
+  Health survives it Staggered (§7.2). Only `GameLoop2._defeat` increments.
+
+  **Start selection now rejects single-route maps.** A start is offered only if
+  its whole shortest-path DAG carries one Event, one Shop, one Champion *that is
+  not the Amulet*, `hops − 1` Enemies and more than one route — a floor of
+  `hops + 3` nodes, plus one of slack at `hops + 4` so a guaranteed route is not
+  entirely pinned. The "not the Amulet" clause matters: the Amulet is always a
+  Champion and always the DAG's terminal node, so a plain "one Champion" would
+  have been satisfied by the destination and guaranteed nothing about the road.
+
+  Measured over 120 sampled runs (240 start options) beforehand: **15.0% of
+  offered start options were a single linear route**, and the floors reject
+  15.0% / 21.2% / 27.1% of options at `hops + 2 / 3 / 4`. The number that matters
+  is not that one, though — a rejected option is re-drawn against the same
+  Amulet, and only when *both* of a run's two starts fail does the Amulet change:
+  **1.7% / 3.3% / 5.0% of runs**, against `RunGraph.AMULET_ATTEMPTS`'s eight
+  tries.
+
+  **Every in-component game can be the Amulet** (§19.9). The narrowing was never
+  the new budget — it was the two steps before it, and both go. The three random
+  reference starts (`AMULET_REFERENCE_STARTS`) were a lottery whose problem is
+  the floor rather than the average: candidates per run averaged 642 of 790
+  (81%), but one draw in forty left **407 — barely half the map** — and because
+  which half moves every run, a game was not reliably excluded so much as
+  unreliably included. Reading every eligible start makes it deterministic, and
+  as shipped it is **790 of 790** — the whole main component, every run, rather
+  than the 789 predicted at the old 4–7 band. `AMULET_SCORE_SLACK` goes too,
+  having become nearly a no-op in that world: against every reference it cuts
+  **one game out of 790**, and none in the owned catalogue.
+
+  **The cost was the open question, and it came back below zero.** A generation
+  measured 269 ms with three references, 605 ms reading all of them naively, and
+  **270 ms as shipped**. Back to back on the same machine the full suite went
+  **768.3s → 658.0s** — the new shape is ~14% FASTER, with five more tests in it,
+  because the branching sweeps it retires cost more than the extra references it
+  reads. (The first comparison drawn here was against a 461.9s figure recorded on
+  a quieter box, which read as a large regression and is not one. Suite wall time
+  on this machine is not comparable across sessions; measure both sides in the
+  same one.) Two things pay for it, and the first is the one the spec
+  predicted: dropping the slack removes the only reason to compute branching
+  scores at all, so a reference now costs one memoized BFS and a walk of its
+  result rather than that plus a whole-catalogue `dag_branch_scores_from` sweep.
+  The second is an early exit, and it is **not a sample** — the loop stops once
+  every game that *could* be a candidate is one, past which no remaining start
+  can change the answer, so it is the same set rather than an approximation of
+  it. On the shipping catalogue that arrives after 27 of the 419 eligible starts,
+  because a hub sees most of the map at 4–8 hops by itself; on a catalogue with a
+  game no start reaches in band, the exit never fires and the sweep runs to the
+  end.
+
+  The sweep is split out as `RunGraph.amulet_candidates_from` so the property can
+  be asserted against the live graph rather than inferred from sampled runs —
+  which is the only way to tell a stable pool from a lucky one. The new
+  `test_amulet_pool.gd` pins full coverage, order-independence, that one
+  reference really does see less than all of them, and the trap this rewrite had
+  to step around: the old code excluded its three references from candidacy,
+  which is harmless at three sticks and, at all of them, would have taken **the
+  entire start pool** out of the amulet draw.
+
+  **No Champion is guaranteed on the road** — only the Amulet, which is one.
+  An earlier draft required a non-Amulet Champion on every guaranteed route; it
+  is dropped rather than fixed, since a 10% roll puts them about anyway and every
+  node the guarantee claims is a node the ordinary distribution cannot speak for.
+  That drops the budget to `hops + 2`, so at the `hops + 5` floor each guaranteed
+  route now carries three spare nodes rather than two. No measurement changes —
+  they are all slack-based.
+
+  **Kinds are laid down in a stated order**: pick the Amulet and starts as today
+  and stamp them Champion / Enemies; place each route's required kinds on random
+  nodes excluding those two; roll the remainder at 60/20/10/10. A node shared
+  between routes usually *helps* — three cards over one Amulet means three DAGs
+  that converge, so an Event placed for one route satisfies every other route
+  containing it. Check before placing; a route that genuinely cannot be satisfied
+  sends its start back to be re-picked. The guaranteed placements COUNT against
+  the distribution rather than sitting on top, so the odds stay true of the map
+  and the guarantee is visibly paid for.
+
+  **Bash can break the guarantee, and that is allowed** — §19.3 describes the map
+  the run was dealt, not one the player has since edited. Refusing the Bash would
+  be a verb saying no for a reason the card cannot show; re-laying the kinds would
+  make a badge change under the player. Noted alongside a pre-existing wrinkle
+  §19 makes load-bearing: `shortest_path_dag` is built from `neighbors()`, which
+  does not filter bashed games, so a bashed node still draws on the route ladder
+  while being unreachable.
+
+  **A Champion node that is also the third spawn event lands two bosses.** The
+  rules compose rather than absorbing each other — "on top of whatever else was
+  spawning" is meant literally, and a rule that quietly cancelled itself on the
+  one node where it would hurt most would be the rule not meaning what it says.
+
+  **`SAVE_VERSION` goes to 3 and version-2 runs cannot be continued**, the way
+  version 1 was retired at the 2.0 cut. A run already under way has no node kinds
+  and no `spawn_events`, and kinds cannot be derived after the fact — they are
+  frozen at run start, so any value invented at load is a badge appearing on a
+  map the player was already walking. Retiring the run keeps that rule literally
+  true rather than true-except-once. The save file survives; only the in-flight
+  run inside it does not.
+
+  **A custom run is held to the same rule and may be refused.** `RunConfig` lets
+  a run name its Amulet outright, and `pick_amulet_and_starts` carries a carve-out
+  for it — "a named target that no reference can reach is still the run the player
+  asked for". That carve-out goes: a named Amulet that cannot field three genres
+  is refused at the setup screen with the reason, rather than quietly handing over
+  a run whose road is worse than the rules promise. The guarantee is measured
+  against the band the run will actually use (`RunConfig.path_band()` when set,
+  the default 4–8 otherwise) — testing it against a band the run will not run at
+  would make it mean nothing. Note the custom defaults are 5–8, already not the
+  standard pair.
+
+  **The Event and the Shop land at opposite ends of the game**, which §19.1's
+  table now says rather than implying they both fire on arrival. An event is a
+  decision and is worth more before an evening is committed to the game under it;
+  a shop is a purchase, and the gold for one is what the game just played pays
+  out — open the shelf on arrival and the player shops broke, on a run earning
+  8–15 gold in total. The shop keeps §14.4's existing timing exactly.
+
+  **The tier can now step mid-game, and the board grows with it.** A failure
+  spawn is a spawn event and happens on a lost run, so the counter can cross a
+  tier boundary with a game in play — something `games_played` never could.
+  `sync_grid_bounds` runs at the spawn rather than waiting for the report, since
+  the tier is what sized that spawn's arrivals and holding the old grid would
+  crowd them onto a board the rule says has already grown. Board resizing has
+  only ever happened between games; this is the first thing to move it mid-game.
+
+  **The band is absolute**: three cards, all inside 4–8, or the Amulet is not
+  used. `pick_amulet_and_starts` today fills a genre-short panel with the best
+  reachable start of that genre at ANY distance (the `in_window: false` path),
+  and that path is retired — an Amulet that would need it is dropped instead. It
+  has no reach limit, so it quietly undoes the run-length ceiling: measured, it
+  would have offered Serpentcoil Island a start at 10 or 11 hops, a twelve-game
+  evening against a stated ceiling of nine. A control that stops applying exactly
+  when it is doing the most work is not a control. A short panel therefore never
+  happens — any Amulet reaching the panel already has its three genres.
+
+  **All four owned exclusions are the band's price, not a map defect.** Measured
+  at every distance rather than only inside the band, each has the genre it is
+  missing, clearing the floor comfortably, just outside 4–8: Dice & Fold slack 10
+  at 3 hops, Ember Knights 9 at 3, Everything is Crab 9 at 3, and Serpentcoil
+  Island Action 21 at 11h / Deckbuilder 17 at 10h / Strategy 15 at 11h. Three are
+  rescued by one hop under the floor, Serpentcoil by two or three over the
+  ceiling. Both are refused, and the refusal is the point — a 3-hop card is a
+  four-game run and an 11-hop card a twelve-game one. Recorded so nobody
+  reintroduces a distance relaxation to "fix" them.
+
+  **There is no fallback — and there were three of them, not one.** The visible
+  one filled a genre-short panel with the best reachable start of that genre at
+  *any* distance (the `in_window: false` card); behind it sat a band-widening
+  fallback for when nothing sat inside the window at all, and behind that a
+  sparse-graph fallback offering any reachable game that was not the Amulet, one
+  per genre, window ignored. They were ordered widest-last, so the one that did
+  the most damage was reached exactly when the map was least able to absorb it —
+  measured, the first alone would have offered Serpentcoil Island a start at 10
+  or 11 hops, a twelve-game evening on a rule set whose stated ceiling is nine.
+  All three are replaced by one line: an Amulet that cannot supply the panel is
+  not used, and when none can, `pick_amulet_and_starts` returns `{}` and the
+  caller opens an ordinary offering. A run without a start panel is a smaller
+  loss than a run whose panel lies about the rules.
+
+  `in_window` stays in the option record as a constant `true`, and `_spread_key`
+  keeps an in-window rank that can no longer break a tie. Both are what state
+  that the band held; a reader who stops finding them will assume nobody checked
+  rather than that nobody had to.
+
+  **A custom run is refused at the setup screen rather than degraded.**
+  `pick_amulet_and_starts` carried a carve-out taking a named target directly and
+  routing to it at any distance; with it gone, such a target would open on no
+  panel at all. `RunGraph.panel_genres(id)` is the new question and
+  `CustomRunScreen` asks it as a *problem* — Begin disabled, with the reason and
+  the target's name. Two details are load-bearing: it reads the live graph, so
+  the screen applies the pending configuration, asks, and restores (a test
+  asserts the verdict leaves `RunConfig` exactly as it found it), and the start
+  pool comes from `RunGraph.eligible_starts_from`, the same function the
+  generator uses — a refusal computed off a different pool than the run uses is a
+  refusal about nothing. The answer is cached on the whole configuration it
+  depends on, because the verdict re-runs on every keystroke in the target search
+  and costs a graph rebuild on each side.
+
+  **AND IT SURFACED A LAYOUT PROBLEM THAT IS NOT MINE TO CLOSE HERE.** With a
+  hub's shop mounted, the page measures 614px of the 625 a 720p window leaves —
+  and each body standing adds a checklist row at ~41px. The page therefore fits
+  ZERO followers with a shop on it. That is not caused by failure spawns; it was
+  survivable only while a missed goal was the one way to accumulate bodies and
+  the test happened to run on an empty board. It is written up with its
+  measurements as an open item in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md), including the
+  attempt that made it worse: wrapping the checklist in a `ScrollContainer` sized
+  to `min(content, cap)` took an EMPTY board's page to 1928px, because inside a
+  scroll the box loses its width constraint and its combined minimum is computed
+  against unwrapped text. Nothing is clipped — the page is already in a scroll —
+  so this is a fit rule rather than a breakage. Meanwhile
+  `test_the_page_still_fits_the_window_with_a_shop_on_it` clears the board first,
+  so it measures the shop panel's own contribution as it was written to rather
+  than silently becoming a test about the checklist.
+
+  **AN EVENT NODE ON A HUB WAS DELIVERING SILENCE**, and that is the badge
+  telling a lie — which is the one thing §19.2 exists to prevent. `roll_for_arrival`
+  refuses at a node that already paid an event and at any of the ten hubs
+  (§14.4), both right for "does this arrival happen to owe one" and wrong for a
+  card that PROMISED one. The hub gate is the one that bit: it depended on
+  whether the offering happened to deal a hub, so it failed about one full run in
+  three and passed in isolation every time. An Event node now asks
+  `EventSystem.roll_for_node`, which steps over both gates and, when nothing is
+  eligible, re-shows an event the run has already had rather than relaxing
+  anything — relaxing the placement gate would do nothing (no shipping event is
+  placed at all), and relaxing the stat requirements produces an event whose
+  interesting choices are all greyed out, which is worse than a repeat.
+
+  It took three full runs to find, because two of my own new tests alternated
+  which one failed. The thing that found it was making the assertion print all
+  four refusal conditions rather than a bare null: `rollable=false` named it in
+  one line after two wrong guesses.
+
+  **KIND MARKS ON EVERY SURFACE THAT DRAWS A NODE** (§19.8, first pass): `!`
+  Enemies, `!!` Champion, `?` Event, `$` Shop. One or two ASCII characters rather
+  than an icon, because they sit on a badge row with 21px of its 160 left and
+  they have to read in a COLUMN — three cards side by side put their marks in a
+  row, and "? ! $" says what the table is offering before a cover has been
+  looked at. ASCII also avoids a `build_glyph_font.py` rebuild.
+  `RunGraph.kind_mark` / `kind_tip` hold the text, `UITheme.kind_color` the
+  colour (RunGraph is the pure graph layer and must not reach into the theme),
+  and `GameChoiceModal` spells the mark out in a sentence — the popup is what a
+  player opens to find out what a card MEANS, so it is the one surface that can
+  afford one.
+
+  **TWO ENEMY OBJECTS CAN SHARE ONE ID, and two intermittents were hiding
+  behind it.** A body's `enemy` is normally Data's own shared resource, which
+  made `==` look safe. It is not: `_plain_goals` (inside `_disarm_board`) hands a
+  body a `duplicate()` to strip a goal's `ticked` and `count`, which it must do
+  for the 21 of 111 bodies authored as `game beaten` or counted. So an identity
+  check against such a body is false for an enemy that IS that enemy.
+
+  That was `test_escaping_advances_the_run_and_the_enemy_follows`, failing about
+  one run in five. It also reaches the product: `_pick_by_type_tier`'s `exclude`
+  and both `fresh == old` guards compared by object — and those are the checks
+  whose stated purpose is *"a die that can hand back the exact goal you spent a
+  charge escaping is a die the player will stop pressing"*. Identity holds in
+  every shipping path today, so this was not a live bug; it would have failed
+  silently the first time one of them stopped serving Data's own object. All
+  three compare ids now, which is what "the same enemy" meant.
+
+  **AND THE OTHER INTERMITTENT IS SOLVED** —
+  `test_the_checklist_follows_a_reroll_of_the_board`, which outlived three
+  attempts and two confident wrong hypotheses (a mid-test tier crossing, a
+  board-bounds leak), both ruled out by probing the board rather than by
+  argument. `reroll_enemies` rolls each body independently, so **two bodies can
+  swap enemies with each other**: a real re-roll, two swaps reported, and the
+  board carrying the pair it started with. The checklist GROUPS by when a goal
+  settles rather than listing the stack in order, so the same two goals in the
+  other order render byte for byte the same. Caught by making the assertion print
+  the swap count and the names: `2 swapped; ["Monkey", "Floating Eye"] ->
+  ["Floating Eye", "Monkey"]`. The test stands ONE body now, where the exclusion
+  guarantees a different enemy. Twelve runs, no failures.
+
+  The lesson worth keeping is the diagnostic rather than the fix: three full runs
+  were spent guessing because the assertion printed two identical blocks of text
+  and nothing else.
+
+  **THE ESCORT IS RETIRED** (§19.4, §19.7) — the number survives, the
+  relationship does not. An escort was a *companion*: a body attached to the
+  game's own enemy, rolled because that enemy had arrived. An Enemies node stands
+  TWO BODIES, and neither is attached to the other — both walk on at the back
+  column, both carry their own goal, both are ordinary followers from the moment
+  they land, and beating the game answers for neither of them on its own.
+
+  `roll_escort` → `roll_second_body`, `_spawn_escort` → `_spawn_second_body`,
+  `escort_instance` / `escort_enemy` → `second_body_instance` / `second_body`,
+  and `choose_game`'s flag is `with_second_body`. The card's *"One more enemy
+  spawns with it"* is now *"Two bodies walk on"*, or *"A boss of this tier walks
+  on, alone"* on a Champion — because the count is a property of the node's KIND
+  now rather than of whichever enemy happened to be advertised. `bodies_expected`
+  returns 2 / 1 / 0, and **−1 for "nothing to say"** — a stay-or-return card or a
+  free game, which is a different fact from a node that genuinely stands nothing
+  up and is worth printing.
+
+  The one thing still called an escort in `GameLoop2` is the authored **Escort
+  ability** (a Gatekeeper's opening skeletons), which is unrelated and now
+  annotated as such — the collision was invisible while the other escort existed.
+
+  **AND THE KIND WAS BEING READ OFF THE WRONG THING.** `_commit_board_for_kind`
+  asked `GameState.node_kind(game.id)`, but §19.2 says the kind rides the SLOT:
+  that is exactly what makes a transmuted card play a different game at the same
+  kind. Reading the game would let a Transmute change what a node does, which is
+  a badge moving under the player — the one thing §19.2 exists to prevent — and
+  it already disagreed with the report path, which has read the slot since the
+  Shop node landed. Fixed via `_committed_kind`.
+
+  That fix caught the test helpers immediately: `_pick_enemies` and `_pick_as`
+  forced the kind onto the game id, which is invisible for an ordinary card and
+  silently wrong for the transmute test, where the two differ. Both now key on
+  the slot, in all seven files.
+
+  **EVERY THIRD SPAWN EVENT PUTS A BOSS ON THE BOARD** (§19.6), on top of
+  whatever else was spawning — replacing `RunDifficulty.is_boss_game`'s
+  every-third-GAME capstone, which rode the offering as a card's own enemy.
+  `is_boss_spawn` counts the same band width; what it counts changed, and three
+  things follow.
+
+  A node that lands nothing — an Event or a Shop — no longer brings the capstone
+  a step closer, so bosses arrive because the run has been fighting. **A failure
+  spawn can be the third one**, so a boss walks on mid-game off a lost run: it
+  takes no bomb damage and leaves only by its goal (§7.1), which makes it the
+  sharpest thing in §19 and aims it squarely at the player who keeps losing
+  without ever clearing a body. And **a Champion node can be the third one too,
+  for two bosses** — the rules compose rather than absorbing each other, because
+  a rule that quietly cancelled itself on the one node where it would hurt most
+  would be the rule not meaning what it says.
+
+  The capstone is deliberately NOT a spawn event of its own. It belongs to the
+  event that triggered it; counting it would make every third event count double
+  and the ladder run away from the rule describing it.
+
+  **`_boss_round` is retired**, and with it the boss card. The offering deals no
+  bosses, so `_slot_enemy_key` stops carrying the flag, the teleport path stops
+  re-deciding it, and the saved view-state key is read for old saves and no
+  longer written. The warning survives, repointed: `_boss_due_next` asks whether
+  the NEXT spawn closes the band — one step ahead of the counter rather than one
+  behind it — and is keyed on `spawn_events`, so a bash, transmute or scramble
+  redrawing the offering cannot re-announce the same band. It shows no portraits
+  now, which is honest: the capstone is rolled when it lands, so there is no
+  named body to show in advance.
+
+  **The test rewrite is most of this change.** Six tests were about a mechanism
+  that no longer exists, and were re-pointed rather than deleted: the bash and
+  transmute pair now assert that neither dodges the capstone (which is true by
+  construction, since it rides the spawn), the portrait test takes its boss from
+  a Champion node, and the warning tests roll their own boss to inspect. A new
+  `_quiet_ladder` helper parks the counter for the tests that COUNT BODIES — the
+  third spawn of a run lands a capstone on top of them, so without it the count
+  depends on how many games the test happened to play first, which reads as a
+  flake and is not one.
+
+  **AND THE ENEMIES YOU GET FOR NOT FIGHTING** (§19.5). Every failure at a game
+  where nothing has been defeated spawns bodies — on a lost run, landing with the
+  tick, and at a game handed in with nothing down whether the goal was met or
+  missed. This is the other half of the node kinds rather than a punishment
+  bolted on beside them: without it, the three non-Enemies kinds would simply be
+  a way to play a whole run on an empty board.
+
+  Four things buy it off. **Defeating anything** shuts the tap for the rest of
+  the game — one body down is the player answering the board, and the rule is
+  about a player who never does. **An escape** owes nothing, since they walked
+  away and already paid §3.2's price. **The Amulet** owes nothing, since there is
+  no next game for anything to walk into. And **an Event or a Shop node** owes
+  nothing, since nothing spawned there — those two kinds are genuine breathing
+  room and this would take it back.
+
+  `defeated_this_game` is the counter and the distinction it draws is
+  load-bearing: it moves in `_defeat` and nowhere else, so stepping a counted
+  goal up by one (§7.7) is not progress here, and nor is meeting a goal against a
+  body with more Health than the single hit it deals — that leaves it Staggered,
+  answered but not down. `goals_met_this_game` is the tempting field and it ticks
+  for both.
+
+  **The count is the turn ladder's other column**, written as
+  `extra_turns_for_hops(hops) + 1` rather than as a second table so a widened
+  band moves both together: 1 in the wilds, 2 closing, 3 on the doorstep. Reading
+  it off HOPS rather than the tier is what keeps a losing run survivable — failure
+  spawns raise the tier, so a tier-scaled price would make each loss bigger than
+  the last, and the draft that did it ran five losses to thirteen bodies. Losing
+  does not move you, so the price at a given game is flat. It also gives the run
+  a shape: both pressures converge on the doorstep, and routing AWAY from the
+  Amulet lowers your failure price, so "back off, clear the stack, come back" is
+  a real plan rather than a slower way to lose.
+
+  The bodies roll from the game in play's own type, so a body that turns up
+  because you keep losing at a Deckbuilder is a Deckbuilder body. **They never
+  join `arrivals`**, which is what stops a Scramble scrubbing them off — that
+  would make the failure price refundable for a D6 charge. The undo needs nothing
+  new: at a lost run the spawn happens after `log_attempt` has taken its
+  snapshot. At a report they land after the resolve, so they do not take the
+  turns that report was paying for.
+
+  **Two tests met the new rule head-on and were arranged rather than loosened.**
+  `test_the_checklist_does_not_rebuild_when_the_board_only_moves` lost a run and
+  got new rows, correctly — its premise is a board that only MOVED, so it now
+  puts one body down first and buys the tap off.
+  `test_escaping_advances_the_run_and_the_enemy_follows` asserted `stack_size()
+  == 1` after an escape; the escape owes nothing, but the lost runs that opened
+  the escape gate do, so it asks the question it actually meant — is the
+  goal-enemy among the bodies that followed you out.
+
+  **DIFFICULTY IS A CONSEQUENCE NOW, NOT A CLOCK** (§19.6). `GameState.spawn_events`
+  counts one per node arrival that landed bodies and one per failure spawn —
+  regardless of how many bodies each put down — and `RunDifficulty.current_tier`
+  reads that instead of `games_played`. An Event or a Shop node lands nothing and
+  ticks nothing, so a player who routes through them and clears goals promptly
+  keeps a small board and a low tier for far longer than the old count allowed,
+  while one who fights everything climbs faster than it ever did. The ladder used
+  to be something the player rode; it is something they steer, in both directions.
+
+  `games_played` is not vestigial and keeps ticking on all four kinds:
+  `RunOverScreen` and the OBS overlay report it, `EventSystem` gates requirements
+  on `"games"`, and `SaveSystem` derives the autosave seed from it.
+
+  **A Scramble does not tick it**, and the exemption is the point. Scramble comes
+  through `choose_game` too — it supersedes what arrived, with a new instance — so
+  without an `is_arrival` flag it would be a way to buy your way INTO a fight: a
+  charge spent, the same bodies standing there, and the tier a third of a step
+  higher. §19.2 says a Scramble is not a way to buy your way out of one; this is
+  the same sentence read from the other side.
+
+  **THE TIER CAN STEP MID-RUN, AND THE BOARD GROWS AT THE SPAWN.** `games_played`
+  could only cross a band at a report; a spawn event crosses it at the arrival.
+  `GameLoop2.note_spawn_event` calls `sync_grid_bounds` there rather than waiting,
+  because the tier is what SIZED that spawn's arrivals — holding the board at its
+  old size until the report would crowd new bodies onto a grid the rule says has
+  already grown, which is the one state §7.3's off-grid queue exists to avoid
+  rather than to absorb. The announcement follows the growth to the arrival.
+
+  **Two tests were only usually true and my change moved the dice under them.**
+  Both are recorded because the diagnosis mattered more than the fix.
+  `test_the_board_plays_then_the_haul_and_the_offering_waits_for_both` asserts the
+  resolve plays back — but a playback is one beat per TURN, and a report beyond 5
+  hops from the Amulet buys the board no turns at all (§7.4), so out in the wilds
+  there is nothing to play and the haul drops straight away. It was really
+  asserting that the random graph happened to open the run near its goal, and it
+  held only until something perturbed which cards the offering deals. It now
+  stands the run inside the band first, via a new `_stand_near_the_amulet` that
+  moves the GOAL rather than the player — the cheap half, since where the run
+  stands is UI state with a board and an offering hanging off it.
+  `test_every_third_encounter_is_a_boss_at_its_own_tier` now sets both counters,
+  because its two halves read different ones until §19.7 retires `is_boss_game`.
+
+  I was wrong about the first one twice before getting it right — a tier crossing
+  landing mid-test, then a board-bounds leak — and both were ruled out by probing
+  the actual board state rather than by argument. The bodies sitting at "col 4 on
+  a 4-column board" that looked like the smoking gun were the back column: the
+  grid is 1-based, melee at 1.
+
+  **THE KIND NOW DECIDES WHAT STANDS ON THE BOARD** (§19.1). Committing a game
+  goes through `Overworld2._commit_board_for_kind`: an Enemies node stands two
+  bodies as before, a Champion stands one boss and nothing beside it,
+  and an Event or a Shop stands none at all. `GameLoop2.choose_game` takes a
+  `with_escort` flag for the Champion's half, defaulting true because Scramble,
+  the dev panel and the tests all commit a game without a node in hand.
+
+  The empty board is `GameLoop2.begin_bodiless_game`, deliberately NOT
+  `choose_game(null)`: that means "nothing is in play" and drops `game_in_play`,
+  which is the state the screen is in *between* games. An Event node is a game
+  you go away and play like any other — shields, `games_played`, the ✓ Completed
+  Game gate and the game's own loot are identical on all four kinds, and a test
+  asserts that of every one of them. What it does not do is put a body up.
+
+  **The Event and the Shop land at opposite ends of the game**, which is the
+  whole reason they are two kinds rather than one. The Event fires on ARRIVAL,
+  through the existing `open_event` path, because a decision is worth more before
+  you have committed an evening to the game it sits on; the Shop queues on
+  `_pending_shop` and opens AFTER, because the gold to spend is what the game you
+  just played pays out. The Shop half reads the kind off the SLOT rather than the
+  game — the kind rides the node, so a transmuted card shops at the same node —
+  where the hub rule beside it reads the game, since a hub's shop belongs to that
+  storefront. Both stand until §19.7 retires the hub one.
+
+  **233 test call sites became a 60/20/10/10 lottery, and were arranged rather
+  than hoped for.** Every `pick()` in the suite used to stand two bodies; now
+  what it stands depends on the node. A test that picks and then counts bodies
+  would have failed about two runs in five — the exact shape CLAUDE.md warns
+  about. So `_pick_enemies` forces the kind on the one node about to be picked
+  and leaves the rest of the map as the run dealt it, and it is applied across
+  seven files. The tests that are ABOUT kinds call `pick` directly; one of them,
+  `test_the_kinds_do_not_move_while_the_run_is_walked`, caught the helper being
+  used where it must not be, which is the guard working as intended.
+
+  **A panel test was measuring the wrong thing, and three cards exposed it.**
+  `test_the_starts_are_different_distances_when_the_graph_allows_it` required
+  every card at a distinct distance whenever two or more distances existed
+  *anywhere* against the Amulet. The spread takes ONE CARD PER GENRE, so a
+  distance no start of the right genre sits at is a distance the panel cannot
+  use — §19.3.2's own table counts 33 owned Amulets fielding three genres at only
+  two distances — and the old count ignored the route floor as well. It now
+  compares the panel against a maximum matching of genres to distances,
+  brute-forced over at most four genres: the same objective `_spread_across_band`
+  maximises, stated independently rather than by calling it. With two cards the
+  old assertion was almost always true, which is why it survived until the third.
+
+  **One failure in this batch is unexplained rather than fixed.**
+  `test_the_checklist_follows_a_reroll_of_the_board` failed once in a full run
+  and has not reproduced since — not alone (539/539 twice) and not in the full
+  suite after. Two hypotheses were ruled out by measurement rather than argument:
+  the play panel's repaint signature does include each body's `display_name`, and
+  a sweep of all 13 (type, tier) re-roll buckets found no two enemies that would
+  render an identical row, so "re-rolled into something that reads the same" is
+  out. The assertion now carries the swap count and the before/after body names,
+  so the next occurrence says what happened instead of printing two identical
+  blocks of text. Do not assume it was the amulet change: that touches which
+  games the run offers, not the checklist.
+
+  **`SAVE_VERSION` goes to 3 and version-2 runs retire** (§19.7), gated by a
+  named `MIN_RESUMABLE_VERSION` rather than the bare `>= 2` in two places. A
+  version-2 run has no node kinds, and §19.2 freezes those at run start, so any
+  value invented at load is a badge appearing on a map the player was already
+  walking. The save FILE is untouched — only the in-flight run inside it — the
+  way version 1 was retired at the 2.0 cut, and a test asserts both halves.
+
+  An Amulet that cannot supply the panel stays an ordinary node to route through
+  and fight at. An
+  earlier draft had it fall back to the best route available; the decision is to
+  keep the guarantee absolute for now, on the grounds that a rule with an escape
+  hatch is a rule nobody can read off the screen. It costs 2 games in the full
+  catalogue (Serpentcoil Island, Touhou Genso Wanderer: Lotus Labyrinth R) and 4
+  in the owned one (Serpentcoil Island, Dice & Fold, Ember Knights, Everything is
+  Crab).
+
+  **The two catalogues exclude for entirely different reasons**, which matters
+  before anyone "fixes" it in the sheet. The full catalogue's two are leaves —
+  degree 1, every route through one neighbour. The owned catalogue's other three
+  are **one node short on one genre**: Dice & Fold, Ember Knights and Everything
+  is Crab each have eligible starts in all four genres, clear Action and
+  Traditional with slack 9-28, and then come up slack 4 against a floor of 5 on
+  Strategy. They are exactly the three Amulets the floor's last rung costs
+  (455 → 452), named — at `hops + 4` all three qualify, and Darkest Dungeon sits
+  in the same neighbourhood with the same shape and passes on slack 6 rather
+  than 4.
+
+  The hub effect is real but second: all three neighbour Slay the Spire (degree
+  91) and each has exactly ONE eligible Deckbuilder start in the whole band, at
+  slack 1-3, because the deckbuilders cluster within 1-2 hops — inside the 4-hop
+  floor. That is why there is no fourth genre to fall back on, not why Strategy
+  came up short. So a leaf needs an edge reaching outward; a one-node-short game
+  needs no edge at all, just the floor at 4 or one more Strategy game 4-8 hops
+  out.
+
+  **A start needs two connections, and both must lead on** (§19.3.1); the route
+  floor becomes **`hops + 5`**; and the panel goes to **three cards over a 4–8
+  band** (§19.3.2). `MIN_START_CONNECTIONS` drops 3 → 2, with the condition that
+  a degree-2 game may open a run only if both its neighbours are themselves
+  onward — measured free, since the degree-2 games whose neighbour is a dead end
+  contribute no Amulet coverage the rest of the pool doesn't already provide.
+  Start pool 246 → 419 full, 124 → 207 owned.
+
+  The loosening and the floor look opposed and are not: more eligible starts
+  means more chances one has a genuinely wide route, so the stricter floor stops
+  biting. On the owned catalogue, moving `hops + 4` → `hops + 5` costs **24**
+  Amulets at `degree ≥ 3` and **3** at `degree ≥ 2` onward. `hops + 7` is the
+  cliff (375) and the floor sits two rungs clear of it, because the catalogue
+  grows and these numbers move under the rule.
+
+  **The degree-2 pool fixes Darkest Dungeon on its own**, which corrects an
+  earlier finding in this entry's own working. At `degree ≥ 3` it was one of two
+  owned games that could not field three genres — a hub whose deckbuilder
+  neighbours all sit *inside* the 4-hop floor, so no wider band could reach them,
+  and the answer looked like buying a game. With degree-2 starts admitted it
+  reads Action 11, Traditional 7, Strategy 6: three genres clear outright. The
+  fix was a bigger start pool, not a wider band or a purchase.
+
+  **The third card and the wider band pay for each other.** Three cards want
+  three distinct *distances* as well as genres (`_spread_across_band`), and a
+  four-rung band leaves that preference no room. 4–8 buys +11 full and +12 owned
+  Amulets whose panel can offer three genuinely different run lengths — the soft
+  column, not the hard one, since three genres was already near-universal. It
+  also raises the longest possible run from seven games to eight, each one a real
+  roguelike, so it is a pacing change as much as a graph one.
+
+  The two-card opening is accepted rather than solved: `BASE_OFFER_COUNT` is 3
+  and the offering draws from the node's neighbours, so a degree-2 start opens
+  one card short. The onward condition fixes the quality of those two cards, not
+  their number — topping up from two hops out would put a card on the table that
+  taking it cannot reach in one move.
+
+  One correction recorded in §19.3: **a fixed slack offset is not a fixed
+  branchiness.** The spares spread over however many middle layers a route has,
+  so at `hops + 5` a 4-hop route offers ~2.3 ways on per step and an 8-hop route
+  ~1.6. An earlier draft claimed the offset scaled so both read alike; it is the
+  reverse, and long routes are the thin ones.
+
+  **The budget costs no game its place on the map.** Checked exhaustively —
+  every in-component game against every other as a (start, amulet) pair, at both
+  game filters. Not one startable game is lost: the pool is 246 (full) / 124
+  (owned) with or without the budget, limited by the `degree >= 3` floor that
+  was always there. The only loss is three Amulets in the full catalogue and two
+  in the owned one, sitting in thin corners where no qualifying start has a
+  branching approach; confirmed as the budget's doing by re-running at slack 1,
+  where every in-component game can be the Amulet. The games that genuinely
+  cannot appear in a run are the 92 (full) / 74 (owned) pruned off-map by
+  `_prune_to_main_component`, which is unchanged and long-standing — note the
+  owned catalogue loses proportionally more of them, 13.9% against 10.4%, since
+  filtering the map removes edges as well as nodes and so fragments it rather
+  than merely shrinking it.
+
+  **The budget implies the split, not the other way round**, and the intuition
+  runs backwards here. A linear chain is `hops + 1` nodes so the budget excludes
+  it on arithmetic alone — but a start that merely *has* a split is `hops + 2`,
+  still two short: **15 of 240 options (6.2%) had a genuine split and still could
+  not carry the required kinds**. The split is written down as its own guarantee
+  so a future loosening of the budget cannot silently retire it, but it is the
+  budget that does the work.
+
+  **An Event node always finds an event**, and the pool makes that nearly free:
+  all 16 events ship with a blank `where` and empty `tiers`, so nothing is
+  placement- or tier-gated today, and 7 of the 16 carry no stat requirement at
+  all. "No eligible event" is a content state that does not currently exist. If
+  it ever does, the node **re-shows an event the run has already had**. An
+  earlier draft specified relaxing the placement gate instead, which would have
+  been a fallback that could never fire against a pool that could never empty;
+  and relaxing the *stat* gates — the nine that ask for gold, keys, potions or a
+  Health band — would fire "pay 5 gold" at a player holding none, with every
+  interesting choice greyed out. A repeat is affordable and playable.
+
+  Retires the escort (§7.5 — an Enemies node lands two bodies flat, a Champion
+  one), shops at the ten hubs (§14.2 — a shop is a Shop node; §14.3's shelf is
+  unchanged), and `RunDifficulty.is_boss_game`'s every-third-*game* capstone
+  (§19.6 — every third *spawn event*, on top of whatever else was spawning, a
+  failure spawn included).
+
 - **Speed's clause had no subject, so it read as nonsense on 99 goals out of
   134.** An enemy-side `clause` is ANDed onto whatever goal the body is carrying,
   which can be any of the 111 — so it is not a sentence of its own but a phrase

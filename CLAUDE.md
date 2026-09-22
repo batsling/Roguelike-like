@@ -68,7 +68,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 43 scripts, 2417 tests, ~6 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 47 scripts, ~2490 tests, ~12 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
@@ -117,6 +117,15 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 43 scripts, 2417 te
   cache. It now checks the cache against a fresh build instead, which is what
   "rebuilt" meant and is true either way. Before blaming a random graph for a
   varying failure, work out which assertion is only *usually* true.
+- **TWO ENEMY OBJECTS CAN SHARE ONE ID, so compare bodies by `id` and never by
+  object.** A body's `enemy` is normally Data's own shared resource, and that made
+  `==` look safe for years. It is not: `test_overworld2`'s `_plain_goals` (inside
+  `_disarm_board`) hands a body a `duplicate()` of its enemy to strip a goal's
+  `ticked` and `count`, which it must do for the 21 of 111 bodies authored as
+  `game beaten` or counted. An identity check against such a body is false for an
+  enemy that IS that enemy. This cost two intermittents and three wrong
+  hypotheses; `_pick_by_type_tier`'s `exclude` and both `fresh == old` guards now
+  compare ids, which is what "the same enemy" meant in the first place.
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
@@ -140,6 +149,21 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 43 scripts, 2417 te
     inside the select panel 8->6), which also widens their text so fewer lines
     wrap at all. The left column now measures 590 and the binding column is the
     RIGHT one at 594 — the board and the pack, which do not wrap.
+  - `test_overworld2.gd::test_the_checklist_follows_a_reroll_of_the_board`
+    failed about one run in twelve and outlived three attempts to explain it —
+    including two confident wrong ones (a mid-test tier crossing, and a
+    board-bounds leak), both ruled out by probing the board rather than by
+    argument. **`reroll_enemies` rolls each body independently, so two bodies can
+    swap enemies WITH EACH OTHER**: a real re-roll, two swaps reported, and the
+    board carrying the pair it started with. The checklist GROUPS by when a goal
+    settles (`ReportChecklist._bodies_settled_at_the_end` / `_bodies_settled_now`)
+    rather than listing the stack in order, so the same two goals in the other
+    order render byte for byte the same. Caught by printing the swap count and
+    the before/after names: `2 swapped; ["Monkey", "Floating Eye"] -> ["Floating
+    Eye", "Monkey"]`. The test stands ONE body now, where the exclusion
+    guarantees a different enemy and a reported swap has to change the list.
+    **The lesson is the diagnostic, not the fix**: three runs were spent guessing
+    because the assertion printed two identical blocks of text and nothing else.
   - `test_enemy_abilities.gd` dropped **one test, and which one depended on the
     seed** — the spawner, the illusionist and the summoned-body payout.
     **The cause was the FOOTPRINT, not the board being full.** All three authored

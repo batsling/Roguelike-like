@@ -168,6 +168,17 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	badge_row.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	card.add_child(badge_row)
 
+	# THE KIND MARK (§19.8), first on the row and on EVERY card — which is the
+	# whole reason it is one or two characters of punctuation rather than a word.
+	# What a node does to the board is half of what routing is about, and the
+	# badge row had 21px of its 160 left; a mark this size is the only thing that
+	# fits without displacing the Amulet's flag or the Dash badge.
+	#
+	# Leftmost so the offering can be read DOWN the column: three cards side by
+	# side put their marks in a row, and "? ! $" says what the table is offering
+	# before a single cover has been looked at.
+	badge_row.add_child(_kind_mark_label(choice))
+
 	var flag := Label.new()
 	if amulet:
 		flag.text = "🏆 THE AMULET"
@@ -314,6 +325,41 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 # with a follower stuck to you.
 #
 # Returns null when there's nothing to say, so an unproven card stays clean.
+# The kind mark, as a label. Blank on a stay-or-return card, which MOVES the run
+# rather than committing it to a node — there is no arrival for a kind to
+# describe, and a mark there would be answering a question nobody asked.
+func _kind_mark_label(choice: Dictionary) -> Label:
+	var mark := Label.new()
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.custom_minimum_size = Vector2(0, BADGE_LINE)
+	mark.add_theme_font_size_override("font_size", BADGE_FONT)
+	var kind: int = kind_of(choice)
+	if kind < 0:
+		mark.text = ""
+		return mark
+	mark.text = RunGraph.kind_mark(kind)
+	mark.tooltip_text = RunGraph.kind_tip(kind)
+	mark.add_theme_color_override("font_color", UITheme.kind_color(kind))
+	return mark
+
+# The KIND of the node this choice sits on, or -1 when the choice is not an
+# arrival at all (the stay-or-return pair).
+#
+# Read off the SLOT, never off the game standing on it (§19.2): the kind rides
+# the node, so a transmuted card plays a different game at the same kind. Public
+# because the popup asks the same question and the two must not drift.
+func kind_of(choice: Dictionary) -> int:
+	if choice.is_empty() or choice.has("stay"):
+		return -1
+	var slot := StringName(choice.get("slot", &""))
+	if slot == &"":
+		var game: GameData = choice.get("game")
+		slot = game.id if game != null else &""
+	if slot == &"":
+		return -1
+	return GameState.node_kind(slot)
+
 func beatable_row(choice: Dictionary) -> Control:
 	var game: GameData = choice.get("game")
 	if game == null:
@@ -443,36 +489,61 @@ func enemy_hidden(choice: Dictionary) -> bool:
 # they must not each invent their own wording for the same blank.
 const HIDDEN_ENEMY_TEXT := "something you can't see"
 
-# THE ESCORT (§7.5), said before it exists. The second body is rolled on ARRIVAL,
-# so a card cannot name it — but it must not stay quiet about it either: "how many
-# bodies does this put on the board" is half of what the routing decision is
-# about, and a card that showed one enemy and delivered two would be lying by
-# omission. So the card promises the count and withholds the name.
-const ESCORT_WARNING := "⚠ One more enemy spawns with it — which one is rolled on arrival."
-const ESCORT_WARNING_SHORT := "⚠ +1 more"
+# WHAT THE NODE STANDS UP, said before it exists (§19.1, §19.4).
+#
+# The bodies are rolled on ARRIVAL, so a card cannot name them — but it must not
+# stay quiet either: "how many bodies does this put on the board" is half of what
+# the routing decision is about, and a card that showed one enemy and delivered
+# two would be lying by omission. So the card promises the COUNT and withholds
+# the names.
+#
+# It used to be THE ESCORT WARNING, and said "one more enemy spawns with it". The
+# escort is retired (§19.4): there is no companion, and the count is a property
+# of the node's kind rather than of the enemy that happened to be advertised — so
+# the line says how many walk on rather than how many come along.
+const BODIES_TWO := "⚠ Two bodies walk on — the second is rolled on arrival."
+const BODIES_ONE_BOSS := "⚠ A boss of this tier walks on, alone."
+const BODIES_NONE := ""
+const BODIES_TWO_SHORT := "⚠ 2 bodies"
+const BODIES_ONE_SHORT := "⚠ boss"
 
-# Whether committing to `choice` will put a SECOND body on the board. False for a
-# BOSS round — a boss spawns solo, the tier change being step-up enough on its own
-# (GameLoop2._spawn_escort) — for a free game with no enemy at all, and for the
-# stay-or-return card, which spawns nothing either way.
-func _escort_expected(choice: Dictionary) -> bool:
+# How many bodies committing to `choice` stands up, read off the node's KIND
+# (§19.1): Enemies 2, Champion 1, Event and Shop none.
+#
+# -1 means "nothing to say" rather than zero: the stay-or-return card moves the
+# run rather than committing it, and a card with no enemy at all is a free game.
+# Both are different from a node that genuinely stands nothing up, which is a
+# fact worth printing.
+func bodies_expected(choice: Dictionary) -> int:
 	if choice.is_empty() or choice.has("stay"):
-		return false
-	if choice.get("enemy") == null or bool(choice.get("boss", false)):
-		return false
-	return not Data.all_goal_enemies().is_empty()
+		return -1
+	if Data.all_goal_enemies().is_empty():
+		return -1
+	var kind: int = kind_of(choice)
+	if kind < 0:
+		return -1
+	match kind:
+		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
+			return 0
+		RunGraph.NodeKind.CHAMPION:
+			return 1
+	return 2 if choice.get("enemy") != null else -1
 
-# The escort's line for a card: a WARNING while the game is still an offer, and
-# the body's NAME once the game has been committed to and the roll has happened.
-# Empty when this card brings no escort. One function, because the offering, the
-# popup and the now-playing panel all have to say the same thing about it.
-func escort_note(choice: Dictionary) -> String:
+# The line for a card: a WARNING while the game is still an offer, and the second
+# body's NAME once the game has been committed to and the roll has happened. One
+# function, because the offering, the popup and the now-playing panel all have to
+# say the same thing about it.
+func bodies_note(choice: Dictionary) -> String:
 	var landed: Dictionary = GameLoop2.arrival()
 	if not landed.is_empty() and choice.get("enemy") != null \
 			and landed.get("enemy") == choice.get("enemy"):
-		var escort: GoalEnemyData = GameLoop2.escort_enemy()
-		return "" if escort == null else "⚠ %s spawned alongside it." % escort.display_name
-	return ESCORT_WARNING if _escort_expected(choice) else ""
+		var second: GoalEnemyData = GameLoop2.second_body()
+		return "" if second == null else "⚠ %s walked on beside it." % second.display_name
+	match bodies_expected(choice):
+		2: return BODIES_TWO
+		1: return BODIES_ONE_BOSS
+		0: return BODIES_NONE
+	return ""
 
 # The hover, on ONE line: the enemy this card would put on the board, the goal you
 # would be playing for, and the TEMPORARY SHIELDS it hands you. They used to be a slot on
@@ -498,17 +569,19 @@ func _hover_line(choice: Dictionary) -> String:
 		GameState.temp_shields_text(_hover_grant)] if _hover_grant >= 0 else ""
 	if e == null:
 		return "[i]no enemy — free game[/i]%s" % tries
-	# The escort rides even the hidden line: the Dome hides WHAT is waiting, and how
+	# The body count rides even the hidden line: the Dome hides WHAT is waiting, and how
 	# many bodies arrive is not part of what it was bought to hide.
-	var escort: String = "  ·  [color=#%s]%s[/color]" % [
-		UITheme.DANGER.to_html(false), ESCORT_WARNING_SHORT] if _escort_expected(choice) else ""
+	var count: int = bodies_expected(choice)
+	var short: String = BODIES_TWO_SHORT if count == 2 else (BODIES_ONE_SHORT if count == 1 else "")
+	var bodies_chip: String = "  ·  [color=#%s]%s[/color]" % [
+		UITheme.DANGER.to_html(false), short] if short != "" else ""
 	# Under the Runic Dome there is no enemy line to give: the goal is the enemy's,
 	# so hiding the name and quoting the goal would give the whole thing away.
 	if enemy_hidden(choice):
-		return "[i]%s[/i]%s%s" % [HIDDEN_ENEMY_TEXT, escort, tries]
+		return "[i]%s[/i]%s%s" % [HIDDEN_ENEMY_TEXT, bodies_chip, tries]
 	var kind: String = "[color=#e0b020]☠ [/color]" if choice["boss"] else ""
 	return "%s[b]%s[/b]  ·  %s%s%s" % [
-		kind, e.display_name, _goal_line(_preview_entry(choice)), escort, tries]
+		kind, e.display_name, _goal_line(_preview_entry(choice)), bodies_chip, tries]
 
 # The goal with its ADD-ONS COLOURED IN PLACE (§13) — red for a condition a status
 # added to it, green for one offered (a way out, a bonus).

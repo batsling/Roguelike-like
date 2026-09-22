@@ -671,9 +671,9 @@ func _build_enemy_block(game: GameData) -> Control:
 		hidden.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		hidden.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		box.add_child(hidden)
-		# The escort survives the blackout: the Dome was bought to hide WHAT is
+		# The body count survives the blackout: the Dome was bought to hide WHAT is
 		# waiting, and the number of bodies is not part of that.
-		_add_escort_line(box)
+		_add_bodies_line(box)
 		return box
 
 	var row := HBoxContainer.new()
@@ -731,10 +731,19 @@ func _build_enemy_block(game: GameData) -> Control:
 	for addon in GameLoop2.goal_addons_for(entry):
 		box.add_child(UITheme.addon_row(addon))
 
-	# What ELSE this card puts on the board (§7.5). Under the goal rather than
+	# WHAT KIND OF NODE THIS IS (§19.8), and then what it puts on the board.
+	#
+	# The card wears a one-character mark and this is where the mark is spelled
+	# out: the popup is what a player opens to find out what a card MEANS, so it
+	# is the one surface that can afford the sentence. Above the body count
+	# because the kind is what decides the count — reading them the other way
+	# round makes the number look like a property of the enemy.
+	_add_kind_line(box)
+
+	# What ELSE this card puts on the board (§19.4). Under the goal rather than
 	# beside the name, because it is not another fact about this enemy — it is a
 	# second body, and the count is the part the player is being warned about.
-	_add_escort_line(box)
+	_add_bodies_line(box)
 
 	# Your own record against what's on the board right now: the enemies you have
 	# ALREADY beaten at this game, this one and every follower. Built by the
@@ -745,13 +754,27 @@ func _build_enemy_block(game: GameData) -> Control:
 		box.add_child(proven)
 	return box
 
-# The escort line, when the overworld handed one over (§7.5). It owns the wording
+# What the node stands up, when the overworld handed a line over (§19.4). It owns the wording
 # — a WARNING while the game is an offer, the body's NAME once it is standing
 # there — so the popup and the hover line under the offering cannot disagree
 # about what is coming. Nothing is drawn when the note is empty (a boss round, a
 # free game), which is what keeps a card that brings one body quiet about it.
-func _add_escort_line(box: VBoxContainer) -> void:
-	var text: String = String(_notes.get("escort", ""))
+# The kind, as the mark the card wears plus the sentence behind it. Silent when
+# the overworld handed over -1, which is the stay-or-return card: it moves the
+# run rather than committing it, so there is no arrival to describe.
+func _add_kind_line(box: VBoxContainer) -> void:
+	var kind: int = int(_notes.get("kind", -1))
+	if kind < 0:
+		return
+	var l := Label.new()
+	l.text = "%s  %s" % [RunGraph.kind_mark(kind), RunGraph.kind_tip(kind)]
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	l.add_theme_color_override("font_color", UITheme.kind_color(kind))
+	box.add_child(l)
+
+func _add_bodies_line(box: VBoxContainer) -> void:
+	var text: String = String(_notes.get("bodies", ""))
 	if text == "":
 		return
 	var l := Label.new()

@@ -90,7 +90,7 @@ func _snapshot() -> void:
 		"max_hp": GameState.max_hp,
 		"items": GameState.inventory.size(),
 		"following": GameLoop2.stack.size(),
-		"tier": RunDifficulty.tier_name(RunDifficulty.tier_for(GameState.games_played)),
+		"tier": RunDifficulty.tier_name(RunDifficulty.current_tier()),
 		"steps_left": _steps_left(),
 	}
 

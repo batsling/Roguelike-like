@@ -104,7 +104,11 @@ var _start_options: Array = []
 # scramble, or a difficulty-tier change (see _build_choices).
 var _slot_enemies: Dictionary = {}
 var _slot_enemy_key: String = ""
-var _boss_round: bool = false
+# Retired with §19.6's capstone: there is no such thing as a boss ROUND any more.
+# The offering deals no bosses, so nothing about the cards depends on it; what
+# replaced it is `_boss_due_next`, a question about the next SPAWN. The saved
+# view-state key is still read so a run written before this loads without
+# complaining, and is no longer written.
 var _phase: int = Phase.SELECT
 var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
 # Scramble (§4) reroll counter. The offering is drawn in a STABLE position-seeded
@@ -782,6 +786,18 @@ func _build_start_options(pick: Dictionary) -> Array:
 			# The run has not started, so this is always the Low tier and never a boss.
 			"enemy": GameLoop2.roll_enemy(GameLoop2.game_type_key(g), _current_tier()),
 		})
+	# THE MAP'S KINDS, once the Amulet and the cards it is offered against are
+	# both known (§19.3). This is the only place they are ever assigned: they are
+	# frozen from here to the end of the run, and a load restores them off the
+	# save rather than coming back through here.
+	#
+	# It rides `_rng`, which is seeded from `GameState.run_seed` a few lines up in
+	# `_begin_run`, so the same seed deals the same map.
+	var start_ids: Array = []
+	for opt in out:
+		start_ids.append((opt["game"] as GameData).id)
+	GameState.node_kinds = RunGraph.assign_node_kinds(
+		_rng, GameState.amulet_game_id, start_ids)
 	return out
 
 # One start option in the shape the offering's cards and GameChoiceModal read, so
@@ -827,7 +843,8 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		"pace": _start_pace_note(int(opt["path_len"])),
 		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"beatable": _beatable_row(choice),
-		"escort": _escort_note(choice),
+		"bodies": _bodies_note(choice),
+		"kind": _kind_of(choice),
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
 		"action_tip": "Begin the run here — you go and play this game for real, right now.",
@@ -893,14 +910,7 @@ func choose_start(index: int) -> void:
 	# a table to act on, and so does the return from the report.
 	_build_choices()
 	if _chosen.get("enemy") != null:
-		GameLoop2.choose_game(_chosen["enemy"],
-			GameLoop2.game_type_key(game), _current_tier())
-		_log_escort()
-		_remind_twitch_category(game)
-		var granted: int = GameLoop2.grant_selection_shields(game)
-		GameLog.add("%s — %s, one hit stopped each." % [
-			game.display_name, GameState.temp_shields_text(granted)],
-			SHIELD_BLUE)
+		_begin_game(game, _chosen["enemy"], _current_tier())
 		_phase = Phase.PLAYING
 		_populate_play_panel()
 	else:
@@ -991,7 +1001,6 @@ func capture_view_state() -> Dictionary:
 		"start_options": starts,
 		"choices": choices,
 		"chosen": _serialize_choice(_chosen),
-		"boss_round": _boss_round,
 		"dash_mode": _dash_mode,
 		"dashed_here": _dashed_here,
 		"scramble_salt": _scramble_salt,
@@ -1071,7 +1080,6 @@ func restore_view_state(view: Dictionary) -> void:
 		if not restored.is_empty():
 			_choices.append(restored)
 	_chosen = _deserialize_choice(view.get("chosen", {}))
-	_boss_round = bool(view.get("boss_round", false))
 	_dash_mode = bool(view.get("dash_mode", false))
 	_dashed_here = bool(view.get("dashed_here", false))
 	_scramble_salt = int(view.get("scramble_salt", 0))
@@ -1107,7 +1115,7 @@ func restore_view_state(view: Dictionary) -> void:
 	# The enemies behind the restored cards are the saved ones, so seed the slot
 	# cache with them — otherwise the next repaint would roll new ones.
 	_slot_enemies.clear()
-	_slot_enemy_key = "%s|%d|%s" % [_offer_seed(), _current_tier(), str(_boss_round)]
+	_slot_enemy_key = "%s|%d" % [_offer_seed(), _current_tier()]
 	for c in _choices:
 		var cg: GameData = c["game"]
 		_slot_enemies["%s>%s" % [String(c["slot"]), String(cg.id)]] = c["enemy"]
@@ -1280,7 +1288,8 @@ func open_choice(index: int) -> GameChoiceModal:
 		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
-		"escort": _escort_note(choice),
+		"bodies": _bodies_note(choice),
+		"kind": _kind_of(choice),
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -1323,19 +1332,7 @@ func pick(index: int) -> void:
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
-	# The GAME's type and the run's tier ride along so the escort (§7.5) is rolled
-	# from the bucket this card's own enemy came out of. A transmuted card plays the
-	# replacement game, so it is that game's type the escort answers to.
-	GameLoop2.choose_game(_chosen["enemy"],
-		GameLoop2.game_type_key(_chosen["game"]), _current_tier())
-	_log_escort()
-	_remind_twitch_category(_chosen["game"])
-	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
-	# Traditional roguelike, plus whatever "when a game is selected" items add.
-	var granted: int = GameLoop2.grant_selection_shields(_chosen["game"])
-	GameLog.add("%s — %s, one hit stopped each." % [
-		_chosen["game"].display_name, GameState.temp_shields_text(granted)],
-		SHIELD_BLUE)
+	_begin_game(_chosen["game"], _chosen["enemy"], _current_tier())
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
@@ -1362,24 +1359,154 @@ func pick(index: int) -> void:
 	# and the lost runs you're about to log all hang off it.
 	autosave()
 
-# Say who came WITH the game's enemy (§7.5). Called at each of the three places a
-# game is committed to, straight after choose_game, because the escort is the one
-# thing about the board that the card could not tell you: it is rolled on arrival,
-# so the player finds out here or not at all.
+# COMMITTING TO A GAME, in one place. Every path that puts a game into play runs
+# this and nothing else runs it: `pick` from the offering, `choose_start` at the
+# run's opening, `arrive_at_game` off a teleport, and `_start_play_game` for an
+# event's detour (§10).
 #
-# It is a notification as well as a log line for that reason — the escort is the
-# only body that appears without having been chosen, and a run of the log is not
-# where a surprise should have to be noticed.
-func _log_escort() -> void:
-	var escort: GoalEnemyData = GameLoop2.escort_enemy()
-	if escort == null:
+# It was four copies of the same five lines, and they had already drifted: one of
+# them grants the shields without saying so in the log. Four copies is also four
+# places to edit every time what "committing" means changes, which it is about to
+# (§19 — the escort goes, the spawn count arrives, and the difficulty counter
+# ticks here).
+#
+# WHAT IT DELIBERATELY DOES NOT DO is the part the four callers genuinely disagree
+# about: where `GameState.set_current_game` sits relative to this, whether
+# `_leave_node` has anything to leave, and whether an armed verb is cancelled.
+# Two of those differences look like bugs and one is load-bearing —
+# `set_current_game` straddles `choose_game`, which runs `_pay_revivals` and fires
+# `TriggerBus.game_selected` in between — so moving them is a change to make on
+# purpose, with the suite watching, rather than smuggled into an extraction.
+#
+# `tier` is the run's tier and `game`'s own type is read off it here, so the
+# node's second body (§19.4) is rolled from the bucket this card's enemy came out
+# of. A transmuted card plays the replacement game, so it is that game's type
+# both bodies answer to.
+#
+# `log_shields` is false for the detour alone, which is the drift noted above:
+# it grants the armour silently. Kept as it was rather than quietly fixed.
+func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
+		log_shields: bool = true) -> void:
+	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
+	# events, and an arrival that lands bodies IS one — so committing a game can
+	# cross a band with nothing reported yet, which `games_played` never could.
+	# GameLoop2.note_spawn_event has already grown the board by the time this
+	# returns; the announcement follows the growth rather than waiting for a report
+	# that would describe it a game late.
+	var tier_before: int = _current_tier()
+	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
+	_commit_board_for_kind(game, enemy, tier)
+	if not GameLoop2.run_over:
+		_announce_difficulty_step(tier_before, board_before)
+	_log_second_body()
+	_remind_twitch_category(game)
+	_fire_arrival_event(game)
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
+	# Traditional roguelike, plus whatever "when a game is selected" items add.
+	var granted: int = GameLoop2.grant_selection_shields(game)
+	if log_shields:
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+
+# WHAT STANDS ON THE BOARD, which is the node's kind and nothing else (§19.1).
+#
+# | Enemies  | 2 bodies | the game's enemy and one beside it |
+# | Champion | 1 body   | a boss of the run's tier, alone    |
+# | Event    | 0 bodies | the event is what is here           |
+# | Shop     | 0 bodies | the shelf comes after the game      |
+#
+# All four are a real video game, which is why this only decides the BOARD: the
+# shields, `games_played`, the ✓ Completed Game gate and the game's own loot are
+# the same on every one of them, and they all live outside this function.
+#
+# The Champion's boss is rolled HERE rather than carried on the card, because
+# `enemy` is whatever the offering advertised and the offering does not yet know
+# about kinds. When the roster cannot supply a boss at all, the advertised enemy
+# stands instead — a Champion node with an empty board would be the badge telling
+# a lie, and §19.1 would rather it told a smaller truth.
+# AN EVENT NODE FIRES ITS EVENT ON ARRIVAL, before the game is played (§19.1).
+#
+# The timing is the point, and it is deliberately the opposite end of the game
+# from the Shop's. An event is a DECISION, and a decision is worth more before
+# you have committed an evening to the game it sits on; a shop is a PURCHASE, and
+# the gold to make one is what the game you just played pays out (§14.1).
+#
+# This is on top of the game's own post-report event, which still rolls — an
+# Event node is a node that pays an extra one, not one that moves the ordinary
+# one forward.
+#
+# IT ALWAYS FINDS ONE, which is why this asks `roll_for_node` rather than the
+# `roll_for_arrival` a reported game uses. That one refuses at a node which has
+# already paid an event and at any of the ten hubs (§14.4) — right for "does this
+# arrival happen to owe one", wrong for a badge that PROMISED one. The hub gate
+# is the one that bit in practice: an Event node landing on a hub delivered
+# silence, and a node whose kind said event and then delivered nothing is the
+# badge telling a lie.
+#
+# Past those gates it re-shows an event the run has already had rather than
+# relaxing anything — see roll_for_node for why both available relaxations are
+# worse than a repeat.
+func _fire_arrival_event(game: GameData) -> void:
+	if game == null or _committed_kind(game) != RunGraph.NodeKind.EVENT:
 		return
-	var msg: String = "%s showed up too — it follows you until its goal is cleared." % escort.display_name
+	# `open_event` refuses while a modal is up or an event is already queued behind
+	# a resolve, which is the right answer: it would otherwise silently eat the one
+	# the run had already earned.
+	open_event(EventSystem.roll_for_node(game.id))
+
+# THE KIND OF THE NODE BEING COMMITTED TO, read off the SLOT rather than off the
+# game standing on it (§19.2).
+#
+# The difference is Transmute, which "repaints which game sits on a node without
+# touching a single edge": the kind rides the node, so a transmuted card plays a
+# different game AT THE SAME KIND. Reading the game would let a transmute change
+# what the node does, which is a badge moving under the player — the one thing
+# §19.2 exists to prevent — and it would disagree with the report path, which has
+# read the slot since the Shop node landed.
+#
+# Falls back to the game's own id when there is no slot: the play_game detour and
+# the tests both commit a game without one, and a game that is not on the map has
+# no node to inherit from.
+func _committed_kind(game: GameData) -> int:
+	if game == null:
+		return RunGraph.NodeKind.ENEMIES
+	var slot := StringName(_chosen.get("slot", &""))
+	return GameState.node_kind(slot if slot != &"" else game.id)
+
+func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
+	var type_key: StringName = GameLoop2.game_type_key(game)
+	match _committed_kind(game):
+		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
+			GameLoop2.begin_bodiless_game()
+		RunGraph.NodeKind.CHAMPION:
+			var boss: GoalEnemyData = enemy if enemy != null and enemy.is_boss() \
+				else GameLoop2.roll_boss(type_key, tier)
+			GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false)
+		_:
+			GameLoop2.choose_game(enemy, type_key, tier)
+
+# Say who else walked on with this game (§19.4). Called at each of the places a
+# game is committed to, straight after choose_game, because the second body is
+# the one thing about the board that the card could not tell you: it is rolled on
+# arrival, so the player finds out here or not at all.
+#
+# It is a notification as well as a log line for that reason — it is the only
+# body that appears without having been chosen, and a run of the log is not where
+# a surprise should have to be noticed.
+#
+# The wording lost the word ESCORT with §19.4. There is no companion any more:
+# an Enemies node stands two bodies and neither of them is attached to the other,
+# so this says one walked on beside the first rather than that it came with it.
+func _log_second_body() -> void:
+	var second: GoalEnemyData = GameLoop2.second_body()
+	if second == null:
+		return
+	var msg: String = "%s walked on beside it — it follows you until its goal is cleared." % second.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 
 # GO AND CHANGE YOUR TWITCH CATEGORY. Called at each of the same four places a
-# game is committed to, straight after `_log_escort`, because those are exactly
+# game is committed to, straight after `_log_second_body`, because those are exactly
 # the moments the stream starts showing a game its category no longer names.
 #
 # This build's whole loop is leaving the program to go and play a REAL game (§1),
@@ -1390,7 +1517,7 @@ func _log_escort() -> void:
 #
 # A NOTIFICATION AND NOT A MODAL. It is a chore, not a decision — there is
 # nothing here to answer and nothing that should stop the run — so it takes the
-# same transient channel the escort does. The game's name IS the category to set
+# same transient channel the second body does. The game's name IS the category to set
 # in the overwhelming majority of cases, so it is quoted rather than described.
 #
 # NOTHING HERE TALKS TO TWITCH. No token, no API, no network call; the program
@@ -2264,7 +2391,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
-		not free_exit)
+		not free_exit, escaped)
 	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). Loot lying on the board belongs to
 	# the game being played; handing the game in ends that, so anything nobody
 	# stopped to pick up — including whatever the bodies this very report cleared
@@ -2332,7 +2459,13 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# exactly the same terms, and read off the GAME rather than the graph slot:
 		# a shop belongs to the storefront of a particular big game, so a node
 		# transmuted into something else is not that shop any more.
-		if ShopSystem.is_hub(played_game.id):
+		#
+		# …OR IF THE NODE'S KIND IS SHOP (§19.1), which is read off the SLOT for
+		# exactly the opposite reason: the kind rides the node, so a transmuted card
+		# plays a different game at the same kind (§19.2). The two rules stand side
+		# by side until §19.7 retires the hub one.
+		if ShopSystem.is_hub(played_game.id) \
+				or GameState.node_kind(slot_here) == RunGraph.NodeKind.SHOP:
 			_pending_shop = played_game.id
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
 		# is deliberately a wider net than the beat below: it is what paces the
@@ -2517,7 +2650,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 # The new cells light up and pulse on the board itself (BattlefieldView's
 # _rebuild_cells) — this is the words that go with them.
 func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void:
-	var tier_now: int = RunDifficulty.tier_for(GameState.games_played)
+	var tier_now: int = RunDifficulty.current_tier()
 	if tier_now == tier_before:
 		return
 	# Re-seat anything the old bounds had parked off-grid: a wider board is
@@ -2642,8 +2775,9 @@ func _open_post_game() -> void:
 	# what stops the popup arriving afterwards to say it again.
 	var boss_tier: String = ""
 	var bosses: Array = []
-	if _boss_round and not GameLoop2.run_over and _boss_notice_for != GameState.games_played:
-		_boss_notice_for = GameState.games_played
+	if _boss_due_next() and not GameLoop2.run_over \
+			and _boss_notice_for != GameState.spawn_events:
+		_boss_notice_for = GameState.spawn_events
 		boss_tier = RunDifficulty.tier_name(_current_tier())
 		for choice in _choices:
 			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
@@ -3205,12 +3339,12 @@ const SHOP_HINT_REVEAL := 60.0
 # report, and a warning that reopened on each of those would be a warning the
 # player learns to click through.
 func _maybe_announce_boss() -> void:
-	var due: bool = _phase == Phase.SELECT and _boss_round and not GameLoop2.run_over \
-		and _boss_notice_for != GameState.games_played and _boss_notice == null
+	var due: bool = _phase == Phase.SELECT and _boss_due_next() and not GameLoop2.run_over \
+		and _boss_notice_for != GameState.spawn_events and _boss_notice == null
 	if not due:
 		_finish_pending_detour()
 		return
-	_boss_notice_for = GameState.games_played
+	_boss_notice_for = GameState.spawn_events
 	var bosses: Array = []
 	for choice in _choices:
 		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
@@ -3636,7 +3770,7 @@ func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
 # game that is there.
 #
 # So an arrival commits, exactly as `pick` does — the destination's enemy is
-# rolled, the escort comes with it, the selection shields are granted, and the
+# rolled, the node stands its bodies up, the selection shields are granted, and the
 # phase goes to PLAYING — and then it puts THE CARD on top of the board: the same
 # GameChoiceModal the offering opens, with the cover, the enemy and its goal, the
 # shields, and the road on from here. The commit happens first and the card is a
@@ -3657,23 +3791,17 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	GameState.set_current_game(dest)
 	var type_key: StringName = GameLoop2.game_type_key(game)
 	var tier: int = _current_tier()
-	# A boss round is a fact about the RUN, not about how you got to the game, so a
-	# teleport that lands on one still meets a boss. Anything else would make the
-	# scroll a way of skipping them.
-	_boss_round = _is_boss_round()
-	var enemy: GoalEnemyData = GameLoop2.roll_boss(type_key, tier) if _boss_round \
-		else GameLoop2.roll_enemy(type_key, tier)
+	# A TELEPORT IS NOT A WAY PAST THE BOSSES, and it no longer has to be said
+	# here. The capstone is every third SPAWN EVENT (§19.6) and lands on the board
+	# from `GameLoop2.note_spawn_event`, so arriving by scroll counts exactly like
+	# arriving on foot — this path stopped having a boss decision to make.
+	var enemy: GoalEnemyData = GameLoop2.roll_enemy(type_key, tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
-		"boss": _boss_round, "amulet": dest == GameState.amulet_game_id,
+		"boss": false, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
-	GameLoop2.choose_game(enemy, type_key, tier)
-	_log_escort()
-	_remind_twitch_category(game)
-	var granted: int = GameLoop2.grant_selection_shields(game)
-	GameLog.add("%s — %s, one hit stopped each." % [
-		game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+	_begin_game(game, enemy, tier)
 	# You did not spend a Dash to get here, so there is nothing for the return-trip
 	# refund to give back (see `_dashed_here`).
 	_dash_mode = false
@@ -3714,7 +3842,8 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 		"beatable": _beatable_row(_chosen),
 		"enemy_hidden": _enemy_hidden(_chosen),
 		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
-		"escort": _escort_note(_chosen),
+		"bodies": _bodies_note(_chosen),
+		"kind": _kind_of(_chosen),
 		"arrival": true,
 		"arrival_note": announce,
 		# UNDER everything the game you just left still owes: the haul screen (128),
@@ -3810,10 +3939,9 @@ func _start_play_game(request: Dictionary) -> void:
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
 		"repeat": GameState.has_played_game(game.id),
 	}
-	GameLoop2.choose_game(enemy, GameLoop2.game_type_key(game), tier)
-	_log_escort()
-	_remind_twitch_category(game)
-	GameLoop2.grant_selection_shields(game)
+	# `log_shields` false: this path has always granted the armour silently. See
+	# _begin_game — kept as it was rather than quietly fixed.
+	_begin_game(game, enemy, tier, false)
 	GameState.set_current_game(dest)
 	_dash_mode = false
 	# A detour is posted by an event, not paid for with a charge, so there is
@@ -4196,8 +4324,21 @@ func show_completed_goals() -> CompletedGoalsPanel:
 # the same three games and the first boss is encounter 3, which is the whole of
 # what makes the climb quicker: encounter 4 is a Medium enemy where it used to be
 # the Low boss, and every rung after it arrives one game sooner.
-func _is_boss_round() -> bool:
-	return RunDifficulty.is_boss_game(GameState.games_played)
+# WHETHER THE NEXT SPAWN CLOSES THE BAND (§19.6) — which is what the warning is
+# for, since it has to arrive while the player can still decide something.
+#
+# It used to ask `is_boss_game(games_played)`: "is the game about to be chosen a
+# boss round", back when the boss rode the offering as a card's own enemy. The
+# capstone lands on the BOARD now and belongs to the spawn rather than to the
+# game, so the question is one step ahead of the counter rather than one behind
+# it — and an Event or a Shop node, which spawns nothing, does not bring it
+# closer.
+#
+# Keyed on `spawn_events` rather than `games_played` everywhere it is used, so a
+# bash, a transmute or a scramble redrawing the offering cannot re-announce the
+# same band.
+func _boss_due_next() -> bool:
+	return RunDifficulty.is_boss_spawn(GameState.spawn_events + 1)
 
 # The difficulty tier of the CURRENT offering — the plain ladder, for a boss round
 # exactly as for any other.
@@ -4210,7 +4351,7 @@ func _is_boss_round() -> bool:
 # tier, and `tier_for` says so on its own. Once the run reaches Insane the cap
 # holds and the Insane band repeats, boss and all.
 func _current_tier() -> int:
-	return RunDifficulty.tier_for(GameState.games_played)
+	return RunDifficulty.current_tier()
 
 # How many game cards the offering shows: the base three plus whatever
 # "game_choices" bonus the run has been granted (never below one, or there'd be
@@ -4347,13 +4488,16 @@ func _build_choices() -> void:
 	# than cached for the run — the amulet and the game filter both outlive a
 	# single draw, and neither is this screen's to assume.
 	_rebuild_amulet_distances()
-	_boss_round = _is_boss_round()
 	var tier: int = _current_tier()
 	# The enemy behind a slot is remembered for as long as the offering itself
 	# stands, so re-drawing the cards (a bash refilling a slot, a transmute swapping
 	# one) leaves the OTHER cards' enemies exactly as they were. Moving, scrambling
 	# or crossing a difficulty gate is what re-rolls them.
-	var enemy_key: String = "%s|%d|%s" % [_offer_seed(), tier, str(_boss_round)]
+	# THE BOSS IS NO LONGER PART OF THIS KEY, because a boss is no longer a card
+	# (§19.6). It used to read `_boss_round`, so crossing the every-third-GAME
+	# capstone re-rolled every slot's enemy into a boss; the capstone is every
+	# third SPAWN EVENT now and lands on the board rather than on the offering.
+	var enemy_key: String = "%s|%d" % [_offer_seed(), tier]
 	if enemy_key != _slot_enemy_key:
 		_slot_enemies.clear()
 		_slot_enemy_key = enemy_key
@@ -4366,11 +4510,16 @@ func _build_choices() -> void:
 		var slot_key: String = "%s>%s" % [String(gid), String(game.id)]
 		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
 		if enemy == null:
-			enemy = GameLoop2.roll_boss(type_key, tier) if _boss_round else GameLoop2.roll_enemy(type_key, tier)
+			enemy = GameLoop2.roll_enemy(type_key, tier)
 			_slot_enemies[slot_key] = enemy
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
-			"boss": _boss_round, "amulet": gid == amulet,
+			# `boss` stays on the record and is always false now: a Champion node
+			# stands a boss (§19.1) and the capstone spawns one, but neither is the
+			# card's advertised enemy. Kept because the card, the modal and the
+			# checklist all read it, and a key that vanishes reads as a bug rather
+			# than as a rule.
+			"boss": false, "amulet": gid == amulet,
 			# Judged on the GAME, not the slot: a transmuted card plays the
 			# replacement game, so that's the clear the Dash bonus keys off.
 			"repeat": GameState.has_played_game(game.id),
@@ -4815,17 +4964,23 @@ func _clear_hover_grant() -> void:
 	if _offering != null:
 		_offering.clear_hover_grant()
 
-# The "you can beat this" row a card and its popup both wear, and the two lines
-# the escort warning is written as — read by the offered-game popup
-# (GameChoiceModal) as well as by the cards themselves.
+# The "you can beat this" row a card and its popup both wear, and the line that
+# says what the node stands up — read by the offered-game popup (GameChoiceModal)
+# as well as by the cards themselves.
 func _beatable_row(choice: Dictionary) -> Control:
 	return _offering.beatable_row(choice)
 
 func _enemy_hidden(choice: Dictionary) -> bool:
 	return _offering.enemy_hidden(choice) if _offering != null else false
 
-func _escort_note(choice: Dictionary) -> String:
-	return _offering.escort_note(choice) if _offering != null else ""
+func _bodies_note(choice: Dictionary) -> String:
+	return _offering.bodies_note(choice) if _offering != null else ""
+
+# The kind of the node a choice sits on, or -1 when there is no arrival to
+# describe. One question, asked through the offering so the card's mark and the
+# popup's block cannot drift apart.
+func _kind_of(choice: Dictionary) -> int:
+	return _offering.kind_of(choice) if _offering != null else -1
 
 # The Amulet, by name.
 #

@@ -38,8 +38,8 @@ func _enemy(dmg: int) -> GoalEnemyData:
 # board would put content they never asked about inside their assertions.
 func _choose_solo(enemy: GoalEnemyData) -> int:
 	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return inst
 
 # The grid column a stacked body stands in (1 = the front line), or -1 when it is

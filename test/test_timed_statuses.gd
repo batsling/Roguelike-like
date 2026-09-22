@@ -42,8 +42,8 @@ func _enemy() -> GoalEnemyData:
 # content they never asked about inside the assertions.
 func _solo_entry() -> Dictionary:
 	var inst: int = GameLoop2.choose_game(_enemy())
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return GameLoop2.entry_for(inst)
 
 # Resolve a game the way the loop does, with nothing reported. That is the tick
@@ -266,8 +266,8 @@ func test_a_bodys_borrowed_stacks_and_their_debt_round_trip() -> void:
 		pending("the run did not reach this case (roster.is_empty())")
 		return
 	var inst: int = GameLoop2.choose_game(roster[0])
-	if GameLoop2.escort_instance() > 0:
-		GameLoop2.despawn(GameLoop2.escort_instance())
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	GameLoop2.apply_status_to(int(entry["instance"]), &"dexterity", 3, 1)
 	var blob: Dictionary = GameLoop2.serialize()

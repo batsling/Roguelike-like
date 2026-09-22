@@ -169,7 +169,7 @@ var _bounds_cols: int = BASE_GRID_COLS
 var _bounds_rows: int = BASE_GRID_ROWS
 
 # The bodies that walked on when the game in play was taken: the enemy the card
-# advertised, and the escort beside it (§7.5). Instance handles, the advertised
+# advertised, and the second body beside it (§19.4). Instance handles, the advertised
 # one first; empty when no game is in play.
 #
 # THERE IS NO SUCH THING AS "THIS GAME'S ENEMY" ANY MORE. This used to be a
@@ -187,7 +187,7 @@ var _bounds_rows: int = BASE_GRID_ROWS
 #     is what Scramble is) takes the pair that arrived with the superseded game
 #     back off the board — they were never played for. Without it the charge is a
 #     spawn button: one press, one free body.
-#   * SAYING WHAT LANDED. "⚠ Carcass spawned alongside it" on a card, and the
+#   * SAYING WHAT LANDED. "⚠ Carcass walked on beside it" on a card, and the
 #     text harness's one-line summary, both need to know what just walked on.
 #
 # Cleared the moment the game is REPORTED (beat_game). From then on those bodies
@@ -209,7 +209,7 @@ var arrivals: Array[int] = []
 # IT EXISTS BECAUSE `arrivals` WAS BEING ASKED THIS AND ANSWERING IT WRONG. The
 # two agree right up until a body leaves the board some way other than the report
 # — and clearing the board is a thing the player is actively encouraged to do.
-# Magic Missile the advertised enemy and its escort and `arrivals` empties, at
+# Magic Missile both of a node's bodies and `arrivals` empties, at
 # which point can_log_attempt() said no game was in play, "Lost a run" went dead
 # with no explanation, and the game could not be handed in. The board being empty
 # is explicitly NOT a reason to refuse the tick (see log_attempt: a cleared stack
@@ -934,7 +934,7 @@ func serialize() -> Dictionary:
 		# are written as HANDLES rather than as second copies of themselves — two
 		# copies is how a load ends up with the same enemy standing on the board
 		# twice. A Scramble taken after a reload then still supersedes everything
-		# that arrived together instead of leaving the escort behind (§7.5).
+		# that arrived together instead of leaving the second one behind (§19.4).
 		"arrivals": arrivals.duplicate(),
 		# Whether that game has been handed in, which `arrivals` cannot be read for
 		# (see game_in_play) — a save taken on a board the player has just cleared
@@ -947,7 +947,7 @@ func serialize() -> Dictionary:
 		# THAT wrote when the body waited off the board instead of standing on it.
 		"current_instance": int(arrival().get("instance", 0)),
 		"current": _serialize_entry(arrival()),
-		"current_escort": escort_instance(),
+		"current_escort": second_body_instance(),
 		"stack": stacked,
 		# The board's FURNITURE (§17), written as flat lists rather than as the
 		# Vector2i-keyed dictionaries they are at runtime: the save goes through
@@ -1096,7 +1096,7 @@ func restore(data: Dictionary) -> void:
 	arrivals.clear()
 	var saved: Array = data.get("arrivals", [])
 	if saved.is_empty():
-		# An OLDER save, from when the advertised body and its escort were two
+		# An OLDER save, from when the advertised body and the second were two
 		# separate fields. A save older still carries the whole entry and no handle
 		# at all: that body is not in the stack, so it is walked onto the board
 		# here, which is exactly where the old build would have put it on the next
@@ -1521,15 +1521,15 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 # have been waiting at that game, not a stranger dropped in from somewhere else.
 # That is also why the caller passes the GAME's type and the RUN's tier rather
 # than letting this read them off `alongside`: when the game's own roll had to
-# widen (nothing authored at that type), the escort must widen with it and come
+# widen (nothing authored at that type), the second body must widen with it and come
 # out of the same bucket, not out of whatever bucket the widened pick landed in.
 #
 # `alongside` is the enemy it is spawning next to, and it is kept OUT of the roll:
 # two of the same body means two identical rows on the report checklist, which
 # reads as a duplicated line rather than as two enemies. Preference, not a rule —
-# a bucket holding nothing else still owes an escort, so the second roll allows
+# a bucket holding nothing else still owes a second body, so the second roll allows
 # the twin rather than spawning nothing.
-func roll_escort(game_type: StringName = &"", tier: int = -1,
+func roll_second_body(game_type: StringName = &"", tier: int = -1,
 		alongside: GoalEnemyData = null) -> GoalEnemyData:
 	var pool: Array = Data.all_goal_enemies()
 	if pool.is_empty():
@@ -1544,7 +1544,7 @@ func roll_escort(game_type: StringName = &"", tier: int = -1,
 
 # Picks one enemy from `pool` preferring an exact type+tier match, and widening
 # from there so a roll always returns something while content is thin. Shared by
-# roll_enemy + roll_boss + roll_escort.
+# roll_enemy + roll_boss + roll_second_body.
 #
 # THE TIER WIDENS DOWNWARD, NEVER UP OR SIDEWAYS. This used to fall from
 # "type+tier" straight to "type, ANY tier", which quietly made the difficulty
@@ -1577,7 +1577,15 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 	var anything: Array = []
 	var type_tiers: Dictionary = {}    # right type, keyed by tier index
 	for e in pool:
-		if not (e is GoalEnemyData) or e == exclude:
+		# BY ID, NOT BY OBJECT. "The same enemy" means the same id, and nothing
+		# guarantees one object per id at a body: anything that hands a body a
+		# `duplicate()` of its enemy — the test harness strips a goal's `ticked`
+		# and `count` that way — leaves an `exclude` that is equal to nothing in
+		# the pool, so the one thing this argument exists to keep out comes
+		# straight back. Identity happened to hold in the shipping paths, which is
+		# exactly why it would have failed quietly the first time one of them
+		# stopped serving Data's own object.
+		if not (e is GoalEnemyData) or (exclude != null and e.id == exclude.id):
 			continue
 		anything.append(e)
 		var t: int = e.tier_index()
@@ -1609,7 +1617,7 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 func choose_game_of_type(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	var enemy: GoalEnemyData = roll_enemy(game_type, tier)
 	if enemy != null:
-		# The type + tier are handed on so the escort comes out of the bucket the
+		# The type + tier are handed on so the second body comes out of the bucket the
 		# game asked for rather than the one this roll may have widened into (§7.5).
 		choose_game(enemy, game_type, tier)
 	return enemy
@@ -1631,9 +1639,9 @@ func roll_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 	var boss: GoalEnemyData = roll_boss(game_type, tier)
 	if boss != null:
-		# The round's own type and tier are handed on for the escort, exactly as
+		# The round's own type and tier are handed on for the second body, exactly as
 		# choose_game_of_type hands on the game's: a boss may be authored at a tier
-		# the goal-enemy roster does not reach, and the escort roll widens DOWNWARD
+		# the goal-enemy roster does not reach, and the second roll widens DOWNWARD
 		# from what it is asked for (_pick_by_type_tier) rather than out of whatever
 		# bucket the boss itself came from.
 		choose_game(boss, game_type, tier)
@@ -1650,12 +1658,25 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # it (see `arrivals`).
 #
 # `escort_type` / `escort_tier` are the GAME's type and the run's tier, for the
-# escort roll only — see roll_escort for why it may not just read them off
+# second-body roll only — see roll_second_body for why it may not just read them off
 # `enemy`. Left out (the tests' path, and Scramble's) they fall back to the
 # enemy's own type and tier, which is the same bucket whenever the game's roll
 # did not have to widen.
+#
+# `with_second_body` is what the node's KIND decides (§19.1). An Enemies node stands
+# two bodies and a Champion node stands one — the boss alone, with its ordinary
+# chest and nothing beside it — so the second body is a property of the node now
+# rather than of every committed game. It defaults to true because Scramble, the
+# dev panel and the tests all commit a game without having a node in hand.
+#
+# `is_arrival` is what tells a node ARRIVAL from a REPLACEMENT. Scramble comes
+# through here too — it supersedes what arrived, with a new instance — and §19.2
+# is explicit that a Scramble is not a way to buy your way out of a fight. If it
+# ticked the spawn counter it would be a way to buy your way INTO one: a charge
+# spent, the same bodies standing there, and the tier a third of a step higher.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
-		escort_tier: int = -1) -> int:
+		escort_tier: int = -1, with_second_body: bool = true,
+		is_arrival: bool = true) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
 	# is closed out — and a fresh escape gate with it: this game has not hurt you
 	# yet, whatever the last one did (§3.2). The same for what the last game's
@@ -1664,7 +1685,7 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_clear_game_record()
 	hurt_this_game = false
 	# The superseded bodies leave the board rather than lingering on it as ones
-	# nobody chose: they were never played for. Both of them — the escort only ever
+	# nobody chose: they were never played for. Both of them — the second one only ever
 	# stood there because the game it came with did.
 	_clear_arrivals()
 	if enemy == null:
@@ -1684,44 +1705,203 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	arrivals = [inst]
-	var escort_inst: int = _spawn_escort(enemy, escort_type, escort_tier)
-	if escort_inst > 0:
-		arrivals.append(escort_inst)
+	if with_second_body:
+		var second_inst: int = _spawn_second_body(enemy, escort_type, escort_tier)
+		if second_inst > 0:
+			arrivals.append(second_inst)
+	# ONE SPAWN EVENT, however many bodies just walked on (§19.6). An Enemies node
+	# and a Champion node each count once, and an Event or a Shop node never
+	# reaches here at all — see begin_bodiless_game.
+	if is_arrival:
+		note_spawn_event(escort_type, escort_tier)
 	loop_changed.emit()
 	return inst
 
-# Stand the escort (§7.5) next to the enemy of the game just chosen. Returns its
-# instance handle, or 0 when there is nothing to roll — an empty goal-enemy
-# roster, where the game still gets its own enemy.
+# A SPAWN EVENT HAPPENED (§19.6): a node arrival that landed bodies, or a failure
+# spawn. One per event, not one per body — two bodies on an Enemies node and one
+# on a Champion are the same single step up the ladder, because what the tier
+# measures is how often the run is putting things on the board rather than how
+# crowded it got.
 #
-# A BOSS ROUND GETS ONE TOO. It used to spawn solo, on the grounds that a tier
-# change is already the run's step up and stacking the two difficulty rules would
-# blur which one was being felt. In play that made the run's biggest round its
-# EMPTIEST board — one body, where the ordinary game before it had two — so the
-# capstone read as a quieter game with a bigger enemy on it. The escort is rolled
-# the same way here as anywhere: an ordinary goal-enemy out of the round's own
-# type and tier bucket, bombable and worth ordinary gold. The boss keeps every
-# rule that is the boss's (§7.1); what it stops having is an escort exemption.
+# The board is grown HERE rather than at the report, which is the first thing in
+# the build to resize it mid-game. The tier is what SIZED this spawn's arrivals,
+# so holding the board at its old size until the report would crowd new bodies
+# onto a grid the rule says has already grown — the one state §7.3's off-grid
+# queue exists to avoid rather than to absorb.
+func note_spawn_event(type_key: StringName = &"", tier: int = -1) -> void:
+	GameState.spawn_events += 1
+	sync_grid_bounds()
+	if RunDifficulty.is_boss_spawn(GameState.spawn_events):
+		_land_capstone_boss(type_key, tier)
+
+# THE EVERY-THIRD-SPAWN CAPSTONE (§19.6): a boss, on top of whatever else this
+# spawn event was already putting down.
 #
-# The escort is a body like any other from the moment it lands: it walks, strikes,
-# takes a bomb, carries its own goal, and drops its own item when that goal is
-# cleared. What it is NOT is the game's enemy — beating the game answers for the
-# named one alone, which is what makes the pair harder than one enemy of twice
-# the size.
-func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> int:
+# It does not call note_spawn_event itself, and that is not an oversight. A
+# capstone is not a spawn event of its own — it is part of the one that triggered
+# it — and counting it would make every third event count double and the ladder
+# accelerate away from the rule that describes it.
+#
+# `type_key` is the game the spawn belongs to, passed down rather than read off
+# GameState, because an arrival commits the board before the run has finished
+# travelling and "where the player is standing" is briefly the game they left.
+# Empty falls back to the current game, which is right for a failure spawn.
+func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
+	var key: StringName = type_key
+	if key == &"":
+		key = game_type_key(Data.get_game(GameState.current_game_id))
+	var boss: GoalEnemyData = roll_boss(key, tier if tier >= 0 else RunDifficulty.current_tier())
+	if boss == null:
+		return          # an empty boss roster: the band closes without one
+	if spawn_to_stack(boss) <= 0:
+		return
+	# NOT an arrival, for the same reason a failure spawn is not one: it did not
+	# come with the game, so a Scramble must not be able to scrub it off.
+	var msg: String = "%s closes the band — a boss walks on." % boss.display_name
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
+	loop_changed.emit()
+
+# --- the enemies you get for not fighting (§19.5) ---------------------------
+#
+# Every failure at a game where nothing has been defeated spawns bodies. This is
+# the other half of the node kinds: without it, the three non-Enemies kinds would
+# simply be a way to play a whole run on an empty board.
+#
+# HOW MANY THIS FAILURE OWES, or 0 when it owes none. Four things buy it off:
+#
+#   * DEFEATING ANYTHING this game shuts the tap for the rest of it. One body
+#     down is the player answering the board, and the rule is about a player who
+#     never does.
+#   * AN ESCAPE, because they walked away and already paid §3.2's price for it.
+#   * THE AMULET, because there is no next game for anything to walk into.
+#   * AN EVENT OR A SHOP NODE, because nothing spawned there so nothing is owed —
+#     those two kinds are genuine breathing room and this would take it back.
+#
+# `defeated_this_game` is the counter and the distinction it draws is load-
+# bearing. It moves in `_defeat` and nowhere else, so two things that look like
+# progress are correctly NOT progress here: stepping a counted goal up by one
+# (§7.7 — `advance_goal` moves a tally and never reaches `_defeat`), and meeting
+# a goal against a body with more Health than the single hit it deals, which
+# leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
+# tempting field and it is the wrong one: it ticks for both.
+func failure_spawn_count(escaped: bool = false) -> int:
+	if not game_in_play or run_over or escaped:
+		return 0
+	if defeated_this_game > 0:
+		return 0
+	var here: StringName = GameState.current_game_id
+	if here == &"" or here == GameState.amulet_game_id:
+		return 0
+	match GameState.node_kind(here):
+		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
+			return 0
+	return RunDifficulty.failure_bodies_for_hops(hops_to_amulet())
+
+# Stand this failure's bodies on the board. Returns how many actually landed.
+#
+# They roll from the GAME IN PLAY's type at the run's current tier — the same
+# roll an Enemies node makes, with the same widening — so a body that turns up
+# because you keep losing at a Deckbuilder is a Deckbuilder body. The board goes
+# on describing where you are standing; the failure changes how MANY walk on
+# rather than what kind of place this is.
+#
+# THEY NEVER JOIN `arrivals`. They did not come with the game, so a Scramble
+# cannot scrub them off the board — which would otherwise make the failure price
+# refundable for a D6 charge. The undo needs nothing new: at a lost run this is
+# called after `log_attempt` has already taken its snapshot, so taking the turn
+# back takes the body with it.
+func spawn_for_failure(escaped: bool = false) -> int:
+	var want: int = failure_spawn_count(escaped)
+	if want <= 0:
+		return 0
+	var game: GameData = Data.get_game(GameState.current_game_id)
+	var type_key: StringName = game_type_key(game)
+	var tier: int = RunDifficulty.current_tier()
+	var landed := 0
+	var names: Array = []
+	for _i in range(want):
+		var enemy: GoalEnemyData = roll_enemy(type_key, tier)
+		if enemy == null:
+			break        # an empty roster: the failure is free rather than fatal
+		if spawn_to_stack(enemy) > 0:
+			landed += 1
+			names.append(enemy.display_name)
+	if landed > 0:
+		# SAID OUT LOUD, in the log and as a notification (§19.8) — the old escort's
+		# old notice generalised. These are the one arrival the player did not
+		# choose, so the notice names what walked on AND why: a body that appears
+		# because of something you did needs saying, or the board simply grows.
+		var msg: String = "%s walked on — nothing went down at %s." % [
+			", ".join(PackedStringArray(names)),
+			game.display_name if game != null else "this game"]
+		GameLog.add(msg, UITheme.DANGER)
+		Notifications.notify(msg, UITheme.DANGER)
+		# ONE spawn event for the failure, not one per body (§19.6) — and it can
+		# be the step that crosses a tier band with the game still in play, which
+		# is the whole reason the board grows at the spawn.
+		note_spawn_event(type_key, tier)
+		loop_changed.emit()
+	return landed
+
+# Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
+#
+# It is not `choose_game(null)`: that means "nothing is in play" and drops
+# `game_in_play`, which is the state the screen is in between games. An Event
+# node is a game you go away and play like any other — it grants the selection
+# shields, ticks `games_played`, needs ✓ Completed Game to advance and pays the
+# game's own loot (§19.1). The only thing it does not do is put something on the
+# board. So this is choose_game's whole prologue, minus the bodies.
+#
+# The revival payout stays, because it is about a NEW COMBAT beginning rather
+# than about anything arriving: a body that died last game with a revive left has
+# earned its walk back on, and an Event node is still the next game.
+func begin_bodiless_game() -> void:
+	_clear_attempts()
+	_clear_game_record()
+	hurt_this_game = false
+	_clear_arrivals()
+	game_in_play = true
+	_pay_revivals()
+	arrivals = []
+	loop_changed.emit()
+
+# THE SECOND OF AN ENEMIES NODE'S TWO BODIES (§19.4). Returns its instance
+# handle, or 0 when there is nothing to roll — an empty goal-enemy roster, where
+# the game still gets its first one.
+#
+# It used to be THE ESCORT, and the difference is not only the name. An escort
+# was a companion: a body attached to the game's own enemy, rolled because that
+# enemy had arrived. §19.4 keeps the number and drops the relationship — two
+# bodies walk on at the back column, both carry their own goal, both are old
+# goals from the moment they land, and beating the game answers for neither of
+# them on its own. What used to be "the enemy and its escort" is "the two bodies
+# this node stands up".
+#
+# A CHAMPION NODE GETS NONE OF THIS, which reverses the old boss-escort rule.
+# That rule was taken when every ordinary game put two bodies down and a solo
+# boss made the run's biggest round its emptiest board; §19.4 overrules it,
+# because a boss of the current tier is a heavy enough board on its own and the
+# every-third-spawn capstone already puts bosses onto boards carrying other
+# things. `choose_game`'s `with_second_body` is what decides it.
+#
+# Either body is a body like any other from the moment it lands: it walks,
+# strikes, takes a bomb, carries its own goal, and drops its own item when that
+# goal is cleared.
+func _spawn_second_body(primary: GoalEnemyData, game_type: StringName, tier: int) -> int:
 	if primary == null:
 		return 0
 	var typ: StringName = game_type if game_type != &"" else primary.game_type
 	var t: int = tier if tier >= 0 else primary.tier_index()
-	var escort: GoalEnemyData = roll_escort(typ, t, primary)
-	if escort == null:
+	var second: GoalEnemyData = roll_second_body(typ, t, primary)
+	if second == null:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	# Same spawn as everything else, so an escort that cannot fit at the back
-	# column waits off-grid and walks on as space frees — a big enemy taking the
-	# whole back row delays its escort rather than teleporting it past.
-	_add_to_grid(inst, escort, effective_health(escort), _spawn_statuses())
+	# Same spawn as everything else, so a body that cannot fit at the back column
+	# waits off-grid and walks on as space frees — a big enemy taking the whole
+	# back row delays the second one rather than teleporting it past.
+	_add_to_grid(inst, second, effective_health(second), _spawn_statuses())
 	return inst
 
 # Take the bodies that arrived with the game in play back off the board.
@@ -1731,8 +1911,8 @@ func _spawn_escort(primary: GoalEnemyData, game_type: StringName, tier: int) -> 
 # would delete bodies the player now owes goals to.
 func _clear_arrivals() -> void:
 	# A COPY, because _take_off_board erases the handle it just removed from
-	# `arrivals` — walking the live array skips every second body, which left the
-	# escort standing exactly where a Scramble was supposed to take it.
+	# `arrivals` — walking the live array skips every other handle, which left the
+	# second body standing exactly where a Scramble was supposed to take it.
 	for inst in arrivals.duplicate():
 		var idx: int = _index_of(int(inst))
 		if idx >= 0:
@@ -1810,6 +1990,11 @@ func log_attempt() -> String:
 	# the Health, the ground it walks onto, a trinket the hit shatters — is what
 	# the undo has to put back (see _run_snapshot).
 	_attempt_snapshots.append(_run_snapshot())
+	# THE PRICE OF A LOST RUN WHERE NOTHING WENT DOWN (§19.5), landing with the
+	# tick and BEFORE the turn that tick buys — so the turn is resolved around the
+	# new bodies rather than a beat ahead of them. After the snapshot above, which
+	# is what makes the undo take them back with it.
+	spawn_for_failure()
 	last_attempt_turn = attempt_turn()
 	# One entry per tick, all of them "turn" now that there is only one thing a
 	# tick can cost. Kept as the list rather than collapsed to a count because it
@@ -2185,9 +2370,9 @@ func _board_snapshot() -> Dictionary:
 # `clear_advertised` is a convenience for callers that have no report checklist to
 # read — the text harness, and the tests that just want "and I did the goal of the
 # thing that walked on here". It adds the body the card ADVERTISED (arrivals[0])
-# to `fulfilled_instances`, and only that one: the escort is a second goal you owe
-# (§7.5), and a flag that cleared it too would hand the player a free kill for
-# every game played.
+# to `fulfilled_instances`, and only that one: the node's second body is a second
+# goal you owe (§19.4), and a flag that cleared it too would hand the player a
+# free kill for every game played.
 #
 # The overworld passes false and lists everything itself, because on its checklist
 # the arrivals are ordinary rows it cannot tell from the followers — which is the
@@ -2203,7 +2388,8 @@ func _board_snapshot() -> Dictionary:
 # It does not touch 2a: Predatory Scent is a body's own ability reacting to an
 # evening you did nothing with (§7.6), not the road's price for the road.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
-		claims: Dictionary = {}, road_turns: bool = true) -> Dictionary:
+		claims: Dictionary = {}, road_turns: bool = true,
+		escaped: bool = false) -> Dictionary:
 	var turns: int = enemy_turns() if road_turns else 0
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
@@ -2426,6 +2612,17 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    has had its full say on the goals, the clauses and the damage above —
 	#    what it bought you was this game, and this game is only over now.
 	res["statuses_expired"] = _expire_timed_statuses()
+
+	# 5. AND THE PRICE OF A GAME HANDED IN WITH NOTHING DEFEATED (§19.5), whether
+	#    the goal was met or missed. AFTER the resolve above, so the bodies that
+	#    just walked on do not take the turns this report was paying for — they
+	#    arrived as the game was handed in and act from the next one, on §7.2's
+	#    ordinary terms.
+	#
+	#    Before `_clear_game_record` below, which is what wipes the counter this
+	#    reads. An ESCAPE owes nothing: the player walked away and already paid
+	#    §3.2's price for it.
+	res["failure_spawns"] = spawn_for_failure(escaped)
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).
@@ -3849,10 +4046,10 @@ func _spawn_statuses() -> Dictionary:
 # following you are untouched — scramble is an escape from what just landed, not
 # a reset of the board.
 #
-# It rerolls the ESCORT with it (§7.5), because choose_game supersedes everything
-# that arrived together. That is the whole reason `arrivals` holds both: a
-# Scramble that swapped the enemy and left the escort standing would be a way to
-# BUY bodies with D6 charges, one per press.
+# It rerolls BOTH BODIES (§19.4), because choose_game supersedes everything that
+# arrived together. That is the whole reason `arrivals` holds both: a Scramble
+# that swapped one and left the other standing would be a way to BUY bodies with
+# D6 charges, one per press.
 func scramble() -> GoalEnemyData:
 	var entry: Dictionary = arrival()
 	if entry.is_empty() or GameState.scramble <= 0:
@@ -3862,7 +4059,9 @@ func scramble() -> GoalEnemyData:
 	if fresh == null:
 		return null
 	GameState.scramble -= 1
-	choose_game(fresh)  # supersedes what arrived, with a new instance
+	# NOT an arrival: this supersedes what arrived, with a new instance, so it must
+	# not tick the spawn counter (§19.2).
+	choose_game(fresh, &"", -1, true, false)
 	return fresh
 
 # D10 (§8): re-roll every NON-BOSS body on the battlefield where it stands.
@@ -3899,7 +4098,9 @@ func reroll_enemies() -> int:
 		# "there is nothing else it could be" is the honest answer there.
 		var fresh: GoalEnemyData = _pick_by_type_tier(
 			pool, StringName(String(old.game_type).to_lower()), old.tier_index(), old)
-		if fresh == null or fresh == old:
+		# Again by id: a re-roll that hands back the same enemy as a different
+		# object would count as a swap and change nothing the player can see.
+		if fresh == null or fresh.id == old.id:
 			continue
 		entry["enemy"] = fresh
 		entry["health"] = effective_health(fresh)
@@ -4015,7 +4216,7 @@ func polymorph_instance(instance: int) -> GoalEnemyData:
 	var pool: Array = Data.all_goal_enemies().filter(
 		func(e): return e is GoalEnemyData and not e.is_boss())
 	var fresh: GoalEnemyData = _pick_by_type_tier(pool, &"", old.tier_index(), old)
-	if fresh == null or fresh == old:
+	if fresh == null or fresh.id == old.id:
 		return null
 	entry["enemy"] = fresh
 	entry["health"] = effective_health(fresh)
@@ -4432,16 +4633,23 @@ func arrival() -> Dictionary:
 	var idx: int = _index_of(arrivals[0])
 	return stack[idx] if idx >= 0 else {}
 
-# The ESCORT's instance handle, or 0 when there is none. Asked for by handle
-# rather than by enemy wherever a caller wants to act on that body (bomb it,
-# despawn it) rather than describe it.
-func escort_instance() -> int:
+# THERE IS NO ESCORT ANY MORE (§19.4). An Enemies node lands TWO BODIES, and the
+# second one is not a companion to the first: both walk on at the back column,
+# both carry their own goal, both are old goals from the moment they land, and
+# beating the game answers for neither of them on its own. The escort was a rule
+# about one body being attached to another; it is a NUMBER on the node now.
+#
+# What survives is the handle, because callers still need to name the second
+# arrival to act on it — bomb it, despawn it, ask what it is. `arrivals` is
+# ordered, so this is "the second thing that walked on with this game" and
+# nothing more than that.
+func second_body_instance() -> int:
 	return arrivals[1] if arrivals.size() > 1 else 0
 
-# The enemy that arrived as the ESCORT (§7.5), or null when there is none — a
-# boss round, or a game whose escort has already been bombed off.
-func escort_enemy() -> GoalEnemyData:
-	var idx: int = _index_of(escort_instance())
+# The second body this game landed, or null when it landed only one — a Champion
+# node (§19.1), or a game whose second body has already been bombed off.
+func second_body() -> GoalEnemyData:
+	var idx: int = _index_of(second_body_instance())
 	return stack[idx]["enemy"] if idx >= 0 else null
 
 # --- internals ------------------------------------------------------------
@@ -6407,6 +6615,11 @@ func _run_intent_op(entry: Dictionary, res: Dictionary, inst: int,
 			# ESCORT — a Gatekeeper is a body you have to reach through the
 			# skeletons it opened with.
 			#
+			# NOT §7.5's escort, which §19.4 retired: that one was the second body
+			# an ordinary game stood up, and it is a number on the node now
+			# (_spawn_second_body). This is an authored ABILITY of one enemy, and
+			# it is the only thing in this file still called an escort.
+			#
 			# ADJACENT, not the row in front: `_brood_cell` is the spawners' single
 			# square and this one is authored to scatter, so a full lane in front of
 			# it does not stop it dead the way it stops a Nested Spawner.
@@ -6568,7 +6781,7 @@ func _adjacent_cells(entry: Dictionary, enemy: GoalEnemyData) -> Array:
 # next to the summoner.
 #
 # THE SQUARE IS ROLLED PER BODY and re-rolled from the board as it stands, not
-# picked once and counted off — the first escort takes a cell, and the second has
+# picked once and counted off — the first summoned body takes a cell, and the next has
 # to be laid somewhere that is still free. A body with nowhere left to go is
 # simply not laid, exactly as a spawner with no room lays nothing; that is the
 # authored "if there is space" applied to a ring instead of to a single square.

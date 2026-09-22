@@ -162,7 +162,7 @@ static func _ch_choosing() -> Dictionary:
 				+ "to the road, not just where it puts you."),
 			_kv("The enemy", "Who is waiting there, and the exact goal you would "
 				+ "be playing for, written out with any clauses your own statuses "
-				+ "add to it — plus a warning when an escort spawns with it, which "
+				+ "add to it — plus a warning saying how many bodies walk on, which "
 				+ "is every card that is not a boss."),
 			_kv("The shields", "How many Temporary Shields that game hands you — "
 				+ "one hit stopped each. See §3."),
@@ -339,20 +339,21 @@ static func _ch_enemies() -> Dictionary:
 				+ "from a pool matched to that game's type and the run's current "
 				+ "difficulty. The enemy IS its goal. Killing it and doing the "
 				+ "goal are the same act."),
-			_h("Nothing arrives alone"),
-			_p("Committing to a game spawns TWO bodies: its own enemy, and an "
-				+ "escort rolled from the same pool — another enemy that could "
-				+ "have been waiting there. The card warns you that a second one "
-				+ "is coming but never says which; you find that out on arrival."),
-			_b("Only the named enemy is the game's. Beating the game answers for "
-				+ "it alone — the escort keeps its own goal, and clearing that is "
-				+ "a job for a later game."),
-			_b("So a missed goal now costs you two followers rather than one, and "
-				+ "the escort's loot and gold are still there to be collected "
-				+ "whenever you get round to its goal."),
-			_b("A BOSS spawns alone. The tier change is the step up on its own."),
-			_b("Scramble rerolls the pair. The escort came with the enemy you "
-				+ "rejected, so it leaves with it."),
+			_h("What a node stands up"),
+			_p("How many bodies a game puts on the board is decided by the NODE, "
+				+ "not by the game. An Enemies node stands TWO — its own enemy and "
+				+ "a second rolled from the same pool. A Champion node stands ONE: "
+				+ "a boss of the run's current tier, alone. An Event or a Shop node "
+				+ "stands none at all. The card says how many; which ones is rolled "
+				+ "on arrival."),
+			_b("Neither of the two is a companion to the other. Both carry their "
+				+ "own goal, both are ordinary followers from the moment they land, "
+				+ "and beating the game answers for neither of them on its own."),
+			_b("So a missed goal costs you two followers rather than one, and both "
+				+ "lots of loot and gold are still there to be collected whenever "
+				+ "you get round to their goals."),
+			_b("Scramble rerolls the pair. Both arrived with the game you "
+				+ "rejected, so both leave with it."),
 			_h("The three kinds of goal"),
 			_kv("Bounty", "Defeat a specific thing in the real game. Defeat an "
 				+ "enemy that splits. Defeat something that is an alien."),
