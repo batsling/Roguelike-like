@@ -349,7 +349,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	var game: GameData = Data.get_game(id)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 7)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var title := Label.new()
@@ -387,7 +387,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		box.add_child(chip)
 
 	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", 3)
+	facts.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	box.add_child(facts)
 	for row in cfg.get("facts", []):
 		if row is Array and (row as Array).size() >= 2:
