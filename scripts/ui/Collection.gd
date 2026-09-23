@@ -771,7 +771,7 @@ func _fill_cell(index: int) -> void:
 	# carries. The ticks still line up in a readable column down the grid, because
 	# every cell is the same width and the row is centred.
 	var stat_row := HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 5)
+	stat_row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	stat_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	stat_row.add_child(_owned_badge(g))
 	stat_row.add_child(_label(stat_line,
@@ -1224,7 +1224,7 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 9)
+	body.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(body)
 	if enemy != null and enemy.image != null:
 		var art := TextureRect.new()
@@ -1234,7 +1234,7 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		body.add_child(art)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 	var top := HBoxContainer.new()
@@ -1279,7 +1279,7 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 9)
+	body.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(body)
 
 	var art_tex: Texture2D = null
@@ -1297,7 +1297,7 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 		body.add_child(art)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 	var top := HBoxContainer.new()
@@ -1761,7 +1761,7 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 9)
+	body.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(body)
 	if enemy.image != null:
 		var art := TextureRect.new()
@@ -1917,7 +1917,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	panel.add_theme_stylebox_override("panel",
 		UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 9)
+	body.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(body)
 
 	if game != null and game.cover_image != null:
@@ -1929,7 +1929,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 		body.add_child(art)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 
@@ -2390,7 +2390,7 @@ func _card_art(folder: String, base: String) -> Texture2D:
 
 func _pill_dose(heading: String, text: String, color: Color) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 1)
+	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	box.add_child(_label(heading, Color(0.55, 0.6, 0.7), 10))
 	box.add_child(_label(text if text.strip_edges() != "" else "—", color, 12, false, true))
 	return box
@@ -2695,7 +2695,7 @@ func _event_choice_block(c: Dictionary, ac: Color) -> Control:
 	panel.add_theme_stylebox_override("panel",
 		UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 3)
+	vb.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	panel.add_child(vb)
 	# Through the name holes on the way out. There is no run here and so no pack
 	# to fill them from, which is exactly what their unfilled forms are for: the

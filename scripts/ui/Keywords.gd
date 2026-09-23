@@ -161,7 +161,7 @@ static func chip(entry: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.PANEL, 6, 5, 1, UITheme.BORDER))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(row)
 	var icon: Texture2D = entry.get("icon")
