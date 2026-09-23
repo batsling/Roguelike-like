@@ -99,7 +99,7 @@ static func build(cfg: Dictionary) -> Control:
 			accent.lerp(UITheme.BORDER, 0.35)))
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	panel.add_child(col)
 
 	# The heading: art on the left, name and what-it-is stacked beside it. The
@@ -122,7 +122,7 @@ static func build(cfg: Dictionary) -> Control:
 		head.add_child(tex)
 
 	var names := VBoxContainer.new()
-	names.add_theme_constant_override("separation", 1)
+	names.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(names)
 	var title := Label.new()
@@ -195,7 +195,7 @@ static func _pip(pip: Dictionary) -> Control:
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	chip.add_child(row)
 	var art: Texture2D = pip.get("art")
 	if art != null:
