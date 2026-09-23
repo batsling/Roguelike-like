@@ -379,7 +379,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	pad.add_child(body)
 
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 7)
+	line.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(line)
 
@@ -388,7 +388,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	line.add_child(art)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
