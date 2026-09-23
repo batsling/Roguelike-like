@@ -12,8 +12,7 @@ because the sizing is the part that is expensive to re-derive.
 **All eight items are now closed or down to a named remainder.** §1 is **decided**;
 §3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts are **done**, leaving its
 spacing scale as the one substantial piece of work left in the document; §6's
-fail-loudly half is **done** with its duplicated colours still open; and §7 leaves
-the disabled `Continue` row behind it. Closed work is kept here with its reasoning rather than
+is **done**, both halves; and §7's empty `Continue` row is gone. Closed work is kept here with its reasoning rather than
 deleted, so none of it gets asked again; a closed item says so in its heading, and
 a half-closed one says which half.
 
@@ -193,11 +192,15 @@ already had it — and `StartRunBtn` was the tell that this was the right shape:
 ALREADY had a unique name and was already reached as `%StartRunBtn` eleven lines
 above, while `_style_menu` walked a four-deep path to the same node.
 
-**Still open: the duplicated colours.** The scene still authors a background, a
-title and a subtitle colour that `_style_menu` then overwrites, so the editor
-preview shows colours no player ever sees. Closing it means putting the real
-colours in the scene and deleting the re-skinning — the larger half, and the one
-that makes the scene honest.
+**DONE: the duplicated colours.** The scene now authors the background, title and
+subtitle at their real `UITheme` values (`BG_DEEP`, `GOLD`, `TEXT_DIM`), and
+`_style_menu` no longer repaints them, so the editor preview is what a player
+sees. The copy is pinned rather than trusted:
+`test_main_menu.gd::test_the_scene_is_authored_in_the_themes_own_colours`
+instantiates the scene WITHOUT running `_ready` and compares all three to the
+theme, so a theme change that leaves the scene behind fails a test instead of
+drifting. What stays in code is the Start Run button's stylebox, which a scene
+cannot share with the theme the way it can share a colour.
 
 ## 7. The main menu — BUILT: the game's art falls past it
 
@@ -267,10 +270,15 @@ in code review:
   the screen holds runs the free list dry, the fallback kind takes over, and the
   mix drifts away from `COVER_SHARE` on its own.
 
-**Still open from the original item:** `Continue (no saved runs)` still takes a
-full row to say nothing, and whether the profile row and How to Play belong where
-they are was never settled. Those are untouched — this item was about the
-emptiness, and the emptiness is what got filled.
+**DONE: the empty Continue row.** With no saves the button is hidden rather than
+standing disabled as `Continue (no saved runs)`, a full row saying nothing on
+every first launch (`MainMenu._refresh_continue_button`,
+`test_continue_is_hidden_when_there_is_nothing_to_continue`). It comes back the
+moment a save exists.
+
+**Left as a taste call, not a defect:** whether the profile row and How to Play
+belong where they are. Nothing about either is broken, so it waits for someone
+who wants them somewhere else.
 
 ## 8. Character picker nits — FIXED
 
