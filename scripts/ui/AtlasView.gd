@@ -1521,7 +1521,7 @@ func _fill_legend() -> void:
 	# A flow's minimum is its widest single chip, so a key too long for one line
 	# wraps onto a second and the page keeps its width.
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 18)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_SECTION)
 	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
@@ -1687,7 +1687,7 @@ func _refresh_card() -> void:
 		_card_box.add_child(chip)
 
 	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", 3)
+	facts.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_card_box.add_child(facts)
 	if game != null and game.year > 0:
 		facts.add_child(_fact("Released", str(game.year)))
@@ -2025,7 +2025,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		body.add_child(art)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 
