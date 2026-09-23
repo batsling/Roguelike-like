@@ -165,7 +165,7 @@ func _build() -> void:
 	# pinned to the top of a mostly-empty panel reads as an unfinished screen.
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 14)
+	col.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	scroller.add_child(col)
 
 	var title := Label.new()
@@ -192,7 +192,7 @@ func _tally() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 26)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
 	row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	wrap.add_child(row)
 
@@ -316,7 +316,7 @@ func _stop(id: StringName, is_amulet: bool, visit: int = 1,
 		beaten: bool = false) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.custom_minimum_size.x = COVER.x
 
 	var frame := PanelContainer.new()
