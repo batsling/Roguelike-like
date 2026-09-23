@@ -160,7 +160,7 @@ func _build() -> void:
 
 	root.add_child(HSeparator.new())
 	var bottom := HBoxContainer.new()
-	bottom.add_theme_constant_override("separation", 18)
+	bottom.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	root.add_child(bottom)
 	bottom.add_child(_band_block())
 	bottom.add_child(_seed_block())
