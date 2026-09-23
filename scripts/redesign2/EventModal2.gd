@@ -207,7 +207,7 @@ func _build() -> void:
 	root.add_child(_header())
 
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
+	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 
@@ -593,7 +593,7 @@ func _recentre() -> void:
 func _choice_button(index: int, choice: Dictionary) -> Control:
 	var taken: int = int(_picks.get(choice.get("id", ""), 0))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var btn := Button.new()
