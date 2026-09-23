@@ -6428,7 +6428,7 @@ func _build_ui() -> void:
 	# how much trouble you were in. As a strip it is only as tall as the rows of
 	# tokens it needs (see _refresh_items), so the board keeps the room.
 	_inv_wrap = PanelContainer.new()
-	# MARGIN 6, not the 8 the other panels use, and separation 3 rather than 4. The
+	# MARGIN 6, not the 8 the other panels use, and GAP_HAIR (2) rather than 4. The
 	# loot bar at the foot of this panel (below) is a row the panel did not used to
 	# have, and the page it lives on is fitted to a 720p canvas with about five
 	# pixels to spare — so the row is paid for out of this panel's own padding
@@ -6437,7 +6437,7 @@ func _build_ui() -> void:
 	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 6, 1))
 	_inv_wrap.size_flags_horizontal = Control.SIZE_FILL
 	var inv_box := VBoxContainer.new()
-	inv_box.add_theme_constant_override("separation", 3)
+	inv_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_inv_wrap.add_child(inv_box)
 	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
 	# and scrolls in a bordered panel does not need to be told what it is — the
@@ -6589,7 +6589,7 @@ func _build_ui() -> void:
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
 	# what you did, then press the single Completed Game button below.
 	_verify_box = VBoxContainer.new()
-	_verify_box.add_theme_constant_override("separation", 3)
+	_verify_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_verify_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# IN ITS OWN SCROLL, CAPPED TO THE ROOM THE PAGE HAS LEFT (_fit_checklist).
 	# Every body standing adds a row of ~51px, and the stack has no upper bound —

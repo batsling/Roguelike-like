@@ -121,7 +121,7 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 
 static func _row(heading: String, entries: Array) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var head := Label.new()
 	head.text = heading
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
@@ -147,7 +147,7 @@ static func _chip(entry: Dictionary) -> Control:
 		UITheme.flat(tint.lerp(UITheme.BG, 0.84), 5, 3, 1, tint.lerp(UITheme.BG, 0.55)))
 	HoverCard.attach(wrap, LootSystem.hover_card(entry))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(row)
 	var art: TextureRect = LootSystem.art_tex(entry, 16)

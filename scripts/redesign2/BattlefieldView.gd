@@ -1119,7 +1119,7 @@ func _build() -> void:
 	outer.add_child(_build_pressure_bar())
 	outer.add_child(_build_battle_toolbar())
 	_battlefield = HBoxContainer.new()
-	_battlefield.add_theme_constant_override("separation", 14)
+	_battlefield.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
 	outer.add_child(_battlefield)
 
@@ -1143,7 +1143,7 @@ func _build() -> void:
 	# 5, not the 2 the glyph pips ran at: each temporary shield carries a clock that
 	# overhangs its bottom-right corner, and at a tighter separation the badge sits
 	# on the next shield along.
-	_hero_shields.add_theme_constant_override("separation", 5)
+	_hero_shields.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	# STOP, so the row answers the hover: the sprites themselves ignore the mouse
 	# (crisp_tex), and a container that passed would leave the only explanation of
 	# what a shield does unreachable.
@@ -1162,7 +1162,7 @@ func _build() -> void:
 	# left of you" (§13). Hidden entirely when nothing is on the player.
 	_hero_statuses = HBoxContainer.new()
 	_hero_statuses.alignment = BoxContainer.ALIGNMENT_CENTER
-	_hero_statuses.add_theme_constant_override("separation", 3)
+	_hero_statuses.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_hero_statuses.visible = false
 	hero_box.add_child(_hero_statuses)
 	_hero_hp = Label.new()
