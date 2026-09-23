@@ -134,11 +134,12 @@ const FONT_HERO := 28        # the largest thing on a screen
 # Same story: ~20 distinct separation values, 60 uses of `8`, 56 of `6`, 43 of
 # `10`. Same rule — these are the values already in use, named.
 #
-# MIND THE OFF-SCALE ONES. Several gaps on the run screens are load-bearing to
-# the pixel (`_inv_wrap`'s margin 6 and separation 3, the select panel's 6s) and
-# carry a comment saying so — the page is fitted to a 720p canvas with single
-# digits to spare. Those stay literal on purpose; snapping one to the nearest
-# step is exactly the change that puts the overworld behind a scrollbar.
+# EVERY GAP IN THE PROJECT IS ON THIS SCALE NOW. The 57 that sat between two
+# steps were snapped by one rule, so none of them was a separate taste call: a
+# value exactly between two steps goes to the SMALLER one (1->0, 3->2, 5->4,
+# 7->6, 9->8, 14->12), and 18 to 16. A snap can therefore only take height away,
+# never add it — which is what made it safe on the run's page, fitted to a 720p
+# canvas with single digits to spare. The one exception is GAP_BREAK below.
 const GAP_NONE := 0
 const GAP_HAIR := 2
 const GAP_TIGHT := 4
@@ -147,6 +148,10 @@ const GAP := 8               # the default gap between two things in a stack
 const GAP_WIDE := 10
 const GAP_LOOSE := 12
 const GAP_SECTION := 16      # between one section of a screen and the next
+# Between the major blocks of a FULL screen — the run-over verdict and its route,
+# the post-game haul's two halves. Added for the two gaps (22 and 26) that sat
+# above the top step: snapping them to 16 squashed the two roomiest screens.
+const GAP_BREAK := 24
 
 # ---------------------------------------------------------------------------
 # The z-order
