@@ -211,7 +211,7 @@ func _run_caption(run: Dictionary) -> Control:
 func _route_stop(id: StringName, is_amulet: bool, won: bool) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.custom_minimum_size.x = COVER.x
 
 	var frame := PanelContainer.new()
