@@ -539,7 +539,7 @@ func _build_source_block() -> Control:
 	# here are a step down from the rest of the column because two game names and a
 	# URL have to fit in ~160px next to a 150px-tall picture.
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
 
 	var head := Label.new()
