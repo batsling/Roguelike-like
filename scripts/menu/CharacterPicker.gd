@@ -83,7 +83,7 @@ func _build() -> void:
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(vbox)
 
 	var header := VBoxContainer.new()
@@ -130,7 +130,7 @@ func _build() -> void:
 	# NO ScrollContainer: the hero has to be readable in one look. The two columns
 	# inside are filled by _fill_char_detail — portrait left, facts right.
 	var detail_box := HBoxContainer.new()
-	detail_box.add_theme_constant_override("separation", 14)
+	detail_box.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_wrap.add_child(detail_box)
