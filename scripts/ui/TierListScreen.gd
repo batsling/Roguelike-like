@@ -203,7 +203,7 @@ func _build_shell() -> void:
 	# Board on the left, the clicked game's card on the right — the same
 	# master/detail shape the Collection uses, so the two screens read alike.
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 14)
+	body.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
 
@@ -277,7 +277,7 @@ func _build_detail_panel() -> Control:
 	scroll.add_child(inset)
 
 	_detail_box = VBoxContainer.new()
-	_detail_box.add_theme_constant_override("separation", 7)
+	_detail_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail_box.custom_minimum_size = Vector2(DETAIL_W - 62.0, 0)
 	inset.add_child(_detail_box)
