@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Cleanup and speed: the page loads 39% faster, the Events tab opens in 53 ms,
+  and the layout and menu leftovers are closed.**
+
+  **The run's page compiled 49 scripts before it could appear**, about 1.4 s
+  between Start Run and the page. The backlog blamed something superlinear in
+  `Overworld2.gd`. Measured, the file's own compile is ~390 ms. The rest was
+  every class it NAMED, most of them screens a run may never open. Those are now
+  loaded by path when they open, and three second-hand routes to the 2,800-line
+  star chart were cut. It now compiles 33 scripts in ~880 ms, and
+  `test_page_load.gd` keeps it that way. One assumption was measured and turned
+  out wrong before it shipped: a literal `load()` path is NOT compiled eagerly.
+  Only `preload` and a class name are.
+
+  **The Events tab** re-decoded every event picture (up to 1616px, drawn at 80)
+  on every rebuild. Pictures now load on a thread once, are shrunk once and are
+  cached for the session: 473 → 53 ms to open, ~40 after. The first version of
+  the fix froze for 663 ms in one frame, because a single Lanczos pass costs
+  571 ms for the sixteen. Halving then bilinear costs 51 ms.
+
+  **`GameLoop2.gd`, measured for the first time:** 157 ms of its own compile, at
+  boot. Not a problem, and written down so nobody goes looking.
+
+  **Every gap in the project is on the spacing scale.** 223 literals across 41
+  files became `UITheme.GAP_*` names. Each changed line was read back with the
+  name swapped for its number and matched byte for byte, so nothing moved.
+  `MIGRATED_GAPS` is asserted complete like the fonts'. 57 values that sit
+  between two steps are listed per file, because snapping them is a restyle.
+
+  **The main menu** carries its real colours in the scene rather than being
+  repainted at `_ready`, pinned to `UITheme` by a test. **Continue** is hidden,
+  not greyed out, when there is nothing to continue.
+
 - **A boss can be Scrambled but not Bashed (§7.1, the spec's last open
   decision).** A Champion node refuses a Bash, read off the node's kind so it
   holds whatever game the node plays. It says why on screen, keeps the charge,
