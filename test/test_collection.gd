@@ -299,6 +299,45 @@ func test_every_event_renders_its_choices_in_full() -> void:
 				assert_true(text.contains(label),
 					"and lists %s's option '%s'" % [ev.display_name, label])
 
+# THE ART ARRIVES, SMALL (docs/performance-backlog.md §6). The tab used to decode
+# every event's art at up to 1616px on the frame it opened, and again on every
+# rebuild. Now each picture comes in off a thread, shrunk once, and every cell
+# whose event has art ends up showing it.
+func test_every_event_cell_gets_its_art_and_it_is_kept_small() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	var frames: int = 0
+	while not col._event_art_waiting.is_empty() and frames < 600:
+		await wait_frames(1)
+		frames += 1
+	assert_true(col._event_art_waiting.is_empty(), "every picture arrived (%d frames)" % frames)
+	var with_art: int = 0
+	for ev in Data.all_events2():
+		if col._has_event_art(ev):
+			with_art += 1
+	var filled: int = 0
+	for r in col._grid.find_children("*", "TextureRect", true, false):
+		var tex: Texture2D = (r as TextureRect).texture
+		if tex == null:
+			continue
+		filled += 1
+		assert_lte(maxi(tex.get_width(), tex.get_height()), Collection.EVENT_ART_MAX,
+			"a grid picture is the shrunk copy, not the original")
+	assert_eq(filled, with_art, "every event with art shows it")
+
+# …and a second visit decodes nothing: the pictures are already there when the
+# cells are built, with nothing left waiting on the thread.
+func test_a_second_visit_to_the_events_tab_waits_on_nothing() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	var frames: int = 0
+	while not col._event_art_waiting.is_empty() and frames < 600:
+		await wait_frames(1)
+		frames += 1
+	col._set_tab(Collection.Tab.ITEMS)
+	col._set_tab(Collection.Tab.EVENTS)
+	assert_true(col._event_art_waiting.is_empty(), "the cache answered every cell at once")
+
 # Searching an event by a word from one of its OPTIONS, not its title — the way
 # anyone actually remembers one.
 func test_events_search_reaches_the_choice_text() -> void:

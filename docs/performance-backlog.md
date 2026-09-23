@@ -451,9 +451,35 @@ both its views. All fit.
 
 ## 6. Still open
 
-**The Events tab is 909 ms** for sixteen events. With the Games tab fixed it is
-the slowest thing in the compendium, it is not a node-count problem at that size,
-and it was not chased.
+**FIXED: the Events tab (was 909 ms).** Re-measured headless before fixing: 473 ms
+to open cold, 307 ms warm. The warm number was the tell, since sixteen cells should
+not cost 300 ms twice. Bisected cell by cell, **225 ms of every 254 was
+`_event_art`**. The art ships at up to 1616x1616 and is drawn at 80px (132 in
+the detail pane). Freeing the previous tab's cells released the textures, and the
+resource cache let them go, so every rebuild decoded all sixteen again.
+
+It was hard to see because a driver that built the cells again **without freeing
+the old ones first** measured 1.5 ms. The textures were still referenced, so
+nothing reloaded. Measure the sequence the player causes (switch away, switch
+back), not the function on its own.
+
+Fixed in `Collection`: each picture is decoded **once a session**, shrunk to
+`EVENT_ART_MAX` (264, twice the detail pane) and kept in a static cache, about
+4 MB for all sixteen. The first visit loads the originals on a **thread**
+(`ResourceLoader.load_threaded_request`), so the cells go up at once with empty
+frames of the right size and each picture lands as it arrives.
+
+**The first version of the fix froze for 663 ms in one frame**, the frame the
+thread delivered, because the shrink was a single Lanczos pass from 1616px:
+**571 ms** for the sixteen. Halving with `shrink_x2` (a box filter) to within 2x
+and finishing bilinear is **51 ms** and reads the same at 80px.
+
+| | before | after |
+|---|---|---|
+| open the tab, first visit (headless) | 473 ms | **53 ms** |
+| open it again | 307 ms | **~40 ms** |
+| worst frame while the art arrives | — | **18 ms** |
+| open, real renderer (OpenGL, Xvfb) | 909 ms (the original report) | **~100 ms** |
 
 **Compiling `Overworld2.gd` costs ~1.05 s, and it is now the largest single
 number in starting a run** — bigger than everything else in the boot together.

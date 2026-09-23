@@ -2459,9 +2459,105 @@ func _rarity_color_by_name(name: String) -> Color:
 func _event_accent(ev: EventData2) -> Color:
 	return _rarity_color_by_name(ev.rarity)
 
+# EVENT ART IS SHRUNK ONCE AND KEPT, AND THE FIRST LOAD IS OFF THE MAIN THREAD
+# (docs/performance-backlog.md §6). Opening the tab measured 909 ms, and 225 ms of
+# every 254 in the cells was this line: the art ships at up to 1616x1616, the
+# tab draws it at 80 (132 in the detail pane), and every rebuild re-decoded all
+# of it, because freeing the previous tab's cells released the textures and the
+# resource cache let them go.
+#
+# So each picture is decoded ONCE a session, shrunk to EVENT_ART_MAX (twice the
+# detail pane, so a 2x canvas on a 1440p screen is still sharp) and kept in a
+# static cache — sixteen of them is ~4 MB where the originals would be tens. Art
+# smaller than that (Arcade Room is 49x36 pixel art) is kept as it is, so it
+# still reads as pixel art and gets nearest-neighbour.
+#
+# The first visit asks for the originals on a THREAD rather than decoding them on
+# the frame the tab opens: the cells go up at once with an empty frame of the
+# right size, and each picture lands in it as it arrives (_poll_event_art).
+const EVENT_ART_MAX := 264
+static var _event_art_cache: Dictionary = {}     # path -> Texture2D, shrunk
+var _event_art_waiting: Array = []               # [{path, rect}]
+
+func _event_art_path(ev: EventData2) -> String:
+	return EVENT_ART_DIR + ev.art_file() + ".png"
+
+# The art if it is ready, or null — whether because there is none, or because it
+# is still loading. `_event_art_into` is how a cell asks for the second case.
 func _event_art(ev: EventData2) -> Texture2D:
-	var path: String = EVENT_ART_DIR + ev.art_file() + ".png"
-	return load(path) if ResourceLoader.exists(path) else null
+	return _event_art_cache.get(_event_art_path(ev), null)
+
+func _has_event_art(ev: EventData2) -> bool:
+	var path: String = _event_art_path(ev)
+	return _event_art_cache.has(path) or ResourceLoader.exists(path)
+
+# Fill `rect` with the event's art — now if it is cached, else when the thread
+# delivers it.
+func _event_art_into(rect: TextureRect, ev: EventData2) -> void:
+	var path: String = _event_art_path(ev)
+	if _event_art_cache.has(path):
+		_set_event_art(rect, _event_art_cache[path])
+		return
+	if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		ResourceLoader.load_threaded_request(path)
+	_event_art_waiting.append({"path": path, "rect": rect})
+	if not get_tree().process_frame.is_connected(_poll_event_art):
+		get_tree().process_frame.connect(_poll_event_art)
+
+func _poll_event_art() -> void:
+	var still: Array = []
+	for w in _event_art_waiting:
+		var path: String = w["path"]
+		var rect = w["rect"]
+		if not is_instance_valid(rect):
+			continue                       # its cell was rebuilt before it arrived
+		if not _event_art_cache.has(path):
+			var status: int = ResourceLoader.load_threaded_get_status(path)
+			if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				still.append(w)
+				continue
+			if status != ResourceLoader.THREAD_LOAD_LOADED:
+				continue                   # failed: the frame simply stays empty
+			_event_art_cache[path] = _shrink_event_art(
+				ResourceLoader.load_threaded_get(path) as Texture2D)
+		_set_event_art(rect, _event_art_cache[path])
+	_event_art_waiting = still
+	if still.is_empty() and get_tree().process_frame.is_connected(_poll_event_art):
+		get_tree().process_frame.disconnect(_poll_event_art)
+
+func _exit_tree() -> void:
+	if get_tree() != null and get_tree().process_frame.is_connected(_poll_event_art):
+		get_tree().process_frame.disconnect(_poll_event_art)
+
+static func _shrink_event_art(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var longest: int = maxi(tex.get_width(), tex.get_height())
+	if longest <= EVENT_ART_MAX:
+		return tex
+	var img: Image = tex.get_image()
+	if img == null:
+		return tex
+	if img.is_compressed():
+		img.decompress()
+	# HALVE, THEN FINISH BILINEAR — not one Lanczos pass. Measured over the
+	# sixteen: Lanczos straight down from 1616 was 571 ms, which landed as one
+	# frozen frame the moment the thread delivered; halving (a box filter, which
+	# is what makes a clean downscale) until within 2x and a bilinear finish is
+	# 51 ms for all of them and reads the same at 80 and 132px.
+	while maxi(img.get_width(), img.get_height()) >= EVENT_ART_MAX * 2:
+		img.shrink_x2()
+	var k: float = float(EVENT_ART_MAX) / float(maxi(img.get_width(), img.get_height()))
+	if k < 1.0:
+		img.resize(maxi(1, int(img.get_width() * k)), maxi(1, int(img.get_height() * k)),
+			Image.INTERPOLATE_BILINEAR)
+	return ImageTexture.create_from_image(img)
+
+# The texture lands after the frame was built, so the pixel-art call the frame
+# would have made at build time is made here, against the real texture.
+func _set_event_art(rect: TextureRect, tex: Texture2D) -> void:
+	rect.texture = tex
+	UITheme.apply_crisp(rect, tex)
 
 func _build_events() -> void:
 	var row := _controls_row()
@@ -2531,9 +2627,10 @@ func _event_cell(ev: EventData2) -> Control:
 	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tex: Texture2D = _event_art(ev)
-	if tex != null:
-		vb.add_child(_image_with_bg(tex, GRID_EVENT_SIZE, ac))
+	if _has_event_art(ev):
+		var art := _image_with_bg(null, GRID_EVENT_SIZE, ac)
+		vb.add_child(art)
+		_event_art_into(art.get_child(0) as TextureRect, ev)
 	var nm := _label("✦ " + ev.display_name, ac, GRID_NAME_FONT, true, true)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
@@ -2547,11 +2644,11 @@ func _show_event_detail(ev: EventData2) -> void:
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _event_accent(ev)
-	var tex: Texture2D = _event_art(ev)
-	if tex != null:
-		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac, false, DETAIL_IMAGE_PAD)
+	if _has_event_art(ev):
+		var img := _image_with_bg(null, DETAIL_ITEM_SIZE, ac, false, DETAIL_IMAGE_PAD)
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
+		_event_art_into(img.get_child(0) as TextureRect, ev)
 	_detail_box.add_child(_label("✦ " + ev.display_name, ac, 18, true))
 	# Always "after", regardless of the sheet's Trigger column: `Before` parses and
 	# is stored on EventData2, and nothing in Overworld2 reads it — every event is
