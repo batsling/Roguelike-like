@@ -601,7 +601,7 @@ func _tally_panel() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 22)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
 	flow.add_theme_constant_override("v_separation", UITheme.GAP)
 	wrap.add_child(flow)
 	for entry in tally():
@@ -610,7 +610,7 @@ func _tally_panel() -> Control:
 
 func _tile(key: String, value: String, color: Color) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 1)
+	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	box.add_child(_line(key.to_upper(), UITheme.TEXT_FAINT, 10))
 	box.add_child(_line(value, color, 16))
 	return box
@@ -702,7 +702,7 @@ func _level_up_panel() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG_DEEP, UITheme.GOLD.lerp(UITheme.BORDER, 0.4), 8, 10, 1))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	wrap.add_child(col)
 	var levels: int = maxi(1, int(lvl.get("levels", 1)))
 	# "LEVELLED UP ×2" only when the Crown actually chained one. A count on the
@@ -854,14 +854,14 @@ func _chest_sum_row() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG_DEEP, UITheme.BORDER, 6, 8, 1))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	wrap.add_child(col)
 	# WHAT THE SUM IS FOR, said before the sum. A row of faces and numbers is
 	# arithmetic without a subject until something names the quantity it totals to.
 	col.add_child(_line("ITEM CHEST SIZE", UITheme.TEXT_FAINT, 10))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
-	flow.add_theme_constant_override("v_separation", 3)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
 	col.add_child(flow)
 	for i in range(terms.size()):
 		if i > 0:
