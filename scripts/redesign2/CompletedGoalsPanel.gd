@@ -163,7 +163,7 @@ func _group_block(group: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 8, 8, 1, DONE.lerp(UITheme.BG, 0.62)))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	wrap.add_child(col)
 
 	var rows: Array = group.get("rows", [])
