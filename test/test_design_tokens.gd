@@ -160,51 +160,17 @@ const MIGRATED_GAPS := [
 # now" where a missing one would just look like the check had been dropped.
 const OFF_SCALE_FONTS := {}
 
-# Gaps that are NOT on the scale, with the reason. There are two kinds, and the
-# reason is the same for both: naming one means CHANGING it, and a restyle does
-# not belong inside a rename — the same line the font pass drew.
+# EMPTY, like OFF_SCALE_FONTS — every gap in the project is on the scale. The 57
+# that sat between two steps were snapped by one rule rather than 57 taste calls:
+# a value exactly between two steps goes to the SMALLER one (1->0, 3->2, 5->4,
+# 7->6, 9->8, 14->12) and 18 to 16, so a snap could only take height away and
+# never put a 720p page behind a scrollbar; 22 and 26, above the top step, went
+# to the new GAP_BREAK (24). Every screen was captured before and after and read
+# side by side, and the fit tests ran on the result.
 #
-#   * THE RUN SCREENS' (Overworld2, BattlefieldView, PackStrip, ShopPanel2,
-#     EnemyInfoCard, GameChoiceModal, ReportChecklist's neighbours) are load-bearing
-#     to the pixel: the overworld is fitted to a 720p canvas with single digits to
-#     spare, and snapping one to the nearest step is exactly the change that puts
-#     the page behind a scrollbar.
-#   * EVERYTHING ELSE is a value that was simply typed between two steps — 1 and
-#     3 as hairlines tighter or looser than GAP_HAIR, 5/7/9 as odd sizes, 14 and
-#     18 between the loose steps, 22 and 26 as section breaks on the two screens
-#     with the most air. Each is a restyle to be done on the running screen, one
-#     screen at a time, and until then it stands here named rather than silent.
-#     A NEW literal in any of these files is still caught: only these exact
-#     values are allowed, only in the file they are listed against.
-#
-# `StartPicker` is absent on purpose: it is fully on the scale.
-const OFF_SCALE_GAPS := {
-	"res://scripts/autoload/DevTools.gd": [3],
-	"res://scripts/menu/CharacterPicker.gd": [14],
-	"res://scripts/menu/CustomRunScreen.gd": [18],
-	"res://scripts/redesign2/BattlefieldView.gd": [3, 5, 14],
-	"res://scripts/redesign2/CompletedGoalsPanel.gd": [5],
-	"res://scripts/redesign2/EnemyInfoCard.gd": [1, 3, 7],
-	"res://scripts/redesign2/EventModal2.gd": [1, 18],
-	"res://scripts/redesign2/GameChoiceModal.gd": [3],
-	"res://scripts/redesign2/LootDiscoveries.gd": [3],
-	"res://scripts/redesign2/ObjectCard.gd": [1, 5],
-	"res://scripts/redesign2/Overworld2.gd": [3],
-	"res://scripts/redesign2/PackStrip.gd": [1],
-	"res://scripts/redesign2/PostCombatScreen.gd": [1, 3, 22],
-	"res://scripts/redesign2/RouteLadder.gd": [3, 7],
-	"res://scripts/redesign2/RunOverScreen.gd": [3, 14, 26],
-	"res://scripts/redesign2/ShopPanel2.gd": [1, 7],
-	"res://scripts/ui/AtlasView.gd": [3, 5, 18],
-	"res://scripts/ui/Collection.gd": [1, 3, 5, 9],
-	"res://scripts/ui/ConfirmPanel.gd": [14],
-	"res://scripts/ui/HoverCard.gd": [1, 3, 5],
-	"res://scripts/ui/HowToPlayScreen.gd": [3, 14],
-	"res://scripts/ui/Keywords.gd": [5],
-	"res://scripts/ui/RewardScreen.gd": [14],
-	"res://scripts/ui/RunHistoryScreen.gd": [3],
-	"res://scripts/ui/TierListScreen.gd": [7, 14],
-}
+# Kept as an empty dict for the reason OFF_SCALE_FONTS is: it is the pressure
+# valve for the next gap that genuinely cannot be named.
+const OFF_SCALE_GAPS := {}
 
 func _source(path: String) -> String:
 	return FileAccess.get_file_as_string(path)
@@ -316,7 +282,7 @@ func test_the_type_scale_is_ordered_and_has_no_duplicates() -> void:
 func test_the_spacing_scale_is_ordered_and_has_no_duplicates() -> void:
 	var steps: Array = [UITheme.GAP_NONE, UITheme.GAP_HAIR, UITheme.GAP_TIGHT,
 		UITheme.GAP_SNUG, UITheme.GAP, UITheme.GAP_WIDE, UITheme.GAP_LOOSE,
-		UITheme.GAP_SECTION]
+		UITheme.GAP_SECTION, UITheme.GAP_BREAK]
 	for i in range(1, steps.size()):
 		assert_gt(steps[i], steps[i - 1],
 			"step %d (%d) is bigger than the one under it (%d)" % [i, steps[i], steps[i - 1]])
@@ -347,6 +313,7 @@ func test_the_scale_still_holds_the_values_it_was_built_from() -> void:
 	assert_eq(UITheme.GAP_WIDE, 10)
 	assert_eq(UITheme.GAP_LOOSE, 12)
 	assert_eq(UITheme.GAP_SECTION, 16)
+	assert_eq(UITheme.GAP_BREAK, 24)
 
 # --- the z-order ------------------------------------------------------------
 

@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The last 57 gaps are on the spacing scale.** They sat between two steps and
+  were snapped by one rule: a value exactly between two steps goes to the
+  smaller one, and 18 goes to 16. So a snap could only take height away, which
+  kept the 720p page safe. The two gaps above the top step (22 and 26, the
+  section breaks on the post-game and run-over screens) got a new
+  `GAP_BREAK := 24` rather than being squashed to 16. Every affected screen was
+  captured before and after from a seeded run and compared side by side; nothing
+  reads worse, and the map's node card now fits without a scrollbar. Every font
+  size and every gap in the project is now a named step.
+
 - **Cleanup and speed: the page loads 39% faster, the Events tab opens in 53 ms,
   and the layout and menu leftovers are closed.**
 

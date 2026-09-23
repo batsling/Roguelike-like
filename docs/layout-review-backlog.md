@@ -10,8 +10,7 @@ Each item says **what** is wrong, **why it matters**, and **what it would take**
 because the sizing is the part that is expensive to re-derive.
 
 **All eight items are now closed or down to a named remainder.** §1 is **decided**;
-§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts and gaps are **done** as value-preserving renames, leaving 57
-between-step gaps as an optional restyle; §6's
+§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts and gaps are **done**, every value on the scale; §6's
 is **done**, both halves; and §7's empty `Continue` row is gone. Closed work is kept here with its reasoning rather than
 deleted, so none of it gets asked again; a closed item says so in its heading, and
 a half-closed one says which half.
@@ -51,7 +50,7 @@ smaller change from replacing the ramp, and it is the only version worth
 reopening. If it ever does change, the tier buttons in `RateGameModal` and the
 move-to row read the same const array.
 
-## 2. The spacing scale — fonts DONE, gaps DONE as a rename
+## 2. The spacing scale — DONE, fonts and gaps
 
 **Done: fonts, project-wide.** All 47 screens that set a font size in code now
 take it from the type scale; 259 bare integers became named steps in one pass.
@@ -70,15 +69,25 @@ original byte for byte. So nothing moved and no fit test needed looking at.
 `MIGRATED_GAPS` now lists all 51 files that set a gap and is asserted complete
 (`test_every_screen_that_sets_a_gap_is_on_the_gap_list`).
 
-**What is left is a restyle, not a rename: 57 literals between two steps**, listed
-per file in `OFF_SCALE_GAPS` — 1 and 3 as hairlines either side of `GAP_HAIR`,
-5 / 7 / 9 as odd sizes, 14 and 18 between the loose steps, and a 22 and a 26 as
-section breaks. Naming one means changing it, which is the line the font pass
-drew too. The run screens' ones are load-bearing to the pixel on the 720p page and
-should stay; the rest (Collection, Atlas, Tier List and the modals) can be snapped
-one screen at a time, **looked at on the running screen**, and taken off the list
-as they go. A new literal in any file is still caught — only the listed values,
-in the file they are listed against, are allowed.
+**DONE: the 57 between-step gaps, snapped as a restyle.** One rule rather than
+57 taste calls: a value exactly between two steps goes to the **smaller** one
+(1→0, 3→2, 5→4, 7→6, 9→8, 14→12) and 18 goes to 16, so a snap can only take
+height away. That is what made it safe on the run's page, fitted to 720p with
+single digits to spare. The two above the top step, 22 (the post-game haul's
+two halves) and 26 (run-over's verdict and route), went to a new
+`GAP_BREAK := 24` rather than being squashed to 16.
+
+**Every affected screen was captured before and after and read side by side**:
+the run's page (with a shop and with a machine), the offered-card popup, the
+enemy card, the Completed panel, the map's node card, the event popup, the
+post-game haul, run-over, all eight Collection tabs plus their history rows, the
+tier list, the manual, run history, the star chart's card, the reward screen, the
+confirm dialog, the character picker, the custom-run screen, the hover card,
+Discoveries and DevTools. The capture was checked for determinism first (a
+seeded run; only the screens that roll random content varied between two
+identical runs). Nothing reads worse. The one visible improvement: the map's
+node card fits without a scrollbar now, where before it cut off its Close
+button. `OFF_SCALE_GAPS` is an empty dict, like `OFF_SCALE_FONTS`.
 
 **Why it mattered.** It was the reason layout changes were expensive here. "Give
 this column 26px back" meant auditing eight numbers by hand and writing a comment
