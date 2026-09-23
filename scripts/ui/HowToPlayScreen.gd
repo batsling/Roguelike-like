@@ -148,7 +148,7 @@ func _build_sidebar() -> Control:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.custom_minimum_size = Vector2(SIDEBAR_W - 14.0, 0)
 	scroll.add_child(col)
 
@@ -375,7 +375,7 @@ func _table(rows: Array) -> Control:
 		cols = maxi(cols, (r.get("c", []) as Array).size())
 	var grid := GridContainer.new()
 	grid.columns = cols
-	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
 	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	grid.custom_minimum_size = Vector2(BODY_MAX_W, 0)
 	for r in rows:
