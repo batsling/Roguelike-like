@@ -1619,37 +1619,21 @@ func _build_card() -> PanelContainer:
 	card.add_child(_card_box)
 	return card
 
-# Cover art on a card is shown WHOLE — the card is where you went to LOOK at the
-# game, so nothing is cropped off it. The star on the chart is still art
-# inscribed in its reserved circle and the connection strip is still a thumbnail;
-# only the panel you opened by clicking gets the entire box art.
-#
-# The frame is the size the picture actually needs: fitted to the card's width,
-# and shrunk further if that would make it taller than `max_height` — never
-# letterboxed, never cut.
+# Cover art on a card is shown WHOLE. The two builders live on UITheme now
+# (UITheme.card_art / card_art_size), because the route ladder's card draws the
+# same art and naming AtlasView for it pulled this 2,800-line file into every
+# run's page load (docs/performance-backlog.md §6). These forward, so nothing
+# that already calls them here changes.
 const CARD_ART_WIDTH := 248.0
-const CARD_ART_MAX_HEIGHT := 300.0
+const CARD_ART_MAX_HEIGHT := UITheme.CARD_ART_MAX_HEIGHT
 
 static func card_art_size(tex: Texture2D, width: float,
 		max_height: float = CARD_ART_MAX_HEIGHT) -> Vector2:
-	if tex == null or width <= 0.0 or tex.get_width() <= 0 or tex.get_height() <= 0:
-		return Vector2.ZERO
-	var aspect: float = float(tex.get_height()) / float(tex.get_width())
-	var box := Vector2(width, width * aspect)
-	if max_height > 0.0 and box.y > max_height:
-		box = Vector2(max_height / aspect, max_height)
-	return box
+	return UITheme.card_art_size(tex, width, max_height)
 
 static func card_art(tex: Texture2D, width: float,
 		max_height: float = CARD_ART_MAX_HEIGHT) -> TextureRect:
-	var art := TextureRect.new()
-	art.texture = tex
-	art.custom_minimum_size = card_art_size(tex, width, max_height)
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# KEEP_ASPECT_CENTERED, not COVERED: the whole picture, letterbox rather than
-	# crop if a container ever hands it a box of a different shape.
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	return art
+	return UITheme.card_art(tex, width, max_height)
 
 # The click-through card. Two shapes: a GAME (cover, facts, launch) when a star
 # is clicked, and a CONNECTION (both games, the claim, the evidence) when a link

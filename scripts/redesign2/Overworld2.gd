@@ -180,7 +180,7 @@ var _header: HBoxContainer = null
 var _header_map_btn: Button = null
 # …and the History button beside it, with the screen it opens (RunLogScreen).
 var _header_history_btn: Button = null
-var _history_screen: RunLogScreen = null
+var _history_screen = null
 var _header_bar: PanelContainer = null
 var _header_layer: CanvasLayer = null
 # The transient-toast stack, held so it can be pushed clear of the header bar.
@@ -202,7 +202,7 @@ var _pending_detour: bool = false
 # …and whether that detour's game was actually beaten, since the payout only
 # lands on a game played to a verdict (an escape walks away from it).
 var _detour_beaten: bool = false
-var _event_modal: EventModal2 = null
+var _event_modal = null
 # The Shop node whose shelf is owed to the player once the board stops moving
 # (§14, §19.1).
 # Set on the same terms an event is — the game at this node was played through
@@ -222,7 +222,7 @@ var _shop_hint: Control = null
 # machines are in is the thing the event is.
 var _object_panel: ObjectPanel2 = null
 var _run_over_won: bool = false
-var _run_over_screen: RunOverScreen = null
+var _run_over_screen = null
 # THE SCREEN A GAME ENDS ON (PostCombatScreen), and the report it is about. The
 # haul used to arrive as a queue of modals over an animating board and then an
 # event on top of that; it is one screen now, opened once the playback has landed
@@ -257,7 +257,7 @@ var _banner: Label
 # already been announced (`GameState.games_played` at the time), so the notice
 # opens once when the round arrives rather than on every repaint of it.
 var _boss_notice_for: int = -1
-var _boss_notice: BossNoticeModal = null
+var _boss_notice = null
 var _preview: RichTextLabel
 var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
@@ -460,14 +460,14 @@ var _done_btn: Button
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
-var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or null
-var _completed_popup: CompletedGoalsPanel  # the open ✓ Completed panel, or null
+var _graveyard_popup   # the open ☠ Fallen panel (§7.6), or null
+var _completed_popup  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
 # The open route map and the star chart under it, when there is one. Held so the
 # run can close what it opened — see _dismiss_route_map.
 var _route_map = null
-var _route_atlas: AtlasView = null
+var _route_atlas = null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
 # The page owns the container; PackStrip fills it (see _refresh_items).
@@ -1962,10 +1962,10 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	# stranded underneath with no way back to it.
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
-	var wants_chart: bool = bool(opts.get("chart", true)) and AtlasView.load_layout() != null
+	var wants_chart: bool = bool(opts.get("chart", true)) and load(ATLAS_VIEW_SCRIPT).load_layout() != null
 	opts.erase("chart")
 	if wants_chart:
-		var atlas := AtlasView.new()
+		var atlas = load(ATLAS_VIEW_SCRIPT).new()
 		# A preview routes the sky from the game being considered rather than from
 		# where the player stands, so the corridor drawn on the chart is the one
 		# the card is offering.
@@ -1974,14 +1974,14 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 		add_child(atlas)
 		opts["atlas"] = atlas
 		_route_atlas = atlas
-		var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+		var modal = load(RUN_MAP_MODAL_SCRIPT).new()
 		# Mounted UNDER the chart, so closing the chart takes its window with it.
 		# The window frames the route on the chart itself, once it knows how much
 		# of the sky it's covering.
 		modal.start(atlas, origin, GameState.amulet_game_id, choice_ids, opts)
 		_hold_route_map(modal)
 		return modal
-	var solo := preload("res://scripts/redesign2/RunMapModal.gd").new()
+	var solo = load(RUN_MAP_MODAL_SCRIPT).new()
 	solo.start(self, origin, GameState.amulet_game_id, choice_ids, opts)
 	_hold_route_map(solo)
 	return solo
@@ -2124,7 +2124,7 @@ func turn_note(choice: Dictionary) -> Dictionary:
 # can replay the other, so a path that only knew about scrolls would drop half of
 # what its own use just did.
 func use_loot(idx: int) -> void:
-	var modal := preload("res://scripts/redesign2/LootUseModal.gd").new()
+	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
 
@@ -2860,7 +2860,7 @@ func _open_pending_event() -> void:
 	if ev == null:
 		_open_pending_shop()
 		return
-	_event_modal = EventModal2.open(self, ev, node)
+	_event_modal = load(EVENT_MODAL2_SCRIPT).open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
 # Raise `ev` here and now, outside the beat-a-game path that normally queues one.
@@ -2924,6 +2924,43 @@ func _open_pending_shop() -> void:
 	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
 		_mount_shop(gid)
 	_maybe_announce_boss()
+
+# --- screens the page opens, compiled when they are OPENED ------------------
+#
+# Loading this script used to compile 49 others first, because a class named
+# anywhere in it — a `var x: Collection`, a `SettingsModal.open(...)`, a
+# `preload(...)` — is compiled before the page can be. That was ~1.4 s between
+# pressing Start Run and the page appearing (docs/performance-backlog.md §6),
+# and most of it paid for screens a run may never open: the Collection, the
+# Settings, the manual, the tier list, the run-over and history screens, the
+# event and reward modals, the map window.
+#
+# So those are reached by PATH — `load(X_SCRIPT)` at the moment they open — and
+# the vars that hold them are untyped. A `load()` is lazy even with a literal
+# path (measured: 39 scripts compiled either way), so it is `preload` and a
+# class name that make a dependency eager, and it is those that must not come
+# back here for a screen the page only opens on demand.
+#
+# The cost moves to the first time each screen opens, once a session.
+# The one piece of the run-history screen the page draws itself: the arrows on
+# the road strip. Its own file, so preloading it costs one small script rather
+# than the history screen and the star chart behind it.
+const ROUTE_ARROW := preload("res://scripts/ui/RouteArrow.gd")
+const BOSS_NOTICE_MODAL_SCRIPT := "res://scripts/redesign2/BossNoticeModal.gd"
+const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPanel.gd"
+const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
+const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
+const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
+const RUN_MAP_MODAL_SCRIPT := "res://scripts/redesign2/RunMapModal.gd"
+const RUN_OVER_SCREEN_SCRIPT := "res://scripts/redesign2/RunOverScreen.gd"
+const ATLAS_VIEW_SCRIPT := "res://scripts/ui/AtlasView.gd"
+const COLLECTION_SCRIPT := "res://scripts/ui/Collection.gd"
+const HOW_TO_PLAY_SCREEN_SCRIPT := "res://scripts/ui/HowToPlayScreen.gd"
+const RATE_GAME_MODAL_SCRIPT := "res://scripts/ui/RateGameModal.gd"
+const REWARD_SCREEN_SCRIPT := "res://scripts/ui/RewardScreen.gd"
+const SETTINGS_MODAL_SCRIPT := "res://scripts/ui/SettingsModal.gd"
+const TIER_LIST_SCREEN_SCRIPT := "res://scripts/ui/TierListScreen.gd"
 
 # --- the checklist's ceiling ----------------------------------------------
 #
@@ -3393,7 +3430,7 @@ func _maybe_announce_boss() -> void:
 	for choice in _choices:
 		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 			bosses.append(choice.get("enemy"))
-	_boss_notice = BossNoticeModal.open(self,
+	_boss_notice = load(BOSS_NOTICE_MODAL_SCRIPT).open(self,
 		RunDifficulty.tier_name(_current_tier()), bosses)
 	_boss_notice.finished.connect(func():
 		_boss_notice = null
@@ -3521,7 +3558,7 @@ func _redeem_pending_chests() -> void:
 	if sizes.is_empty():
 		return
 	_reward_open = true
-	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	var screen = load(REWARD_SCREEN_SCRIPT).new()
 	screen.closed.connect(func():
 		_reward_open = false
 		_redeem_pending_chests())
@@ -3545,7 +3582,7 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
-		var count: int = choices if choices > 0 else RewardScreen.BASE_ITEM_CHOICES + discovery
+		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _roll_chest(false, maxi(1, count))
 		if offer.is_empty():
 			continue
@@ -3717,7 +3754,7 @@ func obtain_any_item() -> void:
 	if _reward_open:
 		return
 	_reward_open = true
-	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	var screen = load(REWARD_SCREEN_SCRIPT).new()
 	screen.closed.connect(func():
 		_reward_open = false
 		_redeem_pending_chests())
@@ -4340,10 +4377,10 @@ func _close_enemy_info() -> void:
 # scrolling page that cannot cover it.
 #
 # Public so a headless test can open it without a click.
-func show_graveyard() -> GraveyardPanel:
+func show_graveyard() -> Node:
 	if _graveyard_popup != null and is_instance_valid(_graveyard_popup):
 		return _graveyard_popup
-	var panel := GraveyardPanel.new()
+	var panel = load(GRAVEYARD_PANEL_SCRIPT).new()
 	panel.closed.connect(func(): _graveyard_popup = null)
 	_graveyard_popup = panel
 	add_child(panel)
@@ -4356,10 +4393,10 @@ func show_graveyard() -> GraveyardPanel:
 # checklist lives inside a scrolling page that cannot cover it.
 #
 # Public so a headless test can open it without a click.
-func show_completed_goals() -> CompletedGoalsPanel:
+func show_completed_goals() -> Node:
 	if _completed_popup != null and is_instance_valid(_completed_popup):
 		return _completed_popup
-	var panel := CompletedGoalsPanel.new()
+	var panel = load(COMPLETED_GOALS_PANEL_SCRIPT).new()
 	panel.closed.connect(func(): _completed_popup = null)
 	_completed_popup = panel
 	add_child(panel)
@@ -4850,7 +4887,7 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	return frame
 
 func _strip_arrow() -> Control:
-	var a := RunHistoryScreen.RouteArrow.new()
+	var a := ROUTE_ARROW.new()
 	a.custom_minimum_size = Vector2(STRIP_ARROW, STRIP_COVER.y)
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return a
@@ -5141,7 +5178,7 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 func _prompt_rating(game: GameData) -> void:
 	if game == null:
 		return
-	var modal = preload("res://scripts/ui/RateGameModal.gd").new()
+	var modal = load(RATE_GAME_MODAL_SCRIPT).new()
 	modal.setup(game.id, game)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(game.id, score, notes)
@@ -5195,24 +5232,24 @@ func _open_full_screen(build: Callable) -> Node:
 # The tier-list board over the run. Its own method so the rating flow, the menu
 # and any future entry point open it the same way, and so a headless test can
 # drive it.
-func open_tier_list(focus_id: StringName = &"") -> TierListScreen:
-	return _open_full_screen(func(host): return TierListScreen.open(host, focus_id)) as TierListScreen
+func open_tier_list(focus_id: StringName = &"") -> Node:
+	return _open_full_screen(func(host): return load(TIER_LIST_SCREEN_SCRIPT).open(host, focus_id))
 
 # The compendium, mid-run. "What does this item do", "have I met this enemy" and
 # "what did I score that game" are questions a run raises, and answering them
 # used to mean quitting to the main menu.
-func open_collection() -> Collection:
-	return _open_full_screen(func(host): return Collection.open(host)) as Collection
+func open_collection() -> Node:
+	return _open_full_screen(func(host): return load(COLLECTION_SCRIPT).open(host))
 
 # The manual, mid-run — the one screen that explains the rules, previously
 # unreachable while you were playing by them.
-func open_manual(chapter: StringName = &"start") -> HowToPlayScreen:
-	return _open_full_screen(func(host): return HowToPlayScreen.open(host, chapter)) as HowToPlayScreen
+func open_manual(chapter: StringName = &"start") -> Node:
+	return _open_full_screen(func(host): return load(HOW_TO_PLAY_SCREEN_SCRIPT).open(host, chapter))
 
 # Display, audio and the rest. F11 already worked mid-run; this is the rest of
 # that panel.
-func open_settings() -> SettingsModal:
-	return _open_full_screen(func(host): return SettingsModal.open(host)) as SettingsModal
+func open_settings() -> Node:
+	return _open_full_screen(func(host): return load(SETTINGS_MODAL_SCRIPT).open(host))
 
 # Whether the pinned header bar is drawn. The page keeps its inset either way —
 # a screen standing in front of it is not a cue to reflow what is behind it.
@@ -6054,7 +6091,7 @@ func _show_run_over() -> void:
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):
 		return
-	var screen := RunOverScreen.open(self, _run_over_won)
+	var screen = load(RUN_OVER_SCREEN_SCRIPT).open(self, _run_over_won)
 	_run_over_screen = screen
 	screen.restart_requested.connect(func(): start_run())
 	screen.menu_requested.connect(func():
@@ -6947,10 +6984,10 @@ func _build_history_button() -> Button:
 
 # The run's own record, over the page. One at a time — a second press while it is
 # up is the player reaching for the button they are already looking at.
-func open_history() -> RunLogScreen:
+func open_history() -> Node:
 	if _history_screen != null and is_instance_valid(_history_screen):
 		return _history_screen
-	var screen := RunLogScreen.open(self)
+	var screen = load(RUN_LOG_SCREEN_SCRIPT).open(self)
 	_history_screen = screen
 	screen.finished.connect(func(): _history_screen = null)
 	return screen
@@ -7082,3 +7119,4 @@ func _mini_button(text: String, cb: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	b.pressed.connect(cb)
 	return b
+

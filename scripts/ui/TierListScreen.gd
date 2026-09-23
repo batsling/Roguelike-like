@@ -639,7 +639,7 @@ func _show_detail(game_id: StringName) -> void:
 		_detail_box.add_child(call_out)
 
 	if gd != null and gd.cover_image != null:
-		var art := AtlasView.card_art(gd.cover_image, DETAIL_W - 60.0, 210.0)
+		var art := UITheme.card_art(gd.cover_image, DETAIL_W - 60.0, 210.0)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(art)
 

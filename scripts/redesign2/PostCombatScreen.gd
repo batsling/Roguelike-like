@@ -528,7 +528,10 @@ func _open_rating(g: GameData, btn: Button) -> void:
 		if btn != null and is_instance_valid(btn):
 			btn.text = "★  Rated %d/10" % score
 		if rank_now:
-			TierListScreen.open(self, g.id))
+			# By path, at the click: naming the class here compiled the tier list
+			# (and the star chart it names) into every run's page load
+			# (docs/performance-backlog.md §6).
+			load("res://scripts/ui/TierListScreen.gd").open(self, g.id))
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
 

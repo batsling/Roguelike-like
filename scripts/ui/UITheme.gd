@@ -620,6 +620,35 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 # and HoverCard's inline TextureRect (test_overworld2 has the regression that
 # caught the last one) — and each hand-rolled copy is a place the game's pixel
 # art can start blurring on its own.
+# Cover art on a card is shown WHOLE — a card is where you went to LOOK at the
+# game, so nothing is cropped off it. The frame is the size the picture actually
+# needs: fitted to `width`, and shrunk further if that would make it taller than
+# `max_height` — never letterboxed, never cut. Moved here from AtlasView (which
+# forwards) so the route ladder's card can draw it without compiling the star
+# chart into every page load.
+const CARD_ART_MAX_HEIGHT := 300.0
+
+static func card_art_size(tex: Texture2D, width: float,
+		max_height: float = CARD_ART_MAX_HEIGHT) -> Vector2:
+	if tex == null or width <= 0.0 or tex.get_width() <= 0 or tex.get_height() <= 0:
+		return Vector2.ZERO
+	var aspect: float = float(tex.get_height()) / float(tex.get_width())
+	var box := Vector2(width, width * aspect)
+	if max_height > 0.0 and box.y > max_height:
+		box = Vector2(max_height / aspect, max_height)
+	return box
+
+static func card_art(tex: Texture2D, width: float,
+		max_height: float = CARD_ART_MAX_HEIGHT) -> TextureRect:
+	var art := TextureRect.new()
+	art.texture = tex
+	art.custom_minimum_size = card_art_size(tex, width, max_height)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# KEEP_ASPECT_CENTERED, not COVERED: the whole picture, letterbox rather than
+	# crop if a container ever hands it a box of a different shape.
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return art
+
 static func crisp_tex(tex: Texture2D, size: int, force: bool = false) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex
