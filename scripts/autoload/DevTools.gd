@@ -166,7 +166,7 @@ func _build() -> void:
 
 	_body = VBoxContainer.new()
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_theme_constant_override("separation", 3)
+	_body.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	scroll.add_child(_body)
 
 	var bar := HBoxContainer.new()
