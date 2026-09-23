@@ -110,7 +110,7 @@ func _build() -> void:
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(vbox)
 
 	var head := Label.new()
