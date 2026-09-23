@@ -229,7 +229,7 @@ func _build_ui() -> void:
 	var panel := _panel
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 14)
+	root.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(root)
 
 	_title_line = Label.new()
