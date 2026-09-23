@@ -1345,9 +1345,13 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 # pointed at a game card's popup. So the surface showing you had a Bash could not
 # spend it. They arm from those chips now and the click on a card is the aim.
 
+# The first card a Bash may be aimed at. A CHAMPION node refuses a Bash (§7.1),
+# and about one card in ten is one, so the card is ARRANGED to be an Enemies node
+# rather than hoped to be — a test about bashing must not fail on the deal.
 func _first_bashable_index() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i].get("amulet", false)):
+			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
 			return i
 	return -1
 
@@ -4528,6 +4532,7 @@ func _a_boss_is_standing() -> bool:
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
+			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
 			return i
 	return 0
 
@@ -4800,6 +4805,49 @@ func test_the_amulet_game_cannot_be_bashed() -> void:
 	_ui.bash_choice(idx)
 	assert_eq(GameState.bash, 1, "the charge is not spent")
 	assert_false(GameLoop2.is_bashed(amulet), "the run's goal survives")
+
+# §7.1, settled: a boss cannot be BASHED out of the road, but it can be
+# SCRAMBLED — a redraw is choosing a different fight, a Bash is refusing one.
+func test_a_champion_node_cannot_be_bashed() -> void:
+	_ui._build_choices()
+	var idx: int = _first_bashable_index()
+	if idx < 0 or _ui._choices.size() <= 1:
+		pending("nothing on this offering could be bashed at all")
+		return
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	var slot: StringName = StringName(_ui._choices[idx]["slot"])
+	GameState.bash = 1
+	assert_false(_ui.bash_choice(idx), "the bash is refused")
+	assert_eq(GameState.bash, 1, "the charge is not spent")
+	assert_false(GameLoop2.is_bashed(slot), "and the Champion node is still on the road")
+	# The same card as an Enemies node goes, so it was the KIND that refused it.
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
+	assert_true(_ui.bash_choice(idx), "an Enemies node on the same slot can be bashed")
+
+func test_an_armed_bash_stays_up_after_aiming_at_a_champion() -> void:
+	_ui._build_choices()
+	var idx: int = _first_bashable_index()
+	if idx < 0:
+		pending("nothing on this offering could be bashed at all")
+		return
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	GameState.bash = 1
+	_ui.arm_bash()
+	_ui.open_choice(idx)
+	assert_eq(_ui._armed_verb, &"bash",
+		"a refused aim leaves the verb up to be pointed somewhere else")
+
+func test_a_champion_node_can_still_be_scrambled() -> void:
+	_ui._build_choices()
+	if _ui._choices.is_empty():
+		pending("the offering is empty")
+		return
+	for c in _ui._choices:
+		if not bool(c.get("amulet", false)):
+			_set_kind(c, RunGraph.NodeKind.CHAMPION)
+	GameState.scramble = 1
+	assert_true(_ui.scramble(), "the offering redraws with a Champion on it")
+	assert_eq(GameState.scramble, 0, "and the charge is spent")
 
 func test_bash_is_refused_when_it_would_leave_nowhere_to_go() -> void:
 	# A node with exactly one connection: destroying that one card would strand

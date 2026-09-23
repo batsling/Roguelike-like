@@ -1406,9 +1406,21 @@ stacks and hits you (per §7.2) until you do. A boss **cannot be dashed
 past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
 *only* be removed by fulfilling its goal. It can still be *bombed*, though: the
 throw is legal and spends the charge, it just does no damage, which is how
-**Sticky Bombs**' stun (§4) reaches a boss at all. **[OPEN]** exact boss attack value, and
-whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
-allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
+**Sticky Bombs**' stun (§4) reaches a boss at all.
+
+**SETTLED: a boss can be SCRAMBLED but not BASHED.** A Champion node refuses a
+Bash (`Overworld2.bash_choice`, read off the node's kind, so it holds whatever
+game the node is playing) and says why on screen; the charge is kept and the
+armed verb stays up to be pointed at another card, the way the Amulet's refusal
+already worked. A Scramble is allowed, because it redraws the offering and the
+card's boss with it — choosing a different fight rather than refusing one — and
+so is a Transmute, which changes the game and leaves the node a Champion, so a
+boss still walks on. A Bash removes the node for good, and a Champion node's
+whole job is to be a fight the road puts in front of you.
+
+**The attack value is authored per boss**, in the `bosses` sheet's `Damage`
+column: 3, 5, 7 or 9 across the 47 (ordinary enemies run 1–4), so there is no
+single number to decide.
 
 ### 7.2 Enemy timing — spawn onto the board, then walk
 
@@ -3052,11 +3064,11 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-Still open:
-1. **Boss escapes** — are scramble/bash allowed on a boss node, or fully
-   unskippable? Plus boss damage value. (§7.1)
-2. **OBS HUD** — deferred: architecture + layout once mechanics lock. (§9)
-3. **Enemy `Ability`** — column exists but all `N/A`; reserved for later specials? (§7)
+Nothing is open. The last three were settled or built:
+- **Boss escapes** — a boss can be scrambled but not bashed; damage is authored
+  per boss (§7.1).
+- **OBS HUD** — built as a browser source (§9).
+- **Enemy `Ability`** — built: abilities are a catalogue of ops (§7.6).
 
 Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
@@ -3127,8 +3139,8 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   **Max Health** is a raisable stat (§3).
 - **Currency & shops** (§14): 1 gold an enemy, 3 a boss, paid with the drop (so a
   bomb pays nothing); characters open on the sheet's new `Gold` column (3 each);
-  prices are 3 + the rarity rung; shops stand at the **ten best-connected games**,
-  open on beating one, keep their three-item shelf for the whole run, and reroll
+  prices are 3 + the rarity rung; shops stand at **Shop nodes** (§19.1 — the
+  ten best-connected games until §19.7), open on beating one, keep their three-item shelf for the whole run, and reroll
   for a **Scramble**. Gold never carries between runs. **`Epic` was deleted from
   `ItemData.Rarity`** — nothing rolled it and nothing was authored at it, and the
   price ladder wants no holes in it.

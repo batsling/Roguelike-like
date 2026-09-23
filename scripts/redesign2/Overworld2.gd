@@ -4197,12 +4197,19 @@ func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
 # connection left to give, the slot simply goes: bashing is destruction, not a
 # guaranteed reroll.
 #
-# Two bashes are refused outright, because both end the run rather than shape it:
-# the AMULET game (destroying the goal makes the run unwinnable) and the LAST card
-# on the board with nothing to replace it (destroying it leaves nowhere to travel).
+# Three bashes are refused outright. Two because they end the run rather than
+# shape it: the AMULET game (destroying the goal makes the run unwinnable) and the
+# LAST card on the board with nothing to replace it (destroying it leaves nowhere
+# to travel).
 #
-# Allowed on a boss round — the boss is tied to the difficulty gate, not the game,
-# so whatever backfills the slot still spawns a boss.
+# THE THIRD IS A CHAMPION NODE (§7.1): a boss cannot be bashed out of the road.
+# That settles the question §7.1 left open, and it is split down the middle on
+# purpose — a SCRAMBLE is still allowed, because it redraws the offering and the
+# card's boss with it, which is choosing a different fight rather than dodging
+# one. A Bash removes the node for good, and a Champion's whole job is to be a
+# fight the road puts in front of you. Read off the node's KIND (§19.2), so it
+# holds for whatever game the node is playing; the Amulet is a Champion too, and
+# keeps its own sentence because its reason is the bigger one.
 # Returns whether the bash actually happened, so an AIM that was refused can stay
 # armed and be pointed at another card (see `open_choice`) — the player has spent
 # nothing, and disarming them for aiming at the Amulet would make a warning feel
@@ -4219,6 +4226,11 @@ func bash_choice(index: int) -> bool:
 		var amulet_msg: String = "%s holds the Amulet — bashing it would end the run's goal." % game.display_name
 		GameLog.add(amulet_msg, UITheme.DANGER)
 		Notifications.notify(amulet_msg, UITheme.DANGER)
+		return false
+	if _kind_of(choice) == RunGraph.NodeKind.CHAMPION:
+		var boss_msg: String = "%s is a Champion node — a boss cannot be bashed out of the road. A Scramble redraws it." % game.display_name
+		GameLog.add(boss_msg, UITheme.DANGER)
+		Notifications.notify(boss_msg, UITheme.DANGER)
 		return false
 	# Resolved BEFORE the bash, while the slot is still on the board.
 	var replacement: StringName = _backfill_id_for(slot)
@@ -5612,7 +5624,7 @@ func _refresh_select_stats() -> void:
 	# are finally the same object.
 	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
 		BASH_ORANGE,
-		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nClick, then click the game you want gone.",
+		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot a Champion node (!!): a boss cannot be bashed away.\nClick, then click the game you want gone.",
 		arm_bash, _armed_verb == &"bash"))
 	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
 		GameState.dash_charges, DASH_BLUE,

@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A boss can be Scrambled but not Bashed (§7.1, the spec's last open
+  decision).** A Champion node refuses a Bash, read off the node's kind so it
+  holds whatever game the node plays. It says why on screen, keeps the charge,
+  and leaves the armed verb up to be aimed elsewhere, the way the Amulet's refusal
+  already worked. Scramble and Transmute are still allowed: a redraw or a
+  different game still puts a boss in front of you, where a Bash would remove the
+  fight for good. The Bash chip's tooltip and the manual say so.
+
+  The boss's attack value, the other half of the open question, turned out to be
+  settled by content: the `bosses` sheet authors it per boss at 3 / 5 / 7 / 9.
+  §12 now lists nothing open. It also still listed the OBS overlay and enemy
+  abilities, both long since built, and still put the shops at the ten hubs.
+
+  Every Bash test helper now marks its target an Enemies node. About one card in
+  ten is a Champion, so a helper that took "the first card that isn't the Amulet"
+  would have failed on the deal about one run in ten.
+
 - **The report checklist has a ceiling, so a crowded board no longer pushes the
   page past a 720p window.** Every body standing adds a goal row of ~51px and the
   stack has no upper bound. Measured before the fix, the page went over at four

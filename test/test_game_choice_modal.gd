@@ -373,9 +373,12 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 			"a note like 'game credits' is shown as written: %s" % text)
 	modal._close()
 
+# A Champion node refuses a Bash (§7.1), so the card is arranged to be an
+# Enemies node — on its SLOT, where the kind lives (§19.2) — rather than hoped.
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
+			GameState.node_kinds[StringName(_ui._choices[i]["slot"])] = RunGraph.NodeKind.ENEMIES
 			return i
 	return -1
 

@@ -591,9 +591,11 @@ static func _ch_verbs() -> Dictionary:
 				+ "Bash or a Transmute is worth spending, because after you travel "
 				+ "the enemy is already on the board and only a bomb or the goal "
 				+ "itself will move it."),
-			_note("Two Bashes are refused outright: the Amulet game (destroying "
-				+ "the win condition would make the run unwinnable) and the last "
-				+ "card on the table with nothing to replace it."),
+			_note("Three Bashes are refused outright: the Amulet game (destroying "
+				+ "the win condition would make the run unwinnable), the last "
+				+ "card on the table with nothing to replace it, and a CHAMPION "
+				+ "node (!!) — a boss cannot be bashed out of the road. Scramble "
+				+ "the offering instead and you are dealt a different fight."),
 			_note("Traditional roguelikes have a setting of their own for "
 				+ "Transmute. By default they swap for another Traditional game, "
 				+ "which is arguably no relief at all — a Traditional game is the "
@@ -858,8 +860,8 @@ static func _ch_bosses() -> Dictionary:
 				+ "removes it. You can still throw one — it spends the charge and "
 				+ "deals nothing, but what the blast LEAVES still lands, which is "
 				+ "how Hot Bombs burns a boss and Sticky Bombs webs one."),
-			_b("Bashing, transmuting or scrambling buys you a DIFFERENT boss, not "
-				+ "a way past this one."),
+			_b("A Champion node cannot be BASHED. Scrambling or transmuting it "
+				+ "buys you a DIFFERENT boss, not a way past this one."),
 			_note("A boss cannot be dashed past either. There is no route around a "
 				+ "tier change — only through it."),
 		],
