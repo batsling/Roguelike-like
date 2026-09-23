@@ -64,7 +64,7 @@ func _build() -> void:
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	margin.add_child(vbox)
 
 	var title := Label.new()
@@ -87,14 +87,14 @@ func _build() -> void:
 	vbox.add_child(scroll)
 
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 6)
+	_list.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
 
 	vbox.add_child(HSeparator.new())
 
 	var add_row := HBoxContainer.new()
-	add_row.add_theme_constant_override("separation", 8)
+	add_row.add_theme_constant_override("separation", UITheme.GAP)
 	vbox.add_child(add_row)
 
 	_new_name = LineEdit.new()
@@ -147,7 +147,7 @@ func _profile_row(p: Dictionary) -> Control:
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(row)
 
 	var name_edit := LineEdit.new()

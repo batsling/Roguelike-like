@@ -241,7 +241,7 @@ func _build_shell() -> void:
 	add_child(panel)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 14)
@@ -262,7 +262,7 @@ func _build_shell() -> void:
 	header.add_child(close_btn)
 
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	root.add_child(tabs)
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items2().size())
@@ -604,8 +604,8 @@ func _new_grid() -> Control:
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(flow)
 	_grid = flow
@@ -910,7 +910,7 @@ func _controls_row() -> HBoxContainer:
 	var bg := PanelContainer.new()
 	bg.add_theme_stylebox_override("panel", _flat(Color(0, 0, 0, 0.35)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bg.add_child(row)
 	_content.add_child(bg)
@@ -918,7 +918,7 @@ func _controls_row() -> HBoxContainer:
 
 func _grid_and_detail() -> void:
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 12)
+	body.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.add_child(body)
@@ -1238,7 +1238,7 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(top)
 	var who := Label.new()
 	who.text = enemy.display_name if enemy != null else String(entry["id"])
@@ -1301,7 +1301,7 @@ func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(top)
 	var who := Label.new()
 	who.text = ch.display_name if side == "character" else game.display_name
@@ -1771,11 +1771,11 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		body.add_child(art)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(col)
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(top)
 	var who := Label.new()
 	who.text = enemy.display_name
@@ -1934,7 +1934,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	body.add_child(col)
 
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(top)
 	var name_label := Label.new()
 	name_label.text = game.display_name if game != null else String(entry["id"])
@@ -2077,8 +2077,8 @@ func _build_loot() -> void:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(flow)
 	_grid = flow
@@ -2155,7 +2155,7 @@ func _scroll_card(s: ScrollData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(300, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	vb.add_child(top)
 	# Revealed art for the catalog (falls back to Unidentified when artless).
 	var path := "res://images2.0/scrolls/%s.png" % s.art_file()
@@ -2214,7 +2214,7 @@ func _pill_card(p: PillData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(300, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	vb.add_child(top)
 	var tex: Texture2D = load(PILL_STANDIN) if ResourceLoader.exists(PILL_STANDIN) else null
 	if tex != null:
@@ -2261,7 +2261,7 @@ func _potion_card(p: PotionData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(300, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	vb.add_child(top)
 	var path := "res://images2.0/potions_identified/%s.png" % p.art_file()
 	var tex: Texture2D = load(path) if p.art_file() != "" and ResourceLoader.exists(path) \
@@ -2310,7 +2310,7 @@ func _card_card(c: CardData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(300, 0)
 	var vb: VBoxContainer = cell.vbox
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
+	top.add_theme_constant_override("separation", UITheme.GAP)
 	vb.add_child(top)
 	var face: Texture2D = _card_art("cards", c.art_file())
 	if face != null:

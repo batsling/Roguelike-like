@@ -417,7 +417,7 @@ func _build() -> void:
 	# Tight, deliberately: the loot column's 3x3 and its bin are the least
 	# compressible thing on this page, and every gap spent up here is a row they
 	# have to find by scrolling.
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	frame.add_child(col)
 	col.add_child(_header())
 
@@ -447,7 +447,7 @@ func _accent() -> Color:
 
 func _header() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var g: GameData = game()
 	if g != null and g.cover_image != null:
 		var art := TextureRect.new()
@@ -458,7 +458,7 @@ func _header() -> Control:
 		row.add_child(art)
 
 	var words := VBoxContainer.new()
-	words.add_theme_constant_override("separation", 2)
+	words.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	# SHRINK, not expand, so the rate button below sits BESIDE the name rather than
 	# being shoved to the far end of a 1200px row by a title block that grew to
 	# fill it. The spacer after the button is what takes the slack instead.
@@ -544,7 +544,7 @@ func _left_column() -> Control:
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroller.add_child(col)
 
@@ -573,7 +573,7 @@ func _left_column() -> Control:
 		col.add_child(_chest_why)
 
 	_chest_slot = VBoxContainer.new()
-	_chest_slot.add_theme_constant_override("separation", 6)
+	_chest_slot.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_chest_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_chest_slot)
 
@@ -599,7 +599,7 @@ func _tally_panel() -> Control:
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 22)
-	flow.add_theme_constant_override("v_separation", 8)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP)
 	wrap.add_child(flow)
 	for entry in tally():
 		flow.add_child(_tile(String(entry[0]), String(entry[1]), entry[2]))
@@ -617,7 +617,7 @@ func _tile(key: String, value: String, color: Color) -> Control:
 # rather than leaving a hole where the loot would have been.
 func _right_column() -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(LootDropModal.EMBED_W, 0)
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_loot_slot = col
@@ -752,7 +752,7 @@ func _hint_text() -> String:
 
 func _footer() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var hint := _line(_hint_text(), UITheme.TEXT_FAINT, 12)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -857,7 +857,7 @@ func _chest_sum_row() -> Control:
 	# arithmetic without a subject until something names the quantity it totals to.
 	col.add_child(_line("ITEM CHEST SIZE", UITheme.TEXT_FAINT, 10))
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
 	flow.add_theme_constant_override("v_separation", 3)
 	col.add_child(flow)
 	for i in range(terms.size()):
@@ -880,7 +880,7 @@ func _chest_sum_row() -> Control:
 # value is unmistakably the caption of the thing above it.
 func _sum_term(term: Dictionary) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 0)
+	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	var enemy: GoalEnemyData = term.get("enemy")
 	var tip: String = ""

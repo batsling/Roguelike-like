@@ -107,7 +107,7 @@ func _build() -> void:
 	_panel.add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 12)
+	root.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	margin.add_child(root)
 
 	var title := Label.new()
@@ -168,7 +168,7 @@ func _build() -> void:
 func _portrait_row() -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var seen: Dictionary = {}
 	for b in _bosses:
 		var boss: GoalEnemyData = b
@@ -176,7 +176,7 @@ func _portrait_row() -> Control:
 			continue
 		seen[boss.id] = true
 		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 2)
+		col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		var art_px: int = EMBED_ART_PX if _slot != null else ART_PX
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 6, 4, 1, ACCENT))

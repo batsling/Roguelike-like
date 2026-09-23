@@ -1262,7 +1262,7 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
+	root.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	add_child(root)
 
 	root.add_child(_build_header())
@@ -1308,8 +1308,8 @@ func _rebuild_filter_bar() -> void:
 	# A flow's minimum is its widest single control, so a filter row too long for
 	# one line takes a second line instead of taking it out of the page.
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 10)
-	row.add_theme_constant_override("v_separation", 4)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	_filter_bar.add_child(row)
 
 	# Two ways of arranging the same graph. Constellations cluster it around its
@@ -1418,7 +1418,7 @@ func _build_header() -> Control:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 10, 0))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	bar.add_child(row)
 
 	var title := Label.new()
@@ -1522,7 +1522,7 @@ func _fill_legend() -> void:
 	# wraps onto a second and the page keeps its width.
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 18)
-	row.add_theme_constant_override("v_separation", 4)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.add_child(row)
 	for t in RunGraph.TYPE_ORDER:
 		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
@@ -1559,7 +1559,7 @@ func _fill_legend() -> void:
 # fills a star's middle rather than what outlines it.
 func _legend_chip(text: String, col: Color, filled: bool = false) -> Control:
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var sw := PanelContainer.new()
 	# 14, not 11, and a hollow ring gets a THICKER rim. The key carries five genre
 	# colours and at 11px with a 2px rim there is barely any colour in one — three
@@ -1581,7 +1581,7 @@ func _legend_chip(text: String, col: Color, filled: bool = false) -> Control:
 # like the thing it names rather than a flat swatch.
 func _route_key(text: String, col: Color) -> Control:
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var line := RouteKey.new()
 	line.core = col
 	line.custom_minimum_size = Vector2(22, 11)
@@ -1615,7 +1615,7 @@ func _build_card() -> PanelContainer:
 	card.grow_vertical = Control.GROW_DIRECTION_END
 	card.visible = false
 	_card_box = VBoxContainer.new()
-	_card_box.add_theme_constant_override("separation", 8)
+	_card_box.add_theme_constant_override("separation", UITheme.GAP)
 	card.add_child(_card_box)
 	return card
 
@@ -1810,7 +1810,7 @@ func _fill_connection_card() -> void:
 	# The two games, influencer on the left, with the arrow between them showing
 	# which way the influence ran.
 	var pair := HBoxContainer.new()
-	pair.add_theme_constant_override("separation", 8)
+	pair.add_theme_constant_override("separation", UITheme.GAP)
 	pair.alignment = BoxContainer.ALIGNMENT_CENTER
 	_card_box.add_child(pair)
 	pair.add_child(_connection_side(from_game))
@@ -1905,7 +1905,7 @@ func _fill_connection_card() -> void:
 # game's own card.
 func _connection_side(game: GameData) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	col.custom_minimum_size.x = 132
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if game.cover_image != null:
@@ -1976,7 +1976,7 @@ func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	var close := func(): layer.queue_free()
 	var panel := ModalScaffold.build_panel(host, UITheme.GOLD, close, Vector2(620, 520))
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
@@ -1986,7 +1986,7 @@ func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	panel.add_child(margin)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	root.add_child(header)
 	var title := Label.new()
 	title.text = "🗒  Beaten at %s" % game_name
@@ -2003,7 +2003,7 @@ func _open_enemy_notes(game_id: StringName, game_name: String) -> void:
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(scroller)
 	var list := VBoxContainer.new()
-	list.add_theme_constant_override("separation", 8)
+	list.add_theme_constant_override("separation", UITheme.GAP)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroller.add_child(list)
 
@@ -2031,7 +2031,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		UITheme.flat(UITheme.PANEL, 6, 10, 1, UITheme.BORDER))
 	# Art on the left, everything about the encounter on the right.
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 10)
+	body.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	panel.add_child(body)
 	if enemy != null and enemy.image != null:
 		var art := TextureRect.new()
@@ -2046,7 +2046,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 	body.add_child(col)
 
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 10)
+	top.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	col.add_child(top)
 	var who := Label.new()
 	who.text = enemy.display_name if enemy != null else String(entry["id"])
@@ -2083,7 +2083,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 	if enemy != null:
 		var game: GameData = Data.get_game(game_id)
 		var actions := HBoxContainer.new()
-		actions.add_theme_constant_override("separation", 6)
+		actions.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 		col.add_child(actions)
 		var edit := Button.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
@@ -2107,7 +2107,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 
 func _fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var k := Label.new()
 	k.text = key
 	k.custom_minimum_size.x = 96

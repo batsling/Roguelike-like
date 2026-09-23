@@ -128,7 +128,7 @@ func _build() -> void:
 	centre.add_child(panel)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 8)
+	root.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(root)
 
 	root.add_child(_header())
@@ -151,7 +151,7 @@ func _build() -> void:
 	column_room.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(column_room)
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 12)
+	columns.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column_room.add_child(columns)
@@ -176,9 +176,9 @@ func _build() -> void:
 
 func _header() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(col)
 
@@ -215,7 +215,7 @@ func _filter_column(col: Dictionary) -> Control:
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 8, 12, 1))
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	frame.add_child(box)
 
 	var head := Label.new()
@@ -278,8 +278,8 @@ func _option_row(items: Array, on_pick: Callable) -> OptionButton:
 # cleared state is the one that is drawn.
 func _genre_row(key: String) -> Control:
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 4)
-	row.add_theme_constant_override("v_separation", 2)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
 	for type_val in RunGraph.TYPE_ORDER:
 		var b := CheckBox.new()
 		b.text = RunGraph.type_label(int(type_val))
@@ -297,7 +297,7 @@ func _genre_row(key: String) -> Control:
 
 func _year_row(key: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	row.add_child(_year_field("from", func(v): _set_axis(key, "year_min", v)))
 	var dash := Label.new()
 	dash.text = "–"
@@ -333,7 +333,7 @@ func _set_axis(key: String, field: String, value: int) -> void:
 
 func _band_block() -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	box.custom_minimum_size.x = 300
 
 	var head := Label.new()
@@ -350,7 +350,7 @@ func _band_block() -> Control:
 	box.add_child(note)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.add_child(row)
 	row.add_child(_band_spin("Shortest", _min_path, func(v):
 		_min_path = v
@@ -380,7 +380,7 @@ func _band_block() -> Control:
 # to hand back a different run from the one that was asked for.
 func _seed_block() -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	box.custom_minimum_size.x = 220
 
 	var head := Label.new()
@@ -435,7 +435,7 @@ func _on_seed_typed(raw: String) -> void:
 
 func _band_spin(label_text: String, value: int, on_change: Callable) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var l := Label.new()
 	l.text = label_text
 	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -459,7 +459,7 @@ func _band_spin(label_text: String, value: int, on_change: Callable) -> Control:
 # first few matches as buttons, with a Clear beside whatever is currently picked.
 func _target_block() -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var head := Label.new()
@@ -469,7 +469,7 @@ func _target_block() -> Control:
 	box.add_child(head)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.add_child(row)
 
 	_target_search = LineEdit.new()
@@ -495,7 +495,7 @@ func _target_block() -> Control:
 	box.add_child(_target_label)
 
 	_target_results = VBoxContainer.new()
-	_target_results.add_theme_constant_override("separation", 2)
+	_target_results.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	box.add_child(_target_results)
 	return box
 
@@ -666,7 +666,7 @@ func is_runnable() -> bool:
 
 func _buttons() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var reset := Button.new()
 	reset.text = "↺  Reset"

@@ -58,7 +58,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	center.add_child(card)
 
 	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 0)
+	body.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	card.add_child(body)
 
 	# Header band, tinted by rarity — the one fact about an item you read first.
@@ -66,7 +66,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	header.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 12, 14, 0))
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 12)
+	head_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = item.display_name
@@ -82,7 +82,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	body.add_child(header)
 
 	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 12)
+	inner.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		pad.add_theme_constant_override(side, 16)
@@ -92,7 +92,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	# Art beside what the item DOES — the description is the reason the card was
 	# opened, so it gets the room the token's tooltip could not give it.
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 16)
+	top.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	var art_frame := PanelContainer.new()
 	art_frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 10, 8, 1, tint.lerp(UITheme.BG, 0.4)))
@@ -101,7 +101,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	top.add_child(art_frame)
 
 	var text_col := VBoxContainer.new()
-	text_col.add_theme_constant_override("separation", 6)
+	text_col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if String(item.description) != "":
@@ -123,7 +123,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	# Rarity / behaviour-class / charge chips (§8) — the shape of the item rather
 	# than its effect.
 	var chips := HBoxContainer.new()
-	chips.add_theme_constant_override("separation", 6)
+	chips.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	chips.add_child(_chip(UITheme.item_class_name(item), tint))
 	chips.add_child(_chip(_kind_name(item), UITheme.ACCENT))
 	if item.is_charged():
@@ -160,7 +160,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	# The Use button, when this item can actually fire. Same wording and weight as
 	# the token's, so the two paths to firing read as the same action.
 	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 8)
+	actions.add_theme_constant_override("separation", UITheme.GAP)
 	actions.alignment = BoxContainer.ALIGNMENT_END
 	if usable:
 		var use_btn := Button.new()
@@ -185,7 +185,7 @@ func setup(item: ItemData, usable: bool) -> void:
 # yet" is a fact about the relic, not a missing widget.
 func _echo_strip(item: ItemData) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var head := Label.new()
 	head.text = "Echoes on your next use:"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -204,12 +204,12 @@ func _echo_strip(item: ItemData) -> Control:
 		return box
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	box.add_child(row)
 	for i in range(memory.size() - 1, maxi(0, memory.size() - depth) - 1, -1):
 		var entry: Dictionary = memory[i]
 		var cell := VBoxContainer.new()
-		cell.add_theme_constant_override("separation", 2)
+		cell.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel",
 			UITheme.flat(UITheme.BG, 8, 6, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.55)))

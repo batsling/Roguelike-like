@@ -10,8 +10,8 @@ Each item says **what** is wrong, **why it matters**, and **what it would take**
 because the sizing is the part that is expensive to re-derive.
 
 **All eight items are now closed or down to a named remainder.** §1 is **decided**;
-§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts are **done**, leaving its
-spacing scale as the one substantial piece of work left in the document; §6's
+§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts and gaps are **done** as value-preserving renames, leaving 57
+between-step gaps as an optional restyle; §6's
 is **done**, both halves; and §7's empty `Continue` row is gone. Closed work is kept here with its reasoning rather than
 deleted, so none of it gets asked again; a closed item says so in its heading, and
 a half-closed one says which half.
@@ -51,7 +51,7 @@ smaller change from replacing the ramp, and it is the only version worth
 reopening. If it ever does change, the tier buttons in `RateGameModal` and the
 move-to row read the same const array.
 
-## 2. The spacing scale covers the run screens only — fonts are DONE
+## 2. The spacing scale — fonts DONE, gaps DONE as a rename
 
 **Done: fonts, project-wide.** All 47 screens that set a font size in code now
 take it from the type scale; 259 bare integers became named steps in one pass.
@@ -62,20 +62,27 @@ re-fitting. `test_design_tokens.gd` keeps it that way with `MIGRATED_FONTS`, and
 that list is asserted **complete** against a walk of `scripts/` — a new screen
 cannot ship bare integers by not being on it.
 
-**Still open: gaps, ~38 screens.** `MIGRATED_GAPS` is the original nine run
-screens. `Collection.gd` (2518 lines), `AtlasView.gd` (2794), `RunOverScreen.gd`,
-`EventModal2.gd` and the rest still type their separations at the call site.
+**Done: gaps, project-wide, the same way.** Every `separation` / `h_separation` /
+`v_separation` literal holding exactly a step's value — **223 across 41 files** —
+became its `UITheme.GAP_*` name, and the diff was read back the same way: each of
+the 223 changed lines, with the name swapped back for its number, matches the
+original byte for byte. So nothing moved and no fit test needed looking at.
+`MIGRATED_GAPS` now lists all 51 files that set a gap and is asserted complete
+(`test_every_screen_that_sets_a_gap_is_on_the_gap_list`).
 
-**Why it matters.** It is the reason layout changes are expensive here. "Give this
-column 26px back" means auditing eight numbers by hand and writing a comment
+**What is left is a restyle, not a rename: 57 literals between two steps**, listed
+per file in `OFF_SCALE_GAPS` — 1 and 3 as hairlines either side of `GAP_HAIR`,
+5 / 7 / 9 as odd sizes, 14 and 18 between the loose steps, and a 22 and a 26 as
+section breaks. Naming one means changing it, which is the line the font pass
+drew too. The run screens' ones are load-bearing to the pixel on the 720p page and
+should stay; the rest (Collection, Atlas, Tier List and the modals) can be snapped
+one screen at a time, **looked at on the running screen**, and taken off the list
+as they go. A new literal in any file is still caught — only the listed values,
+in the file they are listed against, are allowed.
+
+**Why it mattered.** It was the reason layout changes were expensive here. "Give
+this column 26px back" meant auditing eight numbers by hand and writing a comment
 explaining each — which is exactly what the overworld's own history records.
-
-**What it would take.** One file at a time, and **slower than the font pass was**:
-a gap is not a free rename. Several on the run screens are load-bearing to the
-pixel on the 720p-budgeted page, so each one has to be read before it is named —
-do not snap one to the nearest step. Add the file to `MIGRATED_GAPS` and the test
-will fail on any bare integer left behind; genuinely off-scale values go in
-`OFF_SCALE_GAPS` with a reason.
 
 **The off-scale sizes are closed too.** The font pass deliberately left 22
 literals alone — naming them would have meant *changing* them, and a restyle does

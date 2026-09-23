@@ -57,7 +57,7 @@ func _ready() -> void:
 	_stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_stack.offset_left = 16.0
 	_stack.offset_right = -16.0
-	_stack.add_theme_constant_override("separation", 6)
+	_stack.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_stack)
 	_apply_bottom_inset()

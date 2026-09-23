@@ -132,7 +132,7 @@ func _build() -> void:
 		vbox.add_child(_extra)
 
 	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
+	buttons.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	buttons.alignment = BoxContainer.ALIGNMENT_END
 	vbox.add_child(buttons)
 

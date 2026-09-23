@@ -459,7 +459,7 @@ const CARD_ART_W := 248.0
 
 static func card_fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var k := Label.new()
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -60,7 +60,7 @@ func _init() -> void:
 
 func _build(on_take: Callable, on_bin: Callable) -> void:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(col)
 

@@ -82,19 +82,64 @@ const MIGRATED_FONTS := [
 	"res://scripts/ui/UITheme.gd",
 ]
 
-# The screens whose GAPS are on the scale — the ones under the 720p budget, where
-# a literal actually costs something. Everything else adopts the spacing scale as
-# it is next touched.
+# Every screen that sets a gap in code — the list is asserted COMPLETE, like the
+# fonts' (test_every_screen_that_sets_a_gap_is_on_the_gap_list). It was the nine
+# run screens under the 720p budget; the rest came on in one value-preserving
+# pass that renamed every literal holding exactly a step's value and moved
+# nothing (each changed line was read back with the step swapped for its number
+# and matched the original byte for byte).
 const MIGRATED_GAPS := [
-	"res://scripts/redesign2/Overworld2.gd",
-	"res://scripts/redesign2/BattlefieldView.gd",
-	"res://scripts/redesign2/OfferingCards.gd",
-	"res://scripts/redesign2/ReportChecklist.gd",
-	"res://scripts/redesign2/PackStrip.gd",
-	"res://scripts/redesign2/ShopPanel2.gd",
-	"res://scripts/redesign2/EnemyInfoCard.gd",
-	"res://scripts/redesign2/GameChoiceModal.gd",
+	"res://scripts/autoload/DevTools.gd",
+	"res://scripts/menu/CharacterPicker.gd",
+	"res://scripts/menu/CustomRunScreen.gd",
+	"res://scripts/menu/MainMenu.gd",
+	"res://scripts/menu/ProfilePicker.gd",
 	"res://scripts/menu/StartPicker.gd",
+	"res://scripts/redesign2/BattlefieldView.gd",
+	"res://scripts/redesign2/BossNoticeModal.gd",
+	"res://scripts/redesign2/CompletedGoalsPanel.gd",
+	"res://scripts/redesign2/DashFilterBar.gd",
+	"res://scripts/redesign2/DragPackPanel.gd",
+	"res://scripts/redesign2/EnemyInfoCard.gd",
+	"res://scripts/redesign2/EventModal2.gd",
+	"res://scripts/redesign2/GameChoiceModal.gd",
+	"res://scripts/redesign2/GraveyardPanel.gd",
+	"res://scripts/redesign2/ItemDropModal.gd",
+	"res://scripts/redesign2/ItemInfoCard.gd",
+	"res://scripts/redesign2/LootDiscoveries.gd",
+	"res://scripts/redesign2/LootDropModal.gd",
+	"res://scripts/redesign2/LootGrid.gd",
+	"res://scripts/redesign2/LootTrash.gd",
+	"res://scripts/redesign2/LootUseModal.gd",
+	"res://scripts/redesign2/LootWindow.gd",
+	"res://scripts/redesign2/ObjectCard.gd",
+	"res://scripts/redesign2/ObjectPanel2.gd",
+	"res://scripts/redesign2/OfferingCards.gd",
+	"res://scripts/redesign2/Overworld2.gd",
+	"res://scripts/redesign2/PackStrip.gd",
+	"res://scripts/redesign2/PlaySession2.gd",
+	"res://scripts/redesign2/PostCombatScreen.gd",
+	"res://scripts/redesign2/ReportChecklist.gd",
+	"res://scripts/redesign2/RouteLadder.gd",
+	"res://scripts/redesign2/RunLogScreen.gd",
+	"res://scripts/redesign2/RunMapModal.gd",
+	"res://scripts/redesign2/RunOverScreen.gd",
+	"res://scripts/redesign2/ShopPanel2.gd",
+	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/ui/Collection.gd",
+	"res://scripts/ui/ConfirmPanel.gd",
+	"res://scripts/ui/EnemyNoteModal.gd",
+	"res://scripts/ui/HoverCard.gd",
+	"res://scripts/ui/HowToPlayScreen.gd",
+	"res://scripts/ui/Keywords.gd",
+	"res://scripts/ui/NotificationToasts.gd",
+	"res://scripts/ui/RateGameModal.gd",
+	"res://scripts/ui/RewardScreen.gd",
+	"res://scripts/ui/RunHistoryScreen.gd",
+	"res://scripts/ui/SettingsModal.gd",
+	"res://scripts/ui/StatRow.gd",
+	"res://scripts/ui/TierListScreen.gd",
+	"res://scripts/ui/UITheme.gd",
 ]
 
 # EMPTY, AND THAT IS THE POINT. Twenty-two font literals had no step on the type
@@ -115,19 +160,50 @@ const MIGRATED_GAPS := [
 # now" where a missing one would just look like the check had been dropped.
 const OFF_SCALE_FONTS := {}
 
-# Gaps that are deliberately NOT on the scale, with the reason. Every one is
-# load-bearing to the pixel — the overworld is fitted to a 720p canvas with
-# single digits to spare, and snapping one of these to the nearest step is
-# exactly the change that puts the page behind a scrollbar. `StartPicker` is
-# absent on purpose: it is a new screen with room to spare, so it is fully on
-# the scale.
+# Gaps that are NOT on the scale, with the reason. There are two kinds, and the
+# reason is the same for both: naming one means CHANGING it, and a restyle does
+# not belong inside a rename — the same line the font pass drew.
+#
+#   * THE RUN SCREENS' (Overworld2, BattlefieldView, PackStrip, ShopPanel2,
+#     EnemyInfoCard, GameChoiceModal, ReportChecklist's neighbours) are load-bearing
+#     to the pixel: the overworld is fitted to a 720p canvas with single digits to
+#     spare, and snapping one to the nearest step is exactly the change that puts
+#     the page behind a scrollbar.
+#   * EVERYTHING ELSE is a value that was simply typed between two steps — 1 and
+#     3 as hairlines tighter or looser than GAP_HAIR, 5/7/9 as odd sizes, 14 and
+#     18 between the loose steps, 22 and 26 as section breaks on the two screens
+#     with the most air. Each is a restyle to be done on the running screen, one
+#     screen at a time, and until then it stands here named rather than silent.
+#     A NEW literal in any of these files is still caught: only these exact
+#     values are allowed, only in the file they are listed against.
+#
+# `StartPicker` is absent on purpose: it is fully on the scale.
 const OFF_SCALE_GAPS := {
-	"res://scripts/redesign2/Overworld2.gd": [3],
+	"res://scripts/autoload/DevTools.gd": [3],
+	"res://scripts/menu/CharacterPicker.gd": [14],
+	"res://scripts/menu/CustomRunScreen.gd": [18],
 	"res://scripts/redesign2/BattlefieldView.gd": [3, 5, 14],
-	"res://scripts/redesign2/PackStrip.gd": [1],
-	"res://scripts/redesign2/ShopPanel2.gd": [1, 7],
+	"res://scripts/redesign2/CompletedGoalsPanel.gd": [5],
 	"res://scripts/redesign2/EnemyInfoCard.gd": [1, 3, 7],
+	"res://scripts/redesign2/EventModal2.gd": [1, 18],
 	"res://scripts/redesign2/GameChoiceModal.gd": [3],
+	"res://scripts/redesign2/LootDiscoveries.gd": [3],
+	"res://scripts/redesign2/ObjectCard.gd": [1, 5],
+	"res://scripts/redesign2/Overworld2.gd": [3],
+	"res://scripts/redesign2/PackStrip.gd": [1],
+	"res://scripts/redesign2/PostCombatScreen.gd": [1, 3, 22],
+	"res://scripts/redesign2/RouteLadder.gd": [3, 7],
+	"res://scripts/redesign2/RunOverScreen.gd": [3, 14, 26],
+	"res://scripts/redesign2/ShopPanel2.gd": [1, 7],
+	"res://scripts/ui/AtlasView.gd": [3, 5, 18],
+	"res://scripts/ui/Collection.gd": [1, 3, 5, 9],
+	"res://scripts/ui/ConfirmPanel.gd": [14],
+	"res://scripts/ui/HoverCard.gd": [1, 3, 5],
+	"res://scripts/ui/HowToPlayScreen.gd": [3, 14],
+	"res://scripts/ui/Keywords.gd": [5],
+	"res://scripts/ui/RewardScreen.gd": [14],
+	"res://scripts/ui/RunHistoryScreen.gd": [3],
+	"res://scripts/ui/TierListScreen.gd": [7, 14],
 }
 
 func _source(path: String) -> String:
@@ -176,8 +252,8 @@ func test_the_migrated_screens_take_their_gaps_from_the_scale() -> void:
 # Every script under `scripts/` that sets a font size in code, so a NEW screen
 # cannot ship with bare integers by simply not being on the list. This is the
 # loophole the per-file lists had: the check only ever looked where it was told
-# to. Fonts are done project-wide, so the list can be asserted complete —
-# `MIGRATED_GAPS` deliberately cannot be, which is why this guards fonts only.
+# to. Fonts are done project-wide, so the list can be asserted complete — and
+# so are gaps now; the gap list has its own guard below.
 func test_every_screen_that_sets_a_font_size_is_on_the_font_list() -> void:
 	var found: Array = []
 	_collect_scripts("res://scripts", found)
@@ -189,6 +265,23 @@ func test_every_screen_that_sets_a_font_size_is_on_the_font_list() -> void:
 			missing.append(path)
 	missing.sort()
 	assert_eq(missing, [], "these set a font size in code but are not in MIGRATED_FONTS, "
+		+ "so nothing checks them — put each on the scale and add it to the list: %s" % str(missing))
+
+# The same completeness guard for GAPS, now that every screen is on the list: a
+# new screen that types its separations cannot ship unchecked by being absent.
+func test_every_screen_that_sets_a_gap_is_on_the_gap_list() -> void:
+	var found: Array = []
+	_collect_scripts("res://scripts", found)
+	var missing: Array = []
+	for path in found:
+		# A literal left over, or a gap already named — either way the file sets one.
+		if _literals(_source(path), ["separation", "h_separation", "v_separation"]).is_empty() \
+				and not _source(path).contains('separation", UITheme.GAP'):
+			continue
+		if not MIGRATED_GAPS.has(path):
+			missing.append(path)
+	missing.sort()
+	assert_eq(missing, [], "these set a gap in code but are not in MIGRATED_GAPS, "
 		+ "so nothing checks them — put each on the scale and add it to the list: %s" % str(missing))
 
 func _collect_scripts(dir_path: String, out: Array) -> void:

@@ -44,7 +44,7 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
+	vb.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	panel.add_child(vb)
 
 	if stat_title != "":

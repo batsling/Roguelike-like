@@ -64,7 +64,7 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
+	root.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	add_child(root)
 
 	root.add_child(_header())
@@ -76,7 +76,7 @@ func _build() -> void:
 
 	_rows = VBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("separation", 10)
+	_rows.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	scroller.add_child(_rows)
 
 	var margin := MarginContainer.new()
@@ -104,7 +104,7 @@ func _header() -> Control:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 12, 0))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	bar.add_child(row)
 
 	var title := Label.new()
@@ -139,7 +139,7 @@ func _run_row(run: Dictionary) -> Control:
 		UITheme.PANEL, 6, 12, 1, UITheme.SUCCESS if won else UITheme.BORDER))
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(col)
 	col.add_child(_run_caption(run))
 
@@ -153,7 +153,7 @@ func _run_row(run: Dictionary) -> Control:
 	col.add_child(strip_scroll)
 
 	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", 0)
+	strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	strip_scroll.add_child(strip)
 
 	var path: Array = run.get("path", [])
@@ -172,7 +172,7 @@ func _run_row(run: Dictionary) -> Control:
 
 func _run_caption(run: Dictionary) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var verdict := Label.new()
 	var won: bool = bool(run.get("won", false))

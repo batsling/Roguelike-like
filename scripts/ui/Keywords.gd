@@ -146,8 +146,8 @@ static func attach(host: Control, text: String) -> int:
 	if host == null or found.is_empty():
 		return 0
 	var strip := HFlowContainer.new()
-	strip.add_theme_constant_override("h_separation", 6)
-	strip.add_theme_constant_override("v_separation", 4)
+	strip.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	strip.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	for entry in found:
 		strip.add_child(chip(entry))
 	host.add_child(strip)

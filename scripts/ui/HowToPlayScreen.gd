@@ -96,12 +96,12 @@ func _build_shell() -> void:
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 12)
+	root.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	margin.add_child(root)
 	root.add_child(_build_header())
 
 	var body_row := HBoxContainer.new()
-	body_row.add_theme_constant_override("separation", 16)
+	body_row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body_row)
 	body_row.add_child(_build_sidebar())
@@ -110,7 +110,7 @@ func _build_shell() -> void:
 
 func _build_header() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 
 	var title := Label.new()
 	title.text = "📖  How to Play"
@@ -175,7 +175,7 @@ func _build_reader() -> Control:
 	frame.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.BORDER, 10, 16))
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	frame.add_child(col)
 
 	_title_label = Label.new()
@@ -196,7 +196,7 @@ func _build_reader() -> Control:
 	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body_scroll.add_child(centre)
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 8)
+	_body.add_theme_constant_override("separation", UITheme.GAP)
 	# SHRINK_BEGIN, so the column holds the width it asks for instead of being
 	# stretched to the panel. The gutter beside it takes everything left over —
 	# that empty strip is the measure working, not a layout bug.
@@ -213,7 +213,7 @@ func _build_reader() -> Control:
 
 func _build_pager() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 
 	_prev_btn = Button.new()
 	_prev_btn.text = "◀  Back"
@@ -331,7 +331,7 @@ func _prose(text: String, color: Color, indent: float) -> Control:
 # definitions lines up as a table rather than as ragged prose.
 func _definition(term: String, meaning: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var t := Label.new()
 	t.text = term
@@ -376,7 +376,7 @@ func _table(rows: Array) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = cols
 	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	grid.custom_minimum_size = Vector2(BODY_MAX_W, 0)
 	for r in rows:
 		var head: bool = bool(r.get("head", false))

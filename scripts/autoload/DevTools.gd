@@ -123,7 +123,7 @@ func _build() -> void:
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
+	vbox.add_theme_constant_override("separation", UITheme.GAP)
 	margin.add_child(vbox)
 
 	var title := Label.new()
@@ -132,7 +132,7 @@ func _build() -> void:
 	vbox.add_child(title)
 
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	vbox.add_child(tabs)
 	var group := ButtonGroup.new()
 	for t in TABS:
@@ -170,7 +170,7 @@ func _build() -> void:
 	scroll.add_child(_body)
 
 	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 8)
+	bar.add_theme_constant_override("separation", UITheme.GAP)
 	vbox.add_child(bar)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -237,7 +237,7 @@ func _query() -> String:
 # A radio row: [{label, value}], calling `on_pick` with the chosen value.
 func _radio_row(title: String, options: Array, current: String, on_pick: Callable) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	if title != "":
 		var l := Label.new()
 		l.text = title
@@ -261,7 +261,7 @@ func _radio_row(title: String, options: Array, current: String, on_pick: Callabl
 func _stepper(label: String, get_value: Callable, apply: Callable,
 		suffix: String = "") -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var name_lbl := Label.new()
 	name_lbl.text = label
 	name_lbl.custom_minimum_size = Vector2(150, 0)
@@ -655,7 +655,7 @@ func _board_row(entry: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(Color(0.11, 0.11, 0.14, 0.85), 6, 5, 1, UITheme.BORDER))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	wrap.add_child(col)
 
 	var head := Label.new()
@@ -674,7 +674,7 @@ func _board_row(entry: Dictionary) -> Control:
 		col.add_child(_note("statuses: %s" % ", ".join(names)))
 
 	var acts := HBoxContainer.new()
-	acts.add_theme_constant_override("separation", 4)
+	acts.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	col.add_child(acts)
 	# Every body gets every verb. There used to be an exemption for the enemy of
 	# the game in play, mirroring the board's refusal to aim at it; nothing is that
@@ -730,7 +730,7 @@ func _build_flow_tab() -> void:
 		RunDifficulty.tier_name(RunDifficulty.current_tier())]))
 
 	var acts := HBoxContainer.new()
-	acts.add_theme_constant_override("separation", 6)
+	acts.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_body.add_child(acts)
 	acts.add_child(_mini("Heal to full", func() -> void:
 		GameState.change_hp(GameState.max_hp - GameState.hp)
@@ -820,7 +820,7 @@ func _build_events_tab() -> void:
 		why_none]))
 
 	var acts := HBoxContainer.new()
-	acts.add_theme_constant_override("separation", 6)
+	acts.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_body.add_child(acts)
 	# Emptying the bag is the single most useful button on this tab while you are
 	# iterating on an event's text: it puts everything back in the draw.
@@ -897,7 +897,7 @@ func _build_events_tab() -> void:
 	_emit_rows(obj_rows)
 
 	var obj_acts := HBoxContainer.new()
-	obj_acts.add_theme_constant_override("separation", 6)
+	obj_acts.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_body.add_child(obj_acts)
 	obj_acts.add_child(_mini("Clear the machines", func() -> void:
 		ObjectSystem.clear()

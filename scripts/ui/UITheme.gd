@@ -565,7 +565,7 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 		font_size: int = FONT_BODY) -> Control:
 	var tint: Color = addon_color(bool(addon.get("required", false)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	# The indent is a spacer rather than a margin on the label: the icon has to be
 	# indented with the words, or the row reads as a second goal rather than as
 	# something hanging off the one above it.

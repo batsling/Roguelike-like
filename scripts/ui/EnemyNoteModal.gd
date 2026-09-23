@@ -69,7 +69,7 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 	var panel := ModalScaffold.build_panel(root, UITheme.GOLD, close, Vector2(560, 420))
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
 	margin.add_theme_constant_override("margin_right", 16)
@@ -81,7 +81,7 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 	# Header: the subject's own art beside who and where, so there's no doubt
 	# which pair is being written about.
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	box.add_child(header)
 	var art_tex: Texture2D = subject.get("art")
 	if art_tex != null:
@@ -92,7 +92,7 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		header.add_child(art)
 	var titles := VBoxContainer.new()
-	titles.add_theme_constant_override("separation", 2)
+	titles.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(titles)
 	var title := Label.new()
@@ -116,7 +116,7 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 	box.add_child(edit)
 
 	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 8)
+	buttons.add_theme_constant_override("separation", UITheme.GAP)
 	box.add_child(buttons)
 
 	# Delete only offered when there is something to delete, and it clears the

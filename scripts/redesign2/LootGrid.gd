@@ -106,8 +106,8 @@ func grid_columns() -> int:
 
 func _init() -> void:
 	columns = COLS
-	add_theme_constant_override("h_separation", 6)
-	add_theme_constant_override("v_separation", 6)
+	add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
 
 # Draw the nine. Called on every change rather than patched in place: the pack is
 # at most nine cells and rebuilding it is cheaper than keeping a view in sync with

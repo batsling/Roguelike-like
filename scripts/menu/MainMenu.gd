@@ -107,7 +107,7 @@ func _build_profile_row() -> void:
 	var row := HBoxContainer.new()
 	row.name = "ProfileRow"
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	_profile_lbl = Label.new()
 	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
@@ -266,11 +266,11 @@ func _save_row(entry: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.GOLD.lerp(UITheme.BORDER, 0.6 if is_auto else 0.85), 8, 8, 1))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	wrap.add_child(row)
 
 	var text := VBoxContainer.new()
-	text.add_theme_constant_override("separation", 0)
+	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.custom_minimum_size = Vector2(190, 0)
 	row.add_child(text)

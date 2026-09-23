@@ -106,7 +106,7 @@ static func build(cfg: Dictionary) -> Control:
 	# art is what identifies the thing — it is the same picture the full card
 	# opens with, and the reason this is a card rather than a sentence.
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
+	head.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(head)
 	# THROUGH `crisp_tex`, like every other surface that draws content art. This
 	# used to build the TextureRect by hand with the same three properties and one
@@ -144,7 +144,7 @@ static func build(cfg: Dictionary) -> Control:
 	var pips: Array = cfg.get("pips", [])
 	if not pips.is_empty():
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
+		row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 		col.add_child(row)
 		for pip in pips:
 			row.add_child(_pip(pip))

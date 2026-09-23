@@ -90,7 +90,7 @@ func _build() -> void:
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 6)
+	root.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	margin.add_child(root)
 
 	var title := Label.new()
@@ -114,7 +114,7 @@ func _build() -> void:
 		root.add_child(rect)
 
 	_prose_box = VBoxContainer.new()
-	_prose_box.add_theme_constant_override("separation", 4)
+	_prose_box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	root.add_child(_prose_box)
 
 	_choice_box = VBoxContainer.new()
