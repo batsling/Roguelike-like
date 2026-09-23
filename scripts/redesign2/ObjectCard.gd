@@ -118,7 +118,7 @@ func _build() -> void:
 	root.add_child(_prose_box)
 
 	_choice_box = VBoxContainer.new()
-	_choice_box.add_theme_constant_override("separation", 5)
+	_choice_box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	root.add_child(_choice_box)
 	_render()
 
@@ -183,7 +183,7 @@ func _has_effect(types: Array) -> bool:
 func _choice_button(index: int, choice: Dictionary) -> Control:
 	var taken: int = int((_inst.get("picks", {}) as Dictionary).get(String(choice.get("id", "")), 0))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 
 	var refusal: String = ObjectSystem.choice_refusal(_inst, choice)
 	var offered: bool = ObjectSystem.choice_available(_inst, choice)
