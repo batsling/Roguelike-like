@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The manual caught up with §19.** A read of How to Play against the spec
+  found it still teaching retired rules:
+  - the ESCORT, instead of "two bodies walk on";
+  - "every game on the map has exactly one enemy";
+  - a tier that rose every three games *played*, with every third game a boss;
+  - followers that "attack after every game", with a "pressure multiplier";
+  - damage "1 to 3" (ordinary enemies are authored 1–4, bosses 3–9);
+  - Bash and Transmute "pressed inside a game's card";
+  - shields called "tries".
+
+  All corrected. It also now teaches what it never mentioned: the four kind marks,
+  an Event node firing on arrival, and a new section on losing with nothing down,
+  with its price table read from `RunDifficulty` so it cannot drift.
+  `test_how_to_play` pins the new material and asserts the retired phrases stay
+  gone.
+
 - **The last 57 gaps are on the spacing scale.** They sat between two steps and
   were snapped by one rule: a value exactly between two steps goes to the
   smaller one, and 18 goes to 16. So a snap could only take height away, which

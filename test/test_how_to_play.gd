@@ -110,6 +110,22 @@ func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:
 	assert_string_contains(text, "%d or more" % RunDifficulty.FAR_HOPS)
 
 
+# §19: the node kinds and the failure spawn are taught, from the real numbers,
+# and the retired escort and the every-third-GAME boss are gone.
+func test_the_manual_teaches_node_kinds_and_the_failure_price() -> void:
+	var text: String = _all_text()
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
+			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
+		assert_string_contains(text, RunGraph.kind_mark(int(kind)) + " ")
+	assert_string_contains(text, "Losing with nothing down")
+	for hops in [RunDifficulty.FAR_HOPS, RunDifficulty.MID_HOPS, 0]:
+		assert_string_contains(text, "%d" % RunDifficulty.failure_bodies_for_hops(hops))
+	assert_false(text.contains("ESCORT"), "the escort was retired in §19.7")
+	assert_false(text.contains("games you PLAY, the run's tier"),
+		"the tier counts spawns now, not games (§19.6)")
+	assert_false(text.contains("1-to-3"), "enemies hit 1 to 4 and bosses 3 to 9")
+
+
 func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 	var text: String = _all_text()
 	assert_string_contains(text, "+%d gold" % GameLoop2.GOLD_PER_ENEMY)
