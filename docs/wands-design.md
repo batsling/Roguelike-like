@@ -247,16 +247,17 @@ Scroll of Create Monster's op, four times over. It rolls at the run's **own**
 difficulty, which is what keeps a Negative piece of loot expensive: a cost that
 stayed flat while the roster climbed would stop being a cost.
 
-**A conjured body does not queue.** `GameLoop2.spawn_to_stack` walks it onto the
-spawn column like anything else, and a spawn column with a body already standing in
-every row used to park it off-grid to wait. That is right for an enemy that
-*arrived* with a game — it is queuing behind the crowd it came with — and wrong for
-one somebody conjured: the card says a monster is created, and a monster created
-into a holding pen the player cannot see is a charge spent on nothing. So a full
-spawn column falls back to `nearest_open_cell`, the closest square the body's
-footprint fits in, measured from the back of its own lane and breaking ties
-**toward the back** (the same tie-break `place_drop` uses, and for the same reason:
-the further square gives the player a turn to answer it).
+**A conjured body enters at the back, like every other spawn.**
+`GameLoop2.spawn_to_stack` walks it onto the spawn column, and a spawn column with
+a body already standing in every row parks it in the off-grid queue beside the
+board until room frees. For a while a full column fell back instead to
+`nearest_open_cell`, the closest square the body's footprint fitted in, on the
+reasoning that a monster created into a holding pen was a charge spent on nothing.
+That was reversed: `spawn_to_stack` is also how failure spawns and the capstone
+boss land (spec §19.5–§19.6), and the fallback put those bodies in the middle of
+the board, sometimes right beside the player, when every other spawn enters at the
+back. The queue is drawn on the board, so a queued monster is still one the player
+can see coming.
 
 ### 5.5 The eight that aim at a Unit
 

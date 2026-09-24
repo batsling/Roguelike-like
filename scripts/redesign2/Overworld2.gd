@@ -1481,6 +1481,18 @@ func _committed_kind(game: GameData) -> int:
 	var slot := StringName(_chosen.get("slot", &""))
 	return GameState.node_kind(slot if slot != &"" else game.id)
 
+# THE BODY A CARD ADVERTISES, rolled for the node's KIND (§19.1). A Champion node
+# stands a boss, so its card rolls the boss up front — the one the card shows is
+# the one that walks on. It used to roll an ordinary enemy for every card and swap
+# in a freshly rolled boss at the commit, so a Champion card previewed a body that
+# never arrived and hid the one that did.
+func _roll_card_enemy(slot: StringName, type_key: StringName, tier: int) -> GoalEnemyData:
+	if GameState.node_kind(slot) == RunGraph.NodeKind.CHAMPION:
+		var boss: GoalEnemyData = GameLoop2.roll_boss(type_key, tier)
+		if boss != null:
+			return boss
+	return GameLoop2.roll_enemy(type_key, tier)
+
 func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
 	match _committed_kind(game):
@@ -3877,7 +3889,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	# here. The capstone is every third SPAWN EVENT (§19.6) and lands on the board
 	# from `GameLoop2.note_spawn_event`, so arriving by scroll counts exactly like
 	# arriving on foot — this path stopped having a boss decision to make.
-	var enemy: GoalEnemyData = GameLoop2.roll_enemy(type_key, tier)
+	var enemy: GoalEnemyData = _roll_card_enemy(dest, type_key, tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
@@ -4015,7 +4027,7 @@ func _start_play_game(request: Dictionary) -> void:
 
 	var game: GameData = Data.get_game(dest)
 	var tier: int = _current_tier()
-	var enemy: GoalEnemyData = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
+	var enemy: GoalEnemyData = _roll_card_enemy(dest, GameLoop2.game_type_key(game), tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
 		"boss": false, "amulet": dest == GameState.amulet_game_id,
@@ -4604,7 +4616,7 @@ func _build_choices() -> void:
 		var slot_key: String = "%s>%s" % [String(gid), String(game.id)]
 		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
 		if enemy == null:
-			enemy = GameLoop2.roll_enemy(type_key, tier)
+			enemy = _roll_card_enemy(gid, type_key, tier)
 			_slot_enemies[slot_key] = enemy
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,

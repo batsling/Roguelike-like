@@ -29,6 +29,8 @@ signal restart_requested     # "another run"
 signal menu_requested        # "back to the menu"
 
 const COVER := Vector2(78, 104)
+# How far a cover's tier badge overhangs its art, top and right (see _route_strip).
+const BADGE_ROOM := int(ceil(UITheme.TIER_BADGE_H * UITheme.TIER_BADGE_OUT))
 const ARROW_W := 24.0
 
 var won: bool = false
@@ -266,13 +268,22 @@ func _route_strip() -> Control:
 	# that is missing exactly until the moment it is load-bearing.
 	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroller.custom_minimum_size.y = COVER.y + 52
+	scroller.custom_minimum_size.y = COVER.y + 52 + BADGE_ROOM
 	scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(scroller)
 
+	# ROOM FOR THE TIER BADGE. It is pinned centred on each cover's top-right corner
+	# (UITheme.attach_tier_badge), so half of it stands above the art and past its
+	# right edge — and a ScrollContainer clips, which cut the top off every ranked
+	# cover's badge and the side off the last one's. The margin gives the overhang
+	# somewhere inside the clip to be.
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_top", BADGE_ROOM)
+	pad.add_theme_constant_override("margin_right", BADGE_ROOM)
+	scroller.add_child(pad)
 	var strip := HBoxContainer.new()
 	strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
-	scroller.add_child(strip)
+	pad.add_child(strip)
 
 	for i in range(_route.size()):
 		# A REPLAY is marked on the tile rather than left to look like a duplicate

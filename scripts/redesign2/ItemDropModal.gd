@@ -13,7 +13,8 @@ extends Control
 # of 1" and reads exactly as the single item this modal has always shown, and at
 # 2 or more the layout becomes a row of cards you pick from — still one relic
 # taken, still one "Leave it", because the answer to a chest is which one and not
-# how many.
+# how many. (Embedded on the reward screen there is no "Leave it" at all: a chest
+# you don't want is one you don't take — see `_build`.)
 #
 # WHERE THE CHESTS COME FROM is the report (§8.2): a game you beat pays one point
 # plus each defeated body's difficulty, spent on the size ladder, so a heavy
@@ -199,13 +200,17 @@ func _build() -> void:
 	else:
 		box.add_child(row)
 
-	var leave := Button.new()
-	leave.text = "Leave it" if not multi else "Leave them"
-	leave.custom_minimum_size = Vector2(110, 26) if compact else Vector2(150, 42)
-	if compact:
-		leave.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	leave.pressed.connect(func(): _answer(false))
-	row.add_child(leave)
+	# NO "LEAVE IT" ON THE REWARD SCREEN. Embedded, a chest you do not want is a
+	# chest you do not take: the screen's own way out answers everything still on
+	# it as left (PostCombatScreen.dismiss), so a button saying the same thing was
+	# a second, smaller way to decline. The standalone modal keeps it, because
+	# there it is the only way out.
+	if not compact:
+		var leave := Button.new()
+		leave.text = "Leave it" if not multi else "Leave them"
+		leave.custom_minimum_size = Vector2(150, 42)
+		leave.pressed.connect(func(): _answer(false))
+		row.add_child(leave)
 
 	_take_btn = Button.new()
 	_take_btn.custom_minimum_size = Vector2(150, 26) if compact else Vector2(190, 42)

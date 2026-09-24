@@ -1004,6 +1004,13 @@ func _disarm_board() -> void:
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
 
+# A SETUP REPORT, not the subject. A game handed in with nothing defeated spawns
+# random authored bodies (§19.5), and a test that reports only to put its one body
+# on the board would then be measuring those too. Defeating anything shuts the tap
+# for the game, which is what this says. Called after the pick, which wipes it.
+func _shut_failure_tap() -> void:
+	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
+
 func test_the_hero_strip_shows_the_players_statuses() -> void:
 	var ui = _booted()
 	assert_false(ui._board._hero_statuses.visible, "hidden while nothing is on you")
@@ -1181,6 +1188,7 @@ func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var ui = _booted()
 	_pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
+	_shut_failure_tap()
 	ui.report(false)                      # it walks onto the board carrying Marked
 	ui._board.refresh()
 	assert_eq(GameLoop2.stack.size(), 1)
@@ -1306,6 +1314,7 @@ func test_strength_raises_what_an_enemy_hits_for() -> void:
 func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 	var ui = _booted()
 	_pick_enemies(ui, 0)
+	_shut_failure_tap()
 	ui.report(false)                       # it walks onto the board and starts closing
 	GameState.shields = 0                  # no tries left, so every point lands on Health
 	GameLoop2.apply_enemy_status(&"strength", 3, "all")
@@ -1433,6 +1442,7 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	# carrying it, Shields included.
 	var ui = _booted()
 	_pick_enemies(ui, 0)
+	_shut_failure_tap()
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
