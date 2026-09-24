@@ -55,7 +55,7 @@ const WIDTH := LootSlot.CELL_W * 3
 # is what redraws the surface that owns it, since the fold changes its height.
 static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 
 	var pills: Array = known_pills()
 	var scrolls: Array = known_scrolls()
@@ -85,7 +85,7 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(WIDTH, max_height)
 	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 6)
+	inner.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(inner)
 	box.add_child(scroll)
@@ -121,15 +121,15 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 
 static func _row(heading: String, entries: Array) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var head := Label.new()
 	head.text = heading
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	col.add_child(head)
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 4)
-	flow.add_theme_constant_override("v_separation", 4)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	flow.custom_minimum_size = Vector2(WIDTH, 0)
 	col.add_child(flow)
 	for entry in entries:
@@ -147,7 +147,7 @@ static func _chip(entry: Dictionary) -> Control:
 		UITheme.flat(tint.lerp(UITheme.BG, 0.84), 5, 3, 1, tint.lerp(UITheme.BG, 0.55)))
 	HoverCard.attach(wrap, LootSystem.hover_card(entry))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(row)
 	var art: TextureRect = LootSystem.art_tex(entry, 16)

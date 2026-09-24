@@ -1786,17 +1786,31 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
 # tempting field and it is the wrong one: it ticks for both.
 func failure_spawn_count(escaped: bool = false) -> int:
-	if not game_in_play or run_over or escaped:
+	if escaped:
 		return 0
+	return int(failure_price()["bodies"])
+
+# The same answer, with its REASON — what the battlefield strip reads (§19.8).
+# `bodies` is what a failure here would stand on the board right now, and `why`
+# says which of the four exemptions is buying it off when that is 0 (empty when
+# there is no game in play to fail at). One function for both so the strip can
+# never promise a price the spawn does not charge.
+func failure_price() -> Dictionary:
+	if not game_in_play or run_over:
+		return {"bodies": 0, "why": ""}
 	if defeated_this_game > 0:
-		return 0
+		return {"bodies": 0, "why": "a body went down here"}
 	var here: StringName = GameState.current_game_id
-	if here == &"" or here == GameState.amulet_game_id:
-		return 0
-	match GameState.node_kind(here):
+	if here == &"":
+		return {"bodies": 0, "why": ""}
+	if here == GameState.amulet_game_id:
+		return {"bodies": 0, "why": "nothing follows you past the Amulet"}
+	var kind: int = GameState.node_kind(here)
+	match kind:
 		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
-			return 0
-	return RunDifficulty.failure_bodies_for_hops(hops_to_amulet())
+			return {"bodies": 0, "why": "nothing spawns at %s node" % (
+				"an Event" if kind == RunGraph.NodeKind.EVENT else "a Shop")}
+	return {"bodies": RunDifficulty.failure_bodies_for_hops(hops_to_amulet()), "why": ""}
 
 # Stand this failure's bodies on the board. Returns how many actually landed.
 #

@@ -325,8 +325,19 @@ func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 
 # --- Lord's Parasol: the shop, emptied ------------------------------------
 
+# A Shop node to stand at (§19.1). STAMPED rather than looked for, so the test
+# does not ride whether the run's deal put one anywhere; after_each's reset_run
+# takes the kind back off.
+func _a_shop_node() -> StringName:
+	for g in Data.all_games():
+		if g is GameData and not RunGraph.is_off_map(g.id):
+			GameState.node_kinds[g.id] = RunGraph.NodeKind.SHOP
+			GameState.shops.erase(g.id)
+			return g.id
+	return &""
+
 func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
-	var hub: StringName = ShopSystem.hub_games()[0]
+	var hub: StringName = _a_shop_node()
 	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
 	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
 	_give(&"lords_parasol")
@@ -346,7 +357,7 @@ func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
 	assert_true(ShopSystem.is_sold_out(hub), "the shelf is bare behind you")
 
 func test_a_shop_is_only_swept_by_someone_holding_the_parasol() -> void:
-	var hub: StringName = ShopSystem.hub_games()[0]
+	var hub: StringName = _a_shop_node()
 	var before: int = GameState.inventory.size()
 	ShopSystem.mark_seen(hub)
 	assert_eq(GameState.inventory.size(), before, "no Parasol, no sweep")

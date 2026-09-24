@@ -252,7 +252,7 @@ func _charge_battery(item: ItemData, reporting: bool) -> Control:
 	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
 		"; finish reporting this game to use it" if reporting else ""]
 	var cells := HBoxContainer.new()
-	cells.add_theme_constant_override("separation", 1)
+	cells.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(cells)
 	for i in range(maxc):

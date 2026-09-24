@@ -163,11 +163,11 @@ func _build_shell() -> void:
 	add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(vbox)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	vbox.add_child(header)
 
 	var title := Label.new()
@@ -203,7 +203,7 @@ func _build_shell() -> void:
 	# Board on the left, the clicked game's card on the right — the same
 	# master/detail shape the Collection uses, so the two screens read alike.
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 14)
+	body.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
 
@@ -277,7 +277,7 @@ func _build_detail_panel() -> Control:
 	scroll.add_child(inset)
 
 	_detail_box = VBoxContainer.new()
-	_detail_box.add_theme_constant_override("separation", 7)
+	_detail_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail_box.custom_minimum_size = Vector2(DETAIL_W - 62.0, 0)
 	inset.add_child(_detail_box)
@@ -415,7 +415,7 @@ func _font(size: float, floor_px: int = 8) -> int:
 func _build_tier_row(index: int, label_text: String, game_ids: Array) -> Control:
 	var color: Color = TIER_COLORS[index % TIER_COLORS.size()]
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 
 	var label_cell := PanelContainer.new()
 	label_cell.custom_minimum_size = LABEL_CELL * _scale
@@ -451,7 +451,7 @@ func _build_tier_row(index: int, label_text: String, game_ids: Array) -> Control
 
 func _build_unranked_row(game_ids: Array) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 
 	var label_cell := PanelContainer.new()
 	label_cell.custom_minimum_size = LABEL_CELL * _scale
@@ -639,7 +639,7 @@ func _show_detail(game_id: StringName) -> void:
 		_detail_box.add_child(call_out)
 
 	if gd != null and gd.cover_image != null:
-		var art := AtlasView.card_art(gd.cover_image, DETAIL_W - 60.0, 210.0)
+		var art := UITheme.card_art(gd.cover_image, DETAIL_W - 60.0, 210.0)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(art)
 
@@ -710,8 +710,8 @@ func _show_detail(game_id: StringName) -> void:
 # disabled rather than hidden, so the row doesn't reshuffle as you move it.
 func _tier_buttons(game_id: StringName, current_tier: int) -> Control:
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 4)
-	flow.add_theme_constant_override("v_separation", 4)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	for i in TierList.tier_names.size():
 		flow.add_child(_move_button(TierList.tier_names[i], game_id, i, i == current_tier,
 			TIER_COLORS[i % TIER_COLORS.size()]))
@@ -745,7 +745,7 @@ func _open_rating(game_id: StringName, gd: GameData) -> void:
 
 func _fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var k := Label.new()
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -61,8 +61,8 @@ func _init(page: Node) -> void:
 # BELOW the controls. Empty until a Dash opens.
 func mount(parent: Control) -> void:
 	bar = HFlowContainer.new()
-	bar.add_theme_constant_override("h_separation", 6)
-	bar.add_theme_constant_override("v_separation", 4)
+	bar.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	bar.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.visible = false
 	parent.add_child(bar)
 

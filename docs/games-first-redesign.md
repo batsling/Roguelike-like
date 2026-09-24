@@ -1406,9 +1406,21 @@ stacks and hits you (per §7.2) until you do. A boss **cannot be dashed
 past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
 *only* be removed by fulfilling its goal. It can still be *bombed*, though: the
 throw is legal and spends the charge, it just does no damage, which is how
-**Sticky Bombs**' stun (§4) reaches a boss at all. **[OPEN]** exact boss attack value, and
-whether the pre-commit escapes (**scramble** the goal / **bash** the game) are
-allowed on a boss node or whether difficulty-gate bosses are fully unskippable.
+**Sticky Bombs**' stun (§4) reaches a boss at all.
+
+**SETTLED: a boss can be SCRAMBLED but not BASHED.** A Champion node refuses a
+Bash (`Overworld2.bash_choice`, read off the node's kind, so it holds whatever
+game the node is playing) and says why on screen; the charge is kept and the
+armed verb stays up to be pointed at another card, the way the Amulet's refusal
+already worked. A Scramble is allowed, because it redraws the offering and the
+card's boss with it — choosing a different fight rather than refusing one — and
+so is a Transmute, which changes the game and leaves the node a Champion, so a
+boss still walks on. A Bash removes the node for good, and a Champion node's
+whole job is to be a fight the road puts in front of you.
+
+**The attack value is authored per boss**, in the `bosses` sheet's `Damage`
+column: 3, 5, 7 or 9 across the 47 (ordinary enemies run 1–4), so there is no
+single number to decide.
 
 ### 7.2 Enemy timing — spawn onto the board, then walk
 
@@ -2169,7 +2181,7 @@ Movement / Bomb / Grid — a design-side column the generator does not read.
 
 **pools** is a different question from tags: *where a relic is drawn from*, not
 what it is about. Only `shop` is wired up today, and it is a **weight rather than
-a filter** — an item in the shop pool counts **double** when a hub's shelf is
+a filter** — an item in the shop pool counts **double** when a shop's shelf is
 rolled (`ShopSystem.SHOP_POOL_WEIGHT`, §14), so Piggy Bank and There's Options
 turn up at a shop more often than the rest of their rarity while still dropping
 off a body like anything else. Isaac's shop pool is a separate table nothing else
@@ -3052,11 +3064,11 @@ cards/statuses, potions-as-combat-items (repurpose or cut).
 
 ## 12. Open decisions (rolled up)
 
-Still open:
-1. **Boss escapes** — are scramble/bash allowed on a boss node, or fully
-   unskippable? Plus boss damage value. (§7.1)
-2. **OBS HUD** — deferred: architecture + layout once mechanics lock. (§9)
-3. **Enemy `Ability`** — column exists but all `N/A`; reserved for later specials? (§7)
+Nothing is open. The last three were settled or built:
+- **Boss escapes** — a boss can be scrambled but not bashed; damage is authored
+  per boss (§7.1).
+- **OBS HUD** — built as a browser source (§9).
+- **Enemy `Ability`** — built: abilities are a catalogue of ops (§7.6).
 
 Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
 
@@ -3127,8 +3139,8 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   **Max Health** is a raisable stat (§3).
 - **Currency & shops** (§14): 1 gold an enemy, 3 a boss, paid with the drop (so a
   bomb pays nothing); characters open on the sheet's new `Gold` column (3 each);
-  prices are 3 + the rarity rung; shops stand at the **ten best-connected games**,
-  open on beating one, keep their three-item shelf for the whole run, and reroll
+  prices are 3 + the rarity rung; shops stand at **Shop nodes** (§19.1 — the
+  ten best-connected games until §19.7), open on beating one, keep their three-item shelf for the whole run, and reroll
   for a **Scramble**. Gold never carries between runs. **`Epic` was deleted from
   `ItemData.Rarity`** — nothing rolled it and nothing was authored at it, and the
   price ladder wants no holes in it.
@@ -3561,7 +3573,7 @@ be answered twice.
 
 ---
 
-## 14. Currency & shops (`gold`, hub shops)
+## 14. Currency & shops (`gold`, Shop nodes)
 
 Gold is what the drops were never allowed to be: a reward you **choose what to do
 with**. Every other payout in the run is a thing arriving — an item off a corpse,
@@ -3600,13 +3612,16 @@ reaches is always worth walking into.
   an escape from a goal you couldn't or wouldn't do, and letting it mint currency
   would make bombing the cheapest way to farm the shops.
 
-### 14.2 Where shops are: the ten hubs
+### 14.2 Where shops were: the ten hubs (RETIRED — §19.7)
 
-> **SUPERSEDED BY §19.1.** A shop stands at a **Shop node**, not at a hub. The
-> degree measurements and the "second routing axis" argument below are kept
-> because §19.2 is that argument carried through — the kinds are frozen at run
-> start for exactly the reason given here, and the road ahead can now be routed
-> on because of it. §14.3's shelf is unchanged.
+> **RETIRED BY §19.7, AND GONE FROM THE CODE.** A shop stands at a **Shop
+> node** and nowhere else: `ShopSystem.is_shop` reads `GameState.node_kinds`, and
+> `hub_games`, `hub_ids`, `NUM_HUBS` and `is_hub` no longer exist (the degree sort
+> survives as `RunGraph.best_connected`, with no rule hanging off it). The degree
+> measurements and the "second routing axis" argument below are kept as the
+> history of the idea, because §19.2 is that argument carried through — the
+> kinds are frozen at run start for exactly the reason given here. §14.3's shelf
+> is unchanged, except that it is keyed by NODE id (§14.4).
 
 A shop stands at each of the run's **ten best-connected games**
 (`RunGraph.hub_ids`). On the full catalog those are the genre's landmarks — Slay
@@ -3642,8 +3657,8 @@ around.
 
 **Three items, and they stay.** Stock is rolled once — on the standard
 75/20/5-with-a-10%-bump ladder (`Data.roll_item_rarity`) — and **persists for the
-whole run**. Buying marks a slot sold rather than removing it. So a hub you
-cleared out is a hub you know is empty, and a hub you left two items at is a
+whole run**. Buying marks a slot sold rather than removing it. So a shop you
+cleared out is a shop you know is empty, and a shop you left two items at is a
 reason to come back.
 
 Two preferences shape the draw, both aimed at the same problem — 21 authored
@@ -3653,24 +3668,24 @@ preferences rather than filters, and fall back rather than leaving a slot empty.
 
 A third rides on top of them: an item in the sheet's **`shop` pool** (§8) counts
 **double** in the draw (`ShopSystem.SHOP_POOL_WEIGHT`), so Piggy Bank and There's
-Options are twice as likely to be standing at a hub as anything else of their
+Options are twice as likely to be standing on a shelf as anything else of their
 rarity. A weight and not a separate table, for the same reason as the two above:
 Isaac's shop pool is a table nothing else reaches, but against thirty relics and
-ten hubs that would have made every shop the same two items, every run. A shop
+a handful of shops a run that would have made every shop the same two items, every run. A shop
 relic still drops off a body, and a shelf can still come up three ordinary ones.
 
 **Rerolling costs 1 Scramble, not gold.** Scramble is the run's reroll verb
 everywhere else (§4 — "re-draw the offering"), so a shelf of three things you
 don't want is the same kind of problem as an offering of three games you don't
 want, and takes the same answer. Pricing it in gold would let a rich player grind
-the whole catalog at one hub. A reroll redraws **all three slots, sold ones
+the whole catalog at one shop. A reroll redraws **all three slots, sold ones
 included** — the generous reading, and the right one, because gold is the real
 limiter and three fresh items you still can't afford is not a windfall.
 
 ### 14.4 When it opens, and what the road can see
 
 The shop appears **after a Shop node's game is beaten** (§19.1 — it was the ten
-hubs, and that is §14.2's superseded half), queued behind the board's
+hubs until §19.7), queued behind the board's
 resolve playback on the same path an event takes (`Overworld2._pending_shop`) —
 and it appears **on the page, under the battlefield** (`ShopPanel2`), not as a
 modal over it. A shop is not an interruption: the run's rhythm is report the
@@ -3696,24 +3711,32 @@ the build, and this is not the place to make it an exception.
 sweeps the whole shelf into the pack for **no gold** — not "buy everything you can
 afford", which would make it weakest exactly when the shelf is best and would read
 as a discount rather than as a relic. It fires from `ShopSystem.mark_seen`, behind
-the `seen` guard, so it is the *first* visit to each hub that empties it and a
-rerolled shelf on a return trip is not swept a second time. If the Amulet game
-is itself a hub, winning the run beats the shop: the run is over.
+the `seen` guard, so it is the *first* visit to each shop that empties it and a
+rerolled shelf on a return trip is not swept a second time. The Amulet is always a
+Champion node, so it never carries a shop; the page still drops a pending shop
+when the run ends, as a guard for the day that changes.
 
-**A hub pays no event — the shop is what happens there.** An event fires after
-every other game played (§12), and for a while a hub paid both: the shop mounted
+**A Shop node pays no event — the shop is what happens there.** An event fires
+after every other game played (§12), and for a while the shop's node paid both: the shop mounted
 under the board and the event opened a modal over it, so the shop the player had
 routed towards was something they had to dismiss an event to reach. Two things
 queued on one arrival was one thing too many, and of the two the shop is the one
 the player chose to be standing in. `EventSystem.roll_for_arrival` returns null
-at a hub, so the rule holds for every caller rather than for the overworld only.
-It reads off the game actually PLAYED at the node: a transmuted spot plays an
-off-map game, off-map games are never hubs, so the shop leaves with the game it
-belonged to and the spot goes back to paying an event.
+at a Shop node, so the rule holds for every caller rather than for the overworld
+only.
 
-From the road, a hub card carries a **`🛒 SHOP` flag**, the only flag ranked
-below the Amulet — and its tooltip says the shop is *instead of* an event, which
-is the one way a hub costs differently from every other card. Its
+**The shop belongs to the NODE, not the game played there** (§19.2). The shelf is
+keyed by node id in `GameState.shops`, and every `ShopSystem` call takes one, so
+a transmuted Shop node plays a different game, still sells from the same shelf,
+and still pays no event. This is the reverse of the hub rule, which read the game
+PLAYED: a transmute pasted an off-map game over a hub, off-map games were never
+hubs, so the shop left with the game. With a kind on the card, that would have
+been a `$` that stopped selling.
+
+From the road, a Shop node's card carries its `$` kind mark (§19.8) and a
+**`🛒 SHOP` flag**, the only flag ranked below the Amulet — the mark says what
+the node is, the flag's tooltip what is left on its shelf, and that the shop is
+*instead of* an event. Its
 colour is a **green**, not a gold — the flag occupies the Amulet's own slot on
 the card, so it has to be a different colour rather than a different shade
 (`UITheme.SHOP_GREEN` / `COIN_GOLD`).
@@ -3728,11 +3751,11 @@ are the one place a shop is put into words, so the card's tooltip and the popup'
 block cannot disagree — the same rule `StatusData.tooltip_for` follows (§13.3).
 
 **What a shelf row says, and what the header does not.** The panel led with the
-hub game's name and a sentence explaining that what you don't buy stays here.
+shop game's name and a sentence explaining that what you don't buy stays here.
 Neither earned its line: the panel is mounted on that game's page, under that
 game's board, beside that game's card, so naming it again is the screen saying
 where you are for the third time — and the rule about the shelf persisting is
-something you learn once, not something worth re-reading at every hub. The header
+something you learn once, not something worth re-reading at every shop. The header
 is `🛒 Shop`, flat, and the rule is the panel's tooltip.
 
 The row those two lines paid for carries **the art, the name, the price, and the
@@ -3750,11 +3773,12 @@ colour of the *name*, which is the one thing on a row allowed to trim away.
 The board is at its floor while it shares its column
 (`BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED` clamps a 4x4 to `CELL_MIN`), so it
 had nothing to give. But a page's height is the taller of its two columns, and on
-a hub's page that is the **left** one — the report checklist, whose goal text
+a shop's page that is the **left** one — the report checklist, whose goal text
 wraps — by about sixty pixels. This panel is in the right column, so the room was
 already sitting there unspent. The row went 58 → 98px and the page did not move.
-`test_the_page_still_fits_the_window_with_a_shop_on_it` walks all ten hubs and is
-what holds the arrangement honest.
+`test_the_page_still_fits_the_window_with_a_shop_on_it` mounts a shop at the node
+underfoot and at the longest-named Shop node on the map, and is what holds the
+arrangement honest.
 
 ### 14.5 What is still to come
 
@@ -3795,7 +3819,7 @@ Two places, and which one depends on what spawned it:
 - **spawned by an event** → inside that event's modal. The Arcade Room *is* the
   room the cabinets are in, so they are laid out in there with you and the
   room's own `Leave` walks you out of both.
-- **spawned by anything else** → under the board, in the space a hub's shop
+- **spawned by anything else** → under the board, in the space a Shop node's shelf
   takes (`ObjectPanel2`, §14.4). Same argument as the shop: the run's rhythm is
   report the game → see the board → choose where to go, and neither a shop nor a
   machine may interrupt it. The one difference is what survives leaving — a
@@ -4169,7 +4193,7 @@ A report used to fire **six independent surfaces**, none of which knew about the
 others: one `ItemDropModal` per defeated body (the drops were relic chests then,
 one Small chest per kill), then the `LootDropModal`, then the
 event, then the shop appearing under the board, then the boss notice, with the
-toasts running underneath all of it. On a boss round at a hub that is five popups
+toasts running underneath all of it. On a boss round at a shop that was five popups
 in a row, each re-centring on the same spot, each with its own Take/Leave, and
 nothing tying any of them to the game they came out of.
 
@@ -4253,20 +4277,20 @@ sum would under-count exactly the bodies the player is proudest of.
 And **one button out, which names where it goes**: **"Go to Event"** when the
 node owes one (clicking it is what opens the event, so the player leaves this
 screen *into* the next thing rather than having the next thing dropped on them),
-**"Go to Shop"** at a hub that owes no event, and **"Travel on"** when it owes
+**"Go to Shop"** at a Shop node, which owes no event, and **"Travel on"** when it owes
 neither. The event wins when both are owed, because the event is what actually
 opens next and the shelf is still under the board on the far side of it. It
 counts what it is about to bin (`exit_text`), because a Legendary left on the
 ground should be a decision and not a side effect of pressing Continue.
 
-**The shelf is not a section of this screen**, and briefly was: a hub's shop was
+**The shelf is not a section of this screen**, and briefly was: a shop's shelf was
 mounted into the left column and handed back to the page on the way out, on the
 reasoning that §14's "a shop blocks nothing and stays for the whole visit" was
 right but the moment of *arrival* was never seen. What that produced was four
 sections competing for a 720p canvas and a way out that could not honestly name
 itself — a button reading "Go to Shop" beside a shelf the player is already
 looking at describes nothing. So the shelf stays where §14 put it, under the
-board, and this screen keeps only the hub's id to know that is where its exit
+board, and this screen keeps only the Shop node's id to know that is where its exit
 leads (`PostCombatScreen.shop_id`).
 
 **The sections are the real modals, embedded.** `ItemDropModal.embed`,
@@ -4409,7 +4433,8 @@ that does not currently exist. Re-measure rather than trusting this.
 
 **AND THE PROMISE NEEDED ITS OWN ROLL, WHICH IS THE PART THAT WAS MISSED.**
 `EventSystem.roll_for_arrival` — the roll a reported game uses — refuses at a
-node that has already paid an event and at any of the **ten hubs** (§14.4). Both
+node that has already paid an event and — then — at any of the **ten hubs**
+(§14.4; a Shop node since §19.7). Both
 are right for "does this arrival happen to owe one" and wrong for a badge that
 promised one, and the hub gate is the one that bit in practice: an Event node
 landing on a hub delivered silence. It depended on whether the offering happened
@@ -4975,10 +5000,17 @@ something they steer now, in both directions.
   The word still appears once in `GameLoop2`, for the authored **Escort ability**
   — a Gatekeeper's opening skeletons — which is a different thing and is
   annotated as such now that the collision is no longer ambiguous.
-- **Shops at the ten hubs (§14.2)** — a shop is a Shop node. `ShopSystem.is_hub`,
-  `GameState.hub_games` and `RunGraph.hub_ids` stop deciding where a shelf
-  stands. §14.3's shelf itself is unchanged: three items, rolled once, persistent
-  for the run, rerolled for a Scramble.
+- **Shops at the ten hubs (§14.2)** — a shop is a Shop node. **DONE.**
+  `ShopSystem.is_hub`, `GameState.hub_games` and `RunGraph.NUM_HUBS` are gone;
+  `ShopSystem.is_shop(node)` reads the node's kind and `shop_nodes()` lists them.
+  `RunGraph.hub_ids` survives only as `best_connected`, a degree sort with no rule
+  on it. §14.3's shelf itself is unchanged — three items, rolled once, persistent
+  for the run, rerolled for a Scramble — but it is keyed by **node** id now, so a
+  transmuted Shop node keeps its shelf (§14.4). The rung's 🛒 cart went with the
+  hubs; the `$` mark says it. **The Hermit** went to the nearest hub and now goes
+  to the nearest Shop node (`teleport_shop`; the sheet's text is "Teleport to the
+  nearest Shop"). A save written while the hubs stood still loads: its `hubs`
+  list is ignored and its shelves, keyed by what were hub ids, simply sit unused.
 - **`RunDifficulty.is_boss_game`** and the `_boss_round` threading through
   `Overworld2._build_choices`, `arrive_at_game` and `_slot_enemy_key` — a boss is
   a Champion node or the third spawn event, and neither is a property of the
@@ -4998,18 +5030,37 @@ something they steer now, in both directions.
 
 ### 19.8 Where the player sees it
 
+All four are **DONE**. The marks are one or two ASCII characters — `!` Enemies,
+`!!` Champion, `?` Event, `$` Shop — held by `RunGraph.kind_mark` / `kind_tip`
+and coloured by `UITheme.kind_color`, so every surface below says the same thing
+in the same colour.
+
 - **On every offered card**: the kind, as a badge, beside the route badge and the
   pace note (§4.2). What a card does to the board is part of the same decision as
-  what it does to the distance.
+  what it does to the distance. `GameChoiceModal` spells the mark out in a
+  sentence.
 - **On the battlefield strip** (§7.4): beside `⏱ EXTRA TURNS N`, the failure
   price at this distance and the count to the next boss. The player cannot decide
-  whether one more attempt is worth it without both.
+  whether one more attempt is worth it without both. The price reads
+  `☠ +N on a loss`, or `☠ none on a loss` when one of §19.5's exemptions is
+  buying it off — and the hover names WHICH, since "none" with no reason reads as
+  a bug. It comes from `GameLoop2.failure_price`, the same function
+  `failure_spawn_count` answers from, so the strip cannot promise a price the
+  spawn does not charge. The boss count reads `boss in N spawns`, turning red at
+  `boss on the next spawn` (`RunDifficulty.spawns_to_boss`). Between games the
+  price is hidden: there is nothing in play to lose at.
 - **On the 🗺 map and the route ladder**: the kind of every node drawn, so the
-  road ahead can be routed on.
+  road ahead can be routed on. Both draw through `RouteLadder.node_box`, which
+  puts the mark in the rung's top-left corner at every zoom — unlike the other
+  badges, which drop out on a shrunk rung, because the kind is the one thing on
+  it the colour does not already say. It reads the RUNG's id, not the game played
+  there (§19.2). The rung's
+  card carries it as a `Kind` fact in words.
 - **In the log and a notification** when a failure spawn lands, naming what walked
   on and why — the escort's old notice generalised. A body that appears because of
   something the player did needs saying out loud; it is the one arrival they did
-  not choose.
+  not choose. (`GameLoop2.spawn_for_failure`; the capstone boss says it too.)
+
 
 ### 19.9 Amulet selection — every start is a reference, and there is no fallback
 

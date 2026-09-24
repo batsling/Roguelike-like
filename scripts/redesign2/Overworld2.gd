@@ -180,7 +180,7 @@ var _header: HBoxContainer = null
 var _header_map_btn: Button = null
 # …and the History button beside it, with the screen it opens (RunLogScreen).
 var _header_history_btn: Button = null
-var _history_screen: RunLogScreen = null
+var _history_screen = null
 var _header_bar: PanelContainer = null
 var _header_layer: CanvasLayer = null
 # The transient-toast stack, held so it can be pushed clear of the header bar.
@@ -202,8 +202,9 @@ var _pending_detour: bool = false
 # …and whether that detour's game was actually beaten, since the payout only
 # lands on a game played to a verdict (an escape walks away from it).
 var _detour_beaten: bool = false
-var _event_modal: EventModal2 = null
-# The hub whose shop is owed to the player once the board stops moving (§14).
+var _event_modal = null
+# The Shop node whose shelf is owed to the player once the board stops moving
+# (§14, §19.1).
 # Set on the same terms an event is — the game at this node was played through
 # and not escaped — because a shop and an event are the same kind of thing:
 # what was waiting at the node, paid after the game rather than before it.
@@ -212,7 +213,7 @@ var _pending_shop: StringName = &""
 # The shop currently ON THE PAGE, under the board (ShopPanel2), and the pointer
 # that says it is down there. The shop is no longer a modal: it is mounted below
 # the battlefield and stays for the whole visit, so these live as long as the
-# player stands at that hub rather than as long as a dialog is open.
+# player stands at that node rather than as long as a dialog is open.
 var _shop_panel: ShopPanel2 = null
 var _shop_hint: Control = null
 # The machines standing at this game, in the same space and on the same terms
@@ -221,7 +222,7 @@ var _shop_hint: Control = null
 # machines are in is the thing the event is.
 var _object_panel: ObjectPanel2 = null
 var _run_over_won: bool = false
-var _run_over_screen: RunOverScreen = null
+var _run_over_screen = null
 # THE SCREEN A GAME ENDS ON (PostCombatScreen), and the report it is about. The
 # haul used to arrive as a queue of modals over an animating board and then an
 # event on top of that; it is one screen now, opened once the playback has landed
@@ -256,7 +257,7 @@ var _banner: Label
 # already been announced (`GameState.games_played` at the time), so the notice
 # opens once when the round arrives rather than on every repaint of it.
 var _boss_notice_for: int = -1
-var _boss_notice: BossNoticeModal = null
+var _boss_notice = null
 var _preview: RichTextLabel
 var _preview_art: TextureRect       # the hovered card's enemy, beside the line
 var _choices_row: HFlowContainer
@@ -274,6 +275,13 @@ var _split_total: Label = null           # the run's own line
 var _split_pause_btn: Button = null
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
+var _verify_scroll: ScrollContainer  # _verify_box's frame, capped by _fit_checklist
+var _fit_checklist_queued: bool = false
+# The least the checklist is ever squeezed to, however little room the page has:
+# about two rows. Below it the cap stops helping — a checklist you have to scroll
+# a row at a time is worse than a page that scrolls — so past this the page is
+# allowed to grow instead.
+const CHECKLIST_FLOOR := 110.0
 # The checklist itself — both states of the left column, and the row-to-body
 # pairing (ReportChecklist). Built in _build_ui, once the two containers it fills
 # exist. Everything below is a READ-ONLY VIEW of the state it owns, kept on the
@@ -452,14 +460,14 @@ var _done_btn: Button
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
-var _graveyard_popup: GraveyardPanel   # the open ☠ Fallen panel (§7.6), or null
-var _completed_popup: CompletedGoalsPanel  # the open ✓ Completed panel, or null
+var _graveyard_popup   # the open ☠ Fallen panel (§7.6), or null
+var _completed_popup  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
 # The open route map and the star chart under it, when there is one. Held so the
 # run can close what it opened — see _dismiss_route_map.
 var _route_map = null
-var _route_atlas: AtlasView = null
+var _route_atlas = null
 var _log: RichTextLabel
 # The pack strip above the grid: one small token per carried item (§4/§8).
 # The page owns the container; PackStrip fills it (see _refresh_items).
@@ -647,7 +655,7 @@ func start_run(character_id: StringName = &"") -> void:
 	_drop_queue.clear()
 	_slot_enemies.clear()
 	_slot_enemy_key = ""
-	# …and everything a run can be standing in the middle of: a hub's shop, a
+	# …and everything a run can be standing in the middle of: a node's shop, a
 	# detour waiting to ask where to carry on from, a boss round already announced.
 	_leave_node()
 	_pending_shop = &""
@@ -1338,7 +1346,7 @@ func pick(index: int) -> void:
 	GameState.set_current_game(_chosen["slot"])
 	if _offering != null:
 		_offering.reset_hover_grant()
-	# You have left the hub, so its shop comes off the page — the shelf itself
+	# You have left the node, so its shop comes off the page — the shelf itself
 	# survives on ShopSystem, which is what makes coming back to it a real option.
 	# The machines go too, and they do not survive: a Blood Donation Machine is
 	# not a place you can come back to.
@@ -1437,11 +1445,11 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 #
 # IT ALWAYS FINDS ONE, which is why this asks `roll_for_node` rather than the
 # `roll_for_arrival` a reported game uses. That one refuses at a node which has
-# already paid an event and at any of the ten hubs (§14.4) — right for "does this
-# arrival happen to owe one", wrong for a badge that PROMISED one. The hub gate
-# is the one that bit in practice: an Event node landing on a hub delivered
-# silence, and a node whose kind said event and then delivered nothing is the
-# badge telling a lie.
+# already paid an event and at a Shop node (§14.4) — right for "does this
+# arrival happen to owe one", wrong for a badge that PROMISED one. The shop gate
+# is the one that bit in practice, back when it was a HUB gate: an Event node
+# landing on one of the ten hubs delivered silence, and a node whose kind said
+# event and then delivered nothing is the badge telling a lie.
 #
 # Past those gates it re-shows an event the run has already had rather than
 # relaxing anything — see roll_for_node for why both available relaxations are
@@ -1954,10 +1962,10 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	# stranded underneath with no way back to it.
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
-	var wants_chart: bool = bool(opts.get("chart", true)) and AtlasView.load_layout() != null
+	var wants_chart: bool = bool(opts.get("chart", true)) and load(ATLAS_VIEW_SCRIPT).load_layout() != null
 	opts.erase("chart")
 	if wants_chart:
-		var atlas := AtlasView.new()
+		var atlas = load(ATLAS_VIEW_SCRIPT).new()
 		# A preview routes the sky from the game being considered rather than from
 		# where the player stands, so the corridor drawn on the chart is the one
 		# the card is offering.
@@ -1966,14 +1974,14 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 		add_child(atlas)
 		opts["atlas"] = atlas
 		_route_atlas = atlas
-		var modal := preload("res://scripts/redesign2/RunMapModal.gd").new()
+		var modal = load(RUN_MAP_MODAL_SCRIPT).new()
 		# Mounted UNDER the chart, so closing the chart takes its window with it.
 		# The window frames the route on the chart itself, once it knows how much
 		# of the sky it's covering.
 		modal.start(atlas, origin, GameState.amulet_game_id, choice_ids, opts)
 		_hold_route_map(modal)
 		return modal
-	var solo := preload("res://scripts/redesign2/RunMapModal.gd").new()
+	var solo = load(RUN_MAP_MODAL_SCRIPT).new()
 	solo.start(self, origin, GameState.amulet_game_id, choice_ids, opts)
 	_hold_route_map(solo)
 	return solo
@@ -2116,7 +2124,7 @@ func turn_note(choice: Dictionary) -> Dictionary:
 # can replay the other, so a path that only knew about scrolls would drop half of
 # what its own use just did.
 func use_loot(idx: int) -> void:
-	var modal := preload("res://scripts/redesign2/LootUseModal.gd").new()
+	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
 
@@ -2455,18 +2463,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		_pending_event = EventSystem.roll_for_arrival(slot_here)
 		_pending_event_node = slot_here
 	if played_game != null and not escaped:
-		# The shop, if this was one of the run's ten hubs (§14). Queued on
-		# exactly the same terms, and read off the GAME rather than the graph slot:
-		# a shop belongs to the storefront of a particular big game, so a node
-		# transmuted into something else is not that shop any more.
-		#
-		# …OR IF THE NODE'S KIND IS SHOP (§19.1), which is read off the SLOT for
-		# exactly the opposite reason: the kind rides the node, so a transmuted card
-		# plays a different game at the same kind (§19.2). The two rules stand side
-		# by side until §19.7 retires the hub one.
-		if ShopSystem.is_hub(played_game.id) \
-				or GameState.node_kind(slot_here) == RunGraph.NodeKind.SHOP:
-			_pending_shop = played_game.id
+		# The shop, if this is a Shop node (§19.1). Read off the SLOT, not the game
+		# played there: the kind rides the node, so a transmuted Shop node plays a
+		# different game and still sells from the same shelf (§19.2). The shelf is
+		# keyed by that node id too (ShopSystem).
+		if ShopSystem.is_shop(slot_here):
+			_pending_shop = slot_here
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
 		# is deliberately a wider net than the beat below: it is what paces the
 		# "after beating a game" items, and every one of them is balanced around
@@ -2705,9 +2707,9 @@ func _end_resolve() -> void:
 	if _run_over_pending:
 		_run_over_pending = false
 		# A run that just ended has no room for either. The shop matters as much as
-		# the event here: the Amulet game can itself be a hub (they are the
-		# best-connected games on the map, so it is not a rare pairing), and
-		# winning the run is not a cue to go shopping.
+		# the event here. The Amulet is always a Champion node (§19.1), so it
+		# cannot owe a shop today — this stays as the guard for the day that rule
+		# moves, because winning the run is not a cue to go shopping.
 		_pending_event = null
 		_pending_event_node = &""
 		_pending_shop = &""
@@ -2728,7 +2730,7 @@ func _end_resolve() -> void:
 # --- the screen a game ends on (PostCombatScreen) ---------------------------
 
 # Hand the haul over to one screen: the relics that fell, the loot the game paid,
-# the hub's shelf, the boss warning, and the numbers behind all of it.
+# the shop's shelf, the boss warning, and the numbers behind all of it.
 #
 # It opens HERE and nowhere earlier, which is the whole point. The drops are
 # queued in the middle of `GameLoop2.beat_game` and used to be pumped straight
@@ -2793,7 +2795,7 @@ func _open_post_game() -> void:
 	# player is actually STANDING — so the button never promises a shop that method
 	# is about to turn down.
 	var shop_id: StringName = _pending_shop
-	if shop_id == &"" or GameLoop2.run_over or shop_id != _hub_underfoot():
+	if shop_id == &"" or GameLoop2.run_over or shop_id != GameState.current_game_id:
 		shop_id = &""
 	# The map goes before the haul arrives. It is routed from where the run stood
 	# when it was opened, the run has just moved, and — since it is raised on a
@@ -2825,7 +2827,7 @@ func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 
 # `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
 # reparented it under the board. Nothing borrows the shelf now — the screen knows
-# only the hub's id, so its exit button can name it — and `_mount_shop` builds the
+# only the shop's node id, so its exit button can name it — and `_mount_shop` builds the
 # panel in its own turn down the chain, which is what it always did on every path
 # that did not go through a haul screen.
 
@@ -2844,7 +2846,7 @@ func _dismiss_post_game() -> void:
 #
 # A node never owes both any more. The shop still opens behind the event here,
 # and the ordering is kept deliberately rather than collapsed into one path: a
-# hub pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
+# Shop node pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
 # `_pending_shop` is set on, and the fall-through below is the whole story. It
 # stays written as an order because the day something else queues an event on an
 # arrival — an item, a scroll — the shop should still come second: an event is a
@@ -2858,7 +2860,7 @@ func _open_pending_event() -> void:
 	if ev == null:
 		_open_pending_shop()
 		return
-	_event_modal = EventModal2.open(self, ev, node)
+	_event_modal = load(EVENT_MODAL2_SCRIPT).open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
 # Raise `ev` here and now, outside the beat-a-game path that normally queues one.
@@ -2905,7 +2907,7 @@ func _on_event_finished(play_request: Dictionary) -> void:
 		return
 	_open_pending_shop()
 
-# Mount the shop owed at this hub, if any (§14) — under the board, where it stays
+# Mount the shop owed at this node, if any (§14, §19.1) — under the board, where it stays
 # for the whole visit. Nothing is blocked by it and nothing waits on it, so the
 # chain carries straight on to the boss notice.
 func _open_pending_shop() -> void:
@@ -2915,19 +2917,98 @@ func _open_pending_shop() -> void:
 	# anywhere; as a place on the page it cannot, and the one path that gets here
 	# from somewhere else is a node that owed both an event and a shop, where the
 	# event posted the run off to another game (§10). The spec calls that pairing
-	# unreal (every authored event is `Where: Dead End`, and a hub is the opposite
-	# of one), and a shop mounted under the board while the run stands two games
-	# away from it would be a worse answer than no shop.
-	if gid != &"" and not GameLoop2.run_over and gid == _hub_underfoot():
+	# unreal (a Shop node pays no event of its own), and a shop mounted under the
+	# board while the run stands two games away from it would be a worse answer
+	# than no shop. The shelf is keyed by NODE, so "standing on it" is simply the
+	# node the run is on.
+	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
 		_mount_shop(gid)
 	_maybe_announce_boss()
 
-# The id of the game the run is standing on, read through the transmute map — a
-# transmuted node plays a different game, and a shop belongs to the storefront of
-# a particular big game rather than to the spot (§14).
-func _hub_underfoot() -> StringName:
-	var game: GameData = GameLoop2.game_at(GameState.current_game_id)
-	return game.id if game != null else &""
+# --- screens the page opens, compiled when they are OPENED ------------------
+#
+# Loading this script used to compile 49 others first, because a class named
+# anywhere in it — a `var x: Collection`, a `SettingsModal.open(...)`, a
+# `preload(...)` — is compiled before the page can be. That was ~1.4 s between
+# pressing Start Run and the page appearing (docs/performance-backlog.md §6),
+# and most of it paid for screens a run may never open: the Collection, the
+# Settings, the manual, the tier list, the run-over and history screens, the
+# event and reward modals, the map window.
+#
+# So those are reached by PATH — `load(X_SCRIPT)` at the moment they open — and
+# the vars that hold them are untyped. A `load()` is lazy even with a literal
+# path (measured: 39 scripts compiled either way), so it is `preload` and a
+# class name that make a dependency eager, and it is those that must not come
+# back here for a screen the page only opens on demand.
+#
+# The cost moves to the first time each screen opens, once a session.
+# The one piece of the run-history screen the page draws itself: the arrows on
+# the road strip. Its own file, so preloading it costs one small script rather
+# than the history screen and the star chart behind it.
+const ROUTE_ARROW := preload("res://scripts/ui/RouteArrow.gd")
+const BOSS_NOTICE_MODAL_SCRIPT := "res://scripts/redesign2/BossNoticeModal.gd"
+const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPanel.gd"
+const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
+const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
+const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
+const RUN_MAP_MODAL_SCRIPT := "res://scripts/redesign2/RunMapModal.gd"
+const RUN_OVER_SCREEN_SCRIPT := "res://scripts/redesign2/RunOverScreen.gd"
+const ATLAS_VIEW_SCRIPT := "res://scripts/ui/AtlasView.gd"
+const COLLECTION_SCRIPT := "res://scripts/ui/Collection.gd"
+const HOW_TO_PLAY_SCREEN_SCRIPT := "res://scripts/ui/HowToPlayScreen.gd"
+const RATE_GAME_MODAL_SCRIPT := "res://scripts/ui/RateGameModal.gd"
+const REWARD_SCREEN_SCRIPT := "res://scripts/ui/RewardScreen.gd"
+const SETTINGS_MODAL_SCRIPT := "res://scripts/ui/SettingsModal.gd"
+const TIER_LIST_SCREEN_SCRIPT := "res://scripts/ui/TierListScreen.gd"
+
+# --- the checklist's ceiling ----------------------------------------------
+#
+# The checklist is the one thing on the page with no upper bound: a row per body
+# standing, and §19.5 stands more of them every time a game is lost with nothing
+# down. So it gets whatever height the LEFT COLUMN has left under the window and
+# scrolls inside that, rather than pushing the page past it.
+#
+# The budget is read off the live page, not off a constant: the room is the page
+# scroll's height, less every row of the page outside the two columns, less
+# everything in the left column that is not the checklist. A taller window (the
+# canvas is 1280x720 at least, and "expand" can hand back more) is a taller
+# checklist, and a left column that grows for any other reason — an offering name
+# wrapping, the attempt strip — is paid for out of the checklist rather than out
+# of the window.
+#
+# Only ever the left column's business. The page is the taller of the two
+# columns, and when the RIGHT one binds, squeezing the checklist would buy
+# nothing, so the budget is measured against the window and not against the
+# board beside it.
+func _queue_fit_checklist() -> void:
+	if _fit_checklist_queued:
+		return
+	_fit_checklist_queued = true
+	_fit_checklist.call_deferred()
+
+func _fit_checklist() -> void:
+	_fit_checklist_queued = false
+	if _verify_scroll == null or not is_instance_valid(_verify_scroll) \
+			or _scroll == null or _left_col == null:
+		return
+	var content: float = _verify_box.get_combined_minimum_size().y
+	var room: float = _scroll.size.y
+	var want: float = content
+	if room > 0.0 and _scroll.get_child_count() > 0:
+		var page: Control = _scroll.get_child(0)
+		var main_row: Control = _left_col.get_parent()
+		# What the page spends outside the two columns (the banner, the gaps).
+		var outside: float = page.get_combined_minimum_size().y \
+			- main_row.get_combined_minimum_size().y
+		# What the left column spends that is not the checklist.
+		var beside: float = _left_col.get_combined_minimum_size().y \
+			- _verify_scroll.custom_minimum_size.y
+		var budget: float = room - outside - beside
+		want = clampf(budget, minf(content, CHECKLIST_FLOOR), content)
+	want = floorf(maxf(want, 0.0))
+	if absf(want - _verify_scroll.custom_minimum_size.y) >= 1.0:
+		_verify_scroll.custom_minimum_size.y = want
 
 # --- the shop on the page (§14) --------------------------------------------
 
@@ -2950,10 +3031,10 @@ func _mount_shop(gid: StringName) -> void:
 	_update_shop_hint()
 	_update_shop_hint.call_deferred()
 
-# Everything mounted under the board because the run is STANDING HERE: the hub's
+# Everything mounted under the board because the run is STANDING HERE: the node's
 # shop and any machines. Both have the same lifetime — travelling on ends them —
 # and they differ in what survives it. A shop's shelf lives on in ShopSystem, so
-# coming back to a hub is a real option; a machine is simply gone, and the next
+# coming back to a Shop node is a real option; a machine is simply gone, and the next
 # one you meet is a different machine with its own press counts.
 func _leave_node() -> void:
 	_clear_shop()
@@ -3349,7 +3430,7 @@ func _maybe_announce_boss() -> void:
 	for choice in _choices:
 		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 			bosses.append(choice.get("enemy"))
-	_boss_notice = BossNoticeModal.open(self,
+	_boss_notice = load(BOSS_NOTICE_MODAL_SCRIPT).open(self,
 		RunDifficulty.tier_name(_current_tier()), bosses)
 	_boss_notice.finished.connect(func():
 		_boss_notice = null
@@ -3477,7 +3558,7 @@ func _redeem_pending_chests() -> void:
 	if sizes.is_empty():
 		return
 	_reward_open = true
-	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	var screen = load(REWARD_SCREEN_SCRIPT).new()
 	screen.closed.connect(func():
 		_reward_open = false
 		_redeem_pending_chests())
@@ -3501,7 +3582,7 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
-		var count: int = choices if choices > 0 else RewardScreen.BASE_ITEM_CHOICES + discovery
+		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _roll_chest(false, maxi(1, count))
 		if offer.is_empty():
 			continue
@@ -3527,16 +3608,16 @@ func _hand_chests_to_post_game() -> void:
 
 # THE THREE CARD TELEPORTS, AND RIDE THE BUS, ARE ONE MOVE WITH THREE DESTINATIONS
 # (docs/cards-design.md §5). Each names a different pool — every Deckbuilder game
-# on the map, every hub, the game the run started on — and everything after that
+# on the map, the nearest Shop node, the game the run started on — and everything after that
 # is identical: escape whatever is in play, pick, log, land ON the game. Written
 # once, so the day the escape rule changes it changes for all four.
 #
-# `req.dest` is "type" (with `game_type`), "hub" or "start".
+# `req.dest` is "type" (with `game_type`), "shop" or "start".
 func card_teleport(req: Dictionary) -> String:
 	match String(req.get("dest", "")):
-		"hub":
-			return _teleport_into(_hub_pool(), "hub",
-				"There is no Hub Game on the map to reach.")
+		"shop":
+			return _teleport_into(_shop_pool(), "shop",
+				"There is no shop on the map to reach.")
 		"start":
 			# THE ONE FIZZLE THAT IS NOT AN EMPTY MAP. Playing The Fool where the run
 			# began is a card spent on a journey of nought steps, and "there is no
@@ -3579,20 +3660,21 @@ func _type_pool(type_key: StringName) -> Array:
 			out.append(g.id)
 	return out
 
-# THE HERMIT GOES TO THE NEAREST HUB, and "nearest" is measured in ROADS rather
-# than in anything the map is drawn with: the hub the fewest steps from where you
-# are standing. Ties are left in the pool and drawn between, because two hubs two
-# steps away are two equally good answers and picking the first by array order
-# would make the card quietly deterministic.
+# THE HERMIT GOES TO THE NEAREST SHOP NODE, and "nearest" is measured in ROADS
+# rather than in anything the map is drawn with: the Shop node the fewest steps
+# from where you are standing. Ties are left in the pool and drawn between,
+# because two shops two steps away are two equally good answers and picking the
+# first by array order would make the card quietly deterministic.
 #
-# A hub is where the shops are (ShopSystem.is_hub), so this is the one teleport in
-# the game with a destination the player wants for a reason other than distance.
-func _hub_pool() -> Array:
+# It went to the nearest of the ten HUB games until §19.7 moved the shops onto
+# Shop nodes. The card was always about the shop rather than the landmark, so it
+# follows the shops.
+func _shop_pool() -> Array:
 	var here: StringName = GameState.current_game_id
 	var dist: Dictionary = RunGraph.bfs_distances(here)
 	var best: int = -1
 	var out: Array = []
-	for gid in ShopSystem.hub_games():
+	for gid in ShopSystem.shop_nodes():
 		if not _reachable(gid) or not dist.has(gid):
 			continue
 		var d: int = int(dist[gid])
@@ -3647,8 +3729,8 @@ func _teleport_into(pool: Array, flavour: String, nowhere: String,
 	var name: String = g.display_name if g != null else String(dest)
 	var landed: String = ""
 	match flavour:
-		"hub":
-			landed = "Walked the quiet road to %s — a Hub Game." % name
+		"shop":
+			landed = "Walked the quiet road to %s — a shop stands there." % name
 		"start":
 			landed = "Back to where it started: %s." % name
 		_:
@@ -3672,7 +3754,7 @@ func obtain_any_item() -> void:
 	if _reward_open:
 		return
 	_reward_open = true
-	var screen := preload("res://scripts/ui/RewardScreen.gd").new()
+	var screen = load(REWARD_SCREEN_SCRIPT).new()
 	screen.closed.connect(func():
 		_reward_open = false
 		_redeem_pending_chests())
@@ -4152,12 +4234,19 @@ func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
 # connection left to give, the slot simply goes: bashing is destruction, not a
 # guaranteed reroll.
 #
-# Two bashes are refused outright, because both end the run rather than shape it:
-# the AMULET game (destroying the goal makes the run unwinnable) and the LAST card
-# on the board with nothing to replace it (destroying it leaves nowhere to travel).
+# Three bashes are refused outright. Two because they end the run rather than
+# shape it: the AMULET game (destroying the goal makes the run unwinnable) and the
+# LAST card on the board with nothing to replace it (destroying it leaves nowhere
+# to travel).
 #
-# Allowed on a boss round — the boss is tied to the difficulty gate, not the game,
-# so whatever backfills the slot still spawns a boss.
+# THE THIRD IS A CHAMPION NODE (§7.1): a boss cannot be bashed out of the road.
+# That settles the question §7.1 left open, and it is split down the middle on
+# purpose — a SCRAMBLE is still allowed, because it redraws the offering and the
+# card's boss with it, which is choosing a different fight rather than dodging
+# one. A Bash removes the node for good, and a Champion's whole job is to be a
+# fight the road puts in front of you. Read off the node's KIND (§19.2), so it
+# holds for whatever game the node is playing; the Amulet is a Champion too, and
+# keeps its own sentence because its reason is the bigger one.
 # Returns whether the bash actually happened, so an AIM that was refused can stay
 # armed and be pointed at another card (see `open_choice`) — the player has spent
 # nothing, and disarming them for aiming at the Amulet would make a warning feel
@@ -4174,6 +4263,11 @@ func bash_choice(index: int) -> bool:
 		var amulet_msg: String = "%s holds the Amulet — bashing it would end the run's goal." % game.display_name
 		GameLog.add(amulet_msg, UITheme.DANGER)
 		Notifications.notify(amulet_msg, UITheme.DANGER)
+		return false
+	if _kind_of(choice) == RunGraph.NodeKind.CHAMPION:
+		var boss_msg: String = "%s is a Champion node — a boss cannot be bashed out of the road. A Scramble redraws it." % game.display_name
+		GameLog.add(boss_msg, UITheme.DANGER)
+		Notifications.notify(boss_msg, UITheme.DANGER)
 		return false
 	# Resolved BEFORE the bash, while the slot is still on the board.
 	var replacement: StringName = _backfill_id_for(slot)
@@ -4283,10 +4377,10 @@ func _close_enemy_info() -> void:
 # scrolling page that cannot cover it.
 #
 # Public so a headless test can open it without a click.
-func show_graveyard() -> GraveyardPanel:
+func show_graveyard() -> Node:
 	if _graveyard_popup != null and is_instance_valid(_graveyard_popup):
 		return _graveyard_popup
-	var panel := GraveyardPanel.new()
+	var panel = load(GRAVEYARD_PANEL_SCRIPT).new()
 	panel.closed.connect(func(): _graveyard_popup = null)
 	_graveyard_popup = panel
 	add_child(panel)
@@ -4299,10 +4393,10 @@ func show_graveyard() -> GraveyardPanel:
 # checklist lives inside a scrolling page that cannot cover it.
 #
 # Public so a headless test can open it without a click.
-func show_completed_goals() -> CompletedGoalsPanel:
+func show_completed_goals() -> Node:
 	if _completed_popup != null and is_instance_valid(_completed_popup):
 		return _completed_popup
-	var panel := CompletedGoalsPanel.new()
+	var panel = load(COMPLETED_GOALS_PANEL_SCRIPT).new()
 	panel.closed.connect(func(): _completed_popup = null)
 	_completed_popup = panel
 	add_child(panel)
@@ -4793,7 +4887,7 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	return frame
 
 func _strip_arrow() -> Control:
-	var a := RunHistoryScreen.RouteArrow.new()
+	var a := ROUTE_ARROW.new()
 	a.custom_minimum_size = Vector2(STRIP_ARROW, STRIP_COVER.y)
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return a
@@ -5084,7 +5178,7 @@ func _verify_row(text: String, color: Color, emphasise: bool,
 func _prompt_rating(game: GameData) -> void:
 	if game == null:
 		return
-	var modal = preload("res://scripts/ui/RateGameModal.gd").new()
+	var modal = load(RATE_GAME_MODAL_SCRIPT).new()
 	modal.setup(game.id, game)
 	modal.submitted.connect(func(score: int, notes: String):
 		TierList.set_rating(game.id, score, notes)
@@ -5138,24 +5232,24 @@ func _open_full_screen(build: Callable) -> Node:
 # The tier-list board over the run. Its own method so the rating flow, the menu
 # and any future entry point open it the same way, and so a headless test can
 # drive it.
-func open_tier_list(focus_id: StringName = &"") -> TierListScreen:
-	return _open_full_screen(func(host): return TierListScreen.open(host, focus_id)) as TierListScreen
+func open_tier_list(focus_id: StringName = &"") -> Node:
+	return _open_full_screen(func(host): return load(TIER_LIST_SCREEN_SCRIPT).open(host, focus_id))
 
 # The compendium, mid-run. "What does this item do", "have I met this enemy" and
 # "what did I score that game" are questions a run raises, and answering them
 # used to mean quitting to the main menu.
-func open_collection() -> Collection:
-	return _open_full_screen(func(host): return Collection.open(host)) as Collection
+func open_collection() -> Node:
+	return _open_full_screen(func(host): return load(COLLECTION_SCRIPT).open(host))
 
 # The manual, mid-run — the one screen that explains the rules, previously
 # unreachable while you were playing by them.
-func open_manual(chapter: StringName = &"start") -> HowToPlayScreen:
-	return _open_full_screen(func(host): return HowToPlayScreen.open(host, chapter)) as HowToPlayScreen
+func open_manual(chapter: StringName = &"start") -> Node:
+	return _open_full_screen(func(host): return load(HOW_TO_PLAY_SCREEN_SCRIPT).open(host, chapter))
 
 # Display, audio and the rest. F11 already worked mid-run; this is the rest of
 # that panel.
-func open_settings() -> SettingsModal:
-	return _open_full_screen(func(host): return SettingsModal.open(host)) as SettingsModal
+func open_settings() -> Node:
+	return _open_full_screen(func(host): return load(SETTINGS_MODAL_SCRIPT).open(host))
 
 # Whether the pinned header bar is drawn. The page keeps its inset either way —
 # a screen standing in front of it is not a cue to reflow what is behind it.
@@ -5567,7 +5661,7 @@ func _refresh_select_stats() -> void:
 	# are finally the same object.
 	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
 		BASH_ORANGE,
-		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nClick, then click the game you want gone.",
+		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot a Champion node (!!): a boss cannot be bashed away.\nClick, then click the game you want gone.",
 		arm_bash, _armed_verb == &"bash"))
 	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
 		GameState.dash_charges, DASH_BLUE,
@@ -5983,7 +6077,7 @@ func _show_run_over() -> void:
 	# An event can now be the thing that KILLS you (a Health cost taken on the
 	# last point of it), and it is still standing open over the board when it
 	# does. Dismissed rather than closed: closing an event runs the chain that
-	# follows one — refresh, autosave, the hub's shop — and the run it belonged
+	# follows one — refresh, autosave, the node's shop — and the run it belonged
 	# to is over.
 	if _event_modal != null and is_instance_valid(_event_modal):
 		_event_modal.dismiss()
@@ -5997,7 +6091,7 @@ func _show_run_over() -> void:
 		return
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):
 		return
-	var screen := RunOverScreen.open(self, _run_over_won)
+	var screen = load(RUN_OVER_SCREEN_SCRIPT).open(self, _run_over_won)
 	_run_over_screen = screen
 	screen.restart_requested.connect(func(): start_run())
 	screen.menu_requested.connect(func():
@@ -6334,7 +6428,7 @@ func _build_ui() -> void:
 	# how much trouble you were in. As a strip it is only as tall as the rows of
 	# tokens it needs (see _refresh_items), so the board keeps the room.
 	_inv_wrap = PanelContainer.new()
-	# MARGIN 6, not the 8 the other panels use, and separation 3 rather than 4. The
+	# MARGIN 6, not the 8 the other panels use, and GAP_HAIR (2) rather than 4. The
 	# loot bar at the foot of this panel (below) is a row the panel did not used to
 	# have, and the page it lives on is fitted to a 720p canvas with about five
 	# pixels to spare — so the row is paid for out of this panel's own padding
@@ -6343,7 +6437,7 @@ func _build_ui() -> void:
 	_inv_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 6, 1))
 	_inv_wrap.size_flags_horizontal = Control.SIZE_FILL
 	var inv_box := VBoxContainer.new()
-	inv_box.add_theme_constant_override("separation", 3)
+	inv_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_inv_wrap.add_child(inv_box)
 	# NO HEADING. It used to carry a "🎒  Inventory" line, and a strip of relics
 	# and scrolls in a bordered panel does not need to be told what it is — the
@@ -6495,8 +6589,28 @@ func _build_ui() -> void:
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
 	# what you did, then press the single Completed Game button below.
 	_verify_box = VBoxContainer.new()
-	_verify_box.add_theme_constant_override("separation", 3)
-	_play_panel.add_child(_verify_box)
+	_verify_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	_verify_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# IN ITS OWN SCROLL, CAPPED TO THE ROOM THE PAGE HAS LEFT (_fit_checklist).
+	# Every body standing adds a row of ~51px, and the stack has no upper bound —
+	# §19.5's failure spawns make a crowded board the ordinary case — so an
+	# uncapped checklist pushed the whole page past the window at four bodies.
+	#
+	# HORIZONTAL SCROLLING IS DISABLED, AND THAT IS THE LOAD-BEARING LINE. It is
+	# what makes the scroll hand the box its OWN width; left on AUTO, the box is
+	# laid out at its minimum width, every autowrapped goal wraps a word a line,
+	# and the height the cap is computed from is nonsense — an earlier attempt at
+	# exactly this took an EMPTY board's page to 1928px that way.
+	_verify_scroll = ScrollContainer.new()
+	_verify_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_verify_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_verify_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_verify_scroll.add_child(_verify_box)
+	_play_panel.add_child(_verify_scroll)
+	_verify_box.minimum_size_changed.connect(_queue_fit_checklist)
+	_left_col.minimum_size_changed.connect(_queue_fit_checklist)
+	# …and the window: a resize is a different amount of room.
+	_scroll.resized.connect(_queue_fit_checklist)
 	# Built here rather than in _ready: it fills these two containers, so it cannot
 	# exist before they do.
 	_checklist = ReportChecklist.new(self, _verify_box, _launch_row)
@@ -6870,10 +6984,10 @@ func _build_history_button() -> Button:
 
 # The run's own record, over the page. One at a time — a second press while it is
 # up is the player reaching for the button they are already looking at.
-func open_history() -> RunLogScreen:
+func open_history() -> Node:
 	if _history_screen != null and is_instance_valid(_history_screen):
 		return _history_screen
-	var screen := RunLogScreen.open(self)
+	var screen = load(RUN_LOG_SCREEN_SCRIPT).open(self)
 	_history_screen = screen
 	screen.finished.connect(func(): _history_screen = null)
 	return screen
@@ -7005,3 +7119,4 @@ func _mini_button(text: String, cb: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	b.pressed.connect(cb)
 	return b
+

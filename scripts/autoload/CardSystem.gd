@@ -118,8 +118,8 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 			# game in play, and only whoever moved you can say where you ended up.
 			out["requests"].append({"kind": "card_teleport", "dest": "type",
 				"game_type": String(effect.get("game_type", ""))})
-		"teleport_hub":
-			out["requests"].append({"kind": "card_teleport", "dest": "hub"})
+		"teleport_shop":
+			out["requests"].append({"kind": "card_teleport", "dest": "shop"})
 		"teleport_start":
 			out["requests"].append({"kind": "card_teleport", "dest": "start"})
 		"copy_item":

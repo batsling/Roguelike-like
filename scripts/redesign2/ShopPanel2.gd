@@ -1,7 +1,7 @@
 class_name ShopPanel2
 extends PanelContainer
 
-# ShopPanel2 — the shop standing at a hub game (docs/games-first-redesign.md §14),
+# ShopPanel2 — the shop standing at a Shop node (docs/games-first-redesign.md §14, §19.1),
 # mounted BELOW THE BATTLEFIELD on the page rather than opened over it.
 #
 # It was a modal, and the modal was the problem: the run's rhythm is report the
@@ -12,7 +12,7 @@ extends PanelContainer
 # anything meant deciding without them.
 #
 # So the shop is now part of the page: it appears under the board when you beat a
-# hub's game and STAYS THERE for the whole visit, until you travel on. Nothing is
+# Shop node's game and STAYS THERE for the whole visit, until you travel on. Nothing is
 # blocked while it is up, the offering is still one scroll away, and the decision
 # "spend now or keep the gold" is made next to the board it will be spent on.
 # Overworld2 floats a "🛒 Shop ↓" pointer at the foot of the screen until the
@@ -20,7 +20,7 @@ extends PanelContainer
 #
 # THE SHELF IS THREE ITEMS AND IT STAYS. Every slot is drawn whether or not it
 # has been bought — a sold one greys out and keeps its place — because the shelf
-# persists for the whole run (ShopSystem) and a player coming back to a hub needs
+# persists for the whole run (ShopSystem) and a player coming back to a shop needs
 # to recognise the shop they left. Reflowing two remaining items into the middle
 # of the panel would make a return visit look like a fresh roll.
 #
@@ -30,11 +30,11 @@ extends PanelContainer
 # its button says the price rather than "Buy" — the number is the reason, so the
 # number is what the button shows.
 #
-# AND THE HEADER SAYS "SHOP", NOT WHICH GAME'S SHOP. It used to be the hub's own
+# AND THE HEADER SAYS "SHOP", NOT WHICH GAME'S SHOP. It used to be the game's own
 # name with a sentence under it explaining that what you don't buy stays here.
 # Both were furniture: the player knows which game they just beat — they are
 # standing on its page, under its board — and the rule about the shelf persisting
-# is something you learn once, not something worth re-reading at every hub. That
+# is something you learn once, not something worth re-reading at every shop. That
 # is the panel's tooltip now, and the two lines they cost are spent on the shelf
 # instead, which is the part that changes.
 #
@@ -84,7 +84,7 @@ const ROW_WIDTH := 166.0
 # row could grow at all. The board is at its floor while it shares this column
 # (BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED clamps a 4x4 to CELL_MIN), so it
 # cannot pay. But the page's height is the taller of its two columns, and on a
-# hub's page that is the LEFT one — the checklist — by about sixty pixels. This
+# shop's page that is the LEFT one — the checklist — by about sixty pixels. This
 # panel is in the right column, so the room was already sitting there unused.
 # `DESC_LINES` is where it is spent, and `test_the_page_still_fits_the_window_with_a_shop_on_it`
 # is what holds the whole arrangement honest: raise either number and it says so.
@@ -118,14 +118,16 @@ var _reroll_btn: Button = null
 var _subtitle: Label = null
 
 
-# Mount a hub's shop into `parent`. Returns null when that game has no shop (or
+# Mount a Shop node's shop into `parent`. Returns null when that node has no shop (or
 # its shelf could not be rolled), so the caller can simply not have one.
 static func mount(parent: Control, game_id: StringName) -> ShopPanel2:
 	if ShopSystem.shop_for(game_id).is_empty():
 		return null
 	var panel := ShopPanel2.new()
 	panel._game_id = game_id
-	panel._game = Data.get_game(game_id)
+	# The game PLAYED there names it, which on a transmuted Shop node is the
+	# replacement — the shelf rides the node (§19.2), the name the game you beat.
+	panel._game = GameLoop2.game_at(game_id)
 	parent.add_child(panel)
 	# Standing in it is what makes the stock public: from here on the game's card
 	# quotes what's left rather than just saying a shop is here (§14).
@@ -164,8 +166,7 @@ func _exit_tree() -> void:
 
 
 # The shop's name. `shopkeeper` is the seam for the authored roster that is still
-# to come — until a shop carries one, the hub's own game names the place, which
-# is honest about what a shop currently is: the big node's storefront.
+# to come — until a shop carries one, the game played there names the place.
 func _shop_name() -> String:
 	var keeper: String = str(ShopSystem.peek(_game_id).get("shopkeeper", ""))
 	if keeper != "":
@@ -183,8 +184,8 @@ func _header_name() -> String:
 	return keeper if keeper != "" else "Shop"
 
 
-# The game this shop belongs to — the host reads it to tell "the shop already on
-# the page" from "the shop owed at the hub I just beat".
+# The NODE this shop belongs to — the host reads it to tell "the shop already on
+# the page" from "the shop owed at the node I just beat".
 func game_id() -> StringName:
 	return _game_id
 
@@ -240,7 +241,7 @@ func _chrome_line() -> Control:
 	# reports its whole string as its MINIMUM width, and a game's name is a long
 	# string: that minimum became the shop panel's, the panel's became the right
 	# column's, and the right column's came straight out of the left — where the
-	# checklist's goal text then wrapped onto extra lines and grew the page. A hub
+	# checklist's goal text then wrapped onto extra lines and grew the page. A shop
 	# with a long name was a taller page than one with a short name, by up to 39px
 	# on a page with four to spare, so "Enter the Gungeon" ran the overworld off the
 	# bottom of its window and "FTL" did not. The clip below fixed that; a constant
@@ -265,7 +266,7 @@ func _chrome_line() -> Control:
 
 	# ONLY WHEN THERE IS NOTHING LEFT. This used to read "3 items on the shelf. What
 	# you don't buy stays here for next time." — a count of the three rows sitting
-	# directly underneath it, and a rule of the game explained at every single hub.
+	# directly underneath it, and a rule of the game explained at every single shop.
 	# The count is the shelf, and the rule is the panel's tooltip. What is left is
 	# the one state the shelf cannot show by itself: an empty one.
 	_subtitle = Label.new()
@@ -378,7 +379,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	pad.add_child(body)
 
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 7)
+	line.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(line)
 
@@ -387,7 +388,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	line.add_child(art)
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE

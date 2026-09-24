@@ -202,12 +202,12 @@ func _build() -> void:
 	_panel.add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	margin.add_child(root)
 	root.add_child(_header())
 
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
+	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
 
@@ -237,7 +237,7 @@ func _build() -> void:
 	body.add_child(_scroll)
 
 	_right = VBoxContainer.new()
-	_right.add_theme_constant_override("separation", 10)
+	_right.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_right)
 
@@ -249,7 +249,7 @@ func _build() -> void:
 		_right.add_child(_art_banner(art))
 
 	_prose_box = VBoxContainer.new()
-	_prose_box.add_theme_constant_override("separation", 8)
+	_prose_box.add_theme_constant_override("separation", UITheme.GAP)
 	_prose_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_right.add_child(_prose_box)
 	# Machines the event put in front of you (docs/object-sheet-authoring.md),
@@ -258,8 +258,8 @@ func _build() -> void:
 	# the event rather than under the board — and the event's own `Leave`, below
 	# them, is what takes you out of the room and the machines with it.
 	_objects_box = HFlowContainer.new()
-	_objects_box.add_theme_constant_override("h_separation", 8)
-	_objects_box.add_theme_constant_override("v_separation", 8)
+	_objects_box.add_theme_constant_override("h_separation", UITheme.GAP)
+	_objects_box.add_theme_constant_override("v_separation", UITheme.GAP)
 	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_objects_drawn = []
 	_right.add_child(_objects_box)
@@ -267,13 +267,13 @@ func _build() -> void:
 	# the same place in the column, for the same reason: it is a thing standing in
 	# the room with you, and the choices below it are what you do about the room.
 	_loot_box = VBoxContainer.new()
-	_loot_box.add_theme_constant_override("separation", 8)
+	_loot_box.add_theme_constant_override("separation", UITheme.GAP)
 	_loot_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_right.add_child(_loot_box)
 	_mount_opening_loot()
 	_right.add_child(_rule())
 	_choice_box = VBoxContainer.new()
-	_choice_box.add_theme_constant_override("separation", 8)
+	_choice_box.add_theme_constant_override("separation", UITheme.GAP)
 	_choice_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_right.add_child(_choice_box)
 
@@ -282,7 +282,7 @@ func _build() -> void:
 
 func _header() -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 0)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	var title := Label.new()
 	title.text = "✦  %s" % _event.display_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -291,7 +291,7 @@ func _header() -> Control:
 	# Put-it-away, top right of the panel. Not a close: a closed event is resolved
 	# and gone, and this one has not been answered yet.
 	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 6)
+	bar.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var hide_btn := Button.new()
 	hide_btn.text = "⌄  Hide"
@@ -593,7 +593,7 @@ func _recentre() -> void:
 func _choice_button(index: int, choice: Dictionary) -> Control:
 	var taken: int = int(_picks.get(choice.get("id", ""), 0))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var btn := Button.new()
@@ -901,7 +901,7 @@ func _end_objects() -> void:
 
 
 # Take the event off the screen WITHOUT answering it. `finished` is the chain
-# that runs when an event is over — refresh, autosave, open the shop the hub
+# that runs when an event is over — refresh, autosave, open the shop the node
 # owes, start the game a `play_game` sent you to — and none of that should
 # happen when what ended the event was the run ending under it. The player died
 # on a press in here; there is no shop to walk into afterwards and no save to

@@ -165,7 +165,7 @@ func _build() -> void:
 	# pinned to the top of a mostly-empty panel reads as an unfinished screen.
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 14)
+	col.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	scroller.add_child(col)
 
 	var title := Label.new()
@@ -192,8 +192,8 @@ func _tally() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 26)
-	row.add_theme_constant_override("v_separation", 10)
+	row.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	wrap.add_child(row)
 
 	row.add_child(_tile("Character", String(_stats.get("character", "—"))))
@@ -213,7 +213,7 @@ func _tally() -> Control:
 
 func _tile(key: String, value: String, color: Color = UITheme.TEXT) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var k := Label.new()
 	k.text = key.to_upper()
 	k.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
@@ -238,11 +238,11 @@ func _route_strip() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(col)
 
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 10)
+	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var head := Label.new()
 	head.text = "The road you walked"
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -271,7 +271,7 @@ func _route_strip() -> Control:
 	col.add_child(scroller)
 
 	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", 0)
+	strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	scroller.add_child(strip)
 
 	for i in range(_route.size()):
@@ -316,7 +316,7 @@ func _stop(id: StringName, is_amulet: bool, visit: int = 1,
 		beaten: bool = false) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.custom_minimum_size.x = COVER.x
 
 	var frame := PanelContainer.new()
@@ -375,7 +375,7 @@ func _arrow(unreached: bool = false) -> Control:
 func _buttons(accent: Color) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 
 	var again := Button.new()
 	again.text = "⟳  Another run"

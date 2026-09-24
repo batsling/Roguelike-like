@@ -182,7 +182,7 @@ func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	root.offset_left = 16
 	root.offset_top = 16
 	root.offset_right = -16
@@ -190,7 +190,7 @@ func _build_ui() -> void:
 	add_child(root)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	header.add_child(_title("Games-First — play harness"))
 	var menu_btn := Button.new()
 	menu_btn.text = "← Menu"
@@ -215,7 +215,7 @@ func _build_ui() -> void:
 	# Pick-a-game row.
 	root.add_child(_section("1 · Pick a game (spawns its enemy):"))
 	var pick_row := HBoxContainer.new()
-	pick_row.add_theme_constant_override("separation", 8)
+	pick_row.add_theme_constant_override("separation", UITheme.GAP)
 	for t in TYPES:
 		var b := Button.new()
 		b.text = String(t).capitalize()
@@ -232,7 +232,7 @@ func _build_ui() -> void:
 	# Beat / result row.
 	root.add_child(_section("2 · Play the real game, then report:"))
 	var beat_row := HBoxContainer.new()
-	beat_row.add_theme_constant_override("separation", 8)
+	beat_row.add_theme_constant_override("separation", UITheme.GAP)
 	_beat_met = Button.new()
 	_beat_met.text = "Beat — Goal MET ✓"
 	_beat_met.pressed.connect(func(): beat(true))
@@ -246,7 +246,7 @@ func _build_ui() -> void:
 	# Verbs row.
 	root.add_child(_section("Verbs / consumables:"))
 	var verb_row := HBoxContainer.new()
-	verb_row.add_theme_constant_override("separation", 8)
+	verb_row.add_theme_constant_override("separation", UITheme.GAP)
 	verb_row.add_child(_action_button("Scramble enemy", scramble))
 	verb_row.add_child(_action_button("Bomb 1st follower", bomb_first))
 	verb_row.add_child(_action_button("Stun 1st follower", stun_first))
@@ -256,7 +256,7 @@ func _build_ui() -> void:
 	# Character restart row.
 	root.add_child(_section("Restart as:"))
 	var char_row := HBoxContainer.new()
-	char_row.add_theme_constant_override("separation", 8)
+	char_row.add_theme_constant_override("separation", UITheme.GAP)
 	for ch in Data.all_characters2():
 		if ch is CharacterData:
 			var cid: StringName = ch.id

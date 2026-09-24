@@ -118,13 +118,12 @@ const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun Kin
 # The shop flag's hover: the headline, plus the shelf itself once the player has
 # actually been in there. Both come from ShopSystem so this and the popup's shop
 # block cannot end up describing the same shelf differently.
-func _shop_card_tooltip(game: GameData) -> String:
-	# "…and no event" is worth a line here because it is the ONE place a hub
-	# differs from every other card in what it costs you: a shop stands here
-	# instead of an event, not as well as one (§12).
-	var lines: Array = [ShopSystem.headline(game.id),
+func _shop_card_tooltip(node_id: StringName) -> String:
+	# "…and no event" is worth a line here because a Shop node pays no event
+	# after the game: a shop stands here instead of one, not as well as one (§14.4).
+	var lines: Array = [ShopSystem.headline(node_id),
 		"A shop stands here, so no event fires — this is what happens instead."]
-	var stock: Array = ShopSystem.stock_lines(game.id)
+	var stock: Array = ShopSystem.stock_lines(node_id)
 	if not stock.is_empty():
 		lines.append("")
 		lines.append_array(stock)
@@ -158,7 +157,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# IT SHARES ITS LINE WITH THE ⚡ DASH BADGE below. They were two stacked rows of
 	# BADGE_LINE, both blank on most cards, and the page cannot afford a third: the
 	# overworld fits a 720p canvas with about two spare pixels on its worst page
-	# (a hub's shop under the board — test_overworld2's `_assert_fits`), so the
+	# (a shop under the board — test_overworld2's `_assert_fits`), so the
 	# distance line under them had to be paid for out of the badges' own space.
 	# Side by side they are 139px of the card's 160 at their widest
 	# (`🏆 THE AMULET` + `⚡ +1 DASH`), which is the case that decided this.
@@ -184,9 +183,11 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.text = "🏆 THE AMULET"
 		flag.tooltip_text = "Beat this game's goal and you win the run."
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
-	elif ShopSystem.is_hub(game.id):
+	elif ShopSystem.is_shop(slot_of(choice)):
+		# The shelf, beside the `$` kind mark: the mark says what the node IS,
+		# and this carries what is left on it once you have stood there.
 		flag.text = "🛒 SHOP"
-		flag.tooltip_text = _shop_card_tooltip(game)
+		flag.tooltip_text = _shop_card_tooltip(slot_of(choice))
 		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	else:
 		flag.text = ""
@@ -350,15 +351,23 @@ func _kind_mark_label(choice: Dictionary) -> Label:
 # the node, so a transmuted card plays a different game at the same kind. Public
 # because the popup asks the same question and the two must not drift.
 func kind_of(choice: Dictionary) -> int:
-	if choice.is_empty() or choice.has("stay"):
+	var slot: StringName = slot_of(choice)
+	if slot == &"":
 		return -1
+	return GameState.node_kind(slot)
+
+# The NODE a choice sits on — its map slot, which a transmuted card keeps while
+# it plays a different game — or &"" for the stay-or-return pair, which is not
+# an arrival. Everything that belongs to the node rather than the game (its kind,
+# its shop) is read through this.
+func slot_of(choice: Dictionary) -> StringName:
+	if choice.is_empty() or choice.has("stay"):
+		return &""
 	var slot := StringName(choice.get("slot", &""))
 	if slot == &"":
 		var game: GameData = choice.get("game")
 		slot = game.id if game != null else &""
-	if slot == &"":
-		return -1
-	return GameState.node_kind(slot)
+	return slot
 
 func beatable_row(choice: Dictionary) -> Control:
 	var game: GameData = choice.get("game")

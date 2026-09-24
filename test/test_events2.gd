@@ -36,6 +36,8 @@ var _transmute: int
 # leaked follower is the same mystery-failure-three-scripts-later the run state
 # is snapshotted against. Round-tripped through the loop's own save format.
 var _loop: Dictionary
+# The map's kinds: the shop tests stamp a node Shop to arrange the case (§19.1).
+var _kinds: Dictionary
 # And the pack: the Relic Trader's offers are built out of it, so those tests
 # stock a known one and this puts back whatever was there.
 var _inventory: Array
@@ -59,6 +61,7 @@ func before_each() -> void:
 	_gold = GameState.gold
 	_transmute = GameState.transmute
 	_loop = GameLoop2.serialize()
+	_kinds = GameState.node_kinds.duplicate()
 	_inventory = GameState.inventory.duplicate()
 	# And the loot pack: Ranwid takes a potion out of it, so these tests stock
 	# one and this puts back whatever was there.
@@ -85,6 +88,7 @@ func after_each() -> void:
 	GameState.gold = _gold
 	GameState.transmute = _transmute
 	GameLoop2.restore(_loop)
+	GameState.node_kinds = _kinds.duplicate()
 	GameState.inventory = _inventory.duplicate()
 	GameState.loot_items = _loot.duplicate(true)
 
@@ -650,34 +654,33 @@ func test_every_game_pays_an_event() -> void:
 		"an event fires after every game, not just at dead ends")
 
 
-func test_a_hub_pays_a_shop_instead_of_an_event() -> void:
-	# §14.4. A shop is what happens at a hub, not something that happens as well
-	# as an event — the two used to queue on the same arrival and the player had
-	# to dismiss a modal to reach the shop they had routed towards.
-	var hubs: Array = ShopSystem.hub_games()
-	assert_false(hubs.is_empty(), "the run has hubs to test against")
-	for hub in hubs:
-		assert_null(EventSystem.roll_for_arrival(hub),
-			"%s is a hub, so its shop is what happens there" % hub)
+func test_a_shop_node_pays_a_shop_instead_of_an_event() -> void:
+	# §14.4. A shop is what happens at a Shop node, not something that happens as
+	# well as an event — the two used to queue on the same arrival and the player
+	# had to dismiss a modal to reach the shop they had routed towards.
+	var node: StringName = _some_game()
+	assert_not_null(EventSystem.roll_for_arrival(node), "an ordinary node pays one")
+	GameState.node_kinds[node] = RunGraph.NodeKind.SHOP
+	assert_null(EventSystem.roll_for_arrival(node),
+		"a Shop node's shop is what happens there")
 
 
-func test_transmuting_a_hub_gives_the_node_its_event_back() -> void:
-	# The rule reads off the game PLAYED at the node, not the node id. A
-	# transmute pastes an off-map game over the spot, off-map games are never
-	# hubs, so the shop leaves with the game it belonged to — and a spot with no
-	# shop on it owes an event like any other.
-	var hub: StringName = ShopSystem.hub_games()[0]
-	assert_null(EventSystem.roll_for_arrival(hub), "no event while the shop stands")
+func test_transmuting_a_shop_node_keeps_its_shop_and_its_silence() -> void:
+	# The rule reads off the NODE (§19.2), the reverse of the hub rule it replaced:
+	# a transmute pastes a different game over the spot, the kind rides the spot,
+	# so it still sells and still pays no event.
+	var node: StringName = _some_game()
+	GameState.node_kinds[node] = RunGraph.NodeKind.SHOP
 	var off: Array = RunGraph.off_map_ids()
 	if off.is_empty():
 		# The filtered catalog is one component, so there is nothing to transmute
 		# INTO and the case cannot arise. Assert that, rather than nothing.
 		assert_true(RunGraph.off_map_ids().is_empty(),
-			"nothing off the map, so a transmute has no pool and a hub stays a hub")
+			"nothing off the map, so a transmute has no pool")
 		return
-	GameLoop2.transmuted[hub] = StringName(off[0])
-	assert_not_null(EventSystem.roll_for_arrival(hub),
-		"the shop went with the game, so the spot pays an event again")
+	GameLoop2.transmuted[node] = StringName(off[0])
+	assert_true(ShopSystem.is_shop(node), "the shop stayed with the node")
+	assert_null(EventSystem.roll_for_arrival(node), "so it still pays no event")
 
 
 func test_a_game_only_pays_its_event_once() -> void:
@@ -824,12 +827,12 @@ func test_a_requirement_gates_the_event() -> void:
 
 
 # Any game the run could stand on. An event fires after every game now, so a
-# probe no longer has to hunt for a leaf — but it does have to skip the ten
-# HUBS, which pay a shop instead of an event and would make every probe below
-# read as "no event here" for a reason that has nothing to do with what it asks.
+# probe no longer has to hunt for a leaf — but it does have to skip a SHOP node,
+# which pays a shop instead of an event and would make every probe below read as
+# "no event here" for a reason that has nothing to do with what it asks.
 func _some_game() -> StringName:
 	for g in Data.all_games():
-		if g is GameData and not ShopSystem.is_hub(g.id):
+		if g is GameData and not ShopSystem.is_shop(g.id):
 			return g.id
 	return &""
 
@@ -1027,7 +1030,10 @@ func test_blockers_and_the_roller_are_the_same_rule() -> void:
 	# The panel prints blockers_for and the roller calls _eligible_for, and the
 	# whole value of the first is that it cannot disagree with the second. They
 	# share an implementation; this is the assertion that keeps them sharing it.
-	# A leaf (where events actually live), a hub, and wherever the run is standing.
+	# A leaf (where events actually live), a Shop node, and wherever the run is
+	# standing. Slay the Spire is STAMPED a Shop so the shop branch below is
+	# exercised every run rather than whenever the deal happened to put one there.
+	GameState.node_kinds[&"slay_the_spire"] = RunGraph.NodeKind.SHOP
 	for gid in [_some_dead_end(), &"slay_the_spire", GameState.current_game_id]:
 		if gid == &"":
 			continue
@@ -1037,12 +1043,11 @@ func test_blockers_and_the_roller_are_the_same_rule() -> void:
 				eligible.append(ev.id)
 		GameState.event_nodes_fired.erase(gid)
 		var placed: EventData2 = EventSystem.roll_for_arrival(gid)
-		if ShopSystem.is_hub(gid):
-			# The hub rule sits ABOVE both of them: it is a fact about the NODE,
+		if ShopSystem.is_shop(gid):
+			# The shop rule sits ABOVE both of them: it is a fact about the NODE,
 			# not about any event's gates, so blockers_for can rightly report a
-			# stack of eligible events at a hub while nothing is ever dealt there
-			# (§14.4). Slay the Spire is in this list because it is a hub, and
-			# this is now the branch it exercises.
+			# stack of eligible events at a Shop node while nothing is ever dealt
+			# there (§14.4).
 			assert_null(placed, "a shop stands at %s, so it deals no event" % gid)
 		elif eligible.is_empty():
 			assert_null(placed,

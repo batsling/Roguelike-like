@@ -255,6 +255,16 @@ The other 31 functions are ability *behaviour* (`_body_died` calls six loop
 functions and touches four vars; `_flee` calls nine), and they belong where they
 are.
 
+**Its runtime cost, measured for the first time: not a problem.** It is an
+autoload, so it compiles at boot rather than on the way into a run. Its own
+compile (a copy, dependencies warm, best of three) is **157 ms for 7,545
+lines**, against ~390 ms for the page's 7,084, so it is about 2.5x cheaper per
+line. Boot to the first scene is **~2.2 s**, and the 29 autoloads' own compiles
+sum to ~1.75 s of it, spread flat: `GameLoop2` 157, `DevTools` 143 (915 lines),
+`EventSystem` 128, `ObsCompanion` 125, `GameState` 110, and the rest around
+60–100 each. Nothing stands out enough to be the next fix. If boot time ever
+matters, the per-file floor looks like the lever, not any one file.
+
 **So the honest reading of this file is that it is not Overworld2.** Overworld2
 was a page with mechanics accreted onto it, and the mechanics came off. This is a
 loop, and its regions are layers of one machine rather than passengers on it. The
@@ -451,36 +461,81 @@ both its views. All fit.
 
 ## 6. Still open
 
-**The Events tab is 909 ms** for sixteen events. With the Games tab fixed it is
-the slowest thing in the compendium, it is not a node-count problem at that size,
-and it was not chased.
+**FIXED: the Events tab (was 909 ms).** Re-measured headless before fixing: 473 ms
+to open cold, 307 ms warm. The warm number was the tell, since sixteen cells should
+not cost 300 ms twice. Bisected cell by cell, **225 ms of every 254 was
+`_event_art`**. The art ships at up to 1616x1616 and is drawn at 80px (132 in
+the detail pane). Freeing the previous tab's cells released the textures, and the
+resource cache let them go, so every rebuild decoded all sixteen again.
 
-**Compiling `Overworld2.gd` costs ~1.05 s, and it is now the largest single
-number in starting a run** — bigger than everything else in the boot together.
-Split out, on a cold process:
+It was hard to see because a driver that built the cells again **without freeing
+the old ones first** measured 1.5 ms. The textures were still referenced, so
+nothing reloaded. Measure the sequence the player causes (switch away, switch
+back), not the function on its own.
 
-| | |
-|---|---|
-| `load("res://scripts/redesign2/Overworld2.gd")` | **1,019–1,092 ms** |
-| the `.tscn` around it, once that is compiled | ~1 ms |
-| `instantiate()` + `add_child()` (build the UI, roll the run) | 148–171 ms |
+Fixed in `Collection`: each picture is decoded **once a session**, shrunk to
+`EVENT_ART_MAX` (264, twice the detail pane) and kept in a static cache, about
+4 MB for all sixteen. The first visit loads the originals on a **thread**
+(`ResourceLoader.load_threaded_request`), so the cells go up at once with empty
+frames of the right size and each picture lands as it arrives.
 
-**This is the runtime number §1 never had.** That entry argues the file's size on
-maintainability alone; this is what it costs the player, once, on the way into
-every run.
+**The first version of the fix froze for 663 ms in one frame**, the frame the
+thread delivered, because the shrink was a single Lanczos pass from 1616px:
+**571 ms** for the sixteen. Halving with `shrink_x2` (a box filter) to within 2x
+and finishing bilinear is **51 ms** and reads the same at 80px.
 
-**It is not simply the line count, and that matters for the fix.** Pre-compiling
-`BattlefieldView.gd` + `ReportChecklist.gd` (5,136 lines between them) takes
-205 ms; `Overworld2.gd` alone is 5,825 lines and takes ~950 ms with its
-dependencies already compiled — four to five times the cost for a similar number
-of lines. It is not the lambdas either (`Collection.gd` has 68 to this file's 27
-and compiles in ~225 ms). Something about this file specifically is superlinear
-and I did not find what. **So do not assume a split banks the second**: moving
-1,000 lines into a class `Overworld2` still names leaves both compiling at the
-same moment. The win, if it is there, comes from *deferring* — a modal reached
-through `load()` at first use rather than through a `class_name` the page
-mentions — and from whatever the superlinearity turns out to be. Measure a split
-against this number rather than assuming it.
+| | before | after |
+|---|---|---|
+| open the tab, first visit (headless) | 473 ms | **53 ms** |
+| open it again | 307 ms | **~40 ms** |
+| worst frame while the art arrives | — | **18 ms** |
+| open, real renderer (OpenGL, Xvfb) | 909 ms (the original report) | **~100 ms** |
+
+**FIXED, MOSTLY: compiling `Overworld2.gd` was the biggest number in starting a
+run.** Re-measured at **~1.4 s** cold (1,354–1,524 ms over four runs; the file
+had grown from 5,825 to 7,084 lines since the ~1.05 s above was taken). And the
+premise under this entry turned out to be wrong: the file's OWN compile is only
+**~390 ms** (a copy compiled with its dependencies already loaded). The other
+~1 s was the **49 scripts it compiles first**, because a class named anywhere in
+a script, or a `preload`, is compiled before that script can be. Most of those
+were screens a run may never open.
+
+So the "superlinearity" this entry could not find was mostly not in the file. It
+was the dependency graph. Listed with `ResourceLoader.has_cached` over every
+script before and after a cold `load()`, which was the measurement that settled
+it.
+
+**What changed:**
+- The page reaches its **on-demand screens by path** at the moment they open
+  (`Overworld2.*_SCRIPT` consts, `load()` at the call). The Collection, Settings,
+  the manual, the tier list, the history and run-over screens, the event and
+  reward modals, the map window, and the two popups. The vars holding them are
+  untyped.
+- Three second-hand chains to the 2,800-line star chart: the route ladder's card
+  art moved to `UITheme.card_art` (AtlasView forwards); the road strip's arrow
+  moved out of `RunHistoryScreen` into `RouteArrow.gd`; and `PostCombatScreen`
+  loads the tier list at the click.
+
+| | before | after |
+|---|---|---|
+| cold `load("…/Overworld2.gd")` | ~1,435 ms | **~880 ms** (−39%) |
+| scripts compiled with it | 49 | **33** |
+
+The 33 left are the page's own first-frame pieces (board, offering, pack, loot,
+shop, the post-game screen), which it needs to draw at all.
+
+**Two findings, because they cost time.** (1) **`load("res://literal.gd")` is
+lazy.** I assumed the analyzer resolved a literal path at compile time, wrote a
+comment saying so, and measured it before shipping: 39 scripts either way. It is
+`preload` and a class NAME that make a dependency eager. (2) **An experiment on a
+copy of the page was contaminated by the page.** The copy still loaded the real
+`Overworld2.gd`, because `GameChoiceModal` names the class for two constants, and
+the real file pulled everything back in. The experiment had to run on the real
+file (backed up) to mean anything.
+
+`test/test_page_load.gd` guards the cause, since a cold compile cannot be timed
+inside a GUT run: none of the page's first-frame files may name or preload an
+on-demand screen, and every `*_SCRIPT` path must exist.
 
 **A methodology note, because it cost an hour.** An earlier draft of this file
 claimed wall-clock here swings 70%, on the evidence of "identical code measuring

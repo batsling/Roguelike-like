@@ -10,10 +10,8 @@ Each item says **what** is wrong, **why it matters**, and **what it would take**
 because the sizing is the part that is expensive to re-derive.
 
 **All eight items are now closed or down to a named remainder.** §1 is **decided**;
-§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts are **done**, leaving its
-spacing scale as the one substantial piece of work left in the document; §6's
-fail-loudly half is **done** with its duplicated colours still open; and §7 leaves
-the disabled `Continue` row behind it. Closed work is kept here with its reasoning rather than
+§3, §4, §5, §7 and §8 are **built or fixed**; §2's fonts and gaps are **done**, every value on the scale; §6's
+is **done**, both halves; and §7's empty `Continue` row is gone. Closed work is kept here with its reasoning rather than
 deleted, so none of it gets asked again; a closed item says so in its heading, and
 a half-closed one says which half.
 
@@ -52,7 +50,7 @@ smaller change from replacing the ramp, and it is the only version worth
 reopening. If it ever does change, the tier buttons in `RateGameModal` and the
 move-to row read the same const array.
 
-## 2. The spacing scale covers the run screens only — fonts are DONE
+## 2. The spacing scale — DONE, fonts and gaps
 
 **Done: fonts, project-wide.** All 47 screens that set a font size in code now
 take it from the type scale; 259 bare integers became named steps in one pass.
@@ -63,20 +61,37 @@ re-fitting. `test_design_tokens.gd` keeps it that way with `MIGRATED_FONTS`, and
 that list is asserted **complete** against a walk of `scripts/` — a new screen
 cannot ship bare integers by not being on it.
 
-**Still open: gaps, ~38 screens.** `MIGRATED_GAPS` is the original nine run
-screens. `Collection.gd` (2518 lines), `AtlasView.gd` (2794), `RunOverScreen.gd`,
-`EventModal2.gd` and the rest still type their separations at the call site.
+**Done: gaps, project-wide, the same way.** Every `separation` / `h_separation` /
+`v_separation` literal holding exactly a step's value — **223 across 41 files** —
+became its `UITheme.GAP_*` name, and the diff was read back the same way: each of
+the 223 changed lines, with the name swapped back for its number, matches the
+original byte for byte. So nothing moved and no fit test needed looking at.
+`MIGRATED_GAPS` now lists all 51 files that set a gap and is asserted complete
+(`test_every_screen_that_sets_a_gap_is_on_the_gap_list`).
 
-**Why it matters.** It is the reason layout changes are expensive here. "Give this
-column 26px back" means auditing eight numbers by hand and writing a comment
+**DONE: the 57 between-step gaps, snapped as a restyle.** One rule rather than
+57 taste calls: a value exactly between two steps goes to the **smaller** one
+(1→0, 3→2, 5→4, 7→6, 9→8, 14→12) and 18 goes to 16, so a snap can only take
+height away. That is what made it safe on the run's page, fitted to 720p with
+single digits to spare. The two above the top step, 22 (the post-game haul's
+two halves) and 26 (run-over's verdict and route), went to a new
+`GAP_BREAK := 24` rather than being squashed to 16.
+
+**Every affected screen was captured before and after and read side by side**:
+the run's page (with a shop and with a machine), the offered-card popup, the
+enemy card, the Completed panel, the map's node card, the event popup, the
+post-game haul, run-over, all eight Collection tabs plus their history rows, the
+tier list, the manual, run history, the star chart's card, the reward screen, the
+confirm dialog, the character picker, the custom-run screen, the hover card,
+Discoveries and DevTools. The capture was checked for determinism first (a
+seeded run; only the screens that roll random content varied between two
+identical runs). Nothing reads worse. The one visible improvement: the map's
+node card fits without a scrollbar now, where before it cut off its Close
+button. `OFF_SCALE_GAPS` is an empty dict, like `OFF_SCALE_FONTS`.
+
+**Why it mattered.** It was the reason layout changes were expensive here. "Give
+this column 26px back" meant auditing eight numbers by hand and writing a comment
 explaining each — which is exactly what the overworld's own history records.
-
-**What it would take.** One file at a time, and **slower than the font pass was**:
-a gap is not a free rename. Several on the run screens are load-bearing to the
-pixel on the 720p-budgeted page, so each one has to be read before it is named —
-do not snap one to the nearest step. Add the file to `MIGRATED_GAPS` and the test
-will fail on any bare integer left behind; genuinely off-scale values go in
-`OFF_SCALE_GAPS` with a reason.
 
 **The off-scale sizes are closed too.** The font pass deliberately left 22
 literals alone — naming them would have meant *changing* them, and a restyle does
@@ -193,11 +208,15 @@ already had it — and `StartRunBtn` was the tell that this was the right shape:
 ALREADY had a unique name and was already reached as `%StartRunBtn` eleven lines
 above, while `_style_menu` walked a four-deep path to the same node.
 
-**Still open: the duplicated colours.** The scene still authors a background, a
-title and a subtitle colour that `_style_menu` then overwrites, so the editor
-preview shows colours no player ever sees. Closing it means putting the real
-colours in the scene and deleting the re-skinning — the larger half, and the one
-that makes the scene honest.
+**DONE: the duplicated colours.** The scene now authors the background, title and
+subtitle at their real `UITheme` values (`BG_DEEP`, `GOLD`, `TEXT_DIM`), and
+`_style_menu` no longer repaints them, so the editor preview is what a player
+sees. The copy is pinned rather than trusted:
+`test_main_menu.gd::test_the_scene_is_authored_in_the_themes_own_colours`
+instantiates the scene WITHOUT running `_ready` and compares all three to the
+theme, so a theme change that leaves the scene behind fails a test instead of
+drifting. What stays in code is the Start Run button's stylebox, which a scene
+cannot share with the theme the way it can share a colour.
 
 ## 7. The main menu — BUILT: the game's art falls past it
 
@@ -267,10 +286,15 @@ in code review:
   the screen holds runs the free list dry, the fallback kind takes over, and the
   mix drifts away from `COVER_SHARE` on its own.
 
-**Still open from the original item:** `Continue (no saved runs)` still takes a
-full row to say nothing, and whether the profile row and How to Play belong where
-they are was never settled. Those are untouched — this item was about the
-emptiness, and the emptiness is what got filled.
+**DONE: the empty Continue row.** With no saves the button is hidden rather than
+standing disabled as `Continue (no saved runs)`, a full row saying nothing on
+every first launch (`MainMenu._refresh_continue_button`,
+`test_continue_is_hidden_when_there_is_nothing_to_continue`). It comes back the
+moment a save exists.
+
+**Left as a taste call, not a defect:** whether the profile row and How to Play
+belong where they are. Nothing about either is broken, so it waits for someone
+who wants them somewhere else.
 
 ## 8. Character picker nits — FIXED
 
@@ -298,48 +322,50 @@ All three, measured before and after at 1280x720.
 
 ---
 
-## OPEN: the play panel grows 41px per body, against 11px of slack
+## FIXED: the checklist grew a row per body, with no ceiling
 
 Found by `test_the_page_still_fits_the_window_with_a_shop_on_it` when §19.5's
 failure spawns landed. **Not caused by them** — they only made it common.
 
-Measured at 720p with a hub's shop mounted under the board:
+**Re-measured before fixing, and the write-up had the wrong trigger.** It blamed
+the shop. At the time of the fix the shop panel made no difference: the right
+column measured 565–591px either way. What overflowed was the LEFT column on its
+own, at 720p:
 
-| Bodies on the board | Page height | Room |
-|---|---|---|
-| 0 | **614** | 625 |
-| 1 | 655 | 625 |
-| 2 | 696 | 625 |
-| 4 | 778 | 625 |
+| Bodies | Left column (before) | Page (before) | Page (after) |
+|---|---|---|---|
+| 0 | 403 | 591 | 591 |
+| 3 | 576 | 591 | 601 |
+| 4 | 627 | **627** | 625 |
+| 5 | 678 | **678** | 625 |
+| 8 | — | — | 625 |
 
-Each body standing adds a checklist row at **~41px**, and the page has about
-**11px** to spare once everything else has had its share — so the page fits
-**zero** followers with a shop on it. That was survivable while a missed goal was
-the only way to accumulate bodies and this test happened to run on an empty
-board; §19.5 makes a growing board the ordinary case, and the stack has no upper
-bound at all.
+Room is 625. Each body adds a checklist row of **~51px**, so the page went over
+at four bodies, shop or no shop, and the stack has no upper bound.
 
-Nothing is CLIPPED — the page is in a `ScrollContainer` — so this is a fit rule
-rather than a breakage, which is why it is here rather than blocking.
+**The fix is a ceiling, and the load-bearing line is one flag.** `_verify_box`
+sits in its own `ScrollContainer` (`Overworld2._verify_scroll`), whose height
+`_fit_checklist` sets to the smaller of the checklist and the room the left column
+has left under the window, never less than `CHECKLIST_FLOOR` (~two rows). The
+earlier attempt at exactly this took an empty board's page to 1928px. The cause
+was the scroll's **horizontal mode**: left on AUTO, the scroll lays its child out
+at its minimum width, every autowrapped goal wraps a word a line, and the height
+the cap is computed from is nonsense. With `SCROLL_MODE_DISABLED` the scroll hands
+the box its own width. `test_a_crowded_board_does_not_push_the_page_past_the_window`
+asserts that directly (the box is as wide as the scroll), because it is the half
+that fails without anyone noticing.
 
-**The fix is a ceiling on the checklist, and it is not a five-minute change.**
-An attempt to wrap `_verify_box` in a `ScrollContainer` and size it to
-`min(content, cap)` made things dramatically worse: inside a scroll the box loses
-its width constraint, so its combined minimum size is computed against unwrapped
-text and the measurement that drives the cap is meaningless — the page went to
-1928px on an EMPTY board. Whatever the eventual shape, it has to keep the box's
-width tied to the panel's, and it has to be checked against a rendered screen
-(the `verify` skill) rather than reasoned about. Two standing notes at the top of
-this document apply directly.
+The budget is read off the live page rather than a constant: the scroll's height,
+less the page outside the two columns, less the rest of the left column. A taller
+window gets a taller checklist, and anything else in the left column that grows
+is paid for out of the checklist. It refits on the box's and the left column's
+`minimum_size_changed` and on the page scroll's `resized`, deferred and coalesced.
+A change under a pixel is ignored, so its own resize settles in one step.
 
-Shrinking the row is the obvious alternative and is the worse trade: it buys a
-fixed number of extra bodies, then loses to the same arithmetic, and it costs
-legibility on every run to pay for the crowded ones. The page has already given
-up 26px of its own chrome for this test once and there is no second 26px to find.
+Shrinking the row was the alternative and was rejected, as before: it buys a fixed
+number of bodies and then loses to the same arithmetic.
 
-Until it is done, `test_the_page_still_fits_the_window_with_a_shop_on_it` clears
-the board first, so it measures what it was written to measure — the shop panel's
-own contribution — rather than silently becoming a test about the checklist.
+The shop fit test now stands **eight** extra bodies instead of clearing the board.
 
 ---
 

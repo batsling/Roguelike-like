@@ -229,7 +229,7 @@ func _build_ui() -> void:
 	var panel := _panel
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 14)
+	root.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(root)
 
 	_title_line = Label.new()
@@ -285,13 +285,13 @@ func _build_ui() -> void:
 	_scroll.custom_minimum_size = Vector2(0, 270)
 	root.add_child(_scroll)
 	_choices_box = HFlowContainer.new()
-	_choices_box.add_theme_constant_override("h_separation", 12)
-	_choices_box.add_theme_constant_override("v_separation", 12)
+	_choices_box.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	_choices_box.add_theme_constant_override("v_separation", UITheme.GAP_LOOSE)
 	_choices_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_choices_box)
 
 	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 12)
+	btn_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	root.add_child(btn_row)
 
@@ -380,7 +380,7 @@ func _build_catalog_tile(item: ItemData) -> Control:
 	})
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 4)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	tile.add_child(col)
 
 	var art := UITheme.crisp_tex(item.image, OBTAIN_ART)
@@ -428,7 +428,7 @@ func _catalog_kind_line(item: ItemData) -> String:
 func _refresh_multi() -> void:
 	for i in range(_chest_sizes.size()):
 		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 6)
+		col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 
 		var head := Label.new()
 		head.text = "%s Chest" % _size_name(int(_chest_sizes[i]))
@@ -447,7 +447,7 @@ func _refresh_multi() -> void:
 			col.add_child(done)
 		else:
 			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 10)
+			row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 			for item in (_chest_choices[i] as Array):
 				row.add_child(_build_choice_tile(item, i))
 			col.add_child(row)
@@ -477,7 +477,7 @@ func _build_choice_tile(item: ItemData, chest: int = -1) -> Control:
 	tile.custom_minimum_size = Vector2(230, 250)
 	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	tile.add_child(vbox)
 
 	if item.image != null:

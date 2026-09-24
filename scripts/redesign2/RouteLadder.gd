@@ -57,14 +57,6 @@ static func node_name(id: StringName) -> String:
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
 
-# The game a rung actually plays. Normally the node's own game; on a transmuted
-# spot, the replacement pasted over it (§4). Anything asking a rung a question
-# about the GAME — does it sell, has it been beaten — has to go through here,
-# because the node id only answers where the rung sits on the graph.
-static func played_id(id: StringName) -> StringName:
-	var game: GameData = GameLoop2.game_at(id)
-	return game.id if game != null else id
-
 # Build the ladder for one route. `cfg` is the model:
 #
 #   data         Dictionary  {layers, edges} from RunGraph.route_dag_via
@@ -227,32 +219,37 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	else:
 		panel.tooltip_text = name_text
 
-	# The shop badge (§14): a hub game sells, and where the shops sit is the other
-	# half of "which way do I go" — a route one step longer that passes a shelf is
-	# routinely the better road. The ladder is where that comparison is made, so
-	# the marker belongs on the rung rather than only on the page you reach.
+	# There was a 🛒 badge in this corner for the ten HUB games, which sold until
+	# §19.7 moved the shops onto Shop nodes. The kind mark below says the same
+	# thing now — `$` — and says it about the node rather than the game played on
+	# it, so the cart went.
+	# THE NODE'S KIND (§19.8), top-left, so the road ahead can be
+	# routed on: a ladder is a stack of rungs, and "! ? ! $ !!" down one side of it
+	# says the shape of the evening before a name has been read.
 	#
-	# Read off the game actually PLAYED at the rung, not the rung's own id: a
-	# transmuted spot plays an off-map game, and off-map games are never hubs, so
-	# the shop leaves with the game it belonged to.
-	var shop_w: float = 0.0
-	if zoom >= 0.62 and ShopSystem.is_hub(played_id(id)):
-		var shop := Label.new()
-		shop.text = "🛒"
-		# Bigger than the ⚔ badge opposite it, and for a reason that only shows up
-		# on screen: ⚔ is a monochrome glyph that stays sharp at 9px, while 🛒 is a
-		# colour bitmap that turns to mush. 12 is the size the same cart is drawn
-		# at in the card's shop row, so the two read as the same marker.
-		shop.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-		shop.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
-		shop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		shop.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		shop.offset_left = 4
-		shop.offset_top = 2
-		shop_w = 20.0
-		panel.add_child(shop)
-		panel.tooltip_text = "%s — a shop stands here." % name_text \
-			+ ("" if not on_node.is_valid() else " Click for the details.")
+	# Read off the RUNG's id, never the game played there, for the reason §19.2
+	# gives: the kind rides the node, so a transmuted spot keeps its kind while it
+	# plays a different game.
+	#
+	# Drawn at every zoom, unlike the badges. The name is trimmed on a shrunk rung
+	# anyway, and the kind is the one thing on it the colour does not already say.
+	var kind: int = GameState.node_kind(id)
+	var mark := Label.new()
+	mark.text = RunGraph.kind_mark(kind)
+	mark.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	# White on the three filled rungs, whose name is white for the same reason: a
+	# red `!!` on the Amulet's ember fill, or a grey `!` on you-are-here blue, is
+	# a mark that is there and cannot be seen.
+	mark.add_theme_color_override("font_color", Color.WHITE
+		if (is_current or is_amulet or is_waypoint) else UITheme.kind_color(kind))
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	mark.offset_left = 4.0
+	mark.offset_top = 1
+	mark.name = "KindMark"
+	panel.add_child(mark)
+	var kind_w: float = 6.0 + 5.0 * mark.text.length()
+	panel.tooltip_text = "%s\n%s" % [panel.tooltip_text, RunGraph.kind_tip(kind)]
 
 	# The top-right corner: what you have DONE here, and how many ways there are
 	# on from here.
@@ -296,7 +293,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	label.text = (prefix if zoom >= 0.62 else "") + name_text
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	# The name keeps clear of the badges rather than running under them.
-	label.offset_left = 4.0 + shop_w
+	label.offset_left = 4.0 + kind_w
 	label.offset_right = -(4.0 + badge_w)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -352,7 +349,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	var game: GameData = Data.get_game(id)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 7)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var title := Label.new()
@@ -373,7 +370,7 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		box.add_child(role)
 
 	if game != null and game.cover_image != null:
-		var art := AtlasView.card_art(game.cover_image, CARD_ART_W, 190.0)
+		var art := UITheme.card_art(game.cover_image, CARD_ART_W, 190.0)
 		UITheme.attach_tier_badge(art, game.id)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		box.add_child(art)
@@ -390,11 +387,19 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		box.add_child(chip)
 
 	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", 3)
+	facts.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	box.add_child(facts)
 	for row in cfg.get("facts", []):
 		if row is Array and (row as Array).size() >= 2:
 			facts.add_child(card_fact(String(row[0]), String(row[1])))
+	# The kind in words, beside the rung's mark (§19.8) — the card is what a player
+	# opens to find out what a node MEANS, so it spells out what the mark abbreviates.
+	var kind_row := card_fact("Kind", "%s  %s" % [
+		RunGraph.kind_mark(GameState.node_kind(id)), RunGraph.kind_label(GameState.node_kind(id))])
+	kind_row.tooltip_text = RunGraph.kind_tip(GameState.node_kind(id))
+	(kind_row.get_child(1) as Label).add_theme_color_override("font_color",
+		UITheme.kind_color(GameState.node_kind(id)))
+	facts.add_child(kind_row)
 	# The same number the rung's ⛓ badge carries and the Atlas's card calls
 	# "Connections", spelled out in the same words on all three.
 	var links: int = RunGraph.open_degree(id)
@@ -454,7 +459,7 @@ const CARD_ART_W := 248.0
 
 static func card_fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	var k := Label.new()
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL

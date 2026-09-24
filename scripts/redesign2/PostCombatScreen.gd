@@ -41,14 +41,14 @@ extends Control
 #                   a boss round is announced between two games and this screen is
 #                   what is standing between them.
 #
-# THE SHOP IS NOT ONE OF ITS SECTIONS, and briefly was: a hub's shelf was mounted
+# THE SHOP IS NOT ONE OF ITS SECTIONS, and briefly was: a shop's shelf was mounted
 # into the left column and handed back to the page on the way out. It is off again
 # — see `shop_id` for why the button naming it is the reason.
 #
 # And one button out, which NAMES WHERE IT GOES: "Go to Event" when the node owes
 # one (clicking it is what opens the event, so the player leaves this screen into
 # the next thing rather than having the next thing dropped on them), "Go to Shop"
-# at a hub that owes no event, and "Travel on" when it owes neither.
+# at a Shop node, which owes no event, and "Travel on" when it owes neither.
 #
 # Built in code on its own CanvasLayer, BELOW the run's header bar (135) so Health
 # and Gold stay readable over it, and below the loot use modal (130) so spending a
@@ -96,7 +96,7 @@ var _chests: Array = []
 var _loot: Array = []
 # Whether an event is queued behind this screen, which is what the way out says.
 var _event_pending: bool = false
-# The hub this screen's exit leads to, when the game was one of the ten. Only ever
+# The Shop node this screen's exit leads to, when the game was played on one. Only ever
 # read for the button's wording — the shelf itself is the page's (see `shop_id`).
 var _shop_id: StringName = &""
 # The boss round this screen is warning about: the tier it steps to and the
@@ -417,7 +417,7 @@ func _build() -> void:
 	# Tight, deliberately: the loot column's 3x3 and its bin are the least
 	# compressible thing on this page, and every gap spent up here is a row they
 	# have to find by scrolling.
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	frame.add_child(col)
 	col.add_child(_header())
 
@@ -447,7 +447,7 @@ func _accent() -> Color:
 
 func _header() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var g: GameData = game()
 	if g != null and g.cover_image != null:
 		var art := TextureRect.new()
@@ -458,7 +458,7 @@ func _header() -> Control:
 		row.add_child(art)
 
 	var words := VBoxContainer.new()
-	words.add_theme_constant_override("separation", 2)
+	words.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	# SHRINK, not expand, so the rate button below sits BESIDE the name rather than
 	# being shoved to the far end of a 1200px row by a title block that grew to
 	# fill it. The spacer after the button is what takes the slack instead.
@@ -528,13 +528,16 @@ func _open_rating(g: GameData, btn: Button) -> void:
 		if btn != null and is_instance_valid(btn):
 			btn.text = "★  Rated %d/10" % score
 		if rank_now:
-			TierListScreen.open(self, g.id))
+			# By path, at the click: naming the class here compiled the tier list
+			# (and the star chart it names) into every run's page load
+			# (docs/performance-backlog.md §6).
+			load("res://scripts/ui/TierListScreen.gd").open(self, g.id))
 	modal.dismissed.connect(func(): modal.queue_free())
 	add_child(modal)
 
 # The left column: the numbers, the chests, the warning and the shelf, in the
 # order they answer "what just happened". It scrolls, because a boss round at a
-# hub with a Huge chest is more than a 720p canvas holds — the loot column beside
+# shop with a Huge chest is more than a 720p canvas holds — the loot column beside
 # it does not, since the drag between its two halves is the one thing on this
 # screen that a scrollbar would get in the way of.
 func _left_column() -> Control:
@@ -544,7 +547,7 @@ func _left_column() -> Control:
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroller.add_child(col)
 
@@ -573,7 +576,7 @@ func _left_column() -> Control:
 		col.add_child(_chest_why)
 
 	_chest_slot = VBoxContainer.new()
-	_chest_slot.add_theme_constant_override("separation", 6)
+	_chest_slot.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_chest_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_chest_slot)
 
@@ -598,8 +601,8 @@ func _tally_panel() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 22)
-	flow.add_theme_constant_override("v_separation", 8)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP)
 	wrap.add_child(flow)
 	for entry in tally():
 		flow.add_child(_tile(String(entry[0]), String(entry[1]), entry[2]))
@@ -607,7 +610,7 @@ func _tally_panel() -> Control:
 
 func _tile(key: String, value: String, color: Color) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 1)
+	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	box.add_child(_line(key.to_upper(), UITheme.TEXT_FAINT, 10))
 	box.add_child(_line(value, color, 16))
 	return box
@@ -617,7 +620,7 @@ func _tile(key: String, value: String, color: Color) -> Control:
 # rather than leaving a hole where the loot would have been.
 func _right_column() -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(LootDropModal.EMBED_W, 0)
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_loot_slot = col
@@ -699,7 +702,7 @@ func _level_up_panel() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG_DEEP, UITheme.GOLD.lerp(UITheme.BORDER, 0.4), 8, 10, 1))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	wrap.add_child(col)
 	var levels: int = maxi(1, int(lvl.get("levels", 1)))
 	# "LEVELLED UP ×2" only when the Crown actually chained one. A count on the
@@ -752,7 +755,7 @@ func _hint_text() -> String:
 
 func _footer() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var hint := _line(_hint_text(), UITheme.TEXT_FAINT, 12)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -851,14 +854,14 @@ func _chest_sum_row() -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG_DEEP, UITheme.BORDER, 6, 8, 1))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	wrap.add_child(col)
 	# WHAT THE SUM IS FOR, said before the sum. A row of faces and numbers is
 	# arithmetic without a subject until something names the quantity it totals to.
 	col.add_child(_line("ITEM CHEST SIZE", UITheme.TEXT_FAINT, 10))
 	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 6)
-	flow.add_theme_constant_override("v_separation", 3)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
 	col.add_child(flow)
 	for i in range(terms.size()):
 		if i > 0:
@@ -880,7 +883,7 @@ func _chest_sum_row() -> Control:
 # value is unmistakably the caption of the thing above it.
 func _sum_term(term: Dictionary) -> Control:
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 0)
+	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	var enemy: GoalEnemyData = term.get("enemy")
 	var tip: String = ""

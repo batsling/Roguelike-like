@@ -126,7 +126,7 @@ func _toggle_button() -> Control:
 	# Anchor." for most of every report, which is the exact fault that moved this
 	# control off the end of the relic row in the first place.
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 7
@@ -182,11 +182,11 @@ func _panel(reporting: bool) -> Control:
 		UITheme.flat(UITheme.BG.lerp(ACCENT, 0.06), 12, 12, 2, ACCENT.lerp(UITheme.BG, 0.35)))
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(box)
 
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
+	head.add_theme_constant_override("separation", UITheme.GAP)
 	box.add_child(head)
 	var title := Label.new()
 	title.text = "%s  Loot  —  %d / %d carried" % [

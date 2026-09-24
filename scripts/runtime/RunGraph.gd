@@ -117,7 +117,7 @@ const TYPE_ORDER: Array = [
 # touching a single edge.
 #
 # Declared here because a kind is a fact about the MAP; the run's own copy of the
-# assignment lives on GameState.node_kinds, the way hub_games does, so a save
+# assignment lives on GameState.node_kinds, so a save
 # carries it rather than re-deriving it against a graph that may have been
 # rebuilt since.
 enum NodeKind { ENEMIES, EVENT, CHAMPION, SHOP }
@@ -404,30 +404,16 @@ static func open_degree(game_id: StringName) -> int:
 			n += 1
 	return n
 
-# How many of the graph's biggest games carry a shop (§14). Ten is not a round
-# number picked for tidiness: on the full catalog the degree curve has a real
-# shoulder there — Slay the Spire 141, Vampire Survivors 85, Isaac 69, Hades and
-# Balatro 46, Spelunky Classic 37, FTL 36, NetHack 29, Dead Cells 28, Enter the
-# Gungeon 26 — and the eleventh game down is in the low twenties with a long flat
-# tail behind it. Those ten are also the genre's actual landmarks, which is why
-# they read as places rather than as nodes that happened to score well.
-const NUM_HUBS := 10
-
-# The run's HUB GAMES: the NUM_HUBS best-connected games on the route, biggest
-# first. A shop stands at each of them (§14).
+# The `count` best-connected games on the run's map, biggest first, ties broken
+# on the lowest id so the list is stable for a given catalog rather than riding
+# dictionary order. Measured after the filter and the main-component prune, like
+# `degree`.
 #
-# Measured AFTER the filter and the main-component prune, like `degree` — the
-# ten biggest games in an OWNED run are not the ten biggest in the catalog, and
-# the shops belong to the map the player is actually walking. Ties break on the
-# lowest id so the list is stable for a given catalog rather than riding
-# dictionary order; without that, two games on 24 connections could swap places
-# between calls and a shop would move.
-#
-# Callers should not lean on this staying put across a run — the game filter can
-# rebuild the graph underneath it. GameState freezes the answer at run start
-# (`hub_games`) and everything in the run reads that instead, so a shop can never
-# appear or vanish under a player mid-route.
-static func hub_ids(count: int = NUM_HUBS) -> Array[StringName]:
+# This used to be `hub_ids`, and the ten it returned were the run's shops (§14).
+# §19.7 moved the shops onto Shop nodes; what is left is a graph question with
+# no rule hanging off it, which a test that wants somewhere well-connected to
+# stand still asks.
+static func best_connected(count: int) -> Array[StringName]:
 	_build_adj()
 	var ids: Array = _adj_cache.keys()
 	# The tie-break lives INSIDE the comparator rather than in a pre-sort, because

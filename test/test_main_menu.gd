@@ -148,3 +148,33 @@ func test_run_history_still_lays_its_routes_over_the_sky() -> void:
 		kinds.append(c.get_class() if c.get_script() == null else c.get_script().resource_path)
 	var joined: String = "\n".join(PackedStringArray(kinds))
 	assert_string_contains(joined, "RunHistoryScreen", "the history is up: %s" % joined)
+
+
+# THE SCENE CARRIES ITS OWN COLOURS NOW (docs/layout-review-backlog.md §6). The
+# background, title and subtitle used to be repainted at _ready over whatever the
+# .tscn said, so the one editor-built scene previewed in colours no player saw.
+# They are authored in the scene at their UITheme values instead — and pinned
+# here, because a copy of a colour is only honest while it matches the original.
+func test_the_scene_is_authored_in_the_themes_own_colours() -> void:
+	var menu = MENU.instantiate()     # NOT added to the tree: _ready must not run,
+	                                  # so this reads what the scene file says
+	assert_eq((menu.get_node("%Background") as ColorRect).color, UITheme.BG_DEEP,
+		"the background is the page background")
+	assert_eq((menu.get_node("%Title") as Label).get_theme_color("font_color"),
+		UITheme.GOLD, "the title is gold")
+	assert_eq((menu.get_node("%Subtitle") as Label).get_theme_color("font_color"),
+		UITheme.TEXT_DIM, "the subtitle is the dim text colour")
+	menu.free()
+
+
+# NOTHING TO CONTINUE, NO ROW. It stood disabled as "Continue (no saved runs)",
+# a full row saying nothing, on every first launch.
+func test_continue_is_hidden_when_there_is_nothing_to_continue() -> void:
+	SaveSystem.clear_all_saves()
+	var menu = _menu()
+	await wait_frames(1)
+	assert_true(SaveSystem.list_resumable().is_empty(), "no saves on disk")
+	assert_false((menu.get_node("%ContinueBtn") as Button).visible,
+		"so there is no Continue row")
+	assert_false((menu.get_node("%SaveList") as Control).visible,
+		"and no empty save list under it")

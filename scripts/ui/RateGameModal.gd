@@ -110,7 +110,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	margin.add_child(vbox)
 
 	var game_name := String(_game_id)
@@ -145,7 +145,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 
 	# 1-10 as ten toggle-ish buttons.
 	var score_row := HBoxContainer.new()
-	score_row.add_theme_constant_override("separation", 4)
+	score_row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	vbox.add_child(score_row)
 	for n in range(1, 11):
 		var b := Button.new()
@@ -172,7 +172,7 @@ func _build_ui(gd: GameData, existing: Dictionary) -> void:
 	vbox.add_child(_notes_edit)
 
 	var button_row := HBoxContainer.new()
-	button_row.add_theme_constant_override("separation", 12)
+	button_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	vbox.add_child(button_row)
 
 	var skip_btn := Button.new()

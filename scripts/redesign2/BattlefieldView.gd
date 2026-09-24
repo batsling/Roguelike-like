@@ -81,6 +81,8 @@ var _pressure_ladder_text: String = ""
 var _pressure_turns: Label          # "⏱ EXTRA TURNS 1"
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
+var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
+var _boss_count: Label              # "boss in 2 spawns" (§19.8)
 var _size_label: Label              # "▦ 5×5 · Medium"
 var _hero_icon: TextureRect
 var _hero_hp: Label
@@ -287,7 +289,7 @@ const FIELD_WIDTH_BUDGET: int = 470
 # of one. It binds on nothing but the big boards — a 4x4 is capped by CELL_MAX
 # long before either budget is the constraint.
 const FIELD_HEIGHT_BUDGET: int = 384
-# …and what it drops to when something is mounted UNDER the board — a hub's shop,
+# …and what it drops to when something is mounted UNDER the board — a node's shop,
 # or the machines standing at this game. The right column is 626px of a 688px
 # page with about five pixels to spare, so a panel below the board has nowhere to
 # come from: it has to come out of the board. At 190 a 4x4 still draws at a
@@ -541,6 +543,19 @@ func _build_pressure_bar() -> Control:
 	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_pressure_why)
 
+	# WHAT LOSING HERE COSTS, and how close the next boss is (§19.8). The strip
+	# already says what handing a game in costs; since §19.5 losing one has a
+	# price too, and the player cannot decide whether one more attempt is worth
+	# it without both halves of it — the bodies it stands up, and whether the
+	# spawn event those bodies make is the one that closes the band.
+	_spawn_price = Label.new()
+	_spawn_price.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	row.add_child(_spawn_price)
+
+	_boss_count = Label.new()
+	_boss_count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	row.add_child(_boss_count)
+
 	_size_label = Label.new()
 	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
@@ -587,6 +602,25 @@ func _refresh_pressure() -> void:
 	# decision made somewhere else — the route — so its hover has to answer "why is
 	# it that number" as well as "what does it mean". The ladder itself is the
 	# note: the whole table of hops-to-extra, which is where the answer is.
+	var price: Dictionary = GameLoop2.failure_price()
+	var owed: int = int(price["bodies"])
+	var why_free: String = String(price["why"])
+	if owed > 0:
+		_spawn_price.text = "☠ +%d on a loss" % owed
+		_spawn_price.add_theme_color_override("font_color", UITheme.DANGER)
+	elif why_free != "":
+		_spawn_price.text = "☠ none on a loss"
+		_spawn_price.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	else:
+		_spawn_price.text = ""        # between games: nothing in play to lose at
+	_spawn_price.visible = _spawn_price.text != ""
+
+	var to_boss: int = RunDifficulty.spawns_to_boss(GameState.spawn_events)
+	_boss_count.text = ("boss on the next spawn" if to_boss == 1
+		else "boss in %d spawns" % to_boss)
+	_boss_count.add_theme_color_override("font_color",
+		UITheme.DANGER if to_boss == 1 else UITheme.TEXT_DIM)
+
 	var acts: String = ("Reporting a game hands the enemies %s"
 		% RunDifficulty.extra_text(extra))
 	var ladder_tip: String = ("%s.\n"
@@ -602,16 +636,17 @@ func _refresh_pressure() -> void:
 			"%s — a strike from the front column, or a step closer." % acts,
 			"A lost run hands them one turn wherever you are standing.",
 			_pressure_why.text,
+			_spawn_tip(owed, why_free),
+			_boss_tip(to_boss),
 		],
 		"note": "Rush the Amulet and the end of a game costs you turns; take the long way and only your own failures do.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
 	# a card that changed shape depending on which word of the strip the cursor
 	# landed on would read as three different cards.
-	_pressure_turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pressure_why.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pressure_turns.tooltip_text = ""
-	_pressure_why.tooltip_text = ""
+	for l in [_pressure_turns, _pressure_why, _spawn_price, _boss_count]:
+		(l as Label).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(l as Label).tooltip_text = ""
 	_pressure_ladder_text = ladder_tip
 
 	var tier: int = RunDifficulty.current_tier()
@@ -626,6 +661,25 @@ func _refresh_pressure() -> void:
 			GameLoop2.BASE_GRID_COLS, GameLoop2.BASE_GRID_ROWS,
 			GameLoop2.BASE_GRID_COLS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER),
 			GameLoop2.BASE_GRID_ROWS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER)]
+
+# The strip's two §19.8 readouts, in a sentence each for the hover card.
+func _spawn_tip(owed: int, why_free: String) -> String:
+	if owed > 0:
+		return ("Lose a run here, or hand the game in with nothing down, and %d bod%s "
+			+ "walk on — fewer the further you are from the Amulet. Defeat one body "
+			+ "and the tap shuts for this game.") % [owed, "y" if owed == 1 else "ies"]
+	if why_free != "":
+		return "Losing here stands no bodies up: %s." % why_free
+	return "Lose a run with nothing defeated and bodies walk on — 1 far out, up to 3 near the Amulet."
+
+func _boss_tip(to_boss: int) -> String:
+	if to_boss == 1:
+		return ("The next spawn event lands a boss on top of whatever else walks on — "
+			+ "a Champion node, an Enemies node, or a failure spawn off a lost run.")
+	return ("Every %s spawn event lands a boss: %d more to go. An Event or a Shop node "
+		+ "spawns nothing, so it does not bring one closer.") % [
+			"third" if RunDifficulty.GAMES_PER_TIER == 3 else "%dth" % RunDifficulty.GAMES_PER_TIER,
+			to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach
@@ -1065,7 +1119,7 @@ func _build() -> void:
 	outer.add_child(_build_pressure_bar())
 	outer.add_child(_build_battle_toolbar())
 	_battlefield = HBoxContainer.new()
-	_battlefield.add_theme_constant_override("separation", 14)
+	_battlefield.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
 	outer.add_child(_battlefield)
 
@@ -1089,7 +1143,7 @@ func _build() -> void:
 	# 5, not the 2 the glyph pips ran at: each temporary shield carries a clock that
 	# overhangs its bottom-right corner, and at a tighter separation the badge sits
 	# on the next shield along.
-	_hero_shields.add_theme_constant_override("separation", 5)
+	_hero_shields.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	# STOP, so the row answers the hover: the sprites themselves ignore the mouse
 	# (crisp_tex), and a container that passed would leave the only explanation of
 	# what a shield does unreachable.
@@ -1108,7 +1162,7 @@ func _build() -> void:
 	# left of you" (§13). Hidden entirely when nothing is on the player.
 	_hero_statuses = HBoxContainer.new()
 	_hero_statuses.alignment = BoxContainer.ALIGNMENT_CENTER
-	_hero_statuses.add_theme_constant_override("separation", 3)
+	_hero_statuses.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_hero_statuses.visible = false
 	hero_box.add_child(_hero_statuses)
 	_hero_hp = Label.new()

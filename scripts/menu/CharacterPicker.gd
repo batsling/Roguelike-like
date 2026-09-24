@@ -83,11 +83,11 @@ func _build() -> void:
 	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	panel.add_child(vbox)
 
 	var header := VBoxContainer.new()
-	header.add_theme_constant_override("separation", 2)
+	header.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	vbox.add_child(header)
 	var title := Label.new()
 	title.text = "Choose Your Character"
@@ -104,7 +104,7 @@ func _build() -> void:
 
 	# Body: icon grid (left) | full portrait + info (right).
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 16)
+	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
 
@@ -130,7 +130,7 @@ func _build() -> void:
 	# NO ScrollContainer: the hero has to be readable in one look. The two columns
 	# inside are filled by _fill_char_detail — portrait left, facts right.
 	var detail_box := HBoxContainer.new()
-	detail_box.add_theme_constant_override("separation", 14)
+	detail_box.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_wrap.add_child(detail_box)
@@ -138,7 +138,7 @@ func _build() -> void:
 	# Footer: Cancel (left) and the Confirm button (right), enabled once a hero is
 	# selected.
 	var footer := HBoxContainer.new()
-	footer.add_theme_constant_override("separation", 10)
+	footer.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	vbox.add_child(footer)
 	var cancel := Button.new()
 	cancel.text = "Cancel"
@@ -265,7 +265,7 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 			tile.modulate = Color.WHITE)
 
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 4)
+	vb.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	tile.add_child(vb)
 	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
@@ -314,7 +314,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 
 	# LEFT: who they are — portrait, name, where they're from, how much Health.
 	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 6)
+	left.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	left.custom_minimum_size = Vector2(CHAR_PORTRAIT_SIZE, 0)
 	# CENTRED, like the column beside it. This one was SHRINK_BEGIN while `right`
 	# was SHRINK_CENTER, so the portrait hung from the top of a 442px panel, the
@@ -358,7 +358,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 
 	# RIGHT: what they play like.
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 6)
+	right.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Centred against the portrait rather than hung off the top of the panel: a
 	# hero with two facts and one with five both sit beside their own picture.
@@ -419,8 +419,8 @@ func _detail_head(text: String) -> Label:
 func _verb_chips(ch: CharacterData) -> Control:
 	var flow := HFlowContainer.new()
 	flow.alignment = FlowContainer.ALIGNMENT_CENTER
-	flow.add_theme_constant_override("h_separation", 4)
-	flow.add_theme_constant_override("v_separation", 4)
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	var any := false
 	for v in ch.verb_loadout():
 		any = true

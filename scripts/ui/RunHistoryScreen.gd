@@ -64,7 +64,7 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
+	root.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	add_child(root)
 
 	root.add_child(_header())
@@ -76,7 +76,7 @@ func _build() -> void:
 
 	_rows = VBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("separation", 10)
+	_rows.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	scroller.add_child(_rows)
 
 	var margin := MarginContainer.new()
@@ -104,7 +104,7 @@ func _header() -> Control:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 12, 0))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	bar.add_child(row)
 
 	var title := Label.new()
@@ -139,7 +139,7 @@ func _run_row(run: Dictionary) -> Control:
 		UITheme.PANEL, 6, 12, 1, UITheme.SUCCESS if won else UITheme.BORDER))
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	panel.add_child(col)
 	col.add_child(_run_caption(run))
 
@@ -153,7 +153,7 @@ func _run_row(run: Dictionary) -> Control:
 	col.add_child(strip_scroll)
 
 	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", 0)
+	strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	strip_scroll.add_child(strip)
 
 	var path: Array = run.get("path", [])
@@ -172,7 +172,7 @@ func _run_row(run: Dictionary) -> Control:
 
 func _run_caption(run: Dictionary) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var verdict := Label.new()
 	var won: bool = bool(run.get("won", false))
@@ -211,7 +211,7 @@ func _run_caption(run: Dictionary) -> Control:
 func _route_stop(id: StringName, is_amulet: bool, won: bool) -> Control:
 	var game: GameData = Data.get_game(id)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	col.custom_minimum_size.x = COVER.x
 
 	var frame := PanelContainer.new()
@@ -291,38 +291,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 # RouteArrow — a single left-to-right arrow between two stops.
 # ---------------------------------------------------------------------------
 
-class RouteArrow extends Control:
-	var unreached: bool = false
-
-	# THE HEAD IS SIZED AGAINST THE ARROW, not fixed. It used to be a flat 7x10
-	# triangle at a flat 4px inset, which is fine at the end-of-run screen's 24px
-	# and falls apart at the header strip's 15: the pads ate 8 of the 15, the head
-	# ate the remaining 7, and what drew was a squat triangle with no shaft behind
-	# it at all — an arrow that had eaten itself. The head now takes at most half
-	# the span, so there is always a line for it to sit on the end of.
-	const HEAD_LEN := 6.0
-	const HEAD_HALF := 4.0
-	const PAD := 2.0
-
-	func _draw() -> void:
-		# Half-pixel offset so a 2px line lands ON the pixel grid rather than
-		# straddling two rows of it — the difference between a crisp rule and a
-		# soft grey smear at these sizes.
-		var y: float = floorf(size.y * 0.5) + 0.5
-		var col: Color = UITheme.TEXT_FAINT if unreached else UITheme.ACCENT
-		var x0: float = PAD
-		var x1: float = maxf(size.x - PAD, x0 + 1.0)
-		var span: float = x1 - x0
-		var head: float = minf(HEAD_LEN, span * 0.5)
-		# Scaled down with the head when the arrow is very short, so it stays a
-		# triangle rather than becoming a wide flat wedge.
-		var half: float = minf(HEAD_HALF, head * 0.75)
-		var tip := Vector2(x1, y)
-		var base: float = x1 - head
-		if unreached:
-			# The stretch a lost run never covered, so it reads as a gap.
-			draw_dashed_line(Vector2(x0, y), Vector2(base, y), col, 2.0, 5.0, true)
-		else:
-			draw_line(Vector2(x0, y), Vector2(base, y), col, 2.0, true)
-		draw_colored_polygon(PackedVector2Array([
-			tip, Vector2(base, y - half), Vector2(base, y + half)]), col)
+# The arrow is its own file (RouteArrow.gd) and is named here so every existing
+# `RunHistoryScreen.RouteArrow` keeps working. It moved out because the page's
+# road strip draws it too, and reaching it through this class compiled the whole
+# run-history screen — and the 2,800-line star chart this screen names — into
+# every run's page load (docs/performance-backlog.md §6).
+const RouteArrow := preload("res://scripts/ui/RouteArrow.gd")

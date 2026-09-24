@@ -70,7 +70,7 @@ func _init() -> void:
 func _ready() -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	var label := Label.new()

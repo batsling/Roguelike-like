@@ -134,11 +134,12 @@ const FONT_HERO := 28        # the largest thing on a screen
 # Same story: ~20 distinct separation values, 60 uses of `8`, 56 of `6`, 43 of
 # `10`. Same rule — these are the values already in use, named.
 #
-# MIND THE OFF-SCALE ONES. Several gaps on the run screens are load-bearing to
-# the pixel (`_inv_wrap`'s margin 6 and separation 3, the select panel's 6s) and
-# carry a comment saying so — the page is fitted to a 720p canvas with single
-# digits to spare. Those stay literal on purpose; snapping one to the nearest
-# step is exactly the change that puts the overworld behind a scrollbar.
+# EVERY GAP IN THE PROJECT IS ON THIS SCALE NOW. The 57 that sat between two
+# steps were snapped by one rule, so none of them was a separate taste call: a
+# value exactly between two steps goes to the SMALLER one (1->0, 3->2, 5->4,
+# 7->6, 9->8, 14->12), and 18 to 16. A snap can therefore only take height away,
+# never add it — which is what made it safe on the run's page, fitted to a 720p
+# canvas with single digits to spare. The one exception is GAP_BREAK below.
 const GAP_NONE := 0
 const GAP_HAIR := 2
 const GAP_TIGHT := 4
@@ -147,6 +148,10 @@ const GAP := 8               # the default gap between two things in a stack
 const GAP_WIDE := 10
 const GAP_LOOSE := 12
 const GAP_SECTION := 16      # between one section of a screen and the next
+# Between the major blocks of a FULL screen — the run-over verdict and its route,
+# the post-game haul's two halves. Added for the two gaps (22 and 26) that sat
+# above the top step: snapping them to 16 squashed the two roomiest screens.
+const GAP_BREAK := 24
 
 # ---------------------------------------------------------------------------
 # The z-order
@@ -565,7 +570,7 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 		font_size: int = FONT_BODY) -> Control:
 	var tint: Color = addon_color(bool(addon.get("required", false)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	# The indent is a spacer rather than a margin on the label: the icon has to be
 	# indented with the words, or the row reads as a second goal rather than as
 	# something hanging off the one above it.
@@ -620,6 +625,35 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 # and HoverCard's inline TextureRect (test_overworld2 has the regression that
 # caught the last one) — and each hand-rolled copy is a place the game's pixel
 # art can start blurring on its own.
+# Cover art on a card is shown WHOLE — a card is where you went to LOOK at the
+# game, so nothing is cropped off it. The frame is the size the picture actually
+# needs: fitted to `width`, and shrunk further if that would make it taller than
+# `max_height` — never letterboxed, never cut. Moved here from AtlasView (which
+# forwards) so the route ladder's card can draw it without compiling the star
+# chart into every page load.
+const CARD_ART_MAX_HEIGHT := 300.0
+
+static func card_art_size(tex: Texture2D, width: float,
+		max_height: float = CARD_ART_MAX_HEIGHT) -> Vector2:
+	if tex == null or width <= 0.0 or tex.get_width() <= 0 or tex.get_height() <= 0:
+		return Vector2.ZERO
+	var aspect: float = float(tex.get_height()) / float(tex.get_width())
+	var box := Vector2(width, width * aspect)
+	if max_height > 0.0 and box.y > max_height:
+		box = Vector2(max_height / aspect, max_height)
+	return box
+
+static func card_art(tex: Texture2D, width: float,
+		max_height: float = CARD_ART_MAX_HEIGHT) -> TextureRect:
+	var art := TextureRect.new()
+	art.texture = tex
+	art.custom_minimum_size = card_art_size(tex, width, max_height)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# KEEP_ASPECT_CENTERED, not COVERED: the whole picture, letterbox rather than
+	# crop if a container ever hands it a box of a different shape.
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return art
+
 static func crisp_tex(tex: Texture2D, size: int, force: bool = false) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = tex

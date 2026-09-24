@@ -182,7 +182,7 @@ func _show_intro() -> void:
 	# are equally likely — on the relic drop sitting right behind this one in the
 	# queue, the take is green and 190px wide. Same question, same shape now.
 	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 10)
+	actions.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	var cancel := UITheme.quiet_button("Cancel", Vector2(120, 38))
 	cancel.pressed.connect(_finish)
@@ -411,8 +411,8 @@ func _pick_identify(req: Dictionary) -> void:
 	_body.add_child(_muted("Choose up to %d to identify." % max_pick))
 	var grid := GridContainer.new()
 	grid.columns = LootGrid.COLS
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for entry in candidates:
 		if not (entry is Dictionary):
@@ -579,8 +579,8 @@ func _do_teleport(req: Dictionary) -> void:
 		_report("It fizzles — you do not move.")
 	_process_next_request()
 
-# The three CARD teleports (docs/cards-design.md §5) — the bus, the hub, the
-# starting game. Separate from `_do_teleport` above because they are a different
+# The three CARD teleports (docs/cards-design.md §5) — the bus, the nearest
+# shop, the starting game. Separate from `_do_teleport` above because they are a different
 # question of the overworld: that one is measured in steps from the Amulet and
 # these name a destination outright. Same shape of answer, and the same reason it
 # has to come back from whoever moved you.
@@ -812,7 +812,7 @@ func _rebuild_panel() -> void:
 	margin.add_child(scroll)
 	_panel.add_child(margin)
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 10)
+	_body.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_body)
 
@@ -828,7 +828,7 @@ func _heading(text: String, color: Color, size: int) -> Label:
 # A centred row of chips — what this is, and what it would do to you.
 func _chip_row(chips: Array) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	for c in chips:
 		row.add_child(c)

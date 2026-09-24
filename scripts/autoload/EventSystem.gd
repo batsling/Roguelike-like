@@ -45,20 +45,18 @@ extends Node
 # One event per GAME, not per arrival: `event_nodes_fired` spends the node, so
 # walking a two-node loop is not an event faucet.
 #
-# EXCEPT AT A HUB, where the shop is what happens (§12, §14). Two things queued
-# on top of each other after one game was one thing too many — the shop mounts
-# under the board and the event opens a modal over it, so the shop the player
-# walked here for was something they had to dismiss an event to reach. A hub
-# already is the thing that happens at a hub; it does not also owe a roll.
+# EXCEPT AT A SHOP NODE, where the shop is what happens (§14.4, §19.1). Two
+# things queued on top of each other after one game was one thing too many — the
+# shop mounts under the board and the event opens a modal over it, so the shop
+# the player walked here for was something they had to dismiss an event to reach.
 #
-# Read off the game actually PLAYED at the node, not the node's id: a transmuted
-# spot plays an off-map game, off-map games are never hubs, so the shop leaves
-# with the game it belonged to and the spot goes back to paying an event.
+# Read off the NODE, like the shop itself (§19.2): a transmuted Shop node still
+# sells, so it still pays no event. (This gate stood at the ten HUB games until
+# §19.7, and read the game played there, because the hub's shop left with it.)
 func roll_for_arrival(game_id: StringName) -> EventData2:
 	if game_id == &"" or GameState.event_nodes_fired.has(game_id):
 		return null
-	var here: GameData = GameLoop2.game_at(game_id)
-	if here != null and ShopSystem.is_hub(here.id):
+	if ShopSystem.is_shop(game_id):
 		return null
 	return _draw_for(game_id)
 
@@ -67,11 +65,12 @@ func roll_for_arrival(game_id: StringName) -> EventData2:
 #
 # `roll_for_arrival` above asks "does this arrival happen to owe an event", and
 # its two gates are right for that and wrong here: a node that already paid one
-# does not pay twice, and a HUB pays none at all (§14.4). An Event node's badge
-# is a promise about this node — the card said event — so neither applies. The
-# hub gate is the one that actually bit: an Event node that happened to land on
-# one of the ten hubs delivered silence, which is the badge telling a lie, and
-# §19.2 exists to prevent exactly that.
+# does not pay twice, and a Shop node pays none at all (§14.4). An Event node's
+# badge is a promise about this node — the card said event — so neither applies.
+# The shop gate is the one that actually bit, back when it was a gate on the ten
+# HUB games: an Event node that happened to land on a hub delivered silence,
+# which is the badge telling a lie, and §19.2 exists to prevent exactly that. (A
+# node has one kind, so an Event node can no longer be a shop at all.)
 #
 # AND IT ALWAYS FINDS ONE. When nothing is eligible the node RE-SHOWS an event
 # the run has already had rather than relaxing a gate. Both relaxations that

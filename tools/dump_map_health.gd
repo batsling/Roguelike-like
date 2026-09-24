@@ -57,10 +57,12 @@ func _report(label: String, rolls: int) -> void:
 	print("  mean degree       %.2f" % (float(deg_sum) / maxf(1.0, float(on_map.size()))))
 	print("  leaves (degree 1) %d" % leaves)
 	print("  eligible starts   %d" % starts)
+	# The ten biggest games — the run's shops until §19.7 moved those onto Shop
+	# nodes, and still the shape of the map worth printing.
 	var hubs: Array = []
-	for id in RunGraph.hub_ids():
+	for id in RunGraph.best_connected(10):
 		hubs.append("%s (%d)" % [Data.get_game(id).display_name, RunGraph.degree(id)])
-	print("  hubs              %s" % ", ".join(hubs))
+	print("  best connected    %s" % ", ".join(hubs))
 
 	var amulets: Dictionary = {}
 	var start_hits: Dictionary = {}

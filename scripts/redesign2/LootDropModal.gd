@@ -265,13 +265,13 @@ func _build() -> void:
 	# scrolls; "Leave the rest" and "Take" are pinned under it, because a modal whose
 	# answer buttons are somewhere below the fold is a modal that looks unanswerable.
 	var shell := VBoxContainer.new()
-	shell.add_theme_constant_override("separation", 10)
+	shell.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	margin.add_child(shell)
 	_body_scroll = ScrollContainer.new()
 	_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	shell.add_child(_body_scroll)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body_scroll.add_child(box)
 
@@ -364,7 +364,7 @@ func _offer_columns() -> int:
 
 func _offer_column(multi: bool) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.alignment = BoxContainer.ALIGNMENT_BEGIN if _slot != null \
 		else BoxContainer.ALIGNMENT_CENTER
 	# The heading the pack has, so the two columns start on the same line rather
@@ -398,8 +398,8 @@ func _offer_column(multi: bool) -> Control:
 func _offer_grid() -> Control:
 	var grid := GridContainer.new()
 	grid.columns = _offer_columns()
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
 	for i in range(_offers.size()):
 		var idx: int = i
 		grid.add_child(LootGrid.loose_piece(_offers[i], not GameState.loot_is_full(),
@@ -431,7 +431,7 @@ func _build_single(col: VBoxContainer) -> void:
 
 	col.add_child(_line(LootSystem.display_name(entry), ACCENT, 18))
 	var chips := HBoxContainer.new()
-	chips.add_theme_constant_override("separation", 6)
+	chips.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	chips.alignment = BoxContainer.ALIGNMENT_CENTER
 	chips.add_child(UITheme.chip(LootSystem.kind_name(entry), LootSystem.LOOT_COLOR))
 	var pref: String = LootSystem.preference(entry)
@@ -467,7 +467,7 @@ func _is_pill(entry: Dictionary) -> bool:
 
 func _pack_column() -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(PACK_W, 0)
 	col.add_child(_line("Your pack — %d / %d" % [
 		GameState.loot_items.size(), GameState.loot_capacity()], UITheme.TEXT_DIM, 12))
@@ -518,7 +518,7 @@ func _take_all_row(multi: bool) -> Control:
 
 func _buttons(multi: bool) -> Control:
 	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
+	buttons.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	var leave := UITheme.quiet_button(
 		"Leave the rest" if multi else "Leave it", Vector2(160, 38))

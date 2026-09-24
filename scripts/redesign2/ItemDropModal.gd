@@ -154,7 +154,7 @@ func _build() -> void:
 	var beside: HBoxContainer = null
 	if sideways:
 		beside = HBoxContainer.new()
-		beside.add_theme_constant_override("separation", 10)
+		beside.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 		box.add_child(beside)
 
 	_cards.clear()
@@ -172,8 +172,8 @@ func _build() -> void:
 			# was; embedded, the column decides the width and a Huge chest wraps
 			# instead of running off the side of somebody else's screen.
 			var shelf := HFlowContainer.new()
-			shelf.add_theme_constant_override("h_separation", 10)
-			shelf.add_theme_constant_override("v_separation", 10)
+			shelf.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+			shelf.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 			shelf.alignment = FlowContainer.ALIGNMENT_CENTER
 			box.add_child(shelf)
 			host = shelf
@@ -191,7 +191,7 @@ func _build() -> void:
 	# BUILT as the container it needs to be rather than flipped afterwards: an
 	# HBoxContainer is a FIXED BoxContainer and refuses `vertical`.
 	var row: BoxContainer = VBoxContainer.new() if sideways else HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4 if sideways else 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT if sideways else 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	if sideways:
 		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -288,7 +288,7 @@ func _build_shell(multi: bool, tint: Color) -> VBoxContainer:
 	margin.add_theme_constant_override("margin_bottom", pad)
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8 if _slot != null else 10)
+	box.add_theme_constant_override("separation", UITheme.GAP if _slot != null else 10)
 	margin.add_child(box)
 	return box
 
@@ -370,11 +370,11 @@ func _offer_card(item: ItemData) -> Control:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2 if compact else 6)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR if compact else 6)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if compact:
 		var side_by_side := HBoxContainer.new()
-		side_by_side.add_theme_constant_override("separation", 8)
+		side_by_side.add_theme_constant_override("separation", UITheme.GAP)
 		margin.add_child(side_by_side)
 		side_by_side.add_child(art)
 		side_by_side.add_child(col)

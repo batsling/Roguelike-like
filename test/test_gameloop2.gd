@@ -2505,6 +2505,60 @@ func test_the_quiet_kinds_owe_nothing() -> void:
 				% RunGraph.kind_label(int(kind)))
 
 
+# The strip reads `failure_price` and the spawn reads `failure_spawn_count`, so
+# the two must be one answer — a strip promising a price the spawn does not
+# charge is the board lying (§19.8). Every exemption also has to NAME itself,
+# because "none on a loss" with no reason reads as a bug.
+func test_the_price_the_strip_reads_is_the_price_the_spawn_charges() -> void:
+	if not _stand_for_failure(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	var price: Dictionary = GameLoop2.failure_price()
+	assert_gt(int(price["bodies"]), 0, "a game with nothing down owes bodies")
+	assert_eq(int(price["bodies"]), GameLoop2.failure_spawn_count(), "and the same number")
+	assert_eq(String(price["why"]), "", "with nothing to excuse")
+
+	GameLoop2.defeated_this_game = 1
+	price = GameLoop2.failure_price()
+	assert_eq(int(price["bodies"]), 0, "a body down shuts the tap")
+	assert_string_contains(String(price["why"]), "went down", "and says why")
+	GameLoop2.defeated_this_game = 0
+
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		GameState.node_kinds[GameState.current_game_id] = int(kind)
+		price = GameLoop2.failure_price()
+		assert_eq(int(price["bodies"]), 0, "%s owes nothing" % RunGraph.kind_label(int(kind)))
+		assert_string_contains(String(price["why"]), RunGraph.kind_label(int(kind)),
+			"and names the kind that bought it off")
+	GameState.node_kinds[GameState.current_game_id] = RunGraph.NodeKind.ENEMIES
+
+	GameState.amulet_game_id = GameState.current_game_id
+	price = GameLoop2.failure_price()
+	assert_eq(int(price["bodies"]), 0, "the Amulet owes nothing")
+	assert_string_contains(String(price["why"]), "Amulet", "and says so")
+
+	GameLoop2.game_in_play = false
+	price = GameLoop2.failure_price()
+	assert_eq(int(price["bodies"]), 0, "between games there is nothing to lose at")
+	assert_eq(String(price["why"]), "", "and nothing to explain")
+
+
+func test_the_count_to_the_next_boss_lands_on_the_capstone() -> void:
+	# `spawns_to_boss` is what the strip prints; it has to hit 1 exactly when the
+	# next spawn event is the one `is_boss_spawn` will answer true for.
+	for events in range(0, RunDifficulty.GAMES_PER_TIER * 4):
+		var to_boss: int = RunDifficulty.spawns_to_boss(events)
+		assert_between(to_boss, 1, RunDifficulty.GAMES_PER_TIER,
+			"%d events in: a count inside one band" % events)
+		assert_true(RunDifficulty.is_boss_spawn(events + to_boss),
+			"%d events in: the spawn it counts down to lands a boss" % events)
+		for step in range(1, to_boss):
+			assert_false(RunDifficulty.is_boss_spawn(events + step),
+				"%d events in: and none before it" % events)
+	assert_eq(RunDifficulty.spawns_to_boss(-3), RunDifficulty.GAMES_PER_TIER,
+		"a negative counter reads as a fresh run")
+
+
 func test_a_failure_spawn_stands_the_bodies_the_ladder_asks_for() -> void:
 	if not _stand_for_failure(2):
 		pending("the catalog could not stand the run 2 hops out")

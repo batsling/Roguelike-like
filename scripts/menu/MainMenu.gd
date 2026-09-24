@@ -63,14 +63,15 @@ func _ready() -> void:
 #
 # The bigger half of §6 is still open: these colours are also authored in the
 # `.tscn`, so the editor preview shows colours no player ever sees.
+# The background, the title (gold) and the subtitle (dim text) are NOT set here.
+# They are authored in MainMenu.tscn at their real UITheme values, so the one
+# scene built in the editor previews the way it plays; this used to overwrite all
+# three at _ready, and the editor showed colours no player ever saw.
+# test_main_menu pins the scene's three colours to UITheme so a theme change
+# cannot leave the scene behind.
 func _style_menu() -> void:
-	(%Background as ColorRect).color = UITheme.BG_DEEP
-	# The name in gold, the old title under it as a subtitle in the dim text
-	# colour — one is what the game is called, the other is what it is about, and
-	# they were the same 36px line until now.
-	(%Title as Label).add_theme_color_override("font_color", UITheme.GOLD)
-	(%Subtitle as Label).add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	# Make the primary action stand out.
+	# Make the primary action stand out — a stylebox, which a scene cannot share
+	# with the theme the way it can a colour.
 	var start := %StartRunBtn as Button
 	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	start.add_theme_color_override("font_color", UITheme.GOLD)
@@ -106,7 +107,7 @@ func _build_profile_row() -> void:
 	var row := HBoxContainer.new()
 	row.name = "ProfileRow"
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	_profile_lbl = Label.new()
 	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
@@ -228,8 +229,14 @@ func _begin_run(character_id: StringName) -> void:
 
 func _refresh_continue_button() -> void:
 	var count: int = SaveSystem.list_resumable().size()
+	# GONE rather than greyed when there is nothing to continue. It used to stand
+	# disabled as "Continue (no saved runs)" — a full row of the menu saying
+	# nothing — and a first launch, which has no saves by definition, opened on it.
+	_continue_btn.visible = count > 0
 	_continue_btn.disabled = count == 0
-	_continue_btn.text = "Continue" if count > 0 else "Continue (no saved runs)"
+	_continue_btn.text = "Continue"
+	if count == 0:
+		_save_list_container.visible = false
 
 func _on_continue_toggle() -> void:
 	_save_list_container.visible = not _save_list_container.visible
@@ -259,11 +266,11 @@ func _save_row(entry: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.GOLD.lerp(UITheme.BORDER, 0.6 if is_auto else 0.85), 8, 8, 1))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	wrap.add_child(row)
 
 	var text := VBoxContainer.new()
-	text.add_theme_constant_override("separation", 0)
+	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.custom_minimum_size = Vector2(190, 0)
 	row.add_child(text)

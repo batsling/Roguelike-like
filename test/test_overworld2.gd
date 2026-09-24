@@ -217,7 +217,7 @@ func _stand_near_the_amulet(hops: int = 2) -> bool:
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
 # through the modal's own path rather than freed, so the chain behind it still
-# runs — the shop a hub owes opens off `finished`, and half a dozen shop tests
+# runs — the shop a Shop node owes opens off `finished`, and half a dozen shop tests
 # depend on that.
 # Leave the screen a game ends on, and drop anything still on its table. The
 # player's own way out (`dismiss`), so the chain behind it runs exactly as it does
@@ -419,32 +419,21 @@ func test_an_event_node_raises_its_event_on_arrival() -> void:
 		"the event is up before a word has been reported about the game")
 
 
-# The gate that actually bit. `roll_for_arrival` pays no event at any of the ten
-# hubs (§14.4), so an Event node that landed on one delivered silence — and a
-# node whose kind said event and then delivered nothing is the badge telling a
-# lie. It failed about one full run in three, depending on whether the offering
-# happened to deal a hub.
-func test_an_event_node_on_a_hub_still_finds_its_event() -> void:
-	var hub: GameData = null
-	var at: int = -1
-	for i in range(_ui._choices.size()):
-		var g: GameData = _ui._choices[i]["game"]
-		if ShopSystem.is_hub(g.id):
-			hub = g
-			at = i
-			break
-	if hub == null:
-		# Force the question rather than shrug: the promise is about the KIND, and
-		# a hub is only the case that exposed it.
-		assert_not_null(EventSystem.roll_for_node(_ui._choices[0]["game"].id),
-			"an Event node always finds an event, hub or not")
-		return
-	assert_null(EventSystem.roll_for_arrival(hub.id),
-		"a hub pays no ordinary arrival event — that is the rule being stepped over")
-	assert_not_null(EventSystem.roll_for_node(hub.id),
+# An Event node steps over BOTH of `roll_for_arrival`'s gates. The one that bit
+# was the hub gate — an Event node on one of the ten hubs delivered silence, about
+# one full run in three — and §19.7 retired it with the hubs: a node has one kind,
+# so an Event node cannot be a Shop node. The gate still standing is "this node
+# has already paid its event", and a badge that says Event is a promise about
+# this arrival, so it steps over that one too.
+func test_an_event_node_that_already_paid_still_finds_its_event() -> void:
+	var node: StringName = StringName(_ui._choices[0]["slot"])
+	GameState.event_nodes_fired[node] = true
+	assert_null(EventSystem.roll_for_arrival(node),
+		"a node that has paid pays no ordinary event — the rule being stepped over")
+	assert_not_null(EventSystem.roll_for_node(node),
 		"but a node whose badge says Event finds one anyway")
-	GameState.node_kinds[hub.id] = RunGraph.NodeKind.EVENT
-	_ui.pick(at)
+	GameState.node_kinds[node] = RunGraph.NodeKind.EVENT
+	_ui.pick(0)
 	assert_not_null(_ui._event_modal, "and it is raised on arrival like any other")
 
 
@@ -1356,9 +1345,13 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 # pointed at a game card's popup. So the surface showing you had a Bash could not
 # spend it. They arm from those chips now and the click on a card is the aim.
 
+# The first card a Bash may be aimed at. A CHAMPION node refuses a Bash (§7.1),
+# and about one card in ten is one, so the card is ARRANGED to be an Enemies node
+# rather than hoped to be — a test about bashing must not fail on the deal.
 func _first_bashable_index() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i].get("amulet", false)):
+			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
 			return i
 	return -1
 
@@ -2045,6 +2038,40 @@ func test_the_extra_turns_readout_carries_a_hover_card() -> void:
 		"named for what it is")
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
 		"Amulet", "and it says WHY the number is what it is")
+
+# §19.8: the strip says what LOSING here costs, beside what handing the game in
+# costs — and how close the next boss is, since a lost run can be the spawn that
+# lands one. Driven through the real price so the strip cannot drift off it.
+func test_the_strip_carries_the_failure_price_and_the_boss_count() -> void:
+	var board: BattlefieldView = _ui._board
+	GameLoop2.game_in_play = true
+	GameLoop2.defeated_this_game = 0
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	board.refresh()
+	var owed: int = GameLoop2.failure_spawn_count()
+	if owed > 0:
+		assert_string_contains(board._spawn_price.text, "+%d" % owed,
+			"the strip names the bodies a loss here stands up")
+	else:
+		assert_string_contains(board._spawn_price.text, "none",
+			"the strip says a loss here costs nothing")
+	assert_true(board._spawn_price.visible, "with a game in play the price is shown")
+	assert_string_contains(board._boss_count.text, "next spawn",
+		"one spawn short of the band, the strip warns the boss is next")
+
+	GameLoop2.defeated_this_game = 1
+	GameState.spawn_events = 0
+	board.refresh()
+	assert_string_contains(board._spawn_price.text, "none",
+		"one body down shuts the tap, and the strip says so")
+	assert_string_contains(board._boss_count.text, "%d spawns" % RunDifficulty.GAMES_PER_TIER,
+		"and a fresh band counts the whole way down")
+	var card: Dictionary = board._pressure_panel.get_meta(HoverCard.META)
+	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
+	assert_string_contains(lines, "went down", "the hover card gives the reason")
+	assert_string_contains(lines, "boss", "and explains the count")
+	GameLoop2.defeated_this_game = 0
+	GameState.spawn_events = 0
 
 # The offering is the one place that gets nothing: the hover line under the cards
 # already says what is waiting, and a popup over three covers being scanned is
@@ -4505,6 +4532,7 @@ func _a_boss_is_standing() -> bool:
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
+			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
 			return i
 	return 0
 
@@ -4777,6 +4805,49 @@ func test_the_amulet_game_cannot_be_bashed() -> void:
 	_ui.bash_choice(idx)
 	assert_eq(GameState.bash, 1, "the charge is not spent")
 	assert_false(GameLoop2.is_bashed(amulet), "the run's goal survives")
+
+# §7.1, settled: a boss cannot be BASHED out of the road, but it can be
+# SCRAMBLED — a redraw is choosing a different fight, a Bash is refusing one.
+func test_a_champion_node_cannot_be_bashed() -> void:
+	_ui._build_choices()
+	var idx: int = _first_bashable_index()
+	if idx < 0 or _ui._choices.size() <= 1:
+		pending("nothing on this offering could be bashed at all")
+		return
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	var slot: StringName = StringName(_ui._choices[idx]["slot"])
+	GameState.bash = 1
+	assert_false(_ui.bash_choice(idx), "the bash is refused")
+	assert_eq(GameState.bash, 1, "the charge is not spent")
+	assert_false(GameLoop2.is_bashed(slot), "and the Champion node is still on the road")
+	# The same card as an Enemies node goes, so it was the KIND that refused it.
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
+	assert_true(_ui.bash_choice(idx), "an Enemies node on the same slot can be bashed")
+
+func test_an_armed_bash_stays_up_after_aiming_at_a_champion() -> void:
+	_ui._build_choices()
+	var idx: int = _first_bashable_index()
+	if idx < 0:
+		pending("nothing on this offering could be bashed at all")
+		return
+	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	GameState.bash = 1
+	_ui.arm_bash()
+	_ui.open_choice(idx)
+	assert_eq(_ui._armed_verb, &"bash",
+		"a refused aim leaves the verb up to be pointed somewhere else")
+
+func test_a_champion_node_can_still_be_scrambled() -> void:
+	_ui._build_choices()
+	if _ui._choices.is_empty():
+		pending("the offering is empty")
+		return
+	for c in _ui._choices:
+		if not bool(c.get("amulet", false)):
+			_set_kind(c, RunGraph.NodeKind.CHAMPION)
+	GameState.scramble = 1
+	assert_true(_ui.scramble(), "the offering redraws with a Champion on it")
+	assert_eq(GameState.scramble, 0, "and the charge is spent")
 
 func test_bash_is_refused_when_it_would_leave_nowhere_to_go() -> void:
 	# A node with exactly one connection: destroying that one card would strand
@@ -6088,7 +6159,7 @@ func _offer_at(hub: StringName, salt: int) -> Array:
 func test_a_hub_always_offers_at_least_one_game_that_leads_onward() -> void:
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+		pending("the run is standing nowhere")
 		return
 	# Many seeds, because the bug this guards is probabilistic: the unguarded
 	# draw only strands you on the subsets that happen to be all dead ends.
@@ -6105,7 +6176,7 @@ func test_a_hub_always_offers_at_least_one_game_that_leads_onward() -> void:
 func test_the_hub_rule_never_drops_the_amulet() -> void:
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+		pending("the run is standing nowhere")
 		return
 	# Park the amulet on a neighbour of the hub so it's reachable and therefore
 	# pinned to the front of the offering; the onward swap takes the LAST slot
@@ -6149,7 +6220,7 @@ func test_the_rule_promises_a_card_that_exists_not_an_invented_one() -> void:
 	# have degree 0, which is exactly the all-dead-ends pool this guards.
 	var hub: StringName = _busiest_hub()
 	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+		pending("the run is standing nowhere")
 		return
 	GameState.current_game_id = hub          # so the hub rule is actually engaged
 	var offered: Array = [&"a", &"b", &"c"]
@@ -7424,16 +7495,17 @@ func test_a_queued_payout_survives_a_save_in_either_shape() -> void:
 
 # §14's decision still holds: a shop blocks nothing and stays for the whole visit.
 # LEAVING THE HAUL SCREEN IS WHAT PUTS IT THERE, down the page's own chain — the
-# screen names the hub on its way out and never touches the panel.
+# screen names the shop on its way out and never touches the panel.
 func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
-	var hub: StringName = _a_hub()
-	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
 		return
-	# THE OPENING GAME MAY ITSELF HAVE BEEN A HUB. `choose_start(0)` takes the
-	# first of a RANDOM offering, so once in a while it is one of the ten hubs —
-	# and `_open_at_first_offering` then walks off that game's haul screen, which
-	# is precisely the thing that mounts a shelf. The page arrives here with a
+	# THE PAGE MAY ALREADY HAVE A SHOP ON IT. This bit when the shops stood at
+	# the ten hubs: `choose_start(0)` takes the first of a RANDOM offering, once in
+	# a while that was a node, and `_open_at_first_offering` then walked off its
+	# haul screen, which is precisely the thing that mounts a shelf. (The opening
+	# game is always an Enemies node now, §19.1, but the guard costs nothing.) The page arrives here with a
 	# shop already on it and `assert_null` below fails, on a run that did nothing
 	# wrong.
 	#
@@ -7442,24 +7514,24 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	# mounted whatever the opening rolled. Cleared through the page's own teardown
 	# rather than by nulling the field, so the panel is actually closed.
 	_ui._clear_shop()
-	# Standing IN the hub with its shelf owed — the state _open_post_game names a
+	# Standing ON the Shop node with its shelf owed — the state _open_post_game names a
 	# shelf in. The screen is opened directly rather than reported into: a report
 	# moves the run to the card it just played and builds the screen in the same
 	# breath now that the resolve can land instantly (§7.4), so there is no moment
 	# in between to be standing somewhere else.
-	GameState.current_game_id = hub
-	_ui._pending_shop = hub
-	_ui._post_snapshot = {"game": Data.get_game(hub), "beaten": true,
+	GameState.current_game_id = node
+	_ui._pending_shop = node
+	_ui._post_snapshot = {"game": Data.get_game(node), "beaten": true,
 		"escaped": false, "amulet": false, "res": {}}
 	_ui._open_post_game()
 	var screen := _haul()
 	assert_not_null(screen)
 	if screen == null:
 		return
-	assert_eq(screen.shop_id(), hub, "the screen knows where its exit leads")
+	assert_eq(screen.shop_id(), node, "the screen knows where its exit leads")
 	assert_string_contains(screen.exit_text(), "Go to Shop",
 		"and the way out NAMES it rather than saying 'see what's here'")
-	assert_eq(_ui._pending_shop, hub,
+	assert_eq(_ui._pending_shop, node,
 		"the shelf is still the PAGE's to mount — the screen never claimed it")
 	assert_null(_ui._shop_panel, "and nothing is mounted while the haul is up")
 	# `dismiss` emits `finished`, which the page wired to _on_post_game_finished —
@@ -7468,7 +7540,7 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	_ui._post_screen = null
 	assert_not_null(_ui._shop_panel, "leaving mounts the shelf")
 	if _ui._shop_panel != null:
-		assert_eq(_ui._shop_panel.game_id(), hub, "and it is this hub's")
+		assert_eq(_ui._shop_panel.game_id(), node, "and it is this node's")
 		assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
 			"under the board, where a shop lives for the rest of the visit")
 	_dismiss_event()
@@ -7503,27 +7575,32 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 # The shop is part of the page, under the board (§14)
 # ---------------------------------------------------------------------------
 
-func _a_hub() -> StringName:
-	var hubs: Array = ShopSystem.hub_games()
-	return hubs[0] if not hubs.is_empty() else &""
+# The node the run is standing on, STAMPED a Shop (§19.1) — the only node a shop
+# can be mounted at, since the page mounts the one underfoot. Stamped rather than
+# searched for so no shop test rides on what the deal put where.
+func _a_shop() -> StringName:
+	var here: StringName = GameState.current_game_id
+	if here != &"":
+		GameState.node_kinds[here] = RunGraph.NodeKind.SHOP
+	return here
 
 func test_a_shop_mounts_under_the_board_rather_than_over_it() -> void:
-	var hub: StringName = _a_hub()
-	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
 		return
-	_ui._mount_shop(hub)
+	_ui._mount_shop(node)
 	assert_not_null(_ui._shop_panel, "the shop is on the page")
 	assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
 		"in the board's own column, under it")
-	assert_eq(_ui._shop_panel.game_id(), hub, "and it is that hub's shop")
+	assert_eq(_ui._shop_panel.game_id(), node, "and it is that node's shop")
 
 func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
-	var hub: StringName = _a_hub()
-	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
 		return
-	_ui._mount_shop(hub)
+	_ui._mount_shop(node)
 	assert_eq(_ui._shop_hint.visible, not _ui._shop_in_view(),
 		"the pointer is up exactly while the shop it points at is off screen")
 	_ui._clear_shop()
@@ -7531,15 +7608,15 @@ func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
 	assert_false(_ui._shop_hint.visible, "and the pointer with it")
 
 func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
-	var hub: StringName = _a_hub()
-	if hub == &"":
-		pending("the offering rolled no hub to stand on")
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
 		return
-	ShopSystem.shop_for(hub)
-	_ui._mount_shop(hub)
+	ShopSystem.shop_for(node)
+	_ui._mount_shop(node)
 	_pick_enemies(0)
 	assert_null(_ui._shop_panel, "picking the next game walks out of the shop")
-	assert_false(ShopSystem.shop_for(hub).is_empty(),
+	assert_false(ShopSystem.shop_for(node).is_empty(),
 		"but the shelf is still there to come back to")
 
 # ---------------------------------------------------------------------------
@@ -7902,48 +7979,107 @@ func test_the_page_still_fits_the_window_with_machines_standing_on_it() -> void:
 	_assert_fits("the page with three machines under the board")
 	ObjectSystem.clear()
 
+# Give the page the window the project SHIPS. The headless harness hands it
+# 1280x1280, and the checklist's ceiling is read off the live page (it is right
+# for a taller window to get a taller checklist), so a test about the ceiling has
+# to stand in the 1280x720 box `_assert_fits` measures against. Sized on this
+# test's own page rather than on the harness window, so nothing outlives it.
+func _at_720p() -> void:
+	_ui.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_ui.position = Vector2.ZERO
+	_ui.size = Vector2(1280, 720)
+
+# Stand `n` more bodies on the board, rolled for the game in play, and rebuild the
+# checklist around them. Past the board's own room they queue off the field, and
+# still take a checklist row each — which is the growth under test.
+func _crowd_board(n: int) -> void:
+	var key: StringName = GameLoop2.game_type_key(Data.get_game(GameState.current_game_id))
+	for _i in range(n):
+		var e: GoalEnemyData = GameLoop2.roll_enemy(key, RunDifficulty.current_tier())
+		if e != null:
+			GameLoop2.spawn_to_stack(e)
+	_ui._populate_play_panel()
+
+# THE CHECKLIST HAS A CEILING (docs/layout-review-backlog.md). A row per body and
+# no upper bound on the bodies used to put the page past a 720p window at four;
+# now the checklist scrolls inside whatever the left column has left.
+func test_a_crowded_board_does_not_push_the_page_past_the_window() -> void:
+	_at_720p()
+	_pick_enemies(0)
+	_crowd_board(10)
+	_ui._refresh()
+	for _i in range(4):
+		await get_tree().process_frame
+	_assert_fits("the report screen with %d bodies standing" % GameLoop2.stack.size())
+	var shown: float = _ui._verify_scroll.size.y
+	var content: float = _ui._verify_box.get_combined_minimum_size().y
+	assert_lt(shown, content,
+		"the checklist scrolls rather than growing (%.0f shown of %.0f)" % [shown, content])
+	assert_gte(shown, minf(content, OVERWORLD.CHECKLIST_FLOOR),
+		"and it is never squeezed below its floor")
+	# The box keeps the PANEL's width — the load-bearing half of the fix. Laid
+	# out at its minimum width instead (~130px), every goal wraps a word a line.
+	# Less the scrollbar's lane, which it has now because the list scrolls.
+	var lane: float = _ui._verify_scroll.get_v_scroll_bar().size.x
+	assert_almost_eq(_ui._verify_box.size.x, _ui._verify_scroll.size.x - lane, 1.0,
+		"the rows are as wide as the panel they sit in, less the scrollbar")
+
+func test_a_short_checklist_is_not_given_a_scrollbar() -> void:
+	_pick_enemies(0)
+	_ui._refresh()
+	for _i in range(4):
+		await get_tree().process_frame
+	assert_almost_eq(_ui._verify_scroll.size.y,
+		_ui._verify_box.get_combined_minimum_size().y, 1.0,
+		"a checklist that fits is drawn at its full height")
+
 func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# The shop shares the machines' slot and had the same disease, worse: its
 	# three cards ran the page to 1231px of a 688px window, and that predates
 	# machines entirely.
 	#
-	# EVERY HUB, not just the first one the random graph happened to roll. This
-	# used to mount `hubs[0]` and stop, which made it a coin flip: the shop's name
-	# was a Label with no clip, so its width was the hub's NAME length, and a wide
-	# shop panel took the room out of the left column until the checklist wrapped
-	# and grew the page. "Enter the Gungeon" overran by 35px and "FTL" did not, so
-	# the same bug passed or failed depending on the seed. Walking the whole roster
-	# is what turns that back into a test.
-	var hubs: Array = ShopSystem.hub_games()
-	assert_false(hubs.is_empty(), "a run has hubs")
-	# THE BOARD IS CLEARED FIRST, and that is a scope decision rather than a
-	# convenience. This test is about the SHOP PANEL's contribution to the page.
-	# Every body standing also costs the page a checklist row at ~41px against the
-	# ~11px it has to spare, so a run that arrives here with followers overflows
-	# whatever the shop does — measured, and written up as an open item in
-	# docs/layout-review-backlog.md. Leaving the board as the run left it would
-	# quietly turn this into a test about the checklist, failing or passing on how
-	# many bodies the offering happened to leave standing.
-	GameLoop2.stack.clear()
-	_ui._populate_play_panel()
-	for hub in hubs:
-		_ui._mount_shop(hub)
+	# THE LONGEST NAME ON THE MAP, as well as where the run stands. This used to
+	# walk all ten hubs, because the shop's name was a Label with no clip and a
+	# long one ("Enter the Gungeon", 35px over) took the room out of the left
+	# column until the checklist wrapped and grew the page — so the same bug passed
+	# or failed on the seed. The header is the flat word "Shop" now, but the
+	# panel still knows its game, and the longest name any Shop node carries is
+	# the case that bit; the hubs are gone, so that is the roster worth walking.
+	_at_720p()
+	var shops: Array = [_a_shop()]
+	var longest: StringName = &""
+	for gid in ShopSystem.shop_nodes():
+		var g: GameData = Data.get_game(gid)
+		if g != null and (longest == &"" or g.display_name.length()
+				> Data.get_game(longest).display_name.length()):
+			longest = gid
+	if longest != &"" and longest != shops[0]:
+		shops.append(longest)
+	# A CROWDED BOARD, on purpose. This test used to clear the board first,
+	# because every body standing added a checklist row the page had no room for
+	# and the shop page fitted ZERO of them. The checklist is capped to the room
+	# the window leaves now (Overworld2._fit_checklist), so the case that used to
+	# be scoped out is the one worth standing here.
+	_pick_enemies(0)
+	_crowd_board(8)
+	for node in shops:
+		_ui._mount_shop(node)
 		await get_tree().process_frame
 		await get_tree().process_frame
 		assert_not_null(_ui._shop_panel, "the shop mounts under the board")
 		_ui._refresh()
 		await get_tree().process_frame
-		var game: GameData = Data.get_game(hub)
+		var game: GameData = Data.get_game(node)
 		_assert_fits("the page with %s's shop on it" % (
-			game.display_name if game != null else String(hub)))
+			game.display_name if game != null else String(node)))
 
 func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
-	var hubs: Array = ShopSystem.hub_games()
-	_ui._mount_shop(hubs[0])
+	var shop_node: StringName = _a_shop()
+	_ui._mount_shop(shop_node)
 	await get_tree().process_frame
-	var shelf: Array = ShopSystem.stock(hubs[0])
+	var shelf: Array = ShopSystem.stock(shop_node)
 	if shelf.is_empty():
-		# A hub whose shop has not opened yet has nothing to draw; the fit test
+		# A shop that has not opened yet has nothing to draw; the fit test
 		# above is the one that matters for it.
 		assert_eq(_ui._shop_panel._cards_row.get_child_count(), 0)
 		return
@@ -8012,37 +8148,56 @@ func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
 
 # --- the three card teleports (docs/cards-design.md §5.2) -------------------
 
-func test_the_hermit_lands_on_a_hub() -> void:
-	var landed: String = _ui.card_teleport({"dest": "hub"})
+func test_the_hermit_lands_on_a_shop_node() -> void:
+	var landed: String = _ui.card_teleport({"dest": "shop"})
 	assert_ne(landed, "", "it says something either way")
 	if not landed.begins_with("There is no"):
-		assert_true(ShopSystem.is_hub(GameState.current_game_id),
-			"the nearest Hub Game is a hub: %s" % landed)
+		assert_true(ShopSystem.is_shop(GameState.current_game_id),
+			"the nearest shop is a Shop node: %s" % landed)
+	else:
+		assert_true(ShopSystem.shop_nodes().is_empty(),
+			"it only fizzles on a map with no Shop node on it")
 	_ui._end_resolve()
 	_close_arrival_card()
 	_leave_post_game()
 
-func test_the_hermit_takes_the_nearest_hub_and_no_further() -> void:
+func test_the_hermit_takes_the_nearest_shop_and_no_further() -> void:
 	# "Nearest" is measured in ROADS. Asserted over the pool rather than over one
 	# trip, because ties are drawn between and a single landing proves nothing.
 	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
-	var pool: Array = _ui._hub_pool()
+	var pool: Array = _ui._shop_pool()
 	if pool.is_empty():
-		# An empty pool is only legal when there is genuinely no hub to reach —
+		# An empty pool is only legal when there is genuinely no shop to reach —
 		# asserted rather than returned on, so this test is never quietly about
 		# nothing (see CLAUDE.md on tests that stop being reachable).
-		for gid in ShopSystem.hub_games():
+		for gid in ShopSystem.shop_nodes():
 			assert_false(gid != GameState.current_game_id and dist.has(gid)
 				and not GameLoop2.is_bashed(gid) and not RunGraph.is_off_map(gid),
-				"an empty pool means no hub was reachable, and %s was" % gid)
+				"an empty pool means no shop was reachable, and %s was" % gid)
 		return
 	var best: int = int(dist.get(pool[0], 0))
 	for gid in pool:
+		assert_true(ShopSystem.is_shop(gid), "%s is a Shop node" % gid)
 		assert_eq(int(dist.get(gid, -1)), best, "every candidate is equally near")
-	for gid in ShopSystem.hub_games():
+	for gid in ShopSystem.shop_nodes():
 		if gid == GameState.current_game_id or not dist.has(gid):
 			continue
 		assert_gte(int(dist[gid]), best, "and nothing reachable is nearer")
+
+
+# THE HUBS DO NOT SELL (§19.7): the best-connected game on the map is an ordinary
+# node unless the deal made it a Shop, so beating it queues no shelf.
+func test_a_node_that_is_not_a_shop_mounts_no_shop() -> void:
+	var here: StringName = GameState.current_game_id
+	if here == &"":
+		pending("the run is standing nowhere")
+		return
+	GameState.node_kinds[here] = RunGraph.NodeKind.ENEMIES
+	assert_false(ShopSystem.is_shop(here), "an Enemies node does not sell")
+	_ui._clear_shop()
+	_ui._pending_shop = here
+	_ui._open_pending_shop()
+	assert_null(_ui._shop_panel, "so nothing mounts under the board")
 
 func test_the_fool_standing_on_the_start_says_so_rather_than_fizzling_vaguely() -> void:
 	# A card spent on a journey of nought steps. "There is no Starting Game to

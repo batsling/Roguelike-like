@@ -214,7 +214,7 @@ func _build() -> void:
 	_panel = _build_floating_panel()
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
+	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	_rows = root
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 16)
@@ -299,7 +299,7 @@ func _build_floating_panel() -> PanelContainer:
 # pixel the window doesn't take is sky the route can be framed in.
 func _build_header() -> Control:
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 6)
+	stack.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel",
@@ -311,7 +311,7 @@ func _build_header() -> Control:
 	stack.add_child(bar)
 
 	var title_row := HBoxContainer.new()
-	title_row.add_theme_constant_override("separation", 10)
+	title_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	bar.add_child(title_row)
 
 	var grip := Label.new()
@@ -357,7 +357,7 @@ func _build_header() -> Control:
 		title_row.add_child(close)
 
 	var tools := HBoxContainer.new()
-	tools.add_theme_constant_override("separation", 8)
+	tools.add_theme_constant_override("separation", UITheme.GAP)
 	stack.add_child(tools)
 	_header_tools = tools
 
@@ -727,7 +727,7 @@ func _build_pin_bar() -> Control:
 	bar.add_theme_stylebox_override("panel",
 		UITheme.flat(COL_WAYPOINT.lerp(UITheme.BG, 0.4), 6, 8, 1, UITheme.GOLD))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UITheme.GAP)
 	bar.add_child(row)
 	_pin_label = Label.new()
 	_pin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -757,7 +757,7 @@ func _refresh_pin_bar() -> void:
 
 func _legend() -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	row.add_child(_legend_chip("▶ If you go here" if _preview else "📍 You are here", COL_CURRENT))
 	if not _preview:
 		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
@@ -769,13 +769,15 @@ func _legend() -> Control:
 	# is set by the LADDER, and a hint sharing the chips' row was simply clipped
 	# out of existence on every route narrower than the sentence.
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 4)
+	stack.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	stack.add_child(row)
 	var hint := Label.new()
 	# Terser than it reads, on purpose: this label sits under the route and every
 	# line it wraps to is a line the ladder loses. Spelling the shop out cost the
-	# map enough height to push a fit past the legibility floor.
-	hint.text = "🛒 = a shop  •  ⚔ = beaten here  •  click any game for details"
+	# map enough height to push a fit past the legibility floor — and spelling out
+	# all four kind marks would too, so only the one a player routes FOR is named;
+	# every rung's hover says what its own mark means.
+	hint.text = "$ = a shop  •  ⚔ = beaten here  •  click any game for details"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
@@ -784,7 +786,7 @@ func _legend() -> Control:
 
 func _legend_chip(text: String, swatch: Color) -> Control:
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var sw := PanelContainer.new()
 	sw.custom_minimum_size = Vector2(16, 16)
 	sw.add_theme_stylebox_override("panel", UITheme.flat(swatch, 3, 0, 1, UITheme.BORDER))

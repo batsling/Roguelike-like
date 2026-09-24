@@ -53,7 +53,7 @@ extends Resource
 #   {"op": "gain_stat", "stat": "bonus_shields", "value": 2} (The Hierophant)
 #   {"op": "double_stat", "stat": "gold", "floor": 2}        (2 of Diamonds)
 #   {"op": "teleport_type", "game_type": "deckbuilder"}      (Ride the Bus)
-#   {"op": "teleport_hub"}                                   (The Hermit)
+#   {"op": "teleport_shop"}                                  (The Hermit)
 #   {"op": "teleport_start"}                                 (The Fool)
 #   {"op": "spawn_object", "object": "blood_donation_machine"} (Temperance)
 #   {"op": "gain_loot", "kind": "card", "count": 3}          (Ancient Recall)

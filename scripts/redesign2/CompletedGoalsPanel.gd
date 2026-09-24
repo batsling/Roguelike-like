@@ -62,14 +62,14 @@ func setup() -> void:
 	center.add_child(card)
 
 	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 0)
+	body.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	card.add_child(body)
 
 	var header := PanelContainer.new()
 	header.add_theme_stylebox_override("panel",
 		UITheme.flat(DONE.lerp(UITheme.BG, 0.78), 12, 14, 0))
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 12)
+	head_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	header.add_child(head_row)
 	var title := Label.new()
 	title.text = "✓  Completed"
@@ -85,7 +85,7 @@ func setup() -> void:
 	body.add_child(header)
 
 	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 10)
+	inner.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		pad.add_theme_constant_override(side, 16)
@@ -107,7 +107,7 @@ func setup() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	inner.add_child(scroll)
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 10)
+	_list.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
 
@@ -163,13 +163,13 @@ func _group_block(group: Dictionary) -> Control:
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 8, 8, 1, DONE.lerp(UITheme.BG, 0.62)))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	wrap.add_child(col)
 
 	var rows: Array = group.get("rows", [])
 	var game: GameData = Data.get_game(StringName(group.get("game", &"")))
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
+	head.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(head)
 	var where := Label.new()
 	where.text = game.display_name if game != null else "Before the road started"

@@ -61,7 +61,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     GameChoiceModal — the popup an offered card opens
-│   │                      #     ShopPanel2      — a hub's shop, mounted under the board
+│   │                      #     ShopPanel2      — a Shop node's shelf, mounted under the board
 │   │                      #     ObjectPanel2    — the machines standing here, same place
 │   │                      #     ObjectCard      — one machine, in the panel or in an event
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
@@ -247,7 +247,7 @@ Globals are registered in `project.godot` under `[autoload]` and live in
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the games-beaten clock, the enemy stack, and the grid the followers advance across. Committing to a game spawns **two** bodies — the one the card advertised and an **escort** rolled from the same pool (§7.5), boss rounds included. **Neither belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns the OPS every **ability** is built out of (§7.6): the catalogue in `data/abilities2.0` authors `trigger: op args` in its `Effect` column and this file dispatches on that rather than on the ability's id, so an ability composed of ops that already exist is a sheet row and nothing else. `ABILITY_OPS` is the list that exists, and the generator refuses to write a row naming anything outside it. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability behaviour did not come with it — `BodyFacts` gained the pure half of the op layer (`ops_at`, `has_op`, `op_row`, `resolve_op_args`) for the same reason, while the ops themselves run on the loop. |
-| `ShopSystem` | Shops (`docs/games-first-redesign.md` §14): which games are the run's ten hubs, each shop's three-item shelf and its prices, buying, and the Scramble reroll. State lives on `GameState` (`hub_games` / `shops`), the same split `EventSystem` uses. |
+| `ShopSystem` | Shops (`docs/games-first-redesign.md` §14, §19.1): a shop stands at every **Shop node** (`is_shop` reads `GameState.node_kinds`; the ten hub games that used to carry them were retired in §19.7). Each shop's three-item shelf, keyed by **node** id so a transmuted Shop node keeps it, its prices, buying, and the Scramble reroll. State lives on `GameState` (`shops`), the same split `EventSystem` uses. |
 | `RunTimer` | The **speedrun clock** (see "The speedrun clock" below). Starts on the game the run stands on (`TriggerBus.game_selected`), banks a split per lost attempt, stops when the game is reported — beaten, missed or escaped — and keeps a running total for the whole run. Time is accumulated in `_process` rather than measured between timestamps, so a run left open overnight comes back where it was. Rides the save (`SaveSystem` `timer`), drawn as a one-row split strip in the Now Playing panel (with the full LiveSplit list behind `⏱`) and by the overlay. **It can be PAUSED** (`set_paused` / `toggle_pause`) — the clock counts real time for as long as the app is open, so answering the door should not cost the run twelve minutes; nothing else about the run pauses, and the pause rides the save. |
 | `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See "The stream overlay" below. |
 | `ScrollSystem` | Scroll identification + reading (the unidentified-loot gamble). |
@@ -347,7 +347,7 @@ node and its script.
     text, which changes every time the build does, is edited without touching
     layout code. The manual's **numbers are interpolated from the constants that
     govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.bonus_turns_for_hops`,
-    `ShopSystem.BASE_PRICE`, `RunGraph.NUM_HUBS` …), and `test_how_to_play.gd`
+    `ShopSystem.BASE_PRICE`, `ShopSystem.STOCK_SLOTS` …), and `test_how_to_play.gd`
     asserts the prose still quotes them, so a balance change cannot leave the
     manual lying. The menu's **bottom-left corner is its table of contents** —
     built from the same array, opening chapters **by id** rather than by index.
@@ -423,7 +423,7 @@ node and its script.
   Amulet's own card, where the flag a line above has already said it. The row is
   **paid for by merging the 🏆/🛒 flag and the ⚡ `+1 DASH` badge onto one line** —
   two stacked rows both blank on most cards — because the page's worst case (a
-  hub's shop under the board) has about two spare pixels and a third row does not
+  shop under the board) has about two spare pixels and a third row does not
   fit in them. The **hover
   line under the cards** names what is *waiting* there and not the game itself —
   the mouse is on that cover with its title printed under it, the line is one line
@@ -666,7 +666,7 @@ node and its script.
     nowhere to stand. Nothing is drawn over the top of a body — the boss skull and
     the "in 2" that used to be there covered the picture that identifies it.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
-  - **`ShopPanel2.gd`** — a hub's shop (§14), mounted **under the battlefield** on
+  - **`ShopPanel2.gd`** — a Shop node's shelf (§14), mounted **under the battlefield** on
     the page rather than opened over it: it blocks nothing, stays for the whole
     visit, and travelling on is what closes it. The overworld floats a
     `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
@@ -707,7 +707,7 @@ node and its script.
     the pool is spent — *not* re-derived from the report's defeat list, which
     misses a body a mine killed during a lost run.
     **One button out, and it names where it goes**: "Go to Event" when the node
-    owes one (clicking it is what opens the event), "Go to Shop" at a hub that
+    owes one (clicking it is what opens the event), "Go to Shop" at a Shop node, which
     owes no event, "Travel on" otherwise; the event wins when both are owed. It
     counts what it is about to bin, because a Legendary left on the ground should
     be a decision and not a side effect of pressing Continue. The sections are the
@@ -718,8 +718,8 @@ node and its script.
     arrive with a report has no haul screen to be part of. **The shelf is not
     here** — it was briefly borrowed and handed back, which left four sections
     fighting for a 720p canvas and an exit button pointing at something already on
-    screen; it stays under the board per §14, and this screen keeps only the hub's
-    id so its button can name it.
+    screen; it stays under the board per §14, and this screen keeps only the Shop
+    node's id so its button can name it.
 - **`RewardScreen.gd`** — chest rewards (level-ups, and the **Wand of Wishing**,
   which is a piece of loot rather than a relic now — `docs/wands-design.md` §5.2).
   **The obtain-any screen is its own layout**: reaching into the whole catalogue is a different decision
@@ -1603,7 +1603,7 @@ from the baked file. Keep the two in step when either changes — the tests in
 
 **Is the map still healthy after a batch of new games?**
 `tools/dump_map_health.gd` measures the run graph with the game's own code —
-`RunGraph.degree`, `hub_ids`, and `pick_amulet_and_starts` rolled a few hundred
+`RunGraph.degree`, `best_connected`, and `pick_amulet_and_starts` rolled a few hundred
 times — under both the ALL and OWNED filters, and prints the shape of what a
 player would be offered: how much of the catalog is on the map at all, how many
 games qualify as starts, which Amulets and which starts actually come up, and
@@ -1950,7 +1950,8 @@ above). What's still ahead:
   **deleted**: they loaded on every boot, were read by nothing, and were guarded by
   tests that made dead content look maintained. The `encountersold` sheet is still
   in the workbook when they are picked back up. **Shops are not on this list** —
-  they landed as their own thing at the ten hub games (§14).
+  they landed as their own thing (§14), first at the ten hub games and now
+  at Shop nodes (§19.1).
 - **The D20 events** — likewise deleted, for the same reason: `scripts/events/`
   (`EventModal`, `D20DieView`), `EventData` and the four ported `data/events` rows
   had no scene, no caller and no way to be reached. Events 2.0 (§12,

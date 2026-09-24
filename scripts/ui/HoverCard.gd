@@ -99,14 +99,14 @@ static func build(cfg: Dictionary) -> Control:
 			accent.lerp(UITheme.BORDER, 0.35)))
 
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	panel.add_child(col)
 
 	# The heading: art on the left, name and what-it-is stacked beside it. The
 	# art is what identifies the thing — it is the same picture the full card
 	# opens with, and the reason this is a card rather than a sentence.
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
+	head.add_theme_constant_override("separation", UITheme.GAP)
 	col.add_child(head)
 	# THROUGH `crisp_tex`, like every other surface that draws content art. This
 	# used to build the TextureRect by hand with the same three properties and one
@@ -122,7 +122,7 @@ static func build(cfg: Dictionary) -> Control:
 		head.add_child(tex)
 
 	var names := VBoxContainer.new()
-	names.add_theme_constant_override("separation", 1)
+	names.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(names)
 	var title := Label.new()
@@ -144,7 +144,7 @@ static func build(cfg: Dictionary) -> Control:
 	var pips: Array = cfg.get("pips", [])
 	if not pips.is_empty():
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
+		row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 		col.add_child(row)
 		for pip in pips:
 			row.add_child(_pip(pip))
@@ -195,7 +195,7 @@ static func _pip(pip: Dictionary) -> Control:
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	chip.add_child(row)
 	var art: Texture2D = pip.get("art")
 	if art != null:

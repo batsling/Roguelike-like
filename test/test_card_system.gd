@@ -287,7 +287,7 @@ func test_echo_form_is_not_echo_chamber() -> void:
 
 func test_the_three_teleports_hand_back_a_request_rather_than_moving_you() -> void:
 	var wants: Dictionary = {
-		&"ride_the_bus": "type", &"ix_the_hermit": "hub", &"0_the_fool": "start"}
+		&"ride_the_bus": "type", &"ix_the_hermit": "shop", &"0_the_fool": "start"}
 	for id in wants.keys():
 		var out: Dictionary = CardSystem.play_card(_entry(id), {"rng": _rng()})
 		assert_eq(out["requests"].size(), 1, "%s asks the overworld to move you" % id)

@@ -81,7 +81,7 @@ func _build_ui() -> void:
 	margin.add_child(scroll)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(vbox)
 
@@ -122,7 +122,7 @@ func _build_ui() -> void:
 	# there wasn't one. Every entry is a request: a size bigger than the desktop
 	# is clamped to what fits (Settings.windowed_fit).
 	var size_row := HBoxContainer.new()
-	size_row.add_theme_constant_override("separation", 8)
+	size_row.add_theme_constant_override("separation", UITheme.GAP)
 	vbox.add_child(size_row)
 
 	var size_label := Label.new()

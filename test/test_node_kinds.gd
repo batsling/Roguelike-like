@@ -88,3 +88,46 @@ func test_every_kind_has_a_label() -> void:
 	assert_eq(RunGraph.kind_label(RunGraph.NodeKind.SHOP), "Shop")
 	# An unknown value falls back the same way node_kind() does.
 	assert_eq(RunGraph.kind_label(99), "Enemies")
+
+
+# §19.8: the 🗺 map and the popup's route ladder both draw through
+# RouteLadder.node_box, so one rung carries the mark for both. Read off the RUNG's
+# id (the node), and every kind gets its own mark and hover.
+func test_a_rung_wears_its_nodes_kind() -> void:
+	var game: GameData = null
+	for g in Data.all_games():
+		game = g
+		break
+	if game == null:
+		pending("no games in the catalogue")
+		return
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
+			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
+		GameState.node_kinds[game.id] = int(kind)
+		var rung: Control = RouteLadder.node_box({}, game.id, Rect2(0, 0, 150, 48), 1)
+		var mark: Label = rung.get_node_or_null("KindMark")
+		assert_not_null(mark, "%s: the rung carries a kind mark" % RunGraph.kind_label(int(kind)))
+		if mark != null:
+			assert_eq(mark.text, RunGraph.kind_mark(int(kind)), "the kind's own mark")
+		assert_string_contains(rung.tooltip_text, RunGraph.kind_tip(int(kind)),
+			"and its hover says what the mark means")
+		rung.free()
+
+
+func test_a_rungs_card_spells_the_kind_out() -> void:
+	var game: GameData = null
+	for g in Data.all_games():
+		game = g
+		break
+	if game == null:
+		pending("no games in the catalogue")
+		return
+	GameState.node_kinds[game.id] = RunGraph.NodeKind.CHAMPION
+	var box: VBoxContainer = RouteLadder.node_card_body({"id": game.id})
+	var found := false
+	for l in box.find_children("*", "Label", true, false):
+		if (l as Label).text == "%s  %s" % [RunGraph.kind_mark(RunGraph.NodeKind.CHAMPION),
+				RunGraph.kind_label(RunGraph.NodeKind.CHAMPION)]:
+			found = true
+	assert_true(found, "the card names the kind the rung abbreviates")
+	box.free()

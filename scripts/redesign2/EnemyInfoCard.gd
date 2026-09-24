@@ -255,7 +255,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		var goal_wrap := PanelContainer.new()
 		goal_wrap.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 12, 1, UITheme.GOLD.lerp(UITheme.BG, 0.55)))
 		var goal_box := VBoxContainer.new()
-		goal_box.add_theme_constant_override("separation", 3)
+		goal_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		var goal_hdr := Label.new()
 		goal_hdr.text = "GOAL  (%s)" % String(GameLoop2.entry_goal_type(entry)).capitalize()
 		goal_hdr.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -430,7 +430,7 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 		UITheme.flat(tint.lerp(UITheme.BG, 0.80), 6, 5, 1, tint.lerp(UITheme.BG, 0.35)))
 	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified, games)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 7)
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(row)
 	if status.image != null:
 		# The clock in the corner for a borrowed status, exactly as the board's pips
@@ -440,7 +440,7 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(art)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 1)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(col)
 	var name_lbl := Label.new()

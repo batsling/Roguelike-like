@@ -11,6 +11,168 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The manual caught up with §19.** A read of How to Play against the spec
+  found it still teaching retired rules:
+  - the ESCORT, instead of "two bodies walk on";
+  - "every game on the map has exactly one enemy";
+  - a tier that rose every three games *played*, with every third game a boss;
+  - followers that "attack after every game", with a "pressure multiplier";
+  - damage "1 to 3" (ordinary enemies are authored 1–4, bosses 3–9);
+  - Bash and Transmute "pressed inside a game's card";
+  - shields called "tries".
+
+  All corrected. It also now teaches what it never mentioned: the four kind marks,
+  an Event node firing on arrival, and a new section on losing with nothing down,
+  with its price table read from `RunDifficulty` so it cannot drift.
+  `test_how_to_play` pins the new material and asserts the retired phrases stay
+  gone.
+
+- **The last 57 gaps are on the spacing scale.** They sat between two steps and
+  were snapped by one rule: a value exactly between two steps goes to the
+  smaller one, and 18 goes to 16. So a snap could only take height away, which
+  kept the 720p page safe. The two gaps above the top step (22 and 26, the
+  section breaks on the post-game and run-over screens) got a new
+  `GAP_BREAK := 24` rather than being squashed to 16. Every affected screen was
+  captured before and after from a seeded run and compared side by side; nothing
+  reads worse, and the map's node card now fits without a scrollbar. Every font
+  size and every gap in the project is now a named step.
+
+- **Cleanup and speed: the page loads 39% faster, the Events tab opens in 53 ms,
+  and the layout and menu leftovers are closed.**
+
+  **The run's page compiled 49 scripts before it could appear**, about 1.4 s
+  between Start Run and the page. The backlog blamed something superlinear in
+  `Overworld2.gd`. Measured, the file's own compile is ~390 ms. The rest was
+  every class it NAMED, most of them screens a run may never open. Those are now
+  loaded by path when they open, and three second-hand routes to the 2,800-line
+  star chart were cut. It now compiles 33 scripts in ~880 ms, and
+  `test_page_load.gd` keeps it that way. One assumption was measured and turned
+  out wrong before it shipped: a literal `load()` path is NOT compiled eagerly.
+  Only `preload` and a class name are.
+
+  **The Events tab** re-decoded every event picture (up to 1616px, drawn at 80)
+  on every rebuild. Pictures now load on a thread once, are shrunk once and are
+  cached for the session: 473 → 53 ms to open, ~40 after. The first version of
+  the fix froze for 663 ms in one frame, because a single Lanczos pass costs
+  571 ms for the sixteen. Halving then bilinear costs 51 ms.
+
+  **`GameLoop2.gd`, measured for the first time:** 157 ms of its own compile, at
+  boot. Not a problem, and written down so nobody goes looking.
+
+  **Every gap in the project is on the spacing scale.** 223 literals across 41
+  files became `UITheme.GAP_*` names. Each changed line was read back with the
+  name swapped for its number and matched byte for byte, so nothing moved.
+  `MIGRATED_GAPS` is asserted complete like the fonts'. 57 values that sit
+  between two steps are listed per file, because snapping them is a restyle.
+
+  **The main menu** carries its real colours in the scene rather than being
+  repainted at `_ready`, pinned to `UITheme` by a test. **Continue** is hidden,
+  not greyed out, when there is nothing to continue.
+
+- **A boss can be Scrambled but not Bashed (§7.1, the spec's last open
+  decision).** A Champion node refuses a Bash, read off the node's kind so it
+  holds whatever game the node plays. It says why on screen, keeps the charge,
+  and leaves the armed verb up to be aimed elsewhere, the way the Amulet's refusal
+  already worked. Scramble and Transmute are still allowed: a redraw or a
+  different game still puts a boss in front of you, where a Bash would remove the
+  fight for good. The Bash chip's tooltip and the manual say so.
+
+  The boss's attack value, the other half of the open question, turned out to be
+  settled by content: the `bosses` sheet authors it per boss at 3 / 5 / 7 / 9.
+  §12 now lists nothing open. It also still listed the OBS overlay and enemy
+  abilities, both long since built, and still put the shops at the ten hubs.
+
+  Every Bash test helper now marks its target an Enemies node. About one card in
+  ten is a Champion, so a helper that took "the first card that isn't the Amulet"
+  would have failed on the deal about one run in ten.
+
+- **The report checklist has a ceiling, so a crowded board no longer pushes the
+  page past a 720p window.** Every body standing adds a goal row of ~51px and the
+  stack has no upper bound. Measured before the fix, the page went over at four
+  bodies (627 of 625px), shop or no shop. The backlog blamed the shop, which
+  turned out to make no difference. The checklist now sits in a scroll capped to
+  what the left column has left under the window
+  (`Overworld2._fit_checklist`, floor of about two rows), so the page stops at
+  625 however many bodies stand. ✓ Completed Game and Escape stay on screen under
+  it.
+
+  A previous attempt at the same fix took an empty board to 1928px. The
+  difference is the scroll's horizontal mode: on AUTO the box is laid out at its
+  minimum width and every goal wraps a word a line; DISABLED hands it the panel's
+  width. A test asserts that, alongside the fit, and the shop fit test stands
+  eight extra bodies rather than clearing the board. Closed in
+  [`docs/layout-review-backlog.md`](docs/layout-review-backlog.md).
+
+- **The hubs are retired: a shop is a Shop node, and only a Shop node (§19.7).**
+  Shops stood at the run's ten best-connected games until §19 dealt a Shop kind
+  onto 10% of the map. For one pass the two rules ran side by side, so a rung
+  could carry both a 🛒 and a `$`. Now `ShopSystem.is_shop(node)` reads the node's
+  kind and nothing else, and `hub_games`, `is_hub` and `NUM_HUBS` are gone.
+  `hub_ids` survives as `RunGraph.best_connected`, a plain degree sort that a test
+  and `tools/dump_map_health.gd` still ask for.
+
+  **The shelf is keyed by NODE id now, and that reverses a rule.** The hub rule
+  read the game PLAYED at a node: transmute a hub and the off-map game pasted
+  over it was never a hub, so the shop left with the game and the spot went back
+  to paying an event. With a `$` on the card that would be a badge that stopped
+  meaning what it said, which §19.2 exists to prevent. So a transmuted Shop node
+  plays a different game, still sells from the same shelf, and still pays no
+  event (`EventSystem.roll_for_arrival` asks `is_shop` of the node). The panel is
+  still named after the game you actually played there.
+
+  **The Hermit goes to the nearest Shop node**, measured in roads, ties drawn
+  between. The op is `teleport_shop` (was `teleport_hub`), and the card reads
+  "Teleport to the nearest Shop". The text was changed in the `cards` sheet with
+  `_xlsx_surgery.replace_cells` and regenerated, which moved only
+  `ix_the_hermit.tres`.
+
+  **What went with them.** The rung's 🛒 cart, which the `$` kind mark now says
+  (the map legend reads `$ = a shop`). The manual's "ten best-connected games"
+  section, rewritten around Shop nodes. `RouteLadder.played_id`, whose only
+  remaining caller was the cart.
+
+  **Saves.** A save from the hub era still loads. Its `hubs` list is ignored, and
+  its shelves, keyed by what were hub ids, sit unused. `SAVE_VERSION` did not
+  move: nothing in the run is misread, it just stops selling where the hubs
+  were.
+
+  **Tests.** The hub-list tests became Shop-node tests. Every shop test now
+  STAMPS a node Shop rather than looking for one, so none rides on where the deal
+  put them. The page-fit test walked all ten hubs because a long hub NAME once
+  overflowed the page. The header is a flat "Shop" now, so it mounts the shop
+  underfoot and the longest-named Shop node on the map instead. The "Event node
+  on a hub" test can't happen any more (a node has one kind), so it now covers
+  the other gate an Event node steps over: a node that has already paid its
+  event.
+
+- **§19.8 finished: the strip names what losing costs, and the map shows
+  every node's kind.** The first pass put kind marks on the offered cards and the
+  popup; this one does the other two surfaces the section lists.
+
+  **The battlefield strip** gains two readouts beside `⏱ EXTRA TURNS N`:
+  `☠ +N on a loss` and `boss in N spawns`. The strip already said what handing a
+  game in costs; since §19.5 losing one costs something too, and the two numbers
+  a player needs before trying once more are the bodies it stands up and whether
+  that spawn is the one that lands a boss. When one of §19.5's exemptions applies
+  the price reads `☠ none on a loss` and the hover card names WHICH one (a body
+  went down, an Event or Shop node, the Amulet), because "none" with no reason
+  reads as a bug. The price comes from the new `GameLoop2.failure_price`, which
+  `failure_spawn_count` now answers from too, so the strip cannot drift from the
+  spawn. The count comes from `RunDifficulty.spawns_to_boss`, and a test walks
+  four bands to check it hits 1 exactly when `is_boss_spawn` will fire.
+
+  **The 🗺 map and the route ladder** both draw through `RouteLadder.node_box`,
+  so one change covers both: every rung wears its kind mark in the top-left
+  corner, and the rung's card lists it as a `Kind` fact in words. The mark shows
+  at every zoom, where the other badges drop out on a shrunk rung, because the
+  kind is the one thing on a rung that its colour doesn't already show. It reads
+  the rung's id rather than the game played there (§19.2), the opposite of the
+  🛒 hub badge beside it. That badge stays until §19.7 retires the hubs; until
+  then a hub still sells, so a rung can honestly carry both.
+
+  The fourth bullet (log + notification when a failure spawn lands) was already
+  in `GameLoop2.spawn_for_failure`; the spec now says so.
+
 - **Node kinds and the spawn model — spec only, no code yet
   ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §19).** Two
   changes that only work together. A game on the map is now one of four **kinds**

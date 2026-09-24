@@ -2,7 +2,7 @@ class_name ObjectPanel2
 extends PanelContainer
 
 # The machines standing at this game, mounted UNDER THE BOARD — the same place on
-# the page a hub's shop takes (docs/object-sheet-authoring.md).
+# the page a Shop node's shelf takes (docs/object-sheet-authoring.md).
 #
 # This is the half of the object story that is NOT an event. When an event spawns
 # machines they are drawn inside its modal, because the Arcade Room is a room you
@@ -69,7 +69,7 @@ func _build() -> void:
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 4)
+	root.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	margin.add_child(root)
 
 	# No header. "✦ Here" over a list of machines cost 18px of the ~124 this panel
@@ -82,8 +82,8 @@ func _build() -> void:
 	# cards do: this panel shares the right column with the board, and a rigid row
 	# would push that column wider than the page.
 	_row = HFlowContainer.new()
-	_row.add_theme_constant_override("h_separation", 8)
-	_row.add_theme_constant_override("v_separation", 6)
+	_row.add_theme_constant_override("h_separation", UITheme.GAP)
+	_row.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
 	# Wide enough for TWO rows side by side, always. The right column sizes itself
 	# to its widest child and the board narrows when it shrinks to make room for
 	# this panel, so without a floor here the column follows the board down and the
@@ -235,7 +235,7 @@ func open_card(inst: Dictionary) -> Node:
 		margin.add_theme_constant_override("margin_" + side, 12)
 	panel.add_child(margin)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	margin.add_child(col)
 	col.add_child(ObjectCard.make(inst))
 

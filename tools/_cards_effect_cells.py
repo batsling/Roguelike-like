@@ -59,7 +59,7 @@ EFFECTS = {
     "Ride the Bus": "teleport_type deckbuilder",
     "V - The Hierophant": "gain_stat bonus_shields 2",
     "VI - The Lovers": "gain_hp 2",
-    "IX - The Hermit": "teleport_hub",
+    "IX - The Hermit": "teleport_shop",
     "XIV - Temperance": "spawn_object blood_donation_machine",
     "0 - The Fool": "teleport_start",
     "2 of Clubs": "double_stat bombs floor=2",
