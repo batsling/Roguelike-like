@@ -612,7 +612,13 @@ func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 	assert_null(found, "enemy drops ask on the haul screen, not a RewardScreen")
 	var inv_before: int = GameState.inventory.size()
 	chest.take()                                 # click Take it
-	assert_null(screen.chest(), "the chest was answered")
+	# THIS chest, not "no chest": a relic can bank another one the moment it is
+	# picked up (a level-up it pays for, say), and that lands on this same screen
+	# (PostCombatScreen.add_chest) — so "nothing left to answer" was only usually
+	# true, and failed on the relics that pay out.
+	assert_true(not is_instance_valid(chest) or chest.answered_already(),
+		"the chest was answered")
+	assert_ne(screen.chest(), chest, "and it is not the one still asking")
 	assert_eq(GameState.inventory.size(), inv_before + 1, "taking it adds the item")
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
