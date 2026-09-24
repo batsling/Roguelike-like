@@ -1837,12 +1837,11 @@ func _stand_at_hops(hops: int) -> bool:
 			return true
 	return false
 
-# Stack one enemy and walk it to the front column, then return its instance.
+# Stand one follower straight on the front column and return its instance —
+# summoned there rather than walked, because a setup report stood near the
+# Amulet would stand the road's own bodies up beside it (§19.5).
 func _stacked_at_front(dmg: int) -> int:
-	var inst: int = _choose_solo(_enemy(dmg))   # spawns at the back column
-	_report()                       # its own game — after this it is a follower
-	_march_to_front(inst)
-	return inst
+	return GameLoop2.summon(_enemy(dmg), Vector2i(1, 0))
 
 func test_no_amulet_means_no_pressure_at_all() -> void:
 	# Every headless setup starts with no amulet picked, and that has to read as

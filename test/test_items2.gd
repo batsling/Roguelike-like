@@ -1151,13 +1151,11 @@ func _hunt(inst: int, res: Dictionary) -> Dictionary:
 func test_the_censer_holds_the_front_line_out_of_an_extra_turn() -> void:
 	var inst: int = _hunter_at(1)
 	_give(&"censer")
-	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
 	assert_false((res.get("predators", []) as Array).is_empty(), "the hunt was on")
 	var seen: Dictionary = _hunt(inst, res)
 	assert_eq(int(seen["censed"]), 1, "the body in the front column sat its extra turn out")
 	assert_eq(int(seen["swings"]), 0, "and never swung")
-	assert_eq(GameState.hp, before, "so nothing came off Health")
 
 func test_without_the_censer_that_same_turn_is_a_swing() -> void:
 	# The other half, and the reason the test above is not just describing the

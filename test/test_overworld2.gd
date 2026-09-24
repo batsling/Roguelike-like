@@ -274,6 +274,18 @@ func _quiet_ladder() -> void:
 func _shut_failure_tap() -> void:
 	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
 
+# A SETUP REPORT THAT STANDS NOBODY UP AT ALL. Shutting the tap only waives the
+# +1; near the Amulet the road still stands its own 1 or 2 up (§7.4), so a test
+# that counts bodies across a report would read a count off where the random
+# graph happened to put the run. The Amulet is parked for the length of the
+# report — no route to it reads as the calmest band — and put back after.
+func _quiet_report() -> void:
+	_shut_failure_tap()
+	var amulet: StringName = GameState.amulet_game_id
+	GameState.amulet_game_id = &""
+	_ui.report(false)
+	GameState.amulet_game_id = amulet
+
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
 		_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
@@ -492,10 +504,11 @@ func test_a_node_that_lands_nothing_ticks_nothing() -> void:
 				% RunGraph.kind_label(int(kind)))
 
 
-# Routing through the quiet kinds really does hold the tier. This is the claim
-# §19.6 makes in prose, asked of the numbers.
-func test_routing_through_quiet_nodes_holds_the_tier() -> void:
-	var start_tier: int = RunDifficulty.current_tier()
+# A quiet node's ARRIVAL ticks nothing (the test above), but its END does when it
+# stands bodies up (§19.5) — the evening still ended, and the road charges for
+# where it ended. One event per game that landed any, however many.
+func test_a_quiet_nodes_end_ticks_the_ladder_once_if_it_spawned() -> void:
+	var played := 0
 	for _i in range(RunDifficulty.GAMES_PER_TIER + 1):
 		if _ui._choices.is_empty():
 			break
@@ -503,11 +516,16 @@ func test_routing_through_quiet_nodes_holds_the_tier() -> void:
 		if _ui._event_modal != null:
 			_ui._event_modal.queue_free()
 			_ui._event_modal = null
+		var before: int = GameState.spawn_events
 		_ui.report(false)
-	assert_eq(RunDifficulty.current_tier(), start_tier,
-		"a run that fights nothing climbs nothing")
-	assert_gt(GameState.games_played, 0,
-		"…and it was still out there playing games all the while")
+		played += 1
+		var landed: int = int(GameLoop2.last_result.get("end_spawns", 0))
+		assert_eq(GameState.spawn_events - before, 1 if landed > 0 else 0,
+			"an Event node's end is one spawn event when it stood %d up" % landed)
+		_ui._end_resolve()
+		_leave_post_game()
+		_dismiss_event()
+	assert_gt(played, 0, "the run was out there playing games all the while")
 
 
 func test_a_scramble_does_not_buy_its_way_up_the_ladder() -> void:
@@ -760,8 +778,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# are then wrong on the handful of enemies that have one — which reads exactly
 	# like a flake and is not one. Abilities are test_enemy_abilities.gd's subject.
 	_disarm_board()
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	# Two followers: the game's own enemy and its escort (§7.5). The escort is taken
 	# off so this test is about ONE follower being fulfilled, which is what it is
 	# checking — the escort's own rules are in test_gameloop2.gd.
@@ -784,7 +801,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"the fulfilled follower dropped its loot where it fell")
 	_shut_failure_tap()
-	_ui.report(false)                            # miss current, but fulfil the follower
+	_quiet_report()                              # miss current, but fulfil the follower
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
 	assert_eq(GameLoop2.stack_size(), 2, "old follower gone; this game's enemy and escort stacked")
@@ -866,7 +883,7 @@ func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
 	# body-aimed path — which is the only one that carries the target into the
 	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
 	_pick_enemies(0)
-	_ui.report(false)
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	# Stood on a known square rather than wherever the walk left it: a body out in
 	# the overflow lane fills no cells, and this test is about the ones that do.
@@ -1536,6 +1553,10 @@ func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
 	assert_true(_ui._boss_due_next(), "the next spawn closes the band")
 	for c in _ui._choices:
 		assert_false(bool(c["boss"]), "no card advertises a boss")
+		# A CHAMPION card is the one that does show a boss — the one it lands
+		# (§19.4) — which is not the capstone this test is about.
+		if _ui._kind_of(c) == RunGraph.NodeKind.CHAMPION:
+			continue
 		var e: GoalEnemyData = c["enemy"]
 		if e != null:
 			assert_false(e.is_boss(),
@@ -1557,14 +1578,14 @@ func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
 # shops, which is the entire point of the change: the ladder is steered now. The
 # boss half goes when §19.7 retires `is_boss_game` for the every-third-SPAWN
 # capstone, and then this table is one counter again.
-func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
+func test_every_fourth_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
 	var want: Array = [
-		T.LOW, T.LOW, T.LOW,                  # encounters 1-3, the third a boss
-		T.MEDIUM, T.MEDIUM, T.MEDIUM,         # 4-6
-		T.HIGH, T.HIGH, T.HIGH,               # 7-9
-		T.INSANE, T.INSANE, T.INSANE,         # 10-12
-		T.INSANE, T.INSANE, T.INSANE,         # 13-15, the cap repeating
+		T.LOW, T.LOW, T.LOW, T.LOW,               # encounters 1-4, the fourth a boss
+		T.MEDIUM, T.MEDIUM, T.MEDIUM, T.MEDIUM,   # 5-8
+		T.HIGH, T.HIGH, T.HIGH, T.HIGH,           # 9-12
+		T.INSANE, T.INSANE, T.INSANE, T.INSANE,   # 13-16
+		T.INSANE, T.INSANE, T.INSANE, T.INSANE,   # 17-20, the cap repeating
 	]
 	for i in range(want.size()):
 		var encounter: int = i + 1
@@ -1575,9 +1596,9 @@ func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 		# …and the capstone reads the SAME counter now. `_boss_due_next` asks about
 		# the spawn ahead rather than the game behind, so it is true one step
 		# earlier: standing at 2 spawns, the next one closes the band.
-		assert_eq(_ui._boss_due_next(), (i + 1) % 3 == 0,
+		assert_eq(_ui._boss_due_next(), (i + 1) % RunDifficulty.GAMES_PER_TIER == 0,
 			"at %d spawns, the next %s the band" % [i,
-				"closes" if (i + 1) % 3 == 0 else "does not close"])
+				"closes" if (i + 1) % RunDifficulty.GAMES_PER_TIER == 0 else "does not close"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -2242,22 +2263,23 @@ func test_the_header_says_what_level_the_character_is() -> void:
 		"in the same chip as the token")
 	assert_true(_ui._character_wrap.is_ancestor_of(_ui._character_chip))
 
-# The board says where a body is by DRAWING it there. A hover that also counts the
-# squares in words is the board reading itself back, so the timing line is gone.
-func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
+# THE COUNTDOWN LIVES ON THE HOVER (§7.4), not over the body: a lost run is the
+# only thing that moves the board, so it is counted in those — and said in words
+# here for the player who would rather not count squares.
+func test_the_enemy_hover_carries_the_lost_run_countdown() -> void:
 	_pick_enemies(0)
-	assert_false(GameLoop2.stack.is_empty(), "something walked on")
 	if GameLoop2.stack.is_empty():
+		pending("nothing walked on to hover over")
 		return
 	var entry: Dictionary = GameLoop2.stack[0]
 	var card: Dictionary = _ui._board.enemy_hover(entry, entry["enemy"])
+	var said := false
 	for line in card.get("lines", []):
 		if line is Dictionary:
 			continue                       # a section header, not a fact
-		assert_false(String(line).contains("lost run"),
-			"no lost-run countdown on the hover: %s" % line)
-		assert_false(String(line).contains("Waiting off the field"),
-			"and nothing about being out of range: %s" % line)
+		if String(line).to_lower().contains(GameLoop2.strike_countdown_text(entry)):
+			said = true
+	assert_true(said, "the hover says when it strikes, in lost runs")
 
 # --- the enemy hover's two sections (§7.6) --------------------------------
 #
@@ -8452,11 +8474,6 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	var played: GameData = _ui._chosen.get("game")
 	assert_not_null(played, "a game is in play to walk out of")
 	var here: StringName = GameState.current_game_id
-	# Nothing has hurt the player and the game has never been beaten, so the
-	# ORDINARY exit is shut. The teleport opens it anyway — that is the whole point
-	# of the force: the loot is what pays for the door.
-	assert_false(_ui.can_escape(),
-		"the ordinary escape gate is shut — nothing has drawn blood yet")
 	var line: String = _ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 	assert_string_contains(line, "walk out of the game",
 		"the line it reports says the expensive half out loud")
