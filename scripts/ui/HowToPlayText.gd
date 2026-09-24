@@ -402,8 +402,8 @@ static func _ch_enemies() -> Dictionary:
 				+ "whole line steps a column closer, and nobody takes a turn. The "
 				+ "newcomer picks the lane that needs the least shoving. When no lane "
 				+ "can go forward, the body in its way steps one lane up or down "
-				+ "instead, if there is a free cell. Immobile bodies and spawners "
-				+ "that never attack are never shoved."),
+				+ "instead, if there is a free cell. A spawner that never attacks is "
+				+ "never shoved forward, only aside."),
 			_b("The strip on top of the board says the price before you pay it: "
 				+ "+N when this game ends, or none, and why."),
 			_h("Difficulty up"),

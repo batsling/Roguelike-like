@@ -2659,8 +2659,8 @@ func test_with_no_lane_to_push_forward_a_blocker_steps_sideways() -> void:
 	var stepped: int = int(_row_of(x) == 2) + int(_row_of(z) == 1)
 	assert_eq(stepped, 1, "exactly one body stepped a lane sideways to make room")
 
-func test_an_immobile_body_holds_its_ground_against_the_shove() -> void:
-	# "Cannot Move" means the spawn cannot move it either, forward or sideways.
+func test_an_immobile_body_is_still_shoved() -> void:
+	# Immobile means it cannot move BY ITSELF; a spawn shoving it is not that.
 	var cols: int = GameLoop2.grid_cols()
 	var turret: GoalEnemyData = _enemy(0)
 	turret.abilities = [{"id": &"immobile", "amount": 0, "arg": &"", "text": ""}]
@@ -2669,9 +2669,30 @@ func test_an_immobile_body_holds_its_ground_against_the_shove() -> void:
 		for c in range(1, cols + 1):
 			GameLoop2.summon(_enemy(0), Vector2i(c, row))
 	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
-	assert_eq(_col_of(fixed), cols, "the Immobile body was not pushed")
-	assert_eq(_row_of(fixed), 0, "nor stepped aside")
-	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(), "so the newcomer queued")
+	assert_eq(_col_of(fixed), cols - 1, "the Immobile body was pushed a column")
+	assert_eq(_col_of(fresh), cols, "and the newcomer took its place")
+
+func test_a_spawner_that_never_attacks_can_still_step_sideways() -> void:
+	# Not forward — but a sideways step moves it no closer, so that is allowed.
+	#     lane 0: . . [free] S      lane 1: . . X [free]
+	# A two-wide newcomer in lane 0 needs S to step down into lane 1's free back
+	# cell; in lane 1 it needs X to step up into lane 0's free cell. Either works.
+	var cols: int = GameLoop2.grid_cols()
+	var holes: Array = [Vector2i(cols - 1, 0), Vector2i(cols, 1)]
+	var spawner: GoalEnemyData = _enemy(0)
+	spawner.abilities = [{"id": &"nested_spawner", "amount": 1, "arg": &"", "text": ""}]
+	var s_inst: int = 0
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			var cell := Vector2i(c, row)
+			if holes.has(cell):
+				continue
+			var inst: int = GameLoop2.summon(spawner if cell == Vector2i(cols, 0) else _enemy(0), cell)
+			if cell == Vector2i(cols, 0):
+				s_inst = inst
+	var wide: int = GameLoop2.spawn_to_stack(_shaped(0, 1, 2))
+	assert_eq(_col_of(wide), cols - 1, "the newcomer landed")
+	assert_eq(_col_of(s_inst), cols, "the spawner never moved a column forward")
 
 func test_only_a_goal_the_player_answers_counts_as_a_defeat() -> void:
 	# The +1 for defeating nothing is waived by BEATING A GOAL — a row the player

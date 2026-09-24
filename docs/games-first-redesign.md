@@ -1526,11 +1526,12 @@ would strand off the edge is put back in the queue rather than left hanging.
   crowded board. Only when neither works does a body go to the **off-grid queue**, which slides on as space
   frees and never shoves (a queue that pushed the board every turn would be a
   second clock). A summon aimed at a cell of its own (a spawner's brood) never
-  shoves either. **Some bodies are never shoved**, forward or sideways
-  (`GameLoop2._is_anchored`): a spawner that never attacks — every turn a
-  `turn: summon_*` op (Nested Spawner, Necromancy) — and anything that cannot
-  move, Immobile (`no_move`) or a corpse lying where it fell. A lane with one in
-  the way cannot be pushed past it.
+  shoves either. **A spawner that never attacks is never shoved FORWARD**
+  (`GameLoop2._is_anchored`) — every turn a `turn: summon_*` op (Nested Spawner,
+  Necromancy) — so a lane with one in the way cannot be pushed past it; it can
+  still be stepped sideways, which moves it no closer. **Immobile** bodies and
+  corpses ARE shoved: they cannot move by themselves, and being shoved is not
+  that, the same as the Push verb.
 - **Advance** — each turn (§3.2, one per lost run), every enemy that isn't
   striking closes one column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide

@@ -6107,9 +6107,9 @@ func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 # shoved in turn — a chain — and the whole thing repeats until the footprint is
 # clear. A body spanning two lanes is shoved as one piece, so it pushes both.
 #
-# A SPAWNER THAT NEVER ATTACKS IS NOT SHOVED (_is_anchored): it cannot be moved,
-# so a lane with one in the way cannot be pushed past it, and the newcomer takes
-# another lane or queues.
+# A SPAWNER THAT NEVER ATTACKS IS NOT SHOVED FORWARD (_is_anchored): a lane with
+# one in the way cannot be pushed past it, and the newcomer takes another lane,
+# a sideways step, or the queue.
 #
 # Returns the cheapest lane's plan — {"row", "steps": {instance: columns}, "cost"}
 # — where cost is the total columns shoved, so "the lane that needs the least
@@ -6189,16 +6189,15 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 			cost += 1
 	return {}
 
-# A body the spawn shove may not move, forward or sideways:
-#   * one that spends EVERY turn summoning (a `turn: summon_*` op — Nested
-#     Spawner, Necromancy) and so never attacks. Shoving it forward would only
-#     walk a spawner up to the player's face for nothing; printing bodies from
-#     where it stands is its whole threat.
-#   * one that CANNOT MOVE — Immobile (`no_move`) or a corpse lying where it fell
-#     (§7.6). The ability says it does not move, and a spawn is not an exception.
+# A body the FORWARD spawn shove may not move: one that spends EVERY turn
+# summoning (a `turn: summon_*` op — Nested Spawner, Necromancy) and so never
+# attacks. Shoving it forward would only walk a spawner up to the player's face
+# for nothing; printing bodies from where it stands is its whole threat. It can
+# still be stepped SIDEWAYS (_side_shove_lane), which moves it no closer.
+#
+# Immobile (`no_move`) and a corpse are NOT anchored: they cannot move by
+# themselves, and being shoved is not moving by itself — the same as the Push verb.
 func _is_anchored(entry: Dictionary) -> bool:
-	if entry_has_op(entry, &"no_move") or bool(entry.get("corpse", false)):
-		return true
 	for row in entry_ops_at(entry, &"turn"):
 		if String((row as Dictionary).get("op", "")).begins_with("summon"):
 			return true
@@ -6246,7 +6245,7 @@ func _side_shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) ->
 	var moves: Dictionary = {}
 	for inst in blockers:
 		var entry: Dictionary = entry_for(inst)
-		if entry.is_empty() or _is_anchored(entry):
+		if entry.is_empty():
 			return {}
 		var e: GoalEnemyData = entry.get("enemy")
 		var r: int = int(entry.get("row", 0))

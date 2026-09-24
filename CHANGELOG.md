@@ -41,8 +41,9 @@ For how the project is laid out and how its systems fit together, see
   - **Follow-ups.** An escape never stands up fewer than 2 bodies
     (`GameLoop2.ESCAPE_MIN_BODIES`). When no lane can be shoved forward, the body
     in the newcomer's way steps one lane sideways into a free cell
-    (`_side_shove_plan`). Spawners that never attack, Immobile bodies and corpses
-    are never shoved (`_is_anchored`). Only a goal the player answers waives the
+    (`_side_shove_plan`). Spawners that never attack are never shoved forward,
+    only aside (`_is_anchored`); Immobile bodies and corpses are shoved like
+    anything else. Only a goal the player answers waives the
     +1 for nothing defeated (`_defeat`'s `goal_kill`); a goal-hit fired off an
     effect still drops but does not count.
   - **The countdown moved to hover and card.** A body's hover and its info card say
