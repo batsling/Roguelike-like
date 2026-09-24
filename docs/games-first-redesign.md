@@ -372,10 +372,10 @@ run-ender: you may walk away from the one in play at any moment
 game, so the board fills behind you exactly as a hand-in fills it (§19.5) — and
 then one more:
 
-- **The board: the Amulet pressure's bodies + 1, always.** A hand-in adds the one
-  only when nothing went down; an escape adds it even after a kill
-  (`GameLoop2.end_of_game_price(true)`), so walking out is never cheaper than
-  finishing.
+- **The board: the Amulet pressure's bodies + 1, always, and at least 2.** A
+  hand-in adds the one only when no goal was beaten; an escape adds it even after
+  a kill (`GameLoop2.end_of_game_price(true)`), so walking out is never cheaper
+  than finishing, and it never costs fewer than two bodies.
 - **The reward: none.** No report chest (the kill scaling only pays a win, §8.2),
   no beat on the record, and a `game beaten` goal still ticked is dropped rather
   than honoured (§7.7). Loot already on the floor and a boss's own chest are
@@ -1517,14 +1517,20 @@ would strand off the edge is put back in the queue rather than left hanging.
   a body shoved onto a mine or into a fire pays for it exactly as a pushed one
   does. **Being shoved is not a turn**: nobody strikes and nobody's action is
   spent, so a body shoved into column 1 swings on the next lost run, not now.
-  Only a board packed to the front — where every shove would push something off
-  column 1 — leaves a body in the **off-grid queue**, which slides on as space
+  **When no lane can go forward**, it tries **sideways** instead
+  (`GameLoop2._side_shove_plan`): each body standing where the newcomer needs to
+  land steps ONE lane up or down into cells that are free — no chain — and the
+  lane that asks the fewest bodies to step wins. For a one-cell newcomer this can
+  never help (a free cell the blocker could step into is a free back cell the
+  newcomer would have taken), so it is what lets a wide or tall arrival onto a
+  crowded board. Only when neither works does a body go to the **off-grid queue**, which slides on as space
   frees and never shoves (a queue that pushed the board every turn would be a
   second clock). A summon aimed at a cell of its own (a spawner's brood) never
-  shoves either. **A spawner that never attacks is never shoved** — a body whose
-  every turn is a `turn: summon_*` op (Nested Spawner, Necromancy;
-  `GameLoop2._is_anchored`) holds its ground, so a lane with one in the way
-  cannot be pushed and the newcomer takes another lane or queues.
+  shoves either. **Some bodies are never shoved**, forward or sideways
+  (`GameLoop2._is_anchored`): a spawner that never attacks — every turn a
+  `turn: summon_*` op (Nested Spawner, Necromancy) — and anything that cannot
+  move, Immobile (`no_move`) or a corpse lying where it fell. A lane with one in
+  the way cannot be pushed past it.
 - **Advance** — each turn (§3.2, one per lost run), every enemy that isn't
   striking closes one column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
@@ -4826,14 +4832,17 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 
 | Hops to the Amulet | Handed in, a body down | Handed in, nothing down | Escaped |
 |---|---|---|---|
-| 5 or more | 0 | **1** | **1** |
+| 5 or more | 0 | **1** | **2** |
 | 3 – 4 | 1 | **2** | **2** |
 | 2 – 0 | 2 | **3** | **3** |
 
-- **+1 when nothing was defeated at the game.** One body down is the player
-  answering the board.
-- **+1 always on an escape**, kill or no kill (§3.2): walking out is never cheaper
-  than finishing.
+- **+1 when no goal was beaten at the game.** Beating one is the player
+  answering the board, and only that counts: a body killed by a bomb, a wand, a
+  mine, fire or another body does not waive it (`_defeat`'s `goal_kill`), nor
+  does a goal-hit fired off an effect rather than ticked by the player.
+- **+1 always on an escape**, kill or no kill, and **never fewer than 2**
+  (`GameLoop2.ESCAPE_MIN_BODIES`, §3.2): walking out is never cheaper than
+  finishing, and out in the wilds a single body was too cheap to be a price.
 - **At every node kind.** An Event or a Shop node stood nothing up, but the
   evening still ended, and the road charges for where it ended.
 - **Not at the Amulet** — there is no next game for anything to walk into — and

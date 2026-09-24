@@ -38,6 +38,13 @@ For how the project is laid out and how its systems fit together, see
   - **Censer** now holds the front column out of every *extra* turn — Predatory
     Scent's, and anything added later — rather than taking one off the retired
     road turns (sheet reworded by `tools/_items2_censer_extra_turns_setup.py`).
+  - **Follow-ups.** An escape never stands up fewer than 2 bodies
+    (`GameLoop2.ESCAPE_MIN_BODIES`). When no lane can be shoved forward, the body
+    in the newcomer's way steps one lane sideways into a free cell
+    (`_side_shove_plan`). Spawners that never attack, Immobile bodies and corpses
+    are never shoved (`_is_anchored`). Only a goal the player answers waives the
+    +1 for nothing defeated (`_defeat`'s `goal_kill`); a goal-hit fired off an
+    effect still drops but does not count.
   - **The countdown moved to hover and card.** A body's hover and its info card say
     "strikes after N more lost runs" (`GameLoop2.strike_countdown_text`); the
     board keeps its ⚔ badge and threat colour. The strip reads `☠ AMULET PRESSURE

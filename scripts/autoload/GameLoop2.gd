@@ -1799,10 +1799,11 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # a price the spawn does not charge.
 #
 #   * THE AMULET owes nothing: there is no next game for anything to walk into.
-#   * DEFEATING ANYTHING this game waives the +1, and only the +1. One body down
-#     is the player answering the board.
-#   * AN ESCAPE always pays the +1, kill or no kill: walking out is the one way
-#     to leave a game that must never be cheaper than finishing it.
+#   * BEATING A GOAL this game waives the +1, and only the +1 — the reward for
+#     answering the board. A bomb, wand, mine or another body killing one does
+#     not (see _defeat's `goal_kill`).
+#   * AN ESCAPE always pays the +1, kill or no kill, and never less than
+#     ESCAPE_MIN_BODIES: walking out must never be cheaper than finishing.
 #
 # An Event or a Shop node is NOT exempt. It stood nothing on the board, but the
 # evening still ended, and the road still charges for where it ended.
@@ -1814,6 +1815,11 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # a goal against a body with more Health than the single hit it deals, which
 # leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
 # tempting field and it is the wrong one: it ticks for both.
+# The least an escape ever stands up. Out in the wilds the ladder's 0 + 1 made
+# walking out of a game cost a single body, which made skipping any game you did
+# not fancy close to free; two is a price.
+const ESCAPE_MIN_BODIES := 2
+
 func end_of_game_price(escaped: bool = false) -> Dictionary:
 	if not game_in_play or run_over:
 		return {"bodies": 0, "why": ""}
@@ -1825,8 +1831,10 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	var bodies: int = pressure()
 	if escaped or defeated_this_game <= 0:
 		bodies += 1
+	if escaped:
+		bodies = maxi(bodies, ESCAPE_MIN_BODIES)
 	return {"bodies": bodies,
-		"why": "" if bodies > 0 else "a body went down here, out in the wilds"}
+		"why": "" if bodies > 0 else "a body went down to its goal here, out in the wilds"}
 
 # Stand `want` end-of-game bodies on the board, already priced. Returns how many
 # actually landed.
@@ -2841,7 +2849,7 @@ func fulfill(instance: int, record: bool = false) -> bool:
 		goals_met_this_game += 1
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
-		_defeat(e, true, res, fell)
+		_defeat(e, true, res, fell, record)
 		_admit_offgrid()
 	else:
 		# A COUNTED GOAL STARTS ITS TALLY OVER (§7.7). `health` is how many more
@@ -4687,11 +4695,18 @@ func second_body() -> GoalEnemyData:
 
 # --- internals ------------------------------------------------------------
 
+#
+# `goal_kill` is whether the PLAYER'S answer to a goal did it — a row ticked on
+# the checklist, or claimed at the report. Only those count toward
+# `defeated_this_game`, the tally that waives the end-of-game +1 (§19.5): it is
+# the reward for beating a goal. A goal-hit fired off an effect (fulfill with
+# `record` false — the dev panel today) still drops, and does not count.
 func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
-		fell: Vector2i = OFF_FIELD) -> void:
+		fell: Vector2i = OFF_FIELD, goal_kill: bool = true) -> void:
 	defeated_count += 1
-	# The per-game half of the same tally — what the escape gate counts (§3.2).
-	defeated_this_game += 1
+	# The per-game half of the same tally — what waives the end-of-game +1.
+	if goal_kill:
+		defeated_this_game += 1
 	if res.has("defeats"):
 		res["defeats"].append(enemy)
 	if drop:
@@ -6055,7 +6070,8 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 # Returns true when it made it onto the board.
 #
 # `shove`: when no lane has room at the back, push the lane that needs the least
-# pushing forward to make some (_shove_plan) rather than queueing. The queue's
+# pushing forward to make some (_shove_plan); when none can go forward, step the
+# body in the way one lane sideways (_side_shove_plan); only then queue. The queue's
 # own admissions never shove — a body already waiting walks on as room frees, and
 # a queue that pushed the board every turn would be a second clock.
 func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
@@ -6064,12 +6080,18 @@ func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 	var inst: int = int(entry.get("instance", 0))
 	var rows: Array = _spawn_rows(enemy, col, inst)
 	if rows.is_empty() and shove:
+		# FORWARD FIRST, and only when no lane can go forward, SIDEWAYS (§7.3).
 		var plan: Dictionary = _shove_plan(enemy, col, inst)
 		if not plan.is_empty():
 			_apply_shove(plan)
 			# The shove can set off a mine under a shoved body (§17), which only
 			# ever frees cells — so the lane it cleared is still clear.
 			rows = [int(plan["row"])]
+		else:
+			var side: Dictionary = _side_shove_plan(enemy, col, inst)
+			if not side.is_empty():
+				_apply_side_shove(side)
+				rows = [int(side["row"])]
 	if rows.is_empty():
 		entry["col"] = offgrid_col()
 		return false
@@ -6167,15 +6189,101 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 			cost += 1
 	return {}
 
-# A body the spawn shove may not move: one that spends EVERY turn summoning
-# (a `turn: summon_*` op — Nested Spawner, Necromancy) and so never attacks.
-# Shoving it forward would only walk a spawner up to the player's face for
-# nothing; it sits where it is and printing bodies is its whole threat.
+# A body the spawn shove may not move, forward or sideways:
+#   * one that spends EVERY turn summoning (a `turn: summon_*` op — Nested
+#     Spawner, Necromancy) and so never attacks. Shoving it forward would only
+#     walk a spawner up to the player's face for nothing; printing bodies from
+#     where it stands is its whole threat.
+#   * one that CANNOT MOVE — Immobile (`no_move`) or a corpse lying where it fell
+#     (§7.6). The ability says it does not move, and a spawn is not an exception.
 func _is_anchored(entry: Dictionary) -> bool:
+	if entry_has_op(entry, &"no_move") or bool(entry.get("corpse", false)):
+		return true
 	for row in entry_ops_at(entry, &"turn"):
 		if String((row as Dictionary).get("op", "")).begins_with("summon"):
 			return true
 	return false
+
+# THE SIDEWAYS SHOVE (§7.3) — what a spawn does when no lane can be pushed
+# FORWARD (every one is packed to the front, or held by an anchored body). The
+# body standing where the newcomer needs to land steps ONE lane up or down, into
+# cells that are free; no chain. Every body in the way has to find such a step,
+# and the lane asking the fewest of them to move wins, ties at random.
+#
+# Returns {"row", "moves": {instance: Vector2i(col, row)}} or {} when no lane can
+# be cleared that way — and then the newcomer queues.
+func _side_shove_plan(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Dictionary:
+	var best: Array = []
+	var best_n: int = 1 << 30
+	for row in range(grid_rows()):
+		var plan: Dictionary = _side_shove_lane(enemy, row, col, exclude)
+		if plan.is_empty():
+			continue
+		var n: int = (plan["moves"] as Dictionary).size()
+		if n < best_n:
+			best_n = n
+			best = [plan]
+		elif n == best_n:
+			best.append(plan)
+	if best.is_empty():
+		return {}
+	return best[randi() % best.size()]
+
+func _side_shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dictionary:
+	var newcomer: Array = footprint_at(enemy, row, col)
+	if newcomer.is_empty():
+		return {}
+	var taken: Dictionary = occupancy(exclude)
+	var blockers: Array = []
+	for cell in newcomer:
+		if taken.has(cell) and not blockers.has(int(taken[cell])):
+			blockers.append(int(taken[cell]))
+	# Cells nothing may step into: the newcomer's own, and each blocker's
+	# destination once it has one.
+	var claimed: Dictionary = {}
+	for cell in newcomer:
+		claimed[cell] = true
+	var moves: Dictionary = {}
+	for inst in blockers:
+		var entry: Dictionary = entry_for(inst)
+		if entry.is_empty() or _is_anchored(entry):
+			return {}
+		var e: GoalEnemyData = entry.get("enemy")
+		var r: int = int(entry.get("row", 0))
+		var c: int = int(entry.get("col", 1))
+		var dirs: Array = [-1, 1]
+		dirs.shuffle()
+		var placed := false
+		for dy in dirs:
+			if not fits_at(e, r + dy, c, inst):
+				continue
+			var cells: Array = footprint_at(e, r + dy, c)
+			var clash := false
+			for cell in cells:
+				if claimed.has(cell):
+					clash = true
+					break
+			if clash:
+				continue
+			for cell in cells:
+				claimed[cell] = true
+			moves[inst] = Vector2i(c, r + dy)
+			placed = true
+			break
+		if not placed:
+			return {}
+	return {"row": row, "moves": moves}
+
+# Carry out a _side_shove_plan through _move_entry, so the ground a shoved body
+# steps onto charges it exactly as a Push would (§17). Not a turn.
+func _apply_side_shove(plan: Dictionary) -> void:
+	var moves: Dictionary = plan.get("moves", {})
+	for inst in moves:
+		var idx: int = _index_of(int(inst))
+		if idx < 0:
+			continue
+		var to: Vector2i = moves[inst]
+		_move_entry(stack[idx], to.y, to.x)
 
 # Carry out a _shove_plan, one column at a time and front-first, each step through
 # _move_entry — the same path the Push verb takes — so a body shoved onto a mine

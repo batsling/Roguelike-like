@@ -211,7 +211,7 @@ static func ladder_text(pressure: int) -> String:
 		var mark: String = "▸ " if int(r[1]) == pressure else "   "
 		lines.append("%s%s: %s walk on at the end of a game" % [
 			mark, r[0], bodies_text(int(r[1]))])
-	lines.append("+1 if nothing was defeated there. Escaping always adds 1.")
+	lines.append("+1 if no goal was beaten there. Escaping adds 1, and costs at least 2.")
 	return "\n".join(lines)
 
 static func tier_name(tier: int) -> String:

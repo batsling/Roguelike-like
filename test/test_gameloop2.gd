@@ -2322,6 +2322,16 @@ func test_the_price_is_the_pressure_plus_one_for_nothing_down() -> void:
 			"%d hops out, a body down: the ladder's %d and nothing more" % [int(pair[0]), p])
 
 
+func test_an_escape_never_costs_less_than_two() -> void:
+	for hops in [6, 4, 1]:
+		if not _stand_for_end(hops):
+			continue
+		GameLoop2.defeated_this_game = 1
+		assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]),
+			maxi(GameLoop2.pressure() + 1, GameLoop2.ESCAPE_MIN_BODIES),
+			"%d hops out: the ladder + 1, and never under two" % hops)
+
+
 func test_an_escape_always_pays_the_extra_body() -> void:
 	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
@@ -2445,7 +2455,8 @@ func test_an_escape_stands_bodies_up_even_after_a_kill() -> void:
 		return
 	GameLoop2.defeated_this_game = 1
 	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
-	assert_eq(int(res.get("end_spawns", -1)), 1, "walking out always costs the one body")
+	assert_eq(int(res.get("end_spawns", -1)), GameLoop2.ESCAPE_MIN_BODIES,
+		"out in the wilds, walking out costs the floor: two bodies")
 
 
 func test_a_teleport_stands_nobody_up() -> void:
@@ -2616,6 +2627,62 @@ func test_a_spawner_that_never_attacks_is_not_shoved() -> void:
 	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
 	assert_eq(_col_of(anchor), cols, "the spawner was not pushed")
 	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(), "so the newcomer queued")
+
+# THE SIDEWAYS SHOVE (§7.3). A two-wide newcomer on a board packed to the front,
+# with two free cells arranged so no lane can go forward but one body can step a
+# lane up or down out of its way:
+#     lane 1: . . [free] X      lane 2: . . Z [free]
+# X can step down into lane 2's free back cell, or Z up into lane 1's free cell;
+# either clears a two-wide landing, and nothing moves a column.
+func test_with_no_lane_to_push_forward_a_blocker_steps_sideways() -> void:
+	var cols: int = GameLoop2.grid_cols()
+	var holes: Array = [Vector2i(cols - 1, 1), Vector2i(cols, 2)]
+	var cols_before: Dictionary = {}
+	var x: int = 0
+	var z: int = 0
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			var cell := Vector2i(c, row)
+			if holes.has(cell):
+				continue
+			var inst: int = GameLoop2.summon(_enemy(0), cell)
+			cols_before[inst] = c
+			if cell == Vector2i(cols, 1):
+				x = inst
+			elif cell == Vector2i(cols - 1, 2):
+				z = inst
+	var wide: int = GameLoop2.spawn_to_stack(_shaped(0, 1, 2))
+	assert_eq(_col_of(wide), cols - 1,
+		"the two-wide newcomer landed with its back on the back column")
+	for inst in cols_before:
+		assert_eq(_col_of(int(inst)), int(cols_before[inst]), "nobody was shoved a column forward")
+	var stepped: int = int(_row_of(x) == 2) + int(_row_of(z) == 1)
+	assert_eq(stepped, 1, "exactly one body stepped a lane sideways to make room")
+
+func test_an_immobile_body_holds_its_ground_against_the_shove() -> void:
+	# "Cannot Move" means the spawn cannot move it either, forward or sideways.
+	var cols: int = GameLoop2.grid_cols()
+	var turret: GoalEnemyData = _enemy(0)
+	turret.abilities = [{"id": &"immobile", "amount": 0, "arg": &"", "text": ""}]
+	var fixed: int = GameLoop2.summon(turret, Vector2i(cols, 0))
+	for row in range(1, GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(fixed), cols, "the Immobile body was not pushed")
+	assert_eq(_row_of(fixed), 0, "nor stepped aside")
+	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(), "so the newcomer queued")
+
+func test_only_a_goal_the_player_answers_counts_as_a_defeat() -> void:
+	# The +1 for defeating nothing is waived by BEATING A GOAL — a row the player
+	# ticked. A goal-hit fired off an effect still kills and drops, and does not.
+	var a: int = GameLoop2.summon(_enemy(0))
+	var b: int = GameLoop2.summon(_enemy(0))
+	GameLoop2.defeated_this_game = 0
+	assert_true(GameLoop2.fulfill(a, false), "the effect's hit landed")
+	assert_eq(GameLoop2.defeated_this_game, 0, "and did not count")
+	assert_true(GameLoop2.fulfill(b, true), "the player's tick landed")
+	assert_eq(GameLoop2.defeated_this_game, 1, "and counted")
 
 func test_a_board_packed_to_the_front_still_queues() -> void:
 	for row in range(GameLoop2.grid_rows()):

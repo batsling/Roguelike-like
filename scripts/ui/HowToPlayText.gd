@@ -391,14 +391,19 @@ static func _ch_enemies() -> Dictionary:
 				"%d" % RunDifficulty.SPAWN_MID]),
 			_row(["%d or fewer" % (RunDifficulty.MID_HOPS - 1),
 				"%d" % RunDifficulty.SPAWN_NEAR]),
-			_b("+1 if you did not put a single body down during the game, by its "
-				+ "goal."),
-			_b("Escaping always adds 1, even if you did."),
+			_b("+1 if you did not beat a single body's goal during the game. A "
+				+ "bomb, a wand or a mine killing one does not count — only a goal "
+				+ "you beat does."),
+			_b("Escaping always adds 1, even if you did — and never costs fewer "
+				+ "than %d." % GameLoop2.ESCAPE_MIN_BODIES),
 			_b("Nothing walks on at the Amulet, and nothing when a teleport pulls "
 				+ "you out."),
 			_b("A lane packed at the back gets SHOVED forward to make room — the "
 				+ "whole line steps a column closer, and nobody takes a turn. The "
-				+ "newcomer picks the lane that needs the least shoving."),
+				+ "newcomer picks the lane that needs the least shoving. When no lane "
+				+ "can go forward, the body in its way steps one lane up or down "
+				+ "instead, if there is a free cell. Immobile bodies and spawners "
+				+ "that never attack are never shoved."),
 			_b("The strip on top of the board says the price before you pay it: "
 				+ "+N when this game ends, or none, and why."),
 			_h("Difficulty up"),
@@ -925,11 +930,11 @@ static func _ch_wrong() -> Dictionary:
 			_h("I keep losing runs of this game"),
 			_p("Each lost run hands the board a turn, and the board is closer "
 				+ "every time. Escape is always there: it costs one more enemy "
-				+ "than finishing would and pays no chest, but it stops the "
+				+ "than finishing would (at least two) and pays no chest, but it stops the "
 				+ "bleeding, and every goal stays on your checklist to clear "
 				+ "somewhere friendlier."),
-			_p("And put ONE body down if you possibly can — any goal on the list. "
-				+ "A game that ends with nothing down stands one more enemy up."),
+			_p("And beat ONE body's goal if you possibly can — any goal on the list. "
+				+ "A game that ends with no goal beaten stands one more enemy up."),
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "

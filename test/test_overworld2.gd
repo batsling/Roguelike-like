@@ -6372,7 +6372,8 @@ func test_escaping_always_costs_one_more_than_handing_in() -> void:
 	GameLoop2.defeated_this_game = 1
 	var hand_in: int = int(GameLoop2.end_of_game_price()["bodies"])
 	var walk_out: int = int(GameLoop2.end_of_game_price(true)["bodies"])
-	assert_eq(walk_out, hand_in + 1, "one more body for the door")
+	assert_eq(walk_out, maxi(hand_in + 1, GameLoop2.ESCAPE_MIN_BODIES),
+		"one more body for the door, and never fewer than two")
 	GameLoop2.defeated_this_game = 0
 
 func test_escaping_moves_nobody_but_fills_the_board() -> void:

@@ -661,11 +661,11 @@ func _refresh_pressure() -> void:
 func _spawn_tip(owed: int, why_free: String) -> String:
 	if owed > 0:
 		return ("End this game now and %s walk on at the back — fewer the further you "
-			+ "are from the Amulet, and one fewer once a body has gone down here.") % (
+			+ "are from the Amulet, and one fewer once you beat a goal here.") % (
 			RunDifficulty.bodies_text(owed))
 	if why_free != "":
 		return "Ending this game stands nobody up: %s." % why_free
-	return "Every game that ends stands bodies up — 0 far out, up to 2 near the Amulet, +1 if nothing went down."
+	return "Every game that ends stands bodies up — 0 far out, up to 2 near the Amulet, +1 if no goal was beaten."
 
 func _boss_tip(to_boss: int) -> String:
 	if to_boss == 1:
