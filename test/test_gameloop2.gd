@@ -486,14 +486,9 @@ func test_path_check_uses_the_whole_footprint() -> void:
 	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.grid_cols()),
 		"but rows 2-3 are clear all the way in")
 
-# THROUGH `summon`, not `spawn_to_stack`. The off-grid queue is what a body that
-# could not reach the spawn column does while it waits for room. A CONJURED body
-# does not queue at all any more (docs/wands-design.md §5.4): a scroll or a wand
-# that said a monster was created and then put it in a holding pen the player
-# cannot see spent its charge on nothing, so `spawn_to_stack` falls back to the
-# nearest square the body fits in. Filling the board with it would test the
-# opposite of what these three are about. `summon` is the ability-spawn path and
-# still queues, which is what makes it the right stand-in here.
+# Through `summon`, the ability-spawn path. The off-grid queue is what a body that
+# could not reach the spawn column does while it waits for room, and every spawn
+# path queues the same way (spawn_to_stack included, docs/wands-design.md §5.4).
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
 	for i in range(GameLoop2.grid_rows()):
 		GameLoop2.summon(_enemy(0))
@@ -1477,41 +1472,24 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	_turn()                             # strikes for 2
 	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 once at the front")
 
-# A CONJURED BODY DOES NOT QUEUE (docs/wands-design.md §5.4). A scroll or a wand
-# that says a monster is created and then parks it in a holding pen the player
-# cannot see has spent a charge on nothing, so a full spawn column falls back to
-# the nearest square the body fits in.
-func test_a_conjured_body_takes_the_nearest_square_when_its_column_is_full() -> void:
-	# `summon` fills the spawn column and queues anything that will not fit; the
-	# conjured body arriving after it must NOT join that queue.
+# EVERY SPAWN STARTS AT THE BACK (docs/wands-design.md §5.4). A conjured body,
+# a failure spawn and the capstone boss all land through `spawn_to_stack`, and a
+# full spawn column queues them off-grid rather than dropping them into whatever
+# square is nearest — which could be the front line.
+func test_a_spawn_with_its_column_full_queues_rather_than_landing_further_forward() -> void:
 	for _i in range(GameLoop2.grid_rows()):
 		GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column is full and nobody is waiting")
-	var conjured: int = GameLoop2.spawn_to_stack(_enemy(0))
-	assert_gt(conjured, 0)
-	assert_eq(GameLoop2.offgrid_count(), 0, "and the conjured body did not queue behind it")
-	var col: int = _col_of(conjured)
-	assert_lte(col, GameLoop2.grid_cols(), "it is on the board")
-	assert_gte(col, 1)
-	# THE NEAREST one, not just any: the spawn column is taken, so the square it
-	# lands on is one column in from it.
-	assert_eq(col, GameLoop2.spawn_col() - 1,
-		"the closest open column to the one it wanted")
+	var spawned: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_gt(spawned, 0)
+	assert_eq(_col_of(spawned), GameLoop2.offgrid_col(),
+		"it waits beside the board instead of standing in front of the back column")
+	assert_eq(GameLoop2.offgrid_count(), 1)
 
-# …and when the board has no room at all it still waits, because there is nowhere
-# for "nearest" to point. The fallback is a better answer than the queue, not a
-# promise the board can always keep.
-func test_a_conjured_body_with_nowhere_at_all_to_stand_still_waits() -> void:
-	# Placed cell by cell: `summon` with no cell walks onto the spawn column and
-	# QUEUES behind a full one, which would leave the rest of the board empty.
-	for c in range(1, GameLoop2.grid_cols() + 1):
-		for r in range(GameLoop2.grid_rows()):
-			GameLoop2.summon(_enemy(0), Vector2i(c, r))
-	assert_true(GameLoop2.empty_cells().is_empty(), "there is no square left")
-	var conjured: int = GameLoop2.spawn_to_stack(_enemy(0))
-	assert_gt(conjured, 0)
-	assert_eq(_col_of(conjured), GameLoop2.offgrid_col(),
-		"a full board is a full board")
+# …and with room at the back it takes the back column, whatever else is free.
+func test_a_spawn_takes_the_back_column_when_there_is_room() -> void:
+	var spawned: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(spawned), GameLoop2.spawn_col(), "the back of the board")
 
 # --- Strength on the board (Aggravate Monsters, §4.1 / §13.4) -------------
 
@@ -2599,6 +2577,70 @@ func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> voi
 	assert_gt(landed, 1, "the doorstep lands more than one body")
 	assert_eq(GameState.spawn_events, before + 1,
 		"…and they are one spawn EVENT between them (§19.6)")
+
+
+# THE OTHER HALF OF §19.5: a game HANDED IN with nothing defeated spawns too,
+# whether the goal was met or missed. It priced itself at nothing for a while —
+# `beat_game` asked for the price after it had already marked the game over, and
+# `failure_price` answers 0 for a game that is not in play.
+func test_a_game_handed_in_with_nothing_defeated_spawns_bodies() -> void:
+	if not _stand_for_failure(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	if GameLoop2.roll_enemy(GameLoop2.game_type_key(
+			Data.get_game(GameState.current_game_id)), RunDifficulty.current_tier()) == null:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	var want: int = GameLoop2.failure_spawn_count()
+	assert_gt(want, 0, "the hand-in owes bodies")
+	var before: int = GameLoop2.stack_size()
+	var res: Dictionary = GameLoop2.beat_game(false, [])
+	assert_eq(int(res.get("failure_spawns", 0)), want, "the report charges what the strip quoted")
+	assert_gte(GameLoop2.stack_size(), before + want, "and they are on the board")
+
+
+func test_a_hand_in_that_defeated_something_spawns_nothing() -> void:
+	if not _stand_for_failure(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	var inst: int = GameLoop2.summon(_enemy(0))
+	var res: Dictionary = GameLoop2.beat_game(false, [inst])
+	assert_eq(GameLoop2.defeated_this_game, 0, "the game record is wiped at the end")
+	assert_eq(int(res.get("failure_spawns", -1)), 0,
+		"the goal the report cleared put a body down, and that shut the tap")
+
+
+func test_an_escape_spawns_nothing_at_the_report() -> void:
+	if not _stand_for_failure(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
+	assert_eq(int(res.get("failure_spawns", -1)), 0, "walking away already paid its price")
+
+
+# A SPAWN THAT GROWS THE BOARD LANDS ON THE NEW BACK COLUMN. The spawn event is
+# what grows it (§19.6), and it used to be counted after the bodies were placed —
+# which left them on the OLD back column, a column in front of the real one.
+func test_a_tier_crossing_failure_spawn_lands_on_the_grown_boards_back_column() -> void:
+	if not _stand_for_failure(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.sync_grid_bounds()
+	var cols_before: int = GameLoop2.grid_cols()
+	if GameLoop2.spawn_for_failure() == 0:
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	assert_eq(GameLoop2.grid_cols(), cols_before + 1, "the spawn crossed a tier and grew the board")
+	var checked := 0
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e == null or e.is_boss():
+			continue
+		checked += 1
+		assert_eq(int(entry["col"]), GameLoop2.spawn_col_for(e),
+			"%s stands on the back column of the board it walked onto" % e.display_name)
+	assert_gt(checked, 0)
 
 # ---------------------------------------------------------------------------
 # The every-third-spawn capstone (§19.6)

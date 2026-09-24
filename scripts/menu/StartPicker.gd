@@ -44,7 +44,8 @@ signal cancelled
 const LAYER := UITheme.Layer.START
 # …and what it opens on top of ITSELF. The ladder window is 130 and the game-card
 # popup is 124 by default, both of which are under this screen: without lifting
-# them, `→ Optimal Path` and `⚙ Details` open perfectly and are never seen.
+# them, `⚙ Details` (and the route ladder it can raise) opens perfectly and is
+# never seen.
 const MODAL_LAYER := UITheme.Layer.START_MODAL
 
 # The Amulet's banner art, and a road card's cover. Both are deliberately smaller
@@ -292,23 +293,16 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 
 	box.add_child(_waiting_row(opt.get("enemy")))
 
+	# ONE BUTTON. There used to be an `→ Optimal Path` beside it, and it was a
+	# second door into a picture `⚙ Details` already draws: the card it opens
+	# carries the same route ladder (GameChoiceModal's optimal path), so the two
+	# buttons led to the same road.
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.add_child(tools)
-	var path_btn := Button.new()
-	# OPTIMAL PATH, not `Map`. The ladder is the one shortest road drawn rung by
-	# rung; the star chart is the Map, and it is a header button in a run. Three
-	# buttons on the old start panel said `Map` for two different destinations.
-	path_btn.text = "→  Optimal Path"
-	path_btn.tooltip_text = "The shortest route to %s if you open on %s." % [
-		_page.amulet_name(), game.display_name]
-	path_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	path_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	path_btn.pressed.connect(func(): _page.preview_map(game.id))
-	tools.add_child(path_btn)
 	var card_btn := Button.new()
 	card_btn.text = "⚙  Details"
-	card_btn.tooltip_text = "The full card: the enemy, its goal, the shields this game grants, your record in it."
+	card_btn.tooltip_text = "The full card: the enemy, its goal, the shields this game grants, your record in it, and the optimal path to %s." % _page.amulet_name()
 	card_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	card_btn.pressed.connect(func(): _page.open_start_choice(index))

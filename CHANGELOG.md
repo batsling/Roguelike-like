@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Playtest fixes: spawns, the Champion card, the reward and run-over screens.**
+  - **A game handed in with nothing defeated spawns again** (§19.5). `beat_game`
+    priced the failure after it had already marked the game over, and
+    `failure_price` answers 0 for a game not in play, so every report was free.
+    The price is now taken while the game is still in play (after the report's
+    own defeats, which still shut the tap) and paid after the resolve, as before.
+  - **A Champion card shows the boss that walks on.** It used to advertise an
+    ordinary enemy and roll a different body, a boss, at the commit.
+    `Overworld2._roll_card_enemy` rolls the boss when the card is drawn.
+  - **Spawns enter at the back.** Two causes. A spawn event that crossed a tier
+    grew the board AFTER its bodies were placed, which left them one column in
+    front of the new back column; the event is now counted before anything is
+    placed and its capstone boss lands after. And `spawn_to_stack` (failure
+    spawns, the capstone, conjured monsters) dropped a body into the nearest free
+    square when the back column was full, which could be the front line. It now
+    waits in the off-grid queue like every other spawn (docs/wands-design.md §5.4).
+  - **No "Leave it" on the reward screen's chests.** A chest you don't want is
+    one you don't take; the screen's way out already leaves everything unclaimed.
+    The standalone chest modal keeps the button, since it is its only exit.
+  - **The start cards lose `→ Optimal Path`.** `⚙ Details` already draws the same
+    route ladder.
+  - **The run-over road strip no longer clips the tier badges.** The badge
+    overhangs its cover's top-right corner, and the strip's scroll container cut
+    it off; the strip is now padded by the overhang.
+
 - **The manual caught up with §19.** A read of How to Play against the spec
   found it still teaching retired rules:
   - the ESCORT, instead of "two bodies walk on";

@@ -1697,6 +1697,15 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# From here the game is in play until it is handed in, whatever becomes of the
 	# bodies below (see game_in_play).
 	game_in_play = true
+	# ONE SPAWN EVENT, however many bodies are about to walk on (§19.6). An
+	# Enemies node and a Champion node each count once, and an Event or a Shop
+	# node never reaches here at all — see begin_bodiless_game. COUNTED BEFORE
+	# ANYTHING IS PLACED, because counting it can grow the board, and the bodies
+	# below belong on the back column of the board they walk onto rather than the
+	# one they left (see note_spawn_event). The capstone it may owe lands after
+	# them, at the bottom of this function.
+	if is_arrival:
+		_count_spawn_event()
 	# A NEW COMBAT, so Undying pays up (§7.6): anything that died last game and had
 	# a revive left walks back on at the rightmost column, one phase further on.
 	# Before the game's own enemy, so the board it arrives onto is the real one.
@@ -1709,11 +1718,10 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		var second_inst: int = _spawn_second_body(enemy, escort_type, escort_tier)
 		if second_inst > 0:
 			arrivals.append(second_inst)
-	# ONE SPAWN EVENT, however many bodies just walked on (§19.6). An Enemies node
-	# and a Champion node each count once, and an Event or a Shop node never
-	# reaches here at all — see begin_bodiless_game.
+	# The other half of this arrival's spawn event, counted above: the every-third
+	# capstone, on top of the bodies that just walked on.
 	if is_arrival:
-		note_spawn_event(escort_type, escort_tier)
+		_capstone_if_due(escort_type, escort_tier)
 	loop_changed.emit()
 	return inst
 
@@ -1728,9 +1736,22 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 # so holding the board at its old size until the report would crowd new bodies
 # onto a grid the rule says has already grown — the one state §7.3's off-grid
 # queue exists to avoid rather than to absorb.
+#
+# The spawns in this file do it in TWO HALVES round the placing, rather than
+# through this: `_count_spawn_event` before any body is put down, so the board
+# they walk onto is the grown one and they land on its real back column, and
+# `_capstone_if_due` after, so the capstone lands on top of them. Growing the
+# board after placing left every body of a tier-crossing spawn a column in front
+# of the back — a spawn at the front, where every other spawn is at the back.
 func note_spawn_event(type_key: StringName = &"", tier: int = -1) -> void:
+	_count_spawn_event()
+	_capstone_if_due(type_key, tier)
+
+func _count_spawn_event() -> void:
 	GameState.spawn_events += 1
 	sync_grid_bounds()
+
+func _capstone_if_due(type_key: StringName = &"", tier: int = -1) -> void:
 	if RunDifficulty.is_boss_spawn(GameState.spawn_events):
 		_land_capstone_boss(type_key, tier)
 
@@ -1826,18 +1847,37 @@ func failure_price() -> Dictionary:
 # called after `log_attempt` has already taken its snapshot, so taking the turn
 # back takes the body with it.
 func spawn_for_failure(escaped: bool = false) -> int:
-	var want: int = failure_spawn_count(escaped)
+	return _land_failure_bodies(failure_spawn_count(escaped))
+
+# Stand `want` failure bodies on the board, already priced. Split from
+# spawn_for_failure because the REPORT has to price its failure while the game is
+# still in play and land it after the resolve, when it no longer is (beat_game).
+func _land_failure_bodies(want: int) -> int:
 	if want <= 0:
 		return 0
 	var game: GameData = Data.get_game(GameState.current_game_id)
 	var type_key: StringName = game_type_key(game)
 	var tier: int = RunDifficulty.current_tier()
-	var landed := 0
-	var names: Array = []
+	# ROLLED FIRST, placed second. The spawn event grows the board when it crosses
+	# a tier (§19.6), and it has to do that BEFORE anything is placed: a body put
+	# down on the old back column and then left there by the growth is standing a
+	# column in front of the new one, which is a spawn at the front rather than the
+	# back. So: who is coming, then the board they walk onto, then the walk.
+	var rolled: Array = []
 	for _i in range(want):
 		var enemy: GoalEnemyData = roll_enemy(type_key, tier)
 		if enemy == null:
 			break        # an empty roster: the failure is free rather than fatal
+		rolled.append(enemy)
+	if rolled.is_empty():
+		return 0
+	# ONE spawn event for the failure, not one per body (§19.6) — and it can be
+	# the step that crosses a tier band with the game still in play, which is the
+	# whole reason the board grows at the spawn.
+	_count_spawn_event()
+	var landed := 0
+	var names: Array = []
+	for enemy in rolled:
 		if spawn_to_stack(enemy) > 0:
 			landed += 1
 			names.append(enemy.display_name)
@@ -1851,11 +1891,9 @@ func spawn_for_failure(escaped: bool = false) -> int:
 			game.display_name if game != null else "this game"]
 		GameLog.add(msg, UITheme.DANGER)
 		Notifications.notify(msg, UITheme.DANGER)
-		# ONE spawn event for the failure, not one per body (§19.6) — and it can
-		# be the step that crosses a tier band with the game still in play, which
-		# is the whole reason the board grows at the spawn.
-		note_spawn_event(type_key, tier)
-		loop_changed.emit()
+	# …and the capstone, AFTER the bodies it lands on top of (§19.6).
+	_capstone_if_due(type_key, tier)
+	loop_changed.emit()
 	return landed
 
 # Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
@@ -2493,6 +2531,14 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			_defeat(e, true, res, fell)
 		else:
 			_stagger(int(inst))
+	# WHAT THIS HAND-IN OWES FOR NOTHING GOING DOWN (§19.5), priced HERE and paid
+	# at step 5. Here because it is the last moment the game is still in play —
+	# `failure_price` answers 0 for a game that is not, and the line below is what
+	# ends it — and after step 1, whose defeats are what shut the tap. It used to be
+	# priced at step 5 itself, after `game_in_play` had gone false, so every report
+	# priced itself at nothing and a game handed in with nothing defeated spawned
+	# nobody.
+	var failure_owed: int = failure_spawn_count(escaped)
 	# The game is over, so whatever arrived with it is released: those bodies
 	# survived the game they spawned at, and are now ordinary followers that the
 	# NEXT game's Scramble may not touch. The game itself stops being in play at
@@ -2633,10 +2679,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    arrived as the game was handed in and act from the next one, on §7.2's
 	#    ordinary terms.
 	#
-	#    Before `_clear_game_record` below, which is what wipes the counter this
-	#    reads. An ESCAPE owes nothing: the player walked away and already paid
-	#    §3.2's price for it.
-	res["failure_spawns"] = spawn_for_failure(escaped)
+	#    The count was taken before the game stopped being in play (see
+	#    `failure_owed`). An ESCAPE owes nothing: the player walked away and
+	#    already paid §3.2's price for it.
+	res["failure_spawns"] = _land_failure_bodies(failure_owed) if not run_over else 0
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).
@@ -4022,26 +4068,25 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 # onto the board, so a Scramble must not take it off again. Returns its unique
 # instance handle, or 0 if enemy is null.
 #
-# A CONJURED BODY DOES NOT QUEUE. `_add_to_grid` walks it onto the spawn column
+# EVERY SPAWN STARTS AT THE BACK. `_add_to_grid` walks it onto the spawn column
 # like anything else, and a spawn column with a body already standing in every row
-# parks it off-grid to wait — which is right for an enemy that ARRIVED with a game
-# (it is queuing behind the crowd it came with) and wrong for one somebody
-# conjured: the scroll and the wand both say a monster is created, and a monster
-# that is created into a holding pen the player cannot see is a charge spent on
-# nothing. So a full spawn column falls back to the nearest square it fits in.
+# parks it in the off-grid queue beside the board, from which it walks on as room
+# frees — the same as the bodies a node lands. A failure spawn, the capstone boss
+# and a conjured monster all come through here.
+#
+# It used to fall back to the NEAREST square the body fitted in when the back
+# column was full (docs/wands-design.md §5.4), on the reasoning that a conjured
+# monster sent to a holding pen was a charge spent on nothing. What that did in
+# play was drop bodies into the middle of the board — or next to the player, on a
+# board crowded at the back — when every other spawn in the game enters at the
+# back. The queue is drawn on the board, so a queued body is still a body the
+# player can see coming.
 func spawn_to_stack(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
-	var entry: Dictionary = entry_for(inst)
-	if not entry.is_empty() and int(entry.get("col", offgrid_col())) > grid_cols():
-		# Measured from where it WANTED to stand — the back of its own lane — so
-		# "closest" means closest to the way in rather than closest to the player.
-		var at: Vector2i = nearest_open_cell(enemy, Vector2i(spawn_col_for(enemy), 0), inst)
-		if at != OFF_FIELD:
-			_move_entry(entry, at.y, at.x)
 	loop_changed.emit()
 	return inst
 

@@ -382,6 +382,32 @@ func test_a_champion_node_stands_one_boss_and_nothing_beside_it() -> void:
 	assert_true(e.is_boss(), "and it is a boss")
 
 
+# THE CARD SHOWS THE BOSS THAT WALKS ON. A Champion card used to advertise an
+# ordinary enemy and then roll a different body — a boss — at the commit, so the
+# preview named something that never arrived.
+func test_a_champion_card_advertises_the_boss_that_walks_on() -> void:
+	_set_kind(_ui._choices[0], RunGraph.NodeKind.CHAMPION)
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	_ui._slot_enemies.clear()
+	_ui._build_choices()
+	var idx := -1
+	for i in range(_ui._choices.size()):
+		if StringName(_ui._choices[i]["slot"]) == slot:
+			idx = i
+	assert_gte(idx, 0, "the card is still on the table")
+	var shown: GoalEnemyData = _ui._choices[idx]["enemy"]
+	assert_not_null(shown)
+	if shown == null or not shown.is_boss():
+		pending("no boss in the roster for this type/tier; the card falls back to an enemy")
+		return
+	_ui.pick(idx)
+	# By ID and off the ARRIVAL rather than stack[0]: an authored Escort ability
+	# can stand bodies beside a boss the moment it lands.
+	var landed: GoalEnemyData = GameLoop2.arrival().get("enemy")
+	assert_eq(landed.id if landed != null else &"", shown.id,
+		"the body on the board is the one the card showed")
+
+
 func test_an_event_node_stands_no_body() -> void:
 	_pick_as(RunGraph.NodeKind.EVENT)
 	assert_eq(GameLoop2.stack_size(), 0, "the event is what is here, not a fight")
@@ -687,7 +713,7 @@ func test_leaving_a_drop_discards_it() -> void:
 	if chest == null:
 		return
 	var inv_before: int = GameState.inventory.size()
-	chest.leave()                                # click Leave it
+	chest.leave()                                # what walking off it does
 	assert_null(_ui._post_screen.chest(), "the drop was cleared")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
 	_leave_post_game()
