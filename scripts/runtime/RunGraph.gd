@@ -8,8 +8,8 @@ extends RefCounted
 
 # Path length tuning. The run opens with a CHOICE OF STARTING GAMES, each 4 to 7
 # games from the Amulet — so picking a start is a choice of genre, route, AND run
-# length. The length is not flavour: enemies get BONUS turns at the end of a game
-# the closer the run stands to the Amulet (RunDifficulty.extra_turns_for_hops,
+# length. The length is not flavour: the end of a game stands more bodies up the
+# closer the run stands to the Amulet (RunDifficulty.pressure_for_hops,
 # FAR_HOPS = 5), so a start 8 hops out opens with four games in the calm +0 band
 # while a start 4 hops out gets NONE — it begins already inside the +1 band.
 # Starting far is a longer run fought slowly; starting near is a short run fought
@@ -1291,9 +1291,9 @@ static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 # Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
 # DISTANCES from the Amulet wherever the graph allows it.
 #
-# Distance is a real choice across the 4..8 band: enemies get bonus turns on the
-# end of a game the closer the run stands to the Amulet
-# (RunDifficulty.extra_turns_for_hops), so an 8-hop card opens with four games in
+# Distance is a real choice across the 4..8 band: the end of a game stands more
+# bodies up the closer the run stands to the Amulet
+# (RunDifficulty.pressure_for_hops), so an 8-hop card opens with four games in
 # the calm band and a 4-hop card starts already out of it. Two cards at the same distance offer a genre and nothing else.
 #
 # It is a PREFERENCE, not a requirement, and the ONLY one left in the panel — the

@@ -53,14 +53,14 @@ extends Node
 #        whether it walked on this game or three games ago. Defeated + item drop at
 #        0 Health; a survivor (e.g. an Alien-Baby-buffed two-Health enemy) stays on
 #        the board and holds its fire for the whole game, because it was engaged.
-#     2. The stack takes its EXTRA TURNS, and only those (§7.4): a game handed in
-#        moves nobody by itself, and what the Amulet's pull adds on the end is 0
-#        out in the wilds, 1 once they have your scent and 2 on its doorstep. Each
-#        turn every enemy acts once: the front column attacks for its damage
-#        (shields, then hp), everything behind it steps a column closer, and a
-#        stun costs one turn of either. The turns the board takes the REST of the
-#        time come one at a time, off the runs you lose at the game (§3.2).
+#     2. Nobody moves (§7.4): a game handed in takes no turn. The board's turns
+#        come one at a time, off the runs you lose at the game (§3.2) — each one
+#        the front column attacking for its damage (shields, then hp), everything
+#        behind it stepping a column closer, and a stun costing one turn of either.
 #     3. Any shields still standing expire — they belonged to that game.
+#     4. The end of the game FILLS the board (§19.5): the Amulet pressure's 0 / 1
+#        / 2 bodies walk on at the back, +1 if nothing went down here, +1 always
+#        on an escape — shoving a full lane forward to make room.
 # Reach & clear the Amulet game (clear_amulet) to win; hp <= 0 to lose.
 
 signal loop_changed()                 # stack / arrivals / run-state mutated (HUD hook)
@@ -102,11 +102,11 @@ const BOMB_HIT: int = 1
 # and reaches you in fewer games — in a RANDOM row among those with the clearest
 # run at the player (enemies never change lanes ON THEIR OWN, so a row with
 # bodies parked in it is a row it may never strike from — a PUSH is the one thing
-# that moves a body sideways, see `push`). Each game beaten every enemy takes
-# enemy_turns() turns, and each turn it either strikes — once ANY of its cells is
-# in the front column (col 1) — or closes one column toward the player. Enemies
-# that can't fit anywhere wait OFF-GRID (offgrid_col()) and slide in as space
-# frees.
+# that moves a body sideways, see `push`). Each run you LOSE every enemy takes
+# a turn, and each turn it either strikes — once ANY of its cells is in the front
+# column (col 1) — or closes one column toward the player. A spawn with no room
+# at the back SHOVES a lane forward (_shove_plan); only when every lane is packed
+# does it wait OFF-GRID (offgrid_col()) and slide in as space frees.
 #
 # Each entry carries `row` (0-based, the TOP row of its footprint) and `col`
 # (1-based, the LEFTMOST/frontmost column of its footprint): 1 = melee/front,
@@ -1725,7 +1725,7 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	loop_changed.emit()
 	return inst
 
-# A SPAWN EVENT HAPPENED (§19.6): a node arrival that landed bodies, or a failure
+# A SPAWN EVENT HAPPENED (§19.6): a node arrival that landed bodies, or an end-of-game
 # spawn. One per event, not one per body — two bodies on an Enemies node and one
 # on a Champion are the same single step up the ladder, because what the tier
 # measures is how often the run is putting things on the board rather than how
@@ -1766,7 +1766,7 @@ func _capstone_if_due(type_key: StringName = &"", tier: int = -1) -> void:
 # `type_key` is the game the spawn belongs to, passed down rather than read off
 # GameState, because an arrival commits the board before the run has finished
 # travelling and "where the player is standing" is briefly the game they left.
-# Empty falls back to the current game, which is right for a failure spawn.
+# Empty falls back to the current game, which is right for an end-of-game spawn.
 func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 	var key: StringName = type_key
 	if key == &"":
@@ -1776,28 +1776,36 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 		return          # an empty boss roster: the band closes without one
 	if spawn_to_stack(boss) <= 0:
 		return
-	# NOT an arrival, for the same reason a failure spawn is not one: it did not
+	# NOT an arrival, for the same reason an end-of-game spawn is not one: it did not
 	# come with the game, so a Scramble must not be able to scrub it off.
 	var msg: String = "%s closes the band — a boss walks on." % boss.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 	loop_changed.emit()
 
-# --- the enemies you get for not fighting (§19.5) ---------------------------
+# --- the end of a game fills the board (§19.5) ------------------------------
 #
-# Every failure at a game where nothing has been defeated spawns bodies. This is
-# the other half of the node kinds: without it, the three non-Enemies kinds would
-# simply be a way to play a whole run on an empty board.
+# Every game that ends stands bodies up on the back column: the Amulet pressure's
+# count (§7.4), plus one when nothing was defeated there, plus one always on an
+# escape. It is the half of the board's pressure a report owns — a lost run moves
+# the board (§3.2), the end of a game fills it — and it replaced both the extra
+# turns a report used to hand the board and the bodies a lost run used to stand
+# up, so nothing spawns mid-game any more.
 #
-# HOW MANY THIS FAILURE OWES, or 0 when it owes none. Four things buy it off:
+# HOW MANY THE END OF THIS GAME STANDS UP, with its REASON — what the battlefield
+# strip reads (§19.8), and what beat_game prices the hand-in with. `bodies` is
+# the count; `why` names what is waiving it when that is 0 (empty when there is
+# simply no game in play). One function for both so the strip can never promise
+# a price the spawn does not charge.
 #
-#   * DEFEATING ANYTHING this game shuts the tap for the rest of it. One body
-#     down is the player answering the board, and the rule is about a player who
-#     never does.
-#   * AN ESCAPE, because they walked away and already paid §3.2's price for it.
-#   * THE AMULET, because there is no next game for anything to walk into.
-#   * AN EVENT OR A SHOP NODE, because nothing spawned there so nothing is owed —
-#     those two kinds are genuine breathing room and this would take it back.
+#   * THE AMULET owes nothing: there is no next game for anything to walk into.
+#   * DEFEATING ANYTHING this game waives the +1, and only the +1. One body down
+#     is the player answering the board.
+#   * AN ESCAPE always pays the +1, kill or no kill: walking out is the one way
+#     to leave a game that must never be cheaper than finishing it.
+#
+# An Event or a Shop node is NOT exempt. It stood nothing on the board, but the
+# evening still ended, and the road still charges for where it ended.
 #
 # `defeated_this_game` is the counter and the distinction it draws is load-
 # bearing. It moves in `_defeat` and nowhere else, so two things that look like
@@ -1806,53 +1814,32 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # a goal against a body with more Health than the single hit it deals, which
 # leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
 # tempting field and it is the wrong one: it ticks for both.
-func failure_spawn_count(escaped: bool = false) -> int:
-	if escaped:
-		return 0
-	return int(failure_price()["bodies"])
-
-# The same answer, with its REASON — what the battlefield strip reads (§19.8).
-# `bodies` is what a failure here would stand on the board right now, and `why`
-# says which of the four exemptions is buying it off when that is 0 (empty when
-# there is no game in play to fail at). One function for both so the strip can
-# never promise a price the spawn does not charge.
-func failure_price() -> Dictionary:
+func end_of_game_price(escaped: bool = false) -> Dictionary:
 	if not game_in_play or run_over:
 		return {"bodies": 0, "why": ""}
-	if defeated_this_game > 0:
-		return {"bodies": 0, "why": "a body went down here"}
 	var here: StringName = GameState.current_game_id
 	if here == &"":
 		return {"bodies": 0, "why": ""}
 	if here == GameState.amulet_game_id:
 		return {"bodies": 0, "why": "nothing follows you past the Amulet"}
-	var kind: int = GameState.node_kind(here)
-	match kind:
-		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
-			return {"bodies": 0, "why": "nothing spawns at %s node" % (
-				"an Event" if kind == RunGraph.NodeKind.EVENT else "a Shop")}
-	return {"bodies": RunDifficulty.failure_bodies_for_hops(hops_to_amulet()), "why": ""}
+	var bodies: int = pressure()
+	if escaped or defeated_this_game <= 0:
+		bodies += 1
+	return {"bodies": bodies,
+		"why": "" if bodies > 0 else "a body went down here, out in the wilds"}
 
-# Stand this failure's bodies on the board. Returns how many actually landed.
+# Stand `want` end-of-game bodies on the board, already priced. Returns how many
+# actually landed.
 #
 # They roll from the GAME IN PLAY's type at the run's current tier — the same
 # roll an Enemies node makes, with the same widening — so a body that turns up
-# because you keep losing at a Deckbuilder is a Deckbuilder body. The board goes
-# on describing where you are standing; the failure changes how MANY walk on
+# because you ended an evening at a Deckbuilder is a Deckbuilder body. The board
+# goes on describing where you were standing; the road changes how MANY walk on
 # rather than what kind of place this is.
 #
-# THEY NEVER JOIN `arrivals`. They did not come with the game, so a Scramble
-# cannot scrub them off the board — which would otherwise make the failure price
-# refundable for a D6 charge. The undo needs nothing new: at a lost run this is
-# called after `log_attempt` has already taken its snapshot, so taking the turn
-# back takes the body with it.
-func spawn_for_failure(escaped: bool = false) -> int:
-	return _land_failure_bodies(failure_spawn_count(escaped))
-
-# Stand `want` failure bodies on the board, already priced. Split from
-# spawn_for_failure because the REPORT has to price its failure while the game is
-# still in play and land it after the resolve, when it no longer is (beat_game).
-func _land_failure_bodies(want: int) -> int:
+# THEY NEVER JOIN `arrivals`. They did not come with a game, so a Scramble
+# cannot scrub them off the board.
+func _land_end_of_game_bodies(want: int, escaped: bool = false) -> int:
 	if want <= 0:
 		return 0
 	var game: GameData = Data.get_game(GameState.current_game_id)
@@ -1867,13 +1854,13 @@ func _land_failure_bodies(want: int) -> int:
 	for _i in range(want):
 		var enemy: GoalEnemyData = roll_enemy(type_key, tier)
 		if enemy == null:
-			break        # an empty roster: the failure is free rather than fatal
+			break        # an empty roster: the spawn is free rather than fatal
 		rolled.append(enemy)
 	if rolled.is_empty():
 		return 0
-	# ONE spawn event for the failure, not one per body (§19.6) — and it can be
-	# the step that crosses a tier band with the game still in play, which is the
-	# whole reason the board grows at the spawn.
+	# ONE spawn event for the whole end of the game, not one per body (§19.6) —
+	# and it can be the step that crosses a tier band, which is why the board
+	# grows at the spawn.
 	_count_spawn_event()
 	var landed := 0
 	var names: Array = []
@@ -1882,13 +1869,14 @@ func _land_failure_bodies(want: int) -> int:
 			landed += 1
 			names.append(enemy.display_name)
 	if landed > 0:
-		# SAID OUT LOUD, in the log and as a notification (§19.8) — the old escort's
-		# old notice generalised. These are the one arrival the player did not
-		# choose, so the notice names what walked on AND why: a body that appears
-		# because of something you did needs saying, or the board simply grows.
-		var msg: String = "%s walked on — nothing went down at %s." % [
-			", ".join(PackedStringArray(names)),
-			game.display_name if game != null else "this game"]
+		# SAID OUT LOUD, in the log and as a notification (§19.8). These are the
+		# one arrival the player did not choose, so the notice names what walked
+		# on AND why: a body that appears because of something you did needs
+		# saying, or the board simply grows.
+		var where: String = game.display_name if game != null else "this game"
+		var msg: String = ("%s walked on as you left %s." if escaped
+			else "%s walked on as %s ended.") % [
+				", ".join(PackedStringArray(names)), where]
 		GameLog.add(msg, UITheme.DANGER)
 		Notifications.notify(msg, UITheme.DANGER)
 	# …and the capstone, AFTER the bodies it lands on top of (§19.6).
@@ -2042,11 +2030,6 @@ func log_attempt() -> String:
 	# the Health, the ground it walks onto, a trinket the hit shatters — is what
 	# the undo has to put back (see _run_snapshot).
 	_attempt_snapshots.append(_run_snapshot())
-	# THE PRICE OF A LOST RUN WHERE NOTHING WENT DOWN (§19.5), landing with the
-	# tick and BEFORE the turn that tick buys — so the turn is resolved around the
-	# new bodies rather than a beat ahead of them. After the snapshot above, which
-	# is what makes the undo take them back with it.
-	spawn_for_failure()
 	last_attempt_turn = attempt_turn()
 	# One entry per tick, all of them "turn" now that there is only one thing a
 	# tick can cost. Kept as the list rather than collapsed to a count because it
@@ -2363,18 +2346,12 @@ func hops_to_amulet() -> int:
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
 	return int(dist[here]) if dist.has(here) else -1
 
-# How many TURNS every enemy takes when a game is REPORTED: the EXTRA turns this
-# position on the route buys them, and nothing else — 0 out in the wilds, up to 2
-# on the Amulet's doorstep (see RunDifficulty for the ladder and why it exists).
-#
-# Zero is the normal answer, and that is the design (§7.4). Handing a game in does
-# not move the board; LOSING RUNS at it does, one turn each (§3.2). What closing
-# on the Amulet buys the enemies is turns you did not pay for by failing.
-#
-# A turn is one action — attack from the front column, or step a column closer
-# from anywhere behind it.
-func enemy_turns() -> int:
-	return RunDifficulty.extra_turns_for_hops(hops_to_amulet())
+# The AMULET PRESSURE where the run is standing (§7.4): how many bodies the end
+# of a game stands up here before the defeated-nothing and escape surcharges — 0
+# out in the wilds, up to 2 on the Amulet's doorstep (see RunDifficulty for the
+# ladder and why it exists). end_of_game_price is the whole bill.
+func pressure() -> int:
+	return RunDifficulty.pressure_for_hops(hops_to_amulet())
 
 # Where every body on the board stands right now, as instance -> Vector2i(col,
 # row). Snapshotted after each turn so the board can play the turns back one at a
@@ -2408,17 +2385,17 @@ func _board_snapshot() -> Dictionary:
 # Returns last_result:
 #   {beaten, defeats:[enemy...], drops:int,
 #    attacks:[{instance, turn, damage|stunned|goal_hit}],
-#    turns:int, extra_turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
+#    turns:int, turn_frames:[{instance: Vector2i(col,row)}, ...],
 #    damage_taken, blocked, hp, shields, shields_expired, attempts, stack_size,
 #    status_rewards:int, statuses_ticked:[status_id...],
 #    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
 # left over afterwards and went away with the game (§3). `turns` is how many
-# actions each enemy got at the end of the game — all of them the Amulet's EXTRA
-# turns (§7.4), which is why `extra_turns` is the same number and not a subset —
-# while `turn_frames` holds the board after each one so the view can replay them
-# in order.
+# turns the board took at the end of the game — 0, since a report moves nobody
+# (§7.4); only Predatory Scent's extra turn (§7.6) lands one — while
+# `turn_frames` holds the board after each so the view can replay them in order.
+# `end_spawns` is how many bodies the end of the game stood up (§19.5).
 # `clear_advertised` is a convenience for callers that have no report checklist to
 # read — the text harness, and the tests that just want "and I did the goal of the
 # thing that walked on here". It adds the body the card ADVERTISED (arrivals[0])
@@ -2429,23 +2406,21 @@ func _board_snapshot() -> Dictionary:
 # The overworld passes false and lists everything itself, because on its checklist
 # the arrivals are ordinary rows it cannot tell from the followers — which is the
 # whole point.
-# `road_turns` is the ONE thing that can waive step 2 below — the extra turns the
-# Amulet's pull charges for finishing a game (§7.4). It is false for exactly one
-# report: a teleport off a game in play (Overworld2.loot_teleport). Everything
-# else about that report is unchanged — the goal-enemy still follows, the game is
-# still not credited — because what the loot bought was the DOOR, and a door you
-# are pulled through is not a game handed in. See the escape's own comment for why
-# the ordinary escape still pays.
+# `road_spawns` is the ONE thing that can waive step 5 below — the bodies the end
+# of a game stands up (§19.5). It is false for exactly one report: a teleport off
+# a game in play (Overworld2.loot_teleport). Everything else about that report is
+# unchanged — the game is still not credited — because what the loot bought was
+# the DOOR, and a door you are pulled through is not a game handed in. See the
+# escape's own comment for why the ordinary escape still pays, and pays more.
 #
 # It does not touch 2a: Predatory Scent is a body's own ability reacting to an
 # evening you did nothing with (§7.6), not the road's price for the road.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
-		claims: Dictionary = {}, road_turns: bool = true,
+		claims: Dictionary = {}, road_spawns: bool = true,
 		escaped: bool = false) -> Dictionary:
-	var turns: int = enemy_turns() if road_turns else 0
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
-		"turns": turns, "extra_turns": turns, "turn_frames": [],
+		"turns": 0, "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
 		"shields": GameState.shields, "shields_expired": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
@@ -2514,7 +2489,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# holds its fire tonight exactly as it would have if you had waited to tick it —
 	# and holds its ground with it. Everything ticked mid-game is already in the set
 	# (`_stagger`); the loop below adds whatever survives its hit at the report, in
-	# time for the extra turns that follow.
+	# time for any extra turn that follows (2a).
 	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
@@ -2531,14 +2506,13 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			_defeat(e, true, res, fell)
 		else:
 			_stagger(int(inst))
-	# WHAT THIS HAND-IN OWES FOR NOTHING GOING DOWN (§19.5), priced HERE and paid
-	# at step 5. Here because it is the last moment the game is still in play —
-	# `failure_price` answers 0 for a game that is not, and the line below is what
-	# ends it — and after step 1, whose defeats are what shut the tap. It used to be
-	# priced at step 5 itself, after `game_in_play` had gone false, so every report
-	# priced itself at nothing and a game handed in with nothing defeated spawned
-	# nobody.
-	var failure_owed: int = failure_spawn_count(escaped)
+	# WHAT THE END OF THIS GAME STANDS UP (§19.5), priced HERE and paid at step 5.
+	# Here because it is the last moment the game is still in play —
+	# `end_of_game_price` answers 0 for a game that is not, and the line below is
+	# what ends it — and after step 1, whose defeats are what waive the
+	# defeated-nothing surcharge.
+	var spawns_owed: int = (int(end_of_game_price(escaped)["bodies"])
+		if road_spawns else 0)
 	# The game is over, so whatever arrived with it is released: those bodies
 	# survived the game they spawned at, and are now ordinary followers that the
 	# NEXT game's Scramble may not touch. The game itself stops being in play at
@@ -2547,25 +2521,11 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	arrivals.clear()
 	game_in_play = false
 
-	# 2. THE EXTRA TURNS (§7.4). Reporting a game does not, by itself, move the
-	#    board: out in the wilds this loop runs zero times and the stack is exactly
-	#    where you left it. What runs it is the Amulet's pull — 1 turn inside 4
-	#    hops, 2 inside 2 — and each of those is the ordinary beat: a STRIKE from
-	#    the front column, a STEP from anywhere behind it.
+	# 2. NO TURNS (§7.4). Handing a game in does not move the board — the only
+	#    thing that does is losing runs at it (attempt_turn, §3.2). What closing on
+	#    the Amulet costs is BODIES, stood up at step 5, not turns: the extra turns
+	#    this step used to run are retired.
 	#
-	#    The turns you PAY FOR by failing are elsewhere (attempt_turn, §3.2). These
-	#    are the ones the road charges.
-	#
-	#    A CENSER IN THE PACK IS WHAT THE FRONT LINE DOES NOT GET (§8.2). It comes
-	#    off these turns and no others: they are the ones the road charges, which is
-	#    what the item's "-1 Extra Turns" names.
-	var front_drain: int = GameState.front_column_turn_drain()
-	for turn in range(turns):
-		if run_over:
-			break
-		_resolve_enemy_turn(turn, res, [], front_drain)
-		(res["turn_frames"] as Array).append(_board_snapshot())
-
 	# 2a. PREDATORY SCENT (§7.6). A body that smells a bad evening takes ONE MORE
 	#     turn — and only when the player had a status goal to meet and met none of
 	#     them. Both halves are the ability: a run carrying no status goals is not
@@ -2578,7 +2538,9 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	var hunters: Array = _predators(claims)
 	if not hunters.is_empty() and not run_over:
 		res["predators"] = hunters.duplicate()
-		_resolve_enemy_turn(turns, res, hunters)
+		res["turns"] = 1
+		# An EXTRA turn, so a Censer holds the front line out of it (§8.2).
+		_resolve_enemy_turn(0, res, hunters, true)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
@@ -2673,16 +2635,16 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    what it bought you was this game, and this game is only over now.
 	res["statuses_expired"] = _expire_timed_statuses()
 
-	# 5. AND THE PRICE OF A GAME HANDED IN WITH NOTHING DEFEATED (§19.5), whether
-	#    the goal was met or missed. AFTER the resolve above, so the bodies that
-	#    just walked on do not take the turns this report was paying for — they
-	#    arrived as the game was handed in and act from the next one, on §7.2's
-	#    ordinary terms.
+	# 5. AND THE END OF THE GAME FILLS THE BOARD (§19.5): the Amulet pressure's
+	#    bodies, +1 when nothing was defeated here, +1 always on an escape. AFTER
+	#    the resolve above, so the bodies that just walked on do not take a turn
+	#    this report was paying for — they arrived as the game was handed in and
+	#    act from the next lost run, on §7.2's ordinary terms.
 	#
 	#    The count was taken before the game stopped being in play (see
-	#    `failure_owed`). An ESCAPE owes nothing: the player walked away and
-	#    already paid §3.2's price for it.
-	res["failure_spawns"] = _land_failure_bodies(failure_owed) if not run_over else 0
+	#    `spawns_owed`).
+	res["end_spawns"] = (_land_end_of_game_bodies(spawns_owed, escaped)
+		if not run_over else 0)
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).
@@ -2701,7 +2663,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	loop_changed.emit()
 	return res
 
-# ONE turn of the stack, the atomic unit `enemy_turns()` counts out. Every enemy
+# ONE turn of the stack, the atomic unit a lost run buys (§3.2). Every enemy
 # acts once: the ones touching the front column STRIKE, everything behind it
 # STEPS a column closer. A STAGGERED body (`staggered_this_game`) does neither —
 # its goal was met this game and it survived the hit, which buys the rest of the
@@ -2709,21 +2671,20 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 # closer you push rather than less.
 #
 # A stun, by contrast, costs exactly ONE turn: a stunned enemy neither strikes
-# nor steps, and one stun ticks off at the end of the turn. So a stun read at the
-# Amulet's doorstep buys a third of a game rather than all of it — the same
-# charge, worth what the pace of the board says it's worth.
+# nor steps, and one stun ticks off at the end of the turn — one lost run, worth
+# the same wherever on the road you stand.
 # `only` narrows the turn to a named set of bodies — Predatory Scent's extra turn
 # (§7.6) is a free swing for two or three specific enemies and not another beat of
 # the whole board, and the ground's own turn-start triggers do not fire twice for
 # it either. Empty (the default) is every body, which is what a real turn is.
-# `front_drain` is the Censer's (§8.2): a body standing in the FRONT column sits
-# out this turn when `turn` is inside the drain, so `front_drain` of the road's
-# extra turns never happen for the bodies in reach of the player. Passed by
-# beat_game and nothing else — the turns a LOST RUN hands the board (attempt_turn,
-# §3.2) are ones the player bought by failing, and the item is about the extra
-# turns the road charges.
+# `extra` marks an EXTRA turn — one a body gets on top of the lost runs that are
+# the board's only ordinary clock (Predatory Scent's, today; §7.6). The Censer
+# (§8.2) is read against it: while one is owned, a body standing in the FRONT
+# column sits every extra turn out. A lost run's own turn is never extra — the
+# player bought it by failing, and the item is about the turns nobody paid for.
 func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
-		front_drain: int = 0) -> void:
+		extra: bool = false) -> void:
+	var censed: bool = extra and GameState.censes_extra_turns()
 	# a0. THE GROUND, before anything swings (§17). A body that has been parked on
 	#     a fire tile takes its stack of Burn now — so the halved damage is already
 	#     on it when it strikes this turn rather than a turn late — and this is
@@ -2769,7 +2730,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 		# list drawn up beforehand would let it swing on the turn it arrived. It is
 		# logged like a stun — a turn that visibly did not happen, so the resolve
 		# can say which body the incense held off rather than showing a gap.
-		if turn < front_drain and int(entry.get("col", offgrid_col())) == 1:
+		if censed and int(entry.get("col", offgrid_col())) == 1:
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"censed": true})
 			spent[inst] = true
@@ -2864,7 +2825,7 @@ func _all_but(only: Array) -> Dictionary:
 # the game is still being played resolves here, on the spot — the enemy dies now
 # and its loot lands on the board now (§8.2) — rather than waiting for the
 # report. `record` is what makes the two ends agree afterwards: the body counts as
-# ENGAGED for the rest of the game (it holds its fire through every extra turn,
+# ENGAGED for the rest of the game (it holds its fire through every turn left,
 # exactly as one cleared at the report would) and the game counts as one where a
 # goal was completed, so a player clause riding it still ticks. A caller that is
 # not the self-report (a scroll firing off its own effect) passes false and
@@ -4070,8 +4031,9 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 #
 # EVERY SPAWN STARTS AT THE BACK. `_add_to_grid` walks it onto the spawn column
 # like anything else, and a spawn column with a body already standing in every row
-# parks it in the off-grid queue beside the board, from which it walks on as room
-# frees — the same as the bodies a node lands. A failure spawn, the capstone boss
+# SHOVES a lane forward to make room (see _shove_plan) — only when every lane is
+# packed to the front does it wait in the off-grid queue beside the board, from
+# which it walks on as room frees — the same as the bodies a node lands. An end-of-game spawn, the capstone boss
 # and a conjured monster all come through here.
 #
 # It used to fall back to the NEAREST square the body fitted in when the back
@@ -4643,6 +4605,18 @@ func lost_runs_until_strike(entry: Dictionary) -> int:
 	@warning_ignore("integer_division")
 	var runs: int = _turns_owed(entry) / maxi(1, ATTEMPT_TURNS)
 	return runs
+
+# lost_runs_until_strike in words — the COUNTDOWN a body's hover and card carry
+# (§7.4). Not on the board itself: there the column is the countdown, and a
+# number over every body would cover the art that identifies it. One phrasing so
+# the hover and the card cannot disagree.
+func strike_countdown_text(entry: Dictionary) -> String:
+	var runs: int = lost_runs_until_strike(entry)
+	if runs < 0:
+		return "off field — walks on when there is room"
+	if runs == 0:
+		return "strikes on your next lost run"
+	return "strikes after %d more lost run%s" % [runs, "" if runs == 1 else "s"]
 
 # Total damage the stack would deal for ONE LOST RUN — the "how bad is this going
 # to be" number for the board's strip and the HUD (§9). The front line and
@@ -6043,8 +6017,13 @@ func _count_in_col(col: int) -> int:
 # board by a legacy restore: the spawn abilities (§7.6) hand out Tanky Health and
 # Haste's Speed, and a reload that applied them again would grow the body every
 # time the save was opened.
+#
+# `shove` lets a full back column be pushed forward to make room (_shove_plan).
+# Only a fresh body walking on at the back does it: a legacy restore is putting
+# back a board that already existed, and a summon aimed at a cell of its own
+# (summon's `at`) is only passing through here on its way to that cell.
 func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
-		statuses: Dictionary = {}, fresh: bool = true) -> void:
+		statuses: Dictionary = {}, fresh: bool = true, shove: bool = true) -> void:
 	# Statuses ride the BODY, not the board slot: a status hung on the current
 	# game's enemy has to still be on it when it walks on as a follower, or every
 	# enemy-side status would evaporate the moment it mattered.
@@ -6070,14 +6049,27 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	# _place_on_spawn, so an invisible body is already invisible when it walks in.
 	if fresh:
 		_apply_spawn_abilities(entry)
-	_place_on_spawn(entry)
+	_place_on_spawn(entry, fresh and shove)
 
 # Try to move an off-grid entry onto its spawn column in a random open row.
 # Returns true when it made it onto the board.
-func _place_on_spawn(entry: Dictionary) -> bool:
+#
+# `shove`: when no lane has room at the back, push the lane that needs the least
+# pushing forward to make some (_shove_plan) rather than queueing. The queue's
+# own admissions never shove — a body already waiting walks on as room frees, and
+# a queue that pushed the board every turn would be a second clock.
+func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 	var enemy: GoalEnemyData = entry.get("enemy")
 	var col: int = spawn_col_for(enemy)
-	var rows: Array = _spawn_rows(enemy, col, int(entry.get("instance", 0)))
+	var inst: int = int(entry.get("instance", 0))
+	var rows: Array = _spawn_rows(enemy, col, inst)
+	if rows.is_empty() and shove:
+		var plan: Dictionary = _shove_plan(enemy, col, inst)
+		if not plan.is_empty():
+			_apply_shove(plan)
+			# The shove can set off a mine under a shoved body (§17), which only
+			# ever frees cells — so the lane it cleared is still clear.
+			rows = [int(plan["row"])]
 	if rows.is_empty():
 		entry["col"] = offgrid_col()
 		return false
@@ -6086,6 +6078,108 @@ func _place_on_spawn(entry: Dictionary) -> bool:
 	# mined back column sets it off on the way in.
 	_move_entry(entry, int(rows[randi() % rows.size()]), col)
 	return true
+
+# THE SPAWN SHOVE (§7.3). A body walking onto a back column with no room in any
+# lane pushes a lane forward instead of waiting off the board: whatever stands in
+# its footprint is shoved one column toward the player, whatever THAT lands on is
+# shoved in turn — a chain — and the whole thing repeats until the footprint is
+# clear. A body spanning two lanes is shoved as one piece, so it pushes both.
+#
+# Returns the cheapest lane's plan — {"row", "steps": {instance: columns}, "cost"}
+# — where cost is the total columns shoved, so "the lane that needs the least
+# pushing" wins and ties break randomly. Empty when every lane is packed to the
+# front: a shove that would push a body off column 1 is refused, and the spawn
+# queues as it always did.
+#
+# It is PLANNED against a copy of the board and only then applied (_apply_shove),
+# because it has to try every lane before it may touch any of them.
+func _shove_plan(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Dictionary:
+	var best: Array = []
+	var best_cost: int = 1 << 30
+	for row in range(grid_rows()):
+		if footprint_at(enemy, row, col).is_empty():
+			continue          # the newcomer does not fit on the board in this lane
+		var plan: Dictionary = _shove_lane(enemy, row, col, exclude)
+		if plan.is_empty():
+			continue
+		var cost: int = int(plan["cost"])
+		if cost < best_cost:
+			best_cost = cost
+			best = [plan]
+		elif cost == best_cost:
+			best.append(plan)
+	if best.is_empty():
+		return {}
+	return best[randi() % best.size()]
+
+# One lane's shove, simulated: {"row", "steps", "cost"}, or {} when it cannot be
+# done. Each pass shoves everything the newcomer's footprint (or a body already
+# shoved this pass) overlaps by ONE column; passes repeat until the footprint is
+# clear, which is what a 3-wide newcomer needing three columns of room takes.
+func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dictionary:
+	var pos: Dictionary = {}        # instance -> front column in the plan
+	var lane: Dictionary = {}       # instance -> its row
+	var who: Dictionary = {}        # instance -> its enemy
+	for e in stack:
+		var inst: int = int(e.get("instance", 0))
+		var c: int = int(e.get("col", offgrid_col()))
+		if inst == exclude or c > grid_cols():
+			continue
+		pos[inst] = c
+		lane[inst] = int(e.get("row", 0))
+		who[inst] = e.get("enemy")
+	var newcomer: Array = footprint_at(enemy, row, col)
+	var steps: Dictionary = {}
+	var cost: int = 0
+	for _pass in range(grid_cols()):
+		var taken: Dictionary = {}
+		for inst in pos:
+			for cell in footprint_at(who[inst], lane[inst], pos[inst]):
+				taken[cell] = inst
+		var moved: Dictionary = {}
+		var frontier: Array = newcomer.duplicate()
+		while not frontier.is_empty():
+			var cell: Vector2i = frontier.pop_back()
+			if not taken.has(cell):
+				continue
+			var inst: int = int(taken[cell])
+			if moved.has(inst):
+				continue
+			moved[inst] = true
+			var cells: Array = footprint_at(who[inst], lane[inst], pos[inst] - 1)
+			if cells.is_empty():
+				return {}     # it would be shoved off the front edge: lane is full
+			frontier.append_array(cells)
+		if moved.is_empty():
+			return {"row": row, "steps": steps, "cost": cost}
+		for inst in moved:
+			pos[inst] = int(pos[inst]) - 1
+			steps[inst] = int(steps.get(inst, 0)) + 1
+			cost += 1
+	return {}
+
+# Carry out a _shove_plan, one column at a time and front-first, each step through
+# _move_entry — the same path the Push verb takes — so a body shoved onto a mine
+# or into a fire pays for it exactly as a pushed one does (§17). Being shoved is
+# not a turn: nothing strikes, and nobody's turn is spent.
+func _apply_shove(plan: Dictionary) -> void:
+	var steps: Dictionary = plan.get("steps", {})
+	var most: int = 0
+	for inst in steps:
+		most = maxi(most, int(steps[inst]))
+	for k in range(1, most + 1):
+		var movers: Array = []
+		for inst in steps:
+			if int(steps[inst]) < k:
+				continue
+			var idx: int = _index_of(int(inst))
+			if idx >= 0:
+				movers.append(stack[idx])
+		movers.sort_custom(func(a, b): return int(a.get("col", 1)) < int(b.get("col", 1)))
+		for entry in movers:
+			if _index_of(int(entry.get("instance", 0))) < 0:
+				continue      # a mine earlier in this same step took it
+			_move_entry(entry, int(entry.get("row", 0)), int(entry.get("col", 1)) - 1)
 
 # Close the grid up by one column. Enemies step forward FRONT-FIRST, so a cell
 # freed at the front pulls the whole queue along in the same pass, and each one
@@ -6535,7 +6629,8 @@ func summon(enemy: GoalEnemyData, at: Vector2i = OFF_FIELD) -> int:
 		return 0
 	var inst: int = _next_instance
 	_next_instance += 1
-	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
+	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses(), true,
+		at == OFF_FIELD)
 	if at != OFF_FIELD:
 		var entry: Dictionary = entry_for(inst)
 		if not entry.is_empty() and fits_at(enemy, at.y, at.x, inst):

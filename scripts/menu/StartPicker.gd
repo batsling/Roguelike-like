@@ -9,7 +9,7 @@ extends Control
 # the page is built for a run that has started, and at this moment none has.
 #
 #   * THE RIGHT-HAND HALF WAS DEAD. The board drew an empty 4x4 grid, a hero with
-#     no run behind them, `EXTRA TURNS 0`, `no route to the Amulet` and a Push /
+#     no run behind them, `AMULET PRESSURE 0`, `no route to the Amulet` and a Push /
 #     Bomb toolbar that cannot be pressed — roughly 600x560 of furniture, at the
 #     moment of the run's first decision, none of which could be read or used.
 #   * THE HALF THAT MATTERED DID NOT FIT. The left column carried a four-line

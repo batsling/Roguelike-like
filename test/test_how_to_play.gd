@@ -105,21 +105,23 @@ func test_the_shields_the_manual_quotes_are_the_shields_the_build_grants() -> vo
 func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:
 	var text: String = _all_text()
 	for hops in [0, 2, 3, 4, 5, 9]:
-		var extra: int = RunDifficulty.extra_turns_for_hops(hops)
-		assert_string_contains(text, "%d" % extra)
+		var pressure: int = RunDifficulty.pressure_for_hops(hops)
+		assert_string_contains(text, "%d" % pressure)
 	assert_string_contains(text, "%d or more" % RunDifficulty.FAR_HOPS)
+	assert_false(text.to_lower().contains("extra turns at the end"),
+		"the extra turns a report handed the board are retired")
 
 
-# §19: the node kinds and the failure spawn are taught, from the real numbers,
-# and the retired escort and the every-third-GAME boss are gone.
-func test_the_manual_teaches_node_kinds_and_the_failure_price() -> void:
+# §19: the node kinds and the end-of-game spawn are taught, from the real
+# numbers, and the retired escort and the every-third-GAME boss are gone.
+func test_the_manual_teaches_node_kinds_and_the_end_of_game_price() -> void:
 	var text: String = _all_text()
 	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
 			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
 		assert_string_contains(text, RunGraph.kind_mark(int(kind)) + " ")
-	assert_string_contains(text, "Losing with nothing down")
-	for hops in [RunDifficulty.FAR_HOPS, RunDifficulty.MID_HOPS, 0]:
-		assert_string_contains(text, "%d" % RunDifficulty.failure_bodies_for_hops(hops))
+	assert_string_contains(text, "Every game that ends brings more of them")
+	assert_string_contains(text, "Escaping always adds 1")
+	assert_string_contains(text, "Every %dth spawn" % RunDifficulty.GAMES_PER_TIER)
 	assert_false(text.contains("ESCORT"), "the escort was retired in §19.7")
 	assert_false(text.contains("games you PLAY, the run's tier"),
 		"the tier counts spawns now, not games (§19.6)")

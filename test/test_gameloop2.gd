@@ -140,9 +140,9 @@ func _count_in_col(col: int) -> int:
 func _turn() -> void:
 	GameLoop2.attempt_turn()
 
-# Report a game with nothing ticked: the END of a game, which is the extra turns
-# (none, this far out), the statuses' bill, the shields expiring and the ground
-# ageing. Where a test is about the report rather than about the board moving.
+# Report a game with nothing ticked: the END of a game, which is the statuses'
+# bill, the shields expiring, the ground ageing and the end-of-game spawn (none,
+# this far out, once the tap is shut). Where a test is about the report rather than about the board moving.
 func _report() -> void:
 	_shut_failure_tap()
 	GameLoop2.beat_game(false)
@@ -496,21 +496,31 @@ func test_path_check_uses_the_whole_footprint() -> void:
 	assert_true(GameLoop2.has_clear_path(tall, 2, GameLoop2.grid_cols()),
 		"but rows 2-3 are clear all the way in")
 
-# Through `summon`, the ability-spawn path. The off-grid queue is what a body that
-# could not reach the spawn column does while it waits for room, and every spawn
-# path queues the same way (spawn_to_stack included, docs/wands-design.md §5.4).
+# Fill every cell of the board with a 1x1 body, so nothing can be shoved.
+func _pack_board() -> void:
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+
+# Through `summon`, the ability-spawn path. A full back column SHOVES a lane
+# forward (§7.3); only a board packed to the front leaves a body waiting off-grid,
+# and every spawn path does the same (spawn_to_stack included).
 func test_spawn_column_overflows_to_off_grid_when_full() -> void:
 	for i in range(GameLoop2.grid_rows()):
 		GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column holds grid_rows() enemies")
 	GameLoop2.summon(_enemy(0))
-	assert_eq(GameLoop2.offgrid_count(), 1, "the next enemy waits off-grid")
+	assert_eq(GameLoop2.offgrid_count(), 0, "the next one shoves a lane rather than waiting")
+	GameLoop2.reset()
+	_pack_board()
+	GameLoop2.summon(_enemy(0))
+	assert_eq(GameLoop2.offgrid_count(), 1, "a board packed to the front makes it wait off-grid")
 
 func test_full_front_column_stalls_the_queue() -> void:
 	# Six enemies converging on a grid_rows()-wide front column.
 	for i in range(6):
 		GameLoop2.summon(_enemy(0))
-	assert_eq(GameLoop2.offgrid_count(), 6 - GameLoop2.grid_rows(), "two overflow the spawn column")
+	assert_eq(GameLoop2.offgrid_count(), 0, "the two past the spawn column shove their way on")
 	# March forward; the front column caps attackers at grid_rows() and the rest jam.
 	for i in range(12):
 		_turn()
@@ -945,34 +955,6 @@ func test_the_stagger_lifts_when_the_next_game_is_chosen() -> void:
 	_turn()
 	assert_lt(_col_of(inst), before, "and it is moving again")
 
-func test_a_goal_met_at_the_report_staggers_the_survivor_for_the_extra_turns() -> void:
-	# On the Amulet's doorstep the report itself buys the board turns (§7.4). A body
-	# whose goal was ticked ON that report has to be staggered in time for them.
-	#
-	# Asserted on what the turns DID rather than on `is_staggered` afterwards: the
-	# stagger belongs to the game, and beat_game clears the whole per-game record on
-	# its way out (_clear_game_record) — by the time it returns there is no game left
-	# for anything to be staggered in.
-	if not _stand_at_hops(1):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	var inst: int = _choose_solo(_tough()) ; _report()
-	_march_to_front(inst)
-	var was: int = _col_of(inst)
-	assert_eq(was, 1, "it is standing in the front column, where it would swing")
-	GameState.hp = 10
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	var res: Dictionary = GameLoop2.beat_game(false, [inst])
-	assert_eq(int(_entry(inst).get("health", -1)), 1, "it survived its goal at the report")
-	assert_gt(int(res.get("turns", 0)), 0, "and the doorstep bought the board turns")
-	assert_eq(GameState.hp, 10, "which bought it nothing")
-	assert_eq(_col_of(inst), was, "and moved it nowhere")
-	for a in res["attacks"]:
-		if int((a as Dictionary).get("instance", 0)) == inst:
-			assert_true((a as Dictionary).get("goal_hit", false),
-				"every extra turn is logged as held, not as a hit")
-
 func test_a_scroll_fired_goal_hit_does_not_stagger() -> void:
 	# `record` false is the scroll/effect path: it deals the hit and changes nothing
 	# about the game the player is in the middle of — including this.
@@ -1406,12 +1388,9 @@ func test_growing_the_board_buys_a_game_of_distance() -> void:
 	assert_eq(_col_of(b), 5, "the newcomer starts a column further out")
 
 func test_the_queue_walks_onto_the_room_the_growth_made() -> void:
-	# Fill the back column, then jam one more enemy behind it: with 4 lanes the
-	# fifth has nowhere to stand and waits off-grid.
-	# `summon`, not `spawn_to_stack`, for the reason above
-	# (test_spawn_column_overflows_to_off_grid_when_full).
-	for _i in range(GameLoop2.grid_rows()):
-		GameLoop2.summon(_enemy(1))
+	# Pack the whole board, then one more: it has nowhere to stand and nothing it
+	# can shove, so it waits off-grid.
+	_pack_board()
 	var waiting: int = GameLoop2.summon(_enemy(1))
 	assert_eq(_col_of(waiting), GameLoop2.offgrid_col(), "no lane left for it")
 	assert_eq(GameLoop2.offgrid_count(), 1)
@@ -1483,18 +1462,18 @@ func test_spawn_to_stack_adds_a_following_enemy() -> void:
 	assert_eq(GameState.hp, 8, "the conjured enemy hits for 2 once at the front")
 
 # EVERY SPAWN STARTS AT THE BACK (docs/wands-design.md §5.4). A conjured body,
-# a failure spawn and the capstone boss all land through `spawn_to_stack`, and a
-# full spawn column queues them off-grid rather than dropping them into whatever
-# square is nearest — which could be the front line.
-func test_a_spawn_with_its_column_full_queues_rather_than_landing_further_forward() -> void:
+# an end-of-game spawn and the capstone boss all land through `spawn_to_stack`,
+# and a full spawn column is SHOVED to make room at the back rather than the body
+# being dropped into whatever square is nearest — which could be the front line.
+func test_a_spawn_with_its_column_full_still_lands_on_the_back_column() -> void:
 	for _i in range(GameLoop2.grid_rows()):
 		GameLoop2.summon(_enemy(0))
 	assert_eq(GameLoop2.offgrid_count(), 0, "the spawn column is full and nobody is waiting")
 	var spawned: int = GameLoop2.spawn_to_stack(_enemy(0))
 	assert_gt(spawned, 0)
-	assert_eq(_col_of(spawned), GameLoop2.offgrid_col(),
-		"it waits beside the board instead of standing in front of the back column")
-	assert_eq(GameLoop2.offgrid_count(), 1)
+	assert_eq(_col_of(spawned), GameLoop2.spawn_col(),
+		"it shoves a lane and stands on the back column, never further forward")
+	assert_eq(GameLoop2.offgrid_count(), 0)
 
 # …and with room at the back it takes the back column, whatever else is free.
 func test_a_spawn_takes_the_back_column_when_there_is_room() -> void:
@@ -1837,11 +1816,12 @@ func test_real_boss_takes_no_bomb_damage() -> void:
 	assert_eq(GameLoop2.stack_size(), 1, "but the boss takes no damage from it")
 
 # ---------------------------------------------------------------------------
-# Amulet pressure: enemies get BONUS turns the closer the run gets (§7.4)
+# Amulet pressure: the end of a game stands up MORE BODIES the closer the run
+# gets (§7.4) — and hands the board no turns at all
 # ---------------------------------------------------------------------------
 
 # Stand the run `hops` games from the Amulet over the real catalog, so
-# enemy_turns() resolves at a known rung of the ladder. Slay the Spire is the
+# pressure() resolves at a known rung of the ladder. Slay the Spire is the
 # graph's biggest hub, so every distance 0..6 exists off it. Returns false if the
 # catalog somehow can't supply that distance, so a thin graph fails as a skip
 # rather than as a mystery.
@@ -1858,20 +1838,18 @@ func _stand_at_hops(hops: int) -> bool:
 	return false
 
 # Stack one enemy and walk it to the front column, then return its instance.
-# Marches at the FAR pace so the setup itself doesn't depend on the rung under
-# test — the caller moves the run afterwards.
 func _stacked_at_front(dmg: int) -> int:
 	var inst: int = _choose_solo(_enemy(dmg))   # spawns at the back column
 	_report()                       # its own game — after this it is a follower
 	_march_to_front(inst)
 	return inst
 
-func test_no_amulet_means_no_extra_turns_at_all() -> void:
+func test_no_amulet_means_no_pressure_at_all() -> void:
 	# Every headless setup starts with no amulet picked, and that has to read as
-	# the calmest band: reporting a game hands the board nothing.
+	# the calmest band.
 	assert_eq(String(GameState.amulet_game_id), "", "no amulet in a bare run")
 	assert_eq(GameLoop2.hops_to_amulet(), -1, "so there is no distance to it")
-	assert_eq(GameLoop2.enemy_turns(), 0, "and the end of a game costs no turns")
+	assert_eq(GameLoop2.pressure(), 0, "and the road stands nobody up")
 
 func test_the_ladder_reads_off_the_distance_to_the_amulet() -> void:
 	for pair in [[6, 0], [5, 0], [4, 1], [3, 1], [2, 2], [1, 2], [0, 2]]:
@@ -1879,29 +1857,26 @@ func test_the_ladder_reads_off_the_distance_to_the_amulet() -> void:
 		if not _stand_at_hops(hops):
 			continue
 		assert_eq(GameLoop2.hops_to_amulet(), hops, "standing %d hops out" % hops)
-		assert_eq(GameLoop2.enemy_turns(), int(pair[1]),
-			"%d hops from the Amulet buys the enemies %d extra turns" % [hops, int(pair[1])])
+		assert_eq(GameLoop2.pressure(), int(pair[1]),
+			"%d hops from the Amulet stands up %d bodies a game" % [hops, int(pair[1])])
 
 func test_the_ladder_is_pure_maths_without_a_graph() -> void:
-	# The thresholds themselves, independent of any catalog: 5+ buys nothing,
-	# 3-4 one extra turn, 2-0 two. Nothing between the rungs is left undefined.
-	assert_eq(RunDifficulty.extra_turns_for_hops(99), 0)
-	assert_eq(RunDifficulty.extra_turns_for_hops(5), 0)
-	assert_eq(RunDifficulty.extra_turns_for_hops(4), 1, "4 hops is inside the middle band")
-	assert_eq(RunDifficulty.extra_turns_for_hops(3), 1)
-	assert_eq(RunDifficulty.extra_turns_for_hops(2), 2)
-	assert_eq(RunDifficulty.extra_turns_for_hops(0), 2, "standing on it is the doorstep")
-	assert_eq(RunDifficulty.extra_turns_for_hops(-1), 0, "unreachable reads as distant")
-	assert_eq(RunDifficulty.MAX_EXTRA_TURNS, RunDifficulty.EXTRA_NEAR,
-		"and the gauge draws a rung for every turn the end of a game can hand out")
+	# The thresholds themselves, independent of any catalog: 5+ stands nobody up,
+	# 3-4 one body, 2-0 two. Nothing between the rungs is left undefined.
+	assert_eq(RunDifficulty.pressure_for_hops(99), 0)
+	assert_eq(RunDifficulty.pressure_for_hops(5), 0)
+	assert_eq(RunDifficulty.pressure_for_hops(4), 1, "4 hops is inside the middle band")
+	assert_eq(RunDifficulty.pressure_for_hops(3), 1)
+	assert_eq(RunDifficulty.pressure_for_hops(2), 2)
+	assert_eq(RunDifficulty.pressure_for_hops(0), 2, "standing on it is the doorstep")
+	assert_eq(RunDifficulty.pressure_for_hops(-1), 0, "unreachable reads as distant")
+	assert_eq(RunDifficulty.MAX_PRESSURE, RunDifficulty.SPAWN_NEAR,
+		"and the gauge draws a rung for every body the ladder can stand up")
 
 func test_reporting_a_game_moves_nobody_out_in_the_wilds() -> void:
-	# The floor is ZERO (§7.4): a game handed in far from the Amulet costs the
-	# player nothing on the board. What moves the stack is losing runs at it.
 	var a: int = _choose_solo(_enemy(2))
 	GameLoop2.beat_game(false)                    # released as a follower
 	var col: int = _col_of(a)
-	assert_eq(GameLoop2.enemy_turns(), 0, "no amulet, so no extra turns")
 	_choose_solo(_enemy(0))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(false)
@@ -1909,136 +1884,39 @@ func test_reporting_a_game_moves_nobody_out_in_the_wilds() -> void:
 	assert_eq(_col_of(a), col, "so nobody walked")
 	assert_eq(GameState.hp, before, "and nobody swung")
 
-func test_the_extra_turns_are_the_whole_of_what_a_report_costs() -> void:
-	# On the doorstep, handing a game in is two free turns for the board — and the
-	# result says so in both fields, since every turn at the end of a game is one
-	# of the Amulet's now.
+# THE EXTRA TURNS ARE RETIRED. The doorstep used to hand the board two free
+# turns for every game reported there; it stands bodies up instead, and a front-
+# liner that is already in your face does not swing for a game handed in.
+func test_on_the_doorstep_a_report_still_moves_nobody() -> void:
 	if not _stand_at_hops(1):
 		pending("this run could not be stood the required distance from the Amulet")
 		return
 	var inst: int = _stacked_at_front(1)
-	assert_eq(GameLoop2.enemy_turns(), 2, "the doorstep buys two extra turns")
-	var before: int = GameState.hp
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_eq(int(res.get("turns", 0)), 2, "two turns in all")
-	assert_eq(int(res.get("extra_turns", 0)), 2, "all of them the Amulet's")
-	assert_eq(before - GameState.hp, 2, "and the front-liner swung on both")
-	assert_eq(_col_of(inst), 1, "standing where it started — it was already in your face")
-
-func test_at_the_doorstep_the_front_line_strikes_twice_for_the_report() -> void:
-	if not _stand_at_hops(1):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	var inst: int = _stacked_at_front(1)
-	assert_eq(_col_of(inst), 1, "it is on the front line")
+	assert_eq(GameLoop2.pressure(), 2, "the doorstep is the top of the ladder")
 	GameState.hp = 10
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_eq(int(res["turns"]), 2, "one hop out, so two extra turns")
-	assert_eq(GameState.hp, 8, "and two separate 1-damage hits land")
-	var swings: int = 0
-	for a in res["attacks"]:
-		if (a as Dictionary).has("damage"):
-			swings += 1
-	assert_eq(swings, 2, "each turn is logged as its own attack")
+	assert_eq(int(res.get("turns", -1)), 0, "a report is no turn, wherever you stand")
+	assert_eq(GameState.hp, 10, "so the front line never swings for it")
+	assert_eq(_col_of(inst), 1, "and nobody moves")
 
-# …UNLESS THE RUN WAS PULLED OFF THE GAME RATHER THAN HANDING IT IN.
-#
-# The extra turns are the road's price for FINISHING a game (§7.4). A teleport is
-# not finishing one: a piece of loot picked the run up and put it somewhere else,
-# and it was already paid for with the scroll or the pill. Charging the road on
-# top of that made the one thing a teleport can do that nothing else can — get you
-# out of a game that is killing you — the use most likely to kill you.
-#
-# `road_turns: false` is the whole of the waiver, and it is the LAST argument on
-# purpose: every existing caller keeps paying, and the one report that doesn't has
-# to say so out loud. Overworld2.loot_teleport is the only place it comes from.
-func test_being_teleported_off_a_game_is_not_handing_it_in() -> void:
-	if not _stand_at_hops(1):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	var inst: int = _stacked_at_front(1)
-	assert_eq(GameLoop2.enemy_turns(), 2,
-		"the doorstep would buy two extra turns off an ordinary report")
-	var col: int = _col_of(inst)
-	GameState.hp = 10
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	var res: Dictionary = GameLoop2.beat_game(false, [], {}, false)
-	assert_eq(int(res.get("turns", 0)), 0, "but the pull hands the board none of them")
-	assert_eq(int(res.get("extra_turns", 0)), 0, "and the result says so in both fields")
-	assert_eq(GameState.hp, 10, "so the front line never swings")
-	assert_eq(_col_of(inst), col, "and nobody walks a column closer either")
-
-func test_out_in_the_wilds_the_same_enemy_strikes_not_at_all() -> void:
-	if not _stand_at_hops(6):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	_stacked_at_front(1)
-	GameState.hp = 10
-	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_eq(int(res["turns"]), 0, "six hops out is the far band")
-	assert_eq(GameState.hp, 10,
-		"and a game handed in out here moves nobody — only a lost run does")
-
-func test_each_attack_names_the_turn_it_happened_on() -> void:
-	if not _stand_at_hops(0):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	_stacked_at_front(1)
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	var res: Dictionary = GameLoop2.beat_game(false)
-	var turns_seen: Array = []
-	for a in res["attacks"]:
-		if (a as Dictionary).has("damage"):
-			turns_seen.append(int((a as Dictionary).get("turn", -1)))
-	assert_eq(turns_seen, [0, 1], "the board replays them in order")
 
 func test_the_board_is_snapshotted_once_per_turn() -> void:
-	if not _stand_at_hops(1):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	# The doorstep's two extra turns, seen from the frames the view replays: the
-	# enemy stands on the back column the moment its game is chosen and walks two
-	# columns while the report resolves.
+	# A lost run's turn, seen from the frame the view replays: the enemy stands on
+	# the back column the moment its game is chosen and walks one column per tick.
 	var inst: int = _choose_solo(_enemy(1))
-	var res: Dictionary = GameLoop2.beat_game(false)
-	var frames: Array = res["turn_frames"]
-	assert_eq(frames.size(), 2, "one frame per turn, so the view can replay them")
-	var cols: Array = []
-	for f in frames:
-		cols.append(int((f as Dictionary)[inst].x))
-	assert_eq(cols, [cols[0], cols[0] - 1],
-		"and each frame is one step on from the last: %s" % str(cols))
-
-func test_a_walk_and_a_strike_can_both_fit_in_one_report() -> void:
-	# The point of the mechanic: on the Amulet's doorstep, handing a game in buys
-	# the board two turns, and a body one column back spends the first walking and
-	# the second swinging — so it reaches you and hits inside a single report.
-	if not _stand_at_hops(0):
-		pending("this run could not be stood the required distance from the Amulet")
-		return
-	var inst: int = _choose_solo(_enemy(2))
-	_report()                               # stacks; nothing owed at the back
-	while _col_of(inst) > 2:
-		_turn()
-	assert_eq(_col_of(inst), 2, "one column short of the front line")
-	GameState.max_hp = 10
-	GameState.hp = 10
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	_choose_solo(_enemy(0))
-	_report()
-	assert_eq(_col_of(inst), 1, "the first extra turn walked it in")
-	assert_eq(GameState.hp, 8, "and the second one landed")
+	var col: int = _col_of(inst)
+	GameLoop2.log_attempt()
+	var frames: Array = GameLoop2.last_attempt_turn.get("turn_frames", [])
+	assert_eq(frames.size(), 1, "one frame per turn, so the view can replay it")
+	assert_eq(int((frames[0] as Dictionary)[inst].x), col - 1, "and it is one step on")
 
 # --- stun and goal-fulfilment under the new pace ---------------------------
 
-func test_a_stun_costs_one_turn_not_the_whole_report() -> void:
+func test_a_stun_costs_one_lost_run_even_on_the_doorstep() -> void:
+	# Nothing but a lost run moves the board now, so a stun is worth one of them
+	# wherever on the road you stand.
 	if not _stand_at_hops(1):
 		pending("this run could not be stood the required distance from the Amulet")
 		return
@@ -2048,7 +1926,10 @@ func test_a_stun_costs_one_turn_not_the_whole_report() -> void:
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	GameLoop2.beat_game(false)
-	assert_eq(GameState.hp, 9, "the stun eats one of the two extra turns, not both")
+	assert_eq(GameState.hp, 10, "a report is no turn, so the stun is not even touched")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 1, "and it is still waiting")
+	_turn()
+	assert_eq(GameState.hp, 10, "the lost run's turn is the one it eats")
 	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 0, "and it ticks off with that turn")
 
 func test_a_stun_still_costs_a_whole_lost_run_out_in_the_wilds() -> void:
@@ -2408,21 +2289,16 @@ func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
 	assert_eq(GameLoop2.drop_cells().size(), 1, "and only there")
 
 # ---------------------------------------------------------------------------
-# …and the enemies you get for not fighting (§19.5)
+# …and the end of a game FILLS the board (§19.5)
 # ---------------------------------------------------------------------------
 #
-# Every failure at a game where nothing has been defeated spawns bodies. Without
-# it the three non-Enemies kinds would simply be a way to play a whole run on an
-# empty board, so this is the other half of §19.1 rather than a punishment bolted
-# on beside it.
-#
-# These drive `failure_spawn_count` directly wherever the question is "does this
-# failure owe anything", and go through the real spawn where the question is what
-# lands. The run is stood at a known rung first, because the COUNT is the ladder.
+# Every game that ends stands bodies up: the pressure's 0 / 1 / 2, +1 when
+# nothing was defeated there, +1 always on an escape. It replaced both the extra
+# turns and the bodies a lost run used to stand up.
 
 # Put the run at `hops` from the Amulet on a node of `kind`, with a real game
 # under it so the roll has a type to ask for.
-func _stand_for_failure(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> bool:
+func _stand_for_end(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> bool:
 	if not _stand_at_hops(hops):
 		return false
 	GameState.node_kinds[GameState.current_game_id] = kind
@@ -2430,105 +2306,84 @@ func _stand_for_failure(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> boo
 	GameLoop2.defeated_this_game = 0
 	return true
 
+func _roster_can_roll() -> bool:
+	return GameLoop2.roll_enemy(GameLoop2.game_type_key(
+		Data.get_game(GameState.current_game_id)), RunDifficulty.current_tier()) != null
 
-func test_the_failure_ladder_is_the_turn_ladder_plus_one() -> void:
-	# One ladder, two columns (§19.5) — written as `extra_turns + 1` so a widened
-	# band moves both together rather than letting the two tables drift.
-	for pair in [[6, 1], [5, 1], [4, 2], [3, 2], [2, 3], [1, 3], [0, 3]]:
-		assert_eq(RunDifficulty.failure_bodies_for_hops(int(pair[0])), int(pair[1]),
-			"%d hops from the Amulet costs %d bodies" % [int(pair[0]), int(pair[1])])
-	assert_eq(RunDifficulty.failure_bodies_for_hops(-1), 1,
-		"no route to the Amulet reads as the calmest band, like the turns do")
+
+func test_the_price_is_the_pressure_plus_one_for_nothing_down() -> void:
+	for pair in [[6, 0], [4, 1], [1, 2]]:
+		if not _stand_for_end(int(pair[0])):
+			continue
+		var p: int = int(pair[1])
+		assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), p + 1,
+			"%d hops out, nothing down: the ladder's %d and one more" % [int(pair[0]), p])
+		GameLoop2.defeated_this_game = 1
+		assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), p,
+			"%d hops out, a body down: the ladder's %d and nothing more" % [int(pair[0]), p])
+
+
+func test_an_escape_always_pays_the_extra_body() -> void:
+	if not _stand_for_end(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
+	GameLoop2.defeated_this_game = 3
+	assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]), GameLoop2.pressure() + 1,
+		"a kill does not buy the escape's extra body off — walking out is never cheaper")
 
 
 func test_the_price_is_read_off_hops_and_not_off_the_tier() -> void:
-	# The anti-spiral rule. Failure spawns RAISE the tier, so a price that scaled
-	# with the tier would make each loss bigger than the last — five losses ran to
-	# thirteen bodies in the draft that did. Losing does not move you, so the
-	# price at a given game is flat however far the ladder has climbed.
-	if not _stand_for_failure(2):
+	# The anti-spiral rule. Spawns RAISE the tier, so a price that scaled with the
+	# tier would make each game's spawn bigger than the last.
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
-	var at_low: int = GameLoop2.failure_spawn_count()
+	var at_low: int = int(GameLoop2.end_of_game_price()["bodies"])
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER * RunDifficulty.MAX_TIER
 	assert_eq(RunDifficulty.current_tier(), RunDifficulty.MAX_TIER, "the ladder is at the top")
-	assert_eq(GameLoop2.failure_spawn_count(), at_low,
+	assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), at_low,
 		"the same game charges the same whatever the tier has climbed to")
 
 
-func test_defeating_anything_shuts_the_tap_for_the_game() -> void:
-	if not _stand_for_failure(2):
-		pending("the catalog could not stand the run 2 hops out")
-		return
-	assert_gt(GameLoop2.failure_spawn_count(), 0, "a game with nothing down owes bodies")
-	GameLoop2.defeated_this_game = 1
-	assert_eq(GameLoop2.failure_spawn_count(), 0,
-		"one body down is the player answering the board, and that is enough")
-
-
-func test_an_escape_owes_nothing() -> void:
-	if not _stand_for_failure(2):
-		pending("the catalog could not stand the run 2 hops out")
-		return
-	assert_eq(GameLoop2.failure_spawn_count(true), 0,
-		"they walked away and already paid §3.2's price for it")
-
-
 func test_the_amulet_owes_nothing() -> void:
-	if not _stand_for_failure(2):
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
 	GameState.amulet_game_id = GameState.current_game_id
-	assert_eq(GameLoop2.failure_spawn_count(), 0,
-		"there is no next game for anything to walk into")
-
-
-func test_the_quiet_kinds_owe_nothing() -> void:
-	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
-		if not _stand_for_failure(2, int(kind)):
-			pending("the catalog could not stand the run 2 hops out")
-			return
-		assert_eq(GameLoop2.failure_spawn_count(), 0,
-			"%s: nothing spawned there, so nothing is owed — it is breathing room"
-				% RunGraph.kind_label(int(kind)))
-
-
-# The strip reads `failure_price` and the spawn reads `failure_spawn_count`, so
-# the two must be one answer — a strip promising a price the spawn does not
-# charge is the board lying (§19.8). Every exemption also has to NAME itself,
-# because "none on a loss" with no reason reads as a bug.
-func test_the_price_the_strip_reads_is_the_price_the_spawn_charges() -> void:
-	if not _stand_for_failure(2):
-		pending("the catalog could not stand the run 2 hops out")
-		return
-	var price: Dictionary = GameLoop2.failure_price()
-	assert_gt(int(price["bodies"]), 0, "a game with nothing down owes bodies")
-	assert_eq(int(price["bodies"]), GameLoop2.failure_spawn_count(), "and the same number")
-	assert_eq(String(price["why"]), "", "with nothing to excuse")
-
-	GameLoop2.defeated_this_game = 1
-	price = GameLoop2.failure_price()
-	assert_eq(int(price["bodies"]), 0, "a body down shuts the tap")
-	assert_string_contains(String(price["why"]), "went down", "and says why")
-	GameLoop2.defeated_this_game = 0
-
-	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
-		GameState.node_kinds[GameState.current_game_id] = int(kind)
-		price = GameLoop2.failure_price()
-		assert_eq(int(price["bodies"]), 0, "%s owes nothing" % RunGraph.kind_label(int(kind)))
-		assert_string_contains(String(price["why"]), RunGraph.kind_label(int(kind)),
-			"and names the kind that bought it off")
-	GameState.node_kinds[GameState.current_game_id] = RunGraph.NodeKind.ENEMIES
-
-	GameState.amulet_game_id = GameState.current_game_id
-	price = GameLoop2.failure_price()
-	assert_eq(int(price["bodies"]), 0, "the Amulet owes nothing")
+	var price: Dictionary = GameLoop2.end_of_game_price()
+	assert_eq(int(price["bodies"]), 0, "there is no next game for anything to walk into")
 	assert_string_contains(String(price["why"]), "Amulet", "and says so")
 
+
+func test_the_quiet_kinds_owe_it_too() -> void:
+	# An Event or a Shop node stood nothing up, but the evening still ended — and
+	# the road charges for where it ended.
+	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		if not _stand_for_end(2, int(kind)):
+			pending("the catalog could not stand the run 2 hops out")
+			return
+		assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), GameLoop2.pressure() + 1,
+			"%s: owes the same as any other node" % RunGraph.kind_label(int(kind)))
+
+
+func test_between_games_there_is_no_price() -> void:
+	if not _stand_for_end(2):
+		pending("the catalog could not stand the run 2 hops out")
+		return
 	GameLoop2.game_in_play = false
-	price = GameLoop2.failure_price()
-	assert_eq(int(price["bodies"]), 0, "between games there is nothing to lose at")
+	var price: Dictionary = GameLoop2.end_of_game_price()
+	assert_eq(int(price["bodies"]), 0, "between games there is nothing to end")
 	assert_eq(String(price["why"]), "", "and nothing to explain")
+
+
+func test_a_zero_price_names_its_reason() -> void:
+	if not _stand_for_end(6):
+		pending("the catalog could not stand the run 6 hops out")
+		return
+	GameLoop2.defeated_this_game = 1
+	var price: Dictionary = GameLoop2.end_of_game_price()
+	assert_eq(int(price["bodies"]), 0, "out in the wilds with a body down, nobody walks on")
+	assert_string_contains(String(price["why"]), "went down", "and the strip says why")
 
 
 func test_the_count_to_the_next_boss_lands_on_the_capstone() -> void:
@@ -2547,40 +2402,94 @@ func test_the_count_to_the_next_boss_lands_on_the_capstone() -> void:
 		"a negative counter reads as a fresh run")
 
 
-func test_a_failure_spawn_stands_the_bodies_the_ladder_asks_for() -> void:
-	if not _stand_for_failure(2):
+func test_the_difficulty_up_is_every_fourth_spawn() -> void:
+	# The tier step, the grown board and the capstone boss are ONE moment.
+	assert_eq(RunDifficulty.GAMES_PER_TIER, 4)
+	assert_eq(RunDifficulty.tier_for(3), RunDifficulty.Tier.LOW, "three spawns in: still Low")
+	assert_eq(RunDifficulty.tier_for(4), RunDifficulty.Tier.MEDIUM, "the fourth steps it")
+	assert_false(RunDifficulty.is_boss_spawn(3))
+	assert_true(RunDifficulty.is_boss_spawn(4), "and lands the boss on the same spawn")
+
+
+func test_a_game_handed_in_stands_up_what_the_strip_quoted() -> void:
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
-	var want: int = GameLoop2.failure_spawn_count()
-	var before: int = GameLoop2.stack_size()
-	var landed: int = GameLoop2.spawn_for_failure()
-	if landed == 0:
+	if not _roster_can_roll():
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
-	assert_eq(landed, want, "the doorstep charges %d" % want)
-	assert_eq(GameLoop2.stack_size(), before + landed, "and they are on the board")
+	var want: int = int(GameLoop2.end_of_game_price()["bodies"])
+	assert_eq(want, 3, "the doorstep with nothing down is 2 + 1")
+	var before: int = GameLoop2.stack_size()
+	var res: Dictionary = GameLoop2.beat_game(false, [])
+	assert_eq(int(res.get("end_spawns", 0)), want, "the report charges what the strip quoted")
+	assert_gte(GameLoop2.stack_size(), before + want, "and they are on the board")
 
 
-func test_a_failure_spawn_is_not_an_arrival() -> void:
-	# They did not come with the game, so a Scramble must not be able to scrub
-	# them off — that would make the failure price refundable for a D6 charge.
-	if not _stand_for_failure(2):
+func test_a_hand_in_that_defeated_something_pays_only_the_ladder() -> void:
+	if not _stand_for_end(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	var inst: int = GameLoop2.summon(_enemy(0))
+	var res: Dictionary = GameLoop2.beat_game(false, [inst])
+	assert_eq(GameLoop2.defeated_this_game, 0, "the game record is wiped at the end")
+	assert_eq(int(res.get("end_spawns", -1)), 0,
+		"out in the wilds, the goal the report cleared bought the extra body off")
+
+
+func test_an_escape_stands_bodies_up_even_after_a_kill() -> void:
+	if not _stand_for_end(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	if not _roster_can_roll():
+		pending("the goal-enemy roster could not supply a body for this type/tier")
+		return
+	GameLoop2.defeated_this_game = 1
+	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
+	assert_eq(int(res.get("end_spawns", -1)), 1, "walking out always costs the one body")
+
+
+func test_a_teleport_stands_nobody_up() -> void:
+	# `road_spawns: false` is the whole of the waiver: a teleport is not ending a
+	# game, and the loot already paid for the door.
+	if not _stand_for_end(1):
+		pending("the catalog could not stand the run 1 hop out")
+		return
+	var res: Dictionary = GameLoop2.beat_game(false, [], {}, false, true)
+	assert_eq(int(res.get("end_spawns", -1)), 0, "the pull stands nobody up")
+
+
+func test_a_lost_run_stands_nobody_up() -> void:
+	# Losing a run MOVES the board; it no longer fills it. Nothing spawns mid-game.
+	if not _stand_for_end(1):
+		pending("the catalog could not stand the run 1 hop out")
+		return
+	var before: int = GameLoop2.stack_size()
+	var events: int = GameState.spawn_events
+	assert_eq(GameLoop2.log_attempt(), "turn", "the tick is logged")
+	assert_eq(GameLoop2.stack_size(), before, "and nobody walked on")
+	assert_eq(GameState.spawn_events, events, "so it is no spawn event either")
+
+
+func test_an_end_of_game_spawn_is_not_an_arrival() -> void:
+	# They did not come with a game, so a Scramble must not be able to scrub them.
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
 	GameLoop2.arrivals = []
-	if GameLoop2.spawn_for_failure() == 0:
+	if GameLoop2._land_end_of_game_bodies(2) == 0:
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
 	assert_eq(GameLoop2.arrivals.size(), 0,
-		"nothing a failure stood up belongs to the game that was chosen")
+		"nothing the end of a game stood up belongs to the game that was chosen")
 
 
-func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> void:
-	if not _stand_for_failure(2):
+func test_an_end_of_game_spawn_is_one_step_up_the_ladder_however_many_bodies() -> void:
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
 	var before: int = GameState.spawn_events
-	var landed: int = GameLoop2.spawn_for_failure()
+	var landed: int = GameLoop2._land_end_of_game_bodies(3)
 	if landed == 0:
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
@@ -2589,56 +2498,16 @@ func test_a_failure_spawn_is_one_step_up_the_ladder_however_many_bodies() -> voi
 		"…and they are one spawn EVENT between them (§19.6)")
 
 
-# THE OTHER HALF OF §19.5: a game HANDED IN with nothing defeated spawns too,
-# whether the goal was met or missed. It priced itself at nothing for a while —
-# `beat_game` asked for the price after it had already marked the game over, and
-# `failure_price` answers 0 for a game that is not in play.
-func test_a_game_handed_in_with_nothing_defeated_spawns_bodies() -> void:
-	if not _stand_for_failure(5):
-		pending("the catalog could not stand the run 5 hops out")
-		return
-	if GameLoop2.roll_enemy(GameLoop2.game_type_key(
-			Data.get_game(GameState.current_game_id)), RunDifficulty.current_tier()) == null:
-		pending("the goal-enemy roster could not supply a body for this type/tier")
-		return
-	var want: int = GameLoop2.failure_spawn_count()
-	assert_gt(want, 0, "the hand-in owes bodies")
-	var before: int = GameLoop2.stack_size()
-	var res: Dictionary = GameLoop2.beat_game(false, [])
-	assert_eq(int(res.get("failure_spawns", 0)), want, "the report charges what the strip quoted")
-	assert_gte(GameLoop2.stack_size(), before + want, "and they are on the board")
-
-
-func test_a_hand_in_that_defeated_something_spawns_nothing() -> void:
-	if not _stand_for_failure(5):
-		pending("the catalog could not stand the run 5 hops out")
-		return
-	var inst: int = GameLoop2.summon(_enemy(0))
-	var res: Dictionary = GameLoop2.beat_game(false, [inst])
-	assert_eq(GameLoop2.defeated_this_game, 0, "the game record is wiped at the end")
-	assert_eq(int(res.get("failure_spawns", -1)), 0,
-		"the goal the report cleared put a body down, and that shut the tap")
-
-
-func test_an_escape_spawns_nothing_at_the_report() -> void:
-	if not _stand_for_failure(5):
-		pending("the catalog could not stand the run 5 hops out")
-		return
-	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
-	assert_eq(int(res.get("failure_spawns", -1)), 0, "walking away already paid its price")
-
-
 # A SPAWN THAT GROWS THE BOARD LANDS ON THE NEW BACK COLUMN. The spawn event is
-# what grows it (§19.6), and it used to be counted after the bodies were placed —
-# which left them on the OLD back column, a column in front of the real one.
-func test_a_tier_crossing_failure_spawn_lands_on_the_grown_boards_back_column() -> void:
-	if not _stand_for_failure(5):
+# what grows it (§19.6), so it is counted before anything is placed.
+func test_a_tier_crossing_spawn_lands_on_the_grown_boards_back_column() -> void:
+	if not _stand_for_end(5):
 		pending("the catalog could not stand the run 5 hops out")
 		return
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameLoop2.sync_grid_bounds()
 	var cols_before: int = GameLoop2.grid_cols()
-	if GameLoop2.spawn_for_failure() == 0:
+	if GameLoop2._land_end_of_game_bodies(1) == 0:
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
 	assert_eq(GameLoop2.grid_cols(), cols_before + 1, "the spawn crossed a tier and grew the board")
@@ -2653,14 +2522,116 @@ func test_a_tier_crossing_failure_spawn_lands_on_the_grown_boards_back_column() 
 	assert_gt(checked, 0)
 
 # ---------------------------------------------------------------------------
-# The every-third-spawn capstone (§19.6)
+# The spawn SHOVE (§7.3): a full back column is pushed forward, not queued behind
+# ---------------------------------------------------------------------------
+
+# Fill every lane's back cell with a 1x1 synthetic body and return their
+# instances, lane by lane.
+func _pack_back_column() -> Array:
+	var out: Array = []
+	for row in range(GameLoop2.grid_rows()):
+		var inst: int = GameLoop2.summon(_enemy(0), Vector2i(GameLoop2.grid_cols(), row))
+		out.append(inst)
+	return out
+
+func test_a_spawn_onto_a_full_back_column_shoves_a_lane_forward() -> void:
+	var packed: Array = _pack_back_column()
+	for inst in packed:
+		assert_eq(_col_of(int(inst)), GameLoop2.grid_cols(), "the back column is full")
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(fresh), GameLoop2.grid_cols(), "the newcomer is ON the board, at the back")
+	var shoved := 0
+	for inst in packed:
+		if _col_of(int(inst)) == GameLoop2.grid_cols() - 1:
+			shoved += 1
+			assert_eq(_row_of(int(inst)), _row_of(fresh), "the shoved body was in its lane")
+	assert_eq(shoved, 1, "exactly one lane was pushed, by one column")
+
+func test_the_shove_is_a_chain() -> void:
+	# A lane packed three deep moves as one line when a fourth arrives behind it.
+	var cols: int = GameLoop2.grid_cols()
+	var lane: Array = []
+	for c in [cols, cols - 1, cols - 2]:
+		lane.append(GameLoop2.summon(_enemy(0), Vector2i(c, 0)))
+	# Every other lane is packed deeper, so lane 0 needs the least pushing.
+	for row in range(1, GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_row_of(fresh), 0, "the only lane with room to shove")
+	assert_eq(_col_of(fresh), cols, "the newcomer stands at the back")
+	assert_eq([_col_of(int(lane[0])), _col_of(int(lane[1])), _col_of(int(lane[2]))],
+		[cols - 1, cols - 2, cols - 3], "and the whole line stepped one column closer")
+
+func test_the_shove_picks_the_lane_that_needs_the_least_pushing() -> void:
+	var cols: int = GameLoop2.grid_cols()
+	# Lane 0: three deep. Lane 1: one deep. Every other lane: packed full.
+	for c in [cols, cols - 1, cols - 2]:
+		GameLoop2.summon(_enemy(0), Vector2i(c, 0))
+	var lone: int = GameLoop2.summon(_enemy(0), Vector2i(cols, 1))
+	for row in range(2, GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_row_of(fresh), 1, "one body to shove beats three")
+	assert_eq(_col_of(lone), cols - 1, "and that one moved")
+
+func test_a_wide_newcomer_shoves_as_far_as_it_needs() -> void:
+	var cols: int = GameLoop2.grid_cols()
+	var packed: Array = _pack_back_column()
+	var wide: GoalEnemyData = _shaped(0, 1, 2)
+	var fresh: int = GameLoop2.spawn_to_stack(wide)
+	assert_eq(_col_of(fresh), cols - 1, "a two-wide body stands with its back on the back column")
+	var moved := 0
+	for inst in packed:
+		if _row_of(int(inst)) == _row_of(fresh):
+			assert_eq(_col_of(int(inst)), cols - 2, "the body in its lane was shoved two columns")
+			moved += 1
+	assert_eq(moved, 1)
+
+func test_a_tall_body_in_the_way_is_shoved_as_one_piece() -> void:
+	# A 2x1 body spans lanes 0 and 1; shoving it pushes both lanes, so whatever
+	# stood in front of it in EITHER lane goes too.
+	var cols: int = GameLoop2.grid_cols()
+	var tall: int = GameLoop2.summon(_shaped(0, 2, 1), Vector2i(cols, 0))
+	var ahead: int = GameLoop2.summon(_enemy(0), Vector2i(cols - 1, 1))
+	for row in range(2, GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(fresh), cols, "the newcomer landed at the back")
+	assert_eq(_col_of(tall), cols - 1, "the tall body moved as one piece")
+	assert_eq(_col_of(ahead), cols - 2, "and pushed the body ahead of its lower half")
+
+func test_a_board_packed_to_the_front_still_queues() -> void:
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(),
+		"nothing can be shoved off the front edge, so it waits off the board")
+
+func test_being_shoved_is_not_a_turn() -> void:
+	# A body shoved into the front column does not swing for it.
+	var cols: int = GameLoop2.grid_cols()
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			if row == 0 and c == 1:
+				continue
+			GameLoop2.summon(_enemy(3), Vector2i(c, row))
+	GameState.hp = 10
+	GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(GameState.hp, 10, "the lane stepped up to your face, and nobody swung")
+
+# ---------------------------------------------------------------------------
+# The every-fourth-spawn capstone (§19.6)
 # ---------------------------------------------------------------------------
 #
 # A boss on top of whatever else was spawning, replacing the every-third-GAME
 # boss round. The composition is the part worth pinning: it does not absorb the
 # spawn that triggered it, and it does not cancel itself on a Champion.
 
-func test_the_third_spawn_event_lands_a_boss_on_top() -> void:
+func test_the_fourth_spawn_event_lands_a_boss_on_top() -> void:
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameLoop2.game_in_play = true
 	var before: int = GameLoop2.stack_size()
@@ -2701,20 +2672,18 @@ func test_an_ordinary_spawn_lands_no_boss() -> void:
 			"nothing put a boss up on an ordinary spawn")
 
 
-# A FAILURE SPAWN CAN BE THE THIRD ONE, so a boss walks on mid-game off a lost
-# run. It takes no bomb damage and leaves only by its goal (§7.1), which makes
-# this the sharpest thing in §19 — and it is aimed at the player who keeps losing
-# without ever clearing a body.
-func test_a_failure_spawn_can_be_the_one_that_closes_the_band() -> void:
-	if not _stand_for_failure(2):
+# AN END-OF-GAME SPAWN CAN BE THE FOURTH ONE, so a boss walks on with the bodies
+# a game's end stood up.
+func test_an_end_of_game_spawn_can_be_the_one_that_closes_the_band() -> void:
+	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
-	if GameLoop2.spawn_for_failure() == 0:
+	if GameLoop2._land_end_of_game_bodies(3) == 0:
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
 	assert_true(RunDifficulty.is_boss_spawn(GameState.spawn_events),
-		"the failure closed the band")
+		"the end of the game closed the band")
 	var bosses := 0
 	for entry in GameLoop2.stack:
 		var e: GoalEnemyData = entry.get("enemy")
@@ -2723,4 +2692,4 @@ func test_a_failure_spawn_can_be_the_one_that_closes_the_band() -> void:
 	if bosses == 0:
 		pending("no boss in the roster for this type/tier")
 		return
-	assert_eq(bosses, 1, "a boss walked on off a lost run, on top of the failure's own bodies")
+	assert_eq(bosses, 1, "a boss walked on, on top of the game's own bodies")

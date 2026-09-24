@@ -1115,107 +1115,79 @@ func test_the_rack_can_fill_the_room_infusion_made() -> void:
 # The two Isaac relics added after the seven — Censer and Fanny Pack (§8).
 # ==========================================================================
 
-# --- Censer: the front line loses an extra turn ---------------------------
+# --- Censer: the front line sits out every extra turn -----------------------
 #
-# "Enemies in the leftmost column get -1 Extra Turns". The turns it takes off are
-# the ones the ROAD hands the board at a report (§7.4) — a distance-to-the-Amulet
-# thing — so every test here has to stand the run somewhere those exist at all.
+# "Enemies in the leftmost column take no extra turns". An EXTRA turn is one a
+# body gets on top of the lost runs that are the board's only clock (§3.2) —
+# Predatory Scent's is the one on the roster today (§7.6) — so every test here
+# stands a hunter on the board and hands in a game with a status goal unmet.
 
-# The run standing close enough to the Amulet that reporting a game buys the board
-# turns, with one body in the front column ready to spend them on the player.
-# Returns its instance, or -1 when this run's graph could not be stood there.
-func _front_line_at_the_doorstep() -> int:
-	var amulet: StringName = &"slay_the_spire"
-	var dist: Dictionary = RunGraph.bfs_distances(amulet)
-	var stood: bool = false
-	for gid in dist.keys():
-		if int(dist[gid]) == 1:
-			GameState.amulet_game_id = amulet
-			GameState.current_game_id = gid
-			stood = true
-			break
-	if not stood:
-		return -1
-	var inst: int = _choose_solo(_fighter(2))
-	GameLoop2.beat_game(false)        # its own game; after this it is a follower
-	_march_to_front(inst)
+# One Predatory Scent body at `col`, and a status goal the report will leave
+# unmet — the two halves the hunt needs. Returns its instance.
+func _hunter_at(col: int) -> int:
+	var e: GoalEnemyData = _fighter(2)
+	e.abilities = [{"id": &"predatory_scent", "amount": 0, "arg": &"", "text": ""}]
+	var inst: int = GameLoop2.spawn_to_stack(e)
+	var entry: Dictionary = _entry_of(inst)
+	entry["col"] = col
+	entry["row"] = 0
+	GameState.apply_status(&"marked", 1)
 	GameState.hp = 20
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	return inst
 
-func test_the_censer_holds_the_front_line_off_for_a_turn() -> void:
-	var inst: int = _front_line_at_the_doorstep()
-	if inst < 0:
-		pending("this run's graph has nothing standing one hop from the Amulet")
-		return
-	if int(_entry_of(inst).get("col", -1)) != 1:
-		pending("the body did not reach the front column to be held off")
-		return
-	_give(&"censer")
-	var before: int = GameState.hp
-	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_gt(int(res.get("turns", 0)), 0, "the doorstep bought the board turns")
-	var censed: int = 0
-	var swings: int = 0
+func _hunt(inst: int, res: Dictionary) -> Dictionary:
+	var out := {"censed": 0, "swings": 0}
 	for a in res["attacks"]:
 		if int((a as Dictionary).get("instance", 0)) != inst:
 			continue
 		if bool((a as Dictionary).get("censed", false)):
-			censed += 1
+			out["censed"] = int(out["censed"]) + 1
 		if (a as Dictionary).has("damage"):
-			swings += 1
-	assert_eq(censed, 1, "the body in the front column sat one turn out")
-	assert_eq(swings, maxi(0, int(res["turns"]) - 1),
-		"and swung on every other turn it was given, not one more")
-	assert_gt(before - GameState.hp, -1, "and what it did land came off Health")
+			out["swings"] = int(out["swings"]) + 1
+	return out
+
+func test_the_censer_holds_the_front_line_out_of_an_extra_turn() -> void:
+	var inst: int = _hunter_at(1)
+	_give(&"censer")
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
+	assert_false((res.get("predators", []) as Array).is_empty(), "the hunt was on")
+	var seen: Dictionary = _hunt(inst, res)
+	assert_eq(int(seen["censed"]), 1, "the body in the front column sat its extra turn out")
+	assert_eq(int(seen["swings"]), 0, "and never swung")
+	assert_eq(GameState.hp, before, "so nothing came off Health")
 
 func test_without_the_censer_that_same_turn_is_a_swing() -> void:
 	# The other half, and the reason the test above is not just describing the
 	# board being quiet: the SAME setup without the relic is a hit.
-	var inst: int = _front_line_at_the_doorstep()
-	if inst < 0:
-		pending("this run's graph has nothing standing one hop from the Amulet")
-		return
-	if int(_entry_of(inst).get("col", -1)) != 1:
-		pending("the body did not reach the front column to swing from")
-		return
+	var inst: int = _hunter_at(1)
 	var before: int = GameState.hp
-	var res: Dictionary = GameLoop2.beat_game(false)
-	var swings: int = 0
-	for a in res["attacks"]:
-		if int((a as Dictionary).get("instance", 0)) == inst and (a as Dictionary).has("damage"):
-			swings += 1
-	assert_eq(swings, int(res["turns"]), "every turn it was given was a swing")
-	assert_lt(GameState.hp, before, "and the player paid for them")
+	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
+	assert_eq(int(_hunt(inst, res)["swings"]), 1, "the extra turn was a swing")
+	assert_lt(GameState.hp, before, "and the player paid for it")
 
 func test_the_censer_leaves_the_bodies_behind_the_front_line_alone() -> void:
 	# It is armour, not a global slow: a body still crossing the board spends its
-	# turns WALKING, and draining those would be a different (and much stronger)
-	# item. Asserted on the walk, because that is the turn it would have lost.
-	var amulet: StringName = &"slay_the_spire"
-	var dist: Dictionary = RunGraph.bfs_distances(amulet)
-	var stood: bool = false
-	for gid in dist.keys():
-		if int(dist[gid]) == 1:
-			GameState.amulet_game_id = amulet
-			GameState.current_game_id = gid
-			stood = true
-			break
-	if not stood:
-		pending("this run's graph has nothing standing one hop from the Amulet")
-		return
+	# extra turn WALKING, and the Censer only reaches the front column.
+	var inst: int = _hunter_at(3)
+	_give(&"censer")
+	GameLoop2.beat_game(false, [], {"status_goals": []})
+	assert_eq(int(_entry_of(inst).get("col", -1)), 2,
+		"a body back down the board still closed on the player")
+
+func test_the_censer_does_not_touch_a_lost_runs_turn() -> void:
+	# A lost run's turn is the board's own clock, not an extra one.
 	_give(&"censer")
 	var inst: int = _choose_solo(_fighter(2))
-	GameLoop2.beat_game(false)
-	var before: int = int(_entry_of(inst).get("col", -1))
-	if before <= 1:
-		pending("the body spawned already in the front column, with no walk to lose")
-		return
-	var res: Dictionary = GameLoop2.beat_game(false)
-	assert_gt(int(res.get("turns", 0)), 0, "the doorstep bought the board turns")
-	assert_lt(int(_entry_of(inst).get("col", -1)), before,
-		"a body back down the board still closed on the player")
+	var entry: Dictionary = _entry_of(inst)
+	entry["col"] = 1
+	GameState.hp = 20
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameLoop2.attempt_turn()
+	assert_eq(GameState.hp, 18, "the front line swung on the lost run as it always does")
 
 # --- Fanny Pack: loot shaken loose onto the floor -------------------------
 #

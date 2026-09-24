@@ -189,31 +189,22 @@ static func _ch_choosing() -> Dictionary:
 			_kv("🏆 THE AMULET", "This is the game the run is a search for. Beat "
 				+ "its goal and the run is won, on the spot."),
 			_h("Pressure: why the long way is a real option"),
-			_p("Handing a game in does not move the board. Out in the wilds you can "
-				+ "play a game, report it and walk away with the stack exactly where "
-				+ "you left it — what moves them is the runs you LOSE, one turn "
-				+ "each. What closing on the Amulet buys them is EXTRA TURNS at the "
-				+ "end of every game you report:"),
-			_row(["Hops to the Amulet", "Extra turns", "Band"], true),
+			_p("Only one thing moves the board: a run you LOSE, one turn each. "
+				+ "Handing a game in moves nobody. What the end of a game does "
+				+ "instead is FILL the board — new enemies walk on at the back, and "
+				+ "how many is read off how close you are to the Amulet:"),
+			_row(["Hops to the Amulet", "Enemies per game", "Band"], true),
 			_row(["%d or more" % RunDifficulty.FAR_HOPS,
-				"%d" % RunDifficulty.EXTRA_FAR, "Distant"]),
+				"%d" % RunDifficulty.SPAWN_FAR, "Distant"]),
 			_row(["%d – %d" % [RunDifficulty.MID_HOPS, RunDifficulty.FAR_HOPS - 1],
-				"%d" % RunDifficulty.EXTRA_MID, "Closing"]),
+				"%d" % RunDifficulty.SPAWN_MID, "Closing"]),
 			_row(["%d or fewer" % (RunDifficulty.MID_HOPS - 1),
-				"%d" % RunDifficulty.EXTRA_NEAR, "Doorstep"]),
-			_p("A turn is one action for every enemy on the board: anything in "
-				+ "your face swings, everything behind it steps a column closer. "
-				+ "So on the Amulet's doorstep finishing a game is two free swings "
-				+ "from every follower you left alive, and an enemy two columns back "
-				+ "is not safe any more — it can walk into range and hit you before "
-				+ "you have chosen the next card."),
-			_p("This is the whole reason routing is a decision. Every step toward "
-				+ "the Amulet used to be strictly good. Now: route wide and the "
-				+ "board only moves when you fail; run at the Amulet and it moves "
-				+ "every time you finish anything. Neither is correct in general. "
-				+ "What decides it is how many followers you are dragging — three "
-				+ "of them at 2 extra turns is a very different sum from three at "
-				+ "none."),
+				"%d" % RunDifficulty.SPAWN_NEAR, "Doorstep"]),
+			_p("This is the whole reason routing is a decision. Route wide and the "
+				+ "board fills slowly; run at the Amulet and every game you finish "
+				+ "puts more on it, shoving the ones already there closer when the "
+				+ "back is full. Neither is correct in general — what decides it is "
+				+ "how full your board already is."),
 			_note("Taking the Amulet card itself carries no pace warning. There is "
 				+ "no next game for the enemies to act in — you have either won or "
 				+ "you have not."),
@@ -380,36 +371,41 @@ static func _ch_enemies() -> Dictionary:
 			_b("It has been standing on the board since the moment you chose its "
 				+ "game, at the back edge."),
 			_b("It closes one column every TURN the board takes — one for every "
-				+ "run you lose, plus the extra turns near the Amulet. Crossing the "
-				+ "board takes it a while; that is your grace period, and it is a "
-				+ "distance rather than a rule."),
+				+ "run you lose, and nothing else. Crossing the board takes it a "
+				+ "while; that is your grace period, and it is a distance rather "
+				+ "than a rule. Hover or click it for the count in lost runs."),
 			_b("Once it reaches the front it strikes on every one of those turns, "
 				+ "for its damage, until its goal is met."),
 			_b("An ordinary enemy hits for 1 to 4; a boss for 3 to 9. A shield "
 				+ "stops the whole swing if you have one; otherwise it all comes "
 				+ "off Health."),
 			_p("Followers stack. Two followers in reach is two hits every lost run; "
-				+ "five is five. And on the Amulet's doorstep every one of them "
-				+ "swings twice more for each game you hand in. This is how runs "
-				+ "actually end."),
-			_h("Losing with nothing down brings more of them"),
-			_p("Lose a run of a game — or hand a game in — without having put a "
-				+ "single enemy down during it, and fresh bodies walk on, rolled for "
-				+ "the game you are playing. How many is read off the distance, not "
-				+ "the difficulty:"),
+				+ "five is five. This is how runs actually end."),
+			_h("Every game that ends brings more of them"),
+			_p("When a game ends — handed in or escaped — fresh bodies walk on at "
+				+ "the back, rolled for the game you were playing. How many is read "
+				+ "off the distance to the Amulet, not the difficulty:"),
 			_row(["Hops to the Amulet", "Bodies"], true),
-			_row(["%d or more" % RunDifficulty.FAR_HOPS,
-				"%d" % RunDifficulty.failure_bodies_for_hops(RunDifficulty.FAR_HOPS)]),
+			_row(["%d or more" % RunDifficulty.FAR_HOPS, "%d" % RunDifficulty.SPAWN_FAR]),
 			_row(["%d – %d" % [RunDifficulty.MID_HOPS, RunDifficulty.FAR_HOPS - 1],
-				"%d" % RunDifficulty.failure_bodies_for_hops(RunDifficulty.MID_HOPS)]),
+				"%d" % RunDifficulty.SPAWN_MID]),
 			_row(["%d or fewer" % (RunDifficulty.MID_HOPS - 1),
-				"%d" % RunDifficulty.failure_bodies_for_hops(0)]),
-			_b("Put ONE body down this game — any body, by its goal or a bomb — "
-				+ "and it stops for the rest of the game."),
-			_b("Nothing is owed at an Event or a Shop node, at the Amulet, or on "
-				+ "an escape."),
+				"%d" % RunDifficulty.SPAWN_NEAR]),
+			_b("+1 if you did not put a single body down during the game, by its "
+				+ "goal."),
+			_b("Escaping always adds 1, even if you did."),
+			_b("Nothing walks on at the Amulet, and nothing when a teleport pulls "
+				+ "you out."),
+			_b("A lane packed at the back gets SHOVED forward to make room — the "
+				+ "whole line steps a column closer, and nobody takes a turn. The "
+				+ "newcomer picks the lane that needs the least shoving."),
 			_b("The strip on top of the board says the price before you pay it: "
-				+ "+N on a loss, or none, and why."),
+				+ "+N when this game ends, or none, and why."),
+			_h("Difficulty up"),
+			_p(("Every %dth spawn — a node's enemies arriving, or a game's end "
+				+ "standing some up — is a DIFFICULTY UP: the tier steps, the board "
+				+ "grows, and a boss walks on. The strip counts down to it.")
+				% RunDifficulty.GAMES_PER_TIER),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its loot and pays its "
@@ -474,15 +470,16 @@ static func _ch_board() -> Dictionary:
 				+ "ground to lose before they arrive.")
 				% [GameLoop2.BASE_GRID_COLS, GameLoop2.BASE_GRID_ROWS]),
 			_h("What a body does"),
-			_kv("Spawn", "It walks on at the back column the moment you choose its "
-				+ "game. Its lane is picked at random from the ones it could "
-				+ "actually reach you down."),
+			_kv("Spawn", "It walks on at the back column — the moment you choose "
+				+ "its game, or as a game ends. Its lane is picked at random from "
+				+ "the ones it could actually reach you down; with every lane full "
+				+ "at the back, it shoves the least-packed one forward instead."),
 			_kv("Advance", "Each turn, anything not striking closes one column."),
 			_kv("Strike", "It attacks the moment ANY of its cells is in column 1."),
-			_p("Turns come from two places. Every run you LOSE at the game you "
-				+ "are playing gives the board one, straight away. Handing the "
-				+ "game in gives it only the EXTRA turns the Amulet's pull owes "
-				+ "— none out in the wilds, up to two on its doorstep."),
+			_p("Turns come from one place: every run you LOSE at the game you are "
+				+ "playing gives the board one, straight away. Handing the game in "
+				+ "gives it none. So a body's column is its countdown — hover it or "
+				+ "click it to have that said in words."),
 			_h("Size is a real thing"),
 			_p("Enemies are not all one cell. A body two cells wide reaches the "
 				+ "front line in fewer games, because its leading edge starts "
@@ -927,20 +924,18 @@ static func _ch_wrong() -> Dictionary:
 				+ "— and debts in this game are payable in any currency."),
 			_h("I keep losing runs of this game"),
 			_p("Each lost run hands the board a turn, and the board is closer "
-				+ "every time. As soon as one of them gets through your shields "
-				+ "and takes Health, Escape is offered: take it. Escaping keeps "
-				+ "the enemy but stops the bleeding, and the goal stays on your "
-				+ "checklist to clear somewhere friendlier."),
-			_p("And put ONE body down if you possibly can — any goal on the list, "
-				+ "or a bomb. Until something goes down, every loss also stands "
-				+ "fresh bodies up; after it, losing costs the turn and nothing "
-				+ "more."),
+				+ "every time. Escape is always there: it costs one more enemy "
+				+ "than finishing would and pays no chest, but it stops the "
+				+ "bleeding, and every goal stays on your checklist to clear "
+				+ "somewhere friendlier."),
+			_p("And put ONE body down if you possibly can — any goal on the list. "
+				+ "A game that ends with nothing down stands one more enemy up."),
 			_h("I have four followers and they are killing me"),
 			_p("In rough order of what to try:"),
 			_b("ROUTE AWAY from the Amulet. Getting back to five or more hops "
-				+ "takes the extra turns away entirely — the board stops moving "
-				+ "except when you lose a run. That is the biggest single lever in "
-				+ "the game and it costs only games."),
+				+ "means a game you finish with a body down stands nobody new up. "
+				+ "That is the biggest single lever in the game and it costs only "
+				+ "games."),
 			_b("Pick cards whose games can pay off SEVERAL old goals at once. Read "
 				+ "the checklist first and choose the game to fit it, rather than "
 				+ "the other way round."),
@@ -986,11 +981,11 @@ static func _ch_screen() -> Dictionary:
 			_kv("Gold", "A chip in the top bar."),
 			_kv("Board size and tier", "The right-hand end of the board's pressure "
 				+ "bar."),
-			_kv("Extra turns", "The strip across the top of the board: what "
-				+ "reporting a game hands the enemies, in the band's colour, with "
-				+ "the hop count that caused it. Zero out in the wilds. Beside it, "
-				+ "what a loss here would stand up (☠ +N on a loss) and how many "
-				+ "spawns until the next boss."),
+			_kv("Amulet pressure", "The strip across the top of the board: how "
+				+ "many enemies every game that ends stands up, in the band's "
+				+ "colour, with the hop count that caused it. Zero out in the "
+				+ "wilds. Beside it, what ending THIS game will stand up (☠ +N when "
+				+ "this game ends) and how many spawns until the next difficulty up."),
 			_kv("What kind of place a game is", "Its mark — ! ? !! $ — on the "
 				+ "card, on the 🗺 map and on the route ladder."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "

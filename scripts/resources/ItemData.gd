@@ -487,18 +487,18 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 @export var grid_grow: bool = false
 
 # Censer: every body standing in the FRONT column (col 1 — the ones in reach of
-# you) takes one fewer of the extra turns the road hands the board at a report
-# (§7.4). The turn is not moved or delayed: it is gone, and the body sits the
-# first one out where it would otherwise have swung.
+# you) sits out every EXTRA turn (§8.2): a turn a body is handed on top of the
+# lost runs that are the board's only ordinary clock (§3.2). Predatory Scent's is
+# the one on today's roster; anything added that hands a body a turn of its own
+# goes through the same `extra` beat and is covered without touching this.
 #
-# IT ONLY EVER TOUCHES THE FRONT COLUMN, which is what keeps it from being a flat
-# "enemies act less". A body four columns back spends its turns WALKING, so
-# draining one there would only slow its approach; in the front column a turn is a
-# hit on you, so this is armour that reads as the incense keeping them back — and
-# it stops mattering the moment the front line is empty.
+# IT ONLY EVER TOUCHES THE FRONT COLUMN. A body further back spends its turns
+# WALKING, so holding one there would only slow its approach; in the front column
+# a turn is a hit on you, so this is armour that reads as the incense keeping them
+# back.
 #
-# Stacks like grid_grow: GameState.front_column_turn_drain counts the copies, so
-# two Censers cost a front-line body two turns. Read by GameLoop2.beat_game.
+# Does not stack: GameState.censes_extra_turns answers yes or no. Read by
+# GameLoop2._resolve_enemy_turn.
 @export var front_column_slow: bool = false
 
 # Philosophers Stone / Runic Dome: the battlefield grows by one COLUMN only —
