@@ -862,25 +862,23 @@ func open_start_choice(index: int) -> GameChoiceModal:
 	modal.finished.connect(func(): _choice_modal = null)
 	return modal
 
-# turn_note's answer for a start: how fast the board runs at that distance from
+# turn_note's answer for a start: how hard the board fills at that distance from
 # the Amulet, said outright. Same ladder, same colours — only the sentence is
 # different, because there is no "here" to be faster or slower than.
 func _start_pace_note(hops: int) -> Dictionary:
-	var extra: int = RunDifficulty.extra_turns_for_hops(hops)
+	var pressure: int = RunDifficulty.pressure_for_hops(hops)
 	return {
-		# SILENT WHEN THE ANSWER IS ZERO. A pace row is a WARNING, and "costs no
-		# turns there" is a warning about nothing — it took a line of the card to
-		# say that the thing the row exists to announce is not happening. The row
-		# is dropped instead (an empty text draws nothing, see
-		# GameChoiceModal._fact_line's caller), so seeing one at all means the
-		# board really does get extra turns after the game.
-		"text": ("" if extra <= 0
-			else "⏱ Reporting a game costs %s there" % RunDifficulty.extra_text(extra)),
-		"color": RunDifficulty.band_color(extra),
-		"turns": extra,
-		"extra": extra,
-		"tip": "Standing there, handing a game in gives the enemies %s.\n\n%s" % [
-			RunDifficulty.extra_text(extra), RunDifficulty.ladder_text(extra)],
+		# SILENT WHEN THE ANSWER IS ZERO. A pace row is a WARNING, and "no bodies
+		# there" is a warning about nothing. The row is dropped instead (an empty
+		# text draws nothing, see GameChoiceModal._fact_line's caller), so seeing
+		# one at all means the end of a game there really does stand bodies up.
+		"text": ("" if pressure <= 0
+			else "☠ %s walk on at the end of each game there" % (
+				RunDifficulty.bodies_text(pressure))),
+		"color": RunDifficulty.band_color(pressure),
+		"bodies": pressure,
+		"tip": "Standing there, every game that ends stands up %s at the back.\n\n%s" % [
+			RunDifficulty.bodies_text(pressure), RunDifficulty.ladder_text(pressure)],
 	}
 
 # Take the offered start at `index` (choose-your-start, Phase.START_SELECT).
@@ -1617,116 +1615,44 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # --- escaping a game you can't beat ---------------------------------------
 #
 # Some games won't go down, and a run shouldn't end because one of them sat in
-# the way. The player may walk away from the game in play without beating it —
-# ONCE IT HAS DRAWN BLOOD: the door opens the moment an enemy's attack takes
-# Health off you during this game (GameLoop2.hurt_this_game), and it is open from
-# the first second on a game this run has already beaten (see can_escape).
+# the way. The player may walk away from the game in play without beating it,
+# AT ANY TIME: the door is always open, and what keeps it honest is its PRICE.
 #
-# THE GATE IS THE HIT, not a count of tries. It used to be five lost runs, from
-# when a lost run spent a shield and then Health — a counter that stood in for
-# "this game is hurting you" because nothing else measured it. Now the board
-# measures it directly: a lost run hands the enemies a turn (§3.2), a Temporary
-# Shield stops the first swings outright, and the door opens on the swing that
-# gets past them. So the way out arrives exactly when the game has started
-# costing you the one thing you cannot make more of, and never merely because you
-# were patient.
+# Escaping ends the game the way handing it in does — the end of the game fills
+# the board (§19.5) — and it costs more on both counts that matter:
 #
-# Escaping resolves the BOARD exactly as reporting a missed goal does: the
-# goal-enemy walks onto the board and follows you, and every enemy already on it
-# still takes its turns. That IS the price, and it has already been paid by the
-# time the button appears. The button exists to make the way out VISIBLE to a
-# stuck player, not to discount it.
+#   * THE BOARD: the Amulet pressure's bodies PLUS ONE, always. A hand-in only
+#     adds the one when nothing went down; an escape adds it even after a kill,
+#     so walking out is never cheaper than finishing (GameLoop2.end_of_game_price).
+#   * THE REWARD: no report chest (the kill scaling only pays a win, §8.2), no
+#     beat on the record, and a `game beaten` goal ticked on the checklist is
+#     dropped rather than honoured. Loot already lying on the floor, and a boss's
+#     own chest, are drops rather than the report's reward — they stay yours.
+#
+# The door used to be LOCKED behind three gates — an enemy's hit, three bodies
+# down, or five lost runs — because escaping used to cost the board nothing it
+# was not already owed. It costs bodies now, so the gates had nothing left to
+# guard, and a price you can read beats three rules you have to satisfy.
 #
 # Where it PARTS from a missed report is the item trigger: the "after beating a
 # game" items fire on any game FINISHED, win or lose, and an escape is the one
 # report that doesn't fire them. Neither one banks a beat — beaten means won (see
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
-#
-# THREE ways in.
-#
-# The HIT is for a game this run has never got through: the way out has to be
-# earned, because the alternative is a player who quits the run instead.
-#
-# A game this run has ALREADY BEATEN is the opposite case — there is nothing left
-# to prove, and being made to stand there and bleed to unlock the door is a tax
-# on the one card the run cannot make interesting, so that door is open from the
-# first second.
-#
-# THREE BODIES DOWN is the door that keeps the first one honest, and it is the
-# one the player drives. It used to be an EMPTY BOARD — nothing left on the stack
-# means nothing that can ever hurt you, so the hit gate could never open, and a
-# player standing on a game they cannot beat with a clear stack would be held
-# there by a rule written to let them out. True, but it asked for the wrong thing:
-# on a stack of six it is unreachable, and on a stack of one it is a single goal,
-# so the same door cost anywhere between one kill and a whole board depending on
-# something the player never chose. A COUNT is the same argument with a fixed
-# price — you have shown the game three answered goals, whatever else the board
-# still holds — and it is reachable on every board, including the one that will
-# not stop growing. It is per-GAME (GameLoop2.defeated_this_game), like the hit
-# gate: what the last game cost you is not a fact about this one.
-#
-# It is the same escape however you got in: the goal-enemy still follows you, the
-# board still takes the turns the road charges for finishing a game (§7.4, which
-# out in the wilds is none), and the game still isn't credited. Only the gate
-# moves.
-# THE FOURTH DOOR, and the one that cannot be locked: LOST RUNS. The hit gate
-# above is the honest measure of "this game is costing you", but it is a measure
-# the player does not control — a board of low-damage bodies behind a stack of
-# Temporary Shields can take an evening and never land a point of Health, and a
-# player who cannot beat that game is held there by a rule written to let them
-# out. Five lost runs is the floor under all of it: it is not a good way out (the
-# board has taken five turns to get there) and it is not meant to be, it is
-# simply a way out that always eventually arrives.
-const ESCAPE_AFTER_LOSSES := 5
-
-# How many bodies this game has to have cost the board before the door opens on
-# kills alone (see the "THREE BODIES DOWN" note above).
-const ESCAPE_AFTER_DEFEATS := 3
-
 func can_escape() -> bool:
-	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
-		return false
-	return beaten_this_run() or GameLoop2.hurt_this_game \
-		or GameLoop2.defeated_this_game >= ESCAPE_AFTER_DEFEATS \
-		or GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES
+	return _phase == Phase.PLAYING and not _chosen.is_empty() and not GameLoop2.run_over
 
-# What the player still has to do to open the door, as the routes that are not yet
-# open, in the order they are worth trying. Empty when the door is already open.
-#
-# EVERY ROUTE AT ONCE rather than only the nearest: they are genuinely different
-# prices — a turn of the board, three bodies off it, a point of Health — and which
-# is cheapest is a fact about the player's board that only the player can see. A
-# hint that named one of them would be advice; naming all three is information.
-func escape_routes() -> Array:
-	if can_escape():
-		return []
-	var out: Array = []
-	var left: int = ESCAPE_AFTER_LOSSES - GameLoop2.attempts()
-	if left > 0:
-		out.append("%d more %s" % [left, "loss" if left == 1 else "losses"])
-	# "Beat 3 Enemies" until one is down, and "2 more" after that: the count is the
-	# thing being asked for, and repeating the whole price to a player who has
-	# already paid part of it is the version that reads as no progress.
-	var kills: int = ESCAPE_AFTER_DEFEATS - GameLoop2.defeated_this_game
-	if kills > 0:
-		var noun: String = "Enemy" if kills == 1 else "Enemies"
-		out.append(("Beat %d %s" if GameLoop2.defeated_this_game == 0
-			else "Beat %d more %s") % [kills, noun])
-	if not GameLoop2.hurt_this_game:
-		out.append("Lose Health")
-	return out
-
-# Those routes as the line under the button: "3 more losses, Beat 3 Enemies, or
-# Lose Health". Empty string when the door is open and the line has nothing to say.
+# The price of the door, as the line under the button: "Leave now: 3 enemies walk
+# on, no chest." Empty when there is no game in play to walk out of.
 func escape_hint_text() -> String:
-	var routes: Array = escape_routes()
-	if routes.is_empty():
+	if not can_escape():
 		return ""
-	if routes.size() == 1:
-		return String(routes[0])
-	var head: Array = routes.slice(0, routes.size() - 1)
-	return "%s, or %s" % [", ".join(head), String(routes[-1])]
+	var price: Dictionary = GameLoop2.end_of_game_price(true)
+	var bodies: int = int(price["bodies"])
+	if bodies <= 0:
+		return "Leave now: no chest."
+	return "Leave now: %s walk%s on, no chest." % [
+		RunDifficulty.bodies_text(bodies), "s" if bodies == 1 else ""]
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -1747,15 +1673,12 @@ func beaten_this_run() -> bool:
 # separate honour-system claims; escaping only answers the main goal, and it
 # answers no.
 #
-# `force` skips the gate and nothing else. It is for the exits that are PAID FOR
-# rather than earned — every teleport off a game in play. The gate answers "has
-# this game hurt you enough to deserve a way out"; a spent piece of loot is a
-# different answer to the same question, not a way around the bill, so everything
-# the escape costs on the far side is charged in full either way.
+# `force` skips the phase check and nothing else — every teleport off a game in
+# play passes it.
 # `free_exit` is the teleport's door (loot_teleport): the run is not walking out,
-# it is being pulled out, so the board does not get the extra turns finishing a
-# game owes (§7.4). It changes nothing else — the goal-enemy still comes with you,
-# the game is still uncredited, the evening is still spent.
+# it is being pulled out, so the end of the game stands nobody up (§19.5) — the
+# loot already paid for the door. It changes nothing else — the game is still
+# uncredited, the evening is still spent.
 func escape_game(force: bool = false, free_exit: bool = false) -> void:
 	if not force and not can_escape():
 		return
@@ -1767,28 +1690,25 @@ func escape_game(force: bool = false, free_exit: bool = false) -> void:
 	var game: GameData = _chosen.get("game")
 	var game_name: String = game.display_name if game != null else "this game"
 	var tries: int = GameLoop2.attempts()
-	var msg: String = ("Escaped %s — its enemy comes with you." % game_name if tries == 0
-		else "Escaped %s after %d lost run%s — its enemy comes with you." % [
+	var msg: String = ("Escaped %s." % game_name if tries == 0
+		else "Escaped %s after %d lost run%s." % [
 			game_name, tries, "" if tries == 1 else "s"])
-	# Walking away is FINISHING a game as far as the road is concerned, so it is
-	# charged for like one: the extra turns the Amulet's pull owes (§7.4) resolve
-	# through the same report path a missed goal takes, below. Said out loud when
-	# there are any, because "I escaped and then got hit twice" is otherwise a
-	# surprise rather than a price.
+	# Walking away ENDS the game, so the board fills behind you (§19.5) — the
+	# pressure's bodies and one more, kill or no kill. Said out loud, because "I
+	# escaped and then three enemies walked on" is otherwise a surprise rather than
+	# a price.
 	#
 	# A TELEPORT IS THE EXCEPTION, and it is the door that makes it one. An ordinary
-	# escape is the player deciding to leave, and the board's parting turns are what
-	# that decision costs; a teleport is a piece of loot picking the run up and
-	# putting it somewhere else, and it was already paid for — with the scroll, or
-	# with the pill. Charging the road's turns on top made the one use a teleport
-	# has that nothing else covers, getting out of a game that is killing you, the
-	# use most likely to kill you. So the pull is free of them and says so.
-	var extra: int = GameLoop2.enemy_turns()
+	# escape is the player deciding to leave; a teleport is a piece of loot picking
+	# the run up and putting it somewhere else, and it was already paid for — with
+	# the scroll, or with the pill. So the pull stands nobody up and says so.
+	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
 	if free_exit:
-		if extra > 0 and not GameLoop2.stack.is_empty():
-			msg += " You are pulled out before they can take their turns."
-	elif extra > 0 and not GameLoop2.stack.is_empty():
-		msg += " They still get %s on the way out." % RunDifficulty.extra_text(extra)
+		if owed > 0:
+			msg += " You are pulled out before anything can follow."
+	elif owed > 0:
+		msg += " %s walk%s on behind you." % [
+			RunDifficulty.bodies_text(owed), "s" if owed == 1 else ""]
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 	report(false, null, true, free_exit)
@@ -2070,62 +1990,57 @@ func route_note(choice: Dictionary) -> Dictionary:
 			there, plural, maxi(here - 1, 0)],
 	}
 
-# What taking this card does to the PACE of the board (§7.4). The route badge
-# above says how much ground a card gives or takes; this says what that ground
-# costs, because the two are the same decision: every step toward the Amulet is a
-# step toward enemies that take EXTRA TURNS every time you hand a game in.
+# What taking this card does to the AMULET PRESSURE (§7.4). The route badge above
+# says how much ground a card gives or takes; this says what that ground costs,
+# because the two are the same decision: every step toward the Amulet is a step
+# toward more bodies walking on every time a game ends.
 #
-# Out in the wilds that price is zero — reporting a game moves nobody, and the
-# only thing that does is losing runs at it (§3.2). So the card is quoting what
-# this stretch of road charges on top of your own failures.
+# Out in the wilds that price is zero — finish a game there with a body down and
+# nobody walks on. So the card is quoting what this stretch of road charges on
+# top of the defeated-nothing and escape surcharges, which are the player's own.
 #
-# Returned as {"text", "color", "tip", "turns", "extra"} — same shape as
-# route_note. `turns` and `extra` are the same number (every turn the end of a
-# game hands out is an extra one now); both are there so a caller can ask for
-# either without knowing that, and a test can assert the number without parsing
+# Returned as {"text", "color", "tip", "bodies"} — same shape as route_note.
+# `bodies` is there so a caller (and a test) can ask the number without parsing
 # the sentence.
 func turn_note(choice: Dictionary) -> Dictionary:
 	var here: int = steps_to_amulet(GameState.current_game_id)
 	var there: int = steps_to_amulet(choice.get("slot", &""))
-	# The Amulet card ends the run on the spot: what the enemies would have done
-	# afterwards is moot, and saying "+2 extra turns" there would just be alarming.
+	# The Amulet card ends the run on the spot: nothing walks on after it, and
+	# warning about bodies there would just be alarming.
 	if bool(choice.get("amulet", false)):
 		there = 0
-	var now: int = RunDifficulty.extra_turns_for_hops(here)
-	var then: int = RunDifficulty.extra_turns_for_hops(there)
+	var now: int = RunDifficulty.pressure_for_hops(here)
+	var then: int = RunDifficulty.pressure_for_hops(there)
 	var color: Color = RunDifficulty.band_color(then)
-	var tip: String = ("Standing there, handing a game in gives the enemies %s.\n\n%s"
-		% [RunDifficulty.extra_text(then), RunDifficulty.ladder_text(then)])
+	var tip: String = ("Standing there, every game that ends stands up %s at the back.\n\n%s"
+		% [RunDifficulty.bodies_text(then), RunDifficulty.ladder_text(then)])
 	if bool(choice.get("amulet", false)):
-		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
-	# NOTHING TO WARN ABOUT IS NOTHING TO SAY. A card that leaves the board taking
-	# no extra turns after the game drops the row entirely rather than spending a
-	# line on "still no extra turns" — including the case where backing off is what
-	# bought the zero, which reads as good news and is still not a warning. The
-	# number is still returned, so a caller (and a test) can ask without the row
-	# having to exist. Seeing a pace row at all now means the same thing every
-	# time: this game hands the enemies turns when you report it.
+		return {"text": "", "color": color, "tip": tip, "bodies": then}
+	# NOTHING TO WARN ABOUT IS NOTHING TO SAY. A card whose road stands nobody up
+	# drops the row entirely — including the case where backing off is what bought
+	# the zero, which reads as good news and is still not a warning. Seeing a pace
+	# row at all means the same thing every time: games there fill the board.
 	if then <= 0:
-		return {"text": "", "color": color, "tip": tip, "turns": then, "extra": then}
+		return {"text": "", "color": color, "tip": tip, "bodies": then}
 	if then > now:
 		return {
-			"text": "⏱ Enemies speed up — %s" % RunDifficulty.extra_text(then),
-			"color": color, "turns": then, "extra": then,
-			"tip": "Closing on the Amulet is what wakes them up: %s here, %s there.\n\n%s"
-				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+			"text": "☠ Pressure rises — %s per game" % RunDifficulty.bodies_text(then),
+			"color": color, "bodies": then,
+			"tip": "Closing on the Amulet fills the board faster: %s a game here, %s there.\n\n%s"
+				% [RunDifficulty.bodies_text(now), RunDifficulty.bodies_text(then),
 					RunDifficulty.ladder_text(then)],
 		}
 	if then < now:
 		return {
-			"text": "⏱ Enemies slow down — %s" % RunDifficulty.extra_text(then),
-			"color": color, "turns": then, "extra": then,
-			"tip": "Backing off buys you pace: %s here, %s there.\n\n%s"
-				% [RunDifficulty.extra_text(now), RunDifficulty.extra_text(then),
+			"text": "☠ Pressure eases — %s per game" % RunDifficulty.bodies_text(then),
+			"color": color, "bodies": then,
+			"tip": "Backing off slows the board down: %s a game here, %s there.\n\n%s"
+				% [RunDifficulty.bodies_text(now), RunDifficulty.bodies_text(then),
 					RunDifficulty.ladder_text(then)],
 		}
 	return {
-		"text": "⏱ Still %s" % RunDifficulty.extra_text(then),
-		"color": UITheme.TEXT_DIM, "turns": then, "extra": then, "tip": tip,
+		"text": "☠ Still %s per game" % RunDifficulty.bodies_text(then),
+		"color": UITheme.TEXT_DIM, "bodies": then, "tip": tip,
 	}
 
 # Spend the carried piece of loot at index `idx` (the loot window's Use button).
@@ -2185,16 +2100,14 @@ func loot_teleport(req: Dictionary) -> String:
 	# have. So the teleport takes the way out on the player's behalf and then
 	# moves them.
 	#
-	# IT FORCES THE ESCAPE PAST can_escape(). The ordinary gate wants the game to
-	# have drawn blood first, so the exit is earned rather than free; a teleport
-	# IS what earns it — the run spent a piece of loot on the door. What it does
-	# NOT discount is everything the escape costs you on the far side: the
-	# goal-enemy still walks on and follows you, and the game is still not
-	# credited. You are buying the exit, not a pardon.
+	# IT GOES THROUGH THE ESCAPE, with `force` for good measure. What it does NOT
+	# discount is everything the escape costs you on the far side: the
+	# board you leave still follows you, and the game is still not credited. You
+	# are buying the exit, not a pardon.
 	#
-	# What it DOES waive is the road's extra turns (§7.4). Those are the price of
-	# HANDING A GAME IN, and being yanked off one by a scroll is not handing it in
-	# — see `escape_game`'s `free_exit` for the whole of the reasoning.
+	# What it DOES waive is the end-of-game spawn (§19.5). That is the price of
+	# ENDING A GAME, and being yanked off one by a scroll is not ending it — see
+	# `escape_game`'s `free_exit` for the whole of the reasoning.
 	#
 	# Both consumables that teleport come through here (Scroll of Teleportation
 	# and the Telepill), so both escape. One rule for moving the run off a game.
@@ -2330,8 +2243,8 @@ func confirm_completed_game() -> void:
 # the game answered for it (GameLoop2.arrivals). So you can beat a game and leave
 # everything on the board following you, or clear three old goals during a game
 # you never finished, and the report says exactly that.
-# `free_exit` waives the road's extra turns on this report and nothing else (see
-# GameLoop2.beat_game's `road_turns`). Only a teleport off a game in play sets it.
+# `free_exit` waives the end-of-game spawn on this report and nothing else (see
+# GameLoop2.beat_game's `road_spawns`). Only a teleport off a game in play sets it.
 func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		free_exit: bool = false) -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
@@ -3729,7 +3642,7 @@ func _teleport_into(pool: Array, flavour: String, nowhere: String,
 	var escaped_out: bool = false
 	if _phase == Phase.PLAYING:
 		var leaving: GameData = _chosen.get("game")
-		# Free of the road's extra turns, like every other teleport off a game in
+		# Free of the end-of-game spawn, like every other teleport off a game in
 		# play — see `escape_game`'s `free_exit`. A card that picks the run up and
 		# puts it somewhere else is not the run handing a game in.
 		escape_game(true, true)
@@ -3971,8 +3884,8 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 # for moving the run off a game, and `escape_game` is it — a spent item IS what
 # earns the exit, and it buys the door rather than a pardon.
 #
-# The door does NOT come with the road's extra turns, though (§7.4): those are
-# charged for handing a game in, and a teleport is the run being carried off one.
+# The door does NOT come with the end-of-game spawn, though (§19.5): that is
+# charged for ending a game, and a teleport is the run being carried off one.
 # That is the `free_exit` argument below, and every teleport in the file passes it.
 #
 # `escape_first` is off only for the two returns from a play_game trip (§10),
@@ -3981,12 +3894,12 @@ func travel_to_game(game_id: StringName, escape_first: bool = true) -> void:
 	if Data.get_game(game_id) == null:
 		return
 	if escape_first and _phase == Phase.PLAYING:
-		# `free_exit`: the extra turns are the price of FINISHING a game (§7.4), and
-		# being carried off one is not finishing it. Same rule as every other
-		# teleport — see `escape_game`.
+		# `free_exit`: the end-of-game spawn is the price of FINISHING a game
+		# (§19.5), and being carried off one is not finishing it. Same rule as every
+		# other teleport — see `escape_game`.
 		escape_game(true, true)
-		# The way out can be the thing that kills you — escaping resolves the board
-		# and the turns it hands over are real. A run that ended on the way out has
+		# The way out can still be the thing that kills you — a burn's bill lands at
+		# the report whichever door you left by. A run that ended on the way out has
 		# nowhere left to be moved to; the win/lose screen owns the page now.
 		if GameLoop2.run_over or _phase == Phase.OVER:
 			return
@@ -6605,7 +6518,7 @@ func _build_ui() -> void:
 	_verify_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# IN ITS OWN SCROLL, CAPPED TO THE ROOM THE PAGE HAS LEFT (_fit_checklist).
 	# Every body standing adds a row of ~51px, and the stack has no upper bound —
-	# §19.5's failure spawns make a crowded board the ordinary case — so an
+	# §19.5's end-of-game spawns make a crowded board the ordinary case — so an
 	# uncapped checklist pushed the whole page past the window at four bodies.
 	#
 	# HORIZONTAL SCROLLING IS DISABLED, AND THAT IS THE LOAD-BEARING LINE. It is
@@ -6908,31 +6821,18 @@ func _refresh_attempts() -> void:
 	# undo history), so half the time it was a grey button with a paragraph saying
 	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
 	# turn a restore rather than a refund (§3) — they simply have no button.
-	# The escape hatch is up from the first second on a game the player has been
-	# through before, and otherwise only once they have lost enough runs to have
-	# earned it — where it goes away again if they undo back under the line. The
-	# tooltip says WHICH rule is holding the door open, because "why can I leave
-	# this one and not that one" is the whole question the button raises.
+	# The escape hatch is always open while a game is in play (§3.2); its tooltip
+	# and the line under it are its PRICE, because that is the whole of what the
+	# button asks the player to weigh.
 	if _escape_btn != null:
-		var open_now: bool = can_escape()
-		# Up whenever a game is in play, whether or not it will let you through: the
-		# concession has to be VISIBLE to be a concession.
 		_escape_btn.visible = live
-		_escape_btn.disabled = not open_now
-		var why: String = "Something on the board got through and took Health off you — that is enough."
-		if beaten_this_run():
-			why = "You already beat this one this run, so there is nothing to prove — leave whenever you like."
-		elif GameLoop2.defeated_this_game >= ESCAPE_AFTER_DEFEATS:
-			why = "You have put %d enemies down on this one — that is enough on its own." % GameLoop2.defeated_this_game
-		elif GameLoop2.attempts() >= ESCAPE_AFTER_LOSSES:
-			why = "You have lost %d runs at this one — that is enough on its own." % GameLoop2.attempts()
-		elif not open_now:
-			why = "It is not open yet: %s." % escape_hint_text()
-		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nWhatever walked on "
-			+ "when you took this game stays on the board and follows you, and every enemy "
-			+ "still takes its turns — escaping resolves the board exactly as an unticked "
-			+ "checklist does. What it does NOT do is credit the game: no drop, no event, "
-			+ "and it doesn't count as beaten.") % why
+		_escape_btn.disabled = not can_escape()
+		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nEverything already "
+			+ "on the board stays and follows you, and the end of the game fills the board "
+			+ "as it always does — plus one more body, even if you put something down "
+			+ "here. What it does NOT do is credit the game: no chest, no event, and it "
+			+ "doesn't count as beaten. Loot already on the floor is still yours.") % (
+				escape_hint_text())
 	if _escape_hint != null:
 		var hint: String = escape_hint_text()
 		_escape_hint.text = hint

@@ -780,19 +780,13 @@ func stun_enemies_chosen(instances: Array) -> String:
 	return "%s %s Stunned — %s." % [", ".join(PackedStringArray(names)),
 		"is" if names.size() == 1 else "are", stun_worth()]
 
-# What one Stun is actually worth where the run is standing (§7.4). A stun costs
-# the target one TURN, and a turn is what a LOST RUN buys the board (§3.2) — so
-# out in the wilds a stun is one failure this body sits out, and nearer the Amulet
-# it can be eaten by one of the extra turns reporting a game hands over instead.
-# Both the screen that ASKS which enemy to stun and the one that reports the
-# answer price it against the current pace rather than promising "skips its next
-# attack". One copy, because the two saying it differently would be two answers to
-# one question.
+# What one Stun is worth (§7.4): one TURN, and a turn is what a LOST RUN buys the
+# board (§3.2) — nothing else moves it — so a stun is one failure this body sits
+# out, wherever on the road you stand. Both the screen that ASKS which enemy to
+# stun and the one that reports the answer say it through here, so the two
+# cannot describe it differently.
 func stun_worth() -> String:
-	var extra: int = GameLoop2.enemy_turns()
-	if extra <= 0:
-		return "a whole lost run — nothing else moves them out here"
-	return "one turn: a lost run, or 1 of the %d that reporting a game buys them" % extra
+	return "your next lost run"
 
 # What a following enemy is called, by instance — the stack is the only place that
 # knows, and two copies of the same goblin are two instances of one name.

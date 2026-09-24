@@ -9,7 +9,7 @@ extends Control
 #
 # THE STACK IS AT THE FOOT OF THE SCREEN, and it used to be at the top-right.
 # That corner is not empty on the screen this game spends its run on: the
-# overworld's right column puts the battlefield's pressure bar — `EXTRA TURNS`,
+# overworld's right column puts the battlefield's pressure bar — `AMULET PRESSURE`,
 # the distance to the Amulet, the board's size and tier — at exactly the offset
 # the stack anchored to, so every drop, every pickup and every arrival painted
 # over the one row that says how much trouble the board is in. The loot toggle

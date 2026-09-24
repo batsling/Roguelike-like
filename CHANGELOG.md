@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Combat redesign: losing moves the board, ending a game fills it.** A pass to
+  make the enemy grid less obtuse, taken from a design conversation rather than a
+  bug. Spec: §3.2, §7.2–7.4, §8.2, §19.5–19.8.
+  - **The extra turns are gone.** Reporting a game near the Amulet used to hand
+    every body one or two free actions, which punished finishing a game and meant
+    a body's column wasn't its countdown. Now only a **lost run** moves the board,
+    one turn each; handing a game in moves nobody. `GameLoop2.enemy_turns`,
+    `RunDifficulty.extra_turns_for_hops` / `extra_text` are gone.
+  - **Every game that ends stands bodies up** at the back column: the Amulet
+    pressure's 0 / 1 / 2 by hops (`RunDifficulty.pressure_for_hops`), +1 when
+    nothing was defeated there, +1 always on an escape
+    (`GameLoop2.end_of_game_price`). It happens at Event and Shop nodes too. A
+    lost run no longer spawns anything, so nothing arrives mid-game, and nor does
+    a mid-game tier step or boss. A teleport still skips it (`road_spawns`).
+  - **A full back column shoves a lane forward** instead of queueing the newcomer
+    (`GameLoop2._shove_plan`): a chain push, the lane that needs the least
+    pushing, multi-lane bodies moving as one piece, each step through the Push
+    verb's `_move_entry` so mines and fire still bite. Being shoved is not a turn.
+    Only a board packed to the front queues.
+  - **The difficulty-up is every 4th spawn event** (was 3rd): the tier steps, the
+    board grows and a boss walks on, together. End-of-game spawns count toward it.
+  - **Escape is always open.** The three gates (a hit, three kills, five losses)
+    and their countdown line are gone; the door costs the end-of-game bodies + 1
+    and pays no chest, and the line under the button says so.
+  - **Censer** now holds the front column out of every *extra* turn — Predatory
+    Scent's, and anything added later — rather than taking one off the retired
+    road turns (sheet reworded by `tools/_items2_censer_extra_turns_setup.py`).
+  - **Follow-ups.** An escape never stands up fewer than 2 bodies
+    (`GameLoop2.ESCAPE_MIN_BODIES`). When no lane can be shoved forward, the body
+    in the newcomer's way steps one lane sideways into a free cell
+    (`_side_shove_plan`). Spawners that never attack are never shoved forward,
+    only aside (`_is_anchored`); Immobile bodies and corpses are shoved like
+    anything else. Only a goal the player answers waives the
+    +1 for nothing defeated (`_defeat`'s `goal_kill`); a goal-hit fired off an
+    effect still drops but does not count.
+  - **The countdown moved to hover and card.** A body's hover and its info card say
+    "strikes after N more lost runs" (`GameLoop2.strike_countdown_text`); the
+    board keeps its ⚔ badge and threat colour. The strip reads `☠ AMULET PRESSURE
+    N`, `☠ +N when this game ends` and `boss in N spawns`; cards read *Pressure
+    rises / eases*. How to Play is rewritten to match.
+
 - **Playtest fixes: spawns, the Champion card, the reward and run-over screens.**
   - **A game handed in with nothing defeated spawns again** (§19.5). `beat_game`
     priced the failure after it had already marked the game over, and

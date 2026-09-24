@@ -933,9 +933,9 @@ def parse_item(row):
             fields["grid_grow"] = True
             last_trigger = None
         elif kl0 == "front_column_slow":
-            # Censer: a body in the FRONT column loses one of the extra turns the
-            # road hands the board at a report (§7.4). Bare word and stacking, like
-            # grid_grow above — two of them cost a front-line body two turns.
+            # Censer: a body in the FRONT column sits out every EXTRA turn — one
+            # a body gets beyond the lost runs that are the board's clock (§8.2).
+            # A bare word, like grid_grow above; a second copy adds nothing.
             fields["front_column_slow"] = True
             last_trigger = None
         elif kl0 == "grid_length":

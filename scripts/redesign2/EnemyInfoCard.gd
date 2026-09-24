@@ -157,20 +157,14 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	var stun: int = GameLoop2.stun_stacks(entry)
 	if stun > 0:
 		# A stun costs one TURN, and a turn is what a lost run buys the board (§3.2)
-		# — so a stun is a lost run this body sits out. Reporting a game adds the
-		# Amulet's extra turns on top (§7.4), and the card names those too when
-		# there are any, since they are turns the stun also eats.
+		# — so a stun is a lost run this body sits out, wherever you stand.
 		#
 		# THE ROW SURVIVED STUN BECOMING A STATUS (§13.2) and its snowflake did not. The
 		# status strip above already says "Stun 2"; what it cannot say is what two
 		# stacks are WORTH against this board, which is the only reason this row is
 		# here. It wears the status's own art rather than a symbol of its own, so
 		# the two places Stun appears on this card are recognisably the same thing.
-		var extra: int = GameLoop2.enemy_turns()
-		var worth: String = "sits out your next %d lost run(s)" % stun
-		if extra > 0:
-			worth += ", or %d of the %d turns reporting a game buys them" % [
-				mini(stun, extra), extra]
+		var worth: String = "sits out your next %d lost run%s" % [stun, "" if stun == 1 else "s"]
 		var sd: StatusData = Data.get_status(&"stun")
 		stat_col.add_child(_stat_row_art(sd.image if sd != null else null,
 			sd.display_name if sd != null else "Stun", worth, Color(0.6, 0.8, 1.0)))
@@ -472,10 +466,10 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 func _position_text(entry: Dictionary, col: int) -> String:
 	if col >= GameLoop2.offgrid_col():
 		return "off field — waiting for room on the board"
-	var lane: String = "row %d, " % (int(entry.get("row", 0)) + 1)
-	if col <= 1:
-		return lane + "front column — strikes every game"
-	return "%scolumn %d — %d game(s) from striking" % [lane, col, col - 1]
+	# The countdown lives here and on the hover, never over the body (§7.4): a
+	# lost run is the only thing that moves the board, so it is counted in those.
+	return "row %d, column %d — %s" % [int(entry.get("row", 0)) + 1, col,
+		GameLoop2.strike_countdown_text(entry)]
 
 # How much board an enemy takes up, spelled out for the info card.
 func _size_text(e: GoalEnemyData) -> String:

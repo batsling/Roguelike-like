@@ -78,7 +78,7 @@ var _pressure_panel: HoverPanel
 # and this is kept because it is the LONG form the same facts have — the manual
 # and any future full readout should quote this rather than re-derive it.
 var _pressure_ladder_text: String = ""
-var _pressure_turns: Label          # "⏱ EXTRA TURNS 1"
+var _pressure_turns: Label          # "☠ AMULET PRESSURE 1"
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
@@ -497,11 +497,12 @@ func _span_size(rows: int, cols: int) -> Vector2:
 
 # --- the amulet-pressure strip (§7.4) --------------------------------------
 #
-# The one thing a player has to understand about this board is that the enemies
-# on it move faster the closer the run gets to the Amulet. So it is not a
-# tooltip and not a number in a HUD row — it is a strip across the top of the
-# board itself, in the band's own colour, saying the pace, the ladder it sits on,
-# and the distance that put it there. The board's SIZE rides along on the right
+# The one thing a player has to understand about this board is that it fills
+# faster the closer the run gets to the Amulet: every game that ends stands new
+# bodies up at the back. So it is not a tooltip and not a number in a HUD row —
+# it is a strip across the top of the board itself, in the band's own colour,
+# saying the pressure, the ladder it sits on, and the distance that put it
+# there. The board's SIZE rides along on the right
 # because that is the other half of the same bargain: the difficulty tier that
 # makes the enemies heavier also gives you a wider board to see them coming on.
 
@@ -524,14 +525,15 @@ func _build_pressure_bar() -> Control:
 	_pressure_turns.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	row.add_child(_pressure_turns)
 
-	# The ladder: one pip per EXTRA turn the end of a game can ever hand the board.
-	# Filled up to where the run stands, so "how much worse can this get?" is
-	# answerable without a tooltip — and empty out in the wilds, which is the
-	# reading that matters: nothing is owed at the end of a game there.
+	# The ladder: one pip per body the Amulet pressure alone can stand up at the
+	# end of a game. Filled up to where the run stands, so "how much worse can this
+	# get?" is answerable without a tooltip — and empty out in the wilds, which is
+	# the reading that matters: finish a game there with a body down and nothing
+	# walks on.
 	var ladder := HBoxContainer.new()
 	ladder.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_pressure_rungs.clear()
-	for i in range(RunDifficulty.MAX_EXTRA_TURNS):
+	for i in range(RunDifficulty.MAX_PRESSURE):
 		var pip := Label.new()
 		pip.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		ladder.add_child(pip)
@@ -543,10 +545,9 @@ func _build_pressure_bar() -> Control:
 	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_pressure_why)
 
-	# WHAT LOSING HERE COSTS, and how close the next boss is (§19.8). The strip
-	# already says what handing a game in costs; since §19.5 losing one has a
-	# price too, and the player cannot decide whether one more attempt is worth
-	# it without both halves of it — the bodies it stands up, and whether the
+	# WHAT ENDING THIS GAME COSTS, and how close the next difficulty-up is
+	# (§19.8). The ladder says what the road charges; this is the whole bill for
+	# the game in play — the +1 for nothing defeated included — and whether the
 	# spawn event those bodies make is the one that closes the band.
 	_spawn_price = Label.new()
 	_spawn_price.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -562,57 +563,51 @@ func _build_pressure_bar() -> Control:
 	row.add_child(_size_label)
 	return _pressure_panel
 
-# Repaint the strip from the loop. Everything on it is derived — the turn count,
+# Repaint the strip from the loop. Everything on it is derived — the pressure,
 # the rung, the hop count, the board's dimensions — so there is nothing to keep
 # in sync by hand.
 func _refresh_pressure() -> void:
 	if _pressure_turns == null:
 		return
-	var extra: int = GameLoop2.enemy_turns()
+	var pressure: int = GameLoop2.pressure()
 	var hops: int = GameLoop2.hops_to_amulet()
-	var band: Color = RunDifficulty.band_color(extra)
+	var band: Color = RunDifficulty.band_color(pressure)
 
 	_pressure_panel.add_theme_stylebox_override("panel",
 		UITheme.flat(band.lerp(UITheme.BG, 0.82), 6, 6, 1, band.lerp(UITheme.BG, 0.45)))
-	# EXTRA TURNS, and the number is the whole of what the end of a game costs
-	# (§7.4). Zero is the normal reading and says so plainly: hand a game in out
-	# here and the board does not move. Everything else the stack does, it does
-	# because you lost runs at the game (§3.2).
-	_pressure_turns.text = "⏱  EXTRA TURNS  %d" % extra
+	# AMULET PRESSURE: the bodies the road stands up at the end of every game
+	# (§7.4). Zero is the normal reading out in the wilds and says so plainly.
+	_pressure_turns.text = "☠  AMULET PRESSURE  %d" % pressure
 	_pressure_turns.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
 		var pip: Label = _pressure_rungs[i]
-		var lit: bool = i < extra
+		var lit: bool = i < pressure
 		pip.text = RUNG_ON if lit else RUNG_OFF
 		pip.add_theme_color_override("font_color",
 			band if lit else UITheme.TEXT_FAINT)
 
-	# WHY it's that number. Without the hop count the turn count reads as a random
+	# WHY it's that number. Without the hop count the pressure reads as a random
 	# difficulty spike rather than as the price of the route the player chose.
 	if hops < 0:
 		_pressure_why.text = "no route to the Amulet"
 	elif hops == 0:
-		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.band_name(extra)
+		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.band_name(pressure)
 	else:
 		_pressure_why.text = "Amulet %d hop%s away — %s" % [
-			hops, "" if hops == 1 else "s", RunDifficulty.band_name(extra)]
+			hops, "" if hops == 1 else "s", RunDifficulty.band_name(pressure)]
 
-	# EXTRA TURNS is the one readout on the board that is a CONSEQUENCE of a
-	# decision made somewhere else — the route — so its hover has to answer "why is
-	# it that number" as well as "what does it mean". The ladder itself is the
-	# note: the whole table of hops-to-extra, which is where the answer is.
-	var price: Dictionary = GameLoop2.failure_price()
+	var price: Dictionary = GameLoop2.end_of_game_price()
 	var owed: int = int(price["bodies"])
 	var why_free: String = String(price["why"])
 	if owed > 0:
-		_spawn_price.text = "☠ +%d on a loss" % owed
+		_spawn_price.text = "☠ +%d when this game ends" % owed
 		_spawn_price.add_theme_color_override("font_color", UITheme.DANGER)
 	elif why_free != "":
-		_spawn_price.text = "☠ none on a loss"
+		_spawn_price.text = "☠ none when this game ends"
 		_spawn_price.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
-		_spawn_price.text = ""        # between games: nothing in play to lose at
+		_spawn_price.text = ""        # between games: nothing in play to end
 	_spawn_price.visible = _spawn_price.text != ""
 
 	var to_boss: int = RunDifficulty.spawns_to_boss(GameState.spawn_events)
@@ -621,25 +616,25 @@ func _refresh_pressure() -> void:
 	_boss_count.add_theme_color_override("font_color",
 		UITheme.DANGER if to_boss == 1 else UITheme.TEXT_DIM)
 
-	var acts: String = ("Reporting a game hands the enemies %s"
-		% RunDifficulty.extra_text(extra))
+	var acts: String = ("Every game that ends here stands up %s at the back"
+		% RunDifficulty.bodies_text(pressure))
 	var ladder_tip: String = ("%s.\n"
-		+ "A turn is one action: strike from the front column, or step a column closer.\n"
-		+ "Every run of the game you LOSE hands them one as well.\n\n"
-		+ "%s\n\nRush the Amulet and the end of a game costs you turns; take the long "
-		+ "way and only your own failures do.") % [acts, RunDifficulty.ladder_text(extra)]
+		+ "Losing a run is the only thing that moves the board: one turn, a strike "
+		+ "from the front column or a step closer.\n\n"
+		+ "%s\n\nRush the Amulet and every game fills the board faster; take the "
+		+ "long way and it fills slower.") % [acts, RunDifficulty.ladder_text(pressure)]
 	HoverCard.attach(_pressure_panel, {
-		"title": "Extra turns %d" % extra,
-		"subtitle": RunDifficulty.band_name(extra),
+		"title": "Amulet pressure %d" % pressure,
+		"subtitle": RunDifficulty.band_name(pressure),
 		"accent": band,
 		"lines": [
-			"%s — a strike from the front column, or a step closer." % acts,
-			"A lost run hands them one turn wherever you are standing.",
+			"%s — +1 if nothing went down, and escaping always adds 1." % acts,
+			"A lost run is the only thing that moves them: one turn, wherever you stand.",
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
 			_boss_tip(to_boss),
 		],
-		"note": "Rush the Amulet and the end of a game costs you turns; take the long way and only your own failures do.",
+		"note": "Rush the Amulet and every game fills the board faster; take the long way and it fills slower.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
 	# a card that changed shape depending on which word of the strip the cursor
@@ -665,21 +660,20 @@ func _refresh_pressure() -> void:
 # The strip's two §19.8 readouts, in a sentence each for the hover card.
 func _spawn_tip(owed: int, why_free: String) -> String:
 	if owed > 0:
-		return ("Lose a run here, or hand the game in with nothing down, and %d bod%s "
-			+ "walk on — fewer the further you are from the Amulet. Defeat one body "
-			+ "and the tap shuts for this game.") % [owed, "y" if owed == 1 else "ies"]
+		return ("End this game now and %s walk on at the back — fewer the further you "
+			+ "are from the Amulet, and one fewer once you beat a goal here.") % (
+			RunDifficulty.bodies_text(owed))
 	if why_free != "":
-		return "Losing here stands no bodies up: %s." % why_free
-	return "Lose a run with nothing defeated and bodies walk on — 1 far out, up to 3 near the Amulet."
+		return "Ending this game stands nobody up: %s." % why_free
+	return "Every game that ends stands bodies up — 0 far out, up to 2 near the Amulet, +1 if no goal was beaten."
 
 func _boss_tip(to_boss: int) -> String:
 	if to_boss == 1:
-		return ("The next spawn event lands a boss on top of whatever else walks on — "
-			+ "a Champion node, an Enemies node, or a failure spawn off a lost run.")
-	return ("Every %s spawn event lands a boss: %d more to go. An Event or a Shop node "
-		+ "spawns nothing, so it does not bring one closer.") % [
-			"third" if RunDifficulty.GAMES_PER_TIER == 3 else "%dth" % RunDifficulty.GAMES_PER_TIER,
-			to_boss]
+		return ("The next spawn is a DIFFICULTY UP: the tier steps, the board grows, and "
+			+ "a boss walks on top of whatever else arrives.")
+	return ("Every %dth spawn is a difficulty up — the tier steps, the board grows and a "
+		+ "boss walks on: %d more to go. A node arriving and a game ending each count "
+		+ "once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach
@@ -2353,13 +2347,10 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # you are being asked to go and do. Everything else — the full stat block, the
 # position, the verbs — is a click away and stays there.
 func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
-	# THERE IS NO TIMING LINE HERE any more. It used to answer "when does this
-	# swing" in one of four ways, and three of them were the board read back to
-	# itself: how far a body is from its first strike is its COLUMN, which the
-	# player is looking straight at, and "waiting off the field" is said by the
-	# lane the token is standing in and the words "off field" over it. The one
-	# state worth a sentence — what it does when it reaches you — is on the badge
-	# under the body (⚔) and spelled out in full on the card a click away.
+	# THE COUNTDOWN, in lost runs (§7.4) — here and on the card, never over the
+	# body. A lost run is the only thing that moves the board now, so a body's
+	# column IS its countdown; the hover says it in words for the player who would
+	# rather not count squares, and the board keeps its art clear.
 	var pips: Array = []
 	for row in GameLoop2.enemy_statuses(entry):
 		var status: StatusData = row["status"]
@@ -2396,7 +2387,9 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	# are what the body does to you meanwhile. Unlabelled they ran together as one
 	# stack of sentences and the ⚠ was the only thing separating them. A body with
 	# no abilities gets no Abilities header — an empty section is worse than none.
-	var lines: Array = [{"header": "Goals"}, GameLoop2.entry_goal(entry)]
+	var countdown: String = GameLoop2.strike_countdown_text(entry)
+	var lines: Array = ["⏱  " + countdown.left(1).to_upper() + countdown.substr(1),
+		{"header": "Goals"}, GameLoop2.entry_goal(entry)]
 	var ability_rows: Array = GameLoop2.ability_lines(entry)
 	if not ability_rows.is_empty():
 		lines.append({"header": "Abilities"})
@@ -2934,14 +2927,8 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	# slide would hide exactly the thing the player needs to feel.
 	var frames: Array = _turn_rect_frames(before, after, res)
 	var turns: int = maxi(1, frames.size() - 1)
-	# How many of those were the game's OWN, as against the Amulet's EXTRA ones
-	# (§7.4). A reported game has none of its own now — every turn at the end of
-	# one is the road charging you — but a LOST RUN'S playback is the other way
-	# round: its single turn is the tick's, not the Amulet's. Read off the result
-	# rather than the frame count, which a run that ended mid-playback cuts short.
-	var base_turns: int = maxi(0, int(res.get("turns", turns)) - int(res.get("extra_turns", 0)))
 	# Whether the resolve ended on a hunt (§7.6) — the turn Predatory Scent buys is
-	# appended after the road's, so it is the last one when there is one at all.
+	# the only one a report ever plays, so it is the last one when there is one.
 	var hunted: bool = not (res.get("predators", []) as Array).is_empty()
 	var elapsed: float = 0.0
 	# When the last damage number thrown by any turn finally finishes fading. It
@@ -2962,15 +2949,13 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 		# instantly as it always did.
 		if struck or slid:
 			# The counter only earns its place when there is more than one turn to
-			# count; at one turn a game it would be noise over every single report.
-			if turns > 1:
-				# PREDATORY SCENT'S turn is the last one and is not the road's
-				# (§7.6): a handful of bodies get a free swing for a status goal the
-				# player left unmet. Counting it as "EXTRA TURN 3 / 2" would be the
-				# board contradicting its own ladder, so it is named instead.
-				_spawn_turn_counter(turn + 1, turns, base_turns,
-					int(res.get("extra_turns", 0)), elapsed,
-					hunted and turn == turns - 1)
+			# count — or when the turn is PREDATORY SCENT'S (§7.6), which is not the
+			# board's clock at all: a handful of bodies get a free swing for a status
+			# goal the player left unmet, and the board names it rather than leaving
+			# the player to wonder why anything moved after a game handed in.
+			var hunt_turn: bool = hunted and turn == turns - 1
+			if turns > 1 or hunt_turn:
+				_spawn_turn_counter(turn + 1, turns, elapsed, hunt_turn)
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
@@ -3106,21 +3091,19 @@ func _after(delay: float, fn: Callable) -> void:
 
 # "TURN 1 / 2" over the board as each turn opens — the count is the mechanic, so
 # it is spelled out rather than left to be inferred from how many times the hero
-# flinched. The ones the AMULET bought say so ("EXTRA TURN 1 / 2"): they are the
-# last `extra` of the run, and a player watching the board move after handing a
-# game in is owed the reason why.
-func _spawn_turn_counter(turn: int, turns: int, base: int, extra_turns: int,
-		delay: float, hunt: bool = false) -> void:
+# flinched. A Predatory Scent turn names itself instead: it is a body's own extra
+# turn, and a player watching the board move after handing a game in is owed the
+# reason why.
+func _spawn_turn_counter(turn: int, turns: int, delay: float,
+		hunt: bool = false) -> void:
 	if _field == null:
 		return
-	var band: Color = HUNT_BAND if hunt else RunDifficulty.band_color(extra_turns)
+	var band: Color = HUNT_BAND if hunt else UITheme.ACCENT
 	var rect: Rect2 = _local_rect(_field)
-	var extra: int = turn - base                 # 1-based index into the extra turns
 	_after(delay, func():
 		var lbl := Label.new()
 		lbl.text = ("⚠ PREDATORY SCENT" if hunt
-			else ("EXTRA TURN %d / %d" % [extra, extra_turns] if extra > 0
-			else "TURN %d / %d" % [turn, turns]))
+			else "TURN %d / %d" % [turn, turns])
 		lbl.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 		lbl.add_theme_color_override("font_color", band)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))

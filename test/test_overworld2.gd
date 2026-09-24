@@ -178,41 +178,29 @@ func _plain_goals() -> void:
 		_ui._populate_play_panel()
 
 # Wait for the board's resolve playback to hand the screen back, however long it
-# runs. NOT a fixed sleep: a playback is one beat per TURN (§7.4) and a beat is
-# FX_ATTACK_TIME + FX_SLIDE_TIME = 0.89s, while the turn count is the run's
-# distance band (RunDifficulty.extra_turns_for_hops) — no turns beyond 5 hops from the
-# Amulet, 2 inside that, 3 inside 3. So the same report plays for 0.89s, 1.78s
-# or 2.67s depending on where the RANDOM graph put the start.
-#
-# The fixed 1.2s await this replaced covered the one-turn case and nothing else,
-# which is why it failed on the occasional run and passed on the rerun: the
-# assert_false(_resolving) after it was only ever true at one turn a game. The
-# ceiling is 5.0s because the longest a playback can run is 2.67s.
+# runs. NOT a fixed sleep: a playback is one beat per TURN, and a beat is
+# FX_ATTACK_TIME + FX_SLIDE_TIME = 0.89s. A report is no turn any more (§7.4) but
+# still plays back whatever moved — a lane its end-of-game spawn shoved, a
+# Predatory Scent hunt — so the ceiling stays generous.
 func _playback_done() -> void:
 	await wait_until(func(): return not _ui._resolving, 5.0)
 
-# Put the Amulet two hops from where the run is STANDING, so reporting a game
-# buys the board turns and there is therefore a playback to watch.
-#
-# The band above is why: a report hands the board nothing at all beyond 5 hops,
-# so a test that asserts the resolve plays back is really asserting that the
-# random graph happened to open the run near its goal. That is a coin flip, and
-# it is the kind that reads as a flake — it passed for as long as it did because
-# nothing had perturbed which cards the offering deals.
-#
-# It moves the GOAL rather than the player, which is the cheap half: where the
-# run stands is UI state with a board and an offering hanging off it, where the
-# Amulet is a run-level fact that only the badges and this ladder read.
-func _stand_near_the_amulet(hops: int = 2) -> bool:
-	var here: StringName = GameState.current_game_id
-	if here == &"":
-		return false
-	var dist: Dictionary = RunGraph.bfs_distances(here)
-	for gid in dist.keys():
-		if int(dist[gid]) == hops:
-			GameState.amulet_game_id = gid
-			return GameLoop2.enemy_turns() > 0
-	return false
+# Stand a harmless 1x1 body on every free cell of the BACK column, so the next
+# spawn has to SHOVE a lane to land (§7.3) — which is what gives a report a
+# playback to watch now that handing a game in moves nobody on its own.
+func _pack_the_back_column() -> void:
+	var cols: int = GameLoop2.grid_cols()
+	var taken: Dictionary = GameLoop2.occupancy()
+	for row in range(GameLoop2.grid_rows()):
+		if taken.has(Vector2i(cols, row)):
+			continue
+		var e := GoalEnemyData.new()
+		e.id = &"synthetic"
+		e.display_name = "Synthetic"
+		e.goal = "Beat it"
+		e.health = 1
+		e.damage = 0
+		GameLoop2.summon(e, Vector2i(cols, row))
 
 # An event fires after EVERY game now, so the opening game raises one and it is
 # sitting over the board for every test in this file that isn't about it. Closed
@@ -285,6 +273,18 @@ func _quiet_ladder() -> void:
 # failure price has tests of its own. Called after the pick, which wipes it.
 func _shut_failure_tap() -> void:
 	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
+
+# A SETUP REPORT THAT STANDS NOBODY UP AT ALL. Shutting the tap only waives the
+# +1; near the Amulet the road still stands its own 1 or 2 up (§7.4), so a test
+# that counts bodies across a report would read a count off where the random
+# graph happened to put the run. The Amulet is parked for the length of the
+# report — no route to it reads as the calmest band — and put back after.
+func _quiet_report() -> void:
+	_shut_failure_tap()
+	var amulet: StringName = GameState.amulet_game_id
+	GameState.amulet_game_id = &""
+	_ui.report(false)
+	GameState.amulet_game_id = amulet
 
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
@@ -504,10 +504,11 @@ func test_a_node_that_lands_nothing_ticks_nothing() -> void:
 				% RunGraph.kind_label(int(kind)))
 
 
-# Routing through the quiet kinds really does hold the tier. This is the claim
-# §19.6 makes in prose, asked of the numbers.
-func test_routing_through_quiet_nodes_holds_the_tier() -> void:
-	var start_tier: int = RunDifficulty.current_tier()
+# A quiet node's ARRIVAL ticks nothing (the test above), but its END does when it
+# stands bodies up (§19.5) — the evening still ended, and the road charges for
+# where it ended. One event per game that landed any, however many.
+func test_a_quiet_nodes_end_ticks_the_ladder_once_if_it_spawned() -> void:
+	var played := 0
 	for _i in range(RunDifficulty.GAMES_PER_TIER + 1):
 		if _ui._choices.is_empty():
 			break
@@ -515,11 +516,16 @@ func test_routing_through_quiet_nodes_holds_the_tier() -> void:
 		if _ui._event_modal != null:
 			_ui._event_modal.queue_free()
 			_ui._event_modal = null
+		var before: int = GameState.spawn_events
 		_ui.report(false)
-	assert_eq(RunDifficulty.current_tier(), start_tier,
-		"a run that fights nothing climbs nothing")
-	assert_gt(GameState.games_played, 0,
-		"…and it was still out there playing games all the while")
+		played += 1
+		var landed: int = int(GameLoop2.last_result.get("end_spawns", 0))
+		assert_eq(GameState.spawn_events - before, 1 if landed > 0 else 0,
+			"an Event node's end is one spawn event when it stood %d up" % landed)
+		_ui._end_resolve()
+		_leave_post_game()
+		_dismiss_event()
+	assert_gt(played, 0, "the run was out there playing games all the while")
 
 
 func test_a_scramble_does_not_buy_its_way_up_the_ladder() -> void:
@@ -772,8 +778,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# are then wrong on the handful of enemies that have one — which reads exactly
 	# like a flake and is not one. Abilities are test_enemy_abilities.gd's subject.
 	_disarm_board()
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	# Two followers: the game's own enemy and its escort (§7.5). The escort is taken
 	# off so this test is about ONE follower being fulfilled, which is what it is
 	# checking — the escort's own rules are in test_gameloop2.gd.
@@ -796,7 +801,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"the fulfilled follower dropped its loot where it fell")
 	_shut_failure_tap()
-	_ui.report(false)                            # miss current, but fulfil the follower
+	_quiet_report()                              # miss current, but fulfil the follower
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
 	assert_eq(GameLoop2.stack_size(), 2, "old follower gone; this game's enemy and escort stacked")
@@ -878,7 +883,7 @@ func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
 	# body-aimed path — which is the only one that carries the target into the
 	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
 	_pick_enemies(0)
-	_ui.report(false)
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	# Stood on a known square rather than wherever the walk left it: a body out in
 	# the overflow lane fills no cells, and this test is about the ones that do.
@@ -1548,6 +1553,10 @@ func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
 	assert_true(_ui._boss_due_next(), "the next spawn closes the band")
 	for c in _ui._choices:
 		assert_false(bool(c["boss"]), "no card advertises a boss")
+		# A CHAMPION card is the one that does show a boss — the one it lands
+		# (§19.4) — which is not the capstone this test is about.
+		if _ui._kind_of(c) == RunGraph.NodeKind.CHAMPION:
+			continue
 		var e: GoalEnemyData = c["enemy"]
 		if e != null:
 			assert_false(e.is_boss(),
@@ -1569,14 +1578,14 @@ func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
 # shops, which is the entire point of the change: the ladder is steered now. The
 # boss half goes when §19.7 retires `is_boss_game` for the every-third-SPAWN
 # capstone, and then this table is one counter again.
-func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
+func test_every_fourth_encounter_is_a_boss_at_its_own_tier() -> void:
 	var T := RunDifficulty.Tier
 	var want: Array = [
-		T.LOW, T.LOW, T.LOW,                  # encounters 1-3, the third a boss
-		T.MEDIUM, T.MEDIUM, T.MEDIUM,         # 4-6
-		T.HIGH, T.HIGH, T.HIGH,               # 7-9
-		T.INSANE, T.INSANE, T.INSANE,         # 10-12
-		T.INSANE, T.INSANE, T.INSANE,         # 13-15, the cap repeating
+		T.LOW, T.LOW, T.LOW, T.LOW,               # encounters 1-4, the fourth a boss
+		T.MEDIUM, T.MEDIUM, T.MEDIUM, T.MEDIUM,   # 5-8
+		T.HIGH, T.HIGH, T.HIGH, T.HIGH,           # 9-12
+		T.INSANE, T.INSANE, T.INSANE, T.INSANE,   # 13-16
+		T.INSANE, T.INSANE, T.INSANE, T.INSANE,   # 17-20, the cap repeating
 	]
 	for i in range(want.size()):
 		var encounter: int = i + 1
@@ -1587,9 +1596,9 @@ func test_every_third_encounter_is_a_boss_at_its_own_tier() -> void:
 		# …and the capstone reads the SAME counter now. `_boss_due_next` asks about
 		# the spawn ahead rather than the game behind, so it is true one step
 		# earlier: standing at 2 spawns, the next one closes the band.
-		assert_eq(_ui._boss_due_next(), (i + 1) % 3 == 0,
+		assert_eq(_ui._boss_due_next(), (i + 1) % RunDifficulty.GAMES_PER_TIER == 0,
 			"at %d spawns, the next %s the band" % [i,
-				"closes" if (i + 1) % 3 == 0 else "does not close"])
+				"closes" if (i + 1) % RunDifficulty.GAMES_PER_TIER == 0 else "does not close"])
 
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
@@ -2075,47 +2084,52 @@ func test_a_carried_item_carries_a_hover_card() -> void:
 		"testable thing", "with what it does on it")
 	GameState.inventory.erase(item)
 
-func test_the_extra_turns_readout_carries_a_hover_card() -> void:
+func test_the_pressure_readout_carries_a_hover_card() -> void:
 	_ui._board.refresh()
 	var panel: Control = _ui._board._pressure_panel
 	assert_true(panel.has_meta(HoverCard.META), "the pressure readout carries a card")
 	var card: Dictionary = panel.get_meta(HoverCard.META)
-	assert_string_contains(String(card.get("title", "")), "Extra turns",
+	assert_string_contains(String(card.get("title", "")), "Amulet pressure",
 		"named for what it is")
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
 		"Amulet", "and it says WHY the number is what it is")
 
-# §19.8: the strip says what LOSING here costs, beside what handing the game in
-# costs — and how close the next boss is, since a lost run can be the spawn that
-# lands one. Driven through the real price so the strip cannot drift off it.
-func test_the_strip_carries_the_failure_price_and_the_boss_count() -> void:
+# §19.8: the strip says what ENDING this game costs — the whole bill, the +1 for
+# nothing down included — and how close the next difficulty-up is. Driven
+# through the real price so the strip cannot drift off it.
+func test_the_strip_carries_the_end_of_game_price_and_the_boss_count() -> void:
 	var board: BattlefieldView = _ui._board
+	var amulet: StringName = GameState.amulet_game_id
 	GameLoop2.game_in_play = true
 	GameLoop2.defeated_this_game = 0
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	board.refresh()
-	var owed: int = GameLoop2.failure_spawn_count()
+	var owed: int = int(GameLoop2.end_of_game_price()["bodies"])
 	if owed > 0:
 		assert_string_contains(board._spawn_price.text, "+%d" % owed,
-			"the strip names the bodies a loss here stands up")
+			"the strip names the bodies ending this game stands up")
 	else:
 		assert_string_contains(board._spawn_price.text, "none",
-			"the strip says a loss here costs nothing")
+			"the strip says ending here costs nothing")
 	assert_true(board._spawn_price.visible, "with a game in play the price is shown")
 	assert_string_contains(board._boss_count.text, "next spawn",
 		"one spawn short of the band, the strip warns the boss is next")
 
+	# Out in the wilds (no Amulet to be near) with a body down, nothing is owed —
+	# and the strip says why.
+	GameState.amulet_game_id = &""
 	GameLoop2.defeated_this_game = 1
 	GameState.spawn_events = 0
 	board.refresh()
 	assert_string_contains(board._spawn_price.text, "none",
-		"one body down shuts the tap, and the strip says so")
+		"one body down out in the wilds stands nobody up, and the strip says so")
 	assert_string_contains(board._boss_count.text, "%d spawns" % RunDifficulty.GAMES_PER_TIER,
 		"and a fresh band counts the whole way down")
 	var card: Dictionary = board._pressure_panel.get_meta(HoverCard.META)
 	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
 	assert_string_contains(lines, "went down", "the hover card gives the reason")
 	assert_string_contains(lines, "boss", "and explains the count")
+	GameState.amulet_game_id = amulet
 	GameLoop2.defeated_this_game = 0
 	GameState.spawn_events = 0
 
@@ -2249,22 +2263,23 @@ func test_the_header_says_what_level_the_character_is() -> void:
 		"in the same chip as the token")
 	assert_true(_ui._character_wrap.is_ancestor_of(_ui._character_chip))
 
-# The board says where a body is by DRAWING it there. A hover that also counts the
-# squares in words is the board reading itself back, so the timing line is gone.
-func test_the_enemy_hover_does_not_narrate_the_distance() -> void:
+# THE COUNTDOWN LIVES ON THE HOVER (§7.4), not over the body: a lost run is the
+# only thing that moves the board, so it is counted in those — and said in words
+# here for the player who would rather not count squares.
+func test_the_enemy_hover_carries_the_lost_run_countdown() -> void:
 	_pick_enemies(0)
-	assert_false(GameLoop2.stack.is_empty(), "something walked on")
 	if GameLoop2.stack.is_empty():
+		pending("nothing walked on to hover over")
 		return
 	var entry: Dictionary = GameLoop2.stack[0]
 	var card: Dictionary = _ui._board.enemy_hover(entry, entry["enemy"])
+	var said := false
 	for line in card.get("lines", []):
 		if line is Dictionary:
 			continue                       # a section header, not a fact
-		assert_false(String(line).contains("lost run"),
-			"no lost-run countdown on the hover: %s" % line)
-		assert_false(String(line).contains("Waiting off the field"),
-			"and nothing about being out of range: %s" % line)
+		if String(line).to_lower().contains(GameLoop2.strike_countdown_text(entry)):
+			said = true
+	assert_true(said, "the hover says when it strikes, in lost runs")
 
 # --- the enemy hover's two sections (§7.6) --------------------------------
 #
@@ -4625,8 +4640,8 @@ func test_every_offered_start_sits_in_the_amulet_distance_band() -> void:
 				game.display_name, hops, RunGraph.MIN_PATH_LENGTH, RunGraph.MAX_PATH_LENGTH])
 
 # The two cards are a choice of RUN LENGTH as well as genre: distance from the
-# Amulet decides how many games the run gets in the calm 1-turn band before the
-# stack picks up its scent (RunDifficulty.extra_turns_for_hops). Two cards at the same
+# Amulet decides how many games the run gets in the calm band before the end of
+# every game starts standing bodies up (RunDifficulty.pressure_for_hops). Two cards at the same
 # distance would offer a genre and nothing else.
 #
 # It is a preference, not a promise — an Amulet can have every in-band start at a
@@ -5448,12 +5463,12 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# The SECOND game is the one with a board to play back, which is what this
 	# test is actually about.
 	#
-	# AND THE RUN IS STOOD NEAR ITS GOAL, because a playback is one beat per TURN
-	# and a report beyond 5 hops from the Amulet buys the board NO turns at all
-	# (§7.4) — so out in the wilds there is nothing to play back, _hold_for_resolve
-	# ends synchronously, and the haul drops straight away. That is correct
-	# behaviour and it is not what this test is about; leaving it to the graph
-	# means asserting that the run happened to open near its goal.
+	# AND THE BACK COLUMN IS PACKED, because a report is no turn (§7.4): what it
+	# plays back is what MOVED, and on a quiet board nothing does — _hold_for_resolve
+	# ends synchronously and the haul drops straight away. That is correct
+	# behaviour and it is not what this test is about. With every lane full at the
+	# back, the body the end of the game stands up has to shove one forward, and
+	# that slide is the playback.
 	_pick_solo(0)
 	_shut_failure_tap()
 	_ui.report(false)
@@ -5463,10 +5478,9 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
-	if not _stand_near_the_amulet():
-		pending("the graph could not put the run inside the band that buys turns")
-		return
 	_pick_solo(0)
+	_pack_the_back_column()
+	GameLoop2.defeated_this_game = 0          # nothing down: the end stands one up
 	_ui.report(false)
 	assert_null(_ui._post_screen,
 		"nothing is dropped over the playback — the haul waits for the board")
@@ -5839,24 +5853,22 @@ func test_a_card_names_the_pace_it_would_put_you_on() -> void:
 		if gid == &"":
 			continue
 		var note: Dictionary = _ui.turn_note({"slot": gid, "amulet": false})
-		assert_eq(int(note["turns"]), RunDifficulty.extra_turns_for_hops(hops),
+		assert_eq(int(note["bodies"]), RunDifficulty.pressure_for_hops(hops),
 			"a card %d hops out reads the same rung the loop resolves on" % hops)
-		assert_eq(int(note["extra"]), RunDifficulty.extra_turns_for_hops(hops),
-			"and says so in the field the board reads")
-		# The EXTRA turns are what the card says out loud (§7.4) — but ONLY when
-		# there are some. A rung that charges nothing draws no row at all: the
-		# pace line is a warning, and a warning about nothing is a wasted line.
-		if int(note["extra"]) <= 0:
+		# The bodies are what the card says out loud (§7.4) — but ONLY when there
+		# are some. A rung that charges nothing draws no row at all: the pace line
+		# is a warning, and a warning about nothing is a wasted line.
+		if int(note["bodies"]) <= 0:
 			assert_eq(String(note["text"]), "",
-				"a card that costs no turns says nothing: %s" % note["text"])
+				"a card that stands nobody up says nothing: %s" % note["text"])
 			continue
-		var said: String = RunDifficulty.extra_text(int(note["extra"]))
+		var said: String = RunDifficulty.bodies_text(int(note["bodies"]))
 		assert_true(String(note["text"]).contains(said),
 			"and says the price out loud: %s" % note["text"])
 
-func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
+func test_stepping_toward_the_amulet_warns_that_the_pressure_rises() -> void:
 	# Stand in the far band and look at a card deep in the near one: the card has
-	# to say the enemies get faster BEFORE it's clicked.
+	# to say the board fills faster BEFORE it's clicked.
 	var here: StringName = _a_game_at_hops(6)
 	var there: StringName = _a_game_at_hops(1)
 	if here == &"" or there == &"":
@@ -5864,15 +5876,15 @@ func test_stepping_toward_the_amulet_warns_that_they_speed_up() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 2, "one hop from the Amulet is the doorstep")
-	assert_true(String(note["text"]).contains("speed up"),
+	assert_eq(int(note["bodies"]), 2, "one hop from the Amulet is the doorstep")
+	assert_true(String(note["text"]).contains("rises"),
 		"the card warns before the click: %s" % note["text"])
-	assert_eq(note["color"], RunDifficulty.band_color(RunDifficulty.EXTRA_NEAR),
+	assert_eq(note["color"], RunDifficulty.band_color(RunDifficulty.SPAWN_NEAR),
 		"in the band's own colour, same as the board's strip")
 
 func test_backing_off_reads_as_the_relief_it_is() -> void:
 	# Backing off from the doorstep to the middle band: still a price, and a
-	# smaller one, so the card is allowed to say the enemies slow down.
+	# smaller one, so the card is allowed to say the pressure eases.
 	var here: StringName = _a_game_at_hops(1)
 	var there: StringName = _a_game_at_hops(3)
 	if here == &"" or there == &"":
@@ -5880,14 +5892,14 @@ func test_backing_off_reads_as_the_relief_it_is() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), RunDifficulty.EXTRA_MID)
-	assert_true(String(note["text"]).contains("slow down"),
+	assert_eq(int(note["bodies"]), RunDifficulty.SPAWN_MID)
+	assert_true(String(note["text"]).contains("eases"),
 		"walking away buys pace, and the card says so: %s" % note["text"])
 
 func test_backing_off_all_the_way_to_nothing_says_nothing() -> void:
 	# The other half of the same rule: relief down to ZERO is not a warning, so
-	# the row goes rather than reading "slow down — no extra turns". A card that
-	# carries no pace line is a card that costs no turns, every time.
+	# the row goes rather than reading "eases — no enemies". A card that carries
+	# no pace line is a card whose road stands nobody up, every time.
 	var here: StringName = _a_game_at_hops(1)
 	var there: StringName = _a_game_at_hops(6)
 	if here == &"" or there == &"":
@@ -5895,7 +5907,7 @@ func test_backing_off_all_the_way_to_nothing_says_nothing() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 0, "the far band charges nothing")
+	assert_eq(int(note["bodies"]), 0, "the far band charges nothing")
 	assert_eq(String(note["text"]), "", "so there is nothing to warn about")
 
 func test_a_card_that_changes_nothing_says_so_quietly() -> void:
@@ -5908,7 +5920,7 @@ func test_a_card_that_changes_nothing_says_so_quietly() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_gt(int(note["turns"]), 0, "the doorstep charges turns")
+	assert_gt(int(note["bodies"]), 0, "the doorstep charges bodies")
 	assert_true(String(note["text"]).contains("Still"),
 		"same band either way: %s" % note["text"])
 	assert_eq(note["color"], UITheme.TEXT_DIM, "and it doesn't shout about it")
@@ -5923,11 +5935,11 @@ func test_a_card_in_the_quiet_band_carries_no_pace_row_at_all() -> void:
 		return
 	GameState.set_current_game(here)
 	var note: Dictionary = _ui.turn_note({"slot": there, "amulet": false})
-	assert_eq(int(note["turns"]), 0)
+	assert_eq(int(note["bodies"]), 0)
 	assert_eq(String(note["text"]), "", "no price, no row: %s" % note["text"])
 
 func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
-	# Taking the Amulet ends the run on the spot; a "+2 bonus turns" warning there
+	# Taking the Amulet ends the run on the spot; a "2 enemies per game" warning there
 	# would be describing a game that never happens.
 	var note: Dictionary = _ui.turn_note({
 		"slot": GameState.amulet_game_id, "amulet": true})
@@ -5935,7 +5947,7 @@ func test_the_amulet_card_makes_no_threat_about_afterwards() -> void:
 
 func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 	# BOTH BRANCHES ASSERT. A card with a price states it; a card with none — the
-	# Amulet's, and any card that leaves the board taking no extra turns — carries
+	# Amulet's, and any card whose road stands nobody up — carries
 	# no pace row at all. This used to `continue` past the silent ones, which meant
 	# a run standing out in the quiet band asserted nothing whatsoever and reported
 	# green for it.
@@ -5946,8 +5958,8 @@ func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 		var said: String = String(note["text"])
 		var text: String = _text_of(_ui.open_choice(i))
 		if said == "":
-			assert_false(text.contains("⏱"),
-				"choice %d costs no turns, so it carries no pace row: %s" % [i, text])
+			assert_false(text.contains("per game"),
+				"choice %d costs nothing, so it carries no pace row: %s" % [i, text])
 		else:
 			assert_true(text.contains(said),
 				"choice %d states the pace it puts you on: %s" % [i, text])
@@ -6330,104 +6342,57 @@ func _pick_an_unplayed_game() -> GameData:
 	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
 
-func test_escape_is_locked_until_something_gets_through() -> void:
+func test_escape_is_open_from_the_first_second() -> void:
+	# The door has no gates any more (§3.2): its price is the end-of-game spawn and
+	# one more body, and a price you can read replaced three rules to satisfy.
 	_pick_an_unplayed_game()
-	assert_false(_ui.can_escape(), "a game just started offers no way out")
-	# Lost runs alone are not the gate any more: the board takes its turns and the
-	# Temporary Shields stop what reaches you, and a swing a shield ate is not a
-	# hit. Walk everything into reach so the turns actually swing.
-	GameState.max_hp = 99
-	GameState.hp = 99
-	for entry in GameLoop2.stack:
-		entry["col"] = 1
-	GameState.shields = 9
-	GameState.bonus_shields = 0
-	_lose_runs(3)
-	assert_eq(GameState.hp, 99, "the shields stopped every swing")
-	assert_false(_ui.can_escape(), "so nothing has hurt you and the door is shut")
-	assert_true(_ui._escape_btn.visible, "the button is on screen either way")
-	assert_true(_ui._escape_btn.disabled, "but darkened, because the door is shut")
-
-func test_escape_unlocks_the_moment_a_swing_takes_health() -> void:
-	_pick_an_unplayed_game()
-	_bleed_at_the_game_in_play()
-	assert_true(GameLoop2.hurt_this_game, "the loop recorded the hit")
-	assert_true(_ui.can_escape(), "a swing that got through earns the way out")
-	assert_true(_ui._escape_btn.visible, "and the button is there to press")
-	assert_false(_ui._escape_btn.disabled, "lit rather than darkened")
-
-func test_a_status_bill_is_not_the_hit_that_opens_the_door() -> void:
-	# The gate is an ENEMY'S ATTACK. Burn's "or take 3 Damage" resolves through the
-	# same hit path (§13) and costs real Health, but it is a bill for something you
-	# did in the real game — not the board refusing to go down.
-	_pick_an_unplayed_game()
-	GameState.max_hp = 99
-	GameState.hp = 99
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	GameLoop2.damage_player(3)
-	assert_lt(GameState.hp, 99, "the bill was paid in Health")
-	assert_false(GameLoop2.hurt_this_game, "but nothing on the board did it")
-	assert_false(_ui.can_escape(), "so the door stays shut")
-
-# --- the second door: a game you have been through before ------------------
-#
-# The hit rule is for a game you have never got through. On one you have, there
-# is nothing left to prove and being made to stand there and bleed to unlock the
-# door is a tax on the least interesting thing in the run.
-
-func test_a_game_you_have_played_before_can_be_left_immediately() -> void:
-	_pick_enemies(0)
-	var game: GameData = _ui._chosen["game"]
-	_mark_beaten_this_run(game)
-	assert_true(_ui.beaten_this_run(), "the run knows it already beat this one")
-	assert_eq(GameLoop2.attempts(), 0, "and not a single run has been lost")
+	assert_eq(GameLoop2.attempts(), 0, "not a single run has been lost")
 	assert_false(GameLoop2.hurt_this_game, "nor has anything laid a finger on you")
-	assert_true(_ui.can_escape(), "the door is open from the first second")
+	assert_true(_ui.can_escape(), "and the door is open anyway")
 	_ui._refresh()
-	assert_true(_ui._escape_btn.visible, "and the button is up to press")
+	assert_true(_ui._escape_btn.visible, "the button is up to press")
 	assert_false(_ui._escape_btn.disabled, "and lit")
 
-func test_the_free_escape_still_costs_you_the_enemy() -> void:
-	# "Escape at any time" changes the GATE, not the price: the board resolves
-	# exactly as a missed goal does, so the enemy still walks on and everything
-	# already out there still takes its turns.
-	_pick_solo(0)
-	var game: GameData = _ui._chosen["game"]
-	_mark_beaten_this_run(game)
-	var gp_before: int = GameState.games_played
-	_ui.escape_game()
-	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
-	assert_eq(GameLoop2.stack_size(), 1, "and its goal-enemy came with you")
-	assert_eq(_ui._phase, OVERWORLD.Phase.SELECT, "back to a fresh offering")
+func test_the_line_under_the_button_is_the_price() -> void:
+	_pick_an_unplayed_game()
+	_ui._refresh()
+	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	var hint: String = _ui.escape_hint_text()
+	assert_string_contains(hint, RunDifficulty.bodies_text(owed),
+		"the line names the bodies walking out stands up: %s" % hint)
+	assert_string_contains(hint, "no chest", "and what it does not pay: %s" % hint)
+	assert_eq(_ui._escape_hint.text, hint, "which is what the line under the button says")
+	assert_true(_ui._escape_hint.visible, "and it is up while a game is in play")
+	assert_string_contains(_ui._escape_btn.tooltip_text, "no chest",
+		"the tooltip says the same")
 
-func test_escaping_resolves_the_board_exactly_as_a_missed_report_does() -> void:
-	# Walking away is not a pause: the board takes whatever the road charges for
-	# finishing a game (§7.4) — none of it out in the wilds, up to two turns on the
-	# Amulet's doorstep — and the enemy comes with you either way.
+func test_escaping_always_costs_one_more_than_handing_in() -> void:
+	# Even after a kill: walking out is never cheaper than finishing.
+	_pick_an_unplayed_game()
+	GameLoop2.defeated_this_game = 1
+	var hand_in: int = int(GameLoop2.end_of_game_price()["bodies"])
+	var walk_out: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	assert_eq(walk_out, maxi(hand_in + 1, GameLoop2.ESCAPE_MIN_BODIES),
+		"one more body for the door, and never fewer than two")
+	GameLoop2.defeated_this_game = 0
+
+func test_escaping_moves_nobody_but_fills_the_board() -> void:
+	# Walking away is ENDING a game (§19.5): no turn, and the end-of-game bodies
+	# plus one walk on behind you.
 	_pick_enemies(0)
-	_mark_beaten_this_run(_ui._chosen["game"])
+	_front_line()
+	GameState.max_hp = 40
+	GameState.hp = 40
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	var before: int = GameLoop2.stack_size()
+	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	assert_gt(owed, 0, "an escape always owes at least the one body")
 	_ui.escape_game()
-	# ONE named body, followed by instance: the second escape stands another one on
-	# the board and the stack's order is not a promise.
-	var inst: int = int(GameLoop2.stack[0]["instance"])
-	var col_before: int = int(GameLoop2.stack[0]["col"])
-	# Take the next game the same way, so a second resolve runs.
-	_pick_enemies(0)
-	_mark_beaten_this_run(_ui._chosen["game"])
-	# DISARMED, because this test asserts that the body WALKED (§7.6). The offering
-	# rolls a random enemy, and an ability can spend a whole turn on something other
-	# than closing — a Ritual, a Defensive Stance, either spawner — so a body that
-	# happened to roll one walks one column fewer and the arithmetic below is off by
-	# exactly that. It is the flake CLAUDE.md describes, and it only ever showed up
-	# when an unrelated change shifted the global RNG stream far enough to roll one.
-	_disarm_board()
-	var owed: int = GameLoop2.enemy_turns()
-	_ui.escape_game()
-	var still: Dictionary = GameLoop2.entry_for(inst)
-	assert_false(still.is_empty(), "the follower is still following")
-	assert_eq(int(still["col"]), maxi(1, col_before - owed),
-		"the escape resolved exactly the turns the road charges: %d" % owed)
+	_ui._end_resolve()
+	assert_eq(GameState.hp, 40, "nobody swung on the way out — an escape is no turn")
+	assert_gte(GameLoop2.stack_size(), before + owed,
+		"and the bodies it owed walked on (a capstone boss may ride along)")
 
 func test_beaten_this_run_is_false_with_no_game_in_hand() -> void:
 	assert_false(_ui.beaten_this_run(), "nothing is in play, so nothing is escapable")
@@ -6440,11 +6405,9 @@ func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	_bleed_at_the_game_in_play()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
-	# THE BOARD MAY BE BIGGER THAN ONE NOW (§19.5), and counting it was the wrong
-	# question anyway. `_bleed_at_the_game_in_play` loses runs to open the escape
-	# gate, and a lost run at a game where nothing has gone down stands bodies of
-	# its own — the escape itself owes nothing, but the failures that bought it
-	# already did. What this test is about is the GOAL-ENEMY following you out.
+	# THE BOARD IS BIGGER THAN ONE NOW (§19.5), and counting it was the wrong
+	# question anyway: an escape stands the end-of-game bodies up behind you. What
+	# this test is about is the GOAL-ENEMY following you out.
 	# BY ID, NOT BY OBJECT. `_disarm_board` (inside `_pick_solo` above) replaces a
 	# body's enemy with a `duplicate()` when its goal is `game beaten` or counted
 	# — 21 of the 111 bodies — so identity here failed on roughly one run in five,
@@ -6522,181 +6485,15 @@ func test_a_missed_report_is_not_a_beat_either() -> void:
 	assert_false(GameState.has_beaten_game(game.id),
 		"failing a game is not beating it, escape or no escape")
 
-func test_escape_refuses_before_anything_has_hurt_you() -> void:
+func test_escaping_is_a_door_on_every_game_of_the_run() -> void:
+	# No per-game gate to close behind you: the next game is escapable too.
 	_pick_an_unplayed_game()
-	var gp_before: int = GameState.games_played
-	_lose_runs(2)
 	_ui.escape_game()
-	assert_eq(GameState.games_played, gp_before,
-		"pressing it early does nothing at all")
-	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "the game is still in play")
-
-func test_undoing_the_tick_that_drew_blood_takes_the_escape_away() -> void:
-	# Only the hit door reverses; a game you have a record at is escapable whatever
-	# the board did, so this has to be a game you have never played.
-	_pick_an_unplayed_game()
-	_bleed_at_the_game_in_play()
-	assert_true(_ui.can_escape())
-	GameLoop2.undo_attempt()
-	_ui._refresh()
-	assert_false(GameLoop2.hurt_this_game, "the hit was undone with the turn")
-	assert_false(_ui.can_escape(), "the tracker is hand-driven, so this reverses too")
-	assert_true(_ui._escape_btn.disabled, "and the button darkens again with it")
-
-func test_three_bodies_down_is_a_way_out_on_its_own() -> void:
-	# The door the player drives: a fixed price in kills, reachable on any board,
-	# rather than the old "clear the whole stack" that cost one goal on a stack of
-	# one and was unreachable on a stack of six (§3.2).
-	_pick_an_unplayed_game()
-	assert_false(_ui.can_escape(), "an untouched board holds you until one lands a hit")
-	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS - 1
-	_ui._refresh()
-	assert_false(_ui.can_escape(), "two is not three")
-	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
-	_ui._refresh()
-	assert_true(_ui.can_escape(), "the third opens the door")
-	assert_true(_ui._escape_btn.visible, "and the button is up")
-	assert_true(_ui._escape_btn.tooltip_text.contains("enemies down"),
-		"saying which door it is: %s" % _ui._escape_btn.tooltip_text)
-
-func test_an_empty_board_is_not_a_way_out_by_itself() -> void:
-	# The clause it replaced. A board emptied by BOMBS is the case that made the
-	# old rule wrong — nothing was beaten, and the door opened anyway.
-	_pick_an_unplayed_game()
-	for entry in GameLoop2.stack.duplicate():
-		GameLoop2.despawn(int(entry["instance"]))
-	assert_true(GameLoop2.stack.is_empty(), "the board is clear")
-	_ui._refresh()
-	assert_false(_ui.can_escape(), "but nobody was beaten, so nothing was paid")
-
-func test_the_kill_count_is_per_game() -> void:
-	# Like the hit gate: what the last game cost the board is not a fact about this
-	# one, so choosing a game resets the count and shuts the door again.
-	_pick_an_unplayed_game()
-	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
-	assert_true(_ui.can_escape(), "the door is open on this one")
-	_ui.report(false)
-	# The offering is random, so the second card can be the Amulet — playing which
-	# IS the run, whatever the goal did. Nothing left to choose then, and nothing
-	# for this test to be about.
 	if GameLoop2.run_over or _ui._phase != OVERWORLD.Phase.SELECT:
-		assert_eq(GameLoop2.defeated_this_game, 0,
-			"the count still went with the game that was handed in")
+		pending("the escape ended the run or the offering, so there is no next game")
 		return
 	_pick_enemies(0)
-	assert_eq(GameLoop2.defeated_this_game, 0, "the next game starts the count over")
-	# …and with the count back at zero the kill door is shut. Only the kill door:
-	# a game this run has already beaten is escapable from the first second on its
-	# own terms, which is a different rule and has its own test.
-	if not _ui.beaten_this_run():
-		assert_false(_ui.can_escape(), "so the door is shut again")
-
-# --- the fourth door: five lost runs, and the line that counts them down -----
-#
-# The floor under the other three. A board that cannot land a hit and cannot be
-# cleared would otherwise hold a player on a game forever, so patience is a way
-# out again — an expensive one, since every loss is a turn the board took.
-
-func test_five_lost_runs_open_the_door_on_their_own() -> void:
-	_pick_an_unplayed_game()
-	# Shielded to the eyeballs and everything out of reach, so nothing can land the
-	# hit that would open the OTHER door and make this test about the wrong rule.
-	GameState.shields = 99
-	GameState.bonus_shields = 0
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_LOSSES - 1)
-	assert_false(GameLoop2.hurt_this_game, "no swing got through")
-	assert_false(_ui.can_escape(), "four is not five")
-	_lose_runs(1)
-	assert_true(_ui.can_escape(), "and the fifth opens it whatever the board did")
-	_ui._refresh()
-	assert_false(_ui._escape_btn.disabled, "the button lights up with it")
-
-func test_the_hint_counts_the_losses_down_and_names_the_other_doors() -> void:
-	_pick_an_unplayed_game()
-	GameState.shields = 99
-	GameState.bonus_shields = 0
-	_ui._refresh()
-	var hint: String = _ui.escape_hint_text()
-	assert_true(hint.contains("%d more losses" % OVERWORLD.ESCAPE_AFTER_LOSSES),
-		"the countdown starts at the full price: %s" % hint)
-	assert_true(hint.contains("Beat %d Enemies" % OVERWORLD.ESCAPE_AFTER_DEFEATS),
-		"and the kill count is a door too: %s" % hint)
-	assert_true(hint.contains("Lose Health"), "as is a hit: %s" % hint)
-	assert_true(hint.contains(" or "), "read as one line of alternatives: %s" % hint)
-	assert_eq(_ui._escape_hint.text, hint, "which is what the line under the button says")
-	assert_true(_ui._escape_hint.visible, "and it is up while the door is shut")
-
-func test_the_countdown_falls_as_runs_are_lost() -> void:
-	_pick_an_unplayed_game()
-	GameState.shields = 99
-	GameState.bonus_shields = 0
-	_lose_runs(OVERWORLD.ESCAPE_AFTER_LOSSES - 1)
-	assert_true(_ui.escape_hint_text().begins_with("1 more loss,"),
-		"singular on the last one: %s" % _ui.escape_hint_text())
-
-func test_an_open_door_says_nothing_at_all() -> void:
-	_pick_an_unplayed_game()
-	_bleed_at_the_game_in_play()
-	assert_eq(_ui.escape_hint_text(), "", "there is nothing left to earn")
-	_ui._refresh()
-	assert_false(_ui._escape_hint.visible, "so the line goes away")
-
-func test_a_route_already_paid_drops_off_the_line() -> void:
-	# The line names what is still OWED, so a door already open stops being a route
-	# to count down to. Three bodies down is the one the player can drive, and it is
-	# also the one that opens the whole gate — so paying it empties the line.
-	_pick_an_unplayed_game()
-	assert_string_contains(_ui.escape_hint_text(), "Beat 3 Enemies",
-		"the kill count is on the line while it is unpaid")
-	GameLoop2.defeated_this_game = OVERWORLD.ESCAPE_AFTER_DEFEATS
-	assert_eq(_ui.escape_hint_text(), "",
-		"and once it is paid the door is open, so the line has nothing left to say")
-
-func test_escaping_still_owes_the_road_its_extra_turns() -> void:
-	# Walking away is FINISHING a game as far as the Amulet is concerned: the extra
-	# turns it charges (§7.4) resolve on the way out, exactly as they would for a
-	# missed report. Stood on the doorstep so there is something to owe.
-	var near: StringName = _a_game_at_hops(1)
-	if near == &"":
-		pending("the run did not reach this case (near == &'')")
-		return
-	_pick_enemies(0)
-	GameState.set_current_game(near)
-	assert_eq(GameLoop2.enemy_turns(), 2, "one hop out is two extra turns")
-	_mark_beaten_this_run(_ui._chosen["game"])
-	GameState.max_hp = 40
-	GameState.hp = 40
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	_front_line()                              # in reach, so the turns are swings
-	var swingers: int = GameLoop2.stack.size()
-	var dmg: int = 0
-	for entry in GameLoop2.stack:
-		dmg += GameLoop2.enemy_damage(entry)
-	_ui.escape_game()
-	_ui._end_resolve()
-	assert_eq(40 - GameState.hp, dmg * 2,
-		"%d bodies swung on both of the road's turns as you left" % swingers)
-
-func test_the_door_closes_again_on_the_next_game() -> void:
-	# The gate is a fact about the game in play, not about the run: walking into a
-	# fresh game means proving it again.
-	_pick_an_unplayed_game()
-	_bleed_at_the_game_in_play()
-	assert_true(_ui.can_escape())
-	_ui.escape_game()
-	_pick_enemies(0)
-	assert_false(GameLoop2.hurt_this_game, "a new game has not hurt you yet")
-	# …so THIS door is shut. The other one is independent and the offering can
-	# legitimately hand back a game the run has already beaten (the graph allows
-	# revisits, and the opening game was beaten to get here), so which of the two
-	# answers is right depends on the card — assert whichever it is rather than
-	# assuming the common one, or this passes on most runs and fails on the rest.
-	if _ui.beaten_this_run():
-		assert_true(_ui.can_escape(),
-			"the card came back around, and a past beat opens the other door")
-	else:
-		assert_false(_ui.can_escape(), "so its door starts shut")
+	assert_true(_ui.can_escape(), "the next game's door is open from its first second")
 
 # --- rating flows into the tier list ---------------------------------------
 
@@ -8678,11 +8475,6 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	var played: GameData = _ui._chosen.get("game")
 	assert_not_null(played, "a game is in play to walk out of")
 	var here: StringName = GameState.current_game_id
-	# Nothing has hurt the player and the game has never been beaten, so the
-	# ORDINARY exit is shut. The teleport opens it anyway — that is the whole point
-	# of the force: the loot is what pays for the door.
-	assert_false(_ui.can_escape(),
-		"the ordinary escape gate is shut — nothing has drawn blood yet")
 	var line: String = _ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 	assert_string_contains(line, "walk out of the game",
 		"the line it reports says the expensive half out loud")
@@ -8704,48 +8496,24 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 	_leave_post_game()
 	_dismiss_event()
 
-# …AND THE BOARD DOES NOT GET ITS PARTING SHOTS. The escape a teleport forces is
-# a real escape in every way but one: the goal-enemy still follows, the game is
-# still uncredited, the evening is still spent — but the extra turns the Amulet's
-# pull charges for FINISHING a game (§7.4) are not charged, because being carried
-# off a game by a scroll is not finishing it.
-#
-# It matters most exactly where it is easiest to miss. Out in the wilds the road
-# buys the enemies nothing anyway, so the waiver is invisible; on the doorstep it
-# is two free swings at a player who spent a piece of loot to get away from them.
-# So this test STANDS THE RUN somewhere a report really would cost turns rather
-# than hoping the random graph put it there.
-func test_a_teleport_off_a_game_is_not_charged_the_roads_extra_turns() -> void:
+# …AND THE BOARD DOES NOT FILL BEHIND YOU. The escape a teleport forces is a real
+# escape in every way but one: the game is still uncredited, the evening is still
+# spent — but the end-of-game spawn (§19.5) is not charged, because being carried
+# off a game by a scroll is not finishing it. An ordinary escape would stand at
+# least one body up; this stands none.
+func test_a_teleport_off_a_game_stands_nobody_up() -> void:
 	_pick_enemies(0)
-	# The offering rolls a RANDOM enemy, and since §7.6 an ability can spend a
-	# body's turn on something other than you — which would muddy "nobody swung".
 	_disarm_board()
-	if GameLoop2.stack.is_empty():
-		pending("this run's opening game put nothing on the board to swing at")
-		return
-	# Put the Amulet on a neighbour, which is the top of the ladder: one hop out
-	# buys the enemies two extra turns off an ordinary report.
-	var here: StringName = GameState.current_game_id
-	for n in RunGraph.neighbors(here):
-		if n != here:
-			GameState.amulet_game_id = n
-			break
-	var owed: int = GameLoop2.enemy_turns()
-	if owed <= 0:
-		pending("this run could not be stood near enough the Amulet to owe any turns")
-		return
-	GameState.shields = 0
-	GameState.bonus_shields = 0
-	var before_hp: int = GameState.hp
+	GameLoop2.defeated_this_game = 0
+	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	assert_gt(owed, 0, "an ordinary escape here would stand bodies up")
 
 	_ui.loot_teleport({"kind": "teleport", "dir": "same", "spread": 2})
 
 	var res: Dictionary = GameLoop2.last_result
-	assert_eq(int(res.get("turns", -1)), 0,
-		"the teleport's report hands the board none of the %d turns it owed" % owed)
-	assert_eq(int(res.get("extra_turns", -1)), 0, "and says so in both fields")
-	assert_eq(GameState.hp, before_hp,
-		"so being pulled out of a game costs no Health on the way")
+	assert_eq(int(res.get("end_spawns", -1)), 0,
+		"the teleport's report stands none of the %d bodies up" % owed)
+	assert_eq(int(res.get("turns", -1)), 0, "and hands the board no turn either")
 	_ui._end_resolve()
 	_close_arrival_card()
 	_leave_post_game()
@@ -8756,13 +8524,12 @@ func test_a_teleport_off_a_game_is_not_charged_the_roads_extra_turns() -> void:
 # halfway through a game could ride out of it for nothing at all: no goal-enemy
 # following, no report, no game left uncredited. Every teleport pays the same
 # fare now — and, since they are all teleports, every one of them is likewise
-# free of the road's extra turns (the test above).
+# free of the end-of-game spawn (the test above).
 func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
 	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
 	var played: GameData = _ui._chosen.get("game")
 	assert_not_null(played)
-	assert_false(_ui.can_escape(), "the ordinary exit is shut — nothing has drawn blood")
 	# The bus needs somewhere to go, or it says so and moves nobody — asserted
 	# rather than skipped over, so this test is never quietly about nothing.
 	var type_key: StringName = GameLoop2.game_type_key(played)

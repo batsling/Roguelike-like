@@ -37,11 +37,12 @@ so every number must stay small and glanceable.
      is banked toward the chest the report pays (§8.2).**
    - **Game beaten but goal not met → the enemy is not defeated: it *stacks*.**
      No drop. The enemy has been standing on the board since you chose its
-     game (§7.2) and simply keeps walking — from the back column it takes a game
-     or more to reach you — and once it is in the front column it **attacks after
-     each game you play**, for its `Damage`, until its goal is fulfilled. Unspent
-     `shields` (§3.2) absorb, remainder comes off `health`. The more unbeaten enemies on
-     the stack, the more damage per game, ramping until you die or clear them.
+     game (§7.2) and walks one column for every run you lose (§3.2) — from the
+     back column that takes a while — and once it is in the front column it
+     **attacks on every run you lose**, for its `Damage`, until its goal is
+     fulfilled. Unspent `shields` (§3.2) absorb, remainder comes off `health`. And
+     every game that ends stands more bodies up at the back (§19.5), more the
+     closer you are to the Amulet (§7.4), ramping until you die or clear them.
    - **Old goals can still be fulfilled later.** Fulfilling a stacked enemy's goal
      during any later game **defeats it** (removing it from the stack and stopping
      its per-game hits) and drops its loot, exactly as if you'd beaten it on time.
@@ -276,11 +277,9 @@ nothing but armour. And the armour comes in two pools named for the one thing
 that separates them — **Temporary Shields** expire with the game that granted
 them, **Shields** do not.
 
-**A LOST RUN GIVES THE ENEMIES A TURN** — and, if you have defeated nothing at
-this game, **a body as well** (§19.5). Every run of the game in play you lose
-is one tick of the attempt tracker, and a tick costs exactly one turn of the
-board — the same `_resolve_enemy_turn` a reported game takes `enemy_turns()` of
-(§7.4): the ground burns whoever is standing on it, every body touching the front
+**A LOST RUN GIVES THE ENEMIES A TURN, AND NOTHING ELSE DOES.** Every run of the
+game in play you lose is one tick of the attempt tracker, and a tick costs exactly
+one turn of the board (`_resolve_enemy_turn`): the ground burns whoever is standing on it, every body touching the front
 column **strikes** for what its statuses make of its damage, everything behind it
 **steps a column closer**, and a stun costs one turn of either. It can kill —
 Health reaching 0 ends the run right there, exactly like an enemy hit at the end
@@ -294,10 +293,13 @@ of a game.
 - **A board with nothing in reach charges nothing** *as a turn*, and that is the
   design rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
-  logged — it is what the tracker shows. **This is the hole §19.5 fills**: an
-  empty board used to mean the player having the worst evening paid the least,
-  so a lost run at a game where you have defeated nothing now also *spawns*. The
-  turn is free on an empty board; the body is not.
+  logged — it is what the tracker shows.
+- **A lost run spawns nothing.** It used to stand bodies up when nothing had been
+  defeated at the game; that price moved to the END of the game (§19.5), so a
+  board only ever MOVES mid-game and only ever FILLS as a game ends. The hole it
+  was there to close — an empty board letting the worst evening pay the least —
+  is closed there instead: a game that ends with nothing down stands one more
+  body up, and an escape always does.
 - **The gate is the GAME, never the board.** `can_log_attempt` asks
   `GameLoop2.game_in_play` — chosen and not yet reported — and nothing about what
   is standing. It used to ask `arrivals`, the record of which bodies walked on
@@ -364,54 +366,29 @@ one (`GameLoop2._take_hit`).
   simply gone before the swing that broke it was drawn — the one thing a shield
   exists to do was the one thing never shown happening.
 
-**ESCAPE OPENS ON THE HIT.** A game you cannot beat is not a run-ender: you may
-walk away from the one in play, and the door opens **the moment an enemy's attack
-takes Health off you during it** (`GameLoop2.hurt_this_game`, set by `_take_hit`
-on the `enemy_attack` source alone). It is open from the first second on a game
-this run has **already beaten** — there is nothing left to prove at that one.
+**ESCAPE IS ALWAYS OPEN, AND IT HAS A PRICE.** A game you cannot beat is not a
+run-ender: you may walk away from the one in play at any moment
+(`Overworld2.can_escape` asks only that a game is in play). Walking out ENDS the
+game, so the board fills behind you exactly as a hand-in fills it (§19.5) — and
+then one more:
 
-- **The hit is the *first* gate, not the only one.** It used to be five lost runs,
-  from when a lost run spent a shield and then Health: a counter standing in for
-  "this game is hurting you" because nothing else measured it. The board measures
-  it directly now — lose runs, the enemies take turns, a Temporary Shield stops
-  the first swings outright, and the door opens on the swing that gets past them.
-  The way out therefore arrives exactly when the game starts costing the one
-  thing you cannot make more of.
-- **…and THREE BODIES DOWN is the door the player drives**
-  (`Overworld2.ESCAPE_AFTER_DEFEATS`, counted per game by
-  `GameLoop2.defeated_this_game`). It used to be an EMPTY BOARD, on the grounds
-  that nothing left on the stack means nothing that can ever open the hit gate.
-  True, but it asked for the wrong thing: on a stack of six it is unreachable and
-  on a stack of one it is a single goal, so the same door cost anywhere between
-  one kill and a whole board depending on something the player never chose. A
-  fixed count is the same argument at a fixed price, reachable on every board
-  including the one that will not stop growing. A BOMBED body does not count —
-  it never reaches `GameLoop2._defeat` — so buying a goal away does not also buy
-  the door.
-- **…and five lost runs is the floor under it** (`Overworld2.ESCAPE_AFTER_LOSSES`).
-  The hit is the honest measure, but it is one the player does not control: a board
-  of low-damage bodies behind a stack of Temporary Shields can take an evening and
-  never land a point of Health, and a player who cannot beat *that* game would be
-  held there by the rule written to let them out. Five losses is not a good way out
-  — the board has taken five turns to get there — and it is not meant to be. It is
-  a way out that always eventually arrives.
-- **The button is always on screen, darkened until one of them opens.** Hiding it
-  meant the one player who most needed to know there was a door — the one stuck —
-  was reading a panel that never mentioned it. Under the greyed button is the
-  price, as every route still to be paid: *"3 more losses, Beat 3 Enemies, or Lose
-  Health"* (`Overworld2.escape_routes` / `escape_hint_text`). All of them at once
-  rather than the nearest, because which is cheapest is a fact about the player's
-  board that only the player can see — naming one would be advice, naming all
-  three is information. A route already open drops off the line, and an open door
-  says nothing at all.
-- **A swing only.** Burn's bill and an event's price cost real Health and do not
-  open it: they are not the game in front of you refusing to go down.
-- **Per game.** Cleared when a game is chosen and when one is reported, saved
-  with the run, and rewound by an attempt's undo — taking back the tick whose
-  turn drew blood shuts the door again.
-- The price is unchanged: escaping resolves the board exactly as a missed report
-  does (the goal-enemy follows you, the stack takes its turns), and it banks no
-  beat. Only the gate moved.
+- **The board: the Amulet pressure's bodies + 1, always, and at least 2.** A
+  hand-in adds the one only when no goal was beaten; an escape adds it even after
+  a kill (`GameLoop2.end_of_game_price(true)`), so walking out is never cheaper
+  than finishing, and it never costs fewer than two bodies.
+- **The reward: none.** No report chest (the kill scaling only pays a win, §8.2),
+  no beat on the record, and a `game beaten` goal still ticked is dropped rather
+  than honoured (§7.7). Loot already on the floor and a boss's own chest are
+  drops, not the report's reward, and stay yours.
+- **The line under the button is that price**: *"Leave now: 3 enemies walk on, no
+  chest."* (`Overworld2.escape_hint_text`), and the tooltip says the same.
+
+**It used to be gated three ways** — an enemy's hit taking Health off you, three
+bodies down, or five lost runs — with a greyed button listing whichever routes
+were still unpaid. Those gates existed because escaping cost the board nothing it
+was not already owed, so the door had to be earned. It costs bodies now, and a
+price you can read replaced three rules to satisfy. `GameLoop2.hurt_this_game` is
+still recorded per game; nothing gates on it.
 
 The tension is *don't lose runs → the stack never moves, and the wall is still
 whole when you report.* A game cleared first try leaves the board where it was and
@@ -902,24 +879,18 @@ is the single most useful moment a teleport will ever have. So the op takes the 
 out on the player's behalf (`escape_game(true)`) and *then* lands them somewhere
 else.
 
-It **forces the exit past `can_escape()`**, which ordinarily wants the game to have
-drawn blood first. That gate asks whether the game has hurt you enough to deserve a
-way out; spending a piece of loot on the door is a different answer to the same
-question. What it does **not** do is discount what the escape costs you on the far
-side: the goal-enemy still walks on and follows you, and the game is still not
-credited — an escape is not a win. You are buying the exit, not a pardon. Both
+It goes through the ordinary escape (with `force`, for good measure). What it does
+**not** do is discount what the escape costs you on the far side: the board you
+leave still follows you, and the game is still not credited — an escape is not a win. You are buying the exit, not a pardon. Both
 consumables that teleport (Scroll of Teleportation and the Telepill) come through
 the one function, so both escape; one rule for moving the run off a game.
 
-**But the road's extra turns (§7.4) are waived.** Those are the price of *finishing*
-a game, and being carried off one by a scroll is not finishing it — the run already
-paid, with the piece of loot. Charging them on top made the one thing a teleport can
-do that nothing else can, getting you out of a game that is killing you, the use
-most likely to kill you: on the Amulet's doorstep it handed the board two free
-swings at a player who had just spent a consumable to get away from it. So
-`escape_game` takes a `free_exit` flag, every teleport off a game in play passes it
-(the scroll, the pill, Ride the Bus, the card teleports), and it reaches the model as
-the last argument of `GameLoop2.beat_game` — `road_turns: false`. Everything else
+**But the end-of-game spawn (§19.5) is waived.** That is the price of *ending* a
+game, and being carried off one by a scroll is not ending it — the run already
+paid, with the piece of loot. So `escape_game` takes a `free_exit` flag, every
+teleport off a game in play passes it (the scroll, the pill, Ride the Bus, the card
+teleports), and it reaches the model as `GameLoop2.beat_game`'s `road_spawns:
+false`. (It waived the road's extra turns while those existed, §7.4.) Everything else
 still pays, and the one report that does not has to say so at the call site. It does
 **not** touch Predatory Scent (§7.6): that is a body's own ability reacting to an
 evening you did nothing with, not the road's price for the road.
@@ -929,7 +900,7 @@ the run by hand — `travel_to_game` set the phase back to SELECT and that was t
 which walked the player out of a game in play for nothing at all: no goal-enemy
 following, no report, no game left uncredited. It escapes first and arrives second
 now, exactly as the scroll does, so an item that moves you pays the same fare — and,
-being a teleport, is free of the road's extra turns on the same terms. Its one exception is
+being a teleport, is free of the end-of-game spawn on the same terms. Its one exception is
 the return leg of a `play_game` detour (§10), which is not a teleport: that game has
 already been reported by the time the run heads home.
 
@@ -1125,7 +1096,7 @@ request contributed no line at all. Three pieces came out of a use reporting
   — a scroll whose entire subject is *what is this* cannot answer with a count.
   Their `random` modes were silent for the same reason and now say the same thing.
 
-`stun_worth()` — what a Stun costs its target at the run's current pace (§7.4) —
+`stun_worth()` — what a Stun costs its target: one lost run (§7.4) —
 moved onto `ScrollSystem` so the screen that ASKS which enemy to stun and the one
 that reports the answer quote one sentence rather than two.
 
@@ -1331,9 +1302,9 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 
 > **THE CADENCE BELOW IS SUPERSEDED BY §19.6.** A boss is no longer the last
 > *game* of a band. It arrives from a **Champion node** (§19.1), or on **every
-> third spawn event** — where it lands on top of whatever else was spawning, a
-> failure spawn included. Bands, tiers and the table below still describe which
-> tier a boss rolls at; what changed is what counts the three.
+> fourth spawn event** — where it lands on top of whatever else was spawning, an
+> end-of-game spawn included. Bands, tiers and the table below still describe which
+> tier a boss rolls at; what changed is what counts the band.
 > Everything else in this section — the heavier bomb-immune pool, triple gold,
 > the boss's own chest — is unchanged.
 
@@ -1426,9 +1397,10 @@ single number to decide.
 
 An enemy **spawns onto the battlefield the moment you choose its game** — if that
 game is an **Enemies** or a **Champion** node (§19.1); an Event or a Shop node
-stands nothing. **A body can also arrive mid-game**, off a run you lost or a game
-you handed in having defeated nothing (§19.5), and it walks on at the same back
-column on the same terms as everything else here.
+stands nothing. **Bodies also arrive as a game ends** — handed in or escaped
+(§19.5) — and they walk on at the same back column on the same terms as
+everything else here, shoving a full lane forward to make room (§7.3). Nothing
+arrives mid-game.
 
 Whichever way it arrived, from that moment it is an ordinary body on the board
 with **no tie to the game that rolled it**: it takes its turns, it is drawn like the rest,
@@ -1449,38 +1421,37 @@ what the run's beaten set, the repeat-visit Dash and the lifetime tally read.
 What you did to the bodies is the tick boxes, one per enemy on the board.
 
 1. **Spawn** — the enemy appears **on the back column** when you choose its game.
-2. You play & **report**, and the resolve runs in this order: every goal you
-   ticked lands its hit — bodies that walked on this game and bodies you have
-   owed for ten, on the same terms — then every survivor takes its
-   `enemy_turns()` actions.
-3. So an enemy you ticked is **defeated before it acts at all**, and one you
-   left unticked **starts walking during its own game** — reaching the
-   front column takes it the width of the board, which is where the breathing
-   room comes from.
-4. Thereafter it keeps attacking on each game beaten, per §2, until its goal is
-   met or it's removed.
+2. You play, and every run you **lose** is a turn: every body strikes from the
+   front column or steps a column closer (§3.2).
+3. You **report**: every goal you ticked lands its hit — bodies that walked on
+   this game and bodies you have owed for ten, on the same terms. The report
+   itself moves nobody (§7.4); it stands the end-of-game bodies up (§19.5).
+4. So an enemy you ticked before losing a run is **defeated before it acts at
+   all**, and one you leave unticked **walks one column per lost run** —
+   reaching the front column takes it the width of the board, which is where
+   the breathing room comes from — and strikes on every lost run once there,
+   until its goal is met or it's removed.
 
 **This used to be a rule and is now a distance.** The enemy used to wait in an
 off-field lane and step onto the grid only once its game was reported, which
 bought it a guaranteed "one-game grace" no matter what. The grace is now simply
 that it spawns at the far edge: it is worth exactly the ground between the back
-column and the front, which the difficulty tier widens (§7.3) and the amulet
-pressure ladder eats into (§7.4). The board says how long you have instead of a
+column and the front, which the difficulty tier widens (§7.3) and a spawn's shove
+can eat into (§7.3). The board says how long you have instead of a
 rule saying it, and the enemy you are playing against is visibly *on the board*
 you are trying to survive.
 
 **Stun** (Scroll of Scare Monster, §4.1) costs the target **one turn** — it
-neither strikes nor steps, and one stack of stun ticks off with it. Out in the
-wilds that is the whole game; on the Amulet's doorstep it is a third of one (see
-§7.4).
+neither strikes nor steps, and one stack of stun ticks off with it. That is one
+lost run, wherever on the road you stand (§7.4).
 
 **Staggered** works the other way round, and is the whole game rather than one
 turn of it. A goal met deals **one** hit, and one hit does not always finish the
 job — an Alien-Baby-buffed body has 2 Health, a Dexterity one spends a shield
 instead. A body that takes its goal's hit and is still standing is **Staggered**:
 it neither strikes nor steps for the rest of that game, whether the goal was
-ticked mid-game or claimed at the report, and whether the turns come from the
-Amulet's pull (§7.4) or from a run you lost (§3.2). Only the game is bought — the
+ticked mid-game or claimed at the report, and whether the turns come from a run
+you lost (§3.2) or a body's own extra turn (§7.6). Only the game is bought — the
 body is still there, still owed, still carrying its goal into the next one, which
 is what its remaining Health means.
 
@@ -1504,9 +1475,9 @@ add together:
 
 - **The difficulty tier.** Every step of the tier ladder (§7.1) adds **a column
   and a row**: 4x4 at Low, 5x5 Medium, 6x6 High, 7x7 Insane, and there it stops,
-  because the tier does. This is the counterweight to §7.4 — the tier that makes
-  the enemies heavier also gives you more ground to lose before they arrive, so
-  two extra turns a game at the high tiers is still a couple of games of warning.
+  because the tier does. It is the grid half of the **difficulty-up** moment
+  (§19.6): the spawn that steps the tier also lands the capstone boss, and the
+  board grows under it.
 - **Mine-r Construction** (Broomsweeper, Uncommon) adds another column and row
   **per copy owned** — a deeper board to cross before anything reaches you, and
   another lane to stand in, which also means one more body can pack the front
@@ -1523,7 +1494,7 @@ add together:
 for columns alone — `GameState.grid_length_growth()`), so
 nothing measures the board against a constant. Growth doesn't shove the
 bodies already standing on it — they keep their column, and the gain lands on
-what spawns next — but it does open room for the overflow queue, which walks
+what spawns next — but it does open room for the off-grid queue, which walks
 onto the new lane immediately, picking its row by the usual clearest-run rule.
 Should the item ever leave the inventory the board shrinks back, and anything it
 would strand off the edge is put back in the queue rather than left hanging.
@@ -1534,10 +1505,35 @@ would strand off the edge is put back in the queue rather than left hanging.
   is **random among the lanes it can actually reach the player from** — enemies
   never change lanes, so a row with a body parked in it would leave the new
   arrival stuck behind a wall forever, and those rows are skipped while any
-  clear lane is left. Nothing waits outside the board unless it has nowhere to
-  stand; that overflow queue slides on as space frees.
-- **Advance** — each turn (§7.4), every enemy that isn't striking closes one
-  column, front-first.
+  clear lane is left.
+- **Shove** — when **no** lane has room at the back, the newcomer does not wait:
+  it **shoves a lane forward** to make some (`GameLoop2._shove_plan`). Whatever
+  stands in its footprint is pushed one column toward the player, whatever *that*
+  lands on is pushed in turn — a chain — and the passes repeat until the
+  footprint is clear, so a two-wide newcomer shoves two columns. A body spanning
+  two lanes moves as one piece, so it pushes both. Of all the lanes it could
+  shove, it takes the one that needs the **least pushing** (total columns moved),
+  ties at random. Each step goes through `_move_entry` — the Push verb's path — so
+  a body shoved onto a mine or into a fire pays for it exactly as a pushed one
+  does. **Being shoved is not a turn**: nobody strikes and nobody's action is
+  spent, so a body shoved into column 1 swings on the next lost run, not now.
+  **When no lane can go forward**, it tries **sideways** instead
+  (`GameLoop2._side_shove_plan`): each body standing where the newcomer needs to
+  land steps ONE lane up or down into cells that are free — no chain — and the
+  lane that asks the fewest bodies to step wins. For a one-cell newcomer this can
+  never help (a free cell the blocker could step into is a free back cell the
+  newcomer would have taken), so it is what lets a wide or tall arrival onto a
+  crowded board. Only when neither works does a body go to the **off-grid queue**, which slides on as space
+  frees and never shoves (a queue that pushed the board every turn would be a
+  second clock). A summon aimed at a cell of its own (a spawner's brood) never
+  shoves either. **A spawner that never attacks is never shoved FORWARD**
+  (`GameLoop2._is_anchored`) — every turn a `turn: summon_*` op (Nested Spawner,
+  Necromancy) — so a lane with one in the way cannot be pushed past it; it can
+  still be stepped sideways, which moves it no closer. **Immobile** bodies and
+  corpses ARE shoved: they cannot move by themselves, and being shoved is not
+  that, the same as the Push verb.
+- **Advance** — each turn (§3.2, one per lost run), every enemy that isn't
+  striking closes one column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
   bodies reach that line in fewer games; that's the point of `Size`.
 - **Blocking** — an enemy occupies every solid cell of its footprint, and moves
@@ -1572,104 +1568,77 @@ layers by **tree order, never `z_index`** — `z_index` is relative to the paren
 and would punch the board out through the enemy info card and the reward
 screens, which sit above the battlefield only because they're mounted after it.
 
-### 7.4 Amulet pressure — the extra turns you buy by closing in
+### 7.4 Amulet pressure — the bodies you stand up by closing in
 
-The run has two difficulty axes. The tier ladder (§7.1) is the clock: it ticks
-up on its own, every `GAMES_PER_TIER` games, and the player only rides it. This
-is the other one, and it's the one the player **steers**.
+The run has two difficulty axes. The tier ladder (§7.1) is one: it steps every
+fourth spawn event (§19.6). This is the other one, and it's the one the player
+**steers**.
 
-**REPORTING A GAME GIVES THE BOARD NOTHING.** Out in the wilds you can play a
-game, hand it in and walk away with the stack exactly where you left it. What
-moves the enemies is the runs you **lose** at a game — one turn each (§3.2) — and
-what closing on the Amulet buys them is **EXTRA TURNS at the end of every game
-you report**, read off how far you are in hops over the run graph:
+**LOSING A RUN MOVES THE BOARD; ENDING A GAME FILLS IT.** The two are kept apart
+on purpose. A lost run is one turn of the board (§3.2) and nothing else moves the
+bodies — handing a game in moves nobody. What it does instead is stand NEW bodies
+up at the back column (§19.5), and how many is read off how far the run is, in
+hops over the run graph, from the Amulet:
 
-| Hops to the Amulet | Extra turns | Bodies per failure (§19.5) | Band |
-|---|---|---|---|
-| 5 or more | 0 | 1 | Distant |
-| 3 – 4 | 1 | 2 | Closing |
-| 2 – 0 | 2 | 3 | Doorstep |
+| Hops to the Amulet | Bodies at the end of a game | Band |
+|---|---|---|
+| 5 or more | 0 | Distant |
+| 3 – 4 | 1 | Closing |
+| 2 – 0 | 2 | Doorstep |
 
-**The ladder has two columns now.** The second is §19.5's — how many bodies a run
-finished without defeating anything puts on the board — and it is read off these
-same bands on purpose, so the board, the cards and the resolver cannot disagree
-about either number. Everything below is about the first column; the second
-follows the same logic, priced per failure rather than per report.
+…**+1 if nothing was defeated at the game, and +1 always on an escape** (§3.2).
+`RunDifficulty.pressure_for_hops` owns the ladder, `GameLoop2.pressure()` reads
+it where the run stands and `GameLoop2.end_of_game_price` adds the two
+surcharges; all three are pure, so the strip, the cards and the resolver cannot
+disagree about the number. A run with no Amulet picked, or standing somewhere
+with no route to it, reads as Distant.
 
-A **turn** is one action, and every enemy takes one on each of them: a body
-touching column 1 **strikes**, everything behind it **steps** a column closer. A
-turn is exactly the strike-then-advance the loop has always resolved — an extra
-turn is that same beat, handed out for finishing a game near the Amulet.
+**THIS REPLACED THE EXTRA TURNS.** The same ladder used to be read as *turns*:
+finish a game near the Amulet and every body on the board took one or two free
+actions at the report. That had three problems, all of them visible in play:
 
-**Finishing a game is what buys them, so a TELEPORT buys none.** Walking out of a
-game on your own decision is finishing it as far as the road is concerned and pays
-the full ladder; being carried off one by a scroll, a pill or the bus is not, and
-the run already paid for that with the piece of loot. `escape_game(force,
-free_exit)` carries the waiver and it reaches here as `GameLoop2.beat_game`'s
-`road_turns: false` — see §4.1 for the whole of the reasoning. The turns a **lost
-run** buys the board (§3.2) are a different ledger and are never waived.
+- **It punished finishing.** Handing a game in — the thing the player is trying
+  to do — was the thing that made the enemies swing.
+- **A body's column was not its countdown.** How far away a body was depended on
+  the column *and* the band, so the board needed a second readout (`in N`) and
+  threat colours derived from the pace rather than the position.
+- **Everything turn-shaped changed value with the band.** A Stun was a whole lost
+  run in the wilds and half a report on the doorstep; Strength was doubled by the
+  pace; Speed was worth most far out. Each needed its own paragraph here.
 
-**Zero is the floor, and that is the change.** The ladder used to be the turn
-count itself (1 / 2 / 3), so every reported game moved the board whether or not
-the player had struggled at it. Now the board moves for two reasons and both are
-things that happened: **you failed** (a lost run, §3.2) or **you are close to the
-win** (this ladder). A quiet game played far out costs nothing at all, which is
-what makes the routing decision a real one rather than a slower rate of decay.
+With turns coming only from lost runs, a body's column **is** its countdown in
+lost runs (the hover and the card say it in words — `GameLoop2.strike_countdown_text`
+— and the board keeps its art clear), a Stun is one lost run everywhere, and the
+pressure is something you can *see* coming: bodies landing at the back and, when
+the back is full, shoving the lanes closer (§7.3).
 
-**Why.** The routing decision used to be one-directional: the Amulet is the win
-condition, so every step toward it was strictly good and the only reason to take
-the long way was to farm. This makes the long way a real option. Route wide and
-you fight a slow stack for more games; bum-rush the Amulet and you fight a fast
-one for fewer. Neither dominates, and the stack you've accumulated decides which
-is right — three followers on your tail is a very different calculation at 2
-extra turns than at none.
+**Why it is still a routing decision.** Route wide and the board fills slowly; run
+at the Amulet and every game you finish stands two more bodies up, shoving the
+ones already there forward once the back column is full. Neither dominates, and
+the board you have accumulated decides which is right. Taking the **Amulet card
+itself** carries no pressure warning — there is no next game for anything to walk
+into.
 
-The consequences fall out of the same rule rather than being special-cased:
-
-- An enemy two columns back is no longer safe. At 2 extra turns it walks into
-  range **and** swings before you have picked the next card, so "how far away is
-  it" is measured in turns, not columns. The board reads that distance in **lost
-  runs** (`GameLoop2.lost_runs_until_strike`), since that is the turn supply the
-  player controls.
-- **Stun** costs one turn, so it is worth a whole lost run wherever you stand,
-  and half of a reported game's cost at the doorstep — the same charge, priced by
-  the pace.
-- **Old-goal fulfilment** holds a follower's fire for the whole game, so it goes
-  the other way and is worth *more* the closer you push (§7.2).
-- **Strength** buffs each hit, so a two-extra-turn report is two buffed hits — the
-  pace amplifies it like everything else. Aggravate Monsters hands it out to the
-  whole board at once (§13.4), and unlike the temporary damage bonus it replaced,
-  it never expires.
-- **Speed** buys extra columns per step, so it is worth most in the far band —
-  where there are still columns left to skip — and nothing at all once a body is
-  already in the front line.
-- Taking the **Amulet card itself** ends the run on the spot, so it carries no
-  pace warning: there is no next game for the enemies to act in.
+**An EXTRA turn is now only a body's own.** Predatory Scent (§7.6) is the one on
+the roster: a hunt run as its own turn after a report. The Censer (§8.2) holds the
+front column out of every such turn. Anything added later that hands a body a turn
+of its own goes through the same `extra` beat of `_resolve_enemy_turn` and is
+covered without touching either.
 
 **Where the player sees it.** All of it, before committing:
 
 - A **strip across the top of the battlefield**, in the band's colour, reading
-  `⏱ EXTRA TURNS N` — `0` out in the wilds, which is a state worth reading as
-  calm — with a two-rung ladder, the hop count that put it there, and the board's
-  current size and tier on the right, since §7.3 is the other half of the same
-  bargain.
-- Every **offered card** says what taking it does to the pace — *speeds up — 1
-  extra turn*, *slows down*, or *still no extra turns* — next to the route badge
-  that says what it does to the distance, because they are the same decision.
-- Each **body on the board** carries what **one lost run** would let it do: `⚔3`
-  for the swing it would throw, `in 2` for the lost runs of walking it still owes.
-  Threat colours follow that number rather than the raw column, because that is
-  the threat the player is deciding against — reporting a game out in the wilds
-  costs nothing.
-- The **resolve plays turn by turn**, counter and all — `EXTRA TURN 1 / 2` at the
-  end of a game, `TURN 1 / 1` for a lost run's — instead of collapsing into one
-  slide.
-
-`RunDifficulty.extra_turns_for_hops` owns the ladder and `GameLoop2.enemy_turns()`
-applies it; both are pure, so the board, the cards and the resolver cannot
-disagree about the number. A run with no Amulet picked, or standing somewhere with
-no route to it, reads as Distant — nothing is closing in on a goal that isn't
-there.
+  `☠ AMULET PRESSURE N` with a two-rung ladder, the hop count that put it there,
+  what ending *this* game will stand up (`☠ +N when this game ends`, the +1
+  included), and `boss in N spawns` — the countdown to the next difficulty-up
+  (§19.6). The board's current size and tier sit on the right, since §7.3 is the
+  other half of the same bargain.
+- Every **offered card** says what taking it does to the pressure — *Pressure
+  rises — 2 enemies per game*, *Pressure eases*, or *Still …* — next to the route
+  badge, because they are the same decision. A card whose road stands nobody up
+  carries no row at all.
+- Each **body on the board** carries its ⚔ damage and a threat colour; its
+  **hover** and its **card** carry the countdown in lost runs.
 
 ### 7.5 The escort — nothing spawns alone
 
@@ -1822,7 +1791,7 @@ that outlive their maker.
 spends the whole turn; so does a strike. A **Ranged** body that shoots from four
 columns back does *not* also close — before this the mover ran over everything
 that had not reached column 1, which would have let a sniper arrive twice as fast
-as §7.4's ladder says anything can.
+as one column per turn says anything can.
 
 | Ability | The rule, where it isn't obvious |
 |---|---|
@@ -2292,10 +2261,10 @@ odd one out — it is about the *ground* rather than the pool, and its
 
 **Censer and Fanny Pack** are the two Isaac relics added after the seven, and
 each is an answer to being hit rather than a way of hitting back. **Censer**
-(Uncommon, `angel_room`) takes one of the road's extra turns off every body in the
-**front column**, so the closer the board gets to you the more it is holding back
-— armour that is worth nothing while the front line is empty and most when it is
-full. **Fanny Pack** (Uncommon) pays the other way round: half the times you
+(Uncommon, `angel_room`) holds every body in the **front column** out of every
+**extra** turn — one a body gets on top of the lost runs that are the board's
+clock (Predatory Scent's today, §7.6; more to come from abilities and places) —
+so it is armour against exactly the swings nobody paid for. **Fanny Pack** (Uncommon) pays the other way round: half the times you
 actually lose Health, a piece of loot lands **on the battlefield floor**, which
 turns a hit into a reason to go and stand somewhere. Both needed a word the sheet
 did not have (`front_column_slow`, `drop_loot N`), and both are in the table below.
@@ -2317,7 +2286,7 @@ previously name:
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
 | `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
 | `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
-| `front_column_slow` | **Censer.** Every body standing in the **front column** — the ones already in reach of you — sits out one of the extra turns the road hands the board at a report (§7.4). It touches that column and no other on purpose: a body further back spends its turns *walking*, so draining one there would only slow the approach, while in the front line a turn is a hit, which makes this armour that stops mattering the moment the front line is empty. Read off each body's **live** column inside the turn loop, so something that steps up mid-resolve is held off on the turn it arrives; stacks like `grid_grow` (`GameState.front_column_turn_drain` counts the copies). The turns a **lost run** buys the board (§3.2) are untouched — those are the ones you paid for by failing, and "Extra Turns" names the road's. |
+| `front_column_slow` | **Censer.** Every body standing in the **front column** — the ones already in reach of you — sits out every EXTRA turn: a turn a body is handed beyond the lost runs that are the board's clock (§3.2), which today means Predatory Scent's hunt (§7.6). It touches that column and no other on purpose: a body further back spends its turns *walking*, while in the front line a turn is a hit. Read off each body's **live** column inside the turn loop (`_resolve_enemy_turn`'s `extra` beat), so anything added later that hands a body a turn of its own is covered without touching the item. A yes/no, not a count (`GameState.censes_extra_turns`): a second copy has nothing left to take. The turn a **lost run** buys is untouched — the player paid for it by failing. It used to take one off the road's extra turns at a report; those are retired (§7.4). |
 | `drop_loot N` | **Fanny Pack.** N pieces of loot rolled onto the **battlefield floor** rather than into the pack — the twin of `gain_loot`, and the difference is the whole item. A relic that paid into the pack on every hit would be flat income; one that puts the piece on a random free square turns being hit into a reason to walk somewhere, on exactly the terms loot dropped by a defeated body is on (it lies there until picked up, and the report sweeps what is left, §18). A floor with no free square pays nothing rather than stacking two pieces on one cell. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
@@ -4850,45 +4819,48 @@ them on its own.
 decision, which was taken when every ordinary game put two bodies down and a solo
 boss made the run's biggest round its emptiest board. That argument is noted and
 overruled — a boss of the current tier is a heavy enough board on its own, and
-the every-third-spawn capstone below already puts bosses onto boards that are
+the every-fourth-spawn capstone below already puts bosses onto boards that are
 carrying other things.
 
 **Event and Shop nodes land nothing.**
 
-### 19.5 …and the enemies you get for not fighting
+### 19.5 …and the end of every game fills the board
 
-**Every run you finish without defeating anything spawns bodies.** This is the
-other half, and without it the three non-Enemies kinds would simply be a way to
-play the whole run on an empty board.
+**Every game that ends stands bodies up at the back column.** This is the other
+half, and without it the three non-Enemies kinds would simply be a way to play
+the whole run on an empty board. How many is the Amulet pressure (§7.4) plus two
+surcharges, all in `GameLoop2.end_of_game_price`:
 
-It fires on:
-
-- **every lost run** at the game in play, where nothing has been defeated this
-  game (`GameLoop2.log_attempt`);
-- **every game handed in** with nothing defeated — whether the goal was met or
-  missed.
-
-It does **not** fire on an **escape** (the player walked away and already paid
-the price §3.2 sets for it), on the **Amulet** (there is no next game for
-anything to walk into), or on a **Shop or Event node** — nothing spawned there,
-so nothing is owed, and those two kinds are genuine breathing room.
-
-**How many, read off the same ladder §7.4 uses for extra turns:**
-
-| Hops to the Amulet | Extra turns (§7.4) | Bodies per failure | Band |
+| Hops to the Amulet | Handed in, a body down | Handed in, nothing down | Escaped |
 |---|---|---|---|
-| 5 or more | 0 | **1** | Distant |
-| 3 – 4 | 1 | **2** | Closing |
-| 2 – 0 | 2 | **3** | Doorstep |
+| 5 or more | 0 | **1** | **2** |
+| 3 – 4 | 1 | **2** | **2** |
+| 2 – 0 | 2 | **3** | **3** |
 
-One ladder with two columns, on the same bands, so the strip, the cards and the
-resolver cannot disagree about either number.
+- **+1 when no goal was beaten at the game.** Beating one is the player
+  answering the board, and only that counts: a body killed by a bomb, a wand, a
+  mine, fire or another body does not waive it (`_defeat`'s `goal_kill`), nor
+  does a goal-hit fired off an effect rather than ticked by the player.
+- **+1 always on an escape**, kill or no kill, and **never fewer than 2**
+  (`GameLoop2.ESCAPE_MIN_BODIES`, §3.2): walking out is never cheaper than
+  finishing, and out in the wilds a single body was too cheap to be a price.
+- **At every node kind.** An Event or a Shop node stood nothing up, but the
+  evening still ended, and the road charges for where it ended.
+- **Not at the Amulet** — there is no next game for anything to walk into — and
+  **not off a teleport**, which the loot already paid for (§4.1, `road_spawns`).
+
+**A lost run spawns nothing.** It used to stand these bodies up mid-game when
+nothing had been defeated; that moved here, so the board only MOVES mid-game (one
+turn per lost run, §3.2) and only FILLS as a game ends. It is also what retired
+the mid-game tier step and the mid-game capstone (§19.6).
 
 **They roll from the game in play's type, at the run's current tier** — the same
 `GameLoop2.roll_enemy(game_type_key(game), tier)` an Enemies node makes, with the
-same widening. A body that turns up because you keep losing at a Deckbuilder is a
-Deckbuilder body: the board goes on describing where you are standing, and the
-failure changes how *many* walk on rather than what kind of place this is.
+same widening. A body that turns up because you ended an evening at a
+Deckbuilder is a Deckbuilder body: the board goes on describing where you were
+standing, and the road changes how *many* walk on rather than what kind of place
+this is. When the back column is full they **shove a lane forward** to land
+(§7.3).
 
 **`defeated_this_game` is the counter, and the distinction it draws is load-
 bearing.** It is incremented in `GameLoop2._defeat` and nowhere else, which means
@@ -4899,80 +4871,58 @@ two things that look like progress are correctly *not* progress here:
   target resolves anything.
 - **Finishing a counted goal is not always a defeat either.** A goal met deals
   **one** hit, and a body with more Health than that takes the hit, survives, and
-  is **Staggered** (§7.2). It is answered but not down, so the tap stays open.
+  is **Staggered** (§7.2). It is answered but not down.
 
-`goals_met_this_game` is the tempting field here and it is the wrong one: it ticks
-for both of the above.
+A **bombed** body never reaches `_defeat` either, so bombing your way out of a goal
+does not buy the +1 off. `goals_met_this_game` is the tempting field here and it
+is the wrong one: it ticks for both of the counted cases above.
 
-**The escape hatch is the only brake, and that is on purpose.** Five lost runs
-opens the door (`Overworld2.ESCAPE_AFTER_LOSSES`), and three bodies down opens it
-sooner (`ESCAPE_AFTER_DEFEATS`) — and defeating even one body shuts the spawn tap
-for that game entirely. A player with no answer to the game in front of them has
-two exits and a way to stop the bleeding; one who takes none of them is meant to
-lose the run.
+**THE COUNT IS READ OFF HOPS AND NOT OFF THE TIER.** An earlier draft scaled the
+spawn with the **tier**, and because spawns also raise the tier, losing made the
+next loss bigger — five losses ran to thirteen bodies and a boss. Reading it off
+**hops to the Amulet** cuts that loop: sitting at a game does not move you, so the
+price there is the same every time until you leave or win. The tier still climbs,
+but it no longer sizes anything that spawns — it picks heavier bodies and **grows
+the board** (§7.3).
 
-**What makes that survivable is that the rate is flat.** An earlier draft of this
-scaled the failure spawn with the **tier**, and because failure spawns also raise
-the tier, losing made the next loss bigger — five losses ran to thirteen bodies
-and a boss. Reading the count off **hops to the Amulet** cuts that loop: losing
-does not move you, so a player stuck at a game faces the same price every time
-until they leave or win. The tier still climbs, but it no longer sizes anything
-that spawns — it picks heavier bodies and **grows the board** (§7.3), which on the
-crowding axis is help rather than harm.
+**End-of-game bodies never join `arrivals`.** They did not come with a game, so a
+Scramble cannot scrub them off the board.
 
-It also gives the run a shape it did not have. Both pressures now converge on the
-same place: at the doorstep a reported game hands the board two extra turns *and*
-every failure lands three bodies. And **routing away from the Amulet lowers your
-failure cost**, so "back off, clear the stack, come back" is a real plan rather
-than a slower way to lose — which is the long way round finally paying for itself
-the way §7.4 says it should.
-
-**Failure-spawned bodies never join `arrivals`.** They did not come with the game,
-so a Scramble cannot scrub them off the board. The undo needs nothing new: the
-spawn happens after `log_attempt` has already taken its `_run_snapshot`, so
-taking a turn back takes the body with it.
-
-**A body spawned AT THE REPORT lands after the resolve**, so it does not take the
-turns that report was paying for. It walked on as the game was handed in; it acts
-from the next one, on §7.2's ordinary terms. The lost-run spawn is the same shape
-one beat earlier — it lands with the tick, and the turn that tick buys is
-resolved around it.
+**They land AFTER the resolve**, so they do not take a turn the report was
+paying for — there are none now anyway, bar a Predatory Scent hunt (§7.6). They
+walked on as the game was handed in and act from the next lost run, on §7.2's
+ordinary terms.
 
 ### 19.6 Difficulty is now a consequence
 
 **`GameState.spawn_events` counts SPAWN EVENTS** — one per node arrival that
-landed bodies, one per failure spawn, regardless of how many bodies each put down
+landed bodies, one per end of a game that stood any up (§19.5), regardless of how
+many bodies each put down
 — and the tier ladder reads that instead of `GameState.games_played`
 (`RunDifficulty.tier_for`). Event and Shop nodes never tick it. The Amulet's own
 Champion ticks it like any other arrival that lands a body; nothing reads the
 result, because the run ends there.
 
-**THE TIER CAN NOW STEP MID-GAME, AND THE BOARD GROWS WITH IT.** A failure spawn
-is a spawn event, and a failure spawn happens on a *lost run* — so the counter
-can cross a tier boundary with a game still in play, which `games_played` never
-could. `GameLoop2.sync_grid_bounds` runs at the spawn rather than waiting for the
-report: the extra column and row appear immediately, under the bodies that just
-walked on.
+**EVERY FOURTH SPAWN EVENT IS A DIFFICULTY UP**: the tier steps, the board grows a
+column and a row (§7.3), and a boss walks on **ON TOP of whatever else was
+spawning** — one counter and one moment (`RunDifficulty.GAMES_PER_TIER`, 4). It
+replaced `RunDifficulty.is_boss_game`'s every-third-*game* capstone, and it was
+every third spawn event until the end of every game started spawning too; the
+band widened to keep the moment roughly as far apart as it was. Champions are a
+second and independent source of bosses. The strip counts down to it (`boss in N
+spawns`, §19.8).
 
-Growing it late would be the worse of the two. The tier is what *sized* that
-spawn's arrivals in the first place, and holding the board at its old size until
-the report would crowd the new bodies onto a grid that the rule says has already
-grown — which is the one state §7.3's off-grid queue exists to avoid rather than
-to absorb. Board resizing has only ever happened between games
-(`Overworld2._announce_difficulty_step`); this is the first thing that moves it
-mid-game, and the announcement follows it there.
+**The board grows AT THE SPAWN**, before anything is placed
+(`GameLoop2._count_spawn_event` → `sync_grid_bounds`), so the bodies of a
+tier-crossing spawn land on the NEW back column rather than a column in front of
+it. Nothing spawns mid-game any more, so a difficulty-up only ever lands as a node
+is arrived at or as a game ends.
 
-**Every third spawn event puts a boss on the board ON TOP of whatever else was
-spawning**, replacing `RunDifficulty.is_boss_game`'s every-third-*game* capstone.
-Champions are a second and independent source, so a fighting run meets bosses
-more often than the old ladder allowed — that is the intent.
+**An end-of-game spawn can be the fourth one**, and then a boss walks on with the
+bodies the end of that game stood up. A boss takes no bomb damage and leaves only
+by its goal (§7.1).
 
-**A failure spawn can be the third one**, and then a boss walks on mid-game, off a
-lost run. A boss takes no bomb damage and leaves only by its goal (§7.1), so this
-is the sharpest thing in the section and it is aimed squarely at the player who
-keeps losing without ever clearing a body.
-
-**AND A CHAMPION NODE CAN BE THE THIRD ONE TOO, FOR TWO BOSSES.** The rules
+**AND A CHAMPION NODE CAN BE THE FOURTH ONE TOO, FOR TWO BOSSES.** The rules
 compose rather than absorbing each other: the Champion node lands its boss, the
 capstone lands another on top, and the run's hardest node occasionally doubles.
 "On top of whatever else was spawning" is meant literally and the Champion is not
@@ -5013,7 +4963,7 @@ something they steer now, in both directions.
   list is ignored and its shelves, keyed by what were hub ids, simply sit unused.
 - **`RunDifficulty.is_boss_game`** and the `_boss_round` threading through
   `Overworld2._build_choices`, `arrive_at_game` and `_slot_enemy_key` — a boss is
-  a Champion node or the third spawn event, and neither is a property of the
+  a Champion node or the fourth spawn event, and neither is a property of the
   game count.
 - **The per-slot enemy cache** (`_slot_enemies` / `_slot_enemy_key`) keeps doing
   its job for enemies, but it no longer has to hold the kind: the node does.
@@ -5039,16 +4989,16 @@ in the same colour.
   pace note (§4.2). What a card does to the board is part of the same decision as
   what it does to the distance. `GameChoiceModal` spells the mark out in a
   sentence.
-- **On the battlefield strip** (§7.4): beside `⏱ EXTRA TURNS N`, the failure
-  price at this distance and the count to the next boss. The player cannot decide
-  whether one more attempt is worth it without both. The price reads
-  `☠ +N on a loss`, or `☠ none on a loss` when one of §19.5's exemptions is
-  buying it off — and the hover names WHICH, since "none" with no reason reads as
-  a bug. It comes from `GameLoop2.failure_price`, the same function
-  `failure_spawn_count` answers from, so the strip cannot promise a price the
-  spawn does not charge. The boss count reads `boss in N spawns`, turning red at
-  `boss on the next spawn` (`RunDifficulty.spawns_to_boss`). Between games the
-  price is hidden: there is nothing in play to lose at.
+- **On the battlefield strip** (§7.4): beside `☠ AMULET PRESSURE N`, what ending
+  this game will stand up and the count to the next difficulty-up. The price
+  reads `☠ +N when this game ends`, or `☠ none when this game ends` when nothing
+  is owed — and the hover names WHY, since "none" with no reason reads as a bug.
+  It comes from `GameLoop2.end_of_game_price`, the same function the report
+  prices itself with, so the strip cannot promise a price the spawn does not
+  charge. The boss count reads `boss in N spawns`, turning red at `boss on the
+  next spawn` (`RunDifficulty.spawns_to_boss`). Between games the price is
+  hidden: there is nothing in play to end. The escape button carries its own
+  price the same way (§3.2).
 - **On the 🗺 map and the route ladder**: the kind of every node drawn, so the
   road ahead can be routed on. Both draw through `RouteLadder.node_box`, which
   puts the mark in the rung's top-left corner at every zoom — unlike the other
@@ -5056,10 +5006,11 @@ in the same colour.
   it the colour does not already say. It reads the RUNG's id, not the game played
   there (§19.2). The rung's
   card carries it as a `Kind` fact in words.
-- **In the log and a notification** when a failure spawn lands, naming what walked
-  on and why — the escort's old notice generalised. A body that appears because of
-  something the player did needs saying out loud; it is the one arrival they did
-  not choose. (`GameLoop2.spawn_for_failure`; the capstone boss says it too.)
+- **In the log and a notification** when an end-of-game spawn lands, naming what
+  walked on and why — the escort's old notice generalised. A body that appears
+  because of something the player did needs saying out loud; it is the one
+  arrival they did not choose. (`GameLoop2._land_end_of_game_bodies`; the capstone
+  boss says it too.)
 
 
 ### 19.9 Amulet selection — every start is a reference, and there is no fallback
