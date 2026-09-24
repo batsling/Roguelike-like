@@ -144,7 +144,17 @@ func _turn() -> void:
 # (none, this far out), the statuses' bill, the shields expiring and the ground
 # ageing. Where a test is about the report rather than about the board moving.
 func _report() -> void:
+	_shut_failure_tap()
 	GameLoop2.beat_game(false)
+
+# A SETUP HAND-IN, not the subject. A game handed in with nothing defeated spawns
+# bodies (§19.5), rolled at random from the roster — so a report whose only job is
+# to turn a synthetic body into a follower would also stand an authored one beside
+# it, with its own damage and abilities, and every count and Health number after
+# it would be about that body instead. Defeating anything shuts the tap for the
+# game, which is what this says; the failure price has tests of its own.
+func _shut_failure_tap() -> void:
+	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
 
 # Take turns until `instance` is standing in the front column, stopping BEFORE it
 # gets to strike (attacks resolve ahead of the advance). Written as a loop rather
@@ -1852,7 +1862,7 @@ func _stand_at_hops(hops: int) -> bool:
 # test — the caller moves the run afterwards.
 func _stacked_at_front(dmg: int) -> int:
 	var inst: int = _choose_solo(_enemy(dmg))   # spawns at the back column
-	GameLoop2.beat_game(false)      # its own game — after this it is a follower
+	_report()                       # its own game — after this it is a follower
 	_march_to_front(inst)
 	return inst
 
@@ -2064,7 +2074,7 @@ func test_fulfilling_a_goal_holds_its_fire_for_every_turn() -> void:
 	var tough: GoalEnemyData = _enemy(3)
 	tough.health = 2
 	var inst: int = _choose_solo(tough)
-	GameLoop2.beat_game(false)
+	_report()
 	_march_to_front(inst)
 	GameState.hp = 10
 	var res: Dictionary = GameLoop2.beat_game(false, [inst])

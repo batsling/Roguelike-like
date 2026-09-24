@@ -277,6 +277,15 @@ func _reboot(character_id: StringName) -> void:
 func _quiet_ladder() -> void:
 	GameState.spawn_events = 0
 
+# A SETUP REPORT, not the subject. A game handed in with nothing defeated spawns
+# bodies (§19.5), rolled at random from the roster — so a test that misses a game
+# only to leave its body following would also get an authored stranger beside it,
+# and every count, portrait and swing after it would be about that stranger too.
+# Defeating anything shuts the tap for the game, which is what this says; the
+# failure price has tests of its own. Called after the pick, which wipes it.
+func _shut_failure_tap() -> void:
+	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
+
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
 		_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
@@ -551,6 +560,7 @@ func test_pick_then_report_advances_the_loop() -> void:
 	assert_true(GameLoop2.has_arrivals(), "picking spawns the enemy")
 	assert_eq(GameState.current_game_id, target, "player travelled to the picked game")
 	var gp_before: int = GameState.games_played
+	_shut_failure_tap()
 	_ui.report(false)             # miss -> the enemy stacks and follows
 	assert_eq(GameState.games_played, gp_before + 1, "the game counts as played")
 	assert_eq(GameLoop2.stack_size(), 2,
@@ -756,6 +766,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# are then wrong on the handful of enemies that have one — which reads exactly
 	# like a flake and is not one. Abilities are test_enemy_abilities.gd's subject.
 	_disarm_board()
+	_shut_failure_tap()
 	_ui.report(false)
 	# Two followers: the game's own enemy and its escort (§7.5). The escort is taken
 	# off so this test is about ONE follower being fulfilled, which is what it is
@@ -778,6 +789,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# (§8.2) rather than waiting for a report — which is the point of ticking early.
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"the fulfilled follower dropped its loot where it fell")
+	_shut_failure_tap()
 	_ui.report(false)                            # miss current, but fulfil the follower
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
@@ -1090,6 +1102,7 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	GameState.bombs = 1
 	GameState.push = 1
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -1969,6 +1982,7 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	_disarm_board()
 	var before: int = GameLoop2.stack.size()
 	assert_gt(before, 0, "something walked on")
+	_shut_failure_tap()
 	_ui.report(true)                      # completed, ticked nothing
 	assert_eq(GameLoop2.stack.size(), before,
 		"the bodies are all still there — none of them was ticked")
@@ -3988,9 +4002,9 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 	# spawner between the two assertions makes the second one count a portrait the
 	# first could not have known about. Seen: 3 where 2 was counted.
 	_disarm_board()
-	# The CHAMPION's body, not the card's advertised enemy: a Champion node rolls
-	# its boss at commit time (§19.1), so `_chosen["enemy"]` is still the ordinary
-	# enemy the offering dealt.
+	# The body that STOOD, read off the board. The card rolls its boss when it is
+	# drawn now (Overworld2._roll_card_enemy), but this card's kind was forced after
+	# the offering was dealt, so its advertised enemy is still the ordinary one.
 	var boss: GoalEnemyData = stood
 	assert_true(boss.is_boss(), "a Champion node stood a boss up")
 	if boss.image == null:
@@ -4004,6 +4018,7 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 			with_art += 1
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"the report step shows the boss beside the goal it is asking about")
+	_shut_failure_tap()
 	_ui.report(false)                         # miss it: now it follows you
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"and it keeps its portrait on the standing list it moves to")
@@ -4024,6 +4039,7 @@ func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_ui._populate_play_panel()
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"the report step shows the body beside the goal it is asking about")
+	_shut_failure_tap()
 	_ui.report(false)                         # miss it: now it follows you
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
@@ -4259,6 +4275,7 @@ func test_a_missed_goal_leaves_both_bodies_following() -> void:
 	# turn can add a body to the board — a spawner taking its turn during the
 	# report makes the count 3 and reads exactly like the escort rule being wrong.
 	_disarm_board()
+	_shut_failure_tap()
 	_ui.report(false)                    # a missed goal leaves the pair following
 	assert_eq(GameLoop2.stack.size(), 2, "the enemy and its escort are both out there")
 
@@ -4382,6 +4399,7 @@ func test_a_missed_goal_still_advances_the_run() -> void:
 	# withheld, which is what separates this from an escape.
 	var gp_before: int = GameState.games_played
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
@@ -4932,6 +4950,7 @@ func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
 
 func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var expect: Dictionary = {
@@ -5369,6 +5388,7 @@ func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
 
 func test_nothing_prints_the_swing_count_over_the_body() -> void:
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)                         # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
@@ -5429,6 +5449,7 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# behaviour and it is not what this test is about; leaving it to the graph
 	# means asserting that the run happened to open near its goal.
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)
 	await _playback_done()                    # let the first playback finish
 	_leave_post_game()                        # …and walk off its haul, as a player does
@@ -5960,6 +5981,7 @@ func test_an_ordinary_game_leaves_the_board_alone() -> void:
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
 	_pick_enemies(0)
+	_shut_failure_tap()
 	_ui.report(false)
 	assert_eq(GameLoop2.grid_cols(), cols_before,
 		"a game that crosses no gate changes nothing about the board")
@@ -6003,6 +6025,7 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 
 func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
 	_pick_solo(0)
+	_shut_failure_tap()
 	_ui.report(false)                        # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var entry: Dictionary = GameLoop2.stack[0]

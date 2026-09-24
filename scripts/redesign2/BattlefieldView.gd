@@ -1338,11 +1338,25 @@ func refresh() -> void:
 	# Off-field: the overflow queue — bodies with nowhere on the board to stand,
 	# which the current game's enemy can be one of when the back of the board is
 	# already full.
+	#
+	# NO TALLER THAN THE BOARD. The lane is a column of 44px tokens, and every
+	# spawn that finds the back column full queues here now (GameLoop2.spawn_to_stack)
+	# — a crowded board could stack eight of them and run the page past a 720p
+	# window. So it holds one token per ROW, a board cell being at least a token's
+	# height, and the rest are counted on the last one ("+3"). Those are the ones
+	# furthest back in the queue, so the bodies it draws are the next to walk on.
+	var queued: Array = []
 	for entry in GameLoop2.stack:
 		if GameLoop2.entry_hidden(entry):
 			continue
 		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
-			_offgrid_box.add_child(_offgrid_token(entry))
+			queued.append(entry)
+	var room: int = maxi(1, GameLoop2.grid_rows())
+	var drawn: int = queued.size() if queued.size() <= room else room - 1
+	for i in range(drawn):
+		_offgrid_box.add_child(_offgrid_token(queued[i]))
+	if drawn < queued.size():
+		_offgrid_box.add_child(_offgrid_more(queued.slice(drawn)))
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
 	if push_target > 0 and _stack_entry(push_target).is_empty():
@@ -2607,6 +2621,30 @@ func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
 	l.add_theme_constant_override("outline_size", 4)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
+
+# The rest of the off-field queue, counted rather than drawn (see refresh). A
+# token-sized chip, so the lane's height does not depend on how many are behind
+# it, with every name it stands for on the hover.
+func _offgrid_more(rest: Array) -> Control:
+	var chip := PanelContainer.new()
+	chip.custom_minimum_size = Vector2(44, 44)
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.PANEL.lerp(UITheme.BG, 0.3), 5, 2, 1, UITheme.BORDER))
+	var names: PackedStringArray = []
+	for entry in rest:
+		var e: GoalEnemyData = entry.get("enemy")
+		names.append(e.display_name if e != null else "?")
+	chip.tooltip_text = "Also waiting to walk on:\n" + "\n".join(names)
+	var l := Label.new()
+	l.text = "+%d" % rest.size()
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(l)
+	return chip
 
 # A token for an enemy that has no cell on the field: either the overflow queue,
 # or the game you're playing right now (which enters the grid when you report it).
