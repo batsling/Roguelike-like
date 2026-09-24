@@ -6085,6 +6085,10 @@ func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 # shoved in turn — a chain — and the whole thing repeats until the footprint is
 # clear. A body spanning two lanes is shoved as one piece, so it pushes both.
 #
+# A SPAWNER THAT NEVER ATTACKS IS NOT SHOVED (_is_anchored): it cannot be moved,
+# so a lane with one in the way cannot be pushed past it, and the newcomer takes
+# another lane or queues.
+#
 # Returns the cheapest lane's plan — {"row", "steps": {instance: columns}, "cost"}
 # — where cost is the total columns shoved, so "the lane that needs the least
 # pushing" wins and ties break randomly. Empty when every lane is packed to the
@@ -6120,6 +6124,7 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 	var pos: Dictionary = {}        # instance -> front column in the plan
 	var lane: Dictionary = {}       # instance -> its row
 	var who: Dictionary = {}        # instance -> its enemy
+	var anchored: Dictionary = {}   # instance -> true for the unshovable spawners
 	for e in stack:
 		var inst: int = int(e.get("instance", 0))
 		var c: int = int(e.get("col", offgrid_col()))
@@ -6128,6 +6133,8 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 		pos[inst] = c
 		lane[inst] = int(e.get("row", 0))
 		who[inst] = e.get("enemy")
+		if _is_anchored(e):
+			anchored[inst] = true
 	var newcomer: Array = footprint_at(enemy, row, col)
 	var steps: Dictionary = {}
 	var cost: int = 0
@@ -6145,6 +6152,8 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 			var inst: int = int(taken[cell])
 			if moved.has(inst):
 				continue
+			if anchored.has(inst):
+				return {}     # a spawner that never attacks holds its ground
 			moved[inst] = true
 			var cells: Array = footprint_at(who[inst], lane[inst], pos[inst] - 1)
 			if cells.is_empty():
@@ -6157,6 +6166,16 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 			steps[inst] = int(steps.get(inst, 0)) + 1
 			cost += 1
 	return {}
+
+# A body the spawn shove may not move: one that spends EVERY turn summoning
+# (a `turn: summon_*` op — Nested Spawner, Necromancy) and so never attacks.
+# Shoving it forward would only walk a spawner up to the player's face for
+# nothing; it sits where it is and printing bodies is its whole threat.
+func _is_anchored(entry: Dictionary) -> bool:
+	for row in entry_ops_at(entry, &"turn"):
+		if String((row as Dictionary).get("op", "")).begins_with("summon"):
+			return true
+	return false
 
 # Carry out a _shove_plan, one column at a time and front-first, each step through
 # _move_entry — the same path the Push verb takes — so a body shoved onto a mine

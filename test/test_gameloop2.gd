@@ -2602,6 +2602,21 @@ func test_a_tall_body_in_the_way_is_shoved_as_one_piece() -> void:
 	assert_eq(_col_of(tall), cols - 1, "the tall body moved as one piece")
 	assert_eq(_col_of(ahead), cols - 2, "and pushed the body ahead of its lower half")
 
+func test_a_spawner_that_never_attacks_is_not_shoved() -> void:
+	# Lane 0 holds a Nested Spawner at the back; every other lane is packed full.
+	# The spawner holds its ground, so there is no lane to shove and the newcomer
+	# waits off the board.
+	var cols: int = GameLoop2.grid_cols()
+	var spawner: GoalEnemyData = _enemy(0)
+	spawner.abilities = [{"id": &"nested_spawner", "amount": 1, "arg": &"", "text": ""}]
+	var anchor: int = GameLoop2.summon(spawner, Vector2i(cols, 0))
+	for row in range(1, GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(0), Vector2i(c, row))
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(anchor), cols, "the spawner was not pushed")
+	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(), "so the newcomer queued")
+
 func test_a_board_packed_to_the_front_still_queues() -> void:
 	for row in range(GameLoop2.grid_rows()):
 		for c in range(1, GameLoop2.grid_cols() + 1):

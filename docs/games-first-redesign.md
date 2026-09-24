@@ -1521,7 +1521,10 @@ would strand off the edge is put back in the queue rather than left hanging.
   column 1 — leaves a body in the **off-grid queue**, which slides on as space
   frees and never shoves (a queue that pushed the board every turn would be a
   second clock). A summon aimed at a cell of its own (a spawner's brood) never
-  shoves either.
+  shoves either. **A spawner that never attacks is never shoved** — a body whose
+  every turn is a `turn: summon_*` op (Nested Spawner, Necromancy;
+  `GameLoop2._is_anchored`) holds its ground, so a lane with one in the way
+  cannot be pushed and the newcomer takes another lane or queues.
 - **Advance** — each turn (§3.2, one per lost run), every enemy that isn't
   striking closes one column, front-first.
 - **Strike** — an enemy attacks once **any** of its cells is in column 1. Wide
