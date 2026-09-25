@@ -302,7 +302,7 @@ node and its script.
     1280 for a label reading "Select an entry to view details" — a third of the
     widest screen in the game, reserved against a click that had not happened yet,
     which on the Games tab is the difference between five columns and eight while
-    you scan 889 covers. It opens on a click and carries a `✕` to put it away
+    you scan 890 covers. It opens on a click and carries a `✕` to put it away
     again; the grid is an `HFlowContainer`, so it takes the width back by itself.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
@@ -1964,7 +1964,7 @@ above). What's still ahead:
 - **Tags and path requirements (§6.2)** — widen the tag vocabulary on `GameData`
   and let an edge demand a type or tag ("this route needs a Deckbuilder clear"),
   so routing becomes a collection puzzle rather than a shortest path.
-- **Content depth** — the catalogs are thin next to the 889 games: 48 goal-enemies,
+- **Content depth** — the catalogs are thin next to the 890 games: 48 goal-enemies,
   38 bosses, 25 items (3 of them Boss relics, 1 an Event relic), 6 scrolls,
   11 characters, 10 events, 3 curses. More of each (and more goals per type) is
   the cheapest way to add run variety; all of it comes from the sheet.
