@@ -11,5 +11,5 @@ extends PanelContainer
 # `HoverBox` is the same thing for a bare Control (a container, a footprint, a
 # column of tiles) — see HoverBox.gd.
 
-func _make_custom_tooltip(_for_text: String) -> Object:
-	return HoverCard.of(self)
+func _make_custom_tooltip(for_text: String) -> Object:
+	return HoverCard.tip(self, for_text)

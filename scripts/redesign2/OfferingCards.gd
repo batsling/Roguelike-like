@@ -251,7 +251,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# hover line under the cards (see show_preview), which is the same read the
 	# card would be, and a popup over the covers while the mouse crosses three of
 	# them is the noisiest possible way to say it. The cards are for scanning.
-	var btn := Button.new()
+	var btn := HoverButton.new()
 	btn.custom_minimum_size = COVER_SIZE
 	# A CARD UNDER AN ARMED VERB IS A TARGET, and it is drawn as one. Bash and
 	# Transmute are aimed from the chips below the offering (Overworld2._armed_verb),
@@ -474,7 +474,10 @@ func clear_hover_grant() -> void:
 func _preview_idle_text() -> String:
 	if _page._asking_return():
 		return "[i]The detour is over. Open either game to see the road from it, then take the one you want to carry on from.[/i]"
-	return "[i]Hover a game to see the enemy it would spawn — click it for the route, the goal and the way in.[/i]"
+	# Nothing, with nothing hovered: the title over the cards already says what to
+	# do, and a sentence explaining the hover was two lines of the page's tightest
+	# column spent on instructions.
+	return ""
 
 # The enemy's art (§10.1) for a choice, or null when there's no enemy.
 func _enemy_texture(choice: Dictionary) -> Texture2D:

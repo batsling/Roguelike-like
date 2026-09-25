@@ -1045,7 +1045,20 @@ func test_the_click_fires_the_bomb_and_disarms_it() -> void:
 	GameState.bombs = 1
 	_pick_enemies(0)
 	_ui.report(false)
-	var entry: Dictionary = GameLoop2.stack[0]
+	# A NON-BOSS ONE HEALTH FROM DYING, not `stack[0]`. A bomb deals 1 and a boss
+	# is immune to it (GameLoop2.bomb_follower), and the random roll puts a boss
+	# at the head of the stack often enough (the capstone of a band, a Champion
+	# opening) that this failed about one run in six — on a board the bomb was
+	# behaving correctly on.
+	var entry: Dictionary = {}
+	for e in GameLoop2.stack:
+		if not (e["enemy"] as GoalEnemyData).is_boss():
+			entry = e
+			break
+	if entry.is_empty():
+		pending("the board stood nothing but bosses")
+		return
+	entry["health"] = 1
 	var inst: int = int(entry["instance"])
 	var before: int = GameLoop2.stack.size()
 	# Disarmed AFTER `before` is taken, because Split hangs off DEATH: bombing a
@@ -4320,27 +4333,42 @@ func test_reporting_a_game_never_pops_the_rating_modal() -> void:
 	_report_beat(_ui)
 	assert_null(_rating_modal(), "finishing a game doesn't force the rating prompt")
 
-func test_the_played_game_stays_rateable_from_a_button() -> void:
+func test_the_played_game_is_remembered_and_its_card_carries_the_rate_button() -> void:
 	var played: GameData = _ui._choices[0]["game"]
 	_pick_enemies(0)
 	_report_beat(_ui)
 	assert_eq(_ui._last_played_game, played, "the reported game is remembered for rating")
-	# The select-screen controls row offers it as a button.
-	var labels: Array = []
-	for c in _ui._controls_row.get_children():
-		if c is Button:
-			labels.append(String(c.text))
-	var joined: String = "\n".join(labels)
-	assert_true(joined.contains("Rate %s" % played.display_name),
-		"a '★ Rate <game>' button is offered: %s" % joined)
-	# Pressing it is what opens the modal.
+	# The offering's controls row no longer offers it: ★ Rate lives on the card a
+	# game opens, for the game on that card.
+	assert_false(_text_of(_ui._controls_row).contains("Rate"),
+		"no Rate button over the offering: %s" % _text_of(_ui._controls_row))
+	# Pressing the page's own prompt still opens the modal.
 	_ui._prompt_rating(played)
 	var modal: Control = _rating_modal()
-	assert_not_null(modal, "the button opens the rating modal")
+	assert_not_null(modal, "the prompt opens the rating modal")
 	# And it covers the screen, so the dim reads and clicks can't fall through to
 	# the board behind it.
 	assert_gt(modal.size.x, 0.0, "the modal fills the viewport")
 	assert_gt(modal.size.y, 0.0, "the modal fills the viewport")
+
+func test_a_game_card_offers_to_rate_the_game_on_it() -> void:
+	var card: GameChoiceModal = _ui.open_choice(0)
+	assert_not_null(card, "the card opens")
+	if card == null:
+		return
+	var game: GameData = _ui._choices[0]["game"]
+	var rate: Button = null
+	for btn in card.find_children("*", "Button", true, false):
+		if String((btn as Button).text).contains("Rate"):
+			rate = btn
+	assert_not_null(rate, "the card carries a ★ Rate button")
+	if rate != null:
+		assert_string_contains(rate.tooltip_text, game.display_name,
+			"for the game on the card")
+	var modal: Control = card.open_rating(game, rate)
+	assert_not_null(modal, "and pressing it opens the rating modal over the card")
+	assert_true(card.is_ancestor_of(modal), "parented to the card, so it is not behind it")
+	_ui._dismiss_choice_modal()
 
 # --- repeat beats pay a Dash (REPEAT_BEAT_DASH) ----------------------------
 
@@ -6342,20 +6370,37 @@ func _pick_an_unplayed_game() -> GameData:
 	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
 
-func test_escape_is_open_from_the_first_second() -> void:
-	# The door has no gates any more (§3.2): its price is the end-of-game spawn and
-	# one more body, and a price you can read replaced three rules to satisfy.
+# The door opens after ESCAPE_AFTER_LOST_RUNS lost runs of THIS game. Faked by
+# filling the tracker's count rather than playing the turns, so the board and the
+# Health a test is about are left exactly as it arranged them.
+func _unlock_escape() -> void:
+	while GameLoop2.attempts() < GameLoop2.ESCAPE_AFTER_LOST_RUNS:
+		GameLoop2.attempt_costs.append("shield")
+	_ui._refresh()
+
+func test_escape_is_shut_until_three_runs_are_lost() -> void:
+	# Escaping is for a game you have tried and cannot beat, not one you would
+	# rather not try — so the door stays shut until you have lost at it.
 	_pick_an_unplayed_game()
 	assert_eq(GameLoop2.attempts(), 0, "not a single run has been lost")
-	assert_false(GameLoop2.hurt_this_game, "nor has anything laid a finger on you")
-	assert_true(_ui.can_escape(), "and the door is open anyway")
+	assert_false(_ui.can_escape(), "so the door is shut")
 	_ui._refresh()
-	assert_true(_ui._escape_btn.visible, "the button is up to press")
-	assert_false(_ui._escape_btn.disabled, "and lit")
+	assert_true(_ui._escape_btn.visible, "the button is still up, so the door is known about")
+	assert_true(_ui._escape_btn.disabled, "but dark")
+	assert_string_contains(_ui.escape_hint_text(), "%d to go" % GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+		"and the line under it counts down: %s" % _ui.escape_hint_text())
+	GameLoop2.attempt_costs.append("shield")
+	GameLoop2.attempt_costs.append("shield")
+	assert_false(_ui.can_escape(), "two lost runs are not three")
+	assert_string_contains(_ui.escape_hint_text(), "1 to go", _ui.escape_hint_text())
+	GameLoop2.attempt_costs.append("shield")
+	assert_true(_ui.can_escape(), "the third opens it")
+	_ui._refresh()
+	assert_false(_ui._escape_btn.disabled, "and lights the button")
 
-func test_the_line_under_the_button_is_the_price() -> void:
+func test_the_line_under_the_button_is_the_price_once_it_opens() -> void:
 	_pick_an_unplayed_game()
-	_ui._refresh()
+	_unlock_escape()
 	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
 	var hint: String = _ui.escape_hint_text()
 	assert_string_contains(hint, RunDifficulty.bodies_text(owed),
@@ -6363,17 +6408,36 @@ func test_the_line_under_the_button_is_the_price() -> void:
 	assert_string_contains(hint, "no chest", "and what it does not pay: %s" % hint)
 	assert_eq(_ui._escape_hint.text, hint, "which is what the line under the button says")
 	assert_true(_ui._escape_hint.visible, "and it is up while a game is in play")
-	assert_string_contains(_ui._escape_btn.tooltip_text, "no chest",
-		"the tooltip says the same")
+	var lines: String = "\n".join(_ui.escape_hover().get("lines", []))
+	assert_string_contains(lines, "No chest", "the hover card says the same: %s" % lines)
 
-func test_escaping_always_costs_one_more_than_handing_in() -> void:
-	# Even after a kill: walking out is never cheaper than finishing.
+func test_the_escape_hover_is_a_compact_card() -> void:
+	_pick_an_unplayed_game()
+	_ui._refresh()
+	var tip: Object = _ui._escape_btn._make_custom_tooltip(_ui._escape_btn.tooltip_text)
+	assert_not_null(tip, "the Escape button draws its own hover rather than the stock tooltip")
+	if tip == null:
+		return
+	get_tree().root.add_child(tip)
+	await get_tree().process_frame
+	assert_lt((tip as Control).get_combined_minimum_size().x, 400.0,
+		"a card a few hundred pixels wide, not a line across the screen")
+	(tip as Node).queue_free()
+
+func test_escaping_with_nothing_down_costs_one_more_than_handing_in() -> void:
+	_pick_an_unplayed_game()
+	GameLoop2.defeated_this_game = 0
+	var hand_in: int = int(GameLoop2.end_of_game_price()["bodies"])
+	var walk_out: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	assert_eq(walk_out, maxi(hand_in, GameLoop2.ESCAPE_MIN_BODIES),
+		"handing in already pays the +1 for nothing down; the door adds the floor of two")
+
+func test_escaping_after_a_kill_costs_no_more_than_handing_in() -> void:
 	_pick_an_unplayed_game()
 	GameLoop2.defeated_this_game = 1
 	var hand_in: int = int(GameLoop2.end_of_game_price()["bodies"])
 	var walk_out: int = int(GameLoop2.end_of_game_price(true)["bodies"])
-	assert_eq(walk_out, maxi(hand_in + 1, GameLoop2.ESCAPE_MIN_BODIES),
-		"one more body for the door, and never fewer than two")
+	assert_eq(walk_out, hand_in, "a body put down to its goal buys the extra bodies off")
 	GameLoop2.defeated_this_game = 0
 
 func test_escaping_moves_nobody_but_fills_the_board() -> void:
@@ -6388,6 +6452,7 @@ func test_escaping_moves_nobody_but_fills_the_board() -> void:
 	var before: int = GameLoop2.stack_size()
 	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
 	assert_gt(owed, 0, "an escape always owes at least the one body")
+	_unlock_escape()
 	_ui.escape_game()
 	_ui._end_resolve()
 	assert_eq(GameState.hp, 40, "nobody swung on the way out — an escape is no turn")
@@ -6403,6 +6468,7 @@ func test_escaping_advances_the_run_and_the_enemy_follows() -> void:
 	var gp_before: int = GameState.games_played
 	var wanted: GoalEnemyData = _ui._chosen["enemy"]
 	_bleed_at_the_game_in_play()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	# THE BOARD IS BIGGER THAN ONE NOW (§19.5), and counting it was the wrong
@@ -6430,6 +6496,7 @@ func test_escaping_does_not_defeat_the_goal_enemy() -> void:
 	# question is what this escape added, not what the tally reads.
 	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
 	_bleed_at_the_game_in_play()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"escaping is leaving, not killing")
@@ -6443,6 +6510,7 @@ func test_escaping_does_not_count_the_game_as_beaten() -> void:
 	var lifetime_before: int = GameStats.beaten_count(game.id)
 	var run_before: int = GameState.total_games_beaten
 	_bleed_at_the_game_in_play()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_false(GameState.has_beaten_game(game.id),
 		"escaping is leaving, not clearing")
@@ -6460,6 +6528,7 @@ func test_escaping_pays_no_repeat_beat_dash() -> void:
 	_pick_enemies(0)
 	var dash_before: int = GameState.dash_charges
 	_bleed_at_the_game_in_play()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(GameState.dash_charges, dash_before,
 		"walking away from a game you'd beaten before earns nothing")
@@ -6470,6 +6539,7 @@ func test_escaping_still_advances_the_run_clock() -> void:
 	_pick_enemies(0)
 	var gp_before: int = GameState.games_played
 	_bleed_at_the_game_in_play()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(GameState.games_played, gp_before + 1,
 		"games_played counts the game you walked away from")
@@ -6485,15 +6555,17 @@ func test_a_missed_report_is_not_a_beat_either() -> void:
 	assert_false(GameState.has_beaten_game(game.id),
 		"failing a game is not beating it, escape or no escape")
 
-func test_escaping_is_a_door_on_every_game_of_the_run() -> void:
-	# No per-game gate to close behind you: the next game is escapable too.
+func test_every_game_starts_the_escape_count_again() -> void:
+	# Per game: the next game's door is shut until runs are lost at IT.
 	_pick_an_unplayed_game()
+	_unlock_escape()
 	_ui.escape_game()
 	if GameLoop2.run_over or _ui._phase != OVERWORLD.Phase.SELECT:
 		pending("the escape ended the run or the offering, so there is no next game")
 		return
 	_pick_enemies(0)
-	assert_true(_ui.can_escape(), "the next game's door is open from its first second")
+	assert_eq(GameLoop2.attempts(), 0, "the new game has no lost runs yet")
+	assert_false(_ui.can_escape(), "so its door is shut again")
 
 # --- rating flows into the tier list ---------------------------------------
 
@@ -6714,6 +6786,7 @@ func test_escaping_fires_no_game_beaten_trigger() -> void:
 	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])   # so the escape is available at once
 	_watch_game_beaten()
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(_game_beaten_count(), 0,
 		"walking away is not finishing a game, so nothing hooked on it fires")
@@ -6725,6 +6798,7 @@ func test_escaping_pays_no_harvesting_gold() -> void:
 	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
 	var gold_before: int = GameState.gold
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(GameState.gold, gold_before, "no Harvesting payout for leaving")
 
@@ -6742,6 +6816,7 @@ func test_escaping_does_not_recharge_a_charged_item() -> void:
 	inst.current_charge = 0
 	_pick_enemies(0)
 	_mark_beaten_this_run(_ui._chosen["game"])
+	_unlock_escape()
 	_ui.escape_game()
 	assert_eq(inst.current_charge, 0, "leaving does not tick the recharge")
 
@@ -7219,11 +7294,17 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	assert_not_null(screen)
 	if screen == null:
 		return
-	assert_eq(screen._chest_sections.size(), 3, "all three chests were mounted at once")
-	assert_eq(screen.chests_waiting(), 2, "two of them still unanswered besides the first")
+	# AT LEAST the two queued, not exactly three. The report can add chests of its
+	# own — its goal chest, and on some random openings more besides — so an exact
+	# count was only usually true (it failed about one run in five, on the base
+	# code too). What the test is about is that every one of them is up at once.
+	var mounted: int = screen._chest_sections.size()
+	assert_gte(mounted, 2, "both queued chests were mounted, with whatever the report added")
+	assert_eq(screen.chests_waiting(), mounted - 1,
+		"every one of them still unanswered besides the first")
 	# Answering one leaves the others exactly where they were.
 	screen.chest().leave()
-	assert_eq(screen.chests_waiting(), 1, "the rest are untouched")
+	assert_eq(screen.chests_waiting(), mounted - 2, "the rest are untouched")
 	_leave_post_game()
 
 # A relic is ALWAYS a picture. Both card layouts used to draw art only when
@@ -8723,16 +8804,16 @@ func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
 
 # --- the controls row ------------------------------------------------------
 
-func test_the_rate_button_appears_once_a_game_has_been_reported() -> void:
-	# _last_played_game is the controls row's only content for most of a run, and
-	# it moves on a report rather than on anything the row itself can see.
+func test_the_offering_offers_no_rate_button_after_a_report() -> void:
+	# ★ Rate moved onto the card a game opens (GameChoiceModal); the controls row
+	# over the offering is for the verbs that act on the offering.
 	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	_leave_post_game()
 	_ui._render_controls()
-	assert_true(_text_of(_ui._controls_row).contains("Rate"),
-		"the game just played is scorable from the offering")
+	assert_false(_text_of(_ui._controls_row).contains("Rate"),
+		"the offering row does not ask for a score")
 
 func test_the_start_panel_empties_the_controls_row_for_good() -> void:
 	# _refresh clears this row itself on the start panel rather than going through

@@ -723,21 +723,26 @@ static func check_icon(ticked: bool, dim: bool = false,
 		tick = tick.lerp(BG, 0.6)
 	if armed:
 		img.fill(Color(0, 0, 0, 0))
-		var mid: float = (n - 1) * 0.5
-		var outer: float = mid - 0.5
+		# ANTI-ALIASED ON BOTH EDGES, by coverage. It used to test each pixel's
+		# distance against the two radii and paint it one colour or the other, with
+		# a single faded pixel outside — so the outer edge was soft and the INNER
+		# one, where the gold ring meets the dark fill, was a hard staircase all the
+		# way round. That inner edge is the one the eye reads as the circle. Each
+		# pixel now takes how much of it lies inside each radius (a signed
+		# distance, clamped to one pixel's width) and blends accordingly.
+		var mid: float = n * 0.5
+		var outer: float = mid - 0.75
 		var inner: float = outer - CHECK_BORDER
 		for y in range(n):
 			for x in range(n):
-				var d: float = Vector2(x - mid, y - mid).length()
-				if d <= inner:
-					img.set_pixel(x, y, fill)
-				elif d <= outer:
-					img.set_pixel(x, y, border)
-				elif d <= outer + 1.0:
-					# One ALPHA-FADED ring on the outside, so the circle does not come
-					# out of this as a staircase next to the square's clean edges.
-					img.set_pixel(x, y, Color(border.r, border.g, border.b,
-						outer + 1.0 - d))
+				var d: float = Vector2(x + 0.5 - mid, y + 0.5 - mid).length()
+				var in_outer: float = clampf(outer - d + 0.5, 0.0, 1.0)
+				if in_outer <= 0.0:
+					continue
+				var in_inner: float = clampf(inner - d + 0.5, 0.0, 1.0)
+				var c: Color = border.lerp(fill, in_inner)
+				c.a *= in_outer
+				img.set_pixel(x, y, c)
 	else:
 		for y in range(n):
 			for x in range(n):

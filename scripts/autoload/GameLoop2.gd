@@ -609,8 +609,8 @@ var answered_this_game: Dictionary = {}
 # include the ones already resolved.
 var goals_met_this_game: int = 0
 
-# How many bodies were DEFEATED during this game — the count the escape gate reads
-# (Overworld2.can_escape, §3.2). It is a count of KILLS, not of goals: a body that
+# How many bodies were DEFEATED during this game — the count that waives the
+# end-of-game +1, an escape's included (end_of_game_price, §19.5). It is a count of KILLS, not of goals: a body that
 # took its goal hit and lived is not on it, and a body finished off by a mine or a
 # bottle is. What it deliberately does NOT count is a BOMB, which takes the body
 # off the board through `_take_off_board` without ever reaching `_defeat` — buying
@@ -1802,8 +1802,11 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 #   * BEATING A GOAL this game waives the +1, and only the +1 — the reward for
 #     answering the board. A bomb, wand, mine or another body killing one does
 #     not (see _defeat's `goal_kill`).
-#   * AN ESCAPE always pays the +1, kill or no kill, and never less than
-#     ESCAPE_MIN_BODIES: walking out must never be cheaper than finishing.
+#   * AN ESCAPE with no goal beaten pays the +1 and never less than
+#     ESCAPE_MIN_BODIES. An escape AFTER a body went down to its goal pays what
+#     handing the game in would: the player answered the board, and the door is
+#     already gated behind ESCAPE_AFTER_LOST_RUNS lost runs, so it is not the
+#     cheap way out of a game they simply did not fancy.
 #
 # An Event or a Shop node is NOT exempt. It stood nothing on the board, but the
 # evening still ended, and the road still charges for where it ended.
@@ -1820,6 +1823,12 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # not fancy close to free; two is a price.
 const ESCAPE_MIN_BODIES := 2
 
+# How many runs of the game in play have to be LOST before the door out of it
+# opens (Overworld2.can_escape). Per game: the count is `attempts()`, which every
+# game starts at zero. Without it escape was the answer to any game that looked
+# hard — walk out before trying — and the whole run is built on trying.
+const ESCAPE_AFTER_LOST_RUNS := 3
+
 func end_of_game_price(escaped: bool = false) -> Dictionary:
 	if not game_in_play or run_over:
 		return {"bodies": 0, "why": ""}
@@ -1829,10 +1838,10 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	if here == GameState.amulet_game_id:
 		return {"bodies": 0, "why": "nothing follows you past the Amulet"}
 	var bodies: int = pressure()
-	if escaped or defeated_this_game <= 0:
+	if defeated_this_game <= 0:
 		bodies += 1
-	if escaped:
-		bodies = maxi(bodies, ESCAPE_MIN_BODIES)
+		if escaped:
+			bodies = maxi(bodies, ESCAPE_MIN_BODIES)
 	return {"bodies": bodies,
 		"why": "" if bodies > 0 else "a body went down to its goal here, out in the wilds"}
 

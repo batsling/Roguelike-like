@@ -351,7 +351,7 @@ func _build_header(game: GameData, accent: Color) -> Control:
 	title.add_theme_color_override("font_color", accent)
 	row.add_child(title)
 
-	var close := Button.new()
+	var close := HoverButton.new()
 	close.text = "✕"
 	close.tooltip_text = ("Onto the board — you are already here." if bool(_notes.get("arrival", false))
 		else "Back to the offering — nothing is chosen.")
@@ -379,58 +379,39 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(col)
 
-	# ABOVE the cover, not under it: "how many doors does this open" is a routing
-	# fact, and routing is what the popup is opened to decide. The cover is the
-	# thing you have already seen, so it does not get to sit in front of this.
+	# THE COVER WITH ITS FACTS BESIDE IT. The cover sat alone in the middle of the
+	# column with the connection count over it and a centred stack of one-line facts
+	# under it — year, shields, pace, record — each a different width, so the
+	# column read as a ragged pile rather than as a card. Now the facts are one
+	# left-aligned list to the right of the art, the ★ Rate button at its foot, and
+	# the source (the evidence for the edge you'd walk) a band of its own beneath.
+	# The cover is the identifier, not the exhibit: it is what you clicked.
+	var facts := VBoxContainer.new()
+	facts.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	facts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	var meta: Array = []
+	if game.year > 0:
+		meta.append(str(game.year))
+	meta.append(RunGraph.type_label(game.type))
+	var chip := Label.new()
+	chip.text = "  •  ".join(meta).to_upper()
+	chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
+	facts.add_child(chip)
+
+	# "How many doors does this open" is a routing fact, and routing is what the
+	# popup is opened to decide — so it heads the list.
 	var counts: Dictionary = connection_counts(StringName(_choice.get("slot", &"")))
 	var conn := Label.new()
 	conn.text = connection_text(counts)
 	conn.tooltip_text = connection_tip(game, counts)
-	conn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	conn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	conn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	conn.add_theme_color_override("font_color",
 		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
-	col.add_child(conn)
-
-	# THE COVER AND THE SOURCE ARE ONE ROW, art on the left and the evidence beside
-	# it. The source was a band of its own under the game's facts, which is four
-	# lines of a column that has none to spare — and the cover was always the
-	# tallest thing here with dead space either side of it. Beside the art the
-	# source costs the column the height of the cover and nothing more, and the
-	# room it gives back goes to the enemy block under it.
-	#
-	# The cover shrinks a little to pay for the width (see COVER): it is the one
-	# thing on this popup the player has already seen — it is what they clicked —
-	# so it is the identifier, not the exhibit.
-	var source_block: Control = _build_source_block()
-	if game.cover_image != null:
-		var art := TextureRect.new()
-		art.texture = game.cover_image
-		art.custom_minimum_size = COVER
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		UITheme.attach_tier_badge(art, game.id)
-		var frame := PanelContainer.new()
-		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
-		frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		frame.add_child(art)
-		if source_block == null:
-			col.add_child(frame)
-		else:
-			# CENTRED AS A PAIR, not each half in the middle of the column: the two
-			# read as one block that way, and a lone cover keeps the centring it has
-			# always had (the branch above).
-			var cover_row := HBoxContainer.new()
-			cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-			cover_row.alignment = BoxContainer.ALIGNMENT_CENTER
-			cover_row.add_child(frame)
-			source_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			source_block.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			cover_row.add_child(source_block)
-			col.add_child(cover_row)
-			source_block = null      # placed; the block below has nothing left to do
+	facts.add_child(conn)
 
 	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
 	# else on the card already speaks for the REPLACEMENT — its cover, its type,
@@ -440,29 +421,18 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# place on the graph, so the road out is the OLD game's road, not this one's.
 	var was: GameData = GameLoop2.original_at(StringName(_choice.get("slot", &"")))
 	if was != null:
-		col.add_child(_fact_line("⚗ Transmuted — was %s" % was.display_name,
+		facts.add_child(_fact_line("⚗ Transmuted — was %s" % was.display_name,
 			UITheme.ACCENT,
 			("This spot held %s; a transmute pasted %s over it for the rest of the run. "
 			+ "Its connections are unchanged — the route below is still %s's.") % [
 				was.display_name, game.display_name, was.display_name]))
-
-	var meta: Array = []
-	if game.year > 0:
-		meta.append(str(game.year))
-	meta.append(RunGraph.type_label(game.type))
-	var chip := Label.new()
-	chip.text = "  •  ".join(meta).to_upper()
-	chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
-	col.add_child(chip)
 
 	# The SHIELDS this game hands you (§3) — the reason a Traditional roguelike is
 	# worth routing through even when it isn't the short way. A card that only MOVES
 	# the run grants none of them: nothing is being committed to yet.
 	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
 	if shields > 0:
-		col.add_child(_fact_line("%s  %s" % ["◆".repeat(shields),
+		facts.add_child(_fact_line("%s  %s" % ["◆".repeat(shields),
 			GameState.temp_shields_text(shields)],
 			Overworld2.SHIELD_BLUE,
 			("Selecting %s grants %s. Each one stops a single hit outright, however "
@@ -473,25 +443,46 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# game, so it goes with the shields on a move-only card.
 	var pace: Dictionary = {} if bool(_notes.get("move_only", false)) else _notes.get("pace", {})
 	if String(pace.get("text", "")) != "":
-		col.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
+		facts.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
 			String(pace.get("tip", ""))))
 
 	# A game the run has already played pays a Dash for going back and beating it.
 	if bool(_choice.get("repeat", false)):
-		col.add_child(_fact_line("⚡ Gain +%d Dash" % Overworld2.REPEAT_BEAT_DASH,
+		facts.add_child(_fact_line("⚡ Gain +%d Dash" % Overworld2.REPEAT_BEAT_DASH,
 			Overworld2.DASH_BLUE,
 			"You have played %s already this run — go back and beat it for a Dash charge." % game.display_name))
 
 	var beaten: int = GameStats.beaten_count(game.id)
 	if beaten > 0:
-		col.add_child(_fact_line("⚔ Beaten %d time%s" % [beaten, "" if beaten == 1 else "s"],
+		facts.add_child(_fact_line("⚔ Beaten %d time%s" % [beaten, "" if beaten == 1 else "s"],
 			UITheme.GOLD, "Your lifetime record in %s." % game.display_name))
 
-	# THE COVERLESS CASE. The source rides beside the art (above), and a game with
-	# no art in the sheet has no art to ride: it falls back to a band of its own,
-	# above the enemy block rather than under it, because the enemy block is the
-	# tallest thing in this column and anything after it is below the fold on the
-	# games with most to say.
+	# ★ RATE, on the game you are looking at. It used to be a button on the
+	# offering for the game you had just LEFT, which put a score for one game
+	# above a row of three others; here it scores the game whose cover is beside it.
+	facts.add_child(_rate_button(game))
+
+	if game.cover_image != null:
+		var art := TextureRect.new()
+		art.texture = game.cover_image
+		art.custom_minimum_size = COVER
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.attach_tier_badge(art, game.id)
+		var frame := PanelContainer.new()
+		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
+		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		frame.add_child(art)
+		var cover_row := HBoxContainer.new()
+		cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+		cover_row.add_child(frame)
+		cover_row.add_child(facts)
+		col.add_child(cover_row)
+	else:
+		col.add_child(facts)
+
+	# The evidence for the connection you would be walking, under the pair.
+	var source_block: Control = _build_source_block()
 	if source_block != null:
 		col.add_child(HSeparator.new())
 		col.add_child(source_block)
@@ -573,7 +564,7 @@ func _build_source_block() -> Control:
 		# The URL under the button, as the Atlas does it: the button is the verb and
 		# the address is the evidence, and a player who wants to know WHERE a claim
 		# comes from should not have to open a browser to find out.
-		var open_btn := Button.new()
+		var open_btn := HoverButton.new()
 		open_btn.text = "🔗  Open source"
 		open_btn.tooltip_text = source
 		open_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -792,11 +783,49 @@ func _fact_line(text: String, color: Color, tip: String = "") -> Control:
 	var l := Label.new()
 	l.text = text
 	l.tooltip_text = tip
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", color)
 	return l
+
+# The ★ Rate button for the game on this card: "Rate this game", or the score it
+# already carries so a press reads as an edit. The modal is parented to THIS
+# card so it opens over it rather than behind it on the page.
+func _rate_button(game: GameData) -> Button:
+	var btn := HoverButton.new()
+	btn.text = rate_button_text(game)
+	btn.tooltip_text = "Score %s out of 10 on your tier list — optional, and you can change it later." \
+		% game.display_name
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	btn.add_theme_color_override("font_color", UITheme.GOLD)
+	btn.pressed.connect(func(): open_rating(game, btn))
+	return btn
+
+static func rate_button_text(game: GameData) -> String:
+	var existing: Dictionary = TierList.get_rating(game.id)
+	return "★  Rated %d/10" % int(existing.get("score", 0)) \
+		if not existing.is_empty() else "★  Rate this game"
+
+func open_rating(game: GameData, btn: Button = null) -> Control:
+	# By path, not by class: this card is on the page's compile path and the
+	# rating modal is only ever opened on demand (test_page_load.gd).
+	var modal: Control = load("res://scripts/ui/RateGameModal.gd").new()
+	modal.setup(game.id, game)
+	modal.submitted.connect(func(score: int, notes: String):
+		TierList.set_rating(game.id, score, notes)
+		var rank_now: bool = modal.wants_ranking()
+		modal.queue_free()
+		if btn != null and is_instance_valid(btn):
+			btn.text = rate_button_text(game)
+		if rank_now:
+			# By path, at the click, as the haul screen does it: naming the class
+			# here would compile the tier list into every run's page load
+			# (docs/performance-backlog.md §6).
+			load("res://scripts/ui/TierListScreen.gd").open(self, game.id))
+	modal.dismissed.connect(func(): modal.queue_free())
+	add_child(modal)
+	return modal
 
 # --- the route column ------------------------------------------------------
 
@@ -1049,13 +1078,13 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	# being announced into one and shown a door that goes nowhere.
 	var arrival: bool = bool(_notes.get("arrival", false))
 	if not arrival:
-		var back := Button.new()
+		var back := HoverButton.new()
 		back.text = "Back"
 		back.custom_minimum_size = Vector2(110, 44)
 		back.pressed.connect(_close)
 		row.add_child(back)
 
-	var go := Button.new()
+	var go := HoverButton.new()
 	go.text = String(_notes.get("action_text", "▶  Travel to %s" % game.display_name))
 	go.tooltip_text = String(_notes.get("action_tip",
 		"Commit to this game — you'll go and play it for real."))

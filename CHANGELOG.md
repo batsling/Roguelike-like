@@ -11,6 +11,51 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Playtest pass: the escape gate, the board's animations, and a tidier page.**
+  A list of notes from a play session. Spec: §3.2, §19.5.
+  - **Escape opens after 3 lost runs of the game in play**
+    (`GameLoop2.ESCAPE_AFTER_LOST_RUNS`, `Overworld2.can_escape`). The count is
+    per landing — every game, a repeat included, starts at zero. Ungated, the
+    door was the answer to any game that looked too hard. **After a body went
+    down to its goal, escaping costs what handing the game in does** — no +1, no
+    floor of two (`GameLoop2.end_of_game_price`). The button is up but dark until
+    then, with a countdown under it.
+  - **Hovers are compact boxes.** Godot's stock tooltip never wraps, so a
+    two-sentence tip ran across the screen. `HoverButton` (a Button whose
+    `_make_custom_tooltip` draws `HoverCard.tip`) now backs every button on the
+    run's page, the board, the offering, the game card, the haul and the start
+    picker: a HoverCard if one is attached, else the plain text wrapped at
+    `HoverCard.TEXT_WRAP`. `HoverPanel` / `HoverBox` fall back the same way. The
+    Escape button carries a card of its own (`Overworld2.escape_hover`).
+  - **Bodies arriving and leaving are animated** (`BattlefieldView._play_arrivals`
+    / `_play_departures`). A body the end of a game stood up used to simply be
+    there, and with nothing else moving the haul screen came straight down over
+    it, so the spawn happened off screen in effect. Newcomers now walk on from
+    past the back edge with a landing flash, and a body cleared at the hand-in
+    fades where it stood. **Crowds are staggered** (`stagger_step`): several
+    strikes, arrivals or departures play one after another inside about a second,
+    not all on one frame, and the hero's recoil no longer fights itself.
+  - **The strip above the grid is two lines**: the pressure and its ladder with
+    the end-of-game price on the right, then the small print (hops, next boss,
+    difficulty). The `▦ 4×4` board size is gone from it; the grid shows that.
+  - **The boss wears a ☠ on its top-left corner** on the grid, pulled out onto
+    the frame so it covers the corner rather than the face.
+  - **Enemy status pips are smaller** (16 → 11px) and hang less far below the
+    box, so they cover less of the body underneath.
+  - **The round checkmarks are anti-aliased on both edges** (`UITheme.check_icon`
+    `armed`); the inner edge used to be a hard staircase.
+  - **The haul screen's numbers are live**: using loot on it moves the Health
+    tile at once (`PostCombatScreen._refresh_tally`).
+  - **The start picker shows "+ ?" beside each road's enemy** when a second body
+    will be rolled on arrival.
+  - **The offering is headed "Choose a Game"**, large and centred, and the idle
+    "Hover a game to see…" sentence is gone.
+  - **★ Rate moved onto the card a game opens** (`GameChoiceModal._rate_button`),
+    scoring the game on that card; it is off the offering's controls row. The
+    card's left column is re-laid out: the cover with a left-aligned list of its
+    facts beside it (year and genre, connections, shields, record, Rate), the
+    source under the pair.
+
 - **Combat redesign: losing moves the board, ending a game fills it.** A pass to
   make the enemy grid less obtuse, taken from a design conversation rather than a
   bug. Spec: §3.2, §7.2–7.4, §8.2, §19.5–19.8.

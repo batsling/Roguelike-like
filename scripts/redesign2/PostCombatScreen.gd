@@ -121,6 +121,9 @@ var _exit_btn: Button = null
 # than binning it without a word.
 var _chest_sections: Array = []
 var _loot_section: LootDropModal = null
+# The tally's tiles, held so they can be repainted when a stat moves UNDER the
+# screen — a potion read off the table, a Hollow Heart taken out of a chest.
+var _tally_flow: HFlowContainer = null
 
 
 func _init() -> void:
@@ -182,6 +185,26 @@ static func open(page: Node, snapshot: Dictionary, drops: Array,
 func _ready() -> void:
 	theme = UITheme.shared()
 	_build()
+	# LIVE, not a photograph of the report. The haul is where loot gets spent —
+	# a potion drunk here heals now — and a Health tile still quoting the number
+	# from before the drink reads as the potion not having worked.
+	for sig in [GameState.hp_changed, GameState.stats_changed]:
+		if not (sig as Signal).is_connected(_refresh_tally):
+			(sig as Signal).connect(_refresh_tally)
+
+func _exit_tree() -> void:
+	for sig in [GameState.hp_changed, GameState.stats_changed]:
+		if (sig as Signal).is_connected(_refresh_tally):
+			(sig as Signal).disconnect(_refresh_tally)
+
+func _refresh_tally(_a = null, _b = null) -> void:
+	if _tally_flow == null or not is_instance_valid(_tally_flow):
+		return
+	for c in _tally_flow.get_children():
+		_tally_flow.remove_child(c)
+		c.queue_free()
+	for entry in tally():
+		_tally_flow.add_child(_tile(String(entry[0]), String(entry[1]), entry[2]))
 
 
 # ---------------------------------------------------------------------------
@@ -504,7 +527,7 @@ func _header() -> Control:
 # under this CanvasLayer (128) and a modal added there opens behind the very
 # screen whose button asked for it.
 func _rate_button(g: GameData) -> Button:
-	var btn := Button.new()
+	var btn := HoverButton.new()
 	var existing: Dictionary = TierList.get_rating(g.id)
 	btn.text = "★  Rated %d/10" % int(existing.get("score", 0)) \
 		if not existing.is_empty() else "★  Rate this game"
@@ -600,12 +623,11 @@ func _tally_panel() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
-	flow.add_theme_constant_override("v_separation", UITheme.GAP)
-	wrap.add_child(flow)
-	for entry in tally():
-		flow.add_child(_tile(String(entry[0]), String(entry[1]), entry[2]))
+	_tally_flow = HFlowContainer.new()
+	_tally_flow.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
+	_tally_flow.add_theme_constant_override("v_separation", UITheme.GAP)
+	wrap.add_child(_tally_flow)
+	_refresh_tally()
 	return wrap
 
 func _tile(key: String, value: String, color: Color) -> Control:

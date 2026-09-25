@@ -120,7 +120,7 @@ func test_the_manual_teaches_node_kinds_and_the_end_of_game_price() -> void:
 			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
 		assert_string_contains(text, RunGraph.kind_mark(int(kind)) + " ")
 	assert_string_contains(text, "Every game that ends brings more of them")
-	assert_string_contains(text, "Escaping always adds 1")
+	assert_string_contains(text, "Escaping with nothing down adds that 1 too")
 	assert_string_contains(text, "Every %dth spawn" % RunDifficulty.GAMES_PER_TIER)
 	assert_false(text.contains("ESCORT"), "the escort was retired in §19.7")
 	assert_false(text.contains("games you PLAY, the run's tier"),
@@ -139,13 +139,13 @@ func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 
 
 func test_the_escape_rule_the_manual_quotes_is_the_real_one() -> void:
-	# The gate is a HIT now, not a count of lost runs (§3.2) — so the manual must
-	# be teaching the hit, and must not be quoting a threshold that no longer
-	# exists anywhere in the build.
+	# The gate is LOST RUNS OF THE GAME IN PLAY (§3.2), counted from the real
+	# constant — and the retired hit gate must not still be taught beside it.
 	var text: String = _all_text()
-	assert_string_contains(text, "takes Health off you during this game")
-	assert_false(text.contains("lost runs, or immediately"),
-		"the old five-lost-runs gate is gone from the manual too")
+	assert_string_contains(text, "%d RUNS of it" % GameLoop2.ESCAPE_AFTER_LOST_RUNS)
+	assert_string_contains(text, "starts again at every game you land on")
+	assert_false(text.contains("takes Health off you during this game"),
+		"the old draw-blood gate is gone from the manual")
 
 
 # --- the screen -------------------------------------------------------------

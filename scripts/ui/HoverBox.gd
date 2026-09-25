@@ -9,5 +9,5 @@ extends VBoxContainer
 # hover (the tile, the Use button above it and the gap between them), so the
 # card has to hang off the column and not off the art inside it.
 
-func _make_custom_tooltip(_for_text: String) -> Object:
-	return HoverCard.of(self)
+func _make_custom_tooltip(for_text: String) -> Object:
+	return HoverCard.tip(self, for_text)

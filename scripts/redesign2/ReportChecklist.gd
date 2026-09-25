@@ -110,7 +110,7 @@ func populate_play_panel() -> void:
 	# file_location column (falling back to its store page). Only games with a
 	# launch target get the button.
 	if game.has_launch_target():
-		var play_btn := Button.new()
+		var play_btn := HoverButton.new()
 		play_btn.text = "▶  Play %s" % game.display_name
 		play_btn.custom_minimum_size = Vector2(0, 38)
 		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2212,7 +2212,7 @@ func _counter_controls(counter: Dictionary, color: Color, locked: bool) -> Contr
 	return line
 
 func _count_button(glyph: String, tint: Color, tip: String, on_press: Callable) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = glyph
 	b.tooltip_text = tip
 	b.custom_minimum_size = Vector2(COUNT_BTN, COUNT_BTN)
@@ -2403,7 +2403,7 @@ func _verify_head_row(text: String) -> Control:
 # the checklist.
 func completed_button() -> Button:
 	var done: int = GameLoop2.completed_goals.size()
-	var btn := Button.new()
+	var btn := HoverButton.new()
 	btn.text = "✓  %d done" % done
 	btn.tooltip_text = ("Everything you have ticked this run, under the game you "
 		+ "did it at. This list is only what is still owed.")
