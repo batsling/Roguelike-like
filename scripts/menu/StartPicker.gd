@@ -351,14 +351,19 @@ func _waiting_row(enemy: GoalEnemyData, extra: int = 0) -> Control:
 		tip += "\n%s" % enemy.goal
 	tip += "\n\nIt walks on with the game and follows you until its goal is cleared."
 	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
+		# THE BOARD'S HOVER CARD, not a stock tooltip: the same art, name, goal and
+		# abilities a body on the board shows, so the enemy reads the same before
+		# the run starts as it will once it is standing there.
+		var hot := HoverPanel.new()
+		hot.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		hot.mouse_filter = Control.MOUSE_FILTER_STOP
+		var art := UITheme.crisp_tex(enemy.image, int(ENEMY_ART.x))
 		art.custom_minimum_size = ENEMY_ART
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.tooltip_text = tip
-		art.mouse_filter = Control.MOUSE_FILTER_STOP
-		row.add_child(art)
+		UITheme.apply_crisp(art, enemy.image)
+		hot.add_child(art)
+		HoverCard.attach(hot, BattlefieldView.offered_enemy_hover(enemy,
+			"It walks on with the game and follows you until its goal is cleared."))
+		row.add_child(hot)
 	else:
 		var named := Label.new()
 		named.text = "☠  %s" % enemy.display_name

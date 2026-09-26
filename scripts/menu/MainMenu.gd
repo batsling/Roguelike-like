@@ -14,6 +14,9 @@ const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 # How far the corner controls sit in from the edge of the screen.
 const CORNER_MARGIN := 16.0
 
+# The menu's text size: the theme's 14 a quarter larger (see _style_menu).
+const MENU_FONT := UITheme.FONT_HEAD
+
 @onready var _continue_btn: Button = %ContinueBtn
 @onready var _save_list_container: VBoxContainer = %SaveList
 @onready var _modal_layer: Control = %ModalLayer
@@ -70,12 +73,20 @@ func _ready() -> void:
 # test_main_menu pins the scene's three colours to UITheme so a theme change
 # cannot leave the scene behind.
 func _style_menu() -> void:
+	# THE MENU IS DRAWN A QUARTER LARGER THAN THE REST OF THE UI. It is the one
+	# screen with nothing on it but a column of choices, and at the theme's own
+	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
+	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
+	# button's text size is the theme's until something overrides it.
+	for btn in [%HowToPlayBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
+			%CollectionBtn, %TierListBtn, %SettingsBtn, %QuitBtn]:
+		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
 	# Make the primary action stand out — a stylebox, which a scene cannot share
 	# with the theme the way it can a colour.
 	var start := %StartRunBtn as Button
 	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	start.add_theme_color_override("font_color", UITheme.GOLD)
-	start.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+	start.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 
 # The game's own art falling past, down both sides of the button column. Mounted
 # as the FIRST child so it draws under everything else in the scene — the
@@ -107,17 +118,18 @@ func _build_profile_row() -> void:
 	var row := HBoxContainer.new()
 	row.name = "ProfileRow"
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 
 	_profile_lbl = Label.new()
-	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_profile_lbl)
 
 	var switch_btn := Button.new()
 	switch_btn.name = "ProfileBtn"
 	switch_btn.text = "Switch"
-	switch_btn.custom_minimum_size = Vector2(96, 30)
+	switch_btn.custom_minimum_size = Vector2(120, 38)
+	switch_btn.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	switch_btn.pressed.connect(_on_profiles)
 	row.add_child(switch_btn)
 
@@ -157,7 +169,7 @@ func _move_quit_to_corner() -> void:
 			and _modal_layer.get_parent() == self:
 		move_child(corner, _modal_layer.get_index())
 
-	quit_btn.custom_minimum_size = Vector2(150, 36)
+	quit_btn.custom_minimum_size = Vector2(188, 45)
 	quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	quit_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	quit_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -252,7 +264,7 @@ func _populate_save_list() -> void:
 		var none := Label.new()
 		none.text = "No saved runs yet — the overworld's 💾 Save button makes one."
 		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		none.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		none.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		none.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		_save_list_container.add_child(none)
 		_refresh_continue_button()
@@ -272,16 +284,16 @@ func _save_row(entry: Dictionary) -> Control:
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.custom_minimum_size = Vector2(190, 0)
+	text.custom_minimum_size = Vector2(238, 0)
 	row.add_child(text)
 	var title := Label.new()
 	title.text = String(entry.get("name", "")) if String(entry.get("name", "")) != "" else "Unnamed run"
-	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	title.add_theme_color_override("font_color", UITheme.GOLD if is_auto else UITheme.TEXT)
 	text.add_child(title)
 	var sub := Label.new()
 	sub.text = _save_subtitle(entry)
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	text.add_child(sub)
 
@@ -296,20 +308,21 @@ func _save_row(entry: Dictionary) -> Control:
 		tag.text = custom
 		tag.tooltip_text = "This run was built on the Custom Run screen — resuming it rebuilds that map."
 		tag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		tag.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		tag.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		tag.add_theme_color_override("font_color", UITheme.ACCENT)
 		text.add_child(tag)
 
 	var load_btn := Button.new()
 	load_btn.text = "Resume"
-	load_btn.custom_minimum_size = Vector2(84, 32)
+	load_btn.custom_minimum_size = Vector2(105, 40)
+	load_btn.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	load_btn.pressed.connect(func(): _resume_save(entry))
 	row.add_child(load_btn)
 
 	var del := Button.new()
 	del.text = "🗑"
 	del.tooltip_text = "Delete this save"
-	del.custom_minimum_size = Vector2(36, 32)
+	del.custom_minimum_size = Vector2(45, 40)
 	del.pressed.connect(func(): _delete_save(entry))
 	row.add_child(del)
 	return wrap

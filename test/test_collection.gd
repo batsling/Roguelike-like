@@ -272,12 +272,45 @@ func test_events_tab_shows_every_2_0_event() -> void:
 		"every event in data/events2.0 has a cell")
 	assert_gt(Data.all_events2().size(), 0, "and there are some to show")
 
-func test_the_events_tab_opens_on_a_filled_detail_panel() -> void:
+# The Events tab opens on its GRID, like every other tab: an entry is a popup over
+# it now, and one that opened by itself would be covering the grid you came to see.
+func test_the_events_tab_opens_on_its_grid_and_a_click_fills_the_popup() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.EVENTS)
-	assert_not_null(col._detail_box, "the events tab has a detail panel")
-	assert_gt(col._detail_box.get_child_count(), 0,
-		"and it is filled in rather than waiting for a click")
+	assert_not_null(col._detail_box, "the events tab has a detail popup")
+	assert_false(col._detail_panel.visible, "which is not up until something is picked")
+	if col._nav.is_empty():
+		pending("no events to click")
+		return
+	col._select(0)
+	assert_true(col._detail_panel.visible, "a click opens it")
+	assert_gt(col._detail_box.get_child_count(), 0, "filled in")
+
+# ◀ ▶ WALK THE GRID, and the lit cell follows. The popup covers the middle of the
+# screen, so the cell it is about has to say so on its own.
+func test_the_arrows_step_through_the_grid_and_light_the_cell_they_land_on() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ENEMIES)
+	if col._nav.size() < 3:
+		pending("the roster is too small to step through")
+		return
+	col._select(1)
+	assert_eq(col._nav_index, 1)
+	var lit: StyleBoxFlat = (col._nav[1]["panel"] as PanelContainer).get_theme_stylebox("panel")
+	assert_eq(lit.border_width_left, 4, "the picked cell wears the thick rim")
+	assert_false(col._nav_prev.disabled, "there is one before it")
+	col._step_detail(1)
+	assert_eq(col._nav_index, 2, "▶ moves on one")
+	var was: StyleBoxFlat = (col._nav[1]["panel"] as PanelContainer).get_theme_stylebox("panel")
+	assert_eq(was.border_width_left, 2, "and the cell it left goes back to plain")
+	col._step_detail(-1)
+	col._step_detail(-1)
+	assert_eq(col._nav_index, 0, "◀ walks back")
+	assert_true(col._nav_prev.disabled, "and stops at the first")
+	col._close_detail()
+	assert_eq(col._nav_index, -1, "closing lets go of the selection")
+	var plain: StyleBoxFlat = (col._nav[0]["panel"] as PanelContainer).get_theme_stylebox("panel")
+	assert_eq(plain.border_width_left, 2, "and unlights the cell")
 
 # The detail panel is the whole point of the tab: it has to lay out EVERY event's
 # choices, gates, goals and curses without tripping over an optional field.

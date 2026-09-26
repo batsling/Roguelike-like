@@ -119,7 +119,10 @@ func _build() -> void:
 	head.add_theme_color_override("font_color", Color(1, 0.72, 0.45))
 	vbox.add_child(head)
 
+	# An empty body is no body: a panel whose `extra` says everything (the
+	# report's "Completion" review) shouldn't carry a blank line's gap for it.
 	var text := Label.new()
+	text.visible = _body != ""
 	text.text = _body
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.custom_minimum_size = Vector2(_width - 40, 0)

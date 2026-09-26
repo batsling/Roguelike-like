@@ -213,6 +213,22 @@ func _fit_to_viewport() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 func _input(event: InputEvent) -> void:
+	# AN OPEN ENTRY IS THE FIRST THING ESCAPE CLOSES, and the arrows walk it.
+	var popup_up: bool = _detail_overlay != null and is_instance_valid(_detail_overlay) \
+		and _detail_overlay.visible
+	if popup_up:
+		if event.is_action_pressed("ui_cancel"):
+			get_viewport().set_input_as_handled()
+			_close_detail()
+			return
+		if event.is_action_pressed("ui_left"):
+			get_viewport().set_input_as_handled()
+			_step_detail(-1)
+			return
+		if event.is_action_pressed("ui_right"):
+			get_viewport().set_input_as_handled()
+			_step_detail(1)
+			return
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("backpack"):
 		get_viewport().set_input_as_handled()
 		close()
@@ -225,9 +241,13 @@ func close() -> void:
 # ------------------------------------------------------------------
 
 func _build_shell() -> void:
+	# A LIGHT DIM, not a black-out. The Collection opens over the main menu, and
+	# the menu's falling art is the one thing on that screen worth keeping in view
+	# around the edges; at 0.72 it was a smear. The panel itself is opaque, so the
+	# art stays OUTSIDE the part being read and never behind a line of text.
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.72)
+	dim.color = Color(0, 0, 0, 0.18)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
@@ -296,6 +316,9 @@ func _refresh() -> void:
 		var b: Button = _tab_buttons[tab]
 		b.modulate = ACCENT if tab == _tab else Color(0.8, 0.8, 0.8)
 	_clear_children(_content)
+	_free_detail_overlay()
+	_nav.clear()
+	_nav_index = -1
 	_grid = null
 	# Freed with the content above; cleared here so `_update_grid_fade` cannot be
 	# left holding a dangling band from the tab that just went away.
@@ -404,9 +427,13 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 	panel.mouse_entered.connect(func(): panel.modulate = Color(1.18, 1.18, 1.18))
 	panel.mouse_exited.connect(func(): panel.modulate = Color.WHITE)
 	if on_click.is_valid():
+		# Every clickable cell joins the ◀ ▶ order, in the order the grid lays
+		# them out — which is the order the player is reading them in.
+		var index: int = _nav.size()
+		_nav.append({"panel": panel, "open": on_click, "border": border})
 		panel.gui_input.connect(func(e):
 			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-				on_click.call())
+				_select(index))
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", CELL_SEP)
 	panel.add_child(vb)
@@ -545,7 +572,8 @@ func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.position = Vector2(col0 * step, 0)
 		art.size = Vector2(fc * step - BOARD_GAP, fr * step - BOARD_GAP)
-		if UITheme.is_pixel_art(e.image, Vector2.ONE * (cell * mini(fr, fc))):
+		if UITheme.is_pixel_art(e.image, Vector2.ONE * (cell * mini(fr, fc))) \
+				or UITheme.is_small_art(e.image):
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		board.add_child(art)
 	return board
@@ -826,51 +854,110 @@ func _name_block_height() -> float:
 		else font.get_height(GRID_NAME_FONT) * NAME_LINES
 	return _name_height_cache
 
-# THE PANE IS AS NARROW AS ITS WIDEST PICTURE, and no narrower. It was 380 —
-# almost a third of the widest screen in the game — because the text was allowed
-# to set it, and text in a side pane will take whatever it is given and then read
-# worse for it: a 330px measure is a newspaper column, and nothing in here is
-# longer than a sentence. 300 is sized off the ART instead, which is the thing
-# that must not shrink: the enemy portrait is the biggest of them at
-# DETAIL_ENEMY_SIZE, and it clears its frame, its padding and the scrollbar with
-# room left over. Every image in the pane is exactly the size it was; the pane
-# around them is not.
+# THE ENTRY OPENS IN A POPUP, over the grid rather than beside it.
 #
-# The width it gives back goes to the grid, which is what the Collection is for:
-# on the Games tab that is another column of covers while you scan 865 of them.
-const DETAIL_PANEL_W := 300
+# It used to be a pane down the right-hand side that the grid made room for: the
+# HFlowContainer gave up two columns when an entry opened and took them back when
+# it closed, so every click reflowed the whole wall of covers under the mouse and
+# the cell you had just clicked jumped somewhere else. Over the top, the grid never
+# moves — the cell you picked stays exactly where it was, lit (see `_select`), and
+# ◀ ▶ step through its neighbours without closing anything.
+#
+# The card is as narrow as its widest picture plus a little: the enemy portrait
+# (DETAIL_ENEMY_SIZE) is the biggest thing in it, and a longer measure than this
+# makes the one-sentence facts in it read worse rather than better.
+const DETAIL_PANEL_W := 360
+# How much of the window's height the card may take before it scrolls.
+const DETAIL_MAX_H_FRACTION := 0.84
+# The ◀ ▶ buttons either side of the card.
+const DETAIL_NAV_BTN := Vector2(44, 88)
 
-# THE PANE IS CLOSED UNTIL THERE IS SOMETHING IN IT.
-#
-# It used to be mounted open and empty, holding its whole width for a label
-# reading "Select an entry to view details" — reserved against a click that had
-# not happened yet. On the Games tab that is columns of covers taken off the one
-# thing you opened the tab to do, which is scan 865 of them.
-#
-# The grid is an HFlowContainer, so it takes the width back by itself the moment
-# this is hidden and gives it up again when an entry opens. Both are one property
-# on one node because every tab is built by the same `_grid_and_detail`.
+# The card itself — named `_detail_panel` because every tab's code and the tests
+# ask it whether an entry is open. The overlay around it (dim, arrows) is
+# `_detail_overlay`, and the two are shown and hidden as one.
 var _detail_panel: PanelContainer = null
+var _detail_overlay: Control = null
+var _nav_prev: Button = null
+var _nav_next: Button = null
+var _detail_scroll: ScrollContainer = null
+
+# Every clickable cell in the grid, in layout order, as {panel, open, border}.
+# Rebuilt with the grid, so it always describes what is on screen.
+var _nav: Array = []
+# Which of them is open in the popup, or -1 (nothing open, or an entry opened by
+# code rather than by a cell — a test, the Events tab).
+var _nav_index: int = -1
 
 func _set_detail_open(on: bool) -> void:
 	if _detail_panel != null and is_instance_valid(_detail_panel):
 		_detail_panel.visible = on
+	if _detail_overlay != null and is_instance_valid(_detail_overlay):
+		_detail_overlay.visible = on
+		if on:
+			# Deferred: every `_show_*_detail` opens the popup FIRST and fills it
+			# after, so the contents are only there to be measured a beat later.
+			_fit_detail_height.call_deferred()
+			_paint_nav_buttons()
+			if _detail_scroll != null and is_instance_valid(_detail_scroll):
+				_detail_scroll.scroll_vertical = 0
 
-func _new_detail_panel() -> PanelContainer:
+func _free_detail_overlay() -> void:
+	if _detail_overlay != null and is_instance_valid(_detail_overlay):
+		_detail_overlay.queue_free()
+	_detail_overlay = null
+	_detail_panel = null
+	_nav_prev = null
+	_nav_next = null
+	_detail_scroll = null
+
+func _new_detail_panel() -> Control:
+	_free_detail_overlay()
+	# The overlay covers the Collection, not the page behind it — it is a child of
+	# this screen, drawn over its panel, and freed with the tab (`_refresh`).
+	var overlay := Control.new()
+	overlay.name = "DetailPopup"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	# A click on the backdrop closes the entry, the same as ✕.
+	overlay.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_close_detail())
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Light enough that the lit cell underneath still shows through: the grid is
+	# where the player's place is kept, and a black-out would hide it.
+	dim.color = Color(0, 0, 0, 0.45)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(row)
+
+	_nav_prev = _nav_button("◀", "The previous entry (←).", -1)
+	row.add_child(_nav_prev)
+
 	var p := PanelContainer.new()
-	# The theme's own raised surface. This was Color(0.06, 0.06, 0.09) — a cool
-	# blue-black — on a screen whose every other surface is warm brown.
-	p.add_theme_stylebox_override("panel", _flat(UITheme.PANEL))
+	# The theme's own raised surface, rimmed in the accent so the card reads as
+	# lifted off the grid rather than as another cell of it.
+	p.add_theme_stylebox_override("panel", _flat(UITheme.PANEL, ACCENT, 2))
 	p.custom_minimum_size = Vector2(DETAIL_PANEL_W, 0)
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
 	p.visible = false
+	row.add_child(p)
 	_detail_panel = p
+
+	_nav_next = _nav_button("▶", "The next entry (→).", 1)
+	row.add_child(_nav_next)
+
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	p.add_child(col)
-	# THE WAY BACK TO THE COLUMNS. Opening an entry costs the grid two of its
-	# columns, so there has to be something that gives them back — without it the
-	# only way to close the pane is to change tab, which also throws away the
-	# filter and the scroll position.
 	var close_row := HBoxContainer.new()
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -878,7 +965,7 @@ func _new_detail_panel() -> PanelContainer:
 	var close := Button.new()
 	close.text = "✕"
 	close.flat = true
-	close.tooltip_text = "Close this entry and give the grid its width back."
+	close.tooltip_text = "Close this entry (Esc)."
 	close.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	close.pressed.connect(func(): _close_detail())
 	close_row.add_child(close)
@@ -888,6 +975,7 @@ func _new_detail_panel() -> PanelContainer:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
+	_detail_scroll = scroll
 	_detail_box = VBoxContainer.new()
 	_detail_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -895,15 +983,110 @@ func _new_detail_panel() -> PanelContainer:
 	# scrollbar, so right-aligned values (Tier / Damage / Health) aren't clipped.
 	_detail_box.custom_minimum_size = Vector2(DETAIL_PANEL_W - 52, 0)
 	scroll.add_child(_detail_box)
-	return p
 
-# Empty the pane and put it away. This replaced `_detail_placeholder`, which
-# existed only to write "Select an entry to view details" into a pane that was on
-# screen with nothing in it — there is no placeholder any more, because the pane
-# is not there when there would be one to show.
+	add_child(overlay)
+	_detail_overlay = overlay
+	# Nothing for the tab's layout to hold: the popup lives on the overlay. The
+	# caller still gets a node to add, so `_grid_and_detail` stays one shape.
+	var stub := Control.new()
+	stub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return stub
+
+func _nav_button(glyph: String, tip: String, step: int) -> Button:
+	var b := Button.new()
+	b.text = glyph
+	b.tooltip_text = tip
+	b.custom_minimum_size = DETAIL_NAV_BTN
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	b.add_theme_stylebox_override("normal", _flat(UITheme.PANEL, ACCENT.lerp(UITheme.BORDER, 0.5), 1))
+	b.add_theme_stylebox_override("hover", _flat(UITheme.PANEL.lerp(ACCENT, 0.18), ACCENT, 1))
+	b.add_theme_stylebox_override("pressed", _flat(UITheme.PANEL.lerp(ACCENT, 0.28), ACCENT, 1))
+	b.add_theme_stylebox_override("disabled", _flat(UITheme.PANEL.lerp(UITheme.BG, 0.5), UITheme.BORDER, 1))
+	b.pressed.connect(func(): _step_detail(step))
+	return b
+
+# The card is as tall as its contents, up to most of the window, and scrolls past
+# that. A ScrollContainer claims no height of its own, so it is handed one.
+func _fit_detail_height() -> void:
+	if _detail_scroll == null or not is_instance_valid(_detail_scroll) \
+			or _detail_box == null or not is_instance_valid(_detail_box):
+		return
+	var cap: float = get_viewport_rect().size.y * DETAIL_MAX_H_FRACTION - 60.0
+	# Opened at the cap, then fitted once it has been laid out at its real width:
+	# a wrapping Label reports its height at whatever width it last had, and
+	# before its first layout that is a column one word wide.
+	_detail_scroll.custom_minimum_size = Vector2(0, maxf(120.0, cap))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if _detail_scroll == null or not is_instance_valid(_detail_scroll) \
+			or _detail_box == null or not is_instance_valid(_detail_box):
+		return
+	var want: float = _detail_box.size.y
+	_detail_scroll.custom_minimum_size = Vector2(0, clampf(want, 120.0, maxf(120.0, cap)))
+
+func _paint_nav_buttons() -> void:
+	var has: bool = _nav_index >= 0 and _nav_index < _nav.size()
+	if _nav_prev != null and is_instance_valid(_nav_prev):
+		_nav_prev.disabled = not has or _nav_index <= 0
+	if _nav_next != null and is_instance_valid(_nav_next):
+		_nav_next.disabled = not has or _nav_index >= _nav.size() - 1
+
+# Open the cell at `index` and light it. The light is what says which cell the
+# popup is about — the popup covers the middle of the grid, and ◀ ▶ can walk the
+# selection off to somewhere the player was not looking.
+func _select(index: int) -> void:
+	if index < 0 or index >= _nav.size():
+		return
+	_paint_selected(_nav_index, false)
+	_nav_index = index
+	_paint_selected(index, true)
+	var entry: Dictionary = _nav[index]
+	var open: Callable = entry["open"]
+	if open.is_valid():
+		open.call()
+	_paint_nav_buttons()
+	var panel: Control = entry["panel"]
+	if _grid_scroll != null and is_instance_valid(_grid_scroll) and is_instance_valid(panel):
+		_grid_scroll.ensure_control_visible(panel)
+
+func _step_detail(step: int) -> void:
+	if _nav.is_empty():
+		return
+	var at: int = _nav_index if _nav_index >= 0 else (-1 if step > 0 else _nav.size())
+	_select(clampi(at + step, 0, _nav.size() - 1))
+
+# THE SELECTED CELL: a thick bright rim in its own colour, a wash of it behind the
+# art, and a gold outer edge — so it reads from across the grid, through the
+# popup's dim, whatever colour its neighbours are.
+func _paint_selected(index: int, on: bool) -> void:
+	if index < 0 or index >= _nav.size():
+		return
+	var entry: Dictionary = _nav[index]
+	var panel: PanelContainer = entry["panel"]
+	if not is_instance_valid(panel):
+		return
+	var border: Color = entry["border"]
+	if on:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = CELL_BG.lerp(border, 0.28)
+		sb.set_corner_radius_all(8)
+		sb.set_content_margin_all(10)
+		sb.set_border_width_all(4)
+		sb.border_color = border.lerp(Color.WHITE, 0.55)
+		sb.shadow_color = Color(1.0, 0.85, 0.45, 0.85)
+		sb.shadow_size = 6
+		panel.add_theme_stylebox_override("panel", sb)
+	else:
+		panel.add_theme_stylebox_override("panel", _flat(CELL_BG, border, 2))
+
+# Empty the popup and put it away, and let go of the lit cell with it.
 func _close_detail() -> void:
-	_clear_children(_detail_box)
+	if _detail_box != null and is_instance_valid(_detail_box):
+		_clear_children(_detail_box)
 	_detail_game = null
+	_paint_selected(_nav_index, false)
+	_nav_index = -1
 	_set_detail_open(false)
 
 func _controls_row() -> HBoxContainer:
@@ -942,6 +1125,8 @@ func _clear_children(node: Node) -> void:
 	if node == _grid:
 		_reset_cell_window()
 		_grid_laid_out = false
+		_nav.clear()
+		_nav_index = -1
 	for c in node.get_children():
 		node.remove_child(c)
 		c.free()
@@ -1232,6 +1417,7 @@ func _game_enemy_row(game: GameData, entry: Dictionary) -> Control:
 		art.custom_minimum_size = Vector2(48, 48)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, enemy.image)
 		body.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
@@ -1769,6 +1955,7 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 		art.custom_minimum_size = Vector2(44, 44)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, enemy.image)
 		body.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
@@ -1782,7 +1969,7 @@ func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	who.add_theme_color_override("font_color",
-		Color(0.95, 0.55, 0.2) if enemy.is_boss() else UITheme.TEXT)
+		_enemy_accent(enemy) if enemy.is_boss() else UITheme.TEXT)
 	top.add_child(who)
 	var times := Label.new()
 	times.text = "beaten ×%d" % int(entry.get("beaten", 0))
@@ -1880,9 +2067,10 @@ func _populate_enemies() -> void:
 		_grid.add_child(_label("No %s match." % noun, Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), total)
 
+# By GAME TYPE, bosses included. Bosses used to be one flat orange, which made
+# the Bosses tab the one grid whose colours said nothing; the ☠ on the name is
+# what marks a boss, and the colour means the same thing on both tabs.
 func _enemy_accent(e: GoalEnemyData) -> Color:
-	if e.is_boss():
-		return Color(0.95, 0.55, 0.2)
 	var ti := _enemy_game_type_index(e)
 	return _game_type_color(ti) if ti >= 0 else Color(0.85, 0.4, 0.4)
 
@@ -2609,8 +2797,6 @@ func _populate_events() -> void:
 	if list.is_empty():
 		_grid.add_child(_label("No events match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), total)
-	if not list.is_empty():
-		_show_event_detail(list[0])
 
 # Every option's label and its plain-language effect, lowercased, so the search
 # box reaches the thing an event is actually remembered by.

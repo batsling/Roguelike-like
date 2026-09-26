@@ -1976,16 +1976,21 @@ func _no_room_note(centre: Vector2, e: GoalEnemyData) -> Control:
 	return l
 
 # The accent colour for an enemy: red when it strikes on the next game reported,
-# amber when it strikes on the one after, gold farther out, orange for a boss.
+# amber when it strikes on the one after, gold farther out.
+#
+# A BOSS IS CODED THE SAME WAY. It used to be one flat orange wherever it stood,
+# which made the one body most worth watching the one whose colour said nothing
+# about when it would hit. The ☠ disc (BOSS_ORANGE) is what marks it as a boss;
+# `is_boss` is kept in the signature for the callers that pass it.
 #
 # `games` is how many games away its first strike is (GameLoop2.games_until_
 # strike). Callers that don't have it pass nothing, and the colour falls back to
 # reading the COLUMN as if enemies moved one square a game — which is true at one
 # turn a game and a lie at three, so anything drawing the live board should hand
 # the real number in.
-static func threat_color(col: int, is_boss: bool, games: int = -1) -> Color:
-	if is_boss:
-		return Color(0.95, 0.55, 0.2)
+const BOSS_ORANGE := Color(0.95, 0.55, 0.2)
+
+static func threat_color(col: int, _is_boss: bool, games: int = -1) -> Color:
 	var away: int = games if games >= 0 else maxi(0, col - 1)
 	if away <= 0:
 		return UITheme.DANGER
@@ -2122,7 +2127,10 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	var portrait: Texture2D = GameLoop2.entry_image(entry)
 	if portrait != null:
 		art.texture = portrait
-		if portrait.get_width() < _cell or portrait.get_height() < _cell:
+		# Against the FOOTPRINT the art is drawn across, not one cell: a 100px
+		# sprite over a 2x2 body is blown up, even though it is wider than a cell.
+		var span: Vector2 = _span_size(e.footprint_rows(), e.footprint_cols())
+		if UITheme.is_pixel_art(portrait, span) or UITheme.is_small_art(portrait):
 			art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		# NO PICTURE: draw the body's INITIAL, which is how the games this one is
@@ -2192,7 +2200,7 @@ func _initial_glyph(entry: Dictionary, accent: Color) -> Control:
 # sit across the head of the art, and between them they covered the part of the
 # picture that identifies the enemy — on a 7x7 board's 46px cells, most of it.
 # Neither fact is lost, and neither is worth a badge: a boss is already drawn in
-# the boss's own orange (threat_color) and carries its portrait beside its name on
+# its ☠ disc and carries its portrait beside its name on
 # the checklist, and the walking still owed is the body's COLUMN — the thing the
 # player is looking straight at. (The hover used to say it in words as well. It
 # doesn't; a sentence counting the squares between two things on screen is the
@@ -2363,7 +2371,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		skull.name = "BossSkull"
 		skull.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var disc := StyleBoxFlat.new()
-		disc.bg_color = threat_color(1, true)
+		disc.bg_color = BOSS_ORANGE
 		disc.border_color = Color(0.07, 0.06, 0.07, 0.94)
 		disc.set_border_width_all(2)
 		disc.set_corner_radius_all(BOSS_SKULL_FONT)
@@ -2466,6 +2474,26 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		"art": GameLoop2.entry_image(entry),
 		"pips": pips,
 		"lines": lines,
+	}
+
+# THE SAME CARD FOR A BODY THAT IS NOT ON THE BOARD YET — the enemy waiting on a
+# start card, which has no column (and so no countdown) but is otherwise the same
+# enemy with the same goal and abilities. Drawn in the colour it will walk on in.
+static func offered_enemy_hover(e: GoalEnemyData, note: String = "") -> Dictionary:
+	var entry: Dictionary = {"enemy": e, "statuses": {}}
+	var lines: Array = [{"header": "Goals"}, GameLoop2.entry_goal(entry)]
+	var ability_rows: Array = GameLoop2.ability_lines(entry)
+	if not ability_rows.is_empty():
+		lines.append({"header": "Abilities"})
+		for row in ability_rows:
+			lines.append("⚠  %s — %s" % [row["name"], row["text"]])
+	return {
+		"title": e.display_name,
+		"subtitle": "☠ boss" if e.is_boss() else "",
+		"accent": threat_color(GameLoop2.spawn_col(), e.is_boss()),
+		"art": e.image,
+		"lines": lines,
+		"note": note,
 	}
 
 # A single full-rect Control child of a cell PanelContainer, inside which art and
@@ -2718,8 +2746,6 @@ func _offgrid_more(rest: Array) -> Control:
 func _offgrid_token(entry: Dictionary) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
 	var accent: Color = UITheme.GOLD
-	if e != null and e.is_boss():
-		accent = Color(0.95, 0.55, 0.2)
 	var cell := HoverPanel.new()
 	cell.custom_minimum_size = Vector2(44, 44)
 	var inst: int = int(entry.get("instance", 0))

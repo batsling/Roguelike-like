@@ -426,6 +426,7 @@ func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
 		art.custom_minimum_size = Vector2(20, 20)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, enemy.image)
 		art.tooltip_text = tip
 		return art
 	# No portrait authored — fall back to the name rather than an empty gap.

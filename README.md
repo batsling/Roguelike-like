@@ -297,13 +297,12 @@ node and its script.
     `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects. **The detail pane is closed until you pick
-    something.** It used to be mounted open and empty, holding 380 of the page's
-    1280 for a label reading "Select an entry to view details" — a third of the
-    widest screen in the game, reserved against a click that had not happened yet,
-    which on the Games tab is the difference between five columns and eight while
-    you scan 890 covers. It opens on a click and carries a `✕` to put it away
-    again; the grid is an `HFlowContainer`, so it takes the width back by itself.
+    Bosses, **Loot**, Events, Objects. **An entry opens in a popup over the
+    grid** (`_new_detail_panel` / `_select`), not a pane beside it: the grid
+    never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the
+    arrow keys) step through the grid in layout order. Escape or a click on the
+    backdrop closes it. Before that it was a right-hand pane, and before THAT one
+    mounted open and empty — both cost the grid columns while you scan 890 covers.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
     **A grid tile is a picture with a caption, not a stat line with a thumbnail.**
