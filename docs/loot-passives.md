@@ -96,7 +96,7 @@ relic shelf, so a trinket authoring one would be a promise nothing keeps.
 | `drop_copy` | A duplicate of the piece the hook was about lands on a free square of the battlefield (Endless Nameless). A full board pays nothing. |
 | `bump N` | Grows the counter on the firing piece (Rocket). A copy never bumps. |
 | `gain_card N` | A named card grant (Deck of Cards). |
-| `gain_gold N per=P of=<stat>` | N for every P of the stat, rounded down, read before this payout lands (To the Moon: `per=5 of=gold`). |
+| `gain_gold N per=P of=<stat>` | N for every P of the stat, rounded down, read before this payout lands (To the Moon: `per=3 of=gold`). |
 | `gain_gold N plus=counter` | N plus the counter on the piece whose passive this is (Rocket). |
 
 ### The coin-chain rule

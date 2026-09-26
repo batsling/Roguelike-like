@@ -204,11 +204,11 @@ func test_a_blueprinted_rocket_pays_its_payout_and_never_grows_it() -> void:
 	TriggerBus.game_won.emit({"game_id": &""})
 	assert_eq(GameState.gold, gold + 6, "3 from the Rocket and 3 from its copy")
 
-func test_to_the_moon_pays_one_per_five_gold() -> void:
+func test_to_the_moon_pays_one_per_three_gold() -> void:
 	_card(&"to_the_moon", 0)
-	GameState.set_gold(12)
+	GameState.set_gold(13)
 	TriggerBus.game_won.emit({"game_id": &""})
-	assert_eq(GameState.gold, 14)
+	assert_eq(GameState.gold, 17, "four whole threes in 13, the stray one pays nothing")
 
 func test_trading_card_pays_once_a_game() -> void:
 	_card(&"trading_card", 0)
@@ -217,11 +217,11 @@ func test_trading_card_pays_once_a_game() -> void:
 		GameState.take_loot_entry(GameState.roll_loot_entry("card"))
 		var binned: Dictionary = GameState.loot_items[-1]
 		GameState.discard_loot_at(_index_of(binned))
-	assert_eq(GameState.gold, gold + 3, "two cards binned, one payout")
+	assert_eq(GameState.gold, gold + 2, "two cards binned, one payout")
 	GameState.games_played += 1
 	GameState.take_loot_entry(GameState.roll_loot_entry("card"))
 	GameState.discard_loot_at(GameState.loot_items.size() - 1)
-	assert_eq(GameState.gold, gold + 6, "the next game pays again")
+	assert_eq(GameState.gold, gold + 4, "the next game pays again")
 
 func test_binning_anything_else_is_not_trashing_a_card() -> void:
 	_card(&"trading_card", 0)
@@ -245,7 +245,7 @@ func test_isaacs_fork_rolls_only_on_a_win() -> void:
 	assert_eq(GameState.hp, 1, "a game merely finished pays nothing")
 	for _i in range(60):
 		TriggerBus.game_won.emit({"game_id": &""})
-	assert_gt(GameState.hp, 1, "ten percent of sixty wins")
+	assert_gt(GameState.hp, 1, "a quarter of sixty wins")
 
 func test_hairpin_fills_a_relic_when_a_boss_arrives() -> void:
 	var d6: ItemData = GameState.add_item(Data.get_item2(&"d6"))

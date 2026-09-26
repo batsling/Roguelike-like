@@ -11,6 +11,10 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **First tuning pass on the loot passives.** Trading Card pays +2 Gold (was +3);
+  To the Moon pays +1 per 3 Gold held (was per 5); Isaac's Fork is a 25% chance
+  (was 10%). Sheet edited through `_passives_tuning_trading_moon_fork.py`.
+
 - **Every copy ability copies a wand zap** (`docs/loot-passives.md` §9). Echo
   Form, Echo Chamber and Endless Nameless all treat a zap like any other use; the
   charge still comes off exactly once. Echo Chamber remembers where a zap was
