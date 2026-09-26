@@ -16,6 +16,15 @@ func before_each() -> void:
 	GameLoop2.reset()
 	Notifications.clear()
 
+# The save round-trip below applies a save the way loading one does, which leaves a
+# RESUME pending for the next overworld to boot into — and the next file to build
+# one (test_obs_companion) would then open on that half-restored run instead of its
+# own. Nothing here leaves state behind for the file after it.
+func after_each() -> void:
+	SaveSystem.cancel_pending_resume()
+	GameState.reset_run()
+	GameLoop2.reset()
+
 func _trinket(id: StringName, slot: int) -> Dictionary:
 	var t: TrinketData = Data.get_trinket(id)
 	assert_not_null(t, "trinket '%s' is in the catalog" % id)
