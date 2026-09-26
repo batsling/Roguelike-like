@@ -11,6 +11,35 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Loot passives: trinkets, passive cards, and a pack where position matters**
+  (`docs/loot-passives.md`).
+  - **Trinkets are the sixth loot kind**: eleven Isaac trinkets from the new
+    `trinkets` sheet (`generate_trinket2_tres.py` → `data/trinkets2.0/`), a sixth of
+    the kind-blind drop. **Five Balatro cards are passive** (Blueprint, Chaos the
+    Clown, Rocket, To the Moon, Trading Card). Neither is ever spent: the pack draws
+    a "Passive" plate where Use would be.
+  - **They reuse the relic machinery.** Their Effect cells are relic grammar,
+    compiled by `generate_item_tres.parse_loot_passive`; at runtime `LootPassives`
+    hands each working piece to `fire_run_item_triggers` and
+    `_recompute_item_bonuses` as a relic-shaped source, so hooks, gates, chance and
+    Luck behave identically.
+  - **Position matters.** Blueprint copies the piece to its right (rows do not
+    wrap, and it chains through other Blueprints). Stat and status grants are
+    re-derived from the arrangement on every pack change, so moving a piece moves
+    the numbers.
+  - **Five new hooks**: `game_won` (a real win, narrower than `game_beaten`),
+    `shop_entered`, `boss_spawned`, `loot_used`, `card_binned`; gates `if_boss` and
+    `once_per_game`; verbs `charge_random`, `drop_copy`, `bump`, `gain_card`, and
+    `gain_gold per=/of=/plus=counter`.
+  - **Gold a trigger paid never rolls the pack's pennies**, so coin trinkets cannot
+    chain into loops. Relic chains (Lucky Fysh → Dragon Fruit) are unchanged.
+  - **Every relic or passive that fires leaves a toast with its picture**, reading
+    what it actually changed. Nested triggers report only their own effect, a
+    missed chance is silent, and repeats from one source stack (`×N`).
+  - **IV - The Emperor** (card) summons a boss of the current type and tier;
+    **Deck of Cards** (relic, Charged 2) deals a card. Swallowed Penny's line now
+    says "when losing Health", which is what it does.
+
 - **Playtest pass: a Collection popup, crisp pixel art, and a bigger menu.**
   - **Small enemy art is drawn crisp everywhere.** `UITheme.is_small_art` (≤128px
     on its longest side) switches a picture to nearest-neighbour filtering whatever

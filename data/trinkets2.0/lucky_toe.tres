@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_lucky_toe"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"lucky_toe"
+display_name = "Lucky Toe"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "Passive: Gain +1 Luck"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+file = "LuckyToe"
+triggers = []
+stat_bonuses = {"luck": 1}
+status_bonuses = {}

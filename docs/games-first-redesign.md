@@ -1208,6 +1208,15 @@ rather than here: a wand stands **outside Echo Chamber in both directions** (§4
 there), and **anything that charges items charges wands** while a beaten game
 charges only relics (§7 there).
 
+**Trinkets are the sixth kind**, and the one that is **never spent**: a trinket
+sits in its pack slot and works from there like a relic, as do the cards whose
+line opens "Passive:". Where a piece sits can matter — Blueprint copies the piece
+to its right — and every relic or passive that fires now leaves a toast with its
+art. All of it is in [`loot-passives.md`](loot-passives.md), including the five
+hooks it added (`game_won`, `shop_entered`, `boss_spawned`, `loot_used`,
+`card_binned`) and the rule that gold a trigger paid never rolls the pennies.
+The split below became six even sixths with it.
+
 **Beating a game therefore pays an even five-way split** — 20 / 20 / 20 / 20 / 20
 across scroll, pill, potion, card and wand (`GameState.LOOT_KINDS`). The Identify
 tenth is still taken off the top and did not move: the run that needs the scroll is

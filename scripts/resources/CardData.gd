@@ -70,6 +70,23 @@ extends Resource
 # answering it.
 @export var icon: String = ""
 
+# --- PASSIVE CARDS (docs/loot-passives.md) ---------------------------------------
+# A card whose sheet line opens "Passive:" is not spent: it works from its pack slot
+# the way a Balatro joker works from the joker row, and it has no Use button. Its
+# `effect` is empty and these four fields carry what it does instead, in the RELIC
+# grammar and in exactly the shape a trinket carries them (TrinketData), so the one
+# runner (`LootPassives`) reads either kind without asking which it has.
+@export var passive: bool = false
+@export var triggers: Array = []
+@export var stat_bonuses: Dictionary = {}
+@export var status_bonuses: Dictionary = {}
+# "right" for Blueprint: this card does what the piece to its right does.
+@export var copy_neighbour: String = ""
+
+
+func is_passive() -> bool:
+	return passive
+
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary).
 func rarity_index() -> int:

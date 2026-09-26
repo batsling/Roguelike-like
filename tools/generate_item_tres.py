@@ -129,6 +129,19 @@ TRIGGER_SIGNALS = {
     # pickup twin of card_used; nothing to do with the retired combat deck's
     # card_played.
     "card_obtained": "card_obtained",
+    # The loot-passive hooks (docs/loot-passives.md §3). Each is a moment the
+    # trinkets and passive cards named that the run had not:
+    #   game_won      — a game actually BEATEN (not escaped, not lost). Narrower
+    #                   than game_beaten, which is every game seen through.
+    #   shop_entered  — a shop's shelf opened where the player is standing.
+    #   boss_spawned  — a boss walked onto the board (any source).
+    #   loot_used     — a piece of pack loot was spent (wands excepted).
+    #   card_binned   — a card of the loot kind was dragged into the bin.
+    "game_won": "game_won",
+    "shop_entered": "shop_entered",
+    "boss_spawned": "boss_spawned",
+    "loot_used": "loot_used",
+    "card_binned": "card_binned",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
@@ -136,7 +149,9 @@ TRIGGER_SIGNALS = {
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "item_acquired", "game_beaten", "game_selected",
                          "bomb_used", "health_lost", "run_lost", "potion_used",
-                         "gold_gained", "card_obtained")
+                         "gold_gained", "card_obtained", "game_won",
+                         "shop_entered", "boss_spawned", "loot_used",
+                         "card_binned")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and
@@ -381,15 +396,31 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # BATTLEFIELD FLOOR instead of into the pack (Fanny Pack), which the player
     # has to walk to before the report sweeps the board. Same reason for listing
     # it — the bare-verb fallthrough would eat the count.
+    # `gain_card` is the named-kind grant for cards (Deck of Cards), and `bump` adds
+    # to the counter on the piece of loot doing the firing (Rocket's payout,
+    # docs/loot-passives.md §4) — both scalar for the same reason as the rest.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block",
               "gain_pill", "gain_scroll", "gain_potion", "gain_loot",
-              "drop_loot"}
+              "drop_loot", "gain_card", "bump"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
         eff = {"type": verb, "value": nums[0] if nums else 0}
+        # A gold payout can be SIZED by the run rather than fixed:
+        #   per=N of=<stat>  -> value x (stat / N), rounded down (To the Moon)
+        #   plus=counter     -> value + the firing piece's counter (Rocket)
+        if verb == "gain_gold":
+            if "per" in kv or "of" in kv:
+                if "per" not in kv or "of" not in kv:
+                    raise ValueError("item DSL: gain_gold wants per= and of= together in %r" % raw)
+                eff["per"] = _int(kv["per"])
+                eff["of"] = kv["of"]
+            if "plus" in kv:
+                if kv["plus"] != "counter":
+                    raise ValueError("item DSL: gain_gold plus= only knows `counter` in %r" % raw)
+                eff["plus_counter"] = True
         # block/heal default to the player; draw etc. only carry an explicit
         # target. A bare "enemy" target is the EffectSystem default and stays
         # implicit, matching the hand-authored .tres.
@@ -404,6 +435,15 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         rest, _ = _kv(toks[1:])
         return {"type": "gain_stat", "stat": rest[0] if rest else "",
                 "value": _int(rest[1]) if len(rest) > 1 else 0}
+
+    # `charge_random N` / `charge_random full` — top up one random relic or wand
+    # that has room (Charged Penny +1, Hairpin all the way). The same pool the pill
+    # `charge` op draws from (GameState.chargeable_things).
+    if verb == "charge_random":
+        rest, _ = _kv(toks[1:])
+        if rest and rest[0].lower() == "full":
+            return {"type": "charge_random", "full": True}
+        return {"type": "charge_random", "value": _int(rest[0]) if rest else 1}
 
     if verb == "temp_stat":
         rest, _ = _kv(toks[1:])
@@ -938,6 +978,12 @@ def parse_item(row):
             # A bare word, like grid_grow above; a second copy adds nothing.
             fields["front_column_slow"] = True
             last_trigger = None
+        elif kl0 == "copy_right":
+            # Blueprint: this piece does whatever the piece in the pack slot to
+            # its RIGHT does (docs/loot-passives.md §2). Positional, so it only
+            # means something on loot — a relic has no neighbours.
+            fields["copy_neighbour"] = "right"
+            last_trigger = None
         elif kl0 == "grid_length":
             # Philosophers Stone / Runic Dome: a column and no row — distance to
             # cross without an extra lane to be attacked from.
@@ -1013,6 +1059,41 @@ def parse_item(row):
     return fields
 
 
+# THE PASSIVE A PIECE OF LOOT CARRIES (docs/loot-passives.md) — a trinket's Effect
+# cell, or a passive card's — compiled with the relic grammar above and cut down to
+# the fields the loot runner (`LootPassives`) actually hands to the relic machinery.
+#
+# Anything else the grammar can produce is REFUSED rather than dropped. Most relic
+# flags (heal_multiplier, front_column_slow, …) are read straight off the relic
+# shelf, so a trinket authoring one would print a promise the runtime never reads —
+# the exact silent failure every generator here exists to turn into a loud one.
+LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour")
+# Everything parse_item always emits whatever the Effect said, so never a refusal.
+_ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
+               "card_grants", "stat_multipliers", "scaling")
+
+
+def parse_loot_passive(name, effect_text):
+    f = parse_item({"Name": name, "Type": "Passive", "Effect": effect_text or ""})
+    out = {k: f[k] for k in LOOT_PASSIVE_FIELDS if f.get(k)}
+    extra = [k for k, v in f.items()
+             if k not in LOOT_PASSIVE_FIELDS and k not in _ROW_FIELDS
+             and v not in (None, [], {}, 0, False, "")]
+    for k in ("card_grants", "stat_multipliers", "scaling"):
+        if f.get(k):
+            extra.append(k)
+    if extra:
+        raise ValueError("%s: a loot passive cannot author %s — only triggers, "
+                         "passive:, passive_status: and copy_right reach the pack "
+                         "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
+    if not out:
+        raise ValueError("%s: its Effect %r compiles to nothing" % (name, effect_text))
+    return {"triggers": out.get("triggers", []),
+            "stat_bonuses": out.get("stat_bonuses", {}),
+            "status_bonuses": out.get("status_bonuses", {}),
+            "copy_neighbour": out.get("copy_neighbour", "")}
+
+
 def _split_head(clause):
     """Split a clause into (head, ':', payload) at depth-0 first colon, but not
     on a '://' or inside brackets. The head is the trigger prefix + gates."""
@@ -1041,6 +1122,15 @@ def _gates(head_lower):
     # which is what a gate about goals should do outside a game.
     for m in re.finditer(r"if_goals\s*=\s*(\d+)", head_lower):
         g["if_goals_met"] = int(m.group(1))
+    # "only when the body was a BOSS" — Rocket's `enemy_killed if_boss:`. Read
+    # against the `boss` flag the hook puts in its context; a hook that carries no
+    # such flag refuses, like every gate.
+    if re.search(r"\bif_boss\b", head_lower):
+        g["if_boss"] = True
+    # "at most once per game played" — Trading Card. The runtime remembers, on the
+    # piece doing the firing, which game it last paid out at.
+    if re.search(r"\bonce_per_game\b", head_lower):
+        g["once_per_game"] = True
     return g
 
 

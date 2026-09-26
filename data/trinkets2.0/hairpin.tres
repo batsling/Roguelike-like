@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_hairpin"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"hairpin"
+display_name = "Hairpin"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "Passive: Fully Charge a random Chargeable Item or Wand when a Boss spawns"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray()
+file = "Hairpin"
+triggers = [{"on": "boss_spawned", "effects": [{"type": "charge_random", "full": true}]}]
+stat_bonuses = {}
+status_bonuses = {}

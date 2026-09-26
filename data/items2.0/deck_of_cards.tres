@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_deck_of_cards"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/DeckOfCards.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"deck_of_cards"
+display_name = "Deck of Cards"
+kind = 6
+rarity = 1
+description = "Gain +1 Card"
+triggers = [{"on": "item_used", "effects": [{"type": "gain_card", "value": 1}]}]
+stat_bonuses = {}
+charge_cost = 2
+starts_charged = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+image = ExtResource("2_img")

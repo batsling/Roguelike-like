@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_wooden_cross"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"wooden_cross"
+display_name = "Wooden Cross"
+rarity = "Rare"
+size = Vector2i(1, 1)
+description = "Passive: At the start of combat, Gain +1 Temporary Shield"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("wood")
+file = "WoodenCross"
+triggers = [{"on": "game_selected", "effects": [{"type": "gain_stat", "stat": "shields", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

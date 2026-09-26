@@ -97,6 +97,40 @@ signal game_selected(ctx: Dictionary)       # ctx.game_id, ctx.shields — a gam
                                             # Anchor hangs its +1 Shield here so the
                                             # extra try arrives before you play.
 signal game_beaten(ctx: Dictionary)         # ctx.game_id
+# --- The loot-passive hooks (docs/loot-passives.md §3) ------------------------
+# Five moments the trinkets and passive cards named that the run had not. All
+# run-scope and scene-less, all routed through GameState.fire_run_item_triggers,
+# so a relic can hang off them exactly as a trinket does.
+signal game_won(ctx: Dictionary)            # ctx.game_id — a game actually BEATEN:
+                                            # the report said so and it was not an
+                                            # escape. Narrower than game_beaten,
+                                            # which is every game seen through, win
+                                            # or lose. Emitted beside it by
+                                            # Overworld2 (Isaac's Fork, Rocket, To
+                                            # the Moon).
+signal shop_entered(ctx: Dictionary)        # ctx.game_id — a Shop node's shelf was
+                                            # opened where the player stands, once
+                                            # per arrival (Overworld2.
+                                            # _open_pending_shop). Not on a save
+                                            # reload re-mounting it. Chaos the Clown.
+signal boss_spawned(ctx: Dictionary)        # ctx.enemy, ctx.instance — a BOSS walked
+                                            # onto the board, whatever put it there
+                                            # (a Champion node, the capstone, a
+                                            # revival, The Emperor). Fired from
+                                            # GameLoop2._add_to_grid on a FRESH body
+                                            # only, so a save load re-standing the
+                                            # board does not re-fire it. Hairpin.
+signal loot_used(ctx: Dictionary)           # ctx.entry — a piece of loot was SPENT
+                                            # (LootSystem._spend), once per use and
+                                            # never for its echoes. Not for a wand,
+                                            # which spends a charge rather than
+                                            # itself — the same line Echo Chamber
+                                            # draws. Endless Nameless.
+signal card_binned(ctx: Dictionary)         # ctx.card — a CARD of the loot kind was
+                                            # dragged into the bin, from the pack or
+                                            # off the floor (GameState.
+                                            # discard_loot_at / Overworld2's floor
+                                            # bin). Trading Card.
 signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
                                             # ctx.destroyed — a Bomb was spent on
                                             # the battlefield (§4). Fired ONCE per

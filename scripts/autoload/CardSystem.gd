@@ -83,6 +83,11 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var card: CardData = data_for(entry)
 	if card == null:
 		return out
+	# A PASSIVE CARD IS NEVER PLAYED (docs/loot-passives.md §1) — it works from its
+	# slot and has no Use button. Refused here as well, so an echo or a copy that
+	# reached one through some other door does nothing rather than "spending" it.
+	if card.is_passive():
+		return out
 	var rng: RandomNumberGenerator = ctx.get("rng")
 	if rng == null:
 		rng = RandomNumberGenerator.new()
@@ -125,8 +130,22 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 		"copy_item":
 			out["requests"].append({"kind": "copy_item",
 				"candidates": copyable_items()})
+		"spawn_boss":
+			_spawn_boss(out)
 		_:
 			push_warning("CardSystem: unknown effect op '%s'" % op)
+
+
+# IV - The Emperor: a boss of the game in play's type, at the run's current tier,
+# walks onto the board (GameLoop2.summon_boss). Isaac's card sends you to the boss
+# room; here the boss comes to you, which is the same bargain — a boss's chest for
+# a boss's fight, taken when YOU choose rather than when the ladder says.
+func _spawn_boss(out: Dictionary) -> void:
+	var boss: GoalEnemyData = GameLoop2.summon_boss()
+	if boss == null:
+		out["logs"].append("Nothing answers the summons.")
+		return
+	out["logs"].append("%s walks onto the board." % boss.display_name)
 
 
 # The Lovers is a flat amount; Queen of Hearts is a roll between two. Both are the

@@ -537,6 +537,10 @@ func _apply_save_data(data: Dictionary) -> void:
 		if e.has("id"):
 			e["id"] = StringName(e["id"])
 		GameState.loot_items.append(e)
+	# The statuses restored above already carry whatever the pack's passives were
+	# holding up (Goat Hoof's Speed), so the pack ADOPTS them rather than granting
+	# them again when the inventory_changed below re-derives its grants.
+	GameState.adopt_pack_statuses()
 	var ident: Array[StringName] = []
 	for s in data.get("identified_potion_types", []):
 		ident.append(StringName(s))

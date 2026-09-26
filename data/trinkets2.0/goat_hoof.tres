@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_goat_hoof"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"goat_hoof"
+display_name = "Goat Hoof"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "Passive: Gain +1 Speed"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray()
+file = "GoatHoof"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {"speed": 1}

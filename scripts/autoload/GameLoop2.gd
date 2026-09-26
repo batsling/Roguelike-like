@@ -1767,6 +1767,18 @@ func _capstone_if_due(type_key: StringName = &"", tier: int = -1) -> void:
 # GameState, because an arrival commits the board before the run has finished
 # travelling and "where the player is standing" is briefly the game they left.
 # Empty falls back to the current game, which is right for an end-of-game spawn.
+# IV - THE EMPEROR (docs/loot-passives.md §7): a random boss of the game in play's
+# TYPE and the run's current difficulty TIER walks on, exactly as the capstone
+# above lands one — through spawn_to_stack, at the back — and like the capstone it
+# is not a spawn event of its own, so it does not move the tier ladder. Returns
+# the boss, or null when the roster has none to give.
+func summon_boss() -> GoalEnemyData:
+	var key: StringName = game_type_key(Data.get_game(GameState.current_game_id))
+	var boss: GoalEnemyData = roll_boss(key, RunDifficulty.current_tier())
+	if boss == null or spawn_to_stack(boss) <= 0:
+		return null
+	return boss
+
 func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 	var key: StringName = type_key
 	if key == &"":
@@ -4787,7 +4799,9 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 	# the same run-scope runner every other scene-less item trigger uses. Both
 	# sit here, under the same rule about what counts as a defeat: a bombed body
 	# never reaches this function (see `bomb`), so it feeds neither.
-	TriggerBus.enemy_killed.emit({"enemy": enemy})
+	# `boss` is what an `if_boss` gate reads (Rocket, docs/loot-passives.md §3).
+	TriggerBus.enemy_killed.emit({"enemy": enemy,
+		"boss": enemy != null and enemy.is_boss()})
 	enemy_defeated.emit(enemy, fell)
 
 # Applies `damage` to the player. ONE SHIELD STOPS ONE INSTANCE OF DAMAGE (§3) —
@@ -6074,6 +6088,11 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 	if fresh:
 		_apply_spawn_abilities(entry)
 	_place_on_spawn(entry, fresh and shove)
+	# A BOSS WALKED ON (Hairpin, docs/loot-passives.md §3). Here because every body
+	# is born here, whatever put it there; only a FRESH one, because a save load
+	# re-standing the board is not a boss arriving.
+	if fresh and enemy != null and enemy.is_boss():
+		TriggerBus.boss_spawned.emit({"enemy": enemy, "instance": instance})
 
 # Try to move an off-grid entry onto its spawn column in a random open row.
 # Returns true when it made it onto the board.

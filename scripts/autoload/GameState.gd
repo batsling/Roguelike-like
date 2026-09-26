@@ -775,6 +775,23 @@ func _connect_lifecycle_hooks() -> void:
 	# button, and Ripple Basin's shield on the other end of it.
 	if not TriggerBus.run_lost.is_connected(_on_run_lost):
 		TriggerBus.run_lost.connect(_on_run_lost)
+	# The loot-passive hooks (docs/loot-passives.md §3). Same runner, same shape:
+	# no scene, one event per moment, and whatever is held — relic or pack piece —
+	# answers from the far end.
+	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned"]:
+		var sig: Signal = TriggerBus.get(hook)
+		# One Callable per hook, kept, so is_connected can recognise it on a second
+		# pass (a fresh lambda is a fresh Callable and would connect twice).
+		if not _loot_hook_callables.has(hook):
+			_loot_hook_callables[hook] = func(ctx: Dictionary): fire_run_item_triggers(hook, ctx)
+		if not sig.is_connected(_loot_hook_callables[hook]):
+			sig.connect(_loot_hook_callables[hook])
+	# THE PACK'S PASSIVES ARE HELD UP BY WHERE THEY SIT (docs/loot-passives.md §4).
+	# Every change to the pack — a take, a move, a swap, a use, a bin — already says
+	# so on this one signal, so the stat and status grants the pack is holding up are
+	# re-derived from it rather than put up and taken down at a dozen write sites.
+	if not inventory_changed.is_connected(_on_pack_changed):
+		inventory_changed.connect(_on_pack_changed)
 	# Combats-won tally drives the enemy-spawn budget (first fight is gentler).
 	if not TriggerBus.combat_ended.is_connected(_on_combat_ended_tally):
 		TriggerBus.combat_ended.connect(_on_combat_ended_tally)
@@ -882,29 +899,136 @@ func _destroy_fragile_items() -> void:
 # (item_acquired, the curse_* hooks). Only scene-free effect handlers
 # (gain_max_hp, gain_hp, gain_gold, gain_chest, …) are valid here; combat
 # effects (dmg, block, …) silently no-op without a scene.
+#
+# THE PACK'S PASSIVES ANSWER HERE TOO (docs/loot-passives.md). After the relics,
+# every trinket and passive card at work in the pack fires through the very same
+# per-trigger code — LootPassives hands each one over as a relic-shaped source —
+# so a hook, a gate or an effect means one thing wherever it is written.
+#
+# GOLD A TRIGGER PAID DOES NOT ROLL THE PACK'S COINS. A Counterfeit Penny doubling
+# a Swallowed Penny's coin, or two Counterfeits feeding each other, would make the
+# pennies a loop rather than a bonus; so `gold_gained` reached from INSIDE another
+# trigger is answered by relics (Dragon Fruit keeps its designed chain off Lucky
+# Fysh, §8.1) and by no piece of loot. Only gold the run itself paid — a report, a
+# body, an event, a shop, a spent pill — reaches the pennies.
+var _trigger_depth: int = 0
+var _loot_hook_callables: Dictionary = {}
+
 func fire_run_item_triggers(trigger_name: String, ctx_extras: Dictionary = {}) -> void:
+	var nested: bool = _trigger_depth > 0
+	_trigger_depth += 1
 	var sources: Array = []
 	sources.append_array(inventory)
 	if equipped_weapon != null:
 		sources.append(equipped_weapon)
 	for item in sources:
-		if not (item is ItemData):
+		if item is ItemData:
+			_fire_source_triggers(item, trigger_name, ctx_extras, {})
+	if not (nested and trigger_name == "gold_gained"):
+		for passive in LootPassives.active():
+			_fire_source_triggers(passive["item"], trigger_name, ctx_extras, passive)
+	_trigger_depth -= 1
+
+# One held thing's answer to one hook. `loot` is {} for a relic, or the
+# LootPassives.active() row for a piece of the pack (whose `item` is `item`).
+func _fire_source_triggers(item: ItemData, trigger_name: String, ctx_extras: Dictionary,
+		loot: Dictionary) -> void:
+	for trig in item.triggers:
+		if String(trig.get("on", "")) != trigger_name:
 			continue
-		for trig in item.triggers:
-			if String(trig.get("on", "")) != trigger_name:
-				continue
-			if not _trigger_gates_pass(trig, ctx_extras):
-				continue
-			if not bool(trig.get("silent", false)):
-				GameLog.add("(%s triggers)" % item.display_name, Color(0.85, 0.9, 0.7))
-			for effect in trig.get("effects", []):
-				EffectSystem.apply(effect, {
-					"source": null, "target": null, "scene": null,
-					"card": ctx_extras.get("card"),
-					# The owning item — lets a self-referential effect (Unstable
-					# Genome's destroy_self) find and remove itself.
-					"item": item,
-				})
+		if not _trigger_gates_pass(trig, ctx_extras):
+			continue
+		if bool(trig.get("once_per_game", false)) and not _claim_once_per_game(item, loot, trigger_name):
+			continue
+		# A Blueprint copying a Rocket is the BLUEPRINT firing — it is the piece in
+		# the player's pack that did something — so it is named and pictured as
+		# itself, with what it copied beside the name.
+		var label: String = item.display_name
+		var art: Texture2D = item.image
+		if bool(loot.get("copy", false)):
+			var copier: ItemData = LootPassives.proxy(loot["copier"])
+			label = "%s (%s)" % [copier.display_name, item.display_name]
+			art = copier.image
+		if not bool(trig.get("silent", false)):
+			GameLog.add("(%s triggers)" % label, Color(0.85, 0.9, 0.7))
+		var fx_ctx := {
+			"source": null, "target": null, "scene": null,
+			"card": ctx_extras.get("card"),
+			# The owning item — lets a self-referential effect (Unstable
+			# Genome's destroy_self) find and remove itself.
+			"item": item,
+			# What the hook itself said (the entry a loot_used spent, the enemy an
+			# enemy_killed defeated), for an effect that answers about it.
+			"hook": ctx_extras,
+		}
+		if not loot.is_empty():
+			fx_ctx["loot_entry"] = loot["entry"]
+			fx_ctx["loot_source"] = loot["source"]
+			fx_ctx["loot_copy"] = bool(loot.get("copy", false))
+		_begin_trigger_report()
+		for effect in trig.get("effects", []):
+			EffectSystem.apply(effect, fx_ctx)
+		_end_trigger_report(label, art, fx_ctx)
+
+# `once_per_game` (Trading Card): the first firing at a game claims it, and every
+# later one at the same game is refused. The claim is kept on the piece DOING the
+# firing — a Blueprint copying Trading Card has a once-a-game of its own — and on
+# the pack entry, so it rides the save. A relic keeps it as metadata on its slot.
+# "A game" is `games_played`, which ticks once per report.
+func _claim_once_per_game(item: ItemData, loot: Dictionary, hook: String) -> bool:
+	if not loot.is_empty():
+		var entry: Dictionary = loot["entry"]
+		var once: Dictionary = entry.get("once_game", {})
+		if int(once.get(hook, -1)) == games_played:
+			return false
+		once[hook] = games_played
+		entry["once_game"] = once
+		return true
+	var key: String = "once_game_%s" % hook
+	if item.has_meta(key) and int(item.get_meta(key)) == games_played:
+		return false
+	item.set_meta(key, games_played)
+	return true
+
+# --- the picture a trigger leaves (the toast) ------------------------------------
+#
+# EVERY TRIGGER THAT DID SOMETHING SAYS SO, WITH ITS ART (docs/loot-passives.md §5).
+# What it did is read off the run rather than authored: the run resources are
+# snapshotted around the effects and the difference is the sentence ("Bloody Penny:
+# +1 Health"), plus anything an effect that moves no resource wrote into
+# `ctx.did` ("Hairpin: D6 charged"). A trigger that did nothing — a chance that
+# missed, a payout of 0 — leaves no toast, which is what keeps a 25% penny from
+# announcing itself on the three golds it did nothing for.
+#
+# NESTED TRIGGERS REPORT ONLY THEIR OWN. Swallowed Penny's coin fires Dragon Fruit
+# from inside it; the fruit's toast says "+1 Max Health", and the penny's must not
+# say it again, so each report subtracts whatever the reports inside it claimed.
+var _trigger_reports: Array = []
+
+func _begin_trigger_report() -> void:
+	_trigger_reports.append({"before": run_resource_snapshot(), "inner": {}})
+
+func _end_trigger_report(label: String, art: Texture2D, fx_ctx: Dictionary) -> void:
+	var frame: Dictionary = _trigger_reports.pop_back()
+	var now: Dictionary = run_resource_snapshot()
+	var total: Dictionary = {}
+	var parts: Array = []
+	for key in now.keys():
+		var delta: int = int(now[key]) - int(frame["before"].get(key, now[key]))
+		total[key] = delta
+		var own: int = delta - int(frame["inner"].get(key, 0))
+		if own != 0:
+			parts.append("%s%d %s" % ["+" if own > 0 else "", own, key])
+	for line in fx_ctx.get("did", []):
+		parts.append(String(line))
+	if not _trigger_reports.is_empty():
+		var parent: Dictionary = _trigger_reports[-1]["inner"]
+		for key in total.keys():
+			parent[key] = int(parent.get(key, 0)) + int(total[key])
+	if parts.is_empty():
+		return
+	Notifications.notify("%s: %s" % [label, ", ".join(PackedStringArray(parts))],
+		Color(0.85, 0.9, 0.7), art, label)
 
 # The gates a run-scope trigger can carry, read against the context the hook was
 # fired with. Only `if_goals_met` today (Ripple Basin's `if_goals=0`, §3): the item
@@ -920,6 +1044,9 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 			return false
 		if int(ctx["goals_met"]) != int(trig["if_goals_met"]):
 			return false
+	# Rocket's `enemy_killed if_boss:` — the defeat was a boss's.
+	if bool(trig.get("if_boss", false)) and not bool(ctx.get("boss", false)):
+		return false
 	return true
 
 # --- Curse / curse-card tallies -------------------------------------------
@@ -1344,6 +1471,7 @@ func _reset_item_tracking() -> void:
 	_applied_item_max_energy = 0
 	_applied_item_verbs = {}
 	_applied_scaling_max_hp = 0
+	_applied_pack_statuses = {}
 	max_hp_cap = -1
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
@@ -3289,6 +3417,54 @@ func _apply_status_bonuses(item: ItemData, direction: int) -> void:
 		if stacks != 0:
 			apply_status(StringName(key), stacks)
 
+# --- the pack's held-up grants (docs/loot-passives.md §4) -------------------------
+#
+# A relic puts its status grant up when it arrives and takes it down when it goes.
+# A pack piece cannot work that way, because what it holds up depends on WHERE IT
+# IS: a Blueprint beside a Goat Hoof holds a point of Speed, and one dragged a slot
+# over does not. So the pack's statuses are the difference between what the
+# arrangement wants now and what it was holding a moment ago, applied on every
+# change — and, like a relic's, only ever its own share: Speed gained any other way
+# is never the pack's to take back.
+var _applied_pack_statuses: Dictionary = {}
+
+func _on_pack_changed() -> void:
+	_recompute_item_bonuses()
+	_sync_pack_statuses()
+
+func _sync_pack_statuses() -> void:
+	var want: Dictionary = LootPassives.desired_statuses()
+	var keys: Dictionary = {}
+	for k in want.keys():
+		keys[k] = true
+	for k in _applied_pack_statuses.keys():
+		keys[k] = true
+	for k in keys.keys():
+		var delta: int = int(want.get(k, 0)) - int(_applied_pack_statuses.get(k, 0))
+		if delta != 0:
+			apply_status(StringName(k), delta)
+	_applied_pack_statuses = want
+
+# A save load restores the player's statuses WITH the pack's share already in them,
+# so the grants are adopted as standing rather than applied a second time.
+func adopt_pack_statuses() -> void:
+	_applied_pack_statuses = LootPassives.desired_statuses()
+
+# BIN a carried piece — the one place that says a piece was thrown away rather
+# than spent or traded (LootWindow and the drop modal both come through here). A
+# card binned is Trading Card's moment, so it is announced before the piece goes.
+func discard_loot_at(index: int) -> void:
+	if index < 0 or index >= loot_items.size():
+		return
+	var entry = loot_items[index]
+	remove_loot_at(index)
+	note_loot_binned(entry)
+
+# A piece went into the bin from anywhere — the pack, or the battlefield floor.
+func note_loot_binned(entry) -> void:
+	if entry is Dictionary and String(entry.get("type", "")) == "card":
+		TriggerBus.card_binned.emit({"card": entry.get("id", &"")})
+
 # Removes a specific owned item instance by reference (Unstable Genome's
 # destroy_self). No-op if it isn't in the inventory.
 func remove_item(item: ItemData) -> void:
@@ -3392,6 +3568,11 @@ func _recompute_item_bonuses() -> void:
 	sources.append_array(inventory)
 	if equipped_weapon != null:
 		sources.append(equipped_weapon)
+	# The pack's passives hold their stat grants up the same way (Lucky Toe's +1
+	# Luck, docs/loot-passives.md §4) — one relic-shaped source per piece at work,
+	# a Blueprint's copy included, so arranging the pack moves the numbers.
+	for passive in LootPassives.active():
+		sources.append(passive["item"])
 
 	# Handcuffs: (re)establish the max_hp ceiling. Snapshotting here (rather
 	# than only on acquisition) means a fresh pickup locks in the value it
@@ -3552,7 +3733,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll", "pill", "potion", "card", "wand":
+		"scroll", "pill", "potion", "card", "wand", "trinket":
 			# Each unit becomes a concrete entry. Four of the five are gained
 			# UNIDENTIFIED and the owning system resolves identity on use; a card is
 			# never unidentified at all (docs/cards-design.md §2), so for that arm
@@ -3570,6 +3751,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 							_add_random_card_loot()
 						"wand":
 							_add_random_wand_loot()
+						"trinket":
+							_add_random_trinket_loot()
 						_:
 							_add_random_potion_loot()
 			else:
@@ -3594,7 +3777,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
-		"scroll", "pill", "potion", "card":
+		"scroll", "pill", "potion", "card", "trinket":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
@@ -3662,6 +3845,21 @@ func _add_random_wand_loot() -> void:
 	if not entry.is_empty():
 		loot_items.append(entry)
 
+func _add_random_trinket_loot() -> void:
+	var entry: Dictionary = roll_trinket_entry()
+	if not entry.is_empty():
+		loot_items.append(entry)
+		_note_loot_gained(entry)
+
+# One trinket as a pack entry, rarity-weighted like every kind (Data.roll_trinket).
+# Nothing rides on it at the drop: what a trinket carries it earns in the pack — a
+# counter, a once-a-game claim (docs/loot-passives.md §4).
+func roll_trinket_entry() -> Dictionary:
+	var t: TrinketData = Data.roll_trinket()
+	if t == null:
+		return {}
+	return {"type": "trinket", "id": t.id, "rarity": t.rarity}
+
 # WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight FIVE-way
 # split (docs/wands-design.md §4; docs/cards-design.md §4; docs/potions-design.md
 # §8, decision #4).
@@ -3692,7 +3890,13 @@ func _add_random_wand_loot() -> void:
 # enemy drop, no boss bonus: a kind that arrives from four directions at once is a
 # kind nobody can balance the first time. The one-in-four is a number that can be
 # turned; four sources are four numbers that have to be turned together.
-const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand"]
+#
+# TRINKETS MADE IT SIX (docs/loot-passives.md §1), on the same terms cards and
+# wands joined on: an even share, so every kind before them got a little rarer.
+# A trinket is never spent, which makes it the kind most likely to sit in a slot
+# all run — the squeeze the other five feel from it is the price of it, paid in
+# the place the player feels it, exactly as a wand's is.
+const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand", "trinket"]
 
 func roll_loot_kind() -> String:
 	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
@@ -3750,6 +3954,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		return CardSystem.roll_card_loot()
 	if want == "wand":
 		return WandSystem.roll_wand_loot()
+	if want == "trinket":
+		return roll_trinket_entry()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -3902,6 +4108,15 @@ func add_wand_loot(id: StringName) -> void:
 	loot_items.append({"type": "wand", "id": w.id, "rarity": w.rarity,
 		"charges": w.starting_charges()})
 	emit_signal("inventory_changed")
+
+# And a SPECIFIC trinket (DevTools grant, tests). Uncapped, like the rest here.
+func add_trinket_loot(id: StringName) -> void:
+	var t: TrinketData = Data.get_trinket(id)
+	if t == null:
+		return
+	loot_items.append({"type": "trinket", "id": t.id, "rarity": t.rarity})
+	emit_signal("inventory_changed")
+	_note_loot_gained(loot_items[-1])
 
 # ---------------------------------------------------------------------------
 # The 3x3 the loot window draws (§4.3)

@@ -84,7 +84,19 @@ func _apply_bottom_inset() -> void:
 	_stack.offset_top = y
 	_stack.offset_bottom = y
 
-func _on_notified(text: String, color: Color) -> void:
+# THE ART RIDES THE TOAST (docs/loot-passives.md §5). When a relic or a piece of
+# the pack fires, the notice carries its picture, drawn to the left of the line at
+# the size the eye reads before the words — "the penny went off" should be a thing
+# the player sees, not a sentence they have to read to find out which penny.
+const ICON_SIZE := 32
+
+# Live toasts by source key, so a burst from one source stacks (see `_restack`).
+var _by_key: Dictionary = {}
+
+func _on_notified(text: String, color: Color, icon: Texture2D = null, key: String = "") -> void:
+	if key != "" and _by_key.has(key) and is_instance_valid(_by_key[key]["toast"]):
+		_restack(_by_key[key], text)
+		return
 	var toast := PanelContainer.new()
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -101,6 +113,17 @@ func _on_notified(text: String, color: Color) -> void:
 	sb.content_margin_bottom = 8
 	toast.add_theme_stylebox_override("panel", sb)
 
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	toast.add_child(row)
+	var pic: TextureRect = null
+	if icon != null:
+		pic = UITheme.crisp_tex(icon, ICON_SIZE)
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(pic)
+
 	var lbl := Label.new()
 	lbl.text = text
 	# Measured UNWRAPPED first: a Label that already wraps reports a minimum width of
@@ -109,16 +132,61 @@ func _on_notified(text: String, color: Color) -> void:
 	lbl.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
 	lbl.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast.add_child(lbl)
+	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(lbl)
 
 	_stack.add_child(toast)
 	# Cap label width so long lines wrap instead of stretching off-screen, then let
-	# it wrap inside the width it just claimed.
-	lbl.custom_minimum_size = Vector2(minf(MAX_WIDTH - 28.0, lbl.get_minimum_size().x), 0)
+	# it wrap inside the width it just claimed — less the picture beside it.
+	var room: float = MAX_WIDTH - 28.0
+	if pic != null:
+		room -= ICON_SIZE + UITheme.GAP_WIDE
+	lbl.custom_minimum_size = Vector2(minf(room, lbl.get_minimum_size().x), 0)
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
+	var rec := {"toast": toast, "label": lbl, "text": text, "count": 1, "tween": null}
+	if key != "":
+		_by_key[key] = rec
+		toast.tree_exiting.connect(func():
+			if _by_key.get(key, {}).get("toast") == toast:
+				_by_key.erase(key))
+	rec["tween"] = _play(toast, true)
+
+# ONE SOURCE, ONE TOAST. A second notice from a source whose toast is still up
+# rewrites that toast and holds it again rather than stacking a new one: the same
+# line again reads "×2", a different line (a Rocket whose payout just grew)
+# replaces the old one. A report where a Piggy Bank pays on eight hits is one toast
+# saying "×8", not a column of eight that pushes everything else off the screen.
+func _restack(rec: Dictionary, text: String) -> void:
+	if text == String(rec["text"]):
+		rec["count"] = int(rec["count"]) + 1
+		(rec["label"] as Label).text = "%s  ×%d" % [text, int(rec["count"])]
+	else:
+		rec["text"] = text
+		rec["count"] = 1
+		(rec["label"] as Label).text = text
+	# Re-measured, because the width was claimed for the shorter line: without this
+	# a "×2" wraps onto a line of its own.
+	var lbl: Label = rec["label"]
+	var room: float = lbl.custom_minimum_size.x
+	var pic_w: float = (ICON_SIZE + UITheme.GAP_WIDE) if lbl.get_parent().get_child_count() > 1 else 0.0
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.custom_minimum_size = Vector2.ZERO
+	room = minf(MAX_WIDTH - 28.0 - pic_w, lbl.get_minimum_size().x)
+	lbl.custom_minimum_size = Vector2(room, 0)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var old = rec.get("tween")
+	if old is Tween and (old as Tween).is_valid():
+		(old as Tween).kill()
+	rec["tween"] = _play(rec["toast"], false)
+
+func _play(toast: Control, fade_in: bool) -> Tween:
 	var tw := create_tween()
-	tw.tween_property(toast, "modulate:a", 1.0, FADE_IN)
+	if fade_in:
+		tw.tween_property(toast, "modulate:a", 1.0, FADE_IN)
+	else:
+		toast.modulate.a = 1.0
 	tw.tween_interval(HOLD_TIME)
 	tw.tween_property(toast, "modulate:a", 0.0, FADE_OUT)
 	tw.tween_callback(toast.queue_free)
+	return tw

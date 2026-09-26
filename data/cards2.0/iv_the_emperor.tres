@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_iv_the_emperor"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"iv_the_emperor"
+display_name = "IV - The Emperor"
+rarity = "Common"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Spawn a random Boss from the current Game Type and Difficulty Tier"
+effect = [{"op": "spawn_boss"}]
+file = "IVTheEmperor"
+icon = "Isaac_Major_Arcana"

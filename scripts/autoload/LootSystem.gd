@@ -64,6 +64,11 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary):
 		return {"logs": [], "requests": []}
+	# A PASSIVE PIECE IS NEVER SPENT (docs/loot-passives.md §1). The pack draws it
+	# no Use button; this is the backstop for any other door, and it refuses before
+	# the slot is emptied — a Trinket "used" would be a Trinket thrown away.
+	if LootPassives.is_passive(entry):
+		return {"logs": [], "requests": []}
 	entry = (entry as Dictionary).duplicate(true)
 	# A WAND SPENDS A CHARGE RATHER THAN A SLOT, until the charge it spends is its
 	# last (docs/wands-design.md §4.1). That is the whole of what the kind changes
@@ -101,6 +106,8 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 # `use_loot` is this with a slot emptied first, so the two can never drift on what
 # using a piece MEANS.
 func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	if LootPassives.is_passive(entry):
+		return {"logs": [], "requests": []}
 	# A LOOSE WAND SPENDS A CHARGE TOO. There is no slot to settle, but the charge
 	# is a fact about the piece rather than about the pack, and skipping it here
 	# would let a wand taken on the spot fire for free — and would have the outcome
@@ -161,6 +168,13 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# Absent for every other kind, which has nothing to count.
 	if is_wand(spent):
 		out["charges_left"] = WandSystem.charges_of(spent)
+	else:
+		# THE PIECE WAS SPENT, said once, after everything it did (Endless Nameless,
+		# docs/loot-passives.md §3). Here and not in `use_loot`, so a piece used on
+		# the spot counts as well; after the echoes, and never FOR them, so a copy
+		# of a copy cannot breed. Not for a wand, for Echo Chamber's reason: it spent
+		# a charge, not itself.
+		TriggerBus.loot_used.emit({"entry": spent})
 	return out
 
 # Is this piece the one kind that spends charges rather than slots? One reading of
@@ -200,6 +214,7 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 			# a thrown potion's does (docs/wands-design.md §4.2) — set once, by the
 			# caller that armed the picker. A wand with nothing to aim ignores it.
 			return WandSystem.zap_wand(entry, ctx)
+		# A trinket has nothing to resolve: it works from the slot, never from a use.
 	return {}
 
 # The copies Echo Chamber fires this use: the last N remembered, newest first, so
@@ -254,6 +269,9 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 			return CardSystem.display_name(entry, face_up)
 		"wand":
 			return WandSystem.display_name(entry)
+		"trinket":
+			var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
+			return t.display_name if t != null else "Trinket"
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
@@ -281,6 +299,8 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 			return CardSystem.art_texture(entry, face_up)
 		"wand":
 			return WandSystem.art_texture(entry)
+		"trinket":
+			return LootPassives.load_trinket_art(Data.get_trinket(StringName(entry.get("id", ""))))
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -308,6 +328,8 @@ func glyph(entry: Dictionary) -> String:
 			return "🃏"
 		"wand":
 			return "🪄"
+		"trinket":
+			return "✦"
 	return "📜"
 
 # ===========================================================================
@@ -397,6 +419,10 @@ func is_identified(entry: Dictionary) -> bool:
 			# nothing about a card in the pack is hidden. It is what keeps a card out
 			# of `carried_unidentified`, so Scroll of Identify never offers to tell
 			# you something you can already read.
+			return true
+		"trinket":
+			# Nothing hidden about one either: its line is on it from the moment it
+			# is found (docs/loot-passives.md §1).
 			return true
 	return false
 
@@ -488,6 +514,9 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			return CardSystem.description(entry, face_up)
 		"wand":
 			return WandSystem.description(entry)
+		"trinket":
+			var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
+			return t.description if t != null else ""
 	return ""
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -615,6 +644,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Card"
 		"wand":
 			return "Wand"
+		"trinket":
+			return "Trinket"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
@@ -652,14 +683,41 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 			"lines": [description(entry, false)],
 			"note": "▸ Pick it up to turn it over.",
 		}
+	var lines: Array = [description(entry)]
+	var note: String = ""
+	# A PASSIVE PIECE SAYS SO, and says what it is doing from where it sits
+	# (docs/loot-passives.md §2): a Blueprint names what it is copying right now,
+	# which is the one thing about it that changes when the pack is rearranged.
+	if LootPassives.is_passive(entry):
+		sub += "  ·  Passive"
+		note = "▸ Works while it is in your pack — never spent."
+		var def: Resource = LootPassives.def_for(entry)
+		if LootPassives.copies(def) != "":
+			var slot: int = _carried_slot(entry)
+			if slot >= 0:
+				var copying: String = LootPassives.copying_name(slot)
+				lines.append("Copying: %s" % copying if copying != ""
+					else "Copying nothing — put a passive piece to its right.")
+		var grown: int = int(entry.get("counter", 0))
+		if grown != 0:
+			lines.append("Grown by %+d so far." % grown)
 	return {
 		"title": display_name(entry),
 		"subtitle": sub,
 		"accent": LOOT_COLOR,
 		"art": art_texture(entry),
-		"lines": [description(entry)],
+		"lines": lines,
 		# NO NOTE ON AN UNKNOWN PIECE. It used to carry "Using it is how you learn
 		# what it is", which is the same advice the ??? above it already gives and the
 		# Use button under it already offers.
-		"note": "",
+		"note": note,
 	}
+
+# The pack slot of a carried entry — found by IDENTITY, since two copies of one
+# piece are equal Dictionaries — or -1 when it is not in the pack (an offer, a floor
+# piece).
+func _carried_slot(entry: Dictionary) -> int:
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			return GameState.loot_slot_of(i)
+	return -1

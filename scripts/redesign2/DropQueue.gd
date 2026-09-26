@@ -153,6 +153,9 @@ func bin_floor_loot(cell: Vector2i) -> void:
 		GameLoop2.take_drop(cell)
 		GameLog.add("Threw away %s." % LootSystem.display_name(entry),
 			Color(0.8, 0.8, 0.8))
+		# A card thrown off the floor is binned as surely as one out of the pack
+		# (Trading Card, docs/loot-passives.md §3).
+		GameState.note_loot_binned(entry)
 		_page.refresh_board())
 
 # THE PACK, MOUNTED FOR THE LENGTH OF A DRAG. The page's `_notification` hands the

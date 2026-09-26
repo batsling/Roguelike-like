@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_trading_card"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"trading_card"
+display_name = "Trading Card"
+rarity = "Uncommon"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Passive: Once per game, Gain +3 Gold when trashing a card"
+effect = []
+file = "TradingCard"
+icon = "Balatro_Playing_Cards"
+passive = true
+triggers = [{"on": "card_binned", "once_per_game": true, "effects": [{"type": "gain_gold", "value": 3}]}]
+stat_bonuses = {}
+status_bonuses = {}

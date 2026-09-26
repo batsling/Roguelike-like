@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_bloody_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"bloody_penny"
+display_name = "Bloody Penny"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "Passive: 25% chance to Gain +1 Health when gaining Gold"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("coin", "blood")
+file = "BloodyPenny"
+triggers = [{"on": "gold_gained", "effects": [{"type": "chance", "percent": 25, "effect": {"type": "gain_hp", "value": 1}}]}]
+stat_bonuses = {}
+status_bonuses = {}

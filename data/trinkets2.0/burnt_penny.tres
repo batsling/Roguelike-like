@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_burnt_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"burnt_penny"
+display_name = "Burnt Penny"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "Passive: 25% chance to Gain +1 Bomb when gaining Gold"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("coin")
+file = "BurntPenny"
+triggers = [{"on": "gold_gained", "effects": [{"type": "chance", "percent": 25, "effect": {"type": "gain_stat", "stat": "bombs", "value": 1}}]}]
+stat_bonuses = {}
+status_bonuses = {}

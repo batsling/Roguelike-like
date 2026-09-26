@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_chaos_the_clown"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"chaos_the_clown"
+display_name = "Chaos the Clown"
+rarity = "Common"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Passive: Whenever you enter a shop, Gain +1 Scramble"
+effect = []
+file = "ChaosTheClown"
+icon = "Balatro_Playing_Cards"
+passive = true
+triggers = [{"on": "shop_entered", "effects": [{"type": "gain_stat", "stat": "scramble", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}
