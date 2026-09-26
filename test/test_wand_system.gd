@@ -242,27 +242,54 @@ func test_charges_can_be_topped_up_but_never_past_the_top() -> void:
 	assert_false(WandSystem.add_charges(entry, 1),
 		"a full wand reports that the bar did not move")
 
-# --- Echo Chamber leaves wands alone entirely (§4.4) -----------------------
+# --- Every copy ability copies a zap (docs/loot-passives.md §9) -------------
+#
+# The charge is spent ONCE, by use_loot; a copy only re-runs the zap.
 
-func test_a_wand_never_joins_the_echo_memory() -> void:
+func _bodies() -> int:
+	return GameLoop2.stack.size()
+
+func test_echo_form_copies_a_zap_for_one_charge() -> void:
+	GameState.add_wand_loot(&"wand_of_create_monster")
+	var full: int = WandSystem.charges_of(GameState.loot_items[0])
+	GameState.add_card_loot(&"echo_form")
+	var before: int = _bodies()
+	LootSystem.use_loot(0, {"rng": _rng()})
+	assert_eq(_bodies(), before + 2, "the zap and its copy each call a body")
+	if full > 1:
+		assert_eq(WandSystem.charges_of(GameState.loot_items[0]), full - 1,
+			"and only one charge came off")
+	assert_eq(GameState.loot_uses_this_game, 1, "the zap was the game's first use")
+
+func test_a_zap_joins_the_echo_memory() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
 	LootSystem.use_loot(0, {"rng": _rng()})
-	assert_eq(LootSystem.used_memory().size(), 0,
-		"nothing to copy — a wand copied three times would be four effects per charge")
+	assert_eq(LootSystem.used_memory().size(), 1, "remembered like any other use")
+	assert_eq(StringName(LootSystem.used_memory()[0].get("type", "")), &"wand")
 
-func test_zapping_a_wand_fires_no_echoes_either() -> void:
-	# The half that is easy to miss: a wand that replayed the memory without
-	# joining it would be three free copies of your last pill, six times over.
-	GameState.loot_used_memory.append({"type": "pill",
-		"id": Data.all_pills()[0].id, "horse": false})
-	var gold_before: int = GameState.gold
-	var hp_before: int = GameState.hp
-	GameState.add_wand_loot(&"wand_of_nothing")
-	var out: Dictionary = LootSystem.use_loot(0, {"rng": _rng()})
-	assert_eq(GameState.loot_used_memory.size(), 1, "the memory is untouched")
-	assert_eq(GameState.gold, gold_before)
-	assert_eq(GameState.hp, hp_before)
-	assert_eq(out["logs"].size(), 1, "one line, and it is the wand's own")
+func test_echo_chamber_replays_a_zap() -> void:
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	GameState.add_wand_loot(&"wand_of_create_monster")
+	LootSystem.use_loot(0, {"rng": _rng()})
+	GameState.add_pill_loot(Data.all_pills()[0].id)
+	var before: int = _bodies()
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": _rng()})
+	assert_gt(_bodies(), before, "the pill's use replayed the remembered zap")
+
+func test_a_replayed_ray_lands_where_it_was_aimed() -> void:
+	# The remembered zap keeps its square, so a replay fired off the back of a
+	# pill (which aims at nothing) still has somewhere to land.
+	var cell := Vector2i(1, 0)
+	GameState.add_item(Data.get_item2(&"echo_chamber"))
+	WandSystem.identify(&"wand_of_fire")
+	GameState.add_wand_loot(&"wand_of_fire")
+	LootSystem.use_loot(0, {"rng": _rng(), "target": cell})
+	assert_eq(LootSystem.used_memory()[-1].get("echo_target"), [cell.x, cell.y])
+	GameLoop2.tiles.clear()
+	assert_null(GameLoop2.tile_at(cell))
+	GameState.add_pill_loot(Data.all_pills()[0].id)
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": _rng()})
+	assert_not_null(GameLoop2.tile_at(cell), "the replayed bolt set the square alight again")
 
 # --- Aiming (§4.2) ---------------------------------------------------------
 

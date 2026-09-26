@@ -376,3 +376,28 @@ func test_a_mid_game_save_keeps_the_first_copy_spent() -> void:
 	SaveSystem._apply_save_data(data.duplicate(true))
 	assert_eq(GameState.loot_uses_this_game, 1)
 	assert_eq(GameState.extra_loot_copies(), 0, "a reload does not hand it out twice")
+
+# --- a zap is a use, for every copy ability (§9) ----------------------------------
+
+func test_endless_nameless_duplicates_a_wand_with_at_least_one_charge() -> void:
+	_trinket(&"endless_nameless", 0)
+	if GameLoop2.grid_cols() <= 0:
+		pending("no board to drop onto")
+		return
+	var found: Dictionary = {}
+	for _i in range(60):
+		GameState.add_wand_loot(&"wand_of_nothing")
+		var entry: Dictionary = GameState.loot_items[-1]
+		entry["charges"] = 1                       # this zap is its last
+		LootSystem.use_loot(GameState.loot_items.size() - 1)
+		for cell in GameLoop2.drops.keys():
+			var d = GameLoop2.drops[cell]
+			var loot = d.get("loot", d) if d is Dictionary else null
+			if loot is Dictionary and String(loot.get("type", "")) == "wand":
+				found = loot
+		GameLoop2.drops.clear()
+		if not found.is_empty():
+			break
+	assert_false(found.is_empty(), "a quarter of sixty zaps leave a copy")
+	if not found.is_empty():
+		assert_eq(int(found.get("charges", 0)), 1, "never an empty stick")

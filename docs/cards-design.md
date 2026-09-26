@@ -342,10 +342,8 @@ An **int rather than a bool**, so a second Echo Form owes a second copy. "An
 additional copy" is a thing a card owes you, and a Rare that silently no-ops
 because you already played one is a thing a player only finds out by wasting it.
 
-**A wand is outside it**, exactly as it is outside Echo Chamber
-([`wands-design.md`](wands-design.md) §4.4): a wand spends a *charge* rather than a
-slot, so doubling one would be two effects for one charge on the only kind that
-already fires six times.
+**A wand zap is copied too** ([`loot-passives.md`](loot-passives.md) §9, which
+superseded the old rule that a wand stood outside every copy).
 
 **One content consequence, decided rather than discovered.** Echo Form is the only
 `Slay_the_Spire_Defect_Rare`, so its deck holds one card and its face-down icon

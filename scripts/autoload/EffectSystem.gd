@@ -649,6 +649,13 @@ func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
 		return
 	var copy: Dictionary = (used as Dictionary).duplicate(true)
 	copy.erase("pack_slot")
+	copy.erase("echo_target")
+	# A WAND'S DUPLICATE IS THE WAND AS IT NOW STANDS, charges and all — but never
+	# an empty one. The zap that set this off may have spent the stick's last charge,
+	# and a duplicate of that would be a stick with nothing in it: one charge is the
+	# least a copy of a wand you just fired can be.
+	if String(copy.get("type", "")) == "wand":
+		copy["charges"] = maxi(1, int(copy.get("charges", 0)))
 	var cell: Vector2i = GameLoop2.drop_loot_anywhere(copy)
 	if cell != GameLoop2.OFF_FIELD:
 		_did(ctx, "a copy of %s lands on the board" % LootSystem.display_name(copy))

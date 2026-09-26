@@ -127,52 +127,45 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		return out
 	var spent: Dictionary = entry.duplicate(true)
 	_merge(out, _resolve(spent, ctx))
-	# A WAND IS OUTSIDE ECHO CHAMBER IN BOTH DIRECTIONS (docs/wands-design.md §4.4),
-	# and the two halves are one rule: the relic copies pieces that were CONSUMED.
+	# A WAND'S ZAP IS COPIED LIKE ANY OTHER USE (docs/loot-passives.md §9). It used
+	# to stand outside every copy in both directions, on the argument that a copied
+	# zap was a second effect for one charge. That is the POINT of a copy — Echo
+	# Form's extra pill is a second effect for one pill — and the charge is still
+	# only spent once, by `use_loot`, before any of this runs. So a zap is echoed,
+	# is remembered for Echo Chamber, counts as Echo Form's first use, and reaches
+	# Endless Nameless, exactly as a scroll does.
 	#
-	# It is never echoed, because a wand copied three times would be four effects
-	# for one charge — the relic would be worth more on the kind that already gets
-	# to fire six times. And zapping one fires no copies EITHER, which is the half
-	# that is easy to miss and the half that matters: a wand that replayed the
-	# memory without joining it would be three free copies of your last pill, once
-	# per charge, for the price of one slot. Nothing else in the pack can pay a
-	# relic six times.
-	if not is_wand(spent):
-		# ECHO FORM FIRST, and it copies something different from what follows.
-		# The card promises an additional copy of the FIRST loot you use each game
-		# (docs/loot-passives.md §8), so what it repeats is THIS piece — the one in
-		# your hand — while
-		# Echo Chamber below repeats the last three you spent. Two mechanics that
-		# read alike in a sentence and are nothing alike in a pack: the card is
-		# strongest on the best piece you are holding, the relic on the best three
-		# you have already had.
-		#
-		# Before the relic's copies rather than after, so a use reads in the order
-		# it happens: the piece, the piece again, then the history.
-		#
-		# A wand is outside this for the reason it is outside Echo Chamber, spelled
-		# out below: it spends a charge rather than a slot, so doubling it would be
-		# two effects for one charge on the one kind that already fires six times.
-		#
-		# THE COUNT IS READ, THEN THIS USE IS COUNTED, then the copies resolve — so
-		# the copies are this game's first use, and nothing they set off can claim
-		# the first-use copy a second time.
-		var extra: int = GameState.extra_loot_copies()
-		GameState.loot_uses_this_game += 1
-		if extra > 0:
-			var echoers: Array = LootPassives.holders("echo_first_loot")
-			if not echoers.is_empty():
-				LootPassives.announce(echoers[0], "%s again" % display_name(spent)
-					if extra == 1 else "%s ×%d more" % [display_name(spent), extra])
-		for _extra in range(extra):
-			var again: Dictionary = _resolve(spent.duplicate(true), ctx)
-			if not again.is_empty():
-				_merge(out, again)
-		for echo in _echo_queue():
-			var copy: Dictionary = _resolve(echo, ctx)
-			if not copy.is_empty():
-				_merge(out, copy)
-		_remember(spent)
+	# ECHO FORM FIRST, and it copies something different from what follows. The
+	# card promises an additional copy of the FIRST loot you use each game
+	# (docs/loot-passives.md §8), so what it repeats is THIS piece — the one in your
+	# hand — while Echo Chamber below repeats the last three you spent. The card is
+	# strongest on the best piece you are holding, the relic on the best three you
+	# have already had.
+	#
+	# Before the relic's copies rather than after, so a use reads in the order it
+	# happens: the piece, the piece again, then the history. A copy of an AIMED
+	# piece (a thrown potion, a ray) lands where the original was aimed: it rides
+	# the same `ctx.target`.
+	#
+	# THE COUNT IS READ, THEN THIS USE IS COUNTED, then the copies resolve — so the
+	# copies are this game's first use, and nothing they set off can claim the
+	# first-use copy a second time.
+	var extra: int = GameState.extra_loot_copies()
+	GameState.loot_uses_this_game += 1
+	if extra > 0:
+		var echoers: Array = LootPassives.holders("echo_first_loot")
+		if not echoers.is_empty():
+			LootPassives.announce(echoers[0], "%s again" % display_name(spent)
+				if extra == 1 else "%s ×%d more" % [display_name(spent), extra])
+	for _extra in range(extra):
+		var again: Dictionary = _resolve(spent.duplicate(true), ctx)
+		if not again.is_empty():
+			_merge(out, again)
+	for echo in _echo_queue():
+		var copy: Dictionary = _resolve(echo, _echo_ctx(echo, ctx))
+		if not copy.is_empty():
+			_merge(out, copy)
+	_remember(spent, ctx)
 	# WHAT IS LEFT IN IT, on the result rather than left for the caller to work out.
 	# The screen that reports a use holds its own copy of the entry, and for the
 	# PACK path that copy is the one made before the charge came off — so a modal
@@ -180,13 +173,24 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# Absent for every other kind, which has nothing to count.
 	if is_wand(spent):
 		out["charges_left"] = WandSystem.charges_of(spent)
-	else:
-		# THE PIECE WAS SPENT, said once, after everything it did (Endless Nameless,
-		# docs/loot-passives.md §3). Here and not in `use_loot`, so a piece used on
-		# the spot counts as well; after the echoes, and never FOR them, so a copy
-		# of a copy cannot breed. Not for a wand, for Echo Chamber's reason: it spent
-		# a charge, not itself.
-		TriggerBus.loot_used.emit({"entry": spent})
+	# THE PIECE WAS SPENT, said once, after everything it did (Endless Nameless,
+	# docs/loot-passives.md §3). Here and not in `use_loot`, so a piece used on the
+	# spot counts as well; after the echoes, and never FOR them, so a copy of a copy
+	# cannot breed.
+	TriggerBus.loot_used.emit({"entry": spent})
+	return out
+
+# The context a REMEMBERED piece is replayed in. The use in hand's own aim wins
+# when it has one — the player is pointing at something now — and a remembered
+# aimed piece (a ray, a throw) falls back to the square it was aimed at when it was
+# spent, so an Echo Chamber replay of last game's Wand of Fire, fired off the back
+# of a pill that aims at nothing, still has somewhere to land.
+func _echo_ctx(echo: Dictionary, ctx: Dictionary) -> Dictionary:
+	if ctx.get("target") is Vector2i or not echo.has("echo_target"):
+		return ctx
+	var at: Array = echo["echo_target"]
+	var out: Dictionary = ctx.duplicate()
+	out["target"] = Vector2i(int(at[0]), int(at[1]))
 	return out
 
 # Is this piece the one kind that spends charges rather than slots? One reading of
@@ -245,9 +249,17 @@ func _echo_queue() -> Array:
 # Push a used entry onto the memory. Kept trimmed to the deepest echo the pack has
 # ever had rather than to the current one, so taking Echo Chamber off and putting
 # it back on doesn't quietly erase the history it would have read.
-func _remember(entry: Dictionary) -> void:
+#
+# WHERE IT WAS AIMED rides along (`echo_target`, as [x, y] so the memory stays
+# JSON-safe in a save), for the replay's sake — see `_echo_ctx`.
+func _remember(entry: Dictionary, ctx: Dictionary = {}) -> void:
 	var memory: Array = used_memory()
-	memory.append(entry.duplicate(true))
+	var kept: Dictionary = entry.duplicate(true)
+	kept.erase("pack_slot")
+	var at = ctx.get("target")
+	if at is Vector2i:
+		kept["echo_target"] = [at.x, at.y]
+	memory.append(kept)
 	var cap: int = maxi(3, GameState.loot_echo_depth())
 	while memory.size() > cap:
 		memory.pop_front()

@@ -497,8 +497,8 @@ var bonus_shields: int = 0
 # ECHO FORM, HELD (docs/loot-passives.md §8): the FIRST piece of loot used in each
 # game plays an additional copy for every Echo Form at work in the pack. What that
 # needs from the run is how many copyable pieces this game has spent so far, which
-# is this — counted by LootSystem._spend (never for a wand, which Echo Form cannot
-# copy, so zapping one first does not waste the card), zeroed as the game resolves
+# is this — counted by LootSystem._spend (a zap included: it is copied like any
+# other use, docs/loot-passives.md §9), zeroed as the game resolves
 # (GameLoop2), and saved, so a mid-game reload does not hand the copy out twice.
 var loot_uses_this_game: int = 0
 

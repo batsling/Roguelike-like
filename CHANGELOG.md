@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Every copy ability copies a wand zap** (`docs/loot-passives.md` §9). Echo
+  Form, Echo Chamber and Endless Nameless all treat a zap like any other use; the
+  charge still comes off exactly once. Echo Chamber remembers where a zap was
+  aimed, so a replay off the back of an un-aimed use still lands. Endless
+  Nameless's copy of a wand is never empty (at least one charge). Supersedes
+  wands-design §4.4.
+
 - **Barricade and Echo Form are passive cards** (`docs/loot-passives.md` §8).
   Barricade banks every game's unspent Temporary Shields into Shields while held;
   Echo Form copies the first piece of loot used in each game (a wand zap does not

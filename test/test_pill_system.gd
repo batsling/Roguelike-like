@@ -655,23 +655,20 @@ func test_an_echo_form_copy_is_not_remembered_either() -> void:
 	LootSystem.use_loot(0)
 	assert_eq(LootSystem.used_memory().size(), 1, "one use, one memory")
 
-func test_echo_form_leaves_a_wand_alone() -> void:
-	# A wand is outside Echo Chamber in both directions (docs/wands-design.md
-	# §4.4) because it spends a CHARGE rather than a slot — doubling one would be
-	# two effects for one charge on the only kind that already fires six times.
-	# The card is the same shape of promise, so it takes the same exception.
-	var wand: WandData = Data.all_wands()[0] if not Data.all_wands().is_empty() else null
+func test_echo_form_copies_a_zap_too() -> void:
+	# Every copy ability copies a zap (docs/loot-passives.md §9); the charge still
+	# comes off once. test_wand_system.gd measures what the copy does.
+	var wand: WandData = Data.get_wand(&"wand_of_nothing")
 	if wand == null:
-		pending("no wands in the catalog to check the exception against")
+		pending("no Wand of Nothing in the catalog")
 		return
 	GameState.add_wand_loot(wand.id)
 	GameState.add_card_loot(&"echo_form")
-	var before: int = GameState.loot_items.size()
+	var full: int = WandSystem.charges_of(GameState.loot_items[0])
 	var out: Dictionary = LootSystem.use_loot(0)
 	assert_true(out.has("charges_left"), "it went down the wand path")
-	assert_lte(GameState.loot_items.size(), before, "and the zap resolved")
-	assert_eq(GameState.loot_uses_this_game, 0,
-		"and a zap does not spend Echo Form's first copy — a wand is never copied")
+	assert_eq(int(out["charges_left"]), full - 1, "one charge, copy or not")
+	assert_eq(GameState.loot_uses_this_game, 1, "and it was the game's first use")
 
 func test_nothing_echoes_itself() -> void:
 	# Isaac's ordering: the copies fire off the memory as it stood BEFORE this use,

@@ -14,11 +14,11 @@ extends Node
 #     entry's own count and `spend_charge` writes it back, for the reason a pill's
 #     dose rides on its entry: two Wands of Fire in one pack are two different
 #     amounts of wand, and a count on the shared WandData would make them one.
-#   * IT IS OUTSIDE ECHO CHAMBER ENTIRELY (§4.4). A wand's use never joins the
-#     memory and never fires the copies, because both halves of the relic assume a
-#     piece that was consumed: a wand that echoed itself would spend one charge for
-#     four effects, and a wand that only FIRED the memory would be three free
-#     replays of your last pill, six times over, for the price of one slot.
+#   * EVERY COPY ABILITY COPIES A ZAP (docs/loot-passives.md §9). It used to stand
+#     outside Echo Chamber entirely, on the argument that a copied zap was extra
+#     effects for one charge; that is what a copy IS, and a pill copied is extra
+#     effects for one pill. The charge is spent once, by LootSystem.use_loot, and
+#     never by a copy — a copy only re-runs `zap_wand`, which spends nothing.
 #   * ITS ALPHABET IS 28 MATERIALS AND ITS ROSTER IS 12. Sixteen are dealt to
 #     nothing — the same argument the potions' twenty-two spare vials make. The
 #     ratio matters more than the count: with twelve wands and twelve materials,

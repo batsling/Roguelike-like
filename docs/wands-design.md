@@ -64,7 +64,7 @@ Three consequences, and each is a rule somewhere in the code:
 - **Identification covers every charge at once.** One zap and the whole stick is
   known. A wand that had to be learned six times would be six gambles for the price
   of one slot, which is the opposite of what the kind is for.
-- **It stands outside Echo Chamber entirely** (§4.4).
+- **Every copy ability copies a zap** (§4.4).
 
 ---
 
@@ -159,6 +159,11 @@ reach the ground the same way. A clause's `area=` is measured from that cell;
 `area=board` needs no cell at all and works on a wand fired blind.
 
 ### 4.4 Echo Chamber does not see it
+
+> **Superseded ([`loot-passives.md`](loot-passives.md) §9): every copy ability now
+> copies a zap** — Echo Chamber, Echo Form and Endless Nameless alike. The charge
+> is still spent exactly once, by `use_loot`; a copy only re-runs the zap. The
+> reasoning below is kept for the record.
 
 **A wand is never echoed, and zapping one fires no echoes either.** The two halves
 are one rule — the relic copies pieces that were *consumed* — and both are needed:

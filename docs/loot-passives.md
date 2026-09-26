@@ -75,7 +75,7 @@ relic shelf, so a trinket authoring one would be a promise nothing keeps.
 | `game_won` | A game was actually **beaten**: the report said so and it was not an escape. Narrower than `game_beaten`, which is every game seen through, win or lose. | `Overworld2`, beside `game_beaten` | Isaac's Fork, Rocket, To the Moon |
 | `shop_entered` | A Shop node's shelf opens where the player stands, once per arrival (not when a save reload re-mounts it). | `Overworld2._open_pending_shop` | Chaos the Clown |
 | `boss_spawned` | A boss walks onto the board, whatever put it there. Fresh bodies only, so a save load does not re-fire it. | `GameLoop2._add_to_grid` | Hairpin |
-| `loot_used` | A piece of loot was spent, once per use, never for its echoes. Not for a wand, which spends a charge rather than itself (Echo Chamber's rule). | `LootSystem._spend` | Endless Nameless |
+| `loot_used` | A piece of loot was spent (a wand zap included, §9), once per use, never for its echoes. | `LootSystem._spend` | Endless Nameless |
 | `card_binned` | A card of the loot kind went into the bin, from the pack or off the floor. | `GameState.discard_loot_at` / `note_loot_binned` | Trading Card |
 
 `enemy_killed` now also carries `boss: bool`.
@@ -192,11 +192,29 @@ to a hook, so each is a field on the card read by total across every working pie
   counts this game's copyable uses. `LootSystem._spend` reads the owed copies,
   counts the use, then resolves the copies, and `GameLoop2` zeroes the count as
   the game resolves. The count is saved, so a mid-game reload does not hand the
-  copy out twice. **A wand zap does not count**: a wand is never copied (Echo
-  Chamber's rule, wands-design §4.4), so zapping one first does not waste the
-  card, and the first *copyable* piece gets it. The copy leaves a toast: "Echo
-  Form: Luck Up again".
+  copy out twice. A wand zap counts like any other use and is copied (§9). The
+  copy leaves a toast: "Echo Form: Luck Up again".
 
 The old run flags (`bank_shields_next`, `echo_loot_next_game`) and the card ops
 that set them are removed. A save that still carries them loads fine; the keys
 are ignored.
+
+## 9. Every copy ability copies a wand zap
+
+A wand used to stand outside Echo Chamber (and so outside Echo Form and Endless
+Nameless) on the argument that a copied zap was extra effects for one charge.
+That is what a copy is: a copied pill is extra effects for one pill. So a zap is
+now copied like any other use.
+
+- **The charge is spent once.** `LootSystem.use_loot` takes it before anything
+  resolves; a copy only re-runs `WandSystem.zap_wand`, which spends nothing.
+- **Echo Form** copies the zap in hand, at the same square it was aimed at.
+- **Echo Chamber** remembers zaps and replays them. A remembered piece keeps
+  where it was aimed (`echo_target`, stored as `[x, y]` so the saved memory stays
+  JSON-safe). A replay uses the current use's aim when it has one, and the
+  remembered square otherwise, so last game's Wand of Fire replayed off the back
+  of a pill still has somewhere to land.
+- **Endless Nameless** can duplicate a wand. The duplicate carries the charges the
+  wand has after the zap, but never fewer than one, since the zap that set it off
+  may have spent the last.
+- The Use screen shows "Echo Chamber will also use…" over a wand as well.

@@ -1204,8 +1204,9 @@ It is a gamble like the first three — an unknown wand hides behind one of 28
 materials, 24 of which the run deals to nothing — and what you win is different in
 kind: identification covers **every charge**, so the first zap is the price of the
 other five. Two rules fall out of the charges and are written down in wands-design
-rather than here: a wand stands **outside Echo Chamber in both directions** (§4.4
-there), and **anything that charges items charges wands** while a beaten game
+rather than here: every copy ability — Echo Chamber included — **copies a zap**
+without spending a second charge (§4.4 there, superseded by
+[`loot-passives.md`](loot-passives.md) §9), and **anything that charges items charges wands** while a beaten game
 charges only relics (§7 there).
 
 **Trinkets are the sixth kind**, and the one that is **never spent**: a trinket
