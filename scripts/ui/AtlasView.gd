@@ -2023,6 +2023,7 @@ func _enemy_note_row(game_id: StringName, entry: Dictionary, _list: Control) -> 
 		art.custom_minimum_size = Vector2(60, 60)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, enemy.image)
 		body.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)

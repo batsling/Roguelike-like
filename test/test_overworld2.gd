@@ -10217,8 +10217,11 @@ func test_a_start_card_shows_its_enemy_as_art_with_the_words_on_the_hover() -> v
 		assert_true(shown.tooltip_text.contains(enemy.goal),
 			"and carries its goal: '%s'" % shown.tooltip_text)
 	if enemy.image != null:
-		assert_true(shown is TextureRect, "a body with art is drawn as art")
-		assert_eq((shown as TextureRect).texture, enemy.image, "its own portrait")
+		assert_true(shown is HoverPanel, "a body with art wears the board's hover card")
+		var art: TextureRect = _first_texture_rect(shown)
+		assert_not_null(art, "a body with art is drawn as art")
+		if art != null:
+			assert_eq(art.texture, enemy.image, "its own portrait")
 	else:
 		# No portrait authored — the NAME, not a gap. An empty row under one of three
 		# cards reads as that road having no enemy at all.
@@ -10528,8 +10531,10 @@ func test_a_counted_goal_draws_a_counter_instead_of_a_tick_box() -> void:
 	assert_string_contains(_text_of(_ui._verify_box), "0 / 3",
 		"the row opens at zero of three")
 	assert_eq(_count_buttons("+").size(), 1, "one + to press")
-	assert_eq(_count_buttons("−").size(), 0,
-		"and nothing to take back at zero")
+	assert_eq(_count_buttons("−").size(), 1,
+		"the − is there from the start, holding its place")
+	assert_true(_count_buttons("−")[0].disabled,
+		"…but darkened, with nothing to take back at zero")
 
 func test_pressing_plus_short_of_the_target_asks_nothing_and_spends_nothing() -> void:
 	_pick_solo(0)
@@ -10592,11 +10597,11 @@ func test_minus_takes_a_press_back_while_the_goal_is_unfinished() -> void:
 		return
 	_count_buttons("+")[0].pressed.emit()
 	_ui._populate_play_panel()
-	assert_eq(_count_buttons("−").size(), 1, "now there is something to undo")
+	assert_false(_count_buttons("−")[0].disabled, "now there is something to undo")
 	_count_buttons("−")[0].pressed.emit()
 	assert_eq(GameLoop2.goal_progress(inst), 0, "the misclick came back")
 	_ui._populate_play_panel()
-	assert_eq(_count_buttons("−").size(), 0, "and there is nothing left to undo")
+	assert_true(_count_buttons("−")[0].disabled, "and there is nothing left to undo")
 
 # A COUNTED TALLY SURVIVES THE WALK TO THE NEXT GAME. A goal can be answered in
 # any later game (§2), so three bugs need not all be in one — and a counter that

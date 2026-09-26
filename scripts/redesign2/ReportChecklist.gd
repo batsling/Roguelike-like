@@ -1317,13 +1317,9 @@ func winning_run_review() -> Control:
 	_review_notes.clear()
 	if winning_rows.is_empty():
 		return null
+	# No sub-header: the panel's own "Completion" title says what these are.
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	var head := Label.new()
-	head.text = "%s  tick what you managed, and say how it went" % WINNING_RUN_HEAD
-	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	col.add_child(head)
 	for row in winning_rows:
 		var cb: CheckBox = row.get("check")
 		if cb == null or not is_instance_valid(cb):
@@ -1986,8 +1982,7 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
 	var boss: bool = enemy.is_boss()
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
-		UITheme.flat(UITheme.BG, 4, 2, 1,
-			Color(0.95, 0.55, 0.2) if boss else tint.lerp(UITheme.BORDER, 0.45)))
+		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.45)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	frame.tooltip_text = ("Boss — %s" % enemy.display_name) if boss else enemy.display_name
 	if picture != null:
@@ -2006,8 +2001,7 @@ func _enemy_icon_rect(enemy: GoalEnemyData, tint: Color = UITheme.TEXT,
 		initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		initial.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-		initial.add_theme_color_override("font_color",
-			Color(0.95, 0.55, 0.2) if boss else tint)
+		initial.add_theme_color_override("font_color", tint)
 		frame.add_child(initial)
 	return frame
 
@@ -2160,6 +2154,10 @@ func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) 
 # a plain tick box, which is every caller but the counted branch of
 # populate_play_panel.
 const COUNT_BTN := 26
+# …and HALF-HEIGHT, so the stacked pair (2 × 19 + a hair) is no taller than the
+# portrait-and-box line every other row is. At 26 each the counted row stood 14px
+# taller than its neighbours and read as a different kind of goal.
+const COUNT_BTN_H := 19
 
 func _counter_controls(counter: Dictionary, color: Color, locked: bool) -> Control:
 	var at: int = int(counter.get("at", 0))
@@ -2177,9 +2175,10 @@ func _counter_controls(counter: Dictionary, color: Color, locked: bool) -> Contr
 	# halves the horizontal room the control takes in the narrowest column on the
 	# page, which is what buys the tally its own space.
 	#
-	# `−` IS ONLY THERE WHEN THERE IS SOMETHING TO TAKE BACK, so the column holds
-	# just `+` at 0 — the button keeps its place at the top either way, rather
-	# than the pair re-centring under the mouse between presses.
+	# `−` IS THERE FROM THE START, DARKENED AND DISABLED AT 0. It used to appear
+	# only once there was something to take back, which made the row change shape
+	# under the mouse on its first press; now the pair is always a pair, and the
+	# `−` just lights up when it has something to do.
 	var spin := VBoxContainer.new()
 	spin.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	spin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -2190,10 +2189,14 @@ func _counter_controls(counter: Dictionary, color: Color, locked: bool) -> Contr
 	# A counter is the one answer on this list that can be walked back
 	# (GameLoop2.retreat_goal): it has spent nothing yet, and a stray press on a
 	# row you are going to press three times is a misclick rather than a decision.
-	if at > 0 and not locked:
-		spin.add_child(_count_button("−", UITheme.TEXT_DIM,
+	if not locked:
+		var minus: Button = _count_button("−", UITheme.TEXT_DIM,
 			"Take one back — nothing has been spent yet.",
-			counter.get("on_minus", Callable())))
+			counter.get("on_minus", Callable()))
+		if at <= 0:
+			minus.disabled = true
+			minus.tooltip_text = "Nothing to take back yet."
+		spin.add_child(minus)
 	if spin.get_child_count() > 0:
 		line.add_child(spin)
 
@@ -2215,7 +2218,7 @@ func _count_button(glyph: String, tint: Color, tip: String, on_press: Callable) 
 	var b := HoverButton.new()
 	b.text = glyph
 	b.tooltip_text = tip
-	b.custom_minimum_size = Vector2(COUNT_BTN, COUNT_BTN)
+	b.custom_minimum_size = Vector2(COUNT_BTN, COUNT_BTN_H)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	b.add_theme_color_override("font_color", tint)
@@ -2223,7 +2226,11 @@ func _count_button(glyph: String, tint: Color, tip: String, on_press: Callable) 
 	for state in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(state, UITheme.flat(
 			tint.lerp(UITheme.BG, 0.78 if state == "hover" else 0.90),
-			4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
+			4, 0, 1, tint.lerp(UITheme.BORDER, 0.35)))
+	# DISABLED READS AS DARKENED: the `−` at zero is there to hold its place.
+	b.add_theme_stylebox_override("disabled", UITheme.flat(
+		UITheme.BG.lerp(Color.BLACK, 0.25), 4, 0, 1, UITheme.BORDER.lerp(UITheme.BG, 0.5)))
+	b.add_theme_color_override("font_disabled_color", UITheme.TEXT_FAINT.lerp(UITheme.BG, 0.4))
 	if on_press.is_valid():
 		b.pressed.connect(on_press)
 	return b

@@ -379,7 +379,10 @@ func test_the_collection_opens_with_its_detail_pane_closed() -> void:
 	assert_false(col._detail_panel.visible, "and it is not on screen with nothing in it")
 	_assert_fits("the Collection with no entry open", col)
 
-func test_opening_an_entry_opens_the_pane_and_closing_it_gives_the_width_back() -> void:
+# AN ENTRY OPENS IN A POPUP OVER THE GRID, and the grid does not move. It used to
+# be a side pane the grid gave two columns up for, which reflowed every cover
+# under the mouse on every click.
+func test_opening_an_entry_pops_it_up_without_moving_the_grid() -> void:
 	var col := Collection.new()
 	add_child_autofree(col)
 	await wait_frames(6)
@@ -387,16 +390,18 @@ func test_opening_an_entry_opens_the_pane_and_closing_it_gives_the_width_back() 
 	if games.is_empty():
 		pending("no games in this checkout")
 		return
-	var narrow: float = col._grid.size.x
-	col._show_game_detail(games[0])
+	var width: float = col._grid.size.x
+	col._select(0)
 	await wait_frames(6)
-	assert_true(col._detail_panel.visible, "picking an entry opens the pane")
-	assert_lt(col._grid.size.x, narrow, "and the grid gives up the width for it")
+	assert_true(col._detail_panel.visible, "picking an entry opens the popup")
+	assert_true(col._detail_overlay.visible, "…over the grid")
+	assert_almost_eq(col._grid.size.x, width, 1.0, "and the grid keeps every column")
 	_assert_fits("the Collection with an entry open", col)
+	_assert_fits("the entry popup", col._detail_panel)
 	col._close_detail()
 	await wait_frames(6)
-	assert_false(col._detail_panel.visible, "closing it puts the pane away")
-	assert_almost_eq(col._grid.size.x, narrow, 1.0, "and the grid has its columns back")
+	assert_false(col._detail_panel.visible, "closing it puts the popup away")
+	assert_almost_eq(col._grid.size.x, width, 1.0, "and the grid never moved")
 
 func test_the_tier_list_opens_with_its_detail_pane_closed() -> void:
 	var screen := TierListScreen.new()

@@ -11,6 +11,35 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Playtest pass: a Collection popup, crisp pixel art, and a bigger menu.**
+  - **Small enemy art is drawn crisp everywhere.** `UITheme.is_small_art` (≤128px
+    on its longest side) switches a picture to nearest-neighbour filtering whatever
+    box it is drawn in, alongside the old "drawn larger than its pixels" rule. The
+    board now measures against the body's whole footprint rather than one cell, and
+    the offering's Beatable pips, the haul's reason faces, the Atlas and the
+    Collection's enemy rows go through `apply_crisp` like everything else.
+  - **The Completion confirm is the header, the rows and the notes.** Titled
+    "Completion", no body paragraph, no sub-header; `ConfirmPanel` hides an empty
+    body.
+  - **A counted goal's `−` is there from the start**, darkened and disabled at 0,
+    and the stacked `+`/`−` are half height (`COUNT_BTN_H`) so the row is exactly
+    as tall as its neighbours.
+  - **The Collection opens an entry in a popup over the grid**, rather than a side
+    pane that reflowed the grid on every click. The picked cell is lit (thick rim,
+    tinted fill, gold glow), and ◀ ▶ (or the arrow keys) step through the grid in
+    layout order. Escape closes the popup first. The Events tab no longer opens an
+    entry by itself. The backdrop behind the Collection is dimmed 0.18, not 0.72,
+    so the menu's falling art is clear around the (opaque) panel.
+  - **Bosses are colour-coded like enemies**: by distance on the board
+    (`BattlefieldView.threat_color` ignores `is_boss`; the ☠ disc keeps
+    `BOSS_ORANGE`) and by game type in the Collection.
+  - **The start picker's enemy wears the board's hover card**
+    (`BattlefieldView.offered_enemy_hover`) instead of a stock tooltip.
+  - **The main menu is 25% larger**: title, buttons, fonts, the profile row and the
+    save list. The two stack gaps shrank a little so the column still fits 720p
+    (693px). The falling art grew by about a sixth and its clear band widened to
+    0.40 for the wider column.
+
 - **Playtest pass: the escape gate, the board's animations, and a tidier page.**
   A list of notes from a play session. Spec: §3.2, §19.5.
   - **Escape opens after 3 lost runs of the game in play**

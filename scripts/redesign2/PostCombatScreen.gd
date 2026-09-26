@@ -915,6 +915,7 @@ func _sum_term(term: Dictionary) -> Control:
 		art.custom_minimum_size = Vector2(REASON_FACE, REASON_FACE)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, enemy.image)
 		# The name is the tooltip rather than a caption: eight of these across a
 		# 600px column is a row of labels, and the picture is the point.
 		tip = "%s — %s, worth %d" % [enemy.display_name,

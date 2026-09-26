@@ -34,8 +34,10 @@ const COVER_SHARE := 0.3
 
 # Draw sizes, in canvas pixels. A cover is drawn to its real 3:4; the small art
 # keeps its own aspect inside this box.
-const SMALL_EDGE := 46.0
-const COVER_H := 96.0
+# Up about a sixth from 46 / 96, with the menu column going up a quarter: at the
+# old size the art read as specks beside the larger buttons.
+const SMALL_EDGE := 54.0
+const COVER_H := 112.0
 const SIZE_JITTER := 0.45          # +/- this much of the edge, per piece
 
 # Fall speed in pixels/sec, and the sideways drift that stops the columns reading
@@ -75,9 +77,9 @@ const ALPHA_MAX := 0.62
 const FADE_BOTTOM := 0.34          # the height spent fading out into the dark
 
 # The middle of the canvas the columns leave alone, as a fraction of the width.
-# The button column is 320px of a 1280px canvas; this is wider than that so the
+# The button column is 400px of a 1280px canvas; this is wider than that so the
 # art never crowds the text it sits beside.
-const CLEAR_BAND := 0.34
+const CLEAR_BAND := 0.40
 
 # How long a frame may spend decoding textures, in microseconds. The menu has to
 # come up instantly, and baking the whole pool is the better part of a second's

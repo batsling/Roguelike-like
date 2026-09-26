@@ -667,7 +667,7 @@ static func crisp_tex(tex: Texture2D, size: int, force: bool = false) -> Texture
 # The same rule applied to an existing TextureRect after its texture is assigned,
 # for art that is set dynamically rather than at build time.
 static func apply_crisp(tr: TextureRect, tex: Texture2D, force: bool = false) -> void:
-	if force or is_pixel_art(tex, tr.custom_minimum_size):
+	if force or is_pixel_art(tex, tr.custom_minimum_size) or is_small_art(tex):
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	else:
 		tr.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
@@ -679,6 +679,16 @@ static func apply_crisp(tr: TextureRect, tex: Texture2D, force: bool = false) ->
 # the same answer this theme gives everything else.
 static func is_pixel_art(tex: Texture2D, box: Vector2) -> bool:
 	return tex != null and (tex.get_width() < int(box.x) or tex.get_height() < int(box.y))
+
+# True when `tex` is small enough that it can only be pixel art, whatever box it is
+# drawn in. `is_pixel_art` only catches art being blown UP; a 64px sprite shrunk
+# into a 26px checklist chip, or drawn across a footprint the size of its own
+# pixels, was left on linear filtering and came out soft — and the roster's
+# smaller enemies (16x16 to ~120px) are exactly the ones drawn as pixel art.
+const SMALL_ART_MAX := 128
+
+static func is_small_art(tex: Texture2D) -> bool:
+	return tex != null and maxi(tex.get_width(), tex.get_height()) <= SMALL_ART_MAX
 
 # --- Check boxes -----------------------------------------------------------
 #

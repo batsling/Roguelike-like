@@ -2250,12 +2250,10 @@ func confirm_completed_game() -> void:
 	if _phase != Phase.PLAYING or _chosen.is_empty():
 		return
 	var review: Control = _checklist.winning_run_review() if _checklist != null else null
-	var body: String = ("Reporting this game as completed. It resolves now — the "
-		+ "board takes its turn and the run moves on.")
-	if review != null:
-		body += ("\n\nEverything below is claimed with it. These are the goals no "
-			+ "single game settles, so this is the last moment to answer them.")
-	ConfirmPanel.ask(self, "Completed this game?", body, "Yes, I completed it",
+	# NO BODY TEXT. The panel is the "Completion" header, the rows that can be
+	# ticked with it and their notes — the paragraph that used to explain the
+	# resolve was read once and then scrolled past on every game after.
+	ConfirmPanel.ask(self, "Completion", "", "Complete",
 		func() -> void:
 			if _checklist != null:
 				_checklist.save_review_notes()
