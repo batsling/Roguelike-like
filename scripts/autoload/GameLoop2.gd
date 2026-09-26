@@ -2594,25 +2594,22 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	if GameState.shields > 0:
 		if GameState.banks_shields():
 			res["shields_banked"] = GameState.shields
+			# The picture of the rule working (docs/loot-passives.md §5): the
+			# Barricade that did it, saying how many it kept.
+			var keeper: Array = LootPassives.holders("bank_shields")
+			if not keeper.is_empty():
+				LootPassives.announce(keeper[0], "kept %d %s%s as %ss" % [
+					GameState.shields, GameState.TEMP_SHIELD_NAME,
+					"" if GameState.shields == 1 else "s", GameState.SHIELD_NAME])
 			GameState.bonus_shields += GameState.shields
 			GameState.shields = 0
 		else:
 			res["shields_expired"] = GameState.shields
 			GameState.shields = 0
-	# AND THE CARD IS SPENT, whether or not there was anything to bank
-	# (docs/cards-design.md §5). Barricade promises the NEXT game, and a next game
-	# that ended with its cover already broken is a game the card was there for —
-	# disarming only on a successful bank would hold the promise open until a game
-	# happened to end with shields standing, which is a different card.
-	#
-	# Outside the `shields > 0` gate above for exactly that reason: that branch is
-	# not reached at all when the game resolved with nothing left over.
-	GameState.bank_shields_next = false
-	# ECHO FORM expires on the same beat and for the same reason: it promised the
-	# NEXT game, and this is that game ending — however it ended. A card that only
-	# expired on a game it had something to copy in would hold its promise open
-	# across a game the player spent no loot in, which is a different card.
-	GameState.echo_loot_next_game = 0
+	# A NEW GAME GETS A NEW FIRST PIECE (docs/loot-passives.md §8). Echo Form copies
+	# the first loot used in each game, so the count of pieces this game spent goes
+	# back to zero on the beat the game ends — however it ended.
+	GameState.loot_uses_this_game = 0
 	# The tracker went with it: `res` already carries the count for the log, and the
 	# board must not keep counting a finished game's lost runs. The escape gate is
 	# the same kind of per-game fact and goes at the same moment — the swings above

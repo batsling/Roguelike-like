@@ -63,7 +63,8 @@ func test_every_trinket_loads_with_art_and_a_passive() -> void:
 		assert_not_null(LootPassives.load_trinket_art(trinket), "%s has art" % trinket.id)
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
-	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card"]:
+	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",
+			&"barricade", &"echo_form"]:
 		var c: CardData = Data.get_card(id)
 		assert_true(c != null and c.is_passive(), "%s is a passive card" % id)
 		assert_true(c != null and c.effect.is_empty(), "%s has nothing to play" % id)
@@ -351,3 +352,27 @@ func test_a_save_round_trip_does_not_double_a_rented_status() -> void:
 	assert_eq(int(_at(1).get("counter", 0)), 4, "the Rocket kept its payout")
 	GameState.discard_loot_at(GameState.loot_index_at_slot(0))
 	assert_eq(GameState.status_stacks(&"speed"), 0, "and still gives it back")
+
+# --- Barricade and Echo Form, held (§8) ------------------------------------------
+
+func test_echo_form_doubles_the_first_piece_and_says_so() -> void:
+	_card(&"echo_form", 0)
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"luck_up")
+	GameState.luck = 0
+	LootSystem.use_loot(GameState.loot_items.size() - 1)
+	assert_eq(GameState.luck, 2, "the first pill, and its copy")
+	LootSystem.use_loot(GameState.loot_items.size() - 1)
+	assert_eq(GameState.luck, 3, "the second pill of the game is just itself")
+	var texts: Array = Notifications.history.map(func(n): return String(n.get("text", "")))
+	assert_true(texts.any(func(t): return String(t).begins_with("Echo Form: ")),
+		"the copy leaves a toast")
+
+func test_a_mid_game_save_keeps_the_first_copy_spent() -> void:
+	_card(&"echo_form", 0)
+	GameState.add_pill_loot(&"luck_up")
+	LootSystem.use_loot(GameState.loot_items.size() - 1)
+	var data: Dictionary = SaveSystem._build_payload()
+	SaveSystem._apply_save_data(data.duplicate(true))
+	assert_eq(GameState.loot_uses_this_game, 1)
+	assert_eq(GameState.extra_loot_copies(), 0, "a reload does not hand it out twice")

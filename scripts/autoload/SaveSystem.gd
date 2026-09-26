@@ -282,13 +282,10 @@ func _build_payload() -> Dictionary:
 		# once, by a pill or by Barricade banking a resolved game, and subtracting
 		# an item half would eat what was granted.
 		"bonus_shields": GameState.bonus_shields,
-		# Barricade, armed and not yet spent (docs/cards-design.md §5). A run flag
-		# rather than something in the pack — the card that armed it is already
-		# gone — so it has to be written down here or a reload would quietly cancel
-		# a card the player paid a loot slot for.
-		"bank_shields_next": GameState.bank_shields_next,
-		# Echo Form's one game, armed and not yet spent (docs/cards-design.md).
-		"echo_loot_next_game": GameState.echo_loot_next_game,
+		# How many copyable pieces this game has spent (docs/loot-passives.md §8).
+		# Echo Form copies the FIRST one, so a reload mid-game must not hand the
+		# copy out a second time.
+		"loot_uses_this_game": GameState.loot_uses_this_game,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -468,10 +465,11 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.dash_charges = int(data.get("dash", 0))
 	GameState.shields = int(data.get("shields", 0))
 	GameState.bonus_shields = int(data.get("bonus_shields", 0))
-	GameState.bank_shields_next = bool(data.get("bank_shields_next", false))
-	# A save from before Echo Form existed has none, and 0 is the honest answer:
-	# its run was never promised the copies.
-	GameState.echo_loot_next_game = int(data.get("echo_loot_next_game", 0))
+	# A save from before Echo Form was held has none, and 0 is the honest answer.
+	# (Its old one-game flags — bank_shields_next, echo_loot_next_game — are read
+	# by nothing now: both cards are passives, and a run that had one armed has
+	# the card itself to hold instead.)
+	GameState.loot_uses_this_game = int(data.get("loot_uses_this_game", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))

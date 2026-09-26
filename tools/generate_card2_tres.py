@@ -37,7 +37,6 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     spawn_object <object_id>    -> {op:spawn_object, object}
     spawn_boss                  -> {op:spawn_boss}
     copy_item                   -> {op:copy_item}
-    bank_shields_next           -> {op:bank_shields_next}
     none                        -> nothing
 
 `floor=` is the "if you have none, gain this instead" clause the two doubling
@@ -179,19 +178,8 @@ def parse_clause(s: str) -> list:
 
     # IV - The Emperor: a random boss of the current game type and difficulty tier
     # walks onto the board (GameLoop2.summon_boss).
-    if verb in ("teleport_shop", "teleport_start", "copy_item", "bank_shields_next",
-                "spawn_boss"):
+    if verb in ("teleport_shop", "teleport_start", "copy_item", "spawn_boss"):
         return [{"op": verb}]
-
-    # Echo Form. `echo_loot_next [N]` — N extra copies of every piece of loot
-    # used, for one game; 1 when unstated, which is what "an additional copy"
-    # means. Bare rather than a kv so it reads like the rest of the DSL.
-    if verb == "echo_loot_next":
-        count = int(bare[0]) if bare else 1
-        if count < 1:
-            raise ValueError("card effect DSL: echo_loot_next needs at least one "
-                             "copy in %r" % s)
-        return [{"op": "echo_loot_next", "count": count}]
 
     if verb == "spawn_object":
         if not bare:
@@ -269,6 +257,10 @@ def card_tres(row) -> tuple:
         lines.append("status_bonuses = %s" % gd_value(passive["status_bonuses"]))
         if passive["copy_neighbour"]:
             lines.append('copy_neighbour = "%s"' % gd_str(passive["copy_neighbour"]))
+        if passive["bank_shields"]:
+            lines.append("bank_shields = true")
+        if passive["echo_first_loot"]:
+            lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
     return cid, "\n".join(lines) + "\n"
 
 

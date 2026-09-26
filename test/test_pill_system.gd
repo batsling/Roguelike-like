@@ -600,6 +600,10 @@ func test_echo_chamber_replays_the_last_three_used() -> void:
 		"the use itself plus the two it remembers")
 
 # --- Echo Form, the CARD, which is a different mechanic --------------------
+#
+# Held, since docs/loot-passives.md §8: the first piece used in each game plays an
+# additional copy. The card sits in the pack beside the pill; `use_loot(0)` is the
+# pill, which went in first.
 
 func test_echo_form_uses_the_piece_in_your_hand_a_second_time() -> void:
 	# The card copies THIS piece; the relic replays the last three. Luck Up is the
@@ -607,7 +611,7 @@ func test_echo_form_uses_the_piece_in_your_hand_a_second_time() -> void:
 	# the pack and nothing in the memory to confuse it with.
 	GameState.add_pill_loot(&"luck_up")
 	GameState.luck = 0
-	GameState.echo_loot_next_game = 1
+	GameState.add_card_loot(&"echo_form")
 	LootSystem.use_loot(0)
 	assert_eq(GameState.luck, 2, "the use, and the additional copy the card owes")
 
@@ -619,7 +623,7 @@ func test_echo_form_needs_no_memory_at_all() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	GameState.luck = 0
 	assert_true(LootSystem.used_memory().is_empty(), "a fresh run remembers nothing")
-	GameState.echo_loot_next_game = 1
+	GameState.add_card_loot(&"echo_form")
 	LootSystem.use_loot(0)
 	assert_eq(GameState.luck, 2, "and it doubles anyway")
 
@@ -633,7 +637,11 @@ func test_echo_form_and_echo_chamber_both_land() -> void:
 	LootSystem.use_loot(0)
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	GameState.luck = 0
-	GameState.echo_loot_next_game = 1
+	GameState.add_card_loot(&"echo_form")
+	# Echo Form copies the FIRST piece of a game, and the two uses above were this
+	# game's — so the use below is the first of the next one.
+	GameLoop2.beat_game(false)
+	GameState.luck = 0
 	LootSystem.use_loot(0)
 	assert_eq(GameState.luck, 4,
 		"the use, the card's extra copy, and the relic's two remembered ones")
@@ -643,7 +651,7 @@ func test_an_echo_form_copy_is_not_remembered_either() -> void:
 	# join the history the relic reads. Otherwise one doubled pill would deepen the
 	# memory twice and the two cards would compound.
 	GameState.add_pill_loot(&"luck_up")
-	GameState.echo_loot_next_game = 1
+	GameState.add_card_loot(&"echo_form")
 	LootSystem.use_loot(0)
 	assert_eq(LootSystem.used_memory().size(), 1, "one use, one memory")
 
@@ -657,11 +665,13 @@ func test_echo_form_leaves_a_wand_alone() -> void:
 		pending("no wands in the catalog to check the exception against")
 		return
 	GameState.add_wand_loot(wand.id)
-	GameState.echo_loot_next_game = 1
+	GameState.add_card_loot(&"echo_form")
 	var before: int = GameState.loot_items.size()
 	var out: Dictionary = LootSystem.use_loot(0)
 	assert_true(out.has("charges_left"), "it went down the wand path")
 	assert_lte(GameState.loot_items.size(), before, "and the zap resolved")
+	assert_eq(GameState.loot_uses_this_game, 0,
+		"and a zap does not spend Echo Form's first copy — a wand is never copied")
 
 func test_nothing_echoes_itself() -> void:
 	# Isaac's ordering: the copies fire off the memory as it stood BEFORE this use,

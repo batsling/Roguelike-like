@@ -494,40 +494,25 @@ var shields: int = 0
 # overworld has to be readable when no board is on screen.
 var bonus_shields: int = 0
 
-# BARRICADE, ARMED (docs/cards-design.md §5). The next game to resolve turns its
-# unspent Temporary Shields into Shields instead of letting them expire, and then
-# this goes back down — one game, because the card is one use.
-#
-# It is a RUN FLAG rather than a property of anything carried, which is the whole
-# difference between the card and the relic it replaces. The relic was read off the
-# inventory (`_any_item_flag`) and so banked every game forever, for as long as it
-# was in the pack; the card is spent, arms this, and is gone. `banks_shields()`
-# below is still the only reader, so GameLoop2 did not have to learn the difference.
-var bank_shields_next: bool = false
-
-# ECHO FORM (docs/cards-design.md): extra copies of every piece of loot used, for
-# ONE game. A run flag armed by the card and cleared when the next game resolves,
-# exactly like `bank_shields_next` above and for the same reason — the card is
-# spent, so what it bought cannot be read off anything the player is still
-# carrying.
-#
-# IT IS NOT ECHO CHAMBER, and the difference is the whole card. The relic replays
-# THE LAST THREE PIECES USED — a history, permanent, read off the pack
-# (`loot_echo_depth`). This copies THE PIECE IN YOUR HAND, once more, for one
-# game. Reading them as the same mechanic would make Echo Form a worse Echo
-# Chamber that expires, when the sheet says it is "an additional copy of every
-# loot you use".
-#
-# An INT rather than a bool so two of them stack the obvious way: the sheet says
-# "an additional copy", so two cards owe two additional copies rather than one
-# card silently eating the other.
-var echo_loot_next_game: int = 0
+# ECHO FORM, HELD (docs/loot-passives.md §8): the FIRST piece of loot used in each
+# game plays an additional copy for every Echo Form at work in the pack. What that
+# needs from the run is how many copyable pieces this game has spent so far, which
+# is this — counted by LootSystem._spend (never for a wand, which Echo Form cannot
+# copy, so zapping one first does not waste the card), zeroed as the game resolves
+# (GameLoop2), and saved, so a mid-game reload does not hand the copy out twice.
+var loot_uses_this_game: int = 0
 
 # How many EXTRA copies of the piece being used are owed right now. Its own reader
-# so the loot path never touches the flag directly — the same shape
+# so the loot path never touches the pack directly — the same shape
 # `banks_shields()` gives Barricade.
+#
+# IT IS NOT ECHO CHAMBER. The relic replays THE LAST THREE PIECES USED, a history
+# read off the shelf (`loot_echo_depth`); Echo Form copies THE PIECE IN YOUR HAND,
+# once a game. Two held Echo Forms (or one and a Blueprint beside it) owe two.
 func extra_loot_copies() -> int:
-	return maxi(0, echo_loot_next_game)
+	if loot_uses_this_game > 0:
+		return 0
+	return LootPassives.total("echo_first_loot")
 
 # THE TWO POOLS' PLAYER-FACING NAMES (§3.2), in one place because they are told
 # apart by exactly one fact — whether they survive the game — and a screen that
@@ -1321,8 +1306,7 @@ func reset_run() -> void:
 	# Games-first (2.0) resources.
 	shields = 0
 	bonus_shields = 0
-	bank_shields_next = false
-	echo_loot_next_game = 0
+	loot_uses_this_game = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -2800,14 +2784,13 @@ func _any_item_flag(field: String) -> bool:
 # Shields (§4.3) — the pool that stays — instead of expiring with the game that
 # granted them.
 #
-# ARMED BY A CARD, ONCE (docs/cards-design.md §5). This used to read an item flag
-# off the inventory, back when Barricade was a relic and the rule held for every
-# game the run played from the moment it was picked up. As a one-use card the rule
-# holds for the NEXT game and then stops, so the question is about the run's state
-# rather than about what is in the pack — but it is still asked in one place and
-# answered in one place, which is what kept GameLoop2 out of the change.
+# HELD, NOT SPENT (docs/loot-passives.md §8). It was a one-use card that armed this
+# for the next game; it is a passive card now, so the rule holds at the end of
+# EVERY game for as long as a Barricade is at work in the pack — which is what the
+# relic it once was did too. Asked in one place, answered in one place, so GameLoop2
+# never had to learn which of the three it was.
 func banks_shields() -> bool:
-	return bank_shields_next
+	return LootPassives.total("bank_shields") > 0
 
 # Lucky Foot: a Negative pill rerolls into a random Positive one (§4.3).
 func pills_reroll_positive() -> bool:

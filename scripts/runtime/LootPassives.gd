@@ -122,7 +122,8 @@ static func active() -> Array:
 		var src: Dictionary = resolve(slot, layout)
 		if src.is_empty():
 			continue
-		out.append({"item": proxy(src["def"]), "entry": entry, "source": src["entry"],
+		out.append({"item": proxy(src["def"]), "def": src["def"],
+			"entry": entry, "source": src["entry"],
 			# is_same, not ==: Dictionaries compare by VALUE, and two Goat Hoofs picked
 			# up the same way are equal rows that are still two pieces.
 			"copy": not is_same(src["entry"], entry), "slot": slot, "copier": def})
@@ -189,6 +190,35 @@ static func load_trinket_art(t: TrinketData) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+
+# --- the rules read by total ------------------------------------------------------
+#
+# Two passives are not an answer to a hook but a RULE the run consults at one
+# moment: Barricade (`bank_shields`, asked as a game resolves) and Echo Form
+# (`echo_first_loot`, asked as a piece is spent). Each is read off every working
+# piece, so a Blueprint beside one counts as another.
+
+# The pieces at work whose passive carries `field`, as active() rows.
+static func holders(field: String) -> Array:
+	return active().filter(func(p): return bool(p["def"].get(field)))
+
+# `field` summed over every working piece (a bool counts as 1).
+static func total(field: String) -> int:
+	var n: int = 0
+	for p in active():
+		n += int(p["def"].get(field))
+	return n
+
+# Toast a held rule that just did something, as the piece that did it — a
+# Blueprint copying the rule fires as itself, like every other copy.
+static func announce(row: Dictionary, line: String) -> void:
+	var def: Resource = row["copier"] if bool(row.get("copy", false)) else row["def"]
+	var who: ItemData = proxy(def)
+	var label: String = who.display_name
+	if bool(row.get("copy", false)):
+		label = "%s (%s)" % [who.display_name, String(row["def"].get("display_name"))]
+	Notifications.notify("%s: %s" % [label, line], Color(0.85, 0.9, 0.7), who.image, label)
 
 
 # --- the status half, held up by the slot ---------------------------------------

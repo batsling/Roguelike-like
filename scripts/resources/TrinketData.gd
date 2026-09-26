@@ -48,6 +48,10 @@ extends Resource
 # otherwise. No trinket authors it today — it is here because the passive shape is
 # shared with cards and the reader should not have to ask which kind it holds.
 @export var copy_neighbour: String = ""
+# The two held rules the pack reads by total rather than through a hook — Barricade's
+# and Echo Form's on cards today (CardData), here so the shape stays shared.
+@export var bank_shields: bool = false
+@export var echo_first_loot: int = 0
 
 
 func rarity_index() -> int:

@@ -146,8 +146,8 @@ twice.
 
 | Card | Rarity | Effect cell | Notes |
 |---|---|---|---|
-| Barricade | Rare | `bank_shields_next` | §5.1 |
-| Echo Form | Rare | `echo_loot_next 1` | §5.8 |
+| Barricade | Rare | `bank_shields` (passive) | §5.1 |
+| Echo Form | Rare | `echo_first_loot 1` (passive) | §5.8 |
 | Ride the Bus | Uncommon | `teleport_type deckbuilder` | §5.2 |
 | V - The Hierophant | Common | `gain_stat bonus_shields 2` | |
 | VI - The Lovers | Common | `gain_hp 2` | |
@@ -169,6 +169,11 @@ is not on disk and a card whose art cannot be found draws nothing:
 `card`.
 
 ### 5.1 Barricade — the relic that became one use
+
+> **Superseded: Barricade is a PASSIVE card now** ([`loot-passives.md`](loot-passives.md)
+> §8). Held in the pack, it banks every game's leftovers, which is what the relic
+> did; `GameState.banks_shields()` asks the pack, and `bank_shields_next` is gone.
+> The one-use version below is kept for the reasoning.
 
 Barricade and Ride the Bus were **relics** until this pass, and both were tagged
 `card` in the items sheet all along. Both rows are now deleted from `items`, and
@@ -299,6 +304,11 @@ is choosing between *effects* here rather than between names.
 ---
 
 ### 5.8 Echo Form — the card that is not Echo Chamber
+
+> **Superseded: Echo Form is a PASSIVE card now** ([`loot-passives.md`](loot-passives.md)
+> §8). Held in the pack, it copies the FIRST piece of loot used in each game;
+> `echo_loot_next_game` is gone. Everything below about how it differs from Echo
+> Chamber, and why a wand is outside it, still holds.
 
 > *Until the end of the next combat, play an additional copy of every loot you use*
 

@@ -8,7 +8,7 @@ care about what is next to them.
 
 - Content: the `trinkets` sheet (11 Isaac trinkets) and five passive rows on the
   `cards` sheet (Balatro's Blueprint, Chaos the Clown, Rocket, To the Moon,
-  Trading Card).
+  Trading Card), plus Slay the Spire's Barricade and Echo Form (§8).
 - Code: `scripts/runtime/LootPassives.gd` (which pieces are working and what each
   resolves to), `GameState.fire_run_item_triggers` (the runner),
   `scripts/resources/TrinketData.gd` and the passive fields on `CardData`.
@@ -174,3 +174,29 @@ shape has to be taught.
   path the every-third-spawn capstone takes. It is not a spawn event, so it does
   not move the tier ladder.
 - **Deck of Cards** (relic, Charged 2, `item_used: gain_card 1`) deals a card.
+
+## 8. Barricade and Echo Form, held
+
+Both were one-use cards that armed a run flag for the next game. Both are passive
+cards now. They are **rules the run consults at one moment** rather than answers
+to a hook, so each is a field on the card read by total across every working piece
+(`LootPassives.total`). A Blueprint beside one counts as a second.
+
+- **Barricade** (`bank_shields`): as every game resolves, unspent Temporary
+  Shields become Shields for as long as a Barricade is at work in the pack.
+  `GameState.banks_shields()` asks the pack; `GameLoop2.beat_game` did not change
+  its question. The bank leaves a toast: "Barricade: kept 3 Temporary Shields as
+  Shields".
+- **Echo Form** (`echo_first_loot 1`): the **first** piece of loot used in each
+  game plays one additional copy per Echo Form. `GameState.loot_uses_this_game`
+  counts this game's copyable uses. `LootSystem._spend` reads the owed copies,
+  counts the use, then resolves the copies, and `GameLoop2` zeroes the count as
+  the game resolves. The count is saved, so a mid-game reload does not hand the
+  copy out twice. **A wand zap does not count**: a wand is never copied (Echo
+  Chamber's rule, wands-design §4.4), so zapping one first does not waste the
+  card, and the first *copyable* piece gets it. The copy leaves a toast: "Echo
+  Form: Luck Up again".
+
+The old run flags (`bank_shields_next`, `echo_loot_next_game`) and the card ops
+that set them are removed. A save that still carries them loads fine; the keys
+are ignored.

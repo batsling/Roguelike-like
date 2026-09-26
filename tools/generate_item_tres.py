@@ -978,6 +978,17 @@ def parse_item(row):
             # A bare word, like grid_grow above; a second copy adds nothing.
             fields["front_column_slow"] = True
             last_trigger = None
+        elif kl0 == "bank_shields":
+            # Barricade, held: every game that resolves banks the Temporary
+            # Shields it left standing into Shields (docs/loot-passives.md §8).
+            fields["bank_shields"] = True
+            last_trigger = None
+        elif kl0 == "echo_first_loot":
+            # Echo Form, held: the FIRST piece of loot used in each game plays N
+            # additional copies (docs/loot-passives.md §8).
+            mm = re.search(r"\d+", clause)
+            fields["echo_first_loot"] = int(mm.group(0)) if mm else 1
+            last_trigger = None
         elif kl0 == "copy_right":
             # Blueprint: this piece does whatever the piece in the pack slot to
             # its RIGHT does (docs/loot-passives.md §2). Positional, so it only
@@ -1067,7 +1078,8 @@ def parse_item(row):
 # flags (heal_multiplier, front_column_slow, …) are read straight off the relic
 # shelf, so a trinket authoring one would print a promise the runtime never reads —
 # the exact silent failure every generator here exists to turn into a loud one.
-LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour")
+LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
+                       "bank_shields", "echo_first_loot")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
 _ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
                "card_grants", "stat_multipliers", "scaling")
@@ -1084,14 +1096,17 @@ def parse_loot_passive(name, effect_text):
             extra.append(k)
     if extra:
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
-                         "passive:, passive_status: and copy_right reach the pack "
+                         "passive:, passive_status:, copy_right, bank_shields and "
+                         "echo_first_loot reach the pack "
                          "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
     if not out:
         raise ValueError("%s: its Effect %r compiles to nothing" % (name, effect_text))
     return {"triggers": out.get("triggers", []),
             "stat_bonuses": out.get("stat_bonuses", {}),
             "status_bonuses": out.get("status_bonuses", {}),
-            "copy_neighbour": out.get("copy_neighbour", "")}
+            "copy_neighbour": out.get("copy_neighbour", ""),
+            "bank_shields": bool(out.get("bank_shields", False)),
+            "echo_first_loot": int(out.get("echo_first_loot", 0))}
 
 
 def _split_head(clause):

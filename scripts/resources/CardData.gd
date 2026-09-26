@@ -58,7 +58,6 @@ extends Resource
 #   {"op": "spawn_object", "object": "blood_donation_machine"} (Temperance)
 #   {"op": "gain_loot", "kind": "card", "count": 3}          (Ancient Recall)
 #   {"op": "copy_item"}                                      (? Card)
-#   {"op": "bank_shields_next"}                              (Barricade)
 @export var effect: Array = []
 
 # Art base name under res://images2.0/cards/ — the card's FACE, drawn once it is
@@ -82,6 +81,12 @@ extends Resource
 @export var status_bonuses: Dictionary = {}
 # "right" for Blueprint: this card does what the piece to its right does.
 @export var copy_neighbour: String = ""
+# Barricade: while held, every game that resolves banks its unspent Temporary
+# Shields into Shields (GameState.banks_shields).
+@export var bank_shields: bool = false
+# Echo Form: while held, the FIRST piece of loot used in each game plays this many
+# additional copies (GameState.extra_loot_copies).
+@export var echo_first_loot: int = 0
 
 
 func is_passive() -> bool:

@@ -48,7 +48,8 @@ func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 		if card.is_passive():
 			assert_true(card.effect.is_empty(), "%s has nothing to play" % card.id)
 			assert_true(not card.triggers.is_empty() or card.copy_neighbour != ""
-				or not card.stat_bonuses.is_empty() or not card.status_bonuses.is_empty(),
+				or not card.stat_bonuses.is_empty() or not card.status_bonuses.is_empty()
+				or card.bank_shields or card.echo_first_loot > 0,
 				"%s does something from the pack" % card.id)
 			continue
 		assert_false(card.effect.is_empty(), "%s does something" % card.id)
@@ -261,41 +262,42 @@ func test_ancient_recall_offers_three_more_cards() -> void:
 	CardSystem.play_card(_entry(&"ancient_recall"), {"rng": _rng()})
 	assert_eq(GameState.loot_cards().size(), 3)
 
-func test_barricade_arms_the_bank_for_exactly_one_game() -> void:
-	assert_false(GameState.banks_shields(), "nothing is armed to start with")
-	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
-	assert_true(GameState.banks_shields())
-	assert_true(GameState.bank_shields_next)
+# BARRICADE AND ECHO FORM ARE HELD, not played (docs/loot-passives.md §8).
 
-func test_echo_form_arms_an_extra_copy_of_every_piece_of_loot() -> void:
-	assert_eq(GameState.extra_loot_copies(), 0, "nothing is armed to start with")
-	var out: Dictionary = CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	assert_eq(GameState.extra_loot_copies(), 1, "one additional copy, as the card says")
-	assert_string_contains(String(out["logs"][0]).to_lower(), "twice")
+func test_barricade_banks_while_held_and_is_never_played() -> void:
+	assert_false(GameState.banks_shields(), "nothing banks to start with")
+	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
+	assert_false(GameState.banks_shields(), "playing it does nothing — it is a passive")
+	GameState.add_card_loot(&"barricade")
+	assert_true(GameState.banks_shields(), "holding it is what banks")
+
+func test_echo_form_owes_a_copy_of_the_first_piece_each_game() -> void:
+	assert_eq(GameState.extra_loot_copies(), 0, "nothing is owed to start with")
+	GameState.add_card_loot(&"echo_form")
+	assert_eq(GameState.extra_loot_copies(), 1, "the first piece this game gets one copy")
+	GameState.loot_uses_this_game = 1
+	assert_eq(GameState.extra_loot_copies(), 0, "and only the first")
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.extra_loot_copies(), 1, "a new game has a new first piece")
 
 func test_two_echo_forms_owe_two_extra_copies() -> void:
 	# "An additional copy" is a thing a card owes you, and two cards owe two — a
 	# second Rare quietly being a no-op is the kind of thing a player only ever
 	# finds out by wasting one.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	GameState.add_card_loot(&"echo_form")
+	GameState.add_card_loot(&"echo_form")
 	assert_eq(GameState.extra_loot_copies(), 2)
 
-func test_echo_form_expires_when_the_next_game_resolves() -> void:
-	# Barricade's clock exactly, and cleared on the same beat: the promise was
-	# about the next game HOWEVER it went, so it does not wait around for a game
-	# the player happened to spend loot in.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	assert_eq(GameState.extra_loot_copies(), 1)
-	GameLoop2.beat_game(false)
-	assert_eq(GameState.extra_loot_copies(), 0, "one game, and the game counts")
+func test_a_blueprint_beside_echo_form_is_a_second_echo_form() -> void:
+	GameState.take_loot_entry_at(_entry(&"blueprint"), 0)
+	GameState.take_loot_entry_at(_entry(&"echo_form"), 1)
+	assert_eq(GameState.extra_loot_copies(), 2)
 
 func test_echo_form_is_not_echo_chamber() -> void:
 	# The two read alike in a sentence and are different mechanics. The relic sets
 	# a DEPTH into the history of what has been spent; the card copies the piece in
-	# your hand. Neither should be readable as the other, or a temporary Echo Form
-	# would quietly become a worse Echo Chamber.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	# your hand. Neither should be readable as the other.
+	GameState.add_card_loot(&"echo_form")
 	assert_eq(GameState.loot_echo_depth(), 0,
 		"the card grants no history depth — that is the relic's")
 	assert_eq(GameState.extra_loot_copies(), 1, "and the relic would grant none of this")

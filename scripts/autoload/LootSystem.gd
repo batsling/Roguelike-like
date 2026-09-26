@@ -139,8 +139,9 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# relic six times.
 	if not is_wand(spent):
 		# ECHO FORM FIRST, and it copies something different from what follows.
-		# The card promises "an additional copy of every loot you use" for one
-		# game, so what it repeats is THIS piece — the one in your hand — while
+		# The card promises an additional copy of the FIRST loot you use each game
+		# (docs/loot-passives.md §8), so what it repeats is THIS piece — the one in
+		# your hand — while
 		# Echo Chamber below repeats the last three you spent. Two mechanics that
 		# read alike in a sentence and are nothing alike in a pack: the card is
 		# strongest on the best piece you are holding, the relic on the best three
@@ -152,7 +153,18 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 		# A wand is outside this for the reason it is outside Echo Chamber, spelled
 		# out below: it spends a charge rather than a slot, so doubling it would be
 		# two effects for one charge on the one kind that already fires six times.
-		for _extra in range(GameState.extra_loot_copies()):
+		#
+		# THE COUNT IS READ, THEN THIS USE IS COUNTED, then the copies resolve — so
+		# the copies are this game's first use, and nothing they set off can claim
+		# the first-use copy a second time.
+		var extra: int = GameState.extra_loot_copies()
+		GameState.loot_uses_this_game += 1
+		if extra > 0:
+			var echoers: Array = LootPassives.holders("echo_first_loot")
+			if not echoers.is_empty():
+				LootPassives.announce(echoers[0], "%s again" % display_name(spent)
+					if extra == 1 else "%s ×%d more" % [display_name(spent), extra])
+		for _extra in range(extra):
 			var again: Dictionary = _resolve(spent.duplicate(true), ctx)
 			if not again.is_empty():
 				_merge(out, again)

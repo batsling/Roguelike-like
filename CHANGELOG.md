@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Barricade and Echo Form are passive cards** (`docs/loot-passives.md` §8).
+  Barricade banks every game's unspent Temporary Shields into Shields while held;
+  Echo Form copies the first piece of loot used in each game (a wand zap does not
+  use it up). Both leave a toast when they act, and a Blueprint beside either
+  counts twice. The one-game run flags they used to arm are gone;
+  `loot_uses_this_game` is new and saved.
+
 - **Loot passives: trinkets, passive cards, and a pack where position matters**
   (`docs/loot-passives.md`).
   - **Trinkets are the sixth loot kind**: eleven Isaac trinkets from the new

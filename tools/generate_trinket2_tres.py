@@ -103,6 +103,10 @@ def trinket_tres(row) -> tuple:
     ]
     if passive["copy_neighbour"]:
         lines.append('copy_neighbour = "%s"' % passive["copy_neighbour"])
+    if passive["bank_shields"]:
+        lines.append("bank_shields = true")
+    if passive["echo_first_loot"]:
+        lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
     return tid, "\n".join(lines) + "\n"
 
 
