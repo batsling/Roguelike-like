@@ -2292,7 +2292,8 @@ func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
 # ---------------------------------------------------------------------------
 #
 # Every game that ends stands bodies up: the pressure's 0 / 1 / 2, +1 when
-# nothing was defeated there, +1 always on an escape. It replaced both the extra
+# nothing was defeated there — on an escape too, where it is also never under
+# ESCAPE_MIN_BODIES. An escape after a kill costs what handing the game in does. It replaced both the extra
 # turns and the bodies a lost run used to stand up.
 
 # Put the run at `hops` from the Amulet on a node of `kind`, with a real game
@@ -2322,23 +2323,29 @@ func test_the_price_is_the_pressure_plus_one_for_nothing_down() -> void:
 			"%d hops out, a body down: the ladder's %d and nothing more" % [int(pair[0]), p])
 
 
-func test_an_escape_never_costs_less_than_two() -> void:
+func test_an_escape_with_nothing_down_never_costs_less_than_two() -> void:
 	for hops in [6, 4, 1]:
 		if not _stand_for_end(hops):
 			continue
-		GameLoop2.defeated_this_game = 1
+		GameLoop2.defeated_this_game = 0
 		assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]),
 			maxi(GameLoop2.pressure() + 1, GameLoop2.ESCAPE_MIN_BODIES),
 			"%d hops out: the ladder + 1, and never under two" % hops)
 
 
-func test_an_escape_always_pays_the_extra_body() -> void:
+func test_an_escape_after_a_kill_costs_what_handing_in_does() -> void:
+	# The door is gated behind lost runs (Overworld2.can_escape); a player who
+	# has also put a body down to its goal has answered the board, and walking
+	# out adds nothing on top of what finishing would have cost.
 	if not _stand_for_end(2):
 		pending("the catalog could not stand the run 2 hops out")
 		return
 	GameLoop2.defeated_this_game = 3
-	assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]), GameLoop2.pressure() + 1,
-		"a kill does not buy the escape's extra body off — walking out is never cheaper")
+	assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]),
+		int(GameLoop2.end_of_game_price()["bodies"]),
+		"a kill buys the escape's extra bodies off")
+	assert_eq(int(GameLoop2.end_of_game_price(true)["bodies"]), GameLoop2.pressure(),
+		"which is the ladder's count and nothing more")
 
 
 func test_the_price_is_read_off_hops_and_not_off_the_tier() -> void:
@@ -2446,17 +2453,27 @@ func test_a_hand_in_that_defeated_something_pays_only_the_ladder() -> void:
 		"out in the wilds, the goal the report cleared bought the extra body off")
 
 
-func test_an_escape_stands_bodies_up_even_after_a_kill() -> void:
+func test_an_escape_after_a_kill_out_in_the_wilds_stands_nobody_up() -> void:
+	if not _stand_for_end(5):
+		pending("the catalog could not stand the run 5 hops out")
+		return
+	GameLoop2.defeated_this_game = 1
+	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
+	assert_eq(int(res.get("end_spawns", -1)), 0,
+		"out in the wilds, a kill makes walking out cost what finishing does: nothing")
+
+
+func test_an_escape_with_nothing_down_stands_up_the_floor() -> void:
 	if not _stand_for_end(5):
 		pending("the catalog could not stand the run 5 hops out")
 		return
 	if not _roster_can_roll():
 		pending("the goal-enemy roster could not supply a body for this type/tier")
 		return
-	GameLoop2.defeated_this_game = 1
+	GameLoop2.defeated_this_game = 0
 	var res: Dictionary = GameLoop2.beat_game(false, [], {}, true, true)
 	assert_eq(int(res.get("end_spawns", -1)), GameLoop2.ESCAPE_MIN_BODIES,
-		"out in the wilds, walking out costs the floor: two bodies")
+		"out in the wilds, walking out with nothing down costs the floor: two bodies")
 
 
 func test_a_teleport_stands_nobody_up() -> void:

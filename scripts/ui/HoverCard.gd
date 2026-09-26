@@ -88,6 +88,46 @@ static func of(node: Control) -> Control:
 	var cfg = node.get_meta(META)
 	return build(cfg) if cfg is Dictionary else null
 
+# The hover for `node`: its card when one is attached, else its plain text in a
+# compact wrapped box. What HoverButton (and the other hover wrappers) return
+# from `_make_custom_tooltip`.
+static func tip(node: Control, for_text: String) -> Control:
+	var card: Control = of(node)
+	if card != null:
+		return card
+	return text_card(for_text)
+
+# The widest a plain-text hover gets before it wraps. A little wider than a card's
+# lines (WRAP) because it has no art or title beside it to line up with.
+const TEXT_WRAP := 280.0
+
+# A plain tooltip, as a small box that WRAPS: as narrow as its longest line when
+# that fits, TEXT_WRAP wide when it doesn't. Null for blank text, which is what
+# `_make_custom_tooltip` returns to show nothing.
+static func text_card(text: String) -> Control:
+	text = text.strip_edges()
+	if text == "":
+		return null
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.075, 0.065, 0.085, 0.985), 6, 8, 1, UITheme.BORDER))
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	l.add_theme_color_override("font_color", UITheme.TEXT)
+	var font: Font = UITheme.shared().default_font
+	if font == null:
+		font = ThemeDB.fallback_font
+	var widest: float = 0.0
+	for line in text.split("\n"):
+		widest = maxf(widest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT,
+			-1, UITheme.FONT_BODY).x)
+	if widest > TEXT_WRAP:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(TEXT_WRAP, 0)
+	panel.add_child(l)
+	return panel
+
 # Build the card itself. Public so a test can assert what a hover would say
 # without going near the mouse.
 static func build(cfg: Dictionary) -> Control:

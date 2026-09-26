@@ -626,7 +626,7 @@ node and its script.
     **Every rung is named, the Amulet included**: the ladder used to draw the
     destination as `The Amulet — ???` on a start-picker map, and no longer does
     (see "The Amulet is named from the first screen" below).
-  - **`HoverCard.gd` / `HoverPanel.gd` / `HoverBox.gd`** — the small themed card
+  - **`HoverCard.gd` / `HoverPanel.gd` / `HoverBox.gd` / `HoverButton.gd`** — the small themed card
     that appears when the mouse rests on something you could click to read in
     full. Four things open a card when clicked — an **enemy** on the board, a
     **status** on a body, an **item** in the pack, and the **enemy-turns**
@@ -637,9 +637,12 @@ node and its script.
     and the one or two lines that actually decide something.
     `HoverCard.attach(node, {...})` stores the model and seeds the plain
     fallback; the node has to be a `HoverPanel` (a PanelContainer) or a
-    `HoverBox` (a VBoxContainer), or define the two-line
+    `HoverBox` (a VBoxContainer) or a `HoverButton`, or define the two-line
     `_make_custom_tooltip` override itself, because Godot only calls that on a
-    Control's own script. A status's model comes from `StatusData.hover_card`,
+    Control's own script. All three wrappers fall back to `HoverCard.text_card`
+    when no card is attached: the plain `tooltip_text` in a small box that wraps
+    at `TEXT_WRAP` — Godot's stock tooltip never wraps, so a long one ran across
+    the screen. Buttons on the run's screens are `HoverButton`s for that reason. A status's model comes from `StatusData.hover_card`,
     beside the string it replaces, so the board, the enemy card and the hero
     strip cannot describe the same status differently.
     **The offering is the one thing that gets none** — no card and no tooltip:

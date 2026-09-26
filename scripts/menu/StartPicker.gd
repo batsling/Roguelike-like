@@ -258,7 +258,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	box.add_child(genre)
 
 	# The cover is the button: clicking anywhere on the art selects the road.
-	var btn := Button.new()
+	var btn := HoverButton.new()
 	btn.custom_minimum_size = ROAD_ART
 	btn.flat = true
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -291,7 +291,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	dist.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(dist)
 
-	box.add_child(_waiting_row(opt.get("enemy")))
+	box.add_child(_waiting_row(opt.get("enemy"), _extra_bodies(index)))
 
 	# ONE BUTTON. There used to be an `→ Optimal Path` beside it, and it was a
 	# second door into a picture `⚙ Details` already draws: the card it opens
@@ -300,7 +300,7 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	box.add_child(tools)
-	var card_btn := Button.new()
+	var card_btn := HoverButton.new()
 	card_btn.text = "⚙  Details"
 	card_btn.tooltip_text = "The full card: the enemy, its goal, the shields this game grants, your record in it, and the optimal path to %s." % _page.amulet_name()
 	card_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -325,7 +325,16 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 # A body with no portrait authored falls back to its NAME rather than to a gap —
 # an empty row under one of three cards reads as that road having no enemy, which
 # is a different and much better thing than "we have no picture of it".
-func _waiting_row(enemy: GoalEnemyData) -> Control:
+# How many MORE bodies than the pictured one walk on with this start: an
+# Enemies node stands up two (§19.1) and the second is rolled on arrival, so the
+# card can promise it without naming it. Asked of the page's own offering logic so
+# the picker and the popup behind ⚙ Details cannot disagree about the count.
+func _extra_bodies(index: int) -> int:
+	if _page == null or not _page.has_method("_start_choice") or _page._offering == null:
+		return 0
+	return maxi(_page._offering.bodies_expected(_page._start_choice(index)) - 1, 0)
+
+func _waiting_row(enemy: GoalEnemyData, extra: int = 0) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
@@ -358,12 +367,27 @@ func _waiting_row(enemy: GoalEnemyData) -> Control:
 		named.tooltip_text = tip
 		named.mouse_filter = Control.MOUSE_FILTER_STOP
 		row.add_child(named)
+	# "+ ?" for each body still to be rolled: the picture is the one you know, the
+	# question mark the one you'll meet when you arrive.
+	if extra > 0:
+		var more := Label.new()
+		more.name = "MoreBodies"
+		more.text = "+ ?" if extra == 1 else "+ %d ?" % extra
+		more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		more.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+		more.add_theme_color_override("font_color", UITheme.DANGER)
+		more.tooltip_text = ("%s more enem%s walk%s on with it — rolled when you arrive, "
+			+ "so nobody knows which yet.") % [
+			"One" if extra == 1 else str(extra), "y" if extra == 1 else "ies",
+			"s" if extra == 1 else ""]
+		more.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.add_child(more)
 	return row
 
 func _footer() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-	var cancel := Button.new()
+	var cancel := HoverButton.new()
 	cancel.text = "Cancel"
 	cancel.custom_minimum_size = Vector2(150, 42)
 	cancel.tooltip_text = "Back to the main menu — no run is started."
@@ -372,7 +396,7 @@ func _footer() -> Control:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
-	_confirm = Button.new()
+	_confirm = HoverButton.new()
 	_confirm.text = "Begin the run"
 	_confirm.disabled = true
 	_confirm.custom_minimum_size = Vector2(280, 42)

@@ -83,7 +83,7 @@ var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
 var _boss_count: Label              # "boss in 2 spawns" (§19.8)
-var _size_label: Label              # "▦ 5×5 · Medium"
+var _size_label: Label              # "Medium difficulty"
 var _hero_icon: TextureRect
 var _hero_hp: Label
 var _hero_statuses: HBoxContainer   # the player's statuses, under the portrait (§13)
@@ -150,6 +150,10 @@ var _fx_layer: Control               # overlay for damage numbers + sliding ghos
 # the whole multi-turn playback rather than per slide — an enemy that walks on
 # turn 1 and stands still on turn 3 has no last ghost to hand it back.
 var _hidden_parts: Array = []
+# instance -> portrait, as of the last capture_positions — what a body that left
+# the board during a resolve is drawn with while it fades out.
+var _captured_art: Dictionary = {}
+var _punch_tweens: Array = []
 # Whether the game being played right now shows in the off-field lane. Kept from
 # the last refresh so a click can repaint without the host passing it again.
 # The hero portrait, resolved once per character rather than on every repaint.
@@ -502,9 +506,7 @@ func _span_size(rows: int, cols: int) -> Vector2:
 # bodies up at the back. So it is not a tooltip and not a number in a HUD row —
 # it is a strip across the top of the board itself, in the band's own colour,
 # saying the pressure, the ladder it sits on, and the distance that put it
-# there. The board's SIZE rides along on the right
-# because that is the other half of the same bargain: the difficulty tier that
-# makes the enemies heavier also gives you a wider board to see them coming on.
+# there, with the difficulty tier in the small print under it.
 
 # Pip glyphs for the three-rung ladder — filled to the current band, hollow past it.
 const RUNG_ON := "▮"
@@ -512,18 +514,25 @@ const RUNG_OFF := "▯"
 
 func _build_pressure_bar() -> Control:
 	_pressure_panel = HoverPanel.new()
-	# A FLOW row, not an HBox: everything on this strip is a fixed-width label, and
-	# an HBox adds their widths up into a minimum the whole battlefield panel then
-	# has to honour — which is how the board ended up wider than the page. Flowing
-	# lets the strip take a second line on a narrow column instead.
-	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
-	row.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
-	_pressure_panel.add_child(row)
+	# TWO LINES, EACH WITH ONE JOB. It was a single flowing row of six labels,
+	# which wrapped wherever the widths happened to fall — the price of ending the
+	# game one run, the board size the next — and read as a pile. Now the top line
+	# is the headline (the pressure and its ladder on the left, what ending this
+	# game costs on the right) and the second is the small print: how far the
+	# Amulet is, when the next boss comes, the difficulty. The board's size is
+	# gone from it: the grid is right under it and says that itself.
+	var lines := VBoxContainer.new()
+	lines.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	_pressure_panel.add_child(lines)
+
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", UITheme.GAP)
+	lines.add_child(head)
 
 	_pressure_turns = Label.new()
 	_pressure_turns.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
-	row.add_child(_pressure_turns)
+	_pressure_turns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_pressure_turns)
 
 	# The ladder: one pip per body the Amulet pressure alone can stand up at the
 	# end of a game. Filled up to where the run stands, so "how much worse can this
@@ -532,36 +541,61 @@ func _build_pressure_bar() -> Control:
 	# walks on.
 	var ladder := HBoxContainer.new()
 	ladder.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	ladder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_pressure_rungs.clear()
 	for i in range(RunDifficulty.MAX_PRESSURE):
 		var pip := Label.new()
 		pip.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		ladder.add_child(pip)
 		_pressure_rungs.append(pip)
-	row.add_child(ladder)
+	head.add_child(ladder)
 
-	_pressure_why = Label.new()
-	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(_pressure_why)
-
-	# WHAT ENDING THIS GAME COSTS, and how close the next difficulty-up is
-	# (§19.8). The ladder says what the road charges; this is the whole bill for
-	# the game in play — the +1 for nothing defeated included — and whether the
-	# spawn event those bodies make is the one that closes the band.
+	# WHAT ENDING THIS GAME COSTS (§19.8), pushed to the right-hand end of the
+	# headline: it is the one number on the strip that changes with what you do
+	# in the game in play — the +1 for nothing defeated included. Wraps rather
+	# than widening the board: an HBox's minimum is the sum of its labels, and
+	# that sum is what once pushed the board off the page.
 	_spawn_price = Label.new()
 	_spawn_price.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	row.add_child(_spawn_price)
+	_spawn_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_spawn_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_spawn_price.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_spawn_price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_spawn_price)
+
+	# The small print, flowing so a narrow column takes a second line instead of
+	# a wider minimum.
+	var small := HFlowContainer.new()
+	small.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	lines.add_child(small)
+
+	_pressure_why = Label.new()
+	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	small.add_child(_pressure_why)
+	small.add_child(_strip_dot())
 
 	_boss_count = Label.new()
-	_boss_count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	row.add_child(_boss_count)
+	_boss_count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	small.add_child(_boss_count)
+	small.add_child(_strip_dot())
 
+	# The difficulty tier. Still named `_size_label` for the tests and saves that
+	# know it; it said "▦ 4×4 · Low" and the dimensions were the half nobody
+	# needed read to them.
 	_size_label = Label.new()
-	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(_size_label)
+	small.add_child(_size_label)
 	return _pressure_panel
+
+func _strip_dot() -> Label:
+	var dot := Label.new()
+	dot.text = "·"
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dot.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	dot.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	return dot
 
 # Repaint the strip from the loop. Everything on it is derived — the pressure,
 # the rung, the hop count, the board's dimensions — so there is nothing to keep
@@ -645,17 +679,8 @@ func _refresh_pressure() -> void:
 	_pressure_ladder_text = ladder_tip
 
 	var tier: int = RunDifficulty.current_tier()
-	_size_label.text = "▦ %d×%d · %s" % [
-		GameLoop2.grid_cols(), GameLoop2.grid_rows(), RunDifficulty.tier_name(tier)]
-	_size_label.tooltip_text = ("The battlefield is %d columns by %d rows.\n"
-		+ "It gains a column AND a row on every difficulty step — %d×%d at Low, "
-		+ "up to %d×%d at Insane — so the tier that makes the enemies heavier also "
-		+ "gives you more ground to lose before they reach you.\n"
-		+ "Each Mine-r Construction adds another of each on top.") % [
-			GameLoop2.grid_cols(), GameLoop2.grid_rows(),
-			GameLoop2.BASE_GRID_COLS, GameLoop2.BASE_GRID_ROWS,
-			GameLoop2.BASE_GRID_COLS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER),
-			GameLoop2.BASE_GRID_ROWS + RunDifficulty.grid_growth_for(RunDifficulty.MAX_TIER)]
+	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
+	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 # The strip's two §19.8 readouts, in a sentence each for the hover card.
 func _spawn_tip(owed: int, why_free: String) -> String:
@@ -697,12 +722,12 @@ func _build_battle_toolbar() -> Control:
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(_hint_label)
 
-	push_btn = Button.new()
+	push_btn = HoverButton.new()
 	push_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	push_btn.pressed.connect(toggle_push_mode)
 	bar.add_child(push_btn)
 
-	bomb_btn = Button.new()
+	bomb_btn = HoverButton.new()
 	bomb_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	bomb_btn.pressed.connect(toggle_bomb_mode)
 	bar.add_child(bomb_btn)
@@ -716,7 +741,7 @@ func _build_battle_toolbar() -> Control:
 	# that fits its page to about ten spare pixels, and a permanent fourth button
 	# wraps the toolbar onto a second row and pushes the bottom of the board off
 	# the window. An empty graveyard is most of the first game of every run.
-	graveyard_btn = Button.new()
+	graveyard_btn = HoverButton.new()
 	graveyard_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	graveyard_btn.visible = false
 	graveyard_btn.pressed.connect(func(): graveyard_requested.emit())
@@ -727,7 +752,7 @@ func _build_battle_toolbar() -> Control:
 	# ten spare pixels (see refresh_toolbar), and a fourth permanent button wraps
 	# it onto a second row. An item is armed for a few seconds at a time, and those
 	# are the only seconds this needs to exist.
-	aim_btn = Button.new()
+	aim_btn = HoverButton.new()
 	aim_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	aim_btn.visible = false
 	# One Cancel for whichever ground-aiming verb is up — the button stands in the
@@ -1774,7 +1799,7 @@ func _refresh_aim_cells() -> void:
 	if _arrow_layer == null:
 		return
 	for cell in target_cells():
-		var btn := Button.new()
+		var btn := HoverButton.new()
 		btn.position = _cell_pos(cell.y, cell.x)
 		btn.size = Vector2(_cell, _cell)
 		btn.custom_minimum_size = Vector2(_cell, _cell)
@@ -1915,7 +1940,7 @@ func push_arrow_tip(dir: Vector2i, e: GoalEnemyData) -> String:
 	return "Shove %s one column BACK, buying the games it takes to close in again." % who
 
 func _push_arrow(dir: Vector2i, at: Vector2, e: GoalEnemyData) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = push_arrow_glyph(dir)
 	b.tooltip_text = push_arrow_tip(dir, e)
 	b.size = Vector2(ARROW_SIZE, ARROW_SIZE)
@@ -2161,7 +2186,8 @@ func _initial_glyph(entry: Dictionary, accent: Color) -> Control:
 # of every body on the board. All non-blocking, so the enemy underneath still
 # takes the click and shows its tooltip.
 #
-# NOTHING is drawn over the TOP of the box any more. A boss skull and an "in 2"
+# Nothing is drawn over the top of the box but the boss's ☠, pulled out onto its
+# top-left corner (see below). A boss skull and an "in 2"
 # (how many games of walking a body that can't reach you yet still owes) used to
 # sit across the head of the art, and between them they covered the part of the
 # picture that identifies the enemy — on a 7x7 board's 46px cells, most of it.
@@ -2319,6 +2345,43 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		corner.set_anchors_and_offsets_preset(
 			Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
 		holder.add_child(corner)
+
+	# THE BOSS SKULL, top-left — the one mark this file lets back over the top of
+	# the art. It was taken off once for covering the head of the picture; it is
+	# back because "which one is the boss" is a question asked of the whole board
+	# at a glance, and the boss's orange ring alone did not answer it among a
+	# crowd of red ones. It is kept to the CORNER, and pulled half out past it
+	# (the negative inset), so it sits on the frame rather than on the face.
+	#
+	# ON A DISC, not bare: a bare glyph over art is only as legible as the art
+	# behind it lets it be, and on a pale boss it all but vanished. The disc is
+	# the boss's own orange, rimmed in the board's dark, and the skull is drawn
+	# DARK on it: at this size the glyph's strokes are a pixel or two wide, and a
+	# light skull on a dark disc anti-aliased down to grey on grey.
+	if e.is_boss():
+		var skull := PanelContainer.new()
+		skull.name = "BossSkull"
+		skull.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var disc := StyleBoxFlat.new()
+		disc.bg_color = threat_color(1, true)
+		disc.border_color = Color(0.07, 0.06, 0.07, 0.94)
+		disc.set_border_width_all(2)
+		disc.set_corner_radius_all(BOSS_SKULL_FONT)
+		disc.content_margin_left = 3
+		disc.content_margin_right = 3
+		disc.content_margin_top = 0
+		disc.content_margin_bottom = 1
+		disc.anti_aliasing = true
+		skull.add_theme_stylebox_override("panel", disc)
+		var glyph := _corner_badge("☠", BOSS_SKULL, BOSS_SKULL_FONT)
+		glyph.add_theme_color_override("font_color", BOSS_SKULL)
+		glyph.add_theme_constant_override("outline_size", 0)
+		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		skull.add_child(glyph)
+		skull.set_anchors_and_offsets_preset(
+			Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, -BOSS_SKULL_INSET)
+		holder.add_child(skull)
 
 # The ⚔ badge: damage per swing, with the count appended when one turn of the
 # board gives this body more than one. One swing needs no "x1" — that's the
@@ -2482,7 +2545,11 @@ func _fill_shields() -> void:
 # and shrinking it with the board makes it unreadable exactly when the board is
 # busiest.
 const STATUS_PIP_HERO := 22
-const STATUS_PIP_ENEMY := 16
+# Smaller than the hero's, and smaller than it was (16): the strip hangs below the
+# box into the gutter and the top of the cell under it, and at 16px a body with
+# two statuses covered the head of whatever stood below it. The pip's hover still
+# carries the whole status; the chip only has to say which.
+const STATUS_PIP_ENEMY := 11
 
 # How far the ❤ / ⚔ badges hang BELOW an enemy's box, and how far under them the
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
@@ -2495,6 +2562,12 @@ const STATUS_PIP_ENEMY := 16
 # read as one more number on a corner full of them rather than as a warning.
 const ABILITY_MARK := Color(1.0, 0.29, 0.25)
 const ABILITY_FONT := 15
+# The boss's ☠ in the top-left corner of its box: dark, on an orange disc (see
+# _add_enemy_badges), a size up from the stat badges so it reads as a label on
+# the body rather than as one more number.
+const BOSS_SKULL := Color(0.10, 0.07, 0.06)
+const BOSS_SKULL_FONT := 15
+const BOSS_SKULL_INSET := 7
 
 # The band the "⚠ PREDATORY SCENT" turn counter is drawn in. It used to borrow
 # ABILITY_MARK for its amber and now has its own copy of it — the two are
@@ -2504,7 +2577,7 @@ const HUNT_BAND := Color(1.0, 0.78, 0.28)
 
 const STAT_BADGE_DROP := 7
 const STAT_BADGE_FONT := 10
-const STATUS_STRIP_DROP := 20
+const STATUS_STRIP_DROP := 15
 # The status strip's node name on an enemy's badge layer. A const because it is an
 # identity two files agree on: the board builds it and the tests look it up.
 const STATUS_STRIP_NAME := "StatusStrip"
@@ -2725,6 +2798,26 @@ const FX_SLIDE_TIME: float = 0.34    # how long the advance slide takes
 # life beyond the beat already counted) plus a short breath to land on.
 const FX_NUMBER_TAIL: float = FX_ATTACK_TIME * 0.7  # what a damage number outlives its beat by
 const FX_END_BREATH: float = 0.45    # the pause on the finished board before the screen changes
+# BODIES LEAVING AND ARRIVING. A body cleared at the hand-in and a body the end of
+# the game stands up used to do neither on screen: one was simply absent from the
+# repaint and the other simply present, and with nothing to animate the haul
+# screen came straight down over the board — so the enemy a report spawned was
+# spawned, in effect, off screen. Each now plays: the cleared fade and shrink
+# where they stood, then the newcomers walk on from past the back edge.
+const FX_DEPART_TIME: float = 0.35
+const FX_ARRIVE_TIME: float = 0.45
+# STAGGERED, NOT SIMULTANEOUS, when there are several. A crowd doing the same
+# thing on the same frame reads as the board flickering; one after another reads
+# as a line of bodies. The step shrinks as the crowd grows so a full board still
+# plays in about a second (FX_STAGGER_BUDGET) rather than one beat per body.
+const FX_STAGGER_STEP: float = 0.16
+const FX_STAGGER_BUDGET: float = 0.9
+
+# The gap between one body's beat and the next when `count` of them share it.
+static func stagger_step(count: int) -> float:
+	if count <= 1:
+		return 0.0
+	return minf(FX_STAGGER_STEP, FX_STAGGER_BUDGET / float(count - 1))
 
 # A node's rect in the FX LAYER'S OWN SPACE rather than in global coordinates.
 #
@@ -2748,6 +2841,14 @@ func capture_positions() -> Dictionary:
 	var out: Dictionary = {}
 	if _battlefield == null:
 		return out
+	# The PICTURES go with the positions: a body cleared at the hand-in is gone
+	# from the stack by the time the playback runs, and its fade-out still needs
+	# something to fade (_play_departures).
+	_captured_art.clear()
+	for entry in GameLoop2.stack:
+		var inst: int = int(entry.get("instance", 0))
+		if inst > 0:
+			_captured_art[inst] = GameLoop2.entry_image(entry)
 	for inst in _enemy_nodes:
 		var node: Control = _enemy_nodes[inst]
 		if is_instance_valid(node):
@@ -2907,6 +3008,9 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 		return 0.0
 	clear_fx()
 	_fx_gen += 1
+	# The pictures the BEFORE capture took, read before the after capture below
+	# replaces them: a body gone from the stack has no other copy of its art.
+	var before_art: Dictionary = _captured_art.duplicate()
 	var after: Dictionary = capture_positions()
 	_hp_shown = hp_before if hp_before >= 0 else GameState.hp + _health_damage_in(res)
 	_paint_hp()
@@ -2930,7 +3034,7 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	# Whether the resolve ended on a hunt (§7.6) — the turn Predatory Scent buys is
 	# the only one a report ever plays, so it is the last one when there is one.
 	var hunted: bool = not (res.get("predators", []) as Array).is_empty()
-	var elapsed: float = 0.0
+	var elapsed: float = _play_departures(before, after, before_art)
 	# When the last damage number thrown by any turn finally finishes fading. It
 	# outlives the strike beat the schedule counts (see FX_NUMBER_TAIL), and on the
 	# blow that ends a run there is no slide afterwards to cover for that.
@@ -2938,10 +3042,13 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	for turn in range(turns):
 		var from_frame: Dictionary = frames[turn]
 		var to_frame: Dictionary = frames[turn + 1]
-		var struck: bool = _play_turn_strikes(turn, from_frame, res, elapsed)
+		# How long this turn's strikes run past a single beat: 0 for one attacker,
+		# the stagger across them for several, -1 when nothing struck at all.
+		var spread: float = _play_turn_strikes(turn, from_frame, res, elapsed)
+		var struck: bool = spread >= 0.0
 		# The slide waits for its own turn's strike to land, and only for that:
 		# a turn where nothing attacked starts moving immediately.
-		var slide_at: float = elapsed + (FX_ATTACK_TIME if struck else 0.0)
+		var slide_at: float = elapsed + (FX_ATTACK_TIME + spread if struck else 0.0)
 		if struck:
 			numbers_end = maxf(numbers_end, slide_at + FX_NUMBER_TAIL)
 		var slid: bool = _play_turn_slides(from_frame, to_frame, slide_at)
@@ -2957,6 +3064,10 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 			if turns > 1 or hunt_turn:
 				_spawn_turn_counter(turn + 1, turns, elapsed, hunt_turn)
 			elapsed = slide_at + (FX_SLIDE_TIME if slid else 0.0)
+	# The newcomers last, once the board has finished moving: they stand on the
+	# ground the turns left, and walking them on through a slide would be two
+	# things moving through each other.
+	elapsed = _play_arrivals(before, after, elapsed)
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
 	# stood still has no turn-3 ghost to hand it back. The Health line stops being
@@ -3029,9 +3140,11 @@ func _grid_rect_for(instance: int, at: Vector2i):
 # Play the strikes belonging to one turn, from the positions the attackers held
 # when they threw them. Returns whether anything actually connected.
 func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
-		delay: float) -> bool:
+		delay: float) -> float:
 	var hero_rect: Rect2 = _local_rect(_hero_icon)
 	var struck: bool = false
+	# This turn's blows first, so the stagger can be sized to how many there are.
+	var blows: Array = []
 	for a in res.get("attacks", []):
 		if not (a is Dictionary) or not a.has("damage"):
 			continue
@@ -3039,9 +3152,18 @@ func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
 		# building a result by hand) all belong to the first turn.
 		if int(a.get("turn", 0)) != turn:
 			continue
-		var inst: int = int(a.get("instance", 0))
-		if not frame.has(inst):
+		if not frame.has(int(a.get("instance", 0))):
 			continue
+		blows.append(a)
+	# ONE AFTER ANOTHER. Five bodies striking on one frame threw five numbers onto
+	# one spot over the hero and read as a single smear; staggered, each blow is
+	# its own flash and its own number, and the Health line counts down with them.
+	var step: float = stagger_step(blows.size())
+	var base_delay: float = delay
+	for i in range(blows.size()):
+		var a: Dictionary = blows[i]
+		var inst: int = int(a.get("instance", 0))
+		delay = base_delay + step * i
 		struck = true
 		var from: Rect2 = frame[inst]
 		# What this one blow actually cost in Health — the rest of it was eaten by a
@@ -3059,10 +3181,11 @@ func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
 				return
 			_drop_shown_hp(to_health)
 			if blocked:
-				_break_one_shield())
-	if struck:
-		_after(delay, _punch_hero)
-	return struck
+				_break_one_shield()
+			_punch_hero())
+	if not struck:
+		return -1.0
+	return step * (blows.size() - 1)
 
 # Slide every body whose square changed over one turn, starting `delay` seconds
 # into the playback.
@@ -3208,12 +3331,133 @@ func _punch_hero() -> void:
 	if _hero_icon == null:
 		return
 	_hero_icon.pivot_offset = _hero_icon.size * 0.5
+	# One recoil at a time: staggered blows land closer together than a recoil
+	# lasts, and two tweens driving the same scale fight each other into a judder.
+	for old in _punch_tweens:
+		if old != null and old.is_valid():
+			old.kill()
+	_punch_tweens.clear()
 	var t := _hero_icon.create_tween()
 	t.tween_property(_hero_icon, "scale", Vector2(1.14, 0.9), 0.09).set_trans(Tween.TRANS_BACK)
 	t.tween_property(_hero_icon, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	var f := _hero_icon.create_tween()
 	f.tween_property(_hero_icon, "modulate", Color(1.0, 0.55, 0.55), 0.09)
 	f.tween_property(_hero_icon, "modulate", Color.WHITE, 0.34)
+	_punch_tweens = [t, f]
+
+# Bodies that were on the board when the resolve began and are not on it now —
+# cleared at the hand-in, bombed, carried off — fade and shrink where they stood.
+# Returns when the last of them has gone (0 when none did), which is when the
+# rest of the playback starts.
+func _play_departures(before: Dictionary, after: Dictionary, art: Dictionary) -> float:
+	var gone: Array = []
+	for inst in before.keys():
+		if not after.has(inst):
+			gone.append(int(inst))
+	if gone.is_empty():
+		return 0.0
+	var step: float = stagger_step(gone.size())
+	for i in range(gone.size()):
+		var inst: int = gone[i]
+		var rect: Rect2 = before[inst]
+		var ghost := _ghost_for(art.get(inst), rect)
+		var t := ghost.create_tween()
+		t.tween_interval(step * i)
+		t.tween_callback(func(): ghost.pivot_offset = ghost.size * 0.5)
+		t.set_parallel(true)
+		t.tween_property(ghost, "scale", Vector2(0.6, 0.6), FX_DEPART_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		t.tween_property(ghost, "modulate", Color(1.0, 0.85, 0.5, 0.0), FX_DEPART_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.chain().tween_callback(ghost.queue_free)
+	return step * (gone.size() - 1) + FX_DEPART_TIME
+
+# Bodies that are on the board now and were not when the resolve began — the end
+# of the game's spawns, a boss closing the band, a spawner's brood — walk on from
+# just past the back edge to where they stand, one after another, with a flash
+# where each lands. The real body stays hidden until its own ghost arrives, so it
+# is never drawn twice. Starts at `delay`; returns when the last one has landed.
+func _play_arrivals(before: Dictionary, after: Dictionary, delay: float) -> float:
+	var came: Array = []
+	for inst in after.keys():
+		if not before.has(inst):
+			came.append(int(inst))
+	if came.is_empty():
+		return delay
+	# Back of the board first, in lane order: the order they are read in.
+	came.sort_custom(func(a, b):
+		var ra: Rect2 = after[a]
+		var rb: Rect2 = after[b]
+		return ra.position.y < rb.position.y if absf(ra.position.x - rb.position.x) < 1.0 \
+			else ra.position.x > rb.position.x)
+	var step: float = stagger_step(came.size())
+	var entry_x: float = _local_rect(_field).end.x if _field != null else 0.0
+	for i in range(came.size()):
+		var inst: int = came[i]
+		var to_rect: Rect2 = after[inst]
+		var parts: Array = []
+		for part in [_holder_for_instance(inst), _badges_for_instance(inst)]:
+			if part != null:
+				part.modulate.a = 0.0
+				parts.append(part)
+				if not _hidden_parts.has(part):
+					_hidden_parts.append(part)
+		var entry: Dictionary = _stack_entry(inst)
+		var art: Texture2D = GameLoop2.entry_image(entry) if not entry.is_empty() else null
+		# From past whichever is further right: the board's back edge, or the
+		# body's own square (the off-field lane stands beyond the board).
+		var from_x: float = maxf(entry_x, to_rect.position.x) + to_rect.size.x * 0.6
+		var ghost := _ghost_for(art, Rect2(Vector2(from_x, to_rect.position.y), to_rect.size))
+		ghost.modulate.a = 0.0
+		var at: float = delay + step * i
+		var t := ghost.create_tween()
+		t.tween_interval(at)
+		t.set_parallel(true)
+		t.tween_property(ghost, "position", to_rect.position, FX_ARRIVE_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(ghost, "modulate:a", 1.0, FX_ARRIVE_TIME * 0.5)
+		t.chain().tween_callback(func():
+			ghost.queue_free()
+			for part in parts:
+				if is_instance_valid(part):
+					part.modulate.a = 1.0
+			_spawn_arrival_flash(to_rect))
+	return delay + step * (came.size() - 1) + FX_ARRIVE_TIME
+
+# A TextureRect on the FX layer drawing `art` over `rect`, for a body that is
+# moving in a way its real node cannot.
+func _ghost_for(art: Texture2D, rect: Rect2) -> TextureRect:
+	var ghost := TextureRect.new()
+	ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if art != null:
+		ghost.texture = art
+		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ghost.size = rect.size
+	_fx_layer.add_child(ghost)
+	ghost.position = rect.position
+	return ghost
+
+# The ring a newcomer lands in: a frame in the danger colour that swells and
+# fades over the square, so "that one is new" survives a glance away.
+func _spawn_arrival_flash(rect: Rect2) -> void:
+	if _fx_layer == null:
+		return
+	var ring := Panel.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(UITheme.DANGER.r, UITheme.DANGER.g, UITheme.DANGER.b, 0.18)
+	box.border_color = UITheme.DANGER
+	box.set_border_width_all(3)
+	box.set_corner_radius_all(6)
+	ring.add_theme_stylebox_override("panel", box)
+	_fx_layer.add_child(ring)
+	ring.position = rect.position
+	ring.size = rect.size
+	ring.pivot_offset = rect.size * 0.5
+	var t := ring.create_tween()
+	t.set_parallel(true)
+	t.tween_property(ring, "scale", Vector2(1.18, 1.18), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	t.tween_property(ring, "modulate:a", 0.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.chain().tween_callback(ring.queue_free)
 
 # Slide a copy of an enemy from where it stood to where it now stands, hiding the
 # real one until the whole playback is over (_reveal_hidden). `delay` is how far

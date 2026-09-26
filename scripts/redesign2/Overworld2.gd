@@ -522,8 +522,8 @@ var _drag_pack: DragPackPanel:
 	get: return _drops.drag_pack if _drops != null else null
 var _reward_open: bool = false      # a RewardScreen is currently showing
 # The game most recently reported on. Rating is OPT-IN and never pops itself up
-# (see _prompt_rating): this is what the "★ Rate <game>" button on the select
-# screen scores, so a game can still be rated after you've moved on.
+# (see _prompt_rating); the ★ Rate buttons live on the haul screen and on the
+# card a game opens (GameChoiceModal).
 var _last_played_game: GameData = null
 
 # THE DROP QUEUE IS BUILT IN `_init`, NOT `_build_ui`, unlike the page's other
@@ -1639,20 +1639,57 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # report that doesn't fire them. Neither one banks a beat — beaten means won (see
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
+# The door out of the game in play. It opens after ESCAPE_AFTER_LOST_RUNS lost
+# runs OF THIS GAME — every game starts the count again at zero — so escaping is
+# what you do with a game you have tried and cannot beat, not with one you would
+# rather not try. A teleport is not the door and does not ask (escape_game's
+# `force`).
 func can_escape() -> bool:
-	return _phase == Phase.PLAYING and not _chosen.is_empty() and not GameLoop2.run_over
+	return _phase == Phase.PLAYING and not _chosen.is_empty() and not GameLoop2.run_over \
+		and escape_runs_to_go() <= 0
 
-# The price of the door, as the line under the button: "Leave now: 3 enemies walk
-# on, no chest." Empty when there is no game in play to walk out of.
+# Lost runs still needed before the door opens; 0 once it is open.
+func escape_runs_to_go() -> int:
+	return maxi(GameLoop2.ESCAPE_AFTER_LOST_RUNS - GameLoop2.attempts(), 0)
+
+# The line under the button: while the door is shut, what opens it ("Unlocks after
+# 3 lost runs — 2 to go"); once it is open, its price ("Leave now: 3 enemies walk
+# on, no chest."). Empty when there is no game in play to walk out of.
 func escape_hint_text() -> String:
-	if not can_escape():
+	if _phase != Phase.PLAYING or _chosen.is_empty() or GameLoop2.run_over:
 		return ""
+	var to_go: int = escape_runs_to_go()
+	if to_go > 0:
+		return "Unlocks after %d lost runs here — %d to go." % [
+			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go]
 	var price: Dictionary = GameLoop2.end_of_game_price(true)
 	var bodies: int = int(price["bodies"])
 	if bodies <= 0:
 		return "Leave now: no chest."
 	return "Leave now: %s walk%s on, no chest." % [
 		RunDifficulty.bodies_text(bodies), "s" if bodies == 1 else ""]
+
+# The Escape button's hover: what the door is, what opens it, what it costs.
+func escape_hover() -> Dictionary:
+	var to_go: int = escape_runs_to_go()
+	var lines: Array = []
+	if to_go > 0:
+		lines.append("Opens after %d lost runs of this game — %d to go." % [
+			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go])
+	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
+	if GameLoop2.defeated_this_game > 0:
+		lines.append("You beat a goal here, so it costs only what ending the game does: %s."
+			% RunDifficulty.bodies_text(owed))
+	else:
+		lines.append("With no goal beaten here it costs %s; beat one first and it costs no more than finishing."
+			% RunDifficulty.bodies_text(owed))
+	lines.append("No chest, no event, and the game isn't beaten.")
+	return {
+		"title": "Escape this game",
+		"accent": UITheme.ACCENT,
+		"lines": lines,
+		"note": "What is already on the board follows you out.",
+	}
 
 # Whether the game in play is one this RUN has already beaten — won, with the
 # goal met (see report(): "beaten means won").
@@ -3096,13 +3133,13 @@ func _build_split_strip() -> Control:
 	_split_total.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	row.add_child(_split_total)
 
-	_split_pause_btn = Button.new()
+	_split_pause_btn = HoverButton.new()
 	_split_pause_btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 	_split_pause_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_split_pause_btn.pressed.connect(toggle_timer_pause)
 	row.add_child(_split_pause_btn)
 
-	var list_btn := Button.new()
+	var list_btn := HoverButton.new()
 	list_btn.text = "⏱"
 	list_btn.tooltip_text = "Every split this run: each game, and each try at it."
 	list_btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
@@ -3241,7 +3278,7 @@ func _build_splits_popup() -> Control:
 	total.add_theme_color_override("font_color", UITheme.GOLD)
 	box.add_child(total)
 
-	var close := Button.new()
+	var close := HoverButton.new()
 	close.text = "Close"
 	close.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	close.pressed.connect(_dismiss_splits)
@@ -4602,8 +4639,8 @@ func _refresh(_a = null) -> void:
 		_controls_sig = ""
 		_populate_standing_checklist()
 	elif _phase == Phase.SELECT:
-		_select_head.text = ("Stay here, or head back? — open either to see where it leaves you:"
-			if _asking_return() else "Choose a game to travel to:")
+		_select_head.text = ("Stay here, or head back?"
+			if _asking_return() else "Choose a Game")
 		_render_controls()
 		_render_choices()
 		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
@@ -4895,9 +4932,8 @@ func _render_controls() -> void:
 	# Three inputs, and the row is empty for most of a run — so the guard is on the
 	# signature alone rather than on the signature plus a child count, since "no
 	# children" is a legitimate thing for it to have last drawn.
-	var sig: String = "%s|%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
-		String(_armed_verb),
-		String(_last_played_game.id) if _last_played_game != null else ""]
+	var sig: String = "%s|%s|%s" % [str(_asking_return()), str(_dash_mode),
+		String(_armed_verb)]
 	# The Dash bar is rebuilt on the TRANSITION and only on it — a dozen paths drop
 	# out of dash mode and none of them should have to remember to tear it down.
 	# DashFilterBar.sync_to_mode is where that comparison lives.
@@ -4930,16 +4966,9 @@ func _render_controls() -> void:
 			BASH_ORANGE if bashing else UITheme.ACCENT)
 		_controls_row.add_child(armed_hint)
 		_controls_row.add_child(_mini_button("Cancel", cancel_verb))
-	# Rating is opt-in and lives on a button (it never pops itself up): the game you
-	# last reported on stays scorable from here until you report another.
-	if _last_played_game != null:
-		var game: GameData = _last_played_game
-		var rate := Button.new()
-		rate.text = "★ Rate %s" % game.display_name
-		rate.tooltip_text = "Score %s 1-10 on your tier list." % game.display_name
-		rate.add_theme_color_override("font_color", UITheme.GOLD)
-		rate.pressed.connect(func(): _prompt_rating(game))
-		_controls_row.add_child(rate)
+	# ★ Rate is not on this row any more: it lives on the card a game opens
+	# (GameChoiceModal._rate_button), scoring the game on that card, and on the
+	# haul screen for the game that just ended.
 
 # --- the Dash panel's search / filter / sort bar ------------------------------
 #
@@ -5520,7 +5549,7 @@ func _stat_chip(text: String, count: int, tint: Color, tip: String,
 		fire: Callable = Callable(), armed: bool = false) -> Control:
 	var live: bool = count > 0
 	if fire.is_valid() and live:
-		var b := Button.new()
+		var b := HoverButton.new()
 		# ARMED reads as armed. The offering below has become a row of targets and
 		# there is a Cancel above it saying so, but the chip the player pressed is
 		# where they will look to find out whether the press took — so it lights: the
@@ -6249,25 +6278,32 @@ func _build_ui() -> void:
 	# mouse is already near when the question comes up.
 	var select_head_row := HBoxContainer.new()
 	select_head_row.add_theme_constant_override("separation", UITheme.GAP)
-	_select_head = _section("Choose a game to travel to:")
+	# CENTRED ON THE PANEL, not on what the button leaves of it: a pad on the left
+	# as wide as the Optimal Path button on the right, so the title sits over the
+	# middle of the cards it is the question for.
+	var head_pad := Control.new()
+	head_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	select_head_row.add_child(head_pad)
+	_select_head = _section("Choose a Game")
+	_select_head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
+	_select_head.add_theme_color_override("font_color", UITheme.GOLD)
+	_select_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_select_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_select_head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# WRAPPED, and it matters more than a heading usually does. A Label that does
-	# not wrap reports the whole sentence as its MINIMUM width, and this one is a
-	# whole sentence: the start picker's "Choose where to start — three genres, all
-	# the same distance from the Amulet…" set the left column's minimum at ~900px
-	# all by itself, which plus the board is wider than the canvas — and the board,
-	# on the far side of the page, is what got pushed off it. The heading is the
-	# most compressible thing on this screen and it was the thing dictating the
-	# layout.
+	# not wrap reports its whole text as its MINIMUM width, and the detour's
+	# stay-or-return question is a whole sentence: one of those once set the left
+	# column's minimum at ~900px by itself and pushed the board off the canvas.
 	_select_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	select_head_row.add_child(_select_head)
-	var map_btn := Button.new()
+	var map_btn := HoverButton.new()
 	map_btn.text = "→  Optimal Path"
 	map_btn.tooltip_text = ("The shortest road from here to the Amulet, rung by rung. "
 		+ "The star chart is the 🗺 Map button in the header.")
 	map_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
+	map_btn.resized.connect(func(): head_pad.custom_minimum_size.x = map_btn.size.x)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
@@ -6540,7 +6576,7 @@ func _build_ui() -> void:
 	# exist before they do.
 	_checklist = ReportChecklist.new(self, _verify_box, _launch_row)
 
-	var done := Button.new()
+	var done := HoverButton.new()
 	_done_btn = done
 	done.text = "✓  Completed Game"
 	done.custom_minimum_size = Vector2(0, 40)
@@ -6566,7 +6602,7 @@ func _build_ui() -> void:
 	# was a way out — the one stuck on a game they cannot beat — was looking at a
 	# panel that did not mention one. A greyed button with the price under it says
 	# both things at once: there is a door, and here is what opens it.
-	_escape_btn = Button.new()
+	_escape_btn = HoverButton.new()
 	_escape_btn.text = "🏃  Escape this game"
 	_escape_btn.custom_minimum_size = Vector2(0, 30)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -6714,7 +6750,7 @@ func _build_shop_hint() -> Control:
 	wrap.offset_bottom = -18
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.SHOP_GREEN.lerp(UITheme.BG, 0.72), 10, 6, 2, UITheme.SHOP_GREEN))
-	var btn := Button.new()
+	var btn := HoverButton.new()
 	btn.text = "🛒  Shop      ↓"
 	btn.flat = true
 	btn.tooltip_text = "A shop is open under the battlefield — scroll down to it."
@@ -6754,7 +6790,7 @@ func _build_attempt_strip() -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	wrap.add_child(row)
 
-	_attempt_btn = Button.new()
+	_attempt_btn = HoverButton.new()
 	# NO HOVER TEXT on either of these two. The button says what it does and the
 	# pips beside it say what the next press costs — a paragraph explaining a verb
 	# the player has already pressed a dozen times is a tooltip nobody reads twice.
@@ -6821,18 +6857,13 @@ func _refresh_attempts() -> void:
 	# undo history), so half the time it was a grey button with a paragraph saying
 	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
 	# turn a restore rather than a refund (§3) — they simply have no button.
-	# The escape hatch is always open while a game is in play (§3.2); its tooltip
-	# and the line under it are its PRICE, because that is the whole of what the
-	# button asks the player to weigh.
+	# The escape hatch opens after ESCAPE_AFTER_LOST_RUNS lost runs of this game
+	# (can_escape); until then it is up but dark, and the line under it counts
+	# down. Its hover is a compact card rather than a paragraph of plain tooltip.
 	if _escape_btn != null:
 		_escape_btn.visible = live
 		_escape_btn.disabled = not can_escape()
-		_escape_btn.tooltip_text = ("Leave without beating it. %s\n\nEverything already "
-			+ "on the board stays and follows you, and the end of the game fills the board "
-			+ "as it always does — plus one more body, even if you put something down "
-			+ "here. What it does NOT do is credit the game: no chest, no event, and it "
-			+ "doesn't count as beaten. Loot already on the floor is still yours.") % (
-				escape_hint_text())
+		HoverCard.attach(_escape_btn, escape_hover())
 	if _escape_hint != null:
 		var hint: String = escape_hint_text()
 		_escape_hint.text = hint
@@ -6870,7 +6901,7 @@ func _clear(box: Control) -> void:
 # same window the offering's does — `open_map`, from wherever the run stands — so
 # the two can never show different roads.
 func _build_map_button() -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = "🗺  Map"
 	b.tooltip_text = ("The star chart: every game in the run's catalog, with the road "
 		+ "ahead drawn over it. Open from anywhere, including mid-game.")
@@ -6886,7 +6917,7 @@ func _build_map_button() -> Button:
 # walked on, every event, item, piece of loot, shop purchase and lost run — and
 # the only reader was a one-line readout showing the LAST thing that happened.
 func _build_history_button() -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = "🕮  History"
 	b.tooltip_text = ("Everything that has happened this run, newest first and "
 		+ "grouped by the game you were on. Open from anywhere, including mid-game.")
@@ -7026,7 +7057,7 @@ func quit_game() -> void:
 	get_tree().quit()
 
 func _mini_button(text: String, cb: Callable) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = text
 	b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	b.pressed.connect(cb)

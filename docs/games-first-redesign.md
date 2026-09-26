@@ -299,7 +299,7 @@ of a game.
   board only ever MOVES mid-game and only ever FILLS as a game ends. The hole it
   was there to close — an empty board letting the worst evening pay the least —
   is closed there instead: a game that ends with nothing down stands one more
-  body up, and an escape always does.
+  body up, an escape included.
 - **The gate is the GAME, never the board.** `can_log_attempt` asks
   `GameLoop2.game_in_play` — chosen and not yet reported — and nothing about what
   is standing. It used to ask `arrivals`, the record of which bodies walked on
@@ -366,29 +366,37 @@ one (`GameLoop2._take_hit`).
   simply gone before the swing that broke it was drawn — the one thing a shield
   exists to do was the one thing never shown happening.
 
-**ESCAPE IS ALWAYS OPEN, AND IT HAS A PRICE.** A game you cannot beat is not a
-run-ender: you may walk away from the one in play at any moment
-(`Overworld2.can_escape` asks only that a game is in play). Walking out ENDS the
-game, so the board fills behind you exactly as a hand-in fills it (§19.5) — and
-then one more:
+**ESCAPE OPENS AFTER THREE LOST RUNS, AND IT HAS A PRICE.** A game you cannot
+beat is not a run-ender, but the door out of it is earned at the game itself:
+`Overworld2.can_escape` asks that a game is in play AND that
+`GameLoop2.ESCAPE_AFTER_LOST_RUNS` (3) runs of it have been lost
+(`GameLoop2.attempts()`, which every game starts at zero — the count is per
+landing, including a game this run has beaten before). Until then the button is
+up but dark and the line under it counts down (*"Unlocks after 3 lost runs here
+— 2 to go."*). Walking out ENDS the game, so the board fills behind you exactly as
+a hand-in fills it (§19.5):
 
-- **The board: the Amulet pressure's bodies + 1, always, and at least 2.** A
-  hand-in adds the one only when no goal was beaten; an escape adds it even after
-  a kill (`GameLoop2.end_of_game_price(true)`), so walking out is never cheaper
-  than finishing, and it never costs fewer than two bodies.
+- **With a body put down to its goal here, the board: what a hand-in costs** —
+  the Amulet pressure's bodies and nothing more. The player answered the board,
+  and the gate already stops the door being the answer to a game that merely
+  looked hard.
+- **With nothing down: the pressure + 1, and at least 2**
+  (`GameLoop2.ESCAPE_MIN_BODIES`). `GameLoop2.end_of_game_price(true)` owns both.
 - **The reward: none.** No report chest (the kill scaling only pays a win, §8.2),
   no beat on the record, and a `game beaten` goal still ticked is dropped rather
   than honoured (§7.7). Loot already on the floor and a boss's own chest are
   drops, not the report's reward, and stay yours.
-- **The line under the button is that price**: *"Leave now: 3 enemies walk on, no
-  chest."* (`Overworld2.escape_hint_text`), and the tooltip says the same.
+- **The line under the button is that price** once the door is open: *"Leave now:
+  3 enemies walk on, no chest."* (`Overworld2.escape_hint_text`), and its hover
+  card (`Overworld2.escape_hover`) says what opens it and what it costs.
 
-**It used to be gated three ways** — an enemy's hit taking Health off you, three
-bodies down, or five lost runs — with a greyed button listing whichever routes
-were still unpaid. Those gates existed because escaping cost the board nothing it
-was not already owed, so the door had to be earned. It costs bodies now, and a
-price you can read replaced three rules to satisfy. `GameLoop2.hurt_this_game` is
-still recorded per game; nothing gates on it.
+**It was gated before, differently, and then ungated.** Three routes — an enemy's
+hit taking Health off you, three bodies down, or five lost runs — were replaced
+by a price alone, on the argument that a price you can read beats three rules to
+satisfy. In play the ungated door was simply the answer to any game that looked
+too hard: walk out before trying. One gate, on the thing the run is about —
+having tried — came back. `GameLoop2.hurt_this_game` is still recorded per game;
+nothing gates on it.
 
 The tension is *don't lose runs → the stack never moves, and the wall is still
 whole when you report.* A game cleared first try leaves the board where it was and
@@ -1586,7 +1594,8 @@ hops over the run graph, from the Amulet:
 | 3 – 4 | 1 | Closing |
 | 2 – 0 | 2 | Doorstep |
 
-…**+1 if nothing was defeated at the game, and +1 always on an escape** (§3.2).
+…**+1 if nothing was defeated at the game, an escape included, and an escape with
+nothing down never under 2** (§3.2).
 `RunDifficulty.pressure_for_hops` owns the ladder, `GameLoop2.pressure()` reads
 it where the run stands and `GameLoop2.end_of_game_price` adds the two
 surcharges; all three are pure, so the strip, the cards and the resolver cannot
@@ -4831,7 +4840,7 @@ half, and without it the three non-Enemies kinds would simply be a way to play
 the whole run on an empty board. How many is the Amulet pressure (§7.4) plus two
 surcharges, all in `GameLoop2.end_of_game_price`:
 
-| Hops to the Amulet | Handed in, a body down | Handed in, nothing down | Escaped |
+| Hops to the Amulet | Handed in or escaped, a body down | Handed in, nothing down | Escaped, nothing down |
 |---|---|---|---|
 | 5 or more | 0 | **1** | **2** |
 | 3 – 4 | 1 | **2** | **2** |
@@ -4841,9 +4850,10 @@ surcharges, all in `GameLoop2.end_of_game_price`:
   answering the board, and only that counts: a body killed by a bomb, a wand, a
   mine, fire or another body does not waive it (`_defeat`'s `goal_kill`), nor
   does a goal-hit fired off an effect rather than ticked by the player.
-- **+1 always on an escape**, kill or no kill, and **never fewer than 2**
-  (`GameLoop2.ESCAPE_MIN_BODIES`, §3.2): walking out is never cheaper than
-  finishing, and out in the wilds a single body was too cheap to be a price.
+- **An escape with nothing down is never fewer than 2**
+  (`GameLoop2.ESCAPE_MIN_BODIES`, §3.2): out in the wilds a single body was too
+  cheap to be a price. An escape after a goal was beaten costs what the hand-in
+  would; the door is already gated behind three lost runs.
 - **At every node kind.** An Event or a Shop node stood nothing up, but the
   evening still ended, and the road charges for where it ended.
 - **Not at the Amulet** — there is no next game for anything to walk into — and

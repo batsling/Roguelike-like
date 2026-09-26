@@ -204,7 +204,7 @@ func sync_to_mode(dash_mode: bool) -> void:
 # One of the three sort buttons. Pressed-looking when it is the one in force, so
 # the row says which order the list is in without a label.
 func _sort_button(text: String, key: StringName, tip: String) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = text
 	b.tooltip_text = tip
 	b.toggle_mode = true

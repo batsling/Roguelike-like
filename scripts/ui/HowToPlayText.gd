@@ -308,18 +308,19 @@ static func _ch_playing() -> Dictionary:
 				+ "moment it lands — you can bomb it, push it, or leave its goal "
 				+ "for three games and clear it later."),
 			_h("Escaping"),
-			_p("If a game is going nowhere you can leave it — ONCE IT HAS DRAWN "
-				+ "BLOOD. Escape is offered the moment an enemy's attack takes "
-				+ "Health off you during this game, and immediately if this run has "
-				+ "already beaten that game before. Putting THREE enemies down on "
-				+ "the game you are playing opens it too — that is a price you can "
-				+ "pay on purpose rather than one the board has to hand you."),
-			_p("So the way out arrives when the board proves it is the problem: "
-				+ "lose runs, the enemies take turns, your shields stop what they "
-				+ "stop — and the swing that gets past them opens the door. Its "
-				+ "enemy comes with you, alive and following: escape answers the "
-				+ "goal with a no, it does not delete the question."),
-			_note("★ Rate is always optional and always available. Score a game "
+			_p(("If a game is going nowhere you can leave it — once you have LOST "
+				+ "%d RUNS of it. The count starts again at every game you land on, "
+				+ "so escape is for the game you have tried and cannot beat, not "
+				+ "for the one you would rather not try.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
+			_p("Walking out ends the game, so the board fills behind you. If you "
+				+ "put a body down to its goal here, it costs exactly what handing "
+				+ "the game in would; if you put nothing down, it costs one more "
+				+ "and never fewer than %d. Either way there is no chest. The "
+				% GameLoop2.ESCAPE_MIN_BODIES + "enemy comes with you, alive and "
+				+ "following: escape answers the goal with a no, it does not "
+				+ "delete the question."),
+			_note("★ Rate is always optional: it is on the card a game opens and "
+				+ "on the screen a game ends on. Score a game "
 				+ "out of ten and write a note; it feeds the Tier List, which is "
 				+ "yours across every run and is not a game mechanic at all."),
 		],
@@ -394,8 +395,9 @@ static func _ch_enemies() -> Dictionary:
 			_b("+1 if you did not beat a single body's goal during the game. A "
 				+ "bomb, a wand or a mine killing one does not count — only a goal "
 				+ "you beat does."),
-			_b("Escaping always adds 1, even if you did — and never costs fewer "
-				+ "than %d." % GameLoop2.ESCAPE_MIN_BODIES),
+			_b("Escaping with nothing down adds that 1 too and never costs fewer "
+				+ "than %d; escaping after a goal you beat costs the same as handing "
+				% GameLoop2.ESCAPE_MIN_BODIES + "the game in."),
 			_b("Nothing walks on at the Amulet, and nothing when a teleport pulls "
 				+ "you out."),
 			_b("A lane packed at the back gets SHOVED forward to make room — the "
@@ -928,11 +930,11 @@ static func _ch_wrong() -> Dictionary:
 				+ "game that happens to suit it. That is not a loss, it is a debt "
 				+ "— and debts in this game are payable in any currency."),
 			_h("I keep losing runs of this game"),
-			_p("Each lost run hands the board a turn, and the board is closer "
-				+ "every time. Escape is always there: it costs one more enemy "
-				+ "than finishing would (at least two) and pays no chest, but it stops the "
-				+ "bleeding, and every goal stays on your checklist to clear "
-				+ "somewhere friendlier."),
+			_p(("Each lost run hands the board a turn, and the board is closer "
+				+ "every time. After %d lost runs Escape opens: it pays no chest "
+				+ "and costs at least two enemies unless you beat a goal here, but "
+				+ "it stops the bleeding, and every goal stays on your checklist to "
+				+ "clear somewhere friendlier.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
 			_p("And beat ONE body's goal if you possibly can — any goal on the list. "
 				+ "A game that ends with no goal beaten stands one more enemy up."),
 			_h("I have four followers and they are killing me"),

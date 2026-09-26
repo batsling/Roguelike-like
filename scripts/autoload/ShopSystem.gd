@@ -82,7 +82,10 @@ func shop_nodes() -> Array[StringName]:
 	for gid in GameState.node_kinds.keys():
 		if int(GameState.node_kinds[gid]) == RunGraph.NodeKind.SHOP:
 			out.append(StringName(gid))
-	out.sort()
+	# By NAME. A bare sort() on StringNames orders them by where they were
+	# interned, which depends on what the process happened to touch first — the
+	# same two ids came back in either order depending on which tests had run.
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
 	return out
 
 
