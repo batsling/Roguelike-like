@@ -2434,6 +2434,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# "after beating a game" items, and every one of them is balanced around
 		# firing once per game played.
 		TriggerBus.game_beaten.emit({"game_id": played_game.id})
+		# …and the narrower moment: the game was actually WON (docs/loot-passives.md
+		# §3). The report said it was beaten and it was not an escape — which this
+		# block already guarantees — so a missed game pays the wider trigger above
+		# and not this one.
+		if beaten:
+			TriggerBus.game_won.emit({"game_id": played_game.id})
 		# THE GAME'S OWN LOOT (§4.3): one piece, a straight 50/50 between a scroll
 		# and a pill, asked about the way a kill drop is. On the same terms as the
 		# trigger above — any game seen through, win or lose — because what it pays
@@ -2883,6 +2889,11 @@ func _open_pending_shop() -> void:
 	# node the run is on.
 	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
 		_mount_shop(gid)
+		# Walking into the shop is the moment (Chaos the Clown). Here, once per
+		# arrival, rather than in _mount_shop — which a save reload also calls to
+		# put a standing shelf back, and a reload is not an arrival.
+		if _shop_panel != null:
+			TriggerBus.shop_entered.emit({"game_id": gid})
 	_maybe_announce_boss()
 
 # --- screens the page opens, compiled when they are OPENED ------------------

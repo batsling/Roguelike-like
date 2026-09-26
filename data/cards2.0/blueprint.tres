@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_blueprint"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"blueprint"
+display_name = "Blueprint"
+rarity = "Rare"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Passive: Copy the passive effect of the loot to the right of this if possible"
+effect = []
+file = "Blueprint"
+icon = "Balatro_Playing_Cards"
+passive = true
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+copy_neighbour = "right"

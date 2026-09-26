@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_to_the_moon"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"to_the_moon"
+display_name = "To the Moon"
+rarity = "Uncommon"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Passive: Whenever you complete a game, Gain +1 Gold for each 3 Gold you have."
+effect = []
+file = "ToTheMoon"
+icon = "Balatro_Playing_Cards"
+passive = true
+triggers = [{"on": "game_won", "effects": [{"type": "gain_gold", "value": 1, "per": 3, "of": "gold"}]}]
+stat_bonuses = {}
+status_bonuses = {}

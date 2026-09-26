@@ -98,11 +98,13 @@ var locked: bool = false
 # is the shape nine wants; a capacity that is not a multiple of three keeps three
 # and lets the last row come up short, because a row of two beside two rows of
 # three still reads as "this is the pack and there is room in it".
+#
+# The rule lives in LootPassives.pack_columns now, because it stopped being only a
+# drawing fact the day a piece could read "the slot to its right" (Blueprint,
+# docs/loot-passives.md §2): the grid the player arranges and the grid the passives
+# read have to be the same grid.
 func grid_columns() -> int:
-	var cap: int = GameState.loot_capacity()
-	if cap > COLS * COLS and cap % COLS == 0:
-		return cap / COLS
-	return COLS
+	return LootPassives.pack_columns()
 
 func _init() -> void:
 	columns = COLS
@@ -363,7 +365,10 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	# A CARD GETS NO BADGE AT ALL (docs/cards-design.md §2). It has no Preference —
 	# there is no gamble for one to hint at — and the fallback "?" would say the one
 	# thing that is not true of it: that this is a piece you do not know yet.
-	if String(entry.get("type", "")) != "card":
+	#
+	# A TRINKET GETS NONE EITHER, for the card's reason: it is not a gamble.
+	var passive: bool = LootPassives.is_passive(entry)
+	if String(entry.get("type", "")) != "card" and not passive:
 		var badge := UITheme.chip(pref_glyph(entry) if known else "?",
 			UITheme.preference_color(LootSystem.preference(entry)) if known else UITheme.TEXT_FAINT,
 			9)
@@ -388,6 +393,17 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])] \
 			if counted else "Zap it to find out what it is — and how much of it is left."
 		band.add_child(count)
+	# A PASSIVE THAT GROWS WEARS ITS GROWTH in the same corner (Rocket's payout,
+	# docs/loot-passives.md §4) — the relic strip draws an incremental relic's
+	# count there too, so a number in the bottom-left reads as "how far along".
+	var grown: int = int(entry.get("counter", 0))
+	if passive and grown != 0:
+		var tally := UITheme.chip("%+d" % grown, UITheme.GOLD, 9)
+		tally.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		tally.grow_horizontal = Control.GROW_DIRECTION_END
+		tally.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		tally.tooltip_text = "Grown by %+d so far." % grown
+		band.add_child(tally)
 	col.add_child(band)
 
 	if not with_name:
@@ -410,7 +426,22 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name)
 
-	if use_cb.is_valid():
+	# A PASSIVE PIECE HAS NOTHING TO SPEND (docs/loot-passives.md §1), so where the
+	# Use button would be it says what it is instead — at the button's own height,
+	# so a row holding a trinket is exactly as tall as a row holding a scroll.
+	if use_cb.is_valid() and passive:
+		var plate := Label.new()
+		var copier: bool = LootPassives.copies(LootPassives.def_for(entry)) != ""
+		plate.text = "Copies >" if copier else "Passive"
+		plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
+		plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		plate.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		plate.tooltip_text = "Works while it is in your pack. Copies the piece to its right." \
+			if copier else "Works while it is in your pack — never spent."
+		col.add_child(plate)
+	elif use_cb.is_valid():
 		# "Zap" ON A WAND AND "Use" ON EVERYTHING ELSE. The word is the one place a
 		# 40px tile can say that pressing this does not empty the slot — every other
 		# kind's button is a goodbye and a wand's usually is not.

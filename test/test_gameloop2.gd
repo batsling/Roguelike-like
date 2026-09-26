@@ -1294,11 +1294,9 @@ func test_a_plain_bomb_only_hits_its_target() -> void:
 	assert_eq(_col_of(a), -1)
 	assert_eq(_col_of(same_row), 3, "without Brimstone the blast is one body")
 
-# BARRICADE IS A CARD NOW (docs/cards-design.md §5.1), so what arms this is a run
-# flag rather than a relic in the pack — `GameState.bank_shields_next`, set by
-# playing the card and read through the same `banks_shields()` this always went
-# through. The rule it tests is unchanged; how long it lasts is not, which is the
-# second half of the test.
+# BARRICADE IS A PASSIVE CARD NOW (docs/loot-passives.md §8): it banks every game's
+# leftovers for as long as it sits in the pack, read through the same
+# `banks_shields()` this always went through.
 func test_barricade_banks_unspent_shields() -> void:
 	GameState.shields = 4
 	var _a: int = _choose_solo(_enemy(1))
@@ -1306,7 +1304,7 @@ func test_barricade_banks_unspent_shields() -> void:
 	assert_eq(GameState.shields, 0, "shields normally expire with the game")
 	assert_eq(GameState.bonus_shields, 0, "and bank into nothing")
 	GameLoop2.reset()
-	GameState.bank_shields_next = true
+	GameState.add_card_loot(&"barricade")
 	GameState.shields = 4
 	var _b: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
@@ -1316,29 +1314,23 @@ func test_barricade_banks_unspent_shields() -> void:
 	assert_eq(GameState.shields, 0, "the game's own tries still end with it")
 	assert_eq(GameState.bonus_shields, 4, "Barricade banks them into the pool that stays")
 
-func test_the_barricade_card_banks_the_next_game_and_only_that_one() -> void:
-	GameState.bank_shields_next = true
+func test_a_held_barricade_banks_every_game_until_it_leaves_the_pack() -> void:
+	GameState.add_card_loot(&"barricade")
 	GameState.shields = 3
 	var _a: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.bonus_shields, 3, "the next game's leftovers bank")
-	assert_false(GameState.bank_shields_next, "and the card is spent")
+	assert_eq(GameState.bonus_shields, 3, "the first game's leftovers bank")
 	GameLoop2.reset()
-	GameState.shields = 5
+	GameState.shields = 2
 	var _b: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.bonus_shields, 3, "the game after it banks nothing")
-
-func test_the_barricade_card_is_spent_even_by_a_game_with_nothing_to_bank() -> void:
-	# A next game that ended with its cover already broken is a game the card was
-	# there for. Disarming only on a successful bank would hold the promise open
-	# until a game happened to end with shields standing, which is a different card.
-	GameState.bank_shields_next = true
-	GameState.shields = 0
-	var _a: int = _choose_solo(_enemy(1))
+	assert_eq(GameState.bonus_shields, 5, "and so do the next game's — it is held, not spent")
+	GameState.discard_loot_at(0)
+	GameLoop2.reset()
+	GameState.shields = 4
+	var _c: int = _choose_solo(_enemy(1))
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.bonus_shields, 0)
-	assert_false(GameState.bank_shields_next, "spent all the same")
+	assert_eq(GameState.bonus_shields, 5, "binned, the next game banks nothing")
 
 # --- Mine-r Construction: the board grows (§7.3) --------------------------
 

@@ -636,7 +636,7 @@ func _discard_carried(index: int) -> void:
 		return
 	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
 	LootTrash.confirm(_page(), piece_name, func():
-		GameState.remove_loot_at(index)
+		GameState.discard_loot_at(index)
 		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
 		_after_change())
 

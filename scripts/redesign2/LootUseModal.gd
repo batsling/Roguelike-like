@@ -220,10 +220,9 @@ func _show_intro() -> void:
 # relic changes what SPENDING one piece of loot means, and a player who cannot see
 # the three copies coming cannot plan around them (§4.3).
 func _echo_note() -> String:
-	# A WAND FIRES NO COPIES AND JOINS NO MEMORY (docs/wands-design.md §4.4), so
-	# naming the three pieces Echo Chamber "will also use" would be the screen
-	# promising something the use is about to not do.
-	if LootSystem.is_wand(_entry) or GameState.loot_echo_depth() <= 0:
+	# A zap fires the copies like any other use (docs/loot-passives.md §9), so a
+	# wand gets the note too.
+	if GameState.loot_echo_depth() <= 0:
 		return ""
 	var names: Array = _echo_names()
 	if names.is_empty():

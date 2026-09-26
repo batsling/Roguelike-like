@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_rocket"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"rocket"
+display_name = "Rocket"
+rarity = "Uncommon"
+source_game = "Balatro"
+set_name = "Playing Cards"
+description = "Passive: Whenever you complete a game, Gain +1 Gold. Increase Gold payout by 2 when you defeat a boss."
+effect = []
+file = "Rocket"
+icon = "Balatro_Playing_Cards"
+passive = true
+triggers = [{"on": "game_won", "effects": [{"type": "gain_gold", "value": 1, "plus_counter": true}]}, {"on": "enemy_killed", "if_boss": true, "effects": [{"type": "bump", "value": 2}]}]
+stat_bonuses = {}
+status_bonuses = {}

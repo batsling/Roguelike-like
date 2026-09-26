@@ -83,6 +83,11 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var card: CardData = data_for(entry)
 	if card == null:
 		return out
+	# A PASSIVE CARD IS NEVER PLAYED (docs/loot-passives.md §1) — it works from its
+	# slot and has no Use button. Refused here as well, so an echo or a copy that
+	# reached one through some other door does nothing rather than "spending" it.
+	if card.is_passive():
+		return out
 	var rng: RandomNumberGenerator = ctx.get("rng")
 	if rng == null:
 		rng = RandomNumberGenerator.new()
@@ -106,10 +111,6 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 			_double_stat(effect, out)
 		"gain_loot":
 			_gain_loot(effect, out)
-		"bank_shields_next":
-			_bank_shields_next(out)
-		"echo_loot_next":
-			_echo_loot_next(effect, out)
 		"spawn_object":
 			_spawn_object(effect, out)
 		"teleport_type":
@@ -125,8 +126,22 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 		"copy_item":
 			out["requests"].append({"kind": "copy_item",
 				"candidates": copyable_items()})
+		"spawn_boss":
+			_spawn_boss(out)
 		_:
 			push_warning("CardSystem: unknown effect op '%s'" % op)
+
+
+# IV - The Emperor: a boss of the game in play's type, at the run's current tier,
+# walks onto the board (GameLoop2.summon_boss). Isaac's card sends you to the boss
+# room; here the boss comes to you, which is the same bargain — a boss's chest for
+# a boss's fight, taken when YOU choose rather than when the ladder says.
+func _spawn_boss(out: Dictionary) -> void:
+	var boss: GoalEnemyData = GameLoop2.summon_boss()
+	if boss == null:
+		out["logs"].append("Nothing answers the summons.")
+		return
+	out["logs"].append("%s walks onto the board." % boss.display_name)
 
 
 # The Lovers is a flat amount; Queen of Hearts is a roll between two. Both are the
@@ -244,31 +259,6 @@ func _gain_loot(effect: Dictionary, out: Dictionary) -> void:
 	GameState.offer_loot(kind, count)
 	var what: String = "card" if kind == "card" else "piece"
 	out["logs"].append("%d more %s%s." % [count, what, "" if count == 1 else "s"])
-
-
-# Barricade: arm the bank for ONE game resolution. The relic this replaces read
-# off the inventory and banked every game's leftovers forever; the card banks the
-# next one's and is then gone, which is the same rule spent once.
-func _bank_shields_next(out: Dictionary) -> void:
-	GameState.bank_shields_next = true
-	out["logs"].append("The next game's unspent %ss will become %ss."
-		% [GameState.TEMP_SHIELD_NAME, GameState.SHIELD_NAME])
-
-
-# Echo Form: every piece of loot spent this coming game is used one extra time.
-#
-# Barricade's shape exactly — arm a run flag, let the game that resolves clear it
-# — because the two cards make the same kind of promise: one game, spent card,
-# nothing left in the pack to read it off.
-#
-# It ADDS rather than sets, so a second Echo Form is a second copy rather than a
-# no-op. "An additional copy" is a thing a card owes you, and two cards owe two.
-func _echo_loot_next(effect: Dictionary, out: Dictionary) -> void:
-	var copies: int = maxi(1, int(effect.get("count", 1)))
-	GameState.echo_loot_next_game += copies
-	var total: int = GameState.extra_loot_copies()
-	out["logs"].append("Until the end of the next game, every piece of loot you use is used %s."
-		% ("twice" if total == 1 else "%d times" % (total + 1)))
 
 
 # Temperance: put a named machine under the board. NAMED, where an event's

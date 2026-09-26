@@ -6,13 +6,22 @@ Cards are the FOURTH loot consumable (docs/cards-design.md), and the only one
 that is not a gamble: one use, one effect, printed on the face. So this generator
 parses ONE effect column and no Preference — there is nothing to hint at.
 
-  cards: Name | Rarity | Description | Effect | Image | Icon Image
+  cards: Name | Rarity | Description | Effect | Game | Image | Icon Image
 
 `Image` is the card's FACE, drawn once it is in the pack; `Icon Image` is its
 BACK, drawn while it is lying on the floor, and shared by every card of a set.
-The back is also where the credit comes from: the five icon files spell out the
-game and the deck ("Isaac_Major_Arcana"), so `source_game` and `set_name` are
-read off it rather than authored twice.
+The back is also where the DECK comes from: the icon files spell out the game and
+the deck ("Isaac_Major_Arcana"), so `set_name` is read off it. `source_game` is the
+sheet's `Game` column when it is filled (it can say "Rebirth" where the icon can
+only say "Isaac") and the icon's game when it is not.
+
+PASSIVE CARDS (docs/loot-passives.md). A row whose Description opens "Passive:" is
+a card that is never spent — it works from its pack slot, like a Balatro joker —
+and its Effect is written in the RELIC grammar rather than this one, compiled by
+generate_item_tres.parse_loot_passive into the same four fields a trinket carries.
+The prose is the switch because the prose is what the player reads: a card that
+says "Passive:" and has a Use button, or the other way round, is the one mismatch
+this generator cannot let through.
 
 Effect token DSL (semicolons separate clauses, as in every other sheet):
 
@@ -26,8 +35,8 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     teleport_shop               -> {op:teleport_shop}
     teleport_start              -> {op:teleport_start}
     spawn_object <object_id>    -> {op:spawn_object, object}
+    spawn_boss                  -> {op:spawn_boss}
     copy_item                   -> {op:copy_item}
-    bank_shields_next           -> {op:bank_shields_next}
     none                        -> nothing
 
 `floor=` is the "if you have none, gain this instead" clause the two doubling
@@ -45,8 +54,12 @@ raises rather than writing a card that fizzles.
 import argparse
 import os
 import re
+import sys
 
 import openpyxl
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generate_item_tres as items  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -163,18 +176,10 @@ def parse_clause(s: str) -> list:
             raise ValueError("card effect DSL: teleport_type needs a game type in %r" % s)
         return [{"op": "teleport_type", "game_type": bare[0].lower()}]
 
-    if verb in ("teleport_shop", "teleport_start", "copy_item", "bank_shields_next"):
+    # IV - The Emperor: a random boss of the current game type and difficulty tier
+    # walks onto the board (GameLoop2.summon_boss).
+    if verb in ("teleport_shop", "teleport_start", "copy_item", "spawn_boss"):
         return [{"op": verb}]
-
-    # Echo Form. `echo_loot_next [N]` — N extra copies of every piece of loot
-    # used, for one game; 1 when unstated, which is what "an additional copy"
-    # means. Bare rather than a kv so it reads like the rest of the DSL.
-    if verb == "echo_loot_next":
-        count = int(bare[0]) if bare else 1
-        if count < 1:
-            raise ValueError("card effect DSL: echo_loot_next needs at least one "
-                             "copy in %r" % s)
-        return [{"op": "echo_loot_next", "count": count}]
 
     if verb == "spawn_object":
         if not bare:
@@ -216,10 +221,16 @@ def card_tres(row) -> tuple:
     cid = slugify(name)
     rarity = _clean(row.get("Rarity")) or "Common"
     description = _clean(row.get("Description"))
-    effect = parse_effect(row.get("Effect"), name)
+    passive = None
+    if description.lower().startswith("passive:"):
+        passive = items.parse_loot_passive(name, _clean(row.get("Effect")))
+        effect = []
+    else:
+        effect = parse_effect(row.get("Effect"), name)
     file = _clean(row.get("Image"))
     icon = _clean(row.get("Icon Image"))
     source_game, set_name = icon_credit(icon)
+    source_game = _clean(row.get("Game")) or source_game
 
     lines = []
     lines.append('[gd_resource type="Resource" script_class="CardData" load_steps=2 '
@@ -239,6 +250,17 @@ def card_tres(row) -> tuple:
     lines.append("effect = %s" % gd_value(effect))
     lines.append('file = "%s"' % gd_str(file))
     lines.append('icon = "%s"' % gd_str(icon))
+    if passive is not None:
+        lines.append("passive = true")
+        lines.append("triggers = %s" % gd_value(passive["triggers"]))
+        lines.append("stat_bonuses = %s" % gd_value(passive["stat_bonuses"]))
+        lines.append("status_bonuses = %s" % gd_value(passive["status_bonuses"]))
+        if passive["copy_neighbour"]:
+            lines.append('copy_neighbour = "%s"' % gd_str(passive["copy_neighbour"]))
+        if passive["bank_shields"]:
+            lines.append("bank_shields = true")
+        if passive["echo_first_loot"]:
+            lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
     return cid, "\n".join(lines) + "\n"
 
 

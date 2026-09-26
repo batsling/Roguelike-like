@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_counterfeit_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"counterfeit_penny"
+display_name = "Counterfeit Penny"
+rarity = "Rare"
+size = Vector2i(1, 1)
+description = "Passive: 50% chance to Gain +1 Gold when gaining Gold"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("coin")
+file = "CounterfeitPenny"
+triggers = [{"on": "gold_gained", "effects": [{"type": "chance", "percent": 50, "effect": {"type": "gain_gold", "value": 1}}]}]
+stat_bonuses = {}
+status_bonuses = {}

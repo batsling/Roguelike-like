@@ -35,7 +35,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 14, "the sheet's 14 rows all generated")
+	assert_eq(cards.size(), 20, "the sheet's 20 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -43,6 +43,15 @@ func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 		# EVERY CARD PRINTS WHAT IT DOES (docs/cards-design.md §2) — a blank
 		# description is an authoring hole here where on a potion it could be design.
 		assert_ne(card.description, "", "%s prints what it does" % card.id)
+		# A PASSIVE CARD does its something from the pack rather than when played
+		# (docs/loot-passives.md), so what it carries is a passive, not an effect.
+		if card.is_passive():
+			assert_true(card.effect.is_empty(), "%s has nothing to play" % card.id)
+			assert_true(not card.triggers.is_empty() or card.copy_neighbour != ""
+				or not card.stat_bonuses.is_empty() or not card.status_bonuses.is_empty()
+				or card.bank_shields or card.echo_first_loot > 0,
+				"%s does something from the pack" % card.id)
+			continue
 		assert_false(card.effect.is_empty(), "%s does something" % card.id)
 		for op in card.effect:
 			assert_true(op is Dictionary and String(op.get("op", "")) != "",
@@ -124,6 +133,12 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # gives away — the day a fourth card joins Balatro's deck, or another deck arrives
 # with one card in it, this fails and somebody decides on purpose.
 #
+# IT FAILED A SECOND TIME, THE OTHER WAY, when the Balatro jokers arrived
+# (docs/loot-passives.md): Ride the Bus has five deck-mates now, so Balatro's icon
+# stopped naming its card and became the third deck worth guessing at. That is the
+# direction this list is meant to move in, and The Emperor joining the arcana
+# (5 -> 6) is the same thing.
+#
 # IT HAS FAILED ONCE, AND THIS IS THE DECISION. Echo Form arrived as the only
 # Defect Rare, so its face-down icon names it exactly the way Barricade's names
 # Barricade. Accepted rather than worked around: three decks already gave their
@@ -132,7 +147,6 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # finished card back until it has a sibling. The guessing lives in the two decks
 # of five, and those are untouched.
 const LONELY_DECKS := [
-	"Balatro_Playing_Cards",        # Ride the Bus
 	"Isaac_MTG_Cards",              # Ancient Recall
 	"Slay_the_Spire_Defect_Rare",   # Echo Form
 	"Slay_the_Spire_Ironclad_Rare", # Barricade
@@ -149,19 +163,21 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 			lonely.append(icon)
 	lonely.sort()
 	assert_eq(lonely, LONELY_DECKS,
-		"four decks hold one card each and name it on the floor — see LONELY_DECKS")
-	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 5,
+		"three decks hold one card each and name it on the floor — see LONELY_DECKS")
+	assert_eq(int(counts.get("Balatro_Playing_Cards", 0)), 6,
+		"Ride the Bus and the five jokers")
+	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 6,
 		"the arcana are where a face-down card is a real guess")
 	assert_eq(int(counts.get("Isaac_Playing_Cards", 0)), 5)
 
 # --- The drop (§4) ---------------------------------------------------------
 
-func test_the_kind_split_is_five_even_fifths() -> void:
-	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand"])
+func test_the_kind_split_is_six_even_sixths() -> void:
+	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand", "trinket"])
 	var seen: Dictionary = {}
 	for _i in range(500):
 		seen[GameState.roll_loot_kind()] = true
-	assert_eq(seen.size(), 5, "all five kinds come up")
+	assert_eq(seen.size(), 6, "all six kinds come up")
 
 func test_a_kind_blind_drop_can_roll_a_card() -> void:
 	var found: bool = false
@@ -246,41 +262,42 @@ func test_ancient_recall_offers_three_more_cards() -> void:
 	CardSystem.play_card(_entry(&"ancient_recall"), {"rng": _rng()})
 	assert_eq(GameState.loot_cards().size(), 3)
 
-func test_barricade_arms_the_bank_for_exactly_one_game() -> void:
-	assert_false(GameState.banks_shields(), "nothing is armed to start with")
-	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
-	assert_true(GameState.banks_shields())
-	assert_true(GameState.bank_shields_next)
+# BARRICADE AND ECHO FORM ARE HELD, not played (docs/loot-passives.md §8).
 
-func test_echo_form_arms_an_extra_copy_of_every_piece_of_loot() -> void:
-	assert_eq(GameState.extra_loot_copies(), 0, "nothing is armed to start with")
-	var out: Dictionary = CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	assert_eq(GameState.extra_loot_copies(), 1, "one additional copy, as the card says")
-	assert_string_contains(String(out["logs"][0]).to_lower(), "twice")
+func test_barricade_banks_while_held_and_is_never_played() -> void:
+	assert_false(GameState.banks_shields(), "nothing banks to start with")
+	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
+	assert_false(GameState.banks_shields(), "playing it does nothing — it is a passive")
+	GameState.add_card_loot(&"barricade")
+	assert_true(GameState.banks_shields(), "holding it is what banks")
+
+func test_echo_form_owes_a_copy_of_the_first_piece_each_game() -> void:
+	assert_eq(GameState.extra_loot_copies(), 0, "nothing is owed to start with")
+	GameState.add_card_loot(&"echo_form")
+	assert_eq(GameState.extra_loot_copies(), 1, "the first piece this game gets one copy")
+	GameState.loot_uses_this_game = 1
+	assert_eq(GameState.extra_loot_copies(), 0, "and only the first")
+	GameLoop2.beat_game(false)
+	assert_eq(GameState.extra_loot_copies(), 1, "a new game has a new first piece")
 
 func test_two_echo_forms_owe_two_extra_copies() -> void:
 	# "An additional copy" is a thing a card owes you, and two cards owe two — a
 	# second Rare quietly being a no-op is the kind of thing a player only ever
 	# finds out by wasting one.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	GameState.add_card_loot(&"echo_form")
+	GameState.add_card_loot(&"echo_form")
 	assert_eq(GameState.extra_loot_copies(), 2)
 
-func test_echo_form_expires_when_the_next_game_resolves() -> void:
-	# Barricade's clock exactly, and cleared on the same beat: the promise was
-	# about the next game HOWEVER it went, so it does not wait around for a game
-	# the player happened to spend loot in.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
-	assert_eq(GameState.extra_loot_copies(), 1)
-	GameLoop2.beat_game(false)
-	assert_eq(GameState.extra_loot_copies(), 0, "one game, and the game counts")
+func test_a_blueprint_beside_echo_form_is_a_second_echo_form() -> void:
+	GameState.take_loot_entry_at(_entry(&"blueprint"), 0)
+	GameState.take_loot_entry_at(_entry(&"echo_form"), 1)
+	assert_eq(GameState.extra_loot_copies(), 2)
 
 func test_echo_form_is_not_echo_chamber() -> void:
 	# The two read alike in a sentence and are different mechanics. The relic sets
 	# a DEPTH into the history of what has been spent; the card copies the piece in
-	# your hand. Neither should be readable as the other, or a temporary Echo Form
-	# would quietly become a worse Echo Chamber.
-	CardSystem.play_card(_entry(&"echo_form"), {"rng": _rng()})
+	# your hand. Neither should be readable as the other.
+	GameState.add_card_loot(&"echo_form")
 	assert_eq(GameState.loot_echo_depth(), 0,
 		"the card grants no history depth — that is the relic's")
 	assert_eq(GameState.extra_loot_copies(), 1, "and the relic would grant none of this")

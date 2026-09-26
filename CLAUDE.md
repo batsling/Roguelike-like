@@ -14,6 +14,7 @@ the honour system.
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
+| trinkets, passive cards, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule, the five hooks it added, the coin-chain rule and the trigger toast |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
@@ -68,7 +69,7 @@ the honour system.
 ## Working here
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 47 scripts, ~2490 tests, ~12 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 tests, ~12 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by

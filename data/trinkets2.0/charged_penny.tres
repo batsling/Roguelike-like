@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_charged_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"charged_penny"
+display_name = "Charged Penny"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "Passive: 16% chance to Gain +1 Charge to a random Chargeable Item or Wand when gaining Gold"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("coin")
+file = "ChargedPenny"
+triggers = [{"on": "gold_gained", "effects": [{"type": "chance", "percent": 16, "effect": {"type": "charge_random", "value": 1}}]}]
+stat_bonuses = {}
+status_bonuses = {}

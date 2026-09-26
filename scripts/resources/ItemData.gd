@@ -436,11 +436,10 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # has a GameState.has_* helper so the call sites stay a single bool.
 #
 # `bank_shields` USED TO BE HERE and is gone with the relic that authored it.
-# Barricade is a CARD now (docs/cards-design.md §5.1): what a resolved game left
-# standing is banked for the NEXT game only, armed by playing the card, and the
-# run flag it sets (GameState.bank_shields_next) is what GameLoop2.beat_game reads
-# through the same GameState.banks_shields it always did. A sheet keyword with no
-# author is a keyword that rots, so the vocabulary lost it too.
+# Barricade is a PASSIVE CARD now (docs/loot-passives.md §8): it banks every
+# resolved game's leftovers while it is held in the pack, and GameLoop2.beat_game
+# asks through the same GameState.banks_shields it always did — which reads the
+# pack (LootPassives) rather than the relic shelf.
 
 # Lucky Foot: a NEGATIVE pill taken while this is held rerolls into a random
 # Positive one (§4.3). Neutral pills are untouched, and the colour still

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_swallowed_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"swallowed_penny"
+display_name = "Swallowed Penny"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "Passive: Gain +1 Gold when losing Health"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("coin")
+file = "SwallowedPenny"
+triggers = [{"on": "health_lost", "silent": true, "effects": [{"type": "gain_gold", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

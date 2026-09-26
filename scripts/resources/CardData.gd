@@ -58,7 +58,6 @@ extends Resource
 #   {"op": "spawn_object", "object": "blood_donation_machine"} (Temperance)
 #   {"op": "gain_loot", "kind": "card", "count": 3}          (Ancient Recall)
 #   {"op": "copy_item"}                                      (? Card)
-#   {"op": "bank_shields_next"}                              (Barricade)
 @export var effect: Array = []
 
 # Art base name under res://images2.0/cards/ — the card's FACE, drawn once it is
@@ -69,6 +68,29 @@ extends Resource
 # icons cover thirteen cards, so a face-down card narrows the guess without
 # answering it.
 @export var icon: String = ""
+
+# --- PASSIVE CARDS (docs/loot-passives.md) ---------------------------------------
+# A card whose sheet line opens "Passive:" is not spent: it works from its pack slot
+# the way a Balatro joker works from the joker row, and it has no Use button. Its
+# `effect` is empty and these four fields carry what it does instead, in the RELIC
+# grammar and in exactly the shape a trinket carries them (TrinketData), so the one
+# runner (`LootPassives`) reads either kind without asking which it has.
+@export var passive: bool = false
+@export var triggers: Array = []
+@export var stat_bonuses: Dictionary = {}
+@export var status_bonuses: Dictionary = {}
+# "right" for Blueprint: this card does what the piece to its right does.
+@export var copy_neighbour: String = ""
+# Barricade: while held, every game that resolves banks its unspent Temporary
+# Shields into Shields (GameState.banks_shields).
+@export var bank_shields: bool = false
+# Echo Form: while held, the FIRST piece of loot used in each game plays this many
+# additional copies (GameState.extra_loot_copies).
+@export var echo_first_loot: int = 0
+
+
+func is_passive() -> bool:
+	return passive
 
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary).

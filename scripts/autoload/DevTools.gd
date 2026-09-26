@@ -32,10 +32,10 @@ const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
 const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "wands",
-	"statuses"]
+	"trinkets", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
 	"potions": "Potions", "cards": "Cards", "wands": "Wands",
-	"statuses": "Statuses"}
+	"trinkets": "Trinkets", "statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -359,6 +359,8 @@ func _build_grant_tab() -> void:
 			_list_cards()
 		"wands":
 			_list_wands()
+		"trinkets":
+			_list_trinkets()
 		"statuses":
 			_list_statuses()
 		_:
@@ -505,6 +507,24 @@ func _list_wands() -> void:
 			"press": func() -> void:
 				GameState.add_wand_loot(wand.id)
 				_say("Added wand: %s" % wand.display_name, WandSystem.WAND_COLOR)})
+	_emit_rows(rows)
+
+# Every trinket, with what it does — like the cards list, there is nothing a
+# trinket withholds for a grant to give away (docs/loot-passives.md).
+func _list_trinkets() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for t in Data.all_trinkets():
+		if not (t is TrinketData):
+			continue
+		var label: String = String(t.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var trinket: TrinketData = t
+		rows.append({"label": label, "detail": "%s · %s" % [trinket.rarity, trinket.description],
+			"press": func() -> void:
+				GameState.add_trinket_loot(trinket.id)
+				_say("Added trinket: %s" % trinket.display_name, LootSystem.LOOT_COLOR)})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

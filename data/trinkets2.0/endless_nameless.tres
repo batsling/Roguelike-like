@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_endless_nameless"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"endless_nameless"
+display_name = "Endless Nameless"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "Passive: Whenever you use a loot, 25% chance to spawn a duplicate of that loot on the board"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray()
+file = "EndlessNameless"
+triggers = [{"on": "loot_used", "effects": [{"type": "chance", "percent": 25, "effect": {"type": "drop_copy"}}]}]
+stat_bonuses = {}
+status_bonuses = {}

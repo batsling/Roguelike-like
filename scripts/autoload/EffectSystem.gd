@@ -126,6 +126,11 @@ func _register_defaults() -> void:
 	register("destroy_object", _h_destroy_object)
 	register("spawn_object", _h_spawn_object)
 	register("spend_bomb", _h_spend_bomb)
+	# The loot-passive verbs (docs/loot-passives.md §3).
+	register("gain_card", _h_gain_card)
+	register("bump", _h_bump)
+	register("charge_random", _h_charge_random)
+	register("drop_copy", _h_drop_copy)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -224,6 +229,10 @@ func _h_gain_potion(effect: Dictionary, _ctx: Dictionary) -> void:
 func _h_gain_loot(effect: Dictionary, _ctx: Dictionary) -> void:
 	_grant_loot("loot", int(effect.get("value", 1)))
 
+# A named card (Deck of Cards) — the card arm of the three named grants above.
+func _h_gain_card(effect: Dictionary, _ctx: Dictionary) -> void:
+	_grant_loot("card", int(effect.get("value", 1)))
+
 # `drop_loot N` — N pieces rolled and PUT ON THE BATTLEFIELD FLOOR, not into the
 # pack (Fanny Pack: "50% chance to spawn 1 random loot on the grid when losing
 # health"). Its sibling `gain_loot` hands the piece over; this one leaves it lying
@@ -259,8 +268,21 @@ func _grant_loot(kind: String, n: int) -> void:
 func _h_none(_effect: Dictionary, _ctx: Dictionary) -> void:
 	pass
 
-func _h_gain_gold(effect: Dictionary, _ctx: Dictionary) -> void:
+# A payout can be SIZED by the run (docs/loot-passives.md §3):
+#   per=N of=<stat>  -> value for every N of the stat, rounded down (To the Moon:
+#                       +1 per 5 Gold held — read BEFORE this payout lands)
+#   plus_counter     -> value + the counter on the piece whose passive this is
+#                       (Rocket's payout, grown by `bump`)
+func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
+	if effect.has("per"):
+		var per: int = maxi(1, int(effect["per"]))
+		@warning_ignore("integer_division")
+		v *= int(GameState.get(String(effect.get("of", "gold")))) / per
+	if bool(effect.get("plus_counter", false)):
+		var src = ctx.get("loot_source")
+		if src is Dictionary:
+			v += int(src.get("counter", 0))
 	if v != 0:
 		GameState.change_gold(v)
 
@@ -584,6 +606,67 @@ func _h_counter(effect: Dictionary, ctx: Dictionary) -> void:
 	apply_all(inner, ctx)
 	GameState.emit_signal("inventory_changed")
 
+
+# `bump N` — grow the counter on the piece of loot whose passive this is (Rocket:
+# +2 payout per boss). A COPY never bumps: a Blueprint beside a Rocket pays what the
+# Rocket pays, and letting it also grow the Rocket would make one boss worth two
+# steps. The count rides the pack entry, so it survives a save and is drawn on the
+# piece's art like a relic's counter.
+func _h_bump(effect: Dictionary, ctx: Dictionary) -> void:
+	if bool(ctx.get("loot_copy", false)):
+		return
+	var src = ctx.get("loot_source")
+	if not (src is Dictionary):
+		return
+	var by: int = int(effect.get("value", 1))
+	src["counter"] = int(src.get("counter", 0)) + by
+	_did(ctx, "payout %+d" % by)
+	GameState.emit_signal("inventory_changed")
+
+# `charge_random N` / `charge_random full` — top up ONE relic or wand, picked at
+# random from those with room (Charged Penny, Hairpin). The pool is the pill
+# `charge` op's (GameState.chargeable_things), filtered to things a charge would
+# actually move, so a full D6 cannot eat the whole proc.
+func _h_charge_random(effect: Dictionary, ctx: Dictionary) -> void:
+	var pool: Array = GameState.chargeable_things().filter(
+		func(t): return GameState.charge_thing_room(t) > 0)
+	if pool.is_empty():
+		return
+	var thing = pool[_rng.randi_range(0, pool.size() - 1)]
+	var amount: int = GameState.charge_thing_room(thing) if bool(effect.get("full", false)) \
+		else maxi(1, int(effect.get("value", 1)))
+	if GameState.charge_thing(thing, amount):
+		_did(ctx, "%s charged" % GameState.charge_thing_name(thing))
+
+# `drop_copy` — a duplicate of the piece the hook was about lands on a random free
+# square of the battlefield (Endless Nameless, on `loot_used`). Onto the FLOOR, not
+# into the pack: the same terms every other piece the board pays is on, and a full
+# pack is no reason for the proc to vanish. A board with no free square pays nothing.
+func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
+	var hook: Dictionary = ctx.get("hook", {})
+	var used = hook.get("entry")
+	if not (used is Dictionary) or (used as Dictionary).is_empty():
+		return
+	var copy: Dictionary = (used as Dictionary).duplicate(true)
+	copy.erase("pack_slot")
+	copy.erase("echo_target")
+	# A WAND'S DUPLICATE IS THE WAND AS IT NOW STANDS, charges and all — but never
+	# an empty one. The zap that set this off may have spent the stick's last charge,
+	# and a duplicate of that would be a stick with nothing in it: one charge is the
+	# least a copy of a wand you just fired can be.
+	if String(copy.get("type", "")) == "wand":
+		copy["charges"] = maxi(1, int(copy.get("charges", 0)))
+	var cell: Vector2i = GameLoop2.drop_loot_anywhere(copy)
+	if cell != GameLoop2.OFF_FIELD:
+		_did(ctx, "a copy of %s lands on the board" % LootSystem.display_name(copy))
+
+# What an effect that moves no run resource did, for the trigger's toast (see
+# GameState._end_trigger_report). Resource changes are read off the run and need
+# no line here.
+func _did(ctx: Dictionary, line: String) -> void:
+	var lines: Array = ctx.get("did", [])
+	lines.append(line)
+	ctx["did"] = lines
 
 # D10: re-roll every non-boss body on the battlefield at its own difficulty and
 # game type (GameLoop2.reroll_enemies owns the rule; this is only the wiring).
