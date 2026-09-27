@@ -7268,14 +7268,16 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 	assert_not_null(payout, "the game's own loot is on the table")
 	if payout == null:
 		return
-	var carried: int = GameState.loot_items.size()
+	# A BAG on the table goes ONTO the pack rather than into a slot of it
+	# (docs/loot-passives.md §6), so it is counted where it lands.
+	var carried: int = GameState.loot_items.size() + GameState.pack_bags.size()
 	# The table can hold more than the game's own piece now: every body defeated at
 	# this game left one on the floor too, and the report sweeps them here (§8.2).
 	var on_table: int = payout.remaining()
 	assert_gt(on_table, 0, "there is something to take")
 	payout.take()
-	assert_eq(GameState.loot_items.size(), carried + on_table,
-		"taking it fills a slot per piece")
+	assert_eq(GameState.loot_items.size() + GameState.pack_bags.size(), carried + on_table,
+		"taking it fills a slot per piece (or attaches a bag)")
 	assert_eq(payout.remaining(), 0, "and clears the table")
 	# …AND THE SECTION STAYS. As a modal, the last piece leaving the table is the
 	# end of the question. Here it is the opposite: the piece has just gone into the
