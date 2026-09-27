@@ -736,7 +736,14 @@ func test_leaving_a_drop_discards_it() -> void:
 		return
 	var inv_before: int = GameState.inventory.size()
 	chest.leave()                                # what walking off it does
-	assert_null(_ui._post_screen.chest(), "the drop was cleared")
+	# THE CHEST LEFT is what was cleared — not necessarily every chest. The haul
+	# screen shows all of a report's chests at once and `chest()` answers the first
+	# one still open, so a report that ALSO paid a chest another way (a checklist
+	# goal whose reward is "+1 Small Chest", which the random run sometimes rolls)
+	# hands back that second one here. Asserting null made this fail about one full
+	# run in several, for a screen that was behaving exactly as designed.
+	assert_true(chest.answered_already(), "the drop was cleared")
+	assert_false(_ui._post_screen._live_chests().has(chest), "and is no longer offered")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
 	_leave_post_game()
 
