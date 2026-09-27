@@ -923,7 +923,11 @@ func _fire_source_triggers(item: ItemData, trigger_name: String, ctx_extras: Dic
 			continue
 		if not _trigger_gates_pass(trig, ctx_extras):
 			continue
+		if not _loot_gates_pass(trig, ctx_extras, loot):
+			continue
 		if bool(trig.get("once_per_game", false)) and not _claim_once_per_game(item, loot, trigger_name):
+			continue
+		if int(trig.get("every", 0)) > 1 and not _count_every(item, loot, trig):
 			continue
 		# A Blueprint copying a Rocket is the BLUEPRINT firing — it is the piece in
 		# the player's pack that did something — so it is named and pictured as
@@ -954,6 +958,43 @@ func _fire_source_triggers(item: ItemData, trigger_name: String, ctx_extras: Dic
 		for effect in trig.get("effects", []):
 			EffectSystem.apply(effect, fx_ctx)
 		_end_trigger_report(label, art, fx_ctx)
+
+# The gates about the PIECE a hook names (docs/loot-passives.md §6), both Potion
+# Belt's: `if_loot_type` — the spent piece was of this kind — and `if_in_bag` —
+# it was spent from one of the cells of the bag doing the firing. `loot` is the
+# LootPassives.active() row, which carries `bag` (its index in `pack_bags`) only
+# for a bag; anything else asking `if_in_bag` has no cells to be inside, and
+# refuses. `ctx.slot` is where the piece was when it was spent (LootSystem._spend).
+func _loot_gates_pass(trig: Dictionary, ctx: Dictionary, loot: Dictionary) -> bool:
+	if trig.has("if_loot_type"):
+		var entry = ctx.get("entry", {})
+		if not (entry is Dictionary) \
+				or String(entry.get("type", "")) != String(trig["if_loot_type"]):
+			return false
+	if bool(trig.get("if_in_bag", false)):
+		if not loot.has("bag"):
+			return false
+		if bag_at_slot(int(ctx.get("slot", -1))) != int(loot["bag"]):
+			return false
+	return true
+
+# `every=N` (Potion Belt's fourth potion): this firing counts, and only every Nth
+# goes through. Counted AFTER every other gate, so only the firings that qualified
+# are counted. The count is kept where `once_per_game`'s claim is — on the piece
+# doing the firing, so it rides the save — and per trigger, keyed by its position.
+func _count_every(item: ItemData, loot: Dictionary, trig: Dictionary) -> bool:
+	var n: int = int(trig["every"])
+	var key: String = "%s#%d" % [String(trig.get("on", "")), item.triggers.find(trig)]
+	var holder: Dictionary = loot.get("entry", {}) if not loot.is_empty() else {}
+	var counts: Dictionary = holder.get("every_count", {}) if not loot.is_empty() \
+		else (item.get_meta("every_count") if item.has_meta("every_count") else {})
+	var at: int = int(counts.get(key, 0)) + 1
+	counts[key] = at % n
+	if not loot.is_empty():
+		holder["every_count"] = counts
+	else:
+		item.set_meta("every_count", counts)
+	return at >= n
 
 # `once_per_game` (Trading Card): the first firing at a game claims it, and every
 # later one at the same game is refused. The claim is kept on the piece DOING the
@@ -1267,6 +1308,7 @@ func reset_run() -> void:
 	_reset_item_tracking()
 	loot = {"key": 0}
 	loot_items.clear()
+	pack_bags.clear()
 	identified_potion_types.clear()
 	identified_scroll_types.clear()
 	identified_pill_types.clear()
@@ -3691,17 +3733,16 @@ func _recompute_item_bonuses() -> void:
 # otherwise have to unpick every surface that reads a const. Ask `loot_capacity()`.
 const LOOT_CAPACITY := 9
 
-# How much the pack holds RIGHT NOW: the base plus whatever the inventory adds,
-# the shape `GameLoop2.grid_cols()` already uses for the board.
+# How much the pack holds RIGHT NOW: the fixed 3x3 plus every cell of every bag
+# attached to it (docs/loot-passives.md §6). This is the seam the twelve call
+# sites were moved onto before anything could add to it, and bags are the thing
+# that finally does — so none of them had to change.
 #
-# NOTHING ADDS TO IT YET, and that is deliberate (§8.1, decision #15). This is the
-# seam, not the feature: it is cheap now and expensive later, because the loot
-# window is fitted to a 720p canvas with about five pixels to spare and a fourth
-# row is a fit test away from failing. Whoever authors the bigger bag inherits
-# that problem knowingly rather than discovering it — and they add the term here,
-# not at the twelve call sites that used to read the const.
+# The loot window is fitted to a 720p canvas, and a pack that has grown past the
+# 3x3 would not fit it at full size: LootGrid shrinks its cells to fit rather than
+# the page making room (LootGrid.fit_scale).
 func loot_capacity() -> int:
-	return LOOT_CAPACITY
+	return pack_cells().size()
 
 func loot_is_full() -> bool:
 	return loot_items.size() >= loot_capacity()
@@ -3740,15 +3781,24 @@ func add_loot(kind: String, amount: int = 1) -> void:
 							_add_random_potion_loot()
 			else:
 				_drop_loot_of_type(kind, -amount)
+		"bag":
+			# A bag takes no slot — it IS slots — so the cap does not stop one. What
+			# stops one is somewhere to put it: a grant with no UI to drag it on is
+			# attached wherever it fits best (`auto_place_bag`).
+			for _i in range(maxi(0, amount)):
+				var bag: Dictionary = roll_bag_entry()
+				if bag.is_empty() or not auto_place_bag(bag):
+					break
 		"loot":
 			# The KIND-BLIND grant: beating a game pays "1 loot", and which kind it
 			# is comes off `roll_loot_kind()`. Rolled per unit, so +2 loot is two
 			# coins rather than two of one thing.
 			if amount > 0:
 				for _i in range(amount):
-					if loot_is_full():
+					var kind_rolled: String = roll_loot_kind()
+					if loot_is_full() and kind_rolled != "bag":
 						break
-					add_loot(roll_loot_kind(), 1)
+					add_loot(kind_rolled, 1)
 				return
 			_drop_loot_of_type("scroll", -amount)
 		_:
@@ -3760,6 +3810,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 
 func get_loot_count(kind: String) -> int:
 	match kind:
+		"bag":
+			return pack_bags.size()
 		"scroll", "pill", "potion", "card", "trinket":
 			var n: int = 0
 			for l in loot_items:
@@ -3843,46 +3895,54 @@ func roll_trinket_entry() -> Dictionary:
 		return {}
 	return {"type": "trinket", "id": t.id, "rarity": t.rarity}
 
-# WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a straight FIVE-way
-# split (docs/wands-design.md §4; docs/cards-design.md §4; docs/potions-design.md
-# §8, decision #4).
+# One bag as a loot entry, rarity-weighted like every kind (Data.roll_bag). It is
+# an entry only until it is placed: then it becomes a row of `pack_bags`.
+func roll_bag_entry() -> Dictionary:
+	var b: BagData = Data.roll_bag()
+	if b == null:
+		return {}
+	return {"type": "bag", "id": b.id, "rarity": b.rarity}
+
+# WHICH KIND A KIND-BLIND PIECE OF LOOT TURNS OUT TO BE — a WEIGHTED draw
+# (docs/loot-passives.md §6).
 #
 # ONE ROLL, IN ONE PLACE. Two callers ask this question — the grant above and
 # `roll_loot_entry` below — and both used to spell `randi() % 2` out for
 # themselves, which is two places for the odds to drift apart the day one of them
-# is tuned. Potions were the first such day and cards are the second: same income,
-# one more kind, so every kind before it gets rarer, and that is the intended cost
-# of another alphabet rather than an accident of where the coin was flipped.
+# is tuned. Every source that pays "a piece of loot" without naming the kind comes
+# through here: a game's payout, a defeated body, a kind-blind grant.
 #
-# AN EVEN FIFTH EACH, AND NOT A WEIGHTED SPLIT. Cards are the kind you can read
-# before you spend, which makes them the least dangerous of the five and the
-# obvious candidate for a smaller share — and a smaller share is exactly what
-# would make the run's one legible piece of loot the one it rarely sees. The five
-# are equals at the drop and unequal in what they ask of you, which is the trade
-# the kinds exist to offer.
+# IT WAS AN EVEN SPLIT UNTIL BAGS, and the even split's argument still holds for
+# the four kinds that keep the full weight: cards are the one kind you can read
+# before you spend, and a smaller share would make the run's one legible piece of
+# loot the one it rarely sees. Scrolls, pills, potions and cards are the
+# CONSUMABLES — each one is gone when it is used — and they stay equals.
 #
-# WANDS DID NOT BUY THEIR EXTRA CHARGES WITH A SMALLER SLICE, and the argument is
-# the same one in reverse. A wand is worth more per drop than the other four —
-# four or six effects rather than one — so a fifth of every drop looks generous.
-# What it costs is the SLOT: the pack holds nine, and a wand sits in one of them
-# until it is empty, so a run swimming in wands is a run that cannot pick anything
-# up. The kind pays for itself in the place the player feels it, rather than in a
-# number they can only infer from how rarely it turns up.
+# THE KINDS THAT STAY GET TWO THIRDS OF THE WEIGHT. Trinkets and bags are never
+# spent, and a wand lasts four or six uses: each of those is a piece the run keeps
+# for a long time, and each one found changes the pack for the rest of the run
+# rather than for one turn. So they are slightly rarer — 2 against 3, which makes
+# each of them a tenth of the drop and each consumable three twentieths.
 #
-# AND THE PER-GAME PAYOUT IS THE ONLY TAP (decision #14). No shop shelf slot, no
-# enemy drop, no boss bonus: a kind that arrives from four directions at once is a
-# kind nobody can balance the first time. The one-in-four is a number that can be
-# turned; four sources are four numbers that have to be turned together.
-#
-# TRINKETS MADE IT SIX (docs/loot-passives.md §1), on the same terms cards and
-# wands joined on: an even share, so every kind before them got a little rarer.
-# A trinket is never spent, which makes it the kind most likely to sit in a slot
-# all run — the squeeze the other five feel from it is the price of it, paid in
-# the place the player feels it, exactly as a wand's is.
-const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand", "trinket"]
+# WEIGHTS RATHER THAN A LIST OF REPEATS, so a tuning pass changes a number rather
+# than the shape of a const. `LOOT_KINDS` is still the list of kinds, in the order
+# every other screen names them; the weights are keyed by it.
+const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand", "trinket", "bag"]
+const LOOT_WEIGHTS := {
+	"scroll": 3, "pill": 3, "potion": 3, "card": 3,
+	"wand": 2, "trinket": 2, "bag": 2,
+}
 
 func roll_loot_kind() -> String:
-	return String(LOOT_KINDS[randi() % LOOT_KINDS.size()])
+	var total: int = 0
+	for kind in LOOT_KINDS:
+		total += int(LOOT_WEIGHTS.get(kind, 0))
+	var roll: int = randi() % maxi(1, total)
+	for kind in LOOT_KINDS:
+		roll -= int(LOOT_WEIGHTS.get(kind, 0))
+		if roll < 0:
+			return String(kind)
+	return String(LOOT_KINDS[0])
 
 # IDENTIFY IS A FLAT TENTH OF EVERY DROP, and is not in the scroll pool at all.
 #
@@ -3939,6 +3999,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		return WandSystem.roll_wand_loot()
 	if want == "trinket":
 		return roll_trinket_entry()
+	if want == "bag":
+		return roll_bag_entry()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -3948,6 +4010,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 # Put a rolled entry in the pack. Refuses once the pack is full rather than
 # silently dropping it, so the caller can say so.
 func take_loot_entry(entry: Dictionary) -> bool:
+	if is_bag_entry(entry):
+		return auto_place_bag(entry)
 	if entry.is_empty() or loot_is_full():
 		return false
 	loot_items.append(entry.duplicate(true))
@@ -3992,6 +4056,10 @@ func offer_loot(kind: String, n: int) -> void:
 # taken (or out of range) falls back to the first free one, so a stale payload puts
 # the piece in the pack rather than dropping it on the floor.
 func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
+	# A bag has no slot to land in; a caller that only knows slots gets it attached
+	# wherever it fits. The grid's own drag places one where it was dropped.
+	if is_bag_entry(entry):
+		return auto_place_bag(entry)
 	if entry.is_empty() or loot_is_full():
 		return false
 	var layout: Array = loot_layout()
@@ -4023,7 +4091,7 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 # Returns the evicted piece, or {} when the slot was empty or out of range — an
 # empty slot is `take_loot_entry_at`'s job, and the caller falls through to it.
 func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
-	if entry.is_empty() or slot < 0 or slot >= loot_capacity():
+	if entry.is_empty() or is_bag_entry(entry) or slot < 0 or slot >= loot_capacity():
 		return {}
 	var layout: Array = loot_layout()
 	var index: int = int(layout[slot])
@@ -4100,6 +4168,15 @@ func add_trinket_loot(id: StringName) -> void:
 	loot_items.append({"type": "trinket", "id": t.id, "rarity": t.rarity})
 	emit_signal("inventory_changed")
 	_note_loot_gained(loot_items[-1])
+
+# And a SPECIFIC bag (DevTools grant, tests), attached wherever it fits best.
+# Returns whether it found room — the one grant here that can fail, because a bag
+# is a shape and not a count.
+func add_bag_loot(id: StringName) -> bool:
+	var b: BagData = Data.get_bag(id)
+	if b == null:
+		return false
+	return auto_place_bag({"type": "bag", "id": b.id, "rarity": b.rarity})
 
 # ---------------------------------------------------------------------------
 # The 3x3 the loot window draws (§4.3)
@@ -4186,6 +4263,301 @@ func remove_loot_at(index: int) -> void:
 	if index >= 0 and index < loot_items.size():
 		loot_items.remove_at(index)
 		emit_signal("inventory_changed")
+
+# ---------------------------------------------------------------------------
+# Bags: the SHAPE of the pack (docs/loot-passives.md §6)
+# ---------------------------------------------------------------------------
+#
+# THE PACK IS A SET OF CELLS, not a 3x3. The 3x3 is fixed in place at (0,0)-(2,2)
+# and is always there; every bag the player has attached adds its own cells beside
+# it, wherever it was dropped. Lifted from Backpack Battles, where the bags you own
+# ARE your inventory, keeping that game's rules:
+#
+#   * A BAG ATTACHES EDGE TO EDGE. Every cell of the pack is reachable from the
+#     3x3 through cells that share a side — so a new bag has to touch the 3x3 or a
+#     bag that already does, and a move or a removal that would leave some other
+#     bag hanging in the air is refused. There is no size limit.
+#   * WHAT IS IN A BAG MOVES WITH IT, rotation included.
+#   * A BAG IS BINNED ONLY EMPTY. Throwing one away with loot in it would be
+#     throwing the loot away too, and the bin already asks before it destroys one
+#     piece.
+#
+# SLOTS STAY THE CURRENCY, and that is what makes the second rule free. A slot is
+# still an integer (`pack_slot` rides the entry, `loot_layout` maps slot -> piece),
+# numbered by WHO OWNS THE CELL rather than where it is: slots 0-8 are the 3x3 in
+# reading order, exactly as they always were, and each bag's cells follow in the
+# order the bags were attached, each bag's in its own unrotated reading order. So
+# moving or turning a bag changes where its cells are drawn and never which slot a
+# piece is in — the contents ride along because nothing about them changed.
+# Removing a bag is the one change that renumbers, and it renumbers the pieces in
+# the bags after it (`remove_bag`).
+#
+# A row of `pack_bags` is {id, rarity, x, y, rot}: the definition, the cell its
+# top-left sits on once turned, and how many quarter turns clockwise. Anything a
+# bag's passive earns (a once-a-game claim, an every-N count) rides the same row,
+# the way a trinket's rides its pack entry, and is saved with it.
+const PACK_BASE := Vector2i(3, 3)
+
+var pack_bags: Array = []
+
+# slot -> cell and cell -> slot, rebuilt only when `pack_bags` changes (keyed by
+# its hash, so a test or a load that writes the array directly is still seen).
+var _pack_cells_key: int = 0
+var _pack_cells_built: bool = false
+var _pack_cells: Array = []
+var _pack_cell_slots: Dictionary = {}
+
+func is_bag_entry(entry) -> bool:
+	return entry is Dictionary and String(entry.get("type", "")) == "bag"
+
+func bag_def(bag) -> BagData:
+	if not (bag is Dictionary):
+		return null
+	return Data.get_bag(StringName(bag.get("id", "")))
+
+# The footprint a bag of `size` covers when turned `rot` quarter turns.
+static func bag_extent(size: Vector2i, rot: int) -> Vector2i:
+	return size if posmod(rot, 2) == 0 else Vector2i(size.y, size.x)
+
+# Where the bag's own cell `l` (unrotated, from its top-left) lands once the bag is
+# turned `rot` quarter turns CLOCKWISE, as an offset from the turned bag's top-left.
+static func bag_rotate(l: Vector2i, size: Vector2i, rot: int) -> Vector2i:
+	match posmod(rot, 4):
+		1:
+			return Vector2i(size.y - 1 - l.y, l.x)
+		2:
+			return Vector2i(size.x - 1 - l.x, size.y - 1 - l.y)
+		3:
+			return Vector2i(l.y, size.x - 1 - l.x)
+	return l
+
+# The cells a bag covers, IN ITS OWN SLOT ORDER: the k-th cell returned is the
+# bag's k-th slot, however the bag is turned.
+static func bag_cells_at(size: Vector2i, origin: Vector2i, rot: int) -> Array:
+	var out: Array = []
+	for ly in range(size.y):
+		for lx in range(size.x):
+			out.append(origin + bag_rotate(Vector2i(lx, ly), size, rot))
+	return out
+
+func bag_size(bag) -> Vector2i:
+	var def: BagData = bag_def(bag)
+	return def.size if def != null else Vector2i.ONE
+
+func bag_origin(bag: Dictionary) -> Vector2i:
+	return Vector2i(int(bag.get("x", 0)), int(bag.get("y", 0)))
+
+func bag_cells(bag: Dictionary) -> Array:
+	return bag_cells_at(bag_size(bag), bag_origin(bag), int(bag.get("rot", 0)))
+
+func _refresh_pack_cells() -> void:
+	var key: int = pack_bags.hash()
+	if _pack_cells_built and key == _pack_cells_key:
+		return
+	_pack_cells_key = key
+	_pack_cells_built = true
+	_pack_cells = []
+	_pack_cell_slots = {}
+	for y in range(PACK_BASE.y):
+		for x in range(PACK_BASE.x):
+			_add_pack_cell(Vector2i(x, y))
+	for bag in pack_bags:
+		if bag is Dictionary:
+			for c in bag_cells(bag):
+				_add_pack_cell(c)
+
+func _add_pack_cell(c: Vector2i) -> void:
+	_pack_cell_slots[c] = _pack_cells.size()
+	_pack_cells.append(c)
+
+# Every cell of the pack, indexed by slot. Read-only: it is a shared cache.
+func pack_cells() -> Array:
+	_refresh_pack_cells()
+	return _pack_cells
+
+# The cell slot `slot` is drawn in.
+func pack_cell_of(slot: int) -> Vector2i:
+	_refresh_pack_cells()
+	if slot < 0 or slot >= _pack_cells.size():
+		return Vector2i(-1000000, -1000000)
+	return _pack_cells[slot]
+
+# The slot on cell `cell`, or -1 when the pack has no cell there.
+func pack_slot_at(cell: Vector2i) -> int:
+	_refresh_pack_cells()
+	return int(_pack_cell_slots.get(cell, -1))
+
+# The smallest rectangle holding every cell of the pack.
+func pack_bounds() -> Rect2i:
+	var cells: Array = pack_cells()
+	var lo: Vector2i = cells[0]
+	var hi: Vector2i = cells[0]
+	for c in cells:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	return Rect2i(lo, hi - lo + Vector2i.ONE)
+
+# The first slot of bag `i`.
+func bag_slot_start(i: int) -> int:
+	var at: int = LOOT_CAPACITY
+	for j in range(mini(i, pack_bags.size())):
+		at += bag_size(pack_bags[j]).x * bag_size(pack_bags[j]).y
+	return at
+
+# Which bag slot `slot` belongs to: its index in `pack_bags`, or -1 for the 3x3
+# (and for a slot the pack does not have).
+func bag_at_slot(slot: int) -> int:
+	if slot < LOOT_CAPACITY:
+		return -1
+	var at: int = LOOT_CAPACITY
+	for i in range(pack_bags.size()):
+		at += bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y
+		if slot < at:
+			return i
+	return -1
+
+# Whether nothing is in any of bag `i`'s cells.
+func bag_is_empty(i: int) -> bool:
+	if i < 0 or i >= pack_bags.size():
+		return true
+	var layout: Array = loot_layout()
+	var start: int = bag_slot_start(i)
+	var n: int = bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y
+	for slot in range(start, mini(start + n, layout.size())):
+		if int(layout[slot]) >= 0:
+			return false
+	return true
+
+# CAN A BAG OF `size` GO HERE? No cell over another cell of the pack, and every
+# cell of the result reachable from the 3x3 edge to edge. `moving` is the index of
+# a bag being moved (its old cells are ignored), or -1 for a new one — and for a
+# move the reachability check is the one that refuses stranding another bag.
+func can_place_bag(size: Vector2i, origin: Vector2i, rot: int, moving: int = -1) -> bool:
+	var taken: Dictionary = {}
+	for y in range(PACK_BASE.y):
+		for x in range(PACK_BASE.x):
+			taken[Vector2i(x, y)] = true
+	for i in range(pack_bags.size()):
+		if i == moving or not (pack_bags[i] is Dictionary):
+			continue
+		for c in bag_cells(pack_bags[i]):
+			taken[c] = true
+	for c in bag_cells_at(size, origin, rot):
+		if taken.has(c):
+			return false
+		taken[c] = true
+	return _pack_connected(taken)
+
+# Is every cell in `cells` reachable from the 3x3 through side-sharing cells?
+static func _pack_connected(cells: Dictionary) -> bool:
+	var seen: Dictionary = {Vector2i.ZERO: true}
+	var todo: Array = [Vector2i.ZERO]
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		for d in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]:
+			var n: Vector2i = c + d
+			if cells.has(n) and not seen.has(n):
+				seen[n] = true
+				todo.append(n)
+	return seen.size() == cells.size()
+
+# ATTACH a bag entry at `origin`, turned `rot`. Refuses anything `can_place_bag`
+# refuses; the entry becomes a row of `pack_bags`.
+func place_bag(entry: Dictionary, origin: Vector2i, rot: int = 0) -> bool:
+	var def: BagData = bag_def(entry)
+	if def == null or not can_place_bag(def.size, origin, rot):
+		return false
+	pack_bags.append({"id": def.id, "rarity": def.rarity,
+		"x": origin.x, "y": origin.y, "rot": posmod(rot, 4)})
+	emit_signal("inventory_changed")
+	return true
+
+# MOVE (and/or turn) bag `i`. Its contents come with it for free — see the slot
+# numbering above.
+func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
+	if i < 0 or i >= pack_bags.size():
+		return false
+	var bag: Dictionary = pack_bags[i]
+	if bag_origin(bag) == origin and posmod(int(bag.get("rot", 0)), 4) == posmod(rot, 4):
+		return false
+	if not can_place_bag(bag_size(bag), origin, rot, i):
+		return false
+	bag["x"] = origin.x
+	bag["y"] = origin.y
+	bag["rot"] = posmod(rot, 4)
+	emit_signal("inventory_changed")
+	return true
+
+# Whether bag `i` can come off: empty, and not holding up another bag.
+func can_remove_bag(i: int) -> bool:
+	if i < 0 or i >= pack_bags.size() or not bag_is_empty(i):
+		return false
+	var rest: Dictionary = {}
+	for y in range(PACK_BASE.y):
+		for x in range(PACK_BASE.x):
+			rest[Vector2i(x, y)] = true
+	for j in range(pack_bags.size()):
+		if j != i:
+			for c in bag_cells(pack_bags[j]):
+				rest[c] = true
+	return _pack_connected(rest)
+
+# TAKE bag `i` off the pack, returning it as a loot entry ({} if it cannot come
+# off). Every piece in a later bag moves down a slot number by the size of this
+# one, so it stays in the cell it was in.
+func remove_bag(i: int) -> Dictionary:
+	if not can_remove_bag(i):
+		return {}
+	var layout: Array = loot_layout()
+	_freeze_loot_layout(layout)
+	var start: int = bag_slot_start(i)
+	var n: int = bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y
+	for entry in loot_items:
+		if entry is Dictionary and int(entry.get("pack_slot", -1)) >= start + n:
+			entry["pack_slot"] = int(entry["pack_slot"]) - n
+	var bag: Dictionary = pack_bags[i]
+	pack_bags.remove_at(i)
+	emit_signal("inventory_changed")
+	return {"type": "bag", "id": StringName(bag.get("id", "")),
+		"rarity": String(bag.get("rarity", "Common"))}
+
+# Where a bag of `size` fits best, as {origin: Vector2i, rot: int}, or {} when it
+# fits nowhere (which, with no size limit, only a missing definition can cause).
+#
+# "Best" is the placement that grows the pack's bounding box least, so an
+# automatic placement keeps the pack compact; ties go right and down before left
+# and up, then top to bottom, left to right — the direction the pack reads in.
+func find_bag_spot(size: Vector2i) -> Dictionary:
+	var bounds: Rect2i = pack_bounds()
+	var best: Dictionary = {}
+	var best_score: int = 0
+	for rot in [0, 1]:
+		if rot == 1 and size.x == size.y:
+			break
+		var ext: Vector2i = bag_extent(size, rot)
+		for y in range(bounds.position.y - ext.y, bounds.end.y + 1):
+			for x in range(bounds.position.x - ext.x, bounds.end.x + 1):
+				var origin := Vector2i(x, y)
+				if not can_place_bag(size, origin, rot):
+					continue
+				var grown: Rect2i = bounds.merge(Rect2i(origin, ext))
+				var score: int = grown.get_area() * 1000000 \
+					+ (100000 if y < 0 else 0) + (50000 if x < 0 else 0) \
+					+ (y - bounds.position.y + ext.y) * 300 + (x - bounds.position.x + ext.x)
+				if best.is_empty() or score < best_score:
+					best = {"origin": origin, "rot": rot}
+					best_score = score
+	return best
+
+# Attach a bag entry wherever it fits best — the grant that has nobody to drag it.
+func auto_place_bag(entry: Dictionary) -> bool:
+	var def: BagData = bag_def(entry)
+	if def == null:
+		return false
+	var spot: Dictionary = find_bag_spot(def.size)
+	if spot.is_empty():
+		return false
+	return place_bag(entry, spot["origin"], int(spot["rot"]))
 
 func _drop_loot_of_type(type: String, count: int) -> void:
 	for _i in range(count):

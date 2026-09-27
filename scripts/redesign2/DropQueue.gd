@@ -134,6 +134,22 @@ func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 	_page.refresh_board()
 	_page.refresh_loot_window()
 
+# A BAG dragged off the floor and dropped on the pack's edge (docs/loot-passives.md
+# §6): attached where it was dropped, turned the way it was held, and the square
+# cleared. There is no trade — a bag takes no slot, so it never needs to evict one.
+func take_floor_bag(entry: Dictionary, origin: Vector2i, rot: int, cell: Vector2i) -> void:
+	if GameLoop2.run_over or entry.is_empty():
+		return
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	if held.is_empty() or floor_loot(held) != entry:
+		return
+	if not GameState.place_bag(entry, origin, rot):
+		return
+	GameLoop2.take_drop(cell)
+	GameLog.add("Picked up %s." % LootSystem.display_name(entry), Color(0.72, 0.62, 0.86))
+	_page.refresh_board()
+	_page.refresh_loot_window()
+
 # A piece dragged off the floor and onto the bin. It ASKS FIRST, on the same terms
 # a carried piece binned in the loot window does (LootTrash.confirm): this is the
 # one gesture on the board that destroys something and gives nothing back, and it
@@ -171,7 +187,7 @@ func mount_drag_pack() -> void:
 	unmount_drag_pack()
 	if GameLoop2.run_over:
 		return
-	drag_pack = DragPackPanel.build(take_floor_loot, bin_floor_loot)
+	drag_pack = DragPackPanel.build(take_floor_loot, bin_floor_loot, take_floor_bag)
 	drag_pack.top_level = true
 	_page.add_child(drag_pack)
 	place_drag_pack()

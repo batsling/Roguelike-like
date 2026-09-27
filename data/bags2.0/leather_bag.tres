@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BagData" load_steps=2 format=3 uid="uid://bag2_leather_bag"]
+
+[ext_resource type="Script" path="res://scripts/resources/BagData.gd" id="1_bag"]
+
+[resource]
+script = ExtResource("1_bag")
+id = &"leather_bag"
+display_name = "Leather Bag"
+rarity = "Common"
+size = Vector2i(2, 2)
+description = ""
+source_game = "Backpack Battles"
+file = "LeatherBag"

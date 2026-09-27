@@ -1216,10 +1216,14 @@ to its right — and every relic or passive that fires now leaves a toast with i
 art. All of it is in [`loot-passives.md`](loot-passives.md), including the five
 hooks it added (`game_won`, `shop_entered`, `boss_spawned`, `loot_used`,
 `card_binned`) and the rule that gold a trigger paid never rolls the pennies.
-The split below became six even sixths with it.
+**Bags are the seventh kind**: Backpack Battles bags that attach to the edge of the
+3x3 and add their cells to it, moved and turned at will with their contents
+inside ([`loot-passives.md`](loot-passives.md) §6).
 
-**Beating a game therefore pays an even five-way split** — 20 / 20 / 20 / 20 / 20
-across scroll, pill, potion, card and wand (`GameState.LOOT_KINDS`). The Identify
+**Beating a game therefore pays a weighted seven-way split**
+(`GameState.LOOT_WEIGHTS`): scroll, pill, potion and card at weight 3, wand,
+trinket and bag at weight 2 — 15% each for the four consumables, 10% each for the
+three kinds a run keeps. The Identify
 tenth is still taken off the top and did not move: the run that needs the scroll is
 the run holding four unknown capsules, and its odds should not depend on how many
 cards or wands it drew.

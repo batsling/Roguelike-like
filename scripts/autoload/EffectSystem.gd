@@ -131,6 +131,9 @@ func _register_defaults() -> void:
 	register("bump", _h_bump)
 	register("charge_random", _h_charge_random)
 	register("drop_copy", _h_drop_copy)
+	# Potion Belt's two payouts (docs/loot-passives.md §6).
+	register("gain_random_buff", _h_gain_random_buff)
+	register("remove_random_debuff", _h_remove_random_debuff)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -642,6 +645,39 @@ func _h_charge_random(effect: Dictionary, ctx: Dictionary) -> void:
 # square of the battlefield (Endless Nameless, on `loot_used`). Onto the FLOOR, not
 # into the pack: the same terms every other piece the board pays is on, and a full
 # pack is no reason for the proc to vanish. A board with no free square pays nothing.
+# `gain_random_buff N` — N stacks of ONE Buff-kind status, drawn at random from
+# the statuses the sheet marks Buff (StatusData.kind). Permanent, like every
+# apply_status without `games`. Said in the toast, because a status is not one of
+# the run resources the trigger report diffs.
+func _h_gain_random_buff(effect: Dictionary, ctx: Dictionary) -> void:
+	var n: int = maxi(1, int(effect.get("value", 1)))
+	var pool: Array = Data.all_statuses().filter(
+		func(sd): return sd is StatusData and (sd as StatusData).is_buff())
+	if pool.is_empty():
+		return
+	var sd: StatusData = pool[_rng.randi_range(0, pool.size() - 1)]
+	if GameState.apply_status(sd.id, n) > 0:
+		_did(ctx, "+%d %s" % [n, sd.display_name])
+
+# `remove_random_debuff N` — N of the Debuff-kind statuses the player is carrying,
+# picked at random, each taken off WHOLE ("removes a random Debuff"). Nothing
+# carried, nothing done, and no toast.
+func _h_remove_random_debuff(effect: Dictionary, ctx: Dictionary) -> void:
+	for _i in range(maxi(1, int(effect.get("value", 1)))):
+		var held: Array = []
+		# From the catalog rather than `player_statuses`, which holds only the
+		# permanent layer: a timed debuff is carried just as surely.
+		for sd in Data.all_statuses():
+			if sd is StatusData and sd.is_debuff() and GameState.status_stacks(sd.id) > 0:
+				held.append(sd)
+		if held.is_empty():
+			return
+		var pick: StatusData = held[_rng.randi_range(0, held.size() - 1)]
+		# Every stack, permanent and timed: `status_stacks` reads through a cap and
+		# can undercount what is really there, and remove_status stops at zero.
+		GameState.remove_status(pick.id, 1000000)
+		_did(ctx, "%s removed" % pick.display_name)
+
 func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
 	var hook: Dictionary = ctx.get("hook", {})
 	var used = hook.get("entry")

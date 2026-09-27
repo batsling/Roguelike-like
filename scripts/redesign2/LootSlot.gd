@@ -30,7 +30,10 @@ extends PanelContainer
 #                                           when a pack was allowed to have holes
 #                                           in it.
 #   {"kind": "loot_take", "entry": {...}}   a piece being taken INTO the pack from
-#                                           a drop modal (LootGrid.allow_take)
+#                                           a drop modal (LootGrid.allow_take) —
+#                                           with `rot` when the piece is a bag
+#   {"kind": "bag_move", "bag": int,        a bag already on the pack, picked up
+#    "id": StringName, "rot": int}          by an empty cell of it (or its handle)
 #
 # Everything it decides is asked of the grid rather than answered here, so the two
 # screens that draw a grid (the loot window and the drop modal) differ in the grid
@@ -114,8 +117,28 @@ func is_filled() -> bool:
 # ---------------------------------------------------------------------------
 
 func _get_drag_data(_at: Vector2) -> Variant:
-	if not is_filled() or grid == null or not grid.can_drag_from(self):
+	if grid == null:
 		return null
+	# AN EMPTY CELL OF A BAG PICKS UP THE BAG (docs/loot-passives.md §6) — the
+	# bag's handle does too, but a cell you can see is empty is the bigger target.
+	if not is_filled():
+		var bag: int = GameState.bag_at_slot(slot_index) if slot_index >= 0 else -1
+		if bag < 0 or not grid.can_drag_bag():
+			return null
+		var move: Dictionary = grid.bag_payload(bag)
+		if get_viewport() != null and get_viewport().gui_is_dragging():
+			set_drag_preview(grid.bag_preview(move))
+		return move
+	if not grid.can_drag_from(self):
+		return null
+	# A BAG OFF A MODAL'S TABLE is a take like any other piece, plus the turn the
+	# piece in your hand can put on it; what follows the cursor is its footprint.
+	if slot_index < 0 and GameState.is_bag_entry(entry):
+		var take: Dictionary = {"kind": "loot_take", "entry": entry.duplicate(true),
+			"offer": offer_index, "rot": 0}
+		if get_viewport() != null and get_viewport().gui_is_dragging():
+			set_drag_preview(grid.loose_bag_preview(take))
+		return take
 	# GUARDED, because `set_drag_preview` is only legal while the viewport is
 	# actually starting a drag — it fails outright otherwise. Godot itself only ever
 	# calls this method in that state, so the guard costs a real drag nothing; what
@@ -135,12 +158,20 @@ func _get_drag_data(_at: Vector2) -> Variant:
 func _drag_preview() -> Control:
 	return grid.drag_preview(self)
 
-func _can_drop_data(_at: Vector2, data: Variant) -> bool:
+func _can_drop_data(at: Vector2, data: Variant) -> bool:
 	if grid == null or not (data is Dictionary):
 		return false
+	# A bag is dropped on the PACK, so a slot under it hands the question to the
+	# grid, in the grid's own coordinates. A loose offer is on no grid at all.
+	if grid.is_bag_payload(data):
+		return slot_index >= 0 and grid.can_accept_bag_at(position + at * scale, data)
 	return grid.can_accept(self, data)
 
-func _drop_data(_at: Vector2, data: Variant) -> void:
+func _drop_data(at: Vector2, data: Variant) -> void:
 	if grid == null or not (data is Dictionary):
+		return
+	if grid.is_bag_payload(data):
+		if slot_index >= 0:
+			grid.accept_bag_at(position + at * scale, data)
 		return
 	grid.accept(self, data)

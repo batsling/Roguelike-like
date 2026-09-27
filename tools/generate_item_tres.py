@@ -399,11 +399,15 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # `gain_card` is the named-kind grant for cards (Deck of Cards), and `bump` adds
     # to the counter on the piece of loot doing the firing (Rocket's payout,
     # docs/loot-passives.md §4) — both scalar for the same reason as the rest.
+    # `gain_random_buff` / `remove_random_debuff` are Potion Belt's two payouts
+    # (docs/loot-passives.md §6): N stacks of a random Buff-kind status, and N
+    # random Debuffs the player is carrying taken off whole.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block",
               "gain_pill", "gain_scroll", "gain_potion", "gain_loot",
-              "drop_loot", "gain_card", "bump"}
+              "drop_loot", "gain_card", "bump",
+              "gain_random_buff", "remove_random_debuff"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -1146,6 +1150,21 @@ def _gates(head_lower):
     # piece doing the firing, which game it last paid out at.
     if re.search(r"\bonce_per_game\b", head_lower):
         g["once_per_game"] = True
+    # "only when the piece of loot the hook is about is of this kind" — Potion
+    # Belt's `loot_used if_loot=potion`. Read against `entry.type` in the hook's
+    # context; a hook that names no piece refuses.
+    for m in re.finditer(r"if_loot\s*=\s*([a-z_]+)", head_lower):
+        g["if_loot_type"] = m.group(1)
+    # "only when that piece was spent from a cell of THIS bag" — Potion Belt again
+    # (docs/loot-passives.md §6). Means something only on a bag's own trigger; on
+    # anything else it refuses, because nothing else has cells to be inside.
+    if re.search(r"\bif_in_bag\b", head_lower):
+        g["if_in_bag"] = True
+    # "on every Nth firing" — Potion Belt's every fourth potion. The count is kept
+    # on the piece doing the firing, like `once_per_game`'s claim, so it rides the
+    # save and a second belt counts its own.
+    for m in re.finditer(r"\bevery\s*=\s*(\d+)", head_lower):
+        g["every"] = int(m.group(1))
     return g
 
 

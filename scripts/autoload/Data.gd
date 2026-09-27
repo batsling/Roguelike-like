@@ -25,6 +25,7 @@ var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions
 var _cards: Dictionary = {}             # StringName -> CardData (2.0, docs/cards-design.md)
 var _wands: Dictionary = {}             # StringName -> WandData (2.0, docs/wands-design.md)
 var _trinkets: Dictionary = {}          # StringName -> TrinketData (docs/loot-passives.md)
+var _bags: Dictionary = {}              # StringName -> BagData (docs/loot-passives.md §6)
 
 # === Games-first redesign (2.0) content ===
 var _characters2: Dictionary = {}       # StringName -> CharacterData (2.0 roster)
@@ -55,6 +56,7 @@ func _ready() -> void:
 	_load_dir("res://data/cards2.0/", _cards)
 	_load_dir("res://data/wands2.0/", _wands)
 	_load_dir("res://data/trinkets2.0/", _trinkets)
+	_load_dir("res://data/bags2.0/", _bags)
 	_load_dir("res://data/statuses2.0/", _statuses)
 	_load_dir("res://data/tiles2.0/", _tiles)
 	_load_dir("res://data/units2.0/", _units)
@@ -65,10 +67,10 @@ func _ready() -> void:
 	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
 		_items.size(), _games.size(), _characters.size(), _curses.size()
 	])
-	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
+	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d bags, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
 		_scrolls.size(), _pills.size(), _cards.size(), _wands.size(),
-		_trinkets.size(), _statuses.size(), _tiles.size(), _units.size(),
+		_trinkets.size(), _bags.size(), _statuses.size(), _tiles.size(), _units.size(),
 		_abilities.size(), _events2.size(), _curses2.size(), _objects2.size()
 	])
 
@@ -459,6 +461,28 @@ func roll_trinket(rng: RandomNumberGenerator = null) -> TrinketData:
 		r.randomize()
 	var target: int = roll_item_rarity(r)
 	var bucket: Array = pool.filter(func(t): return t is TrinketData and t.rarity_index() == target)
+	if bucket.is_empty():
+		bucket = pool
+	return bucket[r.randi_range(0, bucket.size() - 1)]
+
+# --- Bags (docs/loot-passives.md §6) ---------------------------------------
+func get_bag(id: StringName) -> BagData:
+	return _bags.get(id)
+
+func all_bags() -> Array:
+	return _bags.values()
+
+# One random bag, weighted by rarity on the shared ladder — roll_trinket's twin.
+func roll_bag(rng: RandomNumberGenerator = null) -> BagData:
+	var pool: Array = _bags.values()
+	if pool.is_empty():
+		return null
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var target: int = roll_item_rarity(r)
+	var bucket: Array = pool.filter(func(b): return b is BagData and b.rarity_index() == target)
 	if bucket.is_empty():
 		bucket = pool
 	return bucket[r.randi_range(0, bucket.size() - 1)]

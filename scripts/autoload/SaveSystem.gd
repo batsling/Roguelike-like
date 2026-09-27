@@ -246,6 +246,10 @@ func _build_payload() -> Dictionary:
 		# Loot (potions): concrete carried entries + global per-type identification
 		# + this run's mystery-bottle colour assignment.
 		"loot_items": GameState.loot_items.duplicate(true),
+		# The bags attached to the pack (docs/loot-passives.md §6): where each one
+		# sits and how it is turned. The pieces inside them need nothing extra —
+		# their `pack_slot` already names the bag's cell.
+		"pack_bags": GameState.pack_bags.duplicate(true),
 		"identified_potion_types": _stringnames_to_strings(GameState.identified_potion_types),
 		"identified_scroll_types": _stringnames_to_strings(GameState.identified_scroll_types),
 		"potion_color_map": GameState.potion_color_map.duplicate(),
@@ -535,6 +539,17 @@ func _apply_save_data(data: Dictionary) -> void:
 		if e.has("id"):
 			e["id"] = StringName(e["id"])
 		GameState.loot_items.append(e)
+	# Before anything reads the pack's shape — the statuses below are re-derived
+	# from it. JSON hands the numbers back as floats, so they are coerced here.
+	GameState.pack_bags.clear()
+	for bag in data.get("pack_bags", []):
+		if not (bag is Dictionary):
+			continue
+		var b: Dictionary = bag.duplicate(true)
+		b["id"] = StringName(b.get("id", ""))
+		for k in ["x", "y", "rot"]:
+			b[k] = int(b.get(k, 0))
+		GameState.pack_bags.append(b)
 	# The statuses restored above already carry whatever the pack's passives were
 	# holding up (Goat Hoof's Speed), so the pack ADOPTS them rather than granting
 	# them again when the inventory_changed below re-derives its grants.

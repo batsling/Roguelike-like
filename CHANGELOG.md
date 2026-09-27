@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Bags: the seventh loot kind, and a pack with a shape** (`docs/loot-passives.md`
+  §6). Leather Bag (2x2), Potion Belt (4x1) and Protective Purse (1x1) from
+  Backpack Battles attach edge to edge to the fixed 3x3 and add their cells to it,
+  with no size limit. Drag one onto the pack's edge from the floor or a report's
+  table; R or right-click turns it mid-drag; in the loot window it moves by its
+  tab (or any empty cell) with its contents inside, and comes off in the bin only
+  when empty. `LootGrid` is now a Container that places slots by cell and shrinks
+  them to fit. Blueprint's "to the right" reads across into a bag. Protective
+  Purse shields each game's start; Potion Belt pays a random buff for the first
+  potion spent from it each game and removes a random debuff every fourth — new
+  gates `if_loot=`, `if_in_bag`, `every=N` and verbs `gain_random_buff`,
+  `remove_random_debuff`. Sheet edited through `_bags_effect_cells.py`.
+
+- **Loot kinds are weighted** (`GameState.LOOT_WEIGHTS`): scrolls, pills, potions
+  and cards 3; wands, trinkets and bags 2 — so the kinds a run keeps are a little
+  rarer than the ones it spends.
+
 - **First tuning pass on the loot passives.** Trading Card pays +2 Gold (was +3);
   To the Moon pays +1 per 3 Gold held (was per 5); Isaac's Fork is a 25% chance
   (was 10%). Sheet edited through `_passives_tuning_trading_moon_fork.py`.

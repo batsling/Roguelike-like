@@ -36,8 +36,9 @@ The pack is read in **slots**, the cells the player sees, and never in array
 indices (pickup order). `LootPassives.neighbour_slot(slot, dir)` answers "the slot
 to the right / left / above / below". **Rows do not wrap**: nothing is to the
 right of the last cell in a row. That makes the right-hand column a real cost for
-a piece that reads its right neighbour. `LootPassives.pack_columns` is the one
-statement of the grid's width, and `LootGrid` draws with it.
+a piece that reads its right neighbour — until a bag is attached there (§6):
+adjacency is asked of the pack's CELLS (`GameState.pack_cells`), so a Blueprint on
+the 3x3's right edge copies the piece in the first cell of a bag beside it.
 
 **Blueprint** (`copy_right`) does whatever the piece to its right does:
 
@@ -159,13 +160,104 @@ icon, key)`.
 - The art is drawn at 32px to the left of the line. `Notifications.history` keeps
   the icon with each entry.
 
-## 6. Size (not yet)
+## 6. Bags: the shape of the pack
 
-The `trinkets` sheet has a `Size` column ("1x1"). The generator reads it into
-`TrinketData.size` and **refuses anything but 1x1** until the pack learns shapes.
-Multi-cell pieces (Backpack Battles-style 1x2 / 2x2 / L shapes) were deliberately
-left for later. When they come, `neighbour_slot` and `loot_layout` are where the
-shape has to be taught.
+**Bags are the seventh loot kind**, lifted from Backpack Battles, where the bags
+you own ARE your inventory. A bag is not a piece that sits in the pack — it is
+more pack.
+
+- Content: the `bags` sheet (Leather Bag 2x2, Potion Belt 4x1, Protective Purse
+  1x1), generated into `data/bags2.0/` by `tools/generate_bag2_tres.py` as
+  `BagData`. `Size` is "WxH", columns by rows, unrotated; any rectangle is allowed.
+  The Effect column is the relic grammar, and **may be blank**: Leather Bag only
+  adds room, and that is a whole design.
+- Code: the pack's shape is `GameState.pack_bags` and the functions beside it
+  (`place_bag`, `move_bag`, `remove_bag`, `can_place_bag`, `pack_cells`);
+  `LootGrid` draws and drags it.
+- Tests: `test/test_bags.gd`.
+
+### The rules
+
+- **The 3x3 is fixed**, at cells (0,0)-(2,2). It cannot be moved or binned.
+- **A bag attaches edge to edge.** Every cell of the pack has to be reachable from
+  the 3x3 through cells that share a side, so a new bag must touch the 3x3 or a bag
+  that already does, and **a move or a removal that would strand another bag is
+  refused**. There is **no size limit**.
+- **What is in a bag moves with it**, rotation included.
+- **A bag is binned only when empty**, and only if nothing hangs off it.
+- **A bag takes no slot**, so a full pack never refuses one. A kind-blind grant
+  into a full pack that rolls a bag still pays it.
+
+### Slots, and why the contents ride along for free
+
+A slot is still an integer. Slots 0-8 are the 3x3 in reading order, exactly as
+before. Each bag's cells follow **in the order the bags were attached**, each bag's
+in its own **unrotated** reading order. So a slot names *which bag's which cell*,
+not a position: moving or turning a bag changes where its cells are drawn
+(`pack_cell_of`) and never which slot a piece is in. Removing a bag is the one
+change that renumbers, and `remove_bag` shifts the pieces in later bags down by
+its size so each stays in its cell.
+
+A row of `pack_bags` is `{id, rarity, x, y, rot}`: the cell the turned bag's
+top-left sits on, and quarter turns clockwise. Anything its passive earns (a
+once-a-game claim, an `every=N` count) rides the same row and is saved with it.
+
+### Getting one onto the pack
+
+A bag is **dragged onto the pack's edge** from wherever it arrives: the floor (the
+drag-time pack appears as for any piece), or a report's table in the drop modal.
+While a bag is in the air, every grid that would take it grows a one-cell ring of
+empty space around the pack to drop onto, and shows a ghost of where it would land
+(green) or what is in the way (red). **R or a right-click turns the bag in your
+hand** a quarter turn; the turn is written into the drag payload, which is the same
+Dictionary every drop target is handed.
+
+A drop takes the placement that covers the cell under the pointer and whose middle
+is nearest it. That is what makes one ring enough for any bag: point just past the
+edge and a Potion Belt runs outward from there rather than being centred on the
+pointer and landing half on the 3x3.
+
+A grant with nobody to drag it (a headless run, "Take all", DevTools) attaches the
+bag with `auto_place_bag`: the placement that grows the pack's bounding box least,
+preferring right and down.
+
+### Moving one
+
+In the loot window, a bag is picked up by **the tab in its top-left cell**, or by
+any empty cell of it. The grid moves it itself (`GameState.move_bag`): a move
+changes nothing but the drawing, so there is nothing for a host to decide. Dropped
+on the bin, an empty bag comes off after the usual confirmation.
+
+### Drawing a bigger pack
+
+`LootGrid` places each slot on its own cell and **shrinks every cell alike** when
+the shape outgrows its box (`fit_scale`, never below `MIN_SCALE`). The box is four
+columns by three and a half rows of full-size cells, so the 3x3 alone is always
+drawn at full size and every 720p fit test still measures what it always did.
+
+### What they do
+
+Bag passives run through `LootPassives.active()` like any piece, as rows with
+`slot: -1` and `bag: <index>`. Two gates and a counter were added for them, and are
+available to any passive:
+
+| Grammar | Means |
+|---|---|
+| `if_loot=<kind>` | The hook's piece was of this kind (read off `ctx.entry.type`). |
+| `if_in_bag` | The hook's piece was spent from a cell of **this** bag. `loot_used` now carries `slot`, where the piece was when it was spent (-1 for one used where it stands). Refuses on anything that is not a bag. |
+| `every=N` | Only every Nth firing that passed its other gates goes through. Counted on the firing piece. |
+
+And two verbs: `gain_random_buff N` (N stacks of one random Buff-kind status) and
+`remove_random_debuff N` (N carried Debuff-kind statuses, each removed whole).
+
+- **Protective Purse**: `game_selected: gain_stat shields 1`, the same words and
+  hook as Wooden Cross.
+- **Potion Belt**: `loot_used if_loot=potion if_in_bag once_per_game:
+  gain_random_buff 1; loot_used if_loot=potion if_in_bag every=4:
+  remove_random_debuff 1`. "The first time" was ruled to mean **once per game**.
+
+Trinkets are still 1x1: the generator refuses any other size. Multi-cell PIECES
+(as opposed to bags) are still for later.
 
 ## 7. The two non-passive additions from the same sheet pass
 

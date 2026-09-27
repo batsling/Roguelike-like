@@ -172,12 +172,15 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 
 # --- The drop (§4) ---------------------------------------------------------
 
-func test_the_kind_split_is_six_even_sixths() -> void:
-	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand", "trinket"])
+# The split stopped being even when bags arrived (docs/loot-passives.md §6): the
+# weights themselves are pinned in test_bags.gd. Cards keep the full weight.
+func test_every_kind_comes_up_and_cards_keep_the_full_weight() -> void:
+	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand", "trinket", "bag"])
+	assert_eq(int(GameState.LOOT_WEIGHTS["card"]), 3)
 	var seen: Dictionary = {}
 	for _i in range(500):
 		seen[GameState.roll_loot_kind()] = true
-	assert_eq(seen.size(), 6, "all six kinds come up")
+	assert_eq(seen.size(), 7, "all seven kinds come up")
 
 func test_a_kind_blind_drop_can_roll_a_card() -> void:
 	var found: bool = false

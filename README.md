@@ -101,6 +101,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                     #   a slot held until it is empty (docs/wands-design.md)
 │   ├── trinkets2.0/      #   TrinketData — the sixth loot kind: never spent, works
 │   │                     #   from its pack slot (docs/loot-passives.md)
+│   ├── bags2.0/          #   BagData — the seventh: Backpack Battles bags that
+│   │                     #   attach to the pack and add cells (loot-passives §6)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4).
 │   │                     #   Stun lives here now: the board keeps no counter of
@@ -146,6 +148,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_potion2_tres.py    #   data/potions2.0
 │   ├── generate_wand2_tres.py      #   data/wands2.0
 │   ├── generate_trinket2_tres.py   #   data/trinkets2.0 (relic grammar, loot passives)
+│   ├── generate_bag2_tres.py       #   data/bags2.0 (shapes; Effect optional)
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -1529,7 +1532,8 @@ still exists under an old name silently generates the wrong content.
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_wand2_tres.py` | `data/wands2.0/*.tres` from the `wands` sheet — one effect column, plus the two columns only a wand has: `Charges` (what a fresh one holds) and `Type` (what it wants pointed at it). `nothing` is a verb here, and every *other* empty Effect cell is refused — Wand of Nothing is the roster's authored blank and a hole must not be able to look like one |
-| `generate_trinket2_tres.py` | `data/trinkets2.0/*.tres` from the `trinkets` sheet — the Effect column is in the RELIC grammar, compiled by `generate_item_tres.parse_loot_passive` (shared with the passive cards), which refuses any relic field the pack cannot honour. `Size` must be `1x1` until the pack learns shapes (docs/loot-passives.md §6) |
+| `generate_trinket2_tres.py` | `data/trinkets2.0/*.tres` from the `trinkets` sheet — the Effect column is in the RELIC grammar, compiled by `generate_item_tres.parse_loot_passive` (shared with the passive cards), which refuses any relic field the pack cannot honour. `Size` must be `1x1` (bags are the pack's shapes, not trinkets — docs/loot-passives.md §6) |
+| `generate_bag2_tres.py` | `data/bags2.0/*.tres` from the `bags` sheet — `Size` is any `WxH` rectangle, and the Effect column (relic grammar, same parser) may be blank for a bag that only adds room (docs/loot-passives.md §6) |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet — owns the reward-token DSL, and the `Decrease` column's table: `On Completion` sheds a stack when a SIDE is completed, while `On Trigger` and `Each Turn` are worn away by the BOARD (an attack, a turn) and mean *per game* on the player, who has neither |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles` sheet — owns the trigger / interaction DSL both board kinds use (§17) |
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units` sheet — imports the parsers above rather than restating them |

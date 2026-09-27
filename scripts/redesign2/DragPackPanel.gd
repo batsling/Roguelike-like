@@ -41,11 +41,13 @@ const BOARD_GAP := 10.0
 
 var grid: LootGrid = null
 
-# `on_take(entry, slot, cell)` and `on_bin(cell)` are the page's — this panel owns
-# the drawing and the drop rules, and the run's state is somebody else's business.
-static func build(on_take: Callable, on_bin: Callable) -> DragPackPanel:
+# `on_take(entry, slot, cell)`, `on_bin(cell)` and `on_bag(entry, origin, rot,
+# cell)` are the page's — this panel owns the drawing and the drop rules, and the
+# run's state is somebody else's business.
+static func build(on_take: Callable, on_bin: Callable,
+		on_bag: Callable = Callable()) -> DragPackPanel:
 	var panel := DragPackPanel.new()
-	panel._build(on_take, on_bin)
+	panel._build(on_take, on_bin, on_bag)
 	return panel
 
 func _init() -> void:
@@ -58,7 +60,7 @@ func _init() -> void:
 	add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG.lerp(ACCENT, 0.10), 8, 10, 2, ACCENT))
 
-func _build(on_take: Callable, on_bin: Callable) -> void:
+func _build(on_take: Callable, on_bin: Callable, on_bag: Callable) -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -81,6 +83,10 @@ func _build(on_take: Callable, on_bin: Callable) -> void:
 	grid.floor_take_requested.connect(func(entry: Dictionary, slot: int, cell: Vector2i):
 		on_take.call(entry, slot, cell))
 	grid.floor_discarded.connect(func(cell: Vector2i): on_bin.call(cell))
+	if on_bag.is_valid():
+		grid.floor_bag_take_requested.connect(
+			func(entry: Dictionary, origin: Vector2i, rot: int, cell: Vector2i):
+				on_bag.call(entry, origin, rot, cell))
 	grid.rebuild()
 	col.add_child(grid)
 
@@ -89,11 +95,22 @@ func _build(on_take: Callable, on_bin: Callable) -> void:
 	col.add_child(bin)
 
 	var hint := Label.new()
-	hint.text = "Drop it in a slot." if not GameState.loot_is_full() \
-		else "No room — drop it on a piece to trade."
+	# A BAG IS NEVER "NO ROOM": it goes on the edge, and turns (§6 of
+	# docs/loot-passives.md) — so it gets its own line whatever the count says.
+	# Built before it is in the tree (by the drag itself), so the drag is read off
+	# the root viewport rather than its own.
+	var root: Viewport = (Engine.get_main_loop() as SceneTree).root
+	var data = root.gui_get_drag_data() if root.gui_is_dragging() else null
+	var bag: bool = LootGrid.is_bag_payload(data)
+	var full: bool = GameState.loot_is_full() and not bag
+	if bag:
+		hint.text = "Drop it on the edge of your pack. R turns it."
+	else:
+		hint.text = "Drop it in a slot." if not full \
+			else "No room — drop it on a piece to trade."
 	hint.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	hint.add_theme_color_override("font_color",
-		UITheme.TEXT_FAINT if not GameState.loot_is_full() else UITheme.GOLD)
+		UITheme.TEXT_FAINT if not full else UITheme.GOLD)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(hint)

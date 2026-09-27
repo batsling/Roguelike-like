@@ -68,10 +68,17 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	# GUARDED for the reason LootSlot's is: `set_drag_preview` is only legal while
 	# the viewport is actually starting a drag, and this method is also called
 	# DIRECTLY by the tests, which have no OS mouse to move.
+	var data: Dictionary = {"kind": "loot_take", "entry": entry.duplicate(true), "offer": -1,
+		"floor": cell}
+	# A BAG carries the turn the piece in your hand can put on it, and what follows
+	# the cursor is its footprint rather than a cell (docs/loot-passives.md §6).
+	var bag: bool = GameState.is_bag_entry(entry)
+	if bag:
+		data["rot"] = 0
 	if get_viewport() != null and get_viewport().gui_is_dragging():
 		# FACE DOWN, because it is still on the floor until it lands (cards-design
 		# §3). A preview that turned the card over would make drag-and-cancel a free
 		# look at every card on the board.
-		set_drag_preview(LootGrid.preview_cell(entry, false))
-	return {"kind": "loot_take", "entry": entry.duplicate(true), "offer": -1,
-		"floor": cell}
+		set_drag_preview(LootGrid.loose_bag_preview(data) if bag
+			else LootGrid.preview_cell(entry, false))
+	return data
