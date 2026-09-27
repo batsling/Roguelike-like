@@ -66,7 +66,13 @@ when 0) and the art is drawn turned. For most pieces that is all it is. **For a
 piece that reads a neighbour it is which neighbour**: a Blueprint turned once
 copies the piece below it, then to its left, then above it
 (`LootPassives.facing`, `LootPassives.turned`). Its plate points the way it faces
-("Copies v") and its hover says where. A floor piece taken in turned is still the
+("Copies v") and its hover says where.
+
+**A piece that acts on a neighbour wears an arrow** on the edge of its cell,
+pointing at that neighbour and poking into the gutter between them; it turns with
+the piece, in hand too (`LootGrid.DirArrow`). Every surface asks one function,
+`LootPassives.direction(entry)`, so **the next directional piece gets its arrow by
+answering there** — add its field to that function and nothing in the grid changes. A floor piece taken in turned is still the
 same piece (`DropQueue._same_piece` ignores `rot`).
 
 ## 3. Hooks, gates and verbs

@@ -386,3 +386,19 @@ func test_an_offer_can_be_turned_on_its_way_in() -> void:
 	assert_eq(got.size(), 1)
 	if got.size() == 1:
 		assert_eq(int(got[0].get("rot", 0)), 3, "it arrives facing the way it was held")
+
+func test_a_piece_that_acts_on_a_neighbour_wears_an_arrow_pointing_at_it() -> void:
+	var bp: Dictionary = _put({"type": "card", "id": &"blueprint",
+		"rarity": Data.get_card(&"blueprint").rarity}, 0)
+	_put({"type": "scroll", "id": &"scroll_of_fire"}, 1)
+	var grid: LootGrid = _grid()
+	var arrows: Array = grid.get_child(0).get_children().filter(func(c): return c is LootGrid.DirArrow)
+	assert_eq(arrows.size(), 1, "Blueprint's cell carries an arrow")
+	if arrows.size() == 1:
+		assert_eq(arrows[0].dir, "right", "pointing at what it copies")
+	assert_true(grid.get_child(1).get_children().filter(
+		func(c): return c is LootGrid.DirArrow).is_empty(), "a scroll acts on nothing and has none")
+	GameState.turn_loot(_index_of(bp), 1)
+	grid.rebuild()
+	var turned: Array = grid.get_child(0).get_children().filter(func(c): return c is LootGrid.DirArrow)
+	assert_true(turned.size() == 1 and turned[0].dir == "down", "and it turns with the piece")

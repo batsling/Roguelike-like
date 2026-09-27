@@ -48,6 +48,13 @@ static func turned(dir: String, rot: int) -> String:
 		return dir
 	return String(TURNS[posmod(at + rot, 4)])
 
+# THE DIRECTION A PIECE ACTS IN, if it acts on a neighbour at all — the one
+# question every surface asks to draw a piece's ARROW (LootGrid.DirArrow), so a
+# new piece that reads a neighbour gets its arrow by answering here. Blueprint's
+# copy is the only such rule today; add the next one's field to this function.
+static func direction(entry) -> String:
+	return facing(entry, def_for(entry))
+
 # The direction the piece in `entry` copies, turned the way it is carried, or ""
 # for a piece that copies nothing.
 static func facing(entry, def: Resource) -> String:

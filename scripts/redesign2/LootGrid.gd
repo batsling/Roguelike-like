@@ -218,6 +218,7 @@ static func loose_piece(entry: Dictionary, draggable: bool, host: LootGrid,
 		else Control.CURSOR_ARROW
 	HoverCard.attach(slot, LootSystem.hover_card(entry))
 	slot.add_child(_cell_body(entry, use_cb, false, with_name))
+	add_direction_arrow(slot, entry)
 	return slot
 
 # ---------------------------------------------------------------------------
@@ -727,6 +728,42 @@ class BagPreview extends Control:
 			Rect2(at, span), rot, Color(1, 1, 1, 0.85), size_cells)
 
 
+# THE ARROW ON A PIECE THAT ACTS ON A NEIGHBOUR (Blueprint copies the piece it
+# points at), drawn on the edge of its cell facing that neighbour and poking into
+# the gutter between the two, so the pair reads as connected. It turns with the
+# piece. Any piece LootPassives.direction answers for gets one.
+static func add_direction_arrow(cell: Control, entry: Dictionary) -> void:
+	var dir: String = LootPassives.direction(entry)
+	if dir == "":
+		return
+	var arrow := DirArrow.new()
+	arrow.dir = dir
+	cell.add_child(arrow)
+
+class DirArrow extends Control:
+	var dir: String = ""
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var step: Vector2 = Vector2(LootPassives.DIRECTIONS.get(dir, Vector2i.ZERO))
+		if step == Vector2.ZERO:
+			return
+		# The cell's panel insets this Control by its margin; the tip reaches past
+		# the cell's own edge into the gutter.
+		var pad: float = LootSlot.PAD
+		var half: Vector2 = size * 0.5
+		var edge: Vector2 = half + step * (half + Vector2(pad, pad))
+		var tip: Vector2 = edge + step * 5.0
+		var side: Vector2 = Vector2(-step.y, step.x) * 6.0
+		var base: Vector2 = edge - step * 4.0
+		var pts := PackedVector2Array([tip, base + side, base - side])
+		draw_colored_polygon(pts, UITheme.GOLD)
+		draw_polyline(PackedVector2Array([tip, base + side, base - side, tip]),
+			UITheme.BG, 1.0, true)
+
+
 # THE PIECE IN YOUR HAND, turnable. R or a right-click turns it a quarter clockwise:
 # the turn goes into the payload (the same Dictionary every drop target is handed)
 # and the picture turns to match.
@@ -748,9 +785,22 @@ class PiecePreview extends Control:
 	func show_turn() -> void:
 		if cell == null:
 			return
+		var rot: int = posmod(int(data.get("rot", 0)), 4)
 		var art: Node = cell.find_child("Art", true, false)
 		if art is Control:
-			(art as Control).rotation = posmod(int(data.get("rot", 0)), 4) * PI * 0.5
+			(art as Control).rotation = rot * PI * 0.5
+		# The arrow turns with it, so the hand shows where the piece will point.
+		for c in cell.get_children():
+			if c is DirArrow:
+				var turned_entry: Dictionary = (data.get("entry", {}) as Dictionary).duplicate() \
+					if data.has("entry") else {}
+				if turned_entry.is_empty() and data.has("index"):
+					var i: int = int(data["index"])
+					if i >= 0 and i < GameState.loot_items.size():
+						turned_entry = (GameState.loot_items[i] as Dictionary).duplicate()
+				turned_entry["rot"] = rot
+				(c as DirArrow).dir = LootPassives.direction(turned_entry)
+				(c as DirArrow).queue_redraw()
 
 
 # ONE BAG'S PICTURE, filling its footprint, under the cells. A TextureRect turned
@@ -876,6 +926,7 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 	# prevent. It turns over when it lands in a slot, which is where "in the pack"
 	# begins.
 	cell.add_child(_cell_body(entry, Callable(), false, true, face_up))
+	add_direction_arrow(cell, entry)
 	holder.add_child(cell)
 	if holder is PiecePreview:
 		(holder as PiecePreview).data = data
@@ -921,6 +972,7 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	# (see `locked`). Kept as an argument rather than dropped, because the cell body
 	# is shared with the loose-offer layout and a future rule may want it back.
 	slot.add_child(_cell_body(entry, use_cb, false))
+	add_direction_arrow(slot, entry)
 	# HOVER READS, DRAG MOVES, THE BUTTON SPENDS — and a click does nothing.
 	#
 	# A cell used to open a reading card on click (LootInfoCard), which meant two
