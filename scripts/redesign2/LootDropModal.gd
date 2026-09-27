@@ -421,7 +421,7 @@ func _offer_grid() -> Control:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(
 		_offer_columns() * (LootSlot.CELL_W + 6),
-		LootSlot.cell_height(_spendable) * OFFER_ROWS + 6 * (OFFER_ROWS - 1))
+		LootSlot.CELL * OFFER_ROWS + 6 * (OFFER_ROWS - 1))
 	scroll.add_child(grid)
 	return scroll
 

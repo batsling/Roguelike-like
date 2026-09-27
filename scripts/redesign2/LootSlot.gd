@@ -70,34 +70,44 @@ var entry: Dictionary = {}
 # start below the top of the board (test_overworld2 asserts exactly that). 40 is
 # what the height budget buys once the horse dose's extra third is paid for.
 const ART := 40
-# The width every cell keeps whether or not it has anything in it — a column that
-# sized itself to its contents would jog left and right as pills are spent — and
-# WIDE ENOUGH FOR THE WORD "Unidentified". At the 74px this started at, the longest
-# name in the game breaks mid-word — "Unidentifie / d Scroll" — and the piece whose
-# name is a mask is the one the grid is full of early on.
-const CELL_W := 88
+# EVERY CELL IS A SQUARE, this many pixels a side, full or empty, with or without
+# a Use button. It used to be 88 wide and 116 tall — a column of art, two lines of
+# name and a button — and a grid of tall cards read as a list of tiles rather than
+# as a grid, which is what the pack is now that bags give it a shape
+# (docs/loot-passives.md §6): a 2x2 bag should look square. 104 is the smallest
+# square that holds the art band, one line of name and the Use button, whose
+# styled minimum is 26 tall (4 + 49 + 3 + 15 + 3 + 26 + 4 = 104).
+const CELL := 104
+# The width every cell keeps — the square's side, and still WIDE ENOUGH FOR THE
+# WORD "Unidentified". At the 74px this started at, the longest name in the game
+# broke mid-word.
+const CELL_W := CELL
+# The panel's own inner margin on every side (LootGrid._filled_box/_empty_box).
+const PAD := 4
 # The art sits in a band tall enough for the BIGGEST dose rather than being sized
 # to its own piece. That is what lets a horse pill draw oversized (§4.3) without
 # the row it is in growing taller than the other two: the capsule fills more of
-# its band, the grid stays a grid, and the tell survives. Sized for ART times the
-# widest scale PillSystem.art_scale can report (~1.32), plus a little air.
-const ART_BAND := 54
-# Room for two lines of name under the art, ALWAYS — and it has to be room for two
-# REAL lines at the cell's font size, not merely more than one. The name used to
-# size itself, which meant a one-line name ("Scroll of Fire") pulled its Use button
-# above the two-line names either side of it and made a full row read as broken;
-# reserving too little just moves the same fault to the cells that overflow it.
+# its band, the grid stays a grid, and the tell survives. It was sized for ART
+# times the widest scale PillSystem.art_scale can report (~1.32, so 53) plus air;
+# the square cell took 5px back, so the biggest capsule now overhangs its band by
+# two pixels either side — into the GAP above and below it, never into the name.
+const ART_BAND := 49
+# Room for two lines of name — what the Use modal's piece grid still reserves
+# (LootUseModal), where there is height to spare.
 const NAME_H := 30
+# The pack's square cell has room for ONE line, always reserved whether the name
+# needs it or not (a name that sized itself would pull its Use button out of line
+# with its neighbours'). A longer name ends in an ellipsis; the hover card carries
+# the whole of it.
+const NAME_LINE := 15
 const USE_H := 18
 const GAP := 3
 
-# How tall one cell stands. An EMPTY slot is given the same, because a
-# GridContainer sizes each row to its own tallest cell — so a bottom row with
-# nothing in it would otherwise be visibly shorter than the two above it, and a
-# half-full pack would read as a broken layout rather than as a half-full pack.
-static func cell_height(with_use: bool) -> int:
-	var h: int = ART_BAND + NAME_H + GAP
-	return h + USE_H + GAP if with_use else h
+# How tall a cell's BODY stands, inside the panel's margin: the square, whatever
+# the cell holds. `with_use` no longer changes it — a pack without Use buttons (the
+# drag-time pack) is the same grid of squares as one with them.
+static func cell_height(_with_use: bool = true) -> int:
+	return CELL - PAD * 2
 
 func _init() -> void:
 	# Explicit, because everything this class is for depends on it: a drag begins on

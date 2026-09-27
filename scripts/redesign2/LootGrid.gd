@@ -207,7 +207,7 @@ static func loose_piece(entry: Dictionary, draggable: bool, host: LootGrid,
 	slot.slot_index = -1
 	slot.offer_index = offer_index
 	slot.entry = entry
-	slot.custom_minimum_size = Vector2(LootSlot.CELL_W, 0)
+	slot.custom_minimum_size = Vector2(LootSlot.CELL, LootSlot.CELL)
 	slot.add_theme_stylebox_override("panel", _filled_box(entry, true))
 	slot.mouse_default_cursor_shape = Control.CURSOR_DRAG if draggable \
 		else Control.CURSOR_ARROW
@@ -226,7 +226,7 @@ func cell_size() -> Vector2:
 		if c is Control:
 			var m: Vector2 = (c as Control).get_combined_minimum_size()
 			return Vector2(maxf(m.x, LootSlot.CELL_W), m.y)
-	return Vector2(LootSlot.CELL_W, LootSlot.cell_height(show_use))
+	return Vector2(LootSlot.CELL, LootSlot.CELL)
 
 func _pitch() -> Vector2:
 	return cell_size() + Vector2(GAP, GAP)
@@ -315,10 +315,7 @@ func _place() -> void:
 		h.scale = Vector2(_scale, _scale)
 	for a in _arts:
 		if is_instance_valid(a) and a.bag < GameState.pack_bags.size():
-			var r: Rect2 = _cells_rect(GameState.bag_cells(GameState.pack_bags[a.bag]))
-			a.position = r.position
-			a.size = r.size
-			a.queue_redraw()
+			a.fit(_cells_rect(GameState.bag_cells(GameState.pack_bags[a.bag])))
 	_overlay.position = Vector2.ZERO
 	_overlay.size = size
 	queue_redraw()
@@ -363,14 +360,21 @@ func _draw() -> void:
 # other way up from the bag's own shape (the Potion Belt is painted standing, the
 # bag is 4 wide) gets a quarter turn of its own first. Static so the piece in your
 # hand draws it the same way.
+# How many quarter turns a bag's picture is drawn at: the bag's own, plus one when
+# the painting runs the other way from the bag's unrotated shape.
+static func art_turn(tex: Texture2D, rot: int, size_cells: Vector2i) -> int:
+	var turn: int = posmod(rot, 4)
+	if tex != null and size_cells.x != size_cells.y:
+		var ts: Vector2 = tex.get_size()
+		if (ts.x > ts.y) != (size_cells.x > size_cells.y):
+			turn += 1
+	return turn
+
 static func _draw_bag_art(ci: CanvasItem, tex: Texture2D, rect: Rect2, rot: int,
 		tint: Color, size_cells: Vector2i = Vector2i.ONE) -> void:
 	if tex == null:
 		return
-	var ts: Vector2 = tex.get_size()
-	var turn: int = posmod(rot, 4)
-	if size_cells.x != size_cells.y and (ts.x > ts.y) != (size_cells.x > size_cells.y):
-		turn += 1
+	var turn: int = art_turn(tex, rot, size_cells)
 	var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turn % 2 == 1 else rect.size
 	ci.draw_set_transform(rect.get_center(), turn * PI * 0.5, Vector2.ONE)
 	ci.draw_texture_rect(tex, Rect2(-box * 0.5, box), false, tint)
@@ -645,7 +649,7 @@ static func loose_bag_preview(data: Dictionary) -> Control:
 	var p := BagPreview.new()
 	p.data = data
 	var k: float = 0.7
-	p.cell = Vector2(LootSlot.CELL_W, LootSlot.cell_height(false)) * k
+	p.cell = Vector2(LootSlot.CELL, LootSlot.CELL) * k
 	p.pitch = p.cell + Vector2(GAP, GAP) * k
 	return p
 
@@ -697,20 +701,32 @@ class BagPreview extends Control:
 			Rect2(at, span), rot, Color(1, 1, 1, 0.85), size_cells)
 
 
-# ONE BAG'S PICTURE, filling its footprint, under the cells.
-class BagArt extends Control:
+# ONE BAG'S PICTURE, filling its footprint, under the cells. A TextureRect turned
+# about its middle rather than a custom draw: custom-drawn under the slot panels,
+# the compatibility renderer painted the Leather Bag solid white in some orders of
+# attachment — seen on the screen twice, and not reproduced by a TextureRect.
+class BagArt extends TextureRect:
 	var bag: int = -1
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		stretch_mode = TextureRect.STRETCH_SCALE
 
-	func _draw() -> void:
+	# Fill `rect` (grid-local), turned with the bag — and a quarter more when the
+	# painting runs the other way from the bag (see LootGrid._draw_bag_art).
+	func fit(rect: Rect2) -> void:
 		if bag < 0 or bag >= GameState.pack_bags.size():
 			return
 		var row: Dictionary = GameState.pack_bags[bag]
-		LootGrid._draw_bag_art(self, LootPassives.load_bag_art(GameState.bag_def(row)),
-			Rect2(Vector2.ZERO, size), int(row.get("rot", 0)), Color.WHITE,
+		texture = LootPassives.load_bag_art(GameState.bag_def(row))
+		var turn: int = LootGrid.art_turn(texture, int(row.get("rot", 0)),
 			GameState.bag_size(row))
+		var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turn % 2 == 1 else rect.size
+		size = box
+		pivot_offset = box * 0.5
+		position = rect.get_center() - box * 0.5
+		rotation = turn * PI * 0.5
 
 
 # THE HANDLE A BAG IS PICKED UP BY — a small leather tab in its top-left cell.
@@ -791,7 +807,7 @@ static func preview_cell(entry: Dictionary, face_up: bool = true) -> Control:
 	var cell := PanelContainer.new()
 	cell.add_theme_stylebox_override("panel", _filled_box(entry, true))
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cell.size = Vector2(LootSlot.CELL_W, LootSlot.cell_height(false))
+	cell.size = Vector2(LootSlot.CELL, LootSlot.CELL)
 	# Centred on the pointer, so the cell you are holding covers the slot you are
 	# pointing at rather than hanging off one corner of it.
 	cell.position = -cell.size * 0.5
@@ -816,7 +832,7 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	slot.slot_index = slot_index
 	slot.loot_index = index
 	slot.entry = entry
-	slot.custom_minimum_size = Vector2(LootSlot.CELL_W, 0)
+	slot.custom_minimum_size = Vector2(LootSlot.CELL, LootSlot.CELL)
 	if entry.is_empty():
 		slot.add_theme_stylebox_override("panel", _empty_box())
 		# The count, said as a picture — and said in the right number of words. It
@@ -943,13 +959,13 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	name.add_theme_color_override("font_color", UITheme.TEXT if known else UITheme.TEXT_FAINT)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Two lines' worth, reserved whether the name needs them or not — see
-	# LootSlot.NAME_H. This is the fix for the ragged rows, and `max_lines_visible`
-	# is the other half of it: a name that ran to three lines would push its own Use
-	# button down and put the raggedness back from the other direction.
-	name.custom_minimum_size = Vector2(0, LootSlot.NAME_H)
-	name.max_lines_visible = 2
+	# ONE LINE, reserved whether the name needs it or not (LootSlot.NAME_LINE), and
+	# never wrapped: the cell is a square with no room for a second, and a name that
+	# wrapped would push its own Use button down and make the row ragged. A long
+	# name ends in an ellipsis; the hover card says the whole of it.
+	name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name.clip_text = true
+	name.custom_minimum_size = Vector2(0, LootSlot.NAME_LINE)
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name)
