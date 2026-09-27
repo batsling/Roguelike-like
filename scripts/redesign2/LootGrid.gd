@@ -141,6 +141,7 @@ var _ring: bool = false
 var _ghost: Dictionary = {}
 var _overlay: Control = null
 var _handles: Array = []
+var _arts: Array = []
 
 func _init() -> void:
 	# The gutters are part of the drop target: a bag goes on the pack's EDGE, which
@@ -162,11 +163,19 @@ func rebuild() -> void:
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
-	for h in _handles:
+	for h in _handles + _arts:
 		if is_instance_valid(h):
 			remove_child(h)
 			h.queue_free()
 	_handles.clear()
+	_arts.clear()
+	# Each bag's picture, UNDER the slots (INTERNAL_MODE_FRONT draws before the
+	# ordinary children) — see `_draw` for why it is a node of its own.
+	for i in range(GameState.pack_bags.size()):
+		var art := BagArt.new()
+		art.bag = i
+		_arts.append(art)
+		add_child(art, false, Node.INTERNAL_MODE_FRONT)
 	# THE EMPTY SLOTS ARE PART OF THE DRAWING: "the grid is always the cap" is what
 	# makes the room left readable, so this is the capacity and never the count.
 	var layout: Array = GameState.loot_layout()
@@ -186,6 +195,25 @@ func rebuild() -> void:
 			add_child(h, false, Node.INTERNAL_MODE_BACK)
 	_ring = _wants_ring(_drag_data())
 	_relayout()
+
+# A loose piece, drawn as a cell but belonging to no slot — the thing a drop modal
+# offers up to be dragged in. Public because the modal builds it beside the grid
+# rather than inside it.
+static func loose_piece(entry: Dictionary, draggable: bool, host: LootGrid,
+		with_name: bool = true, offer_index: int = -1,
+		use_cb: Callable = Callable()) -> LootSlot:
+	var slot := LootSlot.new()
+	slot.grid = host
+	slot.slot_index = -1
+	slot.offer_index = offer_index
+	slot.entry = entry
+	slot.custom_minimum_size = Vector2(LootSlot.CELL_W, 0)
+	slot.add_theme_stylebox_override("panel", _filled_box(entry, true))
+	slot.mouse_default_cursor_shape = Control.CURSOR_DRAG if draggable \
+		else Control.CURSOR_ARROW
+	HoverCard.attach(slot, LootSystem.hover_card(entry))
+	slot.add_child(_cell_body(entry, use_cb, false, with_name))
+	return slot
 
 # ---------------------------------------------------------------------------
 # Layout: cells on their own coordinates, shrunk alike to fit
@@ -285,6 +313,12 @@ func _place() -> void:
 		h.position = cell_position(corner) + Vector2(2, 2) * _scale
 		h.size = Vector2(HANDLE, HANDLE)
 		h.scale = Vector2(_scale, _scale)
+	for a in _arts:
+		if is_instance_valid(a) and a.bag < GameState.pack_bags.size():
+			var r: Rect2 = _cells_rect(GameState.bag_cells(GameState.pack_bags[a.bag]))
+			a.position = r.position
+			a.size = r.size
+			a.queue_redraw()
 	_overlay.position = Vector2.ZERO
 	_overlay.size = size
 	queue_redraw()
@@ -313,27 +347,33 @@ func _draw() -> void:
 	if not GameState.pack_bags.is_empty():
 		draw_style_box(UITheme.flat(ACCENT.lerp(UITheme.BG, 0.88), 6, 0, 1,
 			ACCENT.lerp(UITheme.BG, 0.6)), _cells_rect(base))
+	# THE BAGS' ART IS NOT DRAWN HERE but on a canvas item of its own per bag
+	# (BagArt, placed in `_place`). Drawn on this one, under the slot panels, the
+	# compatibility renderer painted one bag's picture solid white wherever an
+	# empty cell sat over it — seen on the screen, not reasoned about. A bag with
+	# no art gets a plain leather plate instead.
 	for bag in GameState.pack_bags:
-		var def: BagData = GameState.bag_def(bag)
-		var rect: Rect2 = _cells_rect(GameState.bag_cells(bag))
-		draw_style_box(UITheme.flat(BAG_TINT.lerp(UITheme.BG, 0.7), 6, 0, 2,
-			BAG_TINT.lerp(UITheme.BG, 0.2)), rect)
-		_draw_bag_art(self, LootPassives.load_bag_art(def), rect,
-			int(bag.get("rot", 0)), Color(1, 1, 1, 0.45))
+		if LootPassives.load_bag_art(GameState.bag_def(bag)) == null:
+			draw_style_box(UITheme.flat(BAG_TINT.lerp(UITheme.BG, 0.7), 6, 0, 2,
+				BAG_TINT.lerp(UITheme.BG, 0.2)), _cells_rect(GameState.bag_cells(bag)))
 
-# The bag's picture, fitted inside `rect` and turned with the bag. Static so the
-# piece in your hand draws it the same way.
+# The bag's picture, FILLING `rect` and turned with the bag. The art is the bag
+# itself, as it is in Backpack Battles — the leather the cells sit on — so it is
+# stretched over the whole footprint rather than fitted inside it. Art drawn the
+# other way up from the bag's own shape (the Potion Belt is painted standing, the
+# bag is 4 wide) gets a quarter turn of its own first. Static so the piece in your
+# hand draws it the same way.
 static func _draw_bag_art(ci: CanvasItem, tex: Texture2D, rect: Rect2, rot: int,
-		tint: Color) -> void:
+		tint: Color, size_cells: Vector2i = Vector2i.ONE) -> void:
 	if tex == null:
 		return
-	var turned: bool = posmod(rot, 2) == 1
-	var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turned else rect.size
 	var ts: Vector2 = tex.get_size()
-	var k: float = minf(box.x / ts.x, box.y / ts.y)
-	var drawn: Vector2 = ts * k
-	ci.draw_set_transform(rect.get_center(), posmod(rot, 4) * PI * 0.5, Vector2.ONE)
-	ci.draw_texture_rect(tex, Rect2(-drawn * 0.5, drawn), false, tint)
+	var turn: int = posmod(rot, 4)
+	if size_cells.x != size_cells.y and (ts.x > ts.y) != (size_cells.x > size_cells.y):
+		turn += 1
+	var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turn % 2 == 1 else rect.size
+	ci.draw_set_transform(rect.get_center(), turn * PI * 0.5, Vector2.ONE)
+	ci.draw_texture_rect(tex, Rect2(-box * 0.5, box), false, tint)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # Where the bag in the air would land, over everything else.
@@ -654,7 +694,23 @@ class BagPreview extends Control:
 				draw_style_box(UITheme.flat(Color(BAG_TINT, 0.55), 6, 0, 2, BAG_TINT),
 					Rect2(at + Vector2(x, y) * pitch, cell))
 		LootGrid._draw_bag_art(self, LootPassives.load_bag_art(Data.get_bag(_id())),
-			Rect2(at, span), rot, Color(1, 1, 1, 0.85))
+			Rect2(at, span), rot, Color(1, 1, 1, 0.85), size_cells)
+
+
+# ONE BAG'S PICTURE, filling its footprint, under the cells.
+class BagArt extends Control:
+	var bag: int = -1
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if bag < 0 or bag >= GameState.pack_bags.size():
+			return
+		var row: Dictionary = GameState.pack_bags[bag]
+		LootGrid._draw_bag_art(self, LootPassives.load_bag_art(GameState.bag_def(row)),
+			Rect2(Vector2.ZERO, size), int(row.get("rot", 0)), Color.WHITE,
+			GameState.bag_size(row))
 
 
 # THE HANDLE A BAG IS PICKED UP BY — a small leather tab in its top-left cell.

@@ -2491,11 +2491,11 @@ func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
 	assert_true(_ui.is_ancestor_of(_ui._loot_panel), "it floats over the page")
 	assert_false(_ui._inv_wrap.is_ancestor_of(_ui._loot_panel),
 		"and not inside the pack panel")
-	var grid: GridContainer = _find_grid(_ui._loot_panel)
+	var grid: LootGrid = _find_grid(_ui._loot_panel)
 	assert_not_null(grid, "the window is a grid")
 	if grid == null:
 		return
-	assert_eq(grid.columns, 3, "three across")
+	assert_eq(grid.grid_columns(), 3, "three across")
 	# ALWAYS nine. The empties are how the window says how much room is left, and
 	# they are what keeps it a grid rather than a row that wraps.
 	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
@@ -2538,11 +2538,13 @@ func test_the_loot_window_stays_on_screen() -> void:
 	assert_lt(panel.end.y, screen.y + 1.0, "and the whole of it fits the window")
 	assert_lt(panel.end.x, screen.x + 1.0)
 
-func _find_grid(node: Node) -> GridContainer:
-	if node is GridContainer:
+# The PACK's grid: a LootGrid, which is a Container rather than a GridContainer
+# since the pack could have bags on it (docs/loot-passives.md §6).
+func _find_grid(node: Node) -> LootGrid:
+	if node is LootGrid:
 		return node
 	for c in node.get_children():
-		var found: GridContainer = _find_grid(c)
+		var found: LootGrid = _find_grid(c)
 		if found != null:
 			return found
 	return null

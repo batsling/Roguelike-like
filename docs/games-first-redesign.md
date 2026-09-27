@@ -1222,7 +1222,7 @@ inside ([`loot-passives.md`](loot-passives.md) §6).
 
 **Beating a game therefore pays a weighted seven-way split**
 (`GameState.LOOT_WEIGHTS`): scroll, pill, potion and card at weight 3, wand,
-trinket and bag at weight 2 — 15% each for the four consumables, 10% each for the
+trinket and bag at weight 2 — a sixth (≈16.7%) each for the four consumables, a ninth (≈11.1%) each for the
 three kinds a run keeps. The Identify
 tenth is still taken off the top and did not move: the run that needs the scroll is
 the run holding four unknown capsules, and its odds should not depend on how many

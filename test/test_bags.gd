@@ -84,11 +84,11 @@ func test_the_weights_show_up_in_what_is_rolled() -> void:
 		var k: String = GameState.roll_loot_kind()
 		counts[k] = int(counts.get(k, 0)) + 1
 	assert_eq(counts.keys().size(), 7, "all seven kinds come up")
-	# 3/20 = 15% and 2/20 = 10%; a couple of points of slack for the dice.
+	# The weights total 18: 3/18 ≈ 16.7% and 2/18 ≈ 11.1%, with slack for the dice.
 	for kind in ["scroll", "pill", "potion", "card"]:
-		assert_almost_eq(float(counts[kind]) / n, 0.15, 0.02, "%s ≈ 15%%" % kind)
+		assert_almost_eq(float(counts[kind]) / n, 3.0 / 18.0, 0.015, "%s ≈ 16.7%%" % kind)
 	for kind in ["wand", "trinket", "bag"]:
-		assert_almost_eq(float(counts[kind]) / n, 0.10, 0.02, "%s ≈ 10%%" % kind)
+		assert_almost_eq(float(counts[kind]) / n, 2.0 / 18.0, 0.015, "%s ≈ 11.1%%" % kind)
 
 func test_a_kind_blind_grant_can_pay_a_bag_into_a_full_pack() -> void:
 	for i in range(9):

@@ -3922,7 +3922,7 @@ func roll_bag_entry() -> Dictionary:
 # spent, and a wand lasts four or six uses: each of those is a piece the run keeps
 # for a long time, and each one found changes the pack for the rest of the run
 # rather than for one turn. So they are slightly rarer — 2 against 3, which makes
-# each of them a tenth of the drop and each consumable three twentieths.
+# each of them a ninth of the drop and each consumable a sixth (weights total 18).
 #
 # WEIGHTS RATHER THAN A LIST OF REPEATS, so a tuning pass changes a number rather
 # than the shape of a const. `LOOT_KINDS` is still the list of kinds, in the order
