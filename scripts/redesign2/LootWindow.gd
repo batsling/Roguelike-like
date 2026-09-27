@@ -243,7 +243,8 @@ func _panel(reporting: bool) -> Control:
 	# to rearrange — a single piece has nowhere to go.
 	if not GameState.loot_items.is_empty() and not reporting:
 		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
-			+ "onto another piece to swap the two, onto an empty one to move it there."))
+			+ "onto another piece to swap the two, onto an empty one to move it there. "
+			+ "R or right-click while dragging turns it."))
 	# THE BAGS MOVE TOO, and nothing on the screen would say so otherwise.
 	if not GameState.pack_bags.is_empty() and not reporting:
 		box.add_child(_note("Drag a bag by its tab to move it, with what is in it. "

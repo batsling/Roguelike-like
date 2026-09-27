@@ -335,3 +335,54 @@ func test_only_an_empty_bag_can_be_binned() -> void:
 	assert_true(grid.can_trash(grid.bag_payload(0)))
 	_put({"type": "scroll", "id": &"scroll_of_fire"}, 9)
 	assert_false(grid.can_trash(grid.bag_payload(0)), "not with a scroll in it")
+
+# --- every piece turns (docs/loot-passives.md §2) ---------------------------------
+
+func test_a_turned_blueprint_copies_the_way_it_faces() -> void:
+	var bp: Dictionary = _put({"type": "card", "id": &"blueprint",
+		"rarity": Data.get_card(&"blueprint").rarity}, 0)
+	_put({"type": "trinket", "id": &"goat_hoof", "rarity": "Common"}, 3)   # below it
+	assert_eq(LootPassives.copying_name(0), "", "facing right, it copies nothing")
+	assert_true(GameState.turn_loot(_index_of(bp), 1))
+	assert_eq(LootPassives.copying_name(0), "Goat Hoof", "a quarter turn aims it down")
+	assert_eq(LootPassives.facing(bp, Data.get_card(&"blueprint")), "down")
+	assert_true(GameState.turn_loot(_index_of(bp), 3))
+	assert_eq(LootSystem.hover_card(bp)["lines"].size() > 0, true)
+	assert_eq(LootPassives.facing(bp, Data.get_card(&"blueprint")), "up")
+
+func test_any_piece_turns_in_place_by_dropping_it_back_on_its_slot() -> void:
+	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 4)
+	var grid: LootGrid = _grid()
+	var data: Dictionary = grid.get_child(4)._get_drag_data(Vector2.ZERO)
+	assert_false(grid.get_child(4)._can_drop_data(Vector2.ZERO, data),
+		"not turned, its own slot is no move at all")
+	data["rot"] = 1    # what R does to the piece in hand
+	assert_true(grid.get_child(4)._can_drop_data(Vector2.ZERO, data), "turned, it is")
+	grid.get_child(4)._drop_data(Vector2.ZERO, data)
+	assert_eq(int(fire.get("rot", 0)), 1, "it is turned")
+	assert_eq(GameState.loot_slot_of(_index_of(fire)), 4, "and stayed put")
+
+func test_a_turn_rides_a_move_and_a_save() -> void:
+	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 0)
+	var grid: LootGrid = _grid()
+	var data: Dictionary = grid.get_child(0)._get_drag_data(Vector2.ZERO)
+	data["rot"] = 2
+	grid.moved.connect(func(a: int, b: int): GameState.move_loot(a, b))
+	grid.get_child(8)._drop_data(Vector2.ZERO, data)
+	assert_eq(GameState.loot_slot_of(_index_of(fire)), 8)
+	assert_eq(int(fire.get("rot", 0)), 2)
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(SaveSystem._build_payload()))
+	GameState.reset_run()
+	SaveSystem._apply_save_data(saved)
+	assert_eq(int(GameState.loot_items[0].get("rot", 0)), 2, "turned after a reload too")
+
+func test_an_offer_can_be_turned_on_its_way_in() -> void:
+	var grid: LootGrid = _grid(false)
+	grid.allow_take = true
+	var got: Array = []
+	grid.take_requested.connect(func(e, s, o): got.append(e))
+	grid.get_child(2)._drop_data(Vector2.ZERO, {"kind": "loot_take",
+		"entry": {"type": "scroll", "id": &"scroll_of_fire"}, "offer": 0, "rot": 3})
+	assert_eq(got.size(), 1)
+	if got.size() == 1:
+		assert_eq(int(got[0].get("rot", 0)), 3, "it arrives facing the way it was held")

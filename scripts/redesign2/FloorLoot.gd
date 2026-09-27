@@ -73,12 +73,12 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	# A BAG carries the turn the piece in your hand can put on it, and what follows
 	# the cursor is its footprint rather than a cell (docs/loot-passives.md §6).
 	var bag: bool = GameState.is_bag_entry(entry)
-	if bag:
-		data["rot"] = 0
+	# Any piece can be turned in hand on its way in (docs/loot-passives.md §2).
+	data["rot"] = 0 if bag else int(entry.get("rot", 0))
 	if get_viewport() != null and get_viewport().gui_is_dragging():
 		# FACE DOWN, because it is still on the floor until it lands (cards-design
 		# §3). A preview that turned the card over would make drag-and-cancel a free
 		# look at every card on the board.
 		set_drag_preview(LootGrid.loose_bag_preview(data) if bag
-			else LootGrid.preview_cell(entry, false))
+			else LootGrid.preview_cell(entry, false, data))
 	return data

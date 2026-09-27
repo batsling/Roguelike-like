@@ -4258,6 +4258,23 @@ func move_loot(from: int, to: int) -> bool:
 	emit_signal("inventory_changed")
 	return true
 
+# TURN the piece at `index` to `rot` quarter turns clockwise (docs/loot-passives.md
+# §2). Saved on the entry; for a piece that reads a neighbour it changes which one,
+# which is why it emits — the pack's passives are re-derived on the signal.
+func turn_loot(index: int, rot: int) -> bool:
+	if index < 0 or index >= loot_items.size() or not (loot_items[index] is Dictionary):
+		return false
+	var entry: Dictionary = loot_items[index]
+	var r: int = posmod(rot, 4)
+	if int(entry.get("rot", 0)) == r:
+		return false
+	if r == 0:
+		entry.erase("rot")
+	else:
+		entry["rot"] = r
+	emit_signal("inventory_changed")
+	return true
+
 # Removes the loot entry at `index` (called after a potion is drunk / thrown).
 func remove_loot_at(index: int) -> void:
 	if index >= 0 and index < loot_items.size():

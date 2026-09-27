@@ -57,6 +57,18 @@ the 3x3's right edge copies the piece in the first cell of a bag beside it.
 Only `right` is authored. The other three directions exist in `neighbour_slot` for
 the next piece that wants one.
 
+### Every piece turns
+
+Any piece can be turned, as bags can: **R or a right-click while it is in your
+hand** turns it a quarter clockwise, and dropping it back on its own slot turns it
+in place. The turn is saved on the entry as `rot` (quarter turns clockwise, absent
+when 0) and the art is drawn turned. For most pieces that is all it is. **For a
+piece that reads a neighbour it is which neighbour**: a Blueprint turned once
+copies the piece below it, then to its left, then above it
+(`LootPassives.facing`, `LootPassives.turned`). Its plate points the way it faces
+("Copies v") and its hover says where. A floor piece taken in turned is still the
+same piece (`DropQueue._same_piece` ignores `rot`).
+
 ## 3. Hooks, gates and verbs
 
 Passives are authored in the **relic grammar** (spec §8.1) and compiled by

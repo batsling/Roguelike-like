@@ -115,7 +115,7 @@ func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 	# The square is what says the piece is still there to be taken. A payload from a
 	# drag whose square has since been swept (a report resolving underneath it) is
 	# refused rather than minting a second copy of the piece.
-	if held.is_empty() or floor_loot(held) != entry:
+	if held.is_empty() or not _same_piece(floor_loot(held), entry):
 		return
 	var displaced: Dictionary = GameState.swap_loot_entry_at(entry, slot)
 	if displaced.is_empty() and not GameState.take_loot_entry_at(entry, slot):
@@ -228,6 +228,15 @@ func place_drag_pack() -> void:
 # One floor square's payload as the loot entry the modals deal in. The loop stores
 # the entry whole (it is scene-free and JSON-safe already), so this is only the
 # unwrapping — and the guard for a save written when the floor still held relics.
+# The same piece, whichever way it is turned: the hand can turn a piece on its way
+# into the pack (`rot`, docs/loot-passives.md §2), and that is not a different piece.
+static func _same_piece(a: Dictionary, b: Dictionary) -> bool:
+	var x: Dictionary = a.duplicate()
+	var y: Dictionary = b.duplicate()
+	x.erase("rot")
+	y.erase("rot")
+	return x == y
+
 func floor_loot(held: Dictionary) -> Dictionary:
 	var entry = held.get("loot")
 	return (entry as Dictionary).duplicate(true) if entry is Dictionary else {}

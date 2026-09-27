@@ -95,6 +95,11 @@ const GAP := UITheme.GAP_SNUG
 # How far the cells may shrink to fit a big pack. Below this the names under the
 # art stop being readable, and the window grows instead.
 const MIN_SCALE := 0.5
+# Which way a turned copier points, in ASCII (a new glyph would need a font rebuild),
+# and the same in words.
+const ARROWS := {"right": ">", "down": "v", "left": "<", "up": "^"}
+const WHERE := {"right": "to its right", "down": "below it", "left": "to its left",
+	"up": "above it"}
 # The handle a bag is dragged by, at full scale.
 const HANDLE := 20
 
@@ -415,7 +420,12 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 			# ANY SLOT BUT ITS OWN. Onto a piece swaps the two, onto an empty one moves
 			# it there and leaves a hole — both are arrangements the pack can hold now
 			# that a slot is a fact about the entry rather than its place in an array.
-			return allow_reorder and int(data.get("from", -1)) != slot.slot_index
+			#
+			# ITS OWN SLOT TOO, once the piece in hand has been TURNED: putting it
+			# back where it was, facing a new way, is how a piece is turned in place.
+			if int(data.get("from", -1)) == slot.slot_index:
+				return allow_reorder and int(data.get("rot", 0)) != int(slot.entry.get("rot", 0))
+			return allow_reorder
 		"loot_take":
 			# OFF THE FLOOR: ANY SLOT. A free one takes it; a filled one SWAPS, and the
 			# piece that was there goes back to the square this one came off
@@ -478,11 +488,27 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 		return
 	match String(data.get("kind", "")):
 		"loot_move":
+			# The turn the hand put on it goes with it (docs/loot-passives.md §2).
+			# Onto its own slot that is ALL that happens, so the grid does it and
+			# redraws; anywhere else the host moves it as it always has.
+			var index: int = int(data.get("index", -1))
+			var turned: bool = GameState.turn_loot(index, int(data.get("rot", 0)))
+			if int(data.get("from", -1)) == slot.slot_index:
+				if turned:
+					rebuild()
+				return
 			moved.emit(int(data.get("from", -1)), slot.slot_index)
 		"loot_take":
 			var entry = data.get("entry", {})
 			if not (entry is Dictionary) or (entry as Dictionary).is_empty():
 				return
+			# Taken in facing the way it was turned in hand.
+			entry = (entry as Dictionary).duplicate(true)
+			var rot: int = posmod(int(data.get("rot", entry.get("rot", 0))), 4)
+			if rot == 0:
+				entry.erase("rot")
+			else:
+				entry["rot"] = rot
 			if data.has("floor"):
 				floor_take_requested.emit(entry, maxi(0, slot.slot_index),
 					data["floor"] as Vector2i)
@@ -701,6 +727,32 @@ class BagPreview extends Control:
 			Rect2(at, span), rot, Color(1, 1, 1, 0.85), size_cells)
 
 
+# THE PIECE IN YOUR HAND, turnable. R or a right-click turns it a quarter clockwise:
+# the turn goes into the payload (the same Dictionary every drop target is handed)
+# and the picture turns to match.
+class PiecePreview extends Control:
+	var data: Dictionary = {}
+	var cell: Control = null
+
+	func _input(event: InputEvent) -> void:
+		var turn: bool = (event is InputEventKey and event.pressed and not event.echo
+				and (event as InputEventKey).keycode == KEY_R) \
+			or (event is InputEventMouseButton and event.pressed
+				and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT)
+		if not turn:
+			return
+		data["rot"] = posmod(int(data.get("rot", 0)) + 1, 4)
+		show_turn()
+		get_viewport().set_input_as_handled()
+
+	func show_turn() -> void:
+		if cell == null:
+			return
+		var art: Node = cell.find_child("Art", true, false)
+		if art is Control:
+			(art as Control).rotation = posmod(int(data.get("rot", 0)), 4) * PI * 0.5
+
+
 # ONE BAG'S PICTURE, filling its footprint, under the cells. A TextureRect turned
 # about its middle rather than a custom draw: custom-drawn under the slot panels,
 # the compatibility renderer painted the Leather Bag solid white in some orders of
@@ -779,8 +831,8 @@ class BagHandle extends Control:
 # Built here rather than on LootSlot because the cell's box and body are this
 # class's, and a LootSlot that named LootGrid back would be two class_names naming
 # each other — a cycle Godot resolves badly. The slot asks its grid for it instead.
-func drag_preview(slot: LootSlot) -> Control:
-	return preview_cell(slot.entry)
+func drag_preview(slot: LootSlot, data: Dictionary = {}) -> Control:
+	return preview_cell(slot.entry, true, data)
 
 # The same cell, for a drag that starts somewhere that is not a slot at all — a
 # piece picked up off the BATTLEFIELD FLOOR (§8.2, `FloorLoot`). Static, and the
@@ -789,8 +841,13 @@ func drag_preview(slot: LootSlot) -> Control:
 # square onto a grid of bordered cells has nothing to line up with, and the thing
 # in your hand is on its way to being a cell in the pack — so it may as well
 # already look like one.
-static func preview_cell(entry: Dictionary, face_up: bool = true) -> Control:
-	var holder := Control.new()
+#
+# With the drag's payload handed in, the holder is a PiecePreview: the piece in
+# your hand TURNS with R or a right-click, and the turn is written into the payload
+# the drop is handed (docs/loot-passives.md §2).
+static func preview_cell(entry: Dictionary, face_up: bool = true,
+		data: Dictionary = {}) -> Control:
+	var holder: Control = Control.new() if data.is_empty() else PiecePreview.new()
 	# ABOVE WHATEVER THE DRAG SUMMONED. Godot parents the drag preview to the
 	# topmost Control over the one the drag started on and moves it to the front of
 	# that node's children — and then DRAG_BEGIN reaches the page, which hangs the
@@ -820,6 +877,10 @@ static func preview_cell(entry: Dictionary, face_up: bool = true) -> Control:
 	# begins.
 	cell.add_child(_cell_body(entry, Callable(), false, true, face_up))
 	holder.add_child(cell)
+	if holder is PiecePreview:
+		(holder as PiecePreview).data = data
+		(holder as PiecePreview).cell = cell
+		(holder as PiecePreview).show_turn()
 	return holder
 
 # ---------------------------------------------------------------------------
@@ -893,7 +954,18 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	band.add_child(centre)
 	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART, face_up)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	centre.add_child(art)
+	# THE PICTURE TURNS WITH THE PIECE (`rot`, docs/loot-passives.md §2). A
+	# container resets its children's rotation, so the art sits in a plain Control
+	# of its own size and turns about its middle inside it.
+	var turn_box := Control.new()
+	turn_box.custom_minimum_size = art.custom_minimum_size
+	turn_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.name = "Art"
+	art.size = art.custom_minimum_size
+	art.pivot_offset = art.custom_minimum_size * 0.5
+	art.rotation = posmod(int(entry.get("rot", 0)), 4) * PI * 0.5
+	turn_box.add_child(art)
+	centre.add_child(turn_box)
 
 	var known: bool = LootSystem.is_identified(entry)
 	# THE PREFERENCE, IN ITS OWN COLOUR, ON THE ART — the corner the pack strip draws
@@ -977,14 +1049,16 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		pass
 	elif use_cb.is_valid() and passive:
 		var plate := Label.new()
-		var copier: bool = LootPassives.copies(LootPassives.def_for(entry)) != ""
-		plate.text = "Copies >" if copier else "Passive"
+		var dir: String = LootPassives.facing(entry, LootPassives.def_for(entry))
+		var copier: bool = dir != ""
+		plate.text = "Copies %s" % ARROWS.get(dir, ">") if copier else "Passive"
 		plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
 		plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		plate.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-		plate.tooltip_text = "Works while it is in your pack. Copies the piece to its right." \
+		plate.tooltip_text = "Works while it is in your pack. Copies the piece %s. Turn it to aim it." \
+			% WHERE.get(dir, "to its right") \
 			if copier else "Works while it is in your pack — never spent."
 		col.add_child(plate)
 	elif use_cb.is_valid():

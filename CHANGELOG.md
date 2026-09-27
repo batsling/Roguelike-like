@@ -24,6 +24,12 @@ For how the project is laid out and how its systems fit together, see
   gates `if_loot=`, `if_in_bag`, `every=N` and verbs `gain_random_buff`,
   `remove_random_debuff`. Sheet edited through `_bags_effect_cells.py`.
 
+- **Every piece of loot turns** (`docs/loot-passives.md` §2): R or right-click
+  while dragging, or drop it back on its own slot turned. Saved as `rot` on the
+  entry and drawn turned; a Blueprint copies the way it faces ("Copies v").
+
+- **Pack cells are squares** (104px), with a one-line name.
+
 - **Loot kinds are weighted** (`GameState.LOOT_WEIGHTS`): scrolls, pills, potions
   and cards 3; wands, trinkets and bags 2 — so the kinds a run keeps are a little
   rarer than the ones it spends.

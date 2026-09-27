@@ -34,6 +34,27 @@ extends RefCounted
 # Which way a copier looks. Only "right" is authored (Blueprint).
 const DIRECTIONS := {"right": Vector2i(1, 0), "left": Vector2i(-1, 0),
 	"up": Vector2i(0, -1), "down": Vector2i(0, 1)}
+# The four directions a quarter turn CLOCKWISE apart — how a turned piece's
+# authored direction becomes the one it faces (docs/loot-passives.md §2).
+const TURNS := ["right", "down", "left", "up"]
+
+# EVERY PIECE CAN BE TURNED, as bags can, and a turn is saved on the piece as
+# `rot` (quarter turns clockwise). For most pieces it is only the picture; for a
+# piece that reads a neighbour it is WHICH neighbour: a Blueprint turned once
+# copies the piece below it, as a directional item does in Backpack Battles.
+static func turned(dir: String, rot: int) -> String:
+	var at: int = TURNS.find(dir)
+	if at < 0:
+		return dir
+	return String(TURNS[posmod(at + rot, 4)])
+
+# The direction the piece in `entry` copies, turned the way it is carried, or ""
+# for a piece that copies nothing.
+static func facing(entry, def: Resource) -> String:
+	var dir: String = copies(def)
+	if dir == "" or not (entry is Dictionary):
+		return dir
+	return turned(dir, int(entry.get("rot", 0)))
 
 # Relic-shaped stand-ins, one per definition. Keyed by "<type>/<id>". The triggers
 # they carry are read-only at runtime (all per-piece state is on the entry), so one
@@ -140,7 +161,7 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 		var def: Resource = def_for(entry)
 		if def == null:
 			return {}
-		var dir: String = copies(def)
+		var dir: String = facing(entry, def)
 		if dir == "":
 			return {"def": def, "entry": entry}
 		at = neighbour_slot(at, dir)

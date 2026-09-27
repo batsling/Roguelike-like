@@ -154,11 +154,15 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	# calls this method in that state, so the guard costs a real drag nothing; what
 	# it buys is that the method can also be called DIRECTLY, which is how the drag
 	# is tested (test_overworld2) without an OS mouse to move.
+	# EVERY PIECE CAN BE TURNED on its way (docs/loot-passives.md §2): the payload
+	# carries the turn it has now, and the piece in your hand adds to it.
+	var rot: int = int(entry.get("rot", 0))
+	var data: Dictionary = {"kind": "loot_take", "entry": entry.duplicate(true),
+		"offer": offer_index, "rot": rot} if slot_index < 0 \
+		else {"kind": "loot_move", "from": slot_index, "index": loot_index, "rot": rot}
 	if get_viewport() != null and get_viewport().gui_is_dragging():
-		set_drag_preview(_drag_preview())
-	if slot_index < 0:
-		return {"kind": "loot_take", "entry": entry.duplicate(true), "offer": offer_index}
-	return {"kind": "loot_move", "from": slot_index, "index": loot_index}
+		set_drag_preview(grid.drag_preview(self, data))
+	return data
 
 # What follows the cursor: THE WHOLE CELL, built by the grid — see
 # LootGrid.drag_preview for why it is the cell and not the bare capsule, and why it

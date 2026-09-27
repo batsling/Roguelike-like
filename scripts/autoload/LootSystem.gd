@@ -757,12 +757,16 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		sub += "  ·  Passive"
 		note = "▸ Works while it is in your pack — never spent."
 		var def: Resource = LootPassives.def_for(entry)
-		if LootPassives.copies(def) != "":
+		var dir: String = LootPassives.facing(entry, def)
+		if dir != "":
+			var where: String = {"right": "to its right", "down": "below it",
+				"left": "to its left", "up": "above it"}.get(dir, "to its right")
 			var slot: int = _carried_slot(entry)
 			if slot >= 0:
 				var copying: String = LootPassives.copying_name(slot)
 				lines.append("Copying: %s" % copying if copying != ""
-					else "Copying nothing — put a passive piece to its right.")
+					else "Copying nothing — put a passive piece %s." % where)
+			lines.append("Copies the piece %s. Turn it (R while dragging) to aim it." % where)
 		var grown: int = int(entry.get("counter", 0))
 		if grown != 0:
 			lines.append("Grown by %+d so far." % grown)
