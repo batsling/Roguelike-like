@@ -274,6 +274,10 @@ func _quiet_ladder() -> void:
 func _shut_failure_tap() -> void:
 	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
 
+# USE THIS, NOT `_shut_failure_tap()` + `report(false)`, whenever a test counts
+# or follows bodies across a miss: eleven tests paired those two, and each failed
+# about one run in fifty on the road's own spawn (§19.5).
+#
 # A SETUP REPORT THAT STANDS NOBODY UP AT ALL. Shutting the tap only waives the
 # +1; near the Amulet the road still stands its own 1 or 2 up (§7.4), so a test
 # that counts bodies across a report would read a count off where the random
@@ -566,8 +570,7 @@ func test_pick_then_report_advances_the_loop() -> void:
 	assert_true(GameLoop2.has_arrivals(), "picking spawns the enemy")
 	assert_eq(GameState.current_game_id, target, "player travelled to the picked game")
 	var gp_before: int = GameState.games_played
-	_shut_failure_tap()
-	_ui.report(false)             # miss -> the enemy stacks and follows
+	_quiet_report()             # miss -> the enemy stacks and follows
 	assert_eq(GameState.games_played, gp_before + 1, "the game counts as played")
 	assert_eq(GameLoop2.stack_size(), 2,
 		"a missed goal leaves the game's enemy AND the escort that spawned with it")
@@ -1174,8 +1177,7 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	# and stands, and either leaves the aim — correctly — on a body that is still
 	# there. The random offering stood one about one run in seven.
 	_make_front_body(&"monkey")
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
 	_ui._board.begin_push()
@@ -4110,8 +4112,7 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 			with_art += 1
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"the report step shows the boss beside the goal it is asking about")
-	_shut_failure_tap()
-	_ui.report(false)                         # miss it: now it follows you
+	_quiet_report()                         # miss it: now it follows you
 	# COUNTED AGAIN, off the board as it now stands: the report can stand another
 	# body up (the road's end-of-game spawns, §19.5), and one with art is one more
 	# portrait on the list — correctly. Reusing the count from before the report
@@ -4140,8 +4141,7 @@ func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_ui._populate_play_panel()
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"the report step shows the body beside the goal it is asking about")
-	_shut_failure_tap()
-	_ui.report(false)                         # miss it: now it follows you
+	_quiet_report()                         # miss it: now it follows you
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"and it keeps its portrait on the standing list it moves to")
@@ -4376,8 +4376,7 @@ func test_a_missed_goal_leaves_both_bodies_following() -> void:
 	# turn can add a body to the board — a spawner taking its turn during the
 	# report makes the count 3 and reads exactly like the escort rule being wrong.
 	_disarm_board()
-	_shut_failure_tap()
-	_ui.report(false)                    # a missed goal leaves the pair following
+	_quiet_report()                    # a missed goal leaves the pair following
 	assert_eq(GameLoop2.stack.size(), 2, "the enemy and its escort are both out there")
 
 # ...and while a game is being PLAYED, the enemy standing on the board for it is
@@ -4515,8 +4514,7 @@ func test_a_missed_goal_still_advances_the_run() -> void:
 	# withheld, which is what separates this from an escape.
 	var gp_before: int = GameState.games_played
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
 
@@ -5066,8 +5064,7 @@ func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
 
 func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	var expect: Dictionary = {
 		"enemy": (entry["enemy"] as GoalEnemyData).id,
@@ -5515,8 +5512,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 	# can stand a second body up (the road's end-of-game spawns, §19.5) — the count
 	# used to be asserted as exactly 1, which was only usually true.
 	var inst: int = int(GameLoop2.stack[0]["instance"])
-	_shut_failure_tap()
-	_ui.report(false)                         # miss, so the enemy stands on the board
+	_quiet_report()                         # miss, so the enemy stands on the board
 	var body: Dictionary = GameLoop2.entry_for(inst)
 	assert_false(body.is_empty(), "the body is still standing")
 	if body.is_empty():
@@ -5578,8 +5574,7 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# back, the body the end of the game stands up has to shove one forward, and
 	# that slide is the playback.
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	await _playback_done()                    # let the first playback finish
 	_leave_post_game()                        # …and walk off its haul, as a player does
 	_dismiss_event()
@@ -6107,8 +6102,7 @@ func test_an_ordinary_game_leaves_the_board_alone() -> void:
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
 	_pick_enemies(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	assert_eq(GameLoop2.grid_cols(), cols_before,
 		"a game that crosses no gate changes nothing about the board")
 
@@ -6151,8 +6145,7 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 
 func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)                        # miss, so the enemy stands on the board
+	_quiet_report()                        # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
