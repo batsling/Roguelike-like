@@ -766,6 +766,11 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	# Queued before the report, which is when the whole queue is handed over — the
 	# resolve can land instantly now (§7.4).
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
+	# A BOSS in the random offering pays a chest of its own (claim_chests), making
+	# three where this counts two — read it up front rather than hope it is not.
+	var landed: Dictionary = GameLoop2.arrival()
+	var extra: int = 1 if not landed.is_empty() \
+		and (landed["enemy"] as GoalEnemyData).is_boss() else 0
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen = _ui._post_screen
@@ -776,10 +781,10 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	assert_not_null(first, "the first chest is the question in front of you")
 	if first == null:
 		return
-	assert_eq(screen.chests_waiting(), 1, "the second is queued behind it")
+	assert_eq(screen.chests_waiting(), 1 + extra, "the second is queued behind it")
 	first.leave()
 	assert_not_null(screen.chest(), "and comes up once the first is answered")
-	assert_eq(screen.chests_waiting(), 0)
+	assert_eq(screen.chests_waiting(), extra)
 	_leave_post_game()
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
@@ -5069,13 +5074,20 @@ func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
 		"col": int(entry["col"]), "row": int(entry["row"]),
 		"health": int(entry["health"]), "instance": int(entry["instance"]),
 	}
+	# AS MANY AS WERE SAVED, and the follower found BY INSTANCE: the miss above can
+	# stand a second body up (the road's end-of-game spawns, §19.5), and asserting
+	# exactly one failed on the runs where it did.
+	var saved_count: int = GameLoop2.stack_size()
 	assert_true(SaveSystem.save_named("board"))
 	GameState.reset_run()
 	GameLoop2.reset()
 	GameState.set_overworld_context(_ui)
 	assert_true(SaveSystem.load_named("board"))
-	assert_eq(GameLoop2.stack_size(), 1, "the follower came back")
-	var back: Dictionary = GameLoop2.stack[0]
+	assert_eq(GameLoop2.stack_size(), saved_count, "the follower came back")
+	var back: Dictionary = GameLoop2.entry_for(int(expect["instance"]))
+	assert_false(back.is_empty(), "under the same instance handle")
+	if back.is_empty():
+		return
 	assert_eq((back["enemy"] as GoalEnemyData).id, expect["enemy"], "the same enemy")
 	assert_eq(int(back["col"]), int(expect["col"]), "standing in the same column")
 	assert_eq(int(back["row"]), int(expect["row"]), "and the same row")
