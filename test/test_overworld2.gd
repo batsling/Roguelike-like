@@ -581,13 +581,23 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	# leaving two where the defeated one stood — makes it 2 for a reason this test
 	# is not about.
 	_disarm_board()
+	# A BOSS pays a chest of its own on top of the win's (GameLoop2.claim_chests),
+	# and the random offering sometimes stands one: read which it is up front.
+	var landed: Dictionary = GameLoop2.arrival()
+	var boss: bool = not landed.is_empty() and (landed["enemy"] as GoalEnemyData).is_boss()
 	_report_beat(_ui)              # met -> defeat + a drop to be asked about
-	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
+	# THE ROAD CAN STAND BODIES UP AT THE END OF ANY GAME (§19.5, `pressure()`),
+	# kill or no kill — usually none this early, but it rides the random road. Both
+	# of these used to be asserted as exactly 1 and failed about one run in ten.
+	var spawned: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack_size(), 1 + spawned,
+		"a met goal still leaves the escort standing (plus what the road stood up)")
 	# The drop is already ON the haul screen: the resolve lands instantly out in
 	# the wilds now (§7.4), and landing is what hands the queue over.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the report ended on the haul screen")
-	assert_eq(_ui._post_screen._chest_sections.size(), 1, "carrying the kill's chest")
+	assert_eq(_ui._post_screen._chest_sections.size(), 2 if boss else 1,
+		"carrying the kill's chest (and a boss's own, if it was one)")
 	_leave_post_game()
 
 # An enemy kill ASKS whether you want what fell off it (§8): the item at full
@@ -891,6 +901,12 @@ func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
 	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
 	_pick_enemies(0)
 	_quiet_report()
+	# NOT A BOSS. A boss shrugs a bomb off (the immunity above), so when the random
+	# offering stood one — a Banshee, about one run in seven — the blast rightly did
+	# nothing and this failed on a rule it is not about. The routing is the subject,
+	# so a plain one-cell body stands here.
+	if (GameLoop2.stack[0]["enemy"] as GoalEnemyData).is_boss():
+		_make_front_body(&"monkey")
 	var entry: Dictionary = GameLoop2.stack[0]
 	# Stood on a known square rather than wherever the walk left it: a body out in
 	# the overflow lane fills no cells, and this test is about the ones that do.
@@ -986,20 +1002,36 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 	GameState.push = 1
 	_pick_enemies(0)
+	# Disarmed, as a screen test should be (CLAUDE.md): a body's own turn in the
+	# report below can move bodies or add one in front of this one.
+	_disarm_board()
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
-	var col: int = int(entry["col"])
+	var at := Vector2i(int(entry["col"]), int(entry["row"]))
 	_ui._board.begin_push()
-	_ui._board.click_enemy(inst, entry, col)
-	var arrow: Button = null
+	_ui._board.click_enemy(inst, entry, at.x)
+	# ANY ARROW THE RULES ALLOW, forward when it is one of them. This is about the
+	# press — it spends the charge and moves the body the way it points — not about
+	# which way happens to be open; it used to insist on forward, which failed once
+	# in a full run with nothing to press. If no arrow is drawn at all, the message
+	# says why, so the next one explains itself.
+	var arrows: Dictionary = {}
 	for a in _ui._board._arrow_layer.get_children():
-		if a.has_meta("push_dir") and a.get_meta("push_dir") == GameLoop2.PUSH_FORWARD:
-			arrow = a
-	assert_not_null(arrow, "the forward arrow is there to press")
-	arrow.pressed.emit()
+		if a.has_meta("push_dir"):
+			arrows[a.get_meta("push_dir")] = a
+	assert_false(arrows.is_empty(), "an arrow is there to press (push_mode=%s charges=%d target=%d legal=%s)"
+		% [_ui._board.push_mode, GameState.push, _ui._board.push_target,
+			str(GameLoop2.push_directions(inst))])
+	if arrows.is_empty():
+		return
+	var dir: Vector2i = GameLoop2.PUSH_FORWARD if arrows.has(GameLoop2.PUSH_FORWARD) \
+		else arrows.keys()[0]
+	(arrows[dir] as Button).pressed.emit()
 	assert_eq(GameState.push, 0, "the charge is spent by the ARROW, not by arming")
-	assert_eq(int(GameLoop2.stack[0]["col"]), col - 1, "and it moved the way the arrow pointed")
+	var moved: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(Vector2i(int(moved["col"]), int(moved["row"])), at + dir,
+		"and it moved the way the arrow pointed")
 	assert_false(_ui._board.push_mode, "one press of Push spends at most one charge")
 
 # --- the bomb is armed and aimed too ---------------------------------------
@@ -2034,9 +2066,16 @@ func test_ticking_an_arrival_is_what_clears_it() -> void:
 	# Disarmed: a ticked body that dies with Split leaves two behind, so the count
 	# grows where this test is about the tick landing at all.
 	_disarm_board()
-	var before: int = GameLoop2.stack.size()
+	var hp_before: int = int(landed.get("health", 0))
 	_ui.report(true, [inst])
-	assert_lt(GameLoop2.stack.size(), before, "the ticked body took its hit")
+	# THE TICKED BODY, not the board's head count. The count used to be asserted to
+	# drop, which is only USUALLY true: a boss can take the goal hit and stand
+	# (more Health than one hit), and the road can stand a new body up at the end
+	# of any game (§19.5, `pressure()`) — either leaves the count where it was
+	# while the tick landed exactly as it should.
+	var after: Dictionary = GameLoop2.entry_for(inst)
+	assert_true(after.is_empty() or int(after.get("health", 0)) < hp_before,
+		"the ticked body took its hit")
 
 # The game the run last played, for the record assertions above.
 func _last_played_id() -> StringName:
@@ -4063,7 +4102,16 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 		"the report step shows the boss beside the goal it is asking about")
 	_shut_failure_tap()
 	_ui.report(false)                         # miss it: now it follows you
-	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
+	# COUNTED AGAIN, off the board as it now stands: the report can stand another
+	# body up (the road's end-of-game spawns, §19.5), and one with art is one more
+	# portrait on the list — correctly. Reusing the count from before the report
+	# failed about one run in fifty for exactly that.
+	var with_art_now: int = 0
+	for entry in GameLoop2.stack:
+		var body: GoalEnemyData = entry["enemy"]
+		if body != null and body.image != null:
+			with_art_now += 1
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art_now,
 		"and it keeps its portrait on the standing list it moves to")
 
 func test_an_ordinary_follower_wears_its_portrait_too() -> void:
@@ -5446,10 +5494,16 @@ func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
 
 func test_nothing_prints_the_swing_count_over_the_body() -> void:
 	_pick_solo(0)
+	# FOLLOWED BY INSTANCE: this is about one body's badges, and the report below
+	# can stand a second body up (the road's end-of-game spawns, §19.5) — the count
+	# used to be asserted as exactly 1, which was only usually true.
+	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_shut_failure_tap()
 	_ui.report(false)                         # miss, so the enemy stands on the board
-	assert_eq(GameLoop2.stack_size(), 1)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
+	var body: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(body.is_empty(), "the body is still standing")
+	if body.is_empty():
+		return
 	var texts: Array = _badge_texts(inst)
 	assert_gt(texts.size(), 0, "the body wears badges")
 	for t in texts:
@@ -5457,7 +5511,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 			"no swing count sitting on top of the art: %s" % t)
 		if String(t).begins_with("⚔"):
 			assert_eq(String(t), _ui._board._damage_badge_text(
-				GameLoop2.stack[0], GameLoop2.attacks_in_turns(GameLoop2.stack[0])),
+				body, GameLoop2.attacks_in_turns(body)),
 				"the ⚔ badge is where the count went")
 
 func test_the_board_says_how_long_its_playback_runs() -> void:
