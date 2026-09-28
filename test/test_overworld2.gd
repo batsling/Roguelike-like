@@ -1165,6 +1165,10 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	GameState.bombs = 1
 	GameState.push = 1
 	_pick_solo(0)
+	# A BODY ONE BOMB KILLS: a boss shrugs a bomb off and a sturdier body takes it
+	# and stands, and either leaves the aim — correctly — on a body that is still
+	# there. The random offering stood one about one run in seven.
+	_make_front_body(&"monkey")
 	_shut_failure_tap()
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
@@ -1173,7 +1177,8 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	_ui._board.click_enemy(inst, entry, int(entry["col"]))
 	assert_eq(_ui._board.push_target, inst, "the push is aimed at it")
 	_ui.bomb_follower(inst)
-	assert_eq(GameLoop2.stack_size(), 0, "the bomb removed it")
+	# THAT body, not the head count: the report can stand another one up.
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "the bomb removed it")
 	assert_eq(_ui._board.push_target, 0, "and the aim comes off the dead body")
 
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
@@ -7684,9 +7689,15 @@ func test_the_verbs_are_held_while_the_question_is_up() -> void:
 
 # Every game pays an event now, so this is any on-map game the run has not
 # already taken one from.
+# NOT A SHOP: a Shop node pays no event on arrival (§14.4, EventSystem.
+# roll_for_arrival), and node kinds are dealt per run — so the first game in the
+# catalog (100 Rogues) was a Shop about one run in seven, and the event test below
+# failed on a rule it is not about.
 func _node_carrying_an_event() -> StringName:
 	for g in Data.all_games():
 		if not (g is GameData) or RunGraph.is_off_map(g.id):
+			continue
+		if ShopSystem.is_shop(g.id):
 			continue
 		if not GameState.event_nodes_fired.has(g.id):
 			return g.id
