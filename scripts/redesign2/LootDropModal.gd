@@ -298,6 +298,10 @@ func _build() -> void:
 		if GameState.move_loot(from, to):
 			_rebuild())
 	_grid.offer_discarded.connect(_leave_offer)
+	# BAGS (docs/loot-passives.md §6): one off the table goes on the pack's edge,
+	# and one already on it comes off in the bin, empty.
+	_grid.bag_take_requested.connect(_take_bag_offer)
+	_grid.bag_discard_requested.connect(_discard_bag)
 	_grid.rebuild()
 
 	# The offer on the left, the pack on the right, and the drag goes between them
@@ -402,9 +406,10 @@ func _offer_grid() -> Control:
 	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
 	for i in range(_offers.size()):
 		var idx: int = i
-		grid.add_child(LootGrid.loose_piece(_offers[i], not GameState.loot_is_full(),
+		var bag: bool = GameState.is_bag_entry(_offers[i])
+		grid.add_child(LootGrid.loose_piece(_offers[i], _can_take(_offers[i]),
 			_grid, true, idx,
-			(func(): _use_offer(idx)) if _spendable else Callable()))
+			(func(): _use_offer(idx)) if _spendable and not bag else Callable()))
 	# Three rows fit beside the pack without the panel outgrowing a 720p canvas,
 	# which covers everything the game can currently pay at once — Mom's Coin Purse
 	# is four and Sacred Bark doubles it to eight. Anything bigger scrolls rather
@@ -416,7 +421,7 @@ func _offer_grid() -> Control:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(
 		_offer_columns() * (LootSlot.CELL_W + 6),
-		LootSlot.cell_height(_spendable) * OFFER_ROWS + 6 * (OFFER_ROWS - 1))
+		LootSlot.CELL * OFFER_ROWS + 6 * (OFFER_ROWS - 1))
 	scroll.add_child(grid)
 	return scroll
 
@@ -426,7 +431,7 @@ func _build_single(col: VBoxContainer) -> void:
 	var entry: Dictionary = _offers[0]
 	var holder := CenterContainer.new()
 	holder.add_child(LootGrid.loose_piece(
-		entry, not GameState.loot_is_full(), _grid, false, 0))
+		entry, _can_take(entry), _grid, false, 0))
 	col.add_child(holder)
 
 	col.add_child(_line(LootSystem.display_name(entry), ACCENT, 18))
@@ -449,7 +454,7 @@ func _build_single(col: VBoxContainer) -> void:
 	# Offered whether the pack is full or not — spending a piece you were not going
 	# to carry is a real choice even with eight slots free, and an unidentified one
 	# is still the gamble it always was.
-	if _spendable:
+	if _spendable and not GameState.is_bag_entry(entry):
 		var use_now := UITheme.confirm_button(
 			"Take it now" if _is_pill(entry) else "Read it now", Vector2(0, 30), 12)
 		use_now.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -504,7 +509,8 @@ func _pack_column() -> Control:
 func _take_all_row(multi: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var room: int = GameState.loot_space()
+	var room: int = GameState.loot_space() \
+		+ _offers.filter(func(e): return GameState.is_bag_entry(e)).size()
 	var take := UITheme.confirm_button(
 		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
 		Vector2(190, 34), 15)
@@ -565,15 +571,45 @@ func _take_offer(entry: Dictionary, slot: int, offer: int) -> void:
 func _take_all() -> void:
 	if _answered:
 		return
-	while not _offers.is_empty() and not GameState.loot_is_full():
-		var entry: Dictionary = _offers[0]
-		# The FIRST FREE SLOT, which is what the button's own tooltip promises — the
-		# per-piece answer is the drag, and this is the one for "just take them".
-		if not GameState.take_loot_entry(entry):
-			break
-		_taken.append(entry.duplicate(true))
-		_offers.remove_at(0)
+	# The FIRST FREE SLOT, which is what the button's own tooltip promises — the
+	# per-piece answer is the drag, and this is the one for "just take them". A bag
+	# takes no slot, so a full pack does not stop one: it is attached wherever it
+	# fits best, and the pieces after it may then have room.
+	var i: int = 0
+	while i < _offers.size():
+		var entry: Dictionary = _offers[i]
+		if _can_take(entry) and GameState.take_loot_entry(entry):
+			_taken.append(entry.duplicate(true))
+			_offers.remove_at(i)
+			i = 0 if GameState.is_bag_entry(entry) else i
+			continue
+		i += 1
 	_after_change()
+
+# Whether an offer can go into the pack right now. A bag always can — it is more
+# pack rather than a piece in it (docs/loot-passives.md §6).
+func _can_take(entry: Dictionary) -> bool:
+	return GameState.is_bag_entry(entry) or not GameState.loot_is_full()
+
+# A bag off the table, dropped on the pack's edge at `origin`, turned `rot`.
+func _take_bag_offer(entry: Dictionary, origin: Vector2i, rot: int, offer: int) -> void:
+	if _answered or not GameState.place_bag(entry, origin, rot):
+		return
+	_taken.append(entry.duplicate(true))
+	_forget_offer(offer, entry)
+	_after_change()
+
+# An attached bag dragged onto the bin. It asks first, like a piece does.
+func _discard_bag(bag: int) -> void:
+	if _answered or not GameState.can_remove_bag(bag):
+		return
+	var bag_name: String = LootSystem.display_name(
+		{"type": "bag", "id": GameState.pack_bags[bag].get("id", "")})
+	LootTrash.confirm(_page(), bag_name, func():
+		if GameState.remove_bag(bag).is_empty():
+			return
+		GameLog.add("Threw away %s." % bag_name, UITheme.DANGER)
+		_after_change())
 
 func _leave_offer(offer: int) -> void:
 	if _answered:

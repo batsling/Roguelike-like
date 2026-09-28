@@ -38,6 +38,10 @@ const LOOT_COLOR := Color(0.72, 0.62, 0.86)
 # for a scroll, a pill, a bottle and a stick.
 const UNKNOWN_TEXT := "???"
 
+# The pack slot the piece being spent was in, set by `use_loot` and handed to the
+# `loot_used` hook as `slot` — -1 for a piece used where it stands (no slot).
+var _spent_slot: int = -1
+
 # What Echo Chamber remembers is RUN state, not item state (GameState.loot_used_
 # memory): the relic READS the memory, it does not carry it. Two Echo Chambers
 # therefore see the same three uses rather than two separate histories, and the
@@ -70,6 +74,10 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	if LootPassives.is_passive(entry):
 		return {"logs": [], "requests": []}
 	entry = (entry as Dictionary).duplicate(true)
+	# Where it was, for the hook: a bag's passive asks whether the piece was spent
+	# from one of its own cells (Potion Belt, docs/loot-passives.md §6). Read now,
+	# before the slot is emptied below.
+	_spent_slot = GameState.loot_slot_of(index)
 	# A WAND SPENDS A CHARGE RATHER THAN A SLOT, until the charge it spends is its
 	# last (docs/wands-design.md §4.1). That is the whole of what the kind changes
 	# about using loot, and it is one branch: everything below — resolving, the
@@ -177,7 +185,9 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# docs/loot-passives.md §3). Here and not in `use_loot`, so a piece used on the
 	# spot counts as well; after the echoes, and never FOR them, so a copy of a copy
 	# cannot breed.
-	TriggerBus.loot_used.emit({"entry": spent})
+	var slot: int = _spent_slot
+	_spent_slot = -1
+	TriggerBus.loot_used.emit({"entry": spent, "slot": slot})
 	return out
 
 # The context a REMEMBERED piece is replayed in. The use in hand's own aim wins
@@ -196,6 +206,19 @@ func _echo_ctx(echo: Dictionary, ctx: Dictionary) -> Dictionary:
 # Is this piece the one kind that spends charges rather than slots? One reading of
 # the type, here rather than at each call site, so the exceptions a wand needs can
 # never be spelled two ways.
+# A bag is more pack rather than a piece in it (docs/loot-passives.md §6).
+func is_bag(entry: Dictionary) -> bool:
+	return String(entry.get("type", "")) == "bag"
+
+# What a bag says about itself: how much room it adds, then its own line if it has
+# one. Leather Bag's sheet line is N/A, and "adds 4 slots" is the whole of it.
+func bag_description(b: BagData) -> String:
+	if b == null:
+		return ""
+	var room: String = "Adds %d slot%s to your pack." % [b.cell_count(),
+		"" if b.cell_count() == 1 else "s"]
+	return room if b.description == "" else "%s\n%s" % [room, b.description]
+
 func is_wand(entry: Dictionary) -> bool:
 	return String(entry.get("type", "")) == "wand"
 
@@ -296,6 +319,9 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 		"trinket":
 			var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
 			return t.display_name if t != null else "Trinket"
+		"bag":
+			var b: BagData = Data.get_bag(StringName(entry.get("id", "")))
+			return b.display_name if b != null else "Bag"
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
@@ -325,6 +351,8 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 			return WandSystem.art_texture(entry)
 		"trinket":
 			return LootPassives.load_trinket_art(Data.get_trinket(StringName(entry.get("id", ""))))
+		"bag":
+			return LootPassives.load_bag_art(Data.get_bag(StringName(entry.get("id", ""))))
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -354,6 +382,8 @@ func glyph(entry: Dictionary) -> String:
 			return "🪄"
 		"trinket":
 			return "✦"
+		"bag":
+			return "🎒"
 	return "📜"
 
 # ===========================================================================
@@ -444,9 +474,9 @@ func is_identified(entry: Dictionary) -> bool:
 			# of `carried_unidentified`, so Scroll of Identify never offers to tell
 			# you something you can already read.
 			return true
-		"trinket":
+		"trinket", "bag":
 			# Nothing hidden about one either: its line is on it from the moment it
-			# is found (docs/loot-passives.md §1).
+			# is found (docs/loot-passives.md §1, §6).
 			return true
 	return false
 
@@ -541,6 +571,8 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 		"trinket":
 			var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
 			return t.description if t != null else ""
+		"bag":
+			return bag_description(Data.get_bag(StringName(entry.get("id", ""))))
 	return ""
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -670,6 +702,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Wand"
 		"trinket":
 			return "Trinket"
+		"bag":
+			return "Bag"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
@@ -709,6 +743,13 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		}
 	var lines: Array = [description(entry)]
 	var note: String = ""
+	# A BAG SAYS HOW TO PLACE IT (docs/loot-passives.md §6): it is the one piece
+	# that goes onto the EDGE of the pack rather than into it, and turns.
+	if is_bag(entry):
+		var b: BagData = Data.get_bag(StringName(entry.get("id", "")))
+		if b != null:
+			sub += "  ·  %dx%d" % [b.size.x, b.size.y]
+		note = "▸ Drag it onto the edge of your pack. R or right-click turns it."
 	# A PASSIVE PIECE SAYS SO, and says what it is doing from where it sits
 	# (docs/loot-passives.md §2): a Blueprint names what it is copying right now,
 	# which is the one thing about it that changes when the pack is rearranged.
@@ -716,12 +757,16 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		sub += "  ·  Passive"
 		note = "▸ Works while it is in your pack — never spent."
 		var def: Resource = LootPassives.def_for(entry)
-		if LootPassives.copies(def) != "":
+		var dir: String = LootPassives.facing(entry, def)
+		if dir != "":
+			var where: String = {"right": "to its right", "down": "below it",
+				"left": "to its left", "up": "above it"}.get(dir, "to its right")
 			var slot: int = _carried_slot(entry)
 			if slot >= 0:
 				var copying: String = LootPassives.copying_name(slot)
 				lines.append("Copying: %s" % copying if copying != ""
-					else "Copying nothing — put a passive piece to its right.")
+					else "Copying nothing — put a passive piece %s." % where)
+			lines.append("Copies the piece %s. Turn it (R while dragging) to aim it." % where)
 		var grown: int = int(entry.get("counter", 0))
 		if grown != 0:
 			lines.append("Grown by %+d so far." % grown)

@@ -72,7 +72,7 @@ func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 		var c: CardData = Data.get_card(id)
 		assert_true(c != null and not c.is_passive(), "%s is played, not held" % id)
 
-func test_a_trinket_is_a_sixth_of_the_kind_blind_drop() -> void:
+func test_a_trinket_is_part_of_the_kind_blind_drop() -> void:
 	assert_true(GameState.LOOT_KINDS.has("trinket"))
 	var e: Dictionary = GameState.roll_loot_entry("trinket")
 	assert_eq(String(e.get("type", "")), "trinket")

@@ -274,6 +274,10 @@ func _quiet_ladder() -> void:
 func _shut_failure_tap() -> void:
 	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
 
+# USE THIS, NOT `_shut_failure_tap()` + `report(false)`, whenever a test counts
+# or follows bodies across a miss: eleven tests paired those two, and each failed
+# about one run in fifty on the road's own spawn (§19.5).
+#
 # A SETUP REPORT THAT STANDS NOBODY UP AT ALL. Shutting the tap only waives the
 # +1; near the Amulet the road still stands its own 1 or 2 up (§7.4), so a test
 # that counts bodies across a report would read a count off where the random
@@ -566,8 +570,7 @@ func test_pick_then_report_advances_the_loop() -> void:
 	assert_true(GameLoop2.has_arrivals(), "picking spawns the enemy")
 	assert_eq(GameState.current_game_id, target, "player travelled to the picked game")
 	var gp_before: int = GameState.games_played
-	_shut_failure_tap()
-	_ui.report(false)             # miss -> the enemy stacks and follows
+	_quiet_report()             # miss -> the enemy stacks and follows
 	assert_eq(GameState.games_played, gp_before + 1, "the game counts as played")
 	assert_eq(GameLoop2.stack_size(), 2,
 		"a missed goal leaves the game's enemy AND the escort that spawned with it")
@@ -581,13 +584,23 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	# leaving two where the defeated one stood — makes it 2 for a reason this test
 	# is not about.
 	_disarm_board()
+	# A BOSS pays a chest of its own on top of the win's (GameLoop2.claim_chests),
+	# and the random offering sometimes stands one: read which it is up front.
+	var landed: Dictionary = GameLoop2.arrival()
+	var boss: bool = not landed.is_empty() and (landed["enemy"] as GoalEnemyData).is_boss()
 	_report_beat(_ui)              # met -> defeat + a drop to be asked about
-	assert_eq(GameLoop2.stack_size(), 1, "a met goal still leaves the escort standing")
+	# THE ROAD CAN STAND BODIES UP AT THE END OF ANY GAME (§19.5, `pressure()`),
+	# kill or no kill — usually none this early, but it rides the random road. Both
+	# of these used to be asserted as exactly 1 and failed about one run in ten.
+	var spawned: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack_size(), 1 + spawned,
+		"a met goal still leaves the escort standing (plus what the road stood up)")
 	# The drop is already ON the haul screen: the resolve lands instantly out in
 	# the wilds now (§7.4), and landing is what hands the queue over.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the report ended on the haul screen")
-	assert_eq(_ui._post_screen._chest_sections.size(), 1, "carrying the kill's chest")
+	assert_eq(_ui._post_screen._chest_sections.size(), 2 if boss else 1,
+		"carrying the kill's chest (and a boss's own, if it was one)")
 	_leave_post_game()
 
 # An enemy kill ASKS whether you want what fell off it (§8): the item at full
@@ -736,7 +749,14 @@ func test_leaving_a_drop_discards_it() -> void:
 		return
 	var inv_before: int = GameState.inventory.size()
 	chest.leave()                                # what walking off it does
-	assert_null(_ui._post_screen.chest(), "the drop was cleared")
+	# THE CHEST LEFT is what was cleared — not necessarily every chest. The haul
+	# screen shows all of a report's chests at once and `chest()` answers the first
+	# one still open, so a report that ALSO paid a chest another way (a checklist
+	# goal whose reward is "+1 Small Chest", which the random run sometimes rolls)
+	# hands back that second one here. Asserting null made this fail about one full
+	# run in several, for a screen that was behaving exactly as designed.
+	assert_true(chest.answered_already(), "the drop was cleared")
+	assert_false(_ui._post_screen._live_chests().has(chest), "and is no longer offered")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
 	_leave_post_game()
 
@@ -749,6 +769,11 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	# Queued before the report, which is when the whole queue is handed over — the
 	# resolve can land instantly now (§7.4).
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
+	# A BOSS in the random offering pays a chest of its own (claim_chests), making
+	# three where this counts two — read it up front rather than hope it is not.
+	var landed: Dictionary = GameLoop2.arrival()
+	var extra: int = 1 if not landed.is_empty() \
+		and (landed["enemy"] as GoalEnemyData).is_boss() else 0
 	_report_beat(_ui)
 	_ui._end_resolve()
 	var screen = _ui._post_screen
@@ -759,10 +784,10 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	assert_not_null(first, "the first chest is the question in front of you")
 	if first == null:
 		return
-	assert_eq(screen.chests_waiting(), 1, "the second is queued behind it")
+	assert_eq(screen.chests_waiting(), 1 + extra, "the second is queued behind it")
 	first.leave()
 	assert_not_null(screen.chest(), "and comes up once the first is answered")
-	assert_eq(screen.chests_waiting(), 0)
+	assert_eq(screen.chests_waiting(), extra)
 	_leave_post_game()
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
@@ -884,6 +909,12 @@ func test_a_bomb_clicked_on_an_occupied_square_still_hits_that_body() -> void:
 	# blast (a boss's immunity, Sticky Bombs' stun, the bomb_used trigger).
 	_pick_enemies(0)
 	_quiet_report()
+	# NOT A BOSS. A boss shrugs a bomb off (the immunity above), so when the random
+	# offering stood one — a Banshee, about one run in seven — the blast rightly did
+	# nothing and this failed on a rule it is not about. The routing is the subject,
+	# so a plain one-cell body stands here.
+	if (GameLoop2.stack[0]["enemy"] as GoalEnemyData).is_boss():
+		_make_front_body(&"monkey")
 	var entry: Dictionary = GameLoop2.stack[0]
 	# Stood on a known square rather than wherever the walk left it: a body out in
 	# the overflow lane fills no cells, and this test is about the ones that do.
@@ -979,20 +1010,36 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 func test_the_arrow_spends_the_charge_and_moves_the_enemy() -> void:
 	GameState.push = 1
 	_pick_enemies(0)
+	# Disarmed, as a screen test should be (CLAUDE.md): a body's own turn in the
+	# report below can move bodies or add one in front of this one.
+	_disarm_board()
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
-	var col: int = int(entry["col"])
+	var at := Vector2i(int(entry["col"]), int(entry["row"]))
 	_ui._board.begin_push()
-	_ui._board.click_enemy(inst, entry, col)
-	var arrow: Button = null
+	_ui._board.click_enemy(inst, entry, at.x)
+	# ANY ARROW THE RULES ALLOW, forward when it is one of them. This is about the
+	# press — it spends the charge and moves the body the way it points — not about
+	# which way happens to be open; it used to insist on forward, which failed once
+	# in a full run with nothing to press. If no arrow is drawn at all, the message
+	# says why, so the next one explains itself.
+	var arrows: Dictionary = {}
 	for a in _ui._board._arrow_layer.get_children():
-		if a.has_meta("push_dir") and a.get_meta("push_dir") == GameLoop2.PUSH_FORWARD:
-			arrow = a
-	assert_not_null(arrow, "the forward arrow is there to press")
-	arrow.pressed.emit()
+		if a.has_meta("push_dir"):
+			arrows[a.get_meta("push_dir")] = a
+	assert_false(arrows.is_empty(), "an arrow is there to press (push_mode=%s charges=%d target=%d legal=%s)"
+		% [_ui._board.push_mode, GameState.push, _ui._board.push_target,
+			str(GameLoop2.push_directions(inst))])
+	if arrows.is_empty():
+		return
+	var dir: Vector2i = GameLoop2.PUSH_FORWARD if arrows.has(GameLoop2.PUSH_FORWARD) \
+		else arrows.keys()[0]
+	(arrows[dir] as Button).pressed.emit()
 	assert_eq(GameState.push, 0, "the charge is spent by the ARROW, not by arming")
-	assert_eq(int(GameLoop2.stack[0]["col"]), col - 1, "and it moved the way the arrow pointed")
+	var moved: Dictionary = GameLoop2.entry_for(inst)
+	assert_eq(Vector2i(int(moved["col"]), int(moved["row"])), at + dir,
+		"and it moved the way the arrow pointed")
 	assert_false(_ui._board.push_mode, "one press of Push spends at most one charge")
 
 # --- the bomb is armed and aimed too ---------------------------------------
@@ -1126,15 +1173,19 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 	GameState.bombs = 1
 	GameState.push = 1
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	# A BODY ONE BOMB KILLS: a boss shrugs a bomb off and a sturdier body takes it
+	# and stands, and either leaves the aim — correctly — on a body that is still
+	# there. The random offering stood one about one run in seven.
+	_make_front_body(&"monkey")
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
 	_ui._board.begin_push()
 	_ui._board.click_enemy(inst, entry, int(entry["col"]))
 	assert_eq(_ui._board.push_target, inst, "the push is aimed at it")
 	_ui.bomb_follower(inst)
-	assert_eq(GameLoop2.stack_size(), 0, "the bomb removed it")
+	# THAT body, not the head count: the report can stand another one up.
+	assert_true(GameLoop2.entry_for(inst).is_empty(), "the bomb removed it")
 	assert_eq(_ui._board.push_target, 0, "and the aim comes off the dead body")
 
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
@@ -2027,9 +2078,16 @@ func test_ticking_an_arrival_is_what_clears_it() -> void:
 	# Disarmed: a ticked body that dies with Split leaves two behind, so the count
 	# grows where this test is about the tick landing at all.
 	_disarm_board()
-	var before: int = GameLoop2.stack.size()
+	var hp_before: int = int(landed.get("health", 0))
 	_ui.report(true, [inst])
-	assert_lt(GameLoop2.stack.size(), before, "the ticked body took its hit")
+	# THE TICKED BODY, not the board's head count. The count used to be asserted to
+	# drop, which is only USUALLY true: a boss can take the goal hit and stand
+	# (more Health than one hit), and the road can stand a new body up at the end
+	# of any game (§19.5, `pressure()`) — either leaves the count where it was
+	# while the tick landed exactly as it should.
+	var after: Dictionary = GameLoop2.entry_for(inst)
+	assert_true(after.is_empty() or int(after.get("health", 0)) < hp_before,
+		"the ticked body took its hit")
 
 # The game the run last played, for the record assertions above.
 func _last_played_id() -> StringName:
@@ -2491,11 +2549,11 @@ func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
 	assert_true(_ui.is_ancestor_of(_ui._loot_panel), "it floats over the page")
 	assert_false(_ui._inv_wrap.is_ancestor_of(_ui._loot_panel),
 		"and not inside the pack panel")
-	var grid: GridContainer = _find_grid(_ui._loot_panel)
+	var grid: LootGrid = _find_grid(_ui._loot_panel)
 	assert_not_null(grid, "the window is a grid")
 	if grid == null:
 		return
-	assert_eq(grid.columns, 3, "three across")
+	assert_eq(grid.grid_columns(), 3, "three across")
 	# ALWAYS nine. The empties are how the window says how much room is left, and
 	# they are what keeps it a grid rather than a row that wraps.
 	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
@@ -2538,11 +2596,13 @@ func test_the_loot_window_stays_on_screen() -> void:
 	assert_lt(panel.end.y, screen.y + 1.0, "and the whole of it fits the window")
 	assert_lt(panel.end.x, screen.x + 1.0)
 
-func _find_grid(node: Node) -> GridContainer:
-	if node is GridContainer:
+# The PACK's grid: a LootGrid, which is a Container rather than a GridContainer
+# since the pack could have bags on it (docs/loot-passives.md §6).
+func _find_grid(node: Node) -> LootGrid:
+	if node is LootGrid:
 		return node
 	for c in node.get_children():
-		var found: GridContainer = _find_grid(c)
+		var found: LootGrid = _find_grid(c)
 		if found != null:
 			return found
 	return null
@@ -4052,9 +4112,17 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 			with_art += 1
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
 		"the report step shows the boss beside the goal it is asking about")
-	_shut_failure_tap()
-	_ui.report(false)                         # miss it: now it follows you
-	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art,
+	_quiet_report()                         # miss it: now it follows you
+	# COUNTED AGAIN, off the board as it now stands: the report can stand another
+	# body up (the road's end-of-game spawns, §19.5), and one with art is one more
+	# portrait on the list — correctly. Reusing the count from before the report
+	# failed about one run in fifty for exactly that.
+	var with_art_now: int = 0
+	for entry in GameLoop2.stack:
+		var body: GoalEnemyData = entry["enemy"]
+		if body != null and body.image != null:
+			with_art_now += 1
+	assert_eq(_texture_rects_under(_ui._verify_box).size(), with_art_now,
 		"and it keeps its portrait on the standing list it moves to")
 
 func test_an_ordinary_follower_wears_its_portrait_too() -> void:
@@ -4073,8 +4141,7 @@ func test_an_ordinary_follower_wears_its_portrait_too() -> void:
 	_ui._populate_play_panel()
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"the report step shows the body beside the goal it is asking about")
-	_shut_failure_tap()
-	_ui.report(false)                         # miss it: now it follows you
+	_quiet_report()                         # miss it: now it follows you
 	assert_eq(GameLoop2.stack_size(), 1, "a missed goal leaves a follower")
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 1,
 		"and it keeps its portrait on the standing list it moves to")
@@ -4309,8 +4376,7 @@ func test_a_missed_goal_leaves_both_bodies_following() -> void:
 	# turn can add a body to the board — a spawner taking its turn during the
 	# report makes the count 3 and reads exactly like the escort rule being wrong.
 	_disarm_board()
-	_shut_failure_tap()
-	_ui.report(false)                    # a missed goal leaves the pair following
+	_quiet_report()                    # a missed goal leaves the pair following
 	assert_eq(GameLoop2.stack.size(), 2, "the enemy and its escort are both out there")
 
 # ...and while a game is being PLAYED, the enemy standing on the board for it is
@@ -4448,8 +4514,7 @@ func test_a_missed_goal_still_advances_the_run() -> void:
 	# withheld, which is what separates this from an escape.
 	var gp_before: int = GameState.games_played
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	assert_eq(GameState.games_played, gp_before + 1, "the game is behind you")
 	assert_eq(GameLoop2.stack_size(), 1, "and its enemy followed you out")
 
@@ -4999,21 +5064,27 @@ func test_a_saved_run_round_trips_through_a_live_overworld() -> void:
 
 func test_a_restored_follower_keeps_its_place_on_the_board() -> void:
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	var entry: Dictionary = GameLoop2.stack[0]
 	var expect: Dictionary = {
 		"enemy": (entry["enemy"] as GoalEnemyData).id,
 		"col": int(entry["col"]), "row": int(entry["row"]),
 		"health": int(entry["health"]), "instance": int(entry["instance"]),
 	}
+	# AS MANY AS WERE SAVED, and the follower found BY INSTANCE: the miss above can
+	# stand a second body up (the road's end-of-game spawns, §19.5), and asserting
+	# exactly one failed on the runs where it did.
+	var saved_count: int = GameLoop2.stack_size()
 	assert_true(SaveSystem.save_named("board"))
 	GameState.reset_run()
 	GameLoop2.reset()
 	GameState.set_overworld_context(_ui)
 	assert_true(SaveSystem.load_named("board"))
-	assert_eq(GameLoop2.stack_size(), 1, "the follower came back")
-	var back: Dictionary = GameLoop2.stack[0]
+	assert_eq(GameLoop2.stack_size(), saved_count, "the follower came back")
+	var back: Dictionary = GameLoop2.entry_for(int(expect["instance"]))
+	assert_false(back.is_empty(), "under the same instance handle")
+	if back.is_empty():
+		return
 	assert_eq((back["enemy"] as GoalEnemyData).id, expect["enemy"], "the same enemy")
 	assert_eq(int(back["col"]), int(expect["col"]), "standing in the same column")
 	assert_eq(int(back["row"]), int(expect["row"]), "and the same row")
@@ -5437,10 +5508,15 @@ func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
 
 func test_nothing_prints_the_swing_count_over_the_body() -> void:
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)                         # miss, so the enemy stands on the board
-	assert_eq(GameLoop2.stack_size(), 1)
+	# FOLLOWED BY INSTANCE: this is about one body's badges, and the report below
+	# can stand a second body up (the road's end-of-game spawns, §19.5) — the count
+	# used to be asserted as exactly 1, which was only usually true.
 	var inst: int = int(GameLoop2.stack[0]["instance"])
+	_quiet_report()                         # miss, so the enemy stands on the board
+	var body: Dictionary = GameLoop2.entry_for(inst)
+	assert_false(body.is_empty(), "the body is still standing")
+	if body.is_empty():
+		return
 	var texts: Array = _badge_texts(inst)
 	assert_gt(texts.size(), 0, "the body wears badges")
 	for t in texts:
@@ -5448,7 +5524,7 @@ func test_nothing_prints_the_swing_count_over_the_body() -> void:
 			"no swing count sitting on top of the art: %s" % t)
 		if String(t).begins_with("⚔"):
 			assert_eq(String(t), _ui._board._damage_badge_text(
-				GameLoop2.stack[0], GameLoop2.attacks_in_turns(GameLoop2.stack[0])),
+				body, GameLoop2.attacks_in_turns(body)),
 				"the ⚔ badge is where the count went")
 
 func test_the_board_says_how_long_its_playback_runs() -> void:
@@ -5498,8 +5574,7 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	# back, the body the end of the game stands up has to shove one forward, and
 	# that slide is the playback.
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	await _playback_done()                    # let the first playback finish
 	_leave_post_game()                        # …and walk off its haul, as a player does
 	_dismiss_event()
@@ -6027,8 +6102,7 @@ func test_an_ordinary_game_leaves_the_board_alone() -> void:
 	_ui._build_choices()
 	var cols_before: int = GameLoop2.grid_cols()
 	_pick_enemies(0)
-	_shut_failure_tap()
-	_ui.report(false)
+	_quiet_report()
 	assert_eq(GameLoop2.grid_cols(), cols_before,
 		"a game that crosses no gate changes nothing about the board")
 
@@ -6071,8 +6145,7 @@ func test_the_playback_runs_one_beat_per_turn() -> void:
 
 func test_health_starts_the_playback_where_it_was_before_the_blows() -> void:
 	_pick_solo(0)
-	_shut_failure_tap()
-	_ui.report(false)                        # miss, so the enemy stands on the board
+	_quiet_report()                        # miss, so the enemy stands on the board
 	assert_eq(GameLoop2.stack_size(), 1)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
@@ -7259,14 +7332,16 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 	assert_not_null(payout, "the game's own loot is on the table")
 	if payout == null:
 		return
-	var carried: int = GameState.loot_items.size()
+	# A BAG on the table goes ONTO the pack rather than into a slot of it
+	# (docs/loot-passives.md §6), so it is counted where it lands.
+	var carried: int = GameState.loot_items.size() + GameState.pack_bags.size()
 	# The table can hold more than the game's own piece now: every body defeated at
 	# this game left one on the floor too, and the report sweeps them here (§8.2).
 	var on_table: int = payout.remaining()
 	assert_gt(on_table, 0, "there is something to take")
 	payout.take()
-	assert_eq(GameState.loot_items.size(), carried + on_table,
-		"taking it fills a slot per piece")
+	assert_eq(GameState.loot_items.size() + GameState.pack_bags.size(), carried + on_table,
+		"taking it fills a slot per piece (or attaches a bag)")
 	assert_eq(payout.remaining(), 0, "and clears the table")
 	# …AND THE SECTION STAYS. As a modal, the last piece leaving the table is the
 	# end of the question. Here it is the opposite: the piece has just gone into the
@@ -7619,9 +7694,15 @@ func test_the_verbs_are_held_while_the_question_is_up() -> void:
 
 # Every game pays an event now, so this is any on-map game the run has not
 # already taken one from.
+# NOT A SHOP: a Shop node pays no event on arrival (§14.4, EventSystem.
+# roll_for_arrival), and node kinds are dealt per run — so the first game in the
+# catalog (100 Rogues) was a Shop about one run in seven, and the event test below
+# failed on a rule it is not about.
 func _node_carrying_an_event() -> StringName:
 	for g in Data.all_games():
 		if not (g is GameData) or RunGraph.is_off_map(g.id):
+			continue
+		if ShopSystem.is_shop(g.id):
 			continue
 		if not GameState.event_nodes_fired.has(g.id):
 			return g.id

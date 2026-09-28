@@ -14,7 +14,7 @@ the honour system.
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
-| trinkets, passive cards, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule, the five hooks it added, the coin-chain rule and the trigger toast |
+| trinkets, passive cards, bags, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule, the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves) |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
@@ -178,6 +178,21 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 t
     `test_a_spawner_with_nowhere_to_lay_a_body_lays_nothing` asserts the other
     half on purpose. If a spawner test starts varying again, look at what the
     selector rolls before anything else.
+  - **Eight more in `test_overworld2`, and the same two causes six times over.**
+    Found with a stress loop — the one test run 40-50 times in a single process,
+    with `before_each`/`after_each` between — which turned "one full run in
+    several" into a rate, and then a print of the board on each failure. Before
+    blaming a seed, check these two: **the random offering stands a BOSS** about
+    one run in seven (a boss is bomb-immune, survives a goal hit, and pays a
+    chest of its own on top of the win's), and **the road stands bodies up at the
+    end of ANY game** (`pressure()`, §19.5, counted in `last_result["end_spawns"]`),
+    so a head count after a report is not a fact about the body you acted on.
+    Follow THAT body by instance (`GameLoop2.entry_for`), and stand a known one
+    with `_make_front_body(&"monkey")` when the test needs a plain one-hit body.
+    A third: node kinds are dealt per run, so a helper that picks "the first
+    game in the catalog" is sometimes standing on a Shop, which pays no event.
+    **Never run two GUT processes at once**: they share `user://`, race on
+    `slot_0.json`, and produce a spray of failures that are not flakes at all.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

@@ -32,10 +32,10 @@ const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
 const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "wands",
-	"trinkets", "statuses"]
+	"trinkets", "bags", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
 	"potions": "Potions", "cards": "Cards", "wands": "Wands",
-	"trinkets": "Trinkets", "statuses": "Statuses"}
+	"trinkets": "Trinkets", "bags": "Bags", "statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -361,6 +361,8 @@ func _build_grant_tab() -> void:
 			_list_wands()
 		"trinkets":
 			_list_trinkets()
+		"bags":
+			_list_bags()
 		"statuses":
 			_list_statuses()
 		_:
@@ -525,6 +527,27 @@ func _list_trinkets() -> void:
 			"press": func() -> void:
 				GameState.add_trinket_loot(trinket.id)
 				_say("Added trinket: %s" % trinket.display_name, LootSystem.LOOT_COLOR)})
+	_emit_rows(rows)
+
+# Every bag, attached wherever it fits best (docs/loot-passives.md §6) — to place
+# one by hand, drag it into position in the loot window afterwards.
+func _list_bags() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for b in Data.all_bags():
+		if not (b is BagData):
+			continue
+		var label: String = String(b.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var bag: BagData = b
+		rows.append({"label": label, "detail": "%s · %dx%d · %s" % [bag.rarity,
+				bag.size.x, bag.size.y, LootSystem.bag_description(bag)],
+			"press": func() -> void:
+				if GameState.add_bag_loot(bag.id):
+					_say("Added bag: %s" % bag.display_name, LootSystem.LOOT_COLOR)
+				else:
+					_say("No room for %s" % bag.display_name, UITheme.DANGER)})
 	_emit_rows(rows)
 
 func _list_statuses() -> void:

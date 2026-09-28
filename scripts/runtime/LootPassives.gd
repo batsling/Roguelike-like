@@ -34,6 +34,34 @@ extends RefCounted
 # Which way a copier looks. Only "right" is authored (Blueprint).
 const DIRECTIONS := {"right": Vector2i(1, 0), "left": Vector2i(-1, 0),
 	"up": Vector2i(0, -1), "down": Vector2i(0, 1)}
+# The four directions a quarter turn CLOCKWISE apart — how a turned piece's
+# authored direction becomes the one it faces (docs/loot-passives.md §2).
+const TURNS := ["right", "down", "left", "up"]
+
+# EVERY PIECE CAN BE TURNED, as bags can, and a turn is saved on the piece as
+# `rot` (quarter turns clockwise). For most pieces it is only the picture; for a
+# piece that reads a neighbour it is WHICH neighbour: a Blueprint turned once
+# copies the piece below it, as a directional item does in Backpack Battles.
+static func turned(dir: String, rot: int) -> String:
+	var at: int = TURNS.find(dir)
+	if at < 0:
+		return dir
+	return String(TURNS[posmod(at + rot, 4)])
+
+# THE DIRECTION A PIECE ACTS IN, if it acts on a neighbour at all — the one
+# question every surface asks to draw a piece's ARROW (LootGrid.DirArrow), so a
+# new piece that reads a neighbour gets its arrow by answering here. Blueprint's
+# copy is the only such rule today; add the next one's field to this function.
+static func direction(entry) -> String:
+	return facing(entry, def_for(entry))
+
+# The direction the piece in `entry` copies, turned the way it is carried, or ""
+# for a piece that copies nothing.
+static func facing(entry, def: Resource) -> String:
+	var dir: String = copies(def)
+	if dir == "" or not (entry is Dictionary):
+		return dir
+	return turned(dir, int(entry.get("rot", 0)))
 
 # Relic-shaped stand-ins, one per definition. Keyed by "<type>/<id>". The triggers
 # they carry are read-only at runtime (all per-piece state is on the entry), so one
@@ -68,33 +96,17 @@ static func copies(def: Resource) -> String:
 
 # --- where it is ----------------------------------------------------------------
 
-# How wide the pack is drawn. The one statement of it — LootGrid draws with this —
-# because "the slot to the right" is only a fact about the grid the player sees.
-# Three columns; a capacity that is a larger multiple of three widens instead of
-# growing a fourth row (LootGrid's reasoning, kept here so both read one rule).
-static func pack_columns() -> int:
-	var cap: int = GameState.loot_capacity()
-	if cap > 9 and cap % 3 == 0:
-		@warning_ignore("integer_division")
-		return cap / 3
-	return 3
-
-# The slot `dir` of `slot`, or -1 off the edge. A row does NOT wrap: the last cell
-# of a row has nothing to its right, which is the rule that makes the right-hand
-# column a real cost for a Blueprint.
+# The slot `dir` of `slot`, or -1 when the pack has no cell there. Asked of the
+# CELLS the player sees (GameState.pack_cells), not of slot arithmetic: a bag
+# attached to the right of the 3x3 puts real cells to the right of its last column,
+# and a Blueprint there copies across into the bag (docs/loot-passives.md §6) —
+# adjacency is a fact about the grid, as it is in Backpack Battles, whichever bag a
+# cell belongs to. Nothing wraps: past the edge of the pack there is nothing.
 static func neighbour_slot(slot: int, dir: String) -> int:
 	var step: Vector2i = DIRECTIONS.get(dir, Vector2i.ZERO)
-	if step == Vector2i.ZERO or slot < 0:
+	if step == Vector2i.ZERO or slot < 0 or slot >= GameState.loot_capacity():
 		return -1
-	var cols: int = pack_columns()
-	var cap: int = GameState.loot_capacity()
-	var col: int = slot % cols + step.x
-	@warning_ignore("integer_division")
-	var row: int = slot / cols + step.y
-	if col < 0 or col >= cols or row < 0:
-		return -1
-	var out: int = row * cols + col
-	return out if out < cap else -1
+	return GameState.pack_slot_at(GameState.pack_cell_of(slot) + step)
 
 
 # --- what is working right now --------------------------------------------------
@@ -127,6 +139,18 @@ static func active() -> Array:
 			# is_same, not ==: Dictionaries compare by VALUE, and two Goat Hoofs picked
 			# up the same way are equal rows that are still two pieces.
 			"copy": not is_same(src["entry"], entry), "slot": slot, "copier": def})
+	# THE BAGS THAT DO SOMETHING (docs/loot-passives.md §6), after the pieces. A
+	# bag is not in a slot — it is slots — so `slot` is -1 and `bag` is its index in
+	# `pack_bags`, which is what the `if_in_bag` gate compares a spent piece's slot
+	# against. Its row in `pack_bags` is the entry, so a once-a-game claim or an
+	# every-N count rides it and is saved with it. Nothing copies a bag.
+	for i in range(GameState.pack_bags.size()):
+		var bag = GameState.pack_bags[i]
+		var bdef: BagData = GameState.bag_def(bag)
+		if bdef == null or not bdef.is_passive():
+			continue
+		out.append({"item": proxy(bdef), "def": bdef, "entry": bag, "source": bag,
+			"copy": false, "slot": -1, "copier": bdef, "bag": i})
 	return out
 
 # What the piece in `slot` actually does: {def, entry} of the passive it runs, or
@@ -144,7 +168,7 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 		var def: Resource = def_for(entry)
 		if def == null:
 			return {}
-		var dir: String = copies(def)
+		var dir: String = facing(entry, def)
 		if dir == "":
 			return {"def": def, "entry": entry}
 		at = neighbour_slot(at, dir)
@@ -179,9 +203,19 @@ static func proxy(def: Resource) -> ItemData:
 static func art_for(def: Resource) -> Texture2D:
 	if def is TrinketData:
 		return load_trinket_art(def)
+	if def is BagData:
+		return load_bag_art(def)
 	if def is CardData:
 		return CardSystem.art_texture({"type": "card", "id": def.id}, true)
 	return null
+
+static func load_bag_art(b: BagData) -> Texture2D:
+	if b == null:
+		return null
+	var path: String = "res://images2.0/bags/%s.png" % b.art_file()
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 static func load_trinket_art(t: TrinketData) -> Texture2D:
 	if t == null:

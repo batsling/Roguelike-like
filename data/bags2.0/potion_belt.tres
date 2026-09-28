@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BagData" load_steps=2 format=3 uid="uid://bag2_potion_belt"]
+
+[ext_resource type="Script" path="res://scripts/resources/BagData.gd" id="1_bag"]
+
+[resource]
+script = ExtResource("1_bag")
+id = &"potion_belt"
+display_name = "Potion Belt"
+rarity = "Rare"
+size = Vector2i(4, 1)
+description = "The first time a potion is consumed while inside this bag, Gain +1 Random Buff. Every 4 Potions consumed in this bag removes a random Debuff on the player."
+source_game = "Backpack Battles"
+file = "PotionBelt"
+triggers = [{"on": "loot_used", "once_per_game": true, "if_loot_type": "potion", "if_in_bag": true, "effects": [{"type": "gain_random_buff", "value": 1}]}, {"on": "loot_used", "if_loot_type": "potion", "if_in_bag": true, "every": 4, "effects": [{"type": "remove_random_debuff", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

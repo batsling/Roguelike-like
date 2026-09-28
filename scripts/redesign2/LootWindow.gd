@@ -172,6 +172,19 @@ func _discard(index: int) -> void:
 		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
 		_page._refresh_items())
 
+# An attached bag dragged onto the bin (docs/loot-passives.md §6): only an empty
+# one that holds up no other bag gets this far, and it asks first like a piece.
+func _discard_bag(bag: int) -> void:
+	if not GameState.can_remove_bag(bag):
+		return
+	var bag_name: String = LootSystem.display_name(
+		{"type": "bag", "id": GameState.pack_bags[bag].get("id", "")})
+	LootTrash.confirm(_page, bag_name, func():
+		if GameState.remove_bag(bag).is_empty():
+			return
+		GameLog.add("Threw away %s." % bag_name, UITheme.DANGER)
+		_page._refresh_items())
+
 # The floating panel: a heading with its own close button, the 3x3, and the
 # foldable record of what the run has learned. Opaque (not the page's translucent
 # PANEL) because it is standing on top of the board — a see-through inventory over
@@ -212,6 +225,7 @@ func _panel(reporting: bool) -> Control:
 		if GameState.move_loot(from, to):
 			_page.refresh_loot_window())
 	grid.discard_requested.connect(_discard)
+	grid.bag_discard_requested.connect(_discard_bag)
 	grid.rebuild()
 	box.add_child(grid)
 
@@ -220,7 +234,7 @@ func _panel(reporting: bool) -> Control:
 	# of loot the run will never willingly use, and reading the Amnesia scroll to
 	# make room is a worse answer than throwing it away. Hidden while the pack is
 	# locked — nothing can leave it mid-report either.
-	if not reporting and not GameState.loot_items.is_empty():
+	if not reporting and (not GameState.loot_items.is_empty() or not GameState.pack_bags.is_empty()):
 		var bin := LootTrash.new()
 		bin.grid = grid
 		box.add_child(bin)
@@ -229,7 +243,12 @@ func _panel(reporting: bool) -> Control:
 	# to rearrange — a single piece has nowhere to go.
 	if not GameState.loot_items.is_empty() and not reporting:
 		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
-			+ "onto another piece to swap the two, onto an empty one to move it there."))
+			+ "onto another piece to swap the two, onto an empty one to move it there. "
+			+ "R or right-click while dragging turns it."))
+	# THE BAGS MOVE TOO, and nothing on the screen would say so otherwise.
+	if not GameState.pack_bags.is_empty() and not reporting:
+		box.add_child(_note("Drag a bag by its tab to move it, with what is in it. "
+			+ "R or right-click while dragging turns it."))
 	if reporting:
 		# SPENDING IS NOT LOCKED, only moving (§4.3, LootGrid.locked). Mid-game is
 		# exactly when the player knows what they want out of a piece — the body

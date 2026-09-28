@@ -168,10 +168,16 @@ func test_rodneys_level_pays_a_piece_of_loot_of_any_kind() -> void:
 	var kinds: Dictionary = {}
 	for _i in range(30):
 		GameState.loot_items.clear()
+		GameState.pack_bags.clear()
 		GameState.grant_level_up()
-		assert_eq(GameState.loot_items.size(), 1, "one piece per level")
+		# A BAG is a piece of loot too, but it goes onto the pack rather than into
+		# it (docs/loot-passives.md §6) — so it is counted where it lands.
+		assert_eq(GameState.loot_items.size() + GameState.pack_bags.size(), 1,
+			"one piece per level")
 		if GameState.loot_items.size() == 1:
 			kinds[String((GameState.loot_items[0] as Dictionary).get("type", ""))] = true
+		elif GameState.pack_bags.size() == 1:
+			kinds["bag"] = true
 	for kind in kinds.keys():
 		assert_true(GameState.LOOT_KINDS.has(kind),
 			"every piece is one of the kinds of loot, not %s" % kind)
