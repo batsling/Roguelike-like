@@ -178,6 +178,21 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 t
     `test_a_spawner_with_nowhere_to_lay_a_body_lays_nothing` asserts the other
     half on purpose. If a spawner test starts varying again, look at what the
     selector rolls before anything else.
+  - **Eight more in `test_overworld2`, and the same two causes six times over.**
+    Found with a stress loop — the one test run 40-50 times in a single process,
+    with `before_each`/`after_each` between — which turned "one full run in
+    several" into a rate, and then a print of the board on each failure. Before
+    blaming a seed, check these two: **the random offering stands a BOSS** about
+    one run in seven (a boss is bomb-immune, survives a goal hit, and pays a
+    chest of its own on top of the win's), and **the road stands bodies up at the
+    end of ANY game** (`pressure()`, §19.5, counted in `last_result["end_spawns"]`),
+    so a head count after a report is not a fact about the body you acted on.
+    Follow THAT body by instance (`GameLoop2.entry_for`), and stand a known one
+    with `_make_front_body(&"monkey")` when the test needs a plain one-hit body.
+    A third: node kinds are dealt per run, so a helper that picks "the first
+    game in the catalog" is sometimes standing on a Shop, which pays no event.
+    **Never run two GUT processes at once**: they share `user://`, race on
+    `slot_0.json`, and produce a spray of failures that are not flakes at all.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill
