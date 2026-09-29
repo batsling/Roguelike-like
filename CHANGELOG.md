@@ -16,7 +16,9 @@ For how the project is laid out and how its systems fit together, see
   (2x1), Carrot and Cheese (1x2), Cupcake. Their "every X seconds" is **every X
   enemies defeated** (`enemy_killed every=N`), counted on the piece and carried
   across games. Each different food touching a food lowers its N by one, to a
-  minimum of 1. The count is drawn on the piece ("2/6", green when food is
+  minimum of 1. `Size` on the `trinkets` and `bags` sheets is read ROWS FIRST, as
+  on `enemies` and as the art is painted: Broccoli's 2x1 and the Potion Belt's
+  4x1 stand. The count is drawn on the piece ("2/6", green when food is
   helping it). Pieces can now be any rectangle: one piece over several cells,
   inside the 3x3 or one bag, moving and turning only where its shape fits, and
   turning with its bag. New verb `gain_top_buff`. Sheet edited through

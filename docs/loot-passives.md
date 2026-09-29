@@ -196,9 +196,10 @@ icon, key)`.
 you own ARE your inventory. A bag is not a piece that sits in the pack — it is
 more pack.
 
-- Content: the `bags` sheet (Leather Bag 2x2, Potion Belt 4x1, Protective Purse
+- Content: the `bags` sheet (Leather Bag 2x2, Potion Belt 4x1 — four tall — Protective Purse
   1x1), generated into `data/bags2.0/` by `tools/generate_bag2_tres.py` as
-  `BagData`. `Size` is "WxH", columns by rows, unrotated; any rectangle is allowed.
+  `BagData`. `Size` is "HxW", **rows first**, unrotated, the way the enemies sheet
+  writes a footprint and the way the art is painted; any rectangle is allowed.
   The Effect column is the relic grammar, and **may be blank**: Leather Bag only
   adds room, and that is a whole design.
 - Code: the pack's shape is `GameState.pack_bags` and the functions beside it
@@ -345,9 +346,11 @@ now copied like any other use.
 
 ## 10. Pieces bigger than one cell
 
-The five foods are shaped: **Broccoli and Garlic are 2x1, Carrot and Cheese 1x2,
-Cupcake 1x1**. `Size` on the `trinkets` sheet is "WxH", columns by rows, unturned,
-and the generator takes any rectangle. `GameState.piece_size` reads it; every other
+The five foods are shaped: **Broccoli and Garlic are 2x1 (two tall), Carrot and
+Cheese 1x2 (two wide), Cupcake 1x1**. `Size` on the `trinkets` sheet is "HxW",
+**rows first**, unturned — as on the `bags` and `enemies` sheets, and as the art
+is painted, so a piece's picture always runs the same way as the piece. The
+generator takes any rectangle and writes `size` as `Vector2i(columns, rows)`. `GameState.piece_size` reads it; every other
 kind is one cell.
 
 - **One piece, several cells.** `loot_layout()` maps every cell a piece covers to
@@ -382,8 +385,8 @@ kind is one cell.
 - **Drawing.** `LootGrid` draws a big piece once, from its anchor's cell, stretched
   over its footprint (`_place`). Its other cells are hidden, filled children, so
   child `i` is still slot `i`. The picture fills the footprint and gets a quarter
-  turn of its own when it is painted the other way from the piece, as bags do
-  (`SpanArt`, `art_turn`). All four foods are painted that way round. The piece in
+  turn of its own if it were ever painted the other way from the piece (`SpanArt`,
+  `art_turn`) — a safety net, since the sheets' sizes match the art. The piece in
   your hand is held by its top-left cell and changes shape as it turns.
 - A piece that cannot be seated anywhere (an old save, a debug grant into a crowded
   pack) is squeezed into one free cell rather than not drawn at all.

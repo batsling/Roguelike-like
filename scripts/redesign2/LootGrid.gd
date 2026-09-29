@@ -388,8 +388,9 @@ func _draw() -> void:
 # The bag's picture, FILLING `rect` and turned with the bag. The art is the bag
 # itself, as it is in Backpack Battles — the leather the cells sit on — so it is
 # stretched over the whole footprint rather than fitted inside it. Art drawn the
-# other way up from the bag's own shape (the Potion Belt is painted standing, the
-# bag is 4 wide) gets a quarter turn of its own first. Static so the piece in your
+# other way up from the bag's own shape gets a quarter turn of its own first — a
+# safety net now that the sheets write sizes rows first, the way the art is
+# painted, so no shipped bag or piece needs it. Static so the piece in your
 # hand draws it the same way.
 # How many quarter turns a bag's picture is drawn at: the bag's own, plus one when
 # the painting runs the other way from the bag's unrotated shape.
@@ -1275,7 +1276,7 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 
 # A BIG PIECE'S PICTURE, filling the art area of its footprint and turned with the
 # piece — and a quarter more when the painting runs the other way from the piece's
-# own shape (Broccoli is a 2x1 painted standing), the rule bags already follow
+# own shape (none do, since sizes are written rows first), the rule bags follow
 # (LootGrid.art_turn). Drawn rather than a TextureRect because a container resets
 # its children's rotation.
 class SpanArt extends Control:

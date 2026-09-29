@@ -60,12 +60,14 @@ func test_every_trinket_loads_with_art_and_a_passive() -> void:
 		assert_true(not trinket.triggers.is_empty() or not trinket.stat_bonuses.is_empty()
 			or not trinket.status_bonuses.is_empty(), "%s does something" % trinket.id)
 		var shape: Vector2i = FOOD_SHAPES.get(trinket.id, Vector2i.ONE)
-		assert_eq(trinket.size, shape, "%s is %dx%d" % [trinket.id, shape.x, shape.y])
+		assert_eq(trinket.size, shape, "%s is %d wide, %d tall" % [trinket.id, shape.x, shape.y])
 		assert_not_null(LootPassives.load_trinket_art(trinket), "%s has art" % trinket.id)
 
 # The five Backpack Battles foods, as the sheet shapes them (docs/loot-passives.md §10).
-const FOOD_SHAPES := {&"broccoli": Vector2i(2, 1), &"carrot": Vector2i(1, 2),
-	&"cheese": Vector2i(1, 2), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(2, 1)}
+# The sheet writes "HxW", rows first, so Broccoli's "2x1" is one column by two
+# rows — Vector2i(columns, rows) — the way its picture is painted.
+const FOOD_SHAPES := {&"broccoli": Vector2i(1, 2), &"carrot": Vector2i(2, 1),
+	&"cheese": Vector2i(2, 1), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(1, 2)}
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",
@@ -195,8 +197,8 @@ func test_a_blueprint_copying_a_trigger_fires_it_as_itself() -> void:
 
 # --- pieces bigger than one cell (§10) --------------------------------------------
 
-func test_a_2x1_covers_two_cells_and_is_one_piece() -> void:
-	_trinket(&"garlic", 0)
+func test_a_flat_2x1_covers_two_cells_and_is_one_piece() -> void:
+	_trinket(&"carrot", 0)
 	var i: int = GameState.loot_index_at_slot(0)
 	assert_eq(GameState.loot_slots_of(i), [0, 1], "its cell and the one to its right")
 	assert_eq(GameState.loot_index_at_slot(1), i)
@@ -204,49 +206,49 @@ func test_a_2x1_covers_two_cells_and_is_one_piece() -> void:
 	assert_eq(LootPassives.active().size(), 1, "and it works once, not once per cell")
 
 func test_a_2x1_does_not_run_off_the_end_of_a_row() -> void:
-	var garlic: Dictionary = {"type": "trinket", "id": &"garlic", "rarity": "Common"}
-	assert_false(GameState.piece_fits_at(garlic, 2, 0), "slot 2 has nothing to its right")
-	assert_true(GameState.piece_fits_at(garlic, 2, 1), "turned, it stands in 2 and 5")
+	var carrot: Dictionary = {"type": "trinket", "id": &"carrot", "rarity": "Common"}
+	assert_false(GameState.piece_fits_at(carrot, 2, 0), "slot 2 has nothing to its right")
+	assert_true(GameState.piece_fits_at(carrot, 2, 1), "turned, it stands in 2 and 5")
 
 func test_a_big_piece_needs_its_shape_free_not_just_a_cell() -> void:
 	# A checkerboard of 1x1 pieces leaves four free cells and no two side by side.
 	for slot in [0, 2, 4, 6, 8]:
 		_trinket(&"goat_hoof", slot)
 	assert_eq(GameState.loot_space(), 4)
-	var garlic: Dictionary = {"type": "trinket", "id": &"garlic", "rarity": "Common"}
-	assert_false(GameState.loot_fits(garlic), "no two free cells touch")
-	assert_false(GameState.take_loot_entry(garlic))
+	var carrot: Dictionary = {"type": "trinket", "id": &"carrot", "rarity": "Common"}
+	assert_false(GameState.loot_fits(carrot), "no two free cells touch")
+	assert_false(GameState.take_loot_entry(carrot))
 
 func test_a_big_piece_turns_only_where_it_has_room() -> void:
-	var garlic: Dictionary = _trinket(&"garlic", 0)
-	assert_true(GameState.turn_loot(_index_of(garlic), 1), "0 and 3 are free")
-	assert_eq(GameState.loot_slots_of(_index_of(garlic)), [0, 3])
+	var carrot: Dictionary = _trinket(&"carrot", 0)
+	assert_true(GameState.turn_loot(_index_of(carrot), 1), "0 and 3 are free")
+	assert_eq(GameState.loot_slots_of(_index_of(carrot)), [0, 3])
 	_trinket(&"goat_hoof", 1)
-	assert_false(GameState.turn_loot(_index_of(garlic), 0), "the hoof is in 1")
+	assert_false(GameState.turn_loot(_index_of(carrot), 0), "the hoof is in 1")
 
 func test_a_big_piece_moves_and_swaps_with_the_one_piece_in_its_way() -> void:
-	var garlic: Dictionary = _trinket(&"garlic", 0)
+	var carrot: Dictionary = _trinket(&"carrot", 0)
 	var hoof: Dictionary = _trinket(&"goat_hoof", 4)
 	assert_true(GameState.move_loot(4, 1), "the hoof onto the garlic's second cell")
 	assert_eq(GameState.loot_slot_of(_index_of(hoof)), 1)
-	assert_eq(GameState.loot_slots_of(_index_of(garlic)), [4, 5],
-		"and the garlic goes where the hoof came from")
+	assert_eq(GameState.loot_slots_of(_index_of(carrot)), [4, 5],
+		"and the carrot goes where the hoof came from")
 
 func test_a_big_piece_rides_its_bag_and_turns_with_it() -> void:
 	assert_true(GameState.place_bag({"type": "bag", "id": &"leather_bag", "rarity": "Common"},
 		Vector2i(3, 0)))
-	var garlic: Dictionary = _trinket(&"garlic", 9)
-	var i: int = _index_of(garlic)
+	var carrot: Dictionary = _trinket(&"carrot", 9)
+	var i: int = _index_of(carrot)
 	assert_eq(GameState.loot_slots_of(i), [9, 10], "the bag's top row")
 	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1))
 	assert_eq(GameState.loot_slots_of(i), [9, 10], "the same two cells of the bag")
-	assert_eq(int(garlic.get("rot", 0)), 1, "and it turned with them")
+	assert_eq(int(carrot.get("rot", 0)), 1, "and it turned with them")
 	var a: Vector2i = GameState.pack_cell_of(9)
 	var b: Vector2i = GameState.pack_cell_of(10)
 	assert_eq(absi(a.x - b.x) + absi(a.y - b.y), 1, "still side by side on screen")
 
 func test_the_grid_draws_a_big_piece_once_across_its_cells() -> void:
-	_trinket(&"garlic", 0)
+	_trinket(&"carrot", 0)
 	var grid := LootGrid.new()
 	add_child_autofree(grid)
 	grid.rebuild()
@@ -283,17 +285,16 @@ func test_the_count_carries_from_game_to_game() -> void:
 	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["have"]), 2)
 
 func test_each_different_food_beside_a_food_makes_it_come_sooner() -> void:
-	_trinket(&"carrot", 4)            # 4 and 7
-	var carrot: int = GameState.loot_index_at_slot(4)
-	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 3)
+	_trinket(&"garlic", 4)            # stands in 4 and 7
+	var garlic: int = GameState.loot_index_at_slot(4)
+	assert_eq(int(LootPassives.kill_progress(garlic)["need"]), 4)
 	_trinket(&"cupcake", 5)
-	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 2, "one food beside it")
+	assert_eq(int(LootPassives.kill_progress(garlic)["need"]), 3, "one food beside it")
 	_trinket(&"goat_hoof", 3)
-	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 2, "a hoof is not food")
-	GameState.discard_loot_at(GameState.loot_index_at_slot(3))
-	_trinket(&"cheese", 3)            # 3 and 6
-	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(4))["need"]), 1,
-		"two different foods: 3 - 2")
+	assert_eq(int(LootPassives.kill_progress(garlic)["need"]), 3, "a hoof is not food")
+	_trinket(&"cheese", 0)            # lies in 0 and 1, touching 4 from above
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(4))["need"]), 2,
+		"two different foods: 4 - 2")
 
 func test_the_same_food_twice_is_not_a_different_food() -> void:
 	_trinket(&"garlic", 0)
@@ -301,10 +302,10 @@ func test_the_same_food_twice_is_not_a_different_food() -> void:
 	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["need"]), 4)
 
 func test_food_never_counts_below_one() -> void:
-	_trinket(&"carrot", 4)            # 4 and 7
-	_trinket(&"broccoli", 1)          # 1 and 2
-	_trinket(&"cheese", 3)            # 3 and 6
-	_trinket(&"cupcake", 5)
+	_trinket(&"carrot", 4)            # lies in 4 and 5
+	_trinket(&"garlic", 0)            # stands in 0 and 3
+	_trinket(&"cheese", 7)            # lies in 7 and 8
+	_trinket(&"cupcake", 1)
 	var carrot: int = GameState.loot_index_at_slot(4)
 	assert_eq(LootPassives.adjacent_foods(carrot).size(), 3)
 	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 1, "3 - 3, floored at 1")
@@ -315,7 +316,7 @@ func test_food_never_counts_below_one() -> void:
 func test_a_blueprint_copying_a_food_is_that_food() -> void:
 	_card(&"blueprint", 0)
 	_trinket(&"cupcake", 1)
-	_trinket(&"garlic", 3)            # 3 and 4, under the Blueprint and the cupcake
+	_trinket(&"garlic", 3)            # stands in 3 and 6, under the Blueprint
 	var bp: int = GameState.loot_index_at_slot(0)
 	assert_eq(LootPassives.food_id_at(bp), &"cupcake")
 	assert_eq(int(LootPassives.kill_progress(bp)["need"]), 5, "cupcake's 6, less the garlic")

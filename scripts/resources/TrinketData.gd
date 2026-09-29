@@ -26,9 +26,10 @@ extends Resource
 # "Common" | "Uncommon" | "Rare" | "Legendary" — the same 0-3 ladder every drop
 # walks (rarity_index).
 @export var rarity: String = "Common"
-# How many pack cells it covers, as the sheet's "WxH" — columns by rows, unturned.
-# The foods are 2x1 and 1x2; GameState.piece_size reads this, and the pack places
-# any rectangle inside one owner (docs/loot-passives.md §10).
+# How many pack cells it covers, as Vector2i(columns, rows), unturned. The sheet
+# writes it "HxW", ROWS FIRST, as the art is painted: Broccoli's "2x1" is (1, 2),
+# standing. GameState.piece_size reads this, and the pack places any rectangle
+# inside one owner (docs/loot-passives.md §10).
 @export var size: Vector2i = Vector2i.ONE
 @export_multiline var description: String = ""
 # The real game it is lifted from (the sheet's `Game` column).

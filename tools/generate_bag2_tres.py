@@ -7,7 +7,10 @@ Battles inventory that attach to the edge of the 3x3 and add their cells to it.
 
   bags: Name | Rarity | Size | Description | Effect | Game | Image
 
-`Size` is "WxH", columns by rows, unrotated; any rectangle is allowed.
+`Size` is "HxW" — ROWS FIRST, unrotated — the way the enemies sheet writes a
+footprint, and the way the art is painted: the Potion Belt's "4x1" is four tall,
+one wide, and its picture stands up. Any rectangle is allowed. The .tres keeps
+`size` as Vector2i(columns, rows), so only this parse knows the sheet's order.
 
 `Effect` is authored in the RELIC grammar and compiled by
 generate_item_tres.parse_loot_passive, the one implementation shared with
@@ -53,8 +56,8 @@ def parse_size(raw, name):
     text = _clean(raw)
     m = SIZE_RE.match(text)
     if not m:
-        raise ValueError("bag %r: Size %r is not WxH" % (name, text))
-    w, h = int(m.group(1)), int(m.group(2))
+        raise ValueError("bag %r: Size %r is not HxW" % (name, text))
+    h, w = int(m.group(1)), int(m.group(2))
     if w < 1 or h < 1:
         raise ValueError("bag %r: Size %r has no cells" % (name, text))
     return w, h

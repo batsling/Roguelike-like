@@ -48,7 +48,7 @@ func _index_of(entry: Dictionary) -> int:
 func test_every_bag_loads_with_its_shape_and_art() -> void:
 	var all: Array = Data.all_bags()
 	assert_eq(all.size(), 3, "the sheet's three bags all generated")
-	var shapes := {&"leather_bag": Vector2i(2, 2), &"potion_belt": Vector2i(4, 1),
+	var shapes := {&"leather_bag": Vector2i(2, 2), &"potion_belt": Vector2i(1, 4),
 		&"protective_purse": Vector2i(1, 1)}
 	for id in shapes:
 		var b: BagData = Data.get_bag(id)
@@ -123,25 +123,30 @@ func test_a_bag_must_touch_the_pack_edge_to_edge() -> void:
 	assert_true(GameState.can_place_bag(size, Vector2i(-2, -1), 0), "on any side")
 
 func test_there_is_no_size_limit() -> void:
-	# A belt off the right, then another off the end of that: 3 + 4 + 4 = 11 wide.
-	_place(&"potion_belt", Vector2i(3, 0))
-	_place(&"potion_belt", Vector2i(7, 0))
-	assert_eq(GameState.pack_bounds().size, Vector2i(11, 3))
+	# A belt (it stands: "4x1" is rows first) under the 3x3, then another under
+	# that: 3 + 4 + 4 = 11 tall.
+	_place(&"potion_belt", Vector2i(0, 3))
+	_place(&"potion_belt", Vector2i(0, 7))
+	assert_eq(GameState.pack_bounds().size, Vector2i(3, 11))
 	assert_eq(GameState.loot_capacity(), 17)
 
 func test_a_turned_bag_covers_its_turned_footprint() -> void:
-	_place(&"potion_belt", Vector2i(3, 0), 1)
-	var cells: Array = GameState.bag_cells(GameState.pack_bags[0])
-	assert_eq(cells, [Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3)],
-		"a quarter turn stands the belt up, its first slot at the top")
+	_place(&"potion_belt", Vector2i(3, 0))
+	assert_eq(GameState.bag_cells(GameState.pack_bags[0]),
+		[Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(3, 3)],
+		"unturned, the belt stands, as its sheet row and its picture do")
+	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1))
+	assert_eq(GameState.bag_cells(GameState.pack_bags[0]),
+		[Vector2i(6, 0), Vector2i(5, 0), Vector2i(4, 0), Vector2i(3, 0)],
+		"a quarter turn clockwise lays it down, its first slot on the right")
 
 func test_whats_in_a_bag_moves_and_turns_with_it() -> void:
 	_place(&"potion_belt", Vector2i(0, 3))
 	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 11)
-	assert_eq(GameState.pack_cell_of(11), Vector2i(2, 3))
-	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1), "stood up beside the 3x3")
+	assert_eq(GameState.pack_cell_of(11), Vector2i(0, 5))
+	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1), "laid down beside the 3x3")
 	assert_eq(GameState.loot_slot_of(_index_of(fire)), 11, "the piece keeps its slot…")
-	assert_eq(GameState.pack_cell_of(11), Vector2i(3, 2), "…which is now drawn where the bag took it")
+	assert_eq(GameState.pack_cell_of(11), Vector2i(4, 0), "…which is now drawn where the bag took it")
 
 func test_a_move_that_strands_another_bag_is_refused() -> void:
 	_place(&"leather_bag", Vector2i(3, 0))
