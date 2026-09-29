@@ -294,8 +294,8 @@ func _build() -> void:
 	_grid.take_requested.connect(_take_offer)
 	_grid.use_requested.connect(_use_carried)
 	_grid.discard_requested.connect(_discard_carried)
-	_grid.moved.connect(func(from: int, to: int):
-		if GameState.move_loot(from, to):
+	_grid.moved.connect(func(from: int, to: int, rot: int):
+		if GameState.move_loot(from, to, rot):
 			_rebuild())
 	_grid.offer_discarded.connect(_leave_offer)
 	# BAGS (docs/loot-passives.md §6): one off the table goes on the pack's edge,
@@ -334,7 +334,7 @@ func _build() -> void:
 		# The cap, said where it bites — beside the nine full slots that are the
 		# reason, and beside the three things that can be done about it.
 		box.add_child(_line("Your pack is full (%d/%d) — use or bin something to make room, "
-			% [GameState.loot_items.size(), GameState.loot_capacity()]
+			% [GameState.loot_capacity() - GameState.loot_space(), GameState.loot_capacity()]
 			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
 
 	# THE ANSWER BUTTONS BELONG TO THE MODAL. "Take" and "Leave the rest" are how
@@ -589,7 +589,7 @@ func _take_all() -> void:
 # Whether an offer can go into the pack right now. A bag always can — it is more
 # pack rather than a piece in it (docs/loot-passives.md §6).
 func _can_take(entry: Dictionary) -> bool:
-	return GameState.is_bag_entry(entry) or not GameState.loot_is_full()
+	return GameState.loot_fits(entry)
 
 # A bag off the table, dropped on the pack's edge at `origin`, turned `rot`.
 func _take_bag_offer(entry: Dictionary, origin: Vector2i, rot: int, offer: int) -> void:

@@ -53,14 +53,19 @@ func _index_of(entry: Dictionary) -> int:
 
 func test_every_trinket_loads_with_art_and_a_passive() -> void:
 	var all: Array = Data.all_trinkets()
-	assert_eq(all.size(), 11, "the sheet's eleven trinkets all generated")
+	assert_eq(all.size(), 16, "the sheet's sixteen trinkets all generated")
 	for t in all:
 		var trinket: TrinketData = t
 		assert_ne(trinket.description, "", "%s prints what it does" % trinket.id)
 		assert_true(not trinket.triggers.is_empty() or not trinket.stat_bonuses.is_empty()
 			or not trinket.status_bonuses.is_empty(), "%s does something" % trinket.id)
-		assert_eq(trinket.size, Vector2i.ONE, "%s is one cell" % trinket.id)
+		var shape: Vector2i = FOOD_SHAPES.get(trinket.id, Vector2i.ONE)
+		assert_eq(trinket.size, shape, "%s is %dx%d" % [trinket.id, shape.x, shape.y])
 		assert_not_null(LootPassives.load_trinket_art(trinket), "%s has art" % trinket.id)
+
+# The five Backpack Battles foods, as the sheet shapes them (docs/loot-passives.md §10).
+const FOOD_SHAPES := {&"broccoli": Vector2i(2, 1), &"carrot": Vector2i(1, 2),
+	&"cheese": Vector2i(1, 2), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(2, 1)}
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",
@@ -143,11 +148,179 @@ func test_blueprint_chains_through_another_blueprint() -> void:
 	assert_eq(int(GameState.item_stat_bonus.get("luck", 0)), base + 3,
 		"the toe, the Blueprint beside it, and the one beside that")
 
-func test_blueprint_beside_nothing_passive_does_nothing() -> void:
+func test_blueprint_beside_nothing_does_nothing() -> void:
 	_card(&"blueprint", 0)
-	GameState.take_loot_entry_at(GameState.roll_loot_entry("scroll"), 1)
 	assert_eq(LootPassives.copying_name(0), "")
 	assert_eq(LootPassives.active().size(), 0)
+	assert_true(LootPassives.usable_copy(GameState.loot_index_at_slot(0)).is_empty())
+
+# --- Blueprint copies ANY loot (§2) ------------------------------------------------
+
+func test_blueprint_beside_a_piece_you_use_becomes_one() -> void:
+	var bp: Dictionary = _card(&"blueprint", 0)
+	var scroll: Dictionary = GameState.roll_loot_entry("scroll")
+	GameState.take_loot_entry_at(scroll, 1)
+	assert_eq(LootPassives.copying_name(0), LootSystem.display_name(scroll),
+		"it names the scroll it copies")
+	assert_eq(LootPassives.active().size(), 0, "a copied scroll is not a passive at work")
+	assert_eq(String(LootPassives.usable_copy(_index_of(bp)).get("id", "")),
+		String(scroll.get("id", "")), "used, it is that scroll")
+	assert_true(LootPassives.is_usable_at(_index_of(bp)))
+
+func test_using_a_blueprint_spends_it_as_the_piece_it_copies() -> void:
+	var bp: Dictionary = _card(&"blueprint", 0)
+	_card(&"v_the_hierophant", 1)
+	var shields: int = GameState.bonus_shields
+	LootSystem.use_loot(_index_of(bp))
+	assert_eq(GameState.bonus_shields, shields + 2, "the Hierophant's +2 Shields, once")
+	assert_eq(GameState.loot_items.size(), 1, "the Blueprint is spent")
+	assert_eq(String(_at(1).get("id", "")), "v_the_hierophant", "the card it copied is not")
+
+func test_a_blueprint_copying_a_usable_piece_wears_a_use_button() -> void:
+	_card(&"blueprint", 0)
+	_card(&"v_the_hierophant", 1)
+	var grid := LootGrid.new()
+	grid.show_use = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	var buttons: Array = grid.get_child(0).find_children("*", "Button", true, false)
+	assert_eq(buttons.size(), 1, "the Blueprint's cell has a Use button")
+
+func test_a_blueprint_copying_a_trigger_fires_it_as_itself() -> void:
+	_card(&"blueprint", 0)
+	_trinket(&"swallowed_penny", 1)
+	var gold: int = GameState.gold
+	GameState.change_hp(-1)
+	assert_eq(GameState.gold, gold + 2, "the penny's coin, and the Blueprint's")
+
+# --- pieces bigger than one cell (§10) --------------------------------------------
+
+func test_a_2x1_covers_two_cells_and_is_one_piece() -> void:
+	_trinket(&"garlic", 0)
+	var i: int = GameState.loot_index_at_slot(0)
+	assert_eq(GameState.loot_slots_of(i), [0, 1], "its cell and the one to its right")
+	assert_eq(GameState.loot_index_at_slot(1), i)
+	assert_eq(GameState.loot_space(), 7, "two of nine cells taken")
+	assert_eq(LootPassives.active().size(), 1, "and it works once, not once per cell")
+
+func test_a_2x1_does_not_run_off_the_end_of_a_row() -> void:
+	var garlic: Dictionary = {"type": "trinket", "id": &"garlic", "rarity": "Common"}
+	assert_false(GameState.piece_fits_at(garlic, 2, 0), "slot 2 has nothing to its right")
+	assert_true(GameState.piece_fits_at(garlic, 2, 1), "turned, it stands in 2 and 5")
+
+func test_a_big_piece_needs_its_shape_free_not_just_a_cell() -> void:
+	# A checkerboard of 1x1 pieces leaves four free cells and no two side by side.
+	for slot in [0, 2, 4, 6, 8]:
+		_trinket(&"goat_hoof", slot)
+	assert_eq(GameState.loot_space(), 4)
+	var garlic: Dictionary = {"type": "trinket", "id": &"garlic", "rarity": "Common"}
+	assert_false(GameState.loot_fits(garlic), "no two free cells touch")
+	assert_false(GameState.take_loot_entry(garlic))
+
+func test_a_big_piece_turns_only_where_it_has_room() -> void:
+	var garlic: Dictionary = _trinket(&"garlic", 0)
+	assert_true(GameState.turn_loot(_index_of(garlic), 1), "0 and 3 are free")
+	assert_eq(GameState.loot_slots_of(_index_of(garlic)), [0, 3])
+	_trinket(&"goat_hoof", 1)
+	assert_false(GameState.turn_loot(_index_of(garlic), 0), "the hoof is in 1")
+
+func test_a_big_piece_moves_and_swaps_with_the_one_piece_in_its_way() -> void:
+	var garlic: Dictionary = _trinket(&"garlic", 0)
+	var hoof: Dictionary = _trinket(&"goat_hoof", 4)
+	assert_true(GameState.move_loot(4, 1), "the hoof onto the garlic's second cell")
+	assert_eq(GameState.loot_slot_of(_index_of(hoof)), 1)
+	assert_eq(GameState.loot_slots_of(_index_of(garlic)), [4, 5],
+		"and the garlic goes where the hoof came from")
+
+func test_a_big_piece_rides_its_bag_and_turns_with_it() -> void:
+	assert_true(GameState.place_bag({"type": "bag", "id": &"leather_bag", "rarity": "Common"},
+		Vector2i(3, 0)))
+	var garlic: Dictionary = _trinket(&"garlic", 9)
+	var i: int = _index_of(garlic)
+	assert_eq(GameState.loot_slots_of(i), [9, 10], "the bag's top row")
+	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1))
+	assert_eq(GameState.loot_slots_of(i), [9, 10], "the same two cells of the bag")
+	assert_eq(int(garlic.get("rot", 0)), 1, "and it turned with them")
+	var a: Vector2i = GameState.pack_cell_of(9)
+	var b: Vector2i = GameState.pack_cell_of(10)
+	assert_eq(absi(a.x - b.x) + absi(a.y - b.y), 1, "still side by side on screen")
+
+func test_the_grid_draws_a_big_piece_once_across_its_cells() -> void:
+	_trinket(&"garlic", 0)
+	var grid := LootGrid.new()
+	add_child_autofree(grid)
+	grid.rebuild()
+	grid.size = grid.get_combined_minimum_size()
+	grid.notification(Container.NOTIFICATION_SORT_CHILDREN)
+	var anchor: LootSlot = grid.get_child(0)
+	var covered: LootSlot = grid.get_child(1)
+	assert_true(anchor.visible and not covered.visible, "one picture, not two")
+	assert_true(covered.is_filled(), "the covered cell is still taken")
+	assert_gt(anchor.size.x, grid.cell_size().x * 1.5, "stretched over both cells")
+
+# --- food and the enemy-defeat triggers (§11) -------------------------------------
+
+func _kill(n: int = 1) -> void:
+	for _i in range(n):
+		TriggerBus.enemy_killed.emit({"enemy": null, "boss": false})
+
+func test_garlic_pays_every_fourth_enemy_defeated() -> void:
+	_trinket(&"garlic", 0)
+	var shields: int = GameState.shields
+	_kill(3)
+	assert_eq(GameState.shields, shields, "three is not four")
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["have"]), 3,
+		"and the piece says how far along it is")
+	_kill()
+	assert_eq(GameState.shields, shields + 3, "the fourth pays +3 Temporary Shields")
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["have"]), 0)
+
+func test_the_count_carries_from_game_to_game() -> void:
+	_trinket(&"garlic", 0)
+	_kill(2)
+	GameState.games_played += 1
+	GameState.loot_uses_this_game = 0
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["have"]), 2)
+
+func test_each_different_food_beside_a_food_makes_it_come_sooner() -> void:
+	_trinket(&"carrot", 4)            # 4 and 7
+	var carrot: int = GameState.loot_index_at_slot(4)
+	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 3)
+	_trinket(&"cupcake", 5)
+	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 2, "one food beside it")
+	_trinket(&"goat_hoof", 3)
+	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 2, "a hoof is not food")
+	GameState.discard_loot_at(GameState.loot_index_at_slot(3))
+	_trinket(&"cheese", 3)            # 3 and 6
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(4))["need"]), 1,
+		"two different foods: 3 - 2")
+
+func test_the_same_food_twice_is_not_a_different_food() -> void:
+	_trinket(&"garlic", 0)
+	_trinket(&"garlic", 3)
+	assert_eq(int(LootPassives.kill_progress(GameState.loot_index_at_slot(0))["need"]), 4)
+
+func test_food_never_counts_below_one() -> void:
+	_trinket(&"carrot", 4)            # 4 and 7
+	_trinket(&"broccoli", 1)          # 1 and 2
+	_trinket(&"cheese", 3)            # 3 and 6
+	_trinket(&"cupcake", 5)
+	var carrot: int = GameState.loot_index_at_slot(4)
+	assert_eq(LootPassives.adjacent_foods(carrot).size(), 3)
+	assert_eq(int(LootPassives.kill_progress(carrot)["need"]), 1, "3 - 3, floored at 1")
+	GameState.apply_status(&"bleed", 2)
+	_kill()
+	assert_eq(GameState.status_stacks(&"bleed"), 1, "every enemy now takes a stack off")
+
+func test_a_blueprint_copying_a_food_is_that_food() -> void:
+	_card(&"blueprint", 0)
+	_trinket(&"cupcake", 1)
+	_trinket(&"garlic", 3)            # 3 and 4, under the Blueprint and the cupcake
+	var bp: int = GameState.loot_index_at_slot(0)
+	assert_eq(LootPassives.food_id_at(bp), &"cupcake")
+	assert_eq(int(LootPassives.kill_progress(bp)["need"]), 5, "cupcake's 6, less the garlic")
+	assert_eq(LootPassives.adjacent_foods(GameState.loot_index_at_slot(3)), [&"cupcake"],
+		"for the garlic, a Blueprint-cupcake and a cupcake are one food")
 
 # --- the hooks -------------------------------------------------------------------
 

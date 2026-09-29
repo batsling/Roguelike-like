@@ -6,7 +6,8 @@ from there, the way a relic works from the shelf. The idea comes from backpack
 roguelikes like Backpack Battles: the pack is a space you arrange, and some pieces
 care about what is next to them.
 
-- Content: the `trinkets` sheet (11 Isaac trinkets) and five passive rows on the
+- Content: the `trinkets` sheet (11 Isaac trinkets and five Backpack Battles
+  foods, §10-§11) and five passive rows on the
   `cards` sheet (Balatro's Blueprint, Chaos the Clown, Rocket, To the Moon,
   Trading Card), plus Slay the Spire's Barricade and Echo Form (§8).
 - Code: `scripts/runtime/LootPassives.gd` (which pieces are working and what each
@@ -40,10 +41,21 @@ a piece that reads its right neighbour — until a bag is attached there (§6):
 adjacency is asked of the pack's CELLS (`GameState.pack_cells`), so a Blueprint on
 the 3x3's right edge copies the piece in the first cell of a bag beside it.
 
-**Blueprint** (`copy_right`) does whatever the piece to its right does:
+**Blueprint** (`copy_right`) does whatever the piece to its right does. **It
+copies ANY loot, not only passives**: it takes on the text of the piece it points
+at.
 
 - If the neighbour is a Goat Hoof, Blueprint holds up a second point of Speed.
-  If it is a Swallowed Penny, it pays a second coin.
+  If it is a Swallowed Penny, it pays a second coin. If it is a food, it counts
+  enemies defeated toward its own payout, and is that food to its neighbours
+  (§11).
+- **If the neighbour is a piece you USE** (a scroll, pill, potion, card or wand),
+  Blueprint gets a Use button and is used AS that piece: the Use screen shows,
+  aims and resolves a copy of the neighbour (`LootPassives.usable_copy`), and
+  then **the Blueprint is gone**, the way the piece it copied would be. The
+  neighbour is untouched. A copied wand zaps once and the Blueprint goes with it:
+  it has no charges of its own. Copying an unidentified piece is a gamble on that
+  piece, and a use that lands teaches it, as spending the piece would.
 - **It chains**, as in Balatro: a Blueprint beside a Blueprint copies whatever
   that one copies. The walk stops at the first piece with a passive of its own,
   at the edge, at a non-passive piece (nothing to copy), or on a cycle.
@@ -277,8 +289,7 @@ timed stack before a permanent one). Neither ever moves a whole pile at once.
   gain_random_buff 1; loot_used if_loot=potion if_in_bag every=4:
   remove_random_debuff 1`. "The first time" was ruled to mean **once per game**.
 
-Trinkets are still 1x1: the generator refuses any other size. Multi-cell PIECES
-(as opposed to bags) are still for later.
+Trinkets can be bigger than one cell now (§10).
 
 ## 7. The two non-passive additions from the same sheet pass
 
@@ -331,3 +342,88 @@ now copied like any other use.
   wand has after the zap, but never fewer than one, since the zap that set it off
   may have spent the last.
 - The Use screen shows "Echo Chamber will also use…" over a wand as well.
+
+## 10. Pieces bigger than one cell
+
+The five foods are shaped: **Broccoli and Garlic are 2x1, Carrot and Cheese 1x2,
+Cupcake 1x1**. `Size` on the `trinkets` sheet is "WxH", columns by rows, unturned,
+and the generator takes any rectangle. `GameState.piece_size` reads it; every other
+kind is one cell.
+
+- **One piece, several cells.** `loot_layout()` maps every cell a piece covers to
+  its index, so "is this slot free" is still `layout[slot] == -1`. Its `pack_slot`
+  is its **anchor**, the lowest slot it covers; `loot_slots_of(index)` lists them
+  all. It is read ONCE by everything that walks the pack: `LootPassives.active()`
+  counts a piece at its anchor only.
+- **Room is a shape, not a count.** `loot_space()` is free cells. A big piece fits
+  only where its rectangle is free: `loot_fits(entry)` and `find_piece_spot` (its
+  own turn first, then a quarter turn, so a 2x1 goes in standing rather than not
+  at all). A grant with no room for the shape is not paid, as a piece into a full
+  pack is not.
+- **A big piece lives inside one owner**: the 3x3 or one bag. Slots are numbered by
+  who owns the cell (§6), so a piece across two owners would be torn apart when its
+  bag moved.
+- **Its footprint is kept in its owner's frame**: the anchor is the top-left of
+  the rectangle in the bag's unturned reading order (`piece_slots`). A placement
+  from the screen is asked by the cell the piece's top-left is dropped on
+  (`piece_slots_from`).
+- **Turning a bag turns what is in it.** `move_bag` adds the bag's turn to every
+  piece in it, so a piece's `rot` is always the way it faces on screen. This also
+  applies to 1x1 pieces: a Blueprint in a bag given a quarter turn now copies
+  the piece below it.
+- **Moving.** A piece lands with its top-left on the cell under the pointer. It
+  swaps with **the one piece in its way**, which goes to the slot the mover came
+  from if it fits there. Two pieces in the way, or a displaced piece with nowhere
+  to go, is refused (`can_move_loot` asks first, and the grid only lights up
+  where a drop would work). A piece off the floor trades the same way
+  (`can_trade_into`, `swap_loot_entry_at`).
+- **Turning** a big piece (R in hand, or dropping it back on itself) turns it
+  about its top-left cell, and only onto free cells.
+- **Drawing.** `LootGrid` draws a big piece once, from its anchor's cell, stretched
+  over its footprint (`_place`). Its other cells are hidden, filled children, so
+  child `i` is still slot `i`. The picture fills the footprint and gets a quarter
+  turn of its own when it is painted the other way from the piece, as bags do
+  (`SpanArt`, `art_turn`). All four foods are painted that way round. The piece in
+  your hand is held by its top-left cell and changes shape as it turns.
+- A piece that cannot be seated anywhere (an old save, a debug grant into a crowded
+  pack) is squeezed into one free cell rather than not drawn at all.
+
+## 11. Food, and triggers that count enemies defeated
+
+Backpack Battles items fire "every X seconds". Here that clock is **enemies
+defeated**: `enemy_killed every=N: …`. The count is the `every=N` count Potion Belt
+already used (§6). It rides on the firing piece, is saved with it, and **carries
+from game to game**.
+
+| Food | Every | Pays |
+|---|---|---|
+| Broccoli (2x1) | 6 | +2 Luck |
+| Carrot (1x2) | 3 | one stack of a random debuff comes off |
+| Cheese (1x2) | 4 | +5 empty Max Health, one stack of a random buff |
+| Cupcake (1x1) | 6 | +5 Health, a stack of the buff you carry most of (`gain_top_buff`) |
+| Garlic (2x1) | 4 | +3 Temporary Shields |
+
+**Food comes round sooner beside other food.** A piece tagged `food` has the N of
+each of its `enemy_killed every=N` triggers lowered by one for **every different
+food touching it**, never below 1 (`LootPassives.every_for`):
+
+- "Touching" is any cell of its footprint sharing a side with any cell of the
+  other's (`adjacent_pieces`), so a 2x1 can have six neighbours.
+- "Different" is by id, and **its own kind does not count**. A Garlic beside a
+  Garlic is not a second food; a Garlic beside a Carrot and a Cheese counts to 2.
+- A Blueprint copying a food is that food, both for its own count and to its
+  neighbours.
+- The count is **progress**, reset when it pays, not a remainder. So moving a
+  Carrot 3 along beside a Cheese (4 becomes 3) pays on the next enemy, rather than
+  wrapping round to zero.
+
+**The number is on the piece.** A piece with an enemy-defeat trigger wears
+`have/need` in the top-right corner of its art (`LootGrid._add_progress`): gold
+normally, green when food beside it has lowered the target. Its hover says the
+same in words and names the food helping it.
+
+### Random buffs and debuffs are one stack
+
+Randomly gaining or losing a buff or debuff is always **one stack** (§6):
+`gain_random_buff N` is N draws of one stack each, and `remove_random_debuff N` is
+N draws over the debuffs you carry, each taking one stack off.

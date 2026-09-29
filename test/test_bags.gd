@@ -393,7 +393,7 @@ func test_a_turn_rides_a_move_and_a_save() -> void:
 	var grid: LootGrid = _grid()
 	var data: Dictionary = grid.get_child(0)._get_drag_data(Vector2.ZERO)
 	data["rot"] = 2
-	grid.moved.connect(func(a: int, b: int): GameState.move_loot(a, b))
+	grid.moved.connect(func(a: int, b: int, r: int): GameState.move_loot(a, b, r))
 	grid.get_child(8)._drop_data(Vector2.ZERO, data)
 	assert_eq(GameState.loot_slot_of(_index_of(fire)), 8)
 	assert_eq(int(fire.get("rot", 0)), 2)

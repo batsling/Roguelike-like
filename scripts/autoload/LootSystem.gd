@@ -71,8 +71,21 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	# A PASSIVE PIECE IS NEVER SPENT (docs/loot-passives.md §1). The pack draws it
 	# no Use button; this is the backstop for any other door, and it refuses before
 	# the slot is emptied — a Trinket "used" would be a Trinket thrown away.
+	#
+	# EXCEPT A BLUEPRINT POINTED AT A PIECE YOU USE (§2). It copies that piece's
+	# text, so it is used as that piece and goes the way that piece would: the
+	# Blueprint leaves the pack, and what resolves is a copy of its neighbour. The
+	# neighbour is untouched. A copied wand zaps once and the Blueprint is spent
+	# with it — it has no charges of its own to keep.
 	if LootPassives.is_passive(entry):
-		return {"logs": [], "requests": []}
+		var copied: Dictionary = LootPassives.usable_copy(index)
+		if copied.is_empty():
+			return {"logs": [], "requests": []}
+		_spent_slot = GameState.loot_slot_of(index)
+		GameState.remove_loot_at(index)
+		var out: Dictionary = _spend(copied, ctx)
+		out.erase("charges_left")
+		return out
 	entry = (entry as Dictionary).duplicate(true)
 	# Where it was, for the hook: a bag's passive asks whether the piece was spent
 	# from one of its own cells (Potion Belt, docs/loot-passives.md §6). Read now,
@@ -765,11 +778,30 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 			if slot >= 0:
 				var copying: String = LootPassives.copying_name(slot)
 				lines.append("Copying: %s" % copying if copying != ""
-					else "Copying nothing — put a passive piece %s." % where)
+					else "Copying nothing — put a piece of loot %s." % where)
+				# Copying a piece you USE makes it one (§2): it goes when it is used.
+				if not LootPassives.usable_copy(GameState.loot_index_at_slot(slot)).is_empty():
+					sub = sub.replace("  ·  Passive", "")
+					note = "▸ Use it as the piece it copies — it is spent doing it."
 			lines.append("Copies the piece %s. Turn it (R while dragging) to aim it." % where)
 		var grown: int = int(entry.get("counter", 0))
 		if grown != 0:
 			lines.append("Grown by %+d so far." % grown)
+		# HOW FAR ALONG an enemy-defeat trigger is, and what food is speeding it (§11).
+		var at: int = _carried_slot(entry)
+		var progress: Dictionary = LootPassives.kill_progress(GameState.loot_index_at_slot(at)) \
+			if at >= 0 else {}
+		if not progress.is_empty():
+			lines.append("%d of %d enemies defeated toward the next one." % [
+				int(progress["have"]), int(progress["need"])])
+			var foods: Array = progress.get("foods", [])
+			if not foods.is_empty():
+				var names: Array = foods.map(func(f): return Data.get_trinket(f).display_name)
+				lines.append("Sooner by %d for the food beside it: %s." % [
+					foods.size(), ", ".join(names)])
+	var cells: Vector2i = GameState.piece_size(entry)
+	if cells != Vector2i.ONE:
+		sub += "  ·  %dx%d" % [cells.x, cells.y]
 	return {
 		"title": display_name(entry),
 		"subtitle": sub,

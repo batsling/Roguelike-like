@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Food: shaped pieces that count enemies defeated** (`docs/loot-passives.md`
+  §10-§11). Five Backpack Battles foods join the trinkets: Broccoli and Garlic
+  (2x1), Carrot and Cheese (1x2), Cupcake. Their "every X seconds" is **every X
+  enemies defeated** (`enemy_killed every=N`), counted on the piece and carried
+  across games. Each different food touching a food lowers its N by one, to a
+  minimum of 1. The count is drawn on the piece ("2/6", green when food is
+  helping it). Pieces can now be any rectangle: one piece over several cells,
+  inside the 3x3 or one bag, moving and turning only where its shape fits, and
+  turning with its bag. New verb `gain_top_buff`. Sheet edited through
+  `_trinkets_food_effect_cells.py`.
+
+- **Blueprint copies any loot**, not only passives. Beside a scroll, pill, potion,
+  card or wand it has a Use button, is used as that piece, and is spent doing it;
+  the piece it copied stays.
+
+- **Random buffs and debuffs move one stack at a time.** `remove_random_debuff`
+  used to take a whole status off; `gain_random_buff N` is now N single stacks.
+
+- **Luck is a 50% chance of a reroll per point**, not a guaranteed one. At 1 Luck
+  a 25% chance is 34.4%, at 3 Luck 49.8%; the odds quoted on buttons use the exact
+  closed form (`Stats.effective_chance`).
+
 - **Bags: the seventh loot kind, and a pack with a shape** (`docs/loot-passives.md`
   §6). Leather Bag (2x2), Potion Belt (4x1) and Protective Purse (1x1) from
   Backpack Battles attach edge to edge to the fixed 3x3 and add their cells to it,

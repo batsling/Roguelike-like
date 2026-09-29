@@ -13,9 +13,10 @@ with passive cards — so `gold_gained: 25% chance gain_hp 1` means exactly what
 means on a relic. A blank Effect raises: a trinket's whole pitch is the line on
 it, and one that compiles to nothing is an authoring hole, not a design.
 
-`Size` is "WxH". Every row is 1x1 today and the pack places only 1x1 pieces; a
-larger one raises here until the pack learns shapes (§6 of the doc), rather than
-being generated into a slot it cannot fit.
+`Size` is "WxH", columns by rows, unturned: the foods are 2x1 and 1x2, and the
+pack places any rectangle (docs/loot-passives.md §10). The art need not be painted
+the same way round — the pack turns a picture a quarter when it runs the other way
+from the piece, as it does for bags.
 
   python3 tools/generate_trinket2_tres.py            # regenerate every trinket
   python3 tools/generate_trinket2_tres.py --list     # print, write nothing
@@ -58,9 +59,8 @@ def parse_size(raw, name):
     if not m:
         raise ValueError("trinket %r: Size %r is not WxH" % (name, text))
     w, h = int(m.group(1)), int(m.group(2))
-    if (w, h) != (1, 1):
-        raise ValueError("trinket %r is %dx%d — the pack only places 1x1 pieces "
-                         "so far (docs/loot-passives.md §6)" % (name, w, h))
+    if w < 1 or h < 1:
+        raise ValueError("trinket %r: Size %r has an empty side" % (name, text))
     return w, h
 
 
