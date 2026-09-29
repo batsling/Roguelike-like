@@ -95,6 +95,14 @@ const ATTEMPT_TURNS: int = 1
 const GOAL_HIT: int = 1
 const BOMB_HIT: int = 1
 
+# What a goal hit that does NOT finish its body costs it instead: this many turns
+# of Stun (§7.2). It replaced Staggered, which held the survivor for the rest of
+# the game — one way of sitting a turn out rather than two, with one countdown.
+# Two is roughly what the rest of a game used to buy. These stacks are QUIET: they
+# hang no bonus row off the body (see `quiet_stun`), because a chest reward is for
+# a stun the player chose to spend, not for one the board handed out.
+const GOAL_HIT_STUN: int = 2
+
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
 # left, and following enemies occupy a grid_cols() x grid_rows() grid on the right.
 # An enemy SPAWNS ON the grid, positioned so its RIGHTMOST cell sits on the back
@@ -260,6 +268,9 @@ var game_in_play: bool = false
 #                 any number of later games (§2), and a counter that reset every
 #                 time you walked to the next game would be a counter nobody
 #                 could ever finish.
+#   "quiet_stun"  how many of the body's Stun stacks were laid by a GOAL HIT it
+#                 survived (§7.2), and so hang no bonus row off it. Never more
+#                 than the Stun it holds; absent or 0 on a body nobody hit.
 var stack: Array = []
 
 # THE LIST ABOVE, AS SOMETHING THE GAME CAN CHECK.
@@ -298,7 +309,7 @@ const BODY_KEYS := {
 	"timed_statuses": true, "abilities": true, "turns": true, "phase": true,
 	"revives": true, "fades": true, "hidden": true, "illusionist": true,
 	"stolen": true, "fleeing": true, "tags": true,
-	"corpse": true, "corpse_revive": true, "progress": true,
+	"corpse": true, "corpse_revive": true, "progress": true, "quiet_stun": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -573,29 +584,6 @@ var cleared_this_game: Dictionary = {}
 # The same for bodies cleared the OTHER way (§13, Burn's `instead`). Engagement,
 # yes; a completed goal, no — the enemy's own condition was never set.
 var instead_this_game: Dictionary = {}
-
-# --- STAGGERED: the body that took its goal and lived (instance -> true) -----
-#
-# A goal met deals ONE hit, and one hit is not always enough — an Alien-Baby-
-# buffed body has 2 Health, a Dexterity one spends a shield instead of Health. So
-# a goal can be beaten and the enemy still be standing there, and until now the
-# only thing that changed was that it held its fire: it went on WALKING, a column
-# a turn, closing on the player it had already been answered for. The player did
-# the thing the board asked and watched the board advance anyway, which reads as
-# the goal not having counted.
-#
-# It counts. A survivor of its own goal is STAGGERED for the rest of the game: it
-# neither strikes (_resolve_enemy_turn) nor steps (_advance_stack, _admit_offgrid).
-# The rest of the run is untouched — the body is still there, still owed, still
-# carrying its goal into the next game, which is what its remaining Health means.
-#
-# This is the same set the engagement checks were already assembling by hand out
-# of `cleared_this_game`, `instead_this_game` and the report's own survivors; it
-# is a set of its own now because it has to be read by the movement code too, and
-# three copies of "who has been answered for" is three places to get it wrong.
-# Populated wherever a goal hit lands and the body lives (`_stagger`), and cleared
-# with the rest of the game record.
-var staggered_this_game: Dictionary = {}
 
 # --- what this game has answered for, counted and remembered (§2.1) ---------
 
@@ -981,7 +969,6 @@ func serialize() -> Dictionary:
 		# JSON has no int keys, so the instance sets go as lists.
 		"cleared_this_game": cleared_this_game.keys(),
 		"instead_this_game": instead_this_game.keys(),
-		"staggered_this_game": staggered_this_game.keys(),
 		"answered_this_game": _string_keys(answered_this_game),
 		"goals_met_this_game": goals_met_this_game,
 		"defeated_this_game": defeated_this_game,
@@ -1180,8 +1167,12 @@ func restore(data: Dictionary) -> void:
 		cleared_this_game[int(inst)] = true
 	for inst in data.get("instead_this_game", []):
 		instead_this_game[int(inst)] = true
+	# A LEGACY STAGGER IS FOLDED IN AS A GOAL HIT'S STUN (§7.2). Saves written
+	# before Staggered was retired name the survivors in a set of their own; each
+	# gets the stun its goal hit would hand it now, so a body the player answered
+	# for does not load walking again.
 	for inst in data.get("staggered_this_game", []):
-		staggered_this_game[int(inst)] = true
+		_stun_survivor(int(inst))
 	for sid in data.get("answered_this_game", []):
 		answered_this_game[StringName(sid)] = true
 	goals_met_this_game = maxi(0, int(data.get("goals_met_this_game", 0)))
@@ -1245,6 +1236,9 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
 		"statuses": _serialize_statuses(entry.get("statuses", {})),
+		# How many of those Stun stacks a goal hit laid, which carry no bonus row
+		# (§7.2). Written because nothing on the body can recompute it.
+		"quiet_stun": quiet_stun(entry),
 		# The stacks with a clock on them (docs/potions-design.md §5.4), each with
 		# the shield it handed out so a reload can still take back what it owes.
 		"timed_statuses": _serialize_timed(entry.get("timed_statuses", [])),
@@ -1336,6 +1330,9 @@ func _deserialize_entry(raw) -> Dictionary:
 		# load that dropped it would hand the player back a board where the thing
 		# they had just scared is walking again.
 		"statuses": _restore_statuses(d),
+		# Absent from a save written before §7.2's goal-hit stun: every stun in it was
+		# a paid one, so 0 is the right answer.
+		"quiet_stun": maxi(0, int(d.get("quiet_stun", 0))),
 		"timed_statuses": _deserialize_timed(d.get("timed_statuses", [])),
 		# A save written before §7.6 has no ability list; the enemy's own is the
 		# right answer there, because nothing had ever granted one.
@@ -1828,7 +1825,7 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 # progress are correctly NOT progress here: stepping a counted goal up by one
 # (§7.7 — `advance_goal` moves a tally and never reaches `_defeat`), and meeting
 # a goal against a body with more Health than the single hit it deals, which
-# leaves it Staggered rather than down (§7.2). `goals_met_this_game` is the
+# leaves it stunned rather than down (§7.2). `goals_met_this_game` is the
 # tempting field and it is the wrong one: it ticks for both.
 # The least an escape ever stands up. Out in the wilds the ladder's 0 + 1 made
 # walking out of a game cost a single body, which made skipping any game you did
@@ -2086,8 +2083,9 @@ func log_attempt() -> String:
 # second place for Strength, stuns, fire tiles and the off-grid queue to be
 # handled differently.
 #
-# Only the STAGGERED hold their fire, and only because the player already went and
-# did their goals this game. Every other body in the front column swings — and the
+# Only the STUNNED hold their fire — among them any body whose goal the player
+# already met this game and which lived through the hit (§7.2). Every other body
+# in the front column swings — and the
 # shields standing at that moment stop what they stop (§3), exactly as they would
 # at the end of a reported game.
 #
@@ -2103,11 +2101,9 @@ func attempt_turn() -> Dictionary:
 		# player must not have to infer from the board having changed.
 		"risen": [],
 	}
-	# WHOEVER YOU HAVE ALREADY ANSWERED FOR IS STAGGERED (§2.1), and a staggered
-	# body neither swings nor walks. "Its goal was met this game" is a fact about
-	# the GAME, not about the report — so a body you cleared an hour ago sits out
-	# the turns your lost runs hand the board just as it sits out the ones the
-	# report does. `_resolve_enemy_turn` reads the set itself.
+	# WHOEVER YOU HAVE ALREADY ANSWERED FOR AND LEFT STANDING IS STUNNED (§7.2), and
+	# a stunned body neither swings nor walks. The stun was laid the moment the goal
+	# was ticked, so `_resolve_enemy_turn` has nothing extra to ask.
 	for turn in range(ATTEMPT_TURNS):
 		if run_over:
 			break
@@ -2197,7 +2193,6 @@ func _loop_snapshot() -> Dictionary:
 		# the record back alongside the board.
 		"cleared_this_game": cleared_this_game.duplicate(),
 		"instead_this_game": instead_this_game.duplicate(),
-		"staggered_this_game": staggered_this_game.duplicate(),
 		"answered_this_game": answered_this_game.duplicate(),
 		"goals_met_this_game": goals_met_this_game,
 		"defeated_this_game": defeated_this_game,
@@ -2248,7 +2243,6 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	hurt_this_game = bool(snap.get("hurt_this_game", false))
 	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
 	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
-	staggered_this_game = (snap.get("staggered_this_game", {}) as Dictionary).duplicate()
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
 	goals_met_this_game = int(snap.get("goals_met_this_game", 0))
 	# …and the kill gate with it: undoing the turn that felled the third body has to
@@ -2333,7 +2327,6 @@ func _clear_attempts() -> void:
 func _clear_game_record() -> void:
 	cleared_this_game.clear()
 	instead_this_game.clear()
-	staggered_this_game.clear()
 	answered_this_game.clear()
 	goals_met_this_game = 0
 	defeated_this_game = 0
@@ -2499,9 +2492,8 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# the goal, so it must not tick a player clause that rode it (step 3) and the
 	# caller must not bank it as a beat.
 	#
-	# What it IS is engagement: a survivor is STAGGERED this game exactly as one
-	# whose goal you did would be, because the player paid something real for the
-	# hit either way.
+	# What it IS is engagement: a survivor is STUNNED exactly as one whose goal you
+	# did would be, because the player paid something real for the hit either way.
 	var instead_cleared: Array = _resolve_instead_claims(claims)
 	res["instead_cleared"] = instead_cleared
 	# A GOAL ALREADY ANSWERED FOR COUNTS (§2.1). Ticking one mid-game resolves it
@@ -2513,12 +2505,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		if not to_hit.has(int(inst)):
 			to_hit.append(int(inst))
 
-	# …and a survivor of one is STAGGERED for the whole game, not just for the turns
-	# after the report. An Alien-Baby-buffed body you took a point off this morning
-	# holds its fire tonight exactly as it would have if you had waited to tick it —
-	# and holds its ground with it. Everything ticked mid-game is already in the set
-	# (`_stagger`); the loop below adds whatever survives its hit at the report, in
-	# time for any extra turn that follows (2a).
+	# …and a survivor of one is STUNNED (§7.2). Everything ticked mid-game was
+	# stunned when it was ticked (`fulfill`); the loop below stuns whatever survives
+	# its hit at the report, in time for any extra turn that follows (2a). Those
+	# stacks are what the next game's first lost runs are spent against.
 	for inst in to_hit:
 		var idx: int = _index_of(int(inst))
 		if idx < 0:
@@ -2534,7 +2524,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		if _damage_enemy(idx, GOAL_HIT):
 			_defeat(e, true, res, fell)
 		else:
-			_stagger(int(inst))
+			_stun_survivor(int(inst))
 	# WHAT THE END OF THIS GAME STANDS UP (§19.5), priced HERE and paid at step 5.
 	# Here because it is the last moment the game is still in play —
 	# `end_of_game_price` answers 0 for a game that is not, and the line below is
@@ -2691,14 +2681,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 
 # ONE turn of the stack, the atomic unit a lost run buys (§3.2). Every enemy
 # acts once: the ones touching the front column STRIKE, everything behind it
-# STEPS a column closer. A STAGGERED body (`staggered_this_game`) does neither —
-# its goal was met this game and it survived the hit, which buys the rest of the
-# game off it, every turn of it. That is what keeps meeting a goal worth more the
-# closer you push rather than less.
-#
-# A stun, by contrast, costs exactly ONE turn: a stunned enemy neither strikes
-# nor steps, and one stun ticks off at the end of the turn — one lost run, worth
-# the same wherever on the road you stand.
+# STEPS a column closer. A STUNNED body does neither, and one stack of its stun
+# ticks off at the end of the turn — one lost run, worth the same wherever on the
+# road you stand. That includes a body that survived its goal's hit, which is
+# stunned for it (§7.2).
 # `only` narrows the turn to a named set of bodies — Predatory Scent's extra turn
 # (§7.6) is a free swing for two or three specific enemies and not another beat of
 # the whole board, and the ground's own turn-start triggers do not fire twice for
@@ -2740,11 +2726,6 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 			continue
 		if not only.is_empty() and not only.has(inst):
 			continue
-		if is_staggered(inst):
-			res["attacks"].append({"instance": inst, "turn": turn,
-				"goal_hit": true})
-			spent[inst] = true
-			continue
 		if is_stunned(entry):
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"stunned": true})
@@ -2767,7 +2748,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 		# true of the abilities as well as of the ordinary bodies.
 		# IT IS TAKING A TURN, whatever it decides to do with it. Counted here and
 		# nowhere else, so "on its first turn" means the first turn this body
-		# actually acted on — a turn it sat out stunned or staggered is not one.
+		# actually acted on — a turn it sat out stunned is not one.
 		var taken: int = int(entry.get("turns", 0))
 		entry["turns"] = taken + 1
 		if _take_intent(entry, res, taken):
@@ -2878,11 +2859,11 @@ func fulfill(instance: int, record: bool = false) -> bool:
 		if idx >= 0 and idx < stack.size():
 			stack[idx]["progress"] = 0
 		if record:
-			# It took the hit and lived — so it is STAGGERED, and done moving and
-			# swinging for this game. Only on the reporting path: a scroll firing a
-			# goal hit off its own effect (`record` false) changes nothing about the
-			# game the player is in the middle of, and that includes this.
-			_stagger(instance)
+			# It took the hit and lived — so it is STUNNED (§7.2). Only on the
+			# reporting path: a scroll firing a goal hit off its own effect (`record`
+			# false) changes nothing about the game the player is in the middle of,
+			# and that includes this.
+			_stun_survivor(instance)
 	loop_changed.emit()
 	return true
 
@@ -2952,16 +2933,11 @@ func retreat_goal(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# Mark a body STAGGERED: it took its goal's hit and lived, so it is out of this
-# game — no strike, no step (see `staggered_this_game`). Only ever called on a
-# survivor; a defeated body is off the board and has nothing left to hold still.
-func _stagger(instance: int) -> void:
-	staggered_this_game[instance] = true
-
-# Is this body staggered right now? The one question the board, the turn resolver
-# and the movement code all ask, so they cannot disagree about the answer.
-func is_staggered(instance: int) -> bool:
-	return staggered_this_game.has(instance)
+# A body took its goal's hit and lived: it is STUNNED for GOAL_HIT_STUN turns, and
+# those stacks hang no bonus row off it (§7.2). Only ever called on a survivor; a
+# defeated body is off the board and has nothing left to hold still.
+func _stun_survivor(instance: int) -> void:
+	stun(instance, GOAL_HIT_STUN, false)
 
 # The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
 # the alternative rather than the condition, so the body clears and is engaged, but
@@ -2981,7 +2957,7 @@ func fulfill_instead(instance: int, status_id: StringName) -> bool:
 		_defeat(e, true, res, fell)
 		_admit_offgrid()
 	else:
-		_stagger(instance)
+		_stun_survivor(instance)
 	loop_changed.emit()
 	return true
 
@@ -3952,16 +3928,41 @@ func _prune_offboard_cells() -> void:
 # `Decrease: Each Turn` is the countdown, its `skip_turn` is the lost turn, and its
 # enemy side hangs a claimable bonus on the body — so a scared monster is a body
 # that is not acting AND a chest reward you can go and earn.
-func stun(instance: int) -> bool:
-	if _index_of(instance) < 0:
+#
+# `stacks` is how many turns it sits out. `rewarded` false lays them QUIET — no
+# bonus row for them (see `quiet_stun`) — which is how a goal hit the body
+# survived stuns it (§7.2). Only the stacks that actually landed are counted as
+# quiet, so a resistance or a cap cannot leave the tally ahead of the Stun.
+func stun(instance: int, stacks: int = 1, rewarded: bool = true) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty():
 		return false
-	apply_status_to(instance, &"stun", 1)
+	var before: int = stun_stacks(entry)
+	apply_status_to(instance, &"stun", stacks)
+	if not rewarded:
+		var landed: int = stun_stacks(entry) - before
+		if landed > 0:
+			entry["quiet_stun"] = quiet_stun(entry) + landed
 	return true
 
 # How many turns `entry` is going to sit out. The one place the number is read off
 # a body, so nothing has to know it is a status rather than a field.
 func stun_stacks(entry: Dictionary) -> int:
 	return entry_status_stacks(entry, &"stun")
+
+# How many of those stacks are QUIET — laid by a goal hit, and so carrying no bonus
+# row. Read clamped to the Stun actually held, so whatever took stacks off the body
+# (a claimed bonus, a scroll, the dev panel) can never leave more quiet stacks than
+# stun. The turn's wear spends the quiet ones FIRST (`_wear_statuses`), so a stun
+# the player paid for keeps its bonus row for as long as the body is stunned.
+func quiet_stun(entry: Dictionary) -> int:
+	var owned: int = int((entry.get("statuses", {}) as Dictionary).get(&"stun", 0))
+	return clampi(int(entry.get("quiet_stun", 0)), 0, owned)
+
+# The Stun stacks on `entry` that DO pay its bonus row: the paid-for ones.
+func paid_stun(entry: Dictionary) -> int:
+	var owned: int = int((entry.get("statuses", {}) as Dictionary).get(&"stun", 0))
+	return owned - quiet_stun(entry)
 
 # --- push (§grid) ----------------------------------------------------------
 #
@@ -5173,6 +5174,15 @@ func bonus_objectives_for(entry: Dictionary) -> Array:
 	var out: Array = []
 	for row in enemy_statuses(entry):
 		if (row["status"] as StatusData).is_bonus(StatusData.ENEMY):
+			# A GOAL HIT'S STUN PAYS NOTHING (§7.2): the row is for the stacks
+			# somebody chose to spend, and a body holding only quiet ones has none.
+			if (row["status"] as StatusData).id == &"stun":
+				var quiet: int = quiet_stun(entry)
+				if quiet > 0:
+					row = row.duplicate()
+					row["stacks"] = int(row["stacks"]) - quiet
+					if int(row["stacks"]) <= 0:
+						continue
 			out.append(row)
 	return out
 
@@ -5364,6 +5374,16 @@ func _wear_statuses(entry: Dictionary, when: StringName) -> void:
 			else status.wears_per_turn()
 		if due:
 			_add_status_to(entry, StringName(id), -1)
+			# THE QUIET STACKS GO FIRST (§7.2). A goal hit's stun and a paid one are
+			# the same lost turn, so which stack a turn wears is only a question about
+			# the bonus row — and spending the unpaid ones first keeps a scared
+			# monster's reward on the board for as long as it is scared.
+			if StringName(id) == &"stun" and entry.has("quiet_stun"):
+				var quiet: int = mini(int(entry["quiet_stun"]) - 1, quiet_stun(entry))
+				if quiet > 0:
+					entry["quiet_stun"] = quiet
+				else:
+					entry.erase("quiet_stun")
 
 # --- Bleed's recoil (§13.2) ------------------------------------------------
 
@@ -5620,6 +5640,9 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 		return false
 	var held: Dictionary = entry.get("statuses", {})
 	var stacks: int = int(held.get(status_id, 0))
+	# Only the paid-for stun pays (§7.2) — see `quiet_stun`.
+	if status_id == &"stun":
+		stacks = paid_stun(entry)
 	if stacks <= 0:
 		return false
 	var status: StatusData = Data.get_status(status_id)
@@ -6351,10 +6374,6 @@ func _advance_stack(spent: Dictionary = {}) -> void:
 		# stunned between the two.
 		if is_stunned(entry):
 			continue
-		# STAGGERED: its goal was met this game and it lived through the hit, so it
-		# is done for the game — the fire it holds it holds standing still.
-		if is_staggered(inst):
-			continue
 		# IMMOBILE (§7.6) — "cannot Move". A Host is a turret: it never closes, and
 		# it is dangerous anyway because it is also Ranged down the whole lane.
 		if entry_has_op(entry, &"no_move") or bool(entry.get("corpse", false)):
@@ -6470,10 +6489,10 @@ func _admit_offgrid() -> void:
 	for entry in stack.duplicate():
 		if _index_of(int(entry.get("instance", 0))) < 0:
 			continue
-		# Walking on IS moving, so a body staggered while it was still queued waits
-		# out the game where it stands. The queue behind it is not held up: the loop
+		# Walking on IS moving, so a body stunned while it was still queued waits out
+		# its stun where it stands. The queue behind it is not held up: the loop
 		# simply goes on to the next one, and the cell it declined is theirs.
-		if is_staggered(int(entry.get("instance", 0))):
+		if is_stunned(entry):
 			continue
 		if int(entry.get("col", offgrid_col())) > grid_cols():
 			_place_on_spawn(entry)

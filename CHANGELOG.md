@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Staggered is gone: a goal hit the body survives stuns it for 2 turns**
+  (§7.2). There was Stun (N turns, one stack each) and Staggered (the rest of the
+  game), and they overlapped badly: Stun stacks wore off on turns Staggered had
+  already paid for, so stunning a Staggered body wasted the stun. Now a survivor
+  gets `GOAL_HIT_STUN` (2) stacks, and stacks just add. Those stacks are **quiet**
+  — they hang no Stun bonus row, since a chest reward is for a stun the player
+  spent — tracked by a new body key `quiet_stun`, which the turn wears first. A
+  game handed in spends no turns, so a stun laid at the report holds the next
+  game's first two lost runs, where Staggered held nothing past the report. A
+  stunned body waiting off the grid no longer walks on (walking on is a step).
+  The grey `STAGGERED` overlay is gone; a stunned body cools toward blue and
+  carries the Stun pip, and its card says how many turns came from the goal hit.
+  Old saves fold their staggered bodies in as a goal hit's stun.
+
 - **Food: shaped pieces that count enemies defeated** (`docs/loot-passives.md`
   §10-§11). Five Backpack Battles foods join the trinkets: Broccoli and Garlic
   (2x1), Carrot and Cheese (1x2), Cupcake. Their "every X seconds" is **every X

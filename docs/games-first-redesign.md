@@ -131,9 +131,6 @@ lose. `GameLoop2` keeps the per-game record and clears it when the game is chose
 or handed in:
 
 - `cleared_this_game` / `instead_this_game` — bodies engaged mid-game.
-- `staggered_this_game` — the engaged bodies that **survived** the hit, from
-  either path: a goal ticked mid-game, or one claimed at the report. A staggered
-  body is out of the game — see **Staggered** in §7.2.
 - `goals_met_this_game` — so a player clause riding a goal still ticks (§13) for a
   game whose goals were all answered hours earlier.
 - `answered_this_game` — player objectives already claimed, so a `demand` does not
@@ -1465,26 +1462,38 @@ you are trying to survive.
 
 **Stun** (Scroll of Scare Monster, §4.1) costs the target **one turn** — it
 neither strikes nor steps, and one stack of stun ticks off with it. That is one
-lost run, wherever on the road you stand (§7.4).
+lost run, wherever on the road you stand (§7.4). Walking on from the off-grid
+queue is a step too, so a stunned body waiting there stays in the queue and the
+bodies behind it take the cell.
 
-**Staggered** works the other way round, and is the whole game rather than one
-turn of it. A goal met deals **one** hit, and one hit does not always finish the
-job — an Alien-Baby-buffed body has 2 Health, a Dexterity one spends a shield
-instead. A body that takes its goal's hit and is still standing is **Staggered**:
-it neither strikes nor steps for the rest of that game, whether the goal was
-ticked mid-game or claimed at the report, and whether the turns come from a run
-you lost (§3.2) or a body's own extra turn (§7.6). Only the game is bought — the
-body is still there, still owed, still carrying its goal into the next one, which
-is what its remaining Health means.
+**A goal hit the body survives stuns it.** A goal met deals **one** hit, and one
+hit does not always finish the job — an Alien-Baby-buffed body has 2 Health, a
+Dexterity one spends a shield instead. A body that takes its goal's hit and is
+still standing gets **`GameLoop2.GOAL_HIT_STUN` (2) stacks of Stun**, whether the
+goal was ticked mid-game (`fulfill`), cleared the other way (`fulfill_instead`),
+or claimed at the report. Only those two turns are bought — the body is still
+there, still owed, still carrying its goal, which is what its remaining Health
+means. A game handed in spends no turns (§7.4), so stacks laid at the report are
+spent against the next game's first lost runs.
 
-It reads on the board as the art **darkened** with `STAGGERED` across it, in a
-threat colour drained toward grey; its hover and its full card say why. There is
-no art for the state and it needs none.
+**Those stacks are QUIET: they hang no bonus row.** Stun's enemy side is a
+claimable chest reward, and that is for a stun the player chose to spend (Scare
+Monster, Web, a weapon), not one the board handed out. The body's `quiet_stun`
+key counts them; `bonus_objectives_for` and `claim_enemy_bonus` subtract it, and
+the turn's wear spends the quiet stacks FIRST, so a paid stun on top keeps its
+row for as long as the body is stunned. The full card says how many of its turns
+came from the goal hit, so the missing row does not read as a bug.
 
-`GameLoop2.staggered_this_game` is the record, `is_staggered()` the question, and
-it clears with the rest of the per-game record (see §2.1). This grace window is
-why bombs, old-goal fulfilment, and Stun are all viable answers rather than
-needing to solve an enemy the instant it appears.
+**This replaced Staggered**, which held a survivor for the rest of the game in a
+per-game set of its own (`staggered_this_game`) beside Stun. Two ways of sitting
+a turn out meant two readers everywhere a body is asked "does this act", and the
+two overlapped badly: Stun stacks wore off on turns Staggered had already paid
+for, so stunning a Staggered body wasted the stun. Now there is one countdown, and
+stacks simply add. A save written before the change folds each staggered body in
+as a goal hit's stun on load.
+
+This grace window is why bombs, old-goal fulfilment, and Stun are all viable
+answers rather than needing to solve an enemy the instant it appears.
 
 ### 7.3 The battlefield grid — footprints, rows, and blocking
 
@@ -2613,7 +2622,7 @@ stream — so the overlay dims only when the beat actually stops.
   It **mirrors `_take_hit` rather than re-deriving it**: the player's damage-taken
   mods first (Marked doubles what lands), a swing modded to nothing spends no
   shield, Pierce takes both pools past, and the timed pool blocks first (§4.3).
-  Bodies that are staggered, stunned or still out of reach are excluded, and
+  Bodies that are stunned or still out of reach are excluded, and
   reach is `can_strike` rather than `in_front` — a Ranged body hits from further
   back (§7.6) and counting only the front column understated the cost for every
   one of them. It is a **forecast and not a promise** (an ability can spend a
@@ -4900,7 +4909,7 @@ two things that look like progress are correctly *not* progress here:
   target resolves anything.
 - **Finishing a counted goal is not always a defeat either.** A goal met deals
   **one** hit, and a body with more Health than that takes the hit, survives, and
-  is **Staggered** (§7.2). It is answered but not down.
+  is **stunned** for it (§7.2). It is answered but not down.
 
 A **bombed** body never reaches `_defeat` either, so bombing your way out of a goal
 does not buy the +1 off. `goals_met_this_game` is the tempting field here and it

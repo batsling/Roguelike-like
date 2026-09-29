@@ -445,7 +445,7 @@ func _resolve_goal_now(instance: int, enemy: GoalEnemyData) -> void:
 		_page._record_defeat(at_game, enemy)
 	_announce(
 		("%s is down — its loot is on the board." % name_of if gone
-			else "%s took the hit, and is holding its fire." % name_of),
+			else "%s took the hit, and is stunned for %d turns." % [name_of, GameLoop2.GOAL_HIT_STUN]),
 		UITheme.SUCCESS if gone else UITheme.GOLD)
 	# The list itself changes shape when a body leaves it, so it is rebuilt
 	# — safely, because every answered row is remembered by the loop, and
@@ -833,7 +833,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 				var gone: bool = GameLoop2.entry_for(instance).is_empty()
 				_announce(
 					("%s is down the other way — its loot is on the board." % alt_name
-						if gone else "%s took the hit, and is holding its fire." % alt_name),
+						if gone else "%s took the hit, and is stunned for %d turns." % [alt_name, GameLoop2.GOAL_HIT_STUN]),
 					UITheme.SUCCESS if gone else UITheme.GOLD)
 				if gone and standing > GameLoop2.stack.size():
 					_rebuild_soon())

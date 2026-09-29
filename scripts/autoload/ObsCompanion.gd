@@ -561,11 +561,10 @@ func _goals(threat: Dictionary) -> Array:
 		# A BODY'S GOAL IS NOT A `row_answered` ROW. That register holds the rows
 		# the report ARMS — the ones cashed when the game is handed in. A body's
 		# own goal resolves the moment it is ticked, and what it leaves behind is
-		# its instance in one of the loop's two cleared sets (or `staggered`, when
-		# the hit landed and the body outlived it).
+		# its instance in one of the loop's two cleared sets — whether the hit
+		# finished the body or it lived through it stunned (§7.2).
 		var cleared: bool = GameLoop2.cleared_this_game.has(instance) \
-			or GameLoop2.instead_this_game.has(instance) \
-			or GameLoop2.is_staggered(instance)
+			or GameLoop2.instead_this_game.has(instance)
 		# `goal_text_for`, never `enemy.goal` — the stem on the resource says
 		# nothing about the clauses a status has bolted onto it since (§13).
 		# THE BODY'S OWN FACE ON ITS OWN ROW. A goal IS an enemy — a game has no
@@ -589,7 +588,7 @@ func _goals(threat: Dictionary) -> Array:
 			# it. `front` is NOT this question and must not be read as it: it asks
 			# about column 1, and a Ranged body swings from further back (§7.6, and
 			# the note in `_threat`). Absent when this body throws nothing next
-			# turn — it is staggered, stunned, out of reach, or modded to zero.
+			# turn — it is stunned, out of reach, or modded to zero.
 			"damage": int(swing.get("damage", 0)),
 			"blocked": bool(swing.get("blocked", false)),
 			"done": cleared,
@@ -723,7 +722,7 @@ func _board(threat: Dictionary) -> Dictionary:
 #
 # IT IS A FORECAST AND NOT A PROMISE, which is why nothing here mutates: an
 # ability can spend a body's whole turn on something other than you (§7.6), and a
-# body that is staggered or stunned sits this one out — those are excluded, but a
+# body that is stunned sits this one out — those are excluded, but a
 # Cultist that decides to buff instead of swing cannot be known until it does.
 func _threat() -> Dictionary:
 	var totals: Dictionary = GameState.combat_totals()
@@ -740,14 +739,14 @@ func _threat() -> Dictionary:
 		if enemy == null:
 			continue
 		var instance: int = int(entry.get("instance", 0))
-		# The three that sit the turn out, exactly as the resolver skips them: a
-		# body answered for this game holds its fire, a stunned one loses the turn,
-		# and one still out of reach cannot swing from where it stands. `can_strike`
+		# The two that sit the turn out, exactly as the resolver skips them: a
+		# stunned one loses the turn (a body that lived through its goal's hit
+		# among them, §7.2), and one still out of reach cannot swing from where it
+		# stands. `can_strike`
 		# rather than `in_front` — a Ranged body reaches from further back (§7.6),
 		# and counting only the front column understated the cost for every one of
 		# them.
-		if GameLoop2.is_staggered(instance) or GameLoop2.is_stunned(entry) \
-				or not GameLoop2.can_strike(entry):
+		if GameLoop2.is_stunned(entry) or not GameLoop2.can_strike(entry):
 			continue
 		var landed: int = StatusData.apply_damage_mods(GameLoop2.enemy_damage(entry),
 			int(totals.get("damage_taken", 0)), float(totals.get("damage_taken_mult", 1.0)))
@@ -809,18 +808,16 @@ func _threat() -> Dictionary:
 # for at least N" holds, and the page words it that way.
 #
 # -1 when nothing on the board is ever going to close: an empty board, or one
-# holding only bodies that are staggered, stunned, off the grid or immobile. The
+# holding only bodies that are stunned, off the grid or immobile. The
 # page prints that as "nothing is coming" rather than as a wait of minus one turn.
 func _turns_away() -> int:
 	var best: int = -1
 	for entry in GameLoop2.stack:
 		if entry.get("enemy") == null:
 			continue
-		# The two that sit a turn out sit this count out too, exactly as `_threat`
-		# skips them: a body answered for this game holds its fire, a stunned one
+		# A stunned body sits this count out too, exactly as `_threat` skips it: it
 		# has lost the turn it would have walked on.
-		if GameLoop2.is_staggered(int(entry.get("instance", 0))) \
-				or GameLoop2.is_stunned(entry):
+		if GameLoop2.is_stunned(entry):
 			continue
 		var turns: int = GameLoop2.turns_until_strike(entry)
 		if turns == 0:

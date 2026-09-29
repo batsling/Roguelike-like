@@ -165,20 +165,14 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		# here. It wears the status's own art rather than a symbol of its own, so
 		# the two places Stun appears on this card are recognisably the same thing.
 		var worth: String = "sits out your next %d lost run%s" % [stun, "" if stun == 1 else "s"]
+		# A goal hit it survived stuns it too (§7.2), and those stacks pay no bonus —
+		# so say which ones they are, or the missing bonus row reads as a bug.
+		var quiet: int = GameLoop2.quiet_stun(entry)
+		if quiet > 0:
+			worth += " (%d from the goal hit it survived)" % quiet
 		var sd: StatusData = Data.get_status(&"stun")
 		stat_col.add_child(_stat_row_art(sd.image if sd != null else null,
 			sd.display_name if sd != null else "Stun", worth, Color(0.6, 0.8, 1.0)))
-	# STAGGERED (GameLoop2.staggered_this_game): the goal was met and the hit wasn't
-	# enough to finish it, so it is out of the game — no strike, no step. A row of
-	# its own rather than a note on the damage line, because the damage line is
-	# still true of it NEXT game, which is exactly the distinction that matters.
-	if GameLoop2.is_staggered(int(entry.get("instance", 0))):
-		# ⛔ and not a new symbol: the shipped glyph fonts are a subset built from
-		# what the source already draws (tools/build_glyph_font.py), so a fresh one
-		# would need the font rebuilt to avoid costing a host font search per Label.
-		stat_col.add_child(_stat_row("⛔", "Staggered",
-			"its goal was met this game — it won't move or attack again until the next one",
-			Color(0.72, 0.72, 0.78)))
 	top.add_child(stat_col)
 	inner.add_child(top)
 
