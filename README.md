@@ -1882,19 +1882,22 @@ Full format spec, the eight object-only verbs, and the two authored machines:
 
 ### Luck
 
-**Every point of Luck buys one more roll, and the better result is kept.**
+**Every point of Luck is a 50% chance of one more roll, and the better result is
+kept.**
 
 That is the whole model, and it applies to every random decision the run makes.
-At 1 Luck a 25% chance is really **43.75%** (`1 - 0.75²`); at 3 Luck it is
-**68%**. Luck compounds rather than adding, so it is not `p × (1 + luck)`.
+A coin is flipped per point and every heads buys a reroll. At 1 Luck a 25% chance
+is really **34.4%** (`1 - 0.75 × 0.875`); at 3 Luck it is **49.8%**. Each point
+multiplies the chance of missing by `1 - p/2`, so it is not `p × (1 + luck)`.
 
-Negative Luck is the same machine pointed the other way — `|Luck|` extra rolls,
-keep the **worse** — so a run at −2 sees that same 25% land at **1.6%**.
+Negative Luck is the same machine pointed the other way — a coin per point, each
+heads an extra roll, keep the **worse** — so a run at −2 sees that same 25% land
+at **9.8%**.
 
-> This replaced a 10%-per-point chance of *advantage* (roll twice, sometimes).
-> The difference is not a tuning change: at a single point the old one did
-> nothing at all nine times in ten, so Luck was a stat you could hold and never
-> see. A guaranteed reroll is felt on the first roll after you pick up a Clover.
+> This replaced a guaranteed reroll per point, which itself replaced a
+> 10%-per-point chance of *advantage* (roll twice, sometimes). The first did
+> nothing nine times in ten at a single point; the second compounded hard, three
+> Luck being four rolls at everything. A coin per point sits between them.
 
 **Which way is "better"** cannot be guessed, so every roll site declares it
 (`Stats.Favour`):
@@ -1908,7 +1911,7 @@ keep the **worse** — so a run at −2 sees that same 25% land at **1.6%**.
 The one that reads backwards is worth spelling out: the Blood Donation Machine's
 6.7% explosion is **`HIGH`**. Bursting pays an Event relic and one gold does
 not, so Luck makes the machine *more* likely to go off in your face — which is
-the outcome you were feeding it for. At 1 Luck the button reads **13%**, not
+the outcome you were feeding it for. At 1 Luck the button reads **9.8%**, not
 6.7%.
 
 **Where it lives.** `Stats.roll_chance` / `roll_range` / `roll_rarity_step_with_luck`
