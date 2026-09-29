@@ -118,13 +118,14 @@ func test_the_quoted_odds_move_with_luck() -> void:
 	var give: Dictionary = _choice(_object(BLOOD), "give_blood")
 	GameState.luck = 0
 	assert_string_contains(EventSystem.describe_choice(give, 0), "6.7%")
-	# One reroll on a 6.7% is 1-(0.933)^2 = 12.95%, which reads as 13%. A button
+	# One point of Luck on a 6.7% is 1 - 0.933 * (1 - 0.0335) = 9.83%, which reads
+	# as 9.8%: half the time a reroll, half the time not. A button
 	# still saying 6.7% would be lying to a player who bought a Clover for
 	# exactly this.
 	GameState.luck = 1
 	var lucky: String = EventSystem.describe_choice(give, 0)
-	assert_string_contains(lucky, "13%")
-	assert_string_contains(lucky, "87%")   # …and the other side moves with it
+	assert_string_contains(lucky, "9.8%")
+	assert_string_contains(lucky, "90.2%")   # …and the other side moves with it
 
 
 func test_the_burst_is_the_outcome_luck_pushes_toward() -> void:

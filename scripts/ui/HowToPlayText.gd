@@ -849,13 +849,13 @@ static func _ch_pack() -> Dictionary:
 				+ "bills you in the run's own currency rather than reaching for "
 				+ "your Health bar."),
 			_h("Luck"),
-			_p("Every point of Luck buys one more roll, and the better result is "
-				+ "kept. It compounds rather than adding — at 1 Luck a 25% chance "
-				+ "is really 43.75%, and at 3 Luck it is 68%. It reaches every "
+			_p("Every point of Luck is a 50% chance of one more roll, and the "
+				+ "better result is kept. It compounds rather than adding — at 1 "
+				+ "Luck a 25% chance is really 34%, and at 3 Luck it is 50%. It reaches every "
 				+ "random decision the run makes: item rarity, chest sizes, shop "
 				+ "stock, scrolls, machines."),
-			_p("Negative Luck is the same machine backwards — extra rolls, keep "
-				+ "the worse. And any odds the game shows you are the odds your "
+			_p("Negative Luck is the same machine backwards — a chance of extra "
+				+ "rolls, keep the worse. And any odds the game shows you are the odds your "
 				+ "Luck will actually roll, not the number on the sheet."),
 		],
 	}

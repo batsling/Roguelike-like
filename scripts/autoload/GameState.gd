@@ -927,7 +927,8 @@ func _fire_source_triggers(item: ItemData, trigger_name: String, ctx_extras: Dic
 			continue
 		if bool(trig.get("once_per_game", false)) and not _claim_once_per_game(item, loot, trigger_name):
 			continue
-		if int(trig.get("every", 0)) > 1 and not _count_every(item, loot, trig):
+		if int(trig.get("every", 0)) > 1 \
+				and not _count_every(item, loot, trig, LootPassives.every_for(trig, loot)):
 			continue
 		# A Blueprint copying a Rocket is the BLUEPRINT firing — it is the piece in
 		# the player's pack that did something — so it is named and pictured as
@@ -978,18 +979,25 @@ func _loot_gates_pass(trig: Dictionary, ctx: Dictionary, loot: Dictionary) -> bo
 			return false
 	return true
 
-# `every=N` (Potion Belt's fourth potion): this firing counts, and only every Nth
-# goes through. Counted AFTER every other gate, so only the firings that qualified
-# are counted. The count is kept where `once_per_game`'s claim is — on the piece
-# doing the firing, so it rides the save — and per trigger, keyed by its position.
-func _count_every(item: ItemData, loot: Dictionary, trig: Dictionary) -> bool:
-	var n: int = int(trig["every"])
+# `every=N` (Potion Belt's fourth potion, a food's sixth enemy defeated): this
+# firing counts, and only every Nth goes through. Counted AFTER every other gate, so
+# only the firings that qualified are counted. The count is kept where
+# `once_per_game`'s claim is — on the piece doing the firing, so it rides the save
+# and carries from game to game — and per trigger, keyed by its position.
+#
+# `n` is the N this firing counts to, which a food beside other food has lowered
+# (LootPassives.every_for). The count is PROGRESS, reset when it pays, rather than
+# a remainder: moving a Carrot beside a Cheese turns 4 into 3, and a piece already
+# 3 along then pays on this firing rather than wrapping round to zero.
+func _count_every(item: ItemData, loot: Dictionary, trig: Dictionary, n: int = 0) -> bool:
+	if n <= 0:
+		n = int(trig["every"])
 	var key: String = "%s#%d" % [String(trig.get("on", "")), item.triggers.find(trig)]
 	var holder: Dictionary = loot.get("entry", {}) if not loot.is_empty() else {}
 	var counts: Dictionary = holder.get("every_count", {}) if not loot.is_empty() \
 		else (item.get_meta("every_count") if item.has_meta("every_count") else {})
 	var at: int = int(counts.get(key, 0)) + 1
-	counts[key] = at % n
+	counts[key] = 0 if at >= n else at
 	if not loot.is_empty():
 		holder["every_count"] = counts
 	else:
@@ -3745,13 +3753,16 @@ func loot_capacity() -> int:
 	return pack_cells().size()
 
 func loot_is_full() -> bool:
-	return loot_items.size() >= loot_capacity()
+	return loot_space() <= 0
 
-# How many more pieces will fit. The drop modal asks with this rather than
+# How many more CELLS are free. The drop modal asks with this rather than
 # refusing after the fact — "you can't carry this" is an answer the player should
-# get before they take it, not a grant that silently evaporates.
+# get before they take it, not a grant that silently evaporates. Counted in cells
+# rather than pieces since a piece can cover more than one (docs/loot-passives.md
+# §10): with only 1x1 pieces the two are the same number. Whether a BIG piece fits
+# is a question about shape, not count — ask `loot_fits`.
 func loot_space() -> int:
-	return maxi(0, loot_capacity() - loot_items.size())
+	return loot_layout().count(-1)
 
 func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
@@ -3882,7 +3893,10 @@ func _add_random_wand_loot() -> void:
 
 func _add_random_trinket_loot() -> void:
 	var entry: Dictionary = roll_trinket_entry()
-	if not entry.is_empty():
+	# A big trinket needs a SHAPE of free cells, not just a free cell: one that fits
+	# nowhere is not paid, as a piece into a full pack is not.
+	if not entry.is_empty() and loot_fits(entry):
+		entry = _seated(entry)
 		loot_items.append(entry)
 		_note_loot_gained(entry)
 
@@ -4012,9 +4026,9 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 func take_loot_entry(entry: Dictionary) -> bool:
 	if is_bag_entry(entry):
 		return auto_place_bag(entry)
-	if entry.is_empty() or loot_is_full():
+	if entry.is_empty() or not loot_fits(entry):
 		return false
-	loot_items.append(entry.duplicate(true))
+	loot_items.append(_seated(entry))
 	emit_signal("inventory_changed")
 	_note_loot_gained(entry)
 	return true
@@ -4063,14 +4077,18 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 	if entry.is_empty() or loot_is_full():
 		return false
 	var layout: Array = loot_layout()
-	var where: int = slot
-	if where < 0 or where >= loot_capacity() or layout[where] != -1:
-		where = layout.find(-1)
-	if where < 0:
-		return false
+	var rot: int = int(entry.get("rot", 0))
+	var cells: Array = piece_slots_from(entry, slot, rot)
+	if not _all_free(layout, cells):
+		var spot: Dictionary = find_piece_spot(entry, layout)
+		if spot.is_empty():
+			return false
+		cells = spot["cells"]
+		rot = int(spot["rot"])
 	_freeze_loot_layout(layout)
 	var taken: Dictionary = entry.duplicate(true)
-	taken["pack_slot"] = where
+	taken["pack_slot"] = int(cells[0])
+	_set_rot(taken, rot)
 	loot_items.append(taken)
 	emit_signal("inventory_changed")
 	_note_loot_gained(taken)
@@ -4094,16 +4112,21 @@ func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
 	if entry.is_empty() or is_bag_entry(entry) or slot < 0 or slot >= loot_capacity():
 		return {}
 	var layout: Array = loot_layout()
-	var index: int = int(layout[slot])
-	if index < 0:
+	# A BIG PIECE TRADES FOR THE ONE PIECE ITS FOOTPRINT LANDS ON (§10 of the doc):
+	# every cell it would cover is either free or that piece's. Two pieces under it
+	# is no trade — there is one square on the board to put the loser back on.
+	var cells: Array = piece_slots_from(entry, slot, int(entry.get("rot", 0)))
+	var under: Array = _occupants(layout, cells, -1)
+	if cells.is_empty() or under.size() != 1:
 		return {}
+	var index: int = int(under[0])
 	_freeze_loot_layout(layout)
 	var out: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
 	# The slot belongs to the pack, not to the piece leaving it: a traded-out piece
 	# lying on the board must not remember a cell of a grid it is no longer in.
 	out.erase("pack_slot")
 	var taken: Dictionary = entry.duplicate(true)
-	taken["pack_slot"] = slot
+	taken["pack_slot"] = int(cells[0])
 	loot_items[index] = taken
 	emit_signal("inventory_changed")
 	_note_loot_gained(taken)
@@ -4165,7 +4188,7 @@ func add_trinket_loot(id: StringName) -> void:
 	var t: TrinketData = Data.get_trinket(id)
 	if t == null:
 		return
-	loot_items.append({"type": "trinket", "id": t.id, "rarity": t.rarity})
+	loot_items.append(_seated({"type": "trinket", "id": t.id, "rarity": t.rarity}))
 	emit_signal("inventory_changed")
 	_note_loot_gained(loot_items[-1])
 
@@ -4195,6 +4218,10 @@ func add_bag_loot(id: StringName) -> bool:
 # existed put in the pack — takes the lowest free one, in pickup order. That is
 # exactly what the dense array used to do, so a run that never drags anything sees
 # the pack it always saw.
+#
+# A PIECE CAN COVER MORE THAN ONE CELL (docs/loot-passives.md §10). Every cell it
+# covers maps to its index here, so "is this slot free" is still `layout[slot] ==
+# -1` wherever it is asked; its `pack_slot` is the lowest of them, its ANCHOR.
 func loot_layout() -> Array:
 	var layout: Array = []
 	layout.resize(loot_capacity())
@@ -4203,15 +4230,28 @@ func loot_layout() -> Array:
 	for i in range(loot_items.size()):
 		var entry = loot_items[i]
 		var slot: int = int(entry.get("pack_slot", -1)) if entry is Dictionary else -1
-		if slot >= 0 and slot < loot_capacity() and layout[slot] == -1:
-			layout[slot] = i
+		var cells: Array = piece_slots(entry, slot, int(entry.get("rot", 0))) \
+			if entry is Dictionary else []
+		if _all_free(layout, cells):
+			for c in cells:
+				layout[c] = i
 		else:
 			homeless.append(i)
 	for i in homeless:
-		var free: int = layout.find(-1)
-		if free < 0:
-			break
-		layout[free] = i
+		var entry = loot_items[i]
+		var cells: Array = []
+		if entry is Dictionary and is_big_piece(entry):
+			cells = _first_fit(layout, entry, int(entry.get("rot", 0)))
+		# Nowhere its shape fits (a save from before shapes, a debug grant into a
+		# crowded pack): SQUEEZED into one free cell rather than not drawn at all, so
+		# a piece the run carries is always a piece the player can see and move.
+		if cells.is_empty():
+			var free: int = layout.find(-1)
+			if free < 0:
+				break
+			cells = [free]
+		for c in cells:
+			layout[c] = i
 	return layout
 
 # Which piece is in a slot (index into `loot_items`), or -1 if it is empty.
@@ -4220,47 +4260,305 @@ func loot_index_at_slot(slot: int) -> int:
 		return -1
 	return int(loot_layout()[slot])
 
-# Where the piece at `index` is drawn, or -1 if it isn't carried.
+# Where the piece at `index` is drawn — its ANCHOR, the lowest slot it covers — or
+# -1 if it isn't carried.
 func loot_slot_of(index: int) -> int:
 	return int(loot_layout().find(index))
+
+# Every slot the piece at `index` covers, lowest first.
+func loot_slots_of(index: int) -> Array:
+	var out: Array = []
+	var layout: Array = loot_layout()
+	for slot in range(layout.size()):
+		if int(layout[slot]) == index:
+			out.append(slot)
+	return out
 
 # Write the arrangement the grid is currently DRAWING onto the entries themselves.
 # Called before any rearrangement, because a piece that was only implicitly in slot
 # 2 (by being third in the array) would otherwise slide the moment something else
 # claimed a slot ahead of it — the player would drag one piece and watch two move.
+# A piece is written ONCE, at the first (lowest) slot it covers: its anchor.
 func _freeze_loot_layout(layout: Array) -> void:
+	var done: Dictionary = {}
 	for slot in range(layout.size()):
 		var index: int = int(layout[slot])
-		if index >= 0 and index < loot_items.size() and loot_items[index] is Dictionary:
+		if index >= 0 and index < loot_items.size() and loot_items[index] is Dictionary \
+				and not done.has(index):
+			done[index] = true
 			loot_items[index]["pack_slot"] = slot
+
+# ---------------------------------------------------------------------------
+# Pieces bigger than one cell (docs/loot-passives.md §10)
+# ---------------------------------------------------------------------------
+#
+# A TRINKET CAN BE 2x1 OR 1x2 (the food from Backpack Battles), and every rule the
+# pack had was written for one cell. Four facts make it fit without anything else
+# about slots changing:
+#
+#   * A BIG PIECE LIVES INSIDE ONE OWNER — the 3x3, or one bag. Slots are numbered
+#     by who owns the cell, and a piece straddling two owners would be torn apart
+#     the moment its bag moved.
+#   * ITS FOOTPRINT IS KEPT IN THE OWNER'S OWN FRAME: its anchor is the top-left of
+#     the rectangle in the bag's unturned reading order, and it covers `size`
+#     turned by (its turn minus its bag's). So when a bag moves or turns, what is
+#     in it comes along whole, exactly as a 1x1 piece always has.
+#   * TURNING A BAG TURNS WHAT IS IN IT (`move_bag`), so a piece's `rot` is always
+#     the way it faces on screen.
+#   * A PLACEMENT FROM THE SCREEN is asked by the CELL a piece's top-left is dropped
+#     on (`piece_slots_from`) — what the player sees — and stored by anchor.
+
+# How many cells a piece covers, unturned (columns x rows). Every kind but a
+# trinket is one cell; a trinket says so on its sheet row.
+func piece_size(entry) -> Vector2i:
+	if entry is Dictionary and String(entry.get("type", "")) == "trinket":
+		var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
+		if t != null:
+			return Vector2i(maxi(1, t.size.x), maxi(1, t.size.y))
+	return Vector2i.ONE
+
+func is_big_piece(entry) -> bool:
+	return piece_size(entry) != Vector2i.ONE
+
+# The frame the slot's owner numbers its cells in: {start, w, h, rot}.
+func _slot_frame(slot: int) -> Dictionary:
+	if slot < 0 or slot >= loot_capacity():
+		return {}
+	if slot < LOOT_CAPACITY:
+		return {"start": 0, "w": PACK_BASE.x, "h": PACK_BASE.y, "rot": 0}
+	var i: int = bag_at_slot(slot)
+	var sz: Vector2i = bag_size(pack_bags[i])
+	return {"start": bag_slot_start(i), "w": sz.x, "h": sz.y,
+		"rot": int(pack_bags[i].get("rot", 0))}
+
+# THE SLOTS A PIECE COVERS with its anchor on `anchor`, turned `rot` — [] when the
+# rectangle runs off its owner. Lowest first, so [0] is the anchor again.
+func piece_slots(entry, anchor: int, rot: int) -> Array:
+	var f: Dictionary = _slot_frame(anchor)
+	if f.is_empty():
+		return []
+	var size: Vector2i = piece_size(entry)
+	if size == Vector2i.ONE:
+		return [anchor]
+	var w: int = int(f["w"])
+	var h: int = int(f["h"])
+	var ext: Vector2i = bag_extent(size, rot - int(f["rot"]))
+	var k: int = anchor - int(f["start"])
+	@warning_ignore("integer_division")
+	var l := Vector2i(k % w, k / w)
+	if l.x + ext.x > w or l.y + ext.y > h:
+		return []
+	var out: Array = []
+	for dy in range(ext.y):
+		for dx in range(ext.x):
+			out.append(int(f["start"]) + (l.y + dy) * w + l.x + dx)
+	return out
+
+# The slots a piece would cover dropped with its TOP-LEFT CELL, as drawn, on slot
+# `at`, turned `rot` — [] when any of them is off the pack or owned by something
+# else than `at`'s owner. Lowest first, so [0] is the anchor to store.
+func piece_slots_from(entry, at: int, rot: int) -> Array:
+	if at < 0 or at >= loot_capacity():
+		return []
+	var size: Vector2i = piece_size(entry)
+	if size == Vector2i.ONE:
+		return [at]
+	var ext: Vector2i = bag_extent(size, rot)
+	var c0: Vector2i = pack_cell_of(at)
+	var owner: int = bag_at_slot(at)
+	var out: Array = []
+	for dy in range(ext.y):
+		for dx in range(ext.x):
+			var s: int = pack_slot_at(c0 + Vector2i(dx, dy))
+			if s < 0 or bag_at_slot(s) != owner:
+				return []
+			out.append(s)
+	out.sort()
+	return out
+
+func _all_free(layout: Array, cells: Array) -> bool:
+	if cells.is_empty():
+		return false
+	for c in cells:
+		if int(c) < 0 or int(c) >= layout.size() or int(layout[c]) != -1:
+			return false
+	return true
+
+# The pieces (indices) on `cells`, other than `except`, each once.
+func _occupants(layout: Array, cells: Array, except: int) -> Array:
+	var out: Array = []
+	for c in cells:
+		var i: int = int(layout[c])
+		if i >= 0 and i != except and not out.has(i):
+			out.append(i)
+	return out
+
+# The first anchor (lowest slot) where the piece fits turned `rot`, as its cells.
+func _first_fit(layout: Array, entry, rot: int) -> Array:
+	for slot in range(layout.size()):
+		var cells: Array = piece_slots_from(entry, slot, rot)
+		if _all_free(layout, cells):
+			return cells
+	return []
+
+# WHERE A PIECE WOULD GO if it were put in the pack now: {cells, rot}, or {} when
+# its shape fits nowhere. Its own turn first, then a quarter turn — a 2x1 into a
+# pack with only a vertical gap goes in standing rather than not at all.
+func find_piece_spot(entry, layout: Array = []) -> Dictionary:
+	var lay: Array = layout if not layout.is_empty() else loot_layout()
+	var rot: int = int(entry.get("rot", 0)) if entry is Dictionary else 0
+	var turns: Array = [rot]
+	var size: Vector2i = piece_size(entry)
+	if size.x != size.y:
+		turns.append(posmod(rot + 1, 4))
+	for r in turns:
+		var cells: Array = _first_fit(lay, entry, r)
+		if not cells.is_empty():
+			return {"cells": cells, "rot": r}
+	return {}
+
+# Would this piece fit in the pack right now? A bag always does (it is more pack),
+# a 1x1 piece does while a cell is free, and a big one needs its shape free.
+func loot_fits(entry) -> bool:
+	if is_bag_entry(entry):
+		return true
+	if not is_big_piece(entry):
+		return not loot_is_full()
+	return not find_piece_spot(entry).is_empty()
+
+# Could `entry` be put down with its top-left on slot `at`, turned `rot`, onto
+# free cells?
+func piece_fits_at(entry, at: int, rot: int) -> bool:
+	return _all_free(loot_layout(), piece_slots_from(entry, at, rot))
+
+# A copy of `entry` with a slot and turn chosen for it, when it is a big piece —
+# so a piece with a shape never lands homeless and squeezed. A 1x1 piece is left
+# slotless, as it always was, and takes the lowest free cell.
+func _seated(entry: Dictionary) -> Dictionary:
+	var out: Dictionary = entry.duplicate(true)
+	if not is_big_piece(out):
+		return out
+	var layout: Array = loot_layout()
+	var spot: Dictionary = find_piece_spot(out, layout)
+	if spot.is_empty():
+		return out
+	_freeze_loot_layout(layout)
+	out["pack_slot"] = int(spot["cells"][0])
+	_set_rot(out, int(spot["rot"]))
+	return out
+
+static func _set_rot(entry: Dictionary, rot: int) -> void:
+	var r: int = posmod(rot, 4)
+	if r == 0:
+		entry.erase("rot")
+	else:
+		entry["rot"] = r
+
+# The slot a piece's TOP-LEFT CELL is drawn on, among the slots it covers.
+func _drawn_top_left(cells: Array) -> int:
+	var best: int = -1
+	var at: Vector2i = Vector2i.ZERO
+	for s in cells:
+		var c: Vector2i = pack_cell_of(int(s))
+		if best < 0 or c.y < at.y or (c.y == at.y and c.x < at.x):
+			best = int(s)
+			at = c
+	return best
 
 # Move the piece in slot `from` to slot `to` — the pack grid's drag (§4.3).
 #
 # ANY SLOT IS A PLACE A PIECE CAN GO. Dropping onto a piece SWAPS the two; dropping
 # onto an EMPTY slot puts the piece there and leaves the slot it came from empty,
-# wherever in the grid that is. Both arguments are slots in the 3x3, not indices
+# wherever in the grid that is. Both arguments are slots in the pack, not indices
 # into `loot_items` — see `loot_layout`.
+#
+# A BIG PIECE lands with its top-left on `to`, turned `rot` (-1 keeps its turn),
+# and swaps with the ONE piece in the way, which goes where it came from if it
+# fits there. Two pieces in the way, or a loser with nowhere to go, is refused.
 #
 # Returns whether anything actually moved, so a drag onto a piece's own slot is a
 # no-op rather than a redraw.
-func move_loot(from: int, to: int) -> bool:
-	if from < 0 or from >= loot_capacity() or to < 0 or to >= loot_capacity() or from == to:
+func move_loot(from: int, to: int, rot: int = -1) -> bool:
+	if from < 0 or from >= loot_capacity() or to < 0 or to >= loot_capacity():
 		return false
 	var layout: Array = loot_layout()
 	var moving: int = int(layout[from])
 	if moving < 0:
 		return false
+	var entry: Dictionary = loot_items[moving]
+	var r: int = posmod(rot, 4) if rot >= 0 else int(entry.get("rot", 0))
+	if from == to and r == int(entry.get("rot", 0)):
+		return false
+	var cells: Array = piece_slots_from(entry, to, r)
+	if cells.is_empty():
+		return false
+	var under: Array = _occupants(layout, cells, moving)
+	if under.size() > 1:
+		return false
+	# Where the displaced piece goes: its top-left on the slot the mover was dragged
+	# from, into the cells the mover leaves (and nothing it now covers).
+	var loser_cells: Array = []
+	if under.size() == 1:
+		var loser: Dictionary = loot_items[int(under[0])]
+		var after: Array = layout.duplicate()
+		for c in range(after.size()):
+			if int(after[c]) == moving or int(after[c]) == int(under[0]):
+				after[c] = -1
+		for c in cells:
+			after[c] = moving
+		loser_cells = piece_slots_from(loser, from, int(loser.get("rot", 0)))
+		if not _all_free(after, loser_cells):
+			return false
 	_freeze_loot_layout(layout)
-	var displaced: int = int(layout[to])
-	loot_items[moving]["pack_slot"] = to
-	if displaced >= 0:
-		loot_items[displaced]["pack_slot"] = from
+	entry["pack_slot"] = int(cells[0])
+	_set_rot(entry, r)
+	if under.size() == 1:
+		loot_items[int(under[0])]["pack_slot"] = int(loser_cells[0])
 	emit_signal("inventory_changed")
 	return true
 
+# Would `move_loot(from, to, rot)` do anything? The same checks, nothing written —
+# what the grid asks while a piece is in the air over a slot.
+func can_move_loot(from: int, to: int, rot: int = -1) -> bool:
+	if from < 0 or from >= loot_capacity() or to < 0 or to >= loot_capacity():
+		return false
+	var layout: Array = loot_layout()
+	var moving: int = int(layout[from])
+	if moving < 0:
+		return false
+	var entry: Dictionary = loot_items[moving]
+	var r: int = posmod(rot, 4) if rot >= 0 else int(entry.get("rot", 0))
+	var cells: Array = piece_slots_from(entry, to, r)
+	if cells.is_empty():
+		return false
+	var under: Array = _occupants(layout, cells, moving)
+	if under.size() > 1:
+		return false
+	if under.is_empty():
+		return true
+	var loser: Dictionary = loot_items[int(under[0])]
+	var after: Array = layout.duplicate()
+	for c in range(after.size()):
+		if int(after[c]) == moving or int(after[c]) == int(under[0]):
+			after[c] = -1
+	for c in cells:
+		after[c] = moving
+	return _all_free(after, piece_slots_from(loser, from, int(loser.get("rot", 0))))
+
+# Could a piece off the FLOOR land with its top-left on `at`, turned `rot` — onto
+# free cells, or trading for the ONE piece its footprint covers
+# (`swap_loot_entry_at`)?
+func can_trade_into(entry: Dictionary, at: int, rot: int) -> bool:
+	var cells: Array = piece_slots_from(entry, at, rot)
+	if cells.is_empty():
+		return false
+	return _occupants(loot_layout(), cells, -1).size() <= 1
+
 # TURN the piece at `index` to `rot` quarter turns clockwise (docs/loot-passives.md
 # §2). Saved on the entry; for a piece that reads a neighbour it changes which one,
-# which is why it emits — the pack's passives are re-derived on the signal.
+# which is why it emits — the pack's passives are re-derived on the signal. A BIG
+# piece turns about its top-left cell and only onto free cells: one with no room
+# to turn where it stands stays as it was (returns false).
 func turn_loot(index: int, rot: int) -> bool:
 	if index < 0 or index >= loot_items.size() or not (loot_items[index] is Dictionary):
 		return false
@@ -4268,10 +4566,15 @@ func turn_loot(index: int, rot: int) -> bool:
 	var r: int = posmod(rot, 4)
 	if int(entry.get("rot", 0)) == r:
 		return false
-	if r == 0:
-		entry.erase("rot")
-	else:
-		entry["rot"] = r
+	if is_big_piece(entry):
+		var layout: Array = loot_layout()
+		var mine: Array = loot_slots_of(index)
+		var cells: Array = piece_slots_from(entry, _drawn_top_left(mine), r)
+		if cells.is_empty() or not _occupants(layout, cells, index).is_empty():
+			return false
+		_freeze_loot_layout(layout)
+		entry["pack_slot"] = int(cells[0])
+	_set_rot(entry, r)
 	emit_signal("inventory_changed")
 	return true
 
@@ -4499,6 +4802,19 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 		return false
 	if not can_place_bag(bag_size(bag), origin, rot, i):
 		return false
+	# WHAT IS IN A TURNED BAG TURNS WITH IT (docs/loot-passives.md §10): a piece's
+	# `rot` is the way it faces on screen, so a Blueprint in a bag given a quarter
+	# turn now copies the piece below it, and a 2x1 stays the shape its cells are.
+	var turn: int = posmod(rot, 4) - posmod(int(bag.get("rot", 0)), 4)
+	if turn != 0:
+		var layout: Array = loot_layout()
+		_freeze_loot_layout(layout)
+		var start: int = bag_slot_start(i)
+		var n: int = bag_size(bag).x * bag_size(bag).y
+		for e in loot_items:
+			if e is Dictionary and int(e.get("pack_slot", -1)) >= start \
+					and int(e.get("pack_slot", -1)) < start + n:
+				_set_rot(e, int(e.get("rot", 0)) + turn)
 	bag["x"] = origin.x
 	bag["y"] = origin.y
 	bag["rot"] = posmod(rot, 4)

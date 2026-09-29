@@ -5644,9 +5644,9 @@ func _refresh_select_stats() -> void:
 	# reading what they can do to the offering. Drawn even at zero, so the stat is
 	# discoverable before a Clover ever turns up.
 	_select_stats.add_child(_stat_chip("🍀 Luck %d" % luck, luck, LUCK_GREEN,
-		"Every roll in the run is made %d extra time%s and the %s result kept.\n"
-		% [absi(luck), "" if absi(luck) == 1 else "s",
-			"better" if luck >= 0 else "worse"]
+		"Every roll in the run gets %d coin flip%s — each heads is one more roll — "
+		% [absi(luck), "" if absi(luck) == 1 else "s"]
+		+ "and the %s result is kept.\n" % ("better" if luck >= 0 else "worse")
 		+ "Rarity ladders, event gambles, machine odds — anything with a better "
 		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
 		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))

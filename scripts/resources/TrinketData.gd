@@ -26,9 +26,10 @@ extends Resource
 # "Common" | "Uncommon" | "Rare" | "Legendary" — the same 0-3 ladder every drop
 # walks (rarity_index).
 @export var rarity: String = "Common"
-# How many pack cells it covers, as the sheet's "WxH". Every trinket is 1x1 today
-# and the pack only places 1x1 pieces; the size is carried so the day a larger one
-# is authored the data already says so (docs/loot-passives.md §6).
+# How many pack cells it covers, as Vector2i(columns, rows), unturned. The sheet
+# writes it "HxW", ROWS FIRST, as the art is painted: Broccoli's "2x1" is (1, 2),
+# standing. GameState.piece_size reads this, and the pack places any rectangle
+# inside one owner (docs/loot-passives.md §10).
 @export var size: Vector2i = Vector2i.ONE
 @export_multiline var description: String = ""
 # The real game it is lifted from (the sheet's `Game` column).
@@ -52,6 +53,13 @@ extends Resource
 # and Echo Form's on cards today (CardData), here so the shape stays shared.
 @export var bank_shields: bool = false
 @export var echo_first_loot: int = 0
+
+
+# Whether the sheet tags it `food` — the one tag the pack reads (docs/loot-passives.md
+# §11): a food's enemy-defeat triggers come round sooner for each different food
+# touching it.
+func is_food() -> bool:
+	return tags.has("food")
 
 
 func rarity_index() -> int:

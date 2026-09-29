@@ -3854,16 +3854,21 @@ already the place it would draw.
 
 ## 16. Luck
 
-**Every point of Luck buys one more roll, and the better result is kept.**
+**Every point of Luck is a 50% chance of one more roll, and the better result is
+kept.**
 
-That is the whole model, and it reaches every random decision the run makes. At
-1 Luck a 25% chance is really 43.75% (`1 - 0.75²`); at 3 Luck, 68%. It compounds
-rather than adding. Negative Luck is the same machine reversed — `|Luck|` extra
-rolls, keep the worse — so −2 puts that 25% at 1.6%.
+That is the whole model, and it reaches every random decision the run makes. A
+coin is flipped per point and every heads is a reroll, so 2 Luck is zero, one or
+two rerolls (one on average). At 1 Luck a 25% chance is really 34.4%
+(`1 - 0.75 × 0.875`); at 3 Luck, 49.8%. Negative Luck is the same machine
+reversed — a coin per point, each heads an extra roll, keep the worse — so −2
+puts that 25% at 9.8%.
 
-It replaced a 10%-per-point chance of *advantage*, which at a single point did
-nothing at all nine times in ten. That is not a tuning difference: the old Luck
-was a stat you could hold for a whole run and never observe.
+It has been two other things. First a 10%-per-point chance of *advantage*, which
+at a single point did nothing at all nine times in ten — a stat you could hold
+for a whole run and never observe. Then a *guaranteed* reroll per point, which
+compounded hard: three Luck was four rolls at every chest, shop and machine. The
+coin keeps every point felt while halving that on average.
 
 ### 16.1 Direction is declared, never assumed
 

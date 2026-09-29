@@ -87,6 +87,12 @@ func start(host: Node, loot_index: int, overworld: Node) -> void:
 		return
 	_overworld = overworld
 	_entry = (entry as Dictionary).duplicate(true)
+	# A BLUEPRINT COPYING A PIECE YOU USE is used AS that piece (docs/loot-passives.md
+	# §2): the screen shows, aims and resolves the copy, and LootSystem.use_loot
+	# spends the Blueprint for it.
+	var copied: Dictionary = LootPassives.usable_copy(loot_index)
+	if not copied.is_empty():
+		_entry = copied
 	_loot_index = loot_index
 	_show_intro()
 

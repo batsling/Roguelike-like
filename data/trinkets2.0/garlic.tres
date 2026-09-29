@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_garlic"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"garlic"
+display_name = "Garlic"
+rarity = "Common"
+size = Vector2i(1, 2)
+description = "Triggered: Whenever you defeat 4 enemies, Gain +3 Temporary Shield"
+source_game = "Backpack Battles"
+tags = PackedStringArray("food", "vegetable")
+file = "Garlic"
+triggers = [{"on": "enemy_killed", "every": 4, "effects": [{"type": "gain_stat", "stat": "shields", "value": 3}]}]
+stat_bonuses = {}
+status_bonuses = {}

@@ -46,8 +46,9 @@ extends Container
 # the table it was — a payout of four identical unidentified capsules cannot be
 # told apart by its entry.
 signal take_requested(entry: Dictionary, slot: int, offer: int)
-# A carried piece moved between slots (swapping with whatever was there).
-signal moved(from: int, to: int)
+# A carried piece moved between slots (swapping with whatever was there), landing
+# with its top-left on `to`, turned `rot` (docs/loot-passives.md §2, §10).
+signal moved(from: int, to: int, rot: int)
 # The Use button on a carried piece.
 signal use_requested(index: int)
 # A carried piece was dragged onto the bin (LootTrash).
@@ -147,6 +148,11 @@ var _ghost: Dictionary = {}
 var _overlay: Control = null
 var _handles: Array = []
 var _arts: Array = []
+# The slot under the pointer for the drop being asked about — set by LootSlot for
+# the length of one `can_accept` / `accept`, because a piece covering two cells is
+# ONE drop target and the cell under the pointer is what the drop means. -1 means
+# "the slot the question was asked of", which is what a direct call gets.
+var drop_slot: int = -1
 
 func _init() -> void:
 	# The gutters are part of the drop target: a bag goes on the pack's EDGE, which
@@ -187,6 +193,13 @@ func rebuild() -> void:
 	for slot in range(GameState.loot_capacity()):
 		var index: int = int(layout[slot])
 		var entry = GameState.loot_items[index] if index >= 0 else null
+		# A PIECE COVERING SEVERAL CELLS IS DRAWN ONCE, by the slot at its anchor,
+		# stretched over its footprint (`_place`). Its other cells are still children
+		# — child `i` is slot `i` — but hidden, and filled, so every question asked
+		# of them ("is this taken?") gets the right answer.
+		if index >= 0 and layout.find(index) != slot:
+			add_child(_covered(slot, index, entry if entry is Dictionary else {}))
+			continue
 		add_child(_slot(slot, index, entry if entry is Dictionary else {}))
 	# A HANDLE ON EVERY BAG, where the pack can be rearranged. An empty cell of a
 	# bag drags the bag too, but a full bag has none, and a bag you cannot pick up
@@ -308,6 +321,18 @@ func _place() -> void:
 			slot.position = cell_position(GameState.pack_cell_of(slot.slot_index))
 			slot.size = cs
 			slot.scale = Vector2(_scale, _scale)
+			# A big piece's anchor spans every cell it covers.
+			if slot.is_filled() and slot.visible and GameState.is_big_piece(slot.entry):
+				var cells: Array = []
+				for s in GameState.loot_slots_of(slot.loot_index):
+					cells.append(GameState.pack_cell_of(int(s)))
+				var lo: Vector2i = cells[0]
+				var hi: Vector2i = cells[0]
+				for cc in cells:
+					lo = Vector2i(mini(lo.x, cc.x), mini(lo.y, cc.y))
+					hi = Vector2i(maxi(hi.x, cc.x), maxi(hi.y, cc.y))
+				slot.position = cell_position(lo)
+				slot.size = Vector2(hi - lo + Vector2i.ONE) * _pitch() - Vector2(GAP, GAP)
 	for h in _handles:
 		if not is_instance_valid(h) or h.bag >= GameState.pack_bags.size():
 			continue
@@ -363,8 +388,9 @@ func _draw() -> void:
 # The bag's picture, FILLING `rect` and turned with the bag. The art is the bag
 # itself, as it is in Backpack Battles — the leather the cells sit on — so it is
 # stretched over the whole footprint rather than fitted inside it. Art drawn the
-# other way up from the bag's own shape (the Potion Belt is painted standing, the
-# bag is 4 wide) gets a quarter turn of its own first. Static so the piece in your
+# other way up from the bag's own shape gets a quarter turn of its own first — a
+# safety net now that the sheets write sizes rows first, the way the art is
+# painted, so no shipped bag or piece needs it. Static so the piece in your
 # hand draws it the same way.
 # How many quarter turns a bag's picture is drawn at: the bag's own, plus one when
 # the painting runs the other way from the bag's unrotated shape.
@@ -409,6 +435,16 @@ func can_drag_from(slot: LootSlot) -> bool:
 	# all — it is the offer. Pieces in the pack move only where reordering is on.
 	return true if slot.slot_index < 0 else allow_reorder
 
+# The slot a drop onto `slot` lands on: the cell under the pointer when LootSlot
+# said so, the slot itself otherwise.
+func _target(slot: LootSlot) -> int:
+	return drop_slot if drop_slot >= 0 else slot.slot_index
+
+# The slot under grid-local point `at`, or -1 off the pack.
+func slot_at_point(at: Vector2) -> int:
+	var p: Vector2 = at / (_pitch() * _scale) + Vector2(_top_left)
+	return GameState.pack_slot_at(Vector2i(floori(p.x), floori(p.y)))
+
 func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 	if locked:
 		return false
@@ -424,9 +460,18 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 			#
 			# ITS OWN SLOT TOO, once the piece in hand has been TURNED: putting it
 			# back where it was, facing a new way, is how a piece is turned in place.
-			if int(data.get("from", -1)) == slot.slot_index:
-				return allow_reorder and int(data.get("rot", 0)) != int(slot.entry.get("rot", 0))
-			return allow_reorder
+			#
+			# A BIG PIECE lands with its top-left on the cell under the pointer, and only
+			# where its shape fits (GameState.can_move_loot, §10 of the doc).
+			var to: int = _target(slot)
+			var from: int = int(data.get("from", -1))
+			var index: int = int(data.get("index", -1))
+			if to == from:
+				var here = GameState.loot_items[index] if index >= 0 \
+					and index < GameState.loot_items.size() else {}
+				return allow_reorder and here is Dictionary \
+					and int(data.get("rot", 0)) != int(here.get("rot", 0))
+			return allow_reorder and GameState.can_move_loot(from, to, int(data.get("rot", 0)))
 		"loot_take":
 			# OFF THE FLOOR: ANY SLOT. A free one takes it; a filled one SWAPS, and the
 			# piece that was there goes back to the square this one came off
@@ -435,12 +480,15 @@ func can_accept(slot: LootSlot, data: Dictionary) -> bool:
 			# and a trade is a decision rather than a wall. It is also the grammar the
 			# grid already speaks: dropping onto a piece has meant "swap these two"
 			# since the pack was allowed to have holes in it.
+			var entry: Dictionary = data.get("entry", {})
+			var rot: int = int(data.get("rot", entry.get("rot", 0)))
 			if data.has("floor"):
-				return allow_floor_take
+				return allow_floor_take and GameState.can_trade_into(entry, _target(slot), rot)
 			# OFF A MODAL'S TABLE: INTO A FREE SLOT. "Put it here" onto an occupied one
 			# has no answer that isn't a guess about which of the two the player meant
-			# to move — there is nowhere to evict the loser TO.
-			return allow_take and not slot.is_filled() and not GameState.loot_is_full()
+			# to move — there is nowhere to evict the loser TO. A big piece needs its
+			# whole shape free.
+			return allow_take and GameState.piece_fits_at(entry, _target(slot), rot)
 	return false
 
 # --- The bin ---------------------------------------------------------------
@@ -493,12 +541,12 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 			# Onto its own slot that is ALL that happens, so the grid does it and
 			# redraws; anywhere else the host moves it as it always has.
 			var index: int = int(data.get("index", -1))
-			var turned: bool = GameState.turn_loot(index, int(data.get("rot", 0)))
-			if int(data.get("from", -1)) == slot.slot_index:
-				if turned:
+			var to: int = _target(slot)
+			if int(data.get("from", -1)) == to:
+				if GameState.turn_loot(index, int(data.get("rot", 0))):
 					rebuild()
 				return
-			moved.emit(int(data.get("from", -1)), slot.slot_index)
+			moved.emit(int(data.get("from", -1)), to, posmod(int(data.get("rot", 0)), 4))
 		"loot_take":
 			var entry = data.get("entry", {})
 			if not (entry is Dictionary) or (entry as Dictionary).is_empty():
@@ -511,10 +559,10 @@ func accept(slot: LootSlot, data: Dictionary) -> void:
 			else:
 				entry["rot"] = rot
 			if data.has("floor"):
-				floor_take_requested.emit(entry, maxi(0, slot.slot_index),
+				floor_take_requested.emit(entry, maxi(0, _target(slot)),
 					data["floor"] as Vector2i)
 			else:
-				take_requested.emit(entry, maxi(0, slot.slot_index),
+				take_requested.emit(entry, maxi(0, _target(slot)),
 					int(data.get("offer", -1)))
 
 # ---------------------------------------------------------------------------
@@ -786,6 +834,15 @@ class PiecePreview extends Control:
 		if cell == null:
 			return
 		var rot: int = posmod(int(data.get("rot", 0)), 4)
+		# A BIG PIECE CHANGES SHAPE when it turns: the cell is re-cut to its turned
+		# footprint, top-left cell still under the pointer.
+		var span := cell.find_child("SpanArt", true, false) as SpanArt
+		if span != null:
+			span.rot = rot
+			span.queue_redraw()
+			var ext: Vector2i = GameState.bag_extent(span.cells, rot)
+			cell.size = LootGrid.span_px(ext)
+			return
 		var art: Node = cell.find_child("Art", true, false)
 		if art is Control:
 			(art as Control).rotation = rot * PI * 0.5
@@ -916,8 +973,12 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.size = Vector2(LootSlot.CELL, LootSlot.CELL)
 	# Centred on the pointer, so the cell you are holding covers the slot you are
-	# pointing at rather than hanging off one corner of it.
+	# pointing at rather than hanging off one corner of it. A BIG piece is held by
+	# its top-left cell, which is the cell it will land on.
 	cell.position = -cell.size * 0.5
+	var cells: Vector2i = GameState.piece_size(entry)
+	if cells != Vector2i.ONE:
+		cell.size = span_px(GameState.bag_extent(cells, int(data.get("rot", entry.get("rot", 0)))))
 	cell.modulate = Color(1, 1, 1, 0.9)
 	# FACE DOWN WHILE IT IS STILL A FLOOR PIECE (docs/cards-design.md §3). A card
 	# picked up off the board and then dropped back on it has to end where it
@@ -925,7 +986,8 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 	# free look at every card on the board — the one thing the mask exists to
 	# prevent. It turns over when it lands in a slot, which is where "in the pack"
 	# begins.
-	cell.add_child(_cell_body(entry, Callable(), false, true, face_up))
+	cell.add_child(_cell_body(entry, Callable(), false, true, face_up,
+		{"rot": int(data.get("rot", entry.get("rot", 0)))}))
 	add_direction_arrow(cell, entry)
 	holder.add_child(cell)
 	if holder is PiecePreview:
@@ -937,6 +999,23 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 # ---------------------------------------------------------------------------
 # Building one cell
 # ---------------------------------------------------------------------------
+
+# One of a big piece's cells other than its anchor: filled, hidden, and deaf to the
+# mouse, so the anchor stretched over it is what is seen and grabbed.
+func _covered(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
+	var slot := LootSlot.new()
+	slot.grid = self
+	slot.slot_index = slot_index
+	slot.loot_index = index
+	slot.entry = entry
+	slot.custom_minimum_size = Vector2(LootSlot.CELL, LootSlot.CELL)
+	slot.visible = false
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return slot
+
+# The size, at full scale, of a piece `ext` cells across.
+static func span_px(ext: Vector2i) -> Vector2:
+	return Vector2(ext) * Vector2(LootSlot.CELL + GAP, LootSlot.CELL + GAP) - Vector2(GAP, GAP)
 
 func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var slot := LootSlot.new()
@@ -968,10 +1047,19 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var use_cb: Callable = Callable()
 	if show_use:
 		use_cb = func(): use_requested.emit(slot.loot_index)
+	# What only the pack knows about this piece: whether a Blueprint in it is
+	# copying a piece you USE (and so wears a Use button), and how far along an
+	# enemy-defeat trigger is (docs/loot-passives.md §2, §11).
+	var extras: Dictionary = {"rot": int(entry.get("rot", 0))}
+	if not LootPassives.usable_copy(index).is_empty():
+		extras["usable"] = true
+	var progress: Dictionary = LootPassives.kill_progress(index)
+	if not progress.is_empty():
+		extras["progress"] = progress
 	# `false`: the lock holds the pack STILL, it does not stop a piece being spent
 	# (see `locked`). Kept as an argument rather than dropped, because the cell body
 	# is shared with the loose-offer layout and a future rule may want it back.
-	slot.add_child(_cell_body(entry, use_cb, false))
+	slot.add_child(_cell_body(entry, use_cb, false, true, true, extras))
 	add_direction_arrow(slot, entry)
 	# HOVER READS, DRAG MOVES, THE BUTTON SPENDS — and a click does nothing.
 	#
@@ -990,10 +1078,38 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 # `with_name` is false for the loose piece a drop modal offers: the modal writes
 # the name underneath at 18px, and the same words twice, 20 pixels apart, at two
 # sizes, reads as a mistake rather than as emphasis.
+# `extras` is what only the pack can say about the piece: `rot` (how it is turned),
+# `usable` (a Blueprint copying a piece you use) and `progress` (kill_progress).
 static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
-		with_name: bool = true, face_up: bool = true) -> Control:
+		with_name: bool = true, face_up: bool = true, extras: Dictionary = {}) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", LootSlot.GAP)
+	# A BIG PIECE's picture fills the whole of its footprint's art area rather than a
+	# 40px square: it is a bigger thing, and it should look it.
+	var cells: Vector2i = GameState.piece_size(entry)
+	if cells != Vector2i.ONE:
+		var span := SpanArt.new()
+		span.name = "SpanArt"
+		span.tex = LootSystem.art_texture(entry, face_up)
+		span.cells = cells
+		span.rot = int(extras.get("rot", entry.get("rot", 0)))
+		span.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		span.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
+		col.add_child(span)
+		_add_progress(span, extras)
+		if with_name:
+			col.add_child(_name_label(entry, face_up))
+			var plate := Label.new()
+			plate.text = "Passive"
+			plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
+			plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+			plate.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+			plate.tooltip_text = "Works while it is in your pack — never spent."
+			if use_cb.is_valid():
+				col.add_child(plate)
+		return col
 
 	# A FIXED BAND, with the art centred in it at ITS OWN SIZE. This is what lets a
 	# horse dose draw oversized without making its row taller than the other two.
@@ -1020,6 +1136,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	centre.add_child(turn_box)
 
 	var known: bool = LootSystem.is_identified(entry)
+	_add_progress(band, extras)
 	# THE PREFERENCE, IN ITS OWN COLOUR, ON THE ART — the corner the pack strip draws
 	# a relic's counter in, for the same reason: the fact belongs to the picture of
 	# the thing, so a grid can be read in one glance without any cell growing a
@@ -1033,7 +1150,8 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	# thing that is not true of it: that this is a piece you do not know yet.
 	#
 	# A TRINKET GETS NONE EITHER, for the card's reason: it is not a gamble.
-	var passive: bool = LootPassives.is_passive(entry)
+	# A Blueprint copying a piece you use is not passive while it does (§2).
+	var passive: bool = LootPassives.is_passive(entry) and not bool(extras.get("usable", false))
 	# A BAG IS NOT A GAMBLE EITHER, and is not spent: no badge, no button.
 	var bag: bool = LootSystem.is_bag(entry)
 	if String(entry.get("type", "")) != "card" and not passive and not bag:
@@ -1077,22 +1195,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	if not with_name:
 		return col
 
-	var name := Label.new()
-	name.text = LootSystem.display_name(entry, face_up)
-	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-	name.add_theme_color_override("font_color", UITheme.TEXT if known else UITheme.TEXT_FAINT)
-	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	# ONE LINE, reserved whether the name needs it or not (LootSlot.NAME_LINE), and
-	# never wrapped: the cell is a square with no room for a second, and a name that
-	# wrapped would push its own Use button down and make the row ragged. A long
-	# name ends in an ellipsis; the hover card says the whole of it.
-	name.autowrap_mode = TextServer.AUTOWRAP_OFF
-	name.clip_text = true
-	name.custom_minimum_size = Vector2(0, LootSlot.NAME_LINE)
-	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(name)
+	col.add_child(_name_label(entry, face_up))
 
 	# A PASSIVE PIECE HAS NOTHING TO SPEND (docs/loot-passives.md §1), so where the
 	# Use button would be it says what it is instead — at the button's own height,
@@ -1129,6 +1232,77 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col
+
+# The piece's name, one line under the art.
+static func _name_label(entry: Dictionary, face_up: bool) -> Label:
+	var name := Label.new()
+	name.text = LootSystem.display_name(entry, face_up)
+	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	name.add_theme_color_override("font_color",
+		UITheme.TEXT if LootSystem.is_identified(entry) else UITheme.TEXT_FAINT)
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	# ONE LINE, reserved whether the name needs it or not (LootSlot.NAME_LINE), and
+	# never wrapped: the cell is a square with no room for a second, and a name that
+	# wrapped would push its own Use button down and make the row ragged. A long
+	# name ends in an ellipsis; the hover card says the whole of it.
+	name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name.clip_text = true
+	name.custom_minimum_size = Vector2(0, LootSlot.NAME_LINE)
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return name
+
+# HOW FAR ALONG AN ENEMY-DEFEAT TRIGGER IS — "2/6" — on the art's top-right corner
+# (docs/loot-passives.md §11). The corner the incremental relics' counts are read in
+# on the strip, in the same gold, so a number on a piece reads as "how far along".
+# Top-right because the bottom corners are the Preference's and a wand's count.
+# Brighter when a food beside it has lowered the target.
+static func _add_progress(on: Control, extras: Dictionary) -> void:
+	var progress: Dictionary = extras.get("progress", {})
+	if progress.is_empty():
+		return
+	var foods: Array = progress.get("foods", [])
+	var chip := UITheme.chip("%d/%d" % [int(progress["have"]), int(progress["need"])],
+		UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD, 9)
+	chip.name = "Progress"
+	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	chip.tooltip_text = "%d of %d enemies defeated toward its next trigger." % [
+		int(progress["have"]), int(progress["need"])]
+	if not foods.is_empty():
+		chip.tooltip_text += "\n%d sooner for the food beside it." % foods.size()
+	on.add_child(chip)
+
+# A BIG PIECE'S PICTURE, filling the art area of its footprint and turned with the
+# piece — and a quarter more when the painting runs the other way from the piece's
+# own shape (none do, since sizes are written rows first), the rule bags follow
+# (LootGrid.art_turn). Drawn rather than a TextureRect because a container resets
+# its children's rotation.
+class SpanArt extends Control:
+	var tex: Texture2D = null
+	var cells: Vector2i = Vector2i.ONE
+	var rot: int = 0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = false
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if tex == null:
+			return
+		var turn: int = LootGrid.art_turn(tex, rot, cells)
+		var box: Vector2 = Vector2(size.y, size.x) if turn % 2 == 1 else size
+		var ts: Vector2 = tex.get_size()
+		var k: float = minf(box.x / ts.x, box.y / ts.y)
+		var d: Vector2 = ts * k
+		draw_set_transform(size * 0.5, turn * PI * 0.5, Vector2.ONE)
+		draw_texture_rect(tex, Rect2(-d * 0.5, d), false)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # The Preference as ONE CHARACTER, for the badge on the art. The word itself is
 # still on the hover, the card and both modals — this is the corner of a 40px tile,

@@ -93,20 +93,21 @@ func event_roll_bonus(stat_id: StringName) -> int:
 # Luck-weighted rolls (EffectSystem chance procs, event dice)
 # ---------------------------------------------------------------------------
 
-# LUCK — one guaranteed reroll per point, and you keep the better result.
+# LUCK — every point is a 50% CHANCE of a reroll, and you keep the better result.
 #
-# Every random decision in the run goes through one of the four rolls below, and
-# every one of them works the same way: make the roll, then make `Luck` MORE
-# rolls, and keep the best of them. At 1 Luck a 25% chance is really 43.75%
-# (1 - 0.75²); at 3 Luck it is 68%. Negative Luck is the same machine pointed the
-# other way — |Luck| extra rolls, keep the WORST — so a run carrying -2 sees that
-# same 25% land at 1.6%.
+# Every random decision in the run goes through one of the rolls below, and every
+# one of them works the same way: make the roll, then flip a coin for each point of
+# `Luck` — every heads buys one MORE roll — and keep the best of them. So 2 Luck is
+# anywhere from zero to two rerolls, one on average. At 1 Luck a 25% chance is
+# really 34.4%; at 3 Luck it is 49.8%. Negative Luck is the same machine pointed
+# the other way — a coin per point, each heads an extra roll, keep the WORST.
 #
-# This replaced a 10%-per-point chance of ADVANTAGE (roll twice, sometimes). The
-# difference is not a tuning change: the old one did nothing at all nine times in
-# ten at a single point, so Luck was a stat you could hold and never see. A
-# guaranteed reroll is a thing the player can feel on the first roll after they
-# pick up the Clover.
+# It has been two other things. First a 10%-per-point chance of ADVANTAGE (roll
+# twice, sometimes), which did nothing at all nine times in ten at a single point,
+# so Luck was a stat you could hold and never see. Then a GUARANTEED reroll per
+# point, which was visible but compounded hard: three Luck was four rolls at every
+# chest, shop and machine. A coin per point halves that on average and keeps each
+# point worth something on every roll it reaches.
 #
 # --- which way is "better" -------------------------------------------------
 #
@@ -129,14 +130,26 @@ func event_roll_bonus(stat_id: StringName) -> int:
 # which is the outcome you were feeding it for.
 enum Favour { HIGH, LOW, NONE }
 
-# How many EXTRA rolls Luck buys, and which way they point. Split out so a caller
-# can quote the real odds on a button (EventSystem.chance_percent) with the same
-# numbers the roll will use.
-func luck_rerolls() -> int:
+# The chance EACH point of Luck buys one extra roll.
+const LUCK_REROLL_CHANCE := 0.5
+
+# How many coins Luck flips — the most extra rolls it can buy — and which way
+# they point. Split out so a caller can quote the real odds on a button
+# (EventSystem.chance_percent) with the same numbers the roll will use.
+func luck_points() -> int:
 	return absi(get_value(&"luck"))
 
 func luck_keeps_high() -> bool:
 	return get_value(&"luck") >= 0
+
+# How many extra rolls Luck buys THIS time: one coin per point, each landing with
+# LUCK_REROLL_CHANCE. Rolled on the caller's rng so a seeded roll stays seeded.
+func luck_rerolls(rng: RandomNumberGenerator) -> int:
+	var n: int = 0
+	for _i in range(luck_points()):
+		if rng.randf() < LUCK_REROLL_CHANCE:
+			n += 1
+	return n
 
 # A percentage roll. `percent` is a float because odds are the one quantity in
 # this build that may be fractional — one-in-fifteen is 6.7%, and an int would
@@ -149,22 +162,32 @@ func roll_chance(rng: RandomNumberGenerator, percent: float, favour: int = Favou
 	# and "all of them hit" when hitting is bad — the second is what makes Luck
 	# steer you AWAY from a jam rather than into it.
 	var wants_hit: bool = (favour == Favour.HIGH) == luck_keeps_high()
-	for _i in range(luck_rerolls()):
+	for _i in range(luck_rerolls(rng)):
 		var again: bool = rng.randf() * 100.0 < percent
 		hit = (hit or again) if wants_hit else (hit and again)
 	return hit
 
 # The odds `roll_chance` will actually apply, as a percentage — what a button
-# quotes so the number the player reads is the number that gets rolled. Luck
-# compounds multiplicatively, which is why this is not `percent * (1 + luck)`.
+# quotes so the number the player reads is the number that gets rolled.
+#
+# The rerolls are themselves random (k of L coins, binomial), and averaging over
+# them has a closed form. Each point either adds a roll (half the time) or does
+# not, so each point multiplies the chance of "every roll missed" by
+# (1 + (1-p)) / 2 = 1 - p/2:
+#   any of them hit  = 1 - (1-p) * (1 - p/2)^L
+#   all of them hit  = p * ((1 + p) / 2)^L
 func effective_chance(percent: float, favour: int = Favour.HIGH) -> float:
 	if favour == Favour.NONE:
 		return clampf(percent, 0.0, 100.0)
 	var p: float = clampf(percent, 0.0, 100.0) / 100.0
-	var tries: int = luck_rerolls() + 1
+	var points: int = luck_points()
+	var c: float = LUCK_REROLL_CHANCE
 	var wants_hit: bool = (favour == Favour.HIGH) == luck_keeps_high()
-	# "any of `tries` hit" = 1 - (1-p)^tries; "all of them hit" = p^tries.
-	var out: float = (1.0 - pow(1.0 - p, tries)) if wants_hit else pow(p, tries)
+	var out: float
+	if wants_hit:
+		out = 1.0 - (1.0 - p) * pow(1.0 - c * p, points)
+	else:
+		out = p * pow(1.0 - c + c * p, points)
 	return clampf(out * 100.0, 0.0, 100.0)
 
 # An integer in [lo, hi] — how many pickups a burst machine scatters, how much
@@ -178,7 +201,7 @@ func roll_range(rng: RandomNumberGenerator, lo: int, hi: int, favour: int = Favo
 	if favour == Favour.NONE or lo == hi:
 		return best
 	var keep_high: bool = (favour == Favour.HIGH) == luck_keeps_high()
-	for _i in range(luck_rerolls()):
+	for _i in range(luck_rerolls(rng)):
 		var again: int = rng.randi_range(lo, hi)
 		best = (maxi(best, again) if keep_high else mini(best, again))
 	return best
@@ -190,7 +213,7 @@ func roll_range(rng: RandomNumberGenerator, lo: int, hi: int, favour: int = Favo
 # knowing Luck exists.
 func roll_rarity_step_with_luck(rng: RandomNumberGenerator) -> int:
 	var best: int = Data.roll_rarity_step(rng)
-	for _i in range(luck_rerolls()):
+	for _i in range(luck_rerolls(rng)):
 		var again: int = Data.roll_rarity_step(rng)
 		best = (maxi(best, again) if luck_keeps_high() else mini(best, again))
 	return best
@@ -204,8 +227,8 @@ func roll_die_with_luck(rng: RandomNumberGenerator, sides: int) -> int:
 
 # Decide whether this roll earns Luck advantage / disadvantage — the event modal's
 # d20, which shows its dice and so needs the mode named rather than folded in.
-# Now that a reroll is guaranteed, "advantage" is simply the sign of Luck; the
-# affliction still forces disadvantage over the top of it.
+# "Advantage" is the sign of Luck; the affliction still forces disadvantage over
+# the top of it.
 func event_luck_mode(_rng: RandomNumberGenerator) -> String:
 	if not GameState.active_affliction_effects("dice_disadvantage").is_empty():
 		return "disadvantage"
@@ -217,13 +240,18 @@ func event_luck_mode(_rng: RandomNumberGenerator) -> String:
 	return "normal"
 
 # Roll a d20 under a known luck mode, exposing every die so the event modal can
-# render them. One extra die PER POINT of Luck, not a single second die: the d20
-# is a roll like any other and gets the same rerolls everything else does.
+# render them. One coin PER POINT of Luck, each heads an extra die: the d20 is a
+# roll like any other and gets the same rerolls everything else does. The
+# affliction's forced disadvantage is always at least one extra die, Luck or not.
 # Returns { "rolls": [a, …], "used": int }.
 func roll_d20_event(rng: RandomNumberGenerator, mode: String) -> Dictionary:
 	var rolls: Array = [rng.randi_range(1, 20)]
 	if mode == "advantage" or mode == "disadvantage":
-		for _i in range(maxi(1, luck_rerolls())):
+		var extra: int = luck_rerolls(rng)
+		if mode == "disadvantage" \
+				and not GameState.active_affliction_effects("dice_disadvantage").is_empty():
+			extra = maxi(1, extra)
+		for _i in range(extra):
 			rolls.append(rng.randi_range(1, 20))
 	var used: int = int(rolls[0])
 	for r in rolls:

@@ -1253,7 +1253,7 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 	# the odds for THIS press, since they climb with every failed one.
 	#
 	# The odds quoted are the ones LUCK WILL ACTUALLY ROLL, not the number on the
-	# sheet: at 1 Luck the Blood Donation Machine's 6.7% burst really is 12.9%,
+	# sheet: at 1 Luck the Blood Donation Machine's 6.7% burst really is 9.8%,
 	# and a button that said 6.7% would be lying to a player who went and bought
 	# a Clover for exactly this.
 	#

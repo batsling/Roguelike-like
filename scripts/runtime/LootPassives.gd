@@ -111,7 +111,8 @@ static func neighbour_slot(slot: int, dir: String) -> int:
 
 # --- what is working right now --------------------------------------------------
 
-# Every passive at work in the pack, in slot order:
+# Every passive at work in the pack, in slot order (a piece covering several cells
+# is read once, at its anchor):
 #   {item: ItemData proxy, entry: the piece doing the firing (live pack row),
 #    source: the piece whose passive it is (live row; == entry unless copying),
 #    copy: bool, slot: int}
@@ -127,12 +128,14 @@ static func active() -> Array:
 		var index: int = int(layout[slot])
 		if index < 0 or index >= GameState.loot_items.size():
 			continue
+		if layout.find(index) != slot:
+			continue
 		var entry = GameState.loot_items[index]
 		var def: Resource = def_for(entry)
 		if def == null:
 			continue
 		var src: Dictionary = resolve(slot, layout)
-		if src.is_empty():
+		if not src.has("def"):
 			continue
 		out.append({"item": proxy(src["def"]), "def": src["def"],
 			"entry": entry, "source": src["entry"],
@@ -155,6 +158,12 @@ static func active() -> Array:
 
 # What the piece in `slot` actually does: {def, entry} of the passive it runs, or
 # {} when it runs nothing. A plain passive answers with itself; a copier walks.
+#
+# BLUEPRINT COPIES ANY LOOT, not only passives (docs/loot-passives.md §2): it copies
+# the TEXT of the piece it points at. So a walk that ends on a piece you USE — a
+# scroll, a pill, a potion, a card, a wand — answers {usable: that entry}, and the
+# Blueprint is then a piece with a Use button that does what that piece does and
+# is spent doing it (`usable_copy`, LootSystem.use_loot).
 static func resolve(slot: int, layout: Array = []) -> Dictionary:
 	var lay: Array = layout if not layout.is_empty() else GameState.loot_layout()
 	var seen: Dictionary = {}
@@ -167,6 +176,10 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 		var entry = GameState.loot_items[index]
 		var def: Resource = def_for(entry)
 		if def == null:
+			# Nothing passive here. Reached THROUGH a copier it is the thing copied; the
+			# walk's own start never answers this way (it is asked only of copiers).
+			if at != slot and entry is Dictionary and not LootSystem.is_bag(entry):
+				return {"usable": entry}
 			return {}
 		var dir: String = facing(entry, def)
 		if dir == "":
@@ -178,9 +191,41 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 # What the pack's hover card says under a Blueprint.
 static func copying_name(slot: int) -> String:
 	var src: Dictionary = resolve(slot)
+	if src.has("usable"):
+		return LootSystem.display_name(src["usable"])
 	if src.is_empty():
 		return ""
 	return String(src["def"].get("display_name"))
+
+# THE PIECE A COPIER AT `index` WOULD BE USED AS — a copy of the usable piece it
+# points at, stripped of where that one sits — or {} when the piece at `index` is
+# not a copier, or copies a passive (which it runs from its slot) or nothing.
+static func usable_copy(index: int) -> Dictionary:
+	if index < 0 or index >= GameState.loot_items.size():
+		return {}
+	var entry = GameState.loot_items[index]
+	if copies(def_for(entry)) == "":
+		return {}
+	var slot: int = GameState.loot_slot_of(index)
+	if slot < 0:
+		return {}
+	var src: Dictionary = resolve(slot)
+	if not src.has("usable"):
+		return {}
+	var out: Dictionary = (src["usable"] as Dictionary).duplicate(true)
+	out.erase("pack_slot")
+	out.erase("rot")
+	return out
+
+# Is the piece at `index` one the player USES rather than one that works from its
+# slot? Every non-passive piece, and a Blueprint copying one.
+static func is_usable_at(index: int) -> bool:
+	if index < 0 or index >= GameState.loot_items.size():
+		return false
+	var entry = GameState.loot_items[index]
+	if not (entry is Dictionary) or LootSystem.is_bag(entry):
+		return false
+	return not is_passive(entry) or not usable_copy(index).is_empty()
 
 # The relic-shaped stand-in for a definition, built once.
 static func proxy(def: Resource) -> ItemData:
@@ -253,6 +298,87 @@ static func announce(row: Dictionary, line: String) -> void:
 	if bool(row.get("copy", false)):
 		label = "%s (%s)" % [who.display_name, String(row["def"].get("display_name"))]
 	Notifications.notify("%s: %s" % [label, line], Color(0.85, 0.9, 0.7), who.image, label)
+
+
+# --- food: triggers that come round sooner beside other food (§11) --------------
+#
+# A piece tagged `food` in its sheet row (Backpack Battles' "triggers faster for
+# each different food beside it") has the ENEMY-DEFEAT requirement of each of its
+# `enemy_killed every=N` triggers lowered by one for every DIFFERENT food touching
+# it, never below 1. "Touching" is any cell of its footprint sharing a side with
+# any cell of the other's, so a 2x1 has six neighbours. "Different" is by id, and
+# a piece's own kind does not count: a Garlic beside a Garlic is not a second food.
+# A Blueprint copying a food is that food, for itself and for its neighbours.
+
+# The food a piece is (its passive's id, a copier's copied one), or &"" for none.
+static func food_id_at(index: int) -> StringName:
+	var slot: int = GameState.loot_slot_of(index)
+	if slot < 0:
+		return &""
+	var src: Dictionary = resolve(slot)
+	var def = src.get("def")
+	if def is TrinketData and (def as TrinketData).is_food():
+		return (def as TrinketData).id
+	return &""
+
+# The pieces (indices) sharing a side with any cell of the piece at `index`.
+static func adjacent_pieces(index: int) -> Array:
+	var layout: Array = GameState.loot_layout()
+	var out: Array = []
+	for slot in range(layout.size()):
+		if int(layout[slot]) != index:
+			continue
+		for dir in DIRECTIONS.keys():
+			var n: int = neighbour_slot(slot, dir)
+			if n < 0:
+				continue
+			var other: int = int(layout[n])
+			if other >= 0 and other != index and not out.has(other):
+				out.append(other)
+	return out
+
+# The different foods beside the piece at `index`, as ids — each once, its own
+# kind never.
+static func adjacent_foods(index: int) -> Array:
+	var mine: StringName = food_id_at(index)
+	var out: Array = []
+	for other in adjacent_pieces(index):
+		var f: StringName = food_id_at(other)
+		if f != &"" and f != mine and not out.has(f):
+			out.append(f)
+	return out
+
+# THE N A TRIGGER ACTUALLY COUNTS TO, for the active() row `row` firing it: the
+# authored `every`, less one per different adjacent food when the passive is a
+# food and the hook is a defeated enemy. Floors at 1.
+static func every_for(trig: Dictionary, row: Dictionary) -> int:
+	var n: int = int(trig.get("every", 0))
+	if n <= 1 or row.is_empty() or String(trig.get("on", "")) != "enemy_killed":
+		return n
+	var def = row.get("def")
+	if not (def is TrinketData and (def as TrinketData).is_food()):
+		return n
+	var index: int = GameState.loot_index_at_slot(int(row.get("slot", -1)))
+	return maxi(1, n - adjacent_foods(index).size())
+
+# WHERE A PIECE IS TOWARD ITS NEXT ENEMY-DEFEAT TRIGGER, for the number drawn on
+# it: {have, need, foods} — `need` already lowered by the food beside it — or {}
+# for a piece with no such trigger. The first such trigger answers.
+static func kill_progress(index: int) -> Dictionary:
+	for row in active():
+		if int(row.get("slot", -1)) < 0 \
+				or GameState.loot_index_at_slot(int(row["slot"])) != index:
+			continue
+		var it: ItemData = row["item"]
+		for i in range(it.triggers.size()):
+			var trig: Dictionary = it.triggers[i]
+			if String(trig.get("on", "")) != "enemy_killed" or int(trig.get("every", 0)) <= 1:
+				continue
+			var counts: Dictionary = (row["entry"] as Dictionary).get("every_count", {})
+			var need: int = every_for(trig, row)
+			return {"have": mini(int(counts.get("enemy_killed#%d" % i, 0)), need),
+				"need": need, "foods": adjacent_foods(index) if need < int(trig["every"]) else []}
+	return {}
 
 
 # --- the status half, held up by the slot ---------------------------------------

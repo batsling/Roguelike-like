@@ -179,7 +179,12 @@ func _can_drop_data(at: Vector2, data: Variant) -> bool:
 	# grid, in the grid's own coordinates. A loose offer is on no grid at all.
 	if grid.is_bag_payload(data):
 		return slot_index >= 0 and grid.can_accept_bag_at(position + at * scale, data)
-	return grid.can_accept(self, data)
+	# A piece covering several cells is one target; the drop means the cell under
+	# the pointer (docs/loot-passives.md §10).
+	grid.drop_slot = _pointer_slot(at)
+	var ok: bool = grid.can_accept(self, data)
+	grid.drop_slot = -1
+	return ok
 
 func _drop_data(at: Vector2, data: Variant) -> void:
 	if grid == null or not (data is Dictionary):
@@ -188,4 +193,17 @@ func _drop_data(at: Vector2, data: Variant) -> void:
 		if slot_index >= 0:
 			grid.accept_bag_at(position + at * scale, data)
 		return
+	grid.drop_slot = _pointer_slot(at)
 	grid.accept(self, data)
+	grid.drop_slot = -1
+
+# The cell under the pointer, when it is one of the cells THIS slot covers — which
+# only a big piece's anchor, stretched over its footprint, has more than one of.
+# Anything else (a 1x1 cell, a grid not laid out yet) means this slot itself: -1.
+func _pointer_slot(at: Vector2) -> int:
+	if slot_index < 0 or grid == null or not is_filled():
+		return -1
+	var under: int = grid.slot_at_point(position + at * scale)
+	if under < 0 or under == slot_index or GameState.loot_index_at_slot(under) != loot_index:
+		return -1
+	return under

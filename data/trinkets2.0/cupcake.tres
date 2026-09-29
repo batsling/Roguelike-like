@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_cupcake"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"cupcake"
+display_name = "Cupcake"
+rarity = "Rare"
+size = Vector2i(1, 1)
+description = "Triggered: Whenever you defeat 6 enemies, Gain +5 Health and Gain +1 Buff to the one you have the most of"
+source_game = "Backpack Battles"
+tags = PackedStringArray("food", "sweets")
+file = "Cupcake"
+triggers = [{"on": "enemy_killed", "every": 6, "effects": [{"type": "gain_hp", "value": 5}, {"type": "gain_top_buff", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

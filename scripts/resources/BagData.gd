@@ -22,7 +22,9 @@ extends Resource
 @export var display_name: String
 # "Common" | "Uncommon" | "Rare" | "Legendary" — the shared 0-3 drop ladder.
 @export var rarity: String = "Common"
-# The footprint, as the sheet's "WxH": columns by rows, unrotated. Always a
+# The footprint as Vector2i(columns, rows), unrotated. The sheet writes it "HxW",
+# ROWS FIRST, as the enemies sheet does and as the art is painted — the Potion
+# Belt's "4x1" is (1, 4), standing (tools/generate_bag2_tres.py). Always a
 # rectangle — Backpack Battles has L-shaped bags, this sheet does not yet.
 @export var size: Vector2i = Vector2i.ONE
 @export_multiline var description: String = ""
