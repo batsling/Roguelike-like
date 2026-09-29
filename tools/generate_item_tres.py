@@ -400,14 +400,15 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # to the counter on the piece of loot doing the firing (Rocket's payout,
     # docs/loot-passives.md §4) — both scalar for the same reason as the rest.
     # `gain_random_buff` / `remove_random_debuff` are Potion Belt's two payouts
-    # (docs/loot-passives.md §6): N stacks of a random Buff-kind status, and N
-    # random Debuffs the player is carrying taken off whole.
+    # (docs/loot-passives.md §6): N random Buff-kind statuses and N random carried
+    # Debuffs, ONE STACK EACH. `gain_top_buff` is Cupcake's: N stacks of the Buff
+    # the player carries the most of.
     SCALAR = {"draw", "gain_energy", "gain_gold", "gain_max_hp",
               "gain_empty_max_hp", "gain_hp",
               "gain_chest", "lose_hp", "heal", "block",
               "gain_pill", "gain_scroll", "gain_potion", "gain_loot",
               "drop_loot", "gain_card", "bump",
-              "gain_random_buff", "remove_random_debuff"}
+              "gain_random_buff", "remove_random_debuff", "gain_top_buff"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]

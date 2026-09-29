@@ -134,6 +134,7 @@ func _register_defaults() -> void:
 	# Potion Belt's two payouts (docs/loot-passives.md §6).
 	register("gain_random_buff", _h_gain_random_buff)
 	register("remove_random_debuff", _h_remove_random_debuff)
+	register("gain_top_buff", _h_gain_top_buff)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -641,27 +642,26 @@ func _h_charge_random(effect: Dictionary, ctx: Dictionary) -> void:
 	if GameState.charge_thing(thing, amount):
 		_did(ctx, "%s charged" % GameState.charge_thing_name(thing))
 
-# `drop_copy` — a duplicate of the piece the hook was about lands on a random free
-# square of the battlefield (Endless Nameless, on `loot_used`). Onto the FLOOR, not
-# into the pack: the same terms every other piece the board pays is on, and a full
-# pack is no reason for the proc to vanish. A board with no free square pays nothing.
-# `gain_random_buff N` — N stacks of ONE Buff-kind status, drawn at random from
-# the statuses the sheet marks Buff (StatusData.kind). Permanent, like every
-# apply_status without `games`. Said in the toast, because a status is not one of
-# the run resources the trigger report diffs.
+# `gain_random_buff N` — N random Buffs, ONE STACK EACH, every one drawn afresh
+# from the statuses the sheet marks Buff (StatusData.kind). "Gain a random buff" is
+# one stack of one buff; two of them are two draws, which may land on the same
+# status or on two. Permanent, like every apply_status without `games`. Said in the
+# toast, because a status is not one of the run resources the trigger report diffs.
 func _h_gain_random_buff(effect: Dictionary, ctx: Dictionary) -> void:
-	var n: int = maxi(1, int(effect.get("value", 1)))
 	var pool: Array = Data.all_statuses().filter(
 		func(sd): return sd is StatusData and (sd as StatusData).is_buff())
 	if pool.is_empty():
 		return
-	var sd: StatusData = pool[_rng.randi_range(0, pool.size() - 1)]
-	if GameState.apply_status(sd.id, n) > 0:
-		_did(ctx, "+%d %s" % [n, sd.display_name])
+	for _i in range(maxi(1, int(effect.get("value", 1)))):
+		var sd: StatusData = pool[_rng.randi_range(0, pool.size() - 1)]
+		if GameState.apply_status(sd.id, 1) > 0:
+			_did(ctx, "+1 %s" % sd.display_name)
 
-# `remove_random_debuff N` — N of the Debuff-kind statuses the player is carrying,
-# picked at random, each taken off WHOLE ("removes a random Debuff"). Nothing
-# carried, nothing done, and no toast.
+# `remove_random_debuff N` — N random Debuffs the player is carrying lose ONE STACK
+# EACH ("lose a random debuff" is one stack of one debuff, never the whole pile).
+# Each stack is its own draw over what is still carried, so a player holding
+# Bleed 2 and Poison 1 may lose one of each or both Bleeds. Nothing carried,
+# nothing done, and no toast.
 func _h_remove_random_debuff(effect: Dictionary, ctx: Dictionary) -> void:
 	for _i in range(maxi(1, int(effect.get("value", 1)))):
 		var held: Array = []
@@ -673,11 +673,34 @@ func _h_remove_random_debuff(effect: Dictionary, ctx: Dictionary) -> void:
 		if held.is_empty():
 			return
 		var pick: StatusData = held[_rng.randi_range(0, held.size() - 1)]
-		# Every stack, permanent and timed: `status_stacks` reads through a cap and
-		# can undercount what is really there, and remove_status stops at zero.
-		GameState.remove_status(pick.id, 1000000)
-		_did(ctx, "%s removed" % pick.display_name)
+		# remove_status takes a borrowed (timed) stack before a permanent one.
+		GameState.remove_status(pick.id, 1)
+		_did(ctx, "-1 %s" % pick.display_name)
 
+# `gain_top_buff N` — N stacks of the Buff the player carries the MOST of
+# (Cupcake). A tie goes to the first in catalog order, so the same pile always
+# answers the same way. Carrying no buff at all, it pays nothing — "the one you
+# have the most of" names a buff you have.
+func _h_gain_top_buff(effect: Dictionary, ctx: Dictionary) -> void:
+	var best: StatusData = null
+	var most: int = 0
+	for sd in Data.all_statuses():
+		if not (sd is StatusData and sd.is_buff()):
+			continue
+		var n: int = GameState.status_stacks(sd.id)
+		if n > most:
+			most = n
+			best = sd
+	if best == null:
+		return
+	var amount: int = maxi(1, int(effect.get("value", 1)))
+	if GameState.apply_status(best.id, amount) > most:
+		_did(ctx, "+%d %s" % [amount, best.display_name])
+
+# `drop_copy` — a duplicate of the piece the hook was about lands on a random free
+# square of the battlefield (Endless Nameless, on `loot_used`). Onto the FLOOR, not
+# into the pack: the same terms every other piece the board pays is on, and a full
+# pack is no reason for the proc to vanish. A board with no free square pays nothing.
 func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
 	var hook: Dictionary = ctx.get("hook", {})
 	var used = hook.get("entry")

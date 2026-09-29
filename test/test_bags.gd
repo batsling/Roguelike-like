@@ -241,14 +241,40 @@ func test_potion_belt_ignores_potions_spent_from_elsewhere() -> void:
 
 func test_potion_belt_removes_a_debuff_every_fourth_potion() -> void:
 	_place(&"potion_belt", Vector2i(0, 3))
-	GameState.apply_status(&"bleed", 2)
+	GameState.apply_status(&"bleed", 1)
 	for i in range(4):
 		assert_true(GameState.has_status(&"bleed"), "still bleeding before potion %d" % (i + 1))
 		GameState.add_potion_loot(&"potion_of_uselessness")
 		var index: int = GameState.loot_items.size() - 1
 		GameState.move_loot(GameState.loot_slot_of(index), 9)
 		LootSystem.use_loot(GameState.loot_index_at_slot(9))
-	assert_false(GameState.has_status(&"bleed"), "the fourth took the whole debuff off")
+	assert_false(GameState.has_status(&"bleed"), "the fourth took a stack of it off")
+
+func test_a_random_debuff_is_lost_one_stack_at_a_time() -> void:
+	# "Lose a random debuff" is ONE stack of one debuff, never the whole pile.
+	GameState.apply_status(&"bleed", 3)
+	EffectSystem.apply({"type": "remove_random_debuff", "value": 1}, {})
+	assert_eq(GameState.status_stacks(&"bleed"), 2, "one stack of three")
+	EffectSystem.apply({"type": "remove_random_debuff", "value": 2}, {})
+	assert_eq(GameState.status_stacks(&"bleed"), 0, "two more, one each")
+
+func test_a_random_buff_is_one_stack_per_draw() -> void:
+	var buffs: Array = Data.all_statuses().filter(func(sd): return sd.is_buff())
+	var total := func() -> int:
+		var n: int = 0
+		for sd in buffs:
+			n += GameState.status_stacks(sd.id)
+		return n
+	var start: int = total.call()
+	EffectSystem.apply({"type": "gain_random_buff", "value": 3}, {})
+	assert_eq(total.call(), start + 3, "three draws, one stack each")
+
+func test_top_buff_feeds_the_buff_you_have_most_of() -> void:
+	GameState.apply_status(&"speed", 1)
+	GameState.apply_status(&"strength", 3)
+	EffectSystem.apply({"type": "gain_top_buff", "value": 1}, {})
+	assert_eq(GameState.status_stacks(&"strength"), 4, "the biggest pile grows")
+	assert_eq(GameState.status_stacks(&"speed"), 1, "and nothing else does")
 
 # --- the grid --------------------------------------------------------------------
 

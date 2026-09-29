@@ -265,8 +265,11 @@ available to any passive:
 | `if_in_bag` | The hook's piece was spent from a cell of **this** bag. `loot_used` now carries `slot`, where the piece was when it was spent (-1 for one used where it stands). Refuses on anything that is not a bag. |
 | `every=N` | Only every Nth firing that passed its other gates goes through. Counted on the firing piece. |
 
-And two verbs: `gain_random_buff N` (N stacks of one random Buff-kind status) and
-`remove_random_debuff N` (N carried Debuff-kind statuses, each removed whole).
+And two verbs: `gain_random_buff N` and `remove_random_debuff N`. **Randomly
+gaining or losing a buff or debuff is always ONE STACK**: `gain_random_buff 2` is
+two draws over the Buff-kind statuses, one stack each, and `remove_random_debuff 2`
+is two draws over the Debuffs you carry, each taking one stack off (a borrowed,
+timed stack before a permanent one). Neither ever moves a whole pile at once.
 
 - **Protective Purse**: `game_selected: gain_stat shields 1`, the same words and
   hook as Wooden Cross.
