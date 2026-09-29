@@ -1372,7 +1372,7 @@ back in a line of `overlay.js`.
 `ObsCompanion._threat()` mirrors `GameLoop2._take_hit` step for step rather than
 re-deriving the arithmetic — damage-taken mods first, a swing modded to nothing
 spends no shield, Pierce takes both pools past, timed shields block first — and
-excludes the bodies that sit a turn out (staggered, stunned, out of reach). Reach
+excludes the bodies that sit a turn out (stunned, out of reach). Reach
 is `can_strike`, not `in_front`: a Ranged body hits from further back. It is a
 forecast, not a promise, since an ability can spend a body's turn on something
 else, and **nothing in it mutates** — a test asserts the live shield pools are

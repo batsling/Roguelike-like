@@ -840,7 +840,7 @@ func test_the_timed_shields_break_first() -> void:
 	assert_eq(GameState.bonus_shields, 1)
 
 func test_a_body_that_sits_the_turn_out_is_not_counted_against_you() -> void:
-	# Staggered and stunned bodies do not swing (_resolve_enemy_turn), so counting
+	# Stunned bodies do not swing (_resolve_enemy_turn), so counting
 	# them would overstate the cost of a lost run — and overstating it is the same
 	# kind of wrong as understating it: the player routes around a threat that
 	# was not there.
@@ -854,10 +854,10 @@ func test_a_body_that_sits_the_turn_out_is_not_counted_against_you() -> void:
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	var before: int = int(ObsCompanion.payload()["threat"]["damage"])
-	GameLoop2.staggered_this_game[instance] = true
+	GameLoop2.stun(instance)
 	var after: int = int(ObsCompanion.payload()["threat"]["damage"])
 	assert_lt(after, before,
-		"a staggered body holds its fire, so the forecast drops with it")
+		"a stunned body holds its fire, so the forecast drops with it")
 
 func test_the_forecast_matches_the_turn_the_board_actually_takes() -> void:
 	# THE ONE THAT MATTERS. Rather than re-deriving the sum, take the forecast and
@@ -949,16 +949,15 @@ func test_a_board_out_of_reach_says_how_many_lost_runs_of_quiet_are_left() -> vo
 		return
 	# ARRANGED, NOT HOPED FOR. `_turns_away` skips the bodies that sit a turn out,
 	# exactly as `_threat` does — so a run whose opening offering happened to
-	# stagger everything standing would leave it with nothing to count and answer
+	# stun everything standing would leave it with nothing to count and answer
 	# -1, and this test asserted a positive number. That is an assertion which is
 	# only USUALLY true, and it failed about one full-suite run in six.
 	#
 	# The state the test is about is a LIVE body out of reach, so it is set up:
-	# nothing staggered, nothing stunned, everything parked in the back column.
+	# nothing stunned, everything parked in the back column.
 	# `skip_turn` rides the entry's STATUSES (`is_stunned` → `enemy_combat` →
 	# `entry_statuses_effective`), so both status books are emptied and not just
 	# the abilities.
-	GameLoop2.staggered_this_game.clear()
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
 		entry["statuses"] = {}
@@ -1028,11 +1027,10 @@ func _disarm_to_one_swing() -> void:
 	for entry in GameLoop2.stack.duplicate():
 		var instance: int = int(entry.get("instance", 0))
 		if not kept and GameLoop2.can_strike(entry) \
-				and not GameLoop2.is_staggered(instance) \
 				and not GameLoop2.is_stunned(entry):
 			kept = true
 			continue
-		GameLoop2.staggered_this_game[instance] = true
+		GameLoop2.stun(instance)
 
 # ------------------------------------------------------------- statuses ----
 

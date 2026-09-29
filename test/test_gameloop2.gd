@@ -901,39 +901,44 @@ func test_fulfilling_old_goal_defeats_and_prevents_its_attack() -> void:
 	# Only the current (failed) enemy remains on the stack.
 	assert_eq(GameLoop2.stack_size(), 1)
 
-# --- staggered: the body that took its goal and lived ----------------------
+# --- the goal hit a body survives: GOAL_HIT_STUN turns of Stun (§7.2) --------
 
-# A two-Health body survives the goal hit — and a survivor is STAGGERED, which is
-# the whole of this section: it holds its fire (which it always did) AND holds its
-# ground (which it did not).
+# A two-Health body survives the goal hit — and a survivor is STUNNED for
+# GOAL_HIT_STUN turns, which is the whole of this section. It replaced Staggered
+# (the rest of the game), so there is one way of sitting a turn out, not two.
 func _tough(dmg: int = 3) -> GoalEnemyData:
 	var e: GoalEnemyData = _enemy(dmg)
 	e.health = 2
 	return e
 
-func test_a_goal_met_mid_game_staggers_the_survivor() -> void:
+func test_a_goal_met_mid_game_stuns_the_survivor() -> void:
 	var inst: int = _choose_solo(_tough()) ; _report()
-	assert_false(GameLoop2.is_staggered(inst), "nothing has been ticked yet")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 0, "nothing has been ticked yet")
 	GameLoop2.fulfill(inst, true)
 	assert_eq(int(_entry(inst).get("health", -1)), 1, "it took the hit and lived")
-	assert_true(GameLoop2.is_staggered(inst), "so it is staggered")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"so it is stunned for the goal hit's turns")
+	assert_eq(GameLoop2.quiet_stun(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"and every one of those stacks is quiet")
 
-func test_a_goal_that_kills_staggers_nobody() -> void:
+func test_a_goal_that_kills_stuns_nobody() -> void:
 	var inst: int = _choose_solo(_enemy(3)) ; _report()
 	GameLoop2.fulfill(inst, true)
 	assert_true(_entry(inst).is_empty(), "one Health, one hit, off the board")
-	assert_false(GameLoop2.is_staggered(inst), "a dead body is not a staggered one")
 
-func test_a_staggered_body_does_not_step() -> void:
+func test_a_goal_hit_survivor_holds_its_ground_for_the_stun_and_then_walks() -> void:
 	var inst: int = _choose_solo(_tough()) ; _report()
 	var before: int = _col_of(inst)
 	assert_gt(before, 1, "it starts behind the front column, with room to walk")
 	GameLoop2.fulfill(inst, true)
+	for _i in range(GameLoop2.GOAL_HIT_STUN):
+		_turn()
+	assert_eq(_col_of(inst), before, "stunned, it stays exactly where it was")
+	assert_false(GameLoop2.is_stunned(_entry(inst)), "and the stun has worn off")
 	_turn()
-	_turn()
-	assert_eq(_col_of(inst), before, "staggered, it stays exactly where it was")
+	assert_lt(_col_of(inst), before, "so the next lost run walks it again")
 
-func test_a_staggered_body_in_the_front_column_does_not_swing() -> void:
+func test_a_goal_hit_survivor_in_the_front_column_does_not_swing() -> void:
 	var inst: int = _choose_solo(_tough()) ; _report()
 	_march_to_front(inst)
 	GameLoop2.fulfill(inst, true)
@@ -941,27 +946,73 @@ func test_a_staggered_body_in_the_front_column_does_not_swing() -> void:
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	_turn()
-	assert_eq(GameState.hp, 10, "it was answered for this game, so it holds its fire")
+	assert_eq(GameState.hp, 10, "it is stunned, so it holds its fire")
 
-func test_the_stagger_lifts_when_the_next_game_is_chosen() -> void:
+func test_a_goal_hit_stun_carries_into_the_next_game() -> void:
+	# The rest of a game was Staggered's clock; Stun's is turns, and a game handed
+	# in spends none of them (§7.4) — so the stacks are still owed afterwards.
 	var inst: int = _choose_solo(_tough()) ; _report()
-	var before: int = _col_of(inst)
 	GameLoop2.fulfill(inst, true)
-	assert_true(GameLoop2.is_staggered(inst))
-	# A new game is a new game: the debt is still owed, and the body walks again.
 	_report()
 	_choose_solo(_enemy(1))
-	assert_false(GameLoop2.is_staggered(inst), "the stagger was this game's")
-	_turn()
-	assert_lt(_col_of(inst), before, "and it is moving again")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"a new game does not lift it")
 
-func test_a_scroll_fired_goal_hit_does_not_stagger() -> void:
+func test_a_goal_hit_stun_hangs_no_bonus_row() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	GameLoop2.fulfill(inst, true)
+	for row in GameLoop2.bonus_objectives_for(_entry(inst)):
+		assert_ne((row["status"] as StatusData).id, &"stun",
+			"a stun the board handed out is not a chest reward the player can earn")
+	assert_false(GameLoop2.claim_enemy_bonus(inst, &"stun"), "and claiming one pays nothing")
+
+func test_a_paid_stun_on_top_of_a_goal_hit_keeps_its_bonus() -> void:
+	var inst: int = _choose_solo(_tough()) ; _report()
+	GameLoop2.fulfill(inst, true)
+	GameLoop2.stun(inst)          # Scroll of Scare Monster, say
+	var stun_rows: Array = GameLoop2.bonus_objectives_for(_entry(inst)).filter(
+		func(r): return (r["status"] as StatusData).id == &"stun")
+	assert_eq(stun_rows.size(), 1, "the paid stack hangs its bonus row")
+	assert_eq(int(stun_rows[0]["stacks"]), 1, "worth the one paid stack, not all three")
+	# THE QUIET STACKS WEAR FIRST, so the paid one's row outlives them.
+	for _i in range(GameLoop2.GOAL_HIT_STUN):
+		_turn()
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 1, "one stack left")
+	assert_eq(GameLoop2.quiet_stun(_entry(inst)), 0, "and it is the paid one")
+
+func test_a_scroll_fired_goal_hit_does_not_stun() -> void:
 	# `record` false is the scroll/effect path: it deals the hit and changes nothing
 	# about the game the player is in the middle of — including this.
 	var inst: int = _choose_solo(_tough()) ; _report()
 	GameLoop2.fulfill(inst, false)
 	assert_eq(int(_entry(inst).get("health", -1)), 1, "the hit still landed")
-	assert_false(GameLoop2.is_staggered(inst), "but nothing was reported, so nothing is held")
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), 0, "but nothing was reported, so nothing is held")
+
+func test_a_goal_hit_stun_survives_a_save() -> void:
+	var real: GoalEnemyData = _catalog_enemy()
+	if real == null:
+		pending("the run did not reach this case (real == null)")
+		return
+	var inst: int = _choose_solo(real)
+	GameLoop2.stun(inst, GameLoop2.GOAL_HIT_STUN, false)
+	GameLoop2.stun(inst)
+	GameLoop2.restore(GameLoop2.serialize())
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), GameLoop2.GOAL_HIT_STUN + 1)
+	assert_eq(GameLoop2.quiet_stun(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"the quiet stacks come back quiet, or a reload would hand out a chest reward")
+
+func test_a_save_from_the_staggered_era_loads_its_survivors_stunned() -> void:
+	var real: GoalEnemyData = _catalog_enemy()
+	if real == null:
+		pending("the run did not reach this case (real == null)")
+		return
+	var inst: int = _choose_solo(real)
+	var blob: Dictionary = GameLoop2.serialize()
+	blob["staggered_this_game"] = [inst]
+	GameLoop2.restore(blob)
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"a body the old build held for the game loads held")
+	assert_eq(GameLoop2.quiet_stun(_entry(inst)), GameLoop2.GOAL_HIT_STUN)
 
 # --- stun (§4.1 / §7.2) ---------------------------------------------------
 
@@ -1954,8 +2005,13 @@ func test_fulfilling_a_goal_holds_its_fire_for_every_turn() -> void:
 	assert_eq(GameState.hp, 10, "and it was engaged all game, so it never swings")
 	for a in res["attacks"]:
 		if int((a as Dictionary).get("instance", 0)) == inst:
-			assert_true((a as Dictionary).get("goal_hit", false),
+			assert_true((a as Dictionary).get("stunned", false),
 				"every turn is logged as held, not as a hit")
+	# …and it is stunned for the goal hit it lived through (§7.2), so the next
+	# game's first lost runs are held too. Asked of the body rather than of your
+	# Health: this close to the Amulet the report stands new bodies up (§19.5).
+	assert_eq(GameLoop2.stun_stacks(_entry(inst)), GameLoop2.GOAL_HIT_STUN,
+		"the goal hit's stun is still owed")
 
 # --- what the HUD promises matches what lands ------------------------------
 
