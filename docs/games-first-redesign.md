@@ -856,10 +856,13 @@ slot draws — rather than the bare capsule, which read as the art coming loose 
 its tile and gave the player nothing to line up against the slot they were aiming
 at.
 
-**LOOT IS SPENDABLE WHENEVER YOU WANT IT.** The mid-report lock holds the pack
-*still* — nothing dragged, taken or binned between "played the game" and "said what
-happened", because that gap is not a moment for the inventory to move — and it used
-to hold spending too. That was the wrong rule twice over. Mid-game is exactly when
+**LOOT IS SPENDABLE — AND MOVABLE — WHENEVER YOU WANT IT.** The mid-report lock
+used to hold the pack *still* — nothing dragged, turned, taken or binned between
+"played the game" and "said what happened". Now only BINNING waits for the report:
+the loot window's pack can be rearranged and its pieces and bags turned mid-game,
+because that gap can be an hour of someone else's game and is exactly when a
+player sorts their pack (`LootGrid.locked` is still there for a surface that wants
+it; the loot window no longer sets it). It also used to hold spending too. That was the wrong rule twice over. Mid-game is exactly when
 a player knows what they want out of a piece: the body walking toward them is right
 there, a Scare Monster or a Scroll of Fire is the answer to it, and an unknown
 capsule is a gamble they are taking *because* of what is on the board. Being told

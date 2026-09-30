@@ -68,7 +68,7 @@ func _init(page: Node, button_host: Control) -> void:
 
 # Redraw the toggle and, when open, the panel. `reporting` is passed in rather
 # than read off the page for the same reason PackStrip takes it: it is the page's
-# phase to know, and the window needs exactly one bit of it — loot cannot be spent
+# phase to know, and the window needs exactly one bit of it — loot cannot be binned
 # mid-report, when the run is between "played the game" and "said what happened".
 func rebuild(reporting: bool) -> void:
 	if _button_host == null or not is_instance_valid(_button_host):
@@ -218,8 +218,12 @@ func _panel(reporting: bool) -> Control:
 	var grid := LootGrid.new()
 	grid.allow_reorder = true
 	grid.show_use = true
-	grid.allow_discard = true
-	grid.locked = reporting
+	# REARRANGING IS NEVER LOCKED, only BINNING is (§4.3). The report step can be an
+	# hour of someone else's game, and it is exactly when a player wants to sort a
+	# pack they cannot spend out of in the order it is in. Moving and turning a piece
+	# changes nothing the report reads; throwing one away is a decision about the run
+	# and still waits until the game has been said to be over.
+	grid.allow_discard = not reporting
 	grid.use_requested.connect(func(i: int): _page.use_loot(i))
 	grid.moved.connect(func(from: int, to: int, rot: int):
 		if GameState.move_loot(from, to, rot):
@@ -232,8 +236,8 @@ func _panel(reporting: bool) -> Control:
 	# THE BIN, on the same terms as the drop modal's (§4.3). Spending a piece is not
 	# the same as being rid of one: a pack holding three known-Negative pills is full
 	# of loot the run will never willingly use, and reading the Amnesia scroll to
-	# make room is a worse answer than throwing it away. Hidden while the pack is
-	# locked — nothing can leave it mid-report either.
+	# make room is a worse answer than throwing it away. Hidden mid-report —
+	# nothing can leave the pack then, even though it can be rearranged.
 	if not reporting and (not GameState.loot_items.is_empty() or not GameState.pack_bags.is_empty()):
 		var bin := LootTrash.new()
 		bin.grid = grid
@@ -241,21 +245,21 @@ func _panel(reporting: bool) -> Control:
 
 	# The one line of instruction the grid needs, and only while there is something
 	# to rearrange — a single piece has nowhere to go.
-	if not GameState.loot_items.is_empty() and not reporting:
+	if not GameState.loot_items.is_empty():
 		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
 			+ "onto another piece to swap the two, onto an empty one to move it there. "
 			+ "R or right-click while dragging turns it."))
 	# THE BAGS MOVE TOO, and nothing on the screen would say so otherwise.
-	if not GameState.pack_bags.is_empty() and not reporting:
+	if not GameState.pack_bags.is_empty():
 		box.add_child(_note("Drag a bag by its tab to move it, with what is in it. "
 			+ "R or right-click while dragging turns it."))
 	if reporting:
-		# SPENDING IS NOT LOCKED, only moving (§4.3, LootGrid.locked). Mid-game is
+		# SPENDING AND MOVING ARE NOT LOCKED, only binning (§4.3). Mid-game is
 		# exactly when the player knows what they want out of a piece — the body
 		# walking toward them is right there — and anything that cannot land in that
 		# gap fizzles rather than being refused.
-		box.add_child(_note("Mid-game: spend what you like. The pack can't be "
-			+ "rearranged or binned until you've reported this one."))
+		box.add_child(_note("Mid-game: spend and rearrange what you like. Nothing "
+			+ "can be binned until you've reported this one."))
 
 	# WHAT YOU HAVE LEARNED, on both surfaces that draw the pack — the reward screen
 	# builds the same section, and the fold is shared so it cannot be shut here and

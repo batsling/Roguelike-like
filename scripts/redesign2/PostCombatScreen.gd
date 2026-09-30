@@ -648,6 +648,16 @@ func _right_column() -> Control:
 	_loot_slot = col
 	return col
 
+# HOW WIDE THE PAYOUT MAY GROW. A pack with bags on it is wide rather than tall,
+# and held to the 3x3's box it was drawn at half size with the left column beside
+# it mostly air. So it may take the frame's width less what the left column keeps
+# (`LEFT_MIN`) — the pack only shrinks once the screen genuinely cannot hold it.
+const LEFT_MIN := 320.0
+
+func _payout_budget() -> float:
+	var frame_w: float = get_viewport_rect().size.x - INSET_X * 2.0 - 14.0 * 2.0 - 4.0
+	return maxf(float(LootDropModal.EMBED_W), frame_w - COLUMN_GAP - LEFT_MIN)
+
 # The payout, once its column is on the screen (see _fill_sections). Loot can
 # always be SPENT from here: this screen only opens once the report has resolved
 # and the run is back on its offering, which is the same condition the pack strip
@@ -658,7 +668,8 @@ func _fill_payout() -> void:
 	if _loot.is_empty():
 		_loot_slot.add_child(_empty_note("Nothing dropped for your pack."))
 		return
-	_loot_section = LootDropModal.embed(_page, self, _loot_slot, _loot, true)
+	_loot_section = LootDropModal.embed(_page, self, _loot_slot, _loot, true,
+		LootDropModal.EMBED_BODY_MIN_H, false, _payout_budget())
 	# THE WAY OUT COUNTS WHAT IS STILL ON THE GROUND, so it has to hear about every
 	# piece the player takes, leaves, spends or bins — not just about the section
 	# finishing. `answered` fires once, on the way out, which is after the button

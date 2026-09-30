@@ -325,6 +325,31 @@ func test_every_playable_character_is_queued() -> void:
 	assert_eq(want.values(), [],
 		"every character is queued to fall past the menu: %s missing" % str(want.values()))
 
+# EVERY KIND OF LOOT IS QUEUED, the new ones included. Bags (5) and weapons (6)
+# are too few to survive a random draw of ~100 out of ~300 on every launch, which
+# is what `LOOT_FLOOR` is for; cards are opaque rectangles and would be rejected
+# at bake time as tiles without the `whole` flag.
+func test_every_kind_of_loot_is_queued_and_survives_the_bake() -> void:
+	_art._fill_queue()
+	var dirs: Array = MenuFallingArt.SMALL_DIRS + [MenuFallingArt.CARD_DIR]
+	var queued := {}
+	for job in _art._queue:
+		var path: String = String(job.get("path", ""))
+		for dir in dirs:
+			if path.begins_with(dir):
+				queued[dir] = int(queued.get(dir, 0)) + 1
+	for dir in ["res://images2.0/trinkets/", "res://images2.0/weapons/",
+			"res://images2.0/bags/"]:
+		assert_true(MenuFallingArt.SMALL_DIRS.has(dir), "%s is a source" % dir)
+	for dir in dirs:
+		assert_gte(int(queued.get(dir, 0)), 1, "%s has art queued to fall" % dir)
+	# A card survives the bake even though it is opaque edge to edge.
+	var before: int = _art._pool[MenuFallingArt.Kind.SMALL].size()
+	_art._bake({"path": MenuFallingArt.CARD_DIR + "2OfClubs.png",
+		"kind": MenuFallingArt.Kind.SMALL, "foot": 1, "whole": true})
+	assert_eq(_art._pool[MenuFallingArt.Kind.SMALL].size(), before + 1,
+		"an opaque card is baked into the pool, not rejected as a tile")
+
 # A character is not a pill. Nothing here stands on the battlefield, so the size
 # is the one decision this makes on their behalf, and it is pinned because the
 # symptom of losing it is a portrait the size of a scroll icon.

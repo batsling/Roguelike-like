@@ -102,7 +102,7 @@ const CLEAR_BAND := 0.40
 const LOAD_BUDGET_USEC := 3000
 
 # Where the loot half of the small art comes from. Read straight off disk rather
-# than through `Data`, because what is wanted from these four folders is PICTURES,
+# than through `Data`, because what is wanted from these folders is PICTURES,
 # not content rows. The two sets that DO come through `Data` are right below, each
 # for its own reason.
 #
@@ -118,7 +118,22 @@ const SMALL_DIRS := [
 	"res://images2.0/scrolls/",
 	"res://images2.0/pills/",
 	"res://images2.0/potions_identified/",
+	"res://images2.0/trinkets/",
+	"res://images2.0/weapons/",
+	"res://images2.0/bags/",
 ]
+# CARDS ARE A RECTANGLE, and that is the card rather than a background. 12 of the
+# 20 are 14x18 pixel-art cards opaque edge to edge, which `_is_cutout` would reject
+# as tiles — so this folder skips that test the way covers do. The face-down back
+# is not a piece of loot anyone carries face down on a menu, so it stays out.
+const CARD_DIR := "res://images2.0/cards/"
+const CARD_SKIP := ["QuestionMarkCard.png"]
+
+# EVERY KIND OF LOOT GETS A SEAT. The small pool is ~100 picks out of ~300, so a
+# kind with five pictures (bags) or six (weapons) would be on screen some launches
+# and not others. Each loot folder puts up to this many in first, the way the
+# characters are taken whole; the rest of the pool is drawn at random as before.
+const LOOT_FLOOR := 4
 const COVER_DIR := "res://images2.0/games/"
 
 # ENEMIES COME FROM `Data`, NOT FROM THEIR FOLDER, and the reason is the
@@ -197,7 +212,7 @@ func _on_setting_changed(enabled: bool) -> void:
 # --- the texture pool -------------------------------------------------------
 
 # Every candidate path, shuffled and trimmed to the pool sizes. Shuffled so the
-# menu is not the same art every launch — with 336 covers and ~250 small pieces
+# menu is not the same art every launch — with 336 covers and ~300 small pieces
 # behind a pool of 34 and 112, which ones show is worth randomising.
 func _fill_queue() -> void:
 	# A queue entry is {tex OR path, kind, foot} — `foot` being the enemy's longest
@@ -205,16 +220,18 @@ func _fill_queue() -> void:
 	var small: Array = []
 	for e in _enemy_jobs():
 		small.append(e)
-	for dir in SMALL_DIRS:
-		for path in _pngs_in(dir):
-			small.append({"path": path, "kind": Kind.SMALL, "foot": 1})
+	var seated: Array = []
+	for group in _loot_groups():
+		group.shuffle()
+		seated.append_array(group.slice(0, LOOT_FLOOR))
+		small.append_array(group.slice(LOOT_FLOOR))
 	small.shuffle()
 	var covers: Array = []
 	for path in _pngs_in(COVER_DIR):
 		covers.append({"path": path, "kind": Kind.COVER, "foot": 1})
 	covers.shuffle()
 	# THE CHARACTERS ARE TAKEN WHOLE, ahead of the shuffle rather than through it.
-	# There are eleven of them against some 250 other small pieces, so a pool of 112
+	# There are eleven of them against some 300 other small pieces, so a pool of 112
 	# drawn at random would hold about five — and on any given launch might hold
 	# none at all. They are the one set on this screen that is about the player
 	# rather than about what the player is up against, and a menu that shows the
@@ -222,10 +239,27 @@ func _fill_queue() -> void:
 	var chars: Array = _character_jobs()
 	_queue.clear()
 	_queue.append_array(chars)
-	_queue.append_array(small.slice(0, maxi(0, SMALL_POOL - chars.size())))
+	_queue.append_array(seated)
+	_queue.append_array(small.slice(0, maxi(0, SMALL_POOL - chars.size() - seated.size())))
 	_queue.append_array(covers.slice(0, COVER_POOL))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
+
+# The loot art as one list of jobs per folder, so `_fill_queue` can seat some of
+# each kind before the random draw.
+func _loot_groups() -> Array:
+	var out: Array = []
+	for dir in SMALL_DIRS:
+		var group: Array = []
+		for path in _pngs_in(dir):
+			group.append({"path": path, "kind": Kind.SMALL, "foot": 1})
+		out.append(group)
+	var cards: Array = []
+	for path in _pngs_in(CARD_DIR):
+		if not CARD_SKIP.has(String(path).get_file()):
+			cards.append({"path": path, "kind": Kind.SMALL, "foot": 1, "whole": true})
+	out.append(cards)
+	return out
 
 # Enemies and bosses straight off their resources, each carrying the footprint it
 # stands on. `image` is an ordinary eager export on `GoalEnemyData` — there are 94
@@ -318,8 +352,8 @@ func _bake(job: Dictionary) -> void:
 		return
 	# Small art has to be a CUT-OUT or it falls as a rectangle of its own
 	# background. Covers are exempt: a cover IS a rectangle, and every one of them
-	# is opaque by design.
-	if kind == Kind.SMALL and not _is_cutout(tex):
+	# is opaque by design. So is a card (`CARD_DIR`), which is a job marked `whole`.
+	if kind == Kind.SMALL and not bool(job.get("whole", false)) and not _is_cutout(tex):
 		return
 	var pixel: bool = UITheme.is_pixel_art(tex, Vector2(want, want))
 	var longest: float = maxf(src.x, src.y)

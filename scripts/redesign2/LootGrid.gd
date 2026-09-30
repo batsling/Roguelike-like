@@ -135,9 +135,43 @@ var locked: bool = false
 # 3x3 alone is never shrunk — every surface was fitted to it at full size — and a
 # bag or two beside it costs a little size rather than a relayout of the page.
 var max_fit: Vector2 = Vector2.ZERO
+# …or just a WIDER box than the default, when the host has the room (the haul
+# screen, whose left column is mostly air). A pack with bags beside it is wide
+# rather than tall, so width is what decides how far it shrinks. 0 keeps the default.
+var fit_width: float = 0.0
 
 # The scale every cell is drawn at right now, and the cell drawn in the top-left.
 var _scale: float = 1.0
+
+# Every grid in the tree, so the thing in your hand can ask which pack it is over.
+static var _live: Array = []
+
+# THE SIZE A CELL IS DRAWN AT UNDER `at` (global), counting both this grid's own
+# fit and whatever scales the page around it — or -1 when no pack is there. The
+# piece in your hand asks every frame, so it is always the size of the slot it is
+# about to land in: a shrunk pack of three bags draws its cells at 0.7, and a
+# full-size cell hovering over it read as not fitting (docs/loot-passives.md §2).
+# Latest first, so a pack that arrives mid-drag (DragPackPanel) wins over the page.
+static func scale_under(at: Vector2) -> float:
+	for i in range(_live.size() - 1, -1, -1):
+		var g = _live[i]
+		if not is_instance_valid(g) or not (g as LootGrid).is_visible_in_tree():
+			continue
+		if (g as LootGrid).get_global_rect().has_point(at):
+			return (g as LootGrid)._scale * (g as LootGrid).get_global_transform().get_scale().x
+	return -1.0
+
+# How big `node`'s own drawing is on screen, for a preview to fall back to.
+static func global_scale_of(node: CanvasItem) -> float:
+	return node.get_global_transform().get_scale().x if node != null and node.is_inside_tree() else 1.0
+
+# Scale the preview `holder` to `k` on screen (its parent may be scaled itself).
+static func _fit_preview(holder: Control, k: float) -> void:
+	var parent := holder.get_parent() as CanvasItem
+	var outer: float = global_scale_of(parent) if parent != null else 1.0
+	var want: float = k / maxf(outer, 0.01)
+	if not is_equal_approx(holder.scale.x, want):
+		holder.scale = Vector2(want, want)
 var _top_left: Vector2i = Vector2i.ZERO
 # A ring of empty cells around the pack, one deep, drawn while a BAG is in the
 # air over a grid that would take it: the pack's edge is where a bag goes, so the
@@ -209,6 +243,9 @@ func rebuild() -> void:
 			var h := BagHandle.new()
 			h.grid = self
 			h.bag = i
+			HoverCard.attach(h, bag_hover(i, "▸ Drag this tab to move the bag — what is in "
+				+ "it comes too. R or right-click while dragging turns it. Drop it on the "
+				+ "bin to take it off (empty only)."))
 			_handles.append(h)
 			add_child(h, false, Node.INTERNAL_MODE_BACK)
 	_ring = _wants_ring(_drag_data())
@@ -264,7 +301,8 @@ func _fit_box() -> Vector2:
 		return max_fit
 	# Four columns and three and a half rows of full-size cells: room for the 3x3
 	# plus a bag's worth either way before anything shrinks.
-	return Vector2(4.0, 3.5) * _pitch() - Vector2(GAP, GAP)
+	var box: Vector2 = Vector2(4.0, 3.5) * _pitch() - Vector2(GAP, GAP)
+	return Vector2(maxf(box.x, fit_width), box.y)
 
 # THE SCALE A PACK THIS BIG IS DRAWN AT — 1 for anything that fits the box, less
 # for a pack that has grown past it, never less than MIN_SCALE. Every cell shrinks
@@ -287,6 +325,10 @@ func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_SORT_CHILDREN:
 			_place()
+		NOTIFICATION_ENTER_TREE:
+			_live.append(self)
+		NOTIFICATION_EXIT_TREE:
+			_live.erase(self)
 		NOTIFICATION_READY:
 			# A grid built mid-drag (the drag-time pack is built BY the drag) never
 			# hears DRAG_BEGIN, so it looks for itself.
@@ -715,17 +757,18 @@ func bag_payload(bag: int) -> Dictionary:
 func bag_preview(data: Dictionary) -> Control:
 	var p := BagPreview.new()
 	p.data = data
-	p.pitch = _pitch() * _scale
-	p.cell = cell_size() * _scale
+	p.pitch = _pitch()
+	p.cell = cell_size()
+	p.home = _scale * global_scale_of(self)
 	return p
 
 # The same for a bag that is not on any grid yet (the floor, a modal's table).
 static func loose_bag_preview(data: Dictionary) -> Control:
 	var p := BagPreview.new()
 	p.data = data
-	var k: float = 0.7
-	p.cell = Vector2(LootSlot.CELL, LootSlot.CELL) * k
-	p.pitch = p.cell + Vector2(GAP, GAP) * k
+	p.cell = Vector2(LootSlot.CELL, LootSlot.CELL)
+	p.pitch = p.cell + Vector2(GAP, GAP)
+	p.home = 0.7
 	return p
 
 
@@ -735,8 +778,17 @@ static func loose_bag_preview(data: Dictionary) -> Control:
 # so whatever it is let go over sees the bag the way it is now held.
 class BagPreview extends Control:
 	var data: Dictionary = {}
+	# At full scale; the preview is scaled as a whole to the pack under it.
 	var pitch: Vector2 = Vector2(94, 100)
 	var cell: Vector2 = Vector2(88, 94)
+	# The on-screen scale away from any pack.
+	var home: float = 1.0
+
+	func _process(_delta: float) -> void:
+		if not is_inside_tree():
+			return
+		var k: float = LootGrid.scale_under(get_global_mouse_position())
+		LootGrid._fit_preview(self, k if k > 0.0 else home)
 
 	func _init() -> void:
 		z_index = DRAG_Z
@@ -818,6 +870,16 @@ class DirArrow extends Control:
 class PiecePreview extends Control:
 	var data: Dictionary = {}
 	var cell: Control = null
+	# The on-screen scale away from any pack: the one it was picked up at.
+	var home: float = 1.0
+
+	# THE SIZE OF THE SLOT UNDER IT (LootGrid.scale_under), so what is in your hand
+	# is always drawn the size it will be when it lands.
+	func _process(_delta: float) -> void:
+		if not is_inside_tree():
+			return
+		var k: float = LootGrid.scale_under(get_global_mouse_position())
+		LootGrid._fit_preview(self, k if k > 0.0 else home)
 
 	func _input(event: InputEvent) -> void:
 		var turn: bool = (event is InputEventKey and event.pressed and not event.echo
@@ -939,7 +1001,11 @@ class BagHandle extends Control:
 # class's, and a LootSlot that named LootGrid back would be two class_names naming
 # each other — a cycle Godot resolves badly. The slot asks its grid for it instead.
 func drag_preview(slot: LootSlot, data: Dictionary = {}) -> Control:
-	return preview_cell(slot.entry, true, data)
+	var p: Control = preview_cell(slot.entry, true, data)
+	# Off any pack it keeps the size it was picked up at.
+	if p is PiecePreview:
+		(p as PiecePreview).home = global_scale_of(slot)
+	return p
 
 # The same cell, for a drag that starts somewhere that is not a slot at all — a
 # piece picked up off the BATTLEFIELD FLOOR (§8.2, `FloorLoot`). Static, and the
@@ -1049,6 +1115,18 @@ func _covered(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return slot
 
+# The hover card for attached bag `i` (docs/loot-passives.md §6): its name, size and
+# what it does, with `note` in place of the "drag it onto the edge" line a loose
+# bag carries — this one is already on the pack.
+func bag_hover(i: int, note: String) -> Dictionary:
+	if i < 0 or i >= GameState.pack_bags.size():
+		return {}
+	var row: Dictionary = GameState.pack_bags[i]
+	var cfg: Dictionary = LootSystem.hover_card({"type": "bag",
+		"id": row.get("id", ""), "rarity": row.get("rarity", "")})
+	cfg["note"] = note
+	return cfg
+
 # The size, at full scale, of a piece `ext` cells across.
 static func span_px(ext: Vector2i) -> Vector2:
 	return Vector2(ext) * Vector2(LootSlot.CELL + GAP, LootSlot.CELL + GAP) - Vector2(GAP, GAP)
@@ -1071,9 +1149,16 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 		if allow_take and not GameState.loot_is_full():
 			slot.tooltip_text = "Drop the piece here to take it."
 		# AN EMPTY CELL OF A BAG IS A HANDLE ON THE BAG, where bags can move.
-		if allow_reorder and GameState.bag_at_slot(slot_index) >= 0:
+		var bag: int = GameState.bag_at_slot(slot_index)
+		if allow_reorder and bag >= 0:
 			slot.tooltip_text += "  Drag this empty cell to move its bag."
 			slot.mouse_default_cursor_shape = Control.CURSOR_DRAG
+		# …AND SAYS WHICH BAG IT IS. A bag's effect (Potion Belt, Holdall, Protective
+		# Purse) is about the cells it owns, so hovering one of them is where the
+		# player asks what the bag does — the card leads with the bag, and the slot's
+		# own line rides underneath as the note.
+		if bag >= 0:
+			HoverCard.attach(slot, bag_hover(bag, "▸ " + slot.tooltip_text))
 		slot.add_child(_empty_body(show_use))
 		return slot
 
