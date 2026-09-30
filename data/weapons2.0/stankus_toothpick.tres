@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_stankus_toothpick"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"stankus_toothpick"
+display_name = "Stankus' Toothpick"
+rarity = "Rare"
+size = Vector2i(1, 2)
+aim = "front"
+aim_column = 0
+area = "2x1"
+stun = 1
+goal = "Attack an enemy with food"
+max_charges = 3
+description = "Every 2 Food adjacent to this weapon gives this +1 Stun"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {"amount": 1, "per": 2}
+source_game = "Backpack Battles"
+tags = PackedStringArray()
+file = "StankusToothpick"

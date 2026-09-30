@@ -14,7 +14,7 @@ the honour system.
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
-| trinkets, passive cards, bags, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule (it copies ANY loot, usable pieces included), the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves); §10 is pieces BIGGER than one cell (one index on several slots, anchored at the lowest); §11 is food and the enemy-defeat counters |
+| trinkets, passive cards, bags, weapons, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule (it copies ANY loot, usable pieces included), the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves); §10 is pieces BIGGER than one cell (one index on several slots, anchored at the lowest); §11 is food, which counts CHARGES (a defeated enemy is one; anything that charges loot is another); §12 is WEAPONS, the eighth kind — aimed like a thrown potion, charged once per game by their own goal; §13 is evolutions; §14 the hover glow |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
@@ -49,11 +49,12 @@ the honour system.
   regenerate; don't hand-edit generated `.tres` in bulk. If you change the shape
   a `.tres` is written in, **update the generator in the same commit** or the next
   regeneration silently reverts you.
-  **…and the `goals` sheet is upstream of five of its own sheets.** Every goal in
+  **…and the `goals` sheet is upstream of six of its own sheets.** Every goal in
   the game is authored there, in one sorted list, and
   `python3 tools/apply_goals_sheet.py` writes it out into `enemies`, `bosses`,
-  `characters` (`Level Up`), `curses` (`Condition`) and `statuses` (spliced back
-  into the `On Player` prose). So a goal is edited in `goals` and NOWHERE ELSE —
+  `characters` (`Level Up`), `curses` (`Condition`), `statuses` (spliced back
+  into the `On Player` prose) and `weapons` (`Goal` — always `any time`, since a
+  weapon's goal charges it even in a lost game). So a goal is edited in `goals` and NOWHERE ELSE —
   anything typed into an owner sheet's goal column is lost on the next push, the
   same rule `data/` lives under. `--check` runs in CI. It went that way round
   because the reverse (a generated view) made a one-pass rewrite of 34 goals

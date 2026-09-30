@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Weapons, evolutions, food on charges, a loot row in the shop, and a hover
+  glow for neighbours** (`docs/loot-passives.md` §11-§14, spec §14.3).
+  - **Weapons** are the eighth loot kind (six, from the new `weapons` sheet). One
+    sits in the pack with a footprint, is found **empty**, and charges **+1 per
+    game** when its goal — a row under "Any time:" on the report checklist — is
+    confirmed, **won or lost**. At 3 it swings: the board lights the squares its
+    `Aim` allows, hovering one previews its `Area`, and every enemy covered takes
+    its Stun once. Whetstone and the Hero swords sharpen neighbouring weapons,
+    Stankus' Toothpick counts the food touching it, King Bomber pays a gold per
+    enemy stunned (a new `weapon_stunned` hook and `if_self` gate). Weight 1 of
+    19 in the drop. `goals` now writes a sixth owner sheet, `weapons`.
+  - **Area words** gained `plus`, `diagonals`, `RxC` rectangles (rows centred,
+    columns away from you) and drawn shapes (`.#./#O#/.#.`) in
+    `GameLoop2.area_cells`, clipped as before. `3x3`/`5x5` keep their meaning.
+  - **Evolutions** (new `evolutions` sheet): Wooden Sword + a whetstone → Hero
+    Sword, Hero Sword + two → Hero Longsword, + a garlic → Stankus' Toothpick,
+    Lil' Bomber + a crown → King Bomber (the crown is kept). The requirement
+    counts wherever it is held, relic or trinket; the weapon's button reads
+    Evolve, and the player picks when more than enough are held.
+  - **Food counts CHARGES** (`enemy_killed charges=N:`), so everything that
+    charges loot reaches it — those cards now say "Chargeable Items and Loot".
+    A move beside more food that leaves one already holding enough makes it
+    READY (a `+1` chip, a toast): it pays on its next charge. The food rule is
+    printed on every food.
+  - **Bags:** Fanny Pack (a 10% chance a charge lands twice) and Holdall (a
+    Temporary Shield per 2 unidentified pieces in it).
+  - **The shop sells three pieces of loot** beside its three relics, rolled as
+    drops are, masked while unidentified, one gold under a relic of the same
+    rarity; a reroll redraws both rows.
+  - **Hovering a pack piece** lights what it works on (green) and what works on
+    it (blue).
+  - **Sheet:** `cards` and `trinkets` grew a `Type` column (the card generator
+    reads it, not a "Passive:" prefix — which is why Barricade stopped
+    generating), `scrolls`/`potions`/`wands` a `Tags` column, `weapons` a
+    `Passive Effect` column. The missing goal rows, effect cells and two typos
+    were filled by `tools/_weapons_food_charges_setup.py`.
+
 - **Staggered is gone: a goal hit the body survives stuns it for 2 turns**
   (§7.2). There was Stun (N turns, one stack each) and Staggered (the rest of the
   game), and they overlapped badly: Stun stacks wore off on turns Staggered had

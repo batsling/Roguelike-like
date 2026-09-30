@@ -11,5 +11,6 @@ rarity = "Uncommon"
 preference = "Positive"
 description = "Apply +1 Stun to a target Enemy"
 file = ""
+tags = PackedStringArray()
 find_weight = 1.0
 effect = [{"op": "stun_enemies", "mode": "choose", "count": 1}]

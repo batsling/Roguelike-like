@@ -1000,6 +1000,42 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 # Building one cell
 # ---------------------------------------------------------------------------
 
+# The two glows: GREEN on what the hovered piece works on, BLUE on what works on it.
+const GLOW_AFFECTS := Color(0.45, 0.95, 0.55)
+const GLOW_AFFECTED_BY := Color(0.45, 0.75, 1.0)
+var _glows: Array = []
+
+# Light up the pieces the piece at `index` works on and is worked on by. Each glow
+# is a panel laid over that piece's ANCHOR cell, which is stretched over its whole
+# footprint — so a 2x1 food glows as one piece. Returns how many were lit.
+func light_influence(index: int) -> int:
+	clear_influence()
+	if index < 0:
+		return 0
+	var inf: Dictionary = LootPassives.influence(index)
+	for pair in [[inf["affects"], GLOW_AFFECTS], [inf["affected_by"], GLOW_AFFECTED_BY]]:
+		for other in pair[0]:
+			var anchor: int = GameState.loot_slot_of(int(other))
+			if anchor < 0 or anchor >= get_child_count():
+				continue
+			var cell: Control = get_child(anchor)
+			var glow := Panel.new()
+			glow.name = "InfluenceGlow"
+			glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+			glow.add_theme_stylebox_override("panel",
+				UITheme.flat(Color(pair[1], 0.18), 6, 0, 3, pair[1]))
+			glow.tooltip_text = ""
+			cell.add_child(glow)
+			_glows.append(glow)
+	return _glows.size()
+
+func clear_influence() -> void:
+	for g in _glows:
+		if is_instance_valid(g):
+			g.queue_free()
+	_glows.clear()
+
 # One of a big piece's cells other than its anchor: filled, hidden, and deaf to the
 # mouse, so the anchor stretched over it is what is seen and grabbed.
 func _covered(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
@@ -1044,6 +1080,12 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	slot.add_theme_stylebox_override("panel", _filled_box(entry, false))
 	slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	HoverCard.attach(slot, LootSystem.hover_card(entry))
+	# THE NEIGHBOURS IT WORKS ON, AND THOSE WORKING ON IT, LIGHT UP while it is
+	# hovered (LootPassives.influence): a Whetstone's weapons, a food's fellow food,
+	# a Blueprint's target. Placement is the whole game of the pack, and a rule that
+	# reads the cell next door should show which cell it is reading.
+	slot.mouse_entered.connect(func(): light_influence(slot.loot_index))
+	slot.mouse_exited.connect(clear_influence)
 	var use_cb: Callable = Callable()
 	if show_use:
 		use_cb = func(): use_requested.emit(slot.loot_index)
@@ -1097,6 +1139,15 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		span.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 		col.add_child(span)
 		_add_progress(span, extras)
+		# A WEAPON is a big piece that is USED (docs/loot-passives.md §12): its charge
+		# in the corner, and Swing / Evolve where a trinket says "Passive".
+		if LootSystem.is_weapon(entry):
+			span.add_child(_weapon_chip(entry))
+			if with_name:
+				col.add_child(_name_label(entry, face_up))
+				if use_cb.is_valid():
+					col.add_child(_weapon_button(entry, use_cb, locked_now))
+			return col
 		if with_name:
 			col.add_child(_name_label(entry, face_up))
 			var plate := Label.new()
@@ -1154,7 +1205,9 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var passive: bool = LootPassives.is_passive(entry) and not bool(extras.get("usable", false))
 	# A BAG IS NOT A GAMBLE EITHER, and is not spent: no badge, no button.
 	var bag: bool = LootSystem.is_bag(entry)
-	if String(entry.get("type", "")) != "card" and not passive and not bag:
+	# A WEAPON is not a gamble either (docs/loot-passives.md §12).
+	var weapon: bool = LootSystem.is_weapon(entry)
+	if String(entry.get("type", "")) != "card" and not passive and not bag and not weapon:
 		var badge := UITheme.chip(pref_glyph(entry) if known else "?",
 			UITheme.preference_color(LootSystem.preference(entry)) if known else UITheme.TEXT_FAINT,
 			9)
@@ -1179,6 +1232,9 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])] \
 			if counted else "Zap it to find out what it is — and how much of it is left."
 		band.add_child(count)
+	# A WEAPON WEARS ITS CHARGE in the wand's corner, green once it can swing.
+	if weapon:
+		band.add_child(_weapon_chip(entry))
 	# A PASSIVE THAT GROWS WEARS ITS GROWTH in the same corner (Rocket's payout,
 	# docs/loot-passives.md §4) — the relic strip draws an incremental relic's
 	# count there too, so a number in the bottom-left reads as "how far along".
@@ -1221,6 +1277,9 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		# 40px tile can say that pressing this does not empty the slot — every other
 		# kind's button is a goodbye and a wand's usually is not.
 		var wand: bool = LootSystem.is_wand(entry)
+		if weapon:
+			col.add_child(_weapon_button(entry, use_cb, locked_now))
+			return col
 		var use := UITheme.confirm_button("Zap" if wand else "Use",
 			Vector2(0, LootSlot.USE_H), 10)
 		use.disabled = locked_now
@@ -1232,6 +1291,36 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col
+
+# A WEAPON'S CHARGE, "1/3", in the bottom-left corner — green once it can swing.
+static func _weapon_chip(entry: Dictionary) -> Control:
+	var ready: bool = WeaponSystem.is_ready(entry)
+	var wc := UITheme.chip("%d/%d" % [WeaponSystem.charges_of(entry),
+		WeaponSystem.max_charges(entry)],
+		UITheme.SUCCESS if ready else WeaponSystem.WEAPON_COLOR, 9)
+	wc.name = "Charge"
+	wc.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	wc.grow_horizontal = Control.GROW_DIRECTION_END
+	wc.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wc.tooltip_text = "Ready to swing." if ready \
+		else "%d of %d charges — complete its goal for +1." % [
+			WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
+	return wc
+
+# A WEAPON'S BUTTON SAYS EVOLVE when it can (docs/loot-passives.md §13) — the rarer
+# and bigger news — and Swing otherwise, live only when full. Both open its card.
+static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool) -> Button:
+	var evolvable: bool = not WeaponSystem.evolutions_ready(entry).is_empty()
+	var ready: bool = WeaponSystem.is_ready(entry)
+	var use := UITheme.confirm_button("Evolve" if evolvable else "Swing",
+		Vector2(0, LootSlot.USE_H), 10)
+	use.name = "WeaponButton"
+	use.disabled = locked_now or (not evolvable and not ready)
+	use.tooltip_text = "It can evolve — open it to choose." if evolvable \
+		else "Aim it at the board — spends every charge." if ready \
+		else "Needs a full charge to swing."
+	use.pressed.connect(use_cb)
+	return use
 
 # The piece's name, one line under the art.
 static func _name_label(entry: Dictionary, face_up: bool) -> Label:
@@ -1263,15 +1352,20 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 	if progress.is_empty():
 		return
 	var foods: Array = progress.get("foods", [])
-	var chip := UITheme.chip("%d/%d" % [int(progress["have"]), int(progress["need"])],
-		UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD, 9)
+	var ready: bool = bool(progress.get("ready", false))
+	# READY: a move beside more food brought the target down to what it already
+	# holds, so it pays on its NEXT charge (docs/loot-passives.md §11) — said on the
+	# piece rather than left as a "3/3" that looks like it should have gone off.
+	var chip := UITheme.chip("+1" if ready else "%d/%d" % [int(progress["have"]), int(progress["need"])],
+		UITheme.ACCENT if ready else UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD, 9)
 	chip.name = "Progress"
 	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	chip.tooltip_text = "%d of %d enemies defeated toward its next trigger." % [
-		int(progress["have"]), int(progress["need"])]
+	chip.tooltip_text = ("Ready — it pays on its next charge." if ready
+		else "%d of %d charges toward its next trigger." % [
+			int(progress["have"]), int(progress["need"])])
 	if not foods.is_empty():
-		chip.tooltip_text += "\n%d sooner for the food beside it." % foods.size()
+		chip.tooltip_text += "\nNeeds %d fewer for the food beside it." % foods.size()
 	on.add_child(chip)
 
 # A BIG PIECE'S PICTURE, filling the art area of its footprint and turned with the

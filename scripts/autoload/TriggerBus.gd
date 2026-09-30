@@ -131,6 +131,10 @@ signal card_binned(ctx: Dictionary)         # ctx.card — a CARD of the loot ki
                                             # off the floor (GameState.
                                             # discard_loot_at / Overworld2's floor
                                             # bin). Trading Card.
+signal weapon_stunned(ctx: Dictionary)      # ctx.slot, ctx.instance, ctx.weapon — a
+                                            # WEAPON's swing stunned one enemy
+                                            # (WeaponSystem.swing), once per body.
+                                            # King Bomber's `if_self` gold.
 signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
                                             # ctx.destroyed — a Bomb was spent on
                                             # the battlefield (§4). Fired ONCE per

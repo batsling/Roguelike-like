@@ -3556,6 +3556,15 @@ func target_cells(target: String) -> Array:
 #   cross   that row AND that column — the Bark's widening of a row or a column,
 #           and deliberately the shape Brimstone already gives a bomb
 #   board   every square
+#   plus    the square and its four neighbours (docs/loot-passives.md §12)
+#   diagonals  the square and its four diagonal neighbours
+#   RxC     a rectangle, ROWS FIRST as an enemy's Size is: its rows CENTRED on the
+#           square (an even height puts the extra row below), its columns running
+#           AWAY from you starting at it — "1x2" is the square and the one behind
+#           it. 3x3 and 5x5 are NOT read this way: they were words first (a centred
+#           square), and potions rely on them.
+#   a drawing  rows split by "/", "#" a square it hits, "." one it skips, "O" the
+#           aimed square (hit). Left is toward you, so ".#./#O#/.#." is a plus.
 #
 # CLIPPED, NEVER WRAPPED. A 3x3 centred on the corner of a 4x4 board is four
 # squares, and that is a real cost of aiming at the edge rather than something to
@@ -3585,8 +3594,51 @@ func area_cells(cell: Vector2i, area: String = "cell") -> Array:
 			return _square_cells(cell, 2)
 		"board", "all":
 			return target_cells("all")
-		_:
-			return [cell]
+		"plus":
+			return shape_cells(cell, ".#./#O#/.#.")
+		"diagonals":
+			return shape_cells(cell, "#.#/.O./#.#")
+	var rect := RegEx.create_from_string("^(\\d+)x(\\d+)$").search(area.to_lower())
+	if rect != null:
+		return rect_cells(cell, int(rect.get_string(1)), int(rect.get_string(2)))
+	if area.contains("O"):
+		return shape_cells(cell, area)
+	return [cell]
+
+# An RxC rectangle laid from `cell` (see area_cells): `rows` centred on it, the
+# extra row of an even height below; `cols` from it AWAY from you. Clipped.
+func rect_cells(cell: Vector2i, rows: int, cols: int) -> Array:
+	var out: Array = []
+	@warning_ignore("integer_division")
+	var top: int = cell.y - (rows - 1) / 2
+	for col in range(cell.x, cell.x + maxi(1, cols)):
+		for row in range(top, top + maxi(1, rows)):
+			if _on_board(col, row):
+				out.append(Vector2i(col, row))
+	return out
+
+# A DRAWN shape laid with its "O" on `cell` (see area_cells). Clipped; a drawing
+# with no "O" covers nothing, since there is nowhere to lay it.
+func shape_cells(cell: Vector2i, drawing: String) -> Array:
+	var lines: PackedStringArray = drawing.split("/")
+	var origin := Vector2i(-1, -1)
+	for r in range(lines.size()):
+		var c: int = lines[r].find("O")
+		if c >= 0:
+			origin = Vector2i(c, r)
+			break
+	if origin.x < 0:
+		return []
+	var out: Array = []
+	for r in range(lines.size()):
+		for c in range(lines[r].length()):
+			var ch: String = lines[r][c]
+			if ch != "#" and ch != "O":
+				continue
+			var at := Vector2i(cell.x + c - origin.x, cell.y + r - origin.y)
+			if _on_board(at.x, at.y):
+				out.append(at)
+	return out
 
 # The clipped square of `radius` around `cell`, in the board's own column-major
 # order so two areas of the same shape always list their cells the same way.

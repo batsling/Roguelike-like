@@ -103,6 +103,10 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                     #   from its pack slot (docs/loot-passives.md)
 │   ├── bags2.0/          #   BagData — the seventh: Backpack Battles bags that
 │   │                     #   attach to the pack and add cells (loot-passives §6)
+│   ├── weapons2.0/       #   WeaponData — the eighth: aimed at the board, charged
+│   │                     #   once a game by its own goal (loot-passives §12)
+│   ├── evolutions2.0/    #   EvolutionData — weapon + tagged things → a better
+│   │                     #   weapon (loot-passives §13)
 │   ├── statuses2.0/      #   StatusData — clauses bolted onto goals, plus the
 │   │                     #   combat side they move numbers with (§13, §13.4).
 │   │                     #   Stun lives here now: the board keeps no counter of
@@ -149,6 +153,8 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── generate_wand2_tres.py      #   data/wands2.0
 │   ├── generate_trinket2_tres.py   #   data/trinkets2.0 (relic grammar, loot passives)
 │   ├── generate_bag2_tres.py       #   data/bags2.0 (shapes; Effect optional)
+│   ├── generate_weapon_tres.py     #   data/weapons2.0 (Aim, Area, stun, goal)
+│   ├── generate_evolution_tres.py  #   data/evolutions2.0 (checked against weapons)
 │   ├── generate_status_tres.py     #   data/statuses2.0 (owns the reward-token DSL)
 │   ├── generate_tile_tres.py       #   data/tiles2.0 (owns the tile/unit trigger DSL)
 │   ├── generate_unit_tres.py       #   data/units2.0 (imports the parsers above)
@@ -1533,6 +1539,8 @@ still exists under an old name silently generates the wrong content.
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_wand2_tres.py` | `data/wands2.0/*.tres` from the `wands` sheet — one effect column, plus the two columns only a wand has: `Charges` (what a fresh one holds) and `Type` (what it wants pointed at it). `nothing` is a verb here, and every *other* empty Effect cell is refused — Wand of Nothing is the roster's authored blank and a hole must not be able to look like one |
 | `generate_trinket2_tres.py` | `data/trinkets2.0/*.tres` from the `trinkets` sheet — the Effect column is in the RELIC grammar, compiled by `generate_item_tres.parse_loot_passive` (shared with the passive cards), which refuses any relic field the pack cannot honour. `Size` is `HxW`, rows first (as the art is painted) — the foods are 2x1 and 1x2, and the pack places any rectangle (docs/loot-passives.md §10) |
+| `generate_weapon_tres.py` | `data/weapons2.0/*.tres` from the `weapons` sheet — `Aim` (any/front/back/column N/enemy/none) and `Area` (a word, an `RxC` rectangle, or a `#.O` drawing) are validated here with the same grammar `GameLoop2.area_cells` reads; `Effect` is `stun N`; `Passive Effect` is the loot-passive grammar; `Goal` is written by `apply_goals_sheet.py` (docs/loot-passives.md §12) |
+| `generate_evolution_tres.py` | `data/evolutions2.0/*.tres` from the `evolutions` sheet — both weapon names are checked against `weapons`, Requirement 2 must read `Any [N] Item(s) or Trinket(s) with "tag"` (docs/loot-passives.md §13) |
 | `generate_bag2_tres.py` | `data/bags2.0/*.tres` from the `bags` sheet — `Size` is any `HxW` rectangle, rows first (the Potion Belt's `4x1` stands), and the Effect column (relic grammar, same parser) may be blank for a bag that only adds room (docs/loot-passives.md §6) |
 | `generate_status_tres.py` | `data/statuses2.0/*.tres` from the `statuses` sheet — owns the reward-token DSL, and the `Decrease` column's table: `On Completion` sheds a stack when a SIDE is completed, while `On Trigger` and `Each Turn` are worn away by the BOARD (an attack, a turn) and mean *per game* on the player, who has neither |
 | `generate_tile_tres.py` | `data/tiles2.0/*.tres` from the `tiles` sheet — owns the trigger / interaction DSL both board kinds use (§17) |

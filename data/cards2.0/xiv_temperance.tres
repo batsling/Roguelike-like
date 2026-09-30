@@ -13,3 +13,4 @@ description = "Spawn a Blood Donation Machine"
 effect = [{"op": "spawn_object", "object": "blood_donation_machine"}]
 file = "XIVTemperance"
 icon = "Isaac_Major_Arcana"
+loot_type = "Usable"

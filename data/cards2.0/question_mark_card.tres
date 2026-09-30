@@ -13,3 +13,4 @@ description = "Copy the effect of a selected Usable Item in your inventory"
 effect = [{"op": "copy_item"}]
 file = "QuestionMarkCard"
 icon = "Isaac_Playing_Cards"
+loot_type = "Usable"

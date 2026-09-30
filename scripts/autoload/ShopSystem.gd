@@ -44,6 +44,19 @@ extends Node
 # either.
 const STOCK_SLOTS := 3
 
+# …AND THREE PIECES OF LOOT BESIDE THEM (docs/games-first-redesign.md §14). The
+# loot kinds grew to eight, and a shop that only ever sold relics was a shop with
+# nothing to say about most of what a run carries. Each is rolled exactly as a drop
+# is (GameState.roll_loot_entry — the same kind weights, the same Identify tenth),
+# so an unidentified potion on the shelf is as unknown as one off a body: the shelf
+# draws it through LootSystem, which masks it.
+const LOOT_SLOTS := 3
+
+# A PIECE OF LOOT COSTS ONE LESS than a relic of its rarity: Common 2, Uncommon 3,
+# Rare 4. Loot is spent or kept in a slot, a relic is kept for free — so the same
+# rarity is worth a little less as loot.
+const LOOT_DISCOUNT := 1
+
 # Price = BASE_PRICE + the rarity's rung on ItemData.Rarity, so Common 3,
 # Uncommon 4, Rare 5, Legendary 6. The ladder is flat by one for a reason — the
 # whole run's income is around a dozen gold, so a Legendary at double a Common
@@ -100,6 +113,11 @@ func price_for(rarity: int) -> int:
 func price_of(entry: Dictionary) -> int:
 	return int(entry.get("price", BASE_PRICE))
 
+# What a piece of loot of `rarity` ("Common".."Legendary") costs on a shelf.
+func loot_price_for(rarity: String) -> int:
+	var rung: int = {"uncommon": 1, "rare": 2, "legendary": 3}.get(rarity.to_lower(), 0)
+	return maxi(1, price_for(rung) - LOOT_DISCOUNT)
+
 
 # ---------------------------------------------------------------------------
 # The shelf
@@ -113,9 +131,14 @@ func shop_for(game_id: StringName) -> Dictionary:
 	if not GameState.shops.has(game_id):
 		GameState.shops[game_id] = {
 			"stock": _roll_stock(game_id, 0),
+			"loot": _roll_loot(),
 			"rerolls": 0,
 			"seen": false,
 		}
+	# A shelf saved before loot was sold gets its loot row the first time it is
+	# asked for, rather than standing half-empty for the rest of that run.
+	if not (GameState.shops[game_id] as Dictionary).has("loot"):
+		GameState.shops[game_id]["loot"] = _roll_loot()
 	return GameState.shops[game_id]
 
 
@@ -156,6 +179,12 @@ func sweep(game_id: StringName) -> Array:
 	var taken: Array = []
 	if not GameState.sweeps_shops():
 		return taken
+	# The loot row too — "purchase everything in it" — as far as the pack has room.
+	for row in remaining_loot(game_id):
+		if GameState.take_loot_entry((row["entry"] as Dictionary).duplicate(true)):
+			row["sold"] = true
+			GameLog.add("Lord's Parasol takes %s off the shelf."
+				% LootSystem.display_name(row["entry"]), UITheme.COIN_GOLD)
 	for entry in remaining(game_id):
 		var template: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
 		if template == null:
@@ -190,7 +219,15 @@ func remaining(game_id: StringName) -> Array:
 
 
 func is_sold_out(game_id: StringName) -> bool:
-	return not stock(game_id).is_empty() and remaining(game_id).is_empty()
+	return not (stock(game_id).is_empty() and loot_stock(game_id).is_empty()) \
+		and remaining(game_id).is_empty() and remaining_loot(game_id).is_empty()
+
+# The loot row, sold slots included: [{entry, price, sold}].
+func loot_stock(game_id: StringName) -> Array:
+	return peek(game_id).get("loot", [])
+
+func remaining_loot(game_id: StringName) -> Array:
+	return loot_stock(game_id).filter(func(r): return not bool(r.get("sold", false)))
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +270,30 @@ func buy(game_id: StringName, slot: int) -> ItemData:
 	return owned
 
 
+# Buy loot slot `slot` at `game_id`. Returns the entry now in the pack, or {} when
+# it could not happen — no shop, bad slot, sold, too dear, or NO ROOM: a piece you
+# cannot carry is not charged for, and stays on the shelf.
+func buy_loot(game_id: StringName, slot: int) -> Dictionary:
+	var shop: Dictionary = shop_for(game_id)
+	if shop.is_empty():
+		return {}
+	var row_list: Array = shop.get("loot", [])
+	if slot < 0 or slot >= row_list.size():
+		return {}
+	var row: Dictionary = row_list[slot]
+	if bool(row.get("sold", false)) or not can_afford(row):
+		return {}
+	var entry: Dictionary = (row["entry"] as Dictionary).duplicate(true)
+	if not GameState.take_loot_entry(entry):
+		return {}
+	var price: int = price_of(row)
+	GameState.spend_gold(price)
+	row["sold"] = true
+	GameLog.add("Bought %s for %d gold." % [LootSystem.display_name(entry), price],
+		Color(1.0, 0.84, 0.4))
+	shop_changed.emit(game_id)
+	return entry
+
 # ---------------------------------------------------------------------------
 # Rerolling
 # ---------------------------------------------------------------------------
@@ -255,6 +316,8 @@ func reroll(game_id: StringName) -> bool:
 	GameState.scramble -= REROLL_COST
 	shop["rerolls"] = int(shop.get("rerolls", 0)) + 1
 	shop["stock"] = _roll_stock(game_id, int(shop["rerolls"]))
+	# BOTH ROWS: a reroll replaces what is in front of you, wholesale.
+	shop["loot"] = _roll_loot()
 	GameState.emit_signal("stats_changed")
 	GameLog.add("Rerolled the shop — %d Scramble left." % GameState.scramble,
 		Color(0.6, 0.75, 1.0))
@@ -281,9 +344,10 @@ func headline(game_id: StringName) -> String:
 	if not has_seen(game_id):
 		return "A shop stands here. Beat this game and it opens."
 	var left: int = remaining(game_id).size()
+	left += remaining_loot(game_id).size()
 	if left == 0:
 		return "You cleared this shop out. A Scramble would restock it."
-	return "You left %d item%s on this shelf." % [left, "" if left == 1 else "s"]
+	return "You left %d thing%s on this shelf." % [left, "" if left == 1 else "s"]
 
 
 # The remaining stock, one "Name — Rarity · N gold" line each. Empty until the
@@ -298,6 +362,10 @@ func stock_lines(game_id: StringName) -> Array:
 			continue
 		out.append("%s — %s · %d gold" % [
 			item.display_name, UITheme.rarity_name(int(item.rarity)), price_of(entry)])
+	# The loot row, in the words the pack uses — an unidentified piece by its mask.
+	for row in remaining_loot(game_id):
+		out.append("%s — %s · %d gold" % [LootSystem.display_name(row["entry"]),
+			LootSystem.kind_name(row["entry"]), price_of(row)])
 	return out
 
 
@@ -333,6 +401,22 @@ func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
 			"price": price_for(int(item.rarity)),
 			"sold": false,
 		})
+	return out
+
+
+# LOOT_SLOTS pieces off the drop roll (GameState.roll_loot_entry), each with its
+# price. Rolled live rather than seeded like the items: a piece carries run state
+# (a pill's dose, a wand's charges, a weapon's uid), and the shelf is saved with the
+# run, so a reload puts back what was rolled either way.
+func _roll_loot() -> Array:
+	var out: Array = []
+	for _i in range(LOOT_SLOTS):
+		var entry: Dictionary = GameState.roll_loot_entry("loot")
+		if entry.is_empty():
+			continue
+		out.append({"entry": entry,
+			"price": loot_price_for(String(entry.get("rarity", "Common"))),
+			"sold": false})
 	return out
 
 

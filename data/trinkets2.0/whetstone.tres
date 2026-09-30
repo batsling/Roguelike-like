@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_whetstone"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"whetstone"
+display_name = "Whetstone"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "Weapons above and below Gain +1 Stun"
+source_game = "Backpack Battles"
+tags = PackedStringArray("stone", "whetstone")
+file = "Whetstone"
+loot_type = "Passive"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {"amount": 1, "dirs": ["up", "down"]}

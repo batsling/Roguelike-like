@@ -142,6 +142,10 @@ TRIGGER_SIGNALS = {
     "boss_spawned": "boss_spawned",
     "loot_used": "loot_used",
     "card_binned": "card_binned",
+    # A weapon stunned one enemy (docs/loot-passives.md §12) — fired ONCE PER BODY
+    # a swing stuns, with the swinging weapon's slot, so King Bomber's
+    # `weapon_stunned if_self:` pays per enemy and only for its own swings.
+    "weapon_stunned": "weapon_stunned",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
@@ -437,9 +441,17 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         return eff
 
     if verb == "gain_stat":
-        rest, _ = _kv(toks[1:])
-        return {"type": "gain_stat", "stat": rest[0] if rest else "",
-                "value": _int(rest[1]) if len(rest) > 1 else 0}
+        rest, kv = _kv(toks[1:])
+        eff = {"type": "gain_stat", "stat": rest[0] if rest else "",
+               "value": _int(rest[1]) if len(rest) > 1 else 0}
+        # Sized by the run, as gain_gold's is: `per=2 of=unidentified_in_bag`
+        # (Holdall) is +value for every 2 unidentified pieces in the firing bag.
+        if "per" in kv or "of" in kv:
+            if "per" not in kv or "of" not in kv:
+                raise ValueError("item DSL: gain_stat wants per= and of= together in %r" % raw)
+            eff["per"] = _int(kv["per"])
+            eff["of"] = kv["of"]
+        return eff
 
     # `charge_random N` / `charge_random full` — top up one random relic or wand
     # that has room (Charged Penny +1, Hairpin all the way). The same pool the pill
@@ -994,6 +1006,38 @@ def parse_item(row):
             mm = re.search(r"\d+", clause)
             fields["echo_first_loot"] = int(mm.group(0)) if mm else 1
             last_trigger = None
+        elif kl0 == "weapon_stun":
+            # Whetstone / the Hero swords: WEAPONS beside this piece swing with
+            # +N Stun (docs/loot-passives.md §12). `dirs=adjacent` is every side;
+            # `dirs=up,down` only the cells above and below.
+            mm = re.match(r"weapon_stun\s+\+?(\d+)(?:\s+dirs\s*=\s*([a-z,]+))?", kl)
+            if not mm:
+                raise ValueError("item DSL: weapon_stun wants `+N [dirs=..]` in %r" % clause)
+            dirs = (mm.group(2) or "adjacent").split(",")
+            if dirs == ["adjacent"]:
+                dirs = ["up", "down", "left", "right"]
+            for d in dirs:
+                if d not in ("up", "down", "left", "right"):
+                    raise ValueError("item DSL: weapon_stun dir %r in %r" % (d, clause))
+            fields["weapon_stun"] = {"amount": int(mm.group(1)), "dirs": dirs}
+            last_trigger = None
+        elif kl0 == "stun_per_food":
+            # Stankus' Toothpick: +N Stun on its own swing for every `per` foods
+            # touching it (§12).
+            mm = re.match(r"stun_per_food\s+\+?(\d+)(?:\s+per\s*=\s*(\d+))?", kl)
+            if not mm:
+                raise ValueError("item DSL: stun_per_food wants `+N per=M` in %r" % clause)
+            fields["stun_per_food"] = {"amount": int(mm.group(1)),
+                                       "per": max(1, int(mm.group(2) or 1))}
+            last_trigger = None
+        elif kl0 == "charge_bonus":
+            # Fanny Pack (a bag): a charge landing on a piece inside it has this
+            # chance to land twice (§6, §12).
+            mm = re.search(r"(\d+)\s*%", clause)
+            if not mm:
+                raise ValueError("item DSL: charge_bonus wants `N%%` in %r" % clause)
+            fields["charge_bonus_chance"] = int(mm.group(1)) / 100.0
+            last_trigger = None
         elif kl0 == "copy_right":
             # Blueprint: this piece does whatever the piece in the pack slot to
             # its RIGHT does (docs/loot-passives.md §2). Positional, so it only
@@ -1084,13 +1128,14 @@ def parse_item(row):
 # shelf, so a trinket authoring one would print a promise the runtime never reads —
 # the exact silent failure every generator here exists to turn into a loud one.
 LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
-                       "bank_shields", "echo_first_loot")
+                       "bank_shields", "echo_first_loot", "weapon_stun",
+                       "stun_per_food", "charge_bonus_chance")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
 _ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
                "card_grants", "stat_multipliers", "scaling")
 
 
-def parse_loot_passive(name, effect_text):
+def parse_loot_passive(name, effect_text, allow_empty=False):
     f = parse_item({"Name": name, "Type": "Passive", "Effect": effect_text or ""})
     out = {k: f[k] for k in LOOT_PASSIVE_FIELDS if f.get(k)}
     extra = [k for k, v in f.items()
@@ -1101,17 +1146,21 @@ def parse_loot_passive(name, effect_text):
             extra.append(k)
     if extra:
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
-                         "passive:, passive_status:, copy_right, bank_shields and "
-                         "echo_first_loot reach the pack "
+                         "passive:, passive_status:, copy_right, bank_shields, "
+                         "echo_first_loot, weapon_stun, stun_per_food and "
+                         "charge_bonus reach the pack "
                          "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
-    if not out:
+    if not out and not allow_empty:
         raise ValueError("%s: its Effect %r compiles to nothing" % (name, effect_text))
     return {"triggers": out.get("triggers", []),
             "stat_bonuses": out.get("stat_bonuses", {}),
             "status_bonuses": out.get("status_bonuses", {}),
             "copy_neighbour": out.get("copy_neighbour", ""),
             "bank_shields": bool(out.get("bank_shields", False)),
-            "echo_first_loot": int(out.get("echo_first_loot", 0))}
+            "echo_first_loot": int(out.get("echo_first_loot", 0)),
+            "weapon_stun": out.get("weapon_stun", {}),
+            "stun_per_food": out.get("stun_per_food", {}),
+            "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0))}
 
 
 def _split_head(clause):
@@ -1166,6 +1215,17 @@ def _gates(head_lower):
     # save and a second belt counts its own.
     for m in re.finditer(r"\bevery\s*=\s*(\d+)", head_lower):
         g["every"] = int(m.group(1))
+    # "each firing is +1 CHARGE, and it pays at N" — the foods (docs/loot-passives.md
+    # §11). The same count `every` keeps, and it IS the piece's charges: that is
+    # what lets anything that charges loot (Charged Penny, Hairpin, 48 Hour Energy,
+    # a Fanny Pack) push a food along as well as a defeated enemy can.
+    for m in re.finditer(r"\bcharges\s*=\s*(\d+)", head_lower):
+        g["every"] = int(m.group(1))
+        g["charges"] = True
+    # "only when the hook is about THIS piece" — King Bomber's `weapon_stunned
+    # if_self:`. Read against the `slot` the hook carries, as `if_in_bag` is.
+    if re.search(r"\bif_self\b", head_lower):
+        g["if_self"] = True
     return g
 
 

@@ -13,3 +13,4 @@ description = "Spawn a random Boss from the current Game Type and Difficulty Tie
 effect = [{"op": "spawn_boss"}]
 file = "IVTheEmperor"
 icon = "Isaac_Major_Arcana"
+loot_type = "Usable"

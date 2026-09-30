@@ -53,6 +53,13 @@ extends Resource
 # and Echo Form's on cards today (CardData), here so the shape stays shared.
 @export var bank_shields: bool = false
 @export var echo_first_loot: int = 0
+# The sheet's `Type`: "Passive" or "Charged" — drawn as a chip on the piece, so
+# the Description says what it does rather than what kind of thing it is. A
+# Charged trinket counts CHARGES toward its payout (the foods, §11).
+@export var loot_type: String = "Passive"
+# Whetstone: weapons in these directions from this piece swing with +amount Stun
+# ({amount, dirs}, docs/loot-passives.md §12). Empty for everything else.
+@export var weapon_stun: Dictionary = {}
 
 
 # Whether the sheet tags it `food` — the one tag the pack reads (docs/loot-passives.md

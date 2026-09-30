@@ -6,7 +6,7 @@
 script = ExtResource("1_bag")
 id = &"protective_purse"
 display_name = "Protective Purse"
-rarity = "Rare"
+rarity = "Uncommon"
 size = Vector2i(1, 1)
 description = "At the start of combat, Gain +1 Temporary Shield"
 source_game = "Backpack Battles"

@@ -1,19 +1,25 @@
 # Loot passives: trinkets, passive cards, and where things sit in the pack
 
 Some loot is never spent. A **trinket** (the sixth loot kind) and a **passive
-card** (a card whose line opens "Passive:") sit in a cell of the 3x3 pack and work
+card** (a card whose sheet `Type` is `Passive`) sit in a cell of the 3x3 pack and work
 from there, the way a relic works from the shelf. The idea comes from backpack
 roguelikes like Backpack Battles: the pack is a space you arrange, and some pieces
 care about what is next to them.
 
-- Content: the `trinkets` sheet (11 Isaac trinkets and five Backpack Battles
-  foods, §10-§11) and five passive rows on the
+- Content: the `trinkets` sheet (11 Isaac trinkets, five Backpack Battles
+  foods and the Whetstone, §10-§12) and five passive rows on the
   `cards` sheet (Balatro's Blueprint, Chaos the Clown, Rocket, To the Moon,
   Trading Card), plus Slay the Spire's Barricade and Echo Form (§8).
 - Code: `scripts/runtime/LootPassives.gd` (which pieces are working and what each
   resolves to), `GameState.fire_run_item_triggers` (the runner),
   `scripts/resources/TrinketData.gd` and the passive fields on `CardData`.
-- Tests: `test/test_loot_passives.gd`.
+- Tests: `test/test_loot_passives.gd`, and `test/test_weapons.gd` for §11's charges,
+  §12's weapons, §13's evolutions and the hover glow (§2).
+- **`Type` is a column now** on `cards` and `trinkets` (`Usable` / `Passive` /
+  `Charged`), shown as a chip on the piece's hover — so a Description says what
+  the piece does and no longer opens with "Passive:" or "Triggered:". The card
+  generator reads `Type`, not the prose, to decide whether a card is played or
+  held. `scrolls`, `potions` and `wands` grew a `Tags` column the same way.
 
 ## 1. What a passive piece is
 
@@ -391,12 +397,19 @@ kind is one cell.
 - A piece that cannot be seated anywhere (an old save, a debug grant into a crowded
   pack) is squeezed into one free cell rather than not drawn at all.
 
-## 11. Food, and triggers that count enemies defeated
+## 11. Food, and triggers that count CHARGES
 
-Backpack Battles items fire "every X seconds". Here that clock is **enemies
-defeated**: `enemy_killed every=N: …`. The count is the `every=N` count Potion Belt
-already used (§6). It rides on the firing piece, is saved with it, and **carries
-from game to game**.
+Backpack Battles items fire "every X seconds". Here that clock is **charges**: a
+defeated enemy is +1 Charge, and the food pays at N — `enemy_killed charges=N: …`.
+The count is the `every=N` count Potion Belt already used (§6), flagged `charges`.
+It rides on the firing piece, is saved with it, and **carries from game to game**.
+
+**A food is Chargeable Loot.** Because the count IS its charges, anything that
+charges loot reaches it too — Charged Penny, Hairpin, 48 Hour Energy, a Fanny
+Pack's extra (§12) — through the one door `GameState.charge_loot_entry`, which
+counts one charge at a time through the same `_count_every` a defeated enemy
+does and pays through the same `_run_trigger`. Fully charging a food pays it once.
+Those sources' Descriptions say "Chargeable Items and Loot".
 
 | Food | Every | Pays |
 |---|---|---|
@@ -417,16 +430,111 @@ food touching it**, never below 1 (`LootPassives.every_for`):
 - A Blueprint copying a food is that food, both for its own count and to its
   neighbours.
 - The count is **progress**, reset when it pays, not a remainder. So moving a
-  Carrot 3 along beside a Cheese (4 becomes 3) pays on the next enemy, rather than
-  wrapping round to zero.
+  Carrot 3 along beside a Cheese (4 becomes 3) pays on its **next charge**, rather
+  than on the spot or wrapping round to zero. The piece is **READY**: its corner
+  chip reads `+1` in the accent colour, its hover says "READY — it pays on its next
+  charge", and the move that made it ready raises a toast ("…needs one more charge
+  to pay"). Only a move can make a food ready — a charge that reaches the number
+  pays and starts again — so `GameState._note_ready_foods` toasts exactly the
+  newly-ready ones on each pack change (and a save loaded with one ready is not
+  news).
+- **The rule is printed on every food**, carried or not (`LootSystem.FOOD_RULE`),
+  because it is what decides where one goes.
 
 **The number is on the piece.** A piece with an enemy-defeat trigger wears
 `have/need` in the top-right corner of its art (`LootGrid._add_progress`): gold
-normally, green when food beside it has lowered the target. Its hover says the
-same in words and names the food helping it.
+normally, green when food beside it has lowered the target, `+1` when READY. Its
+hover says the same in words ("2 / 4 charges") and names the food helping it.
 
 ### Random buffs and debuffs are one stack
 
 Randomly gaining or losing a buff or debuff is always **one stack** (§6):
 `gain_random_buff N` is N draws of one stack each, and `remove_random_debuff N` is
 N draws over the debuffs you carry, each taking one stack off.
+
+## 12. Weapons — the eighth kind
+
+A **weapon** sits in the pack like a trinket (it has a footprint and neighbours),
+is **aimed at the board like a thrown potion**, and **charges off its own goal**.
+Six, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
+`data/weapons2.0/`, `WeaponData`; runtime in `scripts/runtime/WeaponSystem.gd`).
+
+**Charging.** A weapon is found **empty**. Its goal (the sheet's `Goal` column,
+written by `apply_goals_sheet.py` from `goals` — Owner Sheet `weapon`) sits on the
+report checklist under **Any time:** while it is carried, one row per weapon
+(keyed by the entry's `uid`, so two Hero Swords are two rows). Ticking it is +1
+Charge, **at most once per game**: the row is keyed per game and locks once
+confirmed, and the entry's `goal_game` refuses a second charge in the same game by
+any other door. It resolves the moment it is confirmed, so **a game you then lose
+still charges the weapon**. It is Chargeable Loot, so everything else that charges
+loot charges it too. At `Charge` (3) it is **READY**.
+
+**Swinging.** The pack tile's button reads **Swing** (live only when full). The
+board lights the squares the weapon's `Aim` allows; hovering one previews the
+squares its `Area` would hit from there, in the weapon's orange; clicking one
+swings. Every enemy covered takes the Stun **once**, however many of its squares
+are covered. The swing spends every charge and the weapon stays in its slot.
+
+| Aim | where you may click |
+|---|---|
+| `any` | every square |
+| `front` / `back` | column 1 (next to you) / the spawn column |
+| `column N` | that column |
+| `enemy` | a square an enemy stands on |
+| `none` | nothing — laid from the front column's middle row |
+
+| Area | what it hits, from the clicked square |
+|---|---|
+| `cell` `row` `col` `cross` `3x3` `5x5` `board` | the words potions already had |
+| `plus` / `diagonals` | the square and its 4 side / 4 diagonal neighbours |
+| `RxC` | a rectangle, **rows first**: rows **centred** on the click (an even height puts the extra row below), columns running **away** from you starting at it. `3x3`/`5x5` stay the centred-square words. |
+| drawing | rows split by `/`; `#` hit, `.` skipped, `O` the click (hit); left is toward you — `.#./#O#/.#.` is a plus |
+
+Shapes are clipped, never wrapped (`GameLoop2.area_cells`, so potions can use the
+new words too). The generator refuses an Area or Aim it cannot read.
+
+**What sharpens a swing** (`WeaponSystem.stun_parts`, shown in the hover):
+- the weapon's own `stun N`;
+- `weapon_stun +N dirs=…` on a neighbour — **Whetstone** (`dirs=up,down`) and the
+  **Hero swords** (`dirs=adjacent`) — each such piece once, turned with the piece;
+  a Hero sword's aura is for *other* weapons;
+- `stun_per_food +N per=M` — **Stankus' Toothpick**: +1 for every 2 food pieces
+  touching it (pieces, not kinds: two Garlics are two food).
+
+**King Bomber** pays through a new hook, `weapon_stunned` (once per body a swing
+stuns, with the swinging weapon's slot) and a new gate, `if_self`.
+
+**It stands outside the copies.** A swing is three games of goals, so Echo Form,
+Echo Chamber and Endless Nameless do not see it (`LootSystem.use_loot`), and a
+Blueprint pointed at a weapon copies its passive (a Hero sword's aura) but never
+its swing.
+
+**Bags.** **Fanny Pack**'s `charge_bonus 10%`: a charge landing on a piece in it
+has a 10% chance to land twice (`GameState._bag_charge_bonus`) — weapons, wands and
+food alike. **Holdall**'s `gain_stat shields 1 per=2 of=unidentified_in_bag`
+counts the unidentified pieces in its own cells.
+
+**Drops.** Weapons are a loot kind with weight **1** of 19 (half a trinket's).
+
+## 13. Evolutions
+
+The `evolutions` sheet (`generate_evolution_tres.py` → `data/evolutions2.0/`,
+`EvolutionData`): **Name** (what it becomes), **Requirement 1** (the weapon that
+evolves — it always turns), **Requirement 2** (`Any [N] Item(s) or Trinket(s) with
+"tag"`), **Outcome** (`Consume All` uses the tagged things up, `Consume None` keeps
+them). Both weapon names are checked against `weapons` at generation.
+
+A requirement counts **wherever it is held** — a relic on the shelf (Crown) or a
+trinket anywhere in the pack. When one of a weapon's evolutions is met, its pack
+button reads **Evolve** and its card has an **Evolve →** button; with more eligible
+things than needed, the player picks which. The new weapon keeps the old one's
+charges (capped), `uid`, goal claim and place — re-seated where it fits if the
+bigger shape no longer does (`WeaponSystem.evolve`).
+
+## 14. The hover glow
+
+Hovering a pack piece lights the pieces it works on in **green** and the pieces
+working on it in **blue** (`LootPassives.influence`, drawn by
+`LootGrid.light_influence`). One answer for every neighbour rule: a copier and its
+target, a `weapon_stun` piece and the weapons it reaches, a food and each
+different food touching it, and the food feeding Stankus' Toothpick.

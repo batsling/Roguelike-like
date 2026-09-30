@@ -13,3 +13,4 @@ description = "Teleport to a random Deckbuilder Game"
 effect = [{"op": "teleport_type", "game_type": "deckbuilder"}]
 file = "RideTheBus"
 icon = "Balatro_Playing_Cards"
+loot_type = "Usable"

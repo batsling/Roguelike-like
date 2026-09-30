@@ -47,9 +47,10 @@ func _index_of(entry: Dictionary) -> int:
 
 func test_every_bag_loads_with_its_shape_and_art() -> void:
 	var all: Array = Data.all_bags()
-	assert_eq(all.size(), 3, "the sheet's three bags all generated")
+	assert_eq(all.size(), 5, "the sheet's five bags all generated")
 	var shapes := {&"leather_bag": Vector2i(2, 2), &"potion_belt": Vector2i(1, 4),
-		&"protective_purse": Vector2i(1, 1)}
+		&"protective_purse": Vector2i(1, 1), &"fanny_pack": Vector2i(2, 1),
+		&"holdall": Vector2i(3, 2)}
 	for id in shapes:
 		var b: BagData = Data.get_bag(id)
 		assert_not_null(b, "%s generated" % id)
@@ -60,6 +61,8 @@ func test_every_bag_loads_with_its_shape_and_art() -> void:
 	assert_false(Data.get_bag(&"leather_bag").is_passive(), "Leather Bag only adds room")
 	assert_true(Data.get_bag(&"potion_belt").is_passive())
 	assert_true(Data.get_bag(&"protective_purse").is_passive())
+	assert_true(Data.get_bag(&"fanny_pack").is_passive(), "its charge bonus is a passive")
+	assert_almost_eq(Data.get_bag(&"fanny_pack").charge_bonus_chance, 0.10, 0.001)
 
 func test_a_bag_says_how_much_room_it_adds() -> void:
 	var line: String = LootSystem.description(_bag(&"leather_bag"))
@@ -70,11 +73,12 @@ func test_a_bag_says_how_much_room_it_adds() -> void:
 # --- the weighted drop ---------------------------------------------------------
 
 func test_the_kind_roll_is_weighted_three_to_two() -> void:
-	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand", "trinket", "bag"])
+	assert_eq(GameState.LOOT_KINDS, ["scroll", "pill", "potion", "card", "wand", "trinket", "bag", "weapon"])
 	for kind in ["scroll", "pill", "potion", "card"]:
 		assert_eq(int(GameState.LOOT_WEIGHTS[kind]), 3, "%s is a consumable, weight 3" % kind)
 	for kind in ["wand", "trinket", "bag"]:
 		assert_eq(int(GameState.LOOT_WEIGHTS[kind]), 2, "%s stays, weight 2" % kind)
+	assert_eq(int(GameState.LOOT_WEIGHTS["weapon"]), 1, "a weapon is the rarest find")
 
 func test_the_weights_show_up_in_what_is_rolled() -> void:
 	seed(20260927)
@@ -83,12 +87,13 @@ func test_the_weights_show_up_in_what_is_rolled() -> void:
 	for _i in range(n):
 		var k: String = GameState.roll_loot_kind()
 		counts[k] = int(counts.get(k, 0)) + 1
-	assert_eq(counts.keys().size(), 7, "all seven kinds come up")
-	# The weights total 18: 3/18 ≈ 16.7% and 2/18 ≈ 11.1%, with slack for the dice.
+	assert_eq(counts.keys().size(), 8, "all eight kinds come up")
+	# The weights total 19: 3/19 ≈ 15.8%, 2/19 ≈ 10.5% and 1/19 ≈ 5.3%, with slack.
 	for kind in ["scroll", "pill", "potion", "card"]:
-		assert_almost_eq(float(counts[kind]) / n, 3.0 / 18.0, 0.015, "%s ≈ 16.7%%" % kind)
+		assert_almost_eq(float(counts[kind]) / n, 3.0 / 19.0, 0.015, "%s ≈ 15.8%%" % kind)
 	for kind in ["wand", "trinket", "bag"]:
-		assert_almost_eq(float(counts[kind]) / n, 2.0 / 18.0, 0.015, "%s ≈ 11.1%%" % kind)
+		assert_almost_eq(float(counts[kind]) / n, 2.0 / 19.0, 0.015, "%s ≈ 10.5%%" % kind)
+	assert_almost_eq(float(counts["weapon"]) / n, 1.0 / 19.0, 0.01, "weapon ≈ 5.3%")
 
 func test_a_kind_blind_grant_can_pay_a_bag_into_a_full_pack() -> void:
 	for i in range(9):

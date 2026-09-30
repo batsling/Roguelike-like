@@ -222,8 +222,8 @@ func test_a_shop_says_nothing_about_its_stock_until_it_has_been_seen() -> void:
 
 	ShopSystem.mark_seen(shop_node)
 	assert_true(ShopSystem.has_seen(shop_node))
-	assert_eq(ShopSystem.stock_lines(shop_node).size(), ShopSystem.STOCK_SLOTS,
-		"now it lists the shelf")
+	assert_eq(ShopSystem.stock_lines(shop_node).size(),
+		ShopSystem.STOCK_SLOTS + ShopSystem.LOOT_SLOTS, "now it lists the shelf, loot and all")
 
 
 # --- buying ----------------------------------------------------------------

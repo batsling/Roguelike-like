@@ -243,6 +243,12 @@ def potion_tres(row) -> tuple:
     lines.append("quaff = %s" % gd_value(quaff))
     lines.append("throw = %s" % gd_value(throw))
     lines.append('file = "%s"' % gd_str(file))
+    # The sheet's `Tags` column (lower-cased): what a tag-reading rule matches
+    # on, the way a trinket's `Tag` is — an evolution's "with \"heat\"" or a
+    # food's tag. Blank is no tags.
+    lines.append("tags = PackedStringArray(%s)" % ", ".join(
+        '"%s"' % gd_str(t.strip().lower())
+        for t in str(row.get("Tags") or "").split(",") if t.strip()))
     return pid, "\n".join(lines) + "\n"
 
 

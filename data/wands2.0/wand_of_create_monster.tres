@@ -14,3 +14,4 @@ charges = 4
 targeting = "non_directional"
 effect = [{"op": "spawn_enemy", "tier": "current", "value": 1}]
 file = ""
+tags = PackedStringArray()

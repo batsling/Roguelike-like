@@ -13,3 +13,4 @@ description = "Teleport to the nearest Shop"
 effect = [{"op": "teleport_shop"}]
 file = "IXTheHermit"
 icon = "Isaac_Major_Arcana"
+loot_type = "Usable"

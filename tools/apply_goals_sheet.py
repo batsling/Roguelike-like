@@ -84,6 +84,7 @@ OWNER_SHEETS = {
     "character": "characters",
     "curse": "curses",
     "status": "statuses",
+    "weapon": "weapons",
 }
 
 # The two values `Ticked` may take, and what each one means downstream:
@@ -382,6 +383,47 @@ def edits_for_statuses(wb, by_owner):
     return edits
 
 
+def edits_for_weapons(wb, by_owner):
+    """Cell edits for `weapons`' `Goal` column.
+
+    A weapon's goal is how it CHARGES (docs/loot-passives.md §12): ticked while
+    the game is in play, +1 Charge, at most once per game. So it is always
+    `any time` — a `game beaten` goal would never charge a weapon on a loss, and
+    the rule is that a lost game still charges it. There is no Count column on
+    `weapons`, so a counter is refused rather than dropped.
+    """
+    header, rows = read_sheet(wb, "weapons")
+    if "Goal" not in header:
+        raise Finding("`weapons` has no `Goal` column")
+    col = header.index("Goal")
+    edits = {}
+    seen = set()
+    for n, row in rows:
+        owner = cell(row, 0)
+        key = ("weapon", owner)
+        if key not in by_owner:
+            raise Finding("weapons!%d: %r has no row in `%s` — a weapon with no "
+                          "goal can never charge." % (n, owner, SHEET))
+        seen.add(key)
+        goals = by_owner[key]
+        if len(goals) != 1:
+            raise Finding("weapon / %s has %d goal rows; a weapon has one."
+                          % (owner, len(goals)))
+        g = goals[0]
+        if g["Ticked"] != ANY_TIME or g["Count"]:
+            raise Finding(
+                "%s!%d (weapon / %s): a weapon's goal is ticked %r with no Count "
+                "— it charges the weapon while the game is in play, won or lost."
+                % (SHEET, g["_row"], owner, ANY_TIME))
+        if cell(row, col) != g["Goal"]:
+            edits["%s%d" % (col_name(col), n)] = g["Goal"]
+    missing = sorted(k[1] for k in by_owner if k[0] == "weapon" and k not in seen)
+    if missing:
+        raise Finding("`%s` names %s under Owner Sheet 'weapon', and `weapons` "
+                      "has no such row(s)." % (SHEET, ", ".join(missing)))
+    return edits
+
+
 def _refuse_unreadable(sheet_name, owner_key, g):
     """A Ticked/Count authored where nothing downstream can read it.
 
@@ -425,6 +467,7 @@ def build_edits():
         plan[sheet_name] = (edits_for_simple_sheet(
             wb, sheet_name, owner_key, column, by_owner), [], [], 0)
     plan["statuses"] = (edits_for_statuses(wb, by_owner), [], [], 0)
+    plan["weapons"] = (edits_for_weapons(wb, by_owner), [], [], 0)
     return goals, plan
 
 

@@ -86,6 +86,24 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 		var out: Dictionary = _spend(copied, ctx)
 		out.erase("charges_left")
 		return out
+	# A WEAPON IS SWUNG FROM ITS SLOT (docs/loot-passives.md §12): it spends every
+	# charge and stays where it is. It needs to be FULL, and the Stun it lays is read
+	# off the pack now — before anything moves — since its neighbours are half of it.
+	#
+	# IT STANDS OUTSIDE THE COPIES, where a wand's zap does not (§9). A zap is one
+	# charge of six; a swing is three games of goals, and an Echo Form doubling it or
+	# an Echo Chamber replaying it would be those games for free. Nor does it reach
+	# `loot_used`: Endless Nameless dropping a duplicate WEAPON on the board would be
+	# a second one that never had to be charged.
+	if is_weapon(entry):
+		if not WeaponSystem.is_ready(entry):
+			return {"logs": [], "requests": []}
+		var wctx: Dictionary = ctx.duplicate()
+		wctx["weapon_stun"] = WeaponSystem.stun_for(index)
+		wctx["weapon_slot"] = GameState.loot_slot_of(index)
+		(entry as Dictionary)["charges"] = 0
+		GameState.emit_signal("inventory_changed")
+		return WeaponSystem.swing(entry, wctx)
 	entry = (entry as Dictionary).duplicate(true)
 	# Where it was, for the hook: a bag's passive asks whether the piece was spent
 	# from one of its own cells (Potion Belt, docs/loot-passives.md §6). Read now,
@@ -127,7 +145,9 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 # `use_loot` is this with a slot emptied first, so the two can never drift on what
 # using a piece MEANS.
 func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
-	if LootPassives.is_passive(entry):
+	# A loose weapon has no charges to swing with — it arrives empty — so there is
+	# nothing to use where you stand.
+	if LootPassives.is_passive(entry) or is_weapon(entry):
 		return {"logs": [], "requests": []}
 	# A LOOSE WAND SPENDS A CHARGE TOO. There is no slot to settle, but the charge
 	# is a fact about the piece rather than about the pack, and skipping it here
@@ -235,6 +255,9 @@ func bag_description(b: BagData) -> String:
 func is_wand(entry: Dictionary) -> bool:
 	return String(entry.get("type", "")) == "wand"
 
+func is_weapon(entry: Dictionary) -> bool:
+	return WeaponSystem.is_weapon(entry)
+
 # Resolve ONE entry through whichever system owns it. No consuming, no echoing —
 # which is exactly why an echoed copy can come back through here without costing
 # the player a second piece of loot.
@@ -261,6 +284,9 @@ func _resolve(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 			# identify step on the way in, because there was never anything hidden
 			# from a card in the pack.
 			return CardSystem.play_card(entry, ctx)
+		"weapon":
+			# Only an echo of nothing reaches here — use_loot swings a weapon itself.
+			return WeaponSystem.swing(entry, ctx)
 		"wand":
 			# THE OTHER KIND WITH A CELL IN `ctx.target`, and it arrives the same way
 			# a thrown potion's does (docs/wands-design.md §4.2) — set once, by the
@@ -335,6 +361,9 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 		"bag":
 			var b: BagData = Data.get_bag(StringName(entry.get("id", "")))
 			return b.display_name if b != null else "Bag"
+		"weapon":
+			var w: WeaponData = WeaponSystem.def(entry)
+			return w.display_name if w != null else "Weapon"
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
@@ -366,6 +395,8 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 			return LootPassives.load_trinket_art(Data.get_trinket(StringName(entry.get("id", ""))))
 		"bag":
 			return LootPassives.load_bag_art(Data.get_bag(StringName(entry.get("id", ""))))
+		"weapon":
+			return LootPassives.load_weapon_art(WeaponSystem.def(entry))
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -397,6 +428,8 @@ func glyph(entry: Dictionary) -> String:
 			return "✦"
 		"bag":
 			return "🎒"
+		"weapon":
+			return "⚔"
 	return "📜"
 
 # ===========================================================================
@@ -487,7 +520,7 @@ func is_identified(entry: Dictionary) -> bool:
 			# of `carried_unidentified`, so Scroll of Identify never offers to tell
 			# you something you can already read.
 			return true
-		"trinket", "bag":
+		"trinket", "bag", "weapon":
 			# Nothing hidden about one either: its line is on it from the moment it
 			# is found (docs/loot-passives.md §1, §6).
 			return true
@@ -586,7 +619,21 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			return t.description if t != null else ""
 		"bag":
 			return bag_description(Data.get_bag(StringName(entry.get("id", ""))))
+		"weapon":
+			return weapon_description(entry)
 	return ""
+
+# What a weapon says about itself: the swing, what charges it, then its passive.
+func weapon_description(entry: Dictionary) -> String:
+	var w: WeaponData = WeaponSystem.def(entry)
+	if w == null:
+		return ""
+	var lines: Array = ["Swing: %d Stun to every enemy in a %s, aimed %s." % [
+		w.stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)],
+		"Charges when you complete its goal: %s (once per game, won or lost)." % w.goal]
+	if w.description != "":
+		lines.append(w.description)
+	return "\n".join(lines)
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
 # it is the whole reason an unidentified consumable is a gamble (§4.1/§4.3).
@@ -646,6 +693,8 @@ func can_throw(entry: Dictionary) -> bool:
 # modal reads them at different moments: one to decide whether to offer a button,
 # this one to decide whether to open the picker before the button does anything.
 func must_aim(entry: Dictionary) -> bool:
+	if is_weapon(entry):
+		return WeaponSystem.needs_aim(entry)
 	if not is_wand(entry):
 		return false
 	return WandSystem.needs_target(entry)
@@ -658,6 +707,8 @@ func must_aim(entry: Dictionary) -> bool:
 # the pack is holding does not depend on what the player has worked out. Whether to
 # SHOW it is `charges_known` below, and no screen should read one for the other.
 func charges(entry: Dictionary) -> Array:
+	if is_weapon(entry):
+		return [WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
 	if not is_wand(entry):
 		return [0, 0]
 	return [WandSystem.charges_of(entry), WandSystem.max_charges(entry)]
@@ -674,7 +725,7 @@ func charges(entry: Dictionary) -> Array:
 # hover subtitle and the gamble line cannot come to different conclusions about
 # the same stick.
 func charges_known(entry: Dictionary) -> bool:
-	return is_wand(entry) and is_identified(entry)
+	return (is_wand(entry) and is_identified(entry)) or is_weapon(entry)
 
 # Is this use context a throw? One reading of `ctx.verb`, here rather than at each
 # call site, so "throw" can never be spelled two ways.
@@ -693,6 +744,8 @@ func use_verb(entry: Dictionary) -> String:
 			return "Quaff"
 		"card":
 			return "Play Card"
+		"weapon":
+			return "Swing"
 		"wand":
 			# NOT "Use". A wand is ZAPPED, and the word is doing work: it is the one
 			# verb in the pack that does not mean the piece is gone afterwards.
@@ -717,6 +770,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Trinket"
 		"bag":
 			return "Bag"
+		"weapon":
+			return "Weapon"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page
@@ -767,9 +822,10 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 	# (docs/loot-passives.md §2): a Blueprint names what it is copying right now,
 	# which is the one thing about it that changes when the pack is rearranged.
 	if LootPassives.is_passive(entry):
-		sub += "  ·  Passive"
-		note = "▸ Works while it is in your pack — never spent."
+		# THE SHEET'S TYPE, not a fixed word (the `Type` column): a food says Charged.
 		var def: Resource = LootPassives.def_for(entry)
+		sub += "  ·  %s" % type_label(entry)
+		note = "▸ Works while it is in your pack — never spent."
 		var dir: String = LootPassives.facing(entry, def)
 		if dir != "":
 			var where: String = {"right": "to its right", "down": "below it",
@@ -792,16 +848,32 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		var progress: Dictionary = LootPassives.kill_progress(GameState.loot_index_at_slot(at)) \
 			if at >= 0 else {}
 		if not progress.is_empty():
-			lines.append("%d of %d enemies defeated toward the next one." % [
-				int(progress["have"]), int(progress["need"])])
+			# CHARGES, not a kill count (docs/loot-passives.md §11): a defeated enemy
+			# is one charge and anything that charges loot is another.
+			if bool(progress.get("ready", false)):
+				lines.append("READY — it pays on its next charge (%d / %d)." % [
+					int(progress["need"]), int(progress["need"])])
+			else:
+				lines.append("%d / %d charges toward the next one." % [
+					int(progress["have"]), int(progress["need"])])
 			var foods: Array = progress.get("foods", [])
 			if not foods.is_empty():
 				var names: Array = foods.map(func(f): return Data.get_trinket(f).display_name)
-				lines.append("Sooner by %d for the food beside it: %s." % [
+				lines.append("Needs %d fewer for the food beside it: %s." % [
 					foods.size(), ", ".join(names)])
+		# THE FOOD RULE, IN GAME (§11) — on every food, since it is what decides
+		# where one should go.
+		if def is TrinketData and (def as TrinketData).is_food():
+			lines.append(FOOD_RULE)
+	if is_weapon(entry):
+		lines.append_array(_weapon_lines(entry))
+		note = "▸ Complete its goal in a game for +1 Charge. Full: Swing it at the board."
 	var cells: Vector2i = GameState.piece_size(entry)
 	if cells != Vector2i.ONE:
 		sub += "  ·  %dx%d" % [cells.x, cells.y]
+	# A USABLE CARD SAYS SO TOO, in the same place (the sheet's `Type`).
+	if String(entry.get("type", "")) == "card" and not LootPassives.is_passive(entry):
+		sub += "  ·  %s" % type_label(entry)
 	return {
 		"title": display_name(entry),
 		"subtitle": sub,
@@ -813,6 +885,45 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		# Use button under it already offers.
 		"note": note,
 	}
+
+# THE FOOD RULE, as the game says it wherever a food is described.
+const FOOD_RULE := ("Food: each DIFFERENT food touching it lowers the charges it "
+	+ "needs by 1. If a move leaves it already holding enough, it pays on its NEXT charge.")
+
+# The sheet's `Type` for a card or a trinket ("Usable", "Passive", "Charged") —
+# the chip the Description no longer has to say. "" for every other kind.
+func type_label(entry: Dictionary) -> String:
+	var id := StringName(entry.get("id", ""))
+	match String(entry.get("type", "")):
+		"trinket":
+			var t: TrinketData = Data.get_trinket(id)
+			return t.loot_type if t != null else "Passive"
+		"card":
+			var c: CardData = Data.get_card(id)
+			return c.loot_type if c != null else ""
+	return ""
+
+# What a carried weapon's hover adds under its description: how hard it hits right
+# now and where that comes from, and how far it is from a swing.
+func _weapon_lines(entry: Dictionary) -> Array:
+	var out: Array = []
+	var slot: int = _carried_slot(entry)
+	if slot >= 0:
+		var index: int = GameState.loot_index_at_slot(slot)
+		var parts: Array = WeaponSystem.stun_parts(index)
+		if parts.size() > 1:
+			var bits: Array = []
+			for i in range(1, parts.size()):
+				bits.append("+%d %s" % [int(parts[i]["amount"]), String(parts[i]["from"])])
+			out.append("Stun now: %d (%s)." % [WeaponSystem.stun_for(index), ", ".join(bits)])
+	if WeaponSystem.is_ready(entry):
+		out.append("READY to swing.")
+	else:
+		out.append("Needs %d more charge%s to swing." % [WeaponSystem.room(entry),
+			"" if WeaponSystem.room(entry) == 1 else "s"])
+	if slot >= 0 and not WeaponSystem.goal_open(entry):
+		out.append("Its goal already charged it this game.")
+	return out
 
 # The pack slot of a carried entry — found by IDENTITY, since two copies of one
 # piece are equal Dictionaries — or -1 when it is not in the pack (an offer, a floor

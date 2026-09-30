@@ -11,5 +11,6 @@ rarity = "Uncommon"
 preference = "Negative"
 description = "Forget 1 random Identified Loot."
 file = "Amnesia"
+tags = PackedStringArray()
 find_weight = 1.0
 effect = [{"op": "forget", "kind": "loot", "count": 1}]

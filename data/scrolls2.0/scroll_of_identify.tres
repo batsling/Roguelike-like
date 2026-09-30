@@ -11,5 +11,6 @@ rarity = "Common"
 preference = "Positive"
 description = "Choose 1 Loot to Identify."
 file = "Identify"
+tags = PackedStringArray()
 find_weight = 0.0
 effect = [{"op": "identify_loot", "mode": "choose", "count": 1}]

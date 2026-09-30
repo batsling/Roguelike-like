@@ -14,3 +14,4 @@ charges = 2
 targeting = "ray"
 effect = [{"op": "deal_damage", "value": 1, "area": "cell"}]
 file = ""
+tags = PackedStringArray()

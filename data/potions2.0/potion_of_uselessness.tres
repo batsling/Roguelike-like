@@ -14,3 +14,4 @@ throw_text = "Do nothing"
 quaff = []
 throw = []
 file = ""
+tags = PackedStringArray()

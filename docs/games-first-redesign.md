@@ -3683,6 +3683,18 @@ the whole catalog at one shop. A reroll redraws **all three slots, sold ones
 included** — the generous reading, and the right one, because gold is the real
 limiter and three fresh items you still can't afford is not a windfall.
 
+**And three pieces of loot beside them** (`ShopSystem.LOOT_SLOTS`), in a compact
+row under the relics. Each is rolled exactly as a drop is
+(`GameState.roll_loot_entry("loot")` — the same kind weights, the same Identify
+tenth), so every loot kind can turn up, and an **unidentified piece stays
+unidentified on the shelf**: the row, its hover, its card and the offering's
+stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
+**one gold less** than a relic of its rarity (Common 2, Uncommon 3, Rare 4 —
+`LOOT_DISCOUNT`). Buying needs room in the pack; a piece that does not fit is not
+charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
+loot row too, as far as the pack has room. A shelf saved before loot was sold
+gets its loot row the first time it is asked for.
+
 ### 14.4 When it opens, and what the road can see
 
 The shop appears **after a Shop node's game is beaten** (§19.1 — it was the ten
@@ -3789,9 +3801,9 @@ discounts. A `shopkeeper` field is read by `ShopPanel2` and is what a named
 shop would put in the header in place of the flat `Shop`, so an authored roster
 drops in without reshaping anything.
 
-**A wider stock.** Today a shop sells items only. The obvious next step is the
-things drops *don't* give — bombs, scrolls, verb charges, health, an extra try —
-so gold buys a different axis rather than a slower version of the same one.
+**A wider stock.** A shop sells relics and loot (§14.3). The next step is the
+things drops *don't* give — bombs, verb charges, health, an extra try — so gold
+buys a different axis rather than a slower version of the same one.
 
 ---
 

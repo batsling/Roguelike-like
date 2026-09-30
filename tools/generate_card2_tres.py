@@ -6,7 +6,7 @@ Cards are the FOURTH loot consumable (docs/cards-design.md), and the only one
 that is not a gamble: one use, one effect, printed on the face. So this generator
 parses ONE effect column and no Preference — there is nothing to hint at.
 
-  cards: Name | Rarity | Description | Effect | Game | Image | Icon Image
+  cards: Name | Rarity | Type | Description | Effect | Game | Image | Icon Image
 
 `Image` is the card's FACE, drawn once it is in the pack; `Icon Image` is its
 BACK, drawn while it is lying on the floor, and shared by every card of a set.
@@ -15,13 +15,13 @@ the deck ("Isaac_Major_Arcana"), so `set_name` is read off it. `source_game` is 
 sheet's `Game` column when it is filled (it can say "Rebirth" where the icon can
 only say "Isaac") and the icon's game when it is not.
 
-PASSIVE CARDS (docs/loot-passives.md). A row whose Description opens "Passive:" is
+PASSIVE CARDS (docs/loot-passives.md). A row whose `Type` is `Passive` is
 a card that is never spent — it works from its pack slot, like a Balatro joker —
 and its Effect is written in the RELIC grammar rather than this one, compiled by
 generate_item_tres.parse_loot_passive into the same four fields a trinket carries.
-The prose is the switch because the prose is what the player reads: a card that
-says "Passive:" and has a Use button, or the other way round, is the one mismatch
-this generator cannot let through.
+`Type` is the switch, and it is shown on the card as a chip, which is why the
+Description no longer opens "Passive:" — the chip says it once, and the line is
+left to say what the card does. A Type other than Usable or Passive is refused.
 
 Effect token DSL (semicolons separate clauses, as in every other sheet):
 
@@ -222,7 +222,10 @@ def card_tres(row) -> tuple:
     rarity = _clean(row.get("Rarity")) or "Common"
     description = _clean(row.get("Description"))
     passive = None
-    if description.lower().startswith("passive:"):
+    loot_type = _clean(row.get("Type")) or "Usable"
+    if loot_type not in ("Usable", "Passive"):
+        raise ValueError("card %r: Type %r is not Usable or Passive" % (name, loot_type))
+    if loot_type == "Passive":
         passive = items.parse_loot_passive(name, _clean(row.get("Effect")))
         effect = []
     else:
@@ -250,6 +253,7 @@ def card_tres(row) -> tuple:
     lines.append("effect = %s" % gd_value(effect))
     lines.append('file = "%s"' % gd_str(file))
     lines.append('icon = "%s"' % gd_str(icon))
+    lines.append('loot_type = "%s"' % gd_str(loot_type))
     if passive is not None:
         lines.append("passive = true")
         lines.append("triggers = %s" % gd_value(passive["triggers"]))

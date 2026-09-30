@@ -92,6 +92,9 @@ extends Resource
 # player learned it by. The field exists so a future row can have art without a
 # schema change.
 @export var file: String = ""
+# The sheet's `Tags` column, lower-cased — what a tag-reading rule matches on
+# (an evolution's requirement, a bag's filter), exactly as a trinket's `tags`.
+@export var tags: PackedStringArray = PackedStringArray()
 
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary).

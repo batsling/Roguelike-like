@@ -170,9 +170,19 @@ func _h_gain_empty_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 
 # Permanent run-scope stat/verb grant (Anchor +1 Shield, a level-up's +1 Dash, …).
 # Routes ability verbs (bash/transmute/scramble/block/…) to their backing field.
-func _h_gain_stat(effect: Dictionary, _ctx: Dictionary) -> void:
+func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	var stat: String = String(effect.get("stat", ""))
 	var value: int = int(effect.get("value", 0))
+	# Sized by the run, as gain_gold is (`per=N of=<what>`). One `of` is not a stat:
+	# `unidentified_in_bag` is the unidentified pieces in the BAG firing this
+	# (Holdall, docs/loot-passives.md §6) — `ctx.loot_bag`, set by the runner.
+	if effect.has("per"):
+		var per: int = maxi(1, int(effect["per"]))
+		var of: String = String(effect.get("of", ""))
+		var have: int = GameState.unidentified_in_bag(int(ctx.get("loot_bag", -1))) \
+			if of == "unidentified_in_bag" else int(GameState.get(of))
+		@warning_ignore("integer_division")
+		value *= have / per
 	if stat == "" or value == 0:
 		return
 	GameState.grant_run_stat(stat, value)

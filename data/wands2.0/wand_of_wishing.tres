@@ -14,3 +14,4 @@ charges = 1
 targeting = "non_directional"
 effect = [{"op": "obtain_item", "pool": "any"}]
 file = ""
+tags = PackedStringArray()

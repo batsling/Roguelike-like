@@ -862,7 +862,7 @@ func cancel_item_aim() -> void:
 # the fastest board verb in the game: a throw cannot land anywhere the player did
 # not click.
 func begin_loot_throw(entry: Dictionary, index: int = -1) -> bool:
-	if entry.is_empty() or aim_cells(throw_request()).is_empty():
+	if entry.is_empty() or aim_cells(throw_request(entry)).is_empty():
 		return false
 	throwing_loot = entry.duplicate(true)
 	_throw_index = index
@@ -971,6 +971,9 @@ func aim_cells(what) -> Array:
 	var req: Dictionary = _aim_request(what)
 	if String(req.get("target_kind", "")) != "tile":
 		return []
+	# A request that already names its squares (a weapon's Aim, WeaponSystem.aim_cells).
+	if req.has("cells"):
+		return (req["cells"] as Array).duplicate()
 	var lo: int = int(req.get("col_min", 0))
 	var hi: int = int(req.get("col_max", 0))
 	if lo <= 0:
@@ -1001,7 +1004,12 @@ func _aim_request(what) -> Dictionary:
 
 # The request a thrown piece of loot aims with. Its own function so the answer to
 # "where may a bottle land" is written down once.
-func throw_request() -> Dictionary:
+#
+# A WEAPON IS FENCED BY ITS OWN `Aim` (docs/loot-passives.md §12): the front column,
+# an enemy's squares, one column — WeaponSystem.aim_cells says which.
+func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
+	if WeaponSystem.is_weapon(entry):
+		return {"target_kind": "tile", "cells": WeaponSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -1043,7 +1051,8 @@ func refresh_toolbar() -> void:
 			# where the two look alike.
 			var wand: bool = LootSystem.is_wand(throwing_loot)
 			_hint_label.text = "%s %s %s:" % [
-				LootSystem.glyph(throwing_loot), "Zap" if wand else "Throw",
+				LootSystem.glyph(throwing_loot),
+				"Swing" if LootSystem.is_weapon(throwing_loot) else "Zap" if wand else "Throw",
 				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = ""
@@ -1812,7 +1821,37 @@ func _refresh_aim_cells() -> void:
 			UITheme.flat(Color(ARMED_TINT, 0.55), 6, 0, 2, Color.WHITE))
 		btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
 		btn.pressed.connect(_click_cell.bind(cell))
+		# A WEAPON SHOWS WHAT IT WOULD HIT from the square under the cursor: its Area
+		# is a shape, and a shape is easier seen than read (§12).
+		if WeaponSystem.is_weapon(throwing_loot):
+			btn.mouse_entered.connect(_show_swing_preview.bind(cell))
+			btn.mouse_exited.connect(_clear_swing_preview)
 		_arrow_layer.add_child(btn)
+
+# The squares a swing aimed at `cell` would hit, washed in the armed tint — drawn
+# over the picker and under nothing, ignoring the mouse so the click still lands on
+# the button beneath.
+var _swing_preview: Array = []
+
+func _show_swing_preview(cell: Vector2i) -> void:
+	_clear_swing_preview()
+	if _arrow_layer == null or not WeaponSystem.is_weapon(throwing_loot):
+		return
+	for hit in WeaponSystem.hit_cells(throwing_loot, cell):
+		var r := Panel.new()
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.position = _cell_pos(hit.y, hit.x)
+		r.size = Vector2(_cell, _cell)
+		r.add_theme_stylebox_override("panel",
+			UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.42), 6, 0, 2, Color.WHITE))
+		_arrow_layer.add_child(r)
+		_swing_preview.append(r)
+
+func _clear_swing_preview() -> void:
+	for r in _swing_preview:
+		if is_instance_valid(r):
+			r.queue_free()
+	_swing_preview.clear()
 
 # What one lit square promises, for its own tooltip. The bomb's version is asked
 # of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's
@@ -1826,6 +1865,11 @@ func _target_cell_hint(cell: Vector2i) -> String:
 	if aiming_item != null:
 		return "Aim %s here (column %d, row %d)." % [
 			aiming_item.display_name, cell.x, cell.y + 1]
+	if WeaponSystem.is_weapon(throwing_loot):
+		return "Swing %s here (column %d, row %d) — %d Stun." % [
+			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1,
+			WeaponSystem.stun_for(_throw_index) if _throw_index >= 0
+				else int(WeaponSystem.def(throwing_loot).stun)]
 	if not throwing_loot.is_empty():
 		return "Throw %s here (column %d, row %d)." % [
 			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
