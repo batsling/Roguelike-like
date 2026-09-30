@@ -14,3 +14,4 @@ throw_text = ""
 quaff = [{"op": "gain_level", "value": 1}]
 throw = []
 file = ""
+tags = PackedStringArray()

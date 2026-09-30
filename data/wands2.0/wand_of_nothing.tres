@@ -14,3 +14,4 @@ charges = 4
 targeting = "random"
 effect = []
 file = ""
+tags = PackedStringArray()

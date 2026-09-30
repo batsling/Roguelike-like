@@ -14,3 +14,4 @@ charges = 3
 targeting = "ray"
 effect = [{"op": "apply_status", "status": "burn", "value": 3, "target": "enemy", "area": "cell"}, {"op": "apply_tile", "tile": "fire", "area": "cell"}]
 file = ""
+tags = PackedStringArray("heat")

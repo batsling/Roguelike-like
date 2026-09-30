@@ -14,3 +14,4 @@ throw_text = "Apply +1 Dexterity until the end of the next combat"
 quaff = [{"op": "apply_status", "status": "dexterity", "value": 2, "target": "player", "games": 1}]
 throw = [{"op": "apply_status", "status": "dexterity", "value": 1, "area": "cell", "games": 1}]
 file = "DexterityPotion"
+tags = PackedStringArray()

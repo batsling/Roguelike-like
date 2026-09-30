@@ -14,3 +14,4 @@ charges = 3
 targeting = "ray"
 effect = [{"op": "grant_ability", "ability": "invisibility", "value": 0, "area": "cell"}]
 file = ""
+tags = PackedStringArray()

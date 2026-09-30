@@ -87,6 +87,8 @@ extends Resource
 # Echo Form: while held, the FIRST piece of loot used in each game plays this many
 # additional copies (GameState.extra_loot_copies).
 @export var echo_first_loot: int = 0
+# The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card.
+@export var loot_type: String = "Usable"
 
 
 func is_passive() -> bool:

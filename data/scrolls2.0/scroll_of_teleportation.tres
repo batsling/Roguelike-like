@@ -11,5 +11,6 @@ rarity = "Common"
 preference = "Neutral"
 description = "Teleport to a Random Space with roughly the same distance from the Amulet Game. (+ or - 2)"
 file = "Teleportation"
+tags = PackedStringArray()
 find_weight = 1.0
 effect = [{"op": "teleport", "dir": "same", "spread": 2}]

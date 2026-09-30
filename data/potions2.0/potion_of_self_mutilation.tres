@@ -14,3 +14,4 @@ throw_text = "Deal 3 Damage to everything on this tile"
 quaff = [{"op": "take_damage", "value": 3}]
 throw = [{"op": "deal_damage", "value": 3, "area": "cell"}]
 file = ""
+tags = PackedStringArray()

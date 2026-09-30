@@ -14,3 +14,4 @@ charges = 3
 targeting = "ray"
 effect = [{"op": "polymorph", "area": "cell"}]
 file = ""
+tags = PackedStringArray()

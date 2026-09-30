@@ -13,3 +13,4 @@ description = "Double your Bombs, if you have no Bombs then Gain +2"
 effect = [{"op": "double_stat", "stat": "bombs", "floor": 2}]
 file = "2OfClubs"
 icon = "Isaac_Playing_Cards"
+loot_type = "Usable"

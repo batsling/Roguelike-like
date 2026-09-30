@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EvolutionData" load_steps=2 format=3 uid="uid://evolution2_hero_sword"]
+
+[ext_resource type="Script" path="res://scripts/resources/EvolutionData.gd" id="1_evolution"]
+
+[resource]
+script = ExtResource("1_evolution")
+id = &"hero_sword"
+result = &"hero_sword"
+base = &"wooden_sword"
+need_count = 1
+need_tag = "whetstone"
+consumes = true

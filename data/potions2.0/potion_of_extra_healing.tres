@@ -14,3 +14,4 @@ throw_text = "Apply +5 Health"
 quaff = [{"op": "gain_hp", "value": 5}]
 throw = [{"op": "grant_health", "value": 5, "area": "cell"}]
 file = ""
+tags = PackedStringArray()

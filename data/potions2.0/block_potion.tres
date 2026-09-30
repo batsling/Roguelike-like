@@ -14,3 +14,4 @@ throw_text = "Apply 2 Sheilds"
 quaff = [{"op": "gain_stat", "stat": "bonus_shields", "value": 2}]
 throw = [{"op": "grant_shield", "value": 2, "area": "cell"}]
 file = "BlockPotion"
+tags = PackedStringArray()

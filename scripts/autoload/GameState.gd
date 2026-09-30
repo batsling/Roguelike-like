@@ -763,7 +763,8 @@ func _connect_lifecycle_hooks() -> void:
 	# The loot-passive hooks (docs/loot-passives.md §3). Same runner, same shape:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
-	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned"]:
+	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned",
+			"weapon_stunned"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
 		# pass (a fresh lambda is a fresh Callable and would connect twice).
@@ -930,35 +931,45 @@ func _fire_source_triggers(item: ItemData, trigger_name: String, ctx_extras: Dic
 		if int(trig.get("every", 0)) > 1 \
 				and not _count_every(item, loot, trig, LootPassives.every_for(trig, loot)):
 			continue
-		# A Blueprint copying a Rocket is the BLUEPRINT firing — it is the piece in
-		# the player's pack that did something — so it is named and pictured as
-		# itself, with what it copied beside the name.
-		var label: String = item.display_name
-		var art: Texture2D = item.image
-		if bool(loot.get("copy", false)):
-			var copier: ItemData = LootPassives.proxy(loot["copier"])
-			label = "%s (%s)" % [copier.display_name, item.display_name]
-			art = copier.image
-		if not bool(trig.get("silent", false)):
-			GameLog.add("(%s triggers)" % label, Color(0.85, 0.9, 0.7))
-		var fx_ctx := {
-			"source": null, "target": null, "scene": null,
-			"card": ctx_extras.get("card"),
-			# The owning item — lets a self-referential effect (Unstable
-			# Genome's destroy_self) find and remove itself.
-			"item": item,
-			# What the hook itself said (the entry a loot_used spent, the enemy an
-			# enemy_killed defeated), for an effect that answers about it.
-			"hook": ctx_extras,
-		}
-		if not loot.is_empty():
-			fx_ctx["loot_entry"] = loot["entry"]
-			fx_ctx["loot_source"] = loot["source"]
-			fx_ctx["loot_copy"] = bool(loot.get("copy", false))
-		_begin_trigger_report()
-		for effect in trig.get("effects", []):
-			EffectSystem.apply(effect, fx_ctx)
-		_end_trigger_report(label, art, fx_ctx)
+		_run_trigger(item, trig, ctx_extras, loot)
+
+# One trigger that has passed its gates and its count, RUN: the log line, the
+# effects, the toast. Split out so a CHARGE landing on a food from outside any hook
+# (Charged Penny, 48 Hour Energy) pays through exactly the lines a defeated enemy
+# makes it pay through (`charge_loot_entry`).
+func _run_trigger(item: ItemData, trig: Dictionary, ctx_extras: Dictionary,
+		loot: Dictionary) -> void:
+	# A Blueprint copying a Rocket is the BLUEPRINT firing — it is the piece in
+	# the player's pack that did something — so it is named and pictured as
+	# itself, with what it copied beside the name.
+	var label: String = item.display_name
+	var art: Texture2D = item.image
+	if bool(loot.get("copy", false)):
+		var copier: ItemData = LootPassives.proxy(loot["copier"])
+		label = "%s (%s)" % [copier.display_name, item.display_name]
+		art = copier.image
+	if not bool(trig.get("silent", false)):
+		GameLog.add("(%s triggers)" % label, Color(0.85, 0.9, 0.7))
+	var fx_ctx := {
+		"source": null, "target": null, "scene": null,
+		"card": ctx_extras.get("card"),
+		# The owning item — lets a self-referential effect (Unstable
+		# Genome's destroy_self) find and remove itself.
+		"item": item,
+		# What the hook itself said (the entry a loot_used spent, the enemy an
+		# enemy_killed defeated), for an effect that answers about it.
+		"hook": ctx_extras,
+	}
+	if not loot.is_empty():
+		fx_ctx["loot_entry"] = loot["entry"]
+		fx_ctx["loot_source"] = loot["source"]
+		fx_ctx["loot_copy"] = bool(loot.get("copy", false))
+		if loot.has("bag"):
+			fx_ctx["loot_bag"] = int(loot["bag"])
+	_begin_trigger_report()
+	for effect in trig.get("effects", []):
+		EffectSystem.apply(effect, fx_ctx)
+	_end_trigger_report(label, art, fx_ctx)
 
 # The gates about the PIECE a hook names (docs/loot-passives.md §6), both Potion
 # Belt's: `if_loot_type` — the spent piece was of this kind — and `if_in_bag` —
@@ -976,6 +987,12 @@ func _loot_gates_pass(trig: Dictionary, ctx: Dictionary, loot: Dictionary) -> bo
 		if not loot.has("bag"):
 			return false
 		if bag_at_slot(int(ctx.get("slot", -1))) != int(loot["bag"]):
+			return false
+	# `if_self` (King Bomber's `weapon_stunned if_self:`): the hook is about THIS
+	# piece — the slot it names is this piece's. A relic has no slot and refuses.
+	if bool(trig.get("if_self", false)):
+		if loot.is_empty() or int(loot.get("slot", -1)) < 0 \
+				or int(ctx.get("slot", -2)) != int(loot["slot"]):
 			return false
 	return true
 
@@ -997,6 +1014,11 @@ func _count_every(item: ItemData, loot: Dictionary, trig: Dictionary, n: int = 0
 	var counts: Dictionary = holder.get("every_count", {}) if not loot.is_empty() \
 		else (item.get_meta("every_count") if item.has_meta("every_count") else {})
 	var at: int = int(counts.get(key, 0)) + 1
+	# A FOOD'S COUNT IS ITS CHARGES (docs/loot-passives.md §11), so a Fanny Pack it
+	# sits in can land this one twice (§12) — the same bonus a charge from outside
+	# gets in `charge_loot_entry`.
+	if bool(trig.get("charges", false)) and not loot.is_empty() and at < n:
+		at += _bag_charge_bonus(int(loot.get("slot", -1)))
 	counts[key] = 0 if at >= n else at
 	if not loot.is_empty():
 		holder["every_count"] = counts
@@ -3175,14 +3197,107 @@ func chargeable_wands() -> Array:
 			out.append(entry)
 	return out
 
-# Everything in the pack a charge can land on, relics and wands together — the one
-# list the `charge` op draws from (PillSystem._charge). Wands are appended rather
-# than merged in some order, and nothing downstream reads the order: the op picks
-# at random, so a wand is exactly as likely to be topped up as a relic is.
+# Every WEAPON in the pack with room in it (docs/loot-passives.md §12) — left out
+# when full, as a full wand is, for the same reason.
+func chargeable_weapons() -> Array:
+	return loot_items.filter(func(e): return WeaponSystem.is_weapon(e) and WeaponSystem.room(e) > 0)
+
+# Every FOOD in the pack (docs/loot-passives.md §11): a piece working a `charges=N`
+# trigger — a food, or a Blueprint copying one. Never full: a food charged to its
+# number pays and starts again.
+func chargeable_foods() -> Array:
+	var out: Array = []
+	for row in LootPassives.active():
+		if int(row.get("slot", -1)) >= 0 and not _charges_trigger(row).is_empty() \
+				and not out.any(func(e): return is_same(e, row["entry"])):
+			out.append(row["entry"])
+	return out
+
+# Everything a charge can land on — CHARGEABLE ITEMS AND LOOT: relics, wands,
+# weapons and food. The one list the `charge` op and `charge_random` draw from
+# (PillSystem._charge, EffectSystem._h_charge_random). Appended rather than merged
+# in some order, and nothing downstream reads the order: the op picks at random.
 func chargeable_things() -> Array:
 	var out: Array = chargeable_items()
 	out.append_array(chargeable_wands())
+	out.append_array(chargeable_weapons())
+	out.append_array(chargeable_foods())
 	return out
+
+# The `charges=N` trigger an active() row works, as {trig, n}, or {}.
+func _charges_trigger(row: Dictionary) -> Dictionary:
+	var it = row.get("item")
+	if not (it is ItemData):
+		return {}
+	for trig in (it as ItemData).triggers:
+		if bool(trig.get("charges", false)):
+			return {"trig": trig, "n": LootPassives.every_for(trig, row)}
+	return {}
+
+# The active() row for a carried piece, by identity, or {}.
+func _passive_row_for(entry) -> Dictionary:
+	for row in LootPassives.active():
+		if is_same(row["entry"], entry):
+			return row
+	return {}
+
+# FANNY PACK (docs/loot-passives.md §12): a charge landing on a piece in a bag with
+# a `charge_bonus` has that chance to land a second time. 1 when it does, else 0.
+func _bag_charge_bonus(slot: int) -> int:
+	if slot < LOOT_CAPACITY:
+		return 0
+	var b: int = bag_at_slot(slot)
+	if b < 0 or b >= pack_bags.size():
+		return 0
+	var bdef: BagData = bag_def(pack_bags[b])
+	if bdef == null or bdef.charge_bonus_chance <= 0.0:
+		return 0
+	if randf() >= bdef.charge_bonus_chance:
+		return 0
+	for r in LootPassives.active():
+		if int(r.get("bag", -1)) == b:
+			LootPassives.announce(r, "+1 extra Charge")
+			break
+	return 1
+
+# CHARGE ONE PIECE OF LOOT by `amount` — a wand, a weapon or a food — and report how
+# many charges landed. The one door every source comes through (a goal, a pill, a
+# penny, a Hairpin), so a Fanny Pack's extra applies to all of them alike.
+#
+# A FOOD IS CHARGED BY COUNTING TOWARD ITS PAYOUT, one charge at a time through
+# `_count_every`, and pays through `_run_trigger` exactly as a defeated enemy makes
+# it pay — so charging a Garlic four times from 0 is +3 Temporary Shield, once.
+func charge_loot_entry(entry, amount: int) -> int:
+	if not (entry is Dictionary) or amount <= 0:
+		return 0
+	var slot: int = -1
+	for i in range(loot_items.size()):
+		if is_same(loot_items[i], entry):
+			slot = loot_slot_of(i)
+			break
+	var landed: int = 0
+	if WeaponSystem.is_weapon(entry):
+		landed = WeaponSystem.add_charges(entry, amount)
+		if landed > 0:
+			landed += WeaponSystem.add_charges(entry, _bag_charge_bonus(slot))
+	elif String(entry.get("type", "")) == "wand":
+		var before: int = WandSystem.charges_of(entry)
+		WandSystem.add_charges(entry, amount)
+		if WandSystem.charges_of(entry) > before:
+			WandSystem.add_charges(entry, _bag_charge_bonus(slot))
+		landed = WandSystem.charges_of(entry) - before
+	else:
+		var row: Dictionary = _passive_row_for(entry)
+		var ct: Dictionary = _charges_trigger(row)
+		if ct.is_empty():
+			return 0
+		for _i in range(amount):
+			if _count_every(row["item"], row, ct["trig"], int(ct["n"])):
+				_run_trigger(row["item"], ct["trig"], {}, row)
+			landed += 1
+	if landed > 0:
+		emit_signal("inventory_changed")
+	return landed
 
 # Top up one thing from `chargeable_things`, whichever kind it is, and report
 # whether its bar actually moved. The `charge` op is written against this rather
@@ -3191,15 +3306,12 @@ func chargeable_things() -> Array:
 func charge_thing(thing, amount: int) -> bool:
 	if thing is ItemData:
 		return charge_item(thing, amount)
-	if thing is Dictionary and String(thing.get("type", "")) == "wand":
-		# The entry in `loot_items` IS this dictionary (chargeable_wands hands back
-		# the live rows, not copies), so writing the count through WandSystem writes
-		# it into the pack. The signal is this function's to emit for the same reason
-		# `charge_item` emits its own: whoever moved the number owns telling the
-		# screen about it.
-		if WandSystem.add_charges(thing, amount):
-			emit_signal("inventory_changed")
-			return true
+	# A wand, a weapon or a food. The entry in `loot_items` IS this dictionary (the
+	# chargeable_* lists hand back the live rows, not copies), so writing the count
+	# writes it into the pack; `charge_loot_entry` emits the signal, since whoever
+	# moved the number owns telling the screen about it.
+	if thing is Dictionary:
+		return charge_loot_entry(thing, amount) > 0
 	return false
 
 # What one chargeable thing is CALLED, for the line a charge effect writes. A
@@ -3220,6 +3332,17 @@ func charge_thing_room(thing) -> int:
 		return maxi(0, thing.max_charge() - thing.current_charge)
 	if thing is Dictionary and String(thing.get("type", "")) == "wand":
 		return maxi(0, WandSystem.max_charges(thing) - WandSystem.charges_of(thing))
+	if WeaponSystem.is_weapon(thing):
+		return WeaponSystem.room(thing)
+	# A food's "room" is how far it is from paying — fully charging one pays it.
+	if thing is Dictionary:
+		var row: Dictionary = _passive_row_for(thing)
+		var ct: Dictionary = _charges_trigger(row)
+		if not ct.is_empty():
+			var key: String = "%s#%d" % [String(ct["trig"].get("on", "")),
+				(row["item"] as ItemData).triggers.find(ct["trig"])]
+			var have: int = int((thing.get("every_count", {}) as Dictionary).get(key, 0))
+			return maxi(1, int(ct["n"]) - have)
 	return 0
 
 # Public front for _charge_item: tops one relic's bar up by `amount` and reports
@@ -3464,6 +3587,31 @@ var _applied_pack_statuses: Dictionary = {}
 func _on_pack_changed() -> void:
 	_recompute_item_bonuses()
 	_sync_pack_statuses()
+	_note_ready_foods()
+
+# THE FOOD A MOVE HAS MADE READY (docs/loot-passives.md §11), said out loud.
+#
+# A food beside more food needs fewer charges — and a move can bring that number
+# down to what the piece ALREADY holds. It does not pay on the spot: the count
+# only moves on a charge, so it pays on the next one. That is the rule, and a
+# piece sitting at "3/3" without having gone off reads like a bug unless the game
+# says so the moment it happens. Only a rearrangement can make a food ready (a
+# charge that reaches the number pays and starts again), so "newly ready" is
+# exactly "a move did this".
+var _ready_foods: Array = []
+
+func _note_ready_foods() -> void:
+	var now: Array = []
+	for i in range(loot_items.size()):
+		var p: Dictionary = LootPassives.kill_progress(i)
+		if not p.is_empty() and bool(p.get("ready", false)):
+			now.append(loot_items[i])
+			if not _ready_foods.any(func(e): return is_same(e, loot_items[i])):
+				Notifications.notify(
+					"%s is ready — the food beside it lowered its target to %d. It needs one more charge to pay." % [
+						LootSystem.display_name(loot_items[i]), int(p["need"])],
+					UITheme.ACCENT)
+	_ready_foods = now
 
 func _sync_pack_statuses() -> void:
 	var want: Dictionary = LootPassives.desired_statuses()
@@ -3482,6 +3630,11 @@ func _sync_pack_statuses() -> void:
 # so the grants are adopted as standing rather than applied a second time.
 func adopt_pack_statuses() -> void:
 	_applied_pack_statuses = LootPassives.desired_statuses()
+	# …and the food it was saved with ready is not news (see _note_ready_foods).
+	_ready_foods = []
+	for i in range(loot_items.size()):
+		if bool(LootPassives.kill_progress(i).get("ready", false)):
+			_ready_foods.append(loot_items[i])
 
 # BIN a carried piece — the one place that says a piece was thrown away rather
 # than spent or traded (LootWindow and the drop modal both come through here). A
@@ -3768,7 +3921,7 @@ func add_loot(kind: String, amount: int = 1) -> void:
 	if amount == 0:
 		return
 	match kind:
-		"scroll", "pill", "potion", "card", "wand", "trinket":
+		"scroll", "pill", "potion", "card", "wand", "trinket", "weapon":
 			# Each unit becomes a concrete entry. Four of the five are gained
 			# UNIDENTIFIED and the owning system resolves identity on use; a card is
 			# never unidentified at all (docs/cards-design.md §2), so for that arm
@@ -3788,6 +3941,8 @@ func add_loot(kind: String, amount: int = 1) -> void:
 							_add_random_wand_loot()
 						"trinket":
 							_add_random_trinket_loot()
+						"weapon":
+							_add_random_weapon_loot()
 						_:
 							_add_random_potion_loot()
 			else:
@@ -3823,7 +3978,7 @@ func get_loot_count(kind: String) -> int:
 	match kind:
 		"bag":
 			return pack_bags.size()
-		"scroll", "pill", "potion", "card", "trinket":
+		"scroll", "pill", "potion", "card", "trinket", "weapon":
 			var n: int = 0
 			for l in loot_items:
 				if l is Dictionary and String(l.get("type", "")) == kind:
@@ -3900,6 +4055,18 @@ func _add_random_trinket_loot() -> void:
 		loot_items.append(entry)
 		_note_loot_gained(entry)
 
+func _add_random_weapon_loot() -> void:
+	var entry: Dictionary = roll_weapon_entry()
+	if not entry.is_empty() and loot_fits(entry):
+		entry = _seated(entry)
+		loot_items.append(entry)
+		_note_loot_gained(entry)
+
+# One weapon as a pack entry, rarity-weighted like every kind — EMPTY, since a
+# weapon is charged by playing (docs/loot-passives.md §12).
+func roll_weapon_entry() -> Dictionary:
+	return WeaponSystem.new_entry(Data.roll_weapon())
+
 # One trinket as a pack entry, rarity-weighted like every kind (Data.roll_trinket).
 # Nothing rides on it at the drop: what a trinket carries it earns in the pack — a
 # counter, a once-a-game claim (docs/loot-passives.md §4).
@@ -3941,10 +4108,13 @@ func roll_bag_entry() -> Dictionary:
 # WEIGHTS RATHER THAN A LIST OF REPEATS, so a tuning pass changes a number rather
 # than the shape of a const. `LOOT_KINDS` is still the list of kinds, in the order
 # every other screen names them; the weights are keyed by it.
-const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand", "trinket", "bag"]
+# WEAPONS ARE THE RAREST FIND (docs/loot-passives.md §12): each is a piece the run
+# keeps AND builds toward — its goal, its evolution — so it gets half a trinket's
+# weight, and a run sees one in about nineteen drops (weights total 19).
+const LOOT_KINDS := ["scroll", "pill", "potion", "card", "wand", "trinket", "bag", "weapon"]
 const LOOT_WEIGHTS := {
 	"scroll": 3, "pill": 3, "potion": 3, "card": 3,
-	"wand": 2, "trinket": 2, "bag": 2,
+	"wand": 2, "trinket": 2, "bag": 2, "weapon": 1,
 }
 
 func roll_loot_kind() -> String:
@@ -4015,6 +4185,8 @@ func roll_loot_entry(kind: String = "loot") -> Dictionary:
 		return roll_trinket_entry()
 	if want == "bag":
 		return roll_bag_entry()
+	if want == "weapon":
+		return roll_weapon_entry()
 	var s: ScrollData = Data.roll_scroll()
 	if s == null:
 		# No scrolls loaded — keep the old inert stub so counts/UI don't break.
@@ -4192,6 +4364,19 @@ func add_trinket_loot(id: StringName) -> void:
 	emit_signal("inventory_changed")
 	_note_loot_gained(loot_items[-1])
 
+# And a SPECIFIC weapon (DevTools grant, tests), with `charges` in it (0 — empty —
+# unless a test wants one ready). Uncapped, like the rest here.
+func add_weapon_loot(id: StringName, charges: int = 0) -> Dictionary:
+	var entry: Dictionary = WeaponSystem.new_entry(Data.get_weapon(id))
+	if entry.is_empty():
+		return {}
+	entry["charges"] = charges
+	entry["charges"] = WeaponSystem.charges_of(entry)
+	loot_items.append(_seated(entry))
+	emit_signal("inventory_changed")
+	_note_loot_gained(loot_items[-1])
+	return loot_items[-1]
+
 # And a SPECIFIC bag (DevTools grant, tests), attached wherever it fits best.
 # Returns whether it found room — the one grant here that can fail, because a bag
 # is a shape and not a count.
@@ -4315,6 +4500,11 @@ func piece_size(entry) -> Vector2i:
 		var t: TrinketData = Data.get_trinket(StringName(entry.get("id", "")))
 		if t != null:
 			return Vector2i(maxi(1, t.size.x), maxi(1, t.size.y))
+	# A weapon has a footprint too (docs/loot-passives.md §12): Hero Longsword is 3 tall.
+	if WeaponSystem.is_weapon(entry):
+		var w: WeaponData = WeaponSystem.def(entry)
+		if w != null:
+			return Vector2i(maxi(1, w.size.x), maxi(1, w.size.y))
 	return Vector2i.ONE
 
 func is_big_piece(entry) -> bool:
@@ -4735,6 +4925,25 @@ func bag_at_slot(slot: int) -> int:
 		if slot < at:
 			return i
 	return -1
+
+# How many UNIDENTIFIED pieces sit in bag `i` (Holdall, docs/loot-passives.md §6) —
+# each piece once, however many of the bag's cells it covers. 0 for no such bag.
+func unidentified_in_bag(i: int) -> int:
+	if i < 0 or i >= pack_bags.size():
+		return 0
+	var layout: Array = loot_layout()
+	var start: int = bag_slot_start(i)
+	var end: int = mini(layout.size(), start + bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y)
+	var seen: Dictionary = {}
+	var n: int = 0
+	for slot in range(start, end):
+		var index: int = int(layout[slot])
+		if index < 0 or seen.has(index):
+			continue
+		seen[index] = true
+		if loot_items[index] is Dictionary and not LootSystem.is_identified(loot_items[index]):
+			n += 1
+	return n
 
 # Whether nothing is in any of bag `i`'s cells.
 func bag_is_empty(i: int) -> bool:

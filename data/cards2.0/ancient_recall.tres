@@ -13,3 +13,4 @@ description = "Gain +3 Random Cards"
 effect = [{"op": "gain_loot", "kind": "card", "count": 3}]
 file = "AncientRecall"
 icon = "Isaac_MTG_Cards"
+loot_type = "Usable"

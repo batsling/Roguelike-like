@@ -267,6 +267,12 @@ def scroll_tres(row) -> tuple:
     lines.append('preference = "%s"' % gd_str(preference))
     lines.append('description = "%s"' % gd_str(description))
     lines.append('file = "%s"' % gd_str(file))
+    # The sheet's `Tags` column (lower-cased): what a tag-reading rule matches
+    # on, the way a trinket's `Tag` is — an evolution's "with \"heat\"" or a
+    # food's tag. Blank is no tags.
+    lines.append("tags = PackedStringArray(%s)" % ", ".join(
+        '"%s"' % gd_str(t.strip().lower())
+        for t in str(row.get("Tags") or "").split(",") if t.strip()))
     lines.append("find_weight = %s" % gd_value(find_weight))
     lines.append("effect = %s" % gd_value(effect))
     return sid, "\n".join(lines) + "\n"

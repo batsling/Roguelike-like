@@ -32,6 +32,9 @@ extends Resource
 # art is scrolls/<file>.png; unidentified scrolls — and identified scrolls whose
 # File art is missing — fall back to scrolls/Unidentified.png (see ScrollSystem).
 @export var file: String = ""
+# The sheet's `Tags` column, lower-cased — what a tag-reading rule matches on
+# (an evolution's requirement, a bag's filter), exactly as a trinket's `tags`.
+@export var tags: PackedStringArray = PackedStringArray()
 
 # How likely this scroll is to be the one drawn OUT OF ITS RARITY BUCKET — the
 # sheet's Notes column, where Identify says "Has a +25% find rate", read as 1.25.

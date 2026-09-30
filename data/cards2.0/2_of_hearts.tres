@@ -13,3 +13,4 @@ description = "Double your Health"
 effect = [{"op": "double_stat", "stat": "hp"}]
 file = "2OfHearts"
 icon = "Isaac_Playing_Cards"
+loot_type = "Usable"

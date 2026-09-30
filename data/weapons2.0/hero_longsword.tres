@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_hero_longsword"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"hero_longsword"
+display_name = "Hero Longsword"
+rarity = "Rare"
+size = Vector2i(1, 3)
+aim = "front"
+aim_column = 0
+area = "3x2"
+stun = 2
+goal = "Be a hero"
+max_charges = 3
+description = "Every Weapon adjacent to this Gains +2 Stun"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {"amount": 2, "dirs": ["up", "down", "left", "right"]}
+stun_per_food = {}
+source_game = "Backpack Battles"
+tags = PackedStringArray()
+file = "HeroLongsword"

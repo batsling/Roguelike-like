@@ -82,10 +82,18 @@ static func def_for(entry) -> Resource:
 		"card":
 			var c: CardData = Data.get_card(id)
 			return c if c != null and c.is_passive() else null
+		"weapon":
+			# A WEAPON WITH A PASSIVE works from its slot as well as being swung
+			# (docs/loot-passives.md §12): the Hero swords' aura, King Bomber's gold.
+			var w: WeaponData = Data.get_weapon(id)
+			return w if w != null and w.is_passive() else null
 	return null
 
+# Whether the piece is one that is NEVER USED — it only works from its slot. A
+# weapon is never that, passive or not: it has a swing.
 static func is_passive(entry) -> bool:
-	return def_for(entry) != null
+	var def: Resource = def_for(entry)
+	return def != null and not (def is WeaponData)
 
 # Does this piece work by copying a neighbour rather than on its own?
 static func copies(def: Resource) -> String:
@@ -178,7 +186,11 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 		if def == null:
 			# Nothing passive here. Reached THROUGH a copier it is the thing copied; the
 			# walk's own start never answers this way (it is asked only of copiers).
-			if at != slot and entry is Dictionary and not LootSystem.is_bag(entry):
+			# A WEAPON IS NOT COPIED AS A SWING: it is aimed and charged, and a
+			# Blueprint has neither. A weapon with a passive is copied as that passive
+			# (the branch below); one with none gives a copier nothing.
+			if at != slot and entry is Dictionary and not LootSystem.is_bag(entry) \
+					and String(entry.get("type", "")) != "weapon":
 				return {"usable": entry}
 			return {}
 		var dir: String = facing(entry, def)
@@ -252,7 +264,17 @@ static func art_for(def: Resource) -> Texture2D:
 		return load_bag_art(def)
 	if def is CardData:
 		return CardSystem.art_texture({"type": "card", "id": def.id}, true)
+	if def is WeaponData:
+		return load_weapon_art(def)
 	return null
+
+static func load_weapon_art(w: WeaponData) -> Texture2D:
+	if w == null:
+		return null
+	var path: String = "res://images2.0/weapons/%s.png" % w.art_file()
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 static func load_bag_art(b: BagData) -> Texture2D:
 	if b == null:
@@ -376,9 +398,71 @@ static func kill_progress(index: int) -> Dictionary:
 				continue
 			var counts: Dictionary = (row["entry"] as Dictionary).get("every_count", {})
 			var need: int = every_for(trig, row)
-			return {"have": mini(int(counts.get("enemy_killed#%d" % i, 0)), need),
-				"need": need, "foods": adjacent_foods(index) if need < int(trig["every"]) else []}
+			var have: int = int(counts.get("enemy_killed#%d" % i, 0))
+			# READY: a move beside more food has lowered the target to at or below
+			# what it already holds. It does not pay on the spot — the count only moves
+			# on a charge — so it pays on the NEXT one, and the piece says so.
+			return {"have": mini(have, need), "need": need, "ready": have >= need,
+				"foods": adjacent_foods(index) if need < int(trig["every"]) else []}
 	return {}
+
+
+# --- who is working on whom (the hover glow) -------------------------------------
+#
+# WHEN A PIECE IS HOVERED, THE PIECES IT WORKS ON LIGHT UP, and so do the pieces
+# working on it (docs/loot-passives.md §2). Every rule in the pack that reads a
+# NEIGHBOUR answers here, so the glow and the rules cannot disagree:
+#   * a copier (Blueprint) works on the piece it points at;
+#   * a `weapon_stun` piece (Whetstone, a Hero sword) works on the weapons it reaches;
+#   * a food works on every DIFFERENT food touching it (it lowers their target);
+#   * Stankus' Toothpick is worked on by the food touching it.
+# Returns {affects: [indices], affected_by: [indices]}, each index once.
+static func influence(index: int) -> Dictionary:
+	var affects: Array = []
+	var affected_by: Array = []
+	if index < 0 or index >= GameState.loot_items.size():
+		return {"affects": affects, "affected_by": affected_by}
+	for other in range(GameState.loot_items.size()):
+		if other == index:
+			continue
+		if _works_on(index, other) and not affects.has(other):
+			affects.append(other)
+		if _works_on(other, index) and not affected_by.has(other):
+			affected_by.append(other)
+	return {"affects": affects, "affected_by": affected_by}
+
+# Does the piece at `a` work on the piece at `b` through where they sit?
+static func _works_on(a: int, b: int) -> bool:
+	var slot: int = GameState.loot_slot_of(a)
+	if slot < 0 or GameState.loot_slot_of(b) < 0:
+		return false
+	var entry = GameState.loot_items[a]
+	var def: Resource = def_for(entry)
+	# A copier, at the piece it points at.
+	var dir: String = facing(entry, def)
+	if dir != "":
+		for s in GameState.loot_slots_of(a):
+			var n: int = neighbour_slot(s, dir)
+			if n >= 0 and GameState.loot_index_at_slot(n) == b:
+				return true
+	# What the piece RUNS (its own passive, or the one a copier runs).
+	var src: Dictionary = resolve(slot)
+	var run = src.get("def")
+	if run != null and run.get("weapon_stun") is Dictionary \
+			and not (run.get("weapon_stun") as Dictionary).is_empty():
+		if WeaponSystem.aura_targets(a, run.get("weapon_stun"),
+				int((entry as Dictionary).get("rot", 0))).has(b):
+			return true
+	var fa: StringName = food_id_at(a)
+	if fa != &"" and adjacent_pieces(b).has(a):
+		# A food lowers a DIFFERENT food's target, and feeds a weapon that counts food.
+		var fb: StringName = food_id_at(b)
+		if fb != &"" and fb != fa:
+			return true
+		var w: WeaponData = WeaponSystem.def(GameState.loot_items[b])
+		if w != null and not w.stun_per_food.is_empty():
+			return true
+	return false
 
 
 # --- the status half, held up by the slot ---------------------------------------

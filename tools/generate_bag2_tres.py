@@ -103,6 +103,8 @@ def bag_tres(row) -> tuple:
             "stat_bonuses = %s" % gd(passive["stat_bonuses"]),
             "status_bonuses = %s" % gd(passive["status_bonuses"]),
         ]
+        if passive["charge_bonus_chance"]:
+            lines.append("charge_bonus_chance = %s" % passive["charge_bonus_chance"])
     return bid, "\n".join(lines) + "\n"
 
 

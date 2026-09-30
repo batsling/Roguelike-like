@@ -260,8 +260,13 @@ func populate_play_panel() -> void:
 	# The header is what says the list changed subject. The rows stay flush with it
 	# rather than nesting, because they do not belong to it the way a bonus belongs
 	# to the body above it — it is a label on a section, not a sentence they finish.
-	if not _bodies_settled_now().is_empty() or not GameLoop2.cleared_this_game.is_empty():
+	if not _bodies_settled_now().is_empty() or not GameLoop2.cleared_this_game.is_empty() \
+			or not WeaponSystem.carried().is_empty():
 		_box.add_child(_verify_head(ANY_TIME_HEAD))
+	# THE WEAPONS' GOALS (docs/loot-passives.md §12), first under the header: each
+	# carried weapon's goal is +1 Charge, once per game, and resolves on the spot —
+	# so a game that is then LOST keeps the charge.
+	_add_weapon_rows()
 	for entry in _bodies_settled_now():
 		_add_body_rows(entry)
 	# A BODY YOU ALREADY KILLED THIS GAME still has a line on this list, and its
@@ -274,6 +279,38 @@ func populate_play_panel() -> void:
 			_add_ghost_rows(int(inst))
 	# …and everything finished, under everything still to do.
 	_flush_sunk()
+
+# ONE ROW PER CARRIED WEAPON: its goal, whose it is, and what ticking it pays.
+# Keyed by the weapon's own uid (WeaponSystem.goal_key), so two Hero Swords are two
+# rows, and the key is per game — answered_rows is cleared when the next one starts
+# — which is what makes it once per game. A weapon that is already full still
+# gets its row: the goal was done either way, and the row says the charge had
+# nowhere to go rather than refusing to be ticked.
+func _add_weapon_rows() -> void:
+	for carried in WeaponSystem.carried():
+		var entry: Dictionary = carried["entry"]
+		var w: WeaponData = WeaponSystem.def(entry)
+		var key: String = WeaponSystem.goal_key(entry)
+		var text: String = "%s — %s   → +1 Charge (%d / %d)" % [w.goal, w.display_name,
+			WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
+		var mark: Control = UITheme.crisp_tex(LootPassives.load_weapon_art(w), PORTRAIT_SIZE)
+		var row := verify_row(text, WeaponSystem.WEAPON_COLOR, false, null, null, 0, mark)
+		_add_row(row["row"], GameLoop2.row_answered(key))
+		_arm_row(row["check"], key, "You completed %s's goal: %s." % [w.display_name, w.goal],
+			func() -> void: _resolve_weapon_goal(entry, key))
+
+func _resolve_weapon_goal(entry: Dictionary, key: String) -> void:
+	var w: WeaponData = WeaponSystem.def(entry)
+	GameLoop2.mark_row_answered(key)
+	GameLoop2.record_completed_goal("weapon", "Charged: %s — %s" % [w.goal, w.display_name])
+	var landed: int = WeaponSystem.goal_done(entry)
+	if landed <= 0:
+		_announce("%s is already full — the goal is logged." % w.display_name, UITheme.TEXT_DIM)
+	elif WeaponSystem.is_ready(entry):
+		_announce("%s is charged — Swing it from your pack!" % w.display_name, UITheme.SUCCESS)
+	else:
+		_announce("%s +1 Charge (%d / %d)." % [w.display_name,
+			WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)], UITheme.GOLD)
 
 # THE WORDS ON A BODY'S GOAL ROW: the goal, and whose it is.
 #
@@ -1622,8 +1659,15 @@ func populate_standing() -> void:
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
-	if not _bodies_settled_now().is_empty():
+	if not _bodies_settled_now().is_empty() or not WeaponSystem.carried().is_empty():
 		_box.add_child(_verify_head(ANY_TIME_HEAD))
+	# Each carried weapon's goal, read-only — what the next game can charge it with.
+	for carried in WeaponSystem.carried():
+		var w: WeaponData = WeaponSystem.def(carried["entry"])
+		_add_row(_objective_row("%s — %s   → +1 Charge (%d / %d)" % [w.goal, w.display_name,
+			WeaponSystem.charges_of(carried["entry"]), WeaponSystem.max_charges(carried["entry"])],
+			WeaponSystem.WEAPON_COLOR,
+			UITheme.crisp_tex(LootPassives.load_weapon_art(w), PORTRAIT_SIZE)), false, true)
 	for entry in _bodies_settled_now():
 		_add_standing_body_row(entry)
 
@@ -1739,6 +1783,10 @@ func _play_panel_sig() -> String:
 	# the ledger has to be a reason to repaint — otherwise the guard holds a "3
 	# done" button over a run that has done four.
 	parts.append("done:%d" % GameLoop2.completed_goals.size())
+	# A weapon taken, lost or charged changes its row (docs/loot-passives.md §12).
+	for carried in WeaponSystem.carried():
+		parts.append("w%d:%s:%d" % [WeaponSystem.uid_of(carried["entry"]),
+			String(carried["entry"].get("id", "")), WeaponSystem.charges_of(carried["entry"])])
 	for row in GameState.status_objectives():
 		# The KEY, not the id: two rows of the same status differ only by instance,
 		# and a signature that could not see the difference would leave the panel
@@ -1782,6 +1830,10 @@ func _standing_checklist_sig() -> String:
 	# the ledger has to be a reason to repaint — otherwise the guard holds a "3
 	# done" button over a run that has done four.
 	parts.append("done:%d" % GameLoop2.completed_goals.size())
+	# A weapon taken, lost or charged changes its row (docs/loot-passives.md §12).
+	for carried in WeaponSystem.carried():
+		parts.append("w%d:%s:%d" % [WeaponSystem.uid_of(carried["entry"]),
+			String(carried["entry"].get("id", "")), WeaponSystem.charges_of(carried["entry"])])
 	for row in GameState.status_objectives():
 		# The KEY, not the id: two rows of the same status differ only by instance,
 		# and a signature that could not see the difference would leave the panel

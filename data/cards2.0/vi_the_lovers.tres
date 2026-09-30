@@ -13,3 +13,4 @@ description = "Gain +2 Health"
 effect = [{"op": "gain_hp", "value": 2}]
 file = "VITheLovers"
 icon = "Isaac_Major_Arcana"
+loot_type = "Usable"

@@ -14,3 +14,4 @@ throw_text = "Deal 1 Damage everything on this tile and it's row"
 quaff = [{"op": "take_damage", "value": 3}]
 throw = [{"op": "deal_damage", "value": 1, "area": "row"}]
 file = "ExplosiveAmpoule"
+tags = PackedStringArray()

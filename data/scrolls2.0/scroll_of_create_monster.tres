@@ -11,5 +11,6 @@ rarity = "Uncommon"
 preference = "Negative"
 description = "Spawn a Random Enemy with the current Difficulty"
 file = ""
+tags = PackedStringArray()
 find_weight = 1.0
 effect = [{"op": "spawn_enemy", "difficulty": "current"}]

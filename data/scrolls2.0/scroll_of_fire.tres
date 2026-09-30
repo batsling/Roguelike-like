@@ -11,5 +11,6 @@ rarity = "Uncommon"
 preference = "Negative"
 description = "Gain +3 Burn, Apply the Fire Tile and +3 Burn to all everything in the first column"
 file = ""
+tags = PackedStringArray("heat")
 find_weight = 1.0
 effect = [{"op": "apply_status", "status": "burn", "value": 3, "target": "player"}, {"op": "apply_tile", "tile": "fire", "target": "front"}, {"op": "apply_status", "status": "burn", "value": 3, "target": "front"}]

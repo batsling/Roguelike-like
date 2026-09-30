@@ -4162,7 +4162,7 @@ func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
 		refresh_loot_window()
 	_close_item_card()
 	Notifications.notify("Click a square to %s %s." % [
-		"zap" if LootSystem.is_wand(entry) else "throw",
+		"swing" if LootSystem.is_weapon(entry) else "zap" if LootSystem.is_wand(entry) else "throw",
 		LootSystem.display_name(entry)], UITheme.ACCENT)
 	return true
 

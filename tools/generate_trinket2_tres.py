@@ -5,7 +5,12 @@ tools/Roguelikes.xlsx into data/trinkets2.0/.
 Trinkets are the SIXTH loot kind (docs/loot-passives.md): pieces that sit in the
 pack and work from there rather than being spent.
 
-  trinkets: Name | Rarity | Size | Description | Effect | Tag | Game | Image
+  trinkets: Name | Rarity | Size | Type | Description | Effect | Tag | Game | Image
+
+`Type` is `Passive` or `Charged` — shown on the piece as a chip, so the
+Description says what it does and not what kind of thing it is. A Charged
+trinket is one whose Effect counts CHARGES (`charges=N`, the foods), and the
+generator refuses a Type that disagrees with its Effect.
 
 `Effect` is authored in the RELIC grammar (docs/games-first-redesign.md §8.1) and
 compiled by generate_item_tres.parse_loot_passive, the one implementation shared
@@ -74,6 +79,13 @@ def trinket_tres(row) -> tuple:
     if not effect:
         raise ValueError("trinket %r has no Effect authored" % name)
     passive = items.parse_loot_passive(name, effect)
+    loot_type = _clean(row.get("Type")) or "Passive"
+    charged = any(t.get("charges") for t in passive["triggers"])
+    if loot_type not in ("Passive", "Charged"):
+        raise ValueError("trinket %r: Type %r is not Passive or Charged" % (name, loot_type))
+    if charged != (loot_type == "Charged"):
+        raise ValueError("trinket %r: Type is %s but its Effect %s count charges=N"
+                         % (name, loot_type, "does" if charged else "does not"))
     w, h = parse_size(row.get("Size"), name)
     file = _clean(row.get("Image"))
     if file and not os.path.exists(os.path.join(IMG_DIR, file + ".png")):
@@ -98,6 +110,7 @@ def trinket_tres(row) -> tuple:
         'source_game = "%s"' % items.gd_str(_clean(row.get("Game"))),
         "tags = %s" % items.packed(tags),
         'file = "%s"' % items.gd_str(file),
+        'loot_type = "%s"' % items.gd_str(loot_type),
         "triggers = %s" % gd(passive["triggers"]),
         "stat_bonuses = %s" % gd(passive["stat_bonuses"]),
         "status_bonuses = %s" % gd(passive["status_bonuses"]),
@@ -108,6 +121,8 @@ def trinket_tres(row) -> tuple:
         lines.append("bank_shields = true")
     if passive["echo_first_loot"]:
         lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
+    if passive["weapon_stun"]:
+        lines.append("weapon_stun = %s" % gd(passive["weapon_stun"]))
     return tid, "\n".join(lines) + "\n"
 
 

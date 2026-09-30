@@ -13,3 +13,4 @@ description = "Gain +2 Shields"
 effect = [{"op": "gain_stat", "stat": "bonus_shields", "value": 2}]
 file = "VTheHierophant"
 icon = "Isaac_Major_Arcana"
+loot_type = "Usable"

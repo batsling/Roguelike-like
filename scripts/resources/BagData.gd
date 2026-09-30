@@ -42,6 +42,9 @@ extends Resource
 @export var copy_neighbour: String = ""
 @export var bank_shields: bool = false
 @export var echo_first_loot: int = 0
+# Fanny Pack: a charge landing on a piece inside this bag has this chance to land
+# a second time (docs/loot-passives.md §12). 0 for every other bag.
+@export var charge_bonus_chance: float = 0.0
 
 
 func rarity_index() -> int:
@@ -68,4 +71,4 @@ func cell_count() -> int:
 # Whether it does anything beyond adding room. Leather Bag does not.
 func is_passive() -> bool:
 	return not triggers.is_empty() or not stat_bonuses.is_empty() \
-		or not status_bonuses.is_empty()
+		or not status_bonuses.is_empty() or charge_bonus_chance > 0.0

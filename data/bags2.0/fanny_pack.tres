@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BagData" load_steps=2 format=3 uid="uid://bag2_fanny_pack"]
+
+[ext_resource type="Script" path="res://scripts/resources/BagData.gd" id="1_bag"]
+
+[resource]
+script = ExtResource("1_bag")
+id = &"fanny_pack"
+display_name = "Fanny Pack"
+rarity = "Common"
+size = Vector2i(2, 1)
+description = "When Loot inside this bag would Gain +1 Charge, it has a +10% chance to Gain +1 Charge"
+source_game = "Backpack Battles"
+file = "FannyPack"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+charge_bonus_chance = 0.1

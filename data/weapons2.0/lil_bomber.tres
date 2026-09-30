@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_lil_bomber"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"lil_bomber"
+display_name = "Lil' Bomber"
+rarity = "Common"
+size = Vector2i(2, 1)
+aim = "any"
+aim_column = 0
+area = "plus"
+stun = 1
+goal = "Explode an enemy with a cannon ball"
+max_charges = 3
+description = ""
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {}
+source_game = "Enter the Gungeon"
+tags = PackedStringArray()
+file = "LilBomber"

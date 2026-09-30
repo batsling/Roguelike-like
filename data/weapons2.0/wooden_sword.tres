@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_wooden_sword"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"wooden_sword"
+display_name = "Wooden Sword"
+rarity = "Common"
+size = Vector2i(1, 2)
+aim = "front"
+aim_column = 0
+area = "2x1"
+stun = 1
+goal = "Defeat an enemy with wooden gear on"
+max_charges = 3
+description = ""
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {}
+source_game = "Backpack Battles"
+tags = PackedStringArray("wood")
+file = "WoodenSword"

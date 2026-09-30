@@ -14,3 +14,4 @@ throw_text = "Apply the Fire tile and Apply +3 Burn to everything in a 3x3 area 
 quaff = [{"op": "apply_status", "status": "burn", "value": 3, "target": "player"}]
 throw = [{"op": "apply_tile", "tile": "fire", "area": "3x3"}, {"op": "apply_status", "status": "burn", "value": 3, "area": "3x3"}]
 file = "FirePotion"
+tags = PackedStringArray("heat")

@@ -210,7 +210,22 @@ func _show_intro() -> void:
 	var read_btn := UITheme.confirm_button(
 		"%s →" % LootSystem.use_verb(_entry), Vector2(170, 38), 15)
 	read_btn.pressed.connect(_arm_aim if aiming else _on_read)
+	# A WEAPON SWINGS ONLY WHEN FULL (docs/loot-passives.md §12). The button stays,
+	# disabled and saying how far off it is, so the screen still says what it does.
+	if LootSystem.is_weapon(_entry) and not WeaponSystem.is_ready(_entry):
+		read_btn.disabled = true
+		read_btn.text = "Swing (%d / %d)" % [WeaponSystem.charges_of(_entry),
+			WeaponSystem.max_charges(_entry)]
+		read_btn.tooltip_text = "Complete its goal in a game for +1 Charge."
 	actions.add_child(read_btn)
+	# EVOLVE (docs/loot-passives.md §13): offered whenever the run holds what one of
+	# this weapon's evolutions asks for, full or not.
+	if LootSystem.is_weapon(_entry) and _loot_index >= 0 \
+			and not WeaponSystem.evolutions_ready(GameState.loot_items[_loot_index]).is_empty():
+		var evo_btn := UITheme.action_button("Evolve →", UITheme.GOLD, Vector2(150, 38), 15)
+		evo_btn.name = "EvolveButton"
+		evo_btn.pressed.connect(show_evolve)
+		actions.add_child(evo_btn)
 	if LootSystem.can_throw(_entry):
 		# IN THE BOTTLE'S OWN VIOLET, not a second green. Both are affirmatives and
 		# two identical plates would read as one button drawn twice — the point of
@@ -563,6 +578,70 @@ func _toggle_select(selected: Dictionary, key, on: bool, max_pick: int, btn: But
 		selected[key] = value
 	else:
 		selected.erase(key)
+
+# --- Evolve a weapon (docs/loot-passives.md §13) ----------------------------
+#
+# One section per evolution the weapon can take now: what it becomes, what it
+# needs, and — when the run holds MORE eligible things than it needs — which of
+# them to use, picked like Identify's pieces. With exactly enough there is nothing
+# to choose and the button just goes.
+func show_evolve() -> void:
+	if _loot_index < 0 or _loot_index >= GameState.loot_items.size():
+		_finish()
+		return
+	var weapon = GameState.loot_items[_loot_index]
+	_rebuild_panel()
+	_body.add_child(_heading("Evolve %s" % LootSystem.display_name(_entry),
+		WeaponSystem.WEAPON_COLOR, 20))
+	for ready in WeaponSystem.evolutions_ready(weapon):
+		var evo: EvolutionData = ready["evo"]
+		var into: WeaponData = Data.get_weapon(evo.result)
+		var cands: Array = ready["candidates"]
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		var art := UITheme.crisp_tex(LootPassives.load_weapon_art(into), 56)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(art)
+		box.add_child(_heading("→ %s" % into.display_name, UITheme.GOLD, 17))
+		box.add_child(_muted(LootSystem.weapon_description(WeaponSystem.new_entry(into))))
+		box.add_child(_muted("Needs %s — %s." % [WeaponSystem.need_words(evo),
+			"used up" if evo.consumes else "kept"]))
+		var selected: Dictionary = {}
+		var go := UITheme.confirm_button("Evolve into %s" % into.display_name, Vector2(0, 34))
+		if cands.size() > evo.need_count:
+			box.add_child(_muted("Choose %d to use:" % evo.need_count))
+			var pick := HFlowContainer.new()
+			pick.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+			for i in range(cands.size()):
+				var c: Dictionary = cands[i]
+				var b := Button.new()
+				b.toggle_mode = true
+				b.text = WeaponSystem.candidate_name(c) + ("  (relic)" if String(c["kind"]) == "item" else "")
+				b.toggled.connect(func(on): _toggle_select(selected, i, on, evo.need_count, b, c))
+				b.toggled.connect(func(_on): go.disabled = selected.size() != evo.need_count)
+				pick.add_child(b)
+			box.add_child(pick)
+			go.disabled = true
+		else:
+			for i in range(evo.need_count):
+				selected[i] = cands[i]
+			box.add_child(_muted("Uses: %s." % ", ".join(PackedStringArray(
+				cands.slice(0, evo.need_count).map(WeaponSystem.candidate_name)))))
+		go.pressed.connect(func(): _do_evolve(evo, selected.values()))
+		box.add_child(go)
+		_body.add_child(box)
+	var back := UITheme.quiet_button("Back", Vector2(120, 34))
+	back.pressed.connect(_show_intro)
+	_body.add_child(back)
+
+func _do_evolve(evo: EvolutionData, chosen: Array) -> void:
+	var grown: Dictionary = WeaponSystem.evolve(_loot_index, evo, chosen)
+	if grown.is_empty():
+		Notifications.notify("It could not evolve — what it needs has changed.", UITheme.DANGER)
+		_show_intro()
+		return
+	used.emit()
+	_finish()
 
 # --- Teleport — fulfilled by the overworld --------------------------------
 #
