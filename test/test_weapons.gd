@@ -367,3 +367,22 @@ func test_a_fanny_pack_never_takes_a_charge_away() -> void:
 	var landed: int = GameState.charge_loot_entry(w, 1)
 	assert_between(landed, 1, 2, "one charge, and a 10% chance of a second")
 	assert_eq(WeaponSystem.charges_of(w), landed)
+
+# A weapon is a BIG piece, and big pieces were drawn by a path that assumed every
+# one was a passive trinket — so the tile said "Passive" and had no Swing button.
+func test_a_weapon_tile_has_its_charge_and_a_swing_button() -> void:
+	_weapon(&"wooden_sword", 4, 3)
+	var grid := LootGrid.new()
+	grid.show_use = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	var buttons: Array = grid.find_children("WeaponButton", "Button", true, false)
+	assert_eq(buttons.size(), 1, "the weapon's tile has a button")
+	if not buttons.is_empty():
+		assert_eq((buttons[0] as Button).text, "Swing")
+		assert_false((buttons[0] as Button).disabled, "full, so it can swing")
+	assert_eq(grid.find_children("Charge", "", true, false).size(), 1, "and wears 3/3")
+	_trinket(&"whetstone", 8)
+	grid.rebuild()
+	buttons = grid.find_children("WeaponButton", "Button", true, false)
+	assert_eq((buttons[0] as Button).text, "Evolve", "Evolve, once it can")

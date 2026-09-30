@@ -1051,7 +1051,8 @@ func refresh_toolbar() -> void:
 			# where the two look alike.
 			var wand: bool = LootSystem.is_wand(throwing_loot)
 			_hint_label.text = "%s %s %s:" % [
-				LootSystem.glyph(throwing_loot), "Zap" if wand else "Throw",
+				LootSystem.glyph(throwing_loot),
+				"Swing" if LootSystem.is_weapon(throwing_loot) else "Zap" if wand else "Throw",
 				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = ""

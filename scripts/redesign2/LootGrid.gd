@@ -1139,6 +1139,15 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		span.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 		col.add_child(span)
 		_add_progress(span, extras)
+		# A WEAPON is a big piece that is USED (docs/loot-passives.md §12): its charge
+		# in the corner, and Swing / Evolve where a trinket says "Passive".
+		if LootSystem.is_weapon(entry):
+			span.add_child(_weapon_chip(entry))
+			if with_name:
+				col.add_child(_name_label(entry, face_up))
+				if use_cb.is_valid():
+					col.add_child(_weapon_button(entry, use_cb, locked_now))
+			return col
 		if with_name:
 			col.add_child(_name_label(entry, face_up))
 			var plate := Label.new()
@@ -1225,18 +1234,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		band.add_child(count)
 	# A WEAPON WEARS ITS CHARGE in the wand's corner, green once it can swing.
 	if weapon:
-		var ready: bool = WeaponSystem.is_ready(entry)
-		var wc := UITheme.chip("%d/%d" % [WeaponSystem.charges_of(entry),
-			WeaponSystem.max_charges(entry)],
-			UITheme.SUCCESS if ready else WeaponSystem.WEAPON_COLOR, 9)
-		wc.name = "Charge"
-		wc.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		wc.grow_horizontal = Control.GROW_DIRECTION_END
-		wc.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		wc.tooltip_text = "Ready to swing." if ready \
-			else "%d of %d charges — complete its goal for +1." % [
-				WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
-		band.add_child(wc)
+		band.add_child(_weapon_chip(entry))
 	# A PASSIVE THAT GROWS WEARS ITS GROWTH in the same corner (Rocket's payout,
 	# docs/loot-passives.md §4) — the relic strip draws an incremental relic's
 	# count there too, so a number in the bottom-left reads as "how far along".
@@ -1279,25 +1277,50 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		# 40px tile can say that pressing this does not empty the slot — every other
 		# kind's button is a goodbye and a wand's usually is not.
 		var wand: bool = LootSystem.is_wand(entry)
-		# A WEAPON'S BUTTON SAYS EVOLVE when it can (docs/loot-passives.md §13) — the
-		# rarer and bigger news — and Swing otherwise. Both open its card.
-		var evolvable: bool = weapon and not WeaponSystem.evolutions_ready(entry).is_empty()
-		var use := UITheme.confirm_button(
-			"Evolve" if evolvable else "Swing" if weapon else "Zap" if wand else "Use",
+		if weapon:
+			col.add_child(_weapon_button(entry, use_cb, locked_now))
+			return col
+		var use := UITheme.confirm_button("Zap" if wand else "Use",
 			Vector2(0, LootSlot.USE_H), 10)
-		use.disabled = locked_now or (weapon and not evolvable and not WeaponSystem.is_ready(entry))
+		use.disabled = locked_now
 		# NOT "this is how an unknown one gets identified" any more: a use only
 		# identifies a piece when it actually DID something (LootSystem's spend
 		# paths), so a tooltip promising the lesson would be promising a lesson a
 		# zap into an empty square does not buy.
 		use.tooltip_text = "Spend a charge." if wand else "Spend it."
-		if weapon:
-			use.tooltip_text = "It can evolve — open it to choose." if evolvable \
-				else "Aim it at the board — spends every charge." \
-				if WeaponSystem.is_ready(entry) else "Needs a full charge to swing."
 		use.pressed.connect(use_cb)
 		col.add_child(use)
 	return col
+
+# A WEAPON'S CHARGE, "1/3", in the bottom-left corner — green once it can swing.
+static func _weapon_chip(entry: Dictionary) -> Control:
+	var ready: bool = WeaponSystem.is_ready(entry)
+	var wc := UITheme.chip("%d/%d" % [WeaponSystem.charges_of(entry),
+		WeaponSystem.max_charges(entry)],
+		UITheme.SUCCESS if ready else WeaponSystem.WEAPON_COLOR, 9)
+	wc.name = "Charge"
+	wc.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	wc.grow_horizontal = Control.GROW_DIRECTION_END
+	wc.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wc.tooltip_text = "Ready to swing." if ready \
+		else "%d of %d charges — complete its goal for +1." % [
+			WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
+	return wc
+
+# A WEAPON'S BUTTON SAYS EVOLVE when it can (docs/loot-passives.md §13) — the rarer
+# and bigger news — and Swing otherwise, live only when full. Both open its card.
+static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool) -> Button:
+	var evolvable: bool = not WeaponSystem.evolutions_ready(entry).is_empty()
+	var ready: bool = WeaponSystem.is_ready(entry)
+	var use := UITheme.confirm_button("Evolve" if evolvable else "Swing",
+		Vector2(0, LootSlot.USE_H), 10)
+	use.name = "WeaponButton"
+	use.disabled = locked_now or (not evolvable and not ready)
+	use.tooltip_text = "It can evolve — open it to choose." if evolvable \
+		else "Aim it at the board — spends every charge." if ready \
+		else "Needs a full charge to swing."
+	use.pressed.connect(use_cb)
+	return use
 
 # The piece's name, one line under the art.
 static func _name_label(entry: Dictionary, face_up: bool) -> Label:
