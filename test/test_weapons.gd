@@ -386,3 +386,15 @@ func test_a_weapon_tile_has_its_charge_and_a_swing_button() -> void:
 	grid.rebuild()
 	buttons = grid.find_children("WeaponButton", "Button", true, false)
 	assert_eq((buttons[0] as Button).text, "Evolve", "Evolve, once it can")
+
+# A Whetstone turned a quarter reaches LEFT and RIGHT instead of up and down: its
+# directions turn with the piece, as a Blueprint's does.
+func test_a_turned_whetstone_sharpens_to_its_sides() -> void:
+	_weapon(&"wooden_sword", 3)           # 3 and 6
+	var sword: int = _index(3)
+	var stone: Dictionary = _trinket(&"whetstone", 4)   # beside it, to the right
+	assert_eq(WeaponSystem.stun_for(sword), 1, "unturned, it reaches up and down only")
+	stone["rot"] = 1
+	assert_eq(WeaponSystem.stun_for(sword), 2, "turned, it reaches left and right")
+	assert_true((LootPassives.influence(_index(4))["affects"] as Array).has(sword),
+		"and the hover glow follows the turn")
