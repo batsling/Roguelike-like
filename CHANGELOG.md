@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The pack can be sorted mid-game, bags explain themselves, and a dragged
+  piece is the size of the slot it is over.**
+  - **Rearranging is no longer locked while a game is being reported.** The loot
+    window's pack can be dragged and turned (pieces and bags) during the report
+    step; only the bin still waits until the game is reported (spec §4.3).
+  - **Bags have a hover card** on their tab and on each of their empty cells:
+    the bag's name, size, and what it does.
+  - **The drag preview follows the pack under the cursor** (`LootGrid.scale_under`):
+    over a pack shrunk to fit its bags, the piece or bag in your hand shrinks
+    with it. Away from every pack it keeps the size it was picked up at.
+  - **The haul screen gives the pack the room it has.** A pack with bags used to
+    be held to the 3x3's box and drawn at half size next to a mostly empty left
+    column. It may now widen until the left column is down to 320px
+    (`PostCombatScreen.LEFT_MIN`), and the table stays two columns wide beside a
+    bagged pack so the pack gets that width.
+  - **The main menu drops every kind of loot**: trinkets, weapons, bags and
+    cards now fall too. Each loot folder gets up to four guaranteed seats in the
+    pool, so five bags and six weapons still show on every launch. Cards skip the
+    cut-out check, because a card is a rectangle.
+  - **Weapons in the debug menu**: a Weapons tab under Grant, with an
+    Empty/Full switch (Full by default, so a swing can be tested straight away).
+
 - **Weapons, evolutions, food on charges, a loot row in the shop, and a hover
   glow for neighbours** (`docs/loot-passives.md` §11-§14, spec §14.3).
   - **Weapons** are the eighth loot kind (six, from the new `weapons` sheet). One

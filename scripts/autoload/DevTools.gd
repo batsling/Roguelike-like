@@ -32,10 +32,10 @@ const TAB_LABELS := {"grant": "Grant", "run": "Run", "board": "Board",
 	"flow": "Flow", "events": "Events"}
 # What the Grant tab is granting.
 const GRANT_KINDS := ["items", "scrolls", "pills", "potions", "cards", "wands",
-	"trinkets", "bags", "statuses"]
+	"trinkets", "weapons", "bags", "statuses"]
 const GRANT_LABELS := {"items": "Items", "scrolls": "Scrolls", "pills": "Pills",
 	"potions": "Potions", "cards": "Cards", "wands": "Wands",
-	"trinkets": "Trinkets", "bags": "Bags", "statuses": "Statuses"}
+	"trinkets": "Trinkets", "weapons": "Weapons", "bags": "Bags", "statuses": "Statuses"}
 # Where a granted status lands (GameLoop2's own target words, plus the player).
 const STATUS_TARGETS := ["player", "current", "all", "random"]
 
@@ -205,6 +205,8 @@ func _hint_text() -> String:
 					return "Click a scroll to add it (unidentified) to your loot."
 				"pills":
 					return "Click a pill to add it (unidentified) to your loot. The Horse toggle grants the oversized dose — the 5%% roll, on demand (§4.3)."
+				"weapons":
+					return "Click a weapon to add it to your loot. Full hands it over ready to swing; Empty is how a run pays one out (§12)."
 				"statuses":
 					return "Click a status to apply it. 'Player' is your own side; the rest land on bodies (§13)."
 				_:
@@ -347,6 +349,16 @@ func _build_grant_tab() -> void:
 		], "horse" if _grant_horse else "normal", func(v: String) -> void:
 			_grant_horse = v == "horse"
 			_rebuild_body()))
+	# A weapon arrives EMPTY in a real run and is charged by its own goal (§12), so
+	# testing a swing would otherwise mean playing a game first. Full is the switch
+	# for that; Empty is the grant the run itself makes.
+	if _grant_kind == "weapons":
+		_body.add_child(_radio_row("Charges:", [
+			{"label": "Empty", "value": "empty"},
+			{"label": "Full", "value": "full"},
+		], "full" if _grant_charged else "empty", func(v: String) -> void:
+			_grant_charged = v == "full"
+			_rebuild_body()))
 
 	match _grant_kind:
 		"scrolls":
@@ -361,6 +373,8 @@ func _build_grant_tab() -> void:
 			_list_wands()
 		"trinkets":
 			_list_trinkets()
+		"weapons":
+			_list_weapons()
 		"bags":
 			_list_bags()
 		"statuses":
@@ -422,6 +436,8 @@ func _list_scrolls() -> void:
 # of a pill is finding out, and a debug grant that gave the answer away could not
 # be used to test the finding out.
 var _grant_horse: bool = false
+# Whether a weapon grant arrives charged (see `_list_weapons`).
+var _grant_charged: bool = true
 
 func _list_pills() -> void:
 	var query: String = _query()
@@ -527,6 +543,27 @@ func _list_trinkets() -> void:
 			"press": func() -> void:
 				GameState.add_trinket_loot(trinket.id)
 				_say("Added trinket: %s" % trinket.display_name, LootSystem.LOOT_COLOR)})
+	_emit_rows(rows)
+
+# Every weapon (docs/loot-passives.md §12), empty or full per the switch above.
+func _list_weapons() -> void:
+	var query: String = _query()
+	var rows: Array = []
+	for w in Data.all_weapons():
+		if not (w is WeaponData):
+			continue
+		var label: String = String(w.display_name)
+		if query != "" and not label.to_lower().contains(query):
+			continue
+		var weapon: WeaponData = w
+		rows.append({"label": label, "detail": "%s · %dx%d · %s" % [weapon.rarity,
+				weapon.size.x, weapon.size.y, weapon.description],
+			"press": func() -> void:
+				var charges: int = weapon.max_charges if _grant_charged else 0
+				if GameState.add_weapon_loot(weapon.id, charges).is_empty():
+					_say("Could not add %s" % weapon.display_name, UITheme.DANGER)
+				else:
+					_say("Added weapon: %s" % weapon.display_name, WeaponSystem.WEAPON_COLOR)})
 	_emit_rows(rows)
 
 # Every bag, attached wherever it fits best (docs/loot-passives.md §6) — to place

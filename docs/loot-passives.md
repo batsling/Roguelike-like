@@ -258,6 +258,18 @@ A grant with nobody to drag it (a headless run, "Take all", DevTools) attaches t
 bag with `auto_place_bag`: the placement that grows the pack's bounding box least,
 preferring right and down.
 
+**An attached bag says what it does on hover** (`LootGrid.bag_hover`): its tab and
+each of its empty cells carry the bag's card — name, size, the room it adds and its
+Effect — with the cell's own line ("Empty — room for…", "Drag this empty cell…")
+as the note. A filled cell still shows the piece in it.
+
+**What is in your hand is the size of the pack under it** (`LootGrid.scale_under`).
+A pack with bags is shrunk to fit its box, so the piece or bag being dragged is
+rescaled every frame to the drawn size of whichever grid is under the pointer, and
+keeps the size it was picked up at when over none. The haul screen gives its pack
+a wider box (`LootGrid.fit_width`, `PostCombatScreen.LEFT_MIN`) so a bagged pack
+shrinks only as far as the screen really needs.
+
 ### Moving one
 
 In the loot window, a bag is picked up by **the tab in its top-left cell**, or by

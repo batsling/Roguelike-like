@@ -136,6 +136,10 @@ const EMBED_BODY_MIN_H := 200.0
 # table can hand over enough room for the 3x3 to stand up in one piece, and a
 # pack cut off at two rows is a pack the player cannot drop a bottle into.
 var _body_min_h: float = EMBED_BODY_MIN_H
+# The widest this section may grow when embedded (0: no more than it needs). The
+# pack takes whatever the offer does not, so a pack with bags on it is drawn as
+# big as the host can afford rather than squeezed into the 3x3's box.
+var _width_budget: float = 0.0
 # Whether an EMBEDDED table carries the take-all button. Off for the post-combat
 # screen, where the haul is something you sort; on for an event, where the pieces
 # are usually an order you just placed. See _build.
@@ -177,8 +181,10 @@ func _start(host: Node, offer) -> void:
 # the pack-strip refresh all still go to it — and `host` is the node the
 # controller parks on, drawing nothing and taking no room.
 static func embed(page: Node, host: Node, slot: Container, offer, spendable: bool = true,
-		body_min_h: float = EMBED_BODY_MIN_H, take_all_button: bool = false) -> LootDropModal:
+		body_min_h: float = EMBED_BODY_MIN_H, take_all_button: bool = false,
+		width_budget: float = 0.0) -> LootDropModal:
 	var modal := LootDropModal.new()
+	modal._width_budget = width_budget
 	modal._spendable = spendable
 	modal._body_min_h = maxf(EMBED_BODY_MIN_H, body_min_h)
 	modal._take_all_button = take_all_button
@@ -302,6 +308,10 @@ func _build() -> void:
 	# and one already on it comes off in the bin, empty.
 	_grid.bag_take_requested.connect(_take_bag_offer)
 	_grid.bag_discard_requested.connect(_discard_bag)
+	if _width_budget > 0.0:
+		# The section's own chrome: the panel's border and the margins either side,
+		# then the offer column and the gutter. What is left is the pack's.
+		_grid.fit_width = _width_budget - float(offer_w + ROW_GAP + MARGIN * 2) - 4.0
 	_grid.rebuild()
 
 	# The offer on the left, the pack on the right, and the drag goes between them
@@ -360,6 +370,11 @@ func _build() -> void:
 # How wide the offer grid runs. Two abreast is the shape of a four-pill payout;
 # three only once there are more than four, so a handful never becomes a wall.
 func _offer_columns() -> int:
+	# A PACK WITH BAGS IS WIDE, and on the haul screen every column the table gives
+	# up is width the pack is drawn bigger with. There is height to spare there, so
+	# the table stays two across and grows down (it scrolls past OFFER_ROWS).
+	if _width_budget > 0.0 and not GameState.pack_bags.is_empty():
+		return 2
 	return 2 if _offers.size() <= 4 else 3
 
 # ---------------------------------------------------------------------------

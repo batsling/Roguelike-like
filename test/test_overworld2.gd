@@ -2744,6 +2744,72 @@ func test_the_whole_cell_is_what_follows_the_cursor() -> void:
 	# it belongs to nobody, so this test has to be the one to take it away.
 	preview.free()
 
+# THE PIECE IN YOUR HAND IS THE SIZE OF THE SLOT UNDER IT. A pack with bags on it
+# is shrunk to fit its box, and a full-size cell held over it read as a piece that
+# would not fit the slot it was aimed at.
+func test_the_piece_in_hand_takes_the_size_of_the_pack_under_it() -> void:
+	var grid := LootGrid.new()
+	grid.allow_reorder = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	await wait_frames(2)
+	grid._scale = 0.6
+	var inside: Vector2 = grid.get_global_rect().get_center()
+	assert_almost_eq(LootGrid.scale_under(inside), 0.6 * grid.get_global_transform().get_scale().x,
+		0.001, "over the pack, the pack's own drawn scale")
+	assert_eq(LootGrid.scale_under(grid.get_global_rect().end + Vector2(500, 500)), -1.0,
+		"and off every pack, nothing to match")
+	var holder := LootGrid.PiecePreview.new()
+	add_child_autofree(holder)
+	holder.home = 0.8
+	LootGrid._fit_preview(holder, 0.6)
+	assert_almost_eq(holder.scale.x, 0.6, 0.001, "the preview is drawn at the size it will land at")
+
+# REARRANGING IS NOT LOCKED MID-REPORT (§4.3): the report step can be an hour of
+# someone else's game, and it is when a player sorts their pack. Binning still is.
+func test_the_pack_can_be_rearranged_mid_report_but_not_binned() -> void:
+	GameState.loot_items.clear()
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.add_pill_loot(&"luck_up")
+	_ui._loot_window.open = true
+	_ui._loot_window.rebuild(true)
+	var grid: LootGrid = _find_grid(_ui._loot_panel) as LootGrid
+	if grid == null:
+		pending("the page has no loot grid up to drag into")
+		return
+	assert_false(grid.locked, "the pack is not held still")
+	assert_true(grid.allow_reorder, "pieces can be moved and turned")
+	assert_true(grid.can_drag_from(grid.get_child(0)), "a carried piece can be picked up")
+	assert_false(grid.can_trash({"kind": "loot_move", "from": 0, "index": 0}),
+		"but nothing leaves the pack until the game has been reported")
+
+# A BAG SAYS WHAT IT DOES WHEN YOU HOVER IT, on its tab and its empty cells.
+func test_an_attached_bag_has_a_hover_card() -> void:
+	GameState.loot_items.clear()
+	var bag_id: StringName = &""
+	for b in Data.all_bags():
+		if b is BagData:
+			bag_id = b.id
+			break
+	if bag_id == &"" or not GameState.add_bag_loot(bag_id):
+		pending("no bag could be attached")
+		return
+	var grid := LootGrid.new()
+	grid.allow_reorder = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	var bag_def: BagData = Data.get_bag(bag_id)
+	var slot: Control = grid.get_child(GameState.bag_slot_start(0))
+	assert_true(slot.has_meta(HoverCard.META), "an empty bag cell carries a hover card")
+	var cfg: Dictionary = slot.get_meta(HoverCard.META, {})
+	assert_eq(cfg.get("title", ""), bag_def.display_name, "naming the bag")
+	assert_true(str(cfg.get("lines", [])).contains("Adds %d slot" % bag_def.cell_count()),
+		"and saying what it does: %s" % str(cfg.get("lines", [])))
+	var handles: Array = grid.get_children(true).filter(func(c): return c is LootGrid.BagHandle)
+	assert_eq(handles.size(), 1, "the bag has a tab")
+	if not handles.is_empty():
+		assert_true((handles[0] as Control).has_meta(HoverCard.META), "and so does its tab")
+
 func test_loot_cannot_be_rearranged_mid_report() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	GameState.add_pill_loot(&"luck_up")
