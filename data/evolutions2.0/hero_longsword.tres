@@ -9,4 +9,5 @@ result = &"hero_longsword"
 base = &"hero_sword"
 need_count = 2
 need_tag = "whetstone"
+need_id = &""
 consumes = true

@@ -5,12 +5,14 @@ extends RefCounted
 # the pack like a trinket, is aimed at the board like a thrown potion, and charges
 # off its own goal.
 #
-# THE PACK ENTRY is {type: "weapon", id, rarity, charges, uid, goal_game}:
+# THE PACK ENTRY is {type: "weapon", id, rarity, charges, uid, goal_game[, replays]}:
 #   charges    how many it holds, 0..max_charges. A new weapon arrives EMPTY.
 #   uid        tells two copies of one weapon apart — each has its own goal row on
 #              the checklist, and each charges once per game.
 #   goal_game  GameState.games_played when its goal last charged it, so the second
 #              tick in the same game is refused whatever door it comes through.
+#   replays    Lightning Ring's count: each one is another strike per swing. Grows
+#              after every swing (`replay_gain`) and rides an evolution.
 #
 # HOW IT CHARGES. Ticking its goal while a game is in play is +1 Charge, at most
 # once per game (the checklist row is `any time`, keyed by `goal_key`, and locks
@@ -171,6 +173,34 @@ static func stun_for(index: int) -> int:
 		n += int(p["amount"])
 	return n
 
+# HOW MANY EXTRA TIMES the piece at `index` fires its whole swing: +N from every
+# piece whose `weapon_retrigger` points at it (Duplicator, on any side) — each
+# such piece once, turned with the piece, as weapon_stun is read.
+static func retriggers_for(index: int) -> int:
+	if index < 0 or index >= GameState.loot_items.size() \
+			or not is_weapon(GameState.loot_items[index]):
+		return 0
+	var n: int = 0
+	for row in LootPassives.active():
+		var aura: Dictionary = row["def"].get("weapon_retrigger") \
+			if row["def"].get("weapon_retrigger") is Dictionary else {}
+		if aura.is_empty() or int(row.get("slot", -1)) < 0:
+			continue
+		var src: int = GameState.loot_index_at_slot(int(row["slot"]))
+		if src == index:
+			continue
+		if aura_targets(src, aura, int((row["entry"] as Dictionary).get("rot", 0))).has(index):
+			n += int(aura.get("amount", 0))
+	return n
+
+# Lightning Ring's Replays — how many strikes past the first each swing makes.
+static func replays_of(entry) -> int:
+	return maxi(0, int((entry as Dictionary).get("replays", 0))) if is_weapon(entry) else 0
+
+# Strikes one swing makes: the first, and one per Replay.
+static func strikes_of(entry) -> int:
+	return 1 + replays_of(entry)
+
 # The WEAPONS (indices) a piece at `src` with `aura` reaches: the pieces sharing a
 # side with its footprint in each of the aura's directions, turned with the piece.
 static func aura_targets(src: int, aura: Dictionary, rot: int = 0) -> Array:
@@ -202,6 +232,7 @@ static func adjacent_food_pieces(index: int) -> Array:
 #   column N   that column (none if the board is narrower)
 #   enemy      every square an enemy is standing on
 #   none       nothing to click — see `fixed_cell`
+#   random     nothing to click — each strike picks a random enemy (`random_cell`)
 static func aim_cells(entry) -> Array:
 	var w: WeaponData = def(entry)
 	if w == null:
@@ -215,14 +246,14 @@ static func aim_cells(entry) -> Array:
 			return GameLoop2.column_cells(w.aim_column)
 		"enemy":
 			return GameLoop2.occupancy().keys()
-		"none":
+		"none", "random":
 			return []
 	return GameLoop2.target_cells("all")
 
 # Whether it needs a click at all.
 static func needs_aim(entry) -> bool:
 	var w: WeaponData = def(entry)
-	return w != null and w.aim != "none"
+	return w != null and w.aim != "none" and w.aim != "random"
 
 # Where an `aim: none` swing is laid: the front column's middle row, so a drawn
 # shape reads from the square in front of you.
@@ -243,6 +274,8 @@ static func aim_words(w: WeaponData) -> String:
 			return "at an enemy"
 		"none":
 			return "at a fixed spot"
+		"random":
+			return "at a random enemy"
 	return "anywhere"
 
 # WHAT SHAPE IT HITS, in the same words.
@@ -266,6 +299,34 @@ static func area_words(area: String) -> String:
 		return "%s-row by %s-column block" % [m.get_string(1), m.get_string(2)]
 	return "drawn shape"
 
+# WHERE A RANDOM STRIKE LANDS: the leading square (the one nearest you) of a
+# random enemy standing on the board, or OFF_FIELD when nobody is — a whiff. Off-
+# grid bodies in the queue are not on the board to be struck.
+static func random_cell() -> Vector2i:
+	var bodies: Array = []
+	for entry in GameLoop2.stack:
+		if not GameLoop2.entry_cells(entry).is_empty():
+			bodies.append(entry)
+	if bodies.is_empty():
+		return GameLoop2.OFF_FIELD
+	var cells: Array = GameLoop2.entry_cells(bodies[randi() % bodies.size()])
+	var best: Vector2i = cells[0]
+	for c in cells:
+		if c.x < best.x or (c.x == best.x and c.y < best.y):
+			best = c
+	return best
+
+# The direction a weapon's `push_dir` shoves toward, on the board's axes.
+static func push_vector(w: WeaponData) -> Vector2i:
+	match w.push_dir:
+		"left":
+			return GameLoop2.PUSH_FORWARD
+		"up":
+			return GameLoop2.PUSH_UP
+		"down":
+			return GameLoop2.PUSH_DOWN
+	return GameLoop2.PUSH_BACK
+
 # The squares a swing aimed at `cell` hits (its `area` from there, clipped).
 static func hit_cells(entry, cell: Vector2i) -> Array:
 	var w: WeaponData = def(entry)
@@ -278,29 +339,79 @@ static func hit_cells(entry, cell: Vector2i) -> Array:
 
 # SWING the weapon `entry` (already off its charges, see LootSystem.use_loot) at
 # `ctx.target`, laying `ctx.weapon_stun` Stun on every enemy its area covers, once
-# each. `ctx.weapon_slot` is where it sat, for the `weapon_stunned` hook.
+# each per strike. `ctx.weapon_slot` is where it sat, for the hooks.
+#
+# A SWING IS FIRED `1 + ctx.weapon_triggers` TIMES (Duplicator), and each firing
+# makes `strikes_of` strikes (Lightning Ring's Replays). An aimed strike lands on
+# the square the player clicked every time — a second firing stacks its Stun on
+# the same bodies — and a `random` strike picks its body afresh each time.
+#
+# Every body a strike covers fires `weapon_hit` (Bloody Tear's heal), stunned or
+# not; every one it stuns fires `weapon_stunned` (King Bomber's gold). A `push`
+# shoves the covered bodies after the Stun lands, farthest-first so the front of a
+# line does not block the back of it. And the board is told what was hit
+# (GameLoop2.last_strike), so it can show the player where a swing they did not
+# aim actually went.
 static func swing(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	var w: WeaponData = def(entry)
 	if w == null:
 		return out
 	var at = ctx.get("target")
-	var cell: Vector2i = at if at is Vector2i else fixed_cell()
 	var stun: int = int(ctx.get("weapon_stun", w.stun))
-	var hit: Array = GameLoop2.area_instances(hit_cells(entry, cell))
-	var stunned: int = 0
-	for inst in hit:
-		if stun > 0 and GameLoop2.stun(int(inst), stun):
-			stunned += 1
-			TriggerBus.weapon_stunned.emit({"slot": int(ctx.get("weapon_slot", -1)),
-				"instance": int(inst), "weapon": w.id})
-	if stunned == 0:
+	var slot: int = int(ctx.get("weapon_slot", -1))
+	var firings: int = 1 + maxi(0, int(ctx.get("weapon_triggers", 0)))
+	var strikes: Array = []
+	var bodies: Dictionary = {}
+	for _f in range(firings):
+		for _s in range(strikes_of(entry)):
+			var cell: Vector2i
+			if w.aim == "random":
+				cell = random_cell()
+			else:
+				cell = at if at is Vector2i else fixed_cell()
+			var cells: Array = hit_cells(entry, cell) if cell != GameLoop2.OFF_FIELD else []
+			var hit: Array = GameLoop2.area_instances(cells)
+			for inst in hit:
+				if GameLoop2.entry_for(int(inst)).is_empty():
+					continue
+				bodies[int(inst)] = true
+				TriggerBus.weapon_hit.emit({"slot": slot, "instance": int(inst), "weapon": w.id})
+				if stun > 0 and GameLoop2.stun(int(inst), stun):
+					TriggerBus.weapon_stunned.emit({"slot": slot,
+						"instance": int(inst), "weapon": w.id})
+			if w.push > 0:
+				_push_all(hit, push_vector(w), w.push)
+			strikes.append({"cells": cells, "instances": hit.duplicate()})
+	# THE REPLAY IT EARNED, after the swing it was earned on.
+	var gain: Dictionary = w.replay_gain
+	if not gain.is_empty():
+		var cap: int = int(gain.get("max", 0))
+		var grown: int = replays_of(entry) + int(gain.get("amount", 0))
+		entry["replays"] = mini(grown, cap) if cap > 0 else grown
+		GameState.emit_signal("inventory_changed")
+	GameLoop2.set_last_strike(w.display_name, strikes)
+	if bodies.is_empty():
 		(out["logs"] as Array).append("%s hits nothing." % w.display_name)
 	else:
-		(out["logs"] as Array).append("%s stuns %d %s (+%d Stun)." % [w.display_name,
-			stunned, "enemy" if stunned == 1 else "enemies", stun])
+		(out["logs"] as Array).append("%s stuns %d %s (+%d Stun%s)." % [w.display_name,
+			bodies.size(), "enemy" if bodies.size() == 1 else "enemies", stun,
+			"" if strikes.size() == 1 else ", %d strikes" % strikes.size()])
 	GameLoop2.loop_changed.emit()
 	return out
+
+# Shove every body in `instances` `squares` toward `dir`, the one farthest along
+# `dir` first, so a body is never held back by one about to move out of its way.
+static func _push_all(instances: Array, dir: Vector2i, squares: int) -> void:
+	var order: Array = instances.filter(func(i): return not GameLoop2.entry_for(int(i)).is_empty())
+	order.sort_custom(func(a, b):
+		var ea: Dictionary = GameLoop2.entry_for(int(a))
+		var eb: Dictionary = GameLoop2.entry_for(int(b))
+		var pa: int = int(ea.get("col", 0)) * dir.x + int(ea.get("row", 0)) * dir.y
+		var pb: int = int(eb.get("col", 0)) * dir.x + int(eb.get("row", 0)) * dir.y
+		return pa > pb)
+	for inst in order:
+		GameLoop2.shove(int(inst), dir, squares)
 
 
 # --- evolving (docs/loot-passives.md §13) ----------------------------------------
@@ -330,6 +441,22 @@ static func tagged_things(tag: String) -> Array:
 				out.append({"kind": "loot", "entry": e})
 	return out
 
+# Every relic and pack trinket that answers `evo`'s Requirement 2: those carrying
+# its tag, or — for a named requirement (Thunder Loop's Duplicator) — those that
+# ARE that item or trinket.
+static func need_candidates(evo: EvolutionData) -> Array:
+	if evo.need_id == &"":
+		return tagged_things(evo.need_tag)
+	var out: Array = []
+	for it in GameState.inventory:
+		if it is ItemData and (it as ItemData).id == evo.need_id:
+			out.append({"kind": "item", "item": it})
+	for e in GameState.loot_items:
+		if e is Dictionary and String(e.get("type", "")) == "trinket" \
+				and StringName(e.get("id", "")) == evo.need_id:
+			out.append({"kind": "loot", "entry": e})
+	return out
+
 # The evolutions the weapon in `entry` can take RIGHT NOW: [{evo, candidates}] for
 # every row whose base is this weapon and whose tagged things the run holds enough
 # of. Empty for anything else.
@@ -339,7 +466,7 @@ static func evolutions_ready(entry) -> Array:
 	if w == null:
 		return out
 	for evo in Data.evolutions_from(w.id):
-		var cands: Array = tagged_things((evo as EvolutionData).need_tag)
+		var cands: Array = need_candidates(evo as EvolutionData)
 		if cands.size() >= (evo as EvolutionData).need_count \
 				and Data.get_weapon((evo as EvolutionData).result) != null:
 			out.append({"evo": evo, "candidates": cands})
@@ -353,6 +480,11 @@ static func candidate_name(c: Dictionary) -> String:
 
 # The words for what an evolution needs.
 static func need_words(evo: EvolutionData) -> String:
+	if evo.need_id != &"":
+		var item: ItemData = Data.get_item2(evo.need_id)
+		var t: TrinketData = Data.get_trinket(evo.need_id)
+		return item.display_name if item != null else (t.display_name if t != null
+			else String(evo.need_id))
 	return "%s%s with \"%s\"" % ["" if evo.need_count == 1 else "%d " % evo.need_count,
 		"item or trinket" if evo.need_count == 1 else "items or trinkets", evo.need_tag]
 
@@ -369,7 +501,7 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 	var result: WeaponData = Data.get_weapon(evo.result)
 	if w == null or result == null or w.id != evo.base or chosen.size() != evo.need_count:
 		return {}
-	var valid: Array = tagged_things(evo.need_tag)
+	var valid: Array = need_candidates(evo)
 	for c in chosen:
 		if not valid.any(func(v): return _same_candidate(v, c)):
 			return {}
@@ -380,6 +512,9 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 	grown["charges"] = mini(charges_of(old), result.max_charges)
 	grown["pack_slot"] = int(old.get("pack_slot", -1))
 	grown["rot"] = int(old.get("rot", 0))
+	# WHAT IT HAS GROWN rides across too: Lightning Ring's Replays are Thunder Loop's.
+	if replays_of(old) > 0:
+		grown["replays"] = replays_of(old)
 	if evo.consumes:
 		for c in chosen:
 			if String(c.get("kind", "")) == "item":

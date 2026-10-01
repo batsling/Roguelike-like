@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EvolutionData" load_steps=2 format=3 uid="uid://evolution2_bloody_tear"]
+
+[ext_resource type="Script" path="res://scripts/resources/EvolutionData.gd" id="1_evolution"]
+
+[resource]
+script = ExtResource("1_evolution")
+id = &"bloody_tear"
+result = &"bloody_tear"
+base = &"whip"
+need_count = 1
+need_tag = "heart"
+need_id = &""
+consumes = false

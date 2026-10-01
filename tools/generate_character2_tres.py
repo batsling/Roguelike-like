@@ -12,7 +12,7 @@ level_up_reward_type here).
 
   characters2.0: Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
                  Scramble | Bombs | Keys | Random | Level Up | Reward |
-                 Description | Starting items | File
+                 Description | Starting loadout | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Gold -> start_gold, the run's starting purse (§14). It sits beside Health rather
@@ -25,7 +25,13 @@ Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
           (a sized Chest -> item, with level_up_reward_chest_choices set from
           the size — Small 1 / Medium 2 / Large 3 / Huge 5; Random Sized Chest
           -> random_sized_chest; Scroll -> scroll).
-Starting items -> slugged item ids (resolved against data/items2.0/).
+Starting loadout -> comma-separated things the run opens holding. Each is
+          a NAME — a relic (items) goes to starting_items; a weapon, trinket,
+          card, wand, scroll, potion, pill or bag to starting_loot as
+          {type, id} — or `N random [<tag>] <kind>` ("1 random joker card",
+          "1 random wand"), which is rolled at run start as {type, count[,
+          tag]}. A name no sheet has is a refusal. (The column was `Starting
+          items` and is still read under that name.)
 
 Art resolves from the File column (§10.1, matching the enemy/item sheets): the
 full portrait from images2.0/characters/Full/<File>.png and the round in-world
@@ -40,6 +46,9 @@ that field unset (placeholder later).
 import argparse
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import openpyxl
 
@@ -184,14 +193,82 @@ def string_name_array(ids) -> str:
     return "Array[StringName]([%s])" % inner
 
 
-def character_tres(row) -> tuple:
+# The loot kinds a starting loadout may name, by the sheet each is authored on.
+LOADOUT_SHEETS = {"weapon": "weapons", "trinket": "trinkets", "card": "cards",
+                  "wand": "wands", "scroll": "scrolls", "potion": "potions",
+                  "pill": "pills", "bag": "bags"}
+RANDOM_LOOT_RE = re.compile(
+    r"^(\d+)\s+random\s+(?:([a-z_ ]+?)\s+)?(%s)s?$" % "|".join(LOADOUT_SHEETS), re.I)
+
+
+def _norm(name) -> str:
+    """A name compared across sheets (each sheet's own slug rules differ on `?`)."""
+    return re.sub(r"[^a-z0-9]+", "", str(name).lower())
+
+
+def parse_loadout(name, raw, catalog):
+    """(item ids, loot list) for a character's Starting loadout cell.
+
+    `catalog` maps a kind ("item" or a LOADOUT_SHEETS key) to {normalised name: id}.
+    """
+    items, loot = [], []
+    for term in [t.strip() for t in _clean(raw).split(",") if t.strip()]:
+        m = RANDOM_LOOT_RE.match(term)
+        if m:
+            entry = {"type": m.group(3).lower(), "count": int(m.group(1))}
+            if m.group(2):
+                entry["tag"] = m.group(2).strip().lower().replace(" ", "_")
+            loot.append(entry)
+            continue
+        key = _norm(term)
+        if key in catalog.get("item", {}):
+            items.append(catalog["item"][key])
+            continue
+        for kind in LOADOUT_SHEETS:
+            if key in catalog.get(kind, {}):
+                loot.append({"type": kind, "id": catalog[kind][key]})
+                break
+        else:
+            raise ValueError("character %r: Starting loadout %r is not a relic, a piece "
+                             "of loot by name, or `N random [tag] <kind>`" % (name, term))
+    return items, loot
+
+
+def _loot_value(entries) -> str:
+    def one(e):
+        return "{" + ", ".join('"%s": %s' % (k, ('"%s"' % gd_str(v)) if isinstance(v, str)
+                                             else v) for k, v in e.items()) + "}"
+    return "[" + ", ".join(one(e) for e in entries) + "]"
+
+
+def load_catalog(wb):
+    """kind -> {normalised name: id}, ids slugged the way each kind's generator does."""
+    import generate_card2_tres  # its slug spells out `?` ("? Card")
+
+    def names(sheet):
+        # The first column is the name (`scrolls` heads it "Scrolls", not "Name").
+        return [str(next(iter(r.values()))).strip() for r in rows(wb[sheet])]
+
+    cat = {"item": {_norm(n): slugify(n) for n in names("items")}}
+    for kind, sheet in LOADOUT_SHEETS.items():
+        if sheet in wb.sheetnames:
+            slug = generate_card2_tres.slugify if kind == "card" else slugify
+            cat[kind] = {_norm(n): slug(n) for n in names(sheet)}
+    return cat
+
+
+def character_tres(row, catalog=None) -> tuple:
     name = str(row["Name"]).strip()
     cid = slugify(name)
 
-    items_raw = ("" if row.get("Starting items") is None
-                 else str(row.get("Starting items"))).strip()
-    items = ([] if not items_raw or items_raw.upper() == "N/A"
-             else [slugify(t) for t in items_raw.split(",") if t.strip()])
+    raw = row.get("Starting loadout", row.get("Starting items"))
+    if catalog is None:
+        # No workbook to resolve against (a test feeding one row): every name is
+        # read as a relic, the old behaviour.
+        items = [slugify(t) for t in _clean(raw).split(",") if t.strip()]
+        loot = []
+    else:
+        items, loot = parse_loadout(name, raw, catalog)
 
     level_up_stats, reward_type, reward_amount, chest_choices = parse_reward(
         row.get("Reward"))
@@ -241,6 +318,7 @@ def character_tres(row) -> tuple:
     # every run of the character opens differently.
     lines.append("start_random = %d" % _int(row.get("Random")))
     lines.append("starting_items = %s" % string_name_array(items))
+    lines.append("starting_loot = %s" % _loot_value(loot))
     lines.append('starting_weapon = &""')
     lines.append('level_up_condition = "%s"' % gd_str(row.get("Level Up")))
     lines.append('level_up_reward = "%s"' % gd_str(row.get("Reward")))
@@ -276,10 +354,11 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
+    catalog = load_catalog(wb)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(wb["characters"]):
-        cid, text = character_tres(row)
+        cid, text = character_tres(row, catalog)
         if args.list:
             print("=== %s ===\n%s" % (cid, text))
             continue

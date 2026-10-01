@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Brimstone stuns, Censer reaches two columns, three new Vampire Survivors
+  weapons and a Duplicator, a starting loadout, and a lost run can stand a body
+  up** (spec §3.2, §4, §8.2; `docs/loot-passives.md` §12-§13).
+  - **Brimstone Bombs**: the target still takes the bomb's point, but the rays
+    down its row and column now lay **1 Stun** instead of damage — on bosses too —
+    out of every row and column a wide target covers. Mines in the rays are no
+    longer set off by them; Hot Bombs' fire still covers the whole cross.
+  - **Censer** holds the **two** front columns out of every extra turn
+    (`front_column_slow 2`; the field is a column count now).
+  - **Lightning Ring / Thunder Loop** aim `random`: no click, each strike lands on
+    a random enemy. Each swing earns +1 **Replay** (one more strike per swing, up to
+    4); the count lives on the pack entry and **carries through the evolution**.
+    Thunder Loop's requirement names **Duplicator** directly — evolutions can now
+    name one item or trinket instead of a tag.
+  - **Duplicator** (trinket): an adjacent weapon fires its whole swing twice.
+  - **Whip / Bloody Tear**: Bloody Tear heals 1 per enemy hit, through a new
+    `weapon_hit` hook.
+  - **Hero Longsword** is `stun 2, push right 1`: the swing's Effect may add
+    `push right|left|up|down N`, a free shove after the Stun (`GameLoop2.shove`).
+    Weapons gained a `Type` column (Melee / Ranged).
+  - **The board shows what a swing hit**: the squares each strike covered stay
+    washed in orange (numbered when there were several) until the board next moves
+    (`GameLoop2.last_strike`). Brimstone blasts use it too.
+  - **Starting loadout** replaces Starting items: a relic or loot by name, or
+    `N random [tag] <kind>` — Antonio starts with an (empty) Whip, Erratic Deck
+    with a random joker card, Minä with a random wand. Cards gained `Tags`
+    (joker / tarot / playing_card). Both character screens print the whole loadout.
+  - **A lost run may stand a body up**: 0% on the first, then 25%, 50%, 75%,
+    certain, dropping back to 0% after a spawn and at the end of each game. Rolled
+    off the game in play's type and tier, after the turn. It is a spawn event like
+    every other, so the fourth brings a boss and an outward board growth mid-game;
+    a line above the grid warns while the next spawn is that one. The chance is on
+    the tracker button.
+  - **Sheet:** Dicevaders and its four connections imported; the grammar cells
+    for the new pieces filled by `tools/_weapons_lightning_setup.py`.
+
 - **The pack can be sorted mid-game, bags explain themselves, and a dragged
   piece is the size of the slot it is over.**
   - **Rearranging is no longer locked while a game is being reported.** The loot

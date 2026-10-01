@@ -26,7 +26,8 @@ extends Resource
 
 # --- the swing ------------------------------------------------------------------
 # WHERE IT MAY BE AIMED (the sheet's `Aim`): "any", "front", "back", "column",
-# "enemy" or "none". "column" carries its number in `aim_column`.
+# "enemy", "none" or "random". "column" carries its number in `aim_column`;
+# "random" needs no click — each strike picks a random enemy on the board.
 @export var aim: String = "any"
 @export var aim_column: int = 0
 # WHAT IT HITS, measured from the square aimed at (the sheet's `Area`), kept as
@@ -36,6 +37,13 @@ extends Resource
 # Stun laid on every enemy the area covers, ONCE per enemy however many of its
 # squares are covered. Before the pack's bonuses (WeaponSystem.stun_for).
 @export var stun: int = 0
+# After the Stun, every enemy covered is shoved `push` squares toward `push_dir`
+# ("right" away from you, "left" toward you, "up", "down") — Hero Longsword's
+# `push right 1`. Free, and as far as it fits (GameLoop2.shove). 0 for no push.
+@export var push_dir: String = ""
+@export var push: int = 0
+# The sheet's `Type`: "melee" or "ranged".
+@export var weapon_type: String = "melee"
 
 # --- charging -------------------------------------------------------------------
 # The goal that charges it — the sheet's `Goal` column, which `goals` writes
@@ -54,6 +62,12 @@ extends Resource
 @export var weapon_stun: Dictionary = {}
 # Stankus' Toothpick: +amount Stun on its OWN swing for every `per` foods touching it.
 @export var stun_per_food: Dictionary = {}
+# Lightning Ring / Thunder Loop: every swing leaves it +amount Replay, up to `max`
+# ({amount, max}). Each Replay is one more strike per swing; the count is kept on
+# the pack entry (`replays`), so it rides an evolution.
+@export var replay_gain: Dictionary = {}
+# Carried so a weapon could author Duplicator's rule too (TrinketData's shape).
+@export var weapon_retrigger: Dictionary = {}
 # Carried so the passive shape is the one LootPassives reads everywhere.
 @export var copy_neighbour: String = ""
 @export var bank_shields: bool = false
@@ -85,4 +99,5 @@ func art_file() -> String:
 func is_passive() -> bool:
 	return not triggers.is_empty() or not stat_bonuses.is_empty() \
 		or not status_bonuses.is_empty() or not weapon_stun.is_empty() \
-		or not stun_per_food.is_empty()
+		or not stun_per_food.is_empty() or not replay_gain.is_empty() \
+		or not weapon_retrigger.is_empty()

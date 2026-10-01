@@ -6,12 +6,14 @@ Weapons are the EIGHTH loot kind (docs/loot-passives.md §12): pieces that sit i
 the pack like a trinket, are aimed at the board like a thrown potion, and charge
 off their own goal.
 
-  weapons: Name | Rarity | Size | Aim | Area | Effect | Passive | Passive Effect |
-           Goal | Charge | Tag | Game | Image
+  weapons: Name | Rarity | Size | Aim | Area | Effect | Type | Passive |
+           Passive Effect | Goal | Charge | Tag | Game | Image
 
   Size            "HxW", ROWS FIRST, as trinkets and bags write a footprint.
   Aim             where the swing may be aimed:
-                    any | front | back | column N | enemy | none
+                    any | front | back | column N | enemy | none | random
+                  `random` needs no click: each strike lands on a random enemy
+                  standing on the board (and whiffs on an empty one).
   Area            what it hits, measured from the aimed square:
                     a word    cell row col cross 3x3 5x5 board plus diagonals
                     RxC       a rectangle, rows first: its rows CENTRED on the
@@ -22,7 +24,14 @@ off their own goal.
                     a drawing rows split by "/", "#" a square it hits, "." one
                               it skips, "O" the aimed square (hit). Left is
                               toward you: ".#./#O#/.#." is a plus.
-  Effect          `stun N` — the only swing verb so far. Anything else refuses.
+  Effect          comma-separated swing verbs, in the order they land:
+                    stun N              N Stun on every enemy covered (required)
+                    push <dir> N        then shove each enemy covered N squares
+                                        toward <dir> — right (away from you),
+                                        left (toward you), up or down — free,
+                                        as far as it fits (GameLoop2.shove)
+                  Anything else refuses.
+  Type            Melee | Ranged — what kind of weapon it is (blank: Melee).
   Passive         the prose the player reads.
   Passive Effect  that prose in the loot-passive grammar
                   (generate_item_tres.parse_loot_passive); blank for none.
@@ -54,7 +63,9 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "weapons")
 SIZE_RE = re.compile(r"^\s*(\d+)\s*[xX×]\s*(\d+)\s*$")
 AREA_WORDS = {"cell", "row", "col", "column", "cross", "3x3", "5x5", "board", "all",
               "plus", "diagonals"}
-AIM_WORDS = {"any", "front", "back", "enemy", "none"}
+AIM_WORDS = {"any", "front", "back", "enemy", "none", "random"}
+PUSH_DIRS = ("right", "left", "up", "down")
+WEAPON_TYPES = ("melee", "ranged")
 
 
 def slugify(name: str) -> str:
@@ -82,7 +93,7 @@ def parse_aim(raw, name):
         return "column", int(m.group(1))
     if text not in AIM_WORDS:
         raise ValueError("weapon %r: Aim %r is not one of any, front, back, "
-                         "column N, enemy, none" % (name, raw))
+                         "column N, enemy, none, random" % (name, raw))
     return text, 0
 
 
@@ -103,11 +114,30 @@ def check_area(raw, name):
 
 
 def parse_effect(raw, name):
-    m = re.fullmatch(r"stun\s+(\d+)", (_clean(raw) or "").lower())
-    if not m:
-        raise ValueError("weapon %r: Effect %r — the only swing verb is `stun N`"
-                         % (name, raw))
-    return int(m.group(1))
+    """(stun, push_dir, push) from `stun N[, push <dir> N]`."""
+    stun = None
+    push_dir, push = "", 0
+    for part in [p.strip() for p in (_clean(raw) or "").lower().split(",") if p.strip()]:
+        m = re.fullmatch(r"stun\s+(\d+)", part)
+        if m and stun is None:
+            stun = int(m.group(1))
+            continue
+        m = re.fullmatch(r"push\s+(right|left|up|down)\s+(\d+)", part)
+        if m and not push:
+            push_dir, push = m.group(1), int(m.group(2))
+            continue
+        raise ValueError("weapon %r: Effect %r — %r is not `stun N` or "
+                         "`push right|left|up|down N`" % (name, raw, part))
+    if stun is None:
+        raise ValueError("weapon %r: Effect %r has no `stun N`" % (name, raw))
+    return stun, push_dir, push
+
+
+def parse_type(raw, name):
+    text = (_clean(raw) or "melee").lower()
+    if text not in WEAPON_TYPES:
+        raise ValueError("weapon %r: Type %r is not Melee or Ranged" % (name, raw))
+    return text
 
 
 def weapon_tres(row) -> tuple:
@@ -117,7 +147,8 @@ def weapon_tres(row) -> tuple:
     w, h = parse_size(row.get("Size"), name)
     aim, aim_col = parse_aim(row.get("Aim"), name)
     area = check_area(row.get("Area"), name)
-    stun = parse_effect(row.get("Effect"), name)
+    stun, push_dir, push = parse_effect(row.get("Effect"), name)
+    wtype = parse_type(row.get("Type"), name)
     passive_text = _clean(row.get("Passive Effect"))
     passive = items.parse_loot_passive(name, passive_text, allow_empty=True)
     if passive["copy_neighbour"] or passive["bank_shields"] or passive["echo_first_loot"]:
@@ -154,6 +185,9 @@ def weapon_tres(row) -> tuple:
         "aim_column = %d" % aim_col,
         'area = "%s"' % items.gd_str(area),
         "stun = %d" % stun,
+        'push_dir = "%s"' % push_dir,
+        "push = %d" % push,
+        'weapon_type = "%s"' % wtype,
         'goal = "%s"' % items.gd_str(goal),
         "max_charges = %d" % int(charge),
         'description = "%s"' % items.gd_str(_clean(row.get("Passive"))),
@@ -162,6 +196,8 @@ def weapon_tres(row) -> tuple:
         "status_bonuses = %s" % gd(passive["status_bonuses"]),
         "weapon_stun = %s" % gd(passive["weapon_stun"]),
         "stun_per_food = %s" % gd(passive["stun_per_food"]),
+        "replay_gain = %s" % gd(passive["replay_gain"]),
+        "weapon_retrigger = %s" % gd(passive["weapon_retrigger"]),
         'source_game = "%s"' % items.gd_str(_clean(row.get("Game"))),
         "tags = %s" % items.packed(tags),
         'file = "%s"' % items.gd_str(file),

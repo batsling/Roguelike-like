@@ -7,6 +7,8 @@ tools/Roguelikes.xlsx into data/evolutions2.0/ (docs/loot-passives.md §13).
   Name           the weapon it makes (a row of `weapons`)
   Requirement 1  the weapon that evolves (a row of `weapons`); it always turns
   Requirement 2  Any [N] Item(s) or Trinket(s) with "<tag>"
+                 — or the NAME of one item or trinket (Thunder Loop's
+                 `Duplicator`), checked against `items` and `trinkets`
   Outcome        Consume All  — the N tagged things are used up
                  Consume None — they are kept
 
@@ -40,7 +42,19 @@ NEED_RE = re.compile(
 OUTCOMES = {"consume all": True, "consume none": False}
 
 
-def evolution_tres(row, weapons) -> tuple:
+def parse_need(name, need, things):
+    """(count, tag, need_id) for Requirement 2: a tag phrase, or one thing by name."""
+    m = NEED_RE.match(need)
+    if m:
+        return int(m.group(1) or 1), m.group(2).strip().lower(), ""
+    if slugify(need) in things:
+        return 1, "", slugify(need)
+    raise ValueError('evolution %r: Requirement 2 %r is not `Any [N] Item(s) or '
+                     'Trinket(s) with "<tag>"`, nor the name of a row of `items` '
+                     'or `trinkets`' % (name, need))
+
+
+def evolution_tres(row, weapons, things=frozenset()) -> tuple:
     name = str(row["Name"]).strip()
     result = slugify(name)
     base_name = _clean(row.get("Requirement 1"))
@@ -50,12 +64,7 @@ def evolution_tres(row, weapons) -> tuple:
             raise ValueError("evolution %r: %s %r is not a row of `weapons`"
                              % (name, label, raw))
     need = _clean(row.get("Requirement 2"))
-    m = NEED_RE.match(need)
-    if not m:
-        raise ValueError('evolution %r: Requirement 2 %r is not `Any [N] Item(s) or '
-                         'Trinket(s) with "<tag>"`' % (name, need))
-    count = int(m.group(1) or 1)
-    tag = m.group(2).strip().lower()
+    count, tag, need_id = parse_need(name, need, things)
     outcome = (_clean(row.get("Outcome")) or "").lower()
     if outcome not in OUTCOMES:
         raise ValueError("evolution %r: Outcome %r is not Consume All or Consume None"
@@ -74,6 +83,7 @@ def evolution_tres(row, weapons) -> tuple:
         'base = &"%s"' % base,
         "need_count = %d" % count,
         'need_tag = "%s"' % items.gd_str(tag),
+        'need_id = &"%s"' % need_id,
         "consumes = %s" % ("true" if OUTCOMES[outcome] else "false"),
     ]
     return result, "\n".join(lines) + "\n"
@@ -86,10 +96,12 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     weapons = {slugify(r["Name"]) for r in rows(wb["weapons"])}
+    things = {slugify(r["Name"]) for r in rows(wb["items"])} \
+        | {slugify(r["Name"]) for r in rows(wb["trinkets"])}
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(wb["evolutions"]):
-        eid, text = evolution_tres(row, weapons)
+        eid, text = evolution_tres(row, weapons, things)
         if args.list:
             print("=== %s ===\n%s" % (eid, text))
             continue

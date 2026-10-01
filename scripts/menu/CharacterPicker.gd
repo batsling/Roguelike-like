@@ -379,11 +379,12 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		desc.add_theme_color_override("font_color", UITheme.TEXT.lerp(UITheme.TEXT_DIM, 0.3))
 		right.add_child(desc)
 
-	if ch.starting_items.size() > 0:
+	var loadout: PackedStringArray = Data.loadout_names(ch)
+	if not loadout.is_empty():
 		right.add_child(HSeparator.new())
-		right.add_child(_detail_head("Starting Items"))
+		right.add_child(_detail_head("Starting Loadout"))
 		var items_lbl := Label.new()
-		items_lbl.text = ", ".join(Data.item_names(ch.starting_items))
+		items_lbl.text = ", ".join(loadout)
 		items_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		items_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		items_lbl.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5))

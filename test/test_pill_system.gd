@@ -14,6 +14,8 @@ const PILL_IDS := [
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
+	# A lost run's random body (§3.2) is not what this suite is about.
+	GameLoop2.lost_run_spawn_ladder = [0.0]
 
 func _rng() -> RandomNumberGenerator:
 	var r := RandomNumberGenerator.new()

@@ -24,6 +24,8 @@ func _choose_solo(enemy: GoalEnemyData) -> int:
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
+	# A lost run's random body (§3.2) is not what this suite is about.
+	GameLoop2.lost_run_spawn_ladder = [0.0]
 
 func after_each() -> void:
 	GameState.reset_run()
@@ -1117,7 +1119,7 @@ func test_the_rack_can_fill_the_room_infusion_made() -> void:
 
 # --- Censer: the front line sits out every extra turn -----------------------
 #
-# "Enemies in the leftmost column take no extra turns". An EXTRA turn is one a
+# "Enemies in the 2 leftmost columns take no extra turns". An EXTRA turn is one a
 # body gets on top of the lost runs that are the board's only clock (§3.2) —
 # Predatory Scent's is the one on the roster today (§7.6) — so every test here
 # stands a hunter on the board and hands in a game with a status goal unmet.
@@ -1174,6 +1176,16 @@ func test_the_censer_leaves_the_bodies_behind_the_front_line_alone() -> void:
 	GameLoop2.beat_game(false, [], {"status_goals": []})
 	assert_eq(int(_entry_of(inst).get("col", -1)), 2,
 		"a body back down the board still closed on the player")
+
+func test_the_censer_reaches_the_second_column_too() -> void:
+	# `front_column_slow 2`: the column a body steps into the front line from is
+	# held as well, so its extra turn is not a free step into reach.
+	assert_eq(Data.get_item2(&"censer").front_column_slow, 2)
+	var inst: int = _hunter_at(2)
+	_give(&"censer")
+	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
+	assert_eq(int(_hunt(inst, res)["censed"]), 1,
+		"the body in column 2 sat its extra turn out rather than stepping into reach")
 
 func test_the_censer_does_not_touch_a_lost_runs_turn() -> void:
 	# A lost run's turn is the board's own clock, not an extra one.

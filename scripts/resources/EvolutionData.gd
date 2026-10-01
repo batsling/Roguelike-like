@@ -11,7 +11,8 @@ extends Resource
 # `Requirement 1` is the weapon that evolves — it ALWAYS turns into `result`.
 # `Requirement 2` is "Any [N] Item(s) or Trinket(s) with \"<tag>\"": N things the
 # run holds carrying the tag, whether a relic on the shelf (Crown) or a piece in
-# the pack (Garlic, Whetstone). Where they are does not matter.
+# the pack (Garlic, Whetstone). Where they are does not matter. It may instead
+# NAME one item or trinket (Thunder Loop's `Duplicator`), held in `need_id`.
 # `Outcome` says whether those N are used up (`Consume All`) or kept
 # (`Consume None`, King Bomber keeps its Crown).
 
@@ -23,5 +24,7 @@ extends Resource
 # How many tagged things it needs, and the tag.
 @export var need_count: int = 1
 @export var need_tag: String = ""
+# One item or trinket by id instead of a tag, or &"" for a tag requirement.
+@export var need_id: StringName = &""
 # Whether the tagged things are used up.
 @export var consumes: bool = true

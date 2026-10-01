@@ -53,12 +53,13 @@ func _index_of(entry: Dictionary) -> int:
 
 func test_every_trinket_loads_with_art_and_a_passive() -> void:
 	var all: Array = Data.all_trinkets()
-	assert_eq(all.size(), 17, "the sheet's seventeen trinkets all generated")
+	assert_eq(all.size(), 18, "the sheet's eighteen trinkets all generated")
 	for t in all:
 		var trinket: TrinketData = t
 		assert_ne(trinket.description, "", "%s prints what it does" % trinket.id)
 		assert_true(not trinket.triggers.is_empty() or not trinket.stat_bonuses.is_empty()
-			or not trinket.status_bonuses.is_empty() or not trinket.weapon_stun.is_empty(),
+			or not trinket.status_bonuses.is_empty() or not trinket.weapon_stun.is_empty()
+			or not trinket.weapon_retrigger.is_empty(),
 			"%s does something" % trinket.id)
 		var shape: Vector2i = FOOD_SHAPES.get(trinket.id, Vector2i.ONE)
 		assert_eq(trinket.size, shape, "%s is %d wide, %d tall" % [trinket.id, shape.x, shape.y])

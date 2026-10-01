@@ -448,11 +448,12 @@ static func _works_on(a: int, b: int) -> bool:
 	# What the piece RUNS (its own passive, or the one a copier runs).
 	var src: Dictionary = resolve(slot)
 	var run = src.get("def")
-	if run != null and run.get("weapon_stun") is Dictionary \
-			and not (run.get("weapon_stun") as Dictionary).is_empty():
-		if WeaponSystem.aura_targets(a, run.get("weapon_stun"),
-				int((entry as Dictionary).get("rot", 0))).has(b):
-			return true
+	for aura_key in ["weapon_stun", "weapon_retrigger"]:
+		if run != null and run.get(aura_key) is Dictionary \
+				and not (run.get(aura_key) as Dictionary).is_empty():
+			if WeaponSystem.aura_targets(a, run.get(aura_key),
+					int((entry as Dictionary).get("rot", 0))).has(b):
+				return true
 	var fa: StringName = food_id_at(a)
 	if fa != &"" and adjacent_pieces(b).has(a):
 		# A food lowers a DIFFERENT food's target, and feeds a weapon that counts food.

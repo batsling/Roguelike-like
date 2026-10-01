@@ -9,4 +9,5 @@ result = &"stankus_toothpick"
 base = &"hero_sword"
 need_count = 1
 need_tag = "garlic"
+need_id = &""
 consumes = true

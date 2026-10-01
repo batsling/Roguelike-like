@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EvolutionData" load_steps=2 format=3 uid="uid://evolution2_thunder_loop"]
+
+[ext_resource type="Script" path="res://scripts/resources/EvolutionData.gd" id="1_evolution"]
+
+[resource]
+script = ExtResource("1_evolution")
+id = &"thunder_loop"
+result = &"thunder_loop"
+base = &"lightning_ring"
+need_count = 1
+need_tag = ""
+need_id = &"duplicator"
+consumes = false

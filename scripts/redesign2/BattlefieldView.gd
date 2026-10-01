@@ -227,6 +227,10 @@ var _throw_index: int = -1
 # the whole board is drawn against one answer.
 var _armed: Dictionary = {}
 var _arrow_layer: Control            # the direction arrows, above every body
+var _boss_warning: Label             # "the next spawn brings a boss", above the grid
+var _pressure_small: Control         # the strip's small-print row, which the warning replaces
+var _strike_layer: Control           # what the last swing hit (GameLoop2.last_strike)
+var _drawn_strike: Dictionary = {}   # the record last drawn, so a new one pulses once
 # True for the duration of refresh(), and the reason is a real crash rather than
 # bookkeeping. refresh() DETACHES every body on the board, and detaching the one
 # the mouse happens to be over makes Godot fire that body's `mouse_exited` — from
@@ -568,6 +572,7 @@ func _build_pressure_bar() -> Control:
 	var small := HFlowContainer.new()
 	small.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
 	lines.add_child(small)
+	_pressure_small = small
 
 	_pressure_why = Label.new()
 	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -587,6 +592,20 @@ func _build_pressure_bar() -> Control:
 	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	small.add_child(_size_label)
+
+	# THE WARNING (§3.2, §19.6): shown only while the next spawn is a difficulty up
+	# and a game is in play — the one moment a LOST RUN can bring a boss on mid-
+	# game. Says what the next press risks, in words, right above the grid it
+	# would land on. It TAKES THE SMALL PRINT'S ROW while it is up rather than
+	# adding one: the page is fitted to a 720p window to the pixel, and the small
+	# print (hops, boss countdown, difficulty) is all on the strip's hover card.
+	_boss_warning = Label.new()
+	_boss_warning.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_boss_warning.add_theme_color_override("font_color", UITheme.DANGER)
+	_boss_warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boss_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_warning.visible = false
+	lines.add_child(_boss_warning)
 	return _pressure_panel
 
 func _strip_dot() -> Label:
@@ -663,7 +682,7 @@ func _refresh_pressure() -> void:
 		"accent": band,
 		"lines": [
 			"%s — +1 if nothing went down, and escaping always adds 1." % acts,
-			"A lost run is the only thing that moves them: one turn, wherever you stand.",
+			"A lost run moves them one turn — and from the second lost run of a game, may stand one more up.",
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
 			_boss_tip(to_boss),
@@ -678,9 +697,25 @@ func _refresh_pressure() -> void:
 		(l as Label).tooltip_text = ""
 	_pressure_ladder_text = ladder_tip
 
+	_boss_warning.text = boss_warning_text()
+	_boss_warning.visible = _boss_warning.text != ""
+	_pressure_small.visible = not _boss_warning.visible
+
 	var tier: int = RunDifficulty.current_tier()
 	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
 	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+# The warning above the grid while a lost run could bring the next boss on, or ""
+# (§3.2): the next spawn is a difficulty up and a game is in play. Names the
+# chance the next lost run spawns — 0% on a game's first, so the line says it is
+# safe this once rather than leaving the player to work it out.
+func boss_warning_text() -> String:
+	if not GameLoop2.lost_run_may_bring_boss():
+		return ""
+	var pct: int = roundi(GameLoop2.lost_run_spawn_chance() * 100.0)
+	if pct <= 0:
+		return "⚠ Next spawn brings a BOSS — your next lost run can't spawn it."
+	return "⚠ Next spawn brings a BOSS — a lost run now has a %d%% chance." % pct
 
 # The strip's two §19.8 readouts, in a sentence each for the hover card.
 func _spawn_tip(owed: int, why_free: String) -> String:
@@ -695,10 +730,10 @@ func _spawn_tip(owed: int, why_free: String) -> String:
 func _boss_tip(to_boss: int) -> String:
 	if to_boss == 1:
 		return ("The next spawn is a DIFFICULTY UP: the tier steps, the board grows, and "
-			+ "a boss walks on top of whatever else arrives.")
+			+ "a boss walks on top of whatever else arrives — a lost run's spawn included.")
 	return ("Every %dth spawn is a difficulty up — the tier steps, the board grows and a "
-		+ "boss walks on: %d more to go. A node arriving and a game ending each count "
-		+ "once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
+		+ "boss walks on: %d more to go. A node arriving, a game ending and a lost "
+		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach
@@ -1249,6 +1284,16 @@ func _build() -> void:
 	_badge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_badge_layer)
 
+	# WHAT THE LAST SWING HIT (GameLoop2.last_strike): every square it covered,
+	# washed in the weapon's orange, and each strike numbered when there was more
+	# than one — so a Lightning Ring the player never aimed still shows where it
+	# went. Above the badges so it is seen; under the arrows, so it never covers
+	# something that can be pressed. Never clickable.
+	_strike_layer = Control.new()
+	_strike_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_strike_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_strike_layer)
+
 	# The push arrows go above even the badges — while the verb is armed they are
 	# the only thing on the board that can be pressed, and an arrow half-hidden
 	# under a health badge is an arrow that gets mis-clicked. Empty (and so
@@ -1314,7 +1359,8 @@ func refresh() -> void:
 	_rebuild_cells()
 
 	# Clear the overlays and the overflow lane; the backdrop panels are static.
-	for layer in [_ground_layer, _tile_layer, _enemy_layer, _badge_layer, _arrow_layer]:
+	for layer in [_ground_layer, _tile_layer, _enemy_layer, _badge_layer, _strike_layer,
+			_arrow_layer]:
 		for c in layer.get_children():
 			layer.remove_child(c)
 			c.queue_free()
@@ -1385,6 +1431,8 @@ func refresh() -> void:
 		_offgrid_box.add_child(_offgrid_token(queued[i]))
 	if drawn < queued.size():
 		_offgrid_box.add_child(_offgrid_more(queued.slice(drawn)))
+
+	_draw_last_strike()
 
 	# Drop a selection that died / was bombed, then relabel the combat verbs.
 	if push_target > 0 and _stack_entry(push_target).is_empty():
@@ -1852,6 +1900,59 @@ func _clear_swing_preview() -> void:
 		if is_instance_valid(r):
 			r.queue_free()
 	_swing_preview.clear()
+
+# PAINT WHAT THE LAST SWING HIT into `_strike_layer` (§12). Each square a strike
+# covered gets the weapon's orange; with more than one strike, the strike's number
+# sits in the corner of the first square it covered, so "struck three times" reads
+# as three places in an order. A record that is new since the last paint pulses a
+# few times, the way fresh ground does, and then holds until the board moves.
+func _draw_last_strike() -> void:
+	var rec: Dictionary = GameLoop2.last_strike
+	if rec.is_empty():
+		_drawn_strike = {}
+		return
+	var fresh: bool = not is_same(rec, _drawn_strike)
+	_drawn_strike = rec
+	var strikes: Array = rec.get("strikes", [])
+	var numbered: bool = strikes.size() > 1
+	var painted: Dictionary = {}
+	var nodes: Array = []
+	for i in range(strikes.size()):
+		var cells: Array = (strikes[i] as Dictionary).get("cells", [])
+		for cell in cells:
+			if not GameLoop2._on_board(cell.x, cell.y):
+				continue
+			if not painted.has(cell):
+				painted[cell] = true
+				var r := Panel.new()
+				r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				r.position = _cell_pos(cell.y, cell.x)
+				r.size = Vector2(_cell, _cell)
+				r.add_theme_stylebox_override("panel",
+					UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.38), 6, 0, 4,
+						WeaponSystem.WEAPON_COLOR.lightened(0.25)))
+				r.tooltip_text = "Hit by %s." % String(rec.get("label", "the last swing"))
+				_strike_layer.add_child(r)
+				nodes.append(r)
+		if numbered and not cells.is_empty():
+			var first: Vector2i = cells[0]
+			if GameLoop2._on_board(first.x, first.y):
+				var tag := _corner_badge(str(i + 1), WeaponSystem.WEAPON_COLOR,
+					UITheme.FONT_HEAD)
+				tag.add_theme_color_override("font_color", WeaponSystem.WEAPON_COLOR.lightened(0.35))
+				tag.position = _cell_pos(first.y, first.x) + Vector2(6 + 16 * (i % 3), 4)
+				_strike_layer.add_child(tag)
+				nodes.append(tag)
+	if fresh and is_inside_tree():
+		for n: Control in nodes:
+			n.modulate.a = 0.3
+			var t: Tween = n.create_tween()
+			t.set_loops(3)
+			t.tween_property(n, "modulate:a", 1.0, 0.25).set_trans(Tween.TRANS_SINE)
+			t.tween_property(n, "modulate:a", 0.5, 0.25).set_trans(Tween.TRANS_SINE)
+			t.chain().tween_callback(func():
+				if is_instance_valid(n):
+					n.modulate.a = 1.0)
 
 # What one lit square promises, for its own tooltip. The bomb's version is asked
 # of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's

@@ -14,3 +14,4 @@ effect = [{"op": "gain_hp", "value": 2}]
 file = "VITheLovers"
 icon = "Isaac_Major_Arcana"
 loot_type = "Usable"
+tags = PackedStringArray("tarot")

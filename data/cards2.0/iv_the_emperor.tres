@@ -14,3 +14,4 @@ effect = [{"op": "spawn_boss"}]
 file = "IVTheEmperor"
 icon = "Isaac_Major_Arcana"
 loot_type = "Usable"
+tags = PackedStringArray("tarot")

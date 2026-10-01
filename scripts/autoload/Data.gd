@@ -432,8 +432,12 @@ func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
 # one use and a known quantity, so the interesting ones can afford to be the good
 # ones; what stops that from being free is the ladder, which reaches the Rare rung
 # on about one card drop in twenty.
-func roll_card(rng: RandomNumberGenerator = null) -> CardData:
+func roll_card(rng: RandomNumberGenerator = null, tag: String = "") -> CardData:
 	var pool: Array = _cards.values()
+	# A tagged draw (a starting loadout's "random joker card") picks from that
+	# family alone, on the same rarity ladder.
+	if tag != "":
+		pool = pool.filter(func(c): return c is CardData and (c as CardData).tags.has(tag))
 	if pool.is_empty():
 		return null
 	var r: RandomNumberGenerator = rng
@@ -593,6 +597,32 @@ func item_names(ids: Array) -> PackedStringArray:
 	for iid in ids:
 		var it: ItemData = get_item_any(StringName(iid))
 		out.append(it.display_name if it != null else String(iid))
+	return out
+
+# A character's whole Starting loadout in words — its relics, then its loot, a
+# rolled piece said as what it is ("1 random joker card") — for the two character
+# screens. Empty when it brings nothing.
+func loadout_names(ch: CharacterData) -> PackedStringArray:
+	var out: PackedStringArray = item_names(ch.starting_items)
+	for spec in ch.starting_loot:
+		if not (spec is Dictionary):
+			continue
+		var kind: String = String(spec.get("type", ""))
+		if spec.has("id"):
+			var id := StringName(spec["id"])
+			var res: Resource = null
+			match kind:
+				"weapon": res = get_weapon(id)
+				"trinket": res = get_trinket(id)
+				"card": res = get_card(id)
+				"wand": res = get_wand(id)
+				"bag": res = get_bag(id)
+			out.append(String(res.get("display_name")) if res != null else String(id))
+		else:
+			var n: int = int(spec.get("count", 1))
+			var tag: String = String(spec.get("tag", "")).replace("_", " ")
+			out.append("%d random %s%s%s" % [n, (tag + " ") if tag != "" else "", kind,
+				"" if n == 1 else "s"])
 	return out
 
 func get_goal_enemy(id: StringName) -> GoalEnemyData:

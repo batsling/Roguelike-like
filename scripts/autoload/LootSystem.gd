@@ -101,6 +101,9 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 		var wctx: Dictionary = ctx.duplicate()
 		wctx["weapon_stun"] = WeaponSystem.stun_for(index)
 		wctx["weapon_slot"] = GameState.loot_slot_of(index)
+		# Duplicator: how many extra times the whole swing fires, read off the pack
+		# now for the same reason the Stun is.
+		wctx["weapon_triggers"] = WeaponSystem.retriggers_for(index)
 		(entry as Dictionary)["charges"] = 0
 		GameState.emit_signal("inventory_changed")
 		return WeaponSystem.swing(entry, wctx)
@@ -628,8 +631,16 @@ func weapon_description(entry: Dictionary) -> String:
 	var w: WeaponData = WeaponSystem.def(entry)
 	if w == null:
 		return ""
-	var lines: Array = ["Swing: %d Stun to every enemy in a %s, aimed %s." % [
-		w.stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)],
+	var swing: String = "Swing: %d Stun to every enemy in a %s, aimed %s." % [
+		w.stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
+	if w.push > 0:
+		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",
+			{"right": "back", "left": "forward", "up": "up", "down": "down"}.get(w.push_dir, "back")]
+	var replays: int = WeaponSystem.replays_of(entry)
+	if replays > 0:
+		swing += " Strikes %d times (%d Replay%s)." % [1 + replays, replays,
+			"" if replays == 1 else "s"]
+	var lines: Array = [swing,
 		"Charges when you complete its goal: %s (once per game, won or lost)." % w.goal]
 	if w.description != "":
 		lines.append(w.description)

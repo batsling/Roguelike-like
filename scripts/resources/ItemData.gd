@@ -485,20 +485,19 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # bool, so two of them add two columns and two rows.
 @export var grid_grow: bool = false
 
-# Censer: every body standing in the FRONT column (col 1 — the ones in reach of
-# you) sits out every EXTRA turn (§8.2): a turn a body is handed on top of the
+# Censer: every body standing in the FRONT `front_column_slow` columns (col 1 is
+# the one in reach of you; Censer reaches 2) sits out every EXTRA turn (§8.2): a turn a body is handed on top of the
 # lost runs that are the board's only ordinary clock (§3.2). Predatory Scent's is
 # the one on today's roster; anything added that hands a body a turn of its own
 # goes through the same `extra` beat and is covered without touching this.
 #
-# IT ONLY EVER TOUCHES THE FRONT COLUMN. A body further back spends its turns
-# WALKING, so holding one there would only slow its approach; in the front column
-# a turn is a hit on you, so this is armour that reads as the incense keeping them
-# back.
+# IT ONLY EVER TOUCHES THE FRONT OF THE BOARD. A body further back spends its
+# turns WALKING, and the second column is the one a body steps into the front from
+# — holding it there is a turn of reach bought back. 0 is "not a Censer".
 #
-# Does not stack: GameState.censes_extra_turns answers yes or no. Read by
+# Does not stack: the WIDEST copy wins (GameState.censer_columns). Read by
 # GameLoop2._resolve_enemy_turn.
-@export var front_column_slow: bool = false
+@export var front_column_slow: int = 0
 
 # Philosophers Stone / Runic Dome: the battlefield grows by one COLUMN only —
 # the length, not the width. The distinction is the whole of what separates them

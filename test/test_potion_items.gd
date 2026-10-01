@@ -21,6 +21,8 @@ func before_each() -> void:
 	GameLoop2.reset()
 	GameState.max_hp = 20
 	GameState.hp = 20
+	# A lost run's random body (§3.2) is not what this suite is about.
+	GameLoop2.lost_run_spawn_ladder = [0.0]
 
 func after_each() -> void:
 	GameState.reset_run()

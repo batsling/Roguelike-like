@@ -14,3 +14,4 @@ effect = [{"op": "double_stat", "stat": "gold", "floor": 2}]
 file = "2OfDiamonds"
 icon = "Isaac_Playing_Cards"
 loot_type = "Usable"
+tags = PackedStringArray("playing_card")

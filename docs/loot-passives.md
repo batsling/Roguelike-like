@@ -468,7 +468,7 @@ N draws over the debuffs you carry, each taking one stack off.
 
 A **weapon** sits in the pack like a trinket (it has a footprint and neighbours),
 is **aimed at the board like a thrown potion**, and **charges off its own goal**.
-Six, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
+Ten, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
 `data/weapons2.0/`, `WeaponData`; runtime in `scripts/runtime/WeaponSystem.gd`).
 
 **Charging.** A weapon is found **empty**. Its goal (the sheet's `Goal` column,
@@ -494,6 +494,7 @@ are covered. The swing spends every charge and the weapon stays in its slot.
 | `column N` | that column |
 | `enemy` | a square an enemy stands on |
 | `none` | nothing — laid from the front column's middle row |
+| `random` | nothing — each strike lands on a random enemy standing on the board (its square nearest you), and whiffs on an empty board |
 
 | Area | what it hits, from the clicked square |
 |---|---|
@@ -504,6 +505,30 @@ are covered. The swing spends every charge and the weapon stays in its slot.
 
 Shapes are clipped, never wrapped (`GameLoop2.area_cells`, so potions can use the
 new words too). The generator refuses an Area or Aim it cannot read.
+
+**The Effect cell** is `stun N`, optionally followed by `push <dir> N`
+(`right` is away from you, `left` toward you, `up`, `down`). **Hero Longsword** is
+`stun 2, push right 1`: after the Stun lands, every body it covered is shoved one
+square back — free (`GameLoop2.shove`, not the Push verb), farthest-first so a line
+moves together, as far as each fits. The **Type** column is `Melee` or `Ranged`.
+
+**What the board shows afterwards.** Every swing writes `GameLoop2.last_strike`
+— each strike's squares and the bodies it covered — and the board washes those
+squares in the weapon's orange (numbered when there was more than one strike),
+pulsing once, until the board next moves (a lost run's turn, a game chosen or
+reported). A Brimstone blast writes it too. This is what tells the player where a
+`random` strike went.
+
+**More strikes, more firings.**
+- **Replays** (Lightning Ring, Thunder Loop — `replay_on_use +1 max=4`): every swing
+  leaves the weapon +1 Replay, up to 4; each Replay is one more strike per swing
+  (so 1, then 2, … up to 5 strikes). Kept on the pack entry as `replays`, so **it
+  rides an evolution** — a Lightning Ring that has earned 3 is a Thunder Loop with 3.
+- **Duplicator** (trinket — `weapon_retrigger +1 dirs=adjacent`): a weapon beside it
+  fires its whole swing once more (`WeaponSystem.retriggers_for`). An aimed swing
+  fires at the same square, so the Stun stacks; a random one rolls new targets.
+- **Bloody Tear** (`weapon_hit if_self: gain_hp 1`): a new hook, `weapon_hit`, fires
+  once per body per strike, stunned or not.
 
 **What sharpens a swing** (`WeaponSystem.stun_parts`, shown in the hover):
 - the weapon's own `stun N`;
@@ -533,14 +558,15 @@ counts the unidentified pieces in its own cells.
 The `evolutions` sheet (`generate_evolution_tres.py` → `data/evolutions2.0/`,
 `EvolutionData`): **Name** (what it becomes), **Requirement 1** (the weapon that
 evolves — it always turns), **Requirement 2** (`Any [N] Item(s) or Trinket(s) with
-"tag"`), **Outcome** (`Consume All` uses the tagged things up, `Consume None` keeps
+"tag"`, or the NAME of one item or trinket — Thunder Loop's `Duplicator`,
+`EvolutionData.need_id`), **Outcome** (`Consume All` uses the tagged things up, `Consume None` keeps
 them). Both weapon names are checked against `weapons` at generation.
 
 A requirement counts **wherever it is held** — a relic on the shelf (Crown) or a
 trinket anywhere in the pack. When one of a weapon's evolutions is met, its pack
 button reads **Evolve** and its card has an **Evolve →** button; with more eligible
 things than needed, the player picks which. The new weapon keeps the old one's
-charges (capped), `uid`, goal claim and place — re-seated where it fits if the
+charges (capped), `uid`, goal claim, Replays and place — re-seated where it fits if the
 bigger shape no longer does (`WeaponSystem.evolve`).
 
 ## 14. The hover glow
