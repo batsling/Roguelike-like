@@ -21,6 +21,7 @@ start_bombs = 0
 start_keys = 0
 start_random = 0
 starting_items = Array[StringName]([])
+starting_loot = []
 starting_weapon = &""
 level_up_condition = "Perfect a game by beating it without losing"
 level_up_reward = "Gain +1 Dash"

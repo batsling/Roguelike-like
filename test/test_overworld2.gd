@@ -13,7 +13,22 @@ var _ui
 func before_each() -> void:
 	_ui = SCENE.instantiate()
 	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
+	_drop_starting_loot()
 	_open_at_first_offering()
+	# A lost run's random body (§3.2) is not what this suite is about.
+	GameLoop2.lost_run_spawn_ladder = [0.0]
+
+# THE ROSTER'S FIRST CHARACTER CARRIES LOOT NOW: Antonio starts with a Whip (his
+# Starting loadout). The suite boots him by default and is written against an
+# empty pack — loot at index 0, a pack "1/9", a checklist with no weapon row — so
+# his loadout is taken back off here. test_weapons covers the loadout itself.
+func _drop_starting_loot() -> void:
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	if ch == null or ch.starting_loot.is_empty():
+		return
+	GameState.loot_items = GameState.loot_items.filter(
+		func(e): return not WeaponSystem.is_weapon(e))
+	GameState.emit_signal("inventory_changed")
 
 func after_each() -> void:
 	GameState.reset_run()

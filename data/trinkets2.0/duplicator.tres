@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_duplicator"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"duplicator"
+display_name = "Duplicator"
+rarity = "Rare"
+size = Vector2i(1, 1)
+description = "Adjacent Weapons trigger an extra time"
+source_game = "Vampire Survivors"
+tags = PackedStringArray("ring")
+file = "Duplicator"
+loot_type = "Passive"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_retrigger = {"amount": 1, "dirs": ["up", "down", "left", "right"]}

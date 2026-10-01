@@ -6811,7 +6811,7 @@ func _build_attempt_strip() -> Control:
 	# actually does is not a footnote to the press: it is what the button IS, so it
 	# is written on it, in the terms the board is in, in the colour the board uses
 	# for a turn going against you.
-	_attempt_btn.text = "Lost a run  ⚔\n+1 Enemy Turn"
+	_attempt_btn.text = attempt_button_text()
 	_attempt_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
@@ -6838,6 +6838,12 @@ func _build_attempt_strip() -> Control:
 	row.add_child(spacer)
 	return wrap
 
+# The tracker button's two lines: the verb, then what the press costs — a turn,
+# and the chance of a body walking on (GameLoop2.lost_run_spawn_chance).
+func attempt_button_text() -> String:
+	return "Lost a run  ⚔\n+1 Enemy Turn · %d%% spawn" % roundi(
+		GameLoop2.lost_run_spawn_chance() * 100.0)
+
 # Repaint the attempt strip: how many runs have been lost, the shields still
 # standing (one pip each, and a lost run does not spend them), and what the next
 # press does.
@@ -6859,6 +6865,9 @@ func _refresh_attempts() -> void:
 			GameState.temp_shields_text(left), GameState.shields_text(bonus)]
 	var live: bool = _phase == Phase.PLAYING and not GameLoop2.run_over
 	_attempt_btn.disabled = not live or _resolving
+	# …and the chance the press stands a body up (§3.2), which climbs with every
+	# lost run that stood nothing up. On the button for the same reason the turn is.
+	_attempt_btn.text = attempt_button_text()
 	# THERE IS NO UNDO BESIDE THE TRACKER any more. It was there because the
 	# tracker is hand-driven and a mis-click ought to be reversible, and it was
 	# never worth what it cost to explain: it could only take back a turn played by

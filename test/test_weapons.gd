@@ -57,7 +57,7 @@ func _body(cell: Vector2i) -> int:
 
 func test_every_weapon_loads_with_art_a_goal_and_a_swing() -> void:
 	var all: Array = Data.all_weapons()
-	assert_eq(all.size(), 6, "the sheet's six weapons all generated")
+	assert_eq(all.size(), 10, "the sheet's ten weapons all generated")
 	for w in all:
 		var weapon: WeaponData = w
 		assert_ne(weapon.goal, "", "%s has a goal to charge it" % weapon.id)
@@ -68,7 +68,7 @@ func test_every_weapon_loads_with_art_a_goal_and_a_swing() -> void:
 		"Size is rows first: Hero Longsword's 3x1 stands three tall")
 
 func test_the_evolutions_name_real_weapons() -> void:
-	assert_eq(Data.all_evolutions().size(), 4)
+	assert_eq(Data.all_evolutions().size(), 6)
 	for e in Data.all_evolutions():
 		var evo: EvolutionData = e
 		assert_not_null(Data.get_weapon(evo.base), "%s evolves from a weapon" % evo.id)
@@ -398,3 +398,123 @@ func test_a_turned_whetstone_sharpens_to_its_sides() -> void:
 	assert_eq(WeaponSystem.stun_for(sword), 2, "turned, it reaches left and right")
 	assert_true((LootPassives.influence(_index(4))["affects"] as Array).has(sword),
 		"and the hover glow follows the turn")
+
+
+# --- random aim, Replays, Duplicator, push, Bloody Tear (§12) ---------------------
+
+func test_a_random_weapon_needs_no_click_and_lands_on_an_enemy() -> void:
+	_weapon(&"lightning_ring", 0, 3)
+	assert_false(LootSystem.must_aim(_at(0)), "a random swing opens no picker")
+	var inst: int = _body(Vector2i(3, 1))
+	LootSystem.use_loot(_index(0), {})
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1,
+		"the one body on the board is the one it found")
+
+func test_a_random_swing_at_an_empty_board_whiffs() -> void:
+	_weapon(&"lightning_ring", 0, 3)
+	var out: Dictionary = LootSystem.use_loot(_index(0), {})
+	assert_true(String((out["logs"] as Array)[0]).contains("hits nothing"))
+
+func test_lightning_ring_gains_a_replay_each_swing_up_to_four() -> void:
+	var ring: Dictionary = _weapon(&"lightning_ring", 0, 3)
+	var inst: int = _body(Vector2i(2, 1))
+	LootSystem.use_loot(_index(0), {})
+	assert_eq(WeaponSystem.replays_of(_at(0)), 1, "one swing, one Replay")
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1, "the first swing strikes once")
+	GameState.charge_loot_entry(_at(0), 3)
+	LootSystem.use_loot(_index(0), {})
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 3,
+		"the second strikes twice — 1 + its Replay")
+	assert_eq((GameLoop2.last_strike["strikes"] as Array).size(), 2,
+		"and the board is told about both strikes")
+	for _i in range(5):
+		GameState.charge_loot_entry(_at(0), 3)
+		LootSystem.use_loot(_index(0), {})
+	assert_eq(WeaponSystem.replays_of(_at(0)), 4, "Replays stop at 4")
+	assert_true(WeaponSystem.is_weapon(ring))
+
+func test_replays_ride_the_evolution_into_thunder_loop() -> void:
+	var ring: Dictionary = _weapon(&"lightning_ring", 0, 2)
+	ring["replays"] = 3
+	assert_true(WeaponSystem.evolutions_ready(_at(0)).is_empty(), "no Duplicator yet")
+	_trinket(&"duplicator", 8)
+	var ready: Array = WeaponSystem.evolutions_ready(_at(0))
+	assert_eq(ready.size(), 1, "a NAMED requirement: the Duplicator itself")
+	assert_eq(WeaponSystem.need_words(ready[0]["evo"]), "Duplicator")
+	var grown: Dictionary = WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
+	assert_eq(StringName(grown.get("id", "")), &"thunder_loop")
+	assert_eq(WeaponSystem.replays_of(grown), 3, "the Replays it earned come with it")
+	assert_eq(WeaponSystem.charges_of(grown), 2, "and its charges")
+	assert_eq(GameState.get_loot_count("trinket"), 1, "Consume None keeps the Duplicator")
+
+func test_a_duplicator_fires_an_adjacent_weapon_twice() -> void:
+	_weapon(&"wooden_sword", 0, 3)        # 0 and 3
+	var inst: int = _body(Vector2i(1, 1))
+	assert_eq(WeaponSystem.retriggers_for(_index(0)), 0)
+	_trinket(&"duplicator", 1)             # beside it
+	assert_eq(WeaponSystem.retriggers_for(_index(0)), 1, "one extra firing")
+	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 2,
+		"an aimed swing fired twice stacks its Stun on the same body")
+
+func test_a_duplicator_out_of_reach_does_nothing() -> void:
+	_weapon(&"wooden_sword", 0)            # 0 and 3
+	_trinket(&"duplicator", 8)
+	assert_eq(WeaponSystem.retriggers_for(_index(0)), 0)
+
+func test_hero_longsword_pushes_what_it_hits_away_from_you() -> void:
+	var w: WeaponData = Data.get_weapon(&"hero_longsword")
+	assert_eq([w.push_dir, w.push], ["right", 1], "the sheet's `push right 1`")
+	_weapon(&"hero_longsword", 0, 3)       # 0, 3 and 6
+	var front: int = _body(Vector2i(1, 1))
+	var behind: int = _body(Vector2i(2, 1))
+	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
+	assert_eq(int(GameLoop2.entry_for(behind).get("col", 0)), 3,
+		"the body further back moves first…")
+	assert_eq(int(GameLoop2.entry_for(front).get("col", 0)), 2,
+		"…so the one in front has room to follow")
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(front)), 2, "after its Stun")
+
+func test_a_push_into_a_wall_stays_put() -> void:
+	var inst: int = _body(Vector2i(GameLoop2.grid_cols(), 0))
+	assert_eq(GameLoop2.shove(inst, GameLoop2.PUSH_BACK, 1), 0, "no room past the back")
+	assert_eq(int(GameLoop2.entry_for(inst).get("col", 0)), GameLoop2.grid_cols())
+
+func test_bloody_tear_heals_for_every_enemy_it_hits() -> void:
+	_weapon(&"bloody_tear", 0, 3)          # 0, 1, 3, 4
+	_body(Vector2i(1, 0))
+	_body(Vector2i(1, 1))
+	GameState.max_hp = 20
+	GameState.hp = 10
+	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
+	assert_eq(GameState.hp, 12, "two bodies hit, two Health")
+
+func test_the_board_forgets_the_swing_when_it_moves() -> void:
+	_weapon(&"wooden_sword", 0, 3)
+	_body(Vector2i(1, 1))
+	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
+	var strike: Array = GameLoop2.last_strike.get("strikes", [])
+	assert_eq(strike.size(), 1)
+	assert_true(((strike[0] as Dictionary)["cells"] as Array).has(Vector2i(1, 1)),
+		"it remembers the square it hit")
+	GameLoop2.attempt_turn()
+	assert_true(GameLoop2.last_strike.is_empty(), "a turn moves the board, so the picture goes")
+
+# --- a starting loadout's loot ----------------------------------------------------
+
+func test_antonio_starts_with_an_empty_whip() -> void:
+	var ch: CharacterData = Data.get_character2(&"antonio_belpaese")
+	assert_eq(ch.starting_loot, [{"type": "weapon", "id": "whip"}])
+	GameState.apply_character2(ch)
+	var whips: Array = GameState.loot_items.filter(
+		func(e): return StringName(e.get("id", "")) == &"whip")
+	assert_eq(whips.size(), 1, "the Whip is in the pack")
+	assert_eq(WeaponSystem.charges_of(whips[0]), 0, "empty, like one found")
+
+func test_erratic_deck_starts_with_a_random_joker() -> void:
+	GameState.apply_character2(Data.get_character2(&"erratic_deck"))
+	var cards: Array = GameState.loot_items.filter(
+		func(e): return String(e.get("type", "")) == "card")
+	assert_eq(cards.size(), 1)
+	assert_true(Data.get_card(StringName(cards[0]["id"])).tags.has("joker"),
+		"drawn from the jokers alone")

@@ -254,6 +254,11 @@ def card_tres(row) -> tuple:
     lines.append('file = "%s"' % gd_str(file))
     lines.append('icon = "%s"' % gd_str(icon))
     lines.append('loot_type = "%s"' % gd_str(loot_type))
+    # The sheet's `Tags` (joker, tarot, playing_card) — what a "random joker card"
+    # in a starting loadout draws from.
+    tags = [t.strip().lower() for t in _clean(row.get("Tags")).split(",") if t.strip()]
+    if tags:
+        lines.append("tags = PackedStringArray(%s)" % ", ".join('"%s"' % gd_str(t) for t in tags))
     if passive is not None:
         lines.append("passive = true")
         lines.append("triggers = %s" % gd_value(passive["triggers"]))

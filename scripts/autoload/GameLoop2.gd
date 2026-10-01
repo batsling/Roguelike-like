@@ -94,6 +94,9 @@ const ATTEMPT_TURNS: int = 1
 # much is a goal worth" is a question with an answer somewhere.
 const GOAL_HIT: int = 1
 const BOMB_HIT: int = 1
+# Brimstone Bombs: the Stun its rays lay on every body they cross outside the
+# blast's centre (§4). The centre still takes BOMB_HIT.
+const BRIMSTONE_STUN: int = 1
 
 # What a goal hit that does NOT finish its body costs it instead: this many turns
 # of Stun (§7.2). It replaced Staggered, which held the survivor for the rest of
@@ -793,6 +796,37 @@ var last_attempt_turn: Dictionary = {}
 # discount and starts being the point.
 var hurt_this_game: bool = false
 
+# WHAT THE LAST SWING HIT, for the board to show (§12): {label, strikes:
+# [{cells, instances}]}, one strike per entry in the order they landed — a
+# Lightning Ring's random strikes are numbered on the board by it. Set by a weapon
+# swing and by a Brimstone blast; cleared the moment the board moves on its own (a
+# lost run's turn, a game chosen or reported), so it never describes a board that
+# has since changed under it. Runtime only — it is a picture, not a fact of the run.
+var last_strike: Dictionary = {}
+
+func set_last_strike(label: String, strikes: Array) -> void:
+	last_strike = {"label": label, "strikes": strikes}
+
+func note_strike(cells: Array, instances: Array, label: String) -> void:
+	set_last_strike(label, [{"cells": cells.duplicate(), "instances": instances.duplicate()}])
+
+func clear_last_strike() -> void:
+	last_strike = {}
+
+# THE LOST-RUN SPAWN (§3.2). Every lost run has a chance to stand one body up at
+# the back column, rolled from the game in play's type at the run's tier — and the
+# chance CLIMBS with each lost run that stood nothing up: 25%, 50%, 75%, then
+# certain. A spawn drops it back to the bottom, and so does the end of the game
+# (`_clear_attempts`). So a long bad evening averages about one body per two lost
+# runs, never one per run. `lost_run_spawn_step` is the rung, 0-based.
+const LOST_RUN_SPAWN_CHANCES: Array = [0.25, 0.5, 0.75, 1.0]
+var lost_run_spawn_step: int = 0
+# The ladder in force — LOST_RUN_SPAWN_CHANCES, put back by every reset(). A suite
+# whose subject is something else a lost run does sets it to [0.0] in before_each,
+# the way test_overworld2 disarms the board, so a random body cannot walk into a
+# test about Health or shields.
+var lost_run_spawn_ladder: Array = LOST_RUN_SPAWN_CHANCES.duplicate()
+
 # Summary of the most recent beat_game(), for the log / HUD / tests. Rebuilt each
 # resolve; see beat_game for its shape.
 var last_result: Dictionary = {}
@@ -837,6 +871,7 @@ func reset() -> void:
 	_clear_game_record()
 	last_attempt_turn = {}
 	hurt_this_game = false
+	lost_run_spawn_ladder = LOST_RUN_SPAWN_CHANCES.duplicate()
 	bashed.clear()
 	transmuted.clear()
 	run_over = false
@@ -963,6 +998,7 @@ func serialize() -> Dictionary:
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
+		"lost_run_spawn_step": lost_run_spawn_step,
 		# What the game in play has already been answered for (§2.1). Saved with
 		# the tracker and for the same reason: a run reloaded mid-game must not
 		# offer a goal the player already resolved, nor bill a demand they paid.
@@ -1160,6 +1196,7 @@ func restore(data: Dictionary) -> void:
 	# again the first time a swing gets through, rather than being open on a run
 	# that never earned it.
 	hurt_this_game = bool(data.get("hurt_this_game", false))
+	lost_run_spawn_step = int(data.get("lost_run_spawn_step", 0))
 	# What the game in play was already answered for (§2.1). Absent from an older
 	# save, which loads as "nothing has been ticked yet" — the same safe direction
 	# the gate above takes.
@@ -2073,9 +2110,45 @@ func log_attempt() -> String:
 	TriggerBus.run_lost.emit({
 		"attempt": attempt_costs.size(), "goals_met": goals_met_this_game,
 	})
+	# …and then the chance of a body walking on (§3.2). AFTER the turn, so it walks
+	# on at the back and acts from the next lost run like any other arrival.
+	if not run_over:
+		last_attempt_turn["lost_run_spawn"] = _roll_lost_run_spawn()
 	attempt_logged.emit("turn", false)
 	loop_changed.emit()
 	return "turn"
+
+# The chance the NEXT lost run stands a body up (§3.2), 0..1.
+func lost_run_spawn_chance() -> float:
+	if lost_run_spawn_ladder.is_empty():
+		return 0.0
+	return float(lost_run_spawn_ladder[clampi(lost_run_spawn_step, 0,
+		lost_run_spawn_ladder.size() - 1)])
+
+# ROLL THE LOST-RUN SPAWN (§3.2): on a hit, one body of the game in play's type at
+# the run's tier walks on at the back column and the chance drops back to its
+# first rung; on a miss the chance climbs a rung. Returns the new body's instance,
+# or 0 when nothing walked on.
+#
+# NOT A SPAWN EVENT. The tier ladder counts node arrivals and the end of games
+# (§19.6); a lost run that ticked it would make losing grow the board and pull the
+# next boss closer, which is the spiral §19.5 cut by reading the end-of-game price
+# off hops. Nor does it join `arrivals`, so a Scramble cannot scrub it.
+func _roll_lost_run_spawn() -> int:
+	if randf() >= lost_run_spawn_chance():
+		lost_run_spawn_step = mini(lost_run_spawn_step + 1, maxi(0, lost_run_spawn_ladder.size() - 1))
+		return 0
+	lost_run_spawn_step = 0
+	var game: GameData = Data.get_game(GameState.current_game_id)
+	var enemy: GoalEnemyData = roll_enemy(game_type_key(game), RunDifficulty.current_tier())
+	if enemy == null:
+		return 0
+	var inst: int = spawn_to_stack(enemy)
+	if inst > 0:
+		var msg: String = "%s walked on after the lost run." % enemy.display_name
+		GameLog.add(msg, UITheme.DANGER)
+		Notifications.notify(msg, UITheme.DANGER)
+	return inst
 
 # THE TURN A LOST RUN COSTS (§3), in the same shape and through the same resolver
 # one turn of a reported game uses — because it is one of those turns, and a
@@ -2104,6 +2177,8 @@ func attempt_turn() -> Dictionary:
 	# WHOEVER YOU HAVE ALREADY ANSWERED FOR AND LEFT STANDING IS STUNNED (§7.2), and
 	# a stunned body neither swings nor walks. The stun was laid the moment the goal
 	# was ticked, so `_resolve_enemy_turn` has nothing extra to ask.
+	# The board is about to move, so the picture of the last swing goes now.
+	last_strike = {}
 	for turn in range(ATTEMPT_TURNS):
 		if run_over:
 			break
@@ -2188,6 +2263,7 @@ func _loop_snapshot() -> Dictionary:
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
+		"lost_run_spawn_step": lost_run_spawn_step,
 		# What the checklist has already answered for (§2.1). A lost run's turn can
 		# kill a body a confirmed goal had engaged, so undoing the turn has to put
 		# the record back alongside the board.
@@ -2241,6 +2317,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	# whose turn first got through has to close the door again, or the undo would
 	# leave the player holding a way out they no longer paid for (§3.2).
 	hurt_this_game = bool(snap.get("hurt_this_game", false))
+	lost_run_spawn_step = int(snap.get("lost_run_spawn_step", 0))
 	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
 	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()
@@ -2318,6 +2395,8 @@ func _clear_attempts() -> void:
 	attempt_costs.clear()
 	_attempt_payouts.clear()
 	_attempt_snapshots.clear()
+	lost_run_spawn_step = 0
+	last_strike = {}
 
 # Close the book on what was answered during a game (§2.1). SEPARATE from
 # _clear_attempts, and deliberately so: the tracker is finished the moment the
@@ -2691,12 +2770,12 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 # it either. Empty (the default) is every body, which is what a real turn is.
 # `extra` marks an EXTRA turn — one a body gets on top of the lost runs that are
 # the board's only ordinary clock (Predatory Scent's, today; §7.6). The Censer
-# (§8.2) is read against it: while one is owned, a body standing in the FRONT
-# column sits every extra turn out. A lost run's own turn is never extra — the
+# (§8.2) is read against it: while one is owned, a body standing in its front
+# columns (two, for the Censer) sits every extra turn out. A lost run's own turn is never extra — the
 # player bought it by failing, and the item is about the turns nobody paid for.
 func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 		extra: bool = false) -> void:
-	var censed: bool = extra and GameState.censes_extra_turns()
+	var censed_cols: int = GameState.censer_columns() if extra else 0
 	# a0. THE GROUND, before anything swings (§17). A body that has been parked on
 	#     a fire tile takes its stack of Burn now — so the halved damage is already
 	#     on it when it strikes this turn rather than a turn late — and this is
@@ -2737,7 +2816,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 		# list drawn up beforehand would let it swing on the turn it arrived. It is
 		# logged like a stun — a turn that visibly did not happen, so the resolve
 		# can say which body the incense held off rather than showing a gap.
-		if censed and int(entry.get("col", offgrid_col())) == 1:
+		if censed_cols > 0 and int(entry.get("col", offgrid_col())) <= censed_cols:
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"censed": true})
 			spent[inst] = true
@@ -3008,7 +3087,7 @@ func bomb_cell(cell: Vector2i) -> bool:
 # {hits, destroyed} for the caller's log.
 #
 # Everything that modifies a bomb is applied here and therefore applies to both:
-# Brimstone widens `origin` to the whole row and column, Hot Bombs and Sticky Bombs
+# Brimstone throws a STUN down the whole row and column of `origin`, Hot Bombs and Sticky Bombs
 # leave a TILE on every cell the blast covered (Fire and Web — §17), and the one
 # `bomb_used` trigger at the end is what pays Blood Bombs.
 #
@@ -3023,7 +3102,22 @@ func _explode(origin: Array, direct_instance: int = 0,
 	var hits: int = 0
 	# Resolve to instances first: the blast is measured on the board as it stands,
 	# so a body removed mid-loop can't shift who else was in the cross.
-	for inst in _blast_instances(cells, direct_instance):
+	#
+	# BRIMSTONE'S RAYS STUN, THEY DO NOT DAMAGE. The centre — the target and
+	# whatever stands on the blast's own cells — takes the bomb's point as ever;
+	# every OTHER body the rays cross takes 1 Stun instead, bosses included (a
+	# boss shrugs off the damage, not the stun). Out of every row and column the
+	# centre covers, so a wide target throws a ray off each side it has.
+	var centre: Array = _blast_instances(origin, direct_instance)
+	var rays: Array = _blast_instances(cells).filter(func(i): return not centre.has(i)) \
+		if cells.size() > origin.size() else []
+	var stunned: Array = []
+	for inst in rays:
+		if stun(int(inst), BRIMSTONE_STUN):
+			stunned.append(int(inst))
+	if GameState.bombs_cardinal() and not cells.is_empty():
+		note_strike(cells, centre + stunned, "Brimstone Bomb")
+	for inst in centre:
 		var i: int = _index_of(inst)
 		if i < 0:
 			continue
@@ -3039,11 +3133,12 @@ func _explode(origin: Array, direct_instance: int = 0,
 				destroyed.append(enemy)
 				continue
 	# THE GROUND TAKES THE BLAST TOO (docs/potions-design.md §4.7). A mine in the
-	# cross is a thing with Health standing in an explosion, and a Health nothing
+	# blast is a thing with Health standing in an explosion, and a Health nothing
 	# can damage is a number carried for decoration. After the bodies for the
 	# ordering reason above; BEFORE Hot Bombs' fire, so the mine has already gone
 	# up under its own steam rather than being lit by the tile this blast leaves.
-	damage_ground(cells, BOMB_HIT)
+	# Only the CENTRE's ground: Brimstone's rays stun rather than damage.
+	damage_ground(origin, BOMB_HIT)
 	# HOT BOMBS (§17): the ground the blast covered is left carrying a tile effect.
 	# After the damage, so a body the blast killed is already gone and the fire is
 	# laid for whatever walks in next rather than burning a corpse — and last,
@@ -3060,7 +3155,7 @@ func _explode(origin: Array, direct_instance: int = 0,
 	TriggerBus.bomb_used.emit({
 		"instance": direct_instance, "enemy": target,
 		"hits": hits, "destroyed": destroyed.size()})
-	return {"hits": hits, "destroyed": destroyed.size()}
+	return {"hits": hits, "destroyed": destroyed.size(), "stunned": stunned.size()}
 
 # What a bomb aimed at `enemy` would actually do, as one line for the board's
 # bomb button and the enemy card. Lives here rather than in the two UI scripts so
@@ -3070,7 +3165,7 @@ func bomb_hint(enemy: GoalEnemyData) -> String:
 		return "Arm the Bomb, then click any square of the board."
 	if GameState.bombs <= 0:
 		return "No Bombs left."
-	var splash: String = (" The blast runs down its whole row and column."
+	var splash: String = (" The blast stuns everything down its whole row and column."
 		if GameState.bombs_cardinal() else "")
 	if enemy.is_boss():
 		# WHAT THE BLAST LEAVES BEHIND IS STILL SOMETHING (§17). A boss is immune to
@@ -3094,7 +3189,7 @@ func bomb_cell_hint(cell: Vector2i) -> String:
 	if GameState.bombs <= 0:
 		return "No Bombs left."
 	var where: String = "column %d, row %d" % [cell.x, cell.y + 1]
-	var splash: String = (" The blast runs down its whole row and column."
+	var splash: String = (" The blast stuns everything down its whole row and column."
 		if GameState.bombs_cardinal() else "")
 	var leaves: StringName = GameState.bomb_tile()
 	var tile: TileEffectData = Data.get_tile(leaves) if leaves != &"" else null
@@ -4102,6 +4197,27 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	_admit_offgrid()
 	loop_changed.emit()
 	return true
+
+# SHOVE a body up to `squares` cells toward `dir` for FREE — a weapon's push
+# (Hero Longsword), not the Push verb, so no charge is spent. Step by step, each
+# step on can_push's terms, stopping at the first that has nowhere to land — a
+# body against the edge or behind another simply goes as far as it can. Each step
+# is an arrival (`_move_entry`), so shoving into fire or onto a mine costs what
+# walking there would. Returns how many squares it moved.
+func shove(instance: int, dir: Vector2i, squares: int = 1) -> int:
+	var moved: int = 0
+	for _i in range(maxi(0, squares)):
+		if not can_push(instance, dir):
+			break
+		var idx: int = _index_of(instance)
+		_move_entry(stack[idx], int(stack[idx].get("row", 0)) + dir.y,
+			int(stack[idx].get("col", spawn_col())) + dir.x)
+		moved += 1
+		if _index_of(instance) < 0:
+			break        # the ground it was shoved onto took it off the board
+	if moved > 0:
+		_admit_offgrid()
+	return moved
 
 # Add a fresh enemy directly to the following stack (Scroll of Create Monster,
 # §4.1). Unlike choose_game it does not go on `arrivals` — nothing superseded it

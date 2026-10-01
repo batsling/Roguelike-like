@@ -191,14 +191,25 @@ Kept deliberately tiny for HUD readability.
 select is where the run's starting Health and verb/consumable counts come from.
 Current roster:
 
-| Character | Game | Health | Bash | Dash | Push | Transmute | Scramble | Bombs | Keys | Starting item |
-|---|---|--:|--:|--:|--:|--:|--:|--:|--:|---|
-| Rodney | Rogue | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
-| Isaac | The Binding of Isaac | 6 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | D6 |
-| Zoe | Haste | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
-| Minä | Noita | 8 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | — |
-| Ironclad | Slay the Spire | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
-| Manager | Raccoin: Coin Pusher Roguelike | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| Character | Game | Health | Gold | Bash | Dash | Push | Transmute | Scramble | Bombs | Keys | Random | Starting loadout |
+|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|
+| Antonio Belpaese | Vampire Survivors | 7 | 3 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | Whip |
+| Erratic Deck | Balatro | 7 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 random joker card |
+| Ironclad | Slay the Spire | 8 | 3 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | Burning Blood |
+| Isaac | The Binding of Isaac | 6 | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | D6 |
+| Manager | Raccoin: Coin Pusher Roguelike | 7 | 3 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | — |
+| Minä | Noita | 7 | 3 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 1 random wand |
+| Poe Ratcho | Vampire Survivors | 7 | 3 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | Pummarola |
+| Regent | Slay the Spire 2 | 7 | 3 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | — |
+| Rodney | Rogue | 5 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | — |
+| Zagreus | Hades | 7 | 3 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| Zoe | Haste | 7 | 3 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | — |
+
+**The Starting loadout column** names relics (they go on the shelf) and loot (it
+goes in the pack — a weapon starts empty, like one found), or rolls one fresh:
+`N random [tag] <kind>` — "1 random joker card" draws from the cards tagged
+`joker` (the `cards` sheet's `Tags`). Generated into `starting_items` and
+`starting_loot` (`GameState.grant_starting_loot`).
 
 **THE TWO POOLS ARE NAMED FOR WHETHER THEY SURVIVE THE GAME.** What a game
 grants are **Temporary Shields** — they expire when it is reported. What is
@@ -291,7 +302,17 @@ of a game.
   design rather than an oversight: the turn *is* the cost, so a cleared stack has
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
-- **A lost run spawns nothing.** It used to stand bodies up when nothing had been
+- **A lost run MAY stand one body up** (`GameLoop2._roll_lost_run_spawn`). The
+  chance climbs with every lost run at the game that stood nothing up — **25%,
+  50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and drops back to 25% the
+  moment one does, and when the game ends. So a long bad evening averages about one
+  body per two lost runs, never one per run. The body rolls off the game in play's
+  type at the run's tier, walks on at the back column AFTER the turn (it acts from
+  the next lost run), is not one of `arrivals`, and is **not a spawn event** — a
+  lost run that ticked the tier ladder would make losing grow the board and pull
+  the next boss closer, the spiral §19.5 cut. The chance is printed on the tracker
+  button (`+1 Enemy Turn · 25% spawn`). An undo takes the body and the rung back.
+- **It used to spawn nothing.** It once stood bodies up when nothing had been
   defeated at the game; that price moved to the END of the game (§19.5), so a
   board only ever MOVES mid-game and only ever FILLS as a game ends. The hole it
   was there to close — an empty board letting the worst evening pay the least —
@@ -463,7 +484,7 @@ reachable games — dead end."*
 | Item | Effect |
 |---|---|
 | **Key** | Unlock a new game path (blocked edge / unconnected "wild" game). *(No 2.0 content grants keys yet — see open questions.)* |
-| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no loot, and no chest points). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** widen the blast to the target's whole row *and* column, **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
+| **Bomb** | Deal 1 damage to an enemy. Normal enemies have **Health 1** (`enemies2.0`), so one bomb removes one (no loot, and no chest points). A **boss is a legal target but takes no bomb damage** (§7.1) — the charge only buys what an item hangs off the throw. Three items change what a bomb does: **Brimstone Bombs** throw a **1 Stun** down the target's whole row *and* column — out of every row and column its footprint covers — while the target itself still takes the point (bosses included in the stun: they shrug off the damage, not the stun), **Sticky Bombs** stun whatever the blast fails to destroy (in practice, bosses), and **Blood Bombs** pay +1 Health per bomb via the `bomb_used` trigger. **A bomb is aimed at a SQUARE, not only at a body** (`GameLoop2.bomb_cell`): every cell of the board lights up when the verb is armed, and an empty one is a legal target — which is how **Hot Bombs** lays fire in front of the stack and how **Brimstone** is aimed down a lane rather than off whoever happens to be standing in it. A click on an occupied square still routes through the body-aimed path (`GameLoop2.bomb`), so the target reaches the blast, the boss rule and the `bomb_used` trigger unchanged. |
 | **Scroll** | Consumables with an identity that starts **unidentified** and a **Preference** (Positive / Negative / Neutral). See §4.1. |
 | **Pill** | The same gamble held by a **colour** rather than by a type, with an oversized **horse** dose behind a 5% roll. See §4.3. |
 
@@ -1421,8 +1442,8 @@ An enemy **spawns onto the battlefield the moment you choose its game** — if t
 game is an **Enemies** or a **Champion** node (§19.1); an Event or a Shop node
 stands nothing. **Bodies also arrive as a game ends** — handed in or escaped
 (§19.5) — and they walk on at the same back column on the same terms as
-everything else here, shoving a full lane forward to make room (§7.3). Nothing
-arrives mid-game.
+everything else here, shoving a full lane forward to make room (§7.3). Mid-game, a **lost run** may
+stand one up (a climbing chance, §3.2).
 
 Whichever way it arrived, from that moment it is an ordinary body on the board
 with **no tie to the game that rolled it**: it takes its turns, it is drawn like the rest,
@@ -1656,7 +1677,7 @@ into.
 
 **An EXTRA turn is now only a body's own.** Predatory Scent (§7.6) is the one on
 the roster: a hunt run as its own turn after a report. The Censer (§8.2) holds the
-front column out of every such turn. Anything added later that hands a body a turn
+two front columns out of every such turn. Anything added later that hands a body a turn
 of its own goes through the same `extra` beat of `_resolve_enemy_turn` and is
 covered without touching either.
 
@@ -2296,7 +2317,7 @@ odd one out — it is about the *ground* rather than the pool, and its
 
 **Censer and Fanny Pack** are the two Isaac relics added after the seven, and
 each is an answer to being hit rather than a way of hitting back. **Censer**
-(Uncommon, `angel_room`) holds every body in the **front column** out of every
+(Uncommon, `angel_room`) holds every body in the **two front columns** out of every
 **extra** turn — one a body gets on top of the lost runs that are the board's
 clock (Predatory Scent's today, §7.6; more to come from abilities and places) —
 so it is armour against exactly the swings nobody paid for. **Fanny Pack** (Uncommon) pays the other way round: half the times you
@@ -2321,7 +2342,7 @@ previously name:
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
 | `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
 | `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
-| `front_column_slow` | **Censer.** Every body standing in the **front column** — the ones already in reach of you — sits out every EXTRA turn: a turn a body is handed beyond the lost runs that are the board's clock (§3.2), which today means Predatory Scent's hunt (§7.6). It touches that column and no other on purpose: a body further back spends its turns *walking*, while in the front line a turn is a hit. Read off each body's **live** column inside the turn loop (`_resolve_enemy_turn`'s `extra` beat), so anything added later that hands a body a turn of its own is covered without touching the item. A yes/no, not a count (`GameState.censes_extra_turns`): a second copy has nothing left to take. The turn a **lost run** buys is untouched — the player paid for it by failing. It used to take one off the road's extra turns at a report; those are retired (§7.4). |
+| `front_column_slow N` | **Censer** (`front_column_slow 2`). Every body standing in the **front N columns** — the ones in reach of you, and the column they step into reach from — sits out every EXTRA turn: a turn a body is handed beyond the lost runs that are the board's clock (§3.2), which today means Predatory Scent's hunt (§7.6). It touches the front of the board and no further on purpose: a body further back spends its turns *walking*, while at the front a turn is a hit or a step into reach. Read off each body's **live** column inside the turn loop (`_resolve_enemy_turn`'s `extra` beat), so anything added later that hands a body a turn of its own is covered without touching the item. The widest copy wins rather than the sum (`GameState.censer_columns`): a second copy has nothing left to take. The turn a **lost run** buys is untouched — the player paid for it by failing. It used to take one off the road's extra turns at a report; those are retired (§7.4). |
 | `drop_loot N` | **Fanny Pack.** N pieces of loot rolled onto the **battlefield floor** rather than into the pack — the twin of `gain_loot`, and the difference is the whole item. A relic that paid into the pack on every hit would be flat income; one that puts the piece on a random free square turns being hit into a reason to walk somewhere, on exactly the terms loot dropped by a defeated body is on (it lies there until picked up, and the report sweeps what is left, §18). A floor with no free square pays nothing rather than stacking two pieces on one cell. |
 | `passive_status: <status> N` | The status half of a passive grant → `status_bonuses`. **Bionic Face Plating**'s +3 Speed. Read `item_acquired: apply_status` as the *kept* form of the same grant and this as the *rented* one. |
 | `destroy_on_damage` | **The Mewgenics three.** The item is destroyed when an **enemy attack** costs the player Health — not on a swing the Shields ate, and not on the Health an event charges. A failed try reaches it now that the try is a *turn* (§3.2): the swing it buys is an enemy attack like any other, and `undo_attempt`'s snapshot is what puts the broken trinket back. Fires from `GameState._on_health_lost` off the `source` tag `GameLoop2._take_hit` sets, so one swing that gets through breaks every fragile item at once. |
@@ -2974,9 +2995,10 @@ The **`*2.0` sheets in `tools/Roguelikes.xlsx` are the new source of truth** for
 the redesign content. Each needs a `tools/generate_*` pass to emit `.tres` and a
 Resource schema in `scripts/resources/`.
 
-- **characters2.0** — `Name | Game | Health | Bash | Dash | Transmute | Scramble |
-  Bombs | Keys | Level Up | Reward | Description | Starting items`. Drives the
-  starting loadout (§3) and the Level Up loop (§3.1). 5 characters.
+- **characters** — `Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
+  Scramble | Bombs | Keys | Random | Level Up | Reward | Description |
+  Starting loadout | File`. Drives the starting loadout (§3) and the Level Up loop
+  (§3.1). 11 characters.
 - **items2.0** — `Name | Rating | Type | Description | Effect | Reference | tags |
   File | Sorting` (§8). 14 items. `Effect` column currently empty → the structured
   effect DSL still needs authoring from the `Description`.
@@ -4080,7 +4102,7 @@ turn — the same rule footprints follow everywhere else on this board (§7.3).
 **A Landmine is a PROXY BOMB, and that is the whole reason it is a unit rather
 than a one-off trap.** It spends none of the player's Bombs, but everything that
 modifies a bomb modifies it, because there is one blast in `GameLoop2._explode`
-and both go through it: **Brimstone** widens it to the row and column,
+and both go through it: **Brimstone** throws a stun down the row and column,
 **Blood Bombs** pays its Health, and **Hot Bombs** and **Sticky Bombs** leave a
 tile behind — Fire and Web respectively, off the same `bomb_tile` field. (Sticky
 Bombs stunning survivors directly is gone with the counter it wrote to; the Web it
@@ -4902,7 +4924,8 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 - **Not at the Amulet** — there is no next game for anything to walk into — and
   **not off a teleport**, which the loot already paid for (§4.1, `road_spawns`).
 
-**A lost run spawns nothing.** It used to stand these bodies up mid-game when
+**A lost run's own spawn is a CHANCE, not this price** (§3.2): 25% climbing to
+certain, one body, never a spawn event. It once stood these bodies up mid-game when
 nothing had been defeated; that moved here, so the board only MOVES mid-game (one
 turn per lost run, §3.2) and only FILLS as a game ends. It is also what retired
 the mid-game tier step and the mid-game capstone (§19.6).
@@ -4968,7 +4991,7 @@ spawns`, §19.8).
 **The board grows AT THE SPAWN**, before anything is placed
 (`GameLoop2._count_spawn_event` → `sync_grid_bounds`), so the bodies of a
 tier-crossing spawn land on the NEW back column rather than a column in front of
-it. Nothing spawns mid-game any more, so a difficulty-up only ever lands as a node
+it. A lost run's body is not a spawn event (§3.2), so a difficulty-up only ever lands as a node
 is arrived at or as a game ends.
 
 **An end-of-game spawn can be the fourth one**, and then a boss walks on with the

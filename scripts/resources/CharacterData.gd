@@ -28,8 +28,14 @@ extends Resource
 # can keep the same generic deck list yet get its own Strike/Defend.
 @export var starting_deck: Array[StringName] = []
 
-# Starting items — array of item ids
+# Starting items — array of item ids (the RELICS of the sheet's Starting loadout)
 @export var starting_items: Array[StringName] = []
+
+# The LOOT of the sheet's Starting loadout, put in the pack at run start
+# (GameState.grant_starting_loot): {type, id} for a named piece — a weapon starts
+# EMPTY, like one found — or {type, count[, tag]} for "N random [tag] <kind>"
+# ("1 random joker card", "1 random wand"), rolled fresh each run.
+@export var starting_loot: Array = []
 
 # Starting weapon id (or &"" for none)
 @export var starting_weapon: StringName = &""

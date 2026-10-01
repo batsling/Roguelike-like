@@ -21,6 +21,7 @@ start_bombs = 0
 start_keys = 0
 start_random = 0
 starting_items = Array[StringName]([&"pummarola"])
+starting_loot = []
 starting_weapon = &""
 level_up_condition = "Beat a game while being stinky"
 level_up_reward = "Gain +1 Random Sized Chest"

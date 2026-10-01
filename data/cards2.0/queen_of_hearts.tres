@@ -14,3 +14,4 @@ effect = [{"op": "gain_hp", "min": 1, "max": 20}]
 file = "QueenOfHearts"
 icon = "Isaac_Playing_Cards"
 loot_type = "Usable"
+tags = PackedStringArray("playing_card")

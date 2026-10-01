@@ -764,7 +764,7 @@ func _connect_lifecycle_hooks() -> void:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned",
-			"weapon_stunned"]:
+			"weapon_stunned", "weapon_hit"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
 		# pass (a fresh lambda is a fresh Callable and would connect twice).
@@ -1483,10 +1483,48 @@ func apply_character2(char_data: CharacterData) -> void:
 	_reset_item_tracking()
 	for item_id in char_data.starting_items:
 		add_item(Data.get_item2(item_id))
+	grant_starting_loot(char_data)
 	# Pickups may have raised Max Health; open the run at the new full pool.
 	hp = max_hp
 	emit_signal("stats_changed")
 	emit_signal("hp_changed", hp, max_hp)
+	emit_signal("inventory_changed")
+
+# THE LOOT HALF OF A STARTING LOADOUT (CharacterData.starting_loot): a named
+# piece ({type, id}) or a fresh roll ({type, count[, tag]} — "1 random joker
+# card", "1 random wand"). A weapon starts EMPTY, as one found does: it is loaded
+# by playing. Into the pack the ordinary way, so it takes the first free slot.
+func grant_starting_loot(char_data: CharacterData) -> void:
+	for spec in char_data.starting_loot:
+		if not (spec is Dictionary):
+			continue
+		var kind: String = String(spec.get("type", ""))
+		if spec.has("id"):
+			var id := StringName(spec["id"])
+			match kind:
+				"weapon": add_weapon_loot(id, 0)
+				"trinket": add_trinket_loot(id)
+				"card": add_card_loot(id)
+				"wand": add_wand_loot(id)
+				"scroll": add_scroll_loot(id)
+				"potion": add_potion_loot(id)
+				"pill": add_pill_loot(id)
+				"bag": add_bag_loot(id)
+			continue
+		for _i in range(maxi(1, int(spec.get("count", 1)))):
+			var entry: Dictionary = CardSystem.roll_card_loot(null, String(spec["tag"])) \
+				if kind == "card" and spec.has("tag") else roll_loot_entry(kind)
+			if entry.is_empty():
+				continue
+			if kind == "wand":
+				WandSystem.ensure_materials()
+			if kind == "potion":
+				PotionSystem.ensure_colors()
+			if kind == "bag":
+				auto_place_bag(entry)
+				continue
+			loot_items.append(_seated(entry))
+			_note_loot_gained(loot_items[-1])
 	emit_signal("inventory_changed")
 
 # The 2.0 verbs a character's Random points can land on. Keys is a verb on the
@@ -2918,15 +2956,20 @@ func grid_growth() -> int:
 			n += 1
 	return n
 
-# Censer: whether a body standing in the FRONT column sits out every EXTRA turn
-# (§8.2) — the turns a body gets beyond the lost runs that are the board's clock.
-# A yes/no rather than a count: an extra turn is either taken or it is not, so a
-# second Censer has nothing left to take. GameLoop2._resolve_enemy_turn reads it.
-func censes_extra_turns() -> bool:
+# Censer: how many columns, counted from the front, whose bodies sit out every
+# EXTRA turn (§8.2) — the turns a body gets beyond the lost runs that are the
+# board's clock. 0 while nothing censes. The WIDEST copy wins rather than the sum:
+# an extra turn is either taken or it is not, so a second Censer has nothing left
+# to take. GameLoop2._resolve_enemy_turn reads it.
+func censer_columns() -> int:
+	var cols: int = 0
 	for it in inventory:
-		if it is ItemData and it.front_column_slow:
-			return true
-	return false
+		if it is ItemData:
+			cols = maxi(cols, int(it.front_column_slow))
+	return cols
+
+func censes_extra_turns() -> bool:
+	return censer_columns() > 0
 
 # Philosophers Stone / Runic Dome: how many extra COLUMNS the battlefield has,
 # on top of grid_growth's columns-and-rows (§7.3). Length without width: more

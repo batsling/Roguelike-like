@@ -10,6 +10,8 @@ func before_each() -> void:
 	GameLoop2.reset()
 	GameState.max_hp = 10
 	GameState.hp = 10
+	# A lost run's random body (§3.2) is not what this suite is about.
+	GameLoop2.lost_run_spawn_ladder = [0.0]
 	# The transmute rule is a persisted preference, so a test that flips it would
 	# otherwise leak into the rest of the suite.
 	Settings.traditional_transmute = Settings.TraditionalTransmute.SAME_TYPE
@@ -1323,7 +1325,9 @@ func _park(row: int, col: int) -> int:
 	entry["col"] = col
 	return inst
 
-func test_brimstone_bombs_blast_the_row_and_column() -> void:
+# BRIMSTONE'S RAYS STUN (§4): the target takes the bomb's point as ever, and every
+# body down its row and column takes 1 Stun instead of the damage.
+func test_brimstone_bombs_stun_the_row_and_column() -> void:
 	GameState.add_item(Data.get_item2(&"brimstone_bombs"))
 	GameState.bombs = 1
 	var a: int = _park(0, 1)          # the target
@@ -1331,11 +1335,24 @@ func test_brimstone_bombs_blast_the_row_and_column() -> void:
 	var same_col: int = _park(2, 1)
 	var neither: int = _park(2, 3)
 	assert_true(GameLoop2.bomb(a))
-	assert_eq(_col_of(a), -1, "the target dies")
-	assert_eq(_col_of(same_row), -1, "so does everything down its row")
-	assert_eq(_col_of(same_col), -1, "and everything down its column")
-	assert_eq(_col_of(neither), 3, "a body off both lines is untouched")
+	assert_eq(_col_of(a), -1, "the target still dies")
+	assert_eq(_col_of(same_row), 3, "a body down its row is not damaged…")
+	assert_eq(GameLoop2.stun_stacks(_entry(same_row)), 1, "…it is stunned")
+	assert_eq(GameLoop2.stun_stacks(_entry(same_col)), 1, "and so is one down its column")
+	assert_eq(GameLoop2.stun_stacks(_entry(neither)), 0, "a body off both lines is untouched")
 	assert_eq(GameState.bombs, 0, "still just the one charge")
+	assert_false(GameLoop2.last_strike.is_empty(), "and the board is told where it went")
+
+func test_brimstone_stuns_a_boss_its_rays_cross() -> void:
+	GameState.add_item(Data.get_item2(&"brimstone_bombs"))
+	GameState.bombs = 1
+	var a: int = _park(0, 1)
+	var boss: int = GameLoop2.spawn_to_stack(_enemy(3, true))
+	_entry(boss)["row"] = 0
+	_entry(boss)["col"] = 3
+	assert_true(GameLoop2.bomb(a))
+	assert_eq(GameLoop2.stun_stacks(_entry(boss)), 1,
+		"a boss shrugs off a bomb's damage, not Brimstone's stun")
 
 func test_a_plain_bomb_only_hits_its_target() -> void:
 	GameState.bombs = 1
@@ -2860,3 +2877,47 @@ func test_an_end_of_game_spawn_can_be_the_one_that_closes_the_band() -> void:
 		pending("no boss in the roster for this type/tier")
 		return
 	assert_eq(bosses, 1, "a boss walked on, on top of the game's own bodies")
+
+# --- the lost-run spawn (§3.2) ------------------------------------------------
+
+func test_the_lost_run_spawn_climbs_25_50_75_100() -> void:
+	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	var seen: Array = []
+	for step in range(5):
+		GameLoop2.lost_run_spawn_step = step
+		seen.append(GameLoop2.lost_run_spawn_chance())
+	assert_eq(seen, [0.25, 0.5, 0.75, 1.0, 1.0], "and holds at certain")
+
+func test_a_certain_lost_run_spawn_stands_a_body_up_and_starts_over() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameState.current_game_id = &"slay_the_spire"
+	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	GameLoop2.lost_run_spawn_step = 3
+	var before: int = GameLoop2.stack.size()
+	GameLoop2.log_attempt()
+	assert_eq(GameLoop2.stack.size(), before + 1, "100%: a body walked on")
+	assert_gt(int(GameLoop2.last_attempt_turn.get("lost_run_spawn", 0)), 0,
+		"and the turn's result names it")
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "the chance drops back to 25%")
+
+func test_a_reset_puts_the_ladder_back() -> void:
+	GameLoop2.reset()
+	assert_eq(GameLoop2.lost_run_spawn_ladder, GameLoop2.LOST_RUN_SPAWN_CHANCES,
+		"a suite's disarm never outlives the run it was made in")
+
+func test_a_new_game_resets_the_lost_run_spawn() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameLoop2.lost_run_spawn_step = 2
+	GameLoop2.beat_game(true)
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "it is a fact about the game in play")
+
+func test_undoing_a_lost_run_puts_the_spawn_chance_back() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameState.current_game_id = &"slay_the_spire"
+	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	GameLoop2.lost_run_spawn_step = 3
+	var before: int = GameLoop2.stack.size()
+	GameLoop2.log_attempt()
+	GameLoop2.undo_attempt()
+	assert_eq(GameLoop2.lost_run_spawn_step, 3, "the rung comes back with the turn")
+	assert_eq(GameLoop2.stack.size(), before, "and the body that walked on goes")

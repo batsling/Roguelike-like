@@ -9,4 +9,5 @@ result = &"king_bomber"
 base = &"lil_bomber"
 need_count = 1
 need_tag = "crown"
+need_id = &""
 consumes = false

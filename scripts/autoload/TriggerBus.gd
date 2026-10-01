@@ -135,6 +135,11 @@ signal weapon_stunned(ctx: Dictionary)      # ctx.slot, ctx.instance, ctx.weapon
                                             # WEAPON's swing stunned one enemy
                                             # (WeaponSystem.swing), once per body.
                                             # King Bomber's `if_self` gold.
+signal weapon_hit(ctx: Dictionary)          # ctx.slot, ctx.instance, ctx.weapon — a
+                                            # WEAPON's strike covered one enemy,
+                                            # stunned or not (WeaponSystem.swing),
+                                            # once per body per strike. Bloody
+                                            # Tear's `if_self` heal.
 signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
                                             # ctx.destroyed — a Bomb was spent on
                                             # the battlefield (§4). Fired ONCE per

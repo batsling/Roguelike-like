@@ -33,7 +33,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   lower_hp_damage_mult:, gold_spend_stat_per=N, level_up:,
                   charged (charge_cost N),
                   bomb_cardinal, bomb_tile <tile>, death_tile <tile>,
-                  grid_grow, grid_length, front_column_slow, hide_spawns,
+                  grid_grow, grid_length, front_column_slow [N], hide_spawns,
                   spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
                   pills_positive, echo_loot N,
@@ -146,6 +146,10 @@ TRIGGER_SIGNALS = {
     # a swing stuns, with the swinging weapon's slot, so King Bomber's
     # `weapon_stunned if_self:` pays per enemy and only for its own swings.
     "weapon_stunned": "weapon_stunned",
+    # A weapon's swing COVERED one enemy (§12) — fired once per body per strike,
+    # stunned or not, with the swinging weapon's slot. Bloody Tear's
+    # `weapon_hit if_self: gain_hp 1`.
+    "weapon_hit": "weapon_hit",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
@@ -155,7 +159,7 @@ SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "bomb_used", "health_lost", "run_lost", "potion_used",
                          "gold_gained", "card_obtained", "game_won",
                          "shop_entered", "boss_spawned", "loot_used",
-                         "card_binned")
+                         "card_binned", "weapon_hit")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and
@@ -990,10 +994,11 @@ def parse_item(row):
             fields["grid_grow"] = True
             last_trigger = None
         elif kl0 == "front_column_slow":
-            # Censer: a body in the FRONT column sits out every EXTRA turn — one
-            # a body gets beyond the lost runs that are the board's clock (§8.2).
-            # A bare word, like grid_grow above; a second copy adds nothing.
-            fields["front_column_slow"] = True
+            # Censer: a body in the FRONT N columns sits out every EXTRA turn —
+            # one a body gets beyond the lost runs that are the board's clock
+            # (§8.2). `front_column_slow 2`; a bare word is the front column only.
+            mm = re.search(r"\d+", clause)
+            fields["front_column_slow"] = max(1, int(mm.group(0))) if mm else 1
             last_trigger = None
         elif kl0 == "bank_shields":
             # Barricade, held: every game that resolves banks the Temporary
@@ -1029,6 +1034,31 @@ def parse_item(row):
                 raise ValueError("item DSL: stun_per_food wants `+N per=M` in %r" % clause)
             fields["stun_per_food"] = {"amount": int(mm.group(1)),
                                        "per": max(1, int(mm.group(2) or 1))}
+            last_trigger = None
+        elif kl0 == "replay_on_use":
+            # Lightning Ring / Thunder Loop: every swing leaves the weapon +N
+            # Replay — one more strike on each swing after — up to `max` Replays
+            # (docs/loot-passives.md §12). Counted on the pack entry, so it rides
+            # an evolution.
+            mm = re.match(r"replay_on_use\s+\+?(\d+)(?:\s+max\s*=\s*(\d+))?", kl)
+            if not mm:
+                raise ValueError("item DSL: replay_on_use wants `+N [max=M]` in %r" % clause)
+            fields["replay_gain"] = {"amount": int(mm.group(1)),
+                                     "max": int(mm.group(2) or 0)}
+            last_trigger = None
+        elif kl0 == "weapon_retrigger":
+            # Duplicator: WEAPONS beside this piece fire their whole swing N extra
+            # times (§12). `dirs=` as weapon_stun reads it.
+            mm = re.match(r"weapon_retrigger\s+\+?(\d+)(?:\s+dirs\s*=\s*([a-z,]+))?", kl)
+            if not mm:
+                raise ValueError("item DSL: weapon_retrigger wants `+N [dirs=..]` in %r" % clause)
+            dirs = (mm.group(2) or "adjacent").split(",")
+            if dirs == ["adjacent"]:
+                dirs = ["up", "down", "left", "right"]
+            for d in dirs:
+                if d not in ("up", "down", "left", "right"):
+                    raise ValueError("item DSL: weapon_retrigger dir %r in %r" % (d, clause))
+            fields["weapon_retrigger"] = {"amount": int(mm.group(1)), "dirs": dirs}
             last_trigger = None
         elif kl0 == "charge_bonus":
             # Fanny Pack (a bag): a charge landing on a piece inside it has this
@@ -1129,7 +1159,8 @@ def parse_item(row):
 # the exact silent failure every generator here exists to turn into a loud one.
 LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
                        "bank_shields", "echo_first_loot", "weapon_stun",
-                       "stun_per_food", "charge_bonus_chance")
+                       "stun_per_food", "charge_bonus_chance", "replay_gain",
+                       "weapon_retrigger")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
 _ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
                "card_grants", "stat_multipliers", "scaling")
@@ -1147,8 +1178,9 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
     if extra:
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
                          "passive:, passive_status:, copy_right, bank_shields, "
-                         "echo_first_loot, weapon_stun, stun_per_food and "
-                         "charge_bonus reach the pack "
+                         "echo_first_loot, weapon_stun, stun_per_food, "
+                         "replay_on_use, weapon_retrigger and charge_bonus "
+                         "reach the pack "
                          "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
     if not out and not allow_empty:
         raise ValueError("%s: its Effect %r compiles to nothing" % (name, effect_text))
@@ -1160,7 +1192,9 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
             "echo_first_loot": int(out.get("echo_first_loot", 0)),
             "weapon_stun": out.get("weapon_stun", {}),
             "stun_per_food": out.get("stun_per_food", {}),
-            "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0))}
+            "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0)),
+            "replay_gain": out.get("replay_gain", {}),
+            "weapon_retrigger": out.get("weapon_retrigger", {})}
 
 
 def _split_head(clause):
@@ -1408,7 +1442,7 @@ def item_tres(row):
         ("bomb_tile", lambda v: '&"%s"' % gd_str(v)),
         ("death_tile", lambda v: '&"%s"' % gd_str(v)),
         ("grid_grow", lambda v: "true"),
-        ("front_column_slow", lambda v: "true"),
+        ("front_column_slow", lambda v: str(int(v))),
         ("grid_length_grow", lambda v: "true"),
         ("hide_spawns", lambda v: "true"),
         ("spawn_statuses", lambda v: gd_value(v)),

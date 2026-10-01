@@ -60,6 +60,9 @@ extends Resource
 # Whetstone: weapons in these directions from this piece swing with +amount Stun
 # ({amount, dirs}, docs/loot-passives.md §12). Empty for everything else.
 @export var weapon_stun: Dictionary = {}
+# Duplicator: weapons in these directions fire their whole swing +amount extra
+# times ({amount, dirs}, §12). Empty for everything else.
+@export var weapon_retrigger: Dictionary = {}
 
 
 # Whether the sheet tags it `food` — the one tag the pack reads (docs/loot-passives.md

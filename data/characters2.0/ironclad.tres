@@ -21,6 +21,7 @@ start_bombs = 0
 start_keys = 0
 start_random = 0
 starting_items = Array[StringName]([&"burning_blood"])
+starting_loot = []
 starting_weapon = &""
 level_up_condition = "Beat a game while having made a Faustian bargain"
 level_up_reward = "Gain +1 Small Chest"

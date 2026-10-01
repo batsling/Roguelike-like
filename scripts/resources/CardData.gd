@@ -89,6 +89,9 @@ extends Resource
 @export var echo_first_loot: int = 0
 # The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card.
 @export var loot_type: String = "Usable"
+# The sheet's `Tags` — what family the card belongs to (joker, tarot,
+# playing_card). A starting loadout's "1 random joker card" draws from these.
+@export var tags: PackedStringArray = PackedStringArray()
 
 
 func is_passive() -> bool:

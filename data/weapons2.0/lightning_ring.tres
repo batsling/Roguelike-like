@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_lightning_ring"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"lightning_ring"
+display_name = "Lightning Ring"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+aim = "random"
+aim_column = 0
+area = "1x1"
+stun = 1
+push_dir = ""
+push = 0
+weapon_type = "ranged"
+goal = "Defeat an enemy with a lightning bolt"
+max_charges = 3
+description = "Gains +1 Replay after each use (Max 4 times)"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {}
+replay_gain = {"amount": 1, "max": 4}
+weapon_retrigger = {}
+source_game = "Vampire Survivors"
+tags = PackedStringArray("ring", "lightning")
+file = "LightningRing"

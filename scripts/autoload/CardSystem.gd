@@ -48,8 +48,8 @@ const FACE_DOWN_NAME := "Card"
 # One card as a carried loot entry — roll_potion_loot's twin. `rarity` rides on
 # the entry the way it does for every other kind, so the drop modal can chip it
 # without loading the resource.
-func roll_card_loot(rng: RandomNumberGenerator = null) -> Dictionary:
-	var card: CardData = Data.roll_card(rng)
+func roll_card_loot(rng: RandomNumberGenerator = null, tag: String = "") -> Dictionary:
+	var card: CardData = Data.roll_card(rng, tag)
 	if card == null:
 		return {}
 	return {"type": "card", "id": card.id, "rarity": card.rarity}

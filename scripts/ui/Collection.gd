@@ -1904,9 +1904,9 @@ func _show_character_detail(ch: CharacterData) -> void:
 	if ch.start_random > 0:
 		_detail_box.add_child(_kv("Random",
 			"%d, rolled across the verbs at run start" % ch.start_random))
-	if ch.starting_items.size() > 0:
-		_detail_box.add_child(_detail_section("Starting Items"))
-		_detail_box.add_child(_label(", ".join(Data.item_names(ch.starting_items)),
+	if not Data.loadout_names(ch).is_empty():
+		_detail_box.add_child(_detail_section("Starting Loadout"))
+		_detail_box.add_child(_label(", ".join(Data.loadout_names(ch)),
 			Color(0.8, 0.85, 0.95), 11, false, true))
 	if ch.level_up_condition != "":
 		_detail_box.add_child(_detail_section("Level Up"))

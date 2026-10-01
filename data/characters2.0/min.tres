@@ -21,6 +21,7 @@ start_bombs = 0
 start_keys = 0
 start_random = 0
 starting_items = Array[StringName]([])
+starting_loot = [{"type": "wand", "count": 1}]
 starting_weapon = &""
 level_up_condition = "Beat a game while having crafted or combined a spell or weapon"
 level_up_reward = "Gain +1 Transmute"
