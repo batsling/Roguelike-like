@@ -38,10 +38,12 @@ For how the project is laid out and how its systems fit together, see
     `N random [tag] <kind>` — Antonio starts with an (empty) Whip, Erratic Deck
     with a random joker card, Minä with a random wand. Cards gained `Tags`
     (joker / tarot / playing_card). Both character screens print the whole loadout.
-  - **A lost run may stand a body up**: 25%, then 50%, 75%, certain, dropping
-    back to 25% after a spawn and at the end of each game. Rolled off the game in
-    play's type and tier, after the turn; not a spawn event (the tier ladder and
-    the boss countdown do not move for it). The chance is on the tracker button.
+  - **A lost run may stand a body up**: 0% on the first, then 25%, 50%, 75%,
+    certain, dropping back to 0% after a spawn and at the end of each game. Rolled
+    off the game in play's type and tier, after the turn. It is a spawn event like
+    every other, so the fourth brings a boss and an outward board growth mid-game;
+    a line above the grid warns while the next spawn is that one. The chance is on
+    the tracker button.
   - **Sheet:** Dicevaders and its four connections imported; the grammar cells
     for the new pieces filled by `tools/_weapons_lightning_setup.py`.
 

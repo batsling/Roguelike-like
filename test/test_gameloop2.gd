@@ -2880,25 +2880,25 @@ func test_an_end_of_game_spawn_can_be_the_one_that_closes_the_band() -> void:
 
 # --- the lost-run spawn (§3.2) ------------------------------------------------
 
-func test_the_lost_run_spawn_climbs_25_50_75_100() -> void:
+func test_the_lost_run_spawn_climbs_0_25_50_75_100() -> void:
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
 	var seen: Array = []
-	for step in range(5):
+	for step in range(6):
 		GameLoop2.lost_run_spawn_step = step
 		seen.append(GameLoop2.lost_run_spawn_chance())
-	assert_eq(seen, [0.25, 0.5, 0.75, 1.0, 1.0], "and holds at certain")
+	assert_eq(seen, [0.0, 0.25, 0.5, 0.75, 1.0, 1.0], "the first is free, and it holds at certain")
 
 func test_a_certain_lost_run_spawn_stands_a_body_up_and_starts_over() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameState.current_game_id = &"slay_the_spire"
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 3
+	GameLoop2.lost_run_spawn_step = 4
 	var before: int = GameLoop2.stack.size()
 	GameLoop2.log_attempt()
 	assert_eq(GameLoop2.stack.size(), before + 1, "100%: a body walked on")
 	assert_gt(int(GameLoop2.last_attempt_turn.get("lost_run_spawn", 0)), 0,
 		"and the turn's result names it")
-	assert_eq(GameLoop2.lost_run_spawn_step, 0, "the chance drops back to 25%")
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "the chance drops back to 0%")
 
 func test_a_reset_puts_the_ladder_back() -> void:
 	GameLoop2.reset()
@@ -2915,9 +2915,46 @@ func test_undoing_a_lost_run_puts_the_spawn_chance_back() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameState.current_game_id = &"slay_the_spire"
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 3
+	GameLoop2.lost_run_spawn_step = 4
 	var before: int = GameLoop2.stack.size()
 	GameLoop2.log_attempt()
+	var events: int = GameState.spawn_events
 	GameLoop2.undo_attempt()
-	assert_eq(GameLoop2.lost_run_spawn_step, 3, "the rung comes back with the turn")
+	assert_eq(GameLoop2.lost_run_spawn_step, 4, "the rung comes back with the turn")
+	assert_eq(GameState.spawn_events, events - 1, "and so does the spawn event")
 	assert_eq(GameLoop2.stack.size(), before, "and the body that walked on goes")
+
+func test_the_first_lost_run_of_a_game_never_spawns() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameState.current_game_id = &"slay_the_spire"
+	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	var before: int = GameLoop2.stack.size()
+	GameLoop2.log_attempt()
+	assert_eq(GameLoop2.stack.size(), before, "0% on the first")
+	assert_eq(GameLoop2.lost_run_spawn_step, 1, "and the next one is 25%")
+
+func test_a_lost_run_spawn_is_a_spawn_event() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameState.current_game_id = &"slay_the_spire"
+	GameLoop2.lost_run_spawn_ladder = [1.0]
+	var events: int = GameState.spawn_events
+	GameLoop2.log_attempt()
+	assert_eq(GameState.spawn_events, events + 1, "it ticks the ladder like every spawn")
+
+func test_a_lost_run_can_bring_the_boss_and_grow_the_board_outward() -> void:
+	var front: int = _choose_solo(_enemy(1))
+	GameState.current_game_id = &"slay_the_spire"
+	_entry(front)["col"] = 2
+	_entry(front)["row"] = 0
+	# One short of the difficulty up, so this spawn is the fourth.
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	var cols: int = GameLoop2.grid_cols()
+	GameLoop2.lost_run_spawn_ladder = [1.0]
+	assert_true(GameLoop2.lost_run_may_bring_boss(), "the board can warn about it")
+	GameLoop2.log_attempt()
+	assert_gt(GameLoop2.grid_cols(), cols, "the tier stepped and the board grew")
+	assert_true(GameLoop2.stack.any(func(e): return (e["enemy"] as GoalEnemyData).is_boss()),
+		"and a boss walked on, mid-game")
+	var e: Dictionary = _entry(front)
+	assert_eq([int(e.get("col", 0)), int(e.get("row", -1))], [1, 0],
+		"the body already standing only made the step its turn gave it — growth is outward")

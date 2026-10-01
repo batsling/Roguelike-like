@@ -815,11 +815,12 @@ func clear_last_strike() -> void:
 
 # THE LOST-RUN SPAWN (§3.2). Every lost run has a chance to stand one body up at
 # the back column, rolled from the game in play's type at the run's tier — and the
-# chance CLIMBS with each lost run that stood nothing up: 25%, 50%, 75%, then
-# certain. A spawn drops it back to the bottom, and so does the end of the game
-# (`_clear_attempts`). So a long bad evening averages about one body per two lost
-# runs, never one per run. `lost_run_spawn_step` is the rung, 0-based.
-const LOST_RUN_SPAWN_CHANCES: Array = [0.25, 0.5, 0.75, 1.0]
+# chance CLIMBS with each lost run that stood nothing up: 0% (the first is free),
+# 25%, 50%, 75%, then certain. A spawn drops it back to the bottom, and so does
+# the end of the game (`_clear_attempts`). So a long bad evening averages about
+# one body per three lost runs, never one per run. `lost_run_spawn_step` is the
+# rung, 0-based.
+const LOST_RUN_SPAWN_CHANCES: Array = [0.0, 0.25, 0.5, 0.75, 1.0]
 var lost_run_spawn_step: int = 0
 # The ladder in force — LOST_RUN_SPAWN_CHANCES, put back by every reset(). A suite
 # whose subject is something else a lost run does sets it to [0.0] in before_each,
@@ -2130,25 +2131,40 @@ func lost_run_spawn_chance() -> float:
 # first rung; on a miss the chance climbs a rung. Returns the new body's instance,
 # or 0 when nothing walked on.
 #
-# NOT A SPAWN EVENT. The tier ladder counts node arrivals and the end of games
-# (§19.6); a lost run that ticked it would make losing grow the board and pull the
-# next boss closer, which is the spiral §19.5 cut by reading the end-of-game price
-# off hops. Nor does it join `arrivals`, so a Scramble cannot scrub it.
+# IT IS A SPAWN EVENT, like every other spawn (§19.6): it ticks the ladder, and
+# when it is the fourth the tier steps, the board grows OUTWARD (a back column and
+# a bottom row — every body keeps its square) and a boss walks on with it, mid-
+# game. The board says so in advance: the strip above the grid warns while the
+# next spawn is a difficulty up (BattlefieldView._refresh_pressure). Rolled first,
+# placed second, as `_land_end_of_game_bodies` does, so the body lands on the
+# grown board's back column. Not one of `arrivals`: a Scramble cannot scrub it.
 func _roll_lost_run_spawn() -> int:
 	if randf() >= lost_run_spawn_chance():
 		lost_run_spawn_step = mini(lost_run_spawn_step + 1, maxi(0, lost_run_spawn_ladder.size() - 1))
 		return 0
 	lost_run_spawn_step = 0
 	var game: GameData = Data.get_game(GameState.current_game_id)
-	var enemy: GoalEnemyData = roll_enemy(game_type_key(game), RunDifficulty.current_tier())
+	var type_key: StringName = game_type_key(game)
+	var tier: int = RunDifficulty.current_tier()
+	var enemy: GoalEnemyData = roll_enemy(type_key, tier)
 	if enemy == null:
 		return 0
+	_count_spawn_event()
 	var inst: int = spawn_to_stack(enemy)
 	if inst > 0:
 		var msg: String = "%s walked on after the lost run." % enemy.display_name
 		GameLog.add(msg, UITheme.DANGER)
 		Notifications.notify(msg, UITheme.DANGER)
+	# …and the capstone, AFTER the body it lands on top of (§19.6).
+	_capstone_if_due(type_key, tier)
 	return inst
+
+# Whether a lost run right now could be the spawn that brings the next boss —
+# the next spawn event is a difficulty up, a game is in play, and the rung the
+# next lost run stands on can spawn at all. What the board's warning reads.
+func lost_run_may_bring_boss() -> bool:
+	return game_in_play and not run_over \
+		and RunDifficulty.spawns_to_boss(GameState.spawn_events) == 1
 
 # THE TURN A LOST RUN COSTS (§3), in the same shape and through the same resolver
 # one turn of a reported game uses — because it is one of those turns, and a
@@ -2222,6 +2238,8 @@ func _restore_snapshot(snap: Dictionary) -> void:
 	# before anything can resize it under them.
 	_restore_loop_snapshot(snap.get("loop", {}))
 	GameState.restore_run_resources(snap.get("state", {}))
+	# The spawn counter came back with the loop; the board's size follows it.
+	sync_grid_bounds()
 
 # The loop's own state, copied IN MEMORY rather than through serialize/restore.
 # The same fields the save writes, but each held as the object it is: a save
@@ -2264,6 +2282,9 @@ func _loop_snapshot() -> Dictionary:
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
 		"lost_run_spawn_step": lost_run_spawn_step,
+		# A lost run's spawn ticks the tier ladder (§3.2), so taking the turn back
+		# takes the tick back — and with it any board growth it caused.
+		"spawn_events": GameState.spawn_events,
 		# What the checklist has already answered for (§2.1). A lost run's turn can
 		# kill a body a confirmed goal had engaged, so undoing the turn has to put
 		# the record back alongside the board.
@@ -2318,6 +2339,7 @@ func _restore_loop_snapshot(snap: Dictionary) -> void:
 	# leave the player holding a way out they no longer paid for (§3.2).
 	hurt_this_game = bool(snap.get("hurt_this_game", false))
 	lost_run_spawn_step = int(snap.get("lost_run_spawn_step", 0))
+	GameState.spawn_events = int(snap.get("spawn_events", GameState.spawn_events))
 	cleared_this_game = (snap.get("cleared_this_game", {}) as Dictionary).duplicate()
 	instead_this_game = (snap.get("instead_this_game", {}) as Dictionary).duplicate()
 	answered_this_game = (snap.get("answered_this_game", {}) as Dictionary).duplicate()

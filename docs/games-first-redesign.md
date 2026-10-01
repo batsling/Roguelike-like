@@ -303,15 +303,19 @@ of a game.
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
 - **A lost run MAY stand one body up** (`GameLoop2._roll_lost_run_spawn`). The
-  chance climbs with every lost run at the game that stood nothing up — **25%,
-  50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and drops back to 25% the
-  moment one does, and when the game ends. So a long bad evening averages about one
-  body per two lost runs, never one per run. The body rolls off the game in play's
-  type at the run's tier, walks on at the back column AFTER the turn (it acts from
-  the next lost run), is not one of `arrivals`, and is **not a spawn event** — a
-  lost run that ticked the tier ladder would make losing grow the board and pull
-  the next boss closer, the spiral §19.5 cut. The chance is printed on the tracker
-  button (`+1 Enemy Turn · 25% spawn`). An undo takes the body and the rung back.
+  chance climbs with every lost run at the game that stood nothing up — **0% (the
+  first is free), 25%, 50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
+  drops back to 0% the moment one does, and when the game ends. So a long bad
+  evening averages about one body per three lost runs, never one per run. The body
+  rolls off the game in play's type at the run's tier, walks on at the back column
+  AFTER the turn (it acts from the next lost run) and is not one of `arrivals`.
+  **It is a spawn event like every other spawn** (§19.6): the fourth brings the
+  difficulty up mid-game — the tier steps, the board grows outward (a back column
+  and a bottom row; nothing already standing moves) and a boss walks on. While the
+  next spawn is that one and a game is in play, a line above the grid says so and
+  names the next lost run's chance (`BattlefieldView.boss_warning_text`). The
+  chance is also on the tracker button (`+1 Enemy Turn · 25% spawn`). An undo
+  takes the body, the rung and the spawn event back.
 - **It used to spawn nothing.** It once stood bodies up when nothing had been
   defeated at the game; that price moved to the END of the game (§19.5), so a
   board only ever MOVES mid-game and only ever FILLS as a game ends. The hole it
@@ -4924,8 +4928,8 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 - **Not at the Amulet** — there is no next game for anything to walk into — and
   **not off a teleport**, which the loot already paid for (§4.1, `road_spawns`).
 
-**A lost run's own spawn is a CHANCE, not this price** (§3.2): 25% climbing to
-certain, one body, never a spawn event. It once stood these bodies up mid-game when
+**A lost run's own spawn is a CHANCE, not this price** (§3.2): 0% on the first,
+then 25% climbing to certain, one body, and a spawn event like any other. It once stood these bodies up mid-game when
 nothing had been defeated; that moved here, so the board only MOVES mid-game (one
 turn per lost run, §3.2) and only FILLS as a game ends. It is also what retired
 the mid-game tier step and the mid-game capstone (§19.6).
@@ -4991,8 +4995,9 @@ spawns`, §19.8).
 **The board grows AT THE SPAWN**, before anything is placed
 (`GameLoop2._count_spawn_event` → `sync_grid_bounds`), so the bodies of a
 tier-crossing spawn land on the NEW back column rather than a column in front of
-it. A lost run's body is not a spawn event (§3.2), so a difficulty-up only ever lands as a node
-is arrived at or as a game ends.
+it. A difficulty-up lands as a node is arrived at, as a game ends, or — when a
+lost run's spawn (§3.2) is the fourth — mid-game, with the strip above the grid
+warning beforehand.
 
 **An end-of-game spawn can be the fourth one**, and then a boss walks on with the
 bodies the end of that game stood up. A boss takes no bomb damage and leaves only

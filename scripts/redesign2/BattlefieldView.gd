@@ -227,6 +227,8 @@ var _throw_index: int = -1
 # the whole board is drawn against one answer.
 var _armed: Dictionary = {}
 var _arrow_layer: Control            # the direction arrows, above every body
+var _boss_warning: Label             # "the next spawn brings a boss", above the grid
+var _pressure_small: Control         # the strip's small-print row, which the warning replaces
 var _strike_layer: Control           # what the last swing hit (GameLoop2.last_strike)
 var _drawn_strike: Dictionary = {}   # the record last drawn, so a new one pulses once
 # True for the duration of refresh(), and the reason is a real crash rather than
@@ -570,6 +572,7 @@ func _build_pressure_bar() -> Control:
 	var small := HFlowContainer.new()
 	small.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
 	lines.add_child(small)
+	_pressure_small = small
 
 	_pressure_why = Label.new()
 	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -589,6 +592,20 @@ func _build_pressure_bar() -> Control:
 	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	small.add_child(_size_label)
+
+	# THE WARNING (§3.2, §19.6): shown only while the next spawn is a difficulty up
+	# and a game is in play — the one moment a LOST RUN can bring a boss on mid-
+	# game. Says what the next press risks, in words, right above the grid it
+	# would land on. It TAKES THE SMALL PRINT'S ROW while it is up rather than
+	# adding one: the page is fitted to a 720p window to the pixel, and the small
+	# print (hops, boss countdown, difficulty) is all on the strip's hover card.
+	_boss_warning = Label.new()
+	_boss_warning.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_boss_warning.add_theme_color_override("font_color", UITheme.DANGER)
+	_boss_warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boss_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_warning.visible = false
+	lines.add_child(_boss_warning)
 	return _pressure_panel
 
 func _strip_dot() -> Label:
@@ -665,7 +682,7 @@ func _refresh_pressure() -> void:
 		"accent": band,
 		"lines": [
 			"%s — +1 if nothing went down, and escaping always adds 1." % acts,
-			"A lost run is the only thing that moves them: one turn, wherever you stand.",
+			"A lost run moves them one turn — and from the second lost run of a game, may stand one more up.",
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
 			_boss_tip(to_boss),
@@ -680,9 +697,25 @@ func _refresh_pressure() -> void:
 		(l as Label).tooltip_text = ""
 	_pressure_ladder_text = ladder_tip
 
+	_boss_warning.text = boss_warning_text()
+	_boss_warning.visible = _boss_warning.text != ""
+	_pressure_small.visible = not _boss_warning.visible
+
 	var tier: int = RunDifficulty.current_tier()
 	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
 	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+# The warning above the grid while a lost run could bring the next boss on, or ""
+# (§3.2): the next spawn is a difficulty up and a game is in play. Names the
+# chance the next lost run spawns — 0% on a game's first, so the line says it is
+# safe this once rather than leaving the player to work it out.
+func boss_warning_text() -> String:
+	if not GameLoop2.lost_run_may_bring_boss():
+		return ""
+	var pct: int = roundi(GameLoop2.lost_run_spawn_chance() * 100.0)
+	if pct <= 0:
+		return "⚠ Next spawn brings a BOSS — your next lost run can't spawn it."
+	return "⚠ Next spawn brings a BOSS — a lost run now has a %d%% chance." % pct
 
 # The strip's two §19.8 readouts, in a sentence each for the hover card.
 func _spawn_tip(owed: int, why_free: String) -> String:
@@ -697,10 +730,10 @@ func _spawn_tip(owed: int, why_free: String) -> String:
 func _boss_tip(to_boss: int) -> String:
 	if to_boss == 1:
 		return ("The next spawn is a DIFFICULTY UP: the tier steps, the board grows, and "
-			+ "a boss walks on top of whatever else arrives.")
+			+ "a boss walks on top of whatever else arrives — a lost run's spawn included.")
 	return ("Every %dth spawn is a difficulty up — the tier steps, the board grows and a "
-		+ "boss walks on: %d more to go. A node arriving and a game ending each count "
-		+ "once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
+		+ "boss walks on: %d more to go. A node arriving, a game ending and a lost "
+		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach

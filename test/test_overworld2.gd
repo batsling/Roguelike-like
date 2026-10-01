@@ -1002,10 +1002,17 @@ func test_aiming_a_push_draws_an_arrow_per_legal_direction() -> void:
 	_ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	var inst: int = int(entry["instance"])
+	# The end of the game stands bodies up at the back column (§19.5), and one can
+	# land right in front of this one and block "forward". Only this body is the
+	# subject, so the rest go.
+	for other in GameLoop2.stack.duplicate():
+		if int(other["instance"]) != inst:
+			GameLoop2.despawn(int(other["instance"]))
 	# It spawned on the back column and then walked a step during its own game
 	# (§7.2); park it back against the edge, which is the case this test is about.
 	entry["col"] = GameLoop2.spawn_col()
 	assert_eq(int(entry["col"]), GameLoop2.spawn_col(), "it is against the back edge")
+	_ui._board.refresh()
 	_ui._board.begin_push()
 	_ui._board.click_enemy(inst, entry, int(entry["col"]))
 	assert_eq(_ui._board.push_target, inst, "the click aims rather than inspects")
@@ -10969,3 +10976,22 @@ func test_an_arming_row_wears_the_round_box_and_a_resolving_one_does_not() -> vo
 	assert_not_null(now_box, "the any-time row has a box")
 	assert_false(now_box.has_theme_icon_override("unchecked"),
 		"a row that resolves on the spot wears the theme's own box")
+
+# --- the boss warning above the grid (§3.2, §19.6) ------------------------------
+
+func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
+	_pick_enemies(0)
+	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
+	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
+	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	GameLoop2.lost_run_spawn_step = 2
+	_ui._board.refresh()
+	assert_true(_ui._board._boss_warning.visible, "the warning is up")
+	assert_true(_ui._board._boss_warning.text.contains("50%"),
+		"and it names the chance: %s" % _ui._board._boss_warning.text)
+	assert_false(_ui._board._pressure_small.visible,
+		"in the small print's row, so the page is no taller for it")
+	GameState.spawn_events = 0
+	_ui._board.refresh()
+	assert_false(_ui._board._boss_warning.visible, "and it is gone when the boss is further off")
+	_leave_post_game()
