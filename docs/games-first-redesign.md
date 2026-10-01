@@ -305,7 +305,9 @@ of a game.
 - **A lost run MAY stand one body up** (`GameLoop2._roll_lost_run_spawn`). The
   chance climbs with every lost run at the game that stood nothing up — **0% (the
   first is free), 25%, 50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
-  drops back to 0% the moment one does, and when the game ends. So a long bad
+  drops back to 0% the moment one does, and whenever a game ends or starts —
+  won, lost or escaped (`_clear_attempts`) — so losing on purpose can never bank a
+  rung for the next game. So a long bad
   evening averages about one body per three lost runs, never one per run. The body
   rolls off the game in play's type at the run's tier, walks on at the back column
   AFTER the turn (it acts from the next lost run) and is not one of `arrivals`.

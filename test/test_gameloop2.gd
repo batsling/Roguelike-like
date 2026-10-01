@@ -2958,3 +2958,19 @@ func test_a_lost_run_can_bring_the_boss_and_grow_the_board_outward() -> void:
 	var e: Dictionary = _entry(front)
 	assert_eq([int(e.get("col", 0)), int(e.get("row", -1))], [1, 0],
 		"the body already standing only made the step its turn gave it — growth is outward")
+
+# THE CHANCE NEVER CARRIES INTO THE NEXT GAME, whatever way this one ended — so
+# there is nothing to gain by losing on purpose to bank a rung for later.
+func test_a_lost_or_escaped_game_resets_the_lost_run_spawn_too() -> void:
+	var _a: int = _choose_solo(_enemy(1))
+	GameLoop2.lost_run_spawn_step = 3
+	GameLoop2.beat_game(false)
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "a game handed in unbeaten starts the next at 0%")
+
+func test_choosing_a_game_resets_the_lost_run_spawn() -> void:
+	GameLoop2.lost_run_spawn_step = 3
+	var _a: int = _choose_solo(_enemy(1))
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "a new game always opens on the free rung")
+	GameLoop2.lost_run_spawn_step = 3
+	GameLoop2.begin_bodiless_game()
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "an Event or Shop node too")
