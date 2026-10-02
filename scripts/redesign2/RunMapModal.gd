@@ -521,6 +521,11 @@ func _ladder_cfg() -> Dictionary:
 		"zoom": _zoom,
 		"preview": _preview,
 		"on_node": func(id: StringName, depth: int): open_node_card(id, depth),
+		# The widest the window may grow, less its ladder padding: a long route
+		# fitted to the window's HEIGHT leaves this spare, and its rungs widen into
+		# it rather than cutting their names (RouteLadder `room_w`). The window is
+		# sized to the ladder, so it widens with them, never past the ceiling.
+		"room_w": maxf(0.0, view_ceiling().x - LADDER_PAD_X) if is_inside_tree() else 0.0,
 	}
 
 # Fly the chart behind to one game on the ladder. Public so a test can ask for
@@ -539,7 +544,7 @@ func node_name(id: StringName) -> String:
 # ---------------------------------------------------------------------------
 # The node card
 #
-# A rung is 150x48 with a clipped name in it, which is all a ladder should be and
+# A rung is 150x68 with a clipped name in it, which is all a ladder should be and
 # nowhere near enough to decide anything on. Clicking one opens this: the game's
 # cover, where it sits on this route, what you have already done there, and the
 # two things you can do about it — find it on the chart, or pin the route through

@@ -921,6 +921,10 @@ func _ladder_cfg() -> Dictionary:
 		"zoom": _zoom,
 		"preview": true,
 		"on_node": func(node_id: StringName, depth: int): open_node_card(node_id, depth),
+		# The box's width, less a scrollbar's lane, so a long narrow route's rungs
+		# widen into the empty space beside it (RouteLadder `room_w`).
+		"room_w": maxf(0.0, _ladder_room.size.x - 16.0)
+			if _ladder_room != null and is_instance_valid(_ladder_room) else 0.0,
 	}
 
 

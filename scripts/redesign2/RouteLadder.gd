@@ -29,10 +29,16 @@ const COL_WAYPOINT := Color(0.45, 0.24, 0.42)     # the game you insisted on
 # generateMapView, with the vertical gap pulled in: at 6-8 steps the ladder is
 # nine rows deep, and a gap bigger than half a rung spent more of the window on
 # nothing than on the route it exists to show.
-const BOX := Vector2(150, 48)
+#
+# TALLER RUNGS, SHORTER GAPS, SAME LADDER (the stream pass): 48 + 40 became
+# 68 + 20, so a layer costs exactly the height it did and every zoom-to-fit
+# lands where it did — but 20px moved out of the empty gap into the rung, where
+# it buys the name a second line even on the widest route's zoom.
+const BOX := Vector2(150, 68)
 const H_GAP := 14.0
-const V_GAP := 40.0
+const V_GAP := 20.0
 const PAD := 22.0
+const WIDEN_MAX := 2.0
 
 # A node's identity ON A LADDER is (depth, game) — not the game.
 #
@@ -84,6 +90,7 @@ static func kind_legend(font_size: int) -> Array:
 #   zoom         float       1.0 = natural size
 #   preview      bool        the route from a game only being considered
 #   on_node      Callable    (id: StringName, depth: int) -> void; unset = inert rungs
+#   room_w       float       optional: the view's width, so rungs may widen into it
 #
 # Returns the canvas: a Control whose custom_minimum_size is the ladder's real
 # extent, so the caller can fit a window to it.
@@ -97,6 +104,20 @@ static func build(cfg: Dictionary) -> Control:
 	var h_gap: float = H_GAP * zoom
 	var v_gap: float = V_GAP * zoom
 	var pad: float = PAD * zoom
+
+	# WIDER RUNGS WHERE THE VIEW HAS ROOM FOR THEM (`room_w`). A ladder fitted to a
+	# box's HEIGHT — a long, narrow route in the game-choice popup — is shrunk to
+	# fit top to bottom while the width beside it sits empty, and the names in its
+	# 86px rungs were ellipses. Given the room's width, the rungs take up to
+	# WIDEN_MAX of their natural width out of what the widest layer leaves spare.
+	# A ladder bound by its WIDTH has none spare and comes out exactly as before.
+	var room_w: float = float(cfg.get("room_w", 0.0))
+	if room_w > 0.0:
+		var widest: int = 1
+		for layer in layers:
+			widest = maxi(widest, (layer as Array).size())
+		var spare: float = (room_w - pad * 2.0 - (widest - 1) * h_gap) / float(widest)
+		box.x = clampf(spare, box.x, box.x * WIDEN_MAX)
 
 	var content_w: float = 0.0
 	for layer in layers:
@@ -250,6 +271,11 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	#
 	# Drawn at every zoom, unlike the badges. The name is trimmed on a shrunk rung
 	# anyway, and the kind is the one thing on it the colour does not already say.
+	# WHETHER THIS RUNG HAS THE ROOM FOR ITS EXTRAS (the ⚔/⛓ badges, the 📍/◆
+	# prefix): asked of the rung's own size, not of the zoom. A rung widened into
+	# spare room (`room_w`) can be roomy at a zoom that used to mean "shrunk".
+	var roomy: bool = rect.size.x >= ROOMY_W \
+		and rect.size.y >= MARK_BAND + name_line_h(NAME_MIN_FONT)
 	var kind: int = GameState.node_kind(id)
 	var mark := Label.new()
 	mark.text = RunGraph.kind_mark(kind)
@@ -283,7 +309,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	var fought: int = GameStats.enemies_for(id).size()
 	var links: int = RunGraph.open_degree(id)
 	var badge_w: float = 0.0
-	if zoom >= 0.62 and (fought > 0 or links > 0):
+	if roomy and (fought > 0 or links > 0):
 		var marks: Array = []
 		if fought > 0:
 			marks.append("⚔%d" % fought)
@@ -307,30 +333,107 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	var label := Label.new()
 	# A shrunk rung is barely wider than the glyph, and a name is worth more than
 	# a marker the colour already carries.
-	label.text = (prefix if zoom >= 0.62 else "") + name_text
+	label.text = (prefix if roomy else "") + name_text
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	# The name keeps clear of the badges rather than running under them.
-	label.offset_left = 4.0 + kind_w
-	label.offset_right = -(4.0 + badge_w)
+	# THE NAME GETS THE RUNG'S WHOLE WIDTH, under a band the marks sit in. It used
+	# to share one line with them — the kind mark on its left, "⚔3 ⛓12" on its
+	# right — which left a 150px rung about 90px of name, and on a wide route every
+	# name was an ellipsis ("Death…", "Anci…"). On a rung with the height to spare
+	# the marks take a strip along the top and the name the rest; on one too short
+	# for that (a very wide route, zoomed right out) the old side-by-side layout
+	# is the only one that fits, and the badges are already gone at that zoom.
+	var banded: bool = rect.size.y >= MARK_BAND + name_line_h(NAME_MIN_FONT)
+	if banded:
+		label.offset_left = 4.0
+		label.offset_right = -4.0
+		label.offset_top = MARK_BAND
+		label.offset_bottom = -2.0
+	else:
+		label.offset_left = 4.0 + kind_w
+		label.offset_right = -(4.0 + badge_w)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Clipped rather than wrapped forever: what doesn't fit the rung is trimmed to
-	# an ellipsis, and the whole name is a hover away (the tooltip above).
+	# WORD, not WORD_SMART: the size below is chosen so every word fits whole, so
+	# nothing should ever be broken mid-word ("HyperRogu / e").
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	# Clipped rather than wrapped forever: what STILL doesn't fit (a name too long
+	# for the rung even at the floor size) is trimmed to an ellipsis, and the whole
+	# name is a hover away (the tooltip above).
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# A floor as well as a ceiling: a long route fits by shrinking, and a rung
-	# whose name has shrunk out of legibility isn't a rung any more.
-	# A step up from 11 (floored at 9), for a stream: the names are what a viewer
-	# reads the route by. Not more — at 13 the rung's two lines broke words
-	# ("HyperRogu / e") and at one line every name was an ellipsis.
+	# THE NAME IS SIZED TO FIT, between the zoom's natural size and a legible
+	# floor: the largest size at which every word fits the width whole and the
+	# wrapped name fits the height. A short name keeps the big size; "Ancient
+	# Domains of Mystery" steps down until it is three readable lines rather than
+	# one cut-off word.
+	var avail := Vector2(rect.size.x + label.offset_right - label.offset_left,
+		rect.size.y - label.offset_top + label.offset_bottom)
+	# Starts at full size whatever the zoom: the fit steps it down only as far as
+	# this rung's own name needs, so a short name on a shrunk ladder stays big.
+	var natural: int = maxi(NAME_MIN_FONT, int(NAME_FONT * clampf(zoom, 1.0, 1.4)))
 	label.add_theme_font_size_override("font_size",
-		maxi(UITheme.FONT_TINY, int(12 * clampf(zoom, 0.75, 1.4))))
+		fit_name_size(label.text, avail, natural, NAME_MIN_FONT))
 	label.add_theme_color_override("font_color",
 		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
 	panel.add_child(label)
 	return panel
+
+# The rung name's sizes: natural (scaled by zoom), and the floor it may step
+# down to to fit whole words.
+const NAME_FONT := 13
+const NAME_MIN_FONT := 9
+# A Label's default `line_spacing`, which a wrapped name pays between lines.
+const LINE_SPACING := 3.0
+
+# One line of the name at `fs`, measured off the font the label draws in rather
+# than guessed — a guess a pixel high is the difference between two lines and
+# an ellipsis on the rungs this is for.
+static func name_line_h(fs: int) -> float:
+	var font: Font = ThemeDB.fallback_font
+	if font == null:
+		return fs * 1.4 + LINE_SPACING
+	return font.get_height(fs) + LINE_SPACING
+# The strip along a rung's top the kind mark and the badges sit in.
+const MARK_BAND := 14.0
+# The narrowest rung that keeps its badges and prefix (a 150px rung at 0.62, the
+# zoom that used to decide this).
+const ROOMY_W := 93.0
+
+# The largest size in [floor, natural] at which `text` wraps (between words only)
+# inside `avail` with no word wider than the width. Measured with the theme's
+# base font, which is the one these labels draw in. Falls back to the floor when
+# nothing fits — the label's ellipsis then takes the rest.
+static func fit_name_size(text: String, avail: Vector2, natural: int, floor_size: int) -> int:
+	var font: Font = ThemeDB.fallback_font
+	if font == null or avail.x <= 0.0 or avail.y <= 0.0:
+		return floor_size
+	var words: PackedStringArray = text.split(" ", false)
+	for fs in range(natural, floor_size - 1, -1):
+		# The first line is the font's height; every one after adds the Label's
+		# line spacing on top.
+		var max_lines: int = int(floor((avail.y + LINE_SPACING) / name_line_h(fs)))
+		if max_lines < 1:
+			continue
+		var space: float = font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var lines: int = 1
+		var line_w: float = 0.0
+		var fits: bool = true
+		for w in words:
+			var ww: float = font.get_string_size(w, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			if ww > avail.x:
+				fits = false
+				break
+			if line_w <= 0.0:
+				line_w = ww
+			elif line_w + space + ww <= avail.x:
+				line_w += space + ww
+			else:
+				lines += 1
+				line_w = ww
+		if fits and lines <= max_lines:
+			return fs
+	return floor_size
 
 # The corner badges in words. ⚔ is your record here; ⛓ is how many games this one
 # connects to on the run's map — the pool the next offering is drawn from when
@@ -347,7 +450,7 @@ static func _badge_tip(fought: int, links: int) -> String:
 # ---------------------------------------------------------------------------
 # The rung's CARD
 #
-# A rung is 150x48 with a clipped name in it, which is all a ladder should be and
+# A rung is 150x68 with a clipped name in it, which is all a ladder should be and
 # nowhere near enough to decide anything on. Clicking one opens the game: its
 # cover, where it sits on this route, what you have already done there, and
 # whatever the caller can offer to do about it.
