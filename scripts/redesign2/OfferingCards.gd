@@ -63,6 +63,7 @@ func render() -> void:
 			l.text = "No reachable games — dead end."
 		_row.add_child(l)
 		return
+	_fit_row(_page._choices)
 	for i in range(_page._choices.size()):
 		_row.add_child(_make_choice_card(i, _page._choices[i]))
 	_line.text = _preview_idle_text()
@@ -74,6 +75,48 @@ func render() -> void:
 # columns had to fit side by side. The badges have gone into GameChoiceModal, so
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
+
+# THE ROW IS AS TALL AS ITS TALLEST COVER, not as tall as a portrait box.
+#
+# A game's "cover" is often a SCREENSHOT — landscape, and in a 150x200 portrait
+# box it was letterboxed into a 150x110 strip with 45px of nothing above and
+# below it, on every card. With the name box always reserving three lines, an
+# offering of three screenshots spent ~140px of the column's height on empty
+# frame, and that height comes straight out of the checklist under it
+# (Overworld2._fit_checklist), which then scrolled after a row and a half.
+#
+# So the box follows the art: each cover asks for the height its own aspect wants
+# at COVER_SIZE.x, the row takes the tallest of them so the covers still line up,
+# and nothing goes below COVER_MIN_H. A row of box art is exactly as tall as
+# before; a row of screenshots gives the checklist back what it was wasting.
+# The name box does the same with the lines the longest name actually wraps to.
+const COVER_MIN_H := 112.0
+const NAME_LINE_H := 17
+var _cover_h: float = COVER_SIZE.y
+var _name_h: int = NAME_BOX_H
+
+func _fit_row(choices: Array) -> void:
+	_cover_h = COVER_MIN_H
+	var lines: int = 1
+	var font: Font = _row.get_theme_default_font() if _row != null else null
+	for choice in choices:
+		var game: GameData = choice.get("game")
+		if game == null:
+			continue
+		var tex: Texture2D = game.cover_image
+		if tex == null or tex.get_width() <= 0:
+			_cover_h = COVER_SIZE.y
+		else:
+			_cover_h = maxf(_cover_h, minf(COVER_SIZE.y,
+				COVER_SIZE.x * float(tex.get_height()) / float(tex.get_width())))
+		if font != null:
+			var w: float = font.get_string_size("☠ " + game.display_name,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_FONT).x
+			lines = maxi(lines, mini(3, int(ceil(w / (COVER_SIZE.x - 8.0)))))
+		else:
+			lines = 3
+	_cover_h = ceilf(_cover_h)
+	_name_h = lines * NAME_LINE_H
 
 # The width of the enemy portrait on the hover line under the offering. Its
 # HEIGHT is the line's, whatever that turns out to be — and that is the whole
@@ -252,7 +295,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# card would be, and a popup over the covers while the mouse crosses three of
 	# them is the noisiest possible way to say it. The cards are for scanning.
 	var btn := HoverButton.new()
-	btn.custom_minimum_size = COVER_SIZE
+	btn.custom_minimum_size = Vector2(COVER_SIZE.x, _cover_h)
 	# A CARD UNDER AN ARMED VERB IS A TARGET, and it is drawn as one. Bash and
 	# Transmute are aimed from the chips below the offering (Overworld2._armed_verb),
 	# and while one is up a click on this cover fires it instead of opening the card
@@ -314,7 +357,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, NAME_BOX_H)
+	name_lbl.custom_minimum_size = Vector2(COVER_SIZE.x, _name_h)
 	name_lbl.add_theme_font_size_override("font_size", NAME_FONT)
 	name_lbl.add_theme_color_override("font_color", accent if (choice["boss"] or amulet) else UITheme.TEXT)
 	card.add_child(name_lbl)

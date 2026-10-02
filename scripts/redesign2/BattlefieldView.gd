@@ -512,9 +512,12 @@ func _span_size(rows: int, cols: int) -> Vector2:
 # saying the pressure, the ladder it sits on, and the distance that put it
 # there, with the difficulty tier in the small print under it.
 
-# Pip glyphs for the three-rung ladder — filled to the current band, hollow past it.
-const RUNG_ON := "▮"
-const RUNG_OFF := "▯"
+# THE LADDER IS A SEGMENTED BAR, NOT GLYPHS. It was ▮/▯, and the hollow ▯ is
+# exactly the shape a missing character renders as — on a stream, an empty
+# ladder read as a broken font. Drawn segments cannot be mistaken for one: lit in
+# the band's colour up to the pressure, dark past it.
+const RUNG_W := 18
+const RUNG_H := 10
 
 func _build_pressure_bar() -> Control:
 	_pressure_panel = HoverPanel.new()
@@ -548,8 +551,10 @@ func _build_pressure_bar() -> Control:
 	ladder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_pressure_rungs.clear()
 	for i in range(RunDifficulty.MAX_PRESSURE):
-		var pip := Label.new()
-		pip.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(RUNG_W, RUNG_H)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ladder.add_child(pip)
 		_pressure_rungs.append(pip)
 	head.add_child(ladder)
@@ -634,11 +639,11 @@ func _refresh_pressure() -> void:
 	_pressure_turns.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
-		var pip: Label = _pressure_rungs[i]
+		var pip: Panel = _pressure_rungs[i]
 		var lit: bool = i < pressure
-		pip.text = RUNG_ON if lit else RUNG_OFF
-		pip.add_theme_color_override("font_color",
-			band if lit else UITheme.TEXT_FAINT)
+		pip.add_theme_stylebox_override("panel", UITheme.flat(
+			band if lit else Color(0.05, 0.05, 0.06, 0.85), 2, 0, 1,
+			band.lerp(Color.WHITE, 0.2) if lit else band.lerp(UITheme.BG, 0.5)))
 
 	# WHY it's that number. Without the hop count the pressure reads as a random
 	# difficulty spike rather than as the price of the route the player chose.
@@ -2354,17 +2359,16 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# ceiling was never written down.
 	var hp: int = int(entry.get("health", e.health))
 	var ceiling: int = GameLoop2.entry_max_health(entry)
-	var hp_lbl := _corner_badge("❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling],
-		Color(1.0, 0.5, 0.5), STAT_BADGE_FONT)
+	var stat_font: int = stat_badge_font(_cell)
+	var hp_lbl := _stat_badge("❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling],
+		HP_BADGE, stat_font)
 
 	# Damage per swing, and — on the rare body that gets more than one swing out of
 	# a single turn — how many that is: "⚔3 ×2". The two numbers are one fact ("it
 	# hits you twice for 3"), so they read as one badge instead of the count
 	# sitting over the art.
-	var dmg_lbl := _corner_badge(_damage_badge_text(entry, strikes), Color(1.0, 0.8, 0.35),
-		STAT_BADGE_FONT)
-	if strikes > 1:
-		dmg_lbl.add_theme_color_override("font_color", UITheme.DANGER.lerp(Color.WHITE, 0.45))
+	var dmg_lbl := _stat_badge(_damage_badge_text(entry, strikes),
+		UITheme.DANGER.lerp(Color.WHITE, 0.45) if strikes > 1 else DMG_BADGE, stat_font)
 
 	# The two go in ONE ROW, not one in each bottom corner, and that is a bug fix.
 	# Anchored separately, each badge grew from its own corner inwards — so the
@@ -2394,7 +2398,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# how much of it is left.
 	var shield: int = GameLoop2.enemy_shield(entry)
 	if shield > 0:
-		stat_row.add_child(_corner_badge("◆%d" % shield, SHIELD_BLUE, STAT_BADGE_FONT))
+		stat_row.add_child(_stat_badge("◆%d" % shield, SHIELD_BLUE, stat_font))
 	var gap := Control.new()
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2403,7 +2407,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# BOTTOM_WIDE: the row spans the body's full width, so "left corner" and
 	# "right corner" are still where the two numbers land on anything roomy.
 	stat_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE,
-		Control.PRESET_MODE_MINSIZE, -STAT_BADGE_DROP)
+		Control.PRESET_MODE_MINSIZE, -stat_badge_drop(stat_font))
 	holder.add_child(stat_row)
 
 	# Statuses BELOW the box, under the health/damage row (§13) — the one piece of
@@ -2419,7 +2423,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
 			_nullified_ids(entry))
 		strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
-			Control.PRESET_MODE_MINSIZE, -STATUS_STRIP_DROP)
+			Control.PRESET_MODE_MINSIZE, -(STATUS_STRIP_DROP + stat_badge_drop(stat_font)
+				- STAT_BADGE_DROP))
 		holder.add_child(strip)
 
 	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
@@ -2696,7 +2701,10 @@ const STATUS_PIP_HERO := 22
 # box into the gutter and the top of the cell under it, and at 16px a body with
 # two statuses covered the head of whatever stood below it. The pip's hover still
 # carries the whole status; the chip only has to say which.
-const STATUS_PIP_ENEMY := 11
+# 14 for the stream pass: at 11, with a 9px count, a status on an enemy was a
+# speck on a 1080p capture. Still three under the 16 that covered the head of the
+# body below — the stat pills above it now carry most of the visual weight.
+const STATUS_PIP_ENEMY := 14
 
 # How far the ❤ / ⚔ badges hang BELOW an enemy's box, and how far under them the
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
@@ -2723,8 +2731,55 @@ const BOSS_SKULL_INSET := 7
 const HUNT_BAND := Color(1.0, 0.78, 0.28)
 
 const STAT_BADGE_DROP := 7
-const STAT_BADGE_FONT := 10
 const STATUS_STRIP_DROP := 15
+
+# THE ❤ / ⚔ BADGES ARE READ OFF A STREAM, so they are sized to the cell rather
+# than fixed at the 10px they started at. At 10px, outlined white over the art,
+# they were the smallest text on the page and a 1080p capture downscaled to a
+# viewer's player turned them into specks — while they are the two numbers a
+# viewer most wants ("does it die this game, and what does it hit for"). The
+# step tracks the board: the small boards' 90px cells (CELL_MAX) take FONT_SUB,
+# a 7x7's 46px cells FONT_BODY — still two points up on what every size had.
+const HP_BADGE := Color(1.0, 0.55, 0.55)
+const DMG_BADGE := Color(1.0, 0.8, 0.35)
+
+static func stat_badge_font(cell: int) -> int:
+	if cell >= 84:
+		return UITheme.FONT_SUB
+	if cell >= 64:
+		return UITheme.FONT_LEAD
+	if cell >= 52:
+		return UITheme.FONT_LABEL
+	return UITheme.FONT_BODY
+
+# How far the stat row hangs below the box: about half the pill, so it straddles
+# the border at every size the way the 10px badge did at 7px.
+static func stat_badge_drop(font: int) -> int:
+	return STAT_BADGE_DROP + (font - UITheme.FONT_TINY) / 2 + 2
+
+# One stat badge: the number in its own colour on an opaque dark pill rimmed in
+# the same colour. The pill is what lets it carry colour at all — `_corner_badge`
+# is white because bare text over 800-odd different pictures has nothing else it
+# can rely on (see the note above it), and a backing it brings with it removes
+# that constraint. It also gives each number an EDGE: two bodies standing side by
+# side used to run their badges together into one string ("❤1.❤1").
+#
+# Still a Label (a Label draws a `normal` stylebox), so everything that finds a
+# badge by walking the row for Labels keeps finding it.
+func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.3))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	l.add_theme_constant_override("outline_size", 2)
+	var pill := UITheme.flat(Color(0.06, 0.05, 0.06, 0.9), 4, 0, 1,
+		accent.lerp(UITheme.BG, 0.25))
+	pill.content_margin_left = 4
+	pill.content_margin_right = 4
+	l.add_theme_stylebox_override("normal", pill)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
 # The status strip's node name on an enemy's badge layer. A const because it is an
 # identity two files agree on: the board builds it and the tests look it up.
 const STATUS_STRIP_NAME := "StatusStrip"
@@ -2755,7 +2810,8 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 		row.add_child(art)
 	var count := Label.new()
 	count.text = str(stacks)
-	count.add_theme_font_size_override("font_size", maxi(9, size - 6))
+	count.add_theme_font_size_override("font_size",
+		clampi(size - 3, UITheme.FONT_SMALL, UITheme.FONT_LEAD))
 	count.add_theme_color_override("font_color", tint)
 	count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	count.add_theme_constant_override("outline_size", 3)

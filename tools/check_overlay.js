@@ -404,6 +404,9 @@ function fixture(dir) {
       blocked: i === 0,
       stacks: kind === 'status' ? 4 : 0,
       good: kind === 'status',
+      /* Identical bodies share one row (ReportChecklist.group_bodies). */
+      count: i === 0 ? 3 : 0,
+      cleared: i === 0 ? 1 : 0,
     };
   });
 
@@ -656,6 +659,27 @@ async function main() {
   check('an addon carries no face and is indented under its parent',
     rows.filter((r) => /addon/.test(r.kind)).every((r) => !r.art && r.indent > 20),
     JSON.stringify(rows.filter((r) => /addon/.test(r.kind))));
+
+  /* A GROUP OF IDENTICAL BODIES IS ONE ROW wearing ×N — on the corner OPPOSITE
+   * the damage badge, so "how many" and "how hard" can never print over each
+   * other — and its subtitle says how far through the group the game is. */
+  const group = await page.evaluate(() => {
+    const badge = document.querySelector('.goal-badge.count');
+    if (!badge) return null;
+    const row = badge.closest('.goal');
+    const dmg = row.querySelector('.goal-badge.dmg, .goal-badge.shield');
+    const a = badge.getBoundingClientRect();
+    const b = dmg ? dmg.getBoundingClientRect() : null;
+    const apart = !b || a.right <= b.left || a.bottom <= b.top
+      || b.right <= a.left || b.bottom <= a.top;
+    return { text: badge.textContent, apart,
+             who: row.querySelector('.who') ? row.querySelector('.who').textContent : '' };
+  });
+  check('a group of identical bodies wears its count on the art',
+    !!group && group.text === '\u00d73', JSON.stringify(group));
+  check('…clear of the damage badge', !!group && group.apart, JSON.stringify(group));
+  check('…and says how many of them are cleared',
+    !!group && /1 of 3 cleared/.test(group.who), JSON.stringify(group));
 
   /* THE CARD IS A TINT AND THE HALO IS WHAT MAKES THAT SAFE. Two mechanism pins;
    * the pixel sampling further down is what actually holds the line.

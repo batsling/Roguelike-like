@@ -391,27 +391,17 @@ func chests_waiting() -> int:
 # page resumes the chain event-first (`finished`), and the shelf is still under
 # the board on the far side of it. A button promising the shop would be naming the
 # thing after the thing that actually opens.
+#
+# NO "(leaving N behind)" ANY MORE. It sat beside "STILL FOLLOWING 2" in red, and
+# on a stream the N read as a count of ENEMIES — the one thing it was not (it
+# was the loot still on the table). The table itself shows what is left, which
+# is the honest place for it.
 func exit_text() -> String:
-	var left: int = _unanswered()
-	var base: String = "→  Travel on"
 	if _event_pending:
-		base = "⚑  Go to Event"
-	elif _shop_id != &"":
-		base = "🛒  Go to Shop"
-	if left <= 0:
-		return base
-	return "%s   (leaving %d behind)" % [base, left]
-
-# How much is still on the table. The way out bins it, so the button says so
-# first: a Legendary left on the ground should be a decision and not a side
-# effect of pressing Continue.
-func _unanswered() -> int:
-	var left: int = 0
-	if _loot_section != null and is_instance_valid(_loot_section):
-		left += _loot_section.remaining()
-	left += _live_chests().size()
-	left += _chests.size()
-	return left
+		return "⚑  Go to Event"
+	if _shop_id != &"":
+		return "🛒  Go to Shop"
+	return "→  Travel on"
 
 
 # ---------------------------------------------------------------------------
@@ -607,7 +597,95 @@ func _left_column() -> Control:
 	_boss_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_boss_slot)
 
+	var board: Control = _board_panel()
+	if board != null:
+		col.add_child(board)
+
 	return scroller
+
+# WHO IS STILL FOLLOWING YOU, BY FACE — the bottom of the left column.
+#
+# "Still following 6" in red was the whole of what this screen said about the
+# board, and on a lost game that number can jump by four (the enemy turn, the
+# bodies the road stands up as a game ends, §19.5) with nothing on the screen
+# saying where they came from. That is the first question a stream's chat asks,
+# and the left column had half the screen empty below the tally to answer it in.
+#
+# So: the faces, one chip per KIND of body with ×N, the way the checklist groups
+# them; and the line that says how many walked on as the game was handed in.
+const BOARD_FACE := 40
+
+func _board_panel() -> Control:
+	if GameLoop2.stack.is_empty():
+		return null
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	wrap.add_child(col)
+	col.add_child(_line("STILL FOLLOWING YOU — %d" % GameLoop2.stack.size(),
+		UITheme.TEXT_FAINT, UITheme.FONT_TINY))
+
+	# One chip per enemy id, in board order — the shape, not the goal, is what a
+	# viewer is counting here.
+	var order: Array = []
+	var count: Dictionary = {}
+	var sample: Dictionary = {}
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry.get("enemy")
+		if e == null:
+			continue
+		if not count.has(e.id):
+			order.append(e.id)
+			sample[e.id] = entry
+		count[e.id] = int(count.get(e.id, 0)) + 1
+	var faces := HFlowContainer.new()
+	faces.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	faces.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	col.add_child(faces)
+	for id in order:
+		faces.add_child(_board_face(sample[id], int(count[id])))
+
+	var res: Dictionary = _snap.get("res", {})
+	var walked: int = int(res.get("end_spawns", 0))
+	if walked > 0:
+		var why := _line("+%d walked on as the game ended — the road fills the board "
+			% walked + "after every game.", UITheme.DANGER.lerp(UITheme.TEXT, 0.35),
+			UITheme.FONT_BODY)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(why)
+	return wrap
+
+func _board_face(entry: Dictionary, n: int) -> Control:
+	var e: GoalEnemyData = entry.get("enemy")
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	box.tooltip_text = "%s — %s" % [e.display_name, GameLoop2.goal_text_for(entry)]
+	box.mouse_filter = Control.MOUSE_FILTER_PASS
+	var frame := PanelContainer.new()
+	var rim: Color = UITheme.DANGER if GameLoop2.in_front(entry) else UITheme.BORDER
+	frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 4, 2, 1, rim))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art: Texture2D = GameLoop2.entry_image(entry)
+	if art != null:
+		frame.add_child(UITheme.crisp_tex(art, BOARD_FACE))
+	else:
+		var letter := _line(String(e.display_name).substr(0, 1).to_upper(), rim,
+			UITheme.FONT_HEAD)
+		letter.custom_minimum_size = Vector2(BOARD_FACE, BOARD_FACE)
+		letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		frame.add_child(letter)
+	box.add_child(frame)
+	var label := _line(("×%d  " % n if n > 1 else "") + e.display_name, UITheme.TEXT,
+		UITheme.FONT_SMALL)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.custom_minimum_size = Vector2(BOARD_FACE + 64, 0)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(label)
+	return box
 
 # Everything that goes INSIDE the columns, once the columns are on the screen.
 # Kept apart from building them for the reason spelled out in _build: a section is

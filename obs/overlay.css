@@ -762,6 +762,21 @@ html, body {
  * is red (see `_statuses` — the tint is what the SIDE DOES, not buff/debuff). */
 .goal-badge.stacks { color: var(--danger); text-shadow: 0 0 3px #000, 0 1px 2px #000; }
 .goal-badge.stacks.good { color: var(--gold); }
+/* ×N: several identical bodies on one row (the game's checklist groups them the
+ * same way). The OPPOSITE corner from the damage, so the two never collide, and
+ * on a dark chip of its own because it is a count of bodies, not a stat. */
+.goal-badge.count {
+  right: auto;
+  bottom: auto;
+  left: -4px;
+  top: -4px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(10, 8, 10, 0.88);
+  border: 1px solid var(--gold);
+}
 
 /* A BONUS OR AN `instead` HANGS OFF THE ROW ABOVE IT, and is indented to say so
  * rather than repeating that body's face — which would draw one enemy two and

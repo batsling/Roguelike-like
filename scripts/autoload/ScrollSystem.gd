@@ -30,7 +30,7 @@ const SCROLL_COLOR := Color(0.61, 0.35, 0.71)
 # is a capsule (§4.1). Every unidentified scroll wears the same parchment — there
 # is no per-scroll mystery art and there should not be, because a scroll is a
 # sheet of paper with writing on it — so the writing is the tell. Until you read
-# one, a scroll is "ZELGO MER" or "ah bloto festr": a title that means nothing,
+# one, a scroll is "ZELGO MER" or "AH BLOTO FESTR": a title that means nothing,
 # is the same title all run, and means something else entirely in the next run.
 #
 # This is the thing the pack was missing. Nine slots of "Unidentified Scroll" is
@@ -125,7 +125,11 @@ func _assemble_label(book: ScrollNames, rng: RandomNumberGenerator,
 		var pool: Array = Array(book.parts)
 		pool.shuffle()
 		var count: int = mini(rng.randi_range(PARTS_MIN, PARTS_MAX), pool.size())
-		var label: String = " ".join(PackedStringArray(pool.slice(0, count)))
+		# IN CAPITALS, like the whole names beside it. Rogue wrote its syllables in
+		# lower case and NetHack its titles in upper, and a haul table offering
+		# "VELOX NEB" beside "caca quo" read as two different kinds of thing — or
+		# as a bug. One alphabet, one look; the sheet keeps the parts as authored.
+		var label: String = " ".join(PackedStringArray(pool.slice(0, count))).to_upper()
 		if not taken.has(label):
 			return label
 	return ""
@@ -158,7 +162,9 @@ func name_source(label: String) -> String:
 	if whole != "":
 		return whole
 	var first: String = label.split(" ")[0]
-	return book.source_for_part(first)
+	# Parts are authored in lower case and dealt in capitals (_assemble_label).
+	var credit: String = book.source_for_part(first)
+	return credit if credit != "" else book.source_for_part(first.to_lower())
 
 # ===========================================================================
 # Identification (mirrors PotionSystem)
@@ -219,7 +225,7 @@ func unidentify(id: StringName) -> void:
 # ===========================================================================
 
 # What a scroll is CALLED right now: its real name once read, and this run's
-# dealt title until then ("ZELGO MER", "ah bloto festr").
+# dealt title until then ("ZELGO MER", "AH BLOTO FESTR").
 #
 # The flat "Unidentified Scroll" survives as the fallback and only that: it is
 # what a scroll reads as when the name book is missing or empty (a checkout where

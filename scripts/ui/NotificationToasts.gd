@@ -19,13 +19,33 @@ extends Control
 # The foot of the page is the least dense band in every phase — the choosing
 # screen, the report screen and the board all end above it — and it is where a
 # transient notice is conventionally looked for.
-const HOLD_TIME := 2.2
+#
+# ONE LANE, ONE SHAPE (the stream pass). The stack used to sit centred at the foot
+# of the page, every toast as wide as its own sentence and rimmed all round in its
+# colour — so a burst was a ragged pile of differently sized boxes landing on the
+# middle of the page, across the bottom of BOTH columns, over the checklist's last
+# rows and the board's bottom row at once. On a stream that read as clutter.
+#
+# Now it is a fixed-width column in the BOTTOM-LEFT corner: every toast the same
+# width, text left-aligned, the colour carried by a stripe down the left edge
+# instead of a full rim — a list of notices rather than a scatter of them. At most
+# MAX_VISIBLE stand at once; the next one retires the oldest early, so a burst can
+# never climb up the page. Newest at the bottom, nearest the edge, where the eye
+# lands first. The corner is the left column's foot, which on every phase holds
+# the least load-bearing line on the page (the "Last game:" recap, the escape
+# hint, the haul screen's footer prompt), and never the board.
+const HOLD_TIME := 2.6
 const FADE_IN := 0.18
 const FADE_OUT := 0.35
-const MAX_WIDTH := 340.0
+const TOAST_W := 400.0
+const MAX_VISIBLE := 3
+const STRIPE_W := 5
+const PAD_X := 12
+const PAD_Y := 6
 
 # How far off the bottom edge the stack floats when nothing else is down there.
 const BOTTOM_MARGIN := 16.0
+const SIDE_MARGIN := 16.0
 
 var _stack: VBoxContainer
 
@@ -47,16 +67,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_stack = VBoxContainer.new()
-	# Anchored across the bottom edge and growing UPWARD, so a new toast appears
+	# Anchored to the bottom-left corner and growing UPWARD, so a new toast appears
 	# against the foot of the screen and shoves the older ones up out of the way.
-	# Full width rather than a fixed column: each toast centres itself inside it
-	# (SIZE_SHRINK_CENTER below), which is what keeps a one-word notice and a
-	# wrapped two-line one on the same axis.
-	_stack.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_stack.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	# A FIXED column: every toast fills it, so they line up down both edges.
+	_stack.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_stack.grow_horizontal = Control.GROW_DIRECTION_END
 	_stack.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_stack.offset_left = 16.0
-	_stack.offset_right = -16.0
+	_stack.offset_left = SIDE_MARGIN
+	_stack.offset_right = SIDE_MARGIN + TOAST_W
 	_stack.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_stack)
@@ -99,20 +117,23 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 		return
 	var toast := PanelContainer.new()
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	toast.size_flags_horizontal = Control.SIZE_FILL
 	toast.modulate.a = 0.0
 
+	# The colour is a STRIPE down the left edge with a hairline round the rest:
+	# a column of differently rimmed boxes is four different shapes, and a column
+	# of striped ones is one list.
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.09, 0.10, 0.14, 0.95)
+	sb.bg_color = Color(0.07, 0.07, 0.09, 0.96)
 	sb.border_color = color
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 14
-	sb.content_margin_right = 14
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
+	sb.set_border_width_all(1)
+	sb.border_width_left = STRIPE_W
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = PAD_X
+	sb.content_margin_right = PAD_X
+	sb.content_margin_top = PAD_Y
+	sb.content_margin_bottom = PAD_Y
 	toast.add_theme_stylebox_override("panel", sb)
-
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
@@ -126,23 +147,22 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 
 	var lbl := Label.new()
 	lbl.text = text
-	# Measured UNWRAPPED first: a Label that already wraps reports a minimum width of
-	# roughly one character, which would collapse every toast into a tall ribbon.
-	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
 	lbl.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The width the column gives it, less the picture beside it: a wrapping Label
+	# reports a minimum of about one character otherwise.
+	var room: float = TOAST_W - STRIPE_W - 1 - PAD_X * 2
+	if pic != null:
+		room -= ICON_SIZE + UITheme.GAP_WIDE
+	lbl.custom_minimum_size = Vector2(room, 0)
 	row.add_child(lbl)
 
 	_stack.add_child(toast)
-	# Cap label width so long lines wrap instead of stretching off-screen, then let
-	# it wrap inside the width it just claimed — less the picture beside it.
-	var room: float = MAX_WIDTH - 28.0
-	if pic != null:
-		room -= ICON_SIZE + UITheme.GAP_WIDE
-	lbl.custom_minimum_size = Vector2(minf(room, lbl.get_minimum_size().x), 0)
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_retire_overflow()
 
 	var rec := {"toast": toast, "label": lbl, "text": text, "count": 1, "tween": null}
 	if key != "":
@@ -151,6 +171,27 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 			if _by_key.get(key, {}).get("toast") == toast:
 				_by_key.erase(key))
 	rec["tween"] = _play(toast, true)
+
+# NEVER MORE THAN MAX_VISIBLE. The oldest standing toast (the top of the column)
+# is sent out now rather than at the end of its hold, so a burst of drops keeps
+# the column a fixed height instead of climbing the page.
+func _retire_overflow() -> void:
+	var live: Array = []
+	for t in _stack.get_children():
+		if not bool((t as Node).get_meta(&"retiring", false)):
+			live.append(t)
+	var extra: int = live.size() - MAX_VISIBLE
+	for i in range(maxi(0, extra)):
+		var old: Control = live[i]
+		old.set_meta(&"retiring", true)
+		for rec in _by_key.values():
+			if rec.get("toast") == old:
+				var tw = rec.get("tween")
+				if tw is Tween and (tw as Tween).is_valid():
+					(tw as Tween).kill()
+		var out := create_tween()
+		out.tween_property(old, "modulate:a", 0.0, FADE_OUT * 0.5)
+		out.tween_callback(old.queue_free)
 
 # ONE SOURCE, ONE TOAST. A second notice from a source whose toast is still up
 # rewrites that toast and holds it again rather than stacking a new one: the same
@@ -165,16 +206,6 @@ func _restack(rec: Dictionary, text: String) -> void:
 		rec["text"] = text
 		rec["count"] = 1
 		(rec["label"] as Label).text = text
-	# Re-measured, because the width was claimed for the shorter line: without this
-	# a "×2" wraps onto a line of its own.
-	var lbl: Label = rec["label"]
-	var room: float = lbl.custom_minimum_size.x
-	var pic_w: float = (ICON_SIZE + UITheme.GAP_WIDE) if lbl.get_parent().get_child_count() > 1 else 0.0
-	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	lbl.custom_minimum_size = Vector2.ZERO
-	room = minf(MAX_WIDTH - 28.0 - pic_w, lbl.get_minimum_size().x)
-	lbl.custom_minimum_size = Vector2(room, 0)
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var old = rec.get("tween")
 	if old is Tween and (old as Tween).is_valid():
 		(old as Tween).kill()

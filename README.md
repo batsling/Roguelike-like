@@ -89,7 +89,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   ├── characters2.0/    #   CharacterData — the playable roster
 │   ├── scrolls2.0/       #   ScrollData — identify-by-reading scrolls
 │   ├── scroll_names.tres #   ScrollNames — the bag of meaningless titles an
-│   │                     #   unread scroll wears ("ZELGO MER", "ah bloto festr");
+│   │                     #   unread scroll wears ("ZELGO MER", "AH BLOTO FESTR");
 │   │                     #   a run deals one per scroll and redeals every run
 │   ├── pills2.0/         #   PillData — identify-by-taking pills, two doses each
 │   │                     #   (the horse dose is a 5% roll on the drop, §4.3)

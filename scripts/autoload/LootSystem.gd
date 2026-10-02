@@ -583,7 +583,7 @@ func carried_unidentified() -> Array:
 # same parchment and the same words, so a picker that masked them was a list of
 # identical rows, which is not a choice either. Both halves of that are fixed by
 # the run dealing each scroll a title of its own (ScrollSystem.ensure_names) —
-# "ZELGO MER" and "ah bloto festr" are as distinguishable as two names get and
+# "ZELGO MER" and "AH BLOTO FESTR" are as distinguishable as two names get and
 # say nothing whatever about what is written underneath.
 #
 # So every kind now masks the same way, and `display_name` is already the mask

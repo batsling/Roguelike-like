@@ -521,6 +521,11 @@ func _ladder_cfg() -> Dictionary:
 		"zoom": _zoom,
 		"preview": _preview,
 		"on_node": func(id: StringName, depth: int): open_node_card(id, depth),
+		# The widest the window may grow, less its ladder padding: a long route
+		# fitted to the window's HEIGHT leaves this spare, and its rungs widen into
+		# it rather than cutting their names (RouteLadder `room_w`). The window is
+		# sized to the ladder, so it widens with them, never past the ceiling.
+		"room_w": maxf(0.0, view_ceiling().x - LADDER_PAD_X) if is_inside_tree() else 0.0,
 	}
 
 # Fly the chart behind to one game on the ladder. Public so a test can ask for
@@ -539,7 +544,7 @@ func node_name(id: StringName) -> String:
 # ---------------------------------------------------------------------------
 # The node card
 #
-# A rung is 150x48 with a clipped name in it, which is all a ladder should be and
+# A rung is 150x68 with a clipped name in it, which is all a ladder should be and
 # nowhere near enough to decide anything on. Clicking one opens this: the game's
 # cover, where it sits on this route, what you have already done there, and the
 # two things you can do about it — find it on the chart, or pin the route through
@@ -771,17 +776,21 @@ func _legend() -> Control:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	stack.add_child(row)
+	# ALL FOUR KIND MARKS, in their colours, on ONE flowing line with the hint.
+	# Only `$` used to be named, because every rung's hover says its own — but a
+	# stream's viewers cannot hover, and "! ? !!" was four symbols they had never
+	# been told. A flow rather than a wrapping sentence: on a wide route it is one
+	# line, which is all the ladder above can spare.
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	for l in RouteLadder.kind_legend(UITheme.FONT_SMALL):
+		flow.add_child(l)
 	var hint := Label.new()
-	# Terser than it reads, on purpose: this label sits under the route and every
-	# line it wraps to is a line the ladder loses. Spelling the shop out cost the
-	# map enough height to push a fit past the legibility floor — and spelling out
-	# all four kind marks would too, so only the one a player routes FOR is named;
-	# every rung's hover says what its own mark means.
-	hint.text = "$ = a shop  •  ⚔ = beaten here  •  click any game for details"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.text = "•  ⚔ = beaten here  •  click any game for details"
 	hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	stack.add_child(hint)
+	flow.add_child(hint)
+	stack.add_child(flow)
 	return stack
 
 func _legend_chip(text: String, swatch: Color) -> Control:

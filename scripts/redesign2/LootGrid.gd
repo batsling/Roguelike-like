@@ -941,6 +941,8 @@ class BagArt extends TextureRect:
 			return
 		var row: Dictionary = GameState.pack_bags[bag]
 		texture = LootPassives.load_bag_art(GameState.bag_def(row))
+		texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST \
+			if UITheme.is_small_art(texture) else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 		var turn: int = LootGrid.art_turn(texture, int(row.get("rot", 0)),
 			GameState.bag_size(row))
 		var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turn % 2 == 1 else rect.size
@@ -1411,9 +1413,13 @@ static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool
 static func _name_label(entry: Dictionary, face_up: bool) -> Label:
 	var name := Label.new()
 	name.text = LootSystem.display_name(entry, face_up)
-	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	# FONT_SMALL, and an unknown piece in TEXT_DIM rather than TEXT_FAINT: at 10px
+	# faint grey, the names on a haul table of two or more were the one thing on
+	# the screen a stream could not read — and an unread scroll's NAME is the
+	# whole of what tells two of them apart.
+	name.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	name.add_theme_color_override("font_color",
-		UITheme.TEXT if LootSystem.is_identified(entry) else UITheme.TEXT_FAINT)
+		UITheme.TEXT if LootSystem.is_identified(entry) else UITheme.TEXT_DIM)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# ONE LINE, reserved whether the name needs it or not (LootSlot.NAME_LINE), and
@@ -1459,7 +1465,17 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 # (LootGrid.art_turn). Drawn rather than a TextureRect because a container resets
 # its children's rotation.
 class SpanArt extends Control:
-	var tex: Texture2D = null
+	# PIXEL ART STAYS PIXEL ART AT THIS SIZE. A custom draw takes the project's
+	# default filter (linear), and a 16px Whip blown up across a 2x2 footprint came
+	# out a soft orange smear — the one place in the pack the theme's crisp rule
+	# (UITheme.apply_crisp) never reached. Decided when the picture is handed in,
+	# because the filter belongs to the CanvasItem and not to the draw call.
+	var tex: Texture2D = null:
+		set(v):
+			tex = v
+			texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST \
+				if UITheme.is_small_art(v) else CanvasItem.TEXTURE_FILTER_PARENT_NODE
+			queue_redraw()
 	var cells: Vector2i = Vector2i.ONE
 	var rot: int = 0
 

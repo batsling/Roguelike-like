@@ -346,7 +346,7 @@ function drawGoals(goals, art) {
    * never redrew to show it. A curse sat on "3 games left" until some unrelated
    * row happened to change, then jumped. */
   const sig = goals.map(g => [g.kind, g.text, g.done, g.who, g.games,
-    g.damage, g.blocked, g.stacks, g.icon].join('|')).join('\x01');
+    g.damage, g.blocked, g.stacks, g.icon, g.count, g.cleared].join('|')).join('\x01');
   if (sig === goalSignature) return;
   goalSignature = sig;
 
@@ -424,6 +424,15 @@ function drawGoals(goals, art) {
         badge.textContent = g.stacks;
         pic.appendChild(badge);
       }
+      /* SEVERAL IDENTICAL BODIES, ONE ROW (ReportChecklist.group_bodies): the
+       * ×N rides the top-left corner of the shared face, opposite the damage
+       * badge, so "how many" and "how hard" are both on the picture. */
+      if (num(g.count) > 1) {
+        const many = document.createElement('span');
+        many.className = 'goal-badge count';
+        many.textContent = '\u00d7' + num(g.count);
+        pic.appendChild(many);
+      }
       li.appendChild(pic);
     }
 
@@ -452,6 +461,11 @@ function drawGoals(goals, art) {
 function subtitle(g) {
   const bits = [];
   if (g.who) bits.push(g.who);
+  /* A group says how far through it the game is: "1 of 4 cleared". Nothing
+   * while none are — the ×N on the art already says there are four. */
+  if (num(g.count) > 1 && num(g.cleared) > 0) {
+    bits.push(num(g.cleared) + ' of ' + num(g.count) + ' cleared');
+  }
   const games = num(g.games, 0);
   if (g.kind === 'event' || g.kind === 'curse') {
     bits.push(games < 0 ? 'permanent'

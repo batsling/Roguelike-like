@@ -553,7 +553,17 @@ func _goals(threat: Dictionary) -> Array:
 			"front": false,
 			"done": GameLoop2.row_answered(ReportChecklist.LEVELUP_KEY),
 		})
-	for entry in GameLoop2.stack:
+	# IDENTICAL BODIES ARE ONE ROW, as they are on the checklist
+	# (ReportChecklist.group_bodies — the same rule, called rather than copied, so
+	# the overlay and the game cannot disagree about what is a group). The row
+	# carries `count` and how many of them are `cleared`, and the page wears it as
+	# a ×N on the art. Four identical rows scrolling past was a wall the viewer
+	# read as four different jobs.
+	for group in ReportChecklist.group_bodies(GameLoop2.stack):
+		if (group as Array).size() > 1:
+			out.append(_group_goal(group, swing_of))
+			continue
+		var entry: Dictionary = group[0]
 		var enemy: GoalEnemyData = entry.get("enemy")
 		if enemy == null:
 			continue
@@ -687,6 +697,41 @@ func _goals(threat: Dictionary) -> Array:
 			"done": GameLoop2.row_answered("curse:%d:%s" % [i, cd.id]),
 		})
 	return out
+
+# One row for a group of identical bodies. `damage` is what the WHOLE group
+# throws on a lost run (each swing is its own hit, and the shields stop them one
+# at a time), `blocked` only when every one of those swings is eaten.
+func _group_goal(group: Array, swing_of: Dictionary) -> Dictionary:
+	var first: Dictionary = group[0]
+	var enemy: GoalEnemyData = first.get("enemy")
+	var cleared: int = 0
+	var damage: int = 0
+	var blocked: bool = true
+	var swings: int = 0
+	var front: bool = false
+	for entry in group:
+		var inst: int = int(entry.get("instance", 0))
+		if GameLoop2.cleared_this_game.has(inst) or GameLoop2.instead_this_game.has(inst):
+			cleared += 1
+		front = front or GameLoop2.in_front(entry)
+		var sw: Dictionary = swing_of.get(inst, {})
+		if not sw.is_empty():
+			swings += 1
+			damage += int(sw.get("damage", 0))
+			blocked = blocked and bool(sw.get("blocked", false))
+	return {
+		"kind": "goal",
+		"text": GameLoop2.goal_text_for(first),
+		"who": enemy.display_name,
+		"icon": _texture_url(enemy.image_at(int(first.get("phase", 0)))),
+		"boss": false,
+		"front": front,
+		"damage": damage,
+		"blocked": swings > 0 and blocked,
+		"count": group.size(),
+		"cleared": cleared,
+		"done": cleared >= group.size(),
+	}
 
 # The board in one line rather than as a grid. A viewer cannot read a 5x3 tactical
 # board out of the corner of a stream, but "3 bodies, 12 damage waiting" is the

@@ -70,6 +70,15 @@ row on the spot**, while the game is still being played:
 | An event goal | claims it |
 | A curse | nothing to pay — what it buys is the penalty *not* firing at the report |
 
+**Identical bodies share one row** (`ReportChecklist.group_bodies`): the same
+enemy with the same goal and no status riding it is drawn once, with a **×N**
+chip, on both the report step and the standing list (and on the OBS overlay).
+**One tick is one body** — the box answers for the group's front-line body
+first, and the row comes back aimed at the next. Doing the deed twice is two
+ticks, on the honour system like everything else here. Bosses, counted goals
+(§7.7) and a body carrying any status keep a row each, because what hangs off
+them is theirs alone.
+
 **There are no take-backs.** The confirm is the safeguard; past it the row locks.
 An enemy that is already dead cannot be un-killed and a relic already in the pack
 cannot be handed back. (The **Undo** beside the lost-run tracker is a different
@@ -563,7 +572,7 @@ existing `images2.0/scrolls/Unidentified.png`. Scrolls get the identical treatme
   A potion's mask is a bottle colour and a pill's is a capsule; a scroll's is the
   writing on it, because a scroll is a sheet of paper and there is nothing else
   about one to vary. So every scroll is dealt a meaningless title at the start of
-  a run — **"ZELGO MER"**, **"ah bloto festr"** — which it keeps all run and which
+  a run — **"ZELGO MER"**, **"AH BLOTO FESTR"** — which it keeps all run and which
   means something else entirely in the next one.
 
   The bag is two authored columns of the `scrolls2.0` sheet, generated into

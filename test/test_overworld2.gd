@@ -831,7 +831,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# THREE rows: the old follower, and both bodies this game walked on. The
 	# advertised one used to be missing from this list — it had the Goal box
 	# instead — and it is an ordinary row now (GameLoop2.arrivals).
-	assert_eq(_ui._fulfil_checks.size(), 3,
+	assert_eq(_bodies_listed(), 3,
 		"the old follower is offered for fulfilment, and so is this game's pair")
 	# Ticked and CONFIRMED, so the follower is cleared on the spot (§2.1); the
 	# report below is the miss on the game in play and nothing else.
@@ -1872,15 +1872,15 @@ func test_the_checklist_lists_the_arrivals_among_the_followers() -> void:
 	_pick_enemies(0)
 	_ui.report(false)                     # something is following now
 	_pick_enemies(0)                           # …and this game walks more on
-	var rows: int = _ui._fulfil_checks.size()
-	assert_eq(rows, GameLoop2.stack.size(),
-		"one tick box per body on the board, arrivals included")
+	assert_eq(_bodies_listed(), GameLoop2.stack.size(),
+		"every body on the board is on a row, arrivals included")
 	var landed: Dictionary = GameLoop2.arrival()
 	if landed.is_empty():
 		return
 	var listed := false
 	for f in _ui._fulfil_checks:
-		if int(f["instance"]) == int(landed["instance"]):
+		if int(f["instance"]) == int(landed["instance"]) \
+				or (f.get("group", []) as Array).has(int(landed["instance"])):
 			listed = true
 	assert_true(listed, "what walked on with this game is one of them")
 
@@ -1930,8 +1930,8 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 		var e: GoalEnemyData = entry["enemy"]
 		assert_string_contains(after, e.display_name,
 			"%s is on the board, so it is on the list" % e.display_name)
-	assert_eq(_ui._fulfil_checks.size(), GameLoop2.stack.size(),
-		"one tick box per body, still")
+	assert_eq(_bodies_listed(), GameLoop2.stack.size(),
+		"every body is on a row, still")
 
 # …and it does NOT rebuild for a board that merely moved. The panel holds tick
 # boxes, so rebuilding it is not free — the guard is a signature of what the rows
@@ -1974,13 +1974,16 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
-	var rows_before: int = _ui._fulfil_checks.size()
+	# BODIES, not rows: a conjured body identical to one already standing joins
+	# that body's row (ReportChecklist.group_bodies) rather than adding one.
+	var rows_before: int = _bodies_listed()
 	var conjured: GoalEnemyData = GameLoop2.roll_conjured_enemy()
 	if conjured == null:
+		pending("nothing to conjure")
 		return
 	GameLoop2.spawn_to_stack(conjured)
 	_ui._refresh()
-	assert_eq(_ui._fulfil_checks.size(), rows_before + 1,
+	assert_eq(_bodies_listed(), rows_before + 1,
 		"what just walked on is something you can be asked about")
 	assert_string_contains(_text_of(_ui._verify_box), conjured.display_name)
 
@@ -2085,7 +2088,10 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	assert_gt(before, 0, "something walked on")
 	_shut_failure_tap()
 	_ui.report(true)                      # completed, ticked nothing
-	assert_eq(GameLoop2.stack.size(), before,
+	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): those
+	# are new bodies, and this is a claim about the ones that were already there.
+	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack.size() - walked, before,
 		"the bodies are all still there — none of them was ticked")
 	assert_true(GameState.has_played_game(_last_played_id()),
 		"but the GAME is recorded as beaten")
@@ -7389,10 +7395,10 @@ func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
 	screen.dismiss()
 	_ui._post_screen = null
 
-# Leaving with something still on the table BINS it, so the button says so first.
-# A Legendary left on the ground should be a decision and not a side effect of
-# pressing Continue.
-func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
+# THE WAY OUT DOES NOT COUNT WHAT IS LEFT. It used to read "(leaving 3 behind)"
+# beside "STILL FOLLOWING 2", and on a stream the 3 was read as enemies. The table
+# shows what is left; the button only names where it goes.
+func test_the_way_out_does_not_print_a_count_beside_the_follower_tally() -> void:
 	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
@@ -7401,8 +7407,8 @@ func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
 	if screen == null:
 		return
 	assert_not_null(screen.chest(), "there is a chest on the table")
-	assert_true(screen.exit_text().contains("leaving"),
-		"and the way out owns up to binning it: %s" % screen.exit_text())
+	assert_false(screen.exit_text().contains("leaving"),
+		"and the way out names a place, not a number: %s" % screen.exit_text())
 	_leave_post_game()
 
 # The payout is a column of the same screen rather than a modal after it, and it
@@ -8094,12 +8100,37 @@ func _at_720p() -> void:
 # Stand `n` more bodies on the board, rolled for the game in play, and rebuild the
 # checklist around them. Past the board's own room they queue off the field, and
 # still take a checklist row each — which is the growth under test.
+# DISTINCT bodies: identical ones share one checklist row now
+# (ReportChecklist.group_bodies), so a crowd of repeats is a SHORT list — and the
+# tests that use this are about a long one. Ids already on the board count too.
 func _crowd_board(n: int) -> void:
 	var key: StringName = GameLoop2.game_type_key(Data.get_game(GameState.current_game_id))
-	for _i in range(n):
+	var seen: Dictionary = {}
+	for entry in GameLoop2.stack:
+		var have: GoalEnemyData = entry.get("enemy")
+		if have != null:
+			seen[have.id] = true
+	var placed: int = 0
+	var tries: int = 0
+	while placed < n and tries < n * 40:
+		tries += 1
 		var e: GoalEnemyData = GameLoop2.roll_enemy(key, RunDifficulty.current_tier())
-		if e != null:
-			GameLoop2.spawn_to_stack(e)
+		if e == null or seen.has(e.id):
+			continue
+		seen[e.id] = true
+		GameLoop2.spawn_to_stack(e)
+		placed += 1
+	# A genre's tier pool can hold fewer distinct bodies than asked for — then
+	# the rest of the roster makes up the number, still one of each.
+	for e in Data.all_goal_enemies():
+		if placed >= n:
+			break
+		var g: GoalEnemyData = e
+		if g == null or g.is_boss() or seen.has(g.id):
+			continue
+		seen[g.id] = true
+		GameLoop2.spawn_to_stack(g)
+		placed += 1
 	_ui._populate_play_panel()
 
 # THE CHECKLIST HAS A CEILING (docs/layout-review-backlog.md). A row per body and
@@ -8488,6 +8519,15 @@ func test_walking_out_of_a_room_does_not_ask_twice() -> void:
 # body was the game's own enemy and beating the game answered for it; it is spelled
 # out now because the flag only records the GAME any more (GameLoop2.arrivals),
 # and clearing an enemy is ticking its checklist row like any other.
+# How many BODIES the report step's rows stand for. Identical bodies share one
+# row (ReportChecklist.group_bodies), so a row count is not a body count — and a
+# random offering can roll the same enemy twice.
+func _bodies_listed() -> int:
+	var n: int = 0
+	for f in _ui._fulfil_checks:
+		n += maxi(1, (f.get("group", []) as Array).size())
+	return n
+
 func _report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
@@ -10995,3 +11035,138 @@ func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
 	_ui._board.refresh()
 	assert_false(_ui._board._boss_warning.visible, "and it is gone when the boss is further off")
 	_leave_post_game()
+
+# ==========================================================================
+# The stream-clarity pass
+# ==========================================================================
+
+# Stand `n` copies of one plain, one-cell, abilities-free body on an otherwise
+# cleared board, on the report step, and return their instances.
+func _stand_identical(n: int) -> Array:
+	_pick_solo(0)
+	_clear_board()
+	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	var out: Array = []
+	for i in range(n):
+		var inst: int = GameLoop2.spawn_to_stack(monkey)
+		if inst > 0:
+			out.append(inst)
+	_disarm_board()
+	_ui._populate_play_panel()
+	return out
+
+func test_identical_bodies_share_one_checklist_row() -> void:
+	var bodies: Array = _stand_identical(3)
+	if bodies.size() < 3:
+		pending("the board did not take three bodies")
+		return
+	assert_eq(_ui._fulfil_checks.size(), 1,
+		"three of the same body with the same goal are ONE row, not three")
+	assert_eq((_ui._fulfil_checks[0].get("group", []) as Array).size(), 3,
+		"…and the row knows all three it stands for")
+
+func test_one_tick_on_a_group_answers_exactly_one_body() -> void:
+	var bodies: Array = _stand_identical(3)
+	if bodies.size() < 3:
+		pending("the board did not take three bodies")
+		return
+	var standing: int = GameLoop2.stack.size()
+	_tick(_ui._fulfil_checks[0]["check"])
+	await wait_frames(3)
+	var answered: int = 0
+	for inst in bodies:
+		if ReportChecklist.body_done(int(inst)):
+			answered += 1
+	assert_eq(answered, 1, "one deed, one body — the tick answers for ONE of the three")
+	assert_eq(GameLoop2.stack.size(), standing - 1, "and a one-hit body comes off the board")
+	assert_eq(_ui._fulfil_checks.size(), 1, "the other two are still one row")
+	assert_false(_ui._fulfil_checks[0]["check"].disabled,
+		"and that row is open again, aimed at the next body")
+
+func test_a_standing_group_shows_its_count() -> void:
+	var bodies: Array = _stand_identical(2)
+	if bodies.size() < 2:
+		pending("the board did not take two bodies")
+		return
+	var chips: int = 0
+	for row in _ui._fulfil_checks:
+		for c in (row["check"] as Control).get_parent().get_children():
+			if c is PanelContainer and c.get_child_count() > 0 and c.get_child(0) is Label \
+					and String((c.get_child(0) as Label).text) == "×2":
+				chips += 1
+	assert_eq(chips, 1, "the grouped row wears ×2 beside its box")
+
+func test_a_potion_offered_alone_is_quaffed_not_read() -> void:
+	var modal := LootDropModal.open(_ui, {"type": "potion", "id": &"block_potion"})
+	await wait_frames(2)
+	var labels: Array = []
+	for b in modal.find_children("*", "Button", true, false):
+		labels.append(String((b as Button).text))
+	assert_false(labels.has("Read it now"), "a potion is not read: %s" % str(labels))
+	assert_true(labels.has("%s now" % LootSystem.use_verb({"type": "potion"})),
+		"it is offered with its own verb: %s" % str(labels))
+	modal.queue_free()
+
+func test_the_stat_badges_grow_with_the_board_cells() -> void:
+	var big: int = BattlefieldView.stat_badge_font(BattlefieldView.CELL_MAX)
+	var small: int = BattlefieldView.stat_badge_font(46)
+	assert_gt(big, small, "a roomy board draws its numbers bigger than a crowded one")
+	assert_gte(small, UITheme.FONT_BODY,
+		"and even the 7x7's are no smaller than body text — they are read off a stream")
+
+func test_a_toast_burst_never_stands_more_than_the_cap() -> void:
+	var toasts: NotificationToasts = _ui._toasts
+	for i in range(NotificationToasts.MAX_VISIBLE + 3):
+		Notifications.notify("burst %d" % i, Color.GOLD)
+	await wait_frames(2)
+	var live: int = 0
+	for t in toasts._stack.get_children():
+		if not bool(t.get_meta(&"retiring", false)):
+			live += 1
+	assert_eq(live, NotificationToasts.MAX_VISIBLE,
+		"the column holds its height: older toasts retire as new ones land")
+
+func test_every_toast_is_the_same_width() -> void:
+	var toasts: NotificationToasts = _ui._toasts
+	Notifications.notify("Short", Color.GOLD)
+	Notifications.notify("A much longer notice that has to wrap onto a second line of the toast", Color.TOMATO)
+	await wait_frames(3)
+	var widths: Array = []
+	for t in toasts._stack.get_children():
+		if not bool(t.get_meta(&"retiring", false)):
+			widths.append(int(round((t as Control).size.x)))
+	assert_gte(widths.size(), 2)
+	if widths.size() >= 2:
+		assert_eq(widths[-1], widths[-2], "one column, one width: %s" % str(widths))
+
+# A BODY THAT LIVES THROUGH ITS TICK IS STILL DONE FOR THIS GAME. A body goal is
+# recorded on the body (`fulfill` -> cleared_this_game), not as an answered row,
+# so a group that asked only `row_answered` would aim its box straight back at
+# the stunned survivor — one deed, ticked twice.
+func test_a_group_moves_on_from_a_body_that_survived_its_tick() -> void:
+	var bodies: Array = _stand_identical(2)
+	if bodies.size() < 2:
+		pending("the board did not take two bodies")
+		return
+	for entry in GameLoop2.stack:
+		entry["health"] = 2
+	_ui._populate_play_panel()
+	var first: int = int(_ui._fulfil_checks[0]["instance"])
+	_tick(_ui._fulfil_checks[0]["check"])
+	await wait_frames(3)
+	assert_eq(GameLoop2.stack.size(), 2, "both bodies are still standing")
+	assert_true(ReportChecklist.body_done(first), "the ticked one is done for this game")
+	# The survivor is STUNNED now, and a body carrying a status keeps a row of its
+	# own — so the pair splits, and what matters is that the other body's box is
+	# the one still open.
+	var other: int = int(bodies[0]) if int(bodies[0]) != first else int(bodies[1])
+	var open_other := false
+	var survivor_open := false
+	for f in _ui._fulfil_checks:
+		var stands_for: Array = f.get("group", [int(f["instance"])])
+		if stands_for.has(other) and int(f["instance"]) == other and not f["check"].disabled:
+			open_other = true
+		if int(f["instance"]) == first and not f["check"].disabled:
+			survivor_open = true
+	assert_true(open_other, "the other body can still be ticked")
+	assert_false(survivor_open, "the survivor cannot be ticked a second time")
