@@ -57,6 +57,23 @@ static func node_name(id: StringName) -> String:
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
 
+# THE KIND MARKS, SPELLED OUT, for a legend under a ladder: "! Enemies  !! Champion
+# ? Event  $ Shop", each mark in its own kind colour. Every rung already says what
+# its mark means on hover — but a viewer cannot hover, and on a stream "! ? !!"
+# down a route was four symbols nobody watching had been told the meaning of.
+static func kind_legend(font_size: int) -> Array:
+	var out: Array = []
+	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.CHAMPION,
+			RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
+		var l := Label.new()
+		l.text = "%s %s" % [RunGraph.kind_mark(kind), RunGraph.kind_label(kind)]
+		l.tooltip_text = RunGraph.kind_tip(kind)
+		l.mouse_filter = Control.MOUSE_FILTER_PASS
+		l.add_theme_font_size_override("font_size", font_size)
+		l.add_theme_color_override("font_color", UITheme.kind_color(kind))
+		out.append(l)
+	return out
+
 # Build the ladder for one route. `cfg` is the model:
 #
 #   data         Dictionary  {layers, edges} from RunGraph.route_dag_via
@@ -305,7 +322,11 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# A floor as well as a ceiling: a long route fits by shrinking, and a rung
 	# whose name has shrunk out of legibility isn't a rung any more.
-	label.add_theme_font_size_override("font_size", maxi(9, int(11 * clampf(zoom, 0.7, 1.4))))
+	# A step up from 11 (floored at 9), for a stream: the names are what a viewer
+	# reads the route by. Not more — at 13 the rung's two lines broke words
+	# ("HyperRogu / e") and at one line every name was an ellipsis.
+	label.add_theme_font_size_override("font_size",
+		maxi(UITheme.FONT_TINY, int(12 * clampf(zoom, 0.75, 1.4))))
 	label.add_theme_color_override("font_color",
 		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
 	panel.add_child(label)

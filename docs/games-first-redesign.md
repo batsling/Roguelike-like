@@ -572,7 +572,7 @@ existing `images2.0/scrolls/Unidentified.png`. Scrolls get the identical treatme
   A potion's mask is a bottle colour and a pill's is a capsule; a scroll's is the
   writing on it, because a scroll is a sheet of paper and there is nothing else
   about one to vary. So every scroll is dealt a meaningless title at the start of
-  a run — **"ZELGO MER"**, **"ah bloto festr"** — which it keeps all run and which
+  a run — **"ZELGO MER"**, **"AH BLOTO FESTR"** — which it keeps all run and which
   means something else entirely in the next one.
 
   The bag is two authored columns of the `scrolls2.0` sheet, generated into

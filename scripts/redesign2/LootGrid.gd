@@ -1413,9 +1413,13 @@ static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool
 static func _name_label(entry: Dictionary, face_up: bool) -> Label:
 	var name := Label.new()
 	name.text = LootSystem.display_name(entry, face_up)
-	name.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	# FONT_SMALL, and an unknown piece in TEXT_DIM rather than TEXT_FAINT: at 10px
+	# faint grey, the names on a haul table of two or more were the one thing on
+	# the screen a stream could not read — and an unread scroll's NAME is the
+	# whole of what tells two of them apart.
+	name.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	name.add_theme_color_override("font_color",
-		UITheme.TEXT if LootSystem.is_identified(entry) else UITheme.TEXT_FAINT)
+		UITheme.TEXT if LootSystem.is_identified(entry) else UITheme.TEXT_DIM)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# ONE LINE, reserved whether the name needs it or not (LootSlot.NAME_LINE), and

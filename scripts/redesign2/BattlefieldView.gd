@@ -512,9 +512,12 @@ func _span_size(rows: int, cols: int) -> Vector2:
 # saying the pressure, the ladder it sits on, and the distance that put it
 # there, with the difficulty tier in the small print under it.
 
-# Pip glyphs for the three-rung ladder — filled to the current band, hollow past it.
-const RUNG_ON := "▮"
-const RUNG_OFF := "▯"
+# THE LADDER IS A SEGMENTED BAR, NOT GLYPHS. It was ▮/▯, and the hollow ▯ is
+# exactly the shape a missing character renders as — on a stream, an empty
+# ladder read as a broken font. Drawn segments cannot be mistaken for one: lit in
+# the band's colour up to the pressure, dark past it.
+const RUNG_W := 18
+const RUNG_H := 10
 
 func _build_pressure_bar() -> Control:
 	_pressure_panel = HoverPanel.new()
@@ -548,8 +551,10 @@ func _build_pressure_bar() -> Control:
 	ladder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_pressure_rungs.clear()
 	for i in range(RunDifficulty.MAX_PRESSURE):
-		var pip := Label.new()
-		pip.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(RUNG_W, RUNG_H)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ladder.add_child(pip)
 		_pressure_rungs.append(pip)
 	head.add_child(ladder)
@@ -634,11 +639,11 @@ func _refresh_pressure() -> void:
 	_pressure_turns.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
-		var pip: Label = _pressure_rungs[i]
+		var pip: Panel = _pressure_rungs[i]
 		var lit: bool = i < pressure
-		pip.text = RUNG_ON if lit else RUNG_OFF
-		pip.add_theme_color_override("font_color",
-			band if lit else UITheme.TEXT_FAINT)
+		pip.add_theme_stylebox_override("panel", UITheme.flat(
+			band if lit else Color(0.05, 0.05, 0.06, 0.85), 2, 0, 1,
+			band.lerp(Color.WHITE, 0.2) if lit else band.lerp(UITheme.BG, 0.5)))
 
 	# WHY it's that number. Without the hop count the pressure reads as a random
 	# difficulty spike rather than as the price of the route the player chose.

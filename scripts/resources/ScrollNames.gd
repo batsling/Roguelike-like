@@ -22,8 +22,8 @@ extends Resource
 #
 #   * a WHOLE name off `names` — "ZELGO MER", "XIXAXA XOXAXA XUXAXA". These are
 #     the authored labels, each one already a complete piece of nonsense.
-#   * 2-5 PARTS off `parts`, joined with spaces — "ah bloto festr", "quo iky zep
-#     ooze mep". The syllables are meaningless on their own and the run assembles
+#   * 2-5 PARTS off `parts`, joined with spaces and dealt in capitals like the
+#     whole names — "AH BLOTO FESTR", "QUO IKY ZEP OOZE MEP". The syllables are meaningless on their own and the run assembles
 #     them fresh, which is what keeps the bag effectively bottomless: 39 parts
 #     make far more labels than 36 whole names ever could.
 #

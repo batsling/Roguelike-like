@@ -37,6 +37,18 @@ For how the project is laid out and how its systems fit together, see
     is the enemy portrait on the note modal.
   - **Fixed:** a single potion (or wand, food, weapon) offered on the drop screen
     said "Read it now"; it uses the piece's own verb (`LootSystem.use_verb`).
+  - **The Amulet-pressure ladder is a segmented bar**, not ▮/▯ glyphs — the hollow
+    one read as a missing-font box on stream.
+  - **The haul screen's way out no longer says "(leaving N behind)"**: beside
+    "Still following" the N read as enemies. It names where it goes and nothing else.
+  - **Both route maps spell out the kind marks** (`RouteLadder.kind_legend`:
+    `! Enemies  !! Champion  ? Event  $ Shop`, in their colours), and rung names
+    are a step bigger.
+  - **Loot names in the pack and on the haul table** are 11px and, when unknown,
+    dim rather than faint; **assembled scroll titles are dealt in capitals** like
+    the whole ones ("AH BLOTO FESTR" beside "ZELGO MER").
+  - **The relic strip says "no relics yet"** rather than "nothing carried yet",
+    which contradicted a Loot bar holding a Whip directly beneath it.
 
 - **Brimstone stuns, Censer reaches two columns, three new Vampire Survivors
   weapons and a Duplicator, a starting loadout, and a lost run can stand a body

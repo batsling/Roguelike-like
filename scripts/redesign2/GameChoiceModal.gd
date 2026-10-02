@@ -882,14 +882,20 @@ func _build_route_column() -> Control:
 	_ladder_holder = RouteLadder.build(_ladder_cfg())
 	centre.add_child(_ladder_holder)
 
+	# Kept to one flowing line for the reason RunMapModal's is: the ladder above it
+	# is fitted to whatever height is left over. The kind marks are spelled out in
+	# their colours (RouteLadder.kind_legend) — `$` already says "shop", so the 🛒
+	# entry it replaces would have been the same thing twice.
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
 	var legend := Label.new()
-	# Kept to one line for the reason RunMapModal's hint is: the ladder above it
-	# is fitted to whatever height is left over.
-	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  🛒 a shop  •  ⚔ beaten there"
-	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  ⚔ beaten there  •"
 	legend.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	legend.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	col.add_child(legend)
+	flow.add_child(legend)
+	for l in RouteLadder.kind_legend(UITheme.FONT_SMALL):
+		flow.add_child(l)
+	col.add_child(flow)
 	return col
 
 # The route from THIS game, as RouteLadder reads it. `preview` because the top

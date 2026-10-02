@@ -94,7 +94,8 @@ func test_a_title_is_either_a_whole_name_or_two_to_five_parts() -> void:
 		assert_between(pieces.size(), ScrollSystem.PARTS_MIN, ScrollSystem.PARTS_MAX,
 			"'%s' is assembled, so it is 2-5 parts" % label)
 		for piece in pieces:
-			assert_true(book.parts.has(piece),
+			# Dealt in capitals (_assemble_label); the sheet's parts are lower case.
+			assert_true(book.parts.has(piece.to_lower()),
 				"'%s' in '%s' is one of the sheet's syllables" % [piece, label])
 
 # Both shapes have to actually turn up. A coin that always landed the same way

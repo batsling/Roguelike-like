@@ -391,27 +391,17 @@ func chests_waiting() -> int:
 # page resumes the chain event-first (`finished`), and the shelf is still under
 # the board on the far side of it. A button promising the shop would be naming the
 # thing after the thing that actually opens.
+#
+# NO "(leaving N behind)" ANY MORE. It sat beside "STILL FOLLOWING 2" in red, and
+# on a stream the N read as a count of ENEMIES — the one thing it was not (it
+# was the loot still on the table). The table itself shows what is left, which
+# is the honest place for it.
 func exit_text() -> String:
-	var left: int = _unanswered()
-	var base: String = "→  Travel on"
 	if _event_pending:
-		base = "⚑  Go to Event"
-	elif _shop_id != &"":
-		base = "🛒  Go to Shop"
-	if left <= 0:
-		return base
-	return "%s   (leaving %d behind)" % [base, left]
-
-# How much is still on the table. The way out bins it, so the button says so
-# first: a Legendary left on the ground should be a decision and not a side
-# effect of pressing Continue.
-func _unanswered() -> int:
-	var left: int = 0
-	if _loot_section != null and is_instance_valid(_loot_section):
-		left += _loot_section.remaining()
-	left += _live_chests().size()
-	left += _chests.size()
-	return left
+		return "⚑  Go to Event"
+	if _shop_id != &"":
+		return "🛒  Go to Shop"
+	return "→  Travel on"
 
 
 # ---------------------------------------------------------------------------

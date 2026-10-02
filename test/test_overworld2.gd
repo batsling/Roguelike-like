@@ -7389,10 +7389,10 @@ func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
 	screen.dismiss()
 	_ui._post_screen = null
 
-# Leaving with something still on the table BINS it, so the button says so first.
-# A Legendary left on the ground should be a decision and not a side effect of
-# pressing Continue.
-func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
+# THE WAY OUT DOES NOT COUNT WHAT IS LEFT. It used to read "(leaving 3 behind)"
+# beside "STILL FOLLOWING 2", and on a stream the 3 was read as enemies. The table
+# shows what is left; the button only names where it goes.
+func test_the_way_out_does_not_print_a_count_beside_the_follower_tally() -> void:
 	_pick_enemies(0)
 	_report_beat(_ui)
 	_ui._end_resolve()
@@ -7401,8 +7401,8 @@ func test_the_way_out_counts_what_it_is_about_to_leave_behind() -> void:
 	if screen == null:
 		return
 	assert_not_null(screen.chest(), "there is a chest on the table")
-	assert_true(screen.exit_text().contains("leaving"),
-		"and the way out owns up to binning it: %s" % screen.exit_text())
+	assert_false(screen.exit_text().contains("leaving"),
+		"and the way out names a place, not a number: %s" % screen.exit_text())
 	_leave_post_game()
 
 # The payout is a column of the same screen rather than a modal after it, and it
@@ -8094,12 +8094,26 @@ func _at_720p() -> void:
 # Stand `n` more bodies on the board, rolled for the game in play, and rebuild the
 # checklist around them. Past the board's own room they queue off the field, and
 # still take a checklist row each — which is the growth under test.
+# DISTINCT bodies: identical ones share one checklist row now
+# (ReportChecklist.group_bodies), so a crowd of repeats is a SHORT list — and the
+# tests that use this are about a long one. Ids already on the board count too.
 func _crowd_board(n: int) -> void:
 	var key: StringName = GameLoop2.game_type_key(Data.get_game(GameState.current_game_id))
-	for _i in range(n):
+	var seen: Dictionary = {}
+	for entry in GameLoop2.stack:
+		var have: GoalEnemyData = entry.get("enemy")
+		if have != null:
+			seen[have.id] = true
+	var placed: int = 0
+	var tries: int = 0
+	while placed < n and tries < n * 40:
+		tries += 1
 		var e: GoalEnemyData = GameLoop2.roll_enemy(key, RunDifficulty.current_tier())
-		if e != null:
-			GameLoop2.spawn_to_stack(e)
+		if e == null or seen.has(e.id):
+			continue
+		seen[e.id] = true
+		GameLoop2.spawn_to_stack(e)
+		placed += 1
 	_ui._populate_play_panel()
 
 # THE CHECKLIST HAS A CEILING (docs/layout-review-backlog.md). A row per body and
