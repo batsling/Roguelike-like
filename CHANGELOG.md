@@ -11,6 +11,33 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A stream-clarity pass: bigger board numbers, one checklist row per KIND of
+  body, a tidy toast column, and pixel art that stays pixel art.**
+  - **Identical bodies share one checklist row** (`ReportChecklist.group_bodies`).
+    Same enemy, same goal, no status riding it → one row with a **×N** chip, on
+    the report step and the standing list alike. **One tick answers ONE body**:
+    the box is aimed at the group's front-line body first, and the row comes back
+    for the next. Bosses, counted goals and any body carrying a status keep a row
+    of their own. The OBS overlay groups the same way (a `count` / `cleared` pair
+    on the goal row, ×N on the art, "1 of 3 cleared" under it).
+  - **The ❤ / ⚔ / ◆ badges are pills sized to the cell** (`stat_badge_font`):
+    15–16px on the small boards, 12px at 7x7 (all were 10px), each on an opaque
+    rimmed backing so neighbours no longer run together. Enemy status pips 11 → 14px.
+  - **Toasts are one fixed-width column in the bottom-left corner**, newest at the
+    bottom, at most three standing (a burst retires the oldest early), colour as a
+    stripe down the left edge.
+  - **The offering's covers are as tall as their art**: a row of landscape
+    screenshots no longer reserves a 200px portrait box and three name lines,
+    and the height goes back to the checklist under it.
+  - **The haul screen names who is still following you**, one face per kind with
+    ×N, and how many walked on as the game ended — the left half was empty on a
+    lost game, and "Still following 6" never said where the 6 came from.
+  - **Pixel art in the pack is crisp at any size**: a multi-cell piece (the Whip)
+    and a bag's art are drawn nearest-neighbour when the source is small, and so
+    is the enemy portrait on the note modal.
+  - **Fixed:** a single potion (or wand, food, weapon) offered on the drop screen
+    said "Read it now"; it uses the piece's own verb (`LootSystem.use_verb`).
+
 - **Brimstone stuns, Censer reaches two columns, three new Vampire Survivors
   weapons and a Duplicator, a starting loadout, and a lost run can stand a body
   up** (spec §3.2, §4, §8.2; `docs/loot-passives.md` §12-§13).

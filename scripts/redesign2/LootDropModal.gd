@@ -470,16 +470,16 @@ func _build_single(col: VBoxContainer) -> void:
 	# to carry is a real choice even with eight slots free, and an unidentified one
 	# is still the gamble it always was.
 	if _spendable and not GameState.is_bag_entry(entry):
+		# The piece's own verb (LootSystem.use_verb) rather than a pill/scroll pair:
+		# "Read it now" on a potion is how this button used to read for every kind
+		# that was neither.
 		var use_now := UITheme.confirm_button(
-			"Take it now" if _is_pill(entry) else "Read it now", Vector2(0, 30), 12)
+			"%s now" % LootSystem.use_verb(entry), Vector2(0, 30), 12)
 		use_now.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		use_now.tooltip_text = "Spend it on the spot, without carrying it.\n" \
 			+ "It never enters your pack, so it costs you no room."
 		use_now.pressed.connect(func(): _use_offer(0))
 		col.add_child(use_now)
-
-func _is_pill(entry: Dictionary) -> bool:
-	return String(entry.get("type", "")) == "pill"
 
 # ---------------------------------------------------------------------------
 # The pack side

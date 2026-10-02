@@ -941,6 +941,8 @@ class BagArt extends TextureRect:
 			return
 		var row: Dictionary = GameState.pack_bags[bag]
 		texture = LootPassives.load_bag_art(GameState.bag_def(row))
+		texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST \
+			if UITheme.is_small_art(texture) else CanvasItem.TEXTURE_FILTER_PARENT_NODE
 		var turn: int = LootGrid.art_turn(texture, int(row.get("rot", 0)),
 			GameState.bag_size(row))
 		var box: Vector2 = Vector2(rect.size.y, rect.size.x) if turn % 2 == 1 else rect.size
@@ -1459,7 +1461,17 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 # (LootGrid.art_turn). Drawn rather than a TextureRect because a container resets
 # its children's rotation.
 class SpanArt extends Control:
-	var tex: Texture2D = null
+	# PIXEL ART STAYS PIXEL ART AT THIS SIZE. A custom draw takes the project's
+	# default filter (linear), and a 16px Whip blown up across a 2x2 footprint came
+	# out a soft orange smear — the one place in the pack the theme's crisp rule
+	# (UITheme.apply_crisp) never reached. Decided when the picture is handed in,
+	# because the filter belongs to the CanvasItem and not to the draw call.
+	var tex: Texture2D = null:
+		set(v):
+			tex = v
+			texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST \
+				if UITheme.is_small_art(v) else CanvasItem.TEXTURE_FILTER_PARENT_NODE
+			queue_redraw()
 	var cells: Vector2i = Vector2i.ONE
 	var rot: int = 0
 

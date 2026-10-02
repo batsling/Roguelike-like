@@ -243,8 +243,7 @@ func populate_play_panel() -> void:
 	# Its add-on rows come WITH it (see `_add_body_rows`): a clause tightens this
 	# goal and a bonus hangs off this body, and either one left behind in the other
 	# section would be a row naming nothing.
-	for entry in _bodies_settled_at_the_end():
-		_add_body_rows(entry)
+	_add_body_groups(_bodies_settled_at_the_end(), true)
 
 	# GOAL FIRST, then whose it is. The checklist is scanned for "what did I
 	# actually do", and the goal is the part being answered — the enemy's name is
@@ -267,8 +266,7 @@ func populate_play_panel() -> void:
 	# carried weapon's goal is +1 Charge, once per game, and resolves on the spot —
 	# so a game that is then LOST keeps the charge.
 	_add_weapon_rows()
-	for entry in _bodies_settled_now():
-		_add_body_rows(entry)
+	_add_body_groups(_bodies_settled_now())
 	# A BODY YOU ALREADY KILLED THIS GAME still has a line on this list, and its
 	# bonus is still claimable off it (§2.1). Without this the row for a cleared
 	# enemy vanished on the next repaint and took the optional objective you had
@@ -359,6 +357,143 @@ func _bodies_settled_now() -> Array:
 			out.append(entry)
 	return out
 
+# --- identical bodies share ONE row ----------------------------------------
+#
+# Four Floating Eyes used to be four identical rows — "Beat a game without using
+# melee attacks — Floating Eye", four times — and on a real run that wall pushed
+# everything under it (the weapon's goal, the Any-time header) off the bottom of
+# the column. Worse, four boxes side by side invited four ticks for one deed.
+#
+# So bodies that are THE SAME PROBLEM are drawn once, with a ×N on the row: same
+# enemy, same goal sentence, nothing riding them. And one tick is ONE body — the
+# group's box always answers for exactly one of them, and the row comes back for
+# the next. Beating "without melee" once clears one Eye; doing it again (another
+# game, or twice in this one) is a second tick. That is still the honour system,
+# but now the list's shape says one deed, one body.
+#
+# NOT GROUPED: a body with any status on it (its bonus, its way out and its buff
+# strip are its own, and they are rows that hang off THAT body), a boss, and a
+# counted goal (its tally is per body). Those keep a row each, as before.
+static func groupable(entry: Dictionary) -> bool:
+	var e: GoalEnemyData = entry.get("enemy")
+	if e == null or e.is_boss() or e.is_counted():
+		return false
+	return GameLoop2.enemy_statuses(entry).is_empty() \
+		and GameLoop2.goal_addons_for(entry).is_empty()
+
+static func group_key(entry: Dictionary) -> String:
+	var e: GoalEnemyData = entry.get("enemy")
+	return "%s|%s" % [String(e.id) if e != null else "", GameLoop2.goal_text_for(entry)]
+
+# `entries` in the same order, with identical groupable bodies folded into the
+# first one's place: [[entry], [entry, entry, entry], …].
+static func group_bodies(entries: Array) -> Array:
+	var out: Array = []
+	var at: Dictionary = {}
+	for entry in entries:
+		if not groupable(entry):
+			out.append([entry])
+			continue
+		var key: String = group_key(entry)
+		if at.has(key):
+			(out[int(at[key])] as Array).append(entry)
+		else:
+			at[key] = out.size()
+			out.append([entry])
+	return out
+
+# The body a group's box answers for: the first whose goal is still open this
+# game, front line first — that is the one that hits next, so it is the one a
+# player would clear first given the choice. -1 when every one of them is
+# answered.
+static func group_target(group: Array) -> int:
+	# A `game beaten` group's claim is ARMED, not answered, until the report — so a
+	# rebuild mid-game has to keep pointing at the body already armed, or the row
+	# would come back unticked and the claim would be orphaned.
+	for entry in group:
+		var armed: int = int(entry.get("instance", 0))
+		if GameLoop2.row_armed("goal:%d" % armed) \
+				and not GameLoop2.row_answered("goal:%d" % armed):
+			return armed
+	var fallback: int = -1
+	for entry in group:
+		var inst: int = int(entry.get("instance", 0))
+		if GameLoop2.row_answered("goal:%d" % inst):
+			continue
+		if GameLoop2.in_front(entry):
+			return inst
+		if fallback < 0:
+			fallback = inst
+	return fallback
+
+# Draw a list of bodies, grouped. `standing` picks the read-only rows of the
+# list shown between games.
+func _add_body_groups(entries: Array, at_the_end: bool = false, standing: bool = false) -> void:
+	for group in group_bodies(entries):
+		if (group as Array).size() == 1:
+			if standing:
+				_add_standing_body_row(group[0], at_the_end)
+			else:
+				_add_body_rows(group[0])
+		elif standing:
+			_add_standing_group_row(group, at_the_end)
+		else:
+			_add_group_row(group)
+
+# THE ×N CHIP, on the row in place of N copies of it.
+func _count_chip(n: int, done: int, color: Color) -> Control:
+	var chip := UITheme.chip("×%d" % n if done <= 0 else "%d / %d" % [done, n],
+		color, UITheme.FONT_LABEL)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS
+	chip.tooltip_text = ("%d of these, all with the same goal. Each tick clears ONE of "
+		+ "them — do it again for the next.") % n
+	return chip
+
+# All of a group's instances light with its row, and its row with any of them.
+func _bind_group(row: Control, paint: Callable, group: Array) -> void:
+	var all: Array = []
+	for entry in group:
+		var inst: int = int(entry.get("instance", 0))
+		all.append(inst)
+		var rows: Array = row_paints.get(inst, [])
+		if not rows.has(paint):
+			rows.append(paint)
+		row_paints[inst] = rows
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_bind_hover(row, func(): light_bodies(all), func(): light_bodies([]))
+
+# ONE ROW FOR A GROUP ON THE REPORT STEP. Its box is wired to ONE body — the
+# group's target — exactly as that body's own row would have been, and a rebuild
+# after it resolves hands the row the next body.
+func _add_group_row(group: Array) -> void:
+	var first: Dictionary = group[0]
+	var e: GoalEnemyData = first["enemy"]
+	var at_the_end: bool = _settles_at_the_end(first)
+	var target: int = group_target(group)
+	var answered: int = 0
+	for entry in group:
+		if GameLoop2.row_answered("goal:%d" % int(entry["instance"])):
+			answered += 1
+	var inst: int = target if target > 0 else int(first["instance"])
+	var tint: Color = UITheme.GOLD if at_the_end else UITheme.TEXT
+	var row := verify_row(_goal_row_text(GameLoop2.entry_for(inst)), tint, false, e, null,
+		inst, _finish_mark() if at_the_end else null)
+	var line: HBoxContainer = (row["row"] as Control).get_child(0)
+	var cb: CheckBox = row["check"]
+	line.add_child(_count_chip(group.size(), answered, tint))
+	line.move_child(line.get_child(line.get_child_count() - 1), cb.get_index())
+	_bind_group(row["row"], row["paint"], group)
+	_add_row(row["row"])
+	fulfil_checks.append({"check": cb, "instance": inst, "group": group.map(
+		func(x): return int(x["instance"]))})
+	if target <= 0:
+		_lock_row(cb)
+	elif at_the_end:
+		_arm_goal_at_the_end(cb, target, e)
+	else:
+		_arm_goal_row(cb, target, e, true)
+
 # ONE BODY'S ROWS: its goal, then the add-ons hanging off it. Called from both
 # sections, because which section it lands in is the only thing that differs.
 func _add_body_rows(entry: Dictionary) -> void:
@@ -446,12 +581,24 @@ func _add_ghost_rows(instance: int) -> void:
 # One enemy's goal row. Confirming it deals the goal's hit THERE AND THEN — the
 # body dies if that is enough, and its loot lands on the square it fell in (§8.2)
 # for you to go and pick up while the game is still on.
-func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData) -> void:
+#
+# `grouped` is a row standing for several identical bodies (_add_group_row): it
+# always rebuilds after resolving, so the row comes back aimed at the next body —
+# even when this one SURVIVED the hit, which leaves the list's shape unchanged
+# and would otherwise leave the whole group locked behind one tick.
+func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData,
+		grouped: bool = false) -> void:
 	var name_of: String = enemy.display_name if enemy != null else "it"
+	# Named rather than inline: GDScript cannot parse an argument after a
+	# multi-line lambda (see `_arm_row`).
+	var on_yes := func() -> void:
+		_resolve_goal_now(instance, enemy)
+		if grouped:
+			_rebuild_soon()
 	_arm_row(cb, "goal:%d" % instance,
-		"You cleared %s's goal." % name_of,
-		func() -> void: _resolve_goal_now(instance, enemy),
-		_enemy_note_hooks(enemy))
+		("You cleared ONE %s's goal — the others still need theirs." % name_of
+			if grouped else "You cleared %s's goal." % name_of),
+		on_yes, _enemy_note_hooks(enemy))
 
 # WHAT ANSWERING A BODY'S GOAL ACTUALLY DOES. Split out of `_arm_goal_row`
 # because it now has two ways in: a tick box, and the press of `+` that reaches a
@@ -1654,8 +1801,7 @@ func populate_standing() -> void:
 	# same split the report step makes (§7.7), because these are one list in two
 	# states and a row that changed section between them would be a row the player
 	# has to find twice. Read-only here, like everything else on this list.
-	for entry in _bodies_settled_at_the_end():
-		_add_standing_body_row(entry, true)
+	_add_body_groups(_bodies_settled_at_the_end(), true, true)
 
 	# Followers, tinted the way the board tints them: the ones in the front column
 	# are the goals worth clearing first, because they hit next game.
@@ -1668,8 +1814,7 @@ func populate_standing() -> void:
 			WeaponSystem.charges_of(carried["entry"]), WeaponSystem.max_charges(carried["entry"])],
 			WeaponSystem.WEAPON_COLOR,
 			UITheme.crisp_tex(LootPassives.load_weapon_art(w), PORTRAIT_SIZE)), false, true)
-	for entry in _bodies_settled_now():
-		_add_standing_body_row(entry)
+	_add_body_groups(_bodies_settled_now(), false, true)
 
 	if GameLoop2.stack.is_empty() and GameState.status_objectives().is_empty():
 		var none := _verify_head("Nothing is following you — pick a game and take on its goal.")
@@ -1738,6 +1883,29 @@ func _add_standing_body_row(entry: Dictionary, at_the_end: bool = false) -> void
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
 			_status_mark(sd, stacks, StatusData.ENEMY, false, bgames)),
 			false, true)
+
+# A GROUP OF IDENTICAL FOLLOWERS on the standing list: one row, ×N, tinted urgent
+# when any of them is on the front line (that is the one that hits next).
+func _add_standing_group_row(group: Array, at_the_end: bool = false) -> void:
+	var first: Dictionary = group[0]
+	var e: GoalEnemyData = first["enemy"]
+	var urgent: bool = false
+	for entry in group:
+		urgent = urgent or GameLoop2.in_front(entry)
+	var tint: Color = UITheme.DANGER if urgent else UITheme.GOLD.lerp(UITheme.TEXT, 0.4)
+	if at_the_end:
+		tint = UITheme.GOLD
+	var row: Control = _objective_row(
+		"%s — %s   (dmg %d each)" % [GameLoop2.goal_text_for(first), e.display_name, e.damage],
+		tint, _enemy_icon_rect(e, tint, GameLoop2.entry_image(first)), 0,
+		_finish_mark() if at_the_end else null)
+	var line: HBoxContainer = row.get_child(0)
+	line.add_child(_count_chip(group.size(), 0, tint))
+	# Straight after the portrait (and the flag), before the sentence.
+	line.move_child(line.get_child(line.get_child_count() - 1),
+		line.get_child_count() - 2)
+	_bind_group(row, row.get_meta(&"paint"), group)
+	_box.add_child(row)
 
 # Everything the standing checklist draws, as one string — the guard for the
 # rebuild above (see the repaint-guard block near the top of the file).
@@ -1987,9 +2155,13 @@ func _objective_row(text: String, color: Color, icon: Control = null,
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(l)
 	# Bound last: the hover covers what is IN the row, so the row has to be in it.
-	bind_row_to_body(wrap, instance, func(is_lit: bool) -> void:
+	var paint := func(is_lit: bool) -> void:
 		if is_instance_valid(wrap):
-			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle))
+			wrap.add_theme_stylebox_override("panel", lit if is_lit else idle)
+	# Kept on the row so a GROUP row (_add_standing_group_row) can bind the same
+	# paint to every body it stands for.
+	wrap.set_meta(&"paint", paint)
+	bind_row_to_body(wrap, instance, paint)
 	return wrap
 
 # EVERY BODY'S PORTRAIT RIDES ITS ROW, not just a boss's.
@@ -2426,7 +2598,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	# width the button was taking.
 	# Bound last: the hover covers what is IN the row, so the row has to be in it.
 	bind_row_to_body(wrap, instance, paint)
-	return {"row": wrap, "check": cb}
+	return {"row": wrap, "check": cb, "paint": paint}
 
 func _verify_head(text: String) -> Label:
 	var l := Label.new()

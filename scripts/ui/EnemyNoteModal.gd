@@ -90,6 +90,7 @@ static func _open(host: Node, subject: Dictionary, on_done: Callable) -> void:
 		art.custom_minimum_size = Vector2(64, 64)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(art, art_tex)
 		header.add_child(art)
 	var titles := VBoxContainer.new()
 	titles.add_theme_constant_override("separation", UITheme.GAP_HAIR)

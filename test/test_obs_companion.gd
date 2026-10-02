@@ -125,7 +125,9 @@ func test_every_body_on_the_board_is_a_goal_row_and_the_game_itself_is_not() -> 
 	var got: Array = []
 	for row in ObsCompanion.payload()["goals"]:
 		if String(row.get("kind", "")) == "goal":
-			got.append(String(row.get("text", "")))
+			# A row for a GROUP of identical bodies stands for `count` of them.
+			for _i in range(maxi(1, int(row.get("count", 1)))):
+				got.append(String(row.get("text", "")))
 	want.sort()
 	got.sort()
 	assert_eq(got, want,
@@ -1197,3 +1199,26 @@ func test_a_running_clock_does_not_rewrite_the_file_every_frame() -> void:
 	ObsCompanion.flush()
 	assert_eq(ObsCompanion._last_json, with_clock,
 		"a clock ticking is not a reason to rewrite the file")
+
+# IDENTICAL BODIES ARE ONE ROW ON THE OVERLAY, exactly as on the checklist
+# (ReportChecklist.group_bodies), carrying how many it stands for.
+func test_identical_bodies_are_one_overlay_row_with_a_count() -> void:
+	for entry in GameLoop2.stack.duplicate():
+		GameLoop2.despawn(int(entry.get("instance", 0)))
+	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	for i in range(3):
+		GameLoop2.spawn_to_stack(monkey)
+	for entry in GameLoop2.stack:
+		entry["abilities"] = []
+	if GameLoop2.stack.size() < 3:
+		pending("the board did not take three bodies")
+		return
+	var rows: Array = []
+	for row in ObsCompanion.payload()["goals"]:
+		if String(row.get("kind", "")) == "goal":
+			rows.append(row)
+	assert_eq(rows.size(), 1, "three identical bodies are one row")
+	if rows.size() == 1:
+		assert_eq(int(rows[0].get("count", 0)), 3, "…that says there are three")
+		assert_eq(int(rows[0].get("cleared", -1)), 0, "…none of them cleared yet")
+		assert_false(bool(rows[0].get("done", true)), "…so the row is still live")
