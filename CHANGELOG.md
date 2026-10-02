@@ -42,8 +42,15 @@ For how the project is laid out and how its systems fit together, see
   - **The haul screen's way out no longer says "(leaving N behind)"**: beside
     "Still following" the N read as enemies. It names where it goes and nothing else.
   - **Both route maps spell out the kind marks** (`RouteLadder.kind_legend`:
-    `! Enemies  !! Champion  ? Event  $ Shop`, in their colours), and rung names
-    are a step bigger.
+    `! Enemies  !! Champion  ? Event  $ Shop`, in their colours).
+  - **Route names are no longer cut off.** The kind mark and the ⚔/⛓ badges sit
+    in a band along the rung's top and the name takes the full width under it,
+    at a size fitted so every word fits whole (`RouteLadder.fit_name_size`,
+    13px down to 9px). Rungs are 150x68 with 20px gaps (were 48 + 40), so a layer
+    is the same height and every zoom-to-fit is unchanged. A ladder fitted to its
+    view's height widens its rungs into the spare width (cfg `room_w`, up to 2x),
+    in the game-choice popup and the map window; badges and the 📍/◆ prefix now
+    appear by the rung's own size rather than by zoom.
   - **Loot names in the pack and on the haul table** are 11px and, when unknown,
     dim rather than faint; **assembled scroll titles are dealt in capitals** like
     the whole ones ("AH BLOTO FESTR" beside "ZELGO MER").
