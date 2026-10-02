@@ -1974,13 +1974,16 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 	_pick_enemies(0)
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING)
-	var rows_before: int = _ui._fulfil_checks.size()
+	# BODIES, not rows: a conjured body identical to one already standing joins
+	# that body's row (ReportChecklist.group_bodies) rather than adding one.
+	var rows_before: int = _bodies_listed()
 	var conjured: GoalEnemyData = GameLoop2.roll_conjured_enemy()
 	if conjured == null:
+		pending("nothing to conjure")
 		return
 	GameLoop2.spawn_to_stack(conjured)
 	_ui._refresh()
-	assert_eq(_ui._fulfil_checks.size(), rows_before + 1,
+	assert_eq(_bodies_listed(), rows_before + 1,
 		"what just walked on is something you can be asked about")
 	assert_string_contains(_text_of(_ui._verify_box), conjured.display_name)
 
