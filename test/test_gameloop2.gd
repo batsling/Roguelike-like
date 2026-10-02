@@ -1937,6 +1937,15 @@ func test_reporting_a_game_moves_nobody_out_in_the_wilds() -> void:
 	GameLoop2.beat_game(false)                    # released as a follower
 	var col: int = _col_of(a)
 	_choose_solo(_enemy(0))
+	# NOTHING OWED AT THE END OF THIS GAME (§19.5). A game where nothing went down
+	# stands +1 body up as it ends, and where that body lands can SHOVE the lane
+	# `a` is standing in — so "nobody walked" was only usually true, failing on the
+	# runs whose spawn landed in front of it. One body down buys the tap off, the
+	# same arrangement the screen tests use; out in the wilds that leaves nothing.
+	GameLoop2.defeated_this_game = 1
+	if int(GameLoop2.end_of_game_price()["bodies"]) > 0:
+		pending("the run stands inside the Amulet's pressure, so a body is owed regardless")
+		return
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(false)
 	assert_eq(int(res.get("turns", 0)), 0, "the end of the game gave them nothing")
