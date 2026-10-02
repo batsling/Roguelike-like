@@ -8117,6 +8117,17 @@ func _crowd_board(n: int) -> void:
 		seen[e.id] = true
 		GameLoop2.spawn_to_stack(e)
 		placed += 1
+	# A genre's tier pool can hold fewer distinct bodies than asked for — then
+	# the rest of the roster makes up the number, still one of each.
+	for e in Data.all_goal_enemies():
+		if placed >= n:
+			break
+		var g: GoalEnemyData = e
+		if g == null or g.is_boss() or seen.has(g.id):
+			continue
+		seen[g.id] = true
+		GameLoop2.spawn_to_stack(g)
+		placed += 1
 	_ui._populate_play_panel()
 
 # THE CHECKLIST HAS A CEILING (docs/layout-review-backlog.md). A row per body and
