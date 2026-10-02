@@ -2088,7 +2088,10 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	assert_gt(before, 0, "something walked on")
 	_shut_failure_tap()
 	_ui.report(true)                      # completed, ticked nothing
-	assert_eq(GameLoop2.stack.size(), before,
+	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): those
+	# are new bodies, and this is a claim about the ones that were already there.
+	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack.size() - walked, before,
 		"the bodies are all still there — none of them was ticked")
 	assert_true(GameState.has_played_game(_last_played_id()),
 		"but the GAME is recorded as beaten")
