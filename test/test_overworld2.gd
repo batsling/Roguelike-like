@@ -11072,7 +11072,7 @@ func test_one_tick_on_a_group_answers_exactly_one_body() -> void:
 	await wait_frames(3)
 	var answered: int = 0
 	for inst in bodies:
-		if GameLoop2.row_answered("goal:%d" % int(inst)):
+		if ReportChecklist.body_done(int(inst)):
 			answered += 1
 	assert_eq(answered, 1, "one deed, one body — the tick answers for ONE of the three")
 	assert_eq(GameLoop2.stack.size(), standing - 1, "and a one-hit body comes off the board")
@@ -11135,3 +11135,35 @@ func test_every_toast_is_the_same_width() -> void:
 	assert_gte(widths.size(), 2)
 	if widths.size() >= 2:
 		assert_eq(widths[-1], widths[-2], "one column, one width: %s" % str(widths))
+
+# A BODY THAT LIVES THROUGH ITS TICK IS STILL DONE FOR THIS GAME. A body goal is
+# recorded on the body (`fulfill` -> cleared_this_game), not as an answered row,
+# so a group that asked only `row_answered` would aim its box straight back at
+# the stunned survivor — one deed, ticked twice.
+func test_a_group_moves_on_from_a_body_that_survived_its_tick() -> void:
+	var bodies: Array = _stand_identical(2)
+	if bodies.size() < 2:
+		pending("the board did not take two bodies")
+		return
+	for entry in GameLoop2.stack:
+		entry["health"] = 2
+	_ui._populate_play_panel()
+	var first: int = int(_ui._fulfil_checks[0]["instance"])
+	_tick(_ui._fulfil_checks[0]["check"])
+	await wait_frames(3)
+	assert_eq(GameLoop2.stack.size(), 2, "both bodies are still standing")
+	assert_true(ReportChecklist.body_done(first), "the ticked one is done for this game")
+	# The survivor is STUNNED now, and a body carrying a status keeps a row of its
+	# own — so the pair splits, and what matters is that the other body's box is
+	# the one still open.
+	var other: int = int(bodies[0]) if int(bodies[0]) != first else int(bodies[1])
+	var open_other := false
+	var survivor_open := false
+	for f in _ui._fulfil_checks:
+		var stands_for: Array = f.get("group", [int(f["instance"])])
+		if stands_for.has(other) and int(f["instance"]) == other and not f["check"].disabled:
+			open_other = true
+		if int(f["instance"]) == first and not f["check"].disabled:
+			survivor_open = true
+	assert_true(open_other, "the other body can still be ticked")
+	assert_false(survivor_open, "the survivor cannot be ticked a second time")

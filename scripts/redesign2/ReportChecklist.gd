@@ -406,6 +406,14 @@ static func group_bodies(entries: Array) -> Array:
 # game, front line first — that is the one that hits next, so it is the one a
 # player would clear first given the choice. -1 when every one of them is
 # answered.
+# Whether this body's goal is already settled THIS GAME. A body goal is not an
+# `answered_rows` row — `fulfill` records the BODY (`body_finished_this_game`) —
+# so asking `row_answered` alone would aim a group's box at a stunned survivor
+# that was already ticked. The key still counts for a counted or armed goal.
+static func body_done(inst: int) -> bool:
+	return GameLoop2.body_finished_this_game(inst) \
+		or GameLoop2.row_answered("goal:%d" % inst)
+
 static func group_target(group: Array) -> int:
 	# A `game beaten` group's claim is ARMED, not answered, until the report — so a
 	# rebuild mid-game has to keep pointing at the body already armed, or the row
@@ -418,7 +426,7 @@ static func group_target(group: Array) -> int:
 	var fallback: int = -1
 	for entry in group:
 		var inst: int = int(entry.get("instance", 0))
-		if GameLoop2.row_answered("goal:%d" % inst):
+		if body_done(inst):
 			continue
 		if GameLoop2.in_front(entry):
 			return inst
@@ -473,7 +481,7 @@ func _add_group_row(group: Array) -> void:
 	var target: int = group_target(group)
 	var answered: int = 0
 	for entry in group:
-		if GameLoop2.row_answered("goal:%d" % int(entry["instance"])):
+		if body_done(int(entry["instance"])):
 			answered += 1
 	var inst: int = target if target > 0 else int(first["instance"])
 	var tint: Color = UITheme.GOLD if at_the_end else UITheme.TEXT
@@ -588,6 +596,13 @@ func _add_ghost_rows(instance: int) -> void:
 # and would otherwise leave the whole group locked behind one tick.
 func _arm_goal_row(cb: CheckBox, instance: int, enemy: GoalEnemyData,
 		grouped: bool = false) -> void:
+	# A BODY THAT TOOK ITS HIT AND LIVED IS ANSWERED for this game, and stays
+	# locked across a rebuild. `_arm_row` re-locks by `answered_rows`, which a body
+	# goal is never written to (`fulfill` records the body instead), so without
+	# this a stunned survivor's box came back open on the next repaint.
+	if cb != null and body_done(instance):
+		_lock_row(cb)
+		return
 	var name_of: String = enemy.display_name if enemy != null else "it"
 	# Named rather than inline: GDScript cannot parse an argument after a
 	# multi-line lambda (see `_arm_row`).
