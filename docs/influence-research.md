@@ -210,6 +210,17 @@ PR agency and a publisher). Those are listed in section 6 of
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.
 
+## Sequels
+
+The owner's rule: **a sequel only gets an influence its predecessor doesn't
+already have.** If Strange Adventures in Infinite Space is on the sheet as an
+influence on Weird Worlds, a quote saying it also shaped Infinite Space III adds
+nothing, because the series edge already carries it. Check the earlier game's
+influences before listing one for a sequel, and when an interview is about a
+series, put the edge on the first game it applies to. The sequel's own new
+influences (Hades on Moonlighter 2, which Moonlighter never had) are the ones
+worth listing.
+
 ## Adding approved rows
 
 Approved candidates go into the `connections` sheet: Influencer, Influencee,
