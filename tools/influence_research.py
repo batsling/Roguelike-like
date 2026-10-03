@@ -827,9 +827,35 @@ CANDIDATES = os.path.join(ROOT, "docs", "influence-candidates.md")
 # `**Influencer → Influencee**`, the format every candidate line uses. Anything
 # after it on the line (the quote, the source) is left alone.
 CANDIDATE = re.compile(r"\*\*([^*→]+?) → ([^*]+?)\*\*")
-# Section 6 lists rows ALREADY in the sheet whose source needs a look; those are
-# on the chart by definition and are not candidates.
-STATUS_STOP = "## 6."
+# The doc is laid out by what the owner does next: sections 1 and 2 hold the
+# open lines (2 is games not on the sheet yet), section 7 the ones now in the
+# sheet. These headings are how `status` finds its way around it.
+WANTED_SECTION = "## 2."
+DONE_SECTION = "## 7."
+
+
+def _pair_key(line):
+    p = CANDIDATE.findall(line)
+    return (p[0][1].lower(), p[0][0].lower()) if p else ("~", line)
+
+
+def _recount(text):
+    """Refresh the line counts in the table at the top of the doc."""
+    count, sec, sub = {}, "", ""
+    for line in text.split("\n"):
+        if line.startswith("## "):
+            sec, sub = line[:5], ""
+        elif line.startswith("### "):
+            sub = line
+        elif line.startswith("- [ ] ") or line.startswith("- [x] "):
+            kind = "weaker" if "Weaker" in sub else "strong"
+            count[(sec, kind)] = count.get((sec, kind), 0) + 1
+            count[(sec, "all")] = count.get((sec, "all"), 0) + 1
+    def row(label, sec):
+        return "| %s | %d strong, %d weaker |" % (label, count.get((sec, "strong"), 0), count.get((sec, "weaker"), 0))
+    text = re.sub(r"\| 1\. To review: games on the sheet \|[^\n]*", row("1. To review: games on the sheet", "## 1."), text)
+    text = re.sub(r"\| 2\. To review: games you want to add \|[^\n]*", row("2. To review: games you want to add", "## 2."), text)
+    return re.sub(r"\| 7\. Done: on the chart \|[^\n]*", "| 7. Done: on the chart | %d |" % count.get(("## 7.", "all"), 0), text)
 
 
 def cmd_status(args):
@@ -837,31 +863,36 @@ def cmd_status(args):
 
     The owner adds approved rows to `connections` by hand, so the candidate list
     falls behind the sheet. This reads both and prints, per open `- [ ]` line,
-    whether every pair on it is a row now. With --tick it ticks those lines and
-    marks them `✓ on the chart`, so what stays unticked is what is left to
-    review. A name the sheet doesn't have exactly (the doc says "Spelunky", or a
-    series, where the sheet names one game) is reported rather than guessed:
-    fix the doc line to name the row the owner picked, and run it again.
+    whether every pair on it is a row now. With --tick those lines are ticked,
+    marked `✓ on the chart`, and moved into section 7 in their sorted place, so
+    sections 1 and 2 only ever hold what is left to review.
+
+    A name the sheet doesn't have exactly (the doc says "Spelunky", or a series,
+    where the sheet names one game) is reported rather than guessed: fix the
+    line to name the row the owner picked, and run it again. In section 2 the
+    games are not on the sheet yet by definition, so a missing name there is
+    reported as waiting for its game row, not as a misspelling.
     """
     games, conns = load_sheet()
     have = {(str(a).strip().lower(), str(b).strip().lower()) for a, b, *_ in conns}
     names = {str(r[0]).strip().lower() for r in games}
     lines = open(CANDIDATES, encoding="utf8").read().split("\n")
-    added, still_open, unknown = [], [], []
+    added, still_open, unknown, waiting = [], [], [], []
+    section = ""
     for i, line in enumerate(lines):
-        if line.startswith(STATUS_STOP):
-            break
-        if not line.startswith("- [ ] "):
+        if line.startswith("## "):
+            section = line
+            continue
+        if not line.startswith("- [ ] ") or section.startswith(DONE_SECTION):
             continue
         pairs = CANDIDATE.findall(line)
         if not pairs:
             continue
-        missing = [n for p in pairs for n in p if n.strip().lower() not in names]
+        missing = list(dict.fromkeys(n for p in pairs for n in p if n.strip().lower() not in names))
         if all((a.strip().lower(), b.strip().lower()) in have for a, b in pairs):
             added.append(i)
-            if args.tick:
-                end = list(CANDIDATE.finditer(line))[-1].end()
-                lines[i] = "- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:]
+        elif missing and section.startswith(WANTED_SECTION):
+            waiting.append((i, missing))
         elif missing:
             unknown.append((i, missing))
         else:
@@ -870,11 +901,27 @@ def cmd_status(args):
         print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % p for p in CANDIDATE.findall(lines[i]))))
     for i, missing in unknown:
         print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
-    print("%d open candidate line(s) are in the sheet, %d are not, %d name a game the "
-          "sheet spells differently" % (len(added), len(still_open), len(unknown)))
-    if args.tick and added:
-        open(CANDIDATES, "w", encoding="utf8").write("\n".join(lines))
-        print("ticked %d line(s) in %s" % (len(added), os.path.relpath(CANDIDATES, ROOT)))
+    for i, missing in waiting:
+        print("no game row   %4d  add to `games` first: %s" % (i + 1, ", ".join(missing)))
+    print("%d open line(s) are in the sheet, %d are not, %d name a game the sheet spells "
+          "differently, %d wait for a game row" % (len(added), len(still_open), len(unknown), len(waiting)))
+    if not (args.tick and added):
+        return
+    moved = []
+    for i in added:
+        line = lines[i]
+        end = list(CANDIDATE.finditer(line))[-1].end()
+        moved.append("- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:])
+    keep = [l for n, l in enumerate(lines) if n not in set(added)]
+    start = next(n for n, l in enumerate(keep) if l.startswith(DONE_SECTION))
+    stop = next((n for n in range(start + 1, len(keep)) if keep[n].startswith("## ")), len(keep))
+    body = [l for l in keep[start + 1:stop] if l.startswith("- [x] ")]
+    first = next(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
+    last = max(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
+    keep[first:last + 1] = sorted(body + moved, key=_pair_key)
+    open(CANDIDATES, "w", encoding="utf8").write(_recount("\n".join(keep)))
+    print("ticked %d line(s) and moved them to section 7 of %s"
+          % (len(added), os.path.relpath(CANDIDATES, ROOT)))
 
 
 def main():

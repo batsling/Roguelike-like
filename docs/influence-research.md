@@ -2,8 +2,11 @@
 
 How to find influences the chart is missing, what counts as a source, and what
 went wrong the first time so it doesn't again. The candidates found so far, with
-quotes and links, are in `docs/influence-candidates.md`: the ones now in the sheet are ticked
-✓ *on the chart*, and the rest are waiting for approval.
+quotes and links, are in `docs/influence-candidates.md`. It is laid out by what
+the owner does next: lines to review (section 1 for games on the sheet, section
+2 for games not added yet), what was checked and isn't an influence (3), rows
+whose source needs a look (4), leads (5), what was searched without result (6),
+and what is on the chart now (7).
 
 ## The rules
 
@@ -16,12 +19,13 @@ quotes and links, are in `docs/influence-candidates.md`: the ones now in the she
    and only those become rows.
 3. **Flag roguelikes the chart doesn't have.** When a developer names an
    influence that is itself a roguelike but isn't on the chart, list it under
-   "Roguelikes you don't have" in `docs/influence-candidates.md` and tell the
+   "Roguelikes you don't have" (section 5 of `docs/influence-candidates.md`) and tell the
    owner: it's a game they may want to add. Check the chart's full names first
    (IVAN is there as `Iter Vehemens Ad Necem`).
 4. **Record denials too.** "I love Vampire Survivors, but no" (Ron Gilbert, on
    Death by Scrolling) stops someone adding that edge later on a reviewer's say-so.
-   Denials live in section 3 of `docs/influence-candidates.md`.
+   Denials live in section 3 of `docs/influence-candidates.md`, with the
+   things that looked like an influence and weren't.
 
 ## Where to look, and what each source was worth
 
@@ -155,7 +159,9 @@ Break, Million Depth and Auto Rogue (Japan).
 
 For interviews, web-search `"<game>" developer interview inspired`, then fetch
 the page and find the actual quote. Never trust a search engine's summary of a
-page: twice it attributed commenters' suggestions to the developer.
+page: twice it attributed commenters' suggestions to the developer, and once
+it credited Warriors: Abyss's producer with naming Hades II and Vampire
+Survivors, which the interview it cited never says.
 
 ### X / Twitter
 
@@ -174,7 +180,7 @@ specific tweets other sources link to.
 
 The first check (82 rows) found every tweet still readable except one deleted,
 almost all posted by the game's own account, and two posted by someone else (a
-PR agency and a publisher). Those are listed in section 6 of
+PR agency and a publisher). Those are listed in section 4 of
 `docs/influence-candidates.md`.
 
 ## Traps
@@ -236,7 +242,7 @@ candidate list up to date:
 
 ```bash
 python3 tools/influence_research.py status          # what's in the sheet now, and any name it can't match
-python3 tools/influence_research.py status --tick   # tick those lines ✓ on the chart
+python3 tools/influence_research.py status --tick   # tick them and move them to section 7
 ```
 
 `status` matches the names on each `- [ ]` line against the sheet exactly. If
@@ -245,4 +251,10 @@ line as unmatched or open instead of guessing. That happens when the doc names a
 series or a remake and the sheet names one game, for example "Shiren the
 Wanderer" added as `Mystery Dungeon 2: Shiren the Wanderer`, or "Spelunky" added
 as `Spelunky Classic`. Change the doc line to the row that was added, say so in
-a note, and run it again.
+a note, and run it again. Lines in section 2 name games that aren't on the
+sheet yet, so `status` lists them as waiting for their game row instead.
+
+When adding new findings, put each line in section 1 or 2 under Strong or
+Weaker, in its sorted place (by the game that gets the connection). Write every
+line so it stands alone: a second pair from the same quote says `same quote as
+**A → B**` rather than just `same`, because `--tick` moves lines one at a time.
