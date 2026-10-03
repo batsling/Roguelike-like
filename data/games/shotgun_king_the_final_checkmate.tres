@@ -8,9 +8,9 @@ id = &"shotgun_king_the_final_checkmate"
 display_name = "Shotgun King: The Final Checkmate"
 year = 2022
 type = 1
-games_influenced = Array[StringName]([&"bingle_bingle", &"chess_survivors", &"the_ouroboros_king"])
-influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=dfLSGkKC2ug", "https://www.reddit.com/r/Games/comments/10uappd/the_ouroboros_king_oriol_cosp_chess_based/")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"bingle_bingle", &"chess_survivors", &"the_ouroboros_king", &"order_automatica"])
+influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=dfLSGkKC2ug", "https://www.reddit.com/r/Games/comments/10uappd/the_ouroboros_king_oriol_cosp_chess_based/", "https://steamcommunity.com/games/2105840/announcements/detail/526488742956893954")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray("chess")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

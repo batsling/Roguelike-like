@@ -19,10 +19,13 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py devs      # Steam appid + developer for every game (~6 min)
     python3 tools/influence_research.py samedev   # same-developer pairs the sheet doesn't connect
     python3 tools/influence_research.py steam     # store pages + dev announcements -> triage.md
+    python3 tools/influence_research.py cues      # wider read of those pages for the degree-1 games
+    python3 tools/influence_research.py wanted FILE  # games not on the chart yet: find edges to it
     python3 tools/influence_research.py lang      # each studio's own language (+ --forums for subforums)
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
     python3 tools/influence_research.py xsources  # who posted each X/Twitter source the sheet cites
+    python3 tools/influence_research.py status    # which candidates are in the sheet now (--tick marks them)
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -231,6 +234,41 @@ def cmd_samedev(args):
 
 # ── steam ───────────────────────────────────────────────────────────────────
 
+def steam_pages(aid, cache):
+    """A game's store text and its developer's own announcements, cached on disk.
+
+    Store text and `steam_community_announcements` are written by the developer,
+    which is what makes a hit in them first-hand. Returns [(kind, url, text)].
+    """
+    fn = os.path.join(cache, f"{aid}.json")
+    if os.path.exists(fn):
+        return json.load(open(fn))
+    docs = []
+    try:
+        s = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&appids={aid}"))[aid]
+        if s.get("success"):
+            docs.append(("store", f"https://store.steampowered.com/app/{aid}/",
+                         clean(s["data"].get("about_the_game", "") + " . "
+                               + s["data"].get("short_description", ""))))
+    except Exception:
+        pass
+    try:
+        j = json.loads(get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
+                           f"?appid={aid}&count=400&maxlength=0"))
+        for it in j.get("appnews", {}).get("newsitems", []):
+            # Only the developer's own posts; the feed also carries press articles.
+            if it.get("feedname") == "steam_community_announcements":
+                # The feed's gid is NOT the id the store's news page uses, so a
+                # store.steampowered.com/news/app/<aid>/view/<gid> link is dead.
+                # Its own url redirects to the real announcement; cite where it lands.
+                docs.append(("news", it["url"],
+                             clean(it["title"] + " . " + it["contents"])))
+    except Exception:
+        pass
+    json.dump(docs, open(fn, "w"))
+    return docs
+
+
 def cmd_steam(args):
     """Every chart game's store page and developer announcements, scanned for
     sentences that make an influence claim AND name another chart game.
@@ -251,33 +289,7 @@ def cmd_steam(args):
         aid = v.get("aid")
         if not aid:
             return []
-        fn = os.path.join(cache, f"{aid}.json")
-        if os.path.exists(fn):
-            docs = json.load(open(fn))
-        else:
-            docs = []
-            try:
-                s = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&appids={aid}"))[aid]
-                if s.get("success"):
-                    docs.append(("store", f"https://store.steampowered.com/app/{aid}/",
-                                 clean(s["data"].get("about_the_game", "") + " . "
-                                       + s["data"].get("short_description", ""))))
-            except Exception:
-                pass
-            try:
-                j = json.loads(get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
-                                   f"?appid={aid}&count=400&maxlength=0"))
-                for it in j.get("appnews", {}).get("newsitems", []):
-                    # Only the developer's own posts; the feed also carries press articles.
-                    if it.get("feedname") == "steam_community_announcements":
-                        # The feed's gid is NOT the id the store's news page uses, so a
-                        # store.steampowered.com/news/app/<aid>/view/<gid> link is dead.
-                        # Its own url redirects to the real announcement; cite where it lands.
-                        docs.append(("news", it["url"],
-                                     clean(it["title"] + " . " + it["contents"])))
-            except Exception:
-                pass
-            json.dump(docs, open(fn, "w"))
+        docs = steam_pages(aid, cache)
         out = []
         for kind, url, text in docs:
             for s in re.split(r"(?<=[.!?])\s+", text):
@@ -302,6 +314,123 @@ def cmd_steam(args):
         for (src, other), h in sorted(first.items()):
             f.write(f"## {src} mentions {other} [{h[2]}]\n   {h[4]}\n   {h[3]}\n")
     print(f"{len(first)} unconnected pairs -> {path}")
+
+
+# ── cues ────────────────────────────────────────────────────────────────────
+
+# Wider than CLAIM: the phrasings a store page or devlog uses for a lineage
+# without the word "inspired" — "from the creators of", "sequel to", "if you
+# liked", "similar to". This is what found Despotism 3k -> Slime 3K and Luck be
+# a Landlord -> Maze Mice, which `steam` missed because neither says "inspired".
+CUE = re.compile(
+    r"creators? of|makers? of|developers? (?:of|behind)|brought you|sequel to|"
+    r"studio behind|team behind|same (?:solo )?developer|predecessors?|same universe|"
+    r"continues the|if you (?:like|liked|enjoy|enjoyed|love|loved)|fans? of|"
+    r"similar to|akin to|approach|touchstone|reference", re.I)
+
+
+def degree_one(games, conns):
+    deg = {}
+    for a, b, *_ in conns:
+        deg[a] = deg.get(a, 0) + 1
+        deg[b] = deg.get(b, 0) + 1
+    return [r[0] for r in games if deg.get(r[0]) == 1]
+
+
+def cmd_cues(args):
+    """A wider read of the pages `steam` cached, for pairs where one game is held
+    on the map by a single edge (or --games all).
+
+    Same text, looser net: CLAIM or CUE, next to another chart game's name, and
+    the pair not already connected. It finds more noise than `steam` does, so it
+    is pointed at the games where an extra edge matters most. Run `steam` first.
+    Output: cues.md, for a person to read.
+    """
+    games, conns = load_sheet()
+    devs = load_devs(args)
+    have = connected(conns)
+    pats = name_patterns([r[0] for r in games])
+    # A leaf's lineage is as often on the OTHER game's page (Slime 3K's store
+    # page is where Despotism 3k gets its second edge), so every page is read and
+    # a hit is kept when either end of it is a leaf.
+    leaves = set(degree_one(games, conns)) if args.games == "leaves" else None
+    out = []
+    for name in (r[0] for r in games):
+        fn = wpath(args, os.path.join("pages", f"{devs.get(name, {}).get('aid')}.json"))
+        if not os.path.exists(fn):
+            continue
+        for kind, url, text in json.load(open(fn)):
+            for s in re.split(r"(?<=[.!?])\s+", text):
+                if len(s) > 700 or not (CUE.search(s) or CLAIM.search(s)) or NOISE.search(s):
+                    continue
+                for g in named_in(s, pats, name):
+                    if leaves is not None and name not in leaves and g not in leaves:
+                        continue
+                    if (g, name) not in have and (name, g) not in have:
+                        out.append(f"## {name} <- {g} [{kind}] {url}\n   {s.strip()[:500]}\n")
+    path = wpath(args, "cues.md")
+    with open(path, "w") as f:
+        f.write("# Wider cue scan — read every line; most are noise\n\n" + "".join(dict.fromkeys(out)))
+    print(f"{len(set(out))} hits -> {path}")
+
+
+# ── wanted ──────────────────────────────────────────────────────────────────
+
+def cmd_wanted(args):
+    """Games the owner wants on the chart but has no edge for yet.
+
+    Takes a text file, one name per line ("#" starts a comment). Each name is
+    looked up in the Steam store search, its store page and announcements are
+    read the way `steam` reads a chart game's, and every sentence that makes a
+    claim (CLAIM or CUE) next to a chart game's name is written to wanted.md.
+    A name that matches no Steam app, or matches loosely, says so: the store
+    search returns the nearest title, and a wrong game is worse than none.
+    """
+    games, _ = load_sheet()
+    pats = name_patterns([r[0] for r in games])
+    cache = wpath(args, "pages")
+    os.makedirs(cache, exist_ok=True)
+    norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+    names = [l.split("#")[0].strip() for l in open(args.file, encoding="utf8")]
+    names = list(dict.fromkeys(n for n in names if n))
+
+    def one(name):
+        try:
+            s = json.loads(get("https://store.steampowered.com/api/storesearch/?cc=us&l=en&term="
+                               + urllib.parse.quote(name)))
+        except Exception as e:
+            return name, None, f"search failed: {e}", []
+        items = s.get("items", [])
+        exact = [i for i in items if norm(i["name"]) == norm(name)]
+        pick = (exact or items[:1] or [None])[0]
+        if pick is None:
+            return name, None, "not on Steam", []
+        note = "" if exact else f"closest match: {pick['name']}"
+        out = []
+        for kind, url, text in steam_pages(str(pick["id"]), cache):
+            for sent in re.split(r"(?<=[.!?])\s+", text):
+                if len(sent) > 700 or not (CLAIM.search(sent) or CUE.search(sent)) or NOISE.search(sent):
+                    continue
+                for g in named_in(sent, pats, pick["name"]):
+                    out.append((g, kind, url, sent.strip()[:500]))
+        return name, pick, note, out
+
+    path = wpath(args, "wanted.md")
+    found = 0
+    with cf.ThreadPoolExecutor(6) as ex, open(path, "w") as f:
+        f.write("# Wanted games: sentences naming a chart game — read every one\n\n")
+        for name, pick, note, out in ex.map(one, names):
+            app = f"https://store.steampowered.com/app/{pick['id']}/" if pick else "-"
+            f.write(f"## {name}  ({app}{'; ' + note if note else ''})\n")
+            seen = set()
+            for g, kind, url, sent in out:
+                if (g, sent[:80]) in seen:
+                    continue
+                seen.add((g, sent[:80]))
+                f.write(f"- **{g}** [{kind}] {url}\n  {sent}\n")
+            found += bool(out)
+            f.write("\n")
+    print(f"{len(names)} games, {found} with a hit -> {path}")
 
 
 # ── steamcommunity.com (forums) ─────────────────────────────────────────────
@@ -692,6 +821,109 @@ def cmd_xsources(args):
     print(f"{len(rows)} X/Twitter sources -> {out}")
 
 
+# ── status ──────────────────────────────────────────────────────────────────
+
+CANDIDATES = os.path.join(ROOT, "docs", "influence-candidates.md")
+# `**Influencer → Influencee**`, the format every candidate line uses. Anything
+# after it on the line (the quote, the source) is left alone.
+CANDIDATE = re.compile(r"\*\*([^*→]+?) → ([^*]+?)\*\*")
+# The doc is laid out by what the owner does next: sections 1 and 2 hold the
+# open lines (2 is games not on the sheet yet), section 7 the ones now in the
+# sheet. These headings are how `status` finds its way around it.
+WANTED_SECTION = "## 2."
+DONE_SECTION = "## 7."
+
+
+def _pair_key(line):
+    p = CANDIDATE.findall(line)
+    return (p[0][1].lower(), p[0][0].lower()) if p else ("~", line)
+
+
+def _recount(text):
+    """Refresh the line counts in the table at the top of the doc."""
+    count, sec, sub = {}, "", ""
+    for line in text.split("\n"):
+        if line.startswith("## "):
+            sec, sub = line[:5], ""
+        elif line.startswith("### "):
+            sub = line
+        elif line.startswith("- [ ] ") or line.startswith("- [x] "):
+            kind = "weaker" if "Weaker" in sub else "strong"
+            count[(sec, kind)] = count.get((sec, kind), 0) + 1
+            count[(sec, "all")] = count.get((sec, "all"), 0) + 1
+    def row(label, sec):
+        return "| %s | %d strong, %d weaker |" % (label, count.get((sec, "strong"), 0), count.get((sec, "weaker"), 0))
+    text = re.sub(r"\| 1\. To review: games on the sheet \|[^\n]*", row("1. To review: games on the sheet", "## 1."), text)
+    text = re.sub(r"\| 2\. To review: games you want to add \|[^\n]*", row("2. To review: games you want to add", "## 2."), text)
+    return re.sub(r"\| 7\. Done: on the chart \|[^\n]*", "| 7. Done: on the chart | %d |" % count.get(("## 7.", "all"), 0), text)
+
+
+def cmd_status(args):
+    """Which candidates in `docs/influence-candidates.md` are in the sheet now.
+
+    The owner adds approved rows to `connections` by hand, so the candidate list
+    falls behind the sheet. This reads both and prints, per open `- [ ]` line,
+    whether every pair on it is a row now. With --tick those lines are ticked,
+    marked `✓ on the chart`, and moved into section 7 in their sorted place, so
+    sections 1 and 2 only ever hold what is left to review.
+
+    A name the sheet doesn't have exactly (the doc says "Spelunky", or a series,
+    where the sheet names one game) is reported rather than guessed: fix the
+    line to name the row the owner picked, and run it again. In section 2 the
+    games are not on the sheet yet by definition, so a missing name there is
+    reported as waiting for its game row, not as a misspelling.
+    """
+    games, conns = load_sheet()
+    have = {(str(a).strip().lower(), str(b).strip().lower()) for a, b, *_ in conns}
+    names = {str(r[0]).strip().lower() for r in games}
+    lines = open(CANDIDATES, encoding="utf8").read().split("\n")
+    added, still_open, unknown, waiting = [], [], [], []
+    section = ""
+    for i, line in enumerate(lines):
+        if line.startswith("## "):
+            section = line
+            continue
+        if not line.startswith("- [ ] ") or section.startswith(DONE_SECTION):
+            continue
+        pairs = CANDIDATE.findall(line)
+        if not pairs:
+            continue
+        missing = list(dict.fromkeys(n for p in pairs for n in p if n.strip().lower() not in names))
+        if all((a.strip().lower(), b.strip().lower()) in have for a, b in pairs):
+            added.append(i)
+        elif missing and section.startswith(WANTED_SECTION):
+            waiting.append((i, missing))
+        elif missing:
+            unknown.append((i, missing))
+        else:
+            still_open.append(i)
+    for i in added:
+        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % p for p in CANDIDATE.findall(lines[i]))))
+    for i, missing in unknown:
+        print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
+    for i, missing in waiting:
+        print("no game row   %4d  add to `games` first: %s" % (i + 1, ", ".join(missing)))
+    print("%d open line(s) are in the sheet, %d are not, %d name a game the sheet spells "
+          "differently, %d wait for a game row" % (len(added), len(still_open), len(unknown), len(waiting)))
+    if not (args.tick and added):
+        return
+    moved = []
+    for i in added:
+        line = lines[i]
+        end = list(CANDIDATE.finditer(line))[-1].end()
+        moved.append("- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:])
+    keep = [l for n, l in enumerate(lines) if n not in set(added)]
+    start = next(n for n, l in enumerate(keep) if l.startswith(DONE_SECTION))
+    stop = next((n for n in range(start + 1, len(keep)) if keep[n].startswith("## ")), len(keep))
+    body = [l for l in keep[start + 1:stop] if l.startswith("- [x] ")]
+    first = next(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
+    last = max(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
+    keep[first:last + 1] = sorted(body + moved, key=_pair_key)
+    open(CANDIDATES, "w", encoding="utf8").write(_recount("\n".join(keep)))
+    print("ticked %d line(s) and moved them to section 7 of %s"
+          % (len(added), os.path.relpath(CANDIDATES, ROOT)))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--work", default=os.path.join(ROOT, ".influence_work"))
@@ -701,6 +933,10 @@ def main():
     sub.add_parser("samedev")
     sub.add_parser("steam")
     sub.add_parser("xsources")
+    sub.add_parser("wanted").add_argument("file", help="text file, one game name per line")
+    sub.add_parser("cues").add_argument("--games", choices=["leaves", "all"], default="leaves")
+    sub.add_parser("status").add_argument("--tick", action="store_true",
+                                          help="tick the candidate lines that are in the sheet now")
     for name in ("lang", "forums", "devcheck"):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["targets", "all"], default="targets")
@@ -709,7 +945,8 @@ def main():
                                      help="also read each game's forum index for language subforums")
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
-     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources}[args.cmd](args)
+     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
+     "cues": cmd_cues, "wanted": cmd_wanted}[args.cmd](args)
 
 
 if __name__ == "__main__":

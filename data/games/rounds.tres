@@ -8,9 +8,9 @@ id = &"rounds"
 display_name = "Rounds"
 year = 2021
 type = 0
-games_influenced = Array[StringName]([])
-influence_sources = PackedStringArray()
-influence_relations = PackedStringArray()
+games_influenced = Array[StringName]([&"section_13"])
+influence_sources = PackedStringArray("https://v.daum.net/v/pIwu8NNfMg?f=p")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

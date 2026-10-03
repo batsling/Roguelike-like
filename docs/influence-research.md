@@ -2,7 +2,11 @@
 
 How to find influences the chart is missing, what counts as a source, and what
 went wrong the first time so it doesn't again. The candidates found so far, with
-quotes and links, are in `docs/influence-candidates.md`, waiting for approval.
+quotes and links, are in `docs/influence-candidates.md`. It is laid out by what
+the owner does next: lines to review (section 1 for games on the sheet, section
+2 for games not added yet), what was checked and isn't an influence (3), rows
+whose source needs a look (4), leads (5), what was searched without result (6),
+and what is on the chart now (7).
 
 ## The rules
 
@@ -15,12 +19,13 @@ quotes and links, are in `docs/influence-candidates.md`, waiting for approval.
    and only those become rows.
 3. **Flag roguelikes the chart doesn't have.** When a developer names an
    influence that is itself a roguelike but isn't on the chart, list it under
-   "Roguelikes you don't have" in `docs/influence-candidates.md` and tell the
+   "Roguelikes you don't have" (section 5 of `docs/influence-candidates.md`) and tell the
    owner: it's a game they may want to add. Check the chart's full names first
    (IVAN is there as `Iter Vehemens Ad Necem`).
 4. **Record denials too.** "I love Vampire Survivors, but no" (Ron Gilbert, on
    Death by Scrolling) stops someone adding that edge later on a reviewer's say-so.
-   Denials live in section 3 of `docs/influence-candidates.md`.
+   Denials live in section 3 of `docs/influence-candidates.md`, with the
+   things that looked like an influence and weren't.
 
 ## Where to look, and what each source was worth
 
@@ -34,6 +39,18 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Same developer | `samedev` subcommand | A lead, not a source. Use a pair only when the newer game's page says so |
 | Steam discussion forums | `forums` then `devcheck` | **Poor and slow, but the badge makes it trustworthy.** 30 hits in the first 38 games, one from a developer. `devcheck` keeps only posts with Steam's developer badge. Run it last, on the games nothing else found |
 
+**The degree-1 pass (October 2026)** went after the 335 games the map holds by a
+single edge. Two things paid off. The `cues` read of the cached Steam pages
+found the lineage that `steam` misses because it never says "inspired":
+"from the creators of Despot's Game and Despotism 3K" (on Slime 3K's page, not
+Despotism 3k's, which is why `cues` reads every page and keeps a hit when either
+end is a leaf), "the same solo developer who brought you Luck be a Landlord",
+"set in the same universe as its predecessors". Interviews worked for the
+better-known sequels and spin-offs (Exit the Gungeon, Moonlighter 2, UnderMine,
+Morbid Metal). For the rest, mostly survivors-likes and Balatro-likes, the
+developer only ever names the one game the sheet already has: about 45 searched
+by hand turned up new edges for five.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
@@ -45,9 +62,12 @@ python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
 python3 tools/influence_research.py samedev   # same-studio leads
 python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.md, read every line
+python3 tools/influence_research.py cues      # wider read of the same pages, for pairs touching a degree-1 game
+python3 tools/influence_research.py wanted FILE  # games not on the chart yet (one name per line): sentences naming a chart game
 python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
 python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
+python3 tools/influence_research.py status    # which candidates are in the sheet now; --tick marks them
 ```
 
 Everything goes into `.influence_work/` (gitignored). The `steam` pass caches
@@ -139,7 +159,9 @@ Break, Million Depth and Auto Rogue (Japan).
 
 For interviews, web-search `"<game>" developer interview inspired`, then fetch
 the page and find the actual quote. Never trust a search engine's summary of a
-page: twice it attributed commenters' suggestions to the developer.
+page: twice it attributed commenters' suggestions to the developer, and once
+it credited Warriors: Abyss's producer with naming Hades II and Vampire
+Survivors, which the interview it cited never says.
 
 ### X / Twitter
 
@@ -158,7 +180,7 @@ specific tweets other sources link to.
 
 The first check (82 rows) found every tweet still readable except one deleted,
 almost all posted by the game's own account, and two posted by someone else (a
-PR agency and a publisher). Those are listed in section 6 of
+PR agency and a publisher). Those are listed in section 4 of
 `docs/influence-candidates.md`.
 
 ## Traps
@@ -195,6 +217,17 @@ PR agency and a publisher). Those are listed in section 6 of
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.
 
+## Sequels
+
+The owner's rule: **a sequel only gets an influence its predecessor doesn't
+already have.** If Strange Adventures in Infinite Space is on the sheet as an
+influence on Weird Worlds, a quote saying it also shaped Infinite Space III adds
+nothing, because the series edge already carries it. Check the earlier game's
+influences before listing one for a sequel, and when an interview is about a
+series, put the edge on the first game it applies to. The sequel's own new
+influences (Hades on Moonlighter 2, which Moonlighter never had) are the ones
+worth listing.
+
 ## Adding approved rows
 
 Approved candidates go into the `connections` sheet: Influencer, Influencee,
@@ -203,3 +236,25 @@ same-studio pairs), and the source URL. Edit through `tools/_xlsx_surgery.py`
 like the `tools/_connections_*.py` one-shots (never by saving with openpyxl,
 which drops the workbook's charts), then run `python3 tools/import-games-godot.py`.
 `tools/_connections_stolen_realm_survivors.py` is the closest worked example.
+
+The owner usually adds rows straight into the sheet, so afterwards bring the
+candidate list up to date:
+
+```bash
+python3 tools/influence_research.py status          # what's in the sheet now, and any name it can't match
+python3 tools/influence_research.py status --tick   # tick them and move them to section 7
+```
+
+`status` matches the names on each `- [ ]` line against the sheet exactly. If
+the owner added a row under a different name than the doc uses, it reports the
+line as unmatched or open instead of guessing. That happens when the doc names a
+series or a remake and the sheet names one game, for example "Shiren the
+Wanderer" added as `Mystery Dungeon 2: Shiren the Wanderer`, or "Spelunky" added
+as `Spelunky Classic`. Change the doc line to the row that was added, say so in
+a note, and run it again. Lines in section 2 name games that aren't on the
+sheet yet, so `status` lists them as waiting for their game row instead.
+
+When adding new findings, put each line in section 1 or 2 under Strong or
+Weaker, in its sorted place (by the game that gets the connection). Write every
+line so it stands alone: a second pair from the same quote says `same quote as
+**A → B**` rather than just `same`, because `--tick` moves lines one at a time.

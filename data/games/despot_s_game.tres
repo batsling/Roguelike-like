@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_despot_s_game_dystopian_battle_simulator"]
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_despot_s_game"]
 
 [ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
 
 [resource]
 script = ExtResource("1_game")
-id = &"despot_s_game_dystopian_battle_simulator"
-display_name = "Despot's Game: Dystopian Battle Simulator"
+id = &"despot_s_game"
+display_name = "Despot's Game"
 year = 2021
 type = 0
 games_influenced = Array[StringName]([&"skull_horde", &"slime_3k_rise_against_despot"])
