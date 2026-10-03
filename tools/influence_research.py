@@ -19,6 +19,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py devs      # Steam appid + developer for every game (~6 min)
     python3 tools/influence_research.py samedev   # same-developer pairs the sheet doesn't connect
     python3 tools/influence_research.py steam     # store pages + dev announcements -> triage.md
+    python3 tools/influence_research.py cues      # wider read of those pages for the degree-1 games
     python3 tools/influence_research.py lang      # each studio's own language (+ --forums for subforums)
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
@@ -303,6 +304,64 @@ def cmd_steam(args):
         for (src, other), h in sorted(first.items()):
             f.write(f"## {src} mentions {other} [{h[2]}]\n   {h[4]}\n   {h[3]}\n")
     print(f"{len(first)} unconnected pairs -> {path}")
+
+
+# ── cues ────────────────────────────────────────────────────────────────────
+
+# Wider than CLAIM: the phrasings a store page or devlog uses for a lineage
+# without the word "inspired" — "from the creators of", "sequel to", "if you
+# liked", "similar to". This is what found Despotism 3k -> Slime 3K and Luck be
+# a Landlord -> Maze Mice, which `steam` missed because neither says "inspired".
+CUE = re.compile(
+    r"creators? of|makers? of|developers? (?:of|behind)|brought you|sequel to|"
+    r"studio behind|team behind|same (?:solo )?developer|predecessors?|same universe|"
+    r"continues the|if you (?:like|liked|enjoy|enjoyed|love|loved)|fans? of|"
+    r"similar to|akin to|approach|touchstone|reference", re.I)
+
+
+def degree_one(games, conns):
+    deg = {}
+    for a, b, *_ in conns:
+        deg[a] = deg.get(a, 0) + 1
+        deg[b] = deg.get(b, 0) + 1
+    return [r[0] for r in games if deg.get(r[0]) == 1]
+
+
+def cmd_cues(args):
+    """A wider read of the pages `steam` cached, for pairs where one game is held
+    on the map by a single edge (or --games all).
+
+    Same text, looser net: CLAIM or CUE, next to another chart game's name, and
+    the pair not already connected. It finds more noise than `steam` does, so it
+    is pointed at the games where an extra edge matters most. Run `steam` first.
+    Output: cues.md, for a person to read.
+    """
+    games, conns = load_sheet()
+    devs = load_devs(args)
+    have = connected(conns)
+    pats = name_patterns([r[0] for r in games])
+    # A leaf's lineage is as often on the OTHER game's page (Slime 3K's store
+    # page is where Despotism 3k gets its second edge), so every page is read and
+    # a hit is kept when either end of it is a leaf.
+    leaves = set(degree_one(games, conns)) if args.games == "leaves" else None
+    out = []
+    for name in (r[0] for r in games):
+        fn = wpath(args, os.path.join("pages", f"{devs.get(name, {}).get('aid')}.json"))
+        if not os.path.exists(fn):
+            continue
+        for kind, url, text in json.load(open(fn)):
+            for s in re.split(r"(?<=[.!?])\s+", text):
+                if len(s) > 700 or not (CUE.search(s) or CLAIM.search(s)) or NOISE.search(s):
+                    continue
+                for g in named_in(s, pats, name):
+                    if leaves is not None and name not in leaves and g not in leaves:
+                        continue
+                    if (g, name) not in have and (name, g) not in have:
+                        out.append(f"## {name} <- {g} [{kind}] {url}\n   {s.strip()[:500]}\n")
+    path = wpath(args, "cues.md")
+    with open(path, "w") as f:
+        f.write("# Wider cue scan — read every line; most are noise\n\n" + "".join(dict.fromkeys(out)))
+    print(f"{len(set(out))} hits -> {path}")
 
 
 # ── steamcommunity.com (forums) ─────────────────────────────────────────────
@@ -758,6 +817,7 @@ def main():
     sub.add_parser("samedev")
     sub.add_parser("steam")
     sub.add_parser("xsources")
+    sub.add_parser("cues").add_argument("--games", choices=["leaves", "all"], default="leaves")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
     for name in ("lang", "forums", "devcheck"):
@@ -768,7 +828,8 @@ def main():
                                      help="also read each game's forum index for language subforums")
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
-     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status}[args.cmd](args)
+     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
+     "cues": cmd_cues}[args.cmd](args)
 
 
 if __name__ == "__main__":

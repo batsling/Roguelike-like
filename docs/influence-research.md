@@ -35,6 +35,18 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Same developer | `samedev` subcommand | A lead, not a source. Use a pair only when the newer game's page says so |
 | Steam discussion forums | `forums` then `devcheck` | **Poor and slow, but the badge makes it trustworthy.** 30 hits in the first 38 games, one from a developer. `devcheck` keeps only posts with Steam's developer badge. Run it last, on the games nothing else found |
 
+**The degree-1 pass (October 2026)** went after the 335 games the map holds by a
+single edge. Two things paid off. The `cues` read of the cached Steam pages
+found the lineage that `steam` misses because it never says "inspired":
+"from the creators of Despot's Game and Despotism 3K" (on Slime 3K's page, not
+Despotism 3k's, which is why `cues` reads every page and keeps a hit when either
+end is a leaf), "the same solo developer who brought you Luck be a Landlord",
+"set in the same universe as its predecessors". Interviews worked for the
+better-known sequels and spin-offs (Exit the Gungeon, Moonlighter 2, UnderMine,
+Morbid Metal). For the rest, mostly survivors-likes and Balatro-likes, the
+developer only ever names the one game the sheet already has: about 45 searched
+by hand turned up new edges for five.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
@@ -46,6 +58,7 @@ python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
 python3 tools/influence_research.py samedev   # same-studio leads
 python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.md, read every line
+python3 tools/influence_research.py cues      # wider read of the same pages, for pairs touching a degree-1 game
 python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
 python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
