@@ -158,6 +158,32 @@ Quotes are in the original language with a translation. Check the translation ag
 ### Searched, nothing first-hand found
 West of Dead (its interview names only comic artists), Seraph's Last Stand (based on the Flash game Heli Attack), Bleak Sword (Souls series), Heroes of Hammerwatch, Popup Dungeon (tabletop games), Block Tower TD, Super House of Dead Ninjas, Morsels, Ringer, Wireworks, Goblin Sushi, Coal LLC, Auto Rogue, Geometry Arena, Elden Ring Nightreign, Crown Trick (beyond its Steam post), Cubic Cosmos, The Fable, The King is Watching, Loot River, Stories from the Outbreak, Necroking, Necrosmith, Sword of Fargoal (from McCord's own Gammaquest II), CastlevaniaRL, DoomRL, Kingdom: New Lands (began as a horse animation, no game named), Cryptark, Double Dragon Gaiden, Bloons TD 6: Rogue Legends, Flick Shot Rogues and Evolings (German studios, searched in German too), Node Farm, No-Skin. "Closer to Peglin" for Flick Shot Rogues is a journalist's description, not the studio's.
 
+## 4d. Games with only one recorded influence (group 2), first pass
+
+Searched about 45 of the 328 games that have exactly one outside influence on the sheet, starting with the best-known.
+
+- [ ] **Weird Worlds: Return to Infinite Space → FTL** — Subset Games: "The core gameplay interactions were largely inspired by boardgames like Red November and Battlestar Galactica while the pacing and exploration was influenced by computer games like Weird Worlds and Spelunky." — [RPG Codex interview](https://rpgcodex.net/content.php?id=8133)
+- [ ] **Dwarf Fortress → Caves of Qud** — Jason Grinblat, asked "What games influenced Caves of Qud the most?": "Ancient Domains of Mystery (ADoM), Dwarf Fortress, Morrowind, and Star Control II." — [Review Fix interview](https://reviewfix.com/2018/08/review-fix-exclusive-inside-caves-of-qud/)
+- [ ] **Rogue → Unexplored** — Joris Dormans: "the whole tradition of roguelikes is still very important to us, so there is basically everything that builds up to Unexplored 1, from Brogue to Rogue itself to Nethack and all the influences that they carry over." — [The Young Folks interview](https://www.theyoungfolks.com/video-games/154551/interview-joris-dormans-details-the-gameplay-and-story-of-unexplored-2/)
+- [ ] **NetHack → Unexplored** — same quote
+- [ ] **Enter the Gungeon → Neon Abyss** — Yop (lead designer): "for Neon Abyss, we drew more inspiration from well-known roguelikes like The Binding of Isaac, Enter the Gungeon, and Dead Cells." — [GameGrin interview](https://www.gamegrin.com/articles/developer-interview-neon-abyss-2-veewo-games/)
+- [ ] **Dead Cells → Neon Abyss** — same quote
+- [ ] **Nuclear Throne → Spellmasons** — Jordan O'Leary: 「インスピレーションを主に受けたのは、『Nuclear Throne』『Magicka』、iOSの『Hopile』、そして『Into the Breach』です。中でも一番大きな影響を受けたのは、『Into the Breach』ですね。」 ("My main inspirations were Nuclear Throne, Magicka, Hoplite on iOS, and Into the Breach. Into the Breach was the biggest.") *("Hopile" is the interview's misspelling of Hoplite.)* — [Game*Spark interview](https://www.gamespark.jp/article/2023/02/15/127110.html)
+- [ ] **Hoplite → Spellmasons** — same quote
+
+### Weaker
+- [ ] **Omega → Caves of Qud** — Brian Bucklew, on starting out: "I was playing games like Omega and Atom [ADOM], and roguelikes like that, that had these big worlds" — [RPG Site interview](https://www.rpgsite.net/interview/20000-brian-bucklew-caves-of-qud-interview-expansions-switch-port-unity-controller-support-coffee)
+- [ ] **Don't Starve → Sunless Sea** — a journalist relaying Failbetter's announcement: "Failbetter cites as their influences FTL, Don't Starve, Elite, Sid Meier's Pirates". Failbetter's own post wasn't found. — [Quarter to Three](https://www.quartertothree.com/fp/2013/07/30/ten-things-you-should-know-about-sunless-sea/)
+- [ ] **Dead Cells → Curse of the Dead Gods** (feature) — "Vault rooms (Cursed Chests in Dead Cells): A new room type inspired by the Cursed Chest in Dead Cells!" — [Steam dev post](https://store.steampowered.com/news/app/1123770/view/4054904311339638725)
+
+### Checked: the developer says no
+- **Balatro ← Slay the Spire**: LocalThunk had never played it and "cut myself off from the genre at that point intentionally". — [GamesRadar](https://www.gamesradar.com/astonishingly-balatros-creator-had-never-even-played-slay-the-spire-and-intentionally-cut-myself-off-from-roguelikes-to-create-the-best-game-possible/)
+- **Dicey Dungeons ← Slay the Spire**: Terry Cavanagh avoided playing it because the two games explore the same design space; both come from Dream Quest. — [Wireframe](https://wireframe.raspberrypi.com/articles/dicey-dungeons-terry-cavanagh-interview)
+- **Cogmind ← Paradroid**: Josh Ge had never heard of it before release. Cogmind came from Battletech and a forum post. — [@Play interview](https://www.gamedeveloper.com/design/-play-87-interview-with-josh-ge-creator-of-cogmind)
+
+### Searched, nothing new beyond what the sheet has
+Spelunky Classic (NetHack is on the sheet; a Dwarf Fortress claim couldn't be traced to Derek Yu), Downwell, Pixel Dungeon, Desktop Dungeons, Luck be a Landlord, Vampire Survivors (its other influences, Castlevania and Lapis x Labyrinth, aren't on the chart), Monster Train, Super Auto Pets, Peglin, Griftlands, Darkest Dungeon 2, Void Bastards, Crying Suns, Tower of Guns, Eldritch, Hand of Fate, Ring of Pain (Monster Train is a journalist's claim; the Isaac mention is about games he plays), Gunfire Reborn, Revita, Nova Drift, Book of Demons, Dwarf Fortress, Brogue, Dungeons of Dredmor, Noita (its Steam page and Road to the IGF name only Spelunky).
+
 ## 5. Same-studio leads (not sources on their own)
 
 `python3 tools/influence_research.py samedev` lists studio pairs the sheet doesn't connect. Add one only when the newer game's own page says so, as Arcane Trigger's does above. Examples it found: Knights in Tight Spaces → 2 Fights in 2 Tight Spaces, Ziggurat → Army of Ruin, Spirits Abyss → Voids Vigil, Cell Command → Genome Guardian 2, Children of Morta → Wizard of Legend 2 (same studio, Dead Mage).
