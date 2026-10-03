@@ -20,6 +20,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py samedev   # same-developer pairs the sheet doesn't connect
     python3 tools/influence_research.py steam     # store pages + dev announcements -> triage.md
     python3 tools/influence_research.py cues      # wider read of those pages for the degree-1 games
+    python3 tools/influence_research.py wanted FILE  # games not on the chart yet: find edges to it
     python3 tools/influence_research.py lang      # each studio's own language (+ --forums for subforums)
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
@@ -233,6 +234,41 @@ def cmd_samedev(args):
 
 # ── steam ───────────────────────────────────────────────────────────────────
 
+def steam_pages(aid, cache):
+    """A game's store text and its developer's own announcements, cached on disk.
+
+    Store text and `steam_community_announcements` are written by the developer,
+    which is what makes a hit in them first-hand. Returns [(kind, url, text)].
+    """
+    fn = os.path.join(cache, f"{aid}.json")
+    if os.path.exists(fn):
+        return json.load(open(fn))
+    docs = []
+    try:
+        s = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&appids={aid}"))[aid]
+        if s.get("success"):
+            docs.append(("store", f"https://store.steampowered.com/app/{aid}/",
+                         clean(s["data"].get("about_the_game", "") + " . "
+                               + s["data"].get("short_description", ""))))
+    except Exception:
+        pass
+    try:
+        j = json.loads(get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
+                           f"?appid={aid}&count=400&maxlength=0"))
+        for it in j.get("appnews", {}).get("newsitems", []):
+            # Only the developer's own posts; the feed also carries press articles.
+            if it.get("feedname") == "steam_community_announcements":
+                # The feed's gid is NOT the id the store's news page uses, so a
+                # store.steampowered.com/news/app/<aid>/view/<gid> link is dead.
+                # Its own url redirects to the real announcement; cite where it lands.
+                docs.append(("news", it["url"],
+                             clean(it["title"] + " . " + it["contents"])))
+    except Exception:
+        pass
+    json.dump(docs, open(fn, "w"))
+    return docs
+
+
 def cmd_steam(args):
     """Every chart game's store page and developer announcements, scanned for
     sentences that make an influence claim AND name another chart game.
@@ -253,33 +289,7 @@ def cmd_steam(args):
         aid = v.get("aid")
         if not aid:
             return []
-        fn = os.path.join(cache, f"{aid}.json")
-        if os.path.exists(fn):
-            docs = json.load(open(fn))
-        else:
-            docs = []
-            try:
-                s = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&appids={aid}"))[aid]
-                if s.get("success"):
-                    docs.append(("store", f"https://store.steampowered.com/app/{aid}/",
-                                 clean(s["data"].get("about_the_game", "") + " . "
-                                       + s["data"].get("short_description", ""))))
-            except Exception:
-                pass
-            try:
-                j = json.loads(get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
-                                   f"?appid={aid}&count=400&maxlength=0"))
-                for it in j.get("appnews", {}).get("newsitems", []):
-                    # Only the developer's own posts; the feed also carries press articles.
-                    if it.get("feedname") == "steam_community_announcements":
-                        # The feed's gid is NOT the id the store's news page uses, so a
-                        # store.steampowered.com/news/app/<aid>/view/<gid> link is dead.
-                        # Its own url redirects to the real announcement; cite where it lands.
-                        docs.append(("news", it["url"],
-                                     clean(it["title"] + " . " + it["contents"])))
-            except Exception:
-                pass
-            json.dump(docs, open(fn, "w"))
+        docs = steam_pages(aid, cache)
         out = []
         for kind, url, text in docs:
             for s in re.split(r"(?<=[.!?])\s+", text):
@@ -362,6 +372,65 @@ def cmd_cues(args):
     with open(path, "w") as f:
         f.write("# Wider cue scan — read every line; most are noise\n\n" + "".join(dict.fromkeys(out)))
     print(f"{len(set(out))} hits -> {path}")
+
+
+# ── wanted ──────────────────────────────────────────────────────────────────
+
+def cmd_wanted(args):
+    """Games the owner wants on the chart but has no edge for yet.
+
+    Takes a text file, one name per line ("#" starts a comment). Each name is
+    looked up in the Steam store search, its store page and announcements are
+    read the way `steam` reads a chart game's, and every sentence that makes a
+    claim (CLAIM or CUE) next to a chart game's name is written to wanted.md.
+    A name that matches no Steam app, or matches loosely, says so: the store
+    search returns the nearest title, and a wrong game is worse than none.
+    """
+    games, _ = load_sheet()
+    pats = name_patterns([r[0] for r in games])
+    cache = wpath(args, "pages")
+    os.makedirs(cache, exist_ok=True)
+    norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+    names = [l.split("#")[0].strip() for l in open(args.file, encoding="utf8")]
+    names = list(dict.fromkeys(n for n in names if n))
+
+    def one(name):
+        try:
+            s = json.loads(get("https://store.steampowered.com/api/storesearch/?cc=us&l=en&term="
+                               + urllib.parse.quote(name)))
+        except Exception as e:
+            return name, None, f"search failed: {e}", []
+        items = s.get("items", [])
+        exact = [i for i in items if norm(i["name"]) == norm(name)]
+        pick = (exact or items[:1] or [None])[0]
+        if pick is None:
+            return name, None, "not on Steam", []
+        note = "" if exact else f"closest match: {pick['name']}"
+        out = []
+        for kind, url, text in steam_pages(str(pick["id"]), cache):
+            for sent in re.split(r"(?<=[.!?])\s+", text):
+                if len(sent) > 700 or not (CLAIM.search(sent) or CUE.search(sent)) or NOISE.search(sent):
+                    continue
+                for g in named_in(sent, pats, pick["name"]):
+                    out.append((g, kind, url, sent.strip()[:500]))
+        return name, pick, note, out
+
+    path = wpath(args, "wanted.md")
+    found = 0
+    with cf.ThreadPoolExecutor(6) as ex, open(path, "w") as f:
+        f.write("# Wanted games: sentences naming a chart game — read every one\n\n")
+        for name, pick, note, out in ex.map(one, names):
+            app = f"https://store.steampowered.com/app/{pick['id']}/" if pick else "-"
+            f.write(f"## {name}  ({app}{'; ' + note if note else ''})\n")
+            seen = set()
+            for g, kind, url, sent in out:
+                if (g, sent[:80]) in seen:
+                    continue
+                seen.add((g, sent[:80]))
+                f.write(f"- **{g}** [{kind}] {url}\n  {sent}\n")
+            found += bool(out)
+            f.write("\n")
+    print(f"{len(names)} games, {found} with a hit -> {path}")
 
 
 # ── steamcommunity.com (forums) ─────────────────────────────────────────────
@@ -817,6 +886,7 @@ def main():
     sub.add_parser("samedev")
     sub.add_parser("steam")
     sub.add_parser("xsources")
+    sub.add_parser("wanted").add_argument("file", help="text file, one game name per line")
     sub.add_parser("cues").add_argument("--games", choices=["leaves", "all"], default="leaves")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
@@ -829,7 +899,7 @@ def main():
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
      "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
-     "cues": cmd_cues}[args.cmd](args)
+     "cues": cmd_cues, "wanted": cmd_wanted}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -59,6 +59,7 @@ python3 tools/influence_research.py devs      # appid + developer for every game
 python3 tools/influence_research.py samedev   # same-studio leads
 python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.md, read every line
 python3 tools/influence_research.py cues      # wider read of the same pages, for pairs touching a degree-1 game
+python3 tools/influence_research.py wanted FILE  # games not on the chart yet (one name per line): sentences naming a chart game
 python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
 python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
