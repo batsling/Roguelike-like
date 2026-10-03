@@ -19,10 +19,13 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py devs      # Steam appid + developer for every game (~6 min)
     python3 tools/influence_research.py samedev   # same-developer pairs the sheet doesn't connect
     python3 tools/influence_research.py steam     # store pages + dev announcements -> triage.md
-    python3 tools/influence_research.py forums    # Steam forum search, rate-limited, resumable
+    python3 tools/influence_research.py lang      # each studio's own language (+ --forums for subforums)
+    python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
+    python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
 
-`devs` must run before `samedev`, `steam` and `forums`. `forums --games targets`
-scans only the no-influence games (about an hour); `--games all` is ~5 hours.
+`devs` must run before everything after it, and `steam` before `lang` (it reads
+the cached announcements). The three forum steps are rate-limited and resumable;
+`--games targets` (the default) is the no-influence games, `--games all` is ~5x longer.
 """
 
 import argparse
@@ -297,47 +300,26 @@ def cmd_steam(args):
     print(f"{len(first)} unconnected pairs -> {path}")
 
 
-# ── forums ──────────────────────────────────────────────────────────────────
+# ── steamcommunity.com (forums) ─────────────────────────────────────────────
 
-def cmd_forums(args):
-    """Steam discussion search per game, for posts that name a chart game.
+class Community:
+    """One request at a time to steamcommunity.com, `delay` seconds apart.
 
-    RATE LIMIT. steamcommunity.com answers "You've made too many requests
-    recently" to the search page long before the store API complains. 8 s between
-    requests held for about 40 games and then degraded; 15 s is the setting to
-    use. On a limit the script backs off a minute per attempt. It appends one line
-    per game to forums.jsonl and skips games already there, so it can be stopped
-    and resumed at any point — and has to be, across container restarts.
-
-    Almost every hit is a PLAYER ("take inspiration from Peglin", "it's probably
-    inspired by Inscryption"). Only a post from the developer counts: open the
-    thread and look for the developer badge, or first-person wording ("our game").
+    RATE LIMIT. It answers "You've made too many requests recently" long before
+    the store API complains. 8 s between requests held for about 40 games and
+    then degraded; 15 s is the setting to use. On a limit it backs off a minute
+    per attempt, up to six.
     """
-    games, _ = load_sheet()
-    devs = load_devs(args)
-    pats = name_patterns([r[0] for r in games])
-    if args.games == "targets":
-        tpath = wpath(args, "targets.json")
-        if not os.path.exists(tpath):
-            sys.exit("run `targets` first")
-        order = [x["name"] for x in json.load(open(tpath))]
-    else:
-        order = [r[0] for r in games]
-    out = wpath(args, "forums.jsonl")
-    done = set()
-    if os.path.exists(out):
-        for line in open(out):
-            rec = json.loads(line)
-            if not rec.get("err"):
-                done.add(rec["game"])
-    last = [0.0]
 
-    def fetch(url):
+    def __init__(self, delay):
+        self.delay, self.last = delay, 0.0
+
+    def get(self, url):
         for attempt in range(6):
-            wait = args.delay - (time.time() - last[0])
+            wait = self.delay - (time.time() - self.last)
             if wait > 0:
                 time.sleep(wait)
-            last[0] = time.time()
+            self.last = time.time()
             try:
                 t = get(url)
             except Exception:
@@ -347,41 +329,297 @@ def cmd_forums(args):
             time.sleep(60 * (attempt + 1))
         return ""
 
-    def parse(page):
-        res = []
-        for block in page.split('class="post_searchresult"')[1:]:
-            title = re.search(r"forum_topic_name[^>]*>(.*?)</div>", block, re.S)
-            author = re.findall(r'class="whiteLink"[^>]*>([^<]+)', block)
-            for m in re.finditer(r'href="([^"]+discussions/[^"]+)"\s*>\s*<div class="forum_searchresult_reply_borderfix">'
-                                 r'</div>\s*<div class="forum_searchresult_reply_inner">(.*?)</div>', block, re.S):
-                res.append({"url": m.group(1), "snippet": clean(m.group(2))[:600],
-                            "author": author[0] if author else "",
-                            "title": clean(title.group(1)) if title else ""})
-        return res
 
+def game_order(args, games):
+    if args.games == "targets":
+        tpath = wpath(args, "targets.json")
+        if not os.path.exists(tpath):
+            sys.exit("run `targets` first")
+        return [x["name"] for x in json.load(open(tpath))]
+    return [r[0] for r in games]
+
+
+def resumable(path):
+    """Games already in a jsonl output (error rows excepted, so they get redone)."""
+    done = set()
+    if os.path.exists(path):
+        for line in open(path):
+            rec = json.loads(line)
+            if not rec.get("err"):
+                done.add(rec["game"])
+    return done
+
+
+# ── lang ────────────────────────────────────────────────────────────────────
+
+# What to search a studio's forum for, by language. Steam's forum search stems
+# English ("inspired" also finds inspiration/inspiring) but not CJK, so those
+# get two or three forms. Each term is one more rate-limited request per game.
+SEARCH_TERMS = {
+    "en": ["inspired", "influenced"],
+    "ja": ["影響", "インスパイア", "参考"],
+    "zh": ["灵感", "影响", "啟發"],
+    "ko": ["영감", "영향"],
+    "de": ["inspiriert", "beeinflusst"],
+    "fr": ["inspiré", "influencé"],
+    "es": ["inspirado", "influenciado"],
+    "pt": ["inspirado", "influenciado"],
+    "pl": ["inspirowany", "inspiracja"],
+    "ru": ["вдохнов", "влияни"],
+}
+
+# Subforum names a studio creates for its home players.
+SUBFORUM = [
+    ("ja", r"日本語|日本"), ("zh", r"中文|简体|繁體|繁体|华语|華語"), ("ko", r"한국어|한국"),
+    ("de", r"Deutsch"), ("fr", r"Français|Francais"), ("es", r"Español|Espanol"),
+    ("pt", r"Português|Portugues|Brasil"), ("pl", r"Polski"), ("ru", r"Русский|Россия"),
+]
+
+STOPWORDS = {
+    "en": "the and is of to in that it for with this you are",
+    "de": "der die das und ist nicht ich wir mit für auch ein eine zu",
+    "fr": "le la les et est des une pour avec nous dans que pas",
+    "es": "el la los las y es que para con una por del nuestro",
+    "pt": "não que para com uma nosso nossa são também mais você",
+    "pl": "i w nie się na jest że to z do jak już",
+}
+
+
+def detect_language(text, min_letters=100):
+    """Best guess at a text's language, by script first and then by stopwords.
+
+    Returns (code, share) where share is how much of the text supports it. Kana
+    means Japanese even beside kanji; hanzi without kana means Chinese.
+    """
+    if not text:
+        return None, 0.0
+    letters = [c for c in text if c.isalpha()]
+    # Too short to say: "中文版即将推出" (Chinese version coming soon) is a
+    # Japanese studio announcing a translation, and a one-line gif link once
+    # read as Portuguese.
+    if len(letters) < max(min_letters, 1):
+        return None, 0.0
+    n = len(letters)
+    kana = sum(1 for c in letters if "぀" <= c <= "ヿ")
+    hangul = sum(1 for c in letters if "가" <= c <= "힯")
+    han = sum(1 for c in letters if "一" <= c <= "鿿")
+    cyr = sum(1 for c in letters if "Ѐ" <= c <= "ӿ")
+    if kana / n > 0.05:
+        return "ja", (kana + han) / n
+    if hangul / n > 0.1:
+        return "ko", hangul / n
+    if han / n > 0.1:
+        return "zh", han / n
+    if cyr / n > 0.2:
+        return "ru", cyr / n
+    words = re.findall(r"[a-zà-ÿąćęłńóśźż]+", text.lower())
+    if len(words) < 30:
+        return None, 0.0
+    counts = {lang: sum(1 for w in words if w in set(sw.split())) for lang, sw in STOPWORDS.items()}
+    best = max(counts, key=counts.get)
+    # A non-English language has to out-score English in the same text: short
+    # shared words ("de", "a", "con") otherwise turn English patch notes Spanish.
+    if best != "en" and counts[best] <= counts["en"]:
+        best = "en"
+    return best, counts[best] / len(words)
+
+
+def cmd_lang(args):
+    """Work out each studio's language, so it can be searched in that language.
+
+    The signals, strongest first:
+      1. the developer's OWN writing: their Steam announcements (already cached
+         by `steam`) and any developer-badged forum post `devcheck` has opened.
+         A studio posting patch notes in Japanese is a Japanese studio;
+      2. a forum subforum named for a language (日本語, 中文讨论区, 한국어…),
+         which the studio or publisher sets up for its home players;
+      3. the developer's name written in a non-Latin script.
+    Players' thread titles are NOT used: Chinese and Russian players post on
+    nearly every popular game's forum, so their titles say who plays it, not
+    who made it.
+
+    `--forums` adds signal 2 at one rate-limited request per game.
+    """
+    games, _ = load_sheet()
+    devs = load_devs(args)
+    order = game_order(args, games)
+    cache = wpath(args, "pages")
+    dev_posts = {}
+    dpath = wpath(args, "devcheck.jsonl")
+    if os.path.exists(dpath):
+        for line in open(dpath):
+            r = json.loads(line)
+            for h in r.get("hits", []):
+                if h.get("developer"):
+                    dev_posts.setdefault(r["game"], []).append(h.get("dev_text", ""))
+    out = wpath(args, "lang.json")
+    result = json.load(open(out)) if os.path.exists(out) else {}
+    community = Community(args.delay) if args.forums else None
+    for name in order:
+        v = devs.get(name, {})
+        aid = v.get("aid")
+        ev = []
+        # 1. the developer's own writing
+        own = []
+        fn = os.path.join(cache, f"{aid}.json") if aid else ""
+        if fn and os.path.exists(fn):
+            own += [t for kind, url, t in json.load(open(fn)) if kind == "news"]
+        own += dev_posts.get(name, [])
+        tally = {}
+        for t in own:
+            lang, share = detect_language(t)
+            if lang and lang != "en" and share > (0.15 if lang in ("ja", "zh", "ko", "ru") else 0.08):
+                tally[lang] = tally.get(lang, 0) + 1
+        # Developers mostly post English on Steam, so even a few native-language
+        # posts mean something. A studio that LOCALISES (patch notes in five
+        # languages) shows as a sprinkle well under 5%.
+        for lang, k in tally.items():
+            # Measured: a Chinese studio posted 8 of 102 in Chinese, a Japanese one
+            # 1 of 12 in Japanese; Red Hook's 3 Korean posts of 329 are localisation.
+            if k / len(own) >= 0.05:
+                ev.append((lang, 3 if k >= 2 else 2, f"{k} of the developer's {len(own)} posts are in it"))
+        # 2. a subforum named for a language
+        if community and aid and not result.get(name, {}).get("forum_checked"):
+            page = community.get(f"https://steamcommunity.com/app/{aid}/discussions/")
+            names = [clean(m) for m in re.findall(
+                r'href="https://steamcommunity.com/app/\d+/discussions/\d+/"[^>]*>(.*?)</a>', page, re.S)]
+            for lang, pat in SUBFORUM:
+                if any(re.search(pat, n) for n in names):
+                    ev.append((lang, 2, "a subforum is named for it"))
+        elif result.get(name, {}).get("subforum"):
+            ev.append((result[name]["subforum"], 2, "a subforum is named for it"))
+        # 3. the developer's name
+        for dname in v.get("devs") or []:
+            lang, share = detect_language(dname, min_letters=1)
+            if lang in ("ja", "zh", "ko", "ru") and share > 0.3:
+                ev.append((lang, 1, f"developer name '{dname}'"))
+        score = {}
+        for lang, w, _ in ev:
+            score[lang] = score.get(lang, 0) + w
+        best = max(score, key=score.get) if score else "en"
+        result[name] = {"lang": best, "evidence": [e[2] + f" ({e[0]})" for e in ev],
+                        "forum_checked": bool(community) or result.get(name, {}).get("forum_checked", False),
+                        "subforum": next((e[0] for e in ev if e[1] == 2), None)}
+        if best != "en":
+            print(f"{name}: {best} — " + "; ".join(result[name]["evidence"]), flush=True)
+        json.dump(result, open(out, "w"), indent=1, ensure_ascii=False)
+    print(f"{sum(1 for r in result.values() if r['lang'] != 'en')} of {len(result)} games look non-English -> {out}")
+
+
+# ── forums ──────────────────────────────────────────────────────────────────
+
+def parse_search(page):
+    res = []
+    for block in page.split('class="post_searchresult"')[1:]:
+        title = re.search(r"forum_topic_name[^>]*>(.*?)</div>", block, re.S)
+        author = re.findall(r'class="whiteLink"[^>]*>([^<]+)', block)
+        for m in re.finditer(r'href="([^"]+discussions/[^"]+)"\s*>\s*<div class="forum_searchresult_reply_borderfix">'
+                             r'</div>\s*<div class="forum_searchresult_reply_inner">(.*?)</div>', block, re.S):
+            res.append({"url": m.group(1), "snippet": clean(m.group(2))[:600],
+                        "author": author[0] if author else "",
+                        "title": clean(title.group(1)) if title else ""})
+    return res
+
+
+def cmd_forums(args):
+    """Steam discussion search per game, for posts that name a chart game.
+
+    Searches in English AND in the studio's own language when `lang` found one
+    (SEARCH_TERMS). Appends one line per game to forums.jsonl and skips games
+    already there, so it can be stopped and resumed at any point — and has to
+    be, across container restarts.
+
+    Almost every hit is a PLAYER ("take inspiration from Peglin", "it's probably
+    inspired by Inscryption"). Run `devcheck` next: it keeps only the posts with
+    Steam's developer badge.
+    """
+    games, _ = load_sheet()
+    devs = load_devs(args)
+    pats = name_patterns([r[0] for r in games])
+    order = game_order(args, games)
+    lpath = wpath(args, "lang.json")
+    langs = json.load(open(lpath)) if os.path.exists(lpath) else {}
+    out = wpath(args, "forums.jsonl")
+    done = resumable(out)
+    community = Community(args.delay)
     with open(out, "a") as f:
         for name in order:
             if name in done:
                 continue
             aid = devs.get(name, {}).get("aid")
-            rec = {"game": name, "aid": aid, "hits": []}
+            lang = langs.get(name, {}).get("lang", "en")
+            rec = {"game": name, "aid": aid, "lang": lang, "hits": []}
+            terms = [(q, 2 if q == "inspired" else 1) for q in SEARCH_TERMS["en"]]
+            if lang != "en":
+                terms += [(q, 1) for q in SEARCH_TERMS.get(lang, [])]
             if aid:
-                # Steam's forum search stems: "inspired" also finds inspiration/inspiring.
-                for q, pages in (("inspired", 2), ("influenced", 1)):
+                for q, pages in terms:
                     for p in range(1, pages + 1):
-                        page = fetch(f"https://steamcommunity.com/app/{aid}/discussions/search/?q={q}&p={p}")
+                        page = community.get(f"https://steamcommunity.com/app/{aid}/discussions/search/"
+                                             f"?q={urllib.parse.quote(q)}&p={p}")
                         if not page:
                             rec["err"] = 1
                             break
-                        for hit in parse(page):
+                        for hit in parse_search(page):
                             hit["named"] = named_in(hit["snippet"], pats, name)
-                            if hit["named"]:
+                            hit["query"] = q
+                            if hit["named"] and hit["url"] not in {h["url"] for h in rec["hits"]}:
                                 rec["hits"].append(hit)
                         if f"&p={p + 1}" not in page:
                             break
-            f.write(json.dumps(rec) + "\n")
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             f.flush()
-            print(name, len(rec["hits"]), flush=True)
+            print(name, lang, len(rec["hits"]), flush=True)
+
+
+# ── devcheck ────────────────────────────────────────────────────────────────
+
+def cmd_devcheck(args):
+    """Open every forum hit and keep the ones written by the developer.
+
+    Steam marks a developer's reply with the CSS class
+    `commentthread_author_developer` on its author link. A hit URL ending in
+    `#c<id>` is a reply, found by that id; one without is the thread's opening
+    post. This is what turns "someone on the forum said" into a first-hand
+    source. Output: devcheck.jsonl, one line per game, resumable.
+    """
+    fpath = wpath(args, "forums.jsonl")
+    if not os.path.exists(fpath):
+        sys.exit("run `forums` first")
+    out = wpath(args, "devcheck.jsonl")
+    done = resumable(out)
+    community = Community(args.delay)
+    pages = {}
+    with open(out, "a") as f:
+        for line in open(fpath):
+            rec = json.loads(line)
+            if rec["game"] in done or not rec["hits"]:
+                continue
+            for h in rec["hits"]:
+                thread = h["url"].split("#")[0]
+                if thread not in pages:
+                    pages[thread] = community.get(thread)
+                page = pages[thread]
+                if not page:
+                    rec["err"] = 1
+                    continue
+                m = re.search(r"#c(\d+)", h["url"])
+                i = page.find(f'id="comment_{m.group(1)}"') if m else page.find("forum_op_header")
+                block = ""
+                if i >= 0:
+                    # End at the next comment, or a badge further down the
+                    # thread would be credited to this post.
+                    j = page.find('id="comment_', i + 20)
+                    block = page[i:j if j > 0 else i + 6000]
+                h["developer"] = "_author_developer" in block
+                body = re.search(r'class="(?:commentthread_comment_text|forum_op)[^"]*"[^>]*>(.*?)</div>', block, re.S)
+                h["dev_text"] = clean(body.group(1))[:1500] if (h["developer"] and body) else ""
+            rec["hits"] = [h for h in rec["hits"] if h.get("developer")] if not rec.get("err") else rec["hits"]
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            f.flush()
+            for h in rec["hits"]:
+                if h.get("developer"):
+                    print(f"{rec['game']} <- {h['named']} by {h['author']}: {h['url']}", flush=True)
 
 
 def main():
@@ -392,12 +630,15 @@ def main():
     sub.add_parser("devs")
     sub.add_parser("samedev")
     sub.add_parser("steam")
-    fp = sub.add_parser("forums")
-    fp.add_argument("--games", choices=["targets", "all"], default="targets")
-    fp.add_argument("--delay", type=float, default=15.0)
+    for name in ("lang", "forums", "devcheck"):
+        sp = sub.add_parser(name)
+        sp.add_argument("--games", choices=["targets", "all"], default="targets")
+        sp.add_argument("--delay", type=float, default=15.0)
+    sub.choices["lang"].add_argument("--forums", action="store_true",
+                                     help="also read each game's forum index for language subforums")
     args = ap.parse_args()
-    {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev,
-     "steam": cmd_steam, "forums": cmd_forums}[args.cmd](args)
+    {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
+     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -113,7 +113,7 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 
 ## 4. Steam forum scan — developer posts (partial: 54 of 130 games)
 
-- [ ] **Roboquest → Deadzone: Rogue** *(no connections yet)* — "Pluto", answering "How is this game compared to Roboquest?": "Roboquest's a great game! Definitely helped inspire some of our gameplay. We will have crossplay enabled once our game goes live on consoles…" — [Steam forum](https://steamcommunity.com/app/3228590/discussions/0/591779267908673222/#c591779267908675739) *(developer badge NOT yet checked: confirm Pluto is the developer)*
+- [ ] **Roboquest → Deadzone: Rogue** *(no connections yet)* — "Pluto", answering "How is this game compared to Roboquest?": "Roboquest's a great game! Definitely helped inspire some of our gameplay. We will have crossplay enabled once our game goes live on consoles…" — [Steam forum](https://steamcommunity.com/app/3228590/discussions/0/591779267908673222/#c591779267908675739) *(Pluto's reply carries Steam's developer badge, so this is the developer)*
 
 The other forum matches so far are players (suggestions and guesses), not developers.
 

@@ -27,7 +27,7 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Steam store pages | same pass, `about_the_game` text | Good for "Inspired by: X, Y" lists and "From the creators of X" (a Dev/Series Relation) |
 | Interviews and devlogs | web search per game, then read the page | Good for well-known games. Hades, Children of Morta, Crawl, Heat Signature and Death Road to Canada all came from here |
 | Same developer | `samedev` subcommand | A lead, not a source. Use a pair only when the newer game's page says so |
-| Steam discussion forums | `forums` subcommand | **Poor and slow.** 30 hits in the first 38 games, one from a developer. Run it last, on the games nothing else found |
+| Steam discussion forums | `forums` then `devcheck` | **Poor and slow, but the badge makes it trustworthy.** 30 hits in the first 38 games, one from a developer. `devcheck` keeps only posts with Steam's developer badge. Run it last, on the games nothing else found |
 
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
@@ -40,11 +40,18 @@ python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
 python3 tools/influence_research.py samedev   # same-studio leads
 python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.md, read every line
-python3 tools/influence_research.py forums    # ~1 h for the targets; resumable
+python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
+python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
+python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
 ```
 
 Everything goes into `.influence_work/` (gitignored). The `steam` pass caches
 every page it fetches, so a rerun is fast.
+
+**Developer badge.** On a Steam forum thread, a developer's reply has the CSS
+class `commentthread_author_developer` on its author link. That's what
+`devcheck` looks for, and it's what makes a forum post first-hand. It
+confirmed Pluto's Roboquest reply on the Deadzone: Rogue forum.
 
 **Resuming the forum scan.** It writes one line per game and skips games already
 done. Its progress is saved in `tools/influence_research_forums.jsonl` (54 of the
@@ -66,9 +73,31 @@ best interviews to its home press, and in its own language. An English-only
 search finds the English reviewers' guesses and misses the developer. So for
 any game whose developer is not English-speaking:
 
-1. **Find out where the studio is.** The Steam developer name (`devs` writes it
-   to `.influence_work/devs.json`), the studio's website, or its Wikipedia page.
-   Kanji, hanzi or hangul in the developer field is a strong hint.
+1. **Find out what language the studio works in.** `lang` does the first pass
+   and writes `.influence_work/lang.json` with its evidence. The best evidence
+   is the **developer's own writing**, and the Steam discussion forum is where
+   it most often shows: developers reply to their home players in their own
+   language, and studios open a subforum for them (日本語, 中文讨论区, 한국어).
+   In order of strength:
+   - the developer's posts: their Steam announcements, and forum replies
+     carrying the developer badge (`devcheck` collects these, so rerun `lang`
+     after it);
+   - a subforum named for a language (`lang --forums` reads each forum index);
+   - the developer's name in a non-Latin script.
+
+   **Players' posts don't count.** Chinese and Russian players post on nearly
+   every popular game's forum, so their thread titles say who plays a game, not
+   who made it. A one-line developer post doesn't count either: Mimic Logic's
+   studio posted 「中文版即将推出」 ("Chinese version coming soon"). That's
+   a Japanese studio announcing a translation, and `lang` ignores posts under
+   100 letters for that reason.
+
+   Most developers post English on Steam even at home. Of the 130 no-influence
+   games, the announcements alone identified only three non-English studios
+   (Geometry Arena, Super Bullet Break, Auto Rogue), while Crown Trick, Skul and
+   the rest were known only from outside. So after `lang`, also check the studio's
+   website or Wikipedia page, and open the forum to look at what the badged
+   developer writes.
 2. **Find the game's native title.** Many games ship under a different name at
    home. Search under both, and under the studio's native name.
 3. **Search in that language**, with these terms beside the title:
@@ -92,9 +121,10 @@ any game whose developer is not English-speaking:
    can check the translation against the source.
 
 The `steam` pass already recognises these words in announcements (see `CLAIM`
-in the script); it only matches when the game's name is written in Latin
-script. The `forums` pass searches in English only, so for a non-English studio
-also search its forum by hand with the terms above.
+in the script), but it only matches when the game's name is written in Latin
+script. The `forums` pass searches each forum in English **and** in the language
+`lang` found (`SEARCH_TERMS`). For a studio `lang` missed, set its entry in
+`lang.json` by hand before running `forums`.
 
 Among the games with no recorded influences, the studios to do this for first are: Crown Trick and Juicy
 Realm (China), Skul, Magic Survival and Metallic Child (Korea), Super Bullet
