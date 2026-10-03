@@ -13,7 +13,12 @@ quotes and links, are in `docs/influence-candidates.md`, waiting for approval.
 2. **Nothing goes into the sheet until the owner has checked it.** The research
    produces a list of candidates. The owner ticks the ones they have verified,
    and only those become rows.
-3. **Record denials too.** "I love Vampire Survivors, but no" (Ron Gilbert, on
+3. **Flag roguelikes the chart doesn't have.** When a developer names an
+   influence that is itself a roguelike but isn't on the chart, list it under
+   "Roguelikes you don't have" in `docs/influence-candidates.md` and tell the
+   owner: it's a game they may want to add. Check the chart's full names first
+   (IVAN is there as `Iter Vehemens Ad Necem`).
+4. **Record denials too.** "I love Vampire Survivors, but no" (Ron Gilbert, on
    Death by Scrolling) stops someone adding that edge later on a reviewer's say-so.
    Denials live in section 3 of `docs/influence-candidates.md`.
 
