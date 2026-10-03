@@ -316,7 +316,7 @@ From the group-2 hand search, rows with no first-hand source found:
 
 These are the games you said you've wanted to add but never had a connection for. None of them are rows in the `games` sheet yet, so **add the game first, then the connection**. `status` doesn't read this section, because these names won't match the sheet until you add them. Chosen Garden and Star Renegades were on the list but are already on the sheet.
 
-How they were searched: every name went through `python3 tools/influence_research.py wanted FILE` (Steam store page and developer announcements, any sentence naming a chart game), and about 55 were also searched by hand for interviews.
+How they were searched: every name went through `python3 tools/influence_research.py wanted FILE` (Steam store page and developer announcements, any sentence naming a chart game), and then every one was searched by hand for interviews and press releases.
 
 ### Strong
 - [ ] **Hades → Lost Eidolons: Veil of the Witch**, **Slay the Spire → Lost Eidolons: Veil of the Witch** — Ocean Drive Studio: "I'll save the details for another day, but for now I'll simply say that I'm a huge fan of games like Hades and Slay the Spire, and they've had a huge influence on Veil of the Witch." — [Steam dev post](https://steamcommunity.com/games/2530490/announcements/detail/3658666178359170700). Also "Hades and Slay the Spire were among our inspirations as we outlined the project." — [Steam dev post](https://steamcommunity.com/games/2530490/announcements/detail/3731854112018763136)
