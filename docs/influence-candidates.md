@@ -161,3 +161,13 @@ West of Dead (its interview names only comic artists), Seraph's Last Stand (base
 ## 5. Same-studio leads (not sources on their own)
 
 `python3 tools/influence_research.py samedev` lists studio pairs the sheet doesn't connect. Add one only when the newer game's own page says so, as Arcane Trigger's does above. Examples it found: Knights in Tight Spaces → 2 Fights in 2 Tight Spaces, Ziggurat → Army of Ruin, Spirits Abyss → Voids Vigil, Cell Command → Genome Guardian 2, Children of Morta → Wizard of Legend 2 (same studio, Dead Mage).
+
+## 6. Existing rows whose source needs a look
+
+From `python3 tools/influence_research.py xsources`, which reads the sheet's 82 X/Twitter sources:
+
+- **Nuclear Throne → Ogre Chambers 2222** and **Scourgebringer → Ogre Chambers 2222**: the cited tweet was **deleted by its author**. The rows need a new source. — https://x.com/AntennaGames/status/2062052913199956449
+- **Dead Cells → Galactic Glitch** and **Enter the Gungeon → Galactic Glitch**: posted by **JF Games, a PR agency**, not the developer (Crunchy Leaf Games). The wording ("Inspired by Dead Cells, Enter the Gungeon and the classic browser game Bubble Tanks") reads like the studio's own marketing copy, so the influence is probably right, but a developer source would be better. — https://x.com/JFGamesPR/status/1803711115047625170
+- **The Binding of Isaac → Dead Estate**: posted by **2 Left Thumbs, the publisher**, not the developer (Milkbar Lads): "Dead Estate was largely inspired by Isaac!" — https://x.com/2_left_thumbs/status/1625686255093813249
+
+The other 77 are the game's own developer or studio account.

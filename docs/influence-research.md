@@ -136,6 +136,26 @@ For interviews, web-search `"<game>" developer interview inspired`, then fetch
 the page and find the actual quote. Never trust a search engine's summary of a
 page: twice it attributed commenters' suggestions to the developer.
 
+### X / Twitter
+
+`xsources` reads every X/Twitter source the `connections` sheet cites and reports
+who posted it, when, and whether the text names the influencer. x.com itself
+gives anything not logged in an empty page, and profiles and timelines can't be
+read, but the embed endpoints websites use (`cdn.syndication.twimg.com` and
+`publish.twitter.com/oembed`) still return one tweet's text and author. A
+deleted tweet comes back as a "tombstone", which the script reports.
+
+That makes X good for **checking** a known tweet and poor for **finding** one.
+Search engines index only some tweets, ignore quoted phrases, and mostly return
+fans and news accounts. Searching x.com for ten unconnected games found nothing
+first-hand. When a developer's handle is known, the useful move is to read the
+specific tweets other sources link to.
+
+The first check (82 rows) found every tweet still readable except one deleted,
+almost all posted by the game's own account, and two posted by someone else (a
+PR agency and a publisher). Those are listed in section 6 of
+`docs/influence-candidates.md`.
+
 ## Traps
 
 - **Game names that are ordinary words.** Rogue, Hack, Roll, Crawl, Haste,

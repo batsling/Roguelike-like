@@ -22,6 +22,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py lang      # each studio's own language (+ --forums for subforums)
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
+    python3 tools/influence_research.py xsources  # who posted each X/Twitter source the sheet cites
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -622,6 +623,72 @@ def cmd_devcheck(args):
                     print(f"{rec['game']} <- {h['named']} by {h['author']}: {h['url']}", flush=True)
 
 
+# ── X / Twitter ─────────────────────────────────────────────────────────────
+
+def read_tweet(url):
+    """Author, date and text of one tweet, without logging in.
+
+    x.com itself serves an empty JavaScript shell to anything not logged in, and
+    profiles and timelines can't be read at all. The two embed endpoints that
+    websites use to show a tweet still answer, so a tweet whose URL is known can
+    be read and attributed. FINDING tweets has to go through a web search
+    restricted to x.com, which indexes individual tweets with their text.
+    """
+    m = re.search(r"(?:x|twitter)\.com/([^/]+)/status(?:es)?/(\d+)", url or "")
+    if not m:
+        return None
+    handle, tid = m.groups()
+    try:
+        j = json.loads(get(f"https://cdn.syndication.twimg.com/tweet-result?id={tid}&token=a", timeout=20))
+        if j.get("__typename") == "TweetTombstone":
+            # A deleted or withheld tweet answers with a tombstone, not an error.
+            return {"handle": handle, "name": "", "date": "", "text": "",
+                    "err": clean(j.get("tombstone", {}).get("text", {}).get("text", "deleted"))}
+        user = j.get("user", {})
+        return {"handle": user.get("screen_name", handle), "name": user.get("name", ""),
+                "date": j.get("created_at", "")[:10], "text": clean(j.get("text", ""))}
+    except Exception:
+        pass
+    try:
+        j = json.loads(get("https://publish.twitter.com/oembed?omit_script=1&url="
+                           + urllib.parse.quote(f"https://x.com/{handle}/status/{tid}"), timeout=20))
+        body = re.search(r"<p[^>]*>(.*?)</p>", j.get("html", ""), re.S)
+        date = re.findall(r">([A-Z][a-z]+ \d+, \d{4})</a>", j.get("html", ""))
+        return {"handle": j.get("author_url", "").rsplit("/", 1)[-1], "name": j.get("author_name", ""),
+                "date": date[-1] if date else "", "text": clean(body.group(1)) if body else ""}
+    except Exception:
+        return {"handle": handle, "name": "", "date": "", "text": "", "err": "unreadable (deleted or private?)"}
+
+
+def cmd_xsources(args):
+    """Read every X/Twitter source the `connections` sheet already cites.
+
+    For each row it prints who posted the tweet and whether the text names the
+    influencer. The question it answers: is this the developer talking, or a fan?
+    A fan's tweet is not first-hand. A deleted tweet means the row needs a new
+    source. Output: xsources.md, for a person to read.
+    """
+    _, conns = load_sheet()
+    devs = json.load(open(wpath(args, "devs.json"))) if os.path.exists(wpath(args, "devs.json")) else {}
+    rows = [r for r in conns if re.search(r"(?:x|twitter)\.com/[^/]+/status", str(r[4] or ""))]
+    out = wpath(args, "xsources.md")
+    with open(out, "w") as f:
+        f.write("# X/Twitter sources in `connections`: who posted them\n\n")
+        for r in rows:
+            t = read_tweet(str(r[4])) or {}
+            words = [w for w in re.findall(r"\w{4,}", r[0]) if w.lower() not in ("the", "with")]
+            names_it = any(w.lower() in t.get("text", "").lower() for w in words) if words else False
+            studio = ", ".join(devs.get(r[1], {}).get("devs") or [])
+            f.write(f"## {r[0]} → {r[1]}\n"
+                    f"- posted by **@{t.get('handle', '?')}** ({t.get('name', '')}), {t.get('date', '')}"
+                    f"{' — ' + t['err'] if t.get('err') else ''}\n"
+                    f"- influencee's Steam developer: {studio or 'unknown'}\n"
+                    f"- names the influencer: {'yes' if names_it else '**no**'}\n"
+                    f"- text: {t.get('text', '')[:400]}\n- {r[4]}\n\n")
+            time.sleep(0.5)
+    print(f"{len(rows)} X/Twitter sources -> {out}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--work", default=os.path.join(ROOT, ".influence_work"))
@@ -630,6 +697,7 @@ def main():
     sub.add_parser("devs")
     sub.add_parser("samedev")
     sub.add_parser("steam")
+    sub.add_parser("xsources")
     for name in ("lang", "forums", "devcheck"):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["targets", "all"], default="targets")
@@ -638,7 +706,7 @@ def main():
                                      help="also read each game's forum index for language subforums")
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
-     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck}[args.cmd](args)
+     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources}[args.cmd](args)
 
 
 if __name__ == "__main__":
