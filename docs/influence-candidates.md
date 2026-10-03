@@ -138,6 +138,22 @@ Quotes are in the original language with a translation. Check the translation ag
 ### Leads not yet confirmed
 - **Gumballs & Dungeons**: Baidu Baike says the producer's letter (制作者的信) names 《地牢爬行》 and 《符石守护者》 as inspirations. The letter itself wasn't found, and which games those titles are needs checking.
 
+## 4c. Hand search, round 3
+
+- [ ] **FTL → Guild of Dungeoneering** — Colm Larkin: "Design inspirations to me were playing games like FTL and Spelunky which took the rogue-like idea and ran with it." — [Gamasutra interview](https://www.gamedeveloper.com/business/paper-heroes-colm-larkin-and-guild-of-dungeoneering)
+- [ ] **Spelunky → Guild of Dungeoneering** — same quote
+- [ ] **NetHack → Realm of the Mad God** — Alex Carobus: "RotMG was really born out of a love of roguelikes, arcade games and a deep disappointment with MMOs… I wanted to make an MMO that was as fun to play as an old arcade game, as re-playable as NetHack or Spelunky" — [Road to the IGF interview](https://www.gamedeveloper.com/design/road-to-the-igf-spry-fox-s-and-wild-shadow-studios-i-realm-of-the-mad-god-i-)
+- [ ] **Spelunky → Realm of the Mad God** — same quote
+
+### Off the chart (only if you add the game)
+- **Beneath Apple Manor** ← Dragon Maze (Apple II), Colossal Cave Adventure, and D&D. Don Worth, by email to the CRPG Addict. — [CRPG Addict](http://crpgaddict.blogspot.com/2012/12/game-79-beneath-apple-manor-1978.html)
+- **Dota Auto Chess** ← Mahjong (Drodo Studio). — [SCMP / Abacus](https://www.scmp.com/abacus/games/article/3029173/how-popular-pc-gaming-hit-was-influenced-ancient-game-mahjong)
+- **Curious Expedition** ← *The Adventures of Tintin* comics ("one big inspiration we already had for the first game"). — [GamingBolt](https://gamingbolt.com/curious-expedition-2-interview-roguelike-expeditions)
+- **Drapline** also names Princess Maker, Monster Rancher, Rance X and the Atelier series; **Lethal Dungeon** also names Baba Is You and Shadowverse.
+
+### Searched, nothing first-hand found
+West of Dead (its interview names only comic artists), Seraph's Last Stand (based on the Flash game Heli Attack), Bleak Sword (Souls series), Heroes of Hammerwatch, Popup Dungeon (tabletop games), Block Tower TD, Super House of Dead Ninjas, Morsels, Ringer, Wireworks, Goblin Sushi, Coal LLC, Auto Rogue, Geometry Arena, Elden Ring Nightreign, Crown Trick (beyond its Steam post), Cubic Cosmos, The Fable, The King is Watching, Loot River, Stories from the Outbreak, Necroking, Necrosmith, Sword of Fargoal, CastlevaniaRL, DoomRL.
+
 ## 5. Same-studio leads (not sources on their own)
 
 `python3 tools/influence_research.py samedev` lists studio pairs the sheet doesn't connect. Add one only when the newer game's own page says so, as Arcane Trigger's does above. Examples it found: Knights in Tight Spaces → 2 Fights in 2 Tight Spaces, Ziggurat → Army of Ruin, Spirits Abyss → Voids Vigil, Cell Command → Genome Guardian 2, Children of Morta → Wizard of Legend 2 (same studio, Dead Mage).
