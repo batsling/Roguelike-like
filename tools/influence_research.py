@@ -834,6 +834,17 @@ WANTED_SECTION = "## 2."
 DONE_SECTION = "## 7."
 
 
+def _line_pairs(line):
+    """The pairs a candidate line PROPOSES: the bold pairs before its ` — `.
+
+    After the dash comes the quote, and a line that shares one says so with
+    `same as **A → B**`. That pair is a cross-reference, not part of the line:
+    counting it kept **Brotato → Slime 3K** open after the owner added it,
+    because the Despotism 3k pair it pointed at was (deliberately) left out.
+    """
+    return list(CANDIDATE.finditer(line.split(" — ", 1)[0]))
+
+
 def _pair_key(line):
     p = CANDIDATE.findall(line)
     return (p[0][1].lower(), p[0][0].lower()) if p else ("~", line)
@@ -885,7 +896,7 @@ def cmd_status(args):
             continue
         if not line.startswith("- [ ] ") or section.startswith(DONE_SECTION):
             continue
-        pairs = CANDIDATE.findall(line)
+        pairs = [m.groups() for m in _line_pairs(line)]
         if not pairs:
             continue
         missing = list(dict.fromkeys(n for p in pairs for n in p if n.strip().lower() not in names))
@@ -898,7 +909,7 @@ def cmd_status(args):
         else:
             still_open.append(i)
     for i in added:
-        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % p for p in CANDIDATE.findall(lines[i]))))
+        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % m.groups() for m in _line_pairs(lines[i]))))
     for i, missing in unknown:
         print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
     for i, missing in waiting:
@@ -910,7 +921,7 @@ def cmd_status(args):
     moved = []
     for i in added:
         line = lines[i]
-        end = list(CANDIDATE.finditer(line))[-1].end()
+        end = _line_pairs(line)[-1].end()
         moved.append("- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:])
     keep = [l for n, l in enumerate(lines) if n not in set(added)]
     start = next(n for n, l in enumerate(keep) if l.startswith(DONE_SECTION))

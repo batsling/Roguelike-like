@@ -51,6 +51,19 @@ Morbid Metal). For the rest, mostly survivors-likes and Balatro-likes, the
 developer only ever names the one game the sheet already has: about 45 searched
 by hand turned up new edges for five.
 
+**What the owner took from it (3 October 2026).** 20 of the degree-1 pass's
+candidate pairs went into the sheet, plus the `Deat Road` typo fix: Exit the
+Gungeon, Gnomes (three), Gordian Quest (two), Heavy Bullets, Let's! Revolution!
+(two), Maze Mice, Moonlighter 2, Morbid Metal, Rabbit and Steel, Glyphica, five
+survivors-likes on Slime 3K, and Enter the Gungeon on UnderMine. Three were
+taken in a different shape than proposed, which is the normal case, not an
+error: Spelunky went in as `Spelunky Classic`; UnderMine got Gungeon but not
+Hades, from the same quote; and Dota Auto Chess → Slime 3K went in off the
+store page's "a shop straight out of AutoChess", a feature-level line nobody
+had written up. Despotism 3k → Slime 3K was left out, presumably because
+Despotism 3k → Despot's Game → Slime 3K already carries the studio lineage.
+The lines left open in section 1 are still open, not rejected.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
@@ -245,7 +258,12 @@ python3 tools/influence_research.py status          # what's in the sheet now, a
 python3 tools/influence_research.py status --tick   # tick them and move them to section 7
 ```
 
-`status` matches the names on each `- [ ]` line against the sheet exactly. If
+`status` matches the names on each `- [ ]` line against the sheet exactly, and
+only the pairs **before the line's ` — `**. Everything after the dash is the
+quote, and a `same as **A → B**` cross-reference there is not part of the line:
+until that rule, the five Slime 3K lines stayed open after the owner added them,
+because the Despotism 3k pair they point at was left out on purpose. So keep a
+line's own pairs in front of the dash. If
 the owner added a row under a different name than the doc uses, it reports the
 line as unmatched or open instead of guessing. That happens when the doc names a
 series or a remake and the sheet names one game, for example "Shiren the
