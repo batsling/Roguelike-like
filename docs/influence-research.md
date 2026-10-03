@@ -136,6 +136,22 @@ section 2 is games held on by one connection or none. When a video confirms
 an influence, the video is the Source, with a timestamp if possible
 (`&t=754`). A podcast host's guess is not; the developer has to say it.
 
+**Resuming it.** The first run was stopped at 158 of 512 games (fewest
+connections first: all 61 games with none, and the one-connection games
+alphabetically up to Elin).
+Its results are saved, trimmed, in `tools/influence_research_media.jsonl`,
+because `.influence_work/` doesn't survive a container restart. To continue:
+
+```bash
+mkdir -p .influence_work && cp tools/influence_research_media.jsonl .influence_work/media.jsonl
+python3 tools/influence_research.py devs     # optional, ~6 min: studio names sharpen the filter
+python3 tools/influence_research.py media    # skips the 158, ~30 min for the rest
+```
+
+Then copy `.influence_work/media.jsonl` back over the file in `tools/`
+before committing. Ticks in `docs/influence-media.md` are kept across
+rewrites (matched by URL), so listen and tick at any point.
+
 What it misses: interviews titled only with the developer's name ("Episode
 40: Matt Glanville") unless the description names the game, and anything not
 in English or not on YouTube or Apple Podcasts. The cues include

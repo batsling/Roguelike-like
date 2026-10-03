@@ -1058,11 +1058,11 @@ def cmd_media(args):
     write_media_doc(targets, out, devs, args.per_game)
 
 
-def _media_line(kind, h):
+def _media_line(kind, h, heard=()):
     meta = " · ".join(x for x in (h["by"], h["length"], h["when"]) if x)
     why = (" — " + ", ".join(h["why"])) if h.get("why") else ""
     title = h["title"].replace("[", "(").replace("]", ")").replace("|", "/")
-    return "- [ ] %s [%s](%s) — %s%s" % (kind, title, h["url"], meta, why)
+    return "- [%s] %s [%s](%s) — %s%s" % ("x" if h["url"] in heard else " ", kind, title, h["url"], meta, why)
 
 
 def _studio(devs, name):
@@ -1086,6 +1086,11 @@ def write_media_doc(targets, jsonl, devs, per_game):
                 v, p = _filtered(r, r["game"], _studio(devs, r["game"]), per_game)
                 recs[r["game"]] = dict(r, videos=v, podcasts=p)  # a rerun's line replaces the old one
     found = {n: r for n, r in recs.items() if n in targets and (r["videos"] or r["podcasts"])}
+    # The doc is rewritten on every run, and the owner ticks lines in it as they
+    # listen. Carry those ticks over by URL, or a resumed search would undo them.
+    heard = set()
+    if os.path.exists(MEDIA):
+        heard = set(re.findall(r"^- \[x\] \w+ \[.*?\]\((\S+?)\)", open(MEDIA, encoding="utf8").read(), re.M))
     sus = sorted((n for n in found if targets[n]["suspected"]), key=str.lower)
     low = sorted((n for n in found if not targets[n]["suspected"]),
                  key=lambda n: (targets[n]["degree"], n.lower()))
@@ -1108,8 +1113,11 @@ def write_media_doc(targets, jsonl, devs, per_game):
         "| 2. Games with %s connection%s | %d | %d |" % (
             "few", "s", len(low), sum(len(found[n]["videos"]) + len(found[n]["podcasts"]) for n in low)),
         "",
-        "Searched %d games; %d had nothing that looked like the developer talking." % (
-            len([n for n in recs if n in targets]), len([n for n in recs if n in targets and n not in found])),
+        "Searched %d of the %d games that qualify%s; %d had nothing that looked like the developer talking." % (
+            len(recs), len(targets),
+            "" if len(recs) >= len(targets) else
+            " (fewest connections first; `media` picks up where it stopped, see `docs/influence-research.md`)",
+            len(recs) - len(found)),
         "",
         "---",
         "",
@@ -1125,8 +1133,8 @@ def write_media_doc(targets, jsonl, devs, per_game):
             out.append("Listen for: " + "; ".join('**%s** (sheet says "%s")' % (a, s or "nothing")
                                                 for a, s in t["suspected"]))
             out.append("")
-        out += [_media_line("video", h) for h in r["videos"]]
-        out += [_media_line("podcast", h) for h in r["podcasts"]]
+        out += [_media_line("video", h, heard) for h in r["videos"]]
+        out += [_media_line("podcast", h, heard) for h in r["podcasts"]]
         return out + [""]
     for n in sus:
         lines += block(n)
