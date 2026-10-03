@@ -59,6 +59,49 @@ python3 tools/influence_research.py forums      # continues from game 55
 Copy the file back into `tools/` before the session ends. A cloud container can
 restart and take `.influence_work/` with it; that happened once mid-scan.
 
+### Developers who don't work in English: search in their language
+
+A studio from Japan, China, Korea, Germany, France, Poland and so on gives its
+best interviews to its home press, and in its own language. An English-only
+search finds the English reviewers' guesses and misses the developer. So for
+any game whose developer is not English-speaking:
+
+1. **Find out where the studio is.** The Steam developer name (`devs` writes it
+   to `.influence_work/devs.json`), the studio's website, or its Wikipedia page.
+   Kanji, hanzi or hangul in the developer field is a strong hint.
+2. **Find the game's native title.** Many games ship under a different name at
+   home. Search under both, and under the studio's native name.
+3. **Search in that language**, with these terms beside the title:
+
+   | language | "inspired by" / "influenced by" / "interview" |
+   |---|---|
+   | Japanese | 影響を受けた, インスパイア, 参考にした, オマージュ, インタビュー, 開発者 |
+   | Chinese (simplified / traditional) | 灵感来自 / 靈感來自, 受到…启发 / 啟發, 致敬, 参考, 采访 / 專訪, 开发者 |
+   | Korean | 영감을 받은, 영향을 받은, 오마주, 인터뷰, 개발자 |
+   | German | inspiriert von, beeinflusst von, Interview, Entwickler |
+   | French | inspiré par, influencé par, entretien, interview, développeur |
+   | Spanish / Portuguese | inspirado en / por, influenciado, entrevista, desarrollador / desenvolvedor |
+   | Polish | inspirowany, inspiracja, wywiad, twórcy |
+   | Russian | вдохновлён, вдохновение, влияние, интервью, разработчик |
+
+4. **Look where that country's developers talk:** their own X/Twitter account
+   (often in the native language even when the Steam page is English), note.com
+   and 4Gamer / Famitsu / Game Watch for Japan, Bilibili, TapTap and Zhihu for
+   China, Inven / This Is Game / Ruliweb for Korea, and the studio's own blog.
+5. **Quote the original and translate it** in the candidate list, so the owner
+   can check the translation against the source.
+
+The `steam` pass already recognises these words in announcements (see `CLAIM`
+in the script); it only matches when the game's name is written in Latin
+script. The `forums` pass searches in English only, so for a non-English studio
+also search its forum by hand with the terms above.
+
+Among the games with no recorded influences, the studios to do this for first are: Crown Trick and Juicy
+Realm (China), Skul, Magic Survival and Metallic Child (Korea), Super Bullet
+Break, Million Depth and Auto Rogue (Japan).
+
+### Everyone else
+
 For interviews, web-search `"<game>" developer interview inspired`, then fetch
 the page and find the actual quote. Never trust a search engine's summary of a
 page: twice it attributed commenters' suggestions to the developer.

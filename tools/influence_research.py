@@ -57,7 +57,15 @@ AMBIGUOUS = {
 CLAIM = re.compile(
     r"inspir|influenc|homage|love letter|tribute|spiritual successor|big fans? of|"
     r"heavily based|took (?:a lot )?from|borrow|in the vein|cues from|blend of|"
-    r"mix of|\bmeets\b|cross between", re.I)
+    r"mix of|\bmeets\b|cross between|"
+    # Developers outside the English-speaking world often post in their own
+    # language even on an English store page. Japanese, Chinese, Korean,
+    # German, French, Spanish/Portuguese, Polish and Russian. The game they
+    # name is often still written in Latin script, so the name match below works.
+    r"影響|インスパイア|参考に|オマージュ|影响|灵感|启发|啟發|靈感|致敬|"
+    r"영감|영향|오마주|inspiriert|beeinflusst|inspiré|influencé|hommage|"
+    r"inspirad|influenciad|homenaje|homenagem|inspiracj|inspirowan|"
+    r"вдохнов|влияни|отсылк", re.I)
 
 # Sentences that name other games for reasons that are not influence. Crossovers
 # ("X x Y"), bundles and sales are the bulk of what a Steam announcement scan
