@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_despotism_3k"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"despotism_3k"
+display_name = "Despotism 3k"
+year = 2018
+type = 1
+games_influenced = Array[StringName]([&"despot_s_game"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/despotism-3k.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/699920/Despotism_3k/"
