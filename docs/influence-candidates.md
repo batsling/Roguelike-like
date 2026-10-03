@@ -117,6 +117,27 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 
 The other forum matches so far are players (suggestions and guesses), not developers.
 
+## 4b. Native-language sources (studios that don't work in English)
+
+Quotes are in the original language with a translation. Check the translation against the source before ticking.
+
+- [ ] **Uma Musume: Pretty Derby → Drapline** *(both have no connections yet)* — KANAWO: 「主に『プリンセスメーカー』や『ウマ娘 プリティーダービー』、『モンスターファーム』などの育成シミュレーションゲームは理想形として大いに参考にしています。」 ("We referenced raising sims like Princess Maker, Uma Musume Pretty Derby and Monster Rancher heavily, as the ideal form.") — [Game*Spark interview](https://www.gamespark.jp/article/2025/07/24/155340.html)
+- [ ] **ROUNDS → Section 13** *(both have no connections yet)* — 박재은 PD (Park Jae-eun): 「그는 '섹션 13' 개발에 영감을 준 게임으로 랜드폴게임즈의 로그라이크 PvP 게임 '라운즈(ROUNDS)'를 꼽았다.」 ("He named Landfall's roguelike PvP game ROUNDS as a game that inspired Section 13's development", for its gun effects.) *(reporter's paraphrase of what the PD said, at Gamescom 2024)* — [Daum / gamescom interview](https://v.daum.net/v/pIwu8NNfMg?f=p)
+- [ ] **Slay the Spire → Super Bullet Break** — BeXide president 南治 (Minamiji): 「開発スタッフのひとりが『Slay the Spire』が好きで、ローグライク（ローグライト）って方向でやってみたら…いいんじゃないかって案が出てきまして」 ("One of the dev staff liked Slay the Spire, and the idea came up to try the roguelike direction.") — [Gamecast interview](https://www.gamecast-blog.com/archives/66001023.html)
+- [ ] **Shiren the Wanderer → Million Depth** — αPop (director): 「ゲームシステムの面では、『風来のシレン』シリーズから影響を受けています。」 ("On the game-system side, it was influenced by the Shiren the Wanderer series.") He names *Shiren 6 (Serpentcoil Island)* as his favourite game. The quote is about the series, so pick the row. — [Game*Spark interview](https://www.gamespark.jp/article/2025/12/23/160936.html)
+- [ ] **Hades → Metallic Child** — 한대훈 (Han Dae-hoon, director): 「하데스를 플레이했는데, 너무 잘 만들었던 거죠… 거기서 자극을 받았고… 기준치가 올라간 거죠.」 ("I played Hades and it was so well made… I was spurred on by it, and my bar went up.") He gives this as why development ran three years instead of one. — [Ruliweb interview](https://bbs.ruliweb.com/news/read/152932)
+- [ ] **Dota Auto Chess → Despot's Game** — Nikolai Kuznetsov (Konfa Games): «На месте "X" были, например, "Герои меча и магии", Beat Cop в России и Auto Chess. Победили последние.» ("For 'X' [take X, add permadeath and randomness] we had Heroes of Might and Magic, Beat Cop and Auto Chess. The last one won.") Also: the class abilities "это тоже от Auto Chess" ("are also from Auto Chess"). *(Says "Auto Chess"; the sheet's row is `Dota Auto Chess`.)* — [DTF interview](https://dtf.ru/gamedev/141739-otzyvy-i-obshenie-na-meropriyatiyah-uchat-luchshe-lyubyh-kursov-beseda-s-avtorom-rogalika-despots-game)
+- [ ] **Inscryption → Lethal Dungeon** — にほへ (Nihohe Soft): 「『Inscryption』や『Shadowverse』など色んなカードゲームにも影響を受けていますが、『Baba Is You』には特に影響を受けています。」 ("I was influenced by card games like Inscryption and Shadowverse, and especially by Baba Is You.") *(Baba Is You isn't on the chart.)* — [Game*Spark interview](https://www.gamespark.jp/article/2026/05/10/166209.html)
+
+### Checked in the native language: not influences
+- **Skul**: "Dead Cells became the benchmark" is about sales targets, not design. — [Inven](https://www.inven.co.kr/webzine/news/?news=302719)
+- **Loop Hero**: Russian interviews also say no specific inspiration ("Трудно назвать конкретные примеры", "Hard to name specific examples"), and the artist had never heard of Eador, the game players compare it to. — [DTF](https://dtf.ru/gamedev/660318-igrok-dolzhen-iskat-uyazvimosti-i-brat-ih-na-vooruzhenie-beseda-s-avtorami-loop-hero), [Skillbox](https://skillbox.ru/media/gamedev/intervyu_s_avtorami_loop_hero_geymdzhemy_rabota_s_krupnym_izdatelem_i_sovety_novichkam/)
+- **Million Depth ← SUPERHOT**: αPop says he hadn't heard of it when he built the time-stop system, and has avoided playing it. — [AUTOMATON](https://automaton-media.com/articles/interviewsjp/million-depth-20251010-361085/)
+- **Juicy Realm ← Isaac / Nuclear Throne / Gungeon**: only a news write-up says so. SpaceCan's own dev log and the Gcores feature name no games.
+
+### Leads not yet confirmed
+- **Gumballs & Dungeons**: Baidu Baike says the producer's letter (制作者的信) names 《地牢爬行》 and 《符石守护者》 as inspirations. The letter itself wasn't found, and which games those titles are needs checking.
+
 ## 5. Same-studio leads (not sources on their own)
 
 `python3 tools/influence_research.py samedev` lists studio pairs the sheet doesn't connect. Add one only when the newer game's own page says so, as Arcane Trigger's does above. Examples it found: Knights in Tight Spaces → 2 Fights in 2 Tight Spaces, Ziggurat → Army of Ruin, Spirits Abyss → Voids Vigil, Cell Command → Genome Guardian 2, Children of Morta → Wizard of Legend 2 (same studio, Dead Mage).
