@@ -6,7 +6,8 @@ quotes and links, are in `docs/influence-candidates.md`. It is laid out by what
 the owner does next: lines to review (section 1 for games on the sheet, section
 2 for games not added yet), what was checked and isn't an influence (3), rows
 whose source needs a look (4), leads (5), what was searched without result (6),
-and what is on the chart now (7).
+and what is on the chart now (7). Videos and podcasts to listen to are in
+`docs/influence-media.md` (see `media` below).
 
 ## The rules
 
@@ -80,6 +81,7 @@ python3 tools/influence_research.py wanted FILE  # games not on the chart yet (o
 python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
 python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
+python3 tools/influence_research.py media     # interview videos + podcasts to listen to -> docs/influence-media.md
 python3 tools/influence_research.py status    # which candidates are in the sheet now; --tick marks them
 ```
 
@@ -103,6 +105,42 @@ python3 tools/influence_research.py forums      # continues from game 55
 
 Copy the file back into `tools/` before the session ends. A cloud container can
 restart and take `.influence_work/` with it; that happened once mid-scan.
+
+### Interviews and podcasts: `media`
+
+A developer often says what inspired them out loud and nowhere else: on a
+podcast, in a showcase interview, on a YouTube channel that interviews indie
+developers. Nobody can watch those but the owner, so `media` does the searching
+and leaves the listening. For every game with `--max-degree` connections or
+fewer (default 1), and every game whose connection has a placeholder Source
+(`check folder`, `look at it`, a note about a Discord), it searches:
+
+- **YouTube**, `"<game>" developer interview` and `"<game>" podcast`, read
+  straight off the results page (no API key);
+- **Apple Podcasts**, the iTunes Search API's episode search (no key, about 20
+  calls a minute, hence `--delay 3.5` and a run of over half an hour).
+
+It keeps a result only when the game is in the title (or right beside a cue in
+the description) AND it reads like the developer talking: interview, Q&A, AMA,
+postmortem, GDC, devlog, "joined by", "sits down with", or the developer's own
+studio name (from `devs`, which is optional but helps a lot). It drops Let's
+Plays, reviews, trailers, numbered episodes of a playthrough, roundup episodes
+that list five games, and shows that only share the game's name. Raw results
+are cached in `.influence_work/media.jsonl`, so `media --write-only` rewrites
+the doc after a filter change without searching again, and a stopped run
+resumes where it was.
+
+The output is `docs/influence-media.md`: section 1 is the suspected
+connections, each with **"Listen for: X (sheet says 'look at it')"**, and
+section 2 is games held on by one connection or none. When a video confirms
+an influence, the video is the Source, with a timestamp if possible
+(`&t=754`). A podcast host's guess is not; the developer has to say it.
+
+What it misses: interviews titled only with the developer's name ("Episode
+40: Matt Glanville") unless the description names the game, and anything not
+in English or not on YouTube or Apple Podcasts. The cues include
+Japanese/Korean/Chinese/Spanish/Polish/Russian words for "interview", but the
+searches are English.
 
 ### Developers who don't work in English: search in their language
 
