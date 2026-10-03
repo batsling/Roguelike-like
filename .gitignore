@@ -21,3 +21,7 @@ __pycache__/
 *.pyc
 package.json
 package-lock.json
+
+# ── Influence research (tools/influence_research.py) ─────────────────────
+# Steam page cache and scan output; reproducible, and large.
+.influence_work/
