@@ -11,7 +11,7 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 ## 1. Strong — developer names the game as an influence
 
 ### Games with no connections at all
-- [ ] **Shiren the Wanderer → Crown Trick** — "we drew inspiration from the classic Shiren The Wanderer … in the 'synchronous turn-based combat'." — [Steam dev post](https://store.steampowered.com/news/app/1000010/view/2425653583381488332) *(names the series; probably `Mystery Dungeon 2: Shiren the Wanderer`)*
+- [ ] **Shiren the Wanderer → Crown Trick** — "we drew inspiration from the classic Shiren The Wanderer … in the 'synchronous turn-based combat'." — [Steam dev post](https://steamcommunity.com/games/1000010/announcements/detail/1712958942358263915) *(names the series; probably `Mystery Dungeon 2: Shiren the Wanderer`)*
 - [ ] **Backpack Hero → Footgun: Underground** — "Games like Backpack Heroes and Peglin were particularly impactful…" — [Rogueliker interview](https://rogueliker.com/footgun-underground-interview/)
 - [ ] **Peglin → Footgun: Underground** — same quote — [Rogueliker interview](https://rogueliker.com/footgun-underground-interview/)
 - [ ] **Brotato → Footgun: Underground** — "Brotato was where we got the idea of the merge mechanic for the item upgrade system." — [Rogueliker interview](https://rogueliker.com/footgun-underground-interview/)
@@ -19,7 +19,7 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 - [ ] **Diablo → Crawl** — Barney Cumming: "Diablo is a big influence…" — [Toogy Talk interview](https://toogytime.wordpress.com/2014/12/16/toogy-talk-crawl-an-interview-with-barney-cumming-of-powerhoof/)
 - [ ] **The Binding of Isaac → Crawl** — "Binding of Isaac worked as a less direct influence … I was very inspired by my wrongly-interpreted imaginings of what Isaac would be like" — [Toogy Talk interview](https://toogytime.wordpress.com/2014/12/16/toogy-talk-crawl-an-interview-with-barney-cumming-of-powerhoof/)
 - [ ] **FTL → Heat Signature** — Tom Francis: "Partly inspired by FTL, I show everything I can in 'natural' numbers." — [pentadact dev blog](https://www.pentadact.com/2015-09-25-natural-numbers-in-game-design/)
-- [ ] **Peglin → Kill the Brickman** — "Peglin, one of our biggest inspirations when Making Kill the Brickman" — [Steam dev post](https://store.steampowered.com/news/app/3123120/view/1811138915522062)
+- [ ] **Peglin → Kill the Brickman** — "Peglin, one of our biggest inspirations when Making Kill the Brickman" — [Steam dev post](https://steamcommunity.com/games/3123120/announcements/detail/502834694432228039)
 - [ ] **Endgame of Devil → Arcane Trigger** *(Dev/Series Relation)* — "From the Creators of 'Endgame of Devil'" — [Steam store page](https://store.steampowered.com/app/2981070/)
 
 ### Games with no recorded influences (they influence others)
@@ -32,39 +32,39 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 - [ ] **The Binding of Isaac → Children of Morta** — Amir Fassihi: "other roguelike games like The Binding of Isaac, Rogue Legacy, Nuclear Throne." — [Cliqist Q&A](https://cliqist.com/2015/01/30/children-morta-interview/)
 - [ ] **Rogue Legacy → Children of Morta** — same quote
 - [ ] **Nuclear Throne → Children of Morta** — same quote
-- [ ] **Inscryption → Buckshot Roulette** — Mike Klubnika: "Overall, the mechanics and their presentation are mainly inspired by Inscryption." — [Steam Q&A post](https://store.steampowered.com/news/app/2835570/view/5742731639330343335)
+- [ ] **Inscryption → Buckshot Roulette** — Mike Klubnika: "Overall, the mechanics and their presentation are mainly inspired by Inscryption." — [Steam Q&A post](https://steamcommunity.com/games/2835570/announcements/detail/4181107834755509907)
 
 ### Games already on the chart
 - [ ] **The Binding of Isaac → 30XX** — "the replayability of a modern Roguelike (Binding of Isaac, Enter the Gungeon, Dead Cells, etc)" — [Steam store page](https://store.steampowered.com/app/1029210/)
 - [ ] **Enter the Gungeon → 30XX** — same
 - [ ] **Dead Cells → 30XX** — same
-- [ ] **Luck be a Landlord → Aotenjo: Infinite Hands** — "draws inspiration from many card-based rogue-like games such as Balatro, Luck be a Landlord, Monster Train, and Slay the Spire" — [Steam dev Q&A](https://store.steampowered.com/news/app/3066570/view/5963413728346825219)
+- [ ] **Luck be a Landlord → Aotenjo: Infinite Hands** — "draws inspiration from many card-based rogue-like games such as Balatro, Luck be a Landlord, Monster Train, and Slay the Spire" — [Steam dev Q&A](https://steamcommunity.com/games/3066570/announcements/detail/4356754561281185320)
 - [ ] **Monster Train → Aotenjo: Infinite Hands** — same
 - [ ] **Slay the Spire → Aotenjo: Infinite Hands** — same
-- [ ] **Luck be a Landlord → Chosen Garden** — "We've drawn inspiration from classics like Balatro and Luck be a Landlord" — [Steam dev post](https://store.steampowered.com/news/app/3923750/view/1811138915541004)
+- [ ] **Luck be a Landlord → Chosen Garden** — "We've drawn inspiration from classics like Balatro and Luck be a Landlord" — [Steam dev post](https://steamcommunity.com/games/3923750/announcements/detail/503962497384974869)
 - [ ] **Vampire Survivors → Choo Choo Survivor 2** — "inspired by games like Vampire Survivors and Dome Keeper" — [Steam store page](https://store.steampowered.com/app/3494210/)
 - [ ] **Dome Keeper → Choo Choo Survivor 2** — same
-- [ ] **Slay the Spire → Cross Blitz** — "inspired by … Hearthstone and Slay the Spire" — [Steam dev post](https://store.steampowered.com/news/app/1619520/view/5151600576588183735)
-- [ ] **Diablo → Curse of the Dead Gods** — "Video games also heavily contributed to our inspirations with Diablo 3, and Gauntlet (2014) … or Hades" — [Steam dev post](https://store.steampowered.com/news/app/1123770/view/2578810848680736494)
+- [ ] **Slay the Spire → Cross Blitz** — "inspired by … Hearthstone and Slay the Spire" — [Steam dev post](https://steamcommunity.com/games/1619520/announcements/detail/3692434297316940519)
+- [ ] **Diablo → Curse of the Dead Gods** — "Video games also heavily contributed to our inspirations with Diablo 3, and Gauntlet (2014) … or Hades" — [Steam dev post](https://steamcommunity.com/games/1123770/announcements/detail/1697231221626410268)
 - [ ] **Hades → Curse of the Dead Gods** — same
-- [ ] **Into the Breach → Dome Keeper** — "the biggest influences on Dome Keeper are Kingdom and Into the Breach." — [Steam dev post](https://store.steampowered.com/news/app/1637320/view/6339469370185329444)
+- [ ] **Into the Breach → Dome Keeper** — "the biggest influences on Dome Keeper are Kingdom and Into the Breach." — [Steam dev post](https://steamcommunity.com/games/1637320/announcements/detail/4673137508062083951)
 - [ ] **Spelunky → Feed the Deep** — "inspired by the likes of Dome Keeper and Spelunky" *(sheet currently has Spelunky Classic)* — [Steam store page](https://store.steampowered.com/app/2332260/)
-- [ ] **Backpack Hero → God of Weapons** — "Backpack Hero is the inspiration for the Inventory Management part of our game" — [Steam dev post](https://store.steampowered.com/news/app/2342950/view/5322753221336311914)
-- [ ] **Diablo → God of Weapons** — "I just so happen to grow up with Diablo, so the gem system is our way of bringing the classics into our game." — [Steam dev post](https://store.steampowered.com/news/app/2342950/view/1790848102577205)
+- [ ] **Backpack Hero → God of Weapons** — "Backpack Hero is the inspiration for the Inventory Management part of our game" — [Steam dev post](https://steamcommunity.com/games/2342950/announcements/detail/3801662447199262264)
+- [ ] **Diablo → God of Weapons** — "I just so happen to grow up with Diablo, so the gem system is our way of bringing the classics into our game." — [Steam dev post](https://steamcommunity.com/games/2342950/announcements/detail/524208404882784298)
 - [ ] **Magic Survival → HoloCure: Save the Fans!** — "gameplay heavily inspired by Vampire Survivors and Magic Survival" — [Steam store page](https://store.steampowered.com/app/2420510/)
-- [ ] **Magic Survival → Spirit Hunters: Infinite Horde** — "The combat … is inspired by Magical Survival and Vampire Survivors." — [Steam dev post](https://store.steampowered.com/news/app/1914580/view/4247462367448719897)
-- [ ] **The Binding of Isaac → Nordic Ashes: Survivors of Ragnarok** — "inspired by top games like The Binding of Isaac and Rogue Legacy" — [Steam dev post](https://store.steampowered.com/news/app/2068280/view/6258337460546996779)
+- [ ] **Magic Survival → Spirit Hunters: Infinite Horde** — "The combat … is inspired by Magical Survival and Vampire Survivors." — [Steam dev post](https://steamcommunity.com/games/1914580/announcements/detail/3096792662638547858)
+- [ ] **The Binding of Isaac → Nordic Ashes: Survivors of Ragnarok** — "inspired by top games like The Binding of Isaac and Rogue Legacy" — [Steam dev post](https://steamcommunity.com/games/2068280/announcements/detail/5301322539098227375)
 - [ ] **Rogue Legacy → Nordic Ashes: Survivors of Ragnarok** — same
-- [ ] **Hades → Nowhere Prophet** — on its dialogue-driven writing: "Actually Hades was a big influence on that." — [Steam dev post](https://store.steampowered.com/news/app/681730/view/1819386365113003)
-- [ ] **868-Hack → Order Automatica** — "inspired by the games of Michael Brough, such as 868-hack and Cinco Paus." — [Steam dev post](https://store.steampowered.com/news/app/2105840/view/1842212951314141)
-- [ ] **Slice & Dice → Order Automatica** — "This system takes inspiration from roguelikes like Shotgun King and Slice & Dice" — [Steam dev post](https://store.steampowered.com/news/app/2105840/view/1819386365104711)
-- [ ] **Diablo → Our Darker Purpose** — "Don't Starve and FTL were also huge influences, as well as mainstream classic games like Diablo and Zelda" — [Steam dev post](https://store.steampowered.com/news/app/262790/view/919034715922223011)
+- [ ] **Hades → Nowhere Prophet** — on its dialogue-driven writing: "Actually Hades was a big influence on that." — [Steam dev post](https://steamcommunity.com/games/NowhereProphet/announcements/detail/498341245287925959)
+- [ ] **868-Hack → Order Automatica** — "inspired by the games of Michael Brough, such as 868-hack and Cinco Paus." — [Steam dev post](https://steamcommunity.com/games/2105840/announcements/detail/670626757615813587)
+- [ ] **Slice & Dice → Order Automatica** — "This system takes inspiration from roguelikes like Shotgun King and Slice & Dice" — [Steam dev post](https://steamcommunity.com/games/2105840/announcements/detail/526488742956893954)
+- [ ] **Diablo → Our Darker Purpose** — "Don't Starve and FTL were also huge influences, as well as mainstream classic games like Diablo and Zelda" — [Steam dev post](https://steamcommunity.com/games/262790/announcements/detail/1694779751808309596)
 - [ ] **Don't Starve → Our Darker Purpose** — same
 - [ ] **Diablo → Picayune Dreams** — "Inspirations … Diablo (power scaling and item visualization)" — [Steam store page](https://store.steampowered.com/app/2088840/)
-- [ ] **Enter the Gungeon → Roboquest** — "modern roguelites such as Dead Cells, Enter the Gungeon, and Nuclear Throne" — [Steam dev post](https://store.steampowered.com/news/app/692890/view/3670950880878683317)
-- [ ] **Peglin → Rogue Voltage** — "roguelikes, that served as inspiration for Rogue Voltage, such as Peglin, Backpack Hero and recently Backpack Battles" — [Steam dev post](https://store.steampowered.com/news/app/1494560/view/5756237364307132901)
+- [ ] **Enter the Gungeon → Roboquest** — "modern roguelites such as Dead Cells, Enter the Gungeon, and Nuclear Throne" — [Steam dev post](https://steamcommunity.com/games/692890/announcements/detail/4599817768902300278)
+- [ ] **Peglin → Rogue Voltage** — "roguelikes, that served as inspiration for Rogue Voltage, such as Peglin, Backpack Hero and recently Backpack Battles" — [Steam dev post](https://steamcommunity.com/games/1494560/announcements/detail/4187858160655360600)
 - [ ] **Backpack Battles → Rogue Voltage** — same
-- [ ] **Slay the Spire → Rogue: Genesia** — "I thought of making a mix of Slay the Spire and Vampire Survivors." — [Steam dev post](https://store.steampowered.com/news/app/2067920/view/5510783579246314216)
+- [ ] **Slay the Spire → Rogue: Genesia** — "I thought of making a mix of Slay the Spire and Vampire Survivors." — [Steam dev post](https://steamcommunity.com/games/2067920/announcements/detail/3908626109457877555)
 - [ ] **Brogue → Rift Wizard** — "inspired by classics such as Nethack, Dungeon Crawl Stone Soup, Brogue, and Tales of Maj'Eyal" — [Steam store page](https://store.steampowered.com/app/1271280/)
 - [ ] **Brotato → Star Survivor** — "big call for those games I got inspirations from: Vampire Survivor, Brotato, SoulStone Survivors, 20 Minutes Till Dawn, Rogue: Genesia, Spellbook Demonslayers, Void Scrappers, Boneraiser Minions, Nova Drift…" — [Steam store page](https://store.steampowered.com/app/2060750/)
 - [ ] **Soulstone Survivors → Star Survivor** — same
@@ -74,10 +74,10 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 - [ ] **Void Scrappers → Star Survivor** — same
 - [ ] **Boneraiser Minions → Star Survivor** — same
 - [ ] **Nova Drift → Star Survivor** — same
-- [ ] **Dicey Dungeons → Words Can Kill** — "a spelling roguelike game hugely inspired by Slay the Spire and Dicey Dungeons." — [Steam dev post](https://store.steampowered.com/news/app/1732090/view/4480532686363937954)
+- [ ] **Dicey Dungeons → Words Can Kill** — "a spelling roguelike game hugely inspired by Slay the Spire and Dicey Dungeons." — [Steam dev post](https://steamcommunity.com/games/1732090/announcements/detail/3328736922033412095)
 
 ### Better source for a row already in the sheet
-- [ ] **Vampire Survivors → Slime 3K: Rise Against Despot** *(source currently "look at it")* — "inspired by games like Vampire Survivors and auto-chess games." — [Steam dev post](https://store.steampowered.com/news/app/1227280/view/6212244583180100303)
+- [ ] **Vampire Survivors → Slime 3K: Rise Against Despot** *(source currently "look at it")* — "inspired by games like Vampire Survivors and auto-chess games." — [Steam dev post](https://steamcommunity.com/games/1227280/announcements/detail/4522268823003961902)
 
 ---
 
@@ -88,16 +88,16 @@ Steam forum scan: **paused at 54 of 130** no-influence games. Progress is in `to
 - [ ] **Dead Cells → Hades** — journalist paraphrase: "He also singles out Dead Cells for its crisp, responsive feel" — [GamesRadar](https://www.gamesradar.com/modern-roguelikes-are-in-great-shape-but-where-does-the-genre-go-next/)
 - [ ] **Slay the Spire → Hades** — journalist paraphrase: "…and Slay The Spire for its character choices and endgame Ascension modes" — same
 - [ ] **Spelunky → Heat Signature** — "a Story Generator … the common thread between my love for Deus Ex, Spelunky and Invisible Inc." — [pentadact](https://www.pentadact.com/2017-09-27-heat-signatures-launch-and-first-player-legend/)
-- [ ] **Hades → Arcanium: Rise of Akhan** — "A mix of Hades' 'Heats' system and Slay the Spire's 'Ascension' system" — [Steam dev post](https://store.steampowered.com/news/app/1056840/view/4026754911351402249)
-- [ ] **Cogmind → Jupiter Hell** — "a new general purpose level generator (inspired by the awesome roguelike Cogmind)" — [Steam dev post](https://store.steampowered.com/news/app/811320/view/2436926440596679166)
-- [ ] **Die in the Dungeon → Peglin** — "Die in the Dungeon: (inspired 2 of the new relics :) )" — [Steam dev post](https://store.steampowered.com/news/app/1296610/view/5059268543355134684)
-- [ ] **Sil → Tangledeep** — one job "Inspired by the roguelike Sil" — [Steam dev post](https://store.steampowered.com/news/app/628770/view/2145261379788804055)
-- [ ] **Astral Ascent → Voin** — forge mechanic "pretty much inspired by The Forge from Astral Ascent" — [Steam dev post](https://store.steampowered.com/news/app/2464530/view/5410576585134339150)
-- [ ] **Stoneshard → The Last Spell** — pixel-art inspiration — [Steam dev post](https://store.steampowered.com/news/app/1105670/view/4032396530940803324)
-- [ ] **Heretic's Fork → Slime 3K: Rise Against Despot** — "a new ability that pays tribute to Heretic's Fork" — [Steam dev post](https://store.steampowered.com/news/app/2348610/view/5589599109265929688)
-- [ ] **Revita → Tiny Rogues** — "BenStar has been an inspiration for myself ever since I caught my first glimpse of Revita." — [Steam dev post](https://store.steampowered.com/news/app/2088570/view/6839319551983449018)
-- [ ] **Risk of Rain 2 → Soulstone Survivors** — said of their next project, then "(which also became a core concept of Soulstone Survivors)" — [Steam dev post](https://store.steampowered.com/news/app/2066020/view/1818118366173253)
-- [ ] **The Binding of Isaac → Picayune Dreams** — "Schism had similar inspirations as Picayune Dreams, following … The Binding of Isaac and Nuclear Throne." — [Steam post](https://store.steampowered.com/news/app/2088840/view/5159491482924037110)
+- [ ] **Hades → Arcanium: Rise of Akhan** — "A mix of Hades' 'Heats' system and Slay the Spire's 'Ascension' system" — [Steam dev post](https://steamcommunity.com/games/1056840/announcements/detail/3031459393707667773)
+- [ ] **Cogmind → Jupiter Hell** — "a new general purpose level generator (inspired by the awesome roguelike Cogmind)" — [Steam dev post](https://steamcommunity.com/games/811320/announcements/detail/1610515908993060550)
+- [ ] **Die in the Dungeon → Peglin** — "Die in the Dungeon: (inspired 2 of the new relics :) )" — [Steam dev post](https://steamcommunity.com/games/1296610/announcements/detail/3639508760838054968)
+- [ ] **Sil → Tangledeep** — one job "Inspired by the roguelike Sil" — [Steam dev post](https://steamcommunity.com/games/628770/announcements/detail/1464092108240056336)
+- [ ] **Astral Ascent → Voin** — forge mechanic "pretty much inspired by The Forge from Astral Ascent" — [Steam dev post](https://steamcommunity.com/games/2464530/announcements/detail/3860212413410895582)
+- [ ] **Stoneshard → The Last Spell** — pixel-art inspiration — [Steam dev post](https://steamcommunity.com/games/1105670/announcements/detail/2996568545566483264)
+- [ ] **Heretic's Fork → Slime 3K: Rise Against Despot** — "a new ability that pays tribute to Heretic's Fork" — [Steam dev post](https://steamcommunity.com/games/2348610/announcements/detail/4025723667734553082)
+- [ ] **Revita → Tiny Rogues** — "BenStar has been an inspiration for myself ever since I caught my first glimpse of Revita." — [Steam dev post](https://steamcommunity.com/games/2088570/announcements/detail/6770639657665738311)
+- [ ] **Risk of Rain 2 → Soulstone Survivors** — said of their next project, then "(which also became a core concept of Soulstone Survivors)" — [Steam dev post](https://steamcommunity.com/games/2066020/announcements/detail/538872373928001896)
+- [ ] **The Binding of Isaac → Picayune Dreams** — "Schism had similar inspirations as Picayune Dreams, following … The Binding of Isaac and Nuclear Throne." — [Steam post](https://steamcommunity.com/games/2088840/announcements/detail/3685688504882617185)
 - [ ] **Nuclear Throne → Picayune Dreams** — same
 - [ ] **Balatro → Slots & Daggers** — "I had thought about gambling and casino-style mechanics, and how they have inspired very successful recent titles like Balatro or Vampire Survivors." — [indiegames.wtf interview](https://indiegames.wtf/interviews/slots-daggers-the-roguelite-between-luck-and-strategy/)
 - [ ] **Vampire Survivors → Slots & Daggers** — same
@@ -197,11 +197,11 @@ Searched about 45 of the 328 games that have exactly one outside influence on th
 - [ ] **Don't Starve → Sunless Sea** — a journalist relaying Failbetter's announcement: "Failbetter cites as their influences FTL, Don't Starve, Elite, Sid Meier's Pirates". Failbetter's own post wasn't found. — [Quarter to Three](https://www.quartertothree.com/fp/2013/07/30/ten-things-you-should-know-about-sunless-sea/)
 - [ ] **Larn → Castle of the Winds**, **Omega → Castle of the Winds**, **NetHack → Castle of the Winds** *(the interviewer's summary, not Rick Saada's own words)* — "he started work on a program inspired by his love of Rogue, Noah Morgan's Larn, the Laurence Brothers' Omega and Nethack" — [Game Developer interview](https://www.gamedeveloper.com/game-platforms/playing-catch-up-i-castle-of-the-winds-i-rick-saada)
 - [ ] **Slay the Spire → Drop Duchy**, **Dicey Dungeons → Drop Duchy** *(journalists only)* — Digital Trends: "Drop Duchy takes some immediate notes from a much different game: Slay the Spire"; Polygon: "not unlike Dicey Dungeons or Balatro". The developer's 16 devlogs name only Balatro. — [Digital Trends](https://www.digitaltrends.com/gaming/drop-duchy-puzzle-game-preview/)
-- [ ] **Diablo → SULFUR** *(UI only)* — Perfect Random: "When we updated the UI for the Steam Deck, we had taken inspiration from games like Diablo, Escape from Tarkov, and thankfully Resident Evil 4." — [Steam announcement](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6212244583184836506)
+- [ ] **Diablo → SULFUR** *(UI only)* — Perfect Random: "When we updated the UI for the Steam Deck, we had taken inspiration from games like Diablo, Escape from Tarkov, and thankfully Resident Evil 4." — "How We Make SULFUR Feel at Home on Steam Deck", Steam announcement, Oct 2024 *(its page no longer opens, so it looks removed; the text is still in Steam's [news feed](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=2124120&count=100&maxlength=0), search it for "Diablo")*
 - [ ] **Returnal → SULFUR** *(paraphrase)* — GameDiscoverCo's writer: "the devs cite everything from NetHack-influenced 2D roguelike IVAN (!) to games like Returnal and Dark Souls" — [GameDiscoverCo](https://newsletter.gamediscover.co/p/how-sulfur-sold-50k-real-fast-and)
 - [ ] **Rogue Legacy → In Celebration of Violence**, **The Binding of Isaac → In Celebration of Violence** *(a pitch comparison, not worded as inspiration)* — Julian Edison, on the store page: "This is like if The Binding of Isaac and Dark Souls got smushed together. And Rogue Legacy is is there too. And Hammerwatch." — [Steam](https://store.steampowered.com/app/509570)
 - [ ] **NetHack → Approaching Infinity** *(admiration, not called an influence)* — IBOL: "I'm much more impressed with stuff like nethack, where 'the dev team thinks of everything'. I don't think of everything, but I like to throw my players the occasional curve-ball." — [BlindiRL interview](https://www.blindirl.com/august-12-24/)
-- [ ] **Dead Cells → Curse of the Dead Gods** (feature) — "Vault rooms (Cursed Chests in Dead Cells): A new room type inspired by the Cursed Chest in Dead Cells!" — [Steam dev post](https://store.steampowered.com/news/app/1123770/view/4054904311339638725)
+- [ ] **Dead Cells → Curse of the Dead Gods** (feature) — "Vault rooms (Cursed Chests in Dead Cells): A new room type inspired by the Cursed Chest in Dead Cells!" — [Steam dev post](https://steamcommunity.com/games/1123770/announcements/detail/3046097994804047794)
 
 ### Checked: the developer says no
 - **Balatro ← Slay the Spire**: LocalThunk had never played it and "cut myself off from the genre at that point intentionally". — [GamesRadar](https://www.gamesradar.com/astonishingly-balatros-creator-had-never-even-played-slay-the-spire-and-intentionally-cut-myself-off-from-roguelikes-to-create-the-best-game-possible/)

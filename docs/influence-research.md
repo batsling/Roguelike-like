@@ -179,6 +179,13 @@ PR agency and a publisher). Those are listed in section 6 of
 - **Steam rate limits.** The store and news APIs tolerate 8 parallel requests.
   The community forum search does not: it answers "too many requests" after a
   few quick hits. Use `--delay 15`.
+- **Steam announcement links.** The news API's `gid` is not the id the store's
+  news page uses, so `store.steampowered.com/news/app/<appid>/view/<gid>` opens
+  to nothing. Follow the item's own `url` (`curl -sL -o /dev/null -w
+  '%{url_effective}'`) and cite where it lands, a
+  `steamcommunity.com/games/<appid>/announcements/detail/<id>` page. If it lands
+  on the bare announcement list, the developer has removed the post. Say so, and
+  point to the news feed, which still has its text.
 - **Sites that block fetches.** Several interview sites return 403 to the web
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.

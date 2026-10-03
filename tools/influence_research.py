@@ -270,7 +270,10 @@ def cmd_steam(args):
                 for it in j.get("appnews", {}).get("newsitems", []):
                     # Only the developer's own posts; the feed also carries press articles.
                     if it.get("feedname") == "steam_community_announcements":
-                        docs.append(("news", f"https://store.steampowered.com/news/app/{aid}/view/{it['gid']}",
+                        # The feed's gid is NOT the id the store's news page uses, so a
+                        # store.steampowered.com/news/app/<aid>/view/<gid> link is dead.
+                        # Its own url redirects to the real announcement; cite where it lands.
+                        docs.append(("news", it["url"],
                                      clean(it["title"] + " . " + it["contents"])))
             except Exception:
                 pass
