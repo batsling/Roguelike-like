@@ -2,7 +2,8 @@
 
 How to find influences the chart is missing, what counts as a source, and what
 went wrong the first time so it doesn't again. The candidates found so far, with
-quotes and links, are in `docs/influence-candidates.md`, waiting for approval.
+quotes and links, are in `docs/influence-candidates.md`: the ones now in the sheet are ticked
+✓ *on the chart*, and the rest are waiting for approval.
 
 ## The rules
 
@@ -48,6 +49,7 @@ python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.
 python3 tools/influence_research.py lang      # each studio's own language; add --forums for subforums (~30 min)
 python3 tools/influence_research.py forums    # ~1 h for the targets, English + the studio's language; resumable
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
+python3 tools/influence_research.py status    # which candidates are in the sheet now; --tick marks them
 ```
 
 Everything goes into `.influence_work/` (gitignored). The `steam` pass caches
@@ -203,3 +205,19 @@ same-studio pairs), and the source URL. Edit through `tools/_xlsx_surgery.py`
 like the `tools/_connections_*.py` one-shots (never by saving with openpyxl,
 which drops the workbook's charts), then run `python3 tools/import-games-godot.py`.
 `tools/_connections_stolen_realm_survivors.py` is the closest worked example.
+
+The owner usually adds rows straight into the sheet, so afterwards bring the
+candidate list up to date:
+
+```bash
+python3 tools/influence_research.py status          # what's in the sheet now, and any name it can't match
+python3 tools/influence_research.py status --tick   # tick those lines ✓ on the chart
+```
+
+`status` matches the names on each `- [ ]` line against the sheet exactly. If
+the owner added a row under a different name than the doc uses, it reports the
+line as unmatched or open instead of guessing. That happens when the doc names a
+series or a remake and the sheet names one game, for example "Shiren the
+Wanderer" added as `Mystery Dungeon 2: Shiren the Wanderer`, or "Spelunky" added
+as `Spelunky Classic`. Change the doc line to the row that was added, say so in
+a note, and run it again.

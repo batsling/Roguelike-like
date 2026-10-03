@@ -23,6 +23,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
     python3 tools/influence_research.py xsources  # who posted each X/Twitter source the sheet cites
+    python3 tools/influence_research.py status    # which candidates are in the sheet now (--tick marks them)
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -692,6 +693,62 @@ def cmd_xsources(args):
     print(f"{len(rows)} X/Twitter sources -> {out}")
 
 
+# ── status ──────────────────────────────────────────────────────────────────
+
+CANDIDATES = os.path.join(ROOT, "docs", "influence-candidates.md")
+# `**Influencer → Influencee**`, the format every candidate line uses. Anything
+# after it on the line (the quote, the source) is left alone.
+CANDIDATE = re.compile(r"\*\*([^*→]+?) → ([^*]+?)\*\*")
+# Section 6 lists rows ALREADY in the sheet whose source needs a look; those are
+# on the chart by definition and are not candidates.
+STATUS_STOP = "## 6."
+
+
+def cmd_status(args):
+    """Which candidates in `docs/influence-candidates.md` are in the sheet now.
+
+    The owner adds approved rows to `connections` by hand, so the candidate list
+    falls behind the sheet. This reads both and prints, per open `- [ ]` line,
+    whether every pair on it is a row now. With --tick it ticks those lines and
+    marks them `✓ on the chart`, so what stays unticked is what is left to
+    review. A name the sheet doesn't have exactly (the doc says "Spelunky", or a
+    series, where the sheet names one game) is reported rather than guessed:
+    fix the doc line to name the row the owner picked, and run it again.
+    """
+    games, conns = load_sheet()
+    have = {(str(a).strip().lower(), str(b).strip().lower()) for a, b, *_ in conns}
+    names = {str(r[0]).strip().lower() for r in games}
+    lines = open(CANDIDATES, encoding="utf8").read().split("\n")
+    added, still_open, unknown = [], [], []
+    for i, line in enumerate(lines):
+        if line.startswith(STATUS_STOP):
+            break
+        if not line.startswith("- [ ] "):
+            continue
+        pairs = CANDIDATE.findall(line)
+        if not pairs:
+            continue
+        missing = [n for p in pairs for n in p if n.strip().lower() not in names]
+        if all((a.strip().lower(), b.strip().lower()) in have for a, b in pairs):
+            added.append(i)
+            if args.tick:
+                end = list(CANDIDATE.finditer(line))[-1].end()
+                lines[i] = "- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:]
+        elif missing:
+            unknown.append((i, missing))
+        else:
+            still_open.append(i)
+    for i in added:
+        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % p for p in CANDIDATE.findall(lines[i]))))
+    for i, missing in unknown:
+        print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
+    print("%d open candidate line(s) are in the sheet, %d are not, %d name a game the "
+          "sheet spells differently" % (len(added), len(still_open), len(unknown)))
+    if args.tick and added:
+        open(CANDIDATES, "w", encoding="utf8").write("\n".join(lines))
+        print("ticked %d line(s) in %s" % (len(added), os.path.relpath(CANDIDATES, ROOT)))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--work", default=os.path.join(ROOT, ".influence_work"))
@@ -701,6 +758,8 @@ def main():
     sub.add_parser("samedev")
     sub.add_parser("steam")
     sub.add_parser("xsources")
+    sub.add_parser("status").add_argument("--tick", action="store_true",
+                                          help="tick the candidate lines that are in the sheet now")
     for name in ("lang", "forums", "devcheck"):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["targets", "all"], default="targets")
@@ -709,7 +768,7 @@ def main():
                                      help="also read each game's forum index for language subforums")
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
-     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources}[args.cmd](args)
+     "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status}[args.cmd](args)
 
 
 if __name__ == "__main__":
