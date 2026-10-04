@@ -16,7 +16,7 @@ How the research is done, and how to do more: `docs/influence-research.md`.
 
 | | lines |
 |---|---|
-| 1. To review: games on the sheet | 21 strong, 40 weaker |
+| 1. To review: games on the sheet | 21 strong, 41 weaker |
 | 2. To review: games you want to add | 6 strong, 6 weaker |
 | 7. Done: on the chart | 112 |
 
@@ -81,6 +81,7 @@ Sorted by the game that would get the new connection.
 - [ ] **Nuclear Throne → Picayune Dreams** — same as **The Binding of Isaac → Picayune Dreams**
 - [ ] **The Binding of Isaac → Picayune Dreams** — "Schism had similar inspirations as Picayune Dreams, following … The Binding of Isaac and Nuclear Throne." — [Steam post](https://steamcommunity.com/games/2088840/announcements/detail/3685688504882617185)
 - [ ] **The Binding of Isaac → RAM: Random Access Mayhem**, **Risk of Rain 2 → RAM: Random Access Mayhem** *(where the body-swap idea came from)* — Cunningham (Xylem Studios), asked what drew them to the body-swap: "the most engaging roguelike experiences often come from risky play – Grazing past enemies to hit them with the Cube of Meat in The Binding of Isaac, stacking Shaped Glass in Risk of Rain 2 until both you and the enemies die in one hit … it often doesn't translate into a viable playstyle in typical roguelikes where death is so punishing." *(On powerups, they say they use neither the "Isaac" nor the "Risk of Rain" approach.)* — [Game Developer](https://www.gamedeveloper.com/design/ram-random-access-mayhem-s-body-swapping-mechanic-was-born-from-challenges-playing-roguelikes)
+- [ ] **Diablo → Rogue Wizards** *(a quest named after Diablo's, and a lifelong favourite)* — Colin Day (Spellbind Studios), asked whether the "Den of Evil" is a Diablo reference: "Yep, the "Den of Evil" is definitely a nod to Diablo, one of my favorite series and that has been a part of my gaming DNA for a really long time." *(He worked on Diablo 3 at Blizzard North. Its two rows today are Dungeons of Dredmor and Sword of Fargoal, from the same interview.)* — [GameSkinny](https://www.gameskinny.com/culture/interview-with-colin-day-creator-of-rogue-wizards-and-founder-of-spellbind-studios/)
 - [ ] **Heretic's Fork → Slime 3K: Rise Against Despot** — "a new ability that pays tribute to Heretic's Fork" — [Steam dev post](https://steamcommunity.com/games/2348610/announcements/detail/4025723667734553082)
 - [ ] **Balatro → Slots & Daggers** — "I had thought about gambling and casino-style mechanics, and how they have inspired very successful recent titles like Balatro or Vampire Survivors." — [indiegames.wtf interview](https://indiegames.wtf/interviews/slots-daggers-the-roguelite-between-luck-and-strategy/)
 - [ ] **Vampire Survivors → Slots & Daggers** — same as **Balatro → Slots & Daggers**
@@ -235,6 +236,8 @@ Games a developer names that aren't on the chart but are roguelikes themselves, 
 - **WazHack**: its developer Waz wrote GEM NetHack, the first graphical NetHack (not on the chart).
 - **Fushigi no Gensoukyou**: the Japanese wikis (Niconico, Pixiv) say its play is modelled on the Shiren the Wanderer series; the sheet has Torneko: The Last Hope instead, from DualShockers. Nothing from AQUASTYLE itself was found (their published interview is about a later rhythm game).
 
+- **AK-xolotl ← Hades** (a video to watch): in a Gamereactor video interview, creator Daniel Piqueras is reported to say the weapon and upgrade systems drew more on Hades than on Nuclear Throne or Enter the Gungeon, while the gun feel takes from Nuclear Throne. The page has no transcript, so it needs a listen before it's a source. — [Gamereactor video](https://www.gamereactor.eu/video/658393/Creator+Daniel+Piqueras+on+why+AK-xolotl+is+one+of+the+craziest+roguelike+twin-stick+shooters/)
+
 ### Influences that aren't on the chart (only matter if you add the game)
 
 - **Beneath Apple Manor** ← Dragon Maze (Apple II), Colossal Cave Adventure, and D&D. Don Worth, by email to the CRPG Addict. — [CRPG Addict](http://crpgaddict.blogspot.com/2012/12/game-79-beneath-apple-manor-1978.html)
@@ -306,6 +309,8 @@ Word Play (Mark Brown's "think jokers in Balatro, or boons in Hades" is an analo
 ### Two connections, first batch (October 2026)
 
 All 140 two-connection games went through the cached Steam pages read wider, itch.io, studio sites, and a read of every source their rows already cite. Then a hand search of the placeholder rows and the first of the well-known games. New lines are in section 1, and what bears on existing rows is in section 4. Also checked, all off the chart or not an influence: Mewgenics (Magic: The Gathering and board games; Isaac is on the sheet), Cultist Simulator (Fallen London, Doodle God, and books), Bad North (Revenge of the Titans and Total War, from Oskar Stålberg), Iratus (its FAQ: "Primarily, Darkest Dungeon and Dungeon Keeper"), Ravenswatch (the Hades and Diablo comparisons are reviewers'), Raccoin (its producer names only Balatro and Cupiclaw, both on the sheet; the interview's Brotato and Dream Quest lines are about another studio's game), Pronoun Palace (its Brutal Orchestra line is about Bum-bo's influence on that game), Breachway (LoneStar is a player's comparison), and press-only comparisons for Decktamer ("Pokémon meets Slay the Spire"), Into The Grid and Zet Zillions. The itch.io "Rogue Tower" that names Die in the Dungeon is a different game, a tabletop RPG.
+
+Second batch, the better-known games: Barony (its press kit's System Shock 2, Daggerfall and Ultima Underworld are off the chart, and the creator says Ultima Underworld didn't directly shape it), Flinthook (the studio's own Mercenary Kings and Bionic Commando), Has-Been Heroes, Shovel Knight Dig (Dig Dug, Mr. Driller, SteamWorld Dig and Boulder Dash besides the two on the sheet), Aces & Adventures, Mana Spark, Space Grunts (the developer confirms Brogue and DoomRL as "my main inspiration"; the list of other roguelikes in that thread is a player's), Shadow of the Wyrm (NetHack and Angband are how its author found the genre), Hellcard ("love letter to Diablo" is said of Book of Demons, the studio's earlier game), Realm of Ink, Reignbreaker (video only), Iratus (Dungeon Keeper) and Quasimorph: nothing new beyond their rows. The rest of the 140 were covered by the automated passes only.
 
 ### Your wanted list
 
