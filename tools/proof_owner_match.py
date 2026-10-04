@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Rename the owner's proof screenshots into the game's "From → To.png" format.
+"""Rename the owner's free-named proof screenshots into the game's format.
 
-The game reads one file per connection, named for the two games in the
-direction of the influence: "Slay the Spire → Tic Tactic.png". The owner
-uploads screenshots to images2.0/proof/ under whatever name reads well:
-"tic tactic sts.png", "going under hades, isaac, gungeon, spelunky.png",
-"dungeons and degenerate gamblers, ballionaire, and crop rotation to luck be a
-landlord.png". This works out which connection(s) each upload proves and, with
---write, renames it into place: one copy per connection when it proves several,
-then the upload itself is removed. Every file it writes is added to
-tools/proof_owner.json, which is what stops a captured page ever replacing it.
+The game reads one file per connection, named by the two games' ids, influencer
+first, joined by a hyphen: "slay_the_spire-tic_tactic.png" (an id is a game's
+file name in data/games/ without the .tres). A screenshot dropped into
+images2.0/proof/ under that name needs nothing else. One dropped in under any
+other name ("tic tactic sts.png", "going under hades, isaac, gungeon,
+spelunky.png") is what this is for: it works out which connection(s) the name
+means and, with --write, renames it into place, one copy per connection when
+it proves several, then removes the upload.
 
 How it reads a name:
 
@@ -20,20 +19,18 @@ How it reads a name:
      the REST of the file name. Only the rest: "dungeon" in "dungeon drafters"
      is the game's own name, not Mystery Dungeon.
 
-It only proposes pairs that are edges on the sheet, so a screenshot proving a
-connection the sheet doesn't have is reported, never renamed.
+It only proposes pairs that are connections on the sheet. It also reports any
+file already in the id format whose ids aren't a connection (a typo).
 
     python3 tools/proof_owner_match.py           # print the proposals
     python3 tools/proof_owner_match.py --write   # and rename them into place
-    python3 tools/proof_owner_match.py --pair "file.png" "Slay the Spire" "Tic Tactic"
+    python3 tools/proof_owner_match.py --pair "file.png" slay_the_spire tic_tactic
                                                  # one the guess can't place, by hand
-                                                 # (repeat the flag for more pairs)
+                                                 # (ids or names; repeat for more pairs)
 
-Read the proposals before --write. A typo ("abolisk", "backback"), a file that
-runs the other way (one influencer, several games), or a word shared by two
-games ("survivors") won't match or may match wrong: use --pair for those.
-A connection that already has one of YOUR screenshots is never overwritten;
-the upload is left in place and reported.
+A connection that already has one of YOUR screenshots is never overwritten; the
+upload is left in place and reported. A captured one (tools/proof_captured.json)
+is replaced, and is yours from then on.
 """
 import glob
 import json
@@ -44,15 +41,8 @@ import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROOF = os.path.join(ROOT, "images2.0", "proof")
-OWNER = os.path.join(ROOT, "tools", "proof_owner.json")
-ARROW = " → "
-
-
-def proof_name(name):
-    """The same rule as GameChoiceModal.proof_file_name and capture_proof.js."""
-    name = name.replace(":", " -")
-    name = re.sub(r'[<>"/\\|?*]', "", name)
-    return re.sub(r"\s+", " ", name).strip().rstrip(".")
+CAPTURED = os.path.join(ROOT, "tools", "proof_captured.json")
+PROOF_NAME = re.compile(r"^([a-z0-9_]+)-([a-z0-9_]+)\.png$")
 
 # Short forms the owner uses that initials alone don't give.
 SHORT = {
@@ -135,19 +125,27 @@ def propose(stem, games, incoming):
     return to, pairs
 
 
-def rename(name, pairs, games, owned):
+def sha1(data):
+    import hashlib
+    return hashlib.sha1(data).hexdigest()
+
+
+def rename(name, pairs, ledger):
     """Copy one upload to each connection's file; drop the upload if all landed."""
     src = os.path.join(PROOF, name)
     data = open(src, "rb").read()
     clashes = []
     for a, b in pairs:
-        dest = proof_name(games[a]["name"]) + ARROW + proof_name(games[b]["name"]) + ".png"
-        if dest in owned and os.path.exists(os.path.join(PROOF, dest)) \
-                and open(os.path.join(PROOF, dest), "rb").read() != data:
-            clashes.append(dest)
-            continue
-        open(os.path.join(PROOF, dest), "wb").write(data)
-        owned.add(dest)
+        dest = f"{a}-{b}.png"
+        path = os.path.join(PROOF, dest)
+        if os.path.exists(path):
+            old = open(path, "rb").read()
+            captured = ledger.get(dest) == sha1(old)
+            if not captured and old != data:
+                clashes.append(dest)
+                continue
+        open(path, "wb").write(data)
+        ledger.pop(dest, None)          # the owner's now
         print(f"  -> {dest}")
     if clashes:
         print(f"  KEPT {name}: you already have a screenshot for " + ", ".join(clashes))
@@ -163,51 +161,63 @@ def main():
     for gid, g in games.items():
         for o in g["out"]:
             incoming.setdefault(o, []).append(gid)
-    owner = json.load(open(OWNER, encoding="utf8"))
-    owned = set(owner["files"])
+    captured = json.load(open(CAPTURED, encoding="utf8"))
+    ledger = captured["files"]
     write = "--write" in sys.argv
 
-    # --pair FILE FROM TO, by display name, for what the guess can't place.
-    by_name = {proof_name(g["name"]).lower(): gid for gid, g in games.items()}
+    # --pair FILE FROM TO, by id or display name, for what the guess can't place.
+    def game_id(x):
+        if x in games:
+            return x
+        key = " ".join(words(x))
+        return next((gid for gid, g in games.items() if " ".join(words(g["name"])) == key), None)
     hand = {}
     args = sys.argv[1:]
     for i, arg in enumerate(args):
         if arg == "--pair":
             file, a, b = args[i + 1:i + 4]
-            ida, idb = by_name.get(proof_name(a).lower()), by_name.get(proof_name(b).lower())
+            ida, idb = game_id(a), game_id(b)
             if ida is None or idb is None:
                 sys.exit(f"--pair: no game called {a if ida is None else b!r}")
             if idb not in games[ida]["out"]:
-                sys.exit(f"--pair: {a} -> {b} is not a connection on the sheet")
+                sys.exit(f"--pair: {games[ida]['name']} -> {games[idb]['name']} is not a connection on the sheet")
             hand.setdefault(file, []).append([ida, idb])
     for file, pairs in hand.items():
         print(file)
-        rename(file, pairs, games, owned)
+        rename(file, pairs, ledger)
     if hand:
         write = True
 
-    new, stuck = {}, []
+    new, stuck, typos = {}, [], []
     for f in sorted(glob.glob(os.path.join(PROOF, "*.png")), key=str.lower):
         name = os.path.basename(f)
-        # "From → To.png" is already in place.
-        if ARROW in name or name in hand:
+        m = PROOF_NAME.match(name)
+        if m:
+            # Already in the format: only check it names a real connection.
+            a, b = m.groups()
+            if a not in games or b not in games or b not in games[a]["out"]:
+                typos.append(name)
+            continue
+        if name in hand:
             continue
         to, pairs = propose(name[:-4], games, incoming)
         if pairs:
             new[name] = pairs
             print(f"{name}\n    " + "\n    ".join(f"{games[a]['name']} -> {games[b]['name']}" for a, b in pairs))
             if "--write" in sys.argv:
-                rename(name, pairs, games, owned)
+                rename(name, pairs, ledger)
         else:
             why = "no game name at the start" if to is None else \
                 f"{games[to]['name']}: none of its influencers named ({', '.join(games[x]['name'] for x in incoming.get(to, [])) or 'it has none'})"
             stuck.append(f"{name}  [{why}]")
     if stuck:
         print("\nNOT PLACED (a typo, the other direction, or not on the sheet) - use --pair:\n  " + "\n  ".join(stuck))
+    if typos:
+        print("\nNAMED LIKE A PROOF BUT NOT A CONNECTION ON THE SHEET (check the ids and the order, influencer first):\n  " + "\n  ".join(typos))
     print(f"\n{len(new)} matched, {len(stuck)} not placed" + ("" if write else " (nothing renamed: add --write)"))
     if write:
-        owner["files"] = sorted(owned, key=str.lower)
-        json.dump(owner, open(OWNER, "w", encoding="utf8"), indent=1, ensure_ascii=False)
+        json.dump(captured, open(CAPTURED, "w", encoding="utf8"), indent=1)
+        open(CAPTURED, "a").write("\n")
 
 
 if __name__ == "__main__":

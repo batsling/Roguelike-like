@@ -383,21 +383,16 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 # edge's two ids, so these tests stand the run on an edge that HAS one rather
 # than hoping the random offering lands on it.
 
-# A game proof file, "Slay the Spire → Tic Tactic.png", read back as the
-# connection's two ids. [] for the owner's own freely named screenshots, which
-# share the folder, and for a name no game has.
-var _by_file_name: Dictionary = {}
-
+# A proof file, "slay_the_spire-tic_tactic.png", read back as the connection's
+# two ids. [] for anything that isn't a PNG; [null] for a name that isn't two
+# ids of real games joined by the hyphen (a typo the owner made by hand).
 func _edge_of(file: String) -> Array:
-	if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains(GameChoiceModal.PROOF_ARROW):
+	if not file.ends_with(GameChoiceModal.PROOF_EXT):
 		return []
-	if _by_file_name.is_empty():
-		for game in Data.all_games():
-			_by_file_name[GameChoiceModal.proof_file_name(game.display_name)] = game.id
-	var names: PackedStringArray = file.get_basename().split(GameChoiceModal.PROOF_ARROW)
-	if names.size() != 2 or not _by_file_name.has(names[0]) or not _by_file_name.has(names[1]):
+	var ids: PackedStringArray = file.get_basename().split(GameChoiceModal.PROOF_JOIN)
+	if ids.size() != 2 or Data.get_game(StringName(ids[0])) == null or Data.get_game(StringName(ids[1])) == null:
 		return [null]
-	return [_by_file_name[names[0]], _by_file_name[names[1]]]
+	return [StringName(ids[0]), StringName(ids[1])]
 
 func _a_captured_edge() -> Array:
 	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)

@@ -43,7 +43,7 @@
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
  *   node tools/capture_proof.js --export           copy the captures into the game as
- *                                                  images2.0/proof/<From game> → <To game>.png,
+ *                                                  images2.0/proof/<influencer id>-<influenced id>.png,
  *                                                  beside (never over) the owner's own
  *
  * Needs Playwright (`npm install playwright` or NODE_PATH pointing at one) and a
@@ -491,55 +491,63 @@ async function captureVideo(ctx, c, file) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 // ── into the game ─────────────────────────────────────────────────────────────
-// GameChoiceModal shows images2.0/proof/<From game> → <To game>.png under the
-// connection's claim, named by the games' own names so the folder reads like the
-// map. PNG is the owner's call; the files are copied byte for byte. The " → "
-// is what marks a file as the game's: the owner's own freely named screenshots
-// live in the same folder and are never touched here.
-// Video and audio cards are left out: the owner sources those moments by hand.
+// GameChoiceModal shows images2.0/proof/<influencer id>-<influenced id>.png
+// under the connection's claim (slay_the_spire-tic_tactic.png). An id is only
+// lower-case letters, digits and underscores, so the hyphen splits a name one
+// way only, and the owner can type these by hand. PNG is the owner's call; the
+// files are copied byte for byte. Video and audio cards are left out: the owner
+// sources those moments by hand.
+//
+// WHOSE FILE IS WHOSE. Captured and owner's proofs share the folder and the
+// name format, so the name can't tell them apart. tools/proof_captured.json
+// can: every file this export copies in is recorded there with a sha1 of its
+// bytes, and only a file still listed with that same sha1 is ever replaced or
+// deleted. Everything else is the owner's — a file they dropped in under the
+// right name, or a captured one they uploaded over (its bytes no longer match,
+// so it drops off the list and is theirs from then on).
 const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
-const ARROW = ' → ';
-// The same rule as GameChoiceModal.proof_file_name: the characters Windows
-// refuses in a file name go, and a colon becomes " -". Keep the two in step.
-const proofName = name => name.replace(/:/g, ' -').replace(/[<>"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().replace(/\.+$/, '');
-// "__" is the old id naming, cleared out by the next export.
-const isGameFile = f => f.endsWith('.png') && (f.includes(ARROW) || f.includes('__'));
+const CAPTURED = path.join(__dirname, 'proof_captured.json');
+const gameFile = r => `${r.from}-${r.to}.png`;
+const isProofName = f => /^[a-z0-9_]+-[a-z0-9_]+\.png$/.test(f);
+const sha1 = file => require('crypto').createHash('sha1').update(fs.readFileSync(file)).digest('hex');
 
 function exportProofs() {
   const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
-  // The OWNER's own screenshots win over a captured page: they are the proof
-  // the owner chose, mostly for rows whose Source is "check folder". They sit in
-  // the folder under the same "From → To.png" names (proof_owner_match.py
-  // renames an upload into place) and tools/proof_owner.json lists them, so the
-  // export never copies a capture over one, nor deletes one.
-  const owned = new Set(JSON.parse(fs.readFileSync(path.join(__dirname, 'proof_owner.json'), 'utf8')).files);
+  const ledger = JSON.parse(fs.readFileSync(CAPTURED, 'utf8'));
+  const ours = f => ledger.files[f] && fs.existsSync(path.join(GAME_DIR, f)) && sha1(path.join(GAME_DIR, f)) === ledger.files[f];
+  // A listed file whose bytes changed was uploaded over: the owner's now.
+  for (const f of Object.keys(ledger.files)) if (fs.existsSync(path.join(GAME_DIR, f)) && !ours(f)) delete ledger.files[f];
   fs.mkdirSync(GAME_DIR, { recursive: true });
-  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !isGameFile(f));
-  const names = Object.fromEntries(loadConnections().flatMap(c => [[c.from, c.fromName], [c.to, c.toName]]));
-  const gameFile = r => proofName(names[r.from]) + ARROW + proofName(names[r.to]) + '.png';
-  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owned.has(gameFile(r)))
-    .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) }));
+  const owners = f => fs.existsSync(path.join(GAME_DIR, f)) && !ledger.files[f];
+  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owners(gameFile(r)));
   let bytes = 0;
   for (const r of keep) {
     const dest = path.join(GAME_DIR, gameFile(r));
-    fs.copyFileSync(r.file, dest);
+    fs.copyFileSync(path.join(OUT, r.image), dest);
+    ledger.files[gameFile(r)] = sha1(dest);
     bytes += fs.statSync(dest).size;
   }
-  // A file goes only when its connection is KNOWN to have nothing: re-captured
-  // as a failure, or taken out of the sheet (plus the old "__" names). Not merely
-  // because this machine's report doesn't mention it — the owner exports from
-  // their own computer after a `--kind reddit` run, with a report that knows
-  // only Reddit, and that must add the Reddit proofs without wiping the rest.
-  // The owner's own screenshots are never touched.
+  // A captured file goes only when its connection is KNOWN to have nothing:
+  // re-captured as a failure, or taken out of the sheet. Not merely because this
+  // machine's report doesn't mention it — the owner exports from their own
+  // computer after a `--kind reddit` run, with a report that knows only Reddit,
+  // and that must add the Reddit proofs without wiping the rest.
   const want = new Set(keep.map(gameFile));
   const onSheet = new Set(loadConnections().map(gameFile));
   const failed = new Set(report.filter(r => !r.image || r.status === 'quote-card').map(gameFile));
-  for (const f of fs.readdirSync(GAME_DIR)) {
-    if (!isGameFile(f) || want.has(f) || owned.has(f)) continue;
-    if (f.includes('__') || failed.has(f) || !onSheet.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
+  for (const f of Object.keys(ledger.files)) {
+    if (want.has(f) || !ours(f)) continue;
+    if (failed.has(f) || !onSheet.has(f)) { fs.unlinkSync(path.join(GAME_DIR, f)); delete ledger.files[f]; }
   }
-  console.log(`${keep.length} captured proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB), beside ${owned.size} of yours`);
-  if (unmapped.length) console.log(`Not named "From → To.png", so not shown in game (run python3 tools/proof_owner_match.py):\n  ${unmapped.join('\n  ')}`);
+  for (const f of Object.keys(ledger.files)) if (!fs.existsSync(path.join(GAME_DIR, f))) delete ledger.files[f];
+  ledger.files = Object.fromEntries(Object.entries(ledger.files).sort());
+  fs.writeFileSync(CAPTURED, JSON.stringify(ledger, null, 1) + '\n');
+  const all = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png'));
+  const misnamed = all.filter(f => !isProofName(f) || !onSheet.has(f));
+  console.log(`${keep.length} captured proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB); ` +
+    `${all.length - Object.keys(ledger.files).length - misnamed.length} of yours beside them`);
+  if (misnamed.length) console.log(`Not <influencer id>-<influenced id>.png for a connection on the sheet, so not shown in game ` +
+    `(python3 tools/proof_owner_match.py renames free-named uploads):\n  ${misnamed.join('\n  ')}`);
 }
 
 // ── what is still missing ─────────────────────────────────────────────────────
@@ -548,8 +556,7 @@ function exportProofs() {
 // run or after adding screenshots, and it drops whatever has a proof now.
 function writeMissing() {
   const report = new Map(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')).map(r => [`${r.from}__${r.to}`, r]));
-  const names = Object.fromEntries(loadConnections().flatMap(c => [[c.from, c.fromName], [c.to, c.toName]]));
-  const file = c => proofName(names[c.from]) + ARROW + proofName(names[c.to]) + '.png';
+  const file = gameFile;
   const inGame = new Set(fs.readdirSync(GAME_DIR));
   const groups = { reddit: [], dead: [], refused: [], down: [], nomatch: [], video: [], note: [], none: [] };
   for (const c of loadConnections()) {
@@ -574,10 +581,12 @@ function writeMissing() {
 
 Generated by \`node tools/capture_proof.js --missing\` from the capture report and
 the files in \`images2.0/proof/\`, so **don't edit it by hand**: add the proof,
-then run it again and the connection drops off. ${inGame.size ? `${[...inGame].filter(f => f.includes(ARROW) && f.endsWith('.png')).length} connections have a proof in the game; ` : ''}${total} don't, below,
+then run it again and the connection drops off. ${inGame.size ? `${[...inGame].filter(isProofName).length} connections have a proof in the game; ` : ''}${total} don't, below,
 grouped by what each needs. A proof you screenshot yourself goes in
-\`images2.0/proof/\` under any name, then \`python3 tools/proof_owner_match.py --write\`
-and \`node tools/capture_proof.js --export\` (see \`docs/influence-research.md\`).
+\`images2.0/proof/\` as \`<influencer id>-<influenced id>.png\` (the ids are the
+game's file names in \`data/games/\`, e.g. \`slay_the_spire-tic_tactic.png\`), or
+under any name followed by \`python3 tools/proof_owner_match.py --write\` (see
+\`docs/influence-research.md\`).
 
 ` + section('Reddit: capture from your own computer',
     'Reddit blocks the cloud container. `node tools/capture_proof.js --kind reddit` on your own computer captures these as real screenshots, then `--export`. The same run also re-captures the Reddit proofs already in the game, which came through Reddit\'s embed page from here and can come out faded where a long post is folded under "Read more".', groups.reddit)

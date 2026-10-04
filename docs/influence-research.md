@@ -330,28 +330,30 @@ the owner's to source by hand (a YouTube clip can't be downloaded within its
 terms), so `--skip youtube,podcast` leaves them out.
 
 **One name format for every proof.** The game reads one PNG per connection
-(PNG is the owner's call), named for the two games in the direction of the
-influence: `Slay the Spire → Tic Tactic.png`. A colon becomes " -" and the
-characters Windows refuses in a file name are dropped
-(`GameChoiceModal.proof_file_name`, mirrored in both scripts). A screenshot that
-proves several connections is saved once under each: one image naming Hades,
-Isaac, Gungeon and Spelunky as Going Under's influences is four files.
+(PNG is the owner's call), named by the two games' ids, influencer first,
+joined by a hyphen: `slay_the_spire-tic_tactic.png`. An id is a game's file name
+in `data/games/` without `.tres`; ids are only lower-case letters, digits and
+underscores, so the hyphen splits a name one way only. A screenshot that proves
+several connections is saved once under each: one image naming Hades, Isaac,
+Gungeon and Spelunky as Going Under's influences is four files.
 
-**The owner's own screenshots win.** Upload them to `images2.0/proof/` under
-any name ("tic tactic sts.png", "going under hades, isaac, gungeon,
-spelunky.png"), then run `python3 tools/proof_owner_match.py`. It reads each
-name, proposes the connections it proves and lists what it couldn't place; read
-the proposals, then `--write` renames each upload into place (one copy per
-connection) and adds the new files to `tools/proof_owner.json`. That list is
-what makes them the owner's: `capture_proof.js --export` never copies a
-captured page over one or deletes one, and the matcher never overwrites one
-with a different upload (it keeps the upload and says so). It folds accents
-(Kādomon) and accepts a name before its colon, but a typo ("abolisk",
-"backback"), a file that runs the other way (one influencer, several games), or
-a word shared by two games ("survivors") needs a look; place those with
-`--pair "file.png" "Slay the Spire" "Tic Tactic"`. Naming an upload in the
-`From → To.png` format yourself also works, but add it to
-`tools/proof_owner.json` or a later export may replace it.
+**Adding your own.** Drop a screenshot into `images2.0/proof/` named that way and
+you're done. Or drop it in under any name ("tic tactic sts.png", "going under
+hades, isaac, gungeon, spelunky.png") and run `python3
+tools/proof_owner_match.py`: it proposes the connection(s) each name means and
+lists what it couldn't place; `--write` renames them into place (one copy per
+connection). For a name it can't read, `--pair "file.png" slay_the_spire
+tic_tactic` (ids or game names). It also flags a file in the id format whose ids
+aren't a connection on the sheet, and so does the test suite
+(`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
+silently.
+
+**Your screenshots win.** `tools/proof_captured.json` lists the files
+`capture_proof.js --export` copied in, each with a sha1 of its bytes, and an
+export only ever replaces or deletes a file still listed with that sha1.
+Anything else in the folder is yours, including a captured file you uploaded
+over: its bytes no longer match, so it drops off the list and is yours from
+then on.
 
 Two uploads prove connections the sheet doesn't have yet (Brotato → Bounty of
 One, Enter the Gungeon → Dungreed). They wait, already named, in

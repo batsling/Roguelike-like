@@ -623,24 +623,22 @@ static func short_source(url: String) -> String:
 
 # --- the proof screenshot ---------------------------------------------------
 #
-# One image per connection, named for the edge in the direction the sheet
-# authored it, by the games' own names so the folder reads like the map:
-# `Slay the Spire → Tic Tactic.png` (proof_file_name says how a name is made
-# safe as a file name). They are captured, not drawn — `node
+# One image per connection, named by the two games' ids in the direction the
+# sheet authored it, influencer first, joined by a hyphen:
+# `slay_the_spire-tic_tactic.png`. An id is only ever lower-case letters, digits
+# and underscores, so the hyphen can never be part of one and a name splits one
+# way only; the owner types these by hand. They are captured — `node
 # tools/capture_proof.js` opens each Source link, finds the sentence where the
 # developer names the older game, highlights it and crops around it — or they are
-# the owner's own screenshots, copied to these names by `capture_proof.js
-# --export`. A connection with neither has no file, and the block shows the link
-# alone as before.
+# the owner's own screenshots. A connection with neither has no file, and the
+# block shows the link alone as before.
 #
 # Looked up by convention rather than stored on GameData, the way covers and
 # portraits are: an image is added or re-captured without touching the sheet.
 const PROOF_DIR := "res://images2.0/proof/"
 # PNG, the owner's call: screenshots of text, kept lossless.
 const PROOF_EXT := ".png"
-# What marks a file as one the game reads. The owner's freely named screenshots
-# share the folder and never contain it.
-const PROOF_ARROW := " → "
+const PROOF_JOIN := "-"
 # The thumbnail's tallest. A screenshot is scaled to the column's WIDTH and no
 # further (never up: blowing a line of text past its own size only blurs it), so
 # text stays readable; a tall one shows its top this far and is read in full by
@@ -651,32 +649,12 @@ const PROOF_THUMB_H := 260.0
 # the 0.62 the column has without one, a tweet's text came out too small to read.
 const PROOF_COLUMN_RATIO := 0.85
 
-# A game's name as it appears in a proof's file name: the name itself, minus the
-# characters Windows refuses in a file name. A colon becomes " -" so "Shotgun
-# King: The Final Checkmate" still reads as one name. tools/capture_proof.js
-# makes the same names (proofName); keep the two in step.
-static func proof_file_name(display_name: String) -> String:
-	var name: String = display_name.replace(":", " -")
-	for bad in ["<", ">", "\"", "/", "\\", "|", "?", "*"]:
-		name = name.replace(bad, "")
-	while name.contains("  "):
-		name = name.replace("  ", " ")
-	name = name.strip_edges()
-	while name.ends_with("."):
-		name = name.left(-1)
-	return name
-
 static func proof_path(from_id: StringName, to_id: StringName) -> String:
-	var from_game: GameData = Data.get_game(from_id)
-	var to_game: GameData = Data.get_game(to_id)
-	if from_game == null or to_game == null:
-		return ""
-	return "%s%s%s%s%s" % [PROOF_DIR, proof_file_name(from_game.display_name), PROOF_ARROW,
-		proof_file_name(to_game.display_name), PROOF_EXT]
+	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_EXT]
 
 static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
 	var path: String = proof_path(from_id, to_id)
-	if path == "" or not ResourceLoader.exists(path):
+	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
 
