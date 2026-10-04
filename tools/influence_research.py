@@ -27,6 +27,12 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py xsources  # who posted each X/Twitter source the sheet cites
     python3 tools/influence_research.py media     # interview videos + podcasts to listen to -> docs/influence-media.md
     python3 tools/influence_research.py status    # which candidates are in the sheet now (--tick marks them)
+    python3 tools/influence_research.py titles    # each game's Japanese/Chinese/Korean title, so CJK text is read
+    python3 tools/influence_research.py itch      # itch.io pages + devlogs -> itch.md
+    python3 tools/influence_research.py site      # studio websites + press kits -> site.md
+    python3 tools/influence_research.py reddit    # developer AMAs/launch posts + r/roguelikedev -> reddit.md
+    python3 tools/influence_research.py kickstarter  # campaign pages -> kickstarter.md (run on your own machine)
+    python3 tools/influence_research.py radio     # Roguelike Radio episodes -> docs/influence-media.md section 3
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -41,6 +47,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -49,7 +56,11 @@ import openpyxl  # read-only here. NEVER save the workbook with it: it drops the
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 XLSX = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
 LEGACY = os.path.join(ROOT, "legacy-web", "data", "games-data.js")
-UA = {"User-Agent": "Mozilla/5.0"}
+# A full browser string: some studio sites (Grid Sage Games, for Cogmind)
+# answer 406 to the bare "Mozilla/5.0" that bots send.
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/130.0 Safari/537.36",
+      "Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
 
 # Chart game names that are also ordinary words (or a status/class name inside
 # other games). They are matched case-sensitively and still produce noise:
@@ -109,15 +120,53 @@ def clean(text):
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
-def name_patterns(names):
-    return [(g, re.compile(r"(?<![\w])" + re.escape(g) + r"(?![\w])",
+def name_patterns(names, aliases=None):
+    """(chart name, pattern) for every game, plus one per native title in
+    `aliases` (from `titles`), which answers to the chart name it belongs to.
+
+    A native title is matched as a plain substring: Japanese and Chinese put no
+    spaces between words, so the word boundaries the Latin names need would
+    never match inside a sentence.
+    """
+    # Between words, a space, a colon or a dash are all the same: people write
+    # "Dungeon Crawl: Stone Soup" and "Cataclysm Dark Days Ahead" for the
+    # sheet's "Dungeon Crawl Stone Soup" and "Cataclysm: Dark Days Ahead".
+    gap = r"[\s:\-–—]+"
+    pats = [(g, re.compile(r"(?<![\w])" + gap.join(map(re.escape, re.split(gap, g))) + r"(?![\w])",
                            0 if g in AMBIGUOUS else re.I))
             for g in names if len(g) > 2]
+    names = set(names)
+    for g, alts in (aliases or {}).items():
+        if g in names:
+            pats += [(g, re.compile(re.escape(a))) for a in alts]
+    return pats
 
 
 def named_in(sentence, pats, own):
-    # `g in own` drops "Hades" from a Hades II sentence and the like.
-    return [g for g, p in pats if g != own and g not in own and p.search(sentence)]
+    """The chart games a sentence names, other than `own`.
+
+    `g in own` drops "Hades" from a Hades II sentence and the like. A name
+    found only INSIDE another chart game's name is dropped too: "Crawl" in
+    "Dungeon Crawl Stone Soup", "Omega" in "Omega Labyrinth". A game matched by
+    its English name and its native one is listed once.
+    """
+    spans = {}
+    for g, p in pats:
+        if g != own and g not in own:
+            spans.setdefault(g, []).extend(m.span() for m in p.finditer(sentence))
+    found = [(g, s) for g, ss in spans.items() for s in ss]
+    inside = lambda g, a, b: any(h != g and x <= a and b <= y and (x, y) != (a, b) for h, (x, y) in found)
+    return [g for g, ss in spans.items() if any(not inside(g, a, b) for a, b in ss)]
+
+
+# Sentences end at . ! ? followed by a space, or at 。！？ with nothing after:
+# Japanese and Chinese don't space between sentences, and splitting on spaces
+# alone left a whole CJK post as one "sentence", too long to be read at all.
+SENTENCE = re.compile(r"(?<=[.!?])\s+|(?<=[。！？])")
+
+
+def sentences(text):
+    return [x for x in SENTENCE.split(text) if x.strip()]
 
 
 def wpath(args, name):
@@ -130,6 +179,45 @@ def load_devs(args):
     if not os.path.exists(path):
         sys.exit("run `devs` first")
     return json.load(open(path))
+
+
+# Words that make up an edition, not a game: "豪华版" (deluxe edition) is in
+# a dozen localised titles and would name all of them.
+EDITION = re.compile(r"^(?:豪华版|豪華版|完全版|決定版|完整版|中文版|日本語版|한국어판|디럭스|デラックス|"
+                     r"エディション|版|원작|에디션)$")
+
+
+def native_aliases(title):
+    """The parts of a localised title a developer would write in a sentence.
+
+    A title that is wholly non-Latin ("不思议的皇冠") is used whole. A mixed one
+    ("杀戮尖塔 Slay the Spire") gives its non-Latin runs, since the Latin part
+    is the English name already matched. Runs under three letters are
+    dropped: Skul's 小骨 is also just the words "small bone".
+    """
+    runs = re.findall(r"[^\x00-\u024f\s:：\-–—!！?？()（）「」『』【】・·,，.。/／]{3,}", title)
+    return [r for r in runs if not EDITION.match(r)]
+
+
+def load_titles(args):
+    """{chart name: [native titles]} from `titles`, or {} if it hasn't run.
+
+    An alias two games share is dropped from both: it can't say which one a
+    sentence means.
+    """
+    path = wpath(args, "titles.json")
+    if not os.path.exists(path):
+        return {}
+    raw = json.load(open(path))
+    owners = {}
+    for g, titles in raw.items():
+        for a in {a for t in titles or [] for a in native_aliases(t)}:
+            owners.setdefault(a, set()).add(g)
+    out = {}
+    for a, gs in owners.items():
+        if len(gs) == 1:
+            out.setdefault(next(iter(gs)), []).append(a)
+    return out
 
 
 # ── targets ─────────────────────────────────────────────────────────────────
@@ -281,7 +369,7 @@ def cmd_steam(args):
     games, conns = load_sheet()
     devs = load_devs(args)
     have = connected(conns)
-    pats = name_patterns([r[0] for r in games])
+    pats = name_patterns([r[0] for r in games], load_titles(args))
     cache = wpath(args, "pages")
     os.makedirs(cache, exist_ok=True)
 
@@ -293,7 +381,7 @@ def cmd_steam(args):
         docs = steam_pages(aid, cache)
         out = []
         for kind, url, text in docs:
-            for s in re.split(r"(?<=[.!?])\s+", text):
+            for s in sentences(text):
                 if len(s) > 600 or not CLAIM.search(s) or NOISE.search(s):
                     continue
                 for g in named_in(s, pats, name):
@@ -350,7 +438,7 @@ def cmd_cues(args):
     games, conns = load_sheet()
     devs = load_devs(args)
     have = connected(conns)
-    pats = name_patterns([r[0] for r in games])
+    pats = name_patterns([r[0] for r in games], load_titles(args))
     # A leaf's lineage is as often on the OTHER game's page (Slime 3K's store
     # page is where Despotism 3k gets its second edge), so every page is read and
     # a hit is kept when either end of it is a leaf.
@@ -361,7 +449,7 @@ def cmd_cues(args):
         if not os.path.exists(fn):
             continue
         for kind, url, text in json.load(open(fn)):
-            for s in re.split(r"(?<=[.!?])\s+", text):
+            for s in sentences(text):
                 if len(s) > 700 or not (CUE.search(s) or CLAIM.search(s)) or NOISE.search(s):
                     continue
                 for g in named_in(s, pats, name):
@@ -388,7 +476,7 @@ def cmd_wanted(args):
     search returns the nearest title, and a wrong game is worse than none.
     """
     games, _ = load_sheet()
-    pats = name_patterns([r[0] for r in games])
+    pats = name_patterns([r[0] for r in games], load_titles(args))
     cache = wpath(args, "pages")
     os.makedirs(cache, exist_ok=True)
     norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
@@ -409,7 +497,7 @@ def cmd_wanted(args):
         note = "" if exact else f"closest match: {pick['name']}"
         out = []
         for kind, url, text in steam_pages(str(pick["id"]), cache):
-            for sent in re.split(r"(?<=[.!?])\s+", text):
+            for sent in sentences(text):
                 if len(sent) > 700 or not (CLAIM.search(sent) or CUE.search(sent)) or NOISE.search(sent):
                     continue
                 for g in named_in(sent, pats, pick["name"]):
@@ -464,7 +552,16 @@ class Community:
         return ""
 
 
-def game_order(args, games):
+def game_order(args, games, conns=None):
+    if args.games == "few":
+        # One connection or none, fewest first: the games an edge matters most
+        # for, and the same set `media` searches by default.
+        deg = {}
+        for r in conns or load_sheet()[1]:
+            deg[r[0]] = deg.get(r[0], 0) + 1
+            deg[r[1]] = deg.get(r[1], 0) + 1
+        return sorted((r[0] for r in games if deg.get(r[0], 0) <= 1),
+                      key=lambda n: (deg.get(n, 0), n.lower()))
     if args.games == "targets":
         tpath = wpath(args, "targets.json")
         if not os.path.exists(tpath):
@@ -669,7 +766,7 @@ def cmd_forums(args):
     """
     games, _ = load_sheet()
     devs = load_devs(args)
-    pats = name_patterns([r[0] for r in games])
+    pats = name_patterns([r[0] for r in games], load_titles(args))
     order = game_order(args, games)
     lpath = wpath(args, "lang.json")
     langs = json.load(open(lpath)) if os.path.exists(lpath) else {}
@@ -1142,8 +1239,446 @@ def write_media_doc(targets, jsonl, devs, per_game):
               "Held on the map by one connection or none. Listen for any game on the chart.", ""]
     for n in low:
         lines += block(n)
-    open(MEDIA, "w", encoding="utf8").write("\n".join(lines).rstrip() + "\n")
+    # Section 3 belongs to `radio`; carry it over untouched.
+    radio = _doc_section(open(MEDIA, encoding="utf8").read(), RADIO_SECTION) if os.path.exists(MEDIA) else ""
+    text = "\n".join(lines).rstrip() + "\n"
+    open(MEDIA, "w", encoding="utf8").write(text + ("\n" + radio if radio else ""))
     print("wrote %s: %d games with something to listen to" % (os.path.relpath(MEDIA, ROOT), len(found)))
+
+
+# ── titles (native-script names) ────────────────────────────────────────────
+
+TITLE_LANGS = ("japanese", "schinese", "tchinese", "koreana")
+
+
+def _non_latin(text):
+    return any(c.isalpha() and c > "ɏ" for c in text)
+
+
+def cmd_titles(args):
+    """Each game's title on its Steam page in Japanese, Chinese and Korean.
+
+    A Japanese developer writing in Japanese names 風来のシレン, not "Shiren the
+    Wanderer", and the name patterns only knew the English one, so every CJK
+    sentence naming a chart game went unread. Steam serves a game's localised
+    name when the page is asked for in that language (Crown Trick is
+    不思议的皇冠 in Chinese). Only names with non-Latin letters are kept; a page
+    that isn't localised answers with the English name. `steam`, `cues`,
+    `wanted`, `forums` and the scans below read titles.json when it exists.
+
+    Four requests a game. The store API rate-limits after a few hundred; a
+    game that failed is left out of the cache and retried on the next run.
+    """
+    devs = load_devs(args)
+    path = wpath(args, "titles.json")
+    cache = json.load(open(path)) if os.path.exists(path) else {}
+
+    def one(item):
+        name, v = item
+        aid = v.get("aid")
+        if not aid or name in cache:
+            return name, cache.get(name, [])
+        found = []
+        for lang in TITLE_LANGS:
+            try:
+                d = json.loads(get(f"https://store.steampowered.com/api/appdetails?l={lang}"
+                                   f"&filters=basic&appids={aid}"))[aid]
+            except Exception:
+                return name, None
+            t = (d.get("data") or {}).get("name", "") if d.get("success") else ""
+            if t and _non_latin(t) and t not in found:
+                found.append(t)
+        return name, found
+
+    with cf.ThreadPoolExecutor(4) as ex:
+        for name, found in ex.map(one, devs.items()):
+            if found is not None:
+                cache[name] = found
+    json.dump(cache, open(path, "w"), indent=0, ensure_ascii=False)
+    missing = sum(1 for n, v in devs.items() if v.get("aid") and n not in cache)
+    print(f"{sum(1 for v in cache.values() if v)} of {len(cache)} games have a native-script title"
+          + (f"; {missing} failed, run again for them" if missing else "") + f" -> {path}")
+
+
+# ── first-hand pages beyond Steam: itch, Kickstarter, Reddit, studio sites ──
+#
+# All four work the same way. A fetch step reads one game's pages and appends
+# them RAW to <source>.jsonl (resumable, like `forums`), and the triage step
+# writes <source>.md from that cache: every sentence that makes a claim (CLAIM
+# or CUE) beside another chart game's name, for a pair the sheet doesn't have.
+# Keeping the raw text means the filter can change without fetching again
+# (`--write-only`).
+
+def page_text(page):
+    """A web page's readable text: scripts, styles and site chrome dropped."""
+    page = re.sub(r"<(script|style|nav|header|footer|noscript)\b[^>]*>.*?</\1>", " ", page, flags=re.S | re.I)
+    return clean(page)
+
+
+def scan_docs(docs, pats, name, have):
+    out = []
+    for kind, url, text in docs:
+        for sent in sentences(text):
+            if len(sent) > 700 or not (CLAIM.search(sent) or CUE.search(sent)) or NOISE.search(sent):
+                continue
+            for g in named_in(sent, pats, name):
+                if (g, name) not in have and (name, g) not in have:
+                    out.append((g, kind, url, sent.strip()[:500]))
+    return out
+
+
+def collect(args, source, fetch, threads=1):
+    """Run `fetch(name) -> {"docs": [(kind, url, text)], ...}` over the games
+    and append each result to <source>.jsonl, skipping games already there."""
+    games, conns = load_sheet()
+    out = wpath(args, f"{source}.jsonl")
+    done = resumable(out)
+    todo = [n for n in game_order(args, games, conns) if n not in done]
+    if args.limit:
+        todo = todo[:args.limit]
+    print(f"{len(done)} cached, {len(todo)} to go", flush=True)
+
+    def safe(name):
+        try:
+            return fetch(name)
+        except Exception as e:
+            return {"docs": [], "err": str(e)[:200]}
+
+    with cf.ThreadPoolExecutor(threads) as ex, open(out, "a") as f:
+        for name, rec in zip(todo, ex.map(safe, todo)):
+            rec["game"] = name
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            f.flush()
+            print("%-45s %d page(s)%s" % (name[:45], len(rec.get("docs", [])),
+                                          "  " + (rec.get("note") or rec.get("err", ""))[:80]
+                                          if rec.get("note") or rec.get("err") else ""), flush=True)
+
+
+def write_triage(args, source, title, intro):
+    games, conns = load_sheet()
+    have = connected(conns)
+    pats = name_patterns([r[0] for r in games], load_titles(args))
+    recs = {}
+    jsonl = wpath(args, f"{source}.jsonl")
+    if os.path.exists(jsonl):
+        for line in open(jsonl):
+            r = json.loads(line)
+            recs[r["game"]] = r  # a rerun's line replaces the old one
+    path = wpath(args, f"{source}.md")
+    n = 0
+    with open(path, "w") as f:
+        f.write(f"# {title}\n\n{intro}\n\n")
+        for name in sorted(recs, key=str.lower):
+            r = recs[name]
+            seen, lines = set(), []
+            for g, kind, url, sent in scan_docs(r.get("docs", []), pats, name, have):
+                if (g, sent[:80]) not in seen:
+                    seen.add((g, sent[:80]))
+                    lines.append(f"- **{name}** mentions **{g}** [{kind}] {url}\n  {sent}\n")
+            if lines:
+                n += len(lines)
+                f.write(f"## {name}" + (f"  ({r['who']})" if r.get("who") else "") + "\n" + "".join(lines) + "\n")
+    print(f"{len(recs)} games read, {n} sentences to check -> {path}")
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9]", "", html.unescape(s or "").lower())
+
+
+def _cut(page, start, stops, cap=40000):
+    """The text from the tag carrying `start` to the first of `stops`."""
+    i = page.find(start)
+    if i < 0:
+        return ""
+    i = page.find(">", i) + 1
+    ends = [j for j in (page.find(s, i) for s in stops) if j > 0]
+    return page_text(page[i:min(ends + [i + cap])])
+
+
+def cmd_itch(args):
+    """A game's itch.io page and devlog, for the small games nothing else finds.
+
+    An itch page and its devlog posts are written by whoever uploaded the game,
+    which for a jam game or a solo developer's first release is the only place
+    they ever wrote about it. The comments under a post are players and are
+    cut off. The game is found by exact title in itch's search; several
+    uploads can share a title (a tileset called "Brogue", a fan port), so the
+    itch account is printed beside the Steam developer and a mismatch says so.
+    """
+    devs = json.load(open(wpath(args, "devs.json"))) if os.path.exists(wpath(args, "devs.json")) else {}
+
+    def fetch(name):
+        page = get("https://itch.io/search?q=" + urllib.parse.quote(name))
+        # The title link's attributes come in a different order from one
+        # response to the next, so the tag is read attribute by attribute.
+        exact = []
+        for tag, title in re.findall(r'<a\b([^>]*\btitle game_link\b[^>]*)>([^<]+)<', page):
+            m = re.search(r'href="(https://([\w-]+)\.itch\.io/[^"]+)"', tag)
+            if m and _norm(title) == _norm(name) and m.groups() not in exact:
+                exact.append(m.groups())
+        if not exact:
+            return {"docs": [], "note": "not on itch"}
+        studio = [_norm(d) for d in (devs.get(name) or {}).get("devs") or []]
+        same = lambda user: any(_norm(user) and (_norm(user) in d or d in _norm(user)) for d in studio if d)
+        url, user = sorted(exact, key=lambda x: not same(x[1]))[0]
+        who = f"itch user {user}; Steam developer {', '.join((devs.get(name) or {}).get('devs') or []) or 'unknown'}"
+        if studio and not same(user):
+            who += " — NOT the same name, check it is the developer's upload"
+        docs = [("itch page", url, _cut(get(url), 'class="formatted_description',
+                                        ['class="more_information_toggle"', 'class="game_info_panel_widget"']))]
+        try:
+            rss = get(url + "/devlog.rss")
+        except Exception:
+            rss = ""  # a game without a devlog answers 404
+        for post in re.findall(r"<item>.*?<link>([^<]+)</link>", rss, re.S)[:args.max_posts]:
+            body = _cut(get(post), "user_formatted post_body", ["community_post_list_widget", 'class="footer"'])
+            docs.append(("itch devlog", post, body))
+            time.sleep(0.5)
+        return {"docs": docs, "who": who}
+
+    if not args.write_only:
+        collect(args, "itch", fetch, threads=3)
+    write_triage(args, "itch", "itch.io pages and devlogs — read every line",
+                 "Written by whoever uploaded the game. Check the itch account beside each game is the developer.")
+
+
+def cmd_kickstarter(args):
+    """A game's Kickstarter campaign page, where developers list their inspirations.
+
+    A campaign is written by the people asking for the money, and its story
+    very often has an "Inspirations" heading or a "fans of X and Y will…"
+    line, since that is how a pitch explains itself. Found through
+    Kickstarter's own discover search; a campaign counts when its name starts
+    with the game's.
+
+    KICKSTARTER REFUSES CLOUD MACHINES (403 to every request from the Claude
+    Code container, October 2026). Run this one from your own computer. It
+    stops at the first refusal rather than recording 500 failures.
+    """
+    def fetch(name):
+        try:
+            j = json.loads(get("https://www.kickstarter.com/discover/advanced?format=json&sort=magic&term="
+                               + urllib.parse.quote(name)))
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                sys.exit("Kickstarter answered 403: it refuses this machine. Run `kickstarter` from your own computer.")
+            raise
+        hits = [p for p in j.get("projects", []) if _norm(p.get("name")).startswith(_norm(name))]
+        if not hits:
+            return {"docs": [], "note": "no campaign"}
+        p = hits[0]
+        url = (p.get("urls", {}).get("web", {}).get("project") or "").split("?")[0]
+        time.sleep(args.delay)
+        return {"docs": [("kickstarter", url, page_text(get(url + "/description")))],
+                "who": f"campaign by {(p.get('creator') or {}).get('name', '?')}, {p.get('state', '')}"}
+
+    if not args.write_only:
+        collect(args, "kickstarter", fetch)
+    write_triage(args, "kickstarter", "Kickstarter campaigns — read every line",
+                 "Written by the campaign's creator. Check the creator is the game's developer.")
+
+
+# Reddit itself refuses cloud machines, but the Arctic Shift archive serves
+# the same posts and comments without a key. Its search needs a subreddit.
+ARCTIC = "https://arctic-shift.photon-reddit.com/api"
+REDDIT_SUBS = ["roguelikes", "roguelites", "roguelikedev", "IndieGaming", "IndieDev", "gamedev", "Games", "IAmA"]
+# A post the game's developer wrote about their own game. Only these threads
+# are read; "what game is like X?" threads are players.
+OWN_POST = re.compile(r"\bAMA\b|ask me anything|\bI(?:'ve| have)? (?:made|released|launched|finished)\b|"
+                      r"\bwe(?:'ve| have)? (?:made|released|launched|finished)\b|\bmy (?:first |indie )?game\b|"
+                      r"\bour (?:first |indie )?game\b|\bdevs? (?:here|of)\b|\bdeveloper of\b|devlog|post-?mortem|"
+                      r"\bsolo dev", re.I)
+
+
+def cmd_reddit(args):
+    """Developers on Reddit: AMAs and launch posts, and r/roguelikedev.
+
+    Two searches per game, through the Arctic Shift archive:
+      1. posts in REDDIT_SUBS whose title names the game AND reads like its
+         developer posting (an AMA, "I made", "our game", a postmortem). The
+         post's own text and the original poster's replies in that thread are
+         read; other people's replies are not.
+      2. r/roguelikedev comments naming the game. Most are Sharing Saturday,
+         where developers write about their own projects, but a comment can be
+         one developer mentioning another's game, so read who wrote it.
+    Neither proves the account is the developer. The account is in each line's
+    label; check it against the studio before taking a quote.
+    """
+    paced = _Paced(args.delay)
+
+    def arctic(path, **params):
+        # Its rate limit answers 422 with {"error": "Timeout. Maybe slow down a
+        # bit"}, the same as a search that really ran out of time. Both mean wait.
+        for attempt in range(4):
+            try:
+                j = json.loads(paced.get(f"{ARCTIC}/{path}?" + urllib.parse.urlencode(params)))
+            except urllib.error.HTTPError as e:
+                if e.code != 422:
+                    raise
+                j = json.loads(e.read().decode("utf8", "replace") or "{}")
+                if "timeout" not in str(j.get("error", "")).lower():
+                    raise RuntimeError(j.get("error") or str(e))
+            if not j.get("error"):
+                return j.get("data") or []
+            time.sleep(30 * (attempt + 1))
+        # Five minutes of refusals is the archive throttling this machine, not
+        # one slow search: carrying on costs ~45 min a game and records nothing.
+        sys.exit("Arctic Shift kept answering 'slow down' for five minutes; stopped. Games done so far "
+                 "are saved and a rerun resumes. Try later, with a larger --delay, or from your own computer.")
+
+    def fetch(name):
+        q = _short_name(name) or name
+        docs = []
+        for sub in REDDIT_SUBS:
+            for p in arctic("posts/search", subreddit=sub, title=q, limit=50,
+                            fields="id,title,author,selftext"):
+                if not (_mentions(p["title"], name) and OWN_POST.search(p["title"])):
+                    continue
+                url = f"https://www.reddit.com/r/{sub}/comments/{p['id']}/"
+                op = p["author"]
+                docs.append((f"r/{sub} post by u/{op}", url, clean(p["title"] + " . " + (p.get("selftext") or ""))))
+                if op in ("[deleted]", "AutoModerator"):
+                    continue
+                for c in arctic("comments/search", link_id=p["id"], author=op, limit=100, fields="id,body"):
+                    docs.append((f"r/{sub} reply by OP u/{op}", f"{url}_/{c['id']}/", clean(c["body"])))
+        for c in arctic("comments/search", subreddit="roguelikedev", body=q, limit=100,
+                        fields="id,author,body,link_id"):
+            if _mentions(c["body"], name):
+                docs.append((f"r/roguelikedev comment by u/{c['author']}",
+                             f"https://www.reddit.com/r/roguelikedev/comments/{c['link_id'][3:]}/_/{c['id']}/",
+                             clean(c["body"])))
+        return {"docs": docs}
+
+    if not args.write_only:
+        collect(args, "reddit", fetch)
+    write_triage(args, "reddit", "Reddit posts by developers — read every line",
+                 "Each label names the account. Neither search proves it is the developer: check before quoting.")
+
+
+# A Steam page's "website" is often not a website.
+NOT_A_SITE = re.compile(r"(?:^|\.)(?:twitter|x|facebook|discord|youtube|youtu|instagram|steampowered|"
+                        r"steamcommunity|reddit|tiktok|twitch|linktr|bsky|patreon|itch)\.", re.I)
+SITE_LINK = re.compile(r"press|about|devlog|blog|news|story|faq|history", re.I)
+
+
+def cmd_site(args):
+    """The studio's own website, and its press kit.
+
+    A press kit is written by the studio for journalists, and its History or
+    Background section says where the game came from. The site is the
+    `website` on the game's Steam page; from its home page this follows up to
+    eight links on the same site whose address or text says press, about,
+    devlog, blog, news, story, FAQ or history, and tries /presskit, /press and
+    /press-kit when none says press. A studio site covers several games, so a
+    sentence can be about a different one of theirs: read which.
+    """
+    devs = load_devs(args)
+
+    def fetch(name):
+        aid = (devs.get(name) or {}).get("aid")
+        if not aid:
+            return {"docs": [], "note": "no Steam page"}
+        d = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&filters=basic&appids={aid}"))[aid]
+        site = ((d.get("data") or {}).get("website") or "").strip() if d.get("success") else ""
+        host = urllib.parse.urlparse(site).netloc.lower()
+        if not host or NOT_A_SITE.search(host):
+            return {"docs": [], "note": "no website" if not host else f"website is {host}"}
+        home = get(site)
+        docs = [("studio site", site, page_text(home))]
+        bare = host.removeprefix("www.")
+        links = []
+        for href, text in re.findall(r'<a\b[^>]*href="([^"#]+)"[^>]*>(.*?)</a>', home, re.S):
+            u = urllib.parse.urljoin(site, html.unescape(href))
+            if urllib.parse.urlparse(u).netloc.lower().removeprefix("www.") == bare \
+                    and SITE_LINK.search(href + " " + clean(text)) and u not in links and u.rstrip("/") != site.rstrip("/"):
+                links.append(u)
+        if not any("press" in u.lower() for u in links):
+            links += [urllib.parse.urljoin(site, p) for p in ("/presskit", "/press", "/press-kit")]
+        for u in links[:8]:
+            try:
+                docs.append(("press kit" if "press" in u.lower() else "studio site", u, page_text(get(u))))
+            except Exception:
+                pass  # the guessed press-kit addresses mostly 404
+        return {"docs": docs, "who": f"website {host}"}
+
+    if not args.write_only:
+        collect(args, "site", fetch, threads=4)
+    write_triage(args, "site", "Studio websites and press kits — read every line",
+                 "Written by the studio. A studio site covers several games: check which one each sentence is about.")
+
+
+# ── Roguelike Radio ─────────────────────────────────────────────────────────
+
+RADIO_FEED = "https://www.roguelikeradio.com/feeds/posts/default?alt=json&max-results=150&start-index={}"
+RADIO_SECTION = "## 3. Roguelike Radio"
+
+
+def _doc_section(text, heading):
+    """The block from `heading` to the next `## ` heading, or ""."""
+    i = text.find("\n" + heading)
+    if i < 0:
+        return ""
+    j = text.find("\n## ", i + 1)
+    return text[i + 1:j if j > 0 else len(text)].rstrip() + "\n"
+
+
+def cmd_radio(args):
+    """Roguelike Radio episodes that name a chart game, as section 3 of
+    `docs/influence-media.md`.
+
+    Roguelike Radio has interviewed roguelike developers since 2012, often one
+    game an episode with its developer as the guest, which is exactly where a
+    developer says what they took from what. The whole archive is one feed
+    (about 180 episodes, two requests). An episode is listed under every chart
+    game its title or show notes name, fewest connections first. The show
+    notes are the hosts' summary, not a source: the developer has to say it in
+    the episode. `media` keeps this section when it rewrites the doc, and
+    ticks are kept by URL, the same as the rest of the doc.
+    """
+    entries, start = [], 1
+    while True:
+        feed = json.loads(get(RADIO_FEED.format(start)))["feed"]
+        page = feed.get("entry", [])
+        entries += page
+        if len(page) < 150:
+            break
+        start += 150
+    games, conns = load_sheet()
+    deg = {}
+    for r in conns:
+        deg[r[0]] = deg.get(r[0], 0) + 1
+        deg[r[1]] = deg.get(r[1], 0) + 1
+    pats = name_patterns([r[0] for r in games], load_titles(args))
+    by_game = {}
+    for e in entries:
+        title = e["title"]["$t"]
+        notes = re.sub(r"Read more\s*»", "", clean(e.get("content", {}).get("$t", "")))
+        url = next((l["href"] for l in e["link"] if l["rel"] == "alternate"), "")
+        in_title = set(named_in(title, pats, ""))
+        for g in named_in(title + " . " + notes, pats, ""):
+            by_game.setdefault(g, []).append({
+                "url": url, "title": title, "by": "Roguelike Radio", "length": "",
+                "when": e.get("published", {}).get("$t", "")[:10],
+                "why": ["in the title" if g in in_title else "in the show notes"],
+                "first": g in in_title})
+    old = open(MEDIA, encoding="utf8").read() if os.path.exists(MEDIA) else ""
+    heard = set(re.findall(r"^- \[x\] \w+ \[.*?\]\((\S+?)\)", old, re.M))
+    lines = [RADIO_SECTION, "",
+             "Episodes of [Roguelike Radio](https://www.roguelikeradio.com) whose title or show notes name a "
+             "game on the chart, from `python3 tools/influence_research.py radio`. The show often has the "
+             "game's developer as the guest. The notes are the hosts' words; listen for the developer naming "
+             "an influence. Games with the fewest connections come first.", ""]
+    for g in sorted(by_game, key=lambda n: (deg.get(n, 0), n.lower())):
+        eps = sorted(by_game[g], key=lambda h: (not h["first"], h["when"]))
+        lines += ["### %s — %d connection%s" % (g, deg.get(g, 0), "" if deg.get(g, 0) == 1 else "s"), ""]
+        lines += [_media_line("podcast", h, heard) for h in eps] + [""]
+    section = "\n".join(lines).rstrip() + "\n"
+    if _doc_section(old, RADIO_SECTION):
+        new = old.replace(_doc_section(old, RADIO_SECTION), section)
+    else:
+        new = old.rstrip() + "\n\n" + section
+    open(MEDIA, "w", encoding="utf8").write(new)
+    print(f"{len(entries)} episodes, {len(by_game)} chart games named -> {os.path.relpath(MEDIA, ROOT)} section 3")
 
 
 # ── status ──────────────────────────────────────────────────────────────────
@@ -1279,6 +1814,16 @@ def main():
     mp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
+    sub.add_parser("titles")
+    sub.add_parser("radio")
+    for name, delay in (("itch", 0.0), ("kickstarter", 3.0), ("reddit", 2.0), ("site", 0.0)):
+        sp = sub.add_parser(name)
+        sp.add_argument("--games", choices=["few", "targets", "all"], default="few",
+                        help="few = one connection or none (the default); targets = no influences")
+        sp.add_argument("--delay", type=float, default=delay, help="seconds between requests")
+        sp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
+        sp.add_argument("--write-only", action="store_true", help="rewrite the triage from the cache, no fetching")
+    sub.choices["itch"].add_argument("--max-posts", type=int, default=40, help="devlog posts read per game")
     for name in ("lang", "forums", "devcheck"):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["targets", "all"], default="targets")
@@ -1288,7 +1833,9 @@ def main():
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
      "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
-     "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media}[args.cmd](args)
+     "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media, "titles": cmd_titles,
+     "itch": cmd_itch, "kickstarter": cmd_kickstarter, "reddit": cmd_reddit, "site": cmd_site,
+     "radio": cmd_radio}[args.cmd](args)
 
 
 if __name__ == "__main__":

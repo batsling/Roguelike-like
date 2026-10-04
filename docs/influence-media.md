@@ -594,3 +594,208 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Elin Mai interview: Travel Hacks, Coaching Secrets & Building Confidence in Life- Rohit podcast Ep-1](https://www.youtube.com/watch?v=YSydPeou1Uk) — Rohit Khubchandani · 57:18 · 1y ago — interview
 - [ ] video [Elin & The Woods ''First Step In The Faith'' / Melodi Grand Prix Norge 2017 FINAL (INTERVIEW)](https://www.youtube.com/watch?v=ZehCPqHKN9Y) — wiwibloggs · 2:39 · 9y ago — interview
 - [ ] video [Greg Elin Interview: Part 1](https://www.youtube.com/watch?v=BHTcZyvSn_w) — Hashrocket · 10:38 · 15y ago — interview
+
+## 3. Roguelike Radio
+
+Episodes of [Roguelike Radio](https://www.roguelikeradio.com) whose title or show notes name a game on the chart, from `python3 tools/influence_research.py radio`. The show often has the game's developer as the guest. The notes are the hosts' words; listen for the developer naming an influence. Games with the fewest connections come first.
+
+### 868-Back — 1 connection
+
+- [ ] podcast [Episode 157: 868-BACK](https://www.roguelikeradio.com/2024/12/episode-157-868-back.html) — Roguelike Radio · 2024-12-09 — in the title
+
+### Golden Krone Hotel — 1 connection
+
+- [ ] podcast [Episode 138: Golden Krone Hotel](https://www.roguelikeradio.com/2017/08/episode-138-golden-krone-hotel.html) — Roguelike Radio · 2017-08-07 — in the title
+
+### Jupiter Hell — 1 connection
+
+- [ ] podcast [Episode 130: Jupiter Hell, successor to DoomRL](https://www.roguelikeradio.com/2016/11/episode-130-jupiter-hell-successor-to.html) — Roguelike Radio · 2016-11-28 — in the title
+- [ ] podcast [Episode 154: Jupiter Hell - Early Access](https://www.roguelikeradio.com/2019/08/episode-154-jupiter-hell-early-access.html) — Roguelike Radio · 2019-08-31 — in the title
+- [ ] podcast [Roguelike Radio ep 166: Jupiter Hell Classic, with Kornel Kisielewicz](https://www.roguelikeradio.com/2025/07/roguelike-radio-ep-166-jupiter-hell.html) — Roguelike Radio · 2025-07-26 — in the title
+
+### Omega Labyrinth Life — 1 connection
+
+- [ ] podcast [Episode 171: Omega Labyrinth Life](https://www.roguelikeradio.com/2026/04/episode-171-omega-labyrinth-life.html) — Roguelike Radio · 2026-04-01 — in the title
+
+### Sil — 1 connection
+
+- [ ] podcast [Episode 59: Sil](https://www.roguelikeradio.com/2013/01/episode-59-sil.html) — Roguelike Radio · 2013-01-27 — in the title
+- [ ] podcast [Episode 155: Magic Systems](https://www.roguelikeradio.com/2020/07/episode-155-magic-systems.html) — Roguelike Radio · 2020-07-26 — in the show notes
+
+### WazHack — 1 connection
+
+- [ ] podcast [Episode 46: Steam Greenlight](https://www.roguelikeradio.com/2012/09/episode-46-steam-greenlight.html) — Roguelike Radio · 2012-09-12 — in the show notes
+
+### Cataclysm: Dark Days Ahead — 2 connections
+
+- [ ] podcast [Episode 75: Cataclysm Dark Days Ahead](https://www.roguelikeradio.com/2013/07/episode-75-cataclysm-dark-days-ahead.html) — Roguelike Radio · 2013-07-05 — in the title
+
+### Road Not Taken — 2 connections
+
+- [ ] podcast [Episode 125: Road Not Taken](https://www.roguelikeradio.com/2016/08/episode-125-road-not-taken.html) — Roguelike Radio · 2016-08-24 — in the title
+
+### Spelunky — 2 connections
+
+- [ ] podcast [Episode 43: Spelunky](https://www.roguelikeradio.com/2012/08/episode-43-spelunky.html) — Roguelike Radio · 2012-08-06 — in the title
+
+### Ultima Ratio Regum — 2 connections
+
+- [ ] podcast [Episode 96: Ultima Ratio Regum](https://www.roguelikeradio.com/2015/01/episode-96-ultima-ratio-regum.html) — Roguelike Radio · 2015-01-28 — in the title
+
+### 868-Hack — 3 connections
+
+- [ ] podcast [Episode 93: 868-HACK](https://www.roguelikeradio.com/2014/10/episode-93-868-hack.html) — Roguelike Radio · 2014-10-19 — in the title
+
+### Cogmind — 3 connections
+
+- [ ] podcast [Episode 109: Cogmind](https://www.roguelikeradio.com/2015/10/episode-109-cogmind.html) — Roguelike Radio · 2015-10-11 — in the title
+- [ ] podcast [Roguelike Radio ep 167: Designing for Mastery, with Josh Ge](https://www.roguelikeradio.com/2025/08/roguelike-radio-ep-167-designing-for.html) — Roguelike Radio · 2025-08-21 — in the show notes
+
+### Curious Expedition — 3 connections
+
+- [ ] podcast [Episode 115: The Curious Expedition](https://www.roguelikeradio.com/2016/02/episode-115-curious-expedition.html) — Roguelike Radio · 2016-02-05 — in the title
+
+### Desktop Dungeons — 3 connections
+
+- [ ] podcast [Episode 2: Desktop Dungeons](https://www.roguelikeradio.com/2011/09/episode-2-desktop-dungeons.html) — Roguelike Radio · 2011-09-05 — in the title
+
+### Infra Arcana — 3 connections
+
+- [ ] podcast [Episode 22: Infra Arcana](https://www.roguelikeradio.com/2012/02/episode-22-infra-arcana.html) — Roguelike Radio · 2012-02-06 — in the title
+
+### KeeperRL — 3 connections
+
+- [ ] podcast [Episode 120: KeeperRL](https://www.roguelikeradio.com/2016/04/episode-120-keeperrl.html) — Roguelike Radio · 2016-04-10 — in the title
+
+### Red Rogue — 3 connections
+
+- [ ] podcast [Episode 34: Red Rogue, with creator Aaron Steed](https://www.roguelikeradio.com/2012/05/episode-34-red-rogue-with-creator-aaron.html) — Roguelike Radio · 2012-05-12 — in the title
+
+### Sword of the Stars: The Pit — 3 connections
+
+- [ ] podcast [Episode 74 - Sword of the Stars: The Pit](https://www.roguelikeradio.com/2013/06/episode-74-sword-of-stars-pit.html) — Roguelike Radio · 2013-06-30 — in the title
+
+### UnReal World — 3 connections
+
+- [ ] podcast [Episode 80: UnReal World](https://www.roguelikeradio.com/2013/09/this-is-episode-80-of-roguelike-radio.html) — Roguelike Radio · 2013-09-13 — in the title
+
+### 100 Rogues — 4 connections
+
+- [ ] podcast [Episode 7: 100 Rogues](https://www.roguelikeradio.com/2011/10/episode-7-100-rogues.html) — Roguelike Radio · 2011-10-07 — in the title
+- [ ] podcast [*Spoilers* Bonus Content: 100 Rogues](https://www.roguelikeradio.com/2011/10/spoilers-bonus-content-100-rogues.html) — Roguelike Radio · 2011-10-13 — in the title
+
+### Cataclysm — 4 connections
+
+- [ ] podcast [Episode 20: Cataclysm](https://www.roguelikeradio.com/2012/01/episode-20-cataclysm.html) — Roguelike Radio · 2012-01-24 — in the title
+
+### Frozen Depths — 4 connections
+
+- [ ] podcast [Episode 5: Frozen Depths](https://www.roguelikeradio.com/2011/09/episode-5-frozen-depths.html) — Roguelike Radio · 2011-09-26 — in the title
+
+### Haque — 4 connections
+
+- [ ] podcast [Episode 151: Haque](https://www.roguelikeradio.com/2019/02/episode-151-haque.html) — Roguelike Radio · 2019-02-22 — in the title
+
+### Cardinal Quest — 5 connections
+
+- [ ] podcast [Episode 1: Cardinal Quest](https://www.roguelikeradio.com/2011/08/episode-1-cardinal-quest.html) — Roguelike Radio · 2011-08-29 — in the title
+- [ ] podcast [Interview: Ido Yehieli](https://www.roguelikeradio.com/2011/10/interview-with-ido-yehieli.html) — Roguelike Radio · 2011-10-05 — in the show notes
+- [ ] podcast [Episode 46: Steam Greenlight](https://www.roguelikeradio.com/2012/09/episode-46-steam-greenlight.html) — Roguelike Radio · 2012-09-12 — in the show notes
+- [ ] podcast [Episode 51: Graphics and Tile Design part 1](https://www.roguelikeradio.com/2012/11/episode-51-graphics-and-tile-design.html) — Roguelike Radio · 2012-11-07 — in the show notes
+- [ ] podcast [Episode 52: Graphics and Tile Design part 2](https://www.roguelikeradio.com/2012/11/episode-52-graphics-and-tile-design.html) — Roguelike Radio · 2012-11-09 — in the show notes
+
+### Caves of Qud — 5 connections
+
+- [ ] podcast [Episode 45 - Caves of Qud](https://www.roguelikeradio.com/2012/09/episode-45-caves-of-qud.html) — Roguelike Radio · 2012-09-07 — in the title
+- [ ] podcast [Episode 161: Caves of Qud 1.0](https://www.roguelikeradio.com/2025/02/episode-161-caves-of-qud-10.html) — Roguelike Radio · 2025-02-17 — in the title
+
+### Dungeons of Dredmor — 5 connections
+
+- [ ] podcast [Episode 6: Dungeons of Dredmor](https://www.roguelikeradio.com/2011/10/episode-6-dungeons-of-dredmor.html) — Roguelike Radio · 2011-10-03 — in the title
+- [ ] podcast [Interview with Gaslamp Games (developers of Dungeons of Dredmor)](https://www.roguelikeradio.com/2011/10/interview-with-gaslamp-games-developers.html) — Roguelike Radio · 2011-10-28 — in the title
+
+### Unexplored — 5 connections
+
+- [ ] podcast [Episode 139: Unexplored](https://www.roguelikeradio.com/2017/09/episode-139-unexplored.html) — Roguelike Radio · 2017-09-09 — in the title
+
+### HyperRogue — 6 connections
+
+- [ ] podcast [Episode 82: Interview with Zeno](https://www.roguelikeradio.com/2013/11/episode-82-interview-with-zeno.html) — Roguelike Radio · 2013-11-14 — in the show notes
+
+### DoomRL — 8 connections
+
+- [ ] podcast [Episode 4: DoomRL](https://www.roguelikeradio.com/2011/09/episode-4-doomrl.html) — Roguelike Radio · 2011-09-19 — in the title
+- [ ] podcast [Episode 130: Jupiter Hell, successor to DoomRL](https://www.roguelikeradio.com/2016/11/episode-130-jupiter-hell-successor-to.html) — Roguelike Radio · 2016-11-28 — in the title
+
+### Tales of Maj'Eyal — 9 connections
+
+- [ ] podcast [Episode 18: ToME4](https://www.roguelikeradio.com/2012/01/episode-18-tome4.html) — Roguelike Radio · 2012-01-10 — in the show notes
+- [ ] podcast [Episode 19: Interview with DarkGod, creator of ToME4](https://www.roguelikeradio.com/2012/01/episode-19-interview-with-darkgod.html) — Roguelike Radio · 2012-01-18 — in the show notes
+
+### Brogue — 10 connections
+
+- [ ] podcast [Episode 3: Brogue](https://www.roguelikeradio.com/2011/09/episode-3-brogue.html) — Roguelike Radio · 2011-09-13 — in the title
+- [ ] podcast [Episode 92: Return to Brogue](https://www.roguelikeradio.com/2014/10/episode-92-return-to-brogue.html) — Roguelike Radio · 2014-10-11 — in the title
+- [ ] podcast [Interview: Brian Walker aka Pender](https://www.roguelikeradio.com/2011/10/interview-brian-walker-aka-pender.html) — Roguelike Radio · 2011-10-23 — in the show notes
+- [ ] podcast [Episode 64: Player competitions](https://www.roguelikeradio.com/2013/03/episode-64-player-competitions.html) — Roguelike Radio · 2013-03-09 — in the show notes
+
+### Dungeonmans — 10 connections
+
+- [ ] podcast [Episode 76: Dungeonmans](https://www.roguelikeradio.com/2013/07/episode-76-dungeonmans.html) — Roguelike Radio · 2013-07-17 — in the title
+- [ ] podcast [Episode 158: 10 Years of Dungeonmans](https://www.roguelikeradio.com/2025/01/episode-158-10-years-of-dungeonmans.html) — Roguelike Radio · 2025-01-09 — in the title
+
+### Dungeon Crawl Stone Soup — 11 connections
+
+- [ ] podcast [Episode 23: Interview with David Ploog](https://www.roguelikeradio.com/2012/02/episode-23-interview-with-david-ploog.html) — Roguelike Radio · 2012-02-12 — in the show notes
+- [ ] podcast [Episode 64: Player competitions](https://www.roguelikeradio.com/2013/03/episode-64-player-competitions.html) — Roguelike Radio · 2013-03-09 — in the show notes
+
+### Dwarf Fortress — 11 connections
+
+- [ ] podcast [Episode 49: Interview with Tarn Adams](https://www.roguelikeradio.com/2012/10/episode-49-interview-with-tarn-adams.html) — Roguelike Radio · 2012-10-23 — in the show notes
+
+### Mystery Dungeon 2: Shiren the Wanderer — 11 connections
+
+- [ ] podcast [Episode 13: Mystery Dungeon 2: Shiren the Wander](https://www.roguelikeradio.com/2011/11/episode-13-mystery-dungeon-2-shiren_23.html) — Roguelike Radio · 2011-11-23 — in the show notes
+
+### Powder — 11 connections
+
+- [ ] podcast [Episode 9: Powder](https://www.roguelikeradio.com/2011/10/episode-9-powder.html) — Roguelike Radio · 2011-10-25 — in the title
+- [ ] podcast [Episode 10: Deity Systems](https://www.roguelikeradio.com/2011/11/episode-10-deity-systems.html) — Roguelike Radio · 2011-11-01 — in the show notes
+
+### Angband — 15 connections
+
+- [ ] podcast [Episode 89: Interview with the Angband devteam part 1](https://www.roguelikeradio.com/2014/08/episode-89-interview-with-angband.html) — Roguelike Radio · 2014-08-10 — in the title
+- [ ] podcast [Episode 90: Angband devteam interview part 2](https://www.roguelikeradio.com/2014/08/episode-90-angband-devteam-interview.html) — Roguelike Radio · 2014-08-17 — in the title
+- [ ] podcast [Episode 15: Quickband](https://www.roguelikeradio.com/2011/12/episode-15-quickband.html) — Roguelike Radio · 2011-12-08 — in the show notes
+- [ ] podcast [Episode 64: Player competitions](https://www.roguelikeradio.com/2013/03/episode-64-player-competitions.html) — Roguelike Radio · 2013-03-09 — in the show notes
+
+### Rogue — 27 connections
+
+- [ ] podcast [Episode 31 - Rogue, with co-creator Glenn Wichman](https://www.roguelikeradio.com/2012/04/episode-31-rogue-with-co-creator-glenn.html) — Roguelike Radio · 2012-04-20 — in the title
+- [ ] podcast [Interview: Brian Walker aka Pender](https://www.roguelikeradio.com/2011/10/interview-brian-walker-aka-pender.html) — Roguelike Radio · 2011-10-23 — in the show notes
+- [ ] podcast [Episode 126: IVAN](https://www.roguelikeradio.com/2016/09/episode-126-ivan.html) — Roguelike Radio · 2016-09-12 — in the show notes
+- [ ] podcast [Episode 165: Tabletop RPGs](https://www.roguelikeradio.com/2025/06/episode-165-tabletop-rpgs.html) — Roguelike Radio · 2025-06-11 — in the show notes
+
+### Diablo — 28 connections
+
+- [ ] podcast [Episode 35: Diablo](https://www.roguelikeradio.com/2012/05/episode-35-diablo.html) — Roguelike Radio · 2012-05-18 — in the title
+
+### NetHack — 35 connections
+
+- [ ] podcast [Episode 84: Nethack](https://www.roguelikeradio.com/2013/12/episode-84-nethack.html) — Roguelike Radio · 2013-12-09 — in the title
+- [ ] podcast [Episode 122: Nethack Tool-Assisted Speedruns](https://www.roguelikeradio.com/2016/06/episode-122-nethack-tool-assisted.html) — Roguelike Radio · 2016-06-12 — in the title
+- [ ] podcast [Episode 10: Deity Systems](https://www.roguelikeradio.com/2011/11/episode-10-deity-systems.html) — Roguelike Radio · 2011-11-01 — in the show notes
+- [ ] podcast [Episode 64: Player competitions](https://www.roguelikeradio.com/2013/03/episode-64-player-competitions.html) — Roguelike Radio · 2013-03-09 — in the show notes
+
+### FTL — 42 connections
+
+- [ ] podcast [Episode 47: FTL](https://www.roguelikeradio.com/2012/09/episode-47-ftl.html) — Roguelike Radio · 2012-09-21 — in the title
+- [ ] podcast [Episode 56: Interview with FTL Developers, Justin Ma and Matthew Davis](https://www.roguelikeradio.com/2012/12/episode-56-interview-with-ftl.html) — Roguelike Radio · 2012-12-17 — in the title
+
+### Balatro — 60 connections
+
+- [ ] podcast [Episode 162: Balatro](https://www.roguelikeradio.com/2025/02/episode-162-balatro.html) — Roguelike Radio · 2025-02-24 — in the title
+
+### The Binding of Isaac — 77 connections
+
+- [ ] podcast [Episode 11: The Binding of Isaac](https://www.roguelikeradio.com/2011/11/episode-11-binding-of-isaac.html) — Roguelike Radio · 2011-11-10 — in the title
