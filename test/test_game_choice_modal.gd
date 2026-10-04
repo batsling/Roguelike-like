@@ -388,7 +388,7 @@ func _a_captured_edge() -> Array:
 	if dir == null:
 		return []
 	for file in dir.get_files():
-		if not file.ends_with(GameChoiceModal.PROOF_EXT):
+		if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
 			continue
 		var ids: PackedStringArray = file.get_basename().split("__")
 		if ids.size() == 2 and Data.get_game(StringName(ids[0])) != null \
@@ -406,7 +406,9 @@ func test_every_proof_is_named_for_a_real_connection() -> void:
 	var orphans: Array = []
 	var seen: int = 0
 	for file in dir.get_files():
-		if not file.ends_with(GameChoiceModal.PROOF_EXT):
+		# The owner's own freely named screenshots share the folder; only the
+		# "<from>__<to>" files are the game's.
+		if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
 			continue
 		seen += 1
 		var ids: PackedStringArray = file.get_basename().split("__")
@@ -456,7 +458,7 @@ func test_a_check_folder_note_gives_way_to_the_screenshot_it_meant() -> void:
 	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
 	if dir != null:
 		for file in dir.get_files():
-			if not file.ends_with(GameChoiceModal.PROOF_EXT):
+			if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
 				continue
 			var ids: PackedStringArray = file.get_basename().split("__")
 			var from_game: GameData = Data.get_game(StringName(ids[0])) if ids.size() == 2 else null

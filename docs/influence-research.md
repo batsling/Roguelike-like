@@ -300,7 +300,7 @@ export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, np
 node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
 node tools/capture_proof.js --skip youtube,podcast --resume   # the full run, ~6 s a link
 node tools/capture_proof.js --only <game id>     # retry one game's connections
-node tools/capture_proof.js --webp               # copy them into images2.0/proof/ for the game
+node tools/capture_proof.js --export             # copy them into images2.0/proof/<from>__<to>.png for the game
 ```
 
 Results go to `.influence_work/proof/` with `report.json`, which records every
@@ -316,11 +316,21 @@ terms), so `--skip youtube,podcast` leaves them out.
 **The owner's own screenshots win.** The PNGs in `images2.0/proof/` are the
 owner's proof folder (what a `check folder` Source means), named freely ("tic
 tactic sts.png"). `tools/proof_owner_map.json` says which connection(s) each one
-proves, and `--webp` writes those first, ahead of any captured page for the same
-connection. When you add a screenshot, add its line to the map: `--webp` lists
-every PNG it finds that isn't in it, because an unmapped one never reaches the
-game. Two uploaded so far prove connections the sheet doesn't have yet (Brotato
-→ Bounty of One, Enter the Gungeon → Dungreed) and wait on a sheet row.
+proves, and `--export` writes those first, ahead of any captured page for the
+same connection. The game's copies are PNG (the owner's call) and named
+`<from id>__<to id>.png`; the `__` is what tells them apart from the owner's
+own files, which `--export` never touches.
+
+When you add a screenshot, run `python3 tools/proof_owner_match.py`: it reads
+each new file name ("kadomon sap.png", "going under hades, isaac, gungeon,
+spelunky.png"), proposes the connections it proves, and lists what it couldn't
+place. Read the proposals, then `--write` adds them to the map. It folds accents
+(Kādomon) and accepts a name before its colon, but a typo ("abolisk", "backback"),
+a file that runs the other way (one influencer, several games), or a word shared
+by two games ("survivors") needs a look or a hand-written line. `--export` also
+lists any screenshot missing from the map, because an unmapped one never reaches
+the game. Two uploaded so far prove connections the sheet doesn't have yet
+(Brotato → Bounty of One, Enter the Gungeon → Dungreed) and wait on a sheet row.
 
 The script picks a sentence, it doesn't judge one. **Look at the images**: the
 pilot found a source that undercuts its own row (Rogue Voltage, section 4 of

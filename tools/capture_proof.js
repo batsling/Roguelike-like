@@ -35,8 +35,9 @@
  *   node tools/capture_proof.js --skip youtube,podcast --resume
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
- *   node tools/capture_proof.js --webp             copy the captures into the game as
- *                                                  images2.0/proof/<from>__<to>.webp
+ *   node tools/capture_proof.js --export           copy the captures (and the owner's own
+ *                                                  screenshots) into the game as
+ *                                                  images2.0/proof/<from>__<to>.png
  *
  * Needs Playwright (`npm install playwright` or NODE_PATH pointing at one) and a
  * Chromium; in the cloud container NODE_PATH=/opt/node-tools/node_modules works.
@@ -511,16 +512,17 @@ async function captureVideo(ctx, c, file) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 // ── into the game ─────────────────────────────────────────────────────────────
-// GameChoiceModal shows images2.0/proof/<from>__<to>.webp under the connection's
-// claim. Lossy WebP at 0.9 keeps screenshot text crisp at a fraction of the
-// PNG's size, which matters at a thousand files. Chromium does the encoding, so
-// nothing beyond Playwright is needed. Video and audio cards are left out: the
-// owner sources those moments by hand.
+// GameChoiceModal shows images2.0/proof/<from>__<to>.png under the connection's
+// claim. PNG is the owner's call; the files are copied byte for byte. The
+// "__" between the two ids is what marks a file as the game's: the owner's own
+// freely named screenshots live in the same folder and are never touched here.
+// Video and audio cards are left out: the owner sources those moments by hand.
 const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
+const isGameFile = f => f.endsWith('.png') && f.includes('__');
 
-async function exportWebp() {
+function exportProofs() {
   const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
-  // The OWNER's own screenshots (images2.0/proof/*.png, mapped to connections in
+  // The OWNER's own screenshots (mapped to connections in
   // tools/proof_owner_map.json) win over a captured page: they are the proof the
   // owner chose, mostly for rows whose Source is "check folder". When one
   // connection has two, the screenshot made for fewer connections is the one
@@ -534,43 +536,28 @@ async function exportWebp() {
       if (!owner.has(k) || ownerMap[owner.get(k).file].length > pairs.length) owner.set(k, { file, from, to });
     }
   }
-  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !(f in ownerMap));
-  const sources = [...owner.values()].map(o => ({ from: o.from, to: o.to, file: path.join(GAME_DIR, o.file) }))
+  fs.mkdirSync(GAME_DIR, { recursive: true });
+  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !isGameFile(f) && !(f in ownerMap));
+  const keep = [...owner.values()].map(o => ({ from: o.from, to: o.to, file: path.join(GAME_DIR, o.file) }))
     .concat(report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && !owner.has(`${r.from}__${r.to}`))
       .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) })));
-  const keep = sources;
-  fs.mkdirSync(GAME_DIR, { recursive: true });
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
   let bytes = 0;
   for (const r of keep) {
-    const png = fs.readFileSync(r.file).toString('base64');
-    const webp = await page.evaluate(async src => {
-      const img = new Image();
-      img.src = src;
-      await img.decode();
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      return c.toDataURL('image/webp', 0.9).split(',')[1];
-    }, 'data:image/png;base64,' + png);
-    const out = Buffer.from(webp, 'base64');
-    bytes += out.length;
-    fs.writeFileSync(path.join(GAME_DIR, `${r.from}__${r.to}.webp`), out);
+    const dest = path.join(GAME_DIR, `${r.from}__${r.to}.png`);
+    fs.copyFileSync(r.file, dest);
+    bytes += fs.statSync(dest).size;
   }
-  await browser.close();
-  // A connection re-captured as a failure, or taken out of the sheet, loses its image.
-  const want = new Set(keep.map(r => `${r.from}__${r.to}.webp`));
-  for (const f of fs.readdirSync(GAME_DIR)) if (f.endsWith('.webp') && !want.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
+  // A connection re-captured as a failure, or taken out of the sheet, loses its
+  // image. Only "__" files: the owner's own are never deleted.
+  const want = new Set(keep.map(r => `${r.from}__${r.to}.png`));
+  for (const f of fs.readdirSync(GAME_DIR)) if (isGameFile(f) && !want.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
   console.log(`${keep.length} proofs -> images2.0/proof/ (${owner.size} yours, ${keep.length - owner.size} captured; ${(bytes / 1048576).toFixed(1)} MB)`);
   if (unmapped.length) console.log(`Not in tools/proof_owner_map.json, so not shown in game:\n  ${unmapped.join('\n  ')}`);
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes('--webp')) return exportWebp();
+  if (args.includes('--export')) return exportProofs();
   const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
   const all = loadConnections();
   let todo = all.filter(c => c.url);

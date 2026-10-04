@@ -622,7 +622,7 @@ static func short_source(url: String) -> String:
 # --- the proof screenshot ---------------------------------------------------
 #
 # One image per connection, named for the edge in the direction the sheet
-# authored it: `<influencer id>__<influenced id>.webp`. They are captured, not
+# authored it: `<influencer id>__<influenced id>.png`. They are captured, not
 # drawn — `node tools/capture_proof.js` opens each Source link, finds the
 # sentence where the developer names the older game, highlights it and crops
 # around it — so a connection with no link, or one whose page refused the
@@ -631,10 +631,11 @@ static func short_source(url: String) -> String:
 # Looked up by convention rather than stored on GameData, the way covers and
 # portraits are: an image is added or re-captured without touching the sheet.
 const PROOF_DIR := "res://images2.0/proof/"
-# WebP rather than the PNG the browser writes: about a thousand screenshots of
-# text, and lossy WebP at quality 90 keeps the text crisp at a fraction of the
-# size (tools/capture_proof.js --webp converts them).
-const PROOF_EXT := ".webp"
+# PNG, the owner's call: screenshots of text, kept lossless. The two id names
+# joined by "__" are what mark a file as one the game reads; the owner's own
+# freely named screenshots sit in the same folder and are copied to these names
+# by `tools/capture_proof.js --export` (see tools/proof_owner_map.json).
+const PROOF_EXT := ".png"
 # The thumbnail's tallest. Proofs run from one line of a store page (836x98) to
 # a whole tweet (550x1088); the short ones show at their own size and the tall
 # ones are cut to this and read in full by clicking.

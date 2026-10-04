@@ -486,6 +486,24 @@
    "into_the_grid"
   ]
  ],
+ "kadomon patch quest.png": [
+  [
+   "patch_quest",
+   "k_domon_hyper_auto_battlers"
+  ]
+ ],
+ "kadomon sap.png": [
+  [
+   "super_auto_pets",
+   "k_domon_hyper_auto_battlers"
+  ]
+ ],
+ "kadomon sts.png": [
+  [
+   "slay_the_spire",
+   "k_domon_hyper_auto_battlers"
+  ]
+ ],
  "KeeperRL nethack adom dwarf fortress.png": [
   [
    "nethack",
@@ -500,16 +518,126 @@
    "keeperrl"
   ]
  ],
+ "knock on the coffin lid sts.png": [
+  [
+   "slay_the_spire",
+   "knock_on_the_coffin_lid"
+  ]
+ ],
+ "lake of creatures gungeon isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "lake_of_creatures"
+  ],
+  [
+   "enter_the_gungeon",
+   "lake_of_creatures"
+  ]
+ ],
+ "Lost Flame boi nethack.png": [
+  [
+   "the_binding_of_isaac",
+   "lost_flame"
+  ],
+  [
+   "nethack",
+   "lost_flame"
+  ]
+ ],
+ "Luck&Loot StS DD SD.png": [
+  [
+   "darkest_dungeon",
+   "luck_loot"
+  ],
+  [
+   "slay_the_spire",
+   "luck_loot"
+  ],
+  [
+   "slice_dice",
+   "luck_loot"
+  ]
+ ],
  "lunchbreak tactics sap.png": [
   [
    "super_auto_pets",
    "lunchbreak_tactics"
   ]
  ],
+ "Megabonk vs ror2.png": [
+  [
+   "vampire_survivors",
+   "megabonk"
+  ],
+  [
+   "risk_of_rain_2",
+   "megabonk"
+  ]
+ ],
+ "merge maestro sap.png": [
+  [
+   "super_auto_pets",
+   "merge_maestro"
+  ]
+ ],
+ "monmusu gladiator sts.png": [
+  [
+   "slay_the_spire",
+   "monmusu_gladiator"
+  ]
+ ],
+ "moonring adom.png": [
+  [
+   "ancient_domains_of_mystery",
+   "moonring"
+  ]
+ ],
+ "moonring brogue.png": [
+  [
+   "brogue",
+   "moonring"
+  ]
+ ],
+ "moonring nethack.png": [
+  [
+   "nethack",
+   "moonring"
+  ]
+ ],
+ "moonring unexplored.png": [
+  [
+   "unexplored",
+   "moonring"
+  ]
+ ],
  "morbid metal ror2.png": [
   [
    "risk_of_rain_2",
    "morbid_metal"
+  ]
+ ],
+ "mortal sin sts.png": [
+  [
+   "slay_the_spire",
+   "mortal_sin"
+  ]
+ ],
+ "mortal sin vamp survivors.png": [
+  [
+   "vampire_survivors",
+   "mortal_sin"
+  ]
+ ],
+ "My Card Is Better Than Your Card! insctyption.png": [
+  [
+   "inscryption",
+   "my_card_is_better_than_your_card"
+  ]
+ ],
+ "neon abyss isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "neon_abyss"
   ]
  ],
  "nimrods VS.png": [
@@ -550,6 +678,42 @@
    "node_crown"
   ]
  ],
+ "noita spelunky.png": [
+  [
+   "spelunky_classic",
+   "noita"
+  ]
+ ],
+ "Nordhold Rogue tower.png": [
+  [
+   "rogue_tower",
+   "nordhold"
+  ]
+ ],
+ "nordhold sts.png": [
+  [
+   "slay_the_spire",
+   "nordhold"
+  ]
+ ],
+ "nubby sap.png": [
+  [
+   "super_auto_pets",
+   "nubby_s_number_factory"
+  ]
+ ],
+ "nubby vamp suvivor.png": [
+  [
+   "vampire_survivors",
+   "nubby_s_number_factory"
+  ]
+ ],
+ "nubbys number factory isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "nubby_s_number_factory"
+  ]
+ ],
  "oaken tower bpb tft sap bazaar.png": [
   [
    "super_auto_pets",
@@ -570,6 +734,12 @@
    "overworld"
   ]
  ],
+ "paper planet isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "paper_planet"
+  ]
+ ],
  "pluto sts.png": [
   [
    "slay_the_spire",
@@ -584,6 +754,12 @@
   [
    "dead_cells",
    "reality_break"
+  ]
+ ],
+ "repetendium nt.png": [
+  [
+   "nuclear_throne",
+   "repetendium"
   ]
  ],
  "rocket rats nuclear throne.png": [
@@ -650,6 +826,22 @@
    "serpent_s_gaze"
   ]
  ],
+ "ship of fools hades monster train.png": [
+  [
+   "hades",
+   "ship_of_fools"
+  ],
+  [
+   "monster_train",
+   "ship_of_fools"
+  ]
+ ],
+ "ship of fools isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "ship_of_fools"
+  ]
+ ],
  "skull horde slike 3k despots game.png": [
   [
    "despot_s_game",
@@ -666,6 +858,68 @@
    "sky_rogue"
   ]
  ],
+ "slice and dice ftl.png": [
+  [
+   "ftl",
+   "slice_dice"
+  ]
+ ],
+ "slice and dice sts.png": [
+  [
+   "slay_the_spire",
+   "slice_dice"
+  ]
+ ],
+ "Sodaman vs.png": [
+  [
+   "vampire_survivors",
+   "sodaman"
+  ]
+ ],
+ "spin hero sts backpack hero luck be a landlord.png": [
+  [
+   "luck_be_a_landlord",
+   "spin_hero"
+  ],
+  [
+   "slay_the_spire",
+   "spin_hero"
+  ],
+  [
+   "backpack_hero",
+   "spin_hero"
+  ]
+ ],
+ "spiritfall hades.png": [
+  [
+   "hades",
+   "spiritfall"
+  ]
+ ],
+ "spiritfall slay the spire.png": [
+  [
+   "slay_the_spire",
+   "spiritfall"
+  ]
+ ],
+ "Stackflow snkrx.png": [
+  [
+   "snkrx",
+   "stackflow"
+  ]
+ ],
+ "sulfir noita2.png": [
+  [
+   "noita",
+   "sulfur"
+  ]
+ ],
+ "sulfur noita.png": [
+  [
+   "noita",
+   "sulfur"
+  ]
+ ],
  "swordship into the breach.png": [
   [
    "into_the_breach",
@@ -678,6 +932,22 @@
    "tabletop_tavern"
   ]
  ],
+ "talented isaac rotmg.png": [
+  [
+   "the_binding_of_isaac",
+   "talented"
+  ],
+  [
+   "realm_of_the_mad_god",
+   "talented"
+  ]
+ ],
+ "Terraformers ftl.png": [
+  [
+   "ftl",
+   "terraformers"
+  ]
+ ],
  "the loopler balatro.png": [
   [
    "balatro",
@@ -688,6 +958,16 @@
   [
    "slay_the_spire",
    "the_spirit_lift"
+  ]
+ ],
+ "the unliving gungeon hades.png": [
+  [
+   "hades",
+   "the_unliving"
+  ],
+  [
+   "enter_the_gungeon",
+   "the_unliving"
   ]
  ],
  "tic tactic balatro.png": [
@@ -708,6 +988,18 @@
    "tic_tactic"
   ]
  ],
+ "tiny rogues hades.png": [
+  [
+   "hades",
+   "tiny_rogues"
+  ]
+ ],
+ "tinyfolks darkest dungeon.png": [
+  [
+   "darkest_dungeon",
+   "tinyfolks"
+  ]
+ ],
  "Tower Escape sts mt.png": [
   [
    "monster_train",
@@ -716,6 +1008,16 @@
   [
    "slay_the_spire",
    "tower_escape"
+  ]
+ ],
+ "Tower Factory heroes of hammer vampire survivors.png": [
+  [
+   "vampire_survivors",
+   "tower_factory"
+  ],
+  [
+   "heroes_of_hammerwatch",
+   "tower_factory"
   ]
  ],
  "tower tactics liberation sts ftl.png": [
@@ -740,6 +1042,12 @@
    "tyrant_s_realm"
   ]
  ],
+ "vampire hunters vamp survivors.png": [
+  [
+   "vampire_survivors",
+   "vampire_hunters"
+  ]
+ ],
  "Vital Shell VS.png": [
   [
    "vampire_survivors",
@@ -750,6 +1058,12 @@
   [
    "slay_the_spire",
    "voice_of_belldona"
+  ]
+ ],
+ "void bastards ftl.png": [
+  [
+   "ftl",
+   "void_bastards"
   ]
  ],
  "void scrappers vs.png": [
@@ -764,10 +1078,28 @@
    "witchfire"
   ]
  ],
+ "wizardchess isaac.png": [
+  [
+   "the_binding_of_isaac",
+   "wizardchess"
+  ]
+ ],
  "worlds upon the wind renowned explorers.png": [
   [
    "renowned_explorers_international_society",
    "worlds_upon_the_wind"
+  ]
+ ],
+ "zet zillions hades.png": [
+  [
+   "hades",
+   "zet_zillions"
+  ]
+ ],
+ "zet zillions sts.png": [
+  [
+   "slay_the_spire",
+   "zet_zillions"
   ]
  ],
  "zorbus angband.png": [
