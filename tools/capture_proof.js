@@ -42,6 +42,8 @@
  *   node tools/capture_proof.js --skip youtube,podcast --resume
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
+ *   node tools/capture_proof.js --status weak,no-match
+ *                                                  retry what the report last left in these
  *   node tools/capture_proof.js --export           copy the captures into the game as
  *                                                  images2.0/proof/<influencer id>---<influenced id>.png,
  *                                                  beside (never over) the owner's own
@@ -154,19 +156,47 @@ function pilot(conns) {
 // "The Binding of Isaac" is written "Binding of Isaac"; "Moonlighter 2: The
 // Endless Vault" is written "Moonlighter 2". Both short forms count, unless
 // the short form is two letters long or an ordinary word.
+// Names written another way on the very pages that prove them: a short game
+// name spelled out, or a developer's own slip. Add to it when a capture comes
+// back `weak` because the page says the name differently.
+const ALIASES = {
+  'FTL': ['Faster Than Light'],
+  'Magic Survival': ['Magical Survival'],
+  'Backpack Hero': ['Backpack Heroes'],
+};
+
 function variants(name) {
-  const v = new Set([name]);
+  const v = new Set([name, ...(ALIASES[name] || [])]);
   const noThe = name.replace(/^The\s+/i, '');
   v.add(noThe);
   // "Spelunky Classic" is written "Spelunky"; a remaster by its original's name.
   const bare = noThe.replace(/\s+(Classic|Remastered|Remake|HD|Deluxe|Original|(Definitive|Enhanced|Complete) Edition)$/i, '');
   if (bare.length > 3 && !AMBIGUOUS.has(bare)) v.add(bare);
   for (const n of [name, noThe]) {
-    const head = n.split(/\s*[:\-–—]\s+/)[0];
+    const [head, ...rest] = n.split(/\s*[:\-–—]\s+/);
     if (head.length > 3 && !AMBIGUOUS.has(head)) v.add(head);
+    // "FTL: Faster Than Light" is written "FTL": a short head in capitals counts.
+    if (/^[A-Z0-9]{3,5}$/.test(head)) v.add(head);
+    // "Mystery Dungeon 2: Shiren the Wanderer" is written "Shiren the Wanderer".
+    const tail = rest.join(' ');
+    if (tail.split(/\s+/).length >= 2) v.add(tail);
   }
+  // "Ancient Domains of Mystery" is written "ADOM" (HyperRogue's blog never
+  // spells it out), "Dungeon Crawl Stone Soup" "DCSS". A name of three words
+  // or more also counts by its initials, matched in capitals only (see exact()).
+  const acr = acronym(name);
+  if (acr) v.add(acr);
   return [...v].filter(s => s.length > 2);
 }
+
+function acronym(name) {
+  const words = name.replace(/[:\-–—]/g, ' ').split(/\s+/).filter(w => /^[A-Za-z]/.test(w));
+  return words.length >= 3 ? words.map(w => w[0].toUpperCase()).join('') : '';
+}
+
+// Names matched case-sensitively: the ordinary words, and every acronym.
+const exact = (...names) => [...AMBIGUOUS, ...names.map(acronym).filter(Boolean),
+  ...names.flatMap(variants).filter(v => /^[A-Z0-9]{3,5}$/.test(v))];
 
 function textFragment(url) {
   const m = url.match(/#:~:text=([^&#]+)/);
@@ -174,20 +204,24 @@ function textFragment(url) {
   // text=[prefix-,]start[,end][,-suffix]; prefix/suffix are context only.
   const parts = m[1].split(',').map(s => decodeURIComponent(s.replace(/\+/g, ' ')));
   const core = parts.filter(p => !p.endsWith('-') && !p.startsWith('-'));
-  return { start: core[0] || '', end: core[1] || '' };
+  const prefix = (parts.find(p => p.endsWith('-')) || '').slice(0, -1);
+  return { start: core[0] || '', end: core[1] || '', prefix };
 }
 
 // ── the page side: find, highlight, measure ───────────────────────────────────
-// Runs inside the browser. Picks one SENTENCE, not a whole post: a forum reply
-// or a patch note runs to a screen or more, and the proof is one line of it.
+// Runs inside the browser. Highlights one SENTENCE, and frames the message or
+// paragraph it sits in (see the unit choice at the end), so the reader gets what
+// it is part of.
 // Highlighting is done with the CSS Custom Highlight API rather than by
 // wrapping nodes, because a sentence often crosses a <b> or an <a>.
 
-function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
+function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHeight }) {
   const claim = new RegExp(claimSrc, 'i');
   const pat = n => {
     const gap = '[\\s:\\-–—]+';
-    const body = n.split(/[\s:\-–—]+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(gap);
+    // A hyphen inside a word is optional: "Bum-Bo" is written "Bumbo".
+    const word = w => w.split('-').map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('-?');
+    const body = n.split(/(?:\s*[:–—]\s*|\s+-\s+|\s+)/).map(word).join(gap);
     // Latin names need word edges; a name in Japanese or Chinese text sits
     // between 『』 or straight against kana, so the edge test is only on \w.
     return new RegExp('(?<![A-Za-z0-9])' + body + '(?![A-Za-z0-9])', ambiguous.includes(n) ? 'g' : 'gi');
@@ -209,31 +243,42 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
   // Each text node belongs to its nearest block; a block's text is its own
   // nodes, flattened, with each node's offset kept so a range can be built back.
   const BLOCK = 'p,li,blockquote,td,dd,dt,h1,h2,h3,h4,h5,h6,figcaption,pre,div,section,article';
+  // A <br> is a line end in its block, and two in a row are a paragraph break:
+  // Steam forum posts and store pages are one <div> of text split only by them.
   const blocks = new Map();
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const breaks = new Map();
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let n; (n = walker.nextNode());) {
+    if (n.nodeType === 1) {
+      if (n.nodeName === 'BR') { const b = n.closest(BLOCK) || n.parentElement; breaks.set(b, (breaks.get(b) || 0) + 1); }
+      continue;
+    }
     if (!n.nodeValue.trim()) continue;
     const p = n.parentElement;
     if (!p || p.closest('script,style,noscript,nav,footer,template')) continue;
     const b = p.closest(BLOCK) || p;
     if (!blocks.has(b)) blocks.set(b, []);
-    blocks.get(b).push(n);
+    blocks.get(b).push({ node: n, br: breaks.get(b) || 0 });
+    breaks.delete(b);
   }
 
   // A sentence ends at its punctuation, at a line end, or at the end of the block.
   const SENT = /[^.!?。！？\n]*(?:[.!?。！？]+|(?=\n)|$)/g;
   let best = null;
-  for (const [el, nodes] of blocks) {
+  const order = [];
+  for (const [el, items] of blocks) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility === 'hidden') continue;
     let text = '';
     const offs = [];
-    for (const n of nodes) {
-      // A <br> between two text nodes is a line end; without it "…Kill the
-      // Brickman<br>One more thing!" reads as one sentence.
-      if (text && n.previousSibling && n.previousSibling.nodeName === 'BR') text += '\n';
+    const nodes = [];
+    for (const { node, br } of items) {
+      // Without the line end "…Kill the Brickman<br>One more thing!" reads as
+      // one sentence.
+      if (text && br) text += '\n'.repeat(Math.min(br, 2));
       offs.push(text.length);
-      text += n.nodeValue;
+      nodes.push(node);
+      text += node.nodeValue;
     }
     const consider = (start, end, score, how, names) => {
       if (end <= start) return;
@@ -242,20 +287,7 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
       if (!best || score > best.score)
         best = { el, nodes, offs, text, start, end, score, how, names };
     };
-    if (fragment && fragment.start) {
-      const words = s => s.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
-      const m = new RegExp(words(fragment.start), 'i').exec(text);
-      if (m) {
-        let end = m.index + m[0].length;
-        if (fragment.end) {
-          const e = new RegExp(words(fragment.end), 'i');
-          e.lastIndex = end;
-          const me = e.exec(text.slice(end));
-          if (me) end += me.index + me[0].length;
-        }
-        consider(m.index, end, 100, 'fragment', fromNames);
-      }
-    }
+    order.push({ el, nodes, offs, text });
     SENT.lastIndex = 0;
     for (let m; (m = SENT.exec(text));) {
       if (!m[0]) { SENT.lastIndex++; continue; }
@@ -264,12 +296,53 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
       if (sentence.length > 1200) continue;
       if (first(fromNames, text, s, e)) {
         let score = 10;
-        if (claim.test(sentence)) score += 5;
+        // A wiki infobox says it in its row label: "Influences | Angband".
+        const row = el.closest('tr');
+        if (claim.test(sentence) || (row && row.innerText.length < 300 && claim.test(row.innerText))) score += 5;
+        // A reply quoting the developer is second to the developer's own post,
+        // and so is Steam's pinned "Answer" box, which quotes it.
+        if (el.closest('blockquote, .answer_quote')) score -= 1;
         if (first(toNames, text, s, e)) score += 3;
         consider(s, e, score, 'name', fromNames);
       } else if (claim.test(sentence) && first(toNames, text, s, e)) {
         consider(s, e, 1, 'weak', toNames);
       }
+    }
+  }
+  // The URL's own #:~:text= passage, which the owner marked by hand, wins over
+  // any guess. It can run over several paragraphs (Lone Ruin's interview answer
+  // does), so its end is looked for in the blocks after its start too; and its
+  // prefix ("Escaped Lunatic-", the poster's title) tells the post apart from
+  // the page title that repeats the same words.
+  if (fragment && fragment.start) {
+    const words = s => s.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+    const reEnd = fragment.end && new RegExp(words(fragment.end), 'i');
+    const rePre = fragment.prefix && new RegExp(words(fragment.prefix) + '[\\s\\W]*$', 'i');
+    const find = usePrefix => {
+      for (let i = 0; i < order.length; i++) {
+        const B = order[i];
+        const reS = new RegExp(words(fragment.start), 'gi');
+        for (let m; (m = reS.exec(B.text));) {
+          if (usePrefix) {
+            const before = order.slice(Math.max(0, i - 3), i).map(x => x.text).join(' ') + ' ' + B.text.slice(0, m.index);
+            if (!rePre.test(before.slice(-400).trimEnd())) continue;
+          }
+          const from = m.index + m[0].length;
+          if (!reEnd) return { i, start: m.index, j: i, end: from };
+          for (let j = i; j < Math.min(order.length, i + 30); j++) {
+            const t = j === i ? order[j].text.slice(from) : order[j].text;
+            const me = reEnd.exec(t);
+            if (me) return { i, start: m.index, j, end: (j === i ? from : 0) + me.index + me[0].length };
+          }
+        }
+      }
+      return null;
+    };
+    const f = (rePre && find(true)) || find(false);
+    if (f) {
+      const B = order[f.i];
+      best = { ...B, start: f.start, end: f.j === f.i ? f.end : B.text.length, score: 100, how: 'fragment', names: fromNames,
+        across: f.j === f.i ? null : { block: order[f.j], end: f.end } };
     }
   }
   if (!best) return null;
@@ -288,6 +361,12 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
     return r;
   };
   const sentence = range(best.start, best.end);
+  if (best.across) {
+    const E = best.across.block;
+    let k = E.offs.length - 1;
+    while (k > 0 && E.offs[k] > best.across.end) k--;
+    sentence.setEnd(E.nodes[k], Math.min(best.across.end - E.offs[k], E.nodes[k].nodeValue.length));
+  }
   const hit = first(best.names, best.text, best.start, best.end);
   const style = document.createElement('style');
   style.textContent = '::highlight(proof-line){background-color:rgba(255,214,0,.30)}'
@@ -296,20 +375,158 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous }) {
   CSS.highlights.set('proof-line', new Highlight(sentence));
   if (hit) CSS.highlights.set('proof-name', new Highlight(range(hit.at, hit.at + hit.len)));
 
-  // Opened <details>, "read more" clamps and the like would hide it; the
-  // sentence is scrolled to the middle so lazy images above it have settled.
-  sentence.startContainer.parentElement.scrollIntoView({ block: 'center' });
-  const s = sentence.getBoundingClientRect();
-  const b = best.el.getBoundingClientRect();
+  // What the picture shows, the first that fits in MAX px of height:
+  //   1. the whole MESSAGE, when the sentence is in a forum post, a comment or
+  //      a reply (author and date included where the site puts them there);
+  //   2. the whole PARAGRAPH: the block, or the run of it between two blank
+  //      lines when the block is a post laid out with <br>s;
+  //   3. the sentence with a few lines either side.
+  // Only the element or Range is kept, never a measurement: a page still
+  // settling (Steam's store loads its carousels late) moves everything, so
+  // window.__proofRect() measures it again right before the shot.
+  const MAX = maxHeight;
+  // A quote is the message it quotes: a Steam reply that quotes the developer
+  // is the developer's post, set inside someone else's.
+  const MESSAGE = 'blockquote, .commentthread_comment, .forum_op, .thing.comment > .entry, .thing.link > .entry, '
+    + '.topic-post, .post, .postbody, .comment, .comment-body, [itemprop=comment]';
+  const tall = x => x.getBoundingClientRect().height;
+  const msg = best.el.closest(MESSAGE);
+  let unit, unitKind;
+  if (msg && tall(msg) <= MAX) { unit = msg; unitKind = 'message'; }
+  else if (best.across) {
+    // The passage, framed out to the whole of its first and last blocks.
+    const whole = document.createRange();
+    whole.setStartBefore(best.nodes[0]);
+    whole.setEndAfter(best.across.block.nodes[best.across.block.nodes.length - 1]);
+    if (whole.getBoundingClientRect().height <= MAX) { unit = whole; unitKind = 'passage'; }
+    else if (sentence.getBoundingClientRect().height <= MAX) { unit = sentence; unitKind = 'passage'; }
+    else { unit = sentence; unitKind = 'sentence'; }
+  }
+  else {
+    const t = best.text;
+    const back = i => { const k = t.lastIndexOf('\n\n', i); return k < 0 ? 0 : k + 2; };
+    const fwd = i => { const k = t.indexOf('\n\n', i); return k < 0 ? t.length : k; };
+    const trimmed = (a, z) => {
+      while (a < z && /\s/.test(t[a])) a++;
+      while (z > a && /\s/.test(t[z - 1])) z--;
+      return range(a, z);
+    };
+    let a = back(best.start), z = fwd(best.end);
+    let para = trimmed(a, z);
+    // A one-line paragraph ("Pesticide Not Required is inspired by …") is a
+    // sentence with nothing round it: take the paragraphs either side of it too,
+    // while they fit.
+    for (let i = 0; i < 2 && para.getBoundingClientRect().height < 120; i++) {
+      const a2 = a > 0 ? back(a - 3) : a, z2 = z < t.length ? fwd(z + 2) : z;
+      if (a2 === a && z2 === z) break;
+      const wider = trimmed(a2, z2);
+      if (wider.getBoundingClientRect().height > Math.min(MAX, 400)) break;
+      a = a2; z = z2; para = wider;
+    }
+    if (para.getBoundingClientRect().height <= MAX) { unit = para; unitKind = 'paragraph'; }
+    else { unit = sentence; unitKind = 'sentence'; }
+    // Still one line, and alone in its block: a wiki infobox cell ("Hack,
+    // ADOM") or a tagline. Its container says what it is ("Influences"), so
+    // the picture is the largest one around it that is still small.
+    if (unitKind === 'paragraph' && para.getBoundingClientRect().height < 120) {
+      let up = null;
+      for (let e = best.el.parentElement; e && e !== document.body; e = e.parentElement) {
+        const r = e.getBoundingClientRect();
+        if (r.height > 400 || r.width > innerWidth * 0.95 || e.innerText.length > 2000) break;
+        up = e;
+      }
+      // An infobox too tall to take whole still gives its row: "Influences | Hack".
+      const pr = para.getBoundingClientRect();
+      if (up && (up.getBoundingClientRect().height > pr.height + 10 || up.getBoundingClientRect().width > pr.width + 40)) { unit = up; unitKind = 'message'; }
+    }
+  }
+  const column = unitKind === 'message' ? unit : best.el;
+  window.__proofRect = () => {
+    const u = unit.getBoundingClientRect();
+    const c = column.getBoundingClientRect();
+    const pad = unitKind === 'sentence' ? 90 : 0;
+    const top = u.top - pad, bottom = u.bottom + pad;
+    return { x: Math.min(c.left, u.left), y: top, w: Math.max(c.right, u.right) - Math.min(c.left, u.left), h: bottom - top };
+  };
   return {
     how: best.how,
+    unit: unitKind,
     text: best.text.slice(best.start, best.end).replace(/\s+/g, ' ').trim().slice(0, 500),
-    line: { x: s.x + scrollX, y: s.y + scrollY, w: s.width, h: s.height },
-    block: { x: b.x + scrollX, y: b.y + scrollY, w: b.width, h: b.height },
   };
 }
 
+// Puts the unit findAndMark chose in the viewport and shoots it there, not off a
+// full-page shot: Playwright's fullPage resizes the viewport, which re-lays a
+// responsive page out, and the clip measured before it lands on whatever moved
+// in (Atomicrops -> Pesticide Not Required came out as the "More from" carousel).
+// It is measured, scrolled to, and measured again until it holds still.
+async function shootUnit(page, file, maxHeight) {
+  const PAD = 20;
+  const vw = page.viewportSize().width;
+  // A sticky header (Steam's store menu bar, which only turns sticky once the
+  // page is scrolled) sits over the top of the viewport and would cover the
+  // first line, so it is measured after each scroll and the unit put below it.
+  const header = () => page.evaluate(() => {
+    let low = 0;
+    for (const x of [innerWidth * 0.1, innerWidth * 0.5, innerWidth * 0.9])
+      // Steam's sticky wrapper is 0px tall with its 58px bar overflowing it, so
+      // the bar's depth is the deepest of what was walked through to reach it.
+      for (let e = document.elementFromPoint(x, 2), deep = 0; e && e !== document.body; e = e.parentElement) {
+        const r = e.getBoundingClientRect();
+        if (r.bottom < 250) deep = Math.max(deep, r.bottom);
+        const pos = getComputedStyle(e).position;
+        if ((pos === 'fixed' || pos === 'sticky') && r.top <= 4) { low = Math.max(low, deep); break; }
+      }
+    return Math.ceil(low);
+  });
+  let clear = 0;
+  let r = await page.evaluate(() => window.__proofRect());
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) {
+      const at = clear + 40;
+      await page.setViewportSize({ width: vw, height: Math.max(900, Math.ceil(Math.min(r.h, maxHeight)) + 2 * PAD + at) });
+      await page.evaluate(top => window.scrollBy(0, top), r.y - at);
+      await page.waitForTimeout(i ? 500 : 700);
+      clear = await header();
+      const again = await page.evaluate(() => window.__proofRect());
+      const still = Math.abs(again.y - (clear + 40)) < 2 && Math.abs(again.h - r.h) < 2;
+      r = again;
+      if (still) return;
+    }
+  };
+  // A page loading ads late (mcvuk.com) can move the unit after it held still
+  // for one look, and the shot was then a 9px strip of nothing. So it is
+  // measured once more after the shot, and shot again if it moved.
+  for (let shot = 0; shot < 3; shot++) {
+    await settle();
+    // Newsletter pop-ups, chat bubbles and cookie bars float over the text
+    // (GamesRadar's covered Enter the Gungeon -> Hades): anything fixed that
+    // covers part of the screen is hidden. A fixed element taller than most of
+    // the viewport is left alone, in case it is the page itself.
+    await page.evaluate(() => {
+      for (const el of document.querySelectorAll('body *')) {
+        if (getComputedStyle(el).position !== 'fixed') continue;
+        const r = el.getBoundingClientRect();
+        if (r.height > 0 && r.height < innerHeight * 0.6 && r.top > 4) el.style.setProperty('visibility', 'hidden', 'important');
+      }
+    });
+    const vh = page.viewportSize().height;
+    const x = Math.max(0, r.x - PAD);
+    const y = Math.max(clear, r.y - PAD);
+    const w = Math.max(Math.min(vw, r.x + r.w + PAD) - x, 360);
+    const h = Math.min(r.y + r.h + PAD, vh) - y;
+    await page.screenshot({ path: file, clip: { x, y, width: Math.min(w, vw - x), height: Math.max(h, 1) } });
+    const after = await page.evaluate(() => window.__proofRect());
+    if (Math.abs(after.y - r.y) < 2 && Math.abs(after.h - r.h) < 2 && h >= Math.min(r.h, maxHeight)) break;
+    r = after;
+  }
+}
+
 // ── capture, per kind ─────────────────────────────────────────────────────────
+
+// The tallest crop, in CSS px: a whole message or paragraph up to this, past it
+// the sentence with a few lines either side.
+const MAX_UNIT = 900;
 
 const COOKIE_BUTTONS = /^(accept( all)?( cookies)?|i agree|agree( & close)?|allow all|got it|ok|consent|continue)$/i;
 
@@ -349,7 +566,10 @@ async function captureReddit(ctx, c, file) {
 }
 
 async function capturePage(ctx, c, file, at) {
-  const url = (at || c.url).replace(/#.*$/, '');
+  // A Steam link copied from a Finnish client says ?l=finnish, which outranks
+  // the English cookie: the page is read in English either way.
+  let url = (at || c.url).replace(/#.*$/, '');
+  if (/steam(community|powered)\.com/.test(url)) url = url.replace(/([?&])l=[a-z]+&?/, '$1').replace(/[?&]$/, '');
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -360,13 +580,15 @@ async function capturePage(ctx, c, file, at) {
     await page.waitForTimeout(800);
     // Collapsed text: Steam's "Read more", Reddit's "load more comments" are not
     // proof-bearing often enough to chase; the store page's About section is.
-    await page.$$eval('#game_area_description', els => els.forEach(e => { e.style.maxHeight = 'none'; e.style.overflow = 'visible'; })).catch(() => {});
+    await page.addStyleTag({ content: '#game_area_description, .game_page_autocollapse { max-height: none !important; overflow: visible !important }'
+      + ' .game_page_autocollapse_fade, .game_page_autocollapse_readmore { display: none !important }' }).catch(() => {});
     const look = () => page.evaluate(findAndMark, {
       fragment: textFragment(c.url),
       fromNames: variants(c.fromName),
       toNames: variants(c.toName),
       claimSrc: CLAIM.source,
-      ambiguous: [...AMBIGUOUS],
+      ambiguous: exact(c.fromName, c.toName),
+      maxHeight: MAX_UNIT,
     });
     // Steam announcements and most article sites fill their body in by script
     // after the load settles; one slower second look catches them.
@@ -380,19 +602,8 @@ async function capturePage(ctx, c, file, at) {
       await page.screenshot({ path: file.replace(/\.png$/, '.miss.png') });
       return { status: 'no-match', detail: 'neither name found on the page', final: page.url() };
     }
-    await page.waitForTimeout(300);
-    // Crop: the passage's column, from a few lines above the sentence to a few
-    // below, so the reader sees what it is part of without a page of it.
-    const vw = page.viewportSize().width;
-    const CONTEXT = 90, PAD = 20;
-    const x = Math.max(0, Math.min(found.block.x, found.line.x) - PAD);
-    const right = Math.min(vw, Math.max(found.block.x + found.block.w, found.line.x + found.line.w) + PAD);
-    const top = Math.max(0, Math.max(found.block.y - PAD, found.line.y - CONTEXT));
-    const bottom = Math.min(found.block.y + found.block.h + PAD, found.line.y + found.line.h + CONTEXT);
-    const height = Math.min(Math.max(bottom - top, found.line.h + 2 * PAD), 600);
-    await page.screenshot({ path: file, fullPage: true,
-      clip: { x, y: top, width: Math.max(right - x, 360), height } });
-    return { status: found.how === 'weak' ? 'weak' : 'ok', how: found.how, quote: found.text, final: page.url() };
+    await shootUnit(page, file, MAX_UNIT);
+    return { status: found.how === 'weak' ? 'weak' : 'ok', how: found.how, unit: found.unit, quote: found.text, final: page.url() };
   } catch (e) {
     return { status: 'error', detail: String(e.message || e).split('\n')[0] };
   } finally {
@@ -419,25 +630,78 @@ async function getJSON(ctx, url) {
   return r.json();
 }
 
-async function captureTweet(ctx, c, file) {
+// A long post (an X "note tweet") is cut at "Show more" in the embed, and the
+// sentence is often past the cut: Soulash's "inspired by ADOM and UnReal World,
+// my two favorite roguelikes" stopped at "ADOM". The embed's own data has only
+// the cut text, so the full text comes from api.fxtwitter.com (which reads it
+// for link previews) and is handed to the embed in place of the cut one: the
+// picture is still X's own widget, showing all of the post.
+async function fullTweetText(ctx, user, id) {
+  try {
+    const t = (await getJSON(ctx, `https://api.fxtwitter.com/${user}/status/${id}`)).tweet;
+    return (t.raw_text && t.raw_text.text) || t.text || '';
+  } catch (e) { return ''; }
+}
+
+async function captureTweet(ctx, c, file, media = false) {
   const m = c.url.match(/(?:x|twitter)\.com\/([^/]+)\/status(?:es)?\/(\d+)/);
   if (!m) return { status: 'error', detail: 'not a tweet URL' };
   let embed;
   try {
-    embed = await getJSON(ctx, 'https://publish.twitter.com/oembed?dnt=1&hide_media=1&hide_thread=1&url=' + encodeURIComponent(`https://twitter.com/${m[1]}/status/${m[2]}`));
+    embed = await getJSON(ctx, `https://publish.twitter.com/oembed?dnt=1&hide_media=${media ? 0 : 1}&hide_thread=1&url=` + encodeURIComponent(`https://twitter.com/${m[1]}/status/${m[2]}`));
   } catch (e) {
     return { status: 'blocked', detail: 'embed endpoint: ' + e.message };
   }
   const page = await ctx.newPage();
+  let full = '';
+  await page.route('**/tweet-result*', async route => {
+    const resp = await route.fetch();
+    let data;
+    try { data = await resp.json(); } catch (e) { return route.fulfill({ response: resp }); }
+    if (data && data.note_tweet) {
+      full = await fullTweetText(ctx, m[1], m[2]);
+      if (full && full.startsWith(data.text.replace(/\s*\S*$/, ''))) {
+        data.text = full;
+        data.display_text_range = [0, Array.from(full).length];
+        delete data.note_tweet;
+      } else full = '';
+    }
+    route.fulfill({ response: resp, json: data });
+  });
   try {
     await page.setContent(`<html><body style="margin:0;padding:24px;background:#fff;width:600px">${embed.html}</body></html>`);
     const frame = await page.waitForSelector('iframe[id^=twitter-widget]', { timeout: 20000 }).catch(() => null);
     if (!frame) return { status: 'error', detail: 'embed did not render' };
     await page.waitForTimeout(2500);
-    await frame.screenshot({ path: file });
-    const quote = (embed.html.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [, ''])[1].replace(/<[^>]+>/g, '');
-    const named = variants(c.fromName).some(n => quote.toLowerCase().includes(n.toLowerCase()));
-    return { status: named ? 'ok' : 'weak', how: 'embed', quote, detail: named ? '' : 'tweet text does not name ' + c.fromName + ' (may be in an image or a reply)' };
+    const quote = full || (embed.html.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [, ''])[1].replace(/<[^>]+>/g, '');
+    const flat = t => t.replace(/\s+/g, ' ').toLowerCase();
+    const named = variants(c.fromName).some(n => flat(quote).includes(flat(n)));
+    // A whole long post is a page or more: past MAX_UNIT the picture runs from
+    // the top of the post (who said it) down to the end of the paragraph that
+    // names the game, and is highlighted there like any page.
+    const box = await frame.boundingBox();
+    let clip = null;
+    if (full && box.height > MAX_UNIT) {
+      const inner = await frame.contentFrame();
+      const found = inner && await inner.evaluate(findAndMark, {
+        fragment: null, fromNames: variants(c.fromName), toNames: variants(c.toName),
+        claimSrc: CLAIM.source, ambiguous: exact(c.fromName, c.toName), maxHeight: MAX_UNIT,
+      }).catch(() => null);
+      if (found) {
+        const r = await inner.evaluate(() => { scrollTo(0, 0); return window.__proofRect(); });
+        const bottom = box.y + r.y + r.h + 16;
+        clip = bottom - box.y <= MAX_UNIT
+          ? { x: box.x, y: box.y, width: box.width, height: bottom - box.y }
+          : { x: box.x, y: box.y + r.y - 16, width: box.width, height: r.h + 32 };
+      }
+    }
+    // Text that doesn't name the game, on a post with a picture: the name is
+    // usually in the picture (a list of influences, a slide), so it is shown.
+    if (!named && !media && /pic\.(x|twitter)\.com/.test(embed.html)) return await captureTweet(ctx, c, file, true);
+    if (clip) await page.screenshot({ path: file, fullPage: true, clip });
+    else await frame.screenshot({ path: file });
+    return { status: named ? 'ok' : 'weak', how: full ? 'embed-full' : 'embed', quote: quote.slice(0, 500),
+      detail: named ? '' : 'tweet text does not name ' + c.fromName + ' (may be in an image or a reply)' };
   } finally {
     await page.close();
   }
@@ -519,7 +783,14 @@ function exportProofs() {
   for (const f of Object.keys(ledger.files)) if (fs.existsSync(path.join(GAME_DIR, f)) && !ours(f)) delete ledger.files[f];
   fs.mkdirSync(GAME_DIR, { recursive: true });
   const owners = f => fs.existsSync(path.join(GAME_DIR, f)) && !ledger.files[f];
-  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owners(gameFile(r)));
+  // A `weak` page capture names only the newer game, which proves nothing by
+  // itself (ADOM -> HyperRogue showed a sentence about HyperRogue and no ADOM): it
+  // stays in the report for a look, and is listed in docs/proof-missing.md, not
+  // shipped. A weak TWEET still ships: the picture is the whole post, and the
+  // name the text check missed is usually right there ("Isaac", or in the
+  // attached picture).
+  const shown = r => r.image && (r.status !== 'weak' || r.kind === 'x') && r.status !== 'quote-card';
+  const keep = report.filter(r => shown(r) && !['youtube', 'podcast'].includes(r.kind) && !owners(gameFile(r)));
   let bytes = 0;
   for (const r of keep) {
     const dest = path.join(GAME_DIR, gameFile(r));
@@ -534,7 +805,7 @@ function exportProofs() {
   // and that must add the Reddit proofs without wiping the rest.
   const want = new Set(keep.map(gameFile));
   const onSheet = new Set(loadConnections().map(gameFile));
-  const failed = new Set(report.filter(r => !r.image || r.status === 'quote-card').map(gameFile));
+  const failed = new Set(report.filter(r => !shown(r)).map(gameFile));
   for (const f of Object.keys(ledger.files)) {
     if (want.has(f) || !ours(f)) continue;
     if (failed.has(f) || !onSheet.has(f)) { fs.unlinkSync(path.join(GAME_DIR, f)); delete ledger.files[f]; }
@@ -558,7 +829,7 @@ function writeMissing() {
   const report = new Map(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')).map(r => [`${r.from}__${r.to}`, r]));
   const file = gameFile;
   const inGame = new Set(fs.readdirSync(GAME_DIR));
-  const groups = { reddit: [], dead: [], refused: [], down: [], nomatch: [], video: [], note: [], none: [] };
+  const groups = { reddit: [], dead: [], refused: [], down: [], weak: [], nomatch: [], video: [], note: [], none: [] };
   for (const c of loadConnections()) {
     if (inGame.has(file(c))) continue;
     const r = report.get(`${c.from}__${c.to}`);
@@ -570,6 +841,7 @@ function writeMissing() {
     else if (c.kind === 'reddit') groups.reddit.push(line(r && r.status === 'no-match' ? 'the post loaded but neither name is in it' : ''));
     else if (!r) groups.down.push(line('not captured yet'));
     else if (r.status === 'no-match') groups.nomatch.push(line(''));
+    else if (r.status === 'weak') groups.weak.push(line(`only ${c.toName} is named`));
     else if (/HTTP 40[46]|HTTP 410|not a tweet URL/.test(r.detail || '')) groups.dead.push(line(
       c.kind === 'x' ? (/not a tweet/.test(r.detail) ? 'the link is an account, not a tweet' : 'the tweet is deleted') : 'the page is gone'));
     else if (/HTTP (5\d\d)|timed out|ERR_NAME|ERR_CONNECTION|ERR_TIMED|net::/.test(r.detail || '')) groups.down.push(line(r.detail.split(' at ')[0].slice(0, 70)));
@@ -596,6 +868,8 @@ under any name followed by \`python3 tools/proof_owner_match.py --write\` (see
     'Bot walls, 403s and rate limits. Open the link in your own browser and screenshot the sentence.', groups.refused)
     + section('The site was down or never answered',
     'Worth one retry later (`--only <game id>`); if it stays down, the link may need replacing. RogueBasin was down for everyone during the run.', groups.down)
+    + section('Only the newer game is named',
+    'The page talks about the influenced game and never names the influencer, so the capture is in `.influence_work/proof/` for a look but not in the game. Often the influencer is written another way (an abbreviation, a series name) or sits in an image.', groups.weak)
     + section('The page loaded, but the sentence wasn\'t found',
     'Neither game is named in the page\'s text. Usually a dead or moved page, a name written differently, or the proof sitting in an image or a video on the page.', groups.nomatch)
     + section('Videos and podcasts',
@@ -631,6 +905,13 @@ async function main() {
   if (args.includes('--untried') && fs.existsSync(path.join(OUT, 'report.json'))) {
     const seen = new Set(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')).map(r => r.from + '__' + r.to));
     todo = todo.filter(c => !seen.has(c.from + '__' + c.to));
+  }
+  // --status weak,no-match: only connections the report last left in one of these.
+  if (opt('--status') && fs.existsSync(path.join(OUT, 'report.json'))) {
+    const want = opt('--status').split(',');
+    const hit = new Set(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'))
+      .filter(r => want.includes(r.status)).map(r => r.from + '__' + r.to));
+    todo = todo.filter(c => hit.has(c.from + '__' + c.to));
   }
   if (opt('--limit')) todo = todo.slice(0, +opt('--limit'));
 
