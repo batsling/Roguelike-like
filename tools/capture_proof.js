@@ -499,6 +499,17 @@ async function shootUnit(page, file, maxHeight) {
   // measured once more after the shot, and shot again if it moved.
   for (let shot = 0; shot < 3; shot++) {
     await settle();
+    // Newsletter pop-ups, chat bubbles and cookie bars float over the text
+    // (GamesRadar's covered Enter the Gungeon -> Hades): anything fixed that
+    // covers part of the screen is hidden. A fixed element taller than most of
+    // the viewport is left alone, in case it is the page itself.
+    await page.evaluate(() => {
+      for (const el of document.querySelectorAll('body *')) {
+        if (getComputedStyle(el).position !== 'fixed') continue;
+        const r = el.getBoundingClientRect();
+        if (r.height > 0 && r.height < innerHeight * 0.6 && r.top > 4) el.style.setProperty('visibility', 'hidden', 'important');
+      }
+    });
     const vh = page.viewportSize().height;
     const x = Math.max(0, r.x - PAD);
     const y = Math.max(clear, r.y - PAD);
