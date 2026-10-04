@@ -286,6 +286,84 @@ almost all posted by the game's own account, and two posted by someone else (a
 PR agency and a publisher). Those are listed in section 4 of
 `docs/influence-candidates.md`.
 
+### Proof screenshots: `tools/capture_proof.js`
+
+The game's choice popup shows the Source of the connection you would walk, and
+under it a screenshot of the proof: the developer's own sentence on the linked
+page, highlighted. `capture_proof.js` makes those. For each connection with a
+link it opens the page in headless Chromium, finds the sentence (the URL's
+`#:~:text=` fragment when there is one, otherwise a claim sentence naming the
+influencer, the earliest one on a tie), highlights it and crops around it.
+
+```bash
+export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, npm install playwright
+node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
+node tools/capture_proof.js --skip youtube,podcast --resume   # the full run, ~6 s a link
+node tools/capture_proof.js --only <game id>     # retry one game's connections
+node tools/capture_proof.js --kind reddit        # Reddit only; run it from your own computer (below)
+node tools/capture_proof.js --export             # copy them into images2.0/proof/ for the game
+```
+
+Results go to `.influence_work/proof/` with `report.json`, which records every
+connection tried and why one failed (`blocked` with the HTTP status, `no-match`
+with a screenshot of what the browser was shown). How each kind is handled:
+X through the official embed; Steam with its age gate pre-answered; Reddit
+through old.reddit.com, which shows the whole thread, comments included.
+
+**Reddit has to be captured from a home connection.** Reddit blocks cloud
+addresses outright ("You've been blocked by network security"), so from the
+cloud container only the embed host works, and it renders a post but never its
+comments, where the developer's word usually is. Those connections come back
+`blocked`, with a note saying to run them at home. On your own computer, from
+the repo root:
+
+```bash
+npm install playwright && npx playwright install chromium
+node tools/capture_proof.js --kind reddit
+node tools/capture_proof.js --export
+```
+
+then commit `images2.0/proof/`. The export there only adds and replaces Reddit
+proofs: it deletes a game file only for a connection it KNOWS failed or that left
+the sheet, never one its (Reddit-only) report doesn't mention. Videos and podcasts are
+the owner's to source by hand (a YouTube clip can't be downloaded within its
+terms), so `--skip youtube,podcast` leaves them out.
+
+**One name format for every proof.** The game reads one PNG per connection
+(PNG is the owner's call), named by the two games' ids, influencer first,
+joined by three hyphens: `slay_the_spire---tic_tactic.png`. An id is a game's file name
+in `data/games/` without `.tres`; ids are only lower-case letters, digits and
+underscores, so the hyphens split a name one way only. A screenshot that proves
+several connections is saved once under each: one image naming Hades, Isaac,
+Gungeon and Spelunky as Going Under's influences is four files.
+
+**Adding your own.** Drop a screenshot into `images2.0/proof/` named that way and
+you're done. Or drop it in under any name ("tic tactic sts.png", "going under
+hades, isaac, gungeon, spelunky.png") and run `python3
+tools/proof_owner_match.py`: it proposes the connection(s) each name means and
+lists what it couldn't place; `--write` renames them into place (one copy per
+connection). For a name it can't read, `--pair "file.png" slay_the_spire
+tic_tactic` (ids or game names). It also flags a file in the id format whose ids
+aren't a connection on the sheet, and so does the test suite
+(`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
+silently.
+
+**Your screenshots win.** `tools/proof_captured.json` lists the files
+`capture_proof.js --export` copied in, each with a sha1 of its bytes, and an
+export only ever replaces or deletes a file still listed with that sha1.
+Anything else in the folder is yours, including a captured file you uploaded
+over: its bytes no longer match, so it drops off the list and is yours from
+then on.
+
+Two uploads prove connections the sheet doesn't have yet (Brotato → Bounty of
+One, Enter the Gungeon → Dungreed). They wait, already named, in
+`images2.0/proof/not-on-sheet/`: move them up a folder once their rows exist.
+
+The script picks a sentence, it doesn't judge one. **Look at the images**: the
+pilot found a source that undercuts its own row (Rogue Voltage, section 4 of
+`docs/influence-candidates.md`), and a status of `ok` only means a sentence
+naming the game was found.
+
 ## Traps
 
 - **Game names that are ordinary words.** Rogue, Hack, Roll, Crawl, Haste,

@@ -368,9 +368,150 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 			"with the address under it: %s" % text)
 		assert_lt(GameChoiceModal.short_source(source).length(),
 			GameChoiceModal.SOURCE_CHARS + 1, "and it is short enough to read")
+	elif GameChoiceModal.proof_texture(found["from"].id, found["to"].id) != null:
+		# The note pointed at the screenshot now shown above it.
+		assert_false(text.contains(source),
+			"a note whose evidence is on screen is not printed: %s" % text)
 	else:
 		assert_true(text.contains(source),
 			"a note like 'game credits' is shown as written: %s" % text)
+	modal._close()
+
+# --- the proof screenshot ---------------------------------------------------
+#
+# The developer's own sentence, captured off the Source page. Looked up by the
+# edge's two ids, so these tests stand the run on an edge that HAS one rather
+# than hoping the random offering lands on it.
+
+# A proof file, "slay_the_spire---tic_tactic.png", read back as the connection's
+# two ids. [] for anything that isn't a PNG; [null] for a name that isn't two
+# ids of real games joined by the three hyphens (a typo the owner made by hand).
+func _edge_of(file: String) -> Array:
+	if not file.ends_with(GameChoiceModal.PROOF_EXT):
+		return []
+	var ids: PackedStringArray = file.get_basename().split(GameChoiceModal.PROOF_JOIN)
+	if ids.size() != 2 or Data.get_game(StringName(ids[0])) == null or Data.get_game(StringName(ids[1])) == null:
+		return [null]
+	return [StringName(ids[0]), StringName(ids[1])]
+
+func _a_captured_edge() -> Array:
+	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
+	if dir == null:
+		return []
+	for file in dir.get_files():
+		var edge: Array = _edge_of(file)
+		if edge.size() == 2:
+			return edge
+	return []
+
+func test_every_proof_is_named_for_a_real_connection() -> void:
+	# A file named for a pair the sheet does not connect is a proof no card can
+	# ever show — a renamed game, or a connection taken out of the sheet.
+	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
+	if dir == null:
+		pending("no proof folder yet")
+		return
+	var orphans: Array = []
+	var seen: int = 0
+	for file in dir.get_files():
+		# The owner's own freely named screenshots share the folder; only the
+		# "<from>__<to>" files are the game's.
+		var edge: Array = _edge_of(file)
+		if edge.is_empty():
+			continue
+		seen += 1
+		if edge.size() != 2 or not Data.get_game(edge[0]).games_influenced.has(edge[1]):
+			orphans.append(file)
+	if seen == 0:
+		pending("the proof folder is empty")
+		return
+	assert_eq(orphans, [], "every proof belongs to a connection on the sheet")
+
+func test_the_card_shows_the_proof_for_the_edge_it_walks() -> void:
+	var edge: Array = _a_captured_edge()
+	if edge.is_empty():
+		pending("no proof captured yet")
+		return
+	# Stand on the influencer and offer the influenced game as card 0.
+	GameState.current_game_id = edge[0]
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[1]), "slot": edge[1]})
+	var proof: TextureRect = modal.find_child("Proof", true, false)
+	assert_not_null(proof, "the source block carries the screenshot")
+	assert_eq(proof.texture, GameChoiceModal.proof_texture(edge[0], edge[1]),
+		"and it is this edge's, not another's")
+	var frame: Control = modal.find_child("ProofFrame", true, false)
+	for i in range(4):
+		await get_tree().process_frame
+	assert_lte(frame.custom_minimum_size.y, GameChoiceModal.PROOF_THUMB_H + 0.5,
+		"a tall one is cut to a thumbnail")
+	assert_lte(proof.size.x, frame.size.x + 0.5,
+		"scaled to the column's width, so none of it is cut off at the side")
+	assert_gte(proof.size.x / float(proof.texture.get_width()),
+		minf(1.0, frame.size.x / float(proof.texture.get_width())) - 0.01,
+		"and shrunk no further than that width needs")
+	var source: String = String(Data.get_game(edge[0]).influence_evidence(edge[1]).get("source", ""))
+	if GameData.is_openable_source(source.strip_edges()):
+		assert_true(_text_of(modal).contains("Open source"), "with the link still under it")
+	modal._close()
+
+func test_the_proof_is_looked_up_the_way_the_sheet_runs() -> void:
+	var edge: Array = _a_captured_edge()
+	if edge.is_empty():
+		pending("no proof captured yet")
+		return
+	# Standing on the INFLUENCED game and looking back at its influencer is the
+	# same edge, so it shows the same proof.
+	GameState.current_game_id = edge[1]
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[0]), "slot": edge[0]})
+	var proof: TextureRect = modal.find_child("Proof", true, false)
+	assert_not_null(proof, "the edge is the same whichever end you stand on")
+	modal._close()
+
+func test_a_check_folder_note_gives_way_to_the_screenshot_it_meant() -> void:
+	# The owner's own screenshots are the folder "check folder" points at, so on
+	# a card that shows one the note would only read as an instruction.
+	var edge: Array = []
+	var note: String = ""
+	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
+	if dir != null:
+		for file in dir.get_files():
+			var found: Array = _edge_of(file)
+			if found.size() != 2:
+				continue
+			var from_game: GameData = Data.get_game(found[0])
+			var source: String = String(from_game.influence_evidence(found[1]).get("source", "")).strip_edges()
+			if source != "" and not GameData.is_openable_source(source):
+				edge = found
+				note = source
+				break
+	if edge.is_empty():
+		pending("no screenshot stands on a connection sourced by a note")
+		return
+	GameState.current_game_id = edge[0]
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[1]), "slot": edge[1]})
+	assert_not_null(modal.find_child("Proof", true, false), "the screenshot is shown")
+	assert_false(_text_of(modal).contains(note), "and the note that pointed at it is not")
+	modal._close()
+
+func test_a_connection_with_no_capture_shows_the_link_alone() -> void:
+	assert_null(GameChoiceModal.proof_texture(&"no_such_game", &"nor_this_one"),
+		"no file, no picture")
+
+func test_the_proof_opens_full_size_and_any_click_puts_it_away() -> void:
+	var edge: Array = _a_captured_edge()
+	if edge.is_empty():
+		pending("no proof captured yet")
+		return
+	GameState.current_game_id = edge[0]
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[1]), "slot": edge[1]})
+	var view: Control = modal.open_proof(GameChoiceModal.proof_texture(edge[0], edge[1]))
+	assert_true(is_instance_valid(view), "the screenshot opens over the popup")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	view.gui_input.emit(click)
+	assert_null(modal._proof_view, "a click anywhere closes it")
+	assert_true(is_instance_valid(modal), "and only it: the popup is still open")
 	modal._close()
 
 # A Champion node refuses a Bash (§7.1), so the card is arranged to be an
