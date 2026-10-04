@@ -377,6 +377,12 @@ aren't a connection on the sheet, and so does the test suite
 (`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
 silently.
 
+**Seeing it on the sheet.** The `connections` sheet's `Proof` column (F) holds
+each row's PNG name, blank where there is none, so filtering it for blanks is
+the same list as `docs/proof-missing.md`. It is written FROM the folder by
+`python3 tools/proof_column.py` (`--check` says whether it is stale) and nothing
+reads it back, so re-run that after adding proofs rather than typing into it.
+
 **Your screenshots win.** `tools/proof_captured.json` lists the files
 `capture_proof.js --export` copied in, each with a sha1 of its bytes, and an
 export only ever replaces or deletes a file still listed with that sha1.
