@@ -138,6 +138,7 @@ From your own list of games you wanted on the chart but had no connection for. *
 
 ### Looked like an influence, isn't
 
+- **Dome Keeper → Drill Core**: the press compares the two constantly, and a player asked outright whether Drill Core plagiarises it. Its developer (Hummer, developer badge) answered: "To be honest, I was more inspired by the KINGDOM and Craft The World games. But Dome keeper is also a great game!" (Kingdom: New Lands → Drill Core is already on the sheet from this reply; Craft The World isn't on the chart.) — [Steam forum](https://steamcommunity.com/app/2821800/discussions/0/4346617656894336061/#c4346617656897843847)
 - **Skul**: "Dead Cells became the benchmark" is about sales targets, not design. — [Inven](https://www.inven.co.kr/webzine/news/?news=302719)
 - **Juicy Realm ← Isaac / Nuclear Throne / Gungeon**: only a news write-up says so. SpaceCan's own dev log and the Gcores feature name no games.
 - *Slay the Spire → Drapline was checked and isn't sourced.* KANAWO's own list of influences (the Drapline line in section 1) doesn't include it, and neither do the game's Steam page or announcements. The only comparison ("Slay the Spire とか学園アイドルマスターとか、そういった感じだ", "it's like Slay the Spire or Gakuen Idolmaster") is from a player's note.com write-up. — [note.com](https://note.com/ipusiro/n/n3a8ffeb83ef8)
@@ -175,6 +176,12 @@ From the early-classics pass (October 2026), first-hand sources for rows the she
 - **Torneko's Great Adventure: Mystery Dungeon → Baroque** (sheet: Wikipedia's footnote): Yonemitsu's own words, in the **Rogue → Baroque** line in section 1. — [Nerve Tower](https://nervetower.neocities.org/int_yonemitsu_ps)
 - **NetHack → Slash'EM** (sheet: RogueBasin): its own homepage, after a history running Rogue → Hack → NetHack: "people began making their own versions of Nethack to tide themselves between magical releases. SLASH'EM is the (continuing) saga of one such variant..." It's a fork, so this row may want `Yes` under Dev/Series Relation, as the Cataclysm forks get. — [slashem.org](http://www.slashem.org/)
 - **NetHack → Pathos: Nethack Codex** (sheet: RogueBasin): Callan Hodgskin's App Store page: "Pathos is a roguelike adventure game inspired by the rule set from Nethack." — [App Store](https://apps.apple.com/us/app/pathos-nethack-codex/id1045848120)
+
+From the one-connection pass (October 2026), on the rows those twelve games hang on:
+- **NetHack → Dragonslayer** (sheet: RogueBasin): Walter D. Pullen's own page for Daedalus, the maze program Dragonslayer ships inside: "Dragonslayer: A Dungeons & Dragons type game similar to Nethack, but from a first person view." *(A comparison in the author's own words; first-hand, which RogueBasin isn't.)* — [astrolog.org, Daedalus](https://www.astrolog.org/labyrnth/daedalus.htm)
+- **Kingdom: New Lands → Drill Core**: the cited forum comment is from a badged developer and says "KINGDOM", the series. The row is sound. See section 3 for Dome Keeper.
+- **Zangband → Cthangband** (sheet: RogueBasin): the Amiga port's readme says "Cthangband is a variant of Zangband, but has all of the Amber elements removed and is based around HP Lovecraft's Cthulhu mythos". That's its porter (Bablos) writing, not Dean Anderson, so only a little better than RogueBasin. — [Aminet](https://aminet.net/package/game/role/cthangband)
+- **No first-hand source found** for **Vampire Survivors → Nimrods** (sheet: `check folder`; designer Talonos says only "When I played my first bullet heaven…", and Vampire Survivors is Digital Trends's word — [Digital Trends](https://www.digitaltrends.com/gaming/nimrods-guncraft-survivor-steam-demo-impressions/)), **DemonCrawl → BroomSweeper** (`check folder`; BroomSweeper's tagline "Minesweeper gone Rogue(like)" echoes DemonCrawl's, which isn't a source), **Torneko's Great Adventure → Dungeon of Windaria** (`look at it`; Compile Heart's 2008 announcement mentions only auto-generated dungeons — [Game Watch](https://game.watch.impress.co.jp/docs/20080313/windaria.htm)), **Vampire Survivors → Bioprototype** (`look at it`; only the press), and **ToeJam & Earl → Baldi's Basics Plus** (a fan wiki; the wiki's own citation page returns 403, so mystman12's words weren't found).
 
 ---
 
@@ -257,6 +264,10 @@ Dungeon Hack (the "Hack/NetHack with the Eye of the Beholder III engine" line on
 All 61 games with no connection went through the new scans: the Steam pass reading native titles too, itch.io pages and devlogs, and studio websites and press kits. Only Demonlore turned up (section 1). Most itch pages under these titles were someone else's game, and the scan flagged them. Godbreakers' and OTXO's sites were down, and RogueSlide's and Stick It to the Stickman's couldn't be fetched. **Not covered yet:** Reddit (the Arctic Shift archive throttled the cloud container twice) and Kickstarter (it refuses cloud machines). Both need running from your own computer.
 
 The 12 never searched before, by hand: Wildermyth (its interviews name only X-COM, off the chart, and tabletop RPGs), PlateUp! (Overcooked and Unrailed!, both off the chart), White Knuckle (Portal 2's developer commentary, off the chart), Forestrike (kung fu films), Underdogs, Rogue Flight (the developer names only arcade genres; Space Harrier and the others are a player's), Mad King Redemption (searched in Chinese too, as 轮回战纪), Don't Lose Aggro (World of Warcraft), Hangtime! (the anime Haikyuu!!), Cube Chaos, There Are No Orcs (the Warcraft III mod Castle Fight, but only players say so), and Heading Out (FTL, now in section 1).
+
+### One connection, twelve more (October 2026)
+
+DemonCrawl, Handmancers (Arcane, the TV series, for its art; Slay the Spire is on the sheet), Beneath Oresa, Nimrods, Cthangband, Dragonslayer, Dungeon of Windaria, The World is Your Weapon (scans only), Rogue's Tale (its store page names no game), Baldi's Basics Plus, Drill Core and Bioprototype: the cached Steam pages read wider (`cues`), itch.io, studio sites, then a hand search. Nothing new on the chart. What they said about the rows they already have is in section 4, and Dome Keeper → Drill Core is in section 3.
 
 ### Your wanted list
 
