@@ -311,7 +311,11 @@ resizes the viewport, Steam's store re-lays itself out, and the old crop landed
 on the "More like this" carousel. A long X post (cut at "Show more" in the
 embed) is rendered in full, its text read from `api.fxtwitter.com` and handed to
 X's own embed. A name of three words or more is also found by its initials in
-capitals (ADOM, DCSS, FTL). A short name in capitals counts too ("FTL"), and so does
+capitals (ADOM, DCSS, FTL). A passage marked in the URL (`#:~:text=`) can run over
+several paragraphs and is framed whole, and its prefix picks the post out from a
+page title repeating the same words. Names a page writes differently go in
+`ALIASES` in the script ("Faster Than Light" for FTL), and a hyphen inside a
+name is optional ("Bumbo"). A short name in capitals counts too ("FTL"), and so does
 the part after a colon ("Shiren the Wanderer"). A `weak` page match, where only
 the influenced game is named, stays in `.influence_work/proof/` for a look but
 is not exported; it is listed in `docs/proof-missing.md` instead. A weak tweet

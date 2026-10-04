@@ -156,8 +156,17 @@ function pilot(conns) {
 // "The Binding of Isaac" is written "Binding of Isaac"; "Moonlighter 2: The
 // Endless Vault" is written "Moonlighter 2". Both short forms count, unless
 // the short form is two letters long or an ordinary word.
+// Names written another way on the very pages that prove them: a short game
+// name spelled out, or a developer's own slip. Add to it when a capture comes
+// back `weak` because the page says the name differently.
+const ALIASES = {
+  'FTL': ['Faster Than Light'],
+  'Magic Survival': ['Magical Survival'],
+  'Backpack Hero': ['Backpack Heroes'],
+};
+
 function variants(name) {
-  const v = new Set([name]);
+  const v = new Set([name, ...(ALIASES[name] || [])]);
   const noThe = name.replace(/^The\s+/i, '');
   v.add(noThe);
   // "Spelunky Classic" is written "Spelunky"; a remaster by its original's name.
@@ -195,7 +204,8 @@ function textFragment(url) {
   // text=[prefix-,]start[,end][,-suffix]; prefix/suffix are context only.
   const parts = m[1].split(',').map(s => decodeURIComponent(s.replace(/\+/g, ' ')));
   const core = parts.filter(p => !p.endsWith('-') && !p.startsWith('-'));
-  return { start: core[0] || '', end: core[1] || '' };
+  const prefix = (parts.find(p => p.endsWith('-')) || '').slice(0, -1);
+  return { start: core[0] || '', end: core[1] || '', prefix };
 }
 
 // ── the page side: find, highlight, measure ───────────────────────────────────
@@ -209,7 +219,9 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
   const claim = new RegExp(claimSrc, 'i');
   const pat = n => {
     const gap = '[\\s:\\-–—]+';
-    const body = n.split(/[\s:\-–—]+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(gap);
+    // A hyphen inside a word is optional: "Bum-Bo" is written "Bumbo".
+    const word = w => w.split('-').map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('-?');
+    const body = n.split(/(?:\s*[:–—]\s*|\s+-\s+|\s+)/).map(word).join(gap);
     // Latin names need word edges; a name in Japanese or Chinese text sits
     // between 『』 or straight against kana, so the edge test is only on \w.
     return new RegExp('(?<![A-Za-z0-9])' + body + '(?![A-Za-z0-9])', ambiguous.includes(n) ? 'g' : 'gi');
@@ -253,6 +265,7 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
   // A sentence ends at its punctuation, at a line end, or at the end of the block.
   const SENT = /[^.!?。！？\n]*(?:[.!?。！？]+|(?=\n)|$)/g;
   let best = null;
+  const order = [];
   for (const [el, items] of blocks) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility === 'hidden') continue;
@@ -274,20 +287,7 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
       if (!best || score > best.score)
         best = { el, nodes, offs, text, start, end, score, how, names };
     };
-    if (fragment && fragment.start) {
-      const words = s => s.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
-      const m = new RegExp(words(fragment.start), 'i').exec(text);
-      if (m) {
-        let end = m.index + m[0].length;
-        if (fragment.end) {
-          const e = new RegExp(words(fragment.end), 'i');
-          e.lastIndex = end;
-          const me = e.exec(text.slice(end));
-          if (me) end += me.index + me[0].length;
-        }
-        consider(m.index, end, 100, 'fragment', fromNames);
-      }
-    }
+    order.push({ el, nodes, offs, text });
     SENT.lastIndex = 0;
     for (let m; (m = SENT.exec(text));) {
       if (!m[0]) { SENT.lastIndex++; continue; }
@@ -309,6 +309,42 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
       }
     }
   }
+  // The URL's own #:~:text= passage, which the owner marked by hand, wins over
+  // any guess. It can run over several paragraphs (Lone Ruin's interview answer
+  // does), so its end is looked for in the blocks after its start too; and its
+  // prefix ("Escaped Lunatic-", the poster's title) tells the post apart from
+  // the page title that repeats the same words.
+  if (fragment && fragment.start) {
+    const words = s => s.trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+    const reEnd = fragment.end && new RegExp(words(fragment.end), 'i');
+    const rePre = fragment.prefix && new RegExp(words(fragment.prefix) + '[\\s\\W]*$', 'i');
+    const find = usePrefix => {
+      for (let i = 0; i < order.length; i++) {
+        const B = order[i];
+        const reS = new RegExp(words(fragment.start), 'gi');
+        for (let m; (m = reS.exec(B.text));) {
+          if (usePrefix) {
+            const before = order.slice(Math.max(0, i - 3), i).map(x => x.text).join(' ') + ' ' + B.text.slice(0, m.index);
+            if (!rePre.test(before.slice(-400).trimEnd())) continue;
+          }
+          const from = m.index + m[0].length;
+          if (!reEnd) return { i, start: m.index, j: i, end: from };
+          for (let j = i; j < Math.min(order.length, i + 30); j++) {
+            const t = j === i ? order[j].text.slice(from) : order[j].text;
+            const me = reEnd.exec(t);
+            if (me) return { i, start: m.index, j, end: (j === i ? from : 0) + me.index + me[0].length };
+          }
+        }
+      }
+      return null;
+    };
+    const f = (rePre && find(true)) || find(false);
+    if (f) {
+      const B = order[f.i];
+      best = { ...B, start: f.start, end: f.j === f.i ? f.end : B.text.length, score: 100, how: 'fragment', names: fromNames,
+        across: f.j === f.i ? null : { block: order[f.j], end: f.end } };
+    }
+  }
   if (!best) return null;
 
   // Trim the sentence's leading blanks so the band starts on a letter.
@@ -325,6 +361,12 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
     return r;
   };
   const sentence = range(best.start, best.end);
+  if (best.across) {
+    const E = best.across.block;
+    let k = E.offs.length - 1;
+    while (k > 0 && E.offs[k] > best.across.end) k--;
+    sentence.setEnd(E.nodes[k], Math.min(best.across.end - E.offs[k], E.nodes[k].nodeValue.length));
+  }
   const hit = first(best.names, best.text, best.start, best.end);
   const style = document.createElement('style');
   style.textContent = '::highlight(proof-line){background-color:rgba(255,214,0,.30)}'
@@ -351,6 +393,15 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
   const msg = best.el.closest(MESSAGE);
   let unit, unitKind;
   if (msg && tall(msg) <= MAX) { unit = msg; unitKind = 'message'; }
+  else if (best.across) {
+    // The passage, framed out to the whole of its first and last blocks.
+    const whole = document.createRange();
+    whole.setStartBefore(best.nodes[0]);
+    whole.setEndAfter(best.across.block.nodes[best.across.block.nodes.length - 1]);
+    if (whole.getBoundingClientRect().height <= MAX) { unit = whole; unitKind = 'passage'; }
+    else if (sentence.getBoundingClientRect().height <= MAX) { unit = sentence; unitKind = 'passage'; }
+    else { unit = sentence; unitKind = 'sentence'; }
+  }
   else {
     const t = best.text;
     const back = i => { const k = t.lastIndexOf('\n\n', i); return k < 0 ? 0 : k + 2; };
