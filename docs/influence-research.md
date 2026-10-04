@@ -39,6 +39,11 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Interviews and devlogs | web search per game, then read the page | Good for well-known games. Hades, Children of Morta, Crawl, Heat Signature and Death Road to Canada all came from here |
 | Same developer | `samedev` subcommand | A lead, not a source. Use a pair only when the newer game's page says so |
 | Steam discussion forums | `forums` then `devcheck` | **Poor and slow, but the badge makes it trustworthy.** 30 hits in the first 38 games, one from a developer. `devcheck` keeps only posts with Steam's developer badge. Run it last, on the games nothing else found |
+| itch.io pages and devlogs | `itch` | Not measured yet. Aimed at the small games nothing else finds: a jam game's or a solo developer's itch page is often the only place they wrote about it. 4 of 8 well-known games tested were on itch under their exact title, and 2 of the 4 were someone else's upload, which is why each game's itch account is printed beside its Steam developer |
+| Studio websites and press kits | `site` | Not measured yet. A press kit's History section is written by the studio for journalists. 6 of 8 tested had a site, and 3 a press page |
+| Reddit | `reddit` | Not measured yet. Developer AMAs and "I made…" launch posts, plus r/roguelikedev (mostly Sharing Saturday). Read through the Arctic Shift archive, which rate-limits hard (see Traps) |
+| Kickstarter campaigns | `kickstarter` | Not measured yet. A pitch says what it is like, often under an "Inspirations" heading. **Run it from your own computer**: Kickstarter refuses the cloud container |
+| Roguelike Radio | `radio` | A listening list, not a source: 180 episodes since 2011, many with one game's developer as the guest. 43 chart games are named in an episode's title or notes |
 
 **The degree-1 pass (October 2026)** went after the 335 games the map holds by a
 single edge. Two things paid off. The `cues` read of the cached Steam pages
@@ -83,7 +88,23 @@ python3 tools/influence_research.py forums    # ~1 h for the targets, English + 
 python3 tools/influence_research.py devcheck  # opens each forum hit, keeps developer-badged posts
 python3 tools/influence_research.py media     # interview videos + podcasts to listen to -> docs/influence-media.md
 python3 tools/influence_research.py status    # which candidates are in the sheet now; --tick marks them
+python3 tools/influence_research.py titles    # each game's Japanese/Chinese/Korean Steam title, ~20 min, cached; run before the scans
+python3 tools/influence_research.py itch      # itch.io pages + devlogs -> .influence_work/itch.md
+python3 tools/influence_research.py site      # studio websites + press kits -> .influence_work/site.md
+python3 tools/influence_research.py reddit    # developer posts on Reddit + r/roguelikedev -> .influence_work/reddit.md
+python3 tools/influence_research.py kickstarter  # campaign pages -> .influence_work/kickstarter.md; your machine only
+python3 tools/influence_research.py radio     # Roguelike Radio episodes -> section 3 of docs/influence-media.md
 ```
+
+**The four page scans** (`itch`, `site`, `reddit`, `kickstarter`) work alike.
+Each reads the games with one connection or none by default (`--games few`;
+`targets` and `all` also work), appends each game's raw pages to
+`.influence_work/<scan>.jsonl` so a stopped run resumes, and writes
+`<scan>.md`: every sentence that makes a claim beside another chart game's
+name, for a pair the sheet doesn't have. `--write-only` rewrites the `.md`
+from the cache, `--limit N` stops after N games. None of them proves who wrote
+a page. Each line carries the account or site it came from: check it is the
+developer before the quote goes in the candidate list.
 
 Everything goes into `.influence_work/` (gitignored). The `steam` pass caches
 every page it fetches, so a rerun is fast.
@@ -152,6 +173,11 @@ Then copy `.influence_work/media.jsonl` back over the file in `tools/`
 before committing. Ticks in `docs/influence-media.md` are kept across
 rewrites (matched by URL), so listen and tick at any point.
 
+**Roguelike Radio** is section 3 of the same doc, written by `radio`, which
+reads the show's whole archive in two requests. An episode is listed under
+every chart game its title or show notes name. `media` keeps section 3 when it
+rewrites the doc, and `radio` keeps sections 1 and 2.
+
 What it misses: interviews titled only with the developer's name ("Episode
 40: Matt Glanville") unless the description names the game, and anything not
 in English or not on YouTube or Apple Podcasts. The cues include
@@ -213,8 +239,18 @@ any game whose developer is not English-speaking:
    can check the translation against the source.
 
 The `steam` pass already recognises these words in announcements (see `CLAIM`
-in the script), but it only matches when the game's name is written in Latin
-script. The `forums` pass searches each forum in English **and** in the language
+in the script). **Run `titles` first so it can see the game names too.** It
+asks Steam for every game's page in Japanese, Chinese and Korean and keeps the
+localised title when it is in that script (Crown Trick is 不思议的皇冠,
+Super Bullet Break is スーパーバレットブレイク). From then on `steam`, `cues`,
+`wanted`, `forums`, the page scans and `radio` match a game by either name.
+Before it, a Japanese announcement naming 風来のシレン matched nothing. Two
+limits: a title shared by several games (不思議のダンジョン, the whole series)
+is dropped, because it can't say which game is meant, and runs of under three
+letters are dropped, because Skul's 小骨 is also just the words "small bone".
+Sentences are now split at 。！？ as well, since Japanese and Chinese put no space
+after a full stop. Before that, a whole CJK post counted as one "sentence", and
+it was too long to be read at all. The `forums` pass searches each forum in English **and** in the language
 `lang` found (`SEARCH_TERMS`). For a studio `lang` missed, set its entry in
 `lang.json` by hand before running `forums`.
 
@@ -280,6 +316,20 @@ PR agency and a publisher). Those are listed in section 4 of
   `steamcommunity.com/games/<appid>/announcements/detail/<id>` page. If it lands
   on the bare announcement list, the developer has removed the post. Say so, and
   point to the news feed, which still has its text.
+- **Arctic Shift's rate limit.** The Reddit archive answers HTTP 422 "Timeout.
+  Maybe slow down a bit" both when a search really runs out of time and when
+  it is rate-limiting you, and from the cloud container it rate-limited after
+  a dozen quick requests and stayed that way for over half an hour. `reddit`
+  waits and retries, and after five minutes of refusals on one search it
+  stops rather than spend ~45 minutes a game recording nothing. The games done
+  so far are saved and a rerun resumes. A run is about nine searches a game:
+  use `--delay 6` or more, and run it from your own computer if the container
+  is being throttled.
+- **Names in other spellings.** A space, a colon and a dash between words now
+  count as the same, because people write "Dungeon Crawl: Stone Soup" for the
+  sheet's `Dungeon Crawl Stone Soup`. A name found only inside a longer chart
+  name doesn't count either ("Crawl" in "Dungeon Crawl", "Omega" in "Omega
+  Labyrinth"). Both rules apply to every scan.
 - **Sites that block fetches.** Several interview sites return 403 to the web
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.
