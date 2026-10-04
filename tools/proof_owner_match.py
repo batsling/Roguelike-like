@@ -2,7 +2,7 @@
 """Rename the owner's free-named proof screenshots into the game's format.
 
 The game reads one file per connection, named by the two games' ids, influencer
-first, joined by a hyphen: "slay_the_spire-tic_tactic.png" (an id is a game's
+first, joined by three hyphens: "slay_the_spire---tic_tactic.png" (an id is a game's
 file name in data/games/ without the .tres). A screenshot dropped into
 images2.0/proof/ under that name needs nothing else. One dropped in under any
 other name ("tic tactic sts.png", "going under hades, isaac, gungeon,
@@ -42,7 +42,7 @@ import unicodedata
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROOF = os.path.join(ROOT, "images2.0", "proof")
 CAPTURED = os.path.join(ROOT, "tools", "proof_captured.json")
-PROOF_NAME = re.compile(r"^([a-z0-9_]+)-([a-z0-9_]+)\.png$")
+PROOF_NAME = re.compile(r"^([a-z0-9_]+)---([a-z0-9_]+)\.png$")
 
 # Short forms the owner uses that initials alone don't give.
 SHORT = {
@@ -136,7 +136,7 @@ def rename(name, pairs, ledger):
     data = open(src, "rb").read()
     clashes = []
     for a, b in pairs:
-        dest = f"{a}-{b}.png"
+        dest = f"{a}---{b}.png"
         path = os.path.join(PROOF, dest)
         if os.path.exists(path):
             old = open(path, "rb").read()

@@ -383,9 +383,9 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 # edge's two ids, so these tests stand the run on an edge that HAS one rather
 # than hoping the random offering lands on it.
 
-# A proof file, "slay_the_spire-tic_tactic.png", read back as the connection's
+# A proof file, "slay_the_spire---tic_tactic.png", read back as the connection's
 # two ids. [] for anything that isn't a PNG; [null] for a name that isn't two
-# ids of real games joined by the hyphen (a typo the owner made by hand).
+# ids of real games joined by the three hyphens (a typo the owner made by hand).
 func _edge_of(file: String) -> Array:
 	if not file.ends_with(GameChoiceModal.PROOF_EXT):
 		return []

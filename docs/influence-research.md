@@ -331,9 +331,9 @@ terms), so `--skip youtube,podcast` leaves them out.
 
 **One name format for every proof.** The game reads one PNG per connection
 (PNG is the owner's call), named by the two games' ids, influencer first,
-joined by a hyphen: `slay_the_spire-tic_tactic.png`. An id is a game's file name
+joined by three hyphens: `slay_the_spire---tic_tactic.png`. An id is a game's file name
 in `data/games/` without `.tres`; ids are only lower-case letters, digits and
-underscores, so the hyphen splits a name one way only. A screenshot that proves
+underscores, so the hyphens split a name one way only. A screenshot that proves
 several connections is saved once under each: one image naming Hades, Isaac,
 Gungeon and Spelunky as Going Under's influences is four files.
 

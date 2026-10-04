@@ -624,10 +624,11 @@ static func short_source(url: String) -> String:
 # --- the proof screenshot ---------------------------------------------------
 #
 # One image per connection, named by the two games' ids in the direction the
-# sheet authored it, influencer first, joined by a hyphen:
-# `slay_the_spire-tic_tactic.png`. An id is only ever lower-case letters, digits
-# and underscores, so the hyphen can never be part of one and a name splits one
-# way only; the owner types these by hand. They are captured — `node
+# sheet authored it, influencer first, joined by three hyphens:
+# `slay_the_spire---tic_tactic.png`. An id is only ever lower-case letters,
+# digits and underscores, so a hyphen can never be part of one and a name splits
+# one way only; three of them make the join easy to see, and the owner types
+# these by hand. They are captured — `node
 # tools/capture_proof.js` opens each Source link, finds the sentence where the
 # developer names the older game, highlights it and crops around it — or they are
 # the owner's own screenshots. A connection with neither has no file, and the
@@ -638,7 +639,7 @@ static func short_source(url: String) -> String:
 const PROOF_DIR := "res://images2.0/proof/"
 # PNG, the owner's call: screenshots of text, kept lossless.
 const PROOF_EXT := ".png"
-const PROOF_JOIN := "-"
+const PROOF_JOIN := "---"
 # The thumbnail's tallest. A screenshot is scaled to the column's WIDTH and no
 # further (never up: blowing a line of text past its own size only blurs it), so
 # text stays readable; a tall one shows its top this far and is read in full by
