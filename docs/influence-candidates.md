@@ -16,7 +16,7 @@ How the research is done, and how to do more: `docs/influence-research.md`.
 
 | | lines |
 |---|---|
-| 1. To review: games on the sheet | 15 strong, 31 weaker |
+| 1. To review: games on the sheet | 17 strong, 31 weaker |
 | 2. To review: games you want to add | 6 strong, 6 weaker |
 | 7. Done: on the chart | 112 |
 
@@ -31,6 +31,8 @@ Sorted by the game that would get the new connection.
 - [ ] **Dead Cells → 30XX** — same as **The Binding of Isaac → 30XX**
 - [ ] **Enter the Gungeon → 30XX** — same as **The Binding of Isaac → 30XX**
 - [ ] **The Binding of Isaac → 30XX** — "the replayability of a modern Roguelike (Binding of Isaac, Enter the Gungeon, Dead Cells, etc)" — [Steam store page](https://store.steampowered.com/app/1029210/)
+- [ ] **Rogue → Baroque** — Kazunari Yonemitsu, on the PlayStation release: "The 3D, real-time, auto-generated dungeon system is, to put it frankly, the result of combining all of my favorite things. I loved "Rogue" and "Dungeon Master". When it comes to auto-generated dungeons in console games, there is the wonderful "Torneko's Great Adventure"." *(A fan translation of a Japanese guidebook interview; check it against the original if you can. Dungeon Master isn't on the chart; the same quote is a first-hand source for the Torneko → Baroque row, see section 4.)* — [Nerve Tower, "The Worldview of Baroque"](https://nervetower.neocities.org/int_yonemitsu_ps)
+- [ ] **Desktop Dungeons → Cardinal Quest**, **Spelunky Classic → Cardinal Quest**, **Brogue → Cardinal Quest** — Ido Yehieli: "The games I like in the genre are a lot more focused on solving hard problems with the hand you were dealt, e.g. Brogue or Crawl … Desktop Dungeons, Spelunky and Borgue [sic] are much bigger inspiration for me than any RPG out there." *(Said in an interview around 2011, after Cardinal Quest shipped, about the games that inspire him rather than about Cardinal Quest alone; "Spelunky" in 2011 means Spelunky Classic. In the same answer he says Rogue is "a lot more similar to those than it is to Angband, ADOM or ToME4", while the sheet has Angband and ToME → Cardinal Quest from his own tweet and Roguelike Radio. Not a denial, but worth knowing.)* — [IndieGameMag](https://www.indiegamemag.com/ido-yehieli-interview-nephews-and-niches/)
 - [ ] **Cataclysm: Dark Days Ahead → Cataclysm: Bright Nights** *(Dev/Series Relation: it's a fork)* — its README: "Cataclysm: Bright Nights is a fork of Cataclysm: Dark Days Ahead." *(The sheet has it under the original Cataclysm only.)* — [GitHub README](https://github.com/cataclysmbnteam/Cataclysm-BN)
 - [ ] **Dome Keeper → Choo Choo Survivor 2** — same as **Vampire Survivors → Choo Choo Survivor 2**
 - [ ] **Vampire Survivors → Choo Choo Survivor 2** — "inspired by games like Vampire Survivors and Dome Keeper" — [Steam store page](https://store.steampowered.com/app/3494210/)
@@ -165,6 +167,9 @@ From the early-classics pass (October 2026), first-hand sources for rows the she
 - **Hack → Dwarf Fortress** (sheet: RogueBasin): nothing in text. Roguelike Radio episode 49 is Tarn Adams on "influences from classic games", and its notes list Hack, Moria and Larn. Audio: listen for it. — [Roguelike Radio ep. 49](http://www.roguelikeradio.com/2012/10/episode-49-interview-with-tarn-adams.html)
 - **Rogue → Brogue** (sheet: RogueBasin): nothing in text found. Brian Walker on The Secret Lives of Games ep. 18 discusses "the lessons he took from Rogue (and those he didn't)". Audio. — [episode page](https://eggplant.show/18-exploring-brogue-with-brian-walker)
 - **Rogue → Mission: Thunderbolt** (sheet: "look at it"): nothing from Dave Scheifler found; the "modelled along the lines of Rogue, Hack, and Larn" line some sites carry has no source.
+- **Rogue → Torneko's Great Adventure: Mystery Dungeon**, in Nakamura's own English: "We wanted to approach Rogue in a similar way, make a more understandable, more easy-to-play version of Rogue, which was the Mystery Dungeon series. Torneko's Big Adventure was the first title that we put out in the series." — [1UP interview, transcribed on the Mystery Dungeon wiki](https://mysterydungeonwiki.com/wiki/Meta:Koichi_Nakamura_Interview:_On_the_Birth_of_the_Console_RPG)
+- **Rogue → ToeJam & Earl** (sheet: Wikipedia): Greg Johnson: "the design of TJ&E was really based on an old favorite game of mine called Rogue. I used to stay up till 4:00 am regularly playing that on the mainframe computer at college." — [Sega-16 interview, 2005](https://www.sega-16.com/2005/02/interview-greg-johnson/)
+- **Torneko's Great Adventure: Mystery Dungeon → Baroque** (sheet: Wikipedia's footnote): Yonemitsu's own words, in the **Rogue → Baroque** line in section 1. — [Nerve Tower](https://nervetower.neocities.org/int_yonemitsu_ps)
 
 ---
 
@@ -200,6 +205,7 @@ Games a developer names that aren't on the chart but are roguelikes themselves, 
 - **Sword of Fargoal** ← Colossal Cave Adventure: "I played Adventure until I could beat it! … So I would say that Adventure was my biggest influence!" (Jeff McCord) — [TouchArcade, 2009](https://toucharcade.com/2009/11/24/sword-of-fargoal-interview-gameplay-video/)
 - **Dwarf Fortress** ← the Ultima series: "A lot of the games we played, like the Ultimas, also kind of got us into thinking about the worlds themselves" (Tarn Adams) — [Game Developer](https://www.gamedeveloper.com/design/interview-the-making-of-dwarf-fortress)
 - **CastlevaniaRL** ← the Castlevania series (its README). **GearHead** ← MechFight, Fallout, Flames of Freedom, Porto Estado (Hewitt, RPG Codex).
+- **Ziggurat** ← Heretic and Hexen: "a dark fantasy setting, inspired in the classic games Heretic/Hexen" — [Milkstone Studios](https://www.milkstonestudios.com/games/ziggurat/). **Tower of Guns** ← Quake, Doom, UT99: "I was raised on the classic FPS games like Quake, Doom, UT99, Deus Ex" (the Isaac half is already on the sheet) — [GamingBolt](https://gamingbolt.com/tower-of-guns-interview-roguelite-callback-to-twitch-shooters). **Baroque** ← Dungeon Master (Yonemitsu, as above).
 
 ---
 
@@ -235,7 +241,7 @@ Owned with one connection, second round (searched by hand; each only confirms th
 
 ### Early classics (October 2026)
 
-Dungeon Hack (the "Hack/NetHack with the Eye of the Beholder III engine" line on game databases has no source; its executable is HACK.EXE), Mission: Thunderbolt, Fatal Labyrinth, Azure Dreams, Iter Vehemens Ad Necem ("hacklike" is a wiki's word), Linley's Dungeon Crawl (TIGSource's piece returns 403), DoomRL (Roguelike Radio ep. 112 is audio, and its notes name only Kornel's own games), Beneath Apple Manor and Rogue (their influences are off the chart; see section 5), Moria, Angband and Larn were already searched.
+Dungeon Hack (the "Hack/NetHack with the Eye of the Beholder III engine" line on game databases has no source; its executable is HACK.EXE), Mission: Thunderbolt, Fatal Labyrinth, Azure Dreams, Iter Vehemens Ad Necem ("hacklike" is a wiki's word), Linley's Dungeon Crawl (TIGSource's piece returns 403), DoomRL (Roguelike Radio ep. 112 is audio, and its notes name only Kornel's own games), Beneath Apple Manor and Rogue (their influences are off the chart; see section 5), Moria, Angband and Larn were already searched. Second round: Risk of Rain (Hopoo's Kickstarter page returns 403; interviews are all about Risk of Rain 2 and Returns), Hoplite (Cowley's page says only that it set out to avoid "bump-to-attack" combat), Dream Quest (Peter Whalen's interviews are video, see below), Ziggurat and Tower of Guns (off-chart influences only, section 5), Z.H.P., Izuna, Azure Dreams, and Pokémon Mystery Dungeon (its Torneko row is already Dev/Series). Dream Quest's 10th-anniversary developer interview is on YouTube and worth a listen: https://www.youtube.com/watch?v=VCJOMUrpBd0
 
 ### Your wanted list
 
@@ -375,3 +381,4 @@ Lines that are rows in the sheet now, kept for their sources. `status --tick` mo
 - **Owned pass (October 2026)**: every owned game with no connection or one, by hand.
 - **Your wanted list (October 2026)**: 84 games not on the sheet yet, all by hand.
 - **Early classics (October 2026)**: 19 pre-2010 games with no recorded influence or one, by hand. Three new edges (GearHead, Shiren, Omega), two weaker, and first-hand sources for four rows sourced to wikis.
+- **Early classics, second round (October 2026)**: 20 more, 1990s console roguelikes and 2010–14 indies with no recorded influence. Three new edges on Cardinal Quest and one on Baroque, plus first-hand sources for Rogue → ToeJam & Earl, Rogue → Torneko (in English) and Torneko → Baroque.
