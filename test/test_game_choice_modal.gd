@@ -383,17 +383,30 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 # edge's two ids, so these tests stand the run on an edge that HAS one rather
 # than hoping the random offering lands on it.
 
+# A game proof file, "Slay the Spire → Tic Tactic.png", read back as the
+# connection's two ids. [] for the owner's own freely named screenshots, which
+# share the folder, and for a name no game has.
+var _by_file_name: Dictionary = {}
+
+func _edge_of(file: String) -> Array:
+	if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains(GameChoiceModal.PROOF_ARROW):
+		return []
+	if _by_file_name.is_empty():
+		for game in Data.all_games():
+			_by_file_name[GameChoiceModal.proof_file_name(game.display_name)] = game.id
+	var names: PackedStringArray = file.get_basename().split(GameChoiceModal.PROOF_ARROW)
+	if names.size() != 2 or not _by_file_name.has(names[0]) or not _by_file_name.has(names[1]):
+		return [null]
+	return [_by_file_name[names[0]], _by_file_name[names[1]]]
+
 func _a_captured_edge() -> Array:
 	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
 	if dir == null:
 		return []
 	for file in dir.get_files():
-		if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
-			continue
-		var ids: PackedStringArray = file.get_basename().split("__")
-		if ids.size() == 2 and Data.get_game(StringName(ids[0])) != null \
-				and Data.get_game(StringName(ids[1])) != null:
-			return [StringName(ids[0]), StringName(ids[1])]
+		var edge: Array = _edge_of(file)
+		if edge.size() == 2:
+			return edge
 	return []
 
 func test_every_proof_is_named_for_a_real_connection() -> void:
@@ -408,12 +421,11 @@ func test_every_proof_is_named_for_a_real_connection() -> void:
 	for file in dir.get_files():
 		# The owner's own freely named screenshots share the folder; only the
 		# "<from>__<to>" files are the game's.
-		if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
+		var edge: Array = _edge_of(file)
+		if edge.is_empty():
 			continue
 		seen += 1
-		var ids: PackedStringArray = file.get_basename().split("__")
-		var from_game: GameData = Data.get_game(StringName(ids[0])) if ids.size() == 2 else null
-		if from_game == null or not from_game.games_influenced.has(StringName(ids[1])):
+		if edge.size() != 2 or not Data.get_game(edge[0]).games_influenced.has(edge[1]):
 			orphans.append(file)
 	if seen == 0:
 		pending("the proof folder is empty")
@@ -432,9 +444,19 @@ func test_the_card_shows_the_proof_for_the_edge_it_walks() -> void:
 	assert_not_null(proof, "the source block carries the screenshot")
 	assert_eq(proof.texture, GameChoiceModal.proof_texture(edge[0], edge[1]),
 		"and it is this edge's, not another's")
-	assert_lte(proof.custom_minimum_size.y, GameChoiceModal.PROOF_THUMB_H,
+	var frame: Control = modal.find_child("ProofFrame", true, false)
+	for i in range(4):
+		await get_tree().process_frame
+	assert_lte(frame.custom_minimum_size.y, GameChoiceModal.PROOF_THUMB_H + 0.5,
 		"a tall one is cut to a thumbnail")
-	assert_true(_text_of(modal).contains("Open source"), "with the link still under it")
+	assert_lte(proof.size.x, frame.size.x + 0.5,
+		"scaled to the column's width, so none of it is cut off at the side")
+	assert_gte(proof.size.x / float(proof.texture.get_width()),
+		minf(1.0, frame.size.x / float(proof.texture.get_width())) - 0.01,
+		"and shrunk no further than that width needs")
+	var source: String = String(Data.get_game(edge[0]).influence_evidence(edge[1]).get("source", ""))
+	if GameData.is_openable_source(source.strip_edges()):
+		assert_true(_text_of(modal).contains("Open source"), "with the link still under it")
 	modal._close()
 
 func test_the_proof_is_looked_up_the_way_the_sheet_runs() -> void:
@@ -458,15 +480,13 @@ func test_a_check_folder_note_gives_way_to_the_screenshot_it_meant() -> void:
 	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
 	if dir != null:
 		for file in dir.get_files():
-			if not file.ends_with(GameChoiceModal.PROOF_EXT) or not file.contains("__"):
+			var found: Array = _edge_of(file)
+			if found.size() != 2:
 				continue
-			var ids: PackedStringArray = file.get_basename().split("__")
-			var from_game: GameData = Data.get_game(StringName(ids[0])) if ids.size() == 2 else null
-			if from_game == null:
-				continue
-			var source: String = String(from_game.influence_evidence(StringName(ids[1])).get("source", "")).strip_edges()
+			var from_game: GameData = Data.get_game(found[0])
+			var source: String = String(from_game.influence_evidence(found[1]).get("source", "")).strip_edges()
 			if source != "" and not GameData.is_openable_source(source):
-				edge = [StringName(ids[0]), StringName(ids[1])]
+				edge = found
 				note = source
 				break
 	if edge.is_empty():

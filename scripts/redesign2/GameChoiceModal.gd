@@ -486,6 +486,8 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	if source_block != null:
 		col.add_child(HSeparator.new())
 		col.add_child(source_block)
+		if source_block.find_child("Proof", true, false) != null:
+			scroll.size_flags_stretch_ratio = PROOF_COLUMN_RATIO
 
 	col.add_child(HSeparator.new())
 	col.add_child(_build_enemy_block(game))
@@ -622,31 +624,59 @@ static func short_source(url: String) -> String:
 # --- the proof screenshot ---------------------------------------------------
 #
 # One image per connection, named for the edge in the direction the sheet
-# authored it: `<influencer id>__<influenced id>.png`. They are captured, not
-# drawn — `node tools/capture_proof.js` opens each Source link, finds the
-# sentence where the developer names the older game, highlights it and crops
-# around it — so a connection with no link, or one whose page refused the
-# browser, simply has no file, and the block shows the link alone as before.
+# authored it, by the games' own names so the folder reads like the map:
+# `Slay the Spire → Tic Tactic.png` (proof_file_name says how a name is made
+# safe as a file name). They are captured, not drawn — `node
+# tools/capture_proof.js` opens each Source link, finds the sentence where the
+# developer names the older game, highlights it and crops around it — or they are
+# the owner's own screenshots, copied to these names by `capture_proof.js
+# --export`. A connection with neither has no file, and the block shows the link
+# alone as before.
 #
 # Looked up by convention rather than stored on GameData, the way covers and
 # portraits are: an image is added or re-captured without touching the sheet.
 const PROOF_DIR := "res://images2.0/proof/"
-# PNG, the owner's call: screenshots of text, kept lossless. The two id names
-# joined by "__" are what mark a file as one the game reads; the owner's own
-# freely named screenshots sit in the same folder and are copied to these names
-# by `tools/capture_proof.js --export` (see tools/proof_owner_map.json).
+# PNG, the owner's call: screenshots of text, kept lossless.
 const PROOF_EXT := ".png"
-# The thumbnail's tallest. Proofs run from one line of a store page (836x98) to
-# a whole tweet (550x1088); the short ones show at their own size and the tall
-# ones are cut to this and read in full by clicking.
-const PROOF_THUMB_H := 140.0
+# What marks a file as one the game reads. The owner's freely named screenshots
+# share the folder and never contain it.
+const PROOF_ARROW := " → "
+# The thumbnail's tallest. A screenshot is scaled to the column's WIDTH and no
+# further (never up: blowing a line of text past its own size only blurs it), so
+# text stays readable; a tall one shows its top this far and is read in full by
+# clicking.
+const PROOF_THUMB_H := 260.0
+# How much more of the popup's width the left column takes when it carries a
+# proof. Screenshots run 550 (a tweet) to 1600 (a Discord window) wide, and at
+# the 0.62 the column has without one, a tweet's text came out too small to read.
+const PROOF_COLUMN_RATIO := 0.85
+
+# A game's name as it appears in a proof's file name: the name itself, minus the
+# characters Windows refuses in a file name. A colon becomes " -" so "Shotgun
+# King: The Final Checkmate" still reads as one name. tools/capture_proof.js
+# makes the same names (proofName); keep the two in step.
+static func proof_file_name(display_name: String) -> String:
+	var name: String = display_name.replace(":", " -")
+	for bad in ["<", ">", "\"", "/", "\\", "|", "?", "*"]:
+		name = name.replace(bad, "")
+	while name.contains("  "):
+		name = name.replace("  ", " ")
+	name = name.strip_edges()
+	while name.ends_with("."):
+		name = name.left(-1)
+	return name
 
 static func proof_path(from_id: StringName, to_id: StringName) -> String:
-	return "%s%s__%s%s" % [PROOF_DIR, from_id, to_id, PROOF_EXT]
+	var from_game: GameData = Data.get_game(from_id)
+	var to_game: GameData = Data.get_game(to_id)
+	if from_game == null or to_game == null:
+		return ""
+	return "%s%s%s%s%s" % [PROOF_DIR, proof_file_name(from_game.display_name), PROOF_ARROW,
+		proof_file_name(to_game.display_name), PROOF_EXT]
 
 static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
 	var path: String = proof_path(from_id, to_id)
-	if not ResourceLoader.exists(path):
+	if path == "" or not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
 
@@ -654,24 +684,46 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 	var tex: Texture2D = proof_texture(from_id, to_id)
 	if tex == null:
 		return null
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	# The frame clips; the picture inside is sized from the frame's width each
+	# time the column settles, which a TextureRect's own stretch modes can't do
+	# (they fit BOTH ways, which is what shrank a tweet to 140px tall).
+	var frame := Control.new()
+	frame.name = "ProofFrame"
+	frame.clip_contents = true
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	frame.tooltip_text = "Click to read it full size"
 	var art := TextureRect.new()
 	art.name = "Proof"
 	art.texture = tex
-	# Never taller than the image itself: blowing a 98px line of text up to 140
-	# would only blur it. KEEP_ASPECT (not _CENTERED) pins it to the top-left,
-	# under the claim it backs.
-	art.custom_minimum_size = Vector2(0, minf(PROOF_THUMB_H, float(tex.get_height())))
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
-	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	art.mouse_filter = Control.MOUSE_FILTER_STOP
-	art.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	art.tooltip_text = "Click to read it full size"
-	art.gui_input.connect(func(event: InputEvent):
+	art.stretch_mode = TextureRect.STRETCH_SCALE
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(art)
+	var more := Label.new()
+	more.text = "Click to read all of it"
+	more.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	more.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	more.visible = false
+	box.add_child(frame)
+	box.add_child(more)
+	var fit := func():
+		var scale: float = minf(1.0, frame.size.x / float(tex.get_width())) if frame.size.x > 0.0 else 1.0
+		var shown: Vector2 = tex.get_size() * scale
+		art.position = Vector2.ZERO
+		art.size = shown
+		frame.custom_minimum_size.y = minf(shown.y, PROOF_THUMB_H)
+		more.visible = shown.y > PROOF_THUMB_H + 0.5
+	frame.resized.connect(fit)
+	fit.call()
+	frame.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			accept_event()
+			frame.accept_event()
 			open_proof(tex))
-	return art
+	return box
 
 # The screenshot at its own size (or the window's, if it is bigger), over the
 # popup. Any click or Escape puts it away; it is a closer look, not a step.

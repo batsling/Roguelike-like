@@ -26,18 +26,22 @@
  *   youtube  a card: thumbnail, title, channel and the timestamp. Clips are not
  *            downloaded — that is against YouTube's terms — so a clip of the
  *            moment has to be recorded by hand
- *   reddit   read through old.reddit.com, which renders without a login wall
+ *   reddit   old.reddit.com, which refuses cloud addresses, so the Reddit
+ *            connections are captured from the owner's own computer with
+ *            --kind reddit; from the cloud only a post's own text (via the
+ *            embed host) can be captured
  *   steam    age gate pre-answered by cookie
  *
  *   node tools/capture_proof.js --pilot            25 connections across every source kind
  *   node tools/capture_proof.js --only hades       connections out of one game
  *   node tools/capture_proof.js --limit 50         the first 50 with a link
+ *   node tools/capture_proof.js --kind reddit       Reddit, from your own computer, then --export
  *   node tools/capture_proof.js --skip youtube,podcast --resume
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
  *   node tools/capture_proof.js --export           copy the captures (and the owner's own
  *                                                  screenshots) into the game as
- *                                                  images2.0/proof/<from>__<to>.png
+ *                                                  images2.0/proof/<From game> → <To game>.png
  *
  * Needs Playwright (`npm install playwright` or NODE_PATH pointing at one) and a
  * Chromium; in the cloud container NODE_PATH=/opt/node-tools/node_modules works.
@@ -318,12 +322,31 @@ async function dismissBanners(page) {
   }
 }
 
-async function capturePage(ctx, c, file) {
-  let url = c.url.replace(/#.*$/, '');
-  // reddit.com and old.reddit.com both answer 403 to a cloud address; the embed
-  // host Reddit serves to other websites does not, and it renders a comment
-  // permalink as that one comment.
-  if (c.kind === 'reddit') url = url.replace(/\/\/(www\.|old\.|new\.)?reddit\.com/, '//embed.reddit.com');
+// Reddit, in the order that gives a real screenshot of the real page:
+//   1. old.reddit.com, which renders the whole thread, comments included, with
+//      no login wall. It refuses cloud addresses ("blocked by network security")
+//      and works from a home connection, which is why the owner runs
+//      `--kind reddit` on their own computer;
+//   2. embed.reddit.com, the host Reddit serves to other websites. It answers a
+//      cloud address, but renders the POST only, so it catches proof in a
+//      post's title or text and nothing in its comments.
+// The proof is often the developer's own comment under a video post, so a
+// thread neither can show is reported as blocked, to capture from home. (It
+// used to fall back to a quote card transcribed from an archive; the owner
+// wants screenshots of the page.)
+const REDDIT_HOME = 'Reddit refuses this machine: capture it from your own computer with node tools/capture_proof.js --kind reddit';
+
+async function captureReddit(ctx, c, file) {
+  const old = await capturePage(ctx, c, file, c.url.replace(/\/\/(www\.|old\.|new\.)?reddit\.com/, '//old.reddit.com'));
+  if (!['blocked', 'error', 'no-match'].includes(old.status)) return old;
+  const embed = await capturePage(ctx, c, file, c.url.replace(/\/\/(www\.|old\.|new\.)?reddit\.com/, '//embed.reddit.com'));
+  if (!['blocked', 'error', 'no-match'].includes(embed.status)) return embed;
+  // old.reddit's own answer says whether it was the block or the page.
+  return old.status === 'blocked' ? { status: 'blocked', detail: REDDIT_HOME } : old;
+}
+
+async function capturePage(ctx, c, file, at) {
+  const url = (at || c.url).replace(/#.*$/, '');
   const page = await ctx.newPage();
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -346,10 +369,6 @@ async function capturePage(ctx, c, file) {
     // after the load settles; one slower second look catches them.
     let found = await look();
     if (!found) { await page.waitForTimeout(4000); found = await look(); }
-    if (!found && c.kind === 'reddit') {
-      const r = await captureRedditComment(ctx, c, file);
-      if (r) return r;
-    }
     if (!found && /Application error|You've been blocked|Access denied|Just a moment/i.test(await page.evaluate(() => document.body.innerText.slice(0, 2000)))) {
       await page.screenshot({ path: file.replace(/\.png$/, '.miss.png') });
       return { status: 'blocked', detail: 'the page refused the browser (bot wall or script error)', final: page.url() };
@@ -373,49 +392,6 @@ async function capturePage(ctx, c, file) {
     return { status: found.how === 'weak' ? 'weak' : 'ok', how: found.how, quote: found.text, final: page.url() };
   } catch (e) {
     return { status: 'error', detail: String(e.message || e).split('\n')[0] };
-  } finally {
-    await page.close();
-  }
-}
-
-// The proof in a Reddit thread is often the developer's own COMMENT under a
-// video post, and the embed host only renders posts (a comment link answers
-// 403). Arctic Shift's archive has the text, so the comment is shown as a quote
-// card: plainly a transcription with its link, not dressed up as Reddit's page.
-async function captureRedditComment(ctx, c, file) {
-  const id = (c.url.match(/comments\/([a-z0-9]+)/i) || [])[1];
-  if (!id) return null;
-  const api = 'https://arctic-shift.photon-reddit.com/api/';
-  let post, comments;
-  try {
-    post = ((await getJSON(ctx, `${api}posts/ids?ids=${id}`)).data || [])[0];
-    comments = (await getJSON(ctx, `${api}comments/search?link_id=${id}&limit=100`)).data || [];
-  } catch (e) {
-    return null;
-  }
-  const names = variants(c.fromName);
-  const named = t => names.some(n => new RegExp('(?<![A-Za-z0-9])' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9])', 'i').test(t));
-  const op = post && post.author;
-  const pick = [...comments].sort((a, b) => (b.author === op) - (a.author === op)).find(x => named(x.body || ''));
-  if (!pick) return null;
-  const body = pick.body.replace(/\*\*|__|\\(?=_)/g, '');
-  const sentences = body.split(/(?<=[.!?])\s+|\n+/).filter(x => x.trim());
-  const at = sentences.findIndex(named);
-  const quote = sentences.slice(Math.max(0, at - 1), at + 2).join(' ');
-  const mark = esc(quote).replace(new RegExp('(' + names.map(n => esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi'), '<mark>$1</mark>');
-  const when = new Date(pick.created_utc * 1000).toISOString().slice(0, 10);
-  const page = await ctx.newPage();
-  try {
-    await page.setContent(`<html><body style="margin:0;background:#fff;font-family:Georgia,serif">
-      <div id="card" style="width:620px;padding:24px 28px;border-left:6px solid #888;background:#fafafa">
-        <div style="font-size:19px;line-height:1.5;color:#111">“${mark}”</div>
-        <div style="font-family:sans-serif;font-size:13px;color:#555;margin-top:14px">
-          u/${esc(pick.author)}${pick.author === op ? ' (posted the thread)' : ''} · r/${esc(post.subreddit)} · ${when}<br>
-          Reddit comment, transcribed from the Arctic Shift archive · reddit.com/r/${esc(post.subreddit)}/comments/${id}/comment/${esc(pick.id)}
-        </div></div>
-      <style>mark{background:#ffd600;color:#000;padding:0 2px}</style></body></html>`);
-    await (await page.$('#card')).screenshot({ path: file });
-    return { status: 'quote-card', how: 'archive', quote, detail: pick.author === op ? '' : 'the comment is not by the poster: check who wrote it' };
   } finally {
     await page.close();
   }
@@ -512,13 +488,19 @@ async function captureVideo(ctx, c, file) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 // ── into the game ─────────────────────────────────────────────────────────────
-// GameChoiceModal shows images2.0/proof/<from>__<to>.png under the connection's
-// claim. PNG is the owner's call; the files are copied byte for byte. The
-// "__" between the two ids is what marks a file as the game's: the owner's own
-// freely named screenshots live in the same folder and are never touched here.
+// GameChoiceModal shows images2.0/proof/<From game> → <To game>.png under the
+// connection's claim, named by the games' own names so the folder reads like the
+// map. PNG is the owner's call; the files are copied byte for byte. The " → "
+// is what marks a file as the game's: the owner's own freely named screenshots
+// live in the same folder and are never touched here.
 // Video and audio cards are left out: the owner sources those moments by hand.
 const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
-const isGameFile = f => f.endsWith('.png') && f.includes('__');
+const ARROW = ' → ';
+// The same rule as GameChoiceModal.proof_file_name: the characters Windows
+// refuses in a file name go, and a colon becomes " -". Keep the two in step.
+const proofName = name => name.replace(/:/g, ' -').replace(/[<>"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().replace(/\.+$/, '');
+// "__" is the old id naming, cleared out by the next export.
+const isGameFile = f => f.endsWith('.png') && (f.includes(ARROW) || f.includes('__'));
 
 function exportProofs() {
   const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
@@ -538,19 +520,30 @@ function exportProofs() {
   }
   fs.mkdirSync(GAME_DIR, { recursive: true });
   const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !isGameFile(f) && !(f in ownerMap));
+  const names = Object.fromEntries(loadConnections().flatMap(c => [[c.from, c.fromName], [c.to, c.toName]]));
+  const gameFile = r => proofName(names[r.from]) + ARROW + proofName(names[r.to]) + '.png';
   const keep = [...owner.values()].map(o => ({ from: o.from, to: o.to, file: path.join(GAME_DIR, o.file) }))
-    .concat(report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && !owner.has(`${r.from}__${r.to}`))
+    .concat(report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owner.has(`${r.from}__${r.to}`))
       .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) })));
   let bytes = 0;
   for (const r of keep) {
-    const dest = path.join(GAME_DIR, `${r.from}__${r.to}.png`);
+    const dest = path.join(GAME_DIR, gameFile(r));
     fs.copyFileSync(r.file, dest);
     bytes += fs.statSync(dest).size;
   }
-  // A connection re-captured as a failure, or taken out of the sheet, loses its
-  // image. Only "__" files: the owner's own are never deleted.
-  const want = new Set(keep.map(r => `${r.from}__${r.to}.png`));
-  for (const f of fs.readdirSync(GAME_DIR)) if (isGameFile(f) && !want.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
+  // A file goes only when its connection is KNOWN to have nothing: re-captured
+  // as a failure, or taken out of the sheet (plus the old "__" names). Not merely
+  // because this machine's report doesn't mention it — the owner exports from
+  // their own computer after a `--kind reddit` run, with a report that knows
+  // only Reddit, and that must add the Reddit proofs without wiping the rest.
+  // The owner's own screenshots are never touched.
+  const want = new Set(keep.map(gameFile));
+  const onSheet = new Set(loadConnections().map(gameFile));
+  const failed = new Set(report.filter(r => !r.image || r.status === 'quote-card').map(gameFile));
+  for (const f of fs.readdirSync(GAME_DIR)) {
+    if (!isGameFile(f) || want.has(f)) continue;
+    if (f.includes('__') || failed.has(f) || !onSheet.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
+  }
   console.log(`${keep.length} proofs -> images2.0/proof/ (${owner.size} yours, ${keep.length - owner.size} captured; ${(bytes / 1048576).toFixed(1)} MB)`);
   if (unmapped.length) console.log(`Not in tools/proof_owner_map.json, so not shown in game:\n  ${unmapped.join('\n  ')}`);
 }
@@ -563,6 +556,8 @@ async function main() {
   let todo = all.filter(c => c.url);
   if (args.includes('--pilot')) todo = pilot(all);
   if (opt('--only')) todo = todo.filter(c => c.from === opt('--only') || c.to === opt('--only'));
+  // --kind reddit: only these kinds (Reddit, run from a home connection).
+  if (opt('--kind')) todo = todo.filter(c => opt('--kind').split(',').includes(c.kind));
   // --skip youtube,podcast: the owner sources video moments by hand.
   if (opt('--skip')) todo = todo.filter(c => !opt('--skip').split(',').includes(c.kind));
   // --resume: leave connections the report already has an image for.
@@ -603,6 +598,7 @@ async function main() {
     if (c.kind === 'x') r = await captureTweet(ctx, c, file);
     else if (c.kind === 'youtube') r = await captureVideo(ctx, c, file);
     else if (c.kind === 'podcast') r = { status: 'audio', detail: 'audio only: nothing to screenshot; needs the moment transcribed or clipped by hand' };
+    else if (c.kind === 'reddit') r = await withDeadline(captureReddit(ctx, c, file), 150000, ctx);
     else r = await withDeadline(capturePage(ctx, c, file), 90000, ctx);
     if (!['blocked', 'error', 'no-match', 'audio'].includes(r.status)) r.image = path.relative(OUT, file);
     console.log(r.status + (r.detail ? ` (${r.detail})` : ''));

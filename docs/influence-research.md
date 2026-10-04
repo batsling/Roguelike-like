@@ -300,16 +300,32 @@ export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, np
 node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
 node tools/capture_proof.js --skip youtube,podcast --resume   # the full run, ~6 s a link
 node tools/capture_proof.js --only <game id>     # retry one game's connections
-node tools/capture_proof.js --export             # copy them into images2.0/proof/<from>__<to>.png for the game
+node tools/capture_proof.js --kind reddit        # Reddit only; run it from your own computer (below)
+node tools/capture_proof.js --export             # copy them into images2.0/proof/ for the game
 ```
 
 Results go to `.influence_work/proof/` with `report.json`, which records every
 connection tried and why one failed (`blocked` with the HTTP status, `no-match`
 with a screenshot of what the browser was shown). How each kind is handled:
-X through the official embed; Reddit through `embed.reddit.com`, because
-reddit.com refuses cloud addresses, and a developer's COMMENT (which the embed
-won't render) as a quote card from the Arctic Shift archive, labelled as a
-transcription; Steam with its age gate pre-answered. Videos and podcasts are
+X through the official embed; Steam with its age gate pre-answered; Reddit
+through old.reddit.com, which shows the whole thread, comments included.
+
+**Reddit has to be captured from a home connection.** Reddit blocks cloud
+addresses outright ("You've been blocked by network security"), so from the
+cloud container only the embed host works, and it renders a post but never its
+comments, where the developer's word usually is. Those connections come back
+`blocked`, with a note saying to run them at home. On your own computer, from
+the repo root:
+
+```bash
+npm install playwright && npx playwright install chromium
+node tools/capture_proof.js --kind reddit
+node tools/capture_proof.js --export
+```
+
+then commit `images2.0/proof/`. The export there only adds and replaces Reddit
+proofs: it deletes a game file only for a connection it KNOWS failed or that left
+the sheet, never one its (Reddit-only) report doesn't mention. Videos and podcasts are
 the owner's to source by hand (a YouTube clip can't be downloaded within its
 terms), so `--skip youtube,podcast` leaves them out.
 
@@ -317,9 +333,12 @@ terms), so `--skip youtube,podcast` leaves them out.
 owner's proof folder (what a `check folder` Source means), named freely ("tic
 tactic sts.png"). `tools/proof_owner_map.json` says which connection(s) each one
 proves, and `--export` writes those first, ahead of any captured page for the
-same connection. The game's copies are PNG (the owner's call) and named
-`<from id>__<to id>.png`; the `__` is what tells them apart from the owner's
-own files, which `--export` never touches.
+same connection. The game's copies are PNG (the owner's call) and named by the
+games, in the direction of the influence: `Slay the Spire → Tic Tactic.png`. A
+colon becomes " -" and the characters Windows refuses in a file name are
+dropped (`GameChoiceModal.proof_file_name`, mirrored by `proofName` in the
+script). The " → " is what tells them apart from the owner's own files, which
+`--export` never touches.
 
 When you add a screenshot, run `python3 tools/proof_owner_match.py`: it reads
 each new file name ("kadomon sap.png", "going under hades, isaac, gungeon,

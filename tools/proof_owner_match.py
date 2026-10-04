@@ -128,9 +128,9 @@ def main():
     new, stuck = {}, []
     for f in sorted(glob.glob(os.path.join(PROOF, "*.png")), key=str.lower):
         name = os.path.basename(f)
-        # "<from>__<to>.png" are the game's copies (capture_proof.js --export),
+        # "<From> → <To>.png" are the game's copies (capture_proof.js --export),
         # not the owner's screenshots.
-        if name in mapping or "__" in name:
+        if name in mapping or " → " in name or "__" in name:
             continue
         to, pairs = propose(name[:-4], games, incoming)
         if pairs:
