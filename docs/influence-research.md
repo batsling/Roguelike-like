@@ -329,27 +329,33 @@ the sheet, never one its (Reddit-only) report doesn't mention. Videos and podcas
 the owner's to source by hand (a YouTube clip can't be downloaded within its
 terms), so `--skip youtube,podcast` leaves them out.
 
-**The owner's own screenshots win.** The PNGs in `images2.0/proof/` are the
-owner's proof folder (what a `check folder` Source means), named freely ("tic
-tactic sts.png"). `tools/proof_owner_map.json` says which connection(s) each one
-proves, and `--export` writes those first, ahead of any captured page for the
-same connection. The game's copies are PNG (the owner's call) and named by the
-games, in the direction of the influence: `Slay the Spire → Tic Tactic.png`. A
-colon becomes " -" and the characters Windows refuses in a file name are
-dropped (`GameChoiceModal.proof_file_name`, mirrored by `proofName` in the
-script). The " → " is what tells them apart from the owner's own files, which
-`--export` never touches.
+**One name format for every proof.** The game reads one PNG per connection
+(PNG is the owner's call), named for the two games in the direction of the
+influence: `Slay the Spire → Tic Tactic.png`. A colon becomes " -" and the
+characters Windows refuses in a file name are dropped
+(`GameChoiceModal.proof_file_name`, mirrored in both scripts). A screenshot that
+proves several connections is saved once under each: one image naming Hades,
+Isaac, Gungeon and Spelunky as Going Under's influences is four files.
 
-When you add a screenshot, run `python3 tools/proof_owner_match.py`: it reads
-each new file name ("kadomon sap.png", "going under hades, isaac, gungeon,
-spelunky.png"), proposes the connections it proves, and lists what it couldn't
-place. Read the proposals, then `--write` adds them to the map. It folds accents
-(Kādomon) and accepts a name before its colon, but a typo ("abolisk", "backback"),
-a file that runs the other way (one influencer, several games), or a word shared
-by two games ("survivors") needs a look or a hand-written line. `--export` also
-lists any screenshot missing from the map, because an unmapped one never reaches
-the game. Two uploaded so far prove connections the sheet doesn't have yet
-(Brotato → Bounty of One, Enter the Gungeon → Dungreed) and wait on a sheet row.
+**The owner's own screenshots win.** Upload them to `images2.0/proof/` under
+any name ("tic tactic sts.png", "going under hades, isaac, gungeon,
+spelunky.png"), then run `python3 tools/proof_owner_match.py`. It reads each
+name, proposes the connections it proves and lists what it couldn't place; read
+the proposals, then `--write` renames each upload into place (one copy per
+connection) and adds the new files to `tools/proof_owner.json`. That list is
+what makes them the owner's: `capture_proof.js --export` never copies a
+captured page over one or deletes one, and the matcher never overwrites one
+with a different upload (it keeps the upload and says so). It folds accents
+(Kādomon) and accepts a name before its colon, but a typo ("abolisk",
+"backback"), a file that runs the other way (one influencer, several games), or
+a word shared by two games ("survivors") needs a look; place those with
+`--pair "file.png" "Slay the Spire" "Tic Tactic"`. Naming an upload in the
+`From → To.png` format yourself also works, but add it to
+`tools/proof_owner.json` or a later export may replace it.
+
+Two uploads prove connections the sheet doesn't have yet (Brotato → Bounty of
+One, Enter the Gungeon → Dungreed). They wait, already named, in
+`images2.0/proof/not-on-sheet/`: move them up a folder once their rows exist.
 
 The script picks a sentence, it doesn't judge one. **Look at the images**: the
 pilot found a source that undercuts its own row (Rogue Voltage, section 4 of

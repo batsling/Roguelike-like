@@ -42,9 +42,9 @@
  *   node tools/capture_proof.js --skip youtube,podcast --resume
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
- *   node tools/capture_proof.js --export           copy the captures (and the owner's own
- *                                                  screenshots) into the game as
- *                                                  images2.0/proof/<From game> → <To game>.png
+ *   node tools/capture_proof.js --export           copy the captures into the game as
+ *                                                  images2.0/proof/<From game> → <To game>.png,
+ *                                                  beside (never over) the owner's own
  *
  * Needs Playwright (`npm install playwright` or NODE_PATH pointing at one) and a
  * Chromium; in the cloud container NODE_PATH=/opt/node-tools/node_modules works.
@@ -507,27 +507,18 @@ const isGameFile = f => f.endsWith('.png') && (f.includes(ARROW) || f.includes('
 
 function exportProofs() {
   const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
-  // The OWNER's own screenshots (mapped to connections in
-  // tools/proof_owner_map.json) win over a captured page: they are the proof the
-  // owner chose, mostly for rows whose Source is "check folder". When one
-  // connection has two, the screenshot made for fewer connections is the one
-  // made for it.
-  const ownerMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'proof_owner_map.json'), 'utf8'));
-  const owner = new Map();
-  for (const [file, pairs] of Object.entries(ownerMap)) {
-    if (file.startsWith('_')) continue;
-    for (const [from, to] of pairs) {
-      const k = `${from}__${to}`;
-      if (!owner.has(k) || ownerMap[owner.get(k).file].length > pairs.length) owner.set(k, { file, from, to });
-    }
-  }
+  // The OWNER's own screenshots win over a captured page: they are the proof
+  // the owner chose, mostly for rows whose Source is "check folder". They sit in
+  // the folder under the same "From → To.png" names (proof_owner_match.py
+  // renames an upload into place) and tools/proof_owner.json lists them, so the
+  // export never copies a capture over one, nor deletes one.
+  const owned = new Set(JSON.parse(fs.readFileSync(path.join(__dirname, 'proof_owner.json'), 'utf8')).files);
   fs.mkdirSync(GAME_DIR, { recursive: true });
-  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !isGameFile(f) && !(f in ownerMap));
+  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !isGameFile(f));
   const names = Object.fromEntries(loadConnections().flatMap(c => [[c.from, c.fromName], [c.to, c.toName]]));
   const gameFile = r => proofName(names[r.from]) + ARROW + proofName(names[r.to]) + '.png';
-  const keep = [...owner.values()].map(o => ({ from: o.from, to: o.to, file: path.join(GAME_DIR, o.file) }))
-    .concat(report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owner.has(`${r.from}__${r.to}`))
-      .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) })));
+  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && r.status !== 'quote-card' && !owned.has(gameFile(r)))
+    .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) }));
   let bytes = 0;
   for (const r of keep) {
     const dest = path.join(GAME_DIR, gameFile(r));
@@ -544,11 +535,11 @@ function exportProofs() {
   const onSheet = new Set(loadConnections().map(gameFile));
   const failed = new Set(report.filter(r => !r.image || r.status === 'quote-card').map(gameFile));
   for (const f of fs.readdirSync(GAME_DIR)) {
-    if (!isGameFile(f) || want.has(f)) continue;
+    if (!isGameFile(f) || want.has(f) || owned.has(f)) continue;
     if (f.includes('__') || failed.has(f) || !onSheet.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
   }
-  console.log(`${keep.length} proofs -> images2.0/proof/ (${owner.size} yours, ${keep.length - owner.size} captured; ${(bytes / 1048576).toFixed(1)} MB)`);
-  if (unmapped.length) console.log(`Not in tools/proof_owner_map.json, so not shown in game:\n  ${unmapped.join('\n  ')}`);
+  console.log(`${keep.length} captured proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB), beside ${owned.size} of yours`);
+  if (unmapped.length) console.log(`Not named "From → To.png", so not shown in game (run python3 tools/proof_owner_match.py):\n  ${unmapped.join('\n  ')}`);
 }
 
 // ── what is still missing ─────────────────────────────────────────────────────
