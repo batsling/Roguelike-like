@@ -295,6 +295,26 @@ link it opens the page in headless Chromium, finds the sentence (the URL's
 `#:~:text=` fragment when there is one, otherwise a claim sentence naming the
 influencer, the earliest one on a tie), highlights it and crops around it.
 
+**What the crop shows**, the first of these that fits in 900px:
+
+1. the whole **message** the sentence is in: a Steam forum post with its author
+   and date, a Reddit comment, a quoted post. A reply that quotes the developer
+   (or Steam's pinned "Answer" box) loses a tie to the developer's own post;
+2. the whole **paragraph**: the `<p>`, or the run between two blank lines when
+   the page is one block split by `<br>`s (Steam store pages and forum posts
+   are). A one-line paragraph takes its neighbours with it, up to 400px;
+3. the sentence with a few lines either side.
+
+The shot is taken in the viewport after the page has stopped moving, below any
+sticky header, not off a full-page screenshot: Playwright's full-page mode
+resizes the viewport, Steam's store re-lays itself out, and the old crop landed
+on the "More like this" carousel. A long X post (cut at "Show more" in the
+embed) is rendered in full, its text read from `api.fxtwitter.com` and handed to
+X's own embed. A name of three words or more is also found by its initials in
+capitals (ADOM, DCSS, FTL). A `weak` match, where only the influenced game is
+named, stays in `.influence_work/proof/` for a look but is not exported; it is
+listed in `docs/proof-missing.md` instead.
+
 ```bash
 export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, npm install playwright
 node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
