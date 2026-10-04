@@ -8,9 +8,9 @@ id = &"weird_worlds_return_to_infinite_space"
 display_name = "Weird Worlds: Return to Infinite Space"
 year = 2005
 type = 1
-games_influenced = Array[StringName]([&"infinite_space_iii_sea_of_stars", &"ftl"])
-influence_sources = PackedStringArray("", "https://rpgcodex.net/content.php?id=8133")
-influence_relations = PackedStringArray("dev/series", "")
+games_influenced = Array[StringName]([&"ftl", &"infinite_space_iii_sea_of_stars"])
+influence_sources = PackedStringArray("https://rpgcodex.net/content.php?id=8133", "")
+influence_relations = PackedStringArray("", "dev/series")
 tags = PackedStringArray("space")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

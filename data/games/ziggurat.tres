@@ -8,9 +8,9 @@ id = &"ziggurat"
 display_name = "Ziggurat"
 year = 2014
 type = 0
-games_influenced = Array[StringName]([&"vellum", &"ziggurat_2", &"immortal_redneck"])
-influence_sources = PackedStringArray("https://rogueliker.com/vellum-inspirations/#:~:text=Vellum's%20Inspirations,chapter%20of%20the%20original%20series.", "", "https://itch.io/t/9805/immortal-redneck-the-definitive-redneck-fps-roguelite")
-influence_relations = PackedStringArray("", "dev/series", "")
+games_influenced = Array[StringName]([&"immortal_redneck", &"vellum", &"ziggurat_2"])
+influence_sources = PackedStringArray("https://itch.io/t/9805/immortal-redneck-the-definitive-redneck-fps-roguelite", "https://rogueliker.com/vellum-inspirations/#:~:text=Vellum's%20Inspirations,chapter%20of%20the%20original%20series.", "")
+influence_relations = PackedStringArray("", "", "dev/series")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

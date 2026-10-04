@@ -26,16 +26,24 @@
  *   youtube  a card: thumbnail, title, channel and the timestamp. Clips are not
  *            downloaded — that is against YouTube's terms — so a clip of the
  *            moment has to be recorded by hand
- *   reddit   old.reddit.com, which refuses cloud addresses, so the Reddit
- *            connections are captured from the owner's own computer with
- *            --kind reddit; from the cloud only a post's own text (via the
- *            embed host) can be captured
- *   steam    age gate pre-answered by cookie
+ *   reddit   Reddit's own embed (embed.reddit.com) of the post or comment that
+ *            says it, found through the Arctic Shift archive; a comment comes
+ *            with the comment it answers stacked above it (see captureReddit)
+ *   steam    age gate pre-answered by cookie; on a forum thread, a player's
+ *            question and the developer's answer are shot together
+ *
+ * On every page, before the shot: log-in walls and the veil behind them are
+ * removed, "Read more" / "See more" buttons are pressed, and every fixed or
+ * sticky bar (site headers included) is hidden — each of these once covered or
+ * faded a proof (see removeWalls, unfold and hideBars).
  *
  *   node tools/capture_proof.js --pilot            25 connections across every source kind
  *   node tools/capture_proof.js --only hades       connections out of one game
+ *   node tools/capture_proof.js --conn balatro---runeborn,hades---going_under
+ *                                                  exactly these connections
  *   node tools/capture_proof.js --limit 50         the first 50 with a link
- *   node tools/capture_proof.js --kind reddit       Reddit, from your own computer, then --export
+ *   node tools/capture_proof.js --kind reddit       Reddit only
+ *   node tools/capture_proof.js --jobs 4 ...       four connections at a time
  *   node tools/capture_proof.js --missing          write docs/proof-missing.md: what has no proof yet
  *   node tools/capture_proof.js --skip youtube,podcast --untried
  *                                                  finish a stopped run, leaving its failures alone
@@ -44,6 +52,8 @@
  *                                                  and skipping what already has an image
  *   node tools/capture_proof.js --status weak,no-match
  *                                                  retry what the report last left in these
+ *   node tools/capture_proof.js --translate        set the English translations in
+ *                                                  tools/proof_translations.json under their proofs
  *   node tools/capture_proof.js --export           copy the captures into the game as
  *                                                  images2.0/proof/<influencer id>---<influenced id>.png,
  *                                                  beside (never over) the owner's own
@@ -215,7 +225,7 @@ function textFragment(url) {
 // Highlighting is done with the CSS Custom Highlight API rather than by
 // wrapping nodes, because a sentence often crosses a <b> or an <a>.
 
-function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHeight }) {
+function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHeight, anchor }) {
   const claim = new RegExp(claimSrc, 'i');
   const pat = n => {
     const gap = '[\\s:\\-–—]+';
@@ -243,6 +253,9 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
   // Each text node belongs to its nearest block; a block's text is its own
   // nodes, flattened, with each node's offset kept so a range can be built back.
   const BLOCK = 'p,li,blockquote,td,dd,dt,h1,h2,h3,h4,h5,h6,figcaption,pre,div,section,article';
+  // A forum thread's messages, and the badge Steam puts on a developer's.
+  const THREAD = '.forum_op, .commentthread_comment';
+  const DEV = '.commentthread_author_developer';
   // A <br> is a line end in its block, and two in a row are a paragraph break:
   // Steam forum posts and store pages are one <div> of text split only by them.
   const blocks = new Map();
@@ -256,7 +269,13 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
     if (!n.nodeValue.trim()) continue;
     const p = n.parentElement;
     if (!p || p.closest('script,style,noscript,nav,footer,template')) continue;
-    const b = p.closest(BLOCK) || p;
+    // Text with no block element of its own, set straight into <body> (Shadow
+    // of the Wyrm's about page: "<b>Shadow of the Wyrm is …</b> It …"), belongs
+    // to the nearest ancestor that is laid out as a block, not to the <b>: an
+    // inline element's box is one fragment of the line, and the crop came out
+    // cut off at the right edge of it.
+    let b = p.closest(BLOCK);
+    if (!b) for (b = p; b.parentElement && getComputedStyle(b).display.startsWith('inline'); b = b.parentElement);
     if (!blocks.has(b)) blocks.set(b, []);
     blocks.get(b).push({ node: n, br: breaks.get(b) || 0 });
     breaks.delete(b);
@@ -302,6 +321,11 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
         // A reply quoting the developer is second to the developer's own post,
         // and so is Steam's pinned "Answer" box, which quotes it.
         if (el.closest('blockquote, .answer_quote')) score -= 1;
+        // The developer saying it beats a player asking about it: Dungeon
+        // Rushers' thread has a player's "work like darkest dungeon?" and,
+        // further down, the developer's "more similar to Darkest Dungeon".
+        const post = el.closest(THREAD);
+        if (post && post.querySelector(DEV)) score += 2;
         if (first(toNames, text, s, e)) score += 3;
         consider(s, e, score, 'name', fromNames);
       } else if (claim.test(sentence) && first(toNames, text, s, e)) {
@@ -425,6 +449,34 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
     }
     if (para.getBoundingClientRect().height <= MAX) { unit = para; unitKind = 'paragraph'; }
     else { unit = sentence; unitKind = 'sentence'; }
+    // An interview is questions and answers, and one without the other is half
+    // the proof: FTL -> Abandon Ship's crop was the interviewer's question
+    // naming FTL with the answer cut off under it, Has-Been Heroes' the answer
+    // with its question sliced off the top. So a paragraph that IS a question
+    // takes the next block (the answer) with it, and an answer whose block
+    // before is a short question takes that, while the whole still fits.
+    // Not in a table: an infobox cell reading "SimCity (?)" is no question.
+    if (unitKind === 'paragraph' && !best.el.closest('td, th, table')) {
+      const k = order.findIndex(o => o.el === best.el);
+      const isQ = t => /[A-Za-z]\?["”’)\s]*$/.test(t.trim()) && t.trim().length < 400;
+      const sole = el => !best.el.contains(el) && !el.contains(best.el);
+      const grow = (from, to) => {
+        const r = document.createRange();
+        r.setStartBefore(from.nodes[0]);
+        r.setEndAfter(to.nodes[to.nodes.length - 1]);
+        return r;
+      };
+      const next = order.slice(k + 1).find(o => o.text.trim() && sole(o.el));
+      const prev = order.slice(0, k).reverse().find(o => o.text.trim() && sole(o.el));
+      const own = t.slice(a, z);
+      let wider = null;
+      // A heading is the same: "Finding inspiration in conversation -- and
+      // Rogue" (868-HACK) says nothing until the paragraph under it does.
+      const heading = /^H[1-6]$/.test(best.el.nodeName);
+      if ((isQ(own) || heading) && next && (z >= t.length - 2)) wider = grow(best, next);
+      else if (prev && isQ(prev.text) && a === 0 && !isQ(own)) wider = grow(prev, best);
+      if (wider && wider.getBoundingClientRect().height <= MAX) { unit = wider; unitKind = 'passage'; }
+    }
     // Still one line, and alone in its block: a wiki infobox cell ("Hack,
     // ADOM") or a tagline. Its container says what it is ("Influences"), so
     // the picture is the largest one around it that is still small.
@@ -432,7 +484,9 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
       let up = null;
       for (let e = best.el.parentElement; e && e !== document.body; e = e.parentElement) {
         const r = e.getBoundingClientRect();
-        if (r.height > 400 || r.width > innerWidth * 0.95 || e.innerText.length > 2000) break;
+        // 560, not 400: a RogueBasin infobox runs ~420px, and stopping short of
+        // it left three rows with no title saying whose box it was.
+        if (r.height > 560 || r.width > innerWidth * 0.95 || e.innerText.length > 2000) break;
         up = e;
       }
       // An infobox too tall to take whole still gives its row: "Influences | Hack".
@@ -448,10 +502,42 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
     const top = u.top - pad, bottom = u.bottom + pad;
     return { x: Math.min(c.left, u.left), y: top, w: Math.max(c.right, u.right) - Math.min(c.left, u.left), h: bottom - top };
   };
+  // What a fixed or sticky bar must not be hidden for: the element the text is in.
+  window.__proofEl = best.el;
+
+  // A question is half a proof. In a forum thread the other half is shot too
+  // and stacked with it, question first:
+  //   - the sentence is a player's QUESTION ("do the hero position on party work
+  //     like darkest dungeon?"): the developer's first reply after it;
+  //   - the sentence is the DEVELOPER's answer: the message the link points at
+  //     (#c<id>), or else the nearest earlier question naming either game.
+  let partner = null, partnerFirst = false;
+  const own = best.el.closest(THREAD);
+  const posts = [...document.querySelectorAll(THREAD)];
+  if (own && posts.length > 1) {
+    const i = posts.indexOf(own);
+    const isDev = p => !!p.querySelector(DEV);
+    const said = best.text.slice(best.start, best.end).trim();
+    const linked = anchor && (document.getElementById('comment_' + anchor) || document.getElementById(anchor));
+    const at = linked && linked.closest(THREAD);
+    if (!isDev(own) && /\?\W*$/.test(said)) {
+      partner = posts.slice(i + 1).find(isDev) || null;
+    } else if (isDev(own)) {
+      partner = (at && at !== own && posts.indexOf(at) < i) ? at
+        : posts.slice(0, i).reverse().find(p => /\?/.test(p.innerText)
+          && first(fromNames.concat(toNames), p.innerText)) || null;
+      partnerFirst = !!partner;
+    }
+  }
+  if (partner) window.__proofPartnerRect = () => {
+    const r = partner.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  };
   return {
     how: best.how,
     unit: unitKind,
     text: best.text.slice(best.start, best.end).replace(/\s+/g, ' ').trim().slice(0, 500),
+    partner: partner ? (partnerFirst ? 'before' : 'after') : '',
   };
 }
 
@@ -480,6 +566,7 @@ async function shootUnit(page, file, maxHeight) {
     return Math.ceil(low);
   });
   let clear = 0;
+  await page.evaluate(hideBars);
   let r = await page.evaluate(() => window.__proofRect());
   const settle = async () => {
     for (let i = 0; i < 6; i++) {
@@ -487,6 +574,7 @@ async function shootUnit(page, file, maxHeight) {
       await page.setViewportSize({ width: vw, height: Math.max(900, Math.ceil(Math.min(r.h, maxHeight)) + 2 * PAD + at) });
       await page.evaluate(top => window.scrollBy(0, top), r.y - at);
       await page.waitForTimeout(i ? 500 : 700);
+      await page.evaluate(hideBars);
       clear = await header();
       const again = await page.evaluate(() => window.__proofRect());
       const still = Math.abs(again.y - (clear + 40)) < 2 && Math.abs(again.h - r.h) < 2;
@@ -499,17 +587,7 @@ async function shootUnit(page, file, maxHeight) {
   // measured once more after the shot, and shot again if it moved.
   for (let shot = 0; shot < 3; shot++) {
     await settle();
-    // Newsletter pop-ups, chat bubbles and cookie bars float over the text
-    // (GamesRadar's covered Enter the Gungeon -> Hades): anything fixed that
-    // covers part of the screen is hidden. A fixed element taller than most of
-    // the viewport is left alone, in case it is the page itself.
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll('body *')) {
-        if (getComputedStyle(el).position !== 'fixed') continue;
-        const r = el.getBoundingClientRect();
-        if (r.height > 0 && r.height < innerHeight * 0.6 && r.top > 4) el.style.setProperty('visibility', 'hidden', 'important');
-      }
-    });
+    await page.evaluate(hideBars);
     const vh = page.viewportSize().height;
     const x = Math.max(0, r.x - PAD);
     const y = Math.max(clear, r.y - PAD);
@@ -520,6 +598,80 @@ async function shootUnit(page, file, maxHeight) {
     if (Math.abs(after.y - r.y) < 2 && Math.abs(after.h - r.h) < 2 && h >= Math.min(r.h, maxHeight)) break;
     r = after;
   }
+}
+
+// Anything fixed or sticky floats over the text once the page is scrolled:
+// newsletter pop-ups, chat bubbles and cookie bars (GamesRadar's covered Enter
+// the Gungeon -> Hades), and site headers (Game*Spark's menu bar sat over the
+// line naming Inscryption). Measuring a header and shooting below it missed
+// the ones that start a few pixels down, so every such bar is hidden instead,
+// except one the text itself is inside (a page laid out in a fixed shell).
+// A video under a caption (a Facebook reel) is hidden too: its frames run
+// behind the words and whichever frame is up when the shot is taken can bury
+// them (Dungeon Clawler's logo sat across the line naming Dicey Dungeons).
+function hideBars() {
+  const keep = window.__proofEl;
+  // Opacity as well as visibility: a child can set itself visible again
+  // (Game*Spark's open sub-menu does), but nothing inside an element at
+  // opacity 0 shows.
+  const hide = el => { el.style.setProperty('visibility', 'hidden', 'important'); el.style.setProperty('opacity', '0', 'important'); };
+  for (const el of document.querySelectorAll('body *')) {
+    const pos = getComputedStyle(el).position;
+    if (pos !== 'fixed' && pos !== 'sticky') continue;
+    // Whatever its size: a sticky wrapper can be 0px tall with its bar
+    // overflowing it (Steam's store menu, Game*Spark's).
+    if (keep && el.contains(keep)) continue;
+    hide(el);
+  }
+  if (keep) {
+    const k = keep.getBoundingClientRect();
+    for (const v of document.querySelectorAll('video')) {
+      const r = v.getBoundingClientRect();
+      if (r.left <= k.left && r.right >= k.right && r.top <= k.top && r.bottom >= k.bottom) hide(v);
+    }
+  }
+}
+
+// Log-in walls and the veil behind them (Facebook's "See more on Facebook" sat
+// over Anomaly Collapse's post, and its translucent veil greyed out Dungeon
+// Clawler's reel): every modal dialog goes, from its outermost fixed wrapper,
+// along with any full-screen fixed layer that holds no text. The page's own
+// scroll lock goes with them.
+function removeWalls() {
+  for (const d of document.querySelectorAll('[role=dialog], [aria-modal=true]')) {
+    let top = d;
+    for (let e = d; e && e !== document.body; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') top = e;
+    top.remove();
+  }
+  for (const e of document.querySelectorAll('body *')) {
+    if (getComputedStyle(e).position !== 'fixed') continue;
+    const r = e.getBoundingClientRect();
+    if (r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9 && !e.innerText.trim()) e.remove();
+  }
+  // Only a lock is undone: forcing `auto` on a full-height <body> makes it a
+  // scroller of its own, and the window then never scrolls to the text.
+  for (const e of [document.documentElement, document.body])
+    if (/hidden|clip/.test(getComputedStyle(e).overflowY)) e.style.setProperty('overflow', 'visible', 'important');
+}
+
+// Folded text: Reddit's embed shows three faded lines of a post and a "Read
+// more" (Castle of the Winds -> Dungeonmans was cut mid-sentence under it),
+// Facebook a "See more". These are buttons that unfold in place; a LINK reading
+// "read more" goes to another page, so only a link with nowhere to go counts.
+async function unfold(page) {
+  const n = await page.evaluate(() => {
+    const MORE = /^(?:…\s*|\.\.\.\s*)?(?:read|see|show) more$/i;
+    let k = 0;
+    for (const el of document.querySelectorAll('button, [role=button], read-more-button, a:not([href]), a[href="#"], a[href^="javascript"]')) {
+      if (!MORE.test((el.innerText || '').trim())) continue;
+      if (el.closest('nav, header, footer')) continue;
+      el.click();
+      k++;
+    }
+    return k;
+  }).catch(() => 0);
+  if (n) await page.waitForTimeout(1200);
+  return n;
 }
 
 // ── capture, per kind ─────────────────────────────────────────────────────────
@@ -542,27 +694,209 @@ async function dismissBanners(page) {
   }
 }
 
-// Reddit, in the order that gives a real screenshot of the real page:
-//   1. old.reddit.com, which renders the whole thread, comments included, with
-//      no login wall. It refuses cloud addresses ("blocked by network security")
-//      and works from a home connection, which is why the owner runs
-//      `--kind reddit` on their own computer;
-//   2. embed.reddit.com, the host Reddit serves to other websites. It answers a
-//      cloud address, but renders the POST only, so it catches proof in a
-//      post's title or text and nothing in its comments.
-// The proof is often the developer's own comment under a video post, so a
-// thread neither can show is reported as blocked, to capture from home. (It
-// used to fall back to a quote card transcribed from an archive; the owner
-// wants screenshots of the page.)
-const REDDIT_HOME = 'Reddit refuses this machine: capture it from your own computer with node tools/capture_proof.js --kind reddit';
+// Reddit refuses this machine's address on reddit.com and old.reddit.com
+// ("blocked by network security"), but answers on embed.reddit.com, the host
+// it serves to other websites. That host renders a POST, folded after three
+// lines under "Read more" (unfold() opens it), or one COMMENT, with no thread
+// round it. So the thread is read from the Arctic Shift archive of Reddit,
+// which says WHICH post or comment carries the proof, and the picture is then
+// Reddit's own embed of exactly that one:
+//
+//   - the post, when the post says it (the title and text, unfolded);
+//   - the comment, when a comment says it, with the comment it replies to
+//     stacked above it: an AMA's proof is the developer's ANSWER, and an answer
+//     needs its question (Balatro -> Runeborn is "how are you planning to stand
+//     out?" and then "we were heavily inspired by Balatro");
+//   - a player's question naming the game, followed by the original poster's
+//     reply to it, when the question is what names it.
+//
+// The developer is usually the original poster, so their words outrank a
+// commenter's at the same score. When the archive has nothing (a post too new
+// for it, or the archive down), the post alone is captured from the embed.
+const ARCTIC = 'https://arctic-shift.photon-reddit.com/api';
+const REDDIT_HOME = 'Reddit refused the embed too: screenshot it yourself';
+
+function redditIds(url) {
+  const parts = new URL(url).pathname.split('/').filter(Boolean);
+  const i = parts.indexOf('comments');
+  if (i < 0 || !/^[a-z0-9]+$/i.test(parts[i + 1] || '')) return null;
+  let comment = parts[i + 2] === 'comment' ? parts[i + 3] : parts[i + 3];
+  if (comment && !/^[a-z0-9]{4,10}$/i.test(comment)) comment = null;
+  return { sub: parts[i - 1], post: parts[i + 1], comment: comment || null };
+}
+
+// Reddit markdown to the words a reader sees.
+const unmark = t => String(t || '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/&amp;/g, '&')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#x200B;/g, '').replace(/\\([\\*_~`>#[\]()-])/g, '$1')
+  .replace(/[*_~`]+/g, '').replace(/^\s*>\s?/gm, '');
+
+// The same test findAndMark makes on a page, on plain text: 10 for naming the
+// influencer, +5 for a claim word beside it, +3 for naming the influencee too;
+// 1 for a claim beside the influencee alone (`weak`); 100 for the passage the
+// link's own #:~:text= marks.
+function scoreText(c, text) {
+  const amb = exact(c.fromName, c.toName);
+  const re = n => new RegExp('(?<![A-Za-z0-9])' + n.split(/\s+/)
+    .map(w => w.split('-').map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('-?')).join('[\\s:\\-–—]+')
+    + '(?![A-Za-z0-9])', amb.includes(n) ? '' : 'i');
+  const from = variants(c.fromName).map(re), to = variants(c.toName).map(re);
+  const names = (res, s) => res.some(r => r.test(s));
+  const frag = textFragment(c.url);
+  const flat = x => x.replace(/\s+/g, ' ').toLowerCase();
+  if (frag && frag.start && flat(text).includes(flat(frag.start))) return { score: 100, sentence: frag.start };
+  let best = { score: 0, sentence: '' };
+  for (const s of text.split(/(?<=[.!?。！？])\s+|\n+/)) {
+    let score = 0;
+    if (names(from, s)) score = 10 + (CLAIM.test(s) ? 5 : 0) + (names(to, s) ? 3 : 0);
+    else if (CLAIM.test(s) && names(to, s)) score = 1;
+    if (score > best.score) best = { score, sentence: s.trim() };
+  }
+  return best;
+}
+
+async function redditThread(ctx, ids) {
+  const post = ((await getJSON(ctx, `${ARCTIC}/posts/ids?ids=${ids.post}&fields=id,author,title,selftext,subreddit`)).data || [])[0];
+  if (!post) return null;
+  const tree = (await getJSON(ctx, `${ARCTIC}/comments/tree?link_id=${ids.post}&limit=9999`)).data || [];
+  const comments = [];
+  const walk = n => {
+    if (n.kind !== 't1') return;
+    comments.push(n.data);
+    const r = n.data.replies;
+    if (r && r.data) r.data.children.forEach(walk);
+  };
+  tree.forEach(walk);
+  return { post, comments, byId: new Map(comments.map(x => [x.id, x])) };
+}
+
+// One embed, shot whole: the card is the bordered box Reddit draws round it.
+// With `mark`, the sentence is highlighted the way a page's is. A card taller
+// than a screen or two is cut to the paragraph the sentence is in.
+async function shootEmbed(ctx, url, c, file, mark) {
+  const page = await ctx.newPage();
+  try {
+    await page.setViewportSize({ width: 900, height: 900 });
+    const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    if (!resp || resp.status() >= 400) return { status: 'blocked', detail: `HTTP ${resp ? resp.status() : 0}` };
+    await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+    await unfold(page);
+    // A video or picture post's player fills the card and says nothing (Asgard's
+    // Fall came out as a green loading square over a line of text): the media
+    // goes, the words stay. A post whose proof is in its title still shows it.
+    await page.evaluate(() => {
+      for (const e of document.querySelectorAll('shreddit-player, shreddit-player-2, video, gallery-carousel, shreddit-aspect-ratio, [slot=post-media-container], figure.rte-media'))
+        e.style.setProperty('display', 'none', 'important');
+      // and the box that held its place, now tall and empty.
+      for (const e of [...document.querySelectorAll('body *')].reverse()) {
+        const r = e.getBoundingClientRect();
+        if (r.height > 120 && !e.innerText.trim() && !e.querySelector('img:not([src^="data"]), svg'))
+          e.style.setProperty('display', 'none', 'important');
+      }
+    });
+    await page.waitForTimeout(300);
+    await page.mouse.move(0, 0);
+    let found = null;
+    if (mark) {
+      found = await page.evaluate(findAndMark, {
+        fragment: textFragment(c.url), fromNames: variants(c.fromName), toNames: variants(c.toName),
+        claimSrc: CLAIM.source, ambiguous: exact(c.fromName, c.toName), maxHeight: MAX_UNIT, anchor: null,
+      });
+      if (!found) return { status: 'no-match', detail: 'the embed does not show the words the archive has (removed or edited on Reddit)' };
+    }
+    const card = await page.evaluate(() => {
+      let best = null, area = 0;
+      for (const e of document.querySelectorAll('body *')) {
+        const cs = getComputedStyle(e);
+        if (parseFloat(cs.borderTopWidth) < 1 || parseFloat(cs.borderLeftWidth) < 1) continue;
+        const r = e.getBoundingClientRect();
+        if (r.width * r.height > area) { area = r.width * r.height; best = r; }
+      }
+      const r = best || document.body.getBoundingClientRect();
+      return { x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height };
+    });
+    const MAX_CARD = 1800;
+    if (card.h <= MAX_CARD || !found) {
+      await page.setViewportSize({ width: 900, height: Math.ceil(Math.min(card.h, MAX_CARD)) + 40 });
+      await page.screenshot({ path: file, fullPage: true, clip: { x: card.x, y: card.y, width: card.w, height: Math.min(card.h, MAX_CARD) } });
+    } else await shootUnit(page, file, MAX_UNIT);
+    // Whether the card says anything: its lines, less Reddit's own furniture.
+    const empty = await page.evaluate(() => !document.body.innerText.split('\n').map(l => l.trim()).filter(l => l
+      && !/commented on|^post$|upvotes?$|repl(y|ies)$|^Copy link$|^View .*comments?$|^View more on Reddit$|^\[deleted\]$|^Skip to main content$|^Comment$|^Join$|^\d+$/i.test(l)).length);
+    return { status: 'ok', quote: found ? found.text : '', how: found ? found.how : '', empty };
+  } catch (e) {
+    return { status: 'error', detail: String(e.message || e).split('\n')[0] };
+  } finally {
+    await page.close();
+  }
+}
+
+// The embed sometimes paints before the post's text is in (Sodaman's came out
+// as a title and nothing else, once in two), so a shot whose words fall short
+// of what the archive says the post holds is taken again.
+async function shootEmbedSure(ctx, url, c, file, mark, strong) {
+  let r;
+  for (let i = 0; i < 3; i++) {
+    r = await shootEmbed(ctx, url, c, file, mark);
+    if (!mark || !strong || (r.status === 'ok' && r.how !== 'weak')) return r;
+  }
+  return r.status === 'ok' ? { status: 'weak', detail: 'the embed never showed the sentence the archive has', quote: r.quote } : r;
+}
 
 async function captureReddit(ctx, c, file) {
-  const old = await capturePage(ctx, c, file, c.url.replace(/\/\/(www\.|old\.|new\.)?reddit\.com/, '//old.reddit.com'));
-  if (!['blocked', 'error', 'no-match'].includes(old.status)) return old;
-  const embed = await capturePage(ctx, c, file, c.url.replace(/\/\/(www\.|old\.|new\.)?reddit\.com/, '//embed.reddit.com'));
-  if (!['blocked', 'error', 'no-match'].includes(embed.status)) return embed;
-  // old.reddit's own answer says whether it was the block or the page.
-  return old.status === 'blocked' ? { status: 'blocked', detail: REDDIT_HOME } : old;
+  const ids = redditIds(c.url);
+  const embedPost = ids && `https://embed.reddit.com/r/${ids.sub}/comments/${ids.post}/`;
+  const embedComment = id => `https://embed.reddit.com/r/${ids.sub}/comments/${ids.post}/comment/${id}/`;
+  let thread = null;
+  if (ids) thread = await redditThread(ctx, ids).catch(() => null);
+  if (!thread) {
+    if (!ids) return { status: 'blocked', detail: REDDIT_HOME + ' (not a link to a thread)' };
+    const r = await shootEmbed(ctx, embedPost, c, file, true);
+    return r.status === 'ok' ? { status: 'ok', how: 'embed-post', quote: r.quote } : (r.status === 'blocked' ? { status: 'blocked', detail: REDDIT_HOME } : r);
+  }
+  const op = thread.post.author;
+  const candidates = [{ kind: 'post', data: thread.post, text: unmark(thread.post.title + '\n' + thread.post.selftext) }]
+    .concat(thread.comments.map(x => ({ kind: 'comment', data: x, text: unmark(x.body) })));
+  let win = null;
+  for (const cand of candidates) {
+    const s = scoreText(c, cand.text);
+    if (!s.score) continue;
+    // The developer (usually the original poster) over a commenter, and the
+    // comment the link points at over any other.
+    let score = s.score + (cand.data.author === op && s.score >= 10 ? 2 : 0);
+    if (ids.comment && cand.data.id === ids.comment && s.score >= 10) score += 50;
+    if (!win || score > win.score) win = { ...cand, score, sentence: s.sentence };
+  }
+  if (!win) return { status: 'no-match', detail: 'neither the post nor any of its ' + thread.comments.length + ' archived comments names ' + c.fromName };
+  const status = win.score >= 10 ? 'ok' : 'weak';
+  if (win.kind === 'post') {
+    const r = await shootEmbedSure(ctx, embedPost, c, file, true, status === 'ok');
+    if (r.status === 'no-match') return { status: 'no-match', detail: 'the post says it, but Reddit\'s embed shows no text for a video or picture post: screenshot it yourself' };
+    return r.status === 'ok' ? { status, how: 'embed-post', quote: r.quote || win.sentence } : r;
+  }
+  // A comment: its question above it, or the original poster's answer below it.
+  const parts = [];
+  const parent = /^t1_/.test(win.data.parent_id || '') && thread.byId.get(win.data.parent_id.slice(3));
+  const isQuestion = /\?\W*$/.test(win.sentence) && win.data.author !== op;
+  const answer = isQuestion && thread.comments.find(x => x.parent_id === 't1_' + win.data.id && x.author === op);
+  const shots = [];
+  if (parent) shots.push({ id: parent.id, mark: false });
+  shots.push({ id: win.data.id, mark: true });
+  if (answer) shots.push({ id: answer.id, mark: false });
+  let quote = '';
+  for (const [k, sh] of shots.entries()) {
+    const f = file.replace(/\.png$/, `.part${k}.png`);
+    const r = await shootEmbedSure(ctx, embedComment(sh.id), c, f, sh.mark, status === 'ok');
+    // A question deleted since is an empty card on Reddit now (the archive
+    // still has its words): the answer goes alone.
+    if (!sh.mark && r.empty) { if (fs.existsSync(f)) fs.unlinkSync(f); continue; }
+    if (r.status !== 'ok') { parts.forEach(p => fs.existsSync(p) && fs.unlinkSync(p)); return r; }
+    if (sh.mark) quote = r.quote;
+    parts.push(f);
+  }
+  await stackImages(ctx, parts, file);
+  parts.forEach(p => fs.unlinkSync(p));
+  return { status, how: 'embed-comment', unit: parts.length > 1 ? 'thread' : 'comment', quote: quote || win.sentence,
+    final: `https://www.reddit.com/r/${ids.sub}/comments/${ids.post}/comment/${win.data.id}/` };
 }
 
 async function capturePage(ctx, c, file, at) {
@@ -578,6 +912,15 @@ async function capturePage(ctx, c, file, at) {
     if (status >= 400) return { status: 'blocked', detail: `HTTP ${status}` };
     await dismissBanners(page);
     await page.waitForTimeout(800);
+    await page.evaluate(removeWalls).catch(() => {});
+    // Unfolding can bring a wall back (Facebook asks for a log-in on the click).
+    if (await unfold(page)) {
+      if (page.url().replace(/#.*$/, '') !== url && !page.url().startsWith(url)) {
+        await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+        await page.waitForTimeout(1000);
+      }
+      await page.evaluate(removeWalls).catch(() => {});
+    }
     // Collapsed text: Steam's "Read more", Reddit's "load more comments" are not
     // proof-bearing often enough to chase; the store page's About section is.
     await page.addStyleTag({ content: '#game_area_description, .game_page_autocollapse { max-height: none !important; overflow: visible !important }'
@@ -589,6 +932,7 @@ async function capturePage(ctx, c, file, at) {
       claimSrc: CLAIM.source,
       ambiguous: exact(c.fromName, c.toName),
       maxHeight: MAX_UNIT,
+      anchor: (c.url.match(/#c?(\d{6,})$/) || [])[1] || null,
     });
     // Steam announcements and most article sites fill their body in by script
     // after the load settles; one slower second look catches them.
@@ -603,9 +947,41 @@ async function capturePage(ctx, c, file, at) {
       return { status: 'no-match', detail: 'neither name found on the page', final: page.url() };
     }
     await shootUnit(page, file, MAX_UNIT);
-    return { status: found.how === 'weak' ? 'weak' : 'ok', how: found.how, unit: found.unit, quote: found.text, final: page.url() };
+    if (found.partner) {
+      // The other half of a question and its answer, shot the same way and
+      // stacked in the thread's order.
+      const other = file.replace(/\.png$/, '.partner.png');
+      await page.evaluate(() => {
+        window.__proofRect = window.__proofPartnerRect;
+        window.__proofEl = null;
+      });
+      await shootUnit(page, other, MAX_UNIT);
+      await stackImages(page.context(), found.partner === 'before' ? [other, file] : [file, other], file);
+      fs.unlinkSync(other);
+    }
+    return { status: found.how === 'weak' ? 'weak' : 'ok', how: found.how, unit: found.unit, quote: found.text,
+      partner: found.partner || undefined, final: page.url() };
   } catch (e) {
     return { status: 'error', detail: String(e.message || e).split('\n')[0] };
+  } finally {
+    await page.close();
+  }
+}
+
+// Several shots as one picture, top to bottom, on white with a gap between, so
+// a question and its answer (or a Reddit post and the comment under it) read
+// as the thread they were in. Drawn by the browser rather than an image
+// library, so the tool needs nothing Playwright doesn't already bring.
+async function stackImages(ctx, files, out, gap = 10) {
+  const page = await ctx.newPage();
+  try {
+    const imgs = files.map(f => `<img src="data:image/png;base64,${fs.readFileSync(f).toString('base64')}" style="display:block;margin-bottom:${gap}px">`).join('');
+    await page.setContent(`<html><body style="margin:0;background:#9aa0a6"><div id="s" style="display:inline-block;padding:0">${imgs}</div></body></html>`);
+    await page.evaluate(() => Promise.all([...document.images].map(i => i.decode())));
+    // The page is laid out at device pixel ratio 1, so each shot keeps its own size.
+    const box = await page.evaluate(() => { const r = document.getElementById('s').getBoundingClientRect(); return { w: Math.ceil(r.width), h: Math.ceil(r.height) }; });
+    await page.setViewportSize({ width: Math.max(box.w, 100), height: Math.max(box.h, 100) });
+    await page.screenshot({ path: out, clip: { x: 0, y: 0, width: box.w, height: box.h - gap } });
   } finally {
     await page.close();
   }
@@ -673,8 +1049,26 @@ async function captureTweet(ctx, c, file, media = false) {
     const frame = await page.waitForSelector('iframe[id^=twitter-widget]', { timeout: 20000 }).catch(() => null);
     if (!frame) return { status: 'error', detail: 'embed did not render' };
     await page.waitForTimeout(2500);
+    // A video X can't play in the embed is a grey "The media could not be
+    // played" box as tall as the post (Pegs X Stickers, Kill the Music): it
+    // goes, and the post's words close up over it.
+    const inner0 = await frame.contentFrame();
+    if (inner0) await inner0.evaluate(() => {
+      for (const e of document.querySelectorAll('*')) {
+        if (e.childElementCount || !/^The media could not be played\.?$/.test((e.textContent || '').trim())) continue;
+        let box = e;
+        for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+          if (p.innerText.trim() && !/^The media could not be played\.?\s*Reload$/.test(p.innerText.trim())) break;
+          box = p;
+        }
+        box.style.setProperty('display', 'none', 'important');
+      }
+    }).catch(() => {});
+    await page.waitForTimeout(500);
     const quote = full || (embed.html.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [, ''])[1].replace(/<[^>]+>/g, '');
-    const flat = t => t.replace(/\s+/g, ' ').toLowerCase();
+    // Punctuation aside: "Elden Ring: Nightreign" is the chart's "Elden Ring
+    // Nightreign", and missing it sent the post back for its (dead) video.
+    const flat = t => ' ' + t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ') + ' ';
     const named = variants(c.fromName).some(n => flat(quote).includes(flat(n)));
     // A whole long post is a page or more: past MAX_UNIT the picture runs from
     // the top of the post (who said it) down to the end of the paragraph that
@@ -805,7 +1199,12 @@ function exportProofs() {
   // and that must add the Reddit proofs without wiping the rest.
   const want = new Set(keep.map(gameFile));
   const onSheet = new Set(loadConnections().map(gameFile));
-  const failed = new Set(report.filter(r => !shown(r)).map(gameFile));
+  // Only a failure that says something about the PAGE retires a proof: the
+  // sentence is gone (no-match, weak) or the page is (404, 410). A bot wall, a
+  // rate limit or a 502 on the day of the run says nothing about the picture
+  // already in the game, and fifteen good proofs were lost to exactly that.
+  const passing = r => r.status === 'blocked' && !/HTTP 40[46]|HTTP 410/.test(r.detail || '') || r.status === 'error';
+  const failed = new Set(report.filter(r => !shown(r) && !passing(r)).map(gameFile));
   for (const f of Object.keys(ledger.files)) {
     if (want.has(f) || !ours(f)) continue;
     if (failed.has(f) || !onSheet.has(f)) { fs.unlinkSync(path.join(GAME_DIR, f)); delete ledger.files[f]; }
@@ -819,6 +1218,66 @@ function exportProofs() {
     `${all.length - Object.keys(ledger.files).length - misnamed.length} of yours beside them`);
   if (misnamed.length) console.log(`Not <influencer id>---<influenced id>.png for a connection on the sheet, so not shown in game ` +
     `(python3 tools/proof_owner_match.py renames free-named uploads):\n  ${misnamed.join('\n  ')}`);
+}
+
+// ── translations ──────────────────────────────────────────────────────────────
+// A proof in another language keeps the original screenshot, untouched, with an
+// English translation set in a box underneath it. The translations are kept in
+// tools/proof_translations.json, written by hand (or by Claude) once per proof:
+//
+//     "brotato---cluckmech_oasis.png": { "from": "Chinese", "text": "…" }
+//
+// and `--translate` sets each one under its picture. Each entry records the
+// fingerprint (sha1) of the picture WITH its translation, so running it again
+// leaves a done picture alone, and a picture replaced since (a fresh capture,
+// or one you uploaded) gets its translation set under it again. --export runs
+// it at the end, so a re-captured proof never loses its translation.
+const TRANSLATIONS = path.join(__dirname, 'proof_translations.json');
+
+async function translateProofs(browser) {
+  if (!fs.existsSync(TRANSLATIONS)) return;
+  const book = JSON.parse(fs.readFileSync(TRANSLATIONS, 'utf8'));
+  const ledger = JSON.parse(fs.readFileSync(CAPTURED, 'utf8'));
+  const todo = Object.entries(book.files).filter(([f, t]) => fs.existsSync(path.join(GAME_DIR, f)) && sha1(path.join(GAME_DIR, f)) !== t.sha1);
+  if (!todo.length) { console.log('translations: all set'); return; }
+  const own = !browser;
+  if (own) browser = await require('playwright').chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+  const page = await browser.newPage();
+  try {
+    for (const [f, t] of todo) {
+      const file = path.join(GAME_DIR, f);
+      const before = sha1(file);
+      const img = `data:image/png;base64,${fs.readFileSync(file).toString('base64')}`;
+      await page.setViewportSize({ width: 1400, height: 900 });
+      await page.setContent(`<html><body style="margin:0;background:#fff">
+        <div id="s" style="display:inline-block;background:#fff">
+          <img src="${img}" style="display:block">
+          <div id="t" style="box-sizing:border-box;border-top:3px solid #c9a227;background:#fff8dc;color:#222;
+            padding:10px 14px 12px;font:15px/1.45 'DejaVu Sans',Arial,sans-serif">
+            <div style="font-weight:bold;font-size:12px;letter-spacing:.04em;color:#7a5c00;margin-bottom:4px">ENGLISH TRANSLATION (from ${esc(t.from)})</div>
+            <div style="white-space:pre-wrap">${esc(t.text)}</div>
+          </div>
+        </div></body></html>`);
+      await page.evaluate(() => document.images[0].decode());
+      // The box is as wide as the picture, but never narrower than a readable line.
+      await page.evaluate(() => {
+        const w = Math.max(document.images[0].naturalWidth, 520);
+        document.getElementById('s').style.width = w + 'px';
+      });
+      const box = await page.evaluate(() => { const r = document.getElementById('s').getBoundingClientRect(); return { w: Math.ceil(r.width), h: Math.ceil(r.height) }; });
+      await page.setViewportSize({ width: Math.max(box.w, 100), height: Math.max(box.h, 100) });
+      await page.screenshot({ path: file, clip: { x: 0, y: 0, width: box.w, height: box.h } });
+      t.sha1 = sha1(file);
+      // A captured proof is still the capture's: its fingerprint moves with it.
+      if (ledger.files[f] === before) ledger.files[f] = t.sha1;
+      console.log(`translation set under ${f}`);
+    }
+  } finally {
+    await page.close();
+    if (own) await browser.close();
+  }
+  fs.writeFileSync(TRANSLATIONS, JSON.stringify(book, null, 1) + '\n');
+  fs.writeFileSync(CAPTURED, JSON.stringify(ledger, null, 1) + '\n');
 }
 
 // ── what is still missing ─────────────────────────────────────────────────────
@@ -838,7 +1297,11 @@ function writeMissing() {
       const note = c.source.trim();
       (note ? groups.note : groups.none).push(line(note ? `"${note.length > 80 ? note.slice(0, 79) + '…' : note}"` : ''));
     } else if (['youtube', 'podcast'].includes(c.kind)) groups.video.push(line(''));
-    else if (c.kind === 'reddit') groups.reddit.push(line(r && r.status === 'no-match' ? 'the post loaded but neither name is in it' : ''));
+    else if (c.kind === 'reddit') groups.reddit.push(line(!r ? 'not captured yet'
+      : /video or picture/.test(r.detail || '') ? 'a video or picture post: the embed shows no text'
+      : /removed or edited/.test(r.detail || '') ? 'the comment was removed or edited on Reddit'
+      : /archived comments names/.test(r.detail || '') ? 'neither the post nor its comments name ' + c.fromName
+      : r.status === 'weak' ? 'only ' + c.toName + ' is named' : (r.detail || r.status).slice(0, 70)));
     else if (!r) groups.down.push(line('not captured yet'));
     else if (r.status === 'no-match') groups.nomatch.push(line(''));
     else if (r.status === 'weak') groups.weak.push(line(`only ${c.toName} is named`));
@@ -860,8 +1323,8 @@ game's file names in \`data/games/\`, e.g. \`slay_the_spire---tic_tactic.png\`),
 under any name followed by \`python3 tools/proof_owner_match.py --write\` (see
 \`docs/influence-research.md\`).
 
-` + section('Reddit: capture from your own computer',
-    'Reddit blocks the cloud container. `node tools/capture_proof.js --kind reddit` on your own computer captures these as real screenshots, then `--export`. The same run also re-captures the Reddit proofs already in the game, which came through Reddit\'s embed page from here and can come out faded where a long post is folded under "Read more".', groups.reddit)
+` + section('Reddit: screenshot these yourself',
+    'Reddit proofs are captured through Reddit\'s own embed of the post or comment that says it, found through the Arctic Shift archive of Reddit. These are the ones that can\'t be: a video or picture post (the embed shows no text for those), a comment removed or edited since it was archived, or a thread the archive never saw. Open the link and screenshot the sentence.', groups.reddit)
     + section('The link is dead',
     'The page or tweet is gone. These need a new source, or an archived copy if you can find one.', groups.dead)
     + section('The site refused the browser',
@@ -884,12 +1347,15 @@ under any name followed by \`python3 tools/proof_owner_match.py --write\` (see
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--missing')) return writeMissing();
-  if (args.includes('--export')) return exportProofs();
+  if (args.includes('--export')) { exportProofs(); return translateProofs(); }
+  if (args.includes('--translate')) return translateProofs();
   const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
   const all = loadConnections();
   let todo = all.filter(c => c.url);
   if (args.includes('--pilot')) todo = pilot(all);
   if (opt('--only')) todo = todo.filter(c => c.from === opt('--only') || c.to === opt('--only'));
+  // --conn hades---going_under,balatro---runeborn: exactly these connections.
+  if (opt('--conn')) todo = todo.filter(c => opt('--conn').split(',').includes(`${c.from}---${c.to}`));
   // --kind reddit: only these kinds (Reddit, run from a home connection).
   if (opt('--kind')) todo = todo.filter(c => opt('--kind').split(',').includes(c.kind));
   // --skip youtube,podcast: the owner sources video moments by hand.
@@ -918,18 +1384,21 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-  const ctx = await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-    locale: 'en-US',
-    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
-  });
-  // Steam's age gate and language, answered up front.
-  await ctx.addCookies(['store.steampowered.com', 'steamcommunity.com'].flatMap(domain => [
-    { name: 'birthtime', value: '0', domain, path: '/' },
-    { name: 'wants_mature_content', value: '1', domain, path: '/' },
-    { name: 'lastagecheckage', value: '1-0-1990', domain, path: '/' },
-    { name: 'Steam_Language', value: 'english', domain, path: '/' },
-  ]));
+  const newCtx = async () => {
+    const ctx = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      locale: 'en-US',
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+    });
+    // Steam's age gate and language, answered up front.
+    await ctx.addCookies(['store.steampowered.com', 'steamcommunity.com'].flatMap(domain => [
+      { name: 'birthtime', value: '0', domain, path: '/' },
+      { name: 'wants_mature_content', value: '1', domain, path: '/' },
+      { name: 'lastagecheckage', value: '1-0-1990', domain, path: '/' },
+      { name: 'Steam_Language', value: 'english', domain, path: '/' },
+    ]));
+    return ctx;
+  };
 
   // A run updates the report rather than replacing it, so a retry of a few
   // connections (--only) keeps every other connection's result.
@@ -938,21 +1407,28 @@ async function main() {
   const key = r => r.from + '__' + r.to;
   const report = new Map(prior.map(r => [key(r), r]));
   const ran = [];
-  for (const c of todo) {
-    const file = path.join(OUT, `${c.from}__${c.to}.png`);
-    process.stdout.write(`${c.kind.padEnd(15)} ${c.fromName} → ${c.toName} … `);
-    let r;
-    if (c.kind === 'x') r = await captureTweet(ctx, c, file);
-    else if (c.kind === 'youtube') r = await captureVideo(ctx, c, file);
-    else if (c.kind === 'podcast') r = { status: 'audio', detail: 'audio only: nothing to screenshot; needs the moment transcribed or clipped by hand' };
-    else if (c.kind === 'reddit') r = await withDeadline(captureReddit(ctx, c, file), 150000, ctx);
-    else r = await withDeadline(capturePage(ctx, c, file), 90000, ctx);
-    if (!['blocked', 'error', 'no-match', 'audio'].includes(r.status)) r.image = path.relative(OUT, file);
-    console.log(r.status + (r.detail ? ` (${r.detail})` : ''));
-    report.set(key(c), { ...c, ...r });
-    ran.push(r);
-    if (ran.length % 20 === 0) fs.writeFileSync(reportPath, JSON.stringify([...report.values()], null, 2));
-  }
+  // --jobs N: N connections at a time, each worker in a browser context of its
+  // own, because a connection that times out closes every page in its context.
+  const queue = todo.slice();
+  const worker = async () => {
+    const ctx = await newCtx();
+    for (let c; (c = queue.shift());) {
+      const file = path.join(OUT, `${c.from}__${c.to}.png`);
+      let r;
+      if (c.kind === 'x') r = await captureTweet(ctx, c, file);
+      else if (c.kind === 'youtube') r = await captureVideo(ctx, c, file);
+      else if (c.kind === 'podcast') r = { status: 'audio', detail: 'audio only: nothing to screenshot; needs the moment transcribed or clipped by hand' };
+      else if (c.kind === 'reddit') r = await withDeadline(captureReddit(ctx, c, file), 240000, ctx);
+      else r = await withDeadline(capturePage(ctx, c, file), 120000, ctx);
+      if (!['blocked', 'error', 'no-match', 'audio'].includes(r.status)) r.image = path.relative(OUT, file);
+      console.log(`${c.kind.padEnd(15)} ${c.fromName} → ${c.toName} … ` + r.status + (r.detail ? ` (${r.detail})` : ''));
+      report.set(key(c), { ...c, ...r });
+      ran.push(r);
+      if (ran.length % 20 === 0) fs.writeFileSync(reportPath, JSON.stringify([...report.values()], null, 2));
+    }
+    await ctx.close();
+  };
+  await Promise.all(Array.from({ length: Math.max(1, +(opt('--jobs') || 1)) }, worker));
   await browser.close();
   fs.writeFileSync(reportPath, JSON.stringify([...report.values()], null, 2));
   const tally = ran.reduce((t, r) => (t[r.status] = (t[r.status] || 0) + 1, t), {});

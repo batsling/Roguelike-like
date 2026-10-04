@@ -3,8 +3,9 @@
 
 The game reads a connection's proof off disk, as
 `images2.0/proof/<influencer id>---<influenced id>.png`, so the sheet on its own
-never said which rows had one. This writes that file name into column F of each
-row that has one and leaves the cell blank on each row that doesn't — so
+never said which rows had one. This writes that file's name, without the
+`.png` (`slay_the_spire---tic_tactic`), into column F of each row that has one
+and leaves the cell blank on each row that doesn't — so
 filtering `Proof` for blanks gives the same list as `docs/proof-missing.md`.
 
 The column is a VIEW of the folder, not an input: nothing reads it back
@@ -86,8 +87,8 @@ def main():
                 if a_id is None or b_id is None:
                     unresolved.add(a if a_id is None else b)
                 else:
-                    name = "%s---%s.png" % (a_id, b_id)
-                    if name in proofs:
+                    name = "%s---%s" % (a_id, b_id)
+                    if name + ".png" in proofs:
                         want, have = name, have + 1
             if str(row[5] or "").strip() != want:
                 edits["%s%d" % (COL, r)] = want
