@@ -311,9 +311,14 @@ resizes the viewport, Steam's store re-lays itself out, and the old crop landed
 on the "More like this" carousel. A long X post (cut at "Show more" in the
 embed) is rendered in full, its text read from `api.fxtwitter.com` and handed to
 X's own embed. A name of three words or more is also found by its initials in
-capitals (ADOM, DCSS, FTL). A `weak` match, where only the influenced game is
-named, stays in `.influence_work/proof/` for a look but is not exported; it is
-listed in `docs/proof-missing.md` instead.
+capitals (ADOM, DCSS, FTL). A short name in capitals counts too ("FTL"), and so does
+the part after a colon ("Shiren the Wanderer"). A `weak` page match, where only
+the influenced game is named, stays in `.influence_work/proof/` for a look but
+is not exported; it is listed in `docs/proof-missing.md` instead. A weak tweet
+is still exported, because the picture is the whole post and the name the check
+missed is usually in it ("Isaac"). If the post has a picture, it is shown,
+since that is often where the name is. `--status weak,no-match` retries only the
+connections the report last left in those states.
 
 ```bash
 export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, npm install playwright

@@ -42,6 +42,8 @@
  *   node tools/capture_proof.js --skip youtube,podcast --resume
  *                                                  the full run, leaving out video and audio,
  *                                                  and skipping what already has an image
+ *   node tools/capture_proof.js --status weak,no-match
+ *                                                  retry what the report last left in these
  *   node tools/capture_proof.js --export           copy the captures into the game as
  *                                                  images2.0/proof/<influencer id>---<influenced id>.png,
  *                                                  beside (never over) the owner's own
@@ -162,8 +164,13 @@ function variants(name) {
   const bare = noThe.replace(/\s+(Classic|Remastered|Remake|HD|Deluxe|Original|(Definitive|Enhanced|Complete) Edition)$/i, '');
   if (bare.length > 3 && !AMBIGUOUS.has(bare)) v.add(bare);
   for (const n of [name, noThe]) {
-    const head = n.split(/\s*[:\-–—]\s+/)[0];
+    const [head, ...rest] = n.split(/\s*[:\-–—]\s+/);
     if (head.length > 3 && !AMBIGUOUS.has(head)) v.add(head);
+    // "FTL: Faster Than Light" is written "FTL": a short head in capitals counts.
+    if (/^[A-Z0-9]{3,5}$/.test(head)) v.add(head);
+    // "Mystery Dungeon 2: Shiren the Wanderer" is written "Shiren the Wanderer".
+    const tail = rest.join(' ');
+    if (tail.split(/\s+/).length >= 2) v.add(tail);
   }
   // "Ancient Domains of Mystery" is written "ADOM" (HyperRogue's blog never
   // spells it out), "Dungeon Crawl Stone Soup" "DCSS". A name of three words
@@ -179,7 +186,8 @@ function acronym(name) {
 }
 
 // Names matched case-sensitively: the ordinary words, and every acronym.
-const exact = (...names) => [...AMBIGUOUS, ...names.map(acronym).filter(Boolean)];
+const exact = (...names) => [...AMBIGUOUS, ...names.map(acronym).filter(Boolean),
+  ...names.flatMap(variants).filter(v => /^[A-Z0-9]{3,5}$/.test(v))];
 
 function textFragment(url) {
   const m = url.match(/#:~:text=([^&#]+)/);
@@ -376,7 +384,9 @@ function findAndMark({ fragment, fromNames, toNames, claimSrc, ambiguous, maxHei
         if (r.height > 400 || r.width > innerWidth * 0.95 || e.innerText.length > 2000) break;
         up = e;
       }
-      if (up && up.getBoundingClientRect().height > para.getBoundingClientRect().height + 10) { unit = up; unitKind = 'message'; }
+      // An infobox too tall to take whole still gives its row: "Influences | Hack".
+      const pr = para.getBoundingClientRect();
+      if (up && (up.getBoundingClientRect().height > pr.height + 10 || up.getBoundingClientRect().width > pr.width + 40)) { unit = up; unitKind = 'message'; }
     }
   }
   const column = unitKind === 'message' ? unit : best.el;
@@ -420,23 +430,34 @@ async function shootUnit(page, file, maxHeight) {
   });
   let clear = 0;
   let r = await page.evaluate(() => window.__proofRect());
-  for (let i = 0; i < 5; i++) {
-    const at = clear + 40;
-    await page.setViewportSize({ width: vw, height: Math.max(900, Math.ceil(Math.min(r.h, maxHeight)) + 2 * PAD + at) });
-    await page.evaluate(top => window.scrollBy(0, top), r.y - at);
-    await page.waitForTimeout(i ? 400 : 700);
-    clear = await header();
-    const again = await page.evaluate(() => window.__proofRect());
-    const still = Math.abs(again.y - (clear + 40)) < 2 && Math.abs(again.h - r.h) < 2;
-    r = again;
-    if (still) break;
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) {
+      const at = clear + 40;
+      await page.setViewportSize({ width: vw, height: Math.max(900, Math.ceil(Math.min(r.h, maxHeight)) + 2 * PAD + at) });
+      await page.evaluate(top => window.scrollBy(0, top), r.y - at);
+      await page.waitForTimeout(i ? 500 : 700);
+      clear = await header();
+      const again = await page.evaluate(() => window.__proofRect());
+      const still = Math.abs(again.y - (clear + 40)) < 2 && Math.abs(again.h - r.h) < 2;
+      r = again;
+      if (still) return;
+    }
+  };
+  // A page loading ads late (mcvuk.com) can move the unit after it held still
+  // for one look, and the shot was then a 9px strip of nothing. So it is
+  // measured once more after the shot, and shot again if it moved.
+  for (let shot = 0; shot < 3; shot++) {
+    await settle();
+    const vh = page.viewportSize().height;
+    const x = Math.max(0, r.x - PAD);
+    const y = Math.max(clear, r.y - PAD);
+    const w = Math.max(Math.min(vw, r.x + r.w + PAD) - x, 360);
+    const h = Math.min(r.y + r.h + PAD, vh) - y;
+    await page.screenshot({ path: file, clip: { x, y, width: Math.min(w, vw - x), height: Math.max(h, 1) } });
+    const after = await page.evaluate(() => window.__proofRect());
+    if (Math.abs(after.y - r.y) < 2 && Math.abs(after.h - r.h) < 2 && h >= Math.min(r.h, maxHeight)) break;
+    r = after;
   }
-  const vh = page.viewportSize().height;
-  const x = Math.max(0, r.x - PAD);
-  const y = Math.max(clear, r.y - PAD);
-  const w = Math.max(Math.min(vw, r.x + r.w + PAD) - x, 360);
-  const h = Math.min(r.y + r.h + PAD, vh) - y;
-  await page.screenshot({ path: file, clip: { x, y, width: Math.min(w, vw - x), height: h } });
 }
 
 // ── capture, per kind ─────────────────────────────────────────────────────────
@@ -560,12 +581,12 @@ async function fullTweetText(ctx, user, id) {
   } catch (e) { return ''; }
 }
 
-async function captureTweet(ctx, c, file) {
+async function captureTweet(ctx, c, file, media = false) {
   const m = c.url.match(/(?:x|twitter)\.com\/([^/]+)\/status(?:es)?\/(\d+)/);
   if (!m) return { status: 'error', detail: 'not a tweet URL' };
   let embed;
   try {
-    embed = await getJSON(ctx, 'https://publish.twitter.com/oembed?dnt=1&hide_media=1&hide_thread=1&url=' + encodeURIComponent(`https://twitter.com/${m[1]}/status/${m[2]}`));
+    embed = await getJSON(ctx, `https://publish.twitter.com/oembed?dnt=1&hide_media=${media ? 0 : 1}&hide_thread=1&url=` + encodeURIComponent(`https://twitter.com/${m[1]}/status/${m[2]}`));
   } catch (e) {
     return { status: 'blocked', detail: 'embed endpoint: ' + e.message };
   }
@@ -591,7 +612,8 @@ async function captureTweet(ctx, c, file) {
     if (!frame) return { status: 'error', detail: 'embed did not render' };
     await page.waitForTimeout(2500);
     const quote = full || (embed.html.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [, ''])[1].replace(/<[^>]+>/g, '');
-    const named = variants(c.fromName).some(n => quote.toLowerCase().includes(n.toLowerCase()));
+    const flat = t => t.replace(/\s+/g, ' ').toLowerCase();
+    const named = variants(c.fromName).some(n => flat(quote).includes(flat(n)));
     // A whole long post is a page or more: past MAX_UNIT the picture runs from
     // the top of the post (who said it) down to the end of the paragraph that
     // names the game, and is highlighted there like any page.
@@ -611,6 +633,9 @@ async function captureTweet(ctx, c, file) {
           : { x: box.x, y: box.y + r.y - 16, width: box.width, height: r.h + 32 };
       }
     }
+    // Text that doesn't name the game, on a post with a picture: the name is
+    // usually in the picture (a list of influences, a slide), so it is shown.
+    if (!named && !media && /pic\.(x|twitter)\.com/.test(embed.html)) return await captureTweet(ctx, c, file, true);
     if (clip) await page.screenshot({ path: file, fullPage: true, clip });
     else await frame.screenshot({ path: file });
     return { status: named ? 'ok' : 'weak', how: full ? 'embed-full' : 'embed', quote: quote.slice(0, 500),
@@ -696,10 +721,13 @@ function exportProofs() {
   for (const f of Object.keys(ledger.files)) if (fs.existsSync(path.join(GAME_DIR, f)) && !ours(f)) delete ledger.files[f];
   fs.mkdirSync(GAME_DIR, { recursive: true });
   const owners = f => fs.existsSync(path.join(GAME_DIR, f)) && !ledger.files[f];
-  // A `weak` capture names only the newer game, which proves nothing by itself
-  // (ADOM -> HyperRogue showed a sentence about HyperRogue and no ADOM): it stays
-  // in the report for a look, and is listed in docs/proof-missing.md, not shipped.
-  const shown = r => r.image && r.status !== 'weak' && r.status !== 'quote-card';
+  // A `weak` page capture names only the newer game, which proves nothing by
+  // itself (ADOM -> HyperRogue showed a sentence about HyperRogue and no ADOM): it
+  // stays in the report for a look, and is listed in docs/proof-missing.md, not
+  // shipped. A weak TWEET still ships: the picture is the whole post, and the
+  // name the text check missed is usually right there ("Isaac", or in the
+  // attached picture).
+  const shown = r => r.image && (r.status !== 'weak' || r.kind === 'x') && r.status !== 'quote-card';
   const keep = report.filter(r => shown(r) && !['youtube', 'podcast'].includes(r.kind) && !owners(gameFile(r)));
   let bytes = 0;
   for (const r of keep) {
@@ -815,6 +843,13 @@ async function main() {
   if (args.includes('--untried') && fs.existsSync(path.join(OUT, 'report.json'))) {
     const seen = new Set(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')).map(r => r.from + '__' + r.to));
     todo = todo.filter(c => !seen.has(c.from + '__' + c.to));
+  }
+  // --status weak,no-match: only connections the report last left in one of these.
+  if (opt('--status') && fs.existsSync(path.join(OUT, 'report.json'))) {
+    const want = opt('--status').split(',');
+    const hit = new Set(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'))
+      .filter(r => want.includes(r.status)).map(r => r.from + '__' + r.to));
+    todo = todo.filter(c => hit.has(c.from + '__' + c.to));
   }
   if (opt('--limit')) todo = todo.slice(0, +opt('--limit'));
 
