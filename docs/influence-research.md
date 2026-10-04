@@ -286,6 +286,38 @@ almost all posted by the game's own account, and two posted by someone else (a
 PR agency and a publisher). Those are listed in section 4 of
 `docs/influence-candidates.md`.
 
+### Proof screenshots: `tools/capture_proof.js`
+
+The game's choice popup shows the Source of the connection you would walk, and
+under it a screenshot of the proof: the developer's own sentence on the linked
+page, highlighted. `capture_proof.js` makes those. For each connection with a
+link it opens the page in headless Chromium, finds the sentence (the URL's
+`#:~:text=` fragment when there is one, otherwise a claim sentence naming the
+influencer, the earliest one on a tie), highlights it and crops around it.
+
+```bash
+export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, npm install playwright
+node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
+node tools/capture_proof.js --skip youtube,podcast --resume   # the full run, ~6 s a link
+node tools/capture_proof.js --only <game id>     # retry one game's connections
+node tools/capture_proof.js --webp               # copy them into images2.0/proof/ for the game
+```
+
+Results go to `.influence_work/proof/` with `report.json`, which records every
+connection tried and why one failed (`blocked` with the HTTP status, `no-match`
+with a screenshot of what the browser was shown). How each kind is handled:
+X through the official embed; Reddit through `embed.reddit.com`, because
+reddit.com refuses cloud addresses, and a developer's COMMENT (which the embed
+won't render) as a quote card from the Arctic Shift archive, labelled as a
+transcription; Steam with its age gate pre-answered. Videos and podcasts are
+the owner's to source by hand (a YouTube clip can't be downloaded within its
+terms), so `--skip youtube,podcast` leaves them out.
+
+The script picks a sentence, it doesn't judge one. **Look at the images**: the
+pilot found a source that undercuts its own row (Rogue Voltage, section 4 of
+`docs/influence-candidates.md`), and a status of `ok` only means a sentence
+naming the game was found.
+
 ## Traps
 
 - **Game names that are ordinary words.** Rogue, Hack, Roll, Crawl, Haste,

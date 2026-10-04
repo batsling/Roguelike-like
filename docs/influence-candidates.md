@@ -212,6 +212,9 @@ From the two-connection games, first batch (October 2026):
 - **Rogue Tower → Nordhold** (`check folder`): asked whether it was by Rogue Tower's developers, Nando (StunForge, developer badge): "No, Rogue Tower is a great game - but we are someone else :-D apart from the map generation also I think in the game design of the banners, how they build on each other, the eco, the design of the meta then recognizable". A resemblance granted, not an influence claimed. — [Steam forum](https://steamcommunity.com/app/3028310/discussions/0/592892734740693096/)
 - **No first-hand source found** for these placeholder rows: Mortal Sin (Slay the Spire, Vampire Survivors), Tower Escape (Monster Train, Slay the Spire), Decktamer (Slay the Spire, Wildfrost), Inkshade (Hand of Fate, Inscryption), Zet Zillions (Hades, Slay the Spire), SpellRogue (Dicey Dungeons, Slay the Spire), Lost Flame (NetHack, Isaac; its store page says only "classical roguelikes"), Talented (Realm of the Mad God, Isaac), BloodDome99, Disfigure, Stackflow, Tower Factory, Reality Break. Each is compared to those games by the press, and nothing from its developer names them.
 
+From the proof-capture pilot (`tools/capture_proof.js`, October 2026), sources whose captured sentence reads against the row:
+- **Backpack Hero → Rogue Voltage**: **the cited reply ranks it outside the inspirations.** The developer, on the Steam forum: "My favorites and maybe the biggest inspirations for RV are are the classics: Slay the Spire (94h), FTL (24h), Into the Breach (29h). Backpack Hero I only played for a couple of sessions on Itch." Owner to look into it. — [Steam forum](https://steamcommunity.com/app/1494560/discussions/0/4335355681660890217/)
+
 ---
 
 ## 5. Leads that aren't sources yet

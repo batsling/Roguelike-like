@@ -32,6 +32,11 @@
  *   node tools/capture_proof.js --pilot            25 connections across every source kind
  *   node tools/capture_proof.js --only hades       connections out of one game
  *   node tools/capture_proof.js --limit 50         the first 50 with a link
+ *   node tools/capture_proof.js --skip youtube,podcast --resume
+ *                                                  the full run, leaving out video and audio,
+ *                                                  and skipping what already has an image
+ *   node tools/capture_proof.js --webp             copy the captures into the game as
+ *                                                  images2.0/proof/<from>__<to>.webp
  *
  * Needs Playwright (`npm install playwright` or NODE_PATH pointing at one) and a
  * Chromium; in the cloud container NODE_PATH=/opt/node-tools/node_modules works.
@@ -492,13 +497,61 @@ async function captureVideo(ctx, c, file) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
+// ── into the game ─────────────────────────────────────────────────────────────
+// GameChoiceModal shows images2.0/proof/<from>__<to>.webp under the connection's
+// claim. Lossy WebP at 0.9 keeps screenshot text crisp at a fraction of the
+// PNG's size, which matters at a thousand files. Chromium does the encoding, so
+// nothing beyond Playwright is needed. Video and audio cards are left out: the
+// owner sources those moments by hand.
+const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
+
+async function exportWebp() {
+  const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
+  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind));
+  fs.mkdirSync(GAME_DIR, { recursive: true });
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  let bytes = 0;
+  for (const r of keep) {
+    const png = fs.readFileSync(path.join(OUT, r.image)).toString('base64');
+    const webp = await page.evaluate(async src => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/webp', 0.9).split(',')[1];
+    }, 'data:image/png;base64,' + png);
+    const out = Buffer.from(webp, 'base64');
+    bytes += out.length;
+    fs.writeFileSync(path.join(GAME_DIR, `${r.from}__${r.to}.webp`), out);
+  }
+  await browser.close();
+  // A connection re-captured as a failure, or taken out of the sheet, loses its image.
+  const want = new Set(keep.map(r => `${r.from}__${r.to}.webp`));
+  for (const f of fs.readdirSync(GAME_DIR)) if (f.endsWith('.webp') && !want.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
+  console.log(`${keep.length} proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB)`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
+  if (args.includes('--webp')) return exportWebp();
   const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
   const all = loadConnections();
   let todo = all.filter(c => c.url);
   if (args.includes('--pilot')) todo = pilot(all);
   if (opt('--only')) todo = todo.filter(c => c.from === opt('--only') || c.to === opt('--only'));
+  // --skip youtube,podcast: the owner sources video moments by hand.
+  if (opt('--skip')) todo = todo.filter(c => !opt('--skip').split(',').includes(c.kind));
+  // --resume: leave connections the report already has an image for.
+  if (args.includes('--resume') && fs.existsSync(path.join(OUT, 'report.json'))) {
+    const have = new Set(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'))
+      .filter(r => r.image).map(r => r.from + '__' + r.to));
+    todo = todo.filter(c => !have.has(c.from + '__' + c.to));
+  }
   if (opt('--limit')) todo = todo.slice(0, +opt('--limit'));
 
   fs.mkdirSync(OUT, { recursive: true });
@@ -536,6 +589,7 @@ async function main() {
     console.log(r.status + (r.detail ? ` (${r.detail})` : ''));
     report.set(key(c), { ...c, ...r });
     ran.push(r);
+    if (ran.length % 20 === 0) fs.writeFileSync(reportPath, JSON.stringify([...report.values()], null, 2));
   }
   await browser.close();
   fs.writeFileSync(reportPath, JSON.stringify([...report.values()], null, 2));
