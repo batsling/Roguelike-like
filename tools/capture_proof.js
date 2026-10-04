@@ -420,6 +420,19 @@ async function captureRedditComment(ctx, c, file) {
   }
 }
 
+// One page's script can hang the evaluate that reads it forever (Brotato ->
+// Gnomes did, for 13 minutes, with no timeout of Playwright's covering it).
+// Past the deadline the connection is recorded as timed out, and every page
+// still open is closed, which is what makes the stuck evaluate give up.
+async function withDeadline(work, ms, ctx) {
+  let timer;
+  const late = new Promise(resolve => { timer = setTimeout(() => resolve({ status: 'error', detail: `timed out after ${ms / 1000}s` }), ms); });
+  const r = await Promise.race([work, late]);
+  clearTimeout(timer);
+  if (r.detail && r.detail.startsWith('timed out')) for (const p of ctx.pages()) await p.close().catch(() => {});
+  return r;
+}
+
 async function getJSON(ctx, url) {
   const r = await ctx.request.get(url, { timeout: 20000 });
   if (!r.ok()) throw new Error(`HTTP ${r.status()}`);
@@ -584,7 +597,7 @@ async function main() {
     if (c.kind === 'x') r = await captureTweet(ctx, c, file);
     else if (c.kind === 'youtube') r = await captureVideo(ctx, c, file);
     else if (c.kind === 'podcast') r = { status: 'audio', detail: 'audio only: nothing to screenshot; needs the moment transcribed or clipped by hand' };
-    else r = await capturePage(ctx, c, file);
+    else r = await withDeadline(capturePage(ctx, c, file), 90000, ctx);
     if (!['blocked', 'error', 'no-match', 'audio'].includes(r.status)) r.image = path.relative(OUT, file);
     console.log(r.status + (r.detail ? ` (${r.detail})` : ''));
     report.set(key(c), { ...c, ...r });
