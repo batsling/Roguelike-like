@@ -368,6 +368,10 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 			"with the address under it: %s" % text)
 		assert_lt(GameChoiceModal.short_source(source).length(),
 			GameChoiceModal.SOURCE_CHARS + 1, "and it is short enough to read")
+	elif GameChoiceModal.proof_texture(found["from"].id, found["to"].id) != null:
+		# The note pointed at the screenshot now shown above it.
+		assert_false(text.contains(source),
+			"a note whose evidence is on screen is not printed: %s" % text)
 	else:
 		assert_true(text.contains(source),
 			"a note like 'game credits' is shown as written: %s" % text)
@@ -442,6 +446,34 @@ func test_the_proof_is_looked_up_the_way_the_sheet_runs() -> void:
 	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[0]), "slot": edge[0]})
 	var proof: TextureRect = modal.find_child("Proof", true, false)
 	assert_not_null(proof, "the edge is the same whichever end you stand on")
+	modal._close()
+
+func test_a_check_folder_note_gives_way_to_the_screenshot_it_meant() -> void:
+	# The owner's own screenshots are the folder "check folder" points at, so on
+	# a card that shows one the note would only read as an instruction.
+	var edge: Array = []
+	var note: String = ""
+	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
+	if dir != null:
+		for file in dir.get_files():
+			if not file.ends_with(GameChoiceModal.PROOF_EXT):
+				continue
+			var ids: PackedStringArray = file.get_basename().split("__")
+			var from_game: GameData = Data.get_game(StringName(ids[0])) if ids.size() == 2 else null
+			if from_game == null:
+				continue
+			var source: String = String(from_game.influence_evidence(StringName(ids[1])).get("source", "")).strip_edges()
+			if source != "" and not GameData.is_openable_source(source):
+				edge = [StringName(ids[0]), StringName(ids[1])]
+				note = source
+				break
+	if edge.is_empty():
+		pending("no screenshot stands on a connection sourced by a note")
+		return
+	GameState.current_game_id = edge[0]
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[1]), "slot": edge[1]})
+	assert_not_null(modal.find_child("Proof", true, false), "the screenshot is shown")
+	assert_false(_text_of(modal).contains(note), "and the note that pointed at it is not")
 	modal._close()
 
 func test_a_connection_with_no_capture_shows_the_link_alone() -> void:

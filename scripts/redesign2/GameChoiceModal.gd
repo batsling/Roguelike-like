@@ -585,9 +585,12 @@ func _build_source_block() -> Control:
 		url.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 		url.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		box.add_child(url)
-	else:
+	elif proof == null:
 		# Notes like "check folder" or "game credits" point at evidence kept
 		# somewhere else — shown as written rather than dressed up as a link.
+		# Once that evidence IS here (the owner's own screenshot, from the very
+		# folder "check folder" means), the note is a pointer at the picture
+		# above it, and printing it would read as an instruction to the player.
 		box.add_child(_source_note(source))
 	return box
 

@@ -520,14 +520,32 @@ const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
 
 async function exportWebp() {
   const report = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8'));
-  const keep = report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind));
+  // The OWNER's own screenshots (images2.0/proof/*.png, mapped to connections in
+  // tools/proof_owner_map.json) win over a captured page: they are the proof the
+  // owner chose, mostly for rows whose Source is "check folder". When one
+  // connection has two, the screenshot made for fewer connections is the one
+  // made for it.
+  const ownerMap = JSON.parse(fs.readFileSync(path.join(__dirname, 'proof_owner_map.json'), 'utf8'));
+  const owner = new Map();
+  for (const [file, pairs] of Object.entries(ownerMap)) {
+    if (file.startsWith('_')) continue;
+    for (const [from, to] of pairs) {
+      const k = `${from}__${to}`;
+      if (!owner.has(k) || ownerMap[owner.get(k).file].length > pairs.length) owner.set(k, { file, from, to });
+    }
+  }
+  const unmapped = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png') && !(f in ownerMap));
+  const sources = [...owner.values()].map(o => ({ from: o.from, to: o.to, file: path.join(GAME_DIR, o.file) }))
+    .concat(report.filter(r => r.image && !['youtube', 'podcast'].includes(r.kind) && !owner.has(`${r.from}__${r.to}`))
+      .map(r => ({ from: r.from, to: r.to, file: path.join(OUT, r.image) })));
+  const keep = sources;
   fs.mkdirSync(GAME_DIR, { recursive: true });
   const { chromium } = require('playwright');
   const browser = await chromium.launch();
   const page = await browser.newPage();
   let bytes = 0;
   for (const r of keep) {
-    const png = fs.readFileSync(path.join(OUT, r.image)).toString('base64');
+    const png = fs.readFileSync(r.file).toString('base64');
     const webp = await page.evaluate(async src => {
       const img = new Image();
       img.src = src;
@@ -546,7 +564,8 @@ async function exportWebp() {
   // A connection re-captured as a failure, or taken out of the sheet, loses its image.
   const want = new Set(keep.map(r => `${r.from}__${r.to}.webp`));
   for (const f of fs.readdirSync(GAME_DIR)) if (f.endsWith('.webp') && !want.has(f)) fs.unlinkSync(path.join(GAME_DIR, f));
-  console.log(`${keep.length} proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB)`);
+  console.log(`${keep.length} proofs -> images2.0/proof/ (${owner.size} yours, ${keep.length - owner.size} captured; ${(bytes / 1048576).toFixed(1)} MB)`);
+  if (unmapped.length) console.log(`Not in tools/proof_owner_map.json, so not shown in game:\n  ${unmapped.join('\n  ')}`);
 }
 
 async function main() {

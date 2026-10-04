@@ -313,6 +313,15 @@ transcription; Steam with its age gate pre-answered. Videos and podcasts are
 the owner's to source by hand (a YouTube clip can't be downloaded within its
 terms), so `--skip youtube,podcast` leaves them out.
 
+**The owner's own screenshots win.** The PNGs in `images2.0/proof/` are the
+owner's proof folder (what a `check folder` Source means), named freely ("tic
+tactic sts.png"). `tools/proof_owner_map.json` says which connection(s) each one
+proves, and `--webp` writes those first, ahead of any captured page for the same
+connection. When you add a screenshot, add its line to the map: `--webp` lists
+every PNG it finds that isn't in it, because an unmapped one never reaches the
+game. Two uploaded so far prove connections the sheet doesn't have yet (Brotato
+→ Bounty of One, Enter the Gungeon → Dungreed) and wait on a sheet row.
+
 The script picks a sentence, it doesn't judge one. **Look at the images**: the
 pilot found a source that undercuts its own row (Rogue Voltage, section 4 of
 `docs/influence-candidates.md`), and a status of `ok` only means a sentence
