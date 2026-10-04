@@ -60,7 +60,9 @@ LEGACY = os.path.join(ROOT, "legacy-web", "data", "games-data.js")
 # answer 406 to the bare "Mozilla/5.0" that bots send.
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/130.0 Safari/537.36",
-      "Accept": "text/html,application/json;q=0.9,*/*;q=0.8"}
+      # Not application/json: itch.io answers a devlog URL with its comment
+      # widget's JSON when the request says it would take JSON.
+      "Accept": "text/html,*/*;q=0.8"}
 
 # Chart game names that are also ordinary words (or a status/class name inside
 # other games). They are matched case-sensitively and still produce noise:
@@ -332,7 +334,7 @@ def steam_pages(aid, cache):
     fn = os.path.join(cache, f"{aid}.json")
     if os.path.exists(fn):
         return json.load(open(fn))
-    docs = []
+    docs, failed = [], False
     try:
         s = json.loads(get(f"https://store.steampowered.com/api/appdetails?l=english&appids={aid}"))[aid]
         if s.get("success"):
@@ -340,7 +342,7 @@ def steam_pages(aid, cache):
                          clean(s["data"].get("about_the_game", "") + " . "
                                + s["data"].get("short_description", ""))))
     except Exception:
-        pass
+        failed = True
     try:
         j = json.loads(get("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
                            f"?appid={aid}&count=400&maxlength=0"))
@@ -353,8 +355,11 @@ def steam_pages(aid, cache):
                 docs.append(("news", it["url"],
                              clean(it["title"] + " . " + it["contents"])))
     except Exception:
-        pass
-    json.dump(docs, open(fn, "w"))
+        failed = True
+    # A rate-limited fetch is not an empty page: cache it and the game's text
+    # is missing from every later run. Leave it uncached so a rerun fetches it.
+    if not failed:
+        json.dump(docs, open(fn, "w"))
     return docs
 
 
@@ -554,13 +559,14 @@ class Community:
 
 def game_order(args, games, conns=None):
     if args.games == "few":
-        # One connection or none, fewest first: the games an edge matters most
-        # for, and the same set `media` searches by default.
+        # `--max-degree` connections or fewer (default 1), fewest first: the
+        # games an edge matters most for, and the set `media` searches.
         deg = {}
         for r in conns or load_sheet()[1]:
             deg[r[0]] = deg.get(r[0], 0) + 1
             deg[r[1]] = deg.get(r[1], 0) + 1
-        return sorted((r[0] for r in games if deg.get(r[0], 0) <= 1),
+        top = getattr(args, "max_degree", 1)
+        return sorted((r[0] for r in games if deg.get(r[0], 0) <= top),
                       key=lambda n: (deg.get(n, 0), n.lower()))
     if args.games == "targets":
         tpath = wpath(args, "targets.json")
@@ -1820,6 +1826,8 @@ def main():
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["few", "targets", "all"], default="few",
                         help="few = one connection or none (the default); targets = no influences")
+        sp.add_argument("--max-degree", type=int, default=1,
+                        help="with --games few: games with this many connections or fewer")
         sp.add_argument("--delay", type=float, default=delay, help="seconds between requests")
         sp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
         sp.add_argument("--write-only", action="store_true", help="rewrite the triage from the cache, no fetching")
