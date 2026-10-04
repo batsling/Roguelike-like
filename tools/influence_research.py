@@ -25,6 +25,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py forums    # Steam forum search, in English + the studio's language
     python3 tools/influence_research.py devcheck  # keep only forum posts with Steam's developer badge
     python3 tools/influence_research.py xsources  # who posted each X/Twitter source the sheet cites
+    python3 tools/influence_research.py media     # interview videos + podcasts to listen to -> docs/influence-media.md
     python3 tools/influence_research.py status    # which candidates are in the sheet now (--tick marks them)
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
@@ -821,6 +822,330 @@ def cmd_xsources(args):
     print(f"{len(rows)} X/Twitter sources -> {out}")
 
 
+# ── media (interview videos and podcasts) ───────────────────────────────────
+
+MEDIA = os.path.join(ROOT, "docs", "influence-media.md")
+# A source that isn't a link is a connection the owner believes in but can't
+# point at yet: `check folder`, `look at it`, a note about a Discord. Those are
+# the "suspected" rows, and an interview is the likeliest place to confirm one.
+def _placeholder(row):
+    src = str(row[4] or "").strip()
+    return not src.startswith("http") and str(row[3] or "").strip().lower() != "yes"
+
+# What makes a result worth a listen. A title has to name the game AND say one
+# of these; "Dome Keeper gameplay" names the game and says nothing.
+MEDIA_CUE = re.compile(
+    r"interview|developer|\bdevs?\b|creator|designer|director|founder|"
+    r"\bq ?& ?a\b|\bama\b|post-?mortem|\bgdc\b|making of|behind the|devlog|"
+    r"talks? (?:to|with)|chat(?:ting)? with|sits? down|joins us|joined by|guest|\bfeat\.|\bft\.|"
+    r"インタビュー|開発者|인터뷰|개발자|采访|访谈|开发者|entrevista|wywiad|интервью|разработчик", re.I)
+# Words that mean a player, not a developer, is talking. Dropped unless the
+# title is ALSO an interview ("Dev reacts to my run" survives).
+MEDIA_NOISE = re.compile(
+    r"gameplay|let'?s play|walkthrough|\breview\b|trailer|tier list|first look|"
+    r"guide|tips|speedrun|\bmod\b|#shorts|playthrough|\bep\.? ?\d|\bpart \d|\bday \d|\brun \d",
+    re.I)
+MEDIA_STRONG = re.compile(r"interview|\bq ?& ?a\b|\bama\b|post-?mortem|\bgdc\b|developer|"
+                          r"インタビュー|인터뷰|采访|访谈|entrevista|wywiad|интервью", re.I)
+
+
+def _short_name(name):
+    """`Slime 3K: Rise Against Despot` is said aloud as `Slime 3K`."""
+    head = re.split(r"\s*[:\-–]\s+", name)[0]
+    return head if len(head) >= 4 and head != name else None
+
+
+def _mentions(text, name):
+    flags = 0 if name in AMBIGUOUS else re.I
+    for n in filter(None, (name, _short_name(name))):
+        if re.search(r"(?<![\w])" + re.escape(n) + r"(?![\w])", text, flags):
+            return True
+    return False
+
+
+def _yt_search(query):
+    """YouTube's own results page; the data is a JSON blob in the HTML. No key."""
+    page = get("https://www.youtube.com/results?hl=en&search_query=" + urllib.parse.quote(query))
+    m = re.search(r"var ytInitialData = (\{.*?\});</script>", page)
+    if not m:
+        return []
+    out = []
+    def walk(o):
+        if isinstance(o, dict):
+            v = o.get("videoRenderer")
+            if v and v.get("videoId"):
+                txt = lambda k: "".join(r.get("text", "") for r in (v.get(k) or {}).get("runs", [])) \
+                    or (v.get(k) or {}).get("simpleText", "")
+                snip = " ".join("".join(r.get("text", "") for r in s.get("snippetText", {}).get("runs", []))
+                                for s in v.get("detailedMetadataSnippets", []))
+                out.append({"url": "https://www.youtube.com/watch?v=" + v["videoId"],
+                            "title": txt("title"), "by": txt("ownerText"),
+                            "length": txt("lengthText"), "when": txt("publishedTimeText"),
+                            "text": snip})
+                return
+            for x in o.values():
+                walk(x)
+        elif isinstance(o, list):
+            for x in o:
+                walk(x)
+    walk(json.loads(m.group(1)))
+    return out
+
+
+class _Paced:
+    """Apple's search API allows about 20 calls a minute; go a little under."""
+    def __init__(self, delay):
+        self.delay, self.last = delay, 0.0
+
+    def get(self, url):
+        wait = self.last + self.delay - time.time()
+        if wait > 0:
+            time.sleep(wait)
+        self.last = time.time()
+        for attempt in range(4):
+            try:
+                return get(url)
+            except Exception as e:
+                if "403" not in str(e) and "429" not in str(e):
+                    raise
+                time.sleep(60 * (attempt + 1))
+        raise RuntimeError("rate limited")
+
+
+def _podcasts(paced, name):
+    d = json.loads(paced.get("https://itunes.apple.com/search?media=podcast&entity=podcastEpisode"
+                             "&limit=50&term=" + urllib.parse.quote(_short_name(name) or name)))
+    out = []
+    for r in d.get("results", []):
+        ms = r.get("trackTimeMillis") or 0
+        out.append({"url": r.get("trackViewUrl", "").split("&uo=")[0],
+                    "title": r.get("trackName", ""), "by": r.get("collectionName", ""),
+                    "length": "%d min" % (ms // 60000) if ms else "",
+                    "when": (r.get("releaseDate") or "")[:10],
+                    "text": clean(r.get("description") or r.get("shortDescription") or "")[:600]})
+    return out
+
+
+def _near(text, name, span=150):
+    """A cue within `span` characters of the game's name: in a podcast blurb that
+    covers six games, "joined by the developer" belongs to the one beside it."""
+    flags = 0 if name in AMBIGUOUS else re.I
+    for n in filter(None, (name, _short_name(name))):
+        for m in re.finditer(r"(?<![\w])" + re.escape(n) + r"(?![\w])", text, flags):
+            if MEDIA_CUE.search(text[max(0, m.start() - span):m.end() + span]):
+                return True
+    return False
+
+
+def _keep(hit, name, devs):
+    """A hit worth listing, and why. None to drop it.
+
+    The cue has to be in the title or the channel/show name ("Shacknews
+    Interviews"), or right beside the game's name in the description, or the
+    studio has to be named. A cue anywhere in a description is not enough: fan
+    podcasts and Let's Plays say "dev" somewhere in nearly every blurb.
+    """
+    head = hit["title"]
+    body = head + " " + hit["text"]
+    # The game in the title, or beside a cue in the description. A show that
+    # merely shares the name ("Dice With Death - A Dungeons & Dragons podcast")
+    # names it in every blurb and is never about the game.
+    if not (_mentions(head, name) or _near(hit["text"], name)) or _mentions(hit["by"], name):
+        return None
+    dev = any(d and len(d) > 3 and re.search(r"(?<![\w])" + re.escape(d) + r"(?![\w])",
+                                              body + " " + hit["by"], re.I) for d in devs)
+    cue = MEDIA_CUE.search(head) or MEDIA_CUE.search(hit["by"]) or _near(hit["text"], name)
+    if not (cue or dev):
+        return None
+    if MEDIA_NOISE.search(head) and not MEDIA_STRONG.search(head):
+        return None
+    # "Episode 204: Rise & Shine / Undertale / Thumper / …" is a roundup.
+    if len(re.findall(r" / |, | \| | & ", head)) >= 2 and not MEDIA_STRONG.search(head):
+        return None
+    why = sorted({m.group(0).lower() for m in MEDIA_CUE.finditer(head + " " + hit["by"])})[:3]
+    if dev:
+        why.append("names the developer")
+    elif not why:
+        why.append("cue in the description")
+    hit["why"] = why
+    hit["score"] = (2 * bool(MEDIA_STRONG.search(head)) + 2 * dev
+                    + bool(MEDIA_CUE.search(head)) + bool(_mentions(head, name)))
+    return hit
+
+
+def media_targets(games, conns, max_degree):
+    """Games worth an interview hunt: few connections, or a connection whose
+    source is a placeholder. Returns {name: {"degree", "suspected": [...]}}."""
+    deg, sus = {}, {}
+    for r in conns:
+        deg[r[0]] = deg.get(r[0], 0) + 1
+        deg[r[1]] = deg.get(r[1], 0) + 1
+        if _placeholder(r):
+            # The influencee is the one who would have said it.
+            sus.setdefault(r[1], []).append((r[0], str(r[4] or "").strip()))
+    out = {}
+    for r in games:
+        n = r[0]
+        if deg.get(n, 0) <= max_degree or n in sus:
+            out[n] = {"year": r[1], "degree": deg.get(n, 0), "suspected": sus.get(n, [])}
+    return out
+
+
+def cmd_media(args):
+    """Interview videos and podcast episodes to listen to, per game.
+
+    Nobody can read a video, so this does the searching and leaves the listening
+    to a person: for each game with `--max-degree` connections or fewer, or with
+    a connection whose Source is a placeholder (`check folder`, `look at it`), it
+    searches YouTube and Apple Podcasts and keeps results whose title or
+    description names the game AND reads like the developer talking (interview,
+    podcast, Q&A, postmortem, GDC, devlog, or the studio's own name). It writes
+    `docs/influence-media.md`, a checklist that says what to listen for.
+
+    Results are cached in --work/media.jsonl and the run resumes, because Apple's
+    API allows about 20 calls a minute (`--delay`, default 3.5 s) and 600 games
+    is over half an hour. YouTube is searched in parallel and isn't paced.
+    `devs` first is optional but helps: the studio's name in a result is the
+    best sign the developer is in it.
+    """
+    games, conns = load_sheet()
+    targets = media_targets(games, conns, args.max_degree)
+    dpath = wpath(args, "devs.json")
+    devs = json.load(open(dpath)) if os.path.exists(dpath) else {}
+    out = wpath(args, "media.jsonl")
+    done = resumable(out)
+    todo = [n for n in sorted(targets, key=lambda n: (targets[n]["degree"], n.lower())) if n not in done]
+    if args.limit:
+        todo = todo[:args.limit]
+    if args.write_only:
+        return write_media_doc(targets, out, devs, args.per_game)
+    paced = _Paced(args.delay)
+    print(f"{len(targets)} games to search, {len(done)} cached, {len(todo)} to go", flush=True)
+
+    def videos(name):
+        q = name + (" roguelike" if name in AMBIGUOUS else "")
+        hits, seen = [], set()
+        try:
+            for query in (f'"{q}" developer interview', f'"{q}" podcast'):
+                for h in _yt_search(query):
+                    if h["url"] not in seen:
+                        seen.add(h["url"])
+                        hits.append(h)
+        except Exception as e:
+            return hits, str(e)
+        return hits, None
+
+    with cf.ThreadPoolExecutor(3) as ex, open(out, "a") as f:
+        futures = {n: ex.submit(videos, n) for n in todo}
+        for name in todo:
+            names = _studio(devs, name)
+            rec = {"game": name, "videos": [], "podcasts": []}
+            vids, err = futures[name].result()
+            try:
+                pods = _podcasts(paced, name)
+            except Exception as e:
+                pods, err = [], err or str(e)
+            if err:
+                rec["err"] = err
+            # Raw results are cached and filtered when the doc is written, so
+            # the filter can be tuned (`media --write-only`) without searching again.
+            rec["videos"], rec["podcasts"] = vids, pods
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            f.flush()
+            v, p = _filtered(rec, name, names, args.per_game)
+            print("%-45s %d videos, %d podcasts%s" % (name[:45], len(v), len(p),
+                                                     "  (error: %s)" % err[:60] if err else ""), flush=True)
+    write_media_doc(targets, out, devs, args.per_game)
+
+
+def _media_line(kind, h, heard=()):
+    meta = " · ".join(x for x in (h["by"], h["length"], h["when"]) if x)
+    why = (" — " + ", ".join(h["why"])) if h.get("why") else ""
+    title = h["title"].replace("[", "(").replace("]", ")").replace("|", "/")
+    return "- [%s] %s [%s](%s) — %s%s" % ("x" if h["url"] in heard else " ", kind, title, h["url"], meta, why)
+
+
+def _studio(devs, name):
+    """The developer's names. Not the publisher: "Devolver" is in a hundred
+    podcasts that never mention this game's developer."""
+    return [d for d in (devs.get(name) or {}).get("devs") or [] if len(d) > 4]
+
+
+def _filtered(rec, name, names, per_game):
+    pick = lambda hits: sorted(filter(None, (_keep(dict(h), name, names) for h in hits)),
+                               key=lambda h: -h["score"])[:per_game]
+    return pick(rec["videos"]), pick(rec["podcasts"])
+
+
+def write_media_doc(targets, jsonl, devs, per_game):
+    recs = {}
+    if os.path.exists(jsonl):
+        for line in open(jsonl):
+            r = json.loads(line)
+            if r["game"] in targets:
+                v, p = _filtered(r, r["game"], _studio(devs, r["game"]), per_game)
+                recs[r["game"]] = dict(r, videos=v, podcasts=p)  # a rerun's line replaces the old one
+    found = {n: r for n, r in recs.items() if n in targets and (r["videos"] or r["podcasts"])}
+    # The doc is rewritten on every run, and the owner ticks lines in it as they
+    # listen. Carry those ticks over by URL, or a resumed search would undo them.
+    heard = set()
+    if os.path.exists(MEDIA):
+        heard = set(re.findall(r"^- \[x\] \w+ \[.*?\]\((\S+?)\)", open(MEDIA, encoding="utf8").read(), re.M))
+    sus = sorted((n for n in found if targets[n]["suspected"]), key=str.lower)
+    low = sorted((n for n in found if not targets[n]["suspected"]),
+                 key=lambda n: (targets[n]["degree"], n.lower()))
+    lines = [
+        "# Interviews and podcasts to listen to",
+        "",
+        "Videos and podcast episodes where a developer may say what inspired their game, found by "
+        "`python3 tools/influence_research.py media`. Nothing here has been watched: each line is a search "
+        "result whose title or description names the game and reads like the developer talking. "
+        "Expect some misses (a fan podcast, a different game with the same name).",
+        "",
+        "**How to use it.** Pick a game, listen, and if the developer names an influence, add the row to "
+        "`connections` with the video or episode as the Source, and a timestamp if you can "
+        "(`youtube.com/watch?v=…&t=754`). Tick the line either way, so the next pass knows it was heard. "
+        "The rules for what counts are in `docs/influence-research.md`.",
+        "",
+        "| | games | results |",
+        "|---|---|---|",
+        "| 1. Confirm a suspected connection | %d | %d |" % (len(sus), sum(len(found[n]["videos"]) + len(found[n]["podcasts"]) for n in sus)),
+        "| 2. Games with %s connection%s | %d | %d |" % (
+            "few", "s", len(low), sum(len(found[n]["videos"]) + len(found[n]["podcasts"]) for n in low)),
+        "",
+        "Searched %d of the %d games that qualify%s; %d had nothing that looked like the developer talking." % (
+            len(recs), len(targets),
+            "" if len(recs) >= len(targets) else
+            " (fewest connections first; `media` picks up where it stopped, see `docs/influence-research.md`)",
+            len(recs) - len(found)),
+        "",
+        "---",
+        "",
+        "## 1. Confirm a suspected connection",
+        "",
+        "The sheet connects these, but the Source is a note rather than a link. Listen for the game named.",
+        "",
+    ]
+    def block(n):
+        t, r = targets[n], found[n]
+        out = ["### %s (%s) — %d connection%s" % (n, t["year"] or "?", t["degree"], "" if t["degree"] == 1 else "s"), ""]
+        if t["suspected"]:
+            out.append("Listen for: " + "; ".join('**%s** (sheet says "%s")' % (a, s or "nothing")
+                                                for a, s in t["suspected"]))
+            out.append("")
+        out += [_media_line("video", h, heard) for h in r["videos"]]
+        out += [_media_line("podcast", h, heard) for h in r["podcasts"]]
+        return out + [""]
+    for n in sus:
+        lines += block(n)
+    lines += ["## 2. Games with few connections", "",
+              "Held on the map by one connection or none. Listen for any game on the chart.", ""]
+    for n in low:
+        lines += block(n)
+    open(MEDIA, "w", encoding="utf8").write("\n".join(lines).rstrip() + "\n")
+    print("wrote %s: %d games with something to listen to" % (os.path.relpath(MEDIA, ROOT), len(found)))
+
+
 # ── status ──────────────────────────────────────────────────────────────────
 
 CANDIDATES = os.path.join(ROOT, "docs", "influence-candidates.md")
@@ -832,6 +1157,17 @@ CANDIDATE = re.compile(r"\*\*([^*→]+?) → ([^*]+?)\*\*")
 # sheet. These headings are how `status` finds its way around it.
 WANTED_SECTION = "## 2."
 DONE_SECTION = "## 7."
+
+
+def _line_pairs(line):
+    """The pairs a candidate line PROPOSES: the bold pairs before its ` — `.
+
+    After the dash comes the quote, and a line that shares one says so with
+    `same as **A → B**`. That pair is a cross-reference, not part of the line:
+    counting it kept **Brotato → Slime 3K** open after the owner added it,
+    because the Despotism 3k pair it pointed at was (deliberately) left out.
+    """
+    return list(CANDIDATE.finditer(line.split(" — ", 1)[0]))
 
 
 def _pair_key(line):
@@ -885,7 +1221,7 @@ def cmd_status(args):
             continue
         if not line.startswith("- [ ] ") or section.startswith(DONE_SECTION):
             continue
-        pairs = CANDIDATE.findall(line)
+        pairs = [m.groups() for m in _line_pairs(line)]
         if not pairs:
             continue
         missing = list(dict.fromkeys(n for p in pairs for n in p if n.strip().lower() not in names))
@@ -898,7 +1234,7 @@ def cmd_status(args):
         else:
             still_open.append(i)
     for i in added:
-        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % p for p in CANDIDATE.findall(lines[i]))))
+        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % m.groups() for m in _line_pairs(lines[i]))))
     for i, missing in unknown:
         print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
     for i, missing in waiting:
@@ -910,7 +1246,7 @@ def cmd_status(args):
     moved = []
     for i in added:
         line = lines[i]
-        end = list(CANDIDATE.finditer(line))[-1].end()
+        end = _line_pairs(line)[-1].end()
         moved.append("- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:])
     keep = [l for n, l in enumerate(lines) if n not in set(added)]
     start = next(n for n, l in enumerate(keep) if l.startswith(DONE_SECTION))
@@ -935,6 +1271,12 @@ def main():
     sub.add_parser("xsources")
     sub.add_parser("wanted").add_argument("file", help="text file, one game name per line")
     sub.add_parser("cues").add_argument("--games", choices=["leaves", "all"], default="leaves")
+    mp = sub.add_parser("media")
+    mp.add_argument("--max-degree", type=int, default=1, help="search games with this many connections or fewer")
+    mp.add_argument("--per-game", type=int, default=4, help="results kept per game, each of videos and podcasts")
+    mp.add_argument("--delay", type=float, default=3.5, help="seconds between Apple Podcasts searches")
+    mp.add_argument("--write-only", action="store_true", help="rewrite the doc from the cache, no searching")
+    mp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
     for name in ("lang", "forums", "devcheck"):
@@ -946,7 +1288,7 @@ def main():
     args = ap.parse_args()
     {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
      "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
-     "cues": cmd_cues, "wanted": cmd_wanted}[args.cmd](args)
+     "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media}[args.cmd](args)
 
 
 if __name__ == "__main__":

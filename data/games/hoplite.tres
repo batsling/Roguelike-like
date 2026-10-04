@@ -8,9 +8,9 @@ id = &"hoplite"
 display_name = "Hoplite"
 year = 2013
 type = 3
-games_influenced = Array[StringName]([&"hyperrogue", &"into_the_breach", &"spellmasons"])
-influence_sources = PackedStringArray("https://zenorogue.blogspot.com/search/label/sources", "https://youtu.be/s_I07Iq_2XM?si=AWX0JtDGVzx0vl36", "https://www.gamespark.jp/article/2023/02/15/127110.html")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"hyperrogue", &"into_the_breach", &"spellmasons", &"let_s_revolution"])
+influence_sources = PackedStringArray("https://zenorogue.blogspot.com/search/label/sources", "https://youtu.be/s_I07Iq_2XM?si=AWX0JtDGVzx0vl36", "https://www.gamespark.jp/article/2023/02/15/127110.html", "https://www.gamedeveloper.com/production/prototyping-i-let-s-revolution-i-transforming-i-minesweeper-i-into-a-turn-based-strategy-roguelike")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
