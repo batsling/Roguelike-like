@@ -557,6 +557,13 @@ func _build_source_block() -> Control:
 		chip.add_theme_color_override("font_color", UITheme.GOLD)
 		box.add_child(chip)
 
+	# THE PROOF ITSELF, when one was captured: the developer's own sentence on the
+	# page the link opens, highlighted (tools/capture_proof.js). It goes above the
+	# link because it is the evidence; the link under it is the citation.
+	var proof: Control = _proof_thumb(influencer.id, influenced.id)
+	if proof != null:
+		box.add_child(proof)
+
 	var source: String = String(found.get("source", "")).strip_edges()
 	if source == "":
 		box.add_child(_source_note("No source recorded for this connection yet."))
@@ -608,6 +615,96 @@ static func short_source(url: String) -> String:
 	if short.length() > SOURCE_CHARS:
 		short = short.substr(0, SOURCE_CHARS - 1) + "…"
 	return short
+
+# --- the proof screenshot ---------------------------------------------------
+#
+# One image per connection, named for the edge in the direction the sheet
+# authored it: `<influencer id>__<influenced id>.webp`. They are captured, not
+# drawn — `node tools/capture_proof.js` opens each Source link, finds the
+# sentence where the developer names the older game, highlights it and crops
+# around it — so a connection with no link, or one whose page refused the
+# browser, simply has no file, and the block shows the link alone as before.
+#
+# Looked up by convention rather than stored on GameData, the way covers and
+# portraits are: an image is added or re-captured without touching the sheet.
+const PROOF_DIR := "res://images2.0/proof/"
+# WebP rather than the PNG the browser writes: about a thousand screenshots of
+# text, and lossy WebP at quality 90 keeps the text crisp at a fraction of the
+# size (tools/capture_proof.js --webp converts them).
+const PROOF_EXT := ".webp"
+# The thumbnail's tallest. Proofs run from one line of a store page (836x98) to
+# a whole tweet (550x1088); the short ones show at their own size and the tall
+# ones are cut to this and read in full by clicking.
+const PROOF_THUMB_H := 140.0
+
+static func proof_path(from_id: StringName, to_id: StringName) -> String:
+	return "%s%s__%s%s" % [PROOF_DIR, from_id, to_id, PROOF_EXT]
+
+static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
+	var path: String = proof_path(from_id, to_id)
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
+	var tex: Texture2D = proof_texture(from_id, to_id)
+	if tex == null:
+		return null
+	var art := TextureRect.new()
+	art.name = "Proof"
+	art.texture = tex
+	# Never taller than the image itself: blowing a 98px line of text up to 140
+	# would only blur it. KEEP_ASPECT (not _CENTERED) pins it to the top-left,
+	# under the claim it backs.
+	art.custom_minimum_size = Vector2(0, minf(PROOF_THUMB_H, float(tex.get_height())))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.mouse_filter = Control.MOUSE_FILTER_STOP
+	art.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	art.tooltip_text = "Click to read it full size"
+	art.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			accept_event()
+			open_proof(tex))
+	return art
+
+# The screenshot at its own size (or the window's, if it is bigger), over the
+# popup. Any click or Escape puts it away; it is a closer look, not a step.
+var _proof_view: Control = null
+
+func open_proof(tex: Texture2D) -> Control:
+	close_proof()
+	var shade := ColorRect.new()
+	shade.name = "ProofView"
+	shade.color = Color(UITheme.BG_DEEP, 0.88)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	var room: Vector2 = get_viewport_rect().size - VIEW_MARGIN * 2.0
+	var fit: float = minf(1.0, minf(room.x / tex.get_width(), room.y / tex.get_height()))
+	var art := TextureRect.new()
+	art.texture = tex
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.custom_minimum_size = tex.get_size() * fit
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(art)
+	shade.add_child(centre)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			accept_event()
+			close_proof())
+	add_child(shade)
+	_proof_view = shade
+	return shade
+
+func close_proof() -> void:
+	if _proof_view != null and is_instance_valid(_proof_view):
+		_proof_view.queue_free()
+	_proof_view = null
 
 func _source_note(text: String) -> Control:
 	var l := Label.new()
@@ -1154,6 +1251,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		accept_event()
 		# Escape backs out one layer at a time: the rung's card first, the popup
 		# only once there is nothing open over it.
+		if _proof_view != null and is_instance_valid(_proof_view):
+			close_proof()
+			return
 		if _node_card != null and is_instance_valid(_node_card):
 			close_node_card()
 			return
