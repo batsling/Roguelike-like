@@ -2,7 +2,8 @@
 """Fill the `Proof` column on the `connections` sheet from images2.0/proof/.
 
 The game reads a connection's proof off disk, as
-`images2.0/proof/<influencer id>---<influenced id>.png`, so the sheet on its own
+`images2.0/proof/<influencer id>---<influenced id>.png` (or `.mp4`/`.ogv` for a
+clip, see tools/convert_proof_videos.py), so the sheet on its own
 never said which rows had one. This writes that file's name, without the
 `.png` (`slay_the_spire---tic_tactic`), into column F of each row that has one
 and leaves the cell blank on each row that doesn't — so
@@ -62,7 +63,10 @@ def _game_ids():
 def main():
     check = "--check" in sys.argv[1:]
     exact, lower = _game_ids()
-    proofs = {f for f in os.listdir(PROOF) if f.endswith(".png")}
+    # A screenshot, or a clip (the owner's .mp4, or the .ogv the game plays,
+    # tools/convert_proof_videos.py). The name is the same either way.
+    proofs = {os.path.splitext(f)[0] for f in os.listdir(PROOF)
+              if f.endswith((".png", ".mp4", ".ogv")) and not f.endswith(".poster.jpg")}
 
     def resolve(name):
         name = str(name or "").strip()
@@ -88,7 +92,7 @@ def main():
                     unresolved.add(a if a_id is None else b)
                 else:
                     name = "%s---%s" % (a_id, b_id)
-                    if name + ".png" in proofs:
+                    if name in proofs:
                         want, have = name, have + 1
             if str(row[5] or "").strip() != want:
                 edits["%s%d" % (COL, r)] = want

@@ -8,9 +8,9 @@ id = &"don_t_starve_together"
 display_name = "Don't Starve Together"
 year = 2014
 type = 0
-games_influenced = Array[StringName]([])
-influence_sources = PackedStringArray()
-influence_relations = PackedStringArray()
+games_influenced = Array[StringName]([&"hungry_horrors"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=txv0XsRrFwo")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

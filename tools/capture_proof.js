@@ -1289,8 +1289,10 @@ function writeMissing() {
   const file = gameFile;
   const inGame = new Set(fs.readdirSync(GAME_DIR));
   const groups = { reddit: [], dead: [], refused: [], down: [], weak: [], nomatch: [], video: [], note: [], none: [] };
+  // A clip proves a connection as well as a screenshot does (tools/convert_proof_videos.py).
+  const hasClip = c => inGame.has(file(c).replace(/\.png$/, '.mp4')) || inGame.has(file(c).replace(/\.png$/, '.ogv'));
   for (const c of loadConnections()) {
-    if (inGame.has(file(c))) continue;
+    if (inGame.has(file(c)) || hasClip(c)) continue;
     const r = report.get(`${c.from}__${c.to}`);
     const line = (why) => `- [ ] **${c.fromName} → ${c.toName}**${why ? ` — ${why}` : ''}${c.url ? ` — [${new URL(c.url).hostname.replace(/^www\./, '')}](${c.url})` : ''}`;
     if (!c.url) {

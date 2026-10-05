@@ -113,6 +113,13 @@ jobs:
       - name: data/ is what the sheet says
         run: python3 tools/check_data_sync.py
 
+      - name: Every proof clip has been converted
+        # The owner drops proofs in as .mp4, which Godot cannot play; the game
+        # plays the .ogv tools/convert_proof_videos.py makes beside each one. A
+        # clip pushed without that run is a proof slot that shows nothing. The
+        # check only hashes files, so it needs no ffmpeg here.
+        run: python3 tools/convert_proof_videos.py --check
+
       - name: The candidate rows are still pasteable
         # docs/goal-candidates.csv is a paste queue for the enemies/bosses
         # sheets, so the things that would break at paste time — a Damage that

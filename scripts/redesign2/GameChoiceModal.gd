@@ -708,8 +708,33 @@ static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
 		return null
 	return load(path) as Texture2D
 
+# A PROOF THAT IS A CLIP — a developer saying it on a stream or a podcast. The
+# owner drops the `.mp4` in under the proof's own name, and
+# `tools/convert_proof_videos.py` writes the two files the game uses beside it:
+# the clip as Ogg Theora (the one format Godot plays) and a poster frame for the
+# thumbnail. A clip wins over a screenshot of the same connection.
+const PROOF_VIDEO_EXT := ".ogv"
+const PROOF_POSTER_EXT := ".poster.jpg"
+
+static func proof_video_path(from_id: StringName, to_id: StringName) -> String:
+	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_VIDEO_EXT]
+
+# The clip for this connection, or null when it has none.
+static func proof_video(from_id: StringName, to_id: StringName) -> VideoStream:
+	var path: String = proof_video_path(from_id, to_id)
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as VideoStream
+
+static func proof_poster(from_id: StringName, to_id: StringName) -> Texture2D:
+	var path: String = "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_POSTER_EXT]
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
 func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
-	var tex: Texture2D = proof_texture(from_id, to_id)
+	var video: VideoStream = proof_video(from_id, to_id)
+	var tex: Texture2D = proof_poster(from_id, to_id) if video != null else proof_texture(from_id, to_id)
 	if tex == null:
 		return null
 	var box := VBoxContainer.new()
@@ -723,7 +748,7 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	frame.tooltip_text = "Click to read it full size"
+	frame.tooltip_text = "Click to play the clip" if video != null else "Click to read it full size"
 	var art := TextureRect.new()
 	art.name = "Proof"
 	art.texture = tex
@@ -731,6 +756,21 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 	art.stretch_mode = TextureRect.STRETCH_SCALE
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(art)
+	if video != null:
+		# A ▶ over the poster's middle, so the thumbnail reads as a clip at a glance
+		# and not as a screenshot of a video.
+		var play := Label.new()
+		play.name = "PlayMark"
+		play.text = "▶"
+		play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		play.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		play.set_anchors_preset(Control.PRESET_FULL_RECT)
+		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		play.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
+		play.add_theme_color_override("font_color", Color.WHITE)
+		play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		play.add_theme_constant_override("outline_size", 8)
+		frame.add_child(play)
 	var more := Label.new()
 	more.text = "Click to read all of it"
 	more.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
@@ -744,13 +784,16 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 		art.position = Vector2.ZERO
 		art.size = shown
 		frame.custom_minimum_size.y = minf(shown.y, PROOF_THUMB_H)
-		more.visible = shown.y > PROOF_THUMB_H + 0.5
+		more.visible = video == null and shown.y > PROOF_THUMB_H + 0.5
 	frame.resized.connect(fit)
 	fit.call()
 	frame.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			frame.accept_event()
-			open_proof(tex))
+			if video != null:
+				open_proof_video(video, tex.get_size())
+			else:
+				open_proof(tex))
 	return box
 
 # The screenshot at its own size (or the window's, if it is bigger), over the
@@ -783,6 +826,57 @@ func open_proof(tex: Texture2D) -> Control:
 			close_proof())
 	add_child(shade)
 	_proof_view = shade
+	return shade
+
+# THE CLIP, PLAYING, over the popup — the same shade a screenshot opens in, at the
+# poster's shape scaled to the window. A click on the clip pauses and resumes it
+# (and starts it again once it has finished); a click outside it, the ✕, or Escape
+# puts it away, and the sound stops with it.
+func open_proof_video(video: VideoStream, shape: Vector2) -> Control:
+	close_proof()
+	var shade := ColorRect.new()
+	shade.name = "ProofView"
+	shade.color = Color(UITheme.BG_DEEP, 0.92)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	var room: Vector2 = get_viewport_rect().size - VIEW_MARGIN * 2.0
+	if shape.x <= 0.0 or shape.y <= 0.0:
+		shape = Vector2(16, 9)
+	var fit: float = minf(room.x / shape.x, room.y / shape.y)
+	var player := VideoStreamPlayer.new()
+	player.name = "ProofVideo"
+	player.stream = video
+	player.expand = true
+	player.custom_minimum_size = shape * fit
+	player.mouse_filter = Control.MOUSE_FILTER_STOP
+	player.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	player.tooltip_text = "Click to pause or play"
+	player.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			player.accept_event()
+			if not player.is_playing():
+				player.paused = false
+				player.play()
+			else:
+				player.paused = not player.paused)
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(player)
+	shade.add_child(centre)
+	var close := Button.new()
+	close.text = "✕"
+	close.tooltip_text = "Close (Esc)"
+	close.position = Vector2(get_viewport_rect().size.x - VIEW_MARGIN.x - 40.0, VIEW_MARGIN.y * 0.5)
+	close.pressed.connect(close_proof)
+	shade.add_child(close)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			accept_event()
+			close_proof())
+	add_child(shade)
+	_proof_view = shade
+	player.play()
 	return shade
 
 func close_proof() -> void:

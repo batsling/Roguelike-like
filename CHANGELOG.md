@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Proofs can be clips.** The owner's new proofs include ten videos (Tiny Rogues'
+  podcast, Hungry Horrors' dev stream). Godot only plays Ogg Theora, so
+  `tools/convert_proof_videos.py` turns each `<pair>.mp4` into a 720p `<pair>.ogv`
+  plus a `<pair>.poster.jpg`; the game's proof slot shows the poster with a ▶ and
+  plays the clip over the popup on a click. `proof_column.py` and the missing-proof
+  list count clips as proofs, and CI checks every MP4 has been converted. The
+  sheet's two new connections (Hades → UnderMine 2, Diablo → Tiny Rogues) and the
+  Hungry Horrors row now naming Don't Starve Together are imported; two proof
+  files were renamed to their games' ids (`don_t_starve_together`, `pok_rogue`).
+
 - **Rifts, step 4: Rift Keys** (`docs/rifts-design.md` §8). While you hold a key
   (`GameState.keys`), every slot the offering leaves empty is dealt a **rift
   card**: a connectionless game and the game exactly two hops away its rift would

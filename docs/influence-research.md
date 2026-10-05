@@ -406,6 +406,20 @@ aren't a connection on the sheet, and so does the test suite
 (`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
 silently.
 
+**A clip instead of a screenshot.** When the proof is a developer SAYING it — a
+stream, a podcast — drop the video in as `<influencer id>---<influenced id>.mp4`
+and run `python3 tools/convert_proof_videos.py`. Godot plays only Ogg Theora, so
+the script writes `<pair>.ogv` (capped at 720p) and `<pair>.poster.jpg` (a frame a
+quarter of the way in) beside the MP4, which stays as the source and is not
+shipped. In the game the proof slot shows the poster with a ▶, and a click plays
+the clip over the popup, sound and all (click it to pause, click outside it, ✕ or
+Esc to close). A clip wins over a screenshot of the same connection. The script
+keys its outputs to each MP4's sha1 (`tools/proof_videos.json`), so a re-run only
+converts what is new or replaced; CI runs `--check`, and
+`test_every_proof_clip_has_its_playable_video_and_poster` fails on a clip that
+was pushed without it. Name the file with the game's id, not its name: an
+apostrophe or an accent becomes `_` (`don_t_starve_together`, `pok_rogue`).
+
 **Seeing it on the sheet.** The `connections` sheet's `Proof` column (F) holds
 each row's proof file name without the `.png` (`slay_the_spire---tic_tactic`),
 blank where there is none, so filtering it for blanks is

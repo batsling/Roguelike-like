@@ -514,6 +514,67 @@ func test_the_proof_opens_full_size_and_any_click_puts_it_away() -> void:
 	assert_true(is_instance_valid(modal), "and only it: the popup is still open")
 	modal._close()
 
+# --- proofs that are clips (tools/convert_proof_videos.py) ---------------------
+
+# Every clip the owner dropped in has the two files the game plays it from, and
+# both load: a missing conversion would be a proof that silently shows nothing.
+func test_every_proof_clip_has_its_playable_video_and_poster() -> void:
+	var clips: Array = []
+	for f in DirAccess.get_files_at(GameChoiceModal.PROOF_DIR):
+		if f.ends_with(".mp4"):
+			clips.append(f.get_basename())
+	if clips.is_empty():
+		pending("no proof clips yet")
+		return
+	for stem in clips:
+		var pair: PackedStringArray = String(stem).split(GameChoiceModal.PROOF_JOIN)
+		assert_eq(pair.size(), 2, "%s is named <id>---<id>" % stem)
+		if pair.size() != 2:
+			continue
+		assert_not_null(GameChoiceModal.proof_video(StringName(pair[0]), StringName(pair[1])),
+			"%s has its .ogv (run tools/convert_proof_videos.py)" % stem)
+		assert_not_null(GameChoiceModal.proof_poster(StringName(pair[0]), StringName(pair[1])),
+			"%s has its poster" % stem)
+
+# A clip in the proof slot is its poster with a ▶ over it, and a click plays it
+# over the popup; a click outside it puts it away.
+func test_a_proof_clip_shows_a_poster_and_plays_when_clicked() -> void:
+	var edge: Array = []
+	for f in DirAccess.get_files_at(GameChoiceModal.PROOF_DIR):
+		if f.ends_with(GameChoiceModal.PROOF_VIDEO_EXT):
+			var pair: PackedStringArray = f.get_basename().split(GameChoiceModal.PROOF_JOIN)
+			if pair.size() == 2 and Data.get_game(StringName(pair[0])) != null \
+					and Data.get_game(StringName(pair[1])) != null:
+				edge = [StringName(pair[0]), StringName(pair[1])]
+				break
+	if edge.is_empty():
+		pending("no proof clips yet")
+		return
+	var modal := GameChoiceModal.new()
+	add_child_autofree(modal)
+	var thumb: Control = modal._proof_thumb(edge[0], edge[1])
+	assert_not_null(thumb, "a clip fills the proof slot")
+	if thumb == null:
+		return
+	autofree(thumb)
+	assert_not_null(thumb.find_child("PlayMark", true, false), "with a play mark on it")
+	var art: TextureRect = thumb.find_child("Proof", true, false)
+	assert_eq(art.texture, GameChoiceModal.proof_poster(edge[0], edge[1]), "showing the poster")
+	var frame: Control = thumb.find_child("ProofFrame", true, false)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	frame.gui_input.emit(click)
+	var view: Control = modal._proof_view
+	assert_true(view != null and is_instance_valid(view), "a click opens the clip")
+	if view == null:
+		return
+	var player: VideoStreamPlayer = view.find_child("ProofVideo", true, false)
+	assert_not_null(player)
+	assert_true(player.is_playing(), "playing")
+	view.gui_input.emit(click)
+	assert_null(modal._proof_view, "and a click outside it puts it away")
+
 # A Champion node refuses a Bash (§7.1), so the card is arranged to be an
 # Enemies node — on its SLOT, where the kind lives (§19.2) — rather than hoped.
 func _first_bashable() -> int:
