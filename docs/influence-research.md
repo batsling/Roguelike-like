@@ -70,6 +70,22 @@ had written up. Despotism 3k → Slime 3K was left out, presumably because
 Despotism 3k → Despot's Game → Slime 3K already carries the studio lineage.
 The lines left open in section 1 are still open, not rejected.
 
+**The two-connection pass (October 2026)** went after the 213 games the map
+holds by two edges (140 when it started; new rows lifted the rest from one).
+All got the automated passes; the 113 never searched by hand then got a hand
+search in batches: every source their rows already cite reread for any chart
+game (Reddit threads through the Arctic Shift archive, which answered with a
+`User-Agent` header and refused Python's default), the Steam page, and a web
+search. Yield: three strong lines (Isaac → Tape to Tape, FTL and Hades →
+Beyond the Long Night, Desktop Dungeons → I Am Overburdened) and about a dozen
+weaker ones, most of them one feature (Noita's spell system behind Sephiria's
+inventory). As useful were the rows whose cited source turned out not to say
+it: Road Not Taken's FTL and Don't Starve come from Wikipedia paraphrasing a
+pitch, Synthetik: Legion Rising's Risk of Rain isn't in the AMA it cites, and
+I Am Overburdened's two RogueBasin rows aren't what its developer names.
+Small games behave like the degree-1 survivors-likes did: the developer names
+the one or two games the sheet already has, and nothing else.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
