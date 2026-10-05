@@ -1,0 +1,15 @@
+{
+ "_about": "sha1 of each proof MP4 whose .ogv and .poster.jpg were made from it by tools/convert_proof_videos.py. Delete a line to force that clip to be converted again.",
+ "files": {
+  "balatro---hungry_horrors.mp4": "61b893345aeec4d050aaa4ded27332896c368d4c",
+  "diablo---tiny_rogues.mp4": "83a1466cc035d5fa42f27a5b2cbb3713bc6c0e9a",
+  "don_t_starve_together---hungry_horrors.mp4": "8686c99c705dff7c12c7c61d3dc59bbf9d3ba35d",
+  "enter_the_gungeon---tiny_rogues.mp4": "83a1466cc035d5fa42f27a5b2cbb3713bc6c0e9a",
+  "hades---tiny_rogues.mp4": "d45a0783f970d368bef88d3aa19c5861444c9325",
+  "nuclear_throne---tiny_rogues.mp4": "83a1466cc035d5fa42f27a5b2cbb3713bc6c0e9a",
+  "slay_the_spire---hungry_horrors.mp4": "61b893345aeec4d050aaa4ded27332896c368d4c",
+  "the_binding_of_isaac---tiny_rogues.mp4": "83a1466cc035d5fa42f27a5b2cbb3713bc6c0e9a",
+  "vampire_survivors---tiny_rogues.mp4": "83a1466cc035d5fa42f27a5b2cbb3713bc6c0e9a",
+  "wildfrost---hungry_horrors.mp4": "7db3e951e4b291390c31d2f4933f8df10ebff310"
+ }
+}

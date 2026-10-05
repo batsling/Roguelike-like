@@ -665,6 +665,12 @@ var shops: Dictionary = {}
 # ---------------------------------------------------------------------------
 var node_kinds: Dictionary = {}
 
+# THE RUN'S RIFTS (docs/rifts-design.md): [{game, a, b, kind}] as Strings, dealt at
+# run start alongside node_kinds and frozen with them. The graph lays them
+# (RunGraph.set_rifts); this is the copy the save carries. Empty for a run with
+# rifts off and for any save written before rifts existed.
+var rifts: Array = []
+
 # === Curses / status ===
 var active_curses: Array = []            # Array[Dictionary] for now
 var pending_combat_statuses: Array = []  # carryover from events
@@ -1408,8 +1414,10 @@ func reset_run() -> void:
 	ObjectSystem.reset_run()
 	# The shops go with the run.
 	shops.clear()
-	# The map's kinds go with the run that was dealt them (§19.2).
+	# The map's kinds go with the run that was dealt them (§19.2), and so do its
+	# rifts — the graph goes back to the bare influence map for the next one.
 	node_kinds.clear()
+	set_rifts([])
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
@@ -2693,6 +2701,15 @@ func serialize_node_kinds() -> Dictionary:
 	for gid in node_kinds.keys():
 		out[String(gid)] = int(node_kinds[gid])
 	return out
+
+# Replace the run's rifts and lay them on the graph.
+func set_rifts(list: Array) -> void:
+	rifts = []
+	for r in list:
+		if r is Dictionary:
+			rifts.append({"game": String(r.get("game", "")), "a": String(r.get("a", "")),
+				"b": String(r.get("b", "")), "kind": String(r.get("kind", "world"))})
+	RunGraph.set_rifts(rifts)
 
 func restore_node_kinds(data: Dictionary) -> void:
 	node_kinds.clear()

@@ -299,16 +299,30 @@ influencer, the earliest one on a tie), highlights it and crops around it.
 
 1. the whole **message** the sentence is in: a Steam forum post with its author
    and date, a Reddit comment, a quoted post. A reply that quotes the developer
-   (or Steam's pinned "Answer" box) loses a tie to the developer's own post;
+   (or Steam's pinned "Answer" box) loses a tie to the developer's own post, and
+   a player's post loses one to a post carrying Steam's `[developer]` badge.
+   **A question comes with its answer**: when the sentence is a player's
+   question ("do the hero position on party work like darkest dungeon?"), the
+   developer's first reply after it is shot too and stacked under it; when it is
+   the developer's answer, the post the link points at (`#c<id>`), or the nearest
+   earlier question naming either game, is stacked above it;
 2. the whole **paragraph**: the `<p>`, or the run between two blank lines when
    the page is one block split by `<br>`s (Steam store pages and forum posts
    are). A one-line paragraph takes its neighbours with it, up to 400px;
 3. the sentence with a few lines either side.
 
-The shot is taken in the viewport after the page has stopped moving, below any
-sticky header, not off a full-page screenshot: Playwright's full-page mode
-resizes the viewport, Steam's store re-lays itself out, and the old crop landed
-on the "More like this" carousel. A long X post (cut at "Show more" in the
+The shot is taken in the viewport after the page has stopped moving, not off a
+full-page screenshot: Playwright's full-page mode resizes the viewport, Steam's
+store re-lays itself out, and the old crop landed on the "More like this"
+carousel. **Before the shot, everything that covered a proof once is cleared**:
+log-in walls and the translucent veil behind them go (Facebook's "See more on
+Facebook" sat over Anomaly Collapse's post and greyed out Dungeon Clawler's
+reel); "Read more" / "See more" buttons that unfold in place are pressed (a link
+reading "read more" goes elsewhere, so it is left alone); every fixed or sticky
+bar is hidden whatever its size, site headers included (Game*Spark's menu sat
+over the line naming Inscryption, from a 0px-tall sticky wrapper that the old
+"shoot below the header" measurement never saw); and a video playing under a
+caption is hidden, so a frame can't bury the words. A long X post (cut at "Show more" in the
 embed) is rendered in full, its text read from `api.fxtwitter.com` and handed to
 X's own embed. A name of three words or more is also found by its initials in
 capitals (ADOM, DCSS, FTL). A passage marked in the URL (`#:~:text=`) can run over
@@ -327,36 +341,51 @@ connections the report last left in those states.
 ```bash
 export NODE_PATH=/opt/node-tools/node_modules     # cloud container; locally, npm install playwright
 node tools/capture_proof.js --pilot              # 25 across every source kind, to check a change
-node tools/capture_proof.js --skip youtube,podcast --resume   # the full run, ~6 s a link
+node tools/capture_proof.js --skip youtube,podcast --jobs 3   # the full run, three at a time
 node tools/capture_proof.js --only <game id>     # retry one game's connections
-node tools/capture_proof.js --kind reddit        # Reddit only; run it from your own computer (below)
+node tools/capture_proof.js --conn hades---going_under,balatro---runeborn   # exactly these
+node tools/capture_proof.js --kind reddit        # Reddit only
 node tools/capture_proof.js --export             # copy them into images2.0/proof/ for the game
+node tools/capture_proof.js --translate          # set tools/proof_translations.json under its proofs
 ```
+
+`--jobs` beyond the machine's core count is slower, not faster: each job is a
+Chromium, and four cores with five jobs ran at a load of 12.
 
 Results go to `.influence_work/proof/` with `report.json`, which records every
 connection tried and why one failed (`blocked` with the HTTP status, `no-match`
 with a screenshot of what the browser was shown). How each kind is handled:
-X through the official embed; Steam with its age gate pre-answered; Reddit
-through old.reddit.com, which shows the whole thread, comments included.
+X through the official embed; Steam with its age gate pre-answered.
 
-**Reddit has to be captured from a home connection.** Reddit blocks cloud
-addresses outright ("You've been blocked by network security"), so from the
-cloud container only the embed host works, and it renders a post but never its
-comments, where the developer's word usually is. Those connections come back
-`blocked`, with a note saying to run them at home. On your own computer, from
-the repo root:
+**Reddit is captured through its embed, steered by an archive.** Reddit refuses
+cloud addresses on reddit.com and old.reddit.com ("You've been blocked by network
+security"), but answers on embed.reddit.com, the host it serves to other
+websites. That host renders one post (folded under "Read more", which is
+pressed) or one comment, never a thread. So the thread is read from the
+[Arctic Shift](https://arctic-shift.photon-reddit.com) archive of Reddit, which
+says WHICH post or comment says it (the same scoring as a page, with the
+original poster, usually the developer, ahead of a commenter at a tie), and the
+picture is Reddit's own embed of exactly that one. A comment comes with the
+comment it answers stacked above it, and a player's question with the original
+poster's reply stacked below it: Balatro → Runeborn is "how are you planning to
+stand out?" and then "we were heavily inspired by Balatro". What this can't
+capture, and `docs/proof-missing.md` lists for you: a video or picture post (the
+embed shows no text for those), a comment removed or edited since it was
+archived, and a thread the archive never saw.
 
-```bash
-npm install playwright && npx playwright install chromium
-node tools/capture_proof.js --kind reddit
-node tools/capture_proof.js --export
-```
+The export deletes a game file only for a connection it KNOWS failed or that
+left the sheet, never one its report doesn't mention, so a run of one kind
+(`--kind reddit`) can't wipe the rest. Videos and podcasts are the owner's to
+source by hand (a YouTube clip can't be downloaded within its terms), so
+`--skip youtube,podcast` leaves them out.
 
-then commit `images2.0/proof/`. The export there only adds and replaces Reddit
-proofs: it deletes a game file only for a connection it KNOWS failed or that left
-the sheet, never one its (Reddit-only) report doesn't mention. Videos and podcasts are
-the owner's to source by hand (a YouTube clip can't be downloaded within its
-terms), so `--skip youtube,podcast` leaves them out.
+**A proof in another language keeps its original**, with an English translation
+set in a box underneath. The translations live in `tools/proof_translations.json`
+(`"brotato---cluckmech_oasis.png": {"from": "Chinese", "text": "…"}`), and
+`--translate` sets them; `--export` runs it too, so a re-captured proof gets its
+translation back. Each entry keeps the fingerprint of its finished picture, so
+running it twice changes nothing, and a picture replaced since (a fresh capture,
+or one you uploaded) gets its translation set under it again.
 
 **One name format for every proof.** The game reads one PNG per connection
 (PNG is the owner's call), named by the two games' ids, influencer first,
@@ -376,6 +405,27 @@ tic_tactic` (ids or game names). It also flags a file in the id format whose ids
 aren't a connection on the sheet, and so does the test suite
 (`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
 silently.
+
+**A clip instead of a screenshot.** When the proof is a developer SAYING it — a
+stream, a podcast — drop the video in as `<influencer id>---<influenced id>.mp4`
+and run `python3 tools/convert_proof_videos.py`. Godot plays only Ogg Theora, so
+the script writes `<pair>.ogv` (capped at 720p) and `<pair>.poster.jpg` (a frame a
+quarter of the way in) beside the MP4, which stays as the source and is not
+shipped. In the game the proof slot shows the poster with a ▶, and a click plays
+the clip over the popup, sound and all (click it to pause, click outside it, ✕ or
+Esc to close). A clip wins over a screenshot of the same connection. The script
+keys its outputs to each MP4's sha1 (`tools/proof_videos.json`), so a re-run only
+converts what is new or replaced; CI runs `--check`, and
+`test_every_proof_clip_has_its_playable_video_and_poster` fails on a clip that
+was pushed without it. Name the file with the game's id, not its name: an
+apostrophe or an accent becomes `_` (`don_t_starve_together`, `pok_rogue`).
+
+**Seeing it on the sheet.** The `connections` sheet's `Proof` column (F) holds
+each row's proof file name without the `.png` (`slay_the_spire---tic_tactic`),
+blank where there is none, so filtering it for blanks is
+the same list as `docs/proof-missing.md`. It is written FROM the folder by
+`python3 tools/proof_column.py` (`--check` says whether it is stale) and nothing
+reads it back, so re-run that after adding proofs rather than typing into it.
 
 **Your screenshots win.** `tools/proof_captured.json` lists the files
 `capture_proof.js --export` copied in, each with a sha1 of its bytes, and an

@@ -116,6 +116,18 @@ var _chosen: Dictionary = {}          # the choice being played (Phase.PLAYING)
 # scramble changes, re-drawing which games fill the slots (and, through
 # _build_choices, the enemies behind them).
 var _scramble_salt: int = 0
+# RIFT KEY CARDS on the table (docs/rifts-design.md §8): rift game id -> the game
+# its rift leads to. Rebuilt with the offering; read by steps_to_amulet so a card
+# for a rift that is not laid yet still quotes its real distance.
+var _key_cards: Dictionary = {}
+# Rift games Transmute turned away from THIS offering, and the seed they belong
+# to: a Scramble or a move deals a fresh table and forgets them.
+var _key_skip: Dictionary = {}
+var _key_skip_seed: String = ""
+# Whether the table on show was dealt holding a key. Holding one is what decides
+# whether the empty slots carry rift cards, so a key gained or spent while the
+# offering is up re-deals it (`_refresh`).
+var _dealt_with_keys: bool = false
 # How many times the player has ARRIVED at each game this run (game id -> count),
 # counted off GameState.current_game_changed. It salts the offering draw, so
 # coming back to a game you've already stood on offers a DIFFERENT set of its
@@ -804,6 +816,17 @@ func _build_start_options(pick: Dictionary) -> Array:
 	var start_ids: Array = []
 	for opt in out:
 		start_ids.append((opt["game"] as GameData).id)
+	# THE RUN'S RIFTS (docs/rifts-design.md), laid before the kinds so the graph
+	# the kinds are dealt over is the one the run will walk, and so every rift game
+	# is stamped Enemies. Recorded once here for the rotation, which saves last
+	# run's rift games for last.
+	var dealt: Array = pick.get("rifts", [])
+	GameState.set_rifts(dealt)
+	if not dealt.is_empty():
+		var rift_ids: Array = []
+		for r in dealt:
+			rift_ids.append(String(r["game"]))
+		GameStats.record_rifts(rift_ids)
 	GameState.node_kinds = RunGraph.assign_node_kinds(
 		_rng, GameState.amulet_game_id, start_ids)
 	return out
@@ -1338,6 +1361,10 @@ func pick(index: int) -> void:
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
+	# A RIFT KEY CARD spends its key and opens its rift before the commit, so the
+	# commit stands on a laid rift game (docs/rifts-design.md §8).
+	if _chosen.has("rift_key"):
+		_open_rift_key(_chosen)
 	_begin_game(_chosen["game"], _chosen["enemy"], _current_tier())
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
@@ -1493,15 +1520,21 @@ func _roll_card_enemy(slot: StringName, type_key: StringName, tier: int) -> Goal
 
 func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
+	# A RIFT GAME's bodies hit twice as hard and pay twice over (docs/rifts-design.md
+	# §6). Read off the SLOT, like the kind: a rift Transmute has refilled is still a
+	# rift. Passed in because the run has not moved onto the slot yet (see pick).
+	var slot := StringName(_chosen.get("slot", &""))
+	var rift: bool = RunGraph.is_rift_game(slot if slot != &"" else game.id)
 	match _committed_kind(game):
 		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
 			GameLoop2.begin_bodiless_game()
 		RunGraph.NodeKind.CHAMPION:
 			var boss: GoalEnemyData = enemy if enemy != null and enemy.is_boss() \
 				else GameLoop2.roll_boss(type_key, tier)
-			GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false)
+			GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false,
+				true, rift)
 		_:
-			GameLoop2.choose_game(enemy, type_key, tier)
+			GameLoop2.choose_game(enemy, type_key, tier, true, true, rift)
 
 # Say who else walked on with this game (§19.4). Called at each of the places a
 # game is committed to, straight after choose_game, because the second body is
@@ -1985,6 +2018,11 @@ func steps_to_amulet(game_id: StringName) -> int:
 		return -1
 	if _amulet_dist.is_empty():
 		_rebuild_amulet_distances()
+	if not _amulet_dist.has(game_id) and _key_cards.has(game_id):
+		# A Rift Key card's game is not on the map until it is opened: it is one hop
+		# short of where its rift leads.
+		var on: int = steps_to_amulet(StringName(_key_cards[game_id]))
+		return on + 1 if on >= 0 else -1
 	return int(_amulet_dist[game_id]) if _amulet_dist.has(game_id) else -1
 
 # What a card is, as a route: is it the Amulet, does it step toward it, or does
@@ -2180,7 +2218,8 @@ func loot_teleport(req: Dictionary) -> String:
 	var band: Array = []
 	var any: Array = []
 	for gid in dist.keys():
-		if gid == cur or gid == amulet or GameLoop2.is_bashed(gid):
+		# Never into a rift (docs/rifts-design.md §7): a teleport lands on the map.
+		if gid == cur or gid == amulet or GameLoop2.is_bashed(gid) or RunGraph.is_rift_game(gid):
 			continue
 		any.append(gid)
 		var d: int = int(dist[gid])
@@ -3666,7 +3705,8 @@ func _start_pool() -> Array:
 # teleport pool asks this and no teleport pool asks anything else about a node.
 func _reachable(gid: StringName) -> bool:
 	return gid != &"" and gid != GameState.current_game_id \
-		and not GameLoop2.is_bashed(gid) and not RunGraph.is_off_map(gid)
+		and not GameLoop2.is_bashed(gid) and not RunGraph.is_off_map(gid) \
+		and not RunGraph.is_rift_game(gid)       # never lands in a rift (rifts §7)
 
 # The move itself. Returns the sentence it wrote, for the loot use screen to quote
 # (see LootUseModal._do_teleport); "" is never returned, because every path here
@@ -4240,6 +4280,33 @@ func bash_choice(index: int) -> bool:
 		GameLog.add(boss_msg, UITheme.DANGER)
 		Notifications.notify(boss_msg, UITheme.DANGER)
 		return false
+	# A RIFT KEY CARD (docs/rifts-design.md §8): Bash knocks its game out of the pool
+	# and the card is dealt again with another, the rift still waiting to be opened.
+	if choice.has("rift_key"):
+		if GameState.bash <= 0:
+			return false
+		GameState.bash -= 1
+		if not GameLoop2.bashed.has(game.id):
+			GameLoop2.bashed.append(game.id)
+		_build_choices()
+		_refresh()
+		GameLog.add("Bashed %s out of the rift — another game waits behind it." % game.display_name,
+			BASH_ORANGE)
+		return true
+	# A RIFT KEEPS ITS PLACE (docs/rifts-design.md §7): Bash swaps the game inside
+	# it for another rift game, so the route keeps the width its card promised.
+	# Only when the rift pool has nothing left does it fall through and close.
+	if RunGraph.is_rift_game(slot):
+		var inside: GameData = GameLoop2.bash_rift(slot)
+		if inside != null:
+			_slot_enemies.erase("%s>%s" % [String(slot), String(game.id)])
+			_build_choices()
+			_refresh()
+			GameLog.add("Bashed %s — the rift stays open, and %s comes through it instead."
+				% [game.display_name, inside.display_name], BASH_ORANGE)
+			Notifications.notify("Bashed %s → %s (rift)" % [game.display_name, inside.display_name],
+				BASH_ORANGE)
+			return true
 	# Resolved BEFORE the bash, while the slot is still on the board.
 	var replacement: StringName = _backfill_id_for(slot)
 	if replacement == &"" and _choices.size() <= 1:
@@ -4279,6 +4346,16 @@ func transmute_choice(index: int) -> bool:
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
 		return false
 	var slot: StringName = _choices[index]["slot"]
+	# A RIFT KEY CARD transmutes into another rift game (§7, §8): the card is dealt
+	# again without this one, its destination kept.
+	if _choices[index].has("rift_key"):
+		if GameState.transmute <= 0:
+			return false
+		GameState.transmute -= 1
+		_key_skip[slot] = true
+		_build_choices()
+		_refresh()
+		return true
 	var on_map: Array = []
 	for c in _choices:
 		on_map.append(c["slot"])
@@ -4479,7 +4556,9 @@ func _guarantee_onward(offered: Array, pool: Array) -> Array:
 # and type filter and put in the panel's own order. Forwards, both of them —
 # `DashFilterBar` owns the filter and the values it runs on.
 func _dash_list(nbrs: Array) -> Array:
-	return _dash.filter(nbrs)
+	# A RIFT is not a Dash target (docs/rifts-design.md §7): Dash names a game the
+	# player has in mind, and a rift game is one nobody routed to on purpose.
+	return _dash.filter(nbrs.filter(func(gid): return not RunGraph.is_rift_game(StringName(gid))))
 
 # Take the Dash panel back to the state it opens in. Called when a Dash is opened
 # and when one is put down, so a search typed into one Dash can never quietly
@@ -4493,7 +4572,8 @@ func dash_visible_count() -> int:
 	return _choices.size() if _dash_mode else 0
 
 func dash_total_count() -> int:
-	return _sorted_neighbors().size() if _dash_mode else 0
+	return _sorted_neighbors().filter(func(gid): return not RunGraph.is_rift_game(StringName(gid))
+		).size() if _dash_mode else 0
 
 func _sorted_neighbors() -> Array:
 	var nbrs: Array = []
@@ -4589,6 +4669,83 @@ func _build_choices() -> void:
 			# replacement game, so that's the clear the Dash bonus keys off.
 			"repeat": GameState.has_played_game(game.id),
 		})
+	_add_rift_key_cards(tier)
+
+# RIFT KEY CARDS (docs/rifts-design.md §8). While the player holds a key, every
+# slot the offering leaves empty — a game with fewer connections than cards — is
+# filled with a rift card: a specific rift game, and the game exactly two away on
+# a neighbouring branch its rift would lead to. Picking one spends a key
+# (`_open_rift_key`). Seeded off the offering, so redrawing the table keeps them
+# and a Scramble deals new ones, game and destination both.
+func _add_rift_key_cards(tier: int) -> void:
+	_key_cards.clear()
+	_dealt_with_keys = GameState.keys > 0
+	if _dash_mode or _asking_return() or GameState.keys <= 0 or not Settings.rifts_enabled:
+		return
+	var empty: int = offer_count() - _choices.size()
+	if empty <= 0:
+		return
+	var dests: Array = RunGraph.rift_key_destinations(GameState.current_game_id).filter(
+		func(gid): return not GameLoop2.is_bashed(StringName(gid)))
+	if dests.is_empty():
+		return
+	var seed_key: String = _offer_seed()
+	if seed_key != _key_skip_seed:
+		_key_skip.clear()
+		_key_skip_seed = seed_key
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(seed_key + "rift-key")
+	for i in range(dests.size() - 1, 0, -1):
+		var j: int = rng.randi() % (i + 1)
+		var t = dests[i]
+		dests[i] = dests[j]
+		dests[j] = t
+	var exclude: Dictionary = _key_skip.duplicate()
+	for gid in GameLoop2.bashed:
+		exclude[StringName(gid)] = true
+	for c in _choices:
+		exclude[StringName(c["slot"])] = true
+		exclude[(c["game"] as GameData).id] = true
+	var games: Array = RunGraph.rift_key_games(rng, exclude)
+	for i in range(mini(empty, games.size())):
+		var gid := StringName(games[i])
+		var game: GameData = Data.get_game(gid)
+		if game == null:
+			continue
+		var dest := StringName(dests[i % dests.size()])
+		var slot_key: String = "%s>%s>key" % [String(gid), String(dest)]
+		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
+		if enemy == null:
+			enemy = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
+			_slot_enemies[slot_key] = enemy
+		_key_cards[gid] = dest
+		_choices.append({
+			"game": game, "enemy": enemy, "slot": gid,
+			"boss": false, "amulet": false,
+			"repeat": GameState.has_played_game(gid),
+			"rift_key": dest,
+		})
+
+# OPEN THE RIFT a key card promised (docs/rifts-design.md §8): spend the key and
+# lay the rift ONE-ENDED, off its destination only. The way back to where it was
+# opened from is never laid, so it is a one-way passage, and a game hanging off
+# one end can never shorten anything. The rift game is an Enemies node like every
+# rift (§6), so the commit that follows stands rift bodies on it.
+func _open_rift_key(choice: Dictionary) -> void:
+	var gid := StringName(choice["slot"])
+	var dest := StringName(choice["rift_key"])
+	GameState.keys = maxi(0, GameState.keys - 1)
+	var laid: Array = GameState.rifts.duplicate(true)
+	laid.append({"game": String(gid), "a": String(dest), "b": "", "kind": RunGraph.RIFT_KEYED})
+	GameState.set_rifts(laid)
+	GameState.node_kinds[gid] = RunGraph.NodeKind.ENEMIES
+	GameStats.record_key_rift(gid)
+	_key_cards.clear()
+	var game: GameData = Data.get_game(gid)
+	var there: GameData = Data.get_game(dest)
+	GameLog.add("🗝 A key turns, and a rift opens onto %s. It leads one way: on to %s." % [
+		game.display_name if game != null else String(gid),
+		there.display_name if there != null else String(dest)], UITheme.RIFT)
 
 # --- rendering ------------------------------------------------------------
 
@@ -4651,6 +4808,11 @@ func _refresh(_a = null) -> void:
 		_select_head.text = ("Stay here, or head back?"
 			if _asking_return() else "Choose a Game")
 		_render_controls()
+		# A KEY GAINED OR SPENT WITH THE OFFERING UP (a loot pickup, an item) changes
+		# whether its empty slots carry rift cards, so the table is dealt again — on
+		# the transition only, since a re-deal also drops an armed verb.
+		if (GameState.keys > 0) != _dealt_with_keys and not _asking_return():
+			_build_choices()
 		_render_choices()
 		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
 		# so they're rebuilt with the rest of the screen. Safe here because nothing
@@ -5610,8 +5772,9 @@ func _refresh_select_stats() -> void:
 	# Dash is a live button or a readout, and `_armed_verb`, which decides which chip
 	# is lit.
 	var luck: int = Stats.get_value(&"luck")
-	var sig: String = "%d|%d|%d|%d|%d|%s|%s" % [GameState.bash, GameState.dash_charges,
-		GameState.transmute, GameState.scramble, luck, str(_dash_mode), String(_armed_verb)]
+	var sig: String = "%d|%d|%d|%d|%d|%d|%s|%s" % [GameState.bash, GameState.dash_charges,
+		GameState.transmute, GameState.scramble, luck, GameState.keys, str(_dash_mode),
+		String(_armed_verb)]
 	if sig == _select_stats_sig and _select_stats.get_child_count() > 0:
 		return
 	_select_stats_sig = sig
@@ -5650,6 +5813,14 @@ func _refresh_select_stats() -> void:
 		+ "Rarity ladders, event gambles, machine odds — anything with a better "
 		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
 		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
+	# RIFT KEYS (docs/rifts-design.md §8), a readout rather than a button: a key is
+	# spent by TAKING a rift card, which the offering deals into its empty slots
+	# while one is held. Drawn at zero too, like Luck, so the stat can be found
+	# before the first key turns up.
+	_select_stats.add_child(_stat_chip("🗝 Keys %d" % GameState.keys, GameState.keys,
+		UITheme.RIFT,
+		"Rift Keys. While you hold one, every slot the offering leaves empty is dealt a rift card: a game from beyond the map, and the game two hops away its rift leads to.
+Taking a rift card spends a key, and the rift only goes one way."))
 
 # The pack strip above the board is built by PackStrip; the page owns the
 # container and decides WHEN it is redrawn, the strip decides what goes in it.

@@ -52,6 +52,11 @@
   --success:   #6fdc8d;
   --danger:    #f77f71;
   --curse:     #c68df0;
+  /* RIFTS (docs/rifts-design.md §9): UITheme.RIFT and RIFT_DEEP, the cold teal
+   * on deep violet nothing else here uses — a rift is the one stop that is not an
+   * influence. */
+  --rift:      #66ebe0;
+  --rift-deep: #561f8a;
   /* UITheme.UNBEATEN — a stop the run walked away from. */
   --unbeaten:  #d97821;
 
@@ -532,6 +537,21 @@ html, body {
   flex: 0 0 auto;
 }
 .now-cover:not([src]) { visibility: hidden; }
+/* THE RIFT'S SWIRL, in CSS: a teal ring with a violet glow that turns slowly
+ * round it. Outline and box-shadow only, so it costs no layout. */
+.now-cover.rift {
+  border-color: var(--rift);
+  outline: 2px solid var(--rift);
+  outline-offset: 1px;
+  animation: rift-swirl 6s linear infinite;
+}
+@keyframes rift-swirl {
+  0%   { box-shadow: 4px 0 8px 2px var(--rift-deep), -3px 0 6px 1px rgba(102, 235, 224, 0.45); }
+  25%  { box-shadow: 0 4px 8px 2px var(--rift-deep), 0 -3px 6px 1px rgba(102, 235, 224, 0.45); }
+  50%  { box-shadow: -4px 0 8px 2px var(--rift-deep), 3px 0 6px 1px rgba(102, 235, 224, 0.45); }
+  75%  { box-shadow: 0 -4px 8px 2px var(--rift-deep), 0 3px 6px 1px rgba(102, 235, 224, 0.45); }
+  100% { box-shadow: 4px 0 8px 2px var(--rift-deep), -3px 0 6px 1px rgba(102, 235, 224, 0.45); }
+}
 
 /* WHICH ATTEMPT THIS IS. Gold rather than red: the count is not itself a threat,
  * it is the tally of how many times this game has already been walked away from —
@@ -1068,6 +1088,9 @@ html, body {
 .rung.amulet .rung-name { color: var(--accent); }
 .rung.amulet .rung-tag { color: var(--accent); }
 
+.rung.rift { border-color: var(--rift); border-style: dashed; }
+.rung.rift .rung-tag { color: var(--rift); }
+
 .rung.pinned { border-color: var(--curse); }
 .rung.pinned .rung-tag { color: var(--curse); }
 
@@ -1165,6 +1188,8 @@ html, body {
 }
 /* The destination, reached or not. */
 .stop.amulet img { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A rift game: the outline channel is free, because a rift is never the Amulet. */
+.stop.rift img { outline: 2px dashed var(--rift); outline-offset: 2px; }
 /* The Amulet the run has not reached yet: drawn dashed and faded, the way
  * RunOverScreen draws the gap a lost run never closed. It has no outcome to
  * report, so the border carries the destination's colour here and nowhere else. */

@@ -300,7 +300,21 @@ func _accent() -> Color:
 		return UITheme.GOLD
 	if bool(_choice.get("boss", false)):
 		return UITheme.DANGER
+	if _is_rift():
+		return UITheme.RIFT
 	return UITheme.type_color(int(game.type)) if game != null else UITheme.ACCENT
+
+# Whether this card's NODE is a rift game (docs/rifts-design.md). Read off the
+# slot, as the offering does, so a rift Transmute has refilled stays a rift.
+func _is_rift() -> bool:
+	if _choice.has("rift_key"):
+		return true
+	var slot := StringName(_choice.get("slot", &""))
+	return slot != &"" and RunGraph.is_rift_game(slot)
+
+# A RIFT KEY card's destination (docs/rifts-design.md §8), or &"" on any other card.
+func _key_dest() -> StringName:
+	return StringName(_choice.get("rift_key", &""))
 
 # --- the arrival banner ----------------------------------------------------
 
@@ -404,6 +418,10 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# "How many doors does this open" is a routing fact, and routing is what the
 	# popup is opened to decide — so it heads the list.
 	var counts: Dictionary = connection_counts(StringName(_choice.get("slot", &"")))
+	# A RIFT KEY card's game is not on the map until the key is spent, so the graph
+	# has no doors to count for it; it will have exactly one, its destination.
+	if _key_dest() != &"":
+		counts = {"total": 1, "events": 0, "shops": 0}
 	var conn := Label.new()
 	conn.text = connection_text(counts)
 	conn.tooltip_text = connection_tip(game, counts)
@@ -446,6 +464,19 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		facts.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
 			String(pace.get("tip", ""))))
 
+	# THE RIFT'S DEAL (docs/rifts-design.md §6), said where the decision is made:
+	# the risk and the payout in one line.
+	if _key_dest() != &"":
+		var dest: GameData = Data.get_game(_key_dest())
+		facts.add_child(_fact_line("🗝 Spends a Rift Key — one way to %s"
+			% (dest.display_name if dest != null else String(_key_dest())), UITheme.RIFT,
+			"Taking this opens a rift: the key is spent, and the rift leads on to %s and never back to where you are now."
+			% (dest.display_name if dest != null else String(_key_dest()))))
+	if _is_rift():
+		facts.add_child(_fact_line("🌀 Rift: bodies hit ×%d, pay ×%d loot and chest"
+			% [GameLoop2.RIFT_MULT, GameLoop2.RIFT_MULT], UITheme.RIFT,
+			"The bodies that walk on here deal double damage for as long as they stand, wherever they follow you — and drop double loot and chest points when they fall. Beating this game doubles the win's own chest point too."))
+
 	# A game the run has already played pays a Dash for going back and beating it.
 	if bool(_choice.get("repeat", false)):
 		facts.add_child(_fact_line("⚡ Gain +%d Dash" % Overworld2.REPEAT_BEAT_DASH,
@@ -472,7 +503,21 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		frame.add_child(art)
+		if _is_rift():
+			# The offering's swirl, behind the cover and showing round it as a ring
+			# (OfferingCards.RIFT_RING), so the card opened is the card clicked.
+			var holder := Control.new()
+			holder.custom_minimum_size = COVER
+			holder.add_child(UITheme.rift_backdrop())
+			art.set_anchors_preset(Control.PRESET_FULL_RECT)
+			art.offset_left = OfferingCards.RIFT_RING
+			art.offset_top = OfferingCards.RIFT_RING
+			art.offset_right = -OfferingCards.RIFT_RING
+			art.offset_bottom = -OfferingCards.RIFT_RING
+			holder.add_child(art)
+			frame.add_child(holder)
+		else:
+			frame.add_child(art)
 		var cover_row := HBoxContainer.new()
 		cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 		cover_row.add_child(frame)
@@ -524,6 +569,10 @@ func _build_source_block() -> Control:
 		return null
 	var found: Dictionary = GameData.describe_influence(here, there)
 	if found.is_empty():
+		# A RIFT LINE is not an influence and is never presented as one
+		# (docs/rifts-design.md §1, §9): the slot where the proof would be says so.
+		if RunGraph.is_rift_game(here.id) or RunGraph.is_rift_game(there.id) or _key_dest() != &"":
+			return _build_rift_block(here, there)
 		return null
 	var influencer: GameData = found["from"]
 	var influenced: GameData = found["to"]
@@ -659,8 +708,33 @@ static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
 		return null
 	return load(path) as Texture2D
 
+# A PROOF THAT IS A CLIP — a developer saying it on a stream or a podcast. The
+# owner drops the `.mp4` in under the proof's own name, and
+# `tools/convert_proof_videos.py` writes the two files the game uses beside it:
+# the clip as Ogg Theora (the one format Godot plays) and a poster frame for the
+# thumbnail. A clip wins over a screenshot of the same connection.
+const PROOF_VIDEO_EXT := ".ogv"
+const PROOF_POSTER_EXT := ".poster.jpg"
+
+static func proof_video_path(from_id: StringName, to_id: StringName) -> String:
+	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_VIDEO_EXT]
+
+# The clip for this connection, or null when it has none.
+static func proof_video(from_id: StringName, to_id: StringName) -> VideoStream:
+	var path: String = proof_video_path(from_id, to_id)
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as VideoStream
+
+static func proof_poster(from_id: StringName, to_id: StringName) -> Texture2D:
+	var path: String = "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_POSTER_EXT]
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
 func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
-	var tex: Texture2D = proof_texture(from_id, to_id)
+	var video: VideoStream = proof_video(from_id, to_id)
+	var tex: Texture2D = proof_poster(from_id, to_id) if video != null else proof_texture(from_id, to_id)
 	if tex == null:
 		return null
 	var box := VBoxContainer.new()
@@ -674,7 +748,7 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	frame.tooltip_text = "Click to read it full size"
+	frame.tooltip_text = "Click to play the clip" if video != null else "Click to read it full size"
 	var art := TextureRect.new()
 	art.name = "Proof"
 	art.texture = tex
@@ -682,6 +756,21 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 	art.stretch_mode = TextureRect.STRETCH_SCALE
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(art)
+	if video != null:
+		# A ▶ over the poster's middle, so the thumbnail reads as a clip at a glance
+		# and not as a screenshot of a video.
+		var play := Label.new()
+		play.name = "PlayMark"
+		play.text = "▶"
+		play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		play.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		play.set_anchors_preset(Control.PRESET_FULL_RECT)
+		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		play.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
+		play.add_theme_color_override("font_color", Color.WHITE)
+		play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		play.add_theme_constant_override("outline_size", 8)
+		frame.add_child(play)
 	var more := Label.new()
 	more.text = "Click to read all of it"
 	more.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
@@ -695,13 +784,16 @@ func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
 		art.position = Vector2.ZERO
 		art.size = shown
 		frame.custom_minimum_size.y = minf(shown.y, PROOF_THUMB_H)
-		more.visible = shown.y > PROOF_THUMB_H + 0.5
+		more.visible = video == null and shown.y > PROOF_THUMB_H + 0.5
 	frame.resized.connect(fit)
 	fit.call()
 	frame.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			frame.accept_event()
-			open_proof(tex))
+			if video != null:
+				open_proof_video(video, tex.get_size())
+			else:
+				open_proof(tex))
 	return box
 
 # The screenshot at its own size (or the window's, if it is bigger), over the
@@ -736,10 +828,93 @@ func open_proof(tex: Texture2D) -> Control:
 	_proof_view = shade
 	return shade
 
+# THE CLIP, PLAYING, over the popup — the same shade a screenshot opens in, at the
+# poster's shape scaled to the window. A click on the clip pauses and resumes it
+# (and starts it again once it has finished); a click outside it, the ✕, or Escape
+# puts it away, and the sound stops with it.
+func open_proof_video(video: VideoStream, shape: Vector2) -> Control:
+	close_proof()
+	var shade := ColorRect.new()
+	shade.name = "ProofView"
+	shade.color = Color(UITheme.BG_DEEP, 0.92)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	var room: Vector2 = get_viewport_rect().size - VIEW_MARGIN * 2.0
+	if shape.x <= 0.0 or shape.y <= 0.0:
+		shape = Vector2(16, 9)
+	var fit: float = minf(room.x / shape.x, room.y / shape.y)
+	var player := VideoStreamPlayer.new()
+	player.name = "ProofVideo"
+	player.stream = video
+	player.expand = true
+	player.custom_minimum_size = shape * fit
+	player.mouse_filter = Control.MOUSE_FILTER_STOP
+	player.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	player.tooltip_text = "Click to pause or play"
+	player.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			player.accept_event()
+			if not player.is_playing():
+				player.paused = false
+				player.play()
+			else:
+				player.paused = not player.paused)
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(player)
+	shade.add_child(centre)
+	var close := Button.new()
+	close.text = "✕"
+	close.tooltip_text = "Close (Esc)"
+	close.position = Vector2(get_viewport_rect().size.x - VIEW_MARGIN.x - 40.0, VIEW_MARGIN.y * 0.5)
+	close.pressed.connect(close_proof)
+	shade.add_child(close)
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			accept_event()
+			close_proof())
+	add_child(shade)
+	_proof_view = shade
+	player.play()
+	return shade
+
 func close_proof() -> void:
 	if _proof_view != null and is_instance_valid(_proof_view):
 		_proof_view.queue_free()
 	_proof_view = null
+
+# The proof slot on a step through a rift: what the line is, in the place the
+# evidence for an influence would be, so a rift never reads as an unsourced claim.
+func _build_rift_block(here: GameData, there: GameData) -> Control:
+	var rift_game: GameData = there if RunGraph.is_rift_game(there.id) else here
+	var box := VBoxContainer.new()
+	box.name = "RiftBlock"
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
+	var head := Label.new()
+	head.text = "🌀  RIFT"
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	head.add_theme_color_override("font_color", UITheme.RIFT)
+	box.add_child(head)
+	var claim := Label.new()
+	claim.text = "Rift: no known influence"
+	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	claim.add_theme_color_override("font_color", UITheme.TEXT)
+	box.add_child(claim)
+	if _key_dest() != &"":
+		var dest: GameData = Data.get_game(_key_dest())
+		box.add_child(_source_note(("A Rift Key can tear the wall between here and %s open. "
+			+ "It is no influence, and no shortcut: the rift leads one way, on to %s, two "
+			+ "hops from where you stand.") % [there.display_name,
+			dest.display_name if dest != null else String(_key_dest())]))
+		return box
+	box.add_child(_source_note(("Two dimensions have merged here. %s has no known link to %s "
+		+ "— it was pulled onto this map through a rift, and the rift leads no shorter "
+		+ "than the roads already there.") % [rift_game.display_name,
+		(here if rift_game == there else there).display_name]))
+	return box
 
 func _source_note(text: String) -> Control:
 	var l := Label.new()
@@ -846,7 +1021,9 @@ func _build_enemy_block(game: GameData) -> Control:
 		String(enemy.goal_type).capitalize(),
 		GameLoop2.entry_goal(entry),
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
-		hp, "" if hp == 1 else "s", enemy.damage,
+		hp, "" if hp == 1 else "s",
+		# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
+		int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1),
 	]
 	box.add_child(goal)
 
@@ -1044,8 +1221,11 @@ func _build_route_column() -> Control:
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
+	var data: Dictionary = RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {}
+	if _key_dest() != &"" and amulet != &"":
+		data = _key_route(slot, _key_dest(), amulet)
 	return {
-		"data": RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {},
+		"data": data,
 		"current": slot,
 		"amulet": amulet,
 		"waypoint": &"",
@@ -1059,6 +1239,22 @@ func _ladder_cfg() -> Dictionary:
 			if _ladder_room != null and is_instance_valid(_ladder_room) else 0.0,
 	}
 
+
+# The route a Rift Key card would walk: its rift game, then the destination's own
+# shortest route on. The rift is not laid yet, so the graph cannot answer it; the
+# rung on top is stitched onto the destination's ladder, one step down.
+static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName) -> Dictionary:
+	var on: Dictionary = RunGraph.route_dag_via(dest, &"", amulet)
+	var layers: Array = [[rift_id]]
+	for layer in on.get("layers", []):
+		layers.append(layer)
+	var edges: Array = [{"from": rift_id, "to": dest, "from_depth": 0, "to_depth": 1}]
+	for e in on.get("edges", []):
+		var moved: Dictionary = (e as Dictionary).duplicate()
+		moved["from_depth"] = int(e.get("from_depth", 0)) + 1
+		moved["to_depth"] = int(e.get("to_depth", 0)) + 1
+		edges.append(moved)
+	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
 
 # --- the rung's card -------------------------------------------------------
 

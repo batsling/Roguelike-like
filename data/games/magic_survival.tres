@@ -8,8 +8,8 @@ id = &"magic_survival"
 display_name = "Magic Survival"
 year = 2019
 type = 0
-games_influenced = Array[StringName]([&"vampire_survivors", &"holocure_save_the_fans", &"spirit_hunters_infinite_horde"])
-influence_sources = PackedStringArray("https://en.wikipedia.org/wiki/Vampire_Survivors#:~:text=The%20game%20was%20inspired%20by,assets%2C%20art%2C%20and%20music.", "https://store.steampowered.com/app/2420510/HoloCure__Save_the_Fans/", "https://steamcommunity.com/games/1914580/announcements/detail/3096792662638547858")
+games_influenced = Array[StringName]([&"holocure_save_the_fans", &"spirit_hunters_infinite_horde", &"vampire_survivors"])
+influence_sources = PackedStringArray("https://store.steampowered.com/app/2420510/HoloCure__Save_the_Fans/", "https://steamcommunity.com/games/1914580/announcements/detail/3096792662638547858", "https://en.wikipedia.org/wiki/Vampire_Survivors#:~:text=The%20game%20was%20inspired%20by,assets%2C%20art%2C%20and%20music.")
 influence_relations = PackedStringArray("", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])

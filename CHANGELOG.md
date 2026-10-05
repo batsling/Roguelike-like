@@ -11,6 +11,80 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Proofs can be clips.** The owner's new proofs include ten videos (Tiny Rogues'
+  podcast, Hungry Horrors' dev stream). Godot only plays Ogg Theora, so
+  `tools/convert_proof_videos.py` turns each `<pair>.mp4` into a 720p `<pair>.ogv`
+  plus a `<pair>.poster.jpg`; the game's proof slot shows the poster with a ▶ and
+  plays the clip over the popup on a click. `proof_column.py` and the missing-proof
+  list count clips as proofs, and CI checks every MP4 has been converted. The
+  sheet's two new connections (Hades → UnderMine 2, Diablo → Tiny Rogues) and the
+  Hungry Horrors row now naming Don't Starve Together are imported; two proof
+  files were renamed to their games' ids (`don_t_starve_together`, `pok_rogue`).
+
+- **Rifts, step 4: Rift Keys** (`docs/rifts-design.md` §8). While you hold a key
+  (`GameState.keys`), every slot the offering leaves empty is dealt a **rift
+  card**: a connectionless game and the game exactly two hops away its rift would
+  lead to, shown as `🗝 RIFT` with `N away → Destination`. Taking one spends a key
+  and opens the rift **one way**: the rift game is laid hanging off its destination
+  only, so it can never shorten anything, and its bodies are rift bodies (×2). A
+  Scramble re-deals the cards, game and destination both; Bash knocks the game out
+  of the pool and Transmute turns it away, each re-dealing the card. The popup
+  says what the key buys and draws the route through the rift. Key sources in
+  items and loot are still the owner's to place. The key count sits with the other
+  charges under the offering (`🗝 Keys N`), and a key gained while the offering is
+  up deals its rift cards at once.
+
+- **Rifts, step 3: rift enemies** (`docs/rifts-design.md` §6–7). The bodies a
+  rift game stands up carry a `rift` mark for as long as they stand, wherever
+  they follow you: they **hit for ×2**, and when they fall they drop **two pieces
+  of loot** and bank **double chest points**. Beating a rift game doubles the win's
+  own chest point too; gold is unchanged. The mark is saved with the body.
+  **Bash on a rift keeps the rift** and swaps the game inside it for another rift
+  game, closing it only when the pool is empty. **Dash** never lists a rift game
+  and no **teleport** lands on one. The checklist marks rift bodies with `🌀` and
+  quotes their real damage, the enemy card says why it is doubled, and a rift
+  card's popup states the deal.
+
+- **Rifts, step 2: rifts look like rifts** (`docs/rifts-design.md` §9). A rift
+  game's card in the offering has a **swirl** behind its cover
+  (`shaders/rift_swirl.gdshader`, domain-warped noise in a cold teal on deep
+  violet, slowly turning), showing as a ring round the art, plus a teal frame and
+  `🌀 RIFT` in the flag line, all without adding a row to the 720p page. Its popup
+  has the same swirl, and a step into or out of a rift shows **"Rift: no known
+  influence"** where the proof would be, so a rift never reads as an unsourced
+  influence. On the route ladder and run map a step through a rift is a **dashed
+  teal line** and a rift game's rung is ringed in teal with a `🌀`. The OBS overlay
+  gets a `rift` flag on the current game, road stops and map rungs, and rings a
+  rift game's cover in an animated CSS swirl. `🌀` was added to the shipped emoji
+  subset.
+
+- **Rifts, step 1: every run pulls a few connectionless games into the map**
+  (`docs/rifts-design.md`). A rift is an off-map game joined to two map games
+  that were already exactly two hops apart, so it **never shortens a path**: the
+  start band, Amulet pressure and teleports read the same distances as before,
+  measured as zero moved distances over 80 seeded runs. What a rift does is widen
+  a route by one game.
+  - **Path rifts** (one a run on the start cards' optimal routes, a second only
+    if a card still needs one; measured: one in every run) let the start
+    panel hold a **higher route floor of 6**, falling back to 5 only for Amulets
+    that need a rift to be usable at all. That rescues **12 of the 14 owned
+    Amulets refused before** (the deckbuilder cluster around Slay the Spire) and
+    Slay the Spire itself on the full catalogue; owned Slay the Spire and
+    Serpentcoil Island stay refused by decision. **World rifts** (10 a run) pair
+    up dead ends hanging off the same hub, at most two per hub.
+  - Rift games favour games never rifted before and skip last run's
+    (`GameStats.rift_count` / `last_rifts`), are always Enemies, are never the
+    Amulet or a start, and leave the off-map pool while laid. Rifts always leave
+    each genre **two off-map games for Transmute**, which swaps within a genre and
+    has as little as one Traditional game to draw on.
+  - **Transmute on a rift game** gives another random rift game of any genre; the
+    slot keeps its two rift links.
+  - `RunGraph` lays the run's rifts over the adjacency; generation always measures
+    the bare map. `GameState.rifts` is saved with the run and cleared on reset. A
+    **Rifts** toggle sits under Amulet generation in Settings (on by default). The
+    atlas still draws only real influences, so a route step through a rift is left
+    out of its trail until step 2 gives rifts their own look.
+
 - **A stream-clarity pass: bigger board numbers, one checklist row per KIND of
   body, a tidy toast column, and pixel art that stays pixel art.**
   - **Identical bodies share one checklist row** (`ReportChecklist.group_bodies`).

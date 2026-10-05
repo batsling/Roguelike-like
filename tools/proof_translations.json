@@ -1,0 +1,90 @@
+{
+ "_about": "English translations set under proofs that are in another language, by `node tools/capture_proof.js --translate` (and at the end of --export). Key: the proof's file in images2.0/proof/. `from`: the language. `text`: the translation, of the whole picture's words where it is short, of the passage that proves the connection where it is long. `sha1` is written by the tool: the fingerprint of the picture WITH its translation, so a done one is left alone and a replaced one gets its translation again. Delete `sha1` to have it set again.",
+ "files": {
+  "enter_the_gungeon---the_unliving.png": {
+   "from": "Russian",
+   "text": "Tom: @Lorge The enemies will be varied; we'll try to make them as interesting as possible. You've already seen that we have blacksmiths and werewolves. And in the city there will be knights and higher-level opponents too. The game has its own lore, so your run will have a meaning and an end goal (like in Enter the Gungeon and in Hades). Although since it's a roguelite, we're betting on replayability here rather than a single playthrough. As for the corruption of locations, we'll think about it; I've passed it on to our game designer. We understand that everyone wants more content and different features, but it's physically impossible for us to implement everything you'd like to see in the game).\n\nWe don't ban anyone for discussing the game. The only thing is, try not to flood: post one thought in one message, not one word per message)) It's easier to read that way.",
+   "sha1": "2680a013868320ba30024ba92fe4e22c5b2657cd"
+  },
+  "hades---the_unliving.png": {
+   "from": "Russian",
+   "text": "Tom: @Lorge The enemies will be varied; we'll try to make them as interesting as possible. You've already seen that we have blacksmiths and werewolves. And in the city there will be knights and higher-level opponents too. The game has its own lore, so your run will have a meaning and an end goal (like in Enter the Gungeon and in Hades). Although since it's a roguelite, we're betting on replayability here rather than a single playthrough. As for the corruption of locations, we'll think about it; I've passed it on to our game designer. We understand that everyone wants more content and different features, but it's physically impossible for us to implement everything you'd like to see in the game).\n\nWe don't ban anyone for discussing the game. The only thing is, try not to flood: post one thought in one message, not one word per message)) It's easier to read that way.",
+   "sha1": "2680a013868320ba30024ba92fe4e22c5b2657cd"
+  },
+  "hades---cinderia.png": {
+   "from": "Chinese",
+   "text": "(replying to \"Oh the game is called HadesGame internally\")\n小雨xiaoYu: You found us out!",
+   "sha1": "a94a4f32619bbe44a3caf136af704da66399a123"
+  },
+  "into_the_breach---swordship.png": {
+   "from": "French",
+   "text": "Zag: pop quiz: what are these games (on the right)?\nDeleted User: Into the Breach, Nex Machina, The Next Penelope. A bit easy, I'd say.\nZag: too easy haha. They're among our inspirations for Swordship, so we're taking the chance to give away copies of them this weekend 🙂",
+   "sha1": "61bf00f3438703cddc987bdcd6dfbd89df21317f"
+  },
+  "slay_the_spire---monmusu_gladiator.png": {
+   "from": "Japanese",
+   "text": "ウェレイ: I know it would be a lot of work to implement, but how about consumable items? (In StS they're potions.)\n湊あおい (ZephyrStudio): We did consider something like StS's potions, but having them exist alongside artifacts seemed like it would get confusing, so we passed on it. We're thinking we might get the same kind of mechanic by giving more chances to obtain consumable artifacts, like the mushrooms and potions in Mongura.",
+   "sha1": "dd58dcf03a70c2fef43922a05444ee3fa75362bc"
+  },
+  "vampire_survivors---army_of_ruin.png": {
+   "from": "Spanish",
+   "text": "WaaghMan: Hi! The fusion question is a tricky one, and it's closely tied to the weapon evolution system we use now.\n\nIt's no surprise to say that we took Vampire Survivors' evolutions as our starting point, where you need a specific weapon and trinket to evolve a weapon. Although it sounds good on paper, we felt that in the end it pushes you hard into following certain equipment patterns (if you know weapon A evolves when you have trinket B, you'll always try to carry both), which honestly seemed too predictable and boring to us. The element system is a middle ground that allows some freedom of equipment and generally guarantees a minimum number of evolutions per run, without forcing you to always carry the same set of trinkets.\n\nFusion evolutions have a similar problem: if you know two weapons evolve together, you'll feel forced to pick both if you want to maximise your effectiveness.\n\nIt also matters that making a working system for this with the 50+ weapons now available gets out of hand combinatorially: just for every weapon to have at least one shared evolution, we'd need to make another 25 new weapons, which is basically half of what we've made so far.",
+   "sha1": "f18b48c63586a3942bfc5ae4eced0682127c4fcc"
+  },
+  "vampire_survivors---sodaman.png": {
+   "from": "Turkish",
+   "text": "Arif: Hello, soda lovers!\n\n(YouTube link)\n\nThe second video in our devlog series about Sodaman's development is out! We're looking forward to your likes and comments!\n\nTake care, open a cold soda and enjoy the devlog 🍹 @everyone\n\n(The linked video, in English: \"Adding a Survivors-like Style HORDE System To Our Game | Devlog 1\".)",
+   "sha1": "a44bc702b58800ca3fb33fc8bdda466e8464ae1d"
+  },
+  "brotato---cluckmech_oasis.png": {
+   "from": "Chinese",
+   "text": "卤蛋 (Lu Dan): Let me add something. Slay the Spire had an especially big influence on Cluckmech Oasis early on; it's what led us to make it a roguelike deckbuilder. But in the middle and later stages of development, Brotato had just come out, and everyone on our team was hooked on it.",
+   "sha1": "2d32035d871bbd0363a0ac28737bdf2842e97a80"
+  },
+  "inscryption---lethal_dungeon.png": {
+   "from": "Japanese",
+   "text": "Nihoe: I was influenced by all sorts of card games such as Inscryption and Shadowverse, but I was especially influenced by Baba Is You.",
+   "sha1": "78362d026bcdc5ec6bab35dfcfbf6d1dfc6edd63"
+  },
+  "luck_be_a_landlord---super_tax_city.png": {
+   "from": "Japanese",
+   "text": "This is a game we're exhibiting at Game Dungeon 5, held tomorrow (5/4)!\n\nIt's a city-building roguelite in the style of \"Luck be a Landlord\" (『幸運の大家様』, its Japanese title), so if you like games like that, please come by!\n\nYou can try the demo at the 4th-floor booth [4S-20] 🎮",
+   "sha1": "64988661c3044f33e1c78ed40ae25e0fb48acb7b"
+  },
+  "nuclear_throne---spellmasons.png": {
+   "from": "Japanese",
+   "text": "Jordan: My main inspirations were Nuclear Throne, Magicka, Hoplite on iOS, and Into the Breach. The biggest influence of all was Into the Breach. Thinking through your moves carefully and watching a plan you made come together is a lot of fun.",
+   "sha1": "ebecb106e2232e9ca3b63cfdc68c3de1d226c74c"
+  },
+  "slay_the_spire---super_bullet_break.png": {
+   "from": "Japanese",
+   "text": "Nanji: In the trial-and-error phase we tried all sorts of things, like making something like an ordinary vertical shooter, or thinking about whether we could keep the pulling action, but it just didn't work out.\nThen one of the development staff loved Slay the Spire, so we tried going in a roguelike (roguelite) direction, and the idea came up that it would let us make use of having lots of characters, and we thought, that could be good.\nSo we started making it, and decided: \"We can go in this direction!\"",
+   "sha1": "a96ec9987397808ae6f9b6439d8e3b2c780b26c1"
+  },
+  "the_binding_of_isaac---rampage_knights.png": {
+   "from": "Czech",
+   "text": "The Czech studio Rake in Grass is best known for the game Jets'n'Guns; 10 years have passed since then, and in that time they haven't scored any massive hit (which doesn't have to be a bad thing). Most recently, two years ago, they failed on Kickstarter to push through the card RPG Northmark, which in the end wasn't worth the sin anyway. That should be changed, though, by the co-op 2D arcade game Rampage Knights, which the developers themselves describe on IndieGoGo as a mix of Binding of Isaac and Golden Axe.",
+   "sha1": "ee05e93a0a10b113c18da7dc0f45b15b7c72a283"
+  },
+  "torneko_s_great_adventure_mystery_dungeon---the_world_is_your_weapon.png": {
+   "from": "Japanese",
+   "text": "【The World is your Weapon】\n★News★\nNext week's update, on Friday 7/26, adds a roguelike mode in the style of \"Fushigi no Dungeon\" (Mystery Dungeon)!\n\nIn this world your weapons grow huge, and the enemies even come equipped with weapons...\n\nYou'll be able to play a pretty wild roguelike in true \"Buki Atsume\" (weapon-collecting) style!\nPlease look forward to it!",
+   "sha1": "95b1704c281d5d502970b7bd575fbdd98276ad8c"
+  },
+  "cupiclaw---raccoin_coin_pusher_roguelike.png": {
+   "from": "Chinese",
+   "text": "Among the games that made a strong impression on us is \"Cupiclaw\" (丘比娃娃机), a claw-machine roguelike in which the dolls differ: different sizes, and different point values.",
+   "sha1": "022bee9415d215fb38432e8fcfa54b90c2d36322"
+  },
+  "spelunky_classic---heavy_bullets.png": {
+   "from": "Portuguese",
+   "text": "T.V.: The development process was natural; I started with a prototype and little by little added ideas and content, keeping what seemed good and discarding what didn't work. The difficulty, I think, was heavily influenced by games I've been playing, like Spelunky, Hotline Miami and others, where the player really has to earn the victory and isn't handed everything on a silver platter.",
+   "sha1": "6120056f62f81e280d8b7be0239d8a0a32fb086b"
+  },
+  "noita---magicraft.png": {
+   "from": "Chinese",
+   "text": "By then I'd already thought up a lot: the butterfly lasers and rolling stones in the game now, for example, were all designed back then. But later, by chance, I played Noita, and suddenly understood how the game should be made.",
+   "sha1": "9f26e4df43ab239a81264bf4a5bf6971c8405106"
+  }
+ }
+}

@@ -383,7 +383,10 @@ static func groupable(entry: Dictionary) -> bool:
 
 static func group_key(entry: Dictionary) -> String:
 	var e: GoalEnemyData = entry.get("enemy")
-	return "%s|%s" % [String(e.id) if e != null else "", GameLoop2.goal_text_for(entry)]
+	# A rift body hits twice as hard as its twin (docs/rifts-design.md §6), so the
+	# two are not "the same body twice" and never share a row.
+	return "%s|%s|%s" % [String(e.id) if e != null else "", GameLoop2.goal_text_for(entry),
+		"rift" if GameLoop2.is_rift_body(entry) else ""]
 
 # `entries` in the same order, with identical groupable bodies folded into the
 # first one's place: [[entry], [entry, entry, entry], …].
@@ -1865,8 +1868,9 @@ func _add_standing_body_row(entry: Dictionary, at_the_end: bool = false) -> void
 		tally = "   (%d / %d done)" % [int(entry.get("progress", 0)),
 			e.count_target()]
 	_box.add_child(_objective_row(
-		"%s — %s%s   (dmg %d)" % [GameLoop2.goal_text_for(entry),
-			e.display_name, tally, e.damage],
+		"%s — %s%s%s   (dmg %d)" % [GameLoop2.goal_text_for(entry),
+			"🌀 " if GameLoop2.is_rift_body(entry) else "", e.display_name, tally,
+			GameLoop2.enemy_damage(entry)],
 		tint, _enemy_icon_rect(e, tint, GameLoop2.entry_image(entry)), inst,
 		_finish_mark() if at_the_end else null))
 	# The way out of that goal, if something burned this body (§13) — read here
@@ -1911,7 +1915,9 @@ func _add_standing_group_row(group: Array, at_the_end: bool = false) -> void:
 	if at_the_end:
 		tint = UITheme.GOLD
 	var row: Control = _objective_row(
-		"%s — %s   (dmg %d each)" % [GameLoop2.goal_text_for(first), e.display_name, e.damage],
+		"%s — %s%s   (dmg %d each)" % [GameLoop2.goal_text_for(first),
+			"🌀 " if GameLoop2.is_rift_body(first) else "", e.display_name,
+			GameLoop2.enemy_damage(first)],
 		tint, _enemy_icon_rect(e, tint, GameLoop2.entry_image(first)), 0,
 		_finish_mark() if at_the_end else null)
 	var line: HBoxContainer = row.get_child(0)
@@ -2027,7 +2033,7 @@ func _standing_checklist_sig() -> String:
 		# …and the counted goal's tally, which this list now prints (§7.7) and which
 		# therefore has to be a reason to repaint, the same as the goal text is.
 		parts.append("%d:%s:%s:%d:%s:%d" % [int(entry.get("instance", 0)),
-			GameLoop2.goal_text_for(entry), e.display_name, e.damage,
+			GameLoop2.goal_text_for(entry), e.display_name, GameLoop2.enemy_damage(entry),
 			str(GameLoop2.in_front(entry)), int(entry.get("progress", 0))])
 		for alt in GameLoop2.alternatives_for(entry):
 			parts.append("/%s:%d" % [String((alt["status"] as StatusData).id),

@@ -8,8 +8,8 @@ id = &"ballionaire"
 display_name = "Ballionaire"
 year = 2024
 type = 2
-games_influenced = Array[StringName]([&"menherarium", &"omelet_you_cook", &"dicevaders"])
-influence_sources = PackedStringArray("https://www.youtube.com/watch?v=cjh1J2AuT_4", "https://store.steampowered.com/app/3205380/Omelet_You_Cook/", "check folder")
+games_influenced = Array[StringName]([&"dicevaders", &"menherarium", &"omelet_you_cook"])
+influence_sources = PackedStringArray("check folder", "https://www.youtube.com/watch?v=cjh1J2AuT_4", "https://store.steampowered.com/app/3205380/Omelet_You_Cook/")
 influence_relations = PackedStringArray("", "", "")
 tags = PackedStringArray("casino")
 enemy_pool = Array[StringName]([])

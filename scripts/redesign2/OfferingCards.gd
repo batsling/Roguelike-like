@@ -75,6 +75,8 @@ func render() -> void:
 # columns had to fit side by side. The badges have gone into GameChoiceModal, so
 # the art gets the room back.
 const COVER_SIZE := Vector2(150, 200)
+# How far a rift card's cover is inset over its swirl (see _make_choice_card).
+const RIFT_RING := 7.0
 
 # THE ROW IS AS TALL AS ITS TALLEST COVER, not as tall as a portrait box.
 #
@@ -180,7 +182,15 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)
 
 	var amulet: bool = bool(choice["amulet"])
-	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet else UITheme.type_color(int(game.type)))
+	# A RIFT GAME (docs/rifts-design.md §9) is on the map through a rift, not an
+	# influence, and its card says so three ways without adding a row: the flag,
+	# the frame, and the swirl behind the cover. Read off the SLOT, so a rift that
+	# Transmute has refilled is still drawn as a rift.
+	# A RIFT KEY card (§8) is a rift not opened yet, and is drawn as one.
+	var keyed: bool = choice.has("rift_key")
+	var rift: bool = keyed or RunGraph.is_rift_game(slot_of(choice))
+	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet
+		else (UITheme.RIFT if rift else UITheme.type_color(int(game.type))))
 
 	# THE ONE THING that has to be legible without opening anything: this is the
 	# game the run ends on. The row is mounted on every card, blank off the Amulet,
@@ -232,6 +242,19 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.text = "🛒 SHOP"
 		flag.tooltip_text = _shop_card_tooltip(slot_of(choice))
 		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
+	elif keyed:
+		var dest: GameData = Data.get_game(StringName(choice["rift_key"]))
+		flag.text = "🗝 RIFT"
+		flag.tooltip_text = ("Spend a Rift Key to open a rift onto %s. It leads one way, on to %s."
+			% [game.display_name, dest.display_name if dest != null else String(choice["rift_key"])])
+		flag.add_theme_color_override("font_color", UITheme.RIFT)
+	elif rift:
+		# A rift is never the Amulet nor a shop (both rules of the generator), so
+		# the flag's slot is free for it.
+		flag.text = "🌀 RIFT"
+		flag.tooltip_text = ("%s has no known influence on this map — it came through a rift. "
+			% game.display_name) + "A rift never shortens a route; it only widens one."
+		flag.add_theme_color_override("font_color", UITheme.RIFT)
 	else:
 		flag.text = ""
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
@@ -287,6 +310,21 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	dist.custom_minimum_size = Vector2(0, BADGE_LINE)
 	dist.add_theme_font_size_override("font_size", DIST_FONT)
 	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+	if keyed:
+		# WHERE THE RIFT LEADS, on the same one line: the distance first so a trim
+		# eats the end of the destination's name and never the number. Whole in
+		# the tooltip and in the popup.
+		var dest: GameData = Data.get_game(StringName(choice["rift_key"]))
+		var dest_name: String = dest.display_name if dest != null else String(choice["rift_key"])
+		var hops: int = _page.steps_to_amulet(slot_of(choice))
+		dist.text = ("%d away → %s" % [hops, dest_name]) if hops > 0 else "→ %s" % dest_name
+		dist.autowrap_mode = TextServer.AUTOWRAP_OFF
+		dist.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		dist.clip_text = true
+		dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+		dist.tooltip_text = "The rift leads one way, to %s — %s." % [dest_name,
+			_page.amulet_distance_text(hops - 1) if hops > 1 else "the Amulet"]
+		dist.add_theme_color_override("font_color", UITheme.RIFT)
 	card.add_child(dist)
 
 	# NO TOOLTIP. The offering is the one place on the page that does NOT get a
@@ -315,7 +353,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# (Overworld2.BASH_ORANGE / UITheme.ACCENT) — three near-matches would read as
 	# three mechanics rather than as one verb pointing at these cards.
 	var aim_tint: Color = _page.BASH_ORANGE if armed == &"bash" else UITheme.ACCENT
-	var rest_border: Color = UITheme.GOLD if amulet else UITheme.BORDER
+	var rest_border: Color = UITheme.GOLD if amulet else (UITheme.RIFT if rift else UITheme.BORDER)
 	if aimable:
 		rest_border = aim_tint
 	var frame_n := UITheme.flat(
@@ -338,9 +376,19 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	btn.pressed.connect(func(): _page.open_choice(index))
 	btn.mouse_entered.connect(func(): show_preview(index))
 	btn.mouse_exited.connect(clear_hover_grant)
+	# The swirl goes in FIRST so it draws under the cover, and the cover is inset
+	# over it by RIFT_RING so it shows as a ring even round art that fills the
+	# whole frame (most covers do, so a letterbox alone would hide it).
+	if rift:
+		btn.add_child(UITheme.rift_backdrop(float(index) * 3.7))
 	if game.cover_image != null:
 		var art := TextureRect.new()
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		if rift:
+			art.offset_left = RIFT_RING
+			art.offset_top = RIFT_RING
+			art.offset_right = -RIFT_RING
+			art.offset_bottom = -RIFT_RING
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

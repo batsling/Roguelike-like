@@ -285,6 +285,21 @@ func _build_ui() -> void:
 	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(amulet_hint)
 
+	var rifts_chk := CheckButton.new()
+	rifts_chk.text = "Rifts"
+	rifts_chk.button_pressed = Settings.rifts_enabled
+	rifts_chk.toggled.connect(func(on: bool) -> void:
+		Settings.set_rifts_enabled(on))
+	vbox.add_child(rifts_chk)
+
+	var rifts_hint := Label.new()
+	rifts_hint.text = "When on, each run pulls a few games with no known influences into the map through rifts. A rift never shortens a route; it widens the roads to the amulet and gives stranded games a place to be played. Takes effect from the next run."
+	rifts_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rifts_hint.custom_minimum_size = Vector2(0, 60)
+	rifts_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	rifts_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(rifts_hint)
+
 	vbox.add_child(HSeparator.new())
 
 	var rules_heading := Label.new()
