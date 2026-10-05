@@ -271,6 +271,10 @@ var game_in_play: bool = false
 #                 any number of later games (§2), and a counter that reset every
 #                 time you walked to the next game would be a counter nobody
 #                 could ever finish.
+#   "rift"        the body walked on at a RIFT GAME (docs/rifts-design.md §6): it
+#                 hits for RIFT_MULT times its damage and pays RIFT_MULT times the
+#                 loot and chest points, for as long as it stands, wherever it
+#                 follows you. Absent on every body that did not.
 #   "quiet_stun"  how many of the body's Stun stacks were laid by a GOAL HIT it
 #                 survived (§7.2), and so hang no bonus row off it. Never more
 #                 than the Stun it holds; absent or 0 on a body nobody hit.
@@ -313,6 +317,7 @@ const BODY_KEYS := {
 	"revives": true, "fades": true, "hidden": true, "illusionist": true,
 	"stolen": true, "fleeing": true, "tags": true,
 	"corpse": true, "corpse_revive": true, "progress": true, "quiet_stun": true,
+	"rift": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -550,7 +555,10 @@ func chest_point_breakdown() -> Array:
 func claim_chests(beaten: bool) -> Array:
 	var out: Array = []
 	if beaten:
-		out.append({"points": 1 + chest_points, "boss": false})
+		# THE WIN'S OWN POINT doubles on a rift game (docs/rifts-design.md §6); the
+		# bodies' points were already doubled as each rift body fell.
+		var base: int = RIFT_MULT if RunGraph.is_rift_game(GameState.current_game_id) else 1
+		out.append({"points": base + chest_points, "boss": false})
 	for points in boss_chests:
 		out.append({"points": int(points), "boss": true})
 	chest_points = 0
@@ -1306,6 +1314,8 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		# something that can be recomputed from the sheet, and a load that dropped
 		# it would take back two of the three bugs they had already gone and killed.
 		"progress": int(entry.get("progress", 0)),
+		# Off a rift (docs/rifts-design.md §6): the doubling rides the body.
+		"rift": bool(entry.get("rift", false)),
 	}
 
 # The ability rows as plain strings — StringName survives a JSON round trip as a
@@ -1391,6 +1401,8 @@ func _deserialize_entry(raw) -> Dictionary:
 		# A save written before §7.7 has no tally, and 0 is the right answer there:
 		# no goal in it was ever counted.
 		"progress": maxi(0, int(d.get("progress", 0))),
+		# A save written before rifts has no key, and no body in it came off one.
+		"rift": bool(d.get("rift", false)),
 	}
 
 func _names_of(list) -> Array:
@@ -1711,7 +1723,7 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # spent, the same bodies standing there, and the tier a third of a step higher.
 func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		escort_tier: int = -1, with_second_body: bool = true,
-		is_arrival: bool = true) -> int:
+		is_arrival: bool = true, rift: bool = false) -> int:
 	# A new game means a fresh tracker — whatever was logged against the last one
 	# is closed out — and a fresh escape gate with it: this game has not hurt you
 	# yet, whatever the last one did (§3.2). The same for what the last game's
@@ -1753,6 +1765,14 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 		var second_inst: int = _spawn_second_body(enemy, escort_type, escort_tier)
 		if second_inst > 0:
 			arrivals.append(second_inst)
+	# A RIFT GAME'S BODIES (docs/rifts-design.md §6): both of them, marked on the
+	# body so the doubling follows them off the rift. Not the capstone below, which
+	# is the road's pressure rather than anything this game stood up.
+	if rift:
+		for a in arrivals:
+			var idx: int = _index_of(int(a))
+			if idx >= 0:
+				stack[idx]["rift"] = true
 	# The other half of this arrival's spawn event, counted above: the every-third
 	# capstone, on top of the bodies that just walked on.
 	if is_arrival:
@@ -2622,8 +2642,9 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		# Where it is standing, read BEFORE the hit: a lethal one takes the body off
 		# the board, and the square it fell in is where its loot goes (§8.2).
 		var fell: Vector2i = _drop_cell_of(stack[idx])
+		var rift: bool = is_rift_body(stack[idx])
 		if _damage_enemy(idx, GOAL_HIT):
-			_defeat(e, true, res, fell)
+			_defeat(e, true, res, fell, true, rift)
 		else:
 			_stun_survivor(int(inst))
 	# WHAT THE END OF THIS GAME STANDS UP (§19.5), priced HERE and paid at step 5.
@@ -2944,12 +2965,13 @@ func fulfill(instance: int, record: bool = false) -> bool:
 		return false
 	var e: GoalEnemyData = stack[idx]["enemy"]
 	var fell: Vector2i = _drop_cell_of(stack[idx])
+	var rift: bool = is_rift_body(stack[idx])
 	if record:
 		cleared_this_game[instance] = true
 		goals_met_this_game += 1
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
-		_defeat(e, true, res, fell, record)
+		_defeat(e, true, res, fell, record, rift)
 		_admit_offgrid()
 	else:
 		# A COUNTED GOAL STARTS ITS TALLY OVER (§7.7). `health` is how many more
@@ -3052,10 +3074,11 @@ func fulfill_instead(instance: int, status_id: StringName) -> bool:
 		return true
 	var e: GoalEnemyData = stack[idx]["enemy"]
 	var fell: Vector2i = _drop_cell_of(stack[idx])
+	var rift: bool = is_rift_body(stack[idx])
 	instead_this_game[instance] = true
 	if _damage_enemy(idx, GOAL_HIT):
 		var res := {"defeats": [], "drops": 0}
-		_defeat(e, true, res, fell)
+		_defeat(e, true, res, fell, true, rift)
 		_admit_offgrid()
 	else:
 		_stun_survivor(instance)
@@ -4299,7 +4322,8 @@ func scramble() -> GoalEnemyData:
 	GameState.scramble -= 1
 	# NOT an arrival: this supersedes what arrived, with a new instance, so it must
 	# not tick the spawn counter (§19.2).
-	choose_game(fresh, &"", -1, true, false)
+	choose_game(fresh, &"", -1, true, false,
+		RunGraph.is_rift_game(GameState.current_game_id))
 	return fresh
 
 # D10 (§8): re-roll every NON-BOSS body on the battlefield where it stands.
@@ -4702,6 +4726,44 @@ func original_at(node_id: StringName) -> GameData:
 # is a separate question the overworld answers (Overworld2.bash_choice refills it
 # from the games connected to where the player stands, and leaves it empty when
 # that node has nothing left to give).
+# THE GAMES A RIFT CAN BE REFILLED WITH (docs/rifts-design.md §7): the rift pool
+# (connectionless games of any genre, not laid this run), less the game standing in
+# this rift now, anything on the offering, and anything bashed. Sorted, so a
+# seeded run refills the same way twice.
+func _rift_refill_pool(slot: StringName, on_map: Dictionary = {}) -> Array:
+	var inside: StringName = StringName(transmuted.get(slot, slot))
+	var pool: Array = []
+	for rift_id in RunGraph.rift_pool():
+		var rg: GameData = Data.get_game(rift_id)
+		if rg == null or rg.id == slot or rg.id == inside or on_map.has(rg.id) or is_bashed(rg.id):
+			continue
+		pool.append(rg)
+	pool.sort_custom(func(a, b): return a.id < b.id)
+	return pool
+
+# BASH ON A RIFT (docs/rifts-design.md §7): the rift stays and the game inside it
+# is replaced by another rift game, so the route keeps the width its card
+# promised. Spends a Bash charge. The game knocked out leaves the pool for the
+# rest of the run, as any bashed game does — unless it is the rift's own game,
+# which is the node itself and is retired by being painted over instead.
+#
+# Returns the new game, or null with nothing spent when there is no charge or the
+# pool is empty; the caller then bashes the rift shut like any other game.
+func bash_rift(slot: StringName) -> GameData:
+	if GameState.bash <= 0 or not RunGraph.is_rift_game(slot):
+		return null
+	var pool: Array = _rift_refill_pool(slot)
+	if pool.is_empty():
+		return null
+	var inside: StringName = StringName(transmuted.get(slot, slot))
+	GameState.bash -= 1
+	if inside != slot and not bashed.has(inside):
+		bashed.append(inside)
+	var replacement: GameData = pool[randi() % pool.size()]
+	transmuted[slot] = replacement.id
+	loop_changed.emit()
+	return replacement
+
 func bash_game(game_id: StringName) -> bool:
 	if GameState.bash <= 0 or is_bashed(game_id):
 		return false
@@ -4759,10 +4821,7 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	# of ANY genre, the pool rifts are filled from (docs/rifts-design.md §7). The
 	# slot keeps its two rift links; only the game inside the rift changes.
 	if RunGraph.is_rift_game(game_id):
-		for rift_id in RunGraph.rift_pool():
-			var rg: GameData = Data.get_game(rift_id)
-			if rg != null and rg.id != game_id and not on_map.has(rg.id) and not is_bashed(rg.id):
-				pool.append(rg)
+		pool = _rift_refill_pool(game_id, on_map)
 	else:
 		for off_id in RunGraph.off_map_ids():
 			var g: GameData = Data.get_game(off_id)
@@ -4920,7 +4979,9 @@ func second_body() -> GoalEnemyData:
 # the reward for beating a goal. A goal-hit fired off an effect (fulfill with
 # `record` false — the dev panel today) still drops, and does not count.
 func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
-		fell: Vector2i = OFF_FIELD, goal_kill: bool = true) -> void:
+		fell: Vector2i = OFF_FIELD, goal_kill: bool = true, rift: bool = false) -> void:
+	# A rift body pays RIFT_MULT times over: its loot and its chest points (§6).
+	var mult: int = RIFT_MULT if rift else 1
 	defeated_count += 1
 	# The per-game half of the same tally — what waives the end-of-game +1.
 	if goal_kill:
@@ -4934,7 +4995,7 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		# drives off enemy_defeated. We only tally the drop so this headless core
 		# stays scene-free and unit-testable.
 		if res.has("drops"):
-			res["drops"] = int(res.get("drops", 0)) + 1
+			res["drops"] = int(res.get("drops", 0)) + mult
 		# …and the RELIC half is banked, not dropped: chest points, spent in one go
 		# on the screen the game ends on. A body is worth its own difficulty; a boss
 		# banks a chest of its own instead, on its own terms (see `boss_chests`).
@@ -4943,9 +5004,9 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		# never reaches this function at all, so buying your way out of a goal must
 		# not buy a bigger chest either.
 		if enemy != null and enemy.is_boss():
-			boss_chests.append(1 + GameState.boss_chest_bonus())
+			boss_chests.append((1 + GameState.boss_chest_bonus()) * mult)
 		else:
-			var worth: int = chest_points_for(enemy)
+			var worth: int = chest_points_for(enemy) * mult
 			chest_points += worth
 			# Kept in step with the sum above, never derived from it later — see
 			# chest_point_sources for why the report's own defeat list will not do.
@@ -4999,7 +5060,11 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 	# `boss` is what an `if_boss` gate reads (Rocket, docs/loot-passives.md §3).
 	TriggerBus.enemy_killed.emit({"enemy": enemy,
 		"boss": enemy != null and enemy.is_boss()})
+	# The drop queue reads how many pieces this defeat pays off `defeat_loot`; none
+	# at all when the defeat paid no drop.
+	defeat_loot = mult if drop else 0
 	enemy_defeated.emit(enemy, fell)
+	defeat_loot = 1
 
 # Applies `damage` to the player. ONE SHIELD STOPS ONE INSTANCE OF DAMAGE (§3) —
 # the whole of it, whatever its size — and with no shield left it comes off
@@ -5639,8 +5704,25 @@ func enemy_damage(entry: Dictionary) -> int:
 	if enemy == null:
 		return 0
 	var totals: Dictionary = enemy_combat(entry)
-	return StatusData.apply_damage_mods(
+	var hit: int = StatusData.apply_damage_mods(
 		int(enemy.damage), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
+	# A RIFT BODY HITS TWICE AS HARD (docs/rifts-design.md §6), after everything
+	# else has had its say: the rift doubles what this body would have dealt.
+	return hit * RIFT_MULT if is_rift_body(entry) else hit
+
+# RIFTS (docs/rifts-design.md §6). A body that walked on at a rift game deals
+# RIFT_MULT times its damage and pays RIFT_MULT times the loot and chest points,
+# and keeps both for as long as it stands, wherever it follows you.
+const RIFT_MULT := 2
+
+func is_rift_body(entry: Dictionary) -> bool:
+	return bool(entry.get("rift", false))
+
+# How many pieces of loot the defeat being announced pays: RIFT_MULT for a rift
+# body, else one. Set by `_defeat` just before `enemy_defeated` fires, for the drop
+# queue to read off the same announcement (the signal's shape is shared with
+# listeners that only count).
+var defeat_loot: int = 1
 
 # Shield points `entry` still has to spend. Public because the board draws them.
 func enemy_shield(entry: Dictionary) -> int:

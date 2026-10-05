@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rifts, step 3: rift enemies** (`docs/rifts-design.md` §6–7). The bodies a
+  rift game stands up carry a `rift` mark for as long as they stand, wherever
+  they follow you: they **hit for ×2**, and when they fall they drop **two pieces
+  of loot** and bank **double chest points**. Beating a rift game doubles the win's
+  own chest point too; gold is unchanged. The mark is saved with the body.
+  **Bash on a rift keeps the rift** and swaps the game inside it for another rift
+  game, closing it only when the pool is empty. **Dash** never lists a rift game
+  and no **teleport** lands on one. The checklist marks rift bodies with `🌀` and
+  quotes their real damage, the enemy card says why it is doubled, and a rift
+  card's popup states the deal.
+
 - **Rifts, step 2: rifts look like rifts** (`docs/rifts-design.md` §9). A rift
   game's card in the offering has a **swirl** behind its cover
   (`shaders/rift_swirl.gdshader`, domain-warped noise in a cold teal on deep

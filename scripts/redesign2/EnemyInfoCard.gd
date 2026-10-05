@@ -130,7 +130,10 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	# body or clearing the Strength off it is the better move.
 	var dmg: int = GameLoop2.enemy_damage(entry)
 	var dmg_note: String = "%d per game, from the front" % dmg
-	if dmg != int(e.damage):
+	if GameLoop2.is_rift_body(entry):
+		# Off a rift (docs/rifts-design.md §6): doubled, and it stays doubled.
+		dmg_note += "  (×%d — it came through a rift)" % GameLoop2.RIFT_MULT
+	elif dmg != int(e.damage):
 		dmg_note += "  (%d before statuses)" % int(e.damage)
 	stat_col.add_child(_stat_row("⚔", "Damage", dmg_note, Color(1.0, 0.8, 0.35)))
 	# Shields only when it has some to spend: a body with none is the normal case

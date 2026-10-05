@@ -1,9 +1,10 @@
 # Rifts — design
 
-**Status: steps 1 and 2 of 5 built** (generation: path rifts, world rifts, the
-split floor, saving, the toggle, rift games as Enemies; and the visuals: the swirl
-on rift cards, the rift line and badge, the proof slot, the overlay flag). The
-rest is designed, not built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
+**Status: steps 1–3 of 5 built** (generation: path rifts, world rifts, the split
+floor, saving, the toggle, rift games as Enemies; the visuals: the swirl on rift
+cards, the rift line and badge, the proof slot, the overlay flag; and rift
+enemies: double damage, double loot and chest points, Bash, Dash and Teleport).
+Rift Keys are designed, not built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
 §7.4, …) refer to `docs/games-first-redesign.md`.
 
 ## 1. What a rift is
@@ -146,6 +147,10 @@ and **every offered card cleared its floor** with its rifts laid.
   toward the report's chest (§8.2). A rift body that follows you off the rift
   keeps its double damage for as long as it stands. This is the risk and the payout.
 - Not a Dash target, and Teleport never lands on one.
+- **Gold is not doubled.** The owner's deal is loot and chest value; a rift body
+  pays the ordinary gold.
+- **Beating a rift game doubles the win's own chest point** as well, so a rift
+  that was cleared without a kill still pays its double chest.
 
 ## 7. Verbs on a rift game
 
@@ -262,14 +267,42 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - The `🌀` glyph was added to `fonts/NotoEmoji-Subset.ttf`
   (`tools/build_glyph_font.py`).
 
+### Where step 3 lives
+
+- **The body carries it.** `GameLoop2.choose_game` takes `rift`, and marks every
+  arrival with the body key `"rift"` (in `BODY_KEYS`, saved and loaded with the
+  body). `Overworld2._commit_board_for_kind` reads it off the committed SLOT,
+  because `pick` moves the run onto the slot only after the commit. Scramble
+  re-rolls on the current game and keeps it. The every-third capstone boss is the
+  road's pressure, not the rift's, and is not marked.
+- **`GameLoop2.RIFT_MULT = 2`.** `enemy_damage` multiplies after the statuses, so
+  the swing, the forecast, the board's ⚔ badge, the info card and the checklist's
+  "dmg" all agree. `_defeat(..., rift)` multiplies the body's chest points (and a
+  boss's chest) and sets `defeat_loot` for the drop queue
+  (`DropQueue.on_enemy_defeated` lays one piece per count; the second lands on the
+  nearest free square). `claim_chests` doubles the win's base point when the game
+  reported is a rift game.
+- **Bash:** `GameLoop2.bash_rift` refills the rift from `_rift_refill_pool` (the
+  rift pool less the game inside, the offering and anything bashed), painted over
+  the slot with `transmuted`, so the node and both its links stay. A knocked-out
+  refill joins `bashed`; the rift's own game is the node and is only painted
+  over. `Overworld2.bash_choice` tries it first and falls through to an ordinary
+  bash only when the pool is empty. Transmute uses the same pool.
+- **Dash** (`Overworld2._dash_list`) and every **teleport** pool
+  (`_reachable`, `loot_teleport`) skip rift games.
+- Shown: a `🌀` before a rift body's name on the checklist (and rift bodies never
+  group with plain twins), "×2 — it came through a rift" on the enemy card, the
+  doubled dmg on the popup's enemy, and a "🌀 Rift: bodies hit ×2, pay ×2 loot and
+  chest" fact on a rift card's popup.
+
 ### Build order
 
 1. **Generation** (built): path rifts, world rifts and the split floor in
    `RunGraph`, saved with the run, verified against the real measurement (§5).
 2. **Visuals** (built): the swirl background on rift cards, map line, badge,
    proof slot, overlay flag.
-3. **Rift enemies:** Enemies-only nodes, ×2 damage, ×2 loot and chest value; Bash
-   and Transmute swap; excluded from Dash and Teleport.
+3. **Rift enemies** (built): Enemies-only nodes, ×2 damage, ×2 loot and chest
+   value; Bash and Transmute swap; excluded from Dash and Teleport.
 4. **Rift Keys:** rift cards in empty offering slots; Scramble rerolls both the
    rift game and the destination.
 5. **Later (owner):** key sources in items and loot; items and events that

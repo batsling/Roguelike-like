@@ -68,6 +68,14 @@ func on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 	if GameLoop2.run_over:
 		return
 	var from_boss: bool = enemy != null and enemy.is_boss()
+	# A RIFT BODY pays twice (docs/rifts-design.md §6): GameLoop2 says how many
+	# pieces this defeat is worth, and each lands as its own drop — the second
+	# beside the first, since place_drop finds the nearest free square.
+	for _piece in range(GameLoop2.defeat_loot):
+		_drop_one(from_boss, cell)
+	_page.refresh_board()
+
+func _drop_one(from_boss: bool, cell: Vector2i) -> void:
 	var entry: Dictionary = GameState.roll_loot_entry("loot")
 	if entry.is_empty():
 		return
@@ -84,7 +92,6 @@ func on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 		# anyway.
 		queue.append({"loot": [entry]})
 		pump()
-	_page.refresh_board()
 
 # ---------------------------------------------------------------------------
 # Picking a piece up off the floor (§8.2)

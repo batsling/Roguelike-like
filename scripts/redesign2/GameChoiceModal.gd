@@ -454,6 +454,13 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		facts.add_child(_fact_line(String(pace["text"]), pace.get("color", UITheme.TEXT_DIM),
 			String(pace.get("tip", ""))))
 
+	# THE RIFT'S DEAL (docs/rifts-design.md §6), said where the decision is made:
+	# the risk and the payout in one line.
+	if _is_rift():
+		facts.add_child(_fact_line("🌀 Rift: bodies hit ×%d, pay ×%d loot and chest"
+			% [GameLoop2.RIFT_MULT, GameLoop2.RIFT_MULT], UITheme.RIFT,
+			"The bodies that walk on here deal double damage for as long as they stand, wherever they follow you — and drop double loot and chest points when they fall. Beating this game doubles the win's own chest point too."))
+
 	# A game the run has already played pays a Dash for going back and beating it.
 	if bool(_choice.get("repeat", false)):
 		facts.add_child(_fact_line("⚡ Gain +%d Dash" % Overworld2.REPEAT_BEAT_DASH,
@@ -897,7 +904,9 @@ func _build_enemy_block(game: GameData) -> Control:
 		String(enemy.goal_type).capitalize(),
 		GameLoop2.entry_goal(entry),
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
-		hp, "" if hp == 1 else "s", enemy.damage,
+		hp, "" if hp == 1 else "s",
+		# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
+		int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1),
 	]
 	box.add_child(goal)
 

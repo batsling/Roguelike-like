@@ -443,3 +443,160 @@ func test_the_overlay_payload_flags_a_rift_game() -> void:
 	assert_true(bool(ObsCompanion.payload()["now"].get("rift", false)), "a rift game is flagged")
 	GameState.current_game_id = StringName(r["a"])
 	assert_false(bool(ObsCompanion.payload()["now"].get("rift", true)), "an influence game is not")
+
+
+# --- rift enemies (§6, §7) ----------------------------------------------------
+
+# A body that walked on at a rift hits RIFT_MULT times as hard, and only it does.
+func test_a_rift_body_deals_double_damage() -> void:
+	var e: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	assert_not_null(e)
+	if e == null:
+		return
+	var plain: Dictionary = {"enemy": e, "statuses": {}}
+	var rift: Dictionary = {"enemy": e, "statuses": {}, "rift": true}
+	assert_eq(GameLoop2.enemy_damage(rift), GameLoop2.enemy_damage(plain) * GameLoop2.RIFT_MULT)
+
+# Committing a rift game marks the bodies it stands up; an ordinary game does not.
+func test_a_rift_games_arrivals_are_rift_bodies() -> void:
+	GameLoop2.reset()
+	var e: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	GameLoop2.choose_game(e, e.game_type, e.tier_index(), true, false, true)
+	assert_gt(GameLoop2.arrivals.size(), 0)
+	for inst in GameLoop2.arrivals:
+		assert_true(GameLoop2.is_rift_body(GameLoop2.entry_for(int(inst))),
+			"every body a rift game stands up is a rift body")
+	GameLoop2.choose_game(e, e.game_type, e.tier_index(), true, false, false)
+	for inst in GameLoop2.arrivals:
+		assert_false(GameLoop2.is_rift_body(GameLoop2.entry_for(int(inst))),
+			"an ordinary game's bodies are not")
+	GameLoop2.reset()
+
+# The doubling rides the body through a save.
+func test_a_rift_body_stays_one_through_a_save() -> void:
+	var e: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	var entry := {"instance": 7, "enemy": e, "health": 1, "max_health": 1, "shield": 0,
+		"col": 1, "row": 0, "statuses": {}, "rift": true}
+	var raw = JSON.parse_string(JSON.stringify(GameLoop2._serialize_entry(entry)))
+	assert_true(GameLoop2.is_rift_body(GameLoop2._deserialize_entry(raw)))
+	entry.erase("rift")
+	raw = JSON.parse_string(JSON.stringify(GameLoop2._serialize_entry(entry)))
+	assert_false(GameLoop2.is_rift_body(GameLoop2._deserialize_entry(raw)),
+		"and a body that never saw a rift does not become one")
+
+# A rift body that falls pays RIFT_MULT pieces of loot and RIFT_MULT times its
+# chest points.
+func test_a_rift_body_pays_double_loot_and_chest_points() -> void:
+	GameLoop2.reset()
+	var e: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	if e == null or e.is_boss() or GameLoop2.effective_health(e) != 1:
+		pending("the plain one-hit body is not one hit on this build")
+		return
+	GameLoop2.choose_game(e, e.game_type, e.tier_index(), false, false, true)
+	var inst: int = int(GameLoop2.arrivals[0])
+	var seen: Array = []
+	var grab := func(_enemy, _cell): seen.append(GameLoop2.defeat_loot)
+	GameLoop2.enemy_defeated.connect(grab)
+	var before: int = GameLoop2.chest_points
+	GameLoop2.fulfill(inst, true)
+	GameLoop2.enemy_defeated.disconnect(grab)
+	assert_eq(seen, [GameLoop2.RIFT_MULT], "the defeat paid RIFT_MULT pieces")
+	assert_eq(GameLoop2.chest_points - before, GameLoop2.chest_points_for(e) * GameLoop2.RIFT_MULT,
+		"and RIFT_MULT times its chest points")
+	assert_eq(GameLoop2.defeat_loot, 1, "and the count is put back for the next defeat")
+	GameLoop2.reset()
+
+# Beating a rift game doubles the win's own chest point.
+func test_beating_a_rift_game_doubles_the_wins_point() -> void:
+	var pick: Dictionary = _dealt(424242)
+	if pick.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	GameState.set_rifts(pick["rifts"])
+	GameLoop2.reset()
+	GameState.current_game_id = StringName(pick["rifts"][0]["game"])
+	assert_eq(int(GameLoop2.claim_chests(true)[0]["points"]), GameLoop2.RIFT_MULT)
+	GameState.current_game_id = StringName(pick["rifts"][0]["a"])
+	assert_eq(int(GameLoop2.claim_chests(true)[0]["points"]), 1)
+
+# Bash on a rift keeps the rift and swaps the game inside it for another rift game.
+func test_bashing_a_rift_swaps_the_game_inside_it() -> void:
+	var pick: Dictionary = _dealt(48484)
+	if pick.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	GameState.set_rifts(pick["rifts"])
+	var slot := StringName(pick["rifts"][0]["game"])
+	GameState.bash = 2
+	var first: GameData = GameLoop2.bash_rift(slot)
+	assert_not_null(first, "a rift can be bashed while the pool has games")
+	if first == null:
+		return
+	assert_ne(first.id, slot)
+	assert_true(RunGraph.is_rift_game(slot), "the rift stays")
+	assert_false(GameLoop2.is_bashed(slot), "and its node is not bashed off the map")
+	assert_eq(GameLoop2.game_at(slot).id, first.id, "the new game is inside it")
+	assert_eq(GameState.bash, 1, "a charge was spent")
+	var second: GameData = GameLoop2.bash_rift(slot)
+	if second != null:
+		assert_ne(second.id, first.id, "a second bash brings another game")
+		assert_true(GameLoop2.is_bashed(first.id), "and the one knocked out leaves the pool")
+	GameLoop2.transmuted.erase(slot)
+	GameLoop2.bashed.clear()
+	GameState.bash = 0
+
+# Dash never lists a rift game, and no teleport lands on one.
+func test_dash_and_teleport_skip_rift_games() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var r: Dictionary = got["rift"]
+	var rift_id := StringName(r["game"])
+	GameState.current_game_id = StringName(r["a"])
+	assert_false(ui._reachable(rift_id), "no teleport pool takes a rift game")
+	assert_true(ui._reachable(StringName(r["b"])), "while the map game beside it is fine")
+	var listed: Array = ui._dash_list([rift_id, StringName(r["b"])])
+	assert_false(listed.has(rift_id), "Dash does not list the rift game")
+
+# End to end: picking a rift card off the offering stands rift bodies.
+func test_picking_a_rift_card_stands_rift_bodies() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var r: Dictionary = got["rift"]
+	var rift_id := StringName(r["game"])
+	ui.choose_start(0)
+	if ui._phase == ui.Phase.PLAYING:
+		ui.report(true, [])
+		ui._end_resolve()
+	ui._phase = ui.Phase.SELECT
+	GameState.current_game_id = StringName(r["a"])
+	ui._build_choices()
+	if ui._choices.is_empty():
+		pending("the offering came up empty")
+		return
+	var idx := -1
+	for i in ui._choices.size():
+		if StringName(ui._choices[i].get("slot", &"")) == rift_id:
+			idx = i
+	if idx < 0:
+		# Not dealt into the first cards: stand it in the first slot, the way a
+		# transmute pastes a game onto a spot.
+		var c: Dictionary = ui._choices[0].duplicate()
+		c["slot"] = rift_id
+		c["game"] = Data.get_game(rift_id)
+		c["amulet"] = false
+		c["boss"] = false
+		ui._choices[0] = c
+		idx = 0
+	# The kinds were dealt for the run's own rifts; this one is seeded, so say it.
+	GameState.node_kinds[rift_id] = RunGraph.NodeKind.ENEMIES
+	ui.pick(idx)
+	assert_gt(GameLoop2.arrivals.size(), 0, "the rift game stood bodies up")
+	for inst in GameLoop2.arrivals:
+		assert_true(GameLoop2.is_rift_body(GameLoop2.entry_for(int(inst))),
+			"and each one is a rift body")
