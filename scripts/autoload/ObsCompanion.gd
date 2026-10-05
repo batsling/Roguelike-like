@@ -473,6 +473,9 @@ func _now_playing() -> Dictionary:
 		"game": game.display_name if game != null else "",
 		"cover": _cover_url(game),
 		"attempts": GameLoop2.attempts(),
+		# A RIFT GAME (docs/rifts-design.md §9): on the map through a rift, not an
+		# influence. The page rings the cover in the rift's swirl.
+		"rift": RunGraph.is_rift_game(GameState.current_game_id),
 	}
 
 # THE CHECKLIST, which is the thing the overlay exists to show. Every row the
@@ -1053,6 +1056,7 @@ func _rung(id: StringName, depth: int, last: int) -> Dictionary:
 		# should see which of these you have history with. The last layer is the
 		# Amulet and is never dimmed for it.
 		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
+		"rift": RunGraph.is_rift_game(id),
 	}
 
 func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:
@@ -1072,6 +1076,7 @@ func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Diction
 		"amulet": id == GameState.amulet_game_id,
 		"current": id == GameState.current_game_id and not unreached,
 		"unreached": unreached,
+		"rift": RunGraph.is_rift_game(id),
 		"dropped": 0,
 	}
 

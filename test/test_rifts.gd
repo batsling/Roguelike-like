@@ -1,6 +1,6 @@
 extends GutTest
 
-# Rifts, step 1: generation (docs/rifts-design.md).
+# Rifts: generation (step 1) and presentation (step 2) — docs/rifts-design.md.
 #
 # Every case seeds its own roll rather than hoping a random graph reaches it
 # (CLAUDE.md), and puts the graph back to the bare influence map afterwards, so
@@ -22,6 +22,9 @@ func after_each() -> void:
 	# pending resume (SaveSystem._apply_save_data). Left there, the next test's
 	# overworld would resume this file's run instead of booting its own.
 	SaveSystem.cancel_pending_resume()
+	# The presentation cases mount an overworld, which starts a run of its own.
+	GameState.reset_run()
+	GameLoop2.reset()
 
 
 # A seeded panel with its rifts, or {} when this catalogue cannot deal one.
@@ -328,3 +331,115 @@ func test_path_rifts_are_one_and_two_only_when_needed() -> void:
 		assert_between(n, 1, 2, "a run lays one path rift, two at most")
 	if counts.is_empty():
 		pending("no rifts were dealt across the sampled seeds")
+
+
+# --- presentation (§9) -------------------------------------------------------
+
+const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
+
+# The overworld, with a dealt run's rifts laid, and the first rift standing.
+# Returns the rift record, or {} when this catalogue deals none.
+func _overworld_with_a_rift() -> Dictionary:
+	var pick: Dictionary = _dealt(424242)
+	if pick.is_empty():
+		return {}
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	# The overworld deals its own run on the way in; lay the seeded one over it so
+	# the case does not ride that roll.
+	GameState.set_rifts(pick["rifts"])
+	return {"ui": ui, "rift": pick["rifts"][0]}
+
+func _find_shader_rect(node: Node) -> ColorRect:
+	for child in node.get_children():
+		if child is ColorRect and (child as ColorRect).material is ShaderMaterial:
+			return child
+		var deeper: ColorRect = _find_shader_rect(child)
+		if deeper != null:
+			return deeper
+	return null
+
+func _all_text(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	for child in node.get_children():
+		out += _all_text(child)
+	return out
+
+# A rift game's card in the offering carries the swirl behind its cover and says
+# RIFT in the flag line; an ordinary game's card carries neither.
+func test_a_rift_card_wears_the_swirl_and_the_flag() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var rift_id := StringName(got["rift"]["game"])
+	var plain_id := StringName(got["rift"]["a"])
+	var rift_card: Control = ui._offering._make_choice_card(0, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false})
+	autofree(rift_card)
+	assert_not_null(_find_shader_rect(rift_card), "the rift card has the swirl behind its cover")
+	assert_string_contains(_all_text(rift_card), "RIFT", "and says so in its flag line")
+	var plain_card: Control = ui._offering._make_choice_card(1, {"game": Data.get_game(plain_id),
+		"slot": plain_id, "amulet": false, "boss": false})
+	autofree(plain_card)
+	assert_null(_find_shader_rect(plain_card), "an influence game's card has no swirl")
+	assert_false(_all_text(plain_card).contains("RIFT"), "and no rift flag")
+
+# Standing on a rift game, a step to either end is not an influence, and the
+# popup's proof slot says so instead of showing nothing.
+func test_the_proof_slot_on_a_rift_step_says_no_known_influence() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var r: Dictionary = got["rift"]
+	GameState.current_game_id = StringName(r["game"])
+	var modal := GameChoiceModal.new()
+	modal._choice = {"game": Data.get_game(StringName(r["a"])), "slot": StringName(r["a"]),
+		"amulet": false, "boss": false}
+	var block: Control = modal._build_source_block()
+	autofree(modal)
+	assert_not_null(block, "a rift step has a proof slot")
+	if block == null:
+		return
+	autofree(block)
+	assert_eq(String(block.name), "RiftBlock", "and it is the rift's")
+	assert_string_contains(_all_text(block), "Rift: no known influence")
+	assert_null(block.find_child("Proof", true, false), "with no screenshot pretending otherwise")
+
+# The route ladder draws a step through a rift in its own dashed line: the
+# segment carries the flag, and only the segments touching the rift game do.
+func test_the_ladder_flags_the_steps_through_a_rift() -> void:
+	var pick: Dictionary = _dealt(424242)
+	if pick.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	GameState.set_rifts(pick["rifts"])
+	var r: Dictionary = pick["rifts"][0]
+	var a := StringName(r["a"])
+	var g := StringName(r["game"])
+	var b := StringName(r["b"])
+	var canvas = RouteLadder.build({"data": {"layers": [[a], [g], [b]], "edges": [
+		{"from": a, "to": g, "from_depth": 0, "to_depth": 1},
+		{"from": g, "to": b, "from_depth": 1, "to_depth": 2}]},
+		"current": a, "amulet": b})
+	autofree(canvas)
+	assert_eq(canvas.segments.size(), 2)
+	for seg in canvas.segments:
+		assert_true(bool(seg[2]), "a step into or out of a rift game is a rift step")
+
+# The OBS overlay is told when the game being played is a rift game.
+func test_the_overlay_payload_flags_a_rift_game() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var r: Dictionary = got["rift"]
+	GameState.current_game_id = StringName(r["game"])
+	assert_true(bool(ObsCompanion.payload()["now"].get("rift", false)), "a rift game is flagged")
+	GameState.current_game_id = StringName(r["a"])
+	assert_false(bool(ObsCompanion.payload()["now"].get("rift", true)), "an influence game is not")

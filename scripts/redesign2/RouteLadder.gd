@@ -149,9 +149,13 @@ static func build(cfg: Dictionary) -> Control:
 		if rects.has(a) and rects.has(b):
 			var ra: Rect2 = rects[a]
 			var rb: Rect2 = rects[b]
+			# The third entry flags a step THROUGH A RIFT (either end a rift game),
+			# drawn in the rift's own dashed line rather than as an influence.
 			segments.append([
 				Vector2(ra.position.x + ra.size.x * 0.5, ra.position.y + ra.size.y),
 				Vector2(rb.position.x + rb.size.x * 0.5, rb.position.y),
+				RunGraph.is_rift_game(StringName(e.get("from", "")))
+					or RunGraph.is_rift_game(StringName(e.get("to", ""))),
 			])
 
 	var canvas := GraphCanvas.new()
@@ -224,6 +228,12 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	elif is_visited:
 		bg = COL_VISITED_BG
 		border = UITheme.BORDER.lerp(UITheme.BG, 0.4)
+	# A RIFT GAME (docs/rifts-design.md §9) wears the rift colour on an otherwise
+	# plain rung, and its mark where a rung with no role would have none.
+	elif RunGraph.is_rift_game(id):
+		border = UITheme.RIFT if not is_visited else UITheme.RIFT.lerp(UITheme.BG, 0.4)
+		border_w = 2
+		prefix = "🌀 "
 	# A rung you are passing over for the second time is drawn as the same game,
 	# faded, so the doubling-back reads as doubling back rather than as a bug.
 	if revisit and not is_amulet:
@@ -640,7 +650,7 @@ static func fit_zoom(ladder: Vector2, room: Vector2, zoom: float,
 # boxes (which are added as its children).
 # ---------------------------------------------------------------------------
 class GraphCanvas extends Control:
-	var segments: Array = []          # [[Vector2 from, Vector2 to], ...]
+	var segments: Array = []          # [[Vector2 from, Vector2 to, bool rift], ...]
 	var arrow_size: float = 9.0
 
 	func _draw() -> void:
@@ -653,9 +663,16 @@ class GraphCanvas extends Control:
 				continue
 			dir = dir.normalized()
 			var tip: Vector2 = b - dir * 2.0
-			draw_line(a, tip - dir * arrow_size, COL_ARROW, 2.5 * (arrow_size / 9.0), true)
+			var rift: bool = seg.size() > 2 and bool(seg[2])
+			var col: Color = UITheme.RIFT if rift else COL_ARROW
+			var w: float = 2.5 * (arrow_size / 9.0)
+			if rift:
+				# Dashed, in the rift colour: a road, but not an influence.
+				draw_dashed_line(a, tip - dir * arrow_size, col, w, arrow_size * 0.7, true)
+			else:
+				draw_line(a, tip - dir * arrow_size, col, w, true)
 			# Arrowhead triangle at the child end.
 			var perp: Vector2 = Vector2(-dir.y, dir.x) * (arrow_size * 0.5)
 			var base: Vector2 = tip - dir * arrow_size
 			draw_colored_polygon(
-				PackedVector2Array([tip, base + perp, base - perp]), COL_ARROW)
+				PackedVector2Array([tip, base + perp, base - perp]), col)

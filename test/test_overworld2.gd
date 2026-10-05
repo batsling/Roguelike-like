@@ -9550,7 +9550,10 @@ func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 		"a resolved row is not a claim the report can spend again")
 	var standing: int = GameLoop2.stack_size()
 	_ui.report(false)
-	assert_lte(GameLoop2.stack_size(), standing,
+	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): a lost
+	# game can walk bodies on, and those are not a body the report hit twice.
+	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_lte(GameLoop2.stack_size() - walked, standing,
 		"and the report hit nothing that was already down")
 	_ui._end_resolve()
 	_leave_post_game()

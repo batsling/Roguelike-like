@@ -300,7 +300,15 @@ func _accent() -> Color:
 		return UITheme.GOLD
 	if bool(_choice.get("boss", false)):
 		return UITheme.DANGER
+	if _is_rift():
+		return UITheme.RIFT
 	return UITheme.type_color(int(game.type)) if game != null else UITheme.ACCENT
+
+# Whether this card's NODE is a rift game (docs/rifts-design.md). Read off the
+# slot, as the offering does, so a rift Transmute has refilled stays a rift.
+func _is_rift() -> bool:
+	var slot := StringName(_choice.get("slot", &""))
+	return slot != &"" and RunGraph.is_rift_game(slot)
 
 # --- the arrival banner ----------------------------------------------------
 
@@ -472,7 +480,21 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		frame.add_child(art)
+		if _is_rift():
+			# The offering's swirl, behind the cover and showing round it as a ring
+			# (OfferingCards.RIFT_RING), so the card opened is the card clicked.
+			var holder := Control.new()
+			holder.custom_minimum_size = COVER
+			holder.add_child(UITheme.rift_backdrop())
+			art.set_anchors_preset(Control.PRESET_FULL_RECT)
+			art.offset_left = OfferingCards.RIFT_RING
+			art.offset_top = OfferingCards.RIFT_RING
+			art.offset_right = -OfferingCards.RIFT_RING
+			art.offset_bottom = -OfferingCards.RIFT_RING
+			holder.add_child(art)
+			frame.add_child(holder)
+		else:
+			frame.add_child(art)
 		var cover_row := HBoxContainer.new()
 		cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 		cover_row.add_child(frame)
@@ -524,6 +546,10 @@ func _build_source_block() -> Control:
 		return null
 	var found: Dictionary = GameData.describe_influence(here, there)
 	if found.is_empty():
+		# A RIFT LINE is not an influence and is never presented as one
+		# (docs/rifts-design.md §1, §9): the slot where the proof would be says so.
+		if RunGraph.is_rift_game(here.id) or RunGraph.is_rift_game(there.id):
+			return _build_rift_block(here, there)
 		return null
 	var influencer: GameData = found["from"]
 	var influenced: GameData = found["to"]
@@ -740,6 +766,31 @@ func close_proof() -> void:
 	if _proof_view != null and is_instance_valid(_proof_view):
 		_proof_view.queue_free()
 	_proof_view = null
+
+# The proof slot on a step through a rift: what the line is, in the place the
+# evidence for an influence would be, so a rift never reads as an unsourced claim.
+func _build_rift_block(here: GameData, there: GameData) -> Control:
+	var rift_game: GameData = there if RunGraph.is_rift_game(there.id) else here
+	var box := VBoxContainer.new()
+	box.name = "RiftBlock"
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
+	var head := Label.new()
+	head.text = "🌀  RIFT"
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	head.add_theme_color_override("font_color", UITheme.RIFT)
+	box.add_child(head)
+	var claim := Label.new()
+	claim.text = "Rift: no known influence"
+	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	claim.add_theme_color_override("font_color", UITheme.TEXT)
+	box.add_child(claim)
+	box.add_child(_source_note(("Two dimensions have merged here. %s has no known link to %s "
+		+ "— it was pulled onto this map through a rift, and the rift leads no shorter "
+		+ "than the roads already there.") % [rift_game.display_name,
+		(here if rift_game == there else there).display_name]))
+	return box
 
 func _source_note(text: String) -> Control:
 	var l := Label.new()

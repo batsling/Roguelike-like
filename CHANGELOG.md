@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rifts, step 2: rifts look like rifts** (`docs/rifts-design.md` §9). A rift
+  game's card in the offering has a **swirl** behind its cover
+  (`shaders/rift_swirl.gdshader`, domain-warped noise in a cold teal on deep
+  violet, slowly turning), showing as a ring round the art, plus a teal frame and
+  `🌀 RIFT` in the flag line, all without adding a row to the 720p page. Its popup
+  has the same swirl, and a step into or out of a rift shows **"Rift: no known
+  influence"** where the proof would be, so a rift never reads as an unsourced
+  influence. On the route ladder and run map a step through a rift is a **dashed
+  teal line** and a rift game's rung is ringed in teal with a `🌀`. The OBS overlay
+  gets a `rift` flag on the current game, road stops and map rungs, and rings a
+  rift game's cover in an animated CSS swirl. `🌀` was added to the shipped emoji
+  subset.
+
 - **Rifts, step 1: every run pulls a few connectionless games into the map**
   (`docs/rifts-design.md`). A rift is an off-map game joined to two map games
   that were already exactly two hops apart, so it **never shortens a path**: the

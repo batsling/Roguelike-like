@@ -76,6 +76,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │                          #     AtlasView + AtlasLayoutBuilder — the star chart
 │                          #     and the runtime layout behind its filters
 │
+├── shaders/               # canvas shaders: rift_swirl (the swirl behind a rift
+│                          # game's cover, docs/rifts-design.md §9)
+│
 ├── data/                  # Game content as Godot Resources (.tres) — the source
 │   │                      # of truth the game loads at startup (see Data.gd)
 │   ├── games/            #   GameData — the ~860 real games that form the map

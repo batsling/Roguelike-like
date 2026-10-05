@@ -280,6 +280,9 @@ function drawHero(hero, vitals) {
  * the distance to it was a dim 12px chip below a two-line title. */
 function drawNow(now, run) {
   setImg(el('now-cover'), now.cover);
+  /* A RIFT GAME: on the map through a rift rather than an influence
+     (docs/rifts-design.md §9). Ringed in the rift's swirl, which costs no layout. */
+  el('now-cover').classList.toggle('rift', !!now.rift);
   /* "Current game" is the resting label. "Standing on" is kept for the gap
      between games, because it is the one moment the two are different things —
      the run is parked on a node nobody is playing, and a label that still said
@@ -497,7 +500,7 @@ function drawRoad(road) {
    * exactly as invisible as the "+7" this scroller was built to replace, and less
    * honest, because nothing said they were there. */
   const sig = road.map(s => [s.id, s.beaten, s.current, s.amulet, s.unreached,
-    s.dropped].join('|')).join('\x01');
+    s.rift, s.dropped].join('|')).join('\x01');
   if (sig === roadSignature) return;
   roadSignature = sig;
 
@@ -525,8 +528,9 @@ function drawRoad(road) {
       + (stop.beaten ? ' beaten' : '')
       + (stop.current ? ' current' : '')
       + (stop.amulet ? ' amulet' : '')
-      + (stop.unreached ? ' unreached' : '');
-    box.title = stop.name;
+      + (stop.unreached ? ' unreached' : '')
+      + (stop.rift ? ' rift' : '');
+    box.title = stop.rift ? stop.name + ' (rift)' : stop.name;
     const img = document.createElement('img');
     img.alt = stop.name;
     setImg(img, stop.cover);
@@ -584,7 +588,7 @@ function drawMap(route, run) {
     : hops + (hops === 1 ? ' game to ' : ' games to ') + amulet;
 
   const sig = [route.arrived, route.dropped, route.waypoint_depth,
-    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten]
+    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten, n.rift]
       .join('~')).join(',')).join('|'),
     (route.edges || []).map(e => [e.from_depth, e.from, e.to_depth, e.to]
       .join('~')).join(',')].join('\x01');
@@ -615,7 +619,8 @@ function drawMap(route, run) {
         + (n.here ? ' here' : '')
         + (n.amulet ? ' amulet' : '')
         + (n.pinned ? ' pinned' : '')
-        + (n.beaten ? ' beaten' : '');
+        + (n.beaten ? ' beaten' : '')
+        + (n.rift ? ' rift' : '');
       box.dataset.key = depth + '|' + n.id;
       box.title = n.name;
       const img = document.createElement('img');
@@ -637,7 +642,7 @@ function drawMap(route, run) {
        * with nothing saying what a colour meant), and a map read across a room
        * through a lossy encode is the worst case for it. */
       const tag = n.here ? 'Here' : n.amulet ? 'Amulet' : n.pinned ? 'Pinned'
-        : n.beaten ? 'Beaten' : '';
+        : n.beaten ? 'Beaten' : n.rift ? 'Rift' : '';
       if (tag) {
         const flag = document.createElement('span');
         flag.className = 'rung-tag';

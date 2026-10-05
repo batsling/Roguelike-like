@@ -1,8 +1,9 @@
 # Rifts — design
 
-**Status: step 1 of 5 built** (generation: path rifts, world rifts, the split
-floor, saving, the toggle, rift games as Enemies). The rest is designed, not
-built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
+**Status: steps 1 and 2 of 5 built** (generation: path rifts, world rifts, the
+split floor, saving, the toggle, rift games as Enemies; and the visuals: the swirl
+on rift cards, the rift line and badge, the proof slot, the overlay flag). The
+rest is designed, not built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
 §7.4, …) refer to `docs/games-first-redesign.md`.
 
 ## 1. What a rift is
@@ -215,9 +216,9 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   full catalogue). So rifts never take a genre's last
   **`RIFT_TRANSMUTE_RESERVE = 2`** off-map games; a genre with two or fewer keeps
   all of them. About 12 rifts a run still leaves most of the pool.
-- **The atlas** draws only real influences, so until step 2 a route step through a
-  rift is left out of the atlas trail (`AtlasView._build_trail`). The walked path
-  already marks a step that is not a connection, as it does for teleports.
+- **The atlas** draws only real influences, so a route step through a rift is left
+  out of the atlas trail (`AtlasView._build_trail`). The walked path already marks
+  a step that is not a connection, as it does for teleports.
 - **Tests.** Existing tests assume the map is exactly the influence graph
   (`test/test_amulet_pool.gd` asserts every map game can be the goal). Those need
   rifts off, or updated expectations. Rift tests must seed the RNG, not hope for
@@ -237,12 +238,36 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - `Settings.rifts_enabled`, with a toggle in the Settings panel under Amulet generation.
 - `test/test_rifts.gd`.
 
+### Where step 2 lives
+
+- `shaders/rift_swirl.gdshader`: the swirl (domain-warped noise twisted round the
+  centre, drifting with `TIME`). `UITheme.rift_backdrop()` builds it as a
+  full-rect `ColorRect`; `UITheme.RIFT` (teal) and `RIFT_DEEP` (violet) are the
+  palette, `--rift` / `--rift-deep` on the overlay.
+- `OfferingCards._make_choice_card`: a rift card gets `🌀 RIFT` in the flag line
+  (free, since a rift is never the Amulet or a shop), a teal frame, and the swirl
+  behind its cover with the cover inset by `RIFT_RING` (7px) so it shows as a ring
+  even round art that fills the frame. No row was added; the 720p fit is unchanged.
+  Measured on screen: the ring samples violet `(0.20, 0.10, 0.34)` to teal-blue
+  `(0.29, 0.45, 0.58)`.
+- `GameChoiceModal`: the same swirl behind the cover, the rift accent on the
+  frame, and `_build_rift_block` in the proof slot for any step into or out of a
+  rift game ("Rift: no known influence" plus a line of flavour).
+- `RouteLadder`: each segment carries a third entry, `rift`, drawn dashed in the
+  rift colour; a rift game's rung has a teal border and a `🌀`. The run map uses
+  the same ladder.
+- `ObsCompanion`: `now.rift`, and `rift` on every road stop and map rung. The page
+  rings the cover in an animated teal-and-violet glow (outline and box-shadow, so
+  no layout), dashes a rift stop's outline and tags a rift rung "Rift".
+- The `🌀` glyph was added to `fonts/NotoEmoji-Subset.ttf`
+  (`tools/build_glyph_font.py`).
+
 ### Build order
 
 1. **Generation** (built): path rifts, world rifts and the split floor in
    `RunGraph`, saved with the run, verified against the real measurement (§5).
-2. **Visuals:** the swirl background on rift cards, map line, badge, proof slot,
-   overlay flag.
+2. **Visuals** (built): the swirl background on rift cards, map line, badge,
+   proof slot, overlay flag.
 3. **Rift enemies:** Enemies-only nodes, ×2 damage, ×2 loot and chest value; Bash
    and Transmute swap; excluded from Dash and Teleport.
 4. **Rift Keys:** rift cards in empty offering slots; Scramble rerolls both the

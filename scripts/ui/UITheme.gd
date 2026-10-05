@@ -94,6 +94,16 @@ const ITEM_CLASS_COLORS := [
 const COIN_GOLD := Color(0.98, 0.74, 0.20)
 const SHOP_GREEN := Color(0.44, 0.82, 0.56)
 
+# RIFTS (docs/rifts-design.md §9): a game pulled into the map through a rift, not
+# along an influence. A cold teal on a deep violet, the one pairing nothing else on
+# the page uses — every warm colour here is already a claim (the Amulet, coins, the
+# run's accent) and a rift is the one stop that is NOT an influence, so it should
+# look like it came from somewhere else. RIFT is the line, badge and frame;
+# RIFT_DEEP the dark of the swirl behind a rift card's cover.
+const RIFT := Color(0.40, 0.92, 0.88)
+const RIFT_DEEP := Color(0.20, 0.08, 0.34)
+const RIFT_SHADER := preload("res://shaders/rift_swirl.gdshader")
+
 # ---------------------------------------------------------------------------
 # The type scale
 # ---------------------------------------------------------------------------
@@ -861,6 +871,23 @@ static func _stroke(img: Image, from: Vector2, to: Vector2, color: Color, width:
 # on the screen root; children inherit it. Cheap to rebuild, but callers usually
 # cache it via `shared()`.
 static var _shared: Theme = null
+
+# The swirl behind a rift game's cover (rift_swirl.gdshader), as a full-rect
+# ColorRect that ignores the mouse. `seed` staggers its phase so two rift cards
+# side by side don't turn in step. The caller insets the cover over it, so the
+# swirl shows as a ring round the art as well as in any letterbox.
+static func rift_backdrop(seed: float = 0.0) -> ColorRect:
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = RIFT_SHADER
+	mat.set_shader_parameter("rift_color", RIFT)
+	mat.set_shader_parameter("deep_color", RIFT_DEEP)
+	mat.set_shader_parameter("base_color", BG_DEEP.lerp(RIFT_DEEP, 0.3))
+	mat.set_shader_parameter("seed", seed)
+	rect.material = mat
+	return rect
 
 static func shared() -> Theme:
 	if _shared == null:
