@@ -328,6 +328,12 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   name, with `🗝 RIFT` in the flag line; the popup says the key is spent and where
   it leads, counts the one door, and draws the route as the rift game stitched on
   top of the destination's ladder (`GameChoiceModal._key_route`).
+- **The key count** is a `🗝 Keys N` readout chip at the end of the charges row
+  under the offering (`_refresh_select_stats`), drawn at zero like Luck. It is not
+  a button: a key is spent by taking a rift card. A key gained or spent while the
+  offering is up re-deals it on the spot (`_dealt_with_keys`, checked in
+  `_refresh`), so a fresh key's rift cards appear without waiting for a move.
+  Measured with every count at two digits, the row still fits on one line (599px).
 - `🗝` was added to `fonts/NotoSansSymbols2-Subset.ttf`.
 
 ### Build order

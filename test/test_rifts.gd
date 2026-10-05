@@ -742,3 +742,23 @@ func test_bash_and_transmute_redeal_a_rift_card() -> void:
 		assert_false(now.has(old), "%s dealt %s away" % [verb, old])
 		assert_false(RunGraph.is_rift_game(old), "and opened nothing")
 	GameLoop2.bashed.clear()
+
+# The key count sits with the other charges under the offering, and a key gained
+# while the offering is up deals rift cards into its empty slots at once.
+func test_a_key_gained_at_the_offering_shows_and_deals_at_once() -> void:
+	var got: Dictionary = _at_a_quiet_game(0)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	ui._refresh()
+	assert_eq(_key_cards(ui).size(), 0)
+	GameState.keys = 1
+	ui._refresh()
+	assert_gt(_key_cards(ui).size(), 0, "the key deals rift cards without waiting for a move")
+	var chip_text: String = _all_text(ui._select_stats)
+	assert_string_contains(chip_text, "Keys 1", "and the count is under the offering")
+	GameState.keys = 0
+	ui._refresh()
+	assert_eq(_key_cards(ui).size(), 0, "and they go when the last key does")
+	assert_string_contains(_all_text(ui._select_stats), "Keys 0")

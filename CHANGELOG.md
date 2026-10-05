@@ -20,7 +20,9 @@ For how the project is laid out and how its systems fit together, see
   Scramble re-deals the cards, game and destination both; Bash knocks the game out
   of the pool and Transmute turns it away, each re-dealing the card. The popup
   says what the key buys and draws the route through the rift. Key sources in
-  items and loot are still the owner's to place.
+  items and loot are still the owner's to place. The key count sits with the other
+  charges under the offering (`🗝 Keys N`), and a key gained while the offering is
+  up deals its rift cards at once.
 
 - **Rifts, step 3: rift enemies** (`docs/rifts-design.md` §6–7). The bodies a
   rift game stands up carry a `rift` mark for as long as they stand, wherever

@@ -124,6 +124,10 @@ var _key_cards: Dictionary = {}
 # to: a Scramble or a move deals a fresh table and forgets them.
 var _key_skip: Dictionary = {}
 var _key_skip_seed: String = ""
+# Whether the table on show was dealt holding a key. Holding one is what decides
+# whether the empty slots carry rift cards, so a key gained or spent while the
+# offering is up re-deals it (`_refresh`).
+var _dealt_with_keys: bool = false
 # How many times the player has ARRIVED at each game this run (game id -> count),
 # counted off GameState.current_game_changed. It salts the offering draw, so
 # coming back to a game you've already stood on offers a DIFFERENT set of its
@@ -4675,6 +4679,7 @@ func _build_choices() -> void:
 # and a Scramble deals new ones, game and destination both.
 func _add_rift_key_cards(tier: int) -> void:
 	_key_cards.clear()
+	_dealt_with_keys = GameState.keys > 0
 	if _dash_mode or _asking_return() or GameState.keys <= 0 or not Settings.rifts_enabled:
 		return
 	var empty: int = offer_count() - _choices.size()
@@ -4803,6 +4808,11 @@ func _refresh(_a = null) -> void:
 		_select_head.text = ("Stay here, or head back?"
 			if _asking_return() else "Choose a Game")
 		_render_controls()
+		# A KEY GAINED OR SPENT WITH THE OFFERING UP (a loot pickup, an item) changes
+		# whether its empty slots carry rift cards, so the table is dealt again — on
+		# the transition only, since a re-deal also drops an armed verb.
+		if (GameState.keys > 0) != _dealt_with_keys and not _asking_return():
+			_build_choices()
 		_render_choices()
 		# The standing goals change with the stack (a bomb, a fulfilment, a scroll),
 		# so they're rebuilt with the rest of the screen. Safe here because nothing
@@ -5762,8 +5772,9 @@ func _refresh_select_stats() -> void:
 	# Dash is a live button or a readout, and `_armed_verb`, which decides which chip
 	# is lit.
 	var luck: int = Stats.get_value(&"luck")
-	var sig: String = "%d|%d|%d|%d|%d|%s|%s" % [GameState.bash, GameState.dash_charges,
-		GameState.transmute, GameState.scramble, luck, str(_dash_mode), String(_armed_verb)]
+	var sig: String = "%d|%d|%d|%d|%d|%d|%s|%s" % [GameState.bash, GameState.dash_charges,
+		GameState.transmute, GameState.scramble, luck, GameState.keys, str(_dash_mode),
+		String(_armed_verb)]
 	if sig == _select_stats_sig and _select_stats.get_child_count() > 0:
 		return
 	_select_stats_sig = sig
@@ -5802,6 +5813,14 @@ func _refresh_select_stats() -> void:
 		+ "Rarity ladders, event gambles, machine odds — anything with a better "
 		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
 		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
+	# RIFT KEYS (docs/rifts-design.md §8), a readout rather than a button: a key is
+	# spent by TAKING a rift card, which the offering deals into its empty slots
+	# while one is held. Drawn at zero too, like Luck, so the stat can be found
+	# before the first key turns up.
+	_select_stats.add_child(_stat_chip("🗝 Keys %d" % GameState.keys, GameState.keys,
+		UITheme.RIFT,
+		"Rift Keys. While you hold one, every slot the offering leaves empty is dealt a rift card: a game from beyond the map, and the game two hops away its rift leads to.
+Taking a rift card spends a key, and the rift only goes one way."))
 
 # The pack strip above the board is built by PackStrip; the page owns the
 # container and decides WHEN it is redrawn, the strip decides what goes in it.
