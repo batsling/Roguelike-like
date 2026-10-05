@@ -458,6 +458,18 @@ static func _apply_rifts() -> void:
 		var g: StringName = r["game"]
 		var a: StringName = r["a"]
 		var b: StringName = r["b"]
+		# A KEYED RIFT (§8) has one end: the game it leads to. The way back to where
+		# it was opened from was never laid, which is what makes it one-way, and a
+		# game hanging off one end can never shorten anything.
+		if String(r.get("kind", "")) == RIFT_KEYED:
+			if _rift_games.has(g) or not _off_map.has(g) or not _adj_cache.has(a):
+				continue
+			_off_map.erase(g)
+			_isolated.erase(g)
+			_adj_cache[g] = [a]
+			(_adj_cache[a] as Array).append(g)
+			_rift_games[g] = r
+			continue
 		if a == b or _rift_games.has(g) or not _off_map.has(g):
 			continue
 		if not _adj_cache.has(a) or not _adj_cache.has(b):
@@ -468,6 +480,29 @@ static func _apply_rifts() -> void:
 		(_adj_cache[a] as Array).append(g)
 		(_adj_cache[b] as Array).append(g)
 		_rift_games[g] = r
+
+# The kind a Rift Key's rift is laid with (docs/rifts-design.md §8).
+const RIFT_KEYED := "key"
+
+# WHERE A RIFT KEY CAN LEAD from `from_id` (docs/rifts-design.md §8): every game
+# exactly two hops away, on a neighbouring branch. Two away is what keeps a keyed
+# rift honest — the passage is two hops (here → rift game → there), so it is never
+# a shortcut — and the rift is laid one-ended off the destination anyway. Never a
+# rift game. Sorted, so a seeded offering deals the same destinations twice.
+static func rift_key_destinations(from_id: StringName) -> Array:
+	var d: Dictionary = bfs_distances(from_id)
+	var out: Array = []
+	for id in d:
+		if int(d[id]) == 2 and not _rift_games.has(id):
+			out.append(id)
+	out.sort()
+	return out
+
+# The rift games a Rift Key's cards draw from, in the rotation's order (unseen
+# first, last run's last, §3.3), less `exclude`.
+static func rift_key_games(rng: RandomNumberGenerator, exclude: Dictionary) -> Array:
+	_build_adj()
+	return _rift_pool_order(rng, exclude)
 
 # The games a rift may hold this run: connectionless, inside the filter, not
 # already in a rift. Sorted, so the pool is the same list for the same catalogue.

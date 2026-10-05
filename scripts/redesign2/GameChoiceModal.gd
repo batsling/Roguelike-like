@@ -307,8 +307,14 @@ func _accent() -> Color:
 # Whether this card's NODE is a rift game (docs/rifts-design.md). Read off the
 # slot, as the offering does, so a rift Transmute has refilled stays a rift.
 func _is_rift() -> bool:
+	if _choice.has("rift_key"):
+		return true
 	var slot := StringName(_choice.get("slot", &""))
 	return slot != &"" and RunGraph.is_rift_game(slot)
+
+# A RIFT KEY card's destination (docs/rifts-design.md §8), or &"" on any other card.
+func _key_dest() -> StringName:
+	return StringName(_choice.get("rift_key", &""))
 
 # --- the arrival banner ----------------------------------------------------
 
@@ -412,6 +418,10 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# "How many doors does this open" is a routing fact, and routing is what the
 	# popup is opened to decide — so it heads the list.
 	var counts: Dictionary = connection_counts(StringName(_choice.get("slot", &"")))
+	# A RIFT KEY card's game is not on the map until the key is spent, so the graph
+	# has no doors to count for it; it will have exactly one, its destination.
+	if _key_dest() != &"":
+		counts = {"total": 1, "events": 0, "shops": 0}
 	var conn := Label.new()
 	conn.text = connection_text(counts)
 	conn.tooltip_text = connection_tip(game, counts)
@@ -456,6 +466,12 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 
 	# THE RIFT'S DEAL (docs/rifts-design.md §6), said where the decision is made:
 	# the risk and the payout in one line.
+	if _key_dest() != &"":
+		var dest: GameData = Data.get_game(_key_dest())
+		facts.add_child(_fact_line("🗝 Spends a Rift Key — one way to %s"
+			% (dest.display_name if dest != null else String(_key_dest())), UITheme.RIFT,
+			"Taking this opens a rift: the key is spent, and the rift leads on to %s and never back to where you are now."
+			% (dest.display_name if dest != null else String(_key_dest()))))
 	if _is_rift():
 		facts.add_child(_fact_line("🌀 Rift: bodies hit ×%d, pay ×%d loot and chest"
 			% [GameLoop2.RIFT_MULT, GameLoop2.RIFT_MULT], UITheme.RIFT,
@@ -555,7 +571,7 @@ func _build_source_block() -> Control:
 	if found.is_empty():
 		# A RIFT LINE is not an influence and is never presented as one
 		# (docs/rifts-design.md §1, §9): the slot where the proof would be says so.
-		if RunGraph.is_rift_game(here.id) or RunGraph.is_rift_game(there.id):
+		if RunGraph.is_rift_game(here.id) or RunGraph.is_rift_game(there.id) or _key_dest() != &"":
 			return _build_rift_block(here, there)
 		return null
 	var influencer: GameData = found["from"]
@@ -793,6 +809,13 @@ func _build_rift_block(here: GameData, there: GameData) -> Control:
 	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(claim)
+	if _key_dest() != &"":
+		var dest: GameData = Data.get_game(_key_dest())
+		box.add_child(_source_note(("A Rift Key can tear the wall between here and %s open. "
+			+ "It is no influence, and no shortcut: the rift leads one way, on to %s, two "
+			+ "hops from where you stand.") % [there.display_name,
+			dest.display_name if dest != null else String(_key_dest())]))
+		return box
 	box.add_child(_source_note(("Two dimensions have merged here. %s has no known link to %s "
 		+ "— it was pulled onto this map through a rift, and the rift leads no shorter "
 		+ "than the roads already there.") % [rift_game.display_name,
@@ -1104,8 +1127,11 @@ func _build_route_column() -> Control:
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
+	var data: Dictionary = RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {}
+	if _key_dest() != &"" and amulet != &"":
+		data = _key_route(slot, _key_dest(), amulet)
 	return {
-		"data": RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {},
+		"data": data,
 		"current": slot,
 		"amulet": amulet,
 		"waypoint": &"",
@@ -1119,6 +1145,22 @@ func _ladder_cfg() -> Dictionary:
 			if _ladder_room != null and is_instance_valid(_ladder_room) else 0.0,
 	}
 
+
+# The route a Rift Key card would walk: its rift game, then the destination's own
+# shortest route on. The rift is not laid yet, so the graph cannot answer it; the
+# rung on top is stitched onto the destination's ladder, one step down.
+static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName) -> Dictionary:
+	var on: Dictionary = RunGraph.route_dag_via(dest, &"", amulet)
+	var layers: Array = [[rift_id]]
+	for layer in on.get("layers", []):
+		layers.append(layer)
+	var edges: Array = [{"from": rift_id, "to": dest, "from_depth": 0, "to_depth": 1}]
+	for e in on.get("edges", []):
+		var moved: Dictionary = (e as Dictionary).duplicate()
+		moved["from_depth"] = int(e.get("from_depth", 0)) + 1
+		moved["to_depth"] = int(e.get("to_depth", 0)) + 1
+		edges.append(moved)
+	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
 
 # --- the rung's card -------------------------------------------------------
 

@@ -141,6 +141,13 @@ func record_rifts(ids: Array) -> void:
 		last_rifts.append(String(id))
 	save_data()
 
+# A Rift Key opened a rift mid-run (docs/rifts-design.md §8): one more appearance
+# for the rotation, without touching last run's list, which is the dealt rifts'.
+func record_key_rift(id) -> void:
+	var e := _entry(String(id))
+	e["rifts"] = int(e.get("rifts", 0)) + 1
+	save_data()
+
 # Deck ids (DeckCatalog) this character has won at least one run with.
 func deck_wins_for(character_id) -> Array:
 	return deck_wins.get(String(character_id), [])

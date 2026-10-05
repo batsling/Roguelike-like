@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rifts, step 4: Rift Keys** (`docs/rifts-design.md` §8). While you hold a key
+  (`GameState.keys`), every slot the offering leaves empty is dealt a **rift
+  card**: a connectionless game and the game exactly two hops away its rift would
+  lead to, shown as `🗝 RIFT` with `N away → Destination`. Taking one spends a key
+  and opens the rift **one way**: the rift game is laid hanging off its destination
+  only, so it can never shorten anything, and its bodies are rift bodies (×2). A
+  Scramble re-deals the cards, game and destination both; Bash knocks the game out
+  of the pool and Transmute turns it away, each re-dealing the card. The popup
+  says what the key buys and draws the route through the rift. Key sources in
+  items and loot are still the owner's to place.
+
 - **Rifts, step 3: rift enemies** (`docs/rifts-design.md` §6–7). The bodies a
   rift game stands up carry a `rift` mark for as long as they stand, wherever
   they follow you: they **hit for ×2**, and when they fall they drop **two pieces

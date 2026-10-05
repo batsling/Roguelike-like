@@ -186,7 +186,9 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# influence, and its card says so three ways without adding a row: the flag,
 	# the frame, and the swirl behind the cover. Read off the SLOT, so a rift that
 	# Transmute has refilled is still drawn as a rift.
-	var rift: bool = RunGraph.is_rift_game(slot_of(choice))
+	# A RIFT KEY card (§8) is a rift not opened yet, and is drawn as one.
+	var keyed: bool = choice.has("rift_key")
+	var rift: bool = keyed or RunGraph.is_rift_game(slot_of(choice))
 	var accent: Color = UITheme.DANGER if choice["boss"] else (UITheme.GOLD if amulet
 		else (UITheme.RIFT if rift else UITheme.type_color(int(game.type))))
 
@@ -240,6 +242,12 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.text = "🛒 SHOP"
 		flag.tooltip_text = _shop_card_tooltip(slot_of(choice))
 		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
+	elif keyed:
+		var dest: GameData = Data.get_game(StringName(choice["rift_key"]))
+		flag.text = "🗝 RIFT"
+		flag.tooltip_text = ("Spend a Rift Key to open a rift onto %s. It leads one way, on to %s."
+			% [game.display_name, dest.display_name if dest != null else String(choice["rift_key"])])
+		flag.add_theme_color_override("font_color", UITheme.RIFT)
 	elif rift:
 		# A rift is never the Amulet nor a shop (both rules of the generator), so
 		# the flag's slot is free for it.
@@ -302,6 +310,21 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	dist.custom_minimum_size = Vector2(0, BADGE_LINE)
 	dist.add_theme_font_size_override("font_size", DIST_FONT)
 	dist.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
+	if keyed:
+		# WHERE THE RIFT LEADS, on the same one line: the distance first so a trim
+		# eats the end of the destination's name and never the number. Whole in
+		# the tooltip and in the popup.
+		var dest: GameData = Data.get_game(StringName(choice["rift_key"]))
+		var dest_name: String = dest.display_name if dest != null else String(choice["rift_key"])
+		var hops: int = _page.steps_to_amulet(slot_of(choice))
+		dist.text = ("%d away → %s" % [hops, dest_name]) if hops > 0 else "→ %s" % dest_name
+		dist.autowrap_mode = TextServer.AUTOWRAP_OFF
+		dist.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		dist.clip_text = true
+		dist.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
+		dist.tooltip_text = "The rift leads one way, to %s — %s." % [dest_name,
+			_page.amulet_distance_text(hops - 1) if hops > 1 else "the Amulet"]
+		dist.add_theme_color_override("font_color", UITheme.RIFT)
 	card.add_child(dist)
 
 	# NO TOOLTIP. The offering is the one place on the page that does NOT get a

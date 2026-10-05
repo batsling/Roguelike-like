@@ -600,3 +600,145 @@ func test_picking_a_rift_card_stands_rift_bodies() -> void:
 	for inst in GameLoop2.arrivals:
 		assert_true(GameLoop2.is_rift_body(GameLoop2.entry_for(int(inst))),
 			"and each one is a rift body")
+
+
+# --- Rift Keys (§8) ------------------------------------------------------------
+
+# The overworld at its offering, standing on a game with fewer connections than
+# cards (so there are empty slots), holding `keys` Rift Keys. {} when this
+# catalogue has no such game.
+func _at_a_quiet_game(keys: int) -> Dictionary:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	if ui._phase == ui.Phase.PLAYING:
+		ui.report(true, [])
+		ui._end_resolve()
+	ui._phase = ui.Phase.SELECT
+	var amulet: StringName = GameState.amulet_game_id
+	var ids: Array = RunGraph.bfs_distances(amulet).keys()
+	ids.sort()
+	for id in ids:
+		var gid := StringName(id)
+		if gid == amulet or RunGraph.is_rift_game(gid):
+			continue
+		if RunGraph.neighbors(gid).size() >= ui.offer_count():
+			continue
+		if RunGraph.rift_key_destinations(gid).is_empty():
+			continue
+		GameState.current_game_id = gid
+		GameState.keys = keys
+		ui._build_choices()
+		return {"ui": ui, "here": gid}
+	return {}
+
+func _key_cards(ui) -> Array:
+	return ui._choices.filter(func(c): return c.has("rift_key"))
+
+func test_no_key_no_rift_cards() -> void:
+	var got: Dictionary = _at_a_quiet_game(0)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	assert_eq(_key_cards(got["ui"]).size(), 0, "without a key the empty slots stay empty")
+
+# With a key, every empty slot is a rift card: a rift game off the map, leading to
+# a game exactly two hops away.
+func test_a_key_fills_the_empty_slots_with_rift_cards() -> void:
+	var got: Dictionary = _at_a_quiet_game(1)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	var cards: Array = _key_cards(ui)
+	var plain: int = ui._choices.size() - cards.size()
+	assert_eq(cards.size(), ui.offer_count() - plain, "every empty slot is filled")
+	var two_away: Array = RunGraph.rift_key_destinations(got["here"])
+	var pool: Array = RunGraph.rift_pool()
+	for c in cards:
+		assert_true(two_away.has(StringName(c["rift_key"])), "the rift leads two hops away")
+		assert_true(pool.has(StringName(c["slot"])), "and holds a connectionless game")
+		assert_false(RunGraph.is_rift_game(StringName(c["slot"])), "not laid until it is opened")
+
+# A Scramble deals the rift cards again, game and destination both.
+func test_a_scramble_redeals_the_rift_cards() -> void:
+	var got: Dictionary = _at_a_quiet_game(1)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	var seen: Dictionary = {}
+	for i in range(6):
+		for c in _key_cards(ui):
+			seen[String(c["slot"])] = true
+		GameState.scramble = 1
+		ui.scramble()
+	assert_gt(seen.size(), 1, "six tables did not all deal the same rift game")
+
+# Picking a rift card spends the key and opens a ONE-WAY rift: the rift game hangs
+# off its destination and nothing else, and the run stands in it facing rift bodies.
+func test_opening_a_rift_card_spends_a_key_and_lays_a_one_way_rift() -> void:
+	var got: Dictionary = _at_a_quiet_game(2)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	var here: StringName = got["here"]
+	var idx := -1
+	for i in ui._choices.size():
+		if ui._choices[i].has("rift_key"):
+			idx = i
+			break
+	assert_gt(idx, -1)
+	if idx < 0:
+		return
+	var gid := StringName(ui._choices[idx]["slot"])
+	var dest := StringName(ui._choices[idx]["rift_key"])
+	var before: Dictionary = RunGraph.bfs_distances(here).duplicate()
+	ui.pick(idx)
+	assert_eq(GameState.keys, 1, "one key spent")
+	assert_true(RunGraph.is_rift_game(gid), "the rift is open")
+	assert_eq(RunGraph.neighbors(gid), [dest], "and leads only to its destination")
+	assert_false(RunGraph.neighbors(here).has(gid), "never back to where it was opened")
+	assert_eq(GameState.current_game_id, gid, "the run stands in the rift")
+	for inst in GameLoop2.arrivals:
+		assert_true(GameLoop2.is_rift_body(GameLoop2.entry_for(int(inst))), "facing rift bodies")
+	var after: Dictionary = RunGraph.bfs_distances(here)
+	var moved := 0
+	for n in before:
+		if int(after.get(n, -1)) != int(before[n]):
+			moved += 1
+	assert_eq(moved, 0, "and no distance on the map moved")
+	var kinds: Array = GameState.rifts.map(func(r): return String(r["kind"]))
+	assert_true(kinds.has(RunGraph.RIFT_KEYED), "the keyed rift is saved with the run's rifts")
+
+# Bash and Transmute on a rift card deal it again with another game.
+func test_bash_and_transmute_redeal_a_rift_card() -> void:
+	var got: Dictionary = _at_a_quiet_game(1)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	for verb in ["bash", "transmute"]:
+		var idx := -1
+		for i in ui._choices.size():
+			if ui._choices[i].has("rift_key"):
+				idx = i
+				break
+		if idx < 0:
+			pending("the pool ran dry")
+			return
+		var old := StringName(ui._choices[idx]["slot"])
+		if verb == "bash":
+			GameState.bash = 1
+			assert_true(ui.bash_choice(idx))
+			assert_true(GameLoop2.is_bashed(old), "a bashed rift game leaves the pool")
+			assert_eq(GameState.bash, 0)
+		else:
+			GameState.transmute = 1
+			assert_true(ui.transmute_choice(idx))
+			assert_eq(GameState.transmute, 0)
+		var now: Array = _key_cards(ui).map(func(c): return StringName(c["slot"]))
+		assert_false(now.has(old), "%s dealt %s away" % [verb, old])
+		assert_false(RunGraph.is_rift_game(old), "and opened nothing")
+	GameLoop2.bashed.clear()

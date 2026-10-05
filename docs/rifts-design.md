@@ -1,10 +1,11 @@
 # Rifts — design
 
-**Status: steps 1–3 of 5 built** (generation: path rifts, world rifts, the split
+**Status: steps 1–4 of 5 built** (generation: path rifts, world rifts, the split
 floor, saving, the toggle, rift games as Enemies; the visuals: the swirl on rift
-cards, the rift line and badge, the proof slot, the overlay flag; and rift
-enemies: double damage, double loot and chest points, Bash, Dash and Teleport).
-Rift Keys are designed, not built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
+cards, the rift line and badge, the proof slot, the overlay flag; rift enemies:
+double damage, double loot and chest points, Bash, Dash and Teleport; and Rift
+Keys). Step 5 is the owner's: where keys come from, and items and events that
+touch rifts. The build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
 §7.4, …) refer to `docs/games-first-redesign.md`.
 
 ## 1. What a rift is
@@ -188,6 +189,12 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   the same rotation (§3.3).
 - **It closes once entered.** The link back to where you came from disappears, so
   the rift is a one-way passage into the new branch.
+- **As built, the link back is never laid at all.** A keyed rift is laid
+  ONE-ENDED, off its destination only (kind `"key"` in `GameState.rifts`), and the
+  run travels into it from the card. So it is a dead end hanging off the
+  destination: no distance anywhere on the map can move, and from the destination
+  it stays on the map as an ordinary rift game you could step back into (and back
+  out of). It is saved with the run's other rifts.
 
 ## 9. Presentation
 
@@ -295,6 +302,34 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   doubled dmg on the popup's enemy, and a "🌀 Rift: bodies hit ×2, pay ×2 loot and
   chest" fact on a rift card's popup.
 
+### Where step 4 lives
+
+- **A Rift Key is `GameState.keys`**, the character stat the spec reserved for
+  this, already saved and already a verb stat items can grant.
+- `Overworld2._add_rift_key_cards`, at the end of `_build_choices`: with a key
+  held (and rifts on, and not in a Dash or a stay-or-return), each slot short of
+  `offer_count()` gets a card `{game, enemy, slot, "rift_key": destination}`.
+  Destinations are `RunGraph.rift_key_destinations` (every game exactly two hops
+  away, never a rift game or a bashed one), shuffled off the offering's seed and
+  dealt round the cards; games are `RunGraph.rift_key_games`, the same rotation
+  dealt rifts use, less anything bashed, on the table, or turned away by
+  Transmute. So a redraw keeps the cards and a Scramble (which moves the seed)
+  re-deals both halves.
+- `_open_rift_key`, from `pick`, before the commit: spends the key, lays the rift
+  (`RunGraph.RIFT_KEYED`, one end), makes it an Enemies node, and records the
+  appearance (`GameStats.record_key_rift`, which leaves last run's list alone).
+  The commit then stands rift bodies on it like any rift.
+- **Bash on a rift card** knocks its game out of the pool (`bashed`) and the card
+  is dealt again; **Transmute** turns it away from this table only. Neither opens
+  anything.
+- `steps_to_amulet` answers for a card's unlaid game as its destination plus one,
+  so the card's line and the popup's route badge are right before the rift is
+  open. The card's distance line reads `N away → Destination`, trimmed at the
+  name, with `🗝 RIFT` in the flag line; the popup says the key is spent and where
+  it leads, counts the one door, and draws the route as the rift game stitched on
+  top of the destination's ladder (`GameChoiceModal._key_route`).
+- `🗝` was added to `fonts/NotoSansSymbols2-Subset.ttf`.
+
 ### Build order
 
 1. **Generation** (built): path rifts, world rifts and the split floor in
@@ -303,7 +338,7 @@ Keys already exist as a character stat, reserved by the spec for exactly this
    proof slot, overlay flag.
 3. **Rift enemies** (built): Enemies-only nodes, ×2 damage, ×2 loot and chest
    value; Bash and Transmute swap; excluded from Dash and Teleport.
-4. **Rift Keys:** rift cards in empty offering slots; Scramble rerolls both the
-   rift game and the destination.
+4. **Rift Keys** (built): rift cards in empty offering slots; Scramble rerolls
+   both the rift game and the destination.
 5. **Later (owner):** key sources in items and loot; items and events that
    interact with rifts; themed rift names for specific kinds of rift.
