@@ -138,30 +138,51 @@ them with the game's own `RunGraph` before shipping (§10, step 1).
 | **Dash** | Rift games are not listed. |
 | **Teleport** | Never lands on a rift game. |
 
-## 8. Rift Keys and portals
+## 8. Rift Keys
 
 Keys already exist as a character stat, reserved by the spec for exactly this
 ("unlock a blocked edge / unconnected wild game", §4) and deferred until now.
 
 - **Where keys come from:** items and loot. The owner places them in the reward system.
-- **When you can use one:** on a game with only **one or two connections**.
-- **What it does:** offers a choice of **1 of 3** portals. Each is a rift game
-  leading sideways into a **neighbouring branch**, a game exactly 2 away. That
-  makes it obey §2 automatically: it never shortens anything. Fewer than 3
-  neighbouring branches offers as many as there are.
-- **The portal's game is a rift game** (§6: Enemies, ×2 damage, ×2 loot), drawn
-  from the same rotation.
-- **Closes once entered.** The link back to where you came from disappears, so the
-  portal is a one-way passage into the new branch.
+- **Where they show up: in the offering, not on a screen of their own.** The
+  offering shows up to `offer_count()` cards (3 plus any `game_choice_bonus`),
+  drawn from every connection of the current game, including the one you came
+  from. A game with only one or two connections leaves slots empty. **While the
+  player holds at least one key, each empty slot is filled with a rift card.**
+  With no key, nothing changes.
+- **A rift card is a specific rift game and where it leads:** a game exactly 2
+  away on a neighbouring branch. That makes it obey §2 automatically: it never
+  shortens anything. The card shows the destination and its distance to the Amulet,
+  because the offering is a routing decision.
+- **Picking a rift card spends one key.** Picking an ordinary card spends nothing.
+  Each slot is a separate card, so holding fewer keys than empty slots still shows
+  every slot; only one card is taken per step anyway.
+- **Scramble rerolls rift cards too**: a new rift game and possibly a new
+  destination. **Bash** on a rift card swaps the game inside it, as for any rift (§7).
+- **The rift game is a rift game** (§6: Enemies, ×2 damage, ×2 loot), drawn from
+  the same rotation (§3.3).
+- **It closes once entered.** The link back to where you came from disappears, so
+  the rift is a one-way passage into the new branch.
 
 ## 9. Presentation
 
+- **Naming: every rift is a "<theme> Rift"**, named from its game's first tag:
+  Cryptark (mecha, space) opens a **Mecha Rift**, Beat Blast a **Rhythm Rift**,
+  Dice With Death a **Dice Rift**. Only 27 of the 59 off-map games have tags today,
+  so an untagged game falls back to its genre ("Action Rift"). Adding tags to the
+  untagged ones in the sheet removes the fallback over time. The word "portal" is
+  not used anywhere.
+- **Rift cards in the offering** get a **fractal, swirly, distorted background**:
+  a canvas shader on the card's backing panel (domain-warped noise in the rift
+  colour, drifting slowly), with a dark band behind the card's text so the goal and
+  the distance stay readable. Judge its colours by sampling the rendered pixel, not
+  by eye (see `docs/layout-review-backlog.md`).
 - **Map:** a distinct rift line style (shimmering or dashed, its own colour) on the
-  run map, the route ladder and the choice cards. Rift games carry a rift badge.
+  run map and the route ladder. Rift games carry a rift badge.
 - **Proof slot:** a rift game's card shows *"Rift: no known influence"* with
   merged-dimensions flavour text where the proof screenshot would be.
-- **OBS overlay:** a rift flag when the current game is a rift
-  (`tools/check_overlay.js` re-run when the payload changes).
+- **OBS overlay:** a rift flag, with a CSS version of the swirl, when the current
+  game is a rift (`tools/check_overlay.js` re-run when the payload changes).
 - **Atlas / Collection:** stays the real influence graph. Rifts are per-run state,
   shown at most as a faint overlay of the current run's rifts.
 
@@ -184,9 +205,10 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 
 1. **Generation:** path rifts, world rifts and the split floor in `RunGraph`,
    saved with the run. Verify §5 with the real Amulet measurement before going on.
-2. **Visuals:** map line, badge, proof slot, overlay flag.
+2. **Visuals:** rift naming, the swirl background on rift cards, map line, badge,
+   proof slot, overlay flag.
 3. **Rift enemies:** Enemies-only nodes, ×2 damage, ×2 loot and chest value; Bash
    and Transmute swap; excluded from Dash and Teleport.
-4. **Keys and portals.**
+4. **Rift Keys:** rift cards in empty offering slots, rerolled by Scramble.
 5. **Later (owner):** key sources in items and loot; items and events that
    interact with rifts.
