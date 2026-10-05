@@ -157,8 +157,10 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - **Picking a rift card spends one key.** Picking an ordinary card spends nothing.
   Each slot is a separate card, so holding fewer keys than empty slots still shows
   every slot; only one card is taken per step anyway.
-- **Scramble rerolls rift cards too**: a new rift game and possibly a new
-  destination. **Bash** on a rift card swaps the game inside it, as for any rift (§7).
+- **Scramble rerolls rift cards completely: a new rift game AND a new
+  destination.** Where the current game has only one game 2 away, the destination
+  repeats and only the rift game changes. **Bash** on a rift card swaps the game
+  inside it, as for any rift (§7).
 - **The rift game is a rift game** (§6: Enemies, ×2 damage, ×2 loot), drawn from
   the same rotation (§3.3).
 - **It closes once entered.** The link back to where you came from disappears, so
@@ -166,12 +168,9 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 
 ## 9. Presentation
 
-- **Naming: every rift is a "<theme> Rift"**, named from its game's first tag:
-  Cryptark (mecha, space) opens a **Mecha Rift**, Beat Blast a **Rhythm Rift**,
-  Dice With Death a **Dice Rift**. Only 27 of the 59 off-map games have tags today,
-  so an untagged game falls back to its genre ("Action Rift"). Adding tags to the
-  untagged ones in the sheet removes the fallback over time. The word "portal" is
-  not used anywhere.
+- **Naming: deferred.** Rifts are just "rifts" for now. Themed names (a game's tag
+  making a "Mecha Rift") are kept for later, when the owner adds more specific
+  kinds of rift.
 - **Rift cards in the offering** get a **fractal, swirly, distorted background**:
   a canvas shader on the card's backing panel (domain-warped noise in the rift
   colour, drifting slowly), with a dark band behind the card's text so the goal and
@@ -205,10 +204,11 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 
 1. **Generation:** path rifts, world rifts and the split floor in `RunGraph`,
    saved with the run. Verify §5 with the real Amulet measurement before going on.
-2. **Visuals:** rift naming, the swirl background on rift cards, map line, badge,
-   proof slot, overlay flag.
+2. **Visuals:** the swirl background on rift cards, map line, badge, proof slot,
+   overlay flag.
 3. **Rift enemies:** Enemies-only nodes, ×2 damage, ×2 loot and chest value; Bash
    and Transmute swap; excluded from Dash and Teleport.
-4. **Rift Keys:** rift cards in empty offering slots, rerolled by Scramble.
+4. **Rift Keys:** rift cards in empty offering slots; Scramble rerolls both the
+   rift game and the destination.
 5. **Later (owner):** key sources in items and loot; items and events that
-   interact with rifts.
+   interact with rifts; themed rift names for specific kinds of rift.
