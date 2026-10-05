@@ -116,12 +116,18 @@ func test_every_start_offered_clears_the_floor() -> void:
 		if pick.is_empty():
 			continue
 		var amulet := StringName(pick.get("amulet_id", ""))
+		# A card whose route is one game short is offered on the promise of its path
+		# rift (docs/rifts-design.md §4), so the floor is checked with the run's
+		# rifts laid, against the floor the panel was held to.
+		GameState.set_rifts(pick.get("rifts", []))
+		var floor: int = int(pick.get("floor", RunGraph.ROUTE_SLACK_FLOOR))
 		for opt in pick.get("options", []):
 			assert_true(bool(opt.get("in_window", false)),
 				"every card is in window now; %s is not" % opt.get("start_id", ""))
 			offered += 1
-			if not RunGraph.route_clears_floor(StringName(opt.get("start_id", "")), amulet):
+			if RunGraph.route_slack(StringName(opt.get("start_id", "")), amulet) < floor:
 				thin += 1
+		GameState.set_rifts([])
 	if offered == 0:
 		pending("no starts were offered across the sampled runs")
 		return

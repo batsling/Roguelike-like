@@ -81,6 +81,9 @@ const MIN_START_CONNECTIONS := 2
 # The two-card opening is accepted rather than solved: this fixes the QUALITY of
 # those two cards, not their number.
 static func is_eligible_start(game_id: StringName) -> bool:
+	# A rift game is never a start (docs/rifts-design.md §3.3).
+	if is_rift_game(game_id):
+		return false
 	var degree: int = neighbors(game_id).size()
 	if degree >= 3:
 		return true
@@ -236,6 +239,28 @@ const BFS_CACHE_MAX := 320
 # Games that passed the filter but fell outside the main group, as a set. Pruned
 # out of _adj_cache and kept here because Transmute needs exactly this list.
 static var _off_map: Dictionary = {}         # StringName -> true
+# The off-map games with NO connection at all inside the filter — the pool rift
+# games are drawn from (docs/rifts-design.md §3.3). A subset of _off_map: the
+# sequel pairs and other islands are off the map too, but they are not
+# connectionless.
+static var _isolated: Dictionary = {}        # StringName -> true
+
+# --- rifts (docs/rifts-design.md) -------------------------------------------
+#
+# The run's rifts: off-map games joined to two games of the map that were
+# ALREADY exactly two hops apart, so a rift never shortens anything (§2). Each is
+# {"game", "a", "b", "kind"} with kind "path" or "world".
+#
+# This is the RUN's state, held here because the graph is where every reader
+# looks — neighbours, distances, routes, the offering — and laid over the
+# adjacency in _build_adj so none of them needs to know rifts exist.
+# GameState.rifts is the saved copy; set_rifts() is the one way in.
+#
+# invalidate_cache() deliberately leaves `_rifts` alone: a filter change rebuilds
+# the graph, and the run's rifts are re-laid over the rebuilt one (any whose
+# games the new filter excludes simply do not appear).
+static var _rifts: Array = []
+static var _rift_games: Dictionary = {}      # StringName -> the rift's Dictionary, as laid
 
 static func invalidate_cache() -> void:
 	_adj_cache.clear()
@@ -244,6 +269,8 @@ static func invalidate_cache() -> void:
 	_dag_cache.clear()
 	_route_dag_cache.clear()
 	_off_map.clear()
+	_isolated.clear()
+	_rift_games.clear()
 
 # Whether a game is eligible to appear in path selection, per the global
 # Settings.game_filter. Filtered-out games are excluded from the graph
@@ -302,6 +329,7 @@ static func _build_adj() -> void:
 				seen[influenced_id][g.id] = true
 				(_adj_cache[influenced_id] as Array).append(g.id)
 	_prune_to_main_component()
+	_apply_rifts()
 	_adj_cache_built = true
 
 # Third pass — keep only the MAIN GROUP. The influence graph is not one piece:
@@ -352,6 +380,8 @@ static func _prune_to_main_component() -> void:
 	for id in ids:
 		if not main.has(id):
 			_off_map[id] = true
+			if (_adj_cache[id] as Array).is_empty():
+				_isolated[id] = true
 			_adj_cache.erase(id)
 	# Nothing in the mainland can still point at a pruned node — every edge is
 	# mirrored, so an edge to an off-map game would have merged the two groups.
@@ -371,6 +401,338 @@ static func off_map_ids() -> Array[StringName]:
 static func is_off_map(game_id: StringName) -> bool:
 	_build_adj()
 	return not _adj_cache.has(game_id)
+
+# --- rifts: laying them, and the questions about them ------------------------
+
+# How many of each (docs/rifts-design.md §3). One path rift per start card at
+# most, so three; in practice the cards' routes converge on the Amulet and one
+# rift usually lies on two or three of them.
+const PATH_RIFTS_MAX := 3
+const WORLD_RIFTS := 10
+const WORLD_RIFTS_PER_HUB := 2
+# The raised route floor of the split rule (§4): an Amulet that can field its
+# three genres at this, counting the rift each card's route carries, is held to
+# it; one that cannot falls back to ROUTE_SLACK_FLOOR.
+const RIFT_FLOOR := 6
+# How many off-map games of each GENRE rifts always leave for Transmute, which
+# swaps a game for an off-map game of the same genre (GameLoop2.transmute_game).
+# The off-map pool is lopsided — one Traditional and seven Deckbuilders on the
+# full catalogue — so without a reserve one rift can empty a genre and refuse
+# every Transmute of it for the run (docs/rifts-design.md §10).
+const RIFT_TRANSMUTE_RESERVE := 2
+
+# Replace the run's rifts. Rebuilds the graph so every reader sees them at once.
+static func set_rifts(rifts: Array) -> void:
+	# Lifting rifts that are not there changes nothing, and GameState.reset_run
+	# asks this on every reset — so the graph is only rebuilt when it moves.
+	if rifts.is_empty() and _rifts.is_empty():
+		return
+	_rifts = []
+	for r in rifts:
+		if r is Dictionary:
+			_rifts.append({"game": StringName(r.get("game", "")), "a": StringName(r.get("a", "")),
+				"b": StringName(r.get("b", "")), "kind": String(r.get("kind", "world"))})
+	invalidate_cache()
+
+# The run's rifts as laid, JSON-safe (ids as Strings), for the save and for any
+# reader that wants to list them.
+static func rifts() -> Array:
+	_build_adj()
+	var out: Array = []
+	for r in _rifts:
+		if _rift_games.has(r["game"]):
+			out.append({"game": String(r["game"]), "a": String(r["a"]),
+				"b": String(r["b"]), "kind": String(r["kind"])})
+	return out
+
+static func is_rift_game(game_id: StringName) -> bool:
+	_build_adj()
+	return _rift_games.has(game_id)
+
+# Lays `_rifts` over the freshly pruned adjacency. A rift whose game is not in the
+# off-map pool any more, or whose ends are not on the map (a filter change since),
+# is skipped rather than half-laid.
+static func _apply_rifts() -> void:
+	_rift_games.clear()
+	for r in _rifts:
+		var g: StringName = r["game"]
+		var a: StringName = r["a"]
+		var b: StringName = r["b"]
+		if a == b or _rift_games.has(g) or not _off_map.has(g):
+			continue
+		if not _adj_cache.has(a) or not _adj_cache.has(b):
+			continue
+		_off_map.erase(g)
+		_isolated.erase(g)
+		_adj_cache[g] = [a, b]
+		(_adj_cache[a] as Array).append(g)
+		(_adj_cache[b] as Array).append(g)
+		_rift_games[g] = r
+
+# The games a rift may hold this run: connectionless, inside the filter, not
+# already in a rift. Sorted, so the pool is the same list for the same catalogue.
+static func rift_pool() -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	for id in _isolated:
+		out.append(id)
+	out.sort()
+	return out
+
+# Every place a rift could go on the route from `start_id` to `amulet_id` without
+# shortening anything, as [u, v] pairs: two games of that route two layers apart
+# that share a neighbour, so they are exactly two hops apart already and a rift
+# game between them is a second road of the same length (§2). A rift there sits
+# on the route's shortest-path DAG and raises its slack by exactly one.
+#
+# Two nodes two layers apart cannot be adjacent (that would put one a layer
+# nearer), so sharing a neighbour is the whole test. Rift games are never an end.
+static func rift_spots(start_id: StringName, amulet_id: StringName) -> Array:
+	var ds: Dictionary = bfs_distances(start_id)
+	if not ds.has(amulet_id):
+		return []
+	var hops: int = int(ds[amulet_id])
+	var da: Dictionary = bfs_distances(amulet_id)
+	var by_layer: Dictionary = {}
+	for n in ds:
+		var d: int = int(ds[n])
+		if d > hops or not da.has(n) or d + int(da[n]) != hops or _rift_games.has(n):
+			continue
+		if not by_layer.has(d):
+			by_layer[d] = []
+		(by_layer[d] as Array).append(n)
+	var out: Array = []
+	for k in range(0, hops - 1):
+		for u in (by_layer.get(k, []) as Array):
+			var near_u: Dictionary = {}
+			for x in (_adj_cache.get(u, []) as Array):
+				near_u[x] = true
+			for v in (by_layer.get(k + 2, []) as Array):
+				for x in (_adj_cache.get(v, []) as Array):
+					if near_u.has(x):
+						out.append([u, v])
+						break
+	return out
+
+static func _pair_key(a: StringName, b: StringName) -> String:
+	return "%s|%s" % [a, b] if String(a) < String(b) else "%s|%s" % [b, a]
+
+# The rift games for this run, in the order they will be handed out: games that
+# have been in a rift least often first (§3.3, "unseen games first"), ties in a
+# seeded random order, and last run's rift games only once nothing else is left.
+static func _rift_pool_order(rng: RandomNumberGenerator, exclude: Dictionary) -> Array:
+	var last: Dictionary = {}
+	for id in GameStats.last_rift_games():
+		last[StringName(id)] = true
+	var fresh: Array = []
+	var stale: Array = []
+	for id in rift_pool():
+		if exclude.has(id):
+			continue
+		(stale if last.has(id) else fresh).append(id)
+	# Rifts may take a genre's off-map games only down to RIFT_TRANSMUTE_RESERVE.
+	var room: Dictionary = _rift_room()
+	var ordered: Array = []
+	for group in [fresh, stale]:
+		var g: Array = group
+		for i in range(g.size()):
+			var j: int = rng.randi() % g.size()
+			var t = g[i]
+			g[i] = g[j]
+			g[j] = t
+		var keyed: Array = []
+		for i in range(g.size()):
+			keyed.append([GameStats.rift_count(g[i]), i, g[i]])
+		keyed.sort_custom(func(x, y): return x[0] < y[0] or (x[0] == y[0] and x[1] < y[1]))
+		for k in keyed:
+			var kg: GameData = Data.get_game(k[2])
+			if kg == null or int(room.get(kg.type, 0)) <= 0:
+				continue
+			room[kg.type] = int(room[kg.type]) - 1
+			ordered.append(k[2])
+	return ordered
+
+# How many off-map games of each genre may go into rifts: all but the
+# RIFT_TRANSMUTE_RESERVE that Transmute keeps. GameType -> count.
+static func _rift_room() -> Dictionary:
+	_build_adj()
+	var room: Dictionary = {}
+	for id in _off_map:
+		var og: GameData = Data.get_game(id)
+		if og != null:
+			room[og.type] = int(room.get(og.type, 0)) + 1
+	for t in room:
+		room[t] = maxi(0, int(room[t]) - RIFT_TRANSMUTE_RESERVE)
+	return room
+
+# How many games could actually be put in a rift this run: the pool, less what
+# each genre has to keep back for Transmute.
+static func usable_rift_count() -> int:
+	var room: Dictionary = _rift_room()
+	var per_type: Dictionary = {}
+	for id in rift_pool():
+		var g: GameData = Data.get_game(id)
+		if g != null:
+			per_type[g.type] = int(per_type.get(g.type, 0)) + 1
+	var n := 0
+	for t in per_type:
+		n += mini(int(per_type[t]), int(room.get(t, 0)))
+	return n
+
+# PATH RIFTS (§3.1): at most one rift on each start card's route, chosen so that
+# every card whose route needs one to reach `floor` gets one, and otherwise so
+# that each rift lies on as many routes as it can. `options` are the drawn cards,
+# each carrying its route's "slack". Returns [[u, v], ...].
+static func _path_rift_spots(amulet_id: StringName, options: Array, floor: int,
+		rng: RandomNumberGenerator) -> Array:
+	var routes: Array = []        # per card: {keys: {key: true}, need: bool}
+	var spot_of: Dictionary = {}  # key -> [u, v]
+	for opt in options:
+		var keys: Dictionary = {}
+		for pr in rift_spots(StringName(opt["start_id"]), amulet_id):
+			var key := _pair_key(pr[0], pr[1])
+			keys[key] = true
+			spot_of[key] = pr
+		routes.append({"keys": keys, "need": int(opt.get("slack", floor)) < floor})
+	var all_keys: Array = spot_of.keys()
+	all_keys.sort()
+	for i in range(all_keys.size()):
+		var j: int = rng.randi() % all_keys.size()
+		var t = all_keys[i]
+		all_keys[i] = all_keys[j]
+		all_keys[j] = t
+	var covered: Array = []
+	for _r in routes:
+		covered.append(false)
+	var chosen: Array = []
+	while chosen.size() < PATH_RIFTS_MAX:
+		var best_key: String = ""
+		var best_score := 0
+		for key in all_keys:
+			var fresh := 0
+			var rescues := 0
+			var doubles := false
+			for i in range(routes.size()):
+				if not (routes[i]["keys"] as Dictionary).has(key):
+					continue
+				if covered[i]:
+					doubles = true
+				else:
+					fresh += 1
+					if routes[i]["need"]:
+						rescues += 1
+			# A second rift on a route is taken only to rescue another one.
+			if fresh == 0 or (doubles and rescues == 0):
+				continue
+			var score := rescues * 100 + fresh
+			if score > best_score:
+				best_score = score
+				best_key = key
+		if best_key == "":
+			break
+		chosen.append(spot_of[best_key])
+		for i in range(routes.size()):
+			if (routes[i]["keys"] as Dictionary).has(best_key):
+				covered[i] = true
+		all_keys.erase(best_key)
+	return chosen
+
+# WORLD RIFTS (§3.2): up to `count` rifts on weak spots away from the cards'
+# routes — pairs of thin games (one or two connections) hanging off the same
+# hub, dead-end pairs first, at most WORLD_RIFTS_PER_HUB per hub, no game an end
+# of two rifts. `avoid` holds every game of the cards' routes and the path
+# rifts' ends. Returns [[u, v], ...].
+static func _world_rift_spots(avoid: Dictionary, count: int,
+		rng: RandomNumberGenerator) -> Array:
+	var hubs: Array = _adj_cache.keys()
+	hubs.sort()
+	var tiers: Array = [[], []]     # [both dead ends, the rest]
+	for h in hubs:
+		var thin: Array = []
+		for n in (_adj_cache[h] as Array):
+			if avoid.has(n) or _rift_games.has(n):
+				continue
+			if (_adj_cache[n] as Array).size() <= 2:
+				thin.append(n)
+		if thin.size() < 2:
+			continue
+		thin.sort()
+		for i in range(thin.size()):
+			var j: int = rng.randi() % thin.size()
+			var t = thin[i]
+			thin[i] = thin[j]
+			thin[j] = t
+		# Dead ends first, so each hub offers its best pairs.
+		thin.sort_custom(func(x, y): return (_adj_cache[x] as Array).size() < (_adj_cache[y] as Array).size())
+		var made := 0
+		var used: Dictionary = {}
+		for i in range(thin.size()):
+			if made >= WORLD_RIFTS_PER_HUB:
+				break
+			var u = thin[i]
+			if used.has(u):
+				continue
+			for k in range(i + 1, thin.size()):
+				var v = thin[k]
+				if used.has(v) or (_adj_cache[u] as Array).has(v):
+					continue
+				var both_dead: bool = (_adj_cache[u] as Array).size() == 1 \
+					and (_adj_cache[v] as Array).size() == 1
+				(tiers[0 if both_dead else 1] as Array).append([u, v, h])
+				used[u] = true
+				used[v] = true
+				made += 1
+				break
+	var out: Array = []
+	var taken: Dictionary = {}
+	var per_hub: Dictionary = {}
+	for tier in tiers:
+		var t_arr: Array = tier
+		for i in range(t_arr.size()):
+			var j: int = rng.randi() % t_arr.size()
+			var t = t_arr[i]
+			t_arr[i] = t_arr[j]
+			t_arr[j] = t
+		for c in t_arr:
+			if out.size() >= count:
+				return out
+			if taken.has(c[0]) or taken.has(c[1]):
+				continue
+			if int(per_hub.get(c[2], 0)) >= WORLD_RIFTS_PER_HUB:
+				continue
+			taken[c[0]] = true
+			taken[c[1]] = true
+			per_hub[c[2]] = int(per_hub.get(c[2], 0)) + 1
+			out.append([c[0], c[1]])
+	return out
+
+# Every game on the shortest routes from each card's start to the Amulet.
+static func _route_nodes(amulet_id: StringName, start_ids: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var da: Dictionary = bfs_distances(amulet_id)
+	for sid in start_ids:
+		var ds: Dictionary = bfs_distances(StringName(sid))
+		if not ds.has(amulet_id):
+			continue
+		var hops: int = int(ds[amulet_id])
+		for n in ds:
+			if int(ds[n]) <= hops and da.has(n) and int(ds[n]) + int(da[n]) == hops:
+				out[n] = true
+	return out
+
+# Runs `work` on the bare influence map — no rifts laid — and puts the run's rifts
+# back after. Generation and the setup screen's question both measure the map as
+# it is before any rift, because rifts are what they are deciding.
+static func _on_bare_map(work: Callable) -> Variant:
+	var held: Array = _rifts
+	if not held.is_empty():
+		_rifts = []
+		invalidate_cache()
+	var result: Variant = work.call()
+	if not held.is_empty():
+		_rifts = held
+		invalidate_cache()
+	return result
 
 static func neighbors(game_id: StringName) -> Array[StringName]:
 	_build_adj()
@@ -814,6 +1176,12 @@ static func assign_node_kinds(rng: RandomNumberGenerator, amulet_id: StringName,
 	for sid in start_ids:
 		if StringName(sid) != amulet_id:
 			kinds[StringName(sid)] = NodeKind.ENEMIES
+	# A rift game is always ENEMIES (docs/rifts-design.md §6), stamped before the
+	# routes' guarantees so the Event and the Shop a route promises never land in
+	# a rift. It counts toward the route's Enemies share.
+	for id in _rift_games:
+		if id != amulet_id:
+			kinds[id] = NodeKind.ENEMIES
 
 	# 2. What each route still lacks, placed at random on that route.
 	for sid in start_ids:
@@ -1131,8 +1499,9 @@ static func amulet_candidates_from(start_pool: Array, all_games: Array) -> Dicti
 				continue
 			var g: GameData = by_id.get(id, null) as GameData
 			# A custom run may say which games are allowed to BE the goal — or name
-			# one outright, in which case this is the only game that passes.
-			if g == null or not RunConfig.amulet_passes(g):
+			# one outright, in which case this is the only game that passes. A rift
+			# game is never the goal (docs/rifts-design.md §3.3).
+			if g == null or not RunConfig.amulet_passes(g) or _rift_games.has(id):
 				continue
 			out[id] = g
 	return out
@@ -1216,11 +1585,30 @@ static func panel_genres(amulet_id: StringName) -> int:
 	for g in Data.all_games():
 		if g is GameData and _passes_filter(g):
 			all.append(g)
-	return _strict_starts_for(amulet, eligible_starts_from(all),
-		bfs_distances(amulet_id)).size()
+	return int(_on_bare_map(func():
+		var starts: Array[GameData] = eligible_starts_from(all)
+		var d: Dictionary = bfs_distances(amulet_id)
+		if not rifts_available():
+			return _strict_starts_for(amulet, starts, d).size()
+		var at_high: int = _strict_starts_for(amulet, starts, d, RIFT_FLOOR, true).size()
+		if at_high >= NUM_START_OPTIONS:
+			return at_high
+		return _strict_starts_for(amulet, starts, d, ROUTE_SLACK_FLOOR, true).size()))
 
+# Whether this run lays rifts at all: the setting is on and the pool can fill a
+# rift on every card's route. Too small a pool is a run without rifts, never a
+# run that promises a rescue it cannot pay for (docs/rifts-design.md §10).
+static func rifts_available() -> bool:
+	return Settings.rifts_enabled and usable_rift_count() >= PATH_RIFTS_MAX
+
+# `floor` is the route floor this panel is held to and `rifts_on` whether the
+# run lays rifts: a card's route then carries a path rift, worth one game of
+# slack, so a start one game short of `floor` qualifies when its route has a
+# legal place for that rift (docs/rifts-design.md §4). With rifts off it is the
+# plain rule: slack >= floor.
 static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
-		d_to_amulet: Dictionary) -> Dictionary:
+		d_to_amulet: Dictionary, floor: int = ROUTE_SLACK_FLOOR,
+		rifts_on: bool = false) -> Dictionary:
 	var by_type: Dictionary = {}
 	var band: Vector2i = RunConfig.path_band()
 	# Every start's score against this amulet, in one sweep of the amulet's own
@@ -1240,7 +1628,9 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		# …and the road has to be worth walking, not merely the right length
 		# (§19.3). A route below the floor is a corridor or close to one, and it
 		# cannot hold the Event and the Shop every offered start promises.
-		if not route_clears_floor(g.id, amulet.id):
+		var slack: int = route_slack(g.id, amulet.id)
+		if slack < floor and not (rifts_on and slack == floor - 1
+				and not rift_spots(g.id, amulet.id).is_empty()):
 			continue
 		var score := int(start_scores.get(g.id, 0))
 		if not by_type.has(g.type):
@@ -1248,7 +1638,7 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 		var per_len: Dictionary = by_type[g.type]
 		if not per_len.has(path_len):
 			per_len[path_len] = []
-		(per_len[path_len] as Array).append({"game": g, "score": score})
+		(per_len[path_len] as Array).append({"game": g, "score": score, "slack": slack})
 	# Reduce each (genre, distance) cell to one record: the best for ranking, and
 	# the pool of near-best it may actually be drawn from.
 	for type_val in by_type:
@@ -1389,7 +1779,17 @@ static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int
 # instead of being offered a relaxed card (§19.3.2), so a heavily filtered
 # catalogue can legitimately have no panel in it. The caller falls through to an
 # ordinary offering.
+#
+# AND THE RUN'S RIFTS (docs/rifts-design.md). When the run lays rifts the result
+# also carries "rifts" — [{game, a, b, kind}], path rifts on the cards' routes
+# and world rifts on weak spots elsewhere — and "floor", the route floor the
+# panel was held to (6, or 5 for an Amulet only rifts make usable). Nothing is
+# laid here: the caller hands "rifts" to set_rifts() when it commits the run.
+# Generation always measures the BARE map, whatever rifts an earlier run left.
 static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
+	return _on_bare_map(func(): return _pick_on_bare_map(rng))
+
+static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 	var all: Array[GameData] = []
 	for g in Data.all_games():
 		if g is GameData and _passes_filter(g):
@@ -1474,6 +1874,11 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	var amulet: GameData = null
 	var best_per_type: Dictionary = {}     # GameType -> {start, score, path_len}
 	var d_to_amulet: Dictionary = {}
+	# The split rule (docs/rifts-design.md §4): with rifts, hold the panel to
+	# RIFT_FLOOR when the Amulet can field its genres there, else to the ordinary
+	# floor — which a card one game short of it reaches through its path rift.
+	var rifts_on: bool = rifts_available()
+	var floor: int = ROUTE_SLACK_FLOOR
 	var untried: Array[GameData] = amulet_finalists.duplicate()
 	for _attempt in range(AMULET_ATTEMPTS):
 		if untried.is_empty():
@@ -1482,11 +1887,22 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 		var candidate: GameData = untried[idx]
 		untried.remove_at(idx)
 		var d_to_cand := bfs_distances(candidate.id)
-		var per_type := _strict_starts_for(candidate, eligible_starts, d_to_cand)
+		var cand_floor: int = ROUTE_SLACK_FLOOR
+		var per_type: Dictionary = {}
+		if rifts_on:
+			cand_floor = RIFT_FLOOR
+			per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand, RIFT_FLOOR, true)
+			if per_type.size() < NUM_START_OPTIONS:
+				cand_floor = ROUTE_SLACK_FLOOR
+				per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand,
+					ROUTE_SLACK_FLOOR, true)
+		else:
+			per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand)
 		if per_type.size() >= NUM_START_OPTIONS:
 			amulet = candidate
 			best_per_type = per_type
 			d_to_amulet = d_to_cand
+			floor = cand_floor
 			break
 	if amulet == null:
 		# Every attempt came up a genre short. There is no panel to offer under the
@@ -1508,6 +1924,7 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 			"score": int(drawn["score"]),
 			"path_len": int(rec["path_len"]),
 			"in_window": bool(rec.get("in_window", false)),
+			"slack": int(drawn.get("slack", route_slack(start_game.id, amulet.id))),
 		})
 	# The LONGER route first, then branching. Distance leads the display order
 	# because it is the choice the spread exists to offer — the first card is the
@@ -1531,7 +1948,39 @@ static func pick_amulet_and_starts(rng: RandomNumberGenerator) -> Dictionary:
 	# with a dishonest one.
 	if options.is_empty():
 		return {}
-	return {"amulet_id": amulet.id, "options": options}
+	var result: Dictionary = {"amulet_id": amulet.id, "options": options, "floor": floor}
+	if rifts_on:
+		result["rifts"] = _deal_rifts(amulet.id, options, floor, rng)
+	return result
+
+# The run's rifts for a drawn panel: the path rifts its cards' routes carry, then
+# the world rifts, each filled with a game from the rotation (docs/rifts-design.md
+# §3). Never the Amulet or a start as a rift's game; those are on the map anyway.
+static func _deal_rifts(amulet_id: StringName, options: Array, floor: int,
+		rng: RandomNumberGenerator) -> Array:
+	var start_ids: Array = []
+	for opt in options:
+		start_ids.append(StringName(opt["start_id"]))
+	var games: Array = _rift_pool_order(rng, {})
+	var out: Array = []
+	var path_spots: Array = _path_rift_spots(amulet_id, options, floor, rng)
+	var avoid: Dictionary = _route_nodes(amulet_id, start_ids)
+	for pr in path_spots:
+		if games.is_empty():
+			break
+		out.append({"game": String(games.pop_front()), "a": String(pr[0]),
+			"b": String(pr[1]), "kind": "path"})
+		avoid[pr[0]] = true
+		avoid[pr[1]] = true
+	avoid[amulet_id] = true
+	for sid in start_ids:
+		avoid[sid] = true
+	for pr in _world_rift_spots(avoid, mini(WORLD_RIFTS, games.size()), rng):
+		if games.is_empty():
+			break
+		out.append({"game": String(games.pop_front()), "a": String(pr[0]),
+			"b": String(pr[1]), "kind": "world"})
+	return out
 
 # Human-readable type name.
 static func type_label(type_val: int) -> String:

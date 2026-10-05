@@ -775,9 +775,14 @@ func test_route_matches_the_run_minimap_exactly() -> void:
 		GameState.current_game_id, GameState.amulet_game_id)
 	var expected: Dictionary = {}
 	for edge in dag.get("edges", []):
+		# A step through a rift is not an influence, and the sky only draws those
+		# (docs/rifts-design.md §9), so the minimap's rift edges are not expected.
+		if RunGraph.is_rift_game(StringName(edge["from"])) \
+				or RunGraph.is_rift_game(StringName(edge["to"])):
+			continue
 		expected["%s>%s" % [edge["from"], edge["to"]]] = true
 	assert_eq(view.trail_segment_count(), expected.size(),
-		"the atlas route has one segment per minimap edge")
+		"the atlas route has one segment per minimap influence edge")
 	for seg in view._trail:
 		var key: String = "%s>%s" % [view.layout.id_at(int(seg[0])), view.layout.id_at(int(seg[1]))]
 		assert_true(expected.has(key), "%s is an edge the minimap also draws" % key)

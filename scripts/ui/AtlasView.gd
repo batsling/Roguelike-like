@@ -389,8 +389,14 @@ func _build_trail() -> void:
 	if not layers.is_empty():
 		_steps_ahead = maxi(0, layers.size() - 1)
 	for edge in dag.get("edges", []):
-		var a: int = layout.index_of(StringName(edge.get("from", "")))
-		var b: int = layout.index_of(StringName(edge.get("to", "")))
+		var from_id := StringName(edge.get("from", ""))
+		var to_id := StringName(edge.get("to", ""))
+		# The sky is the real influence graph (docs/rifts-design.md §9): a step
+		# through a rift is not a connection, so it is not drawn as one.
+		if RunGraph.is_rift_game(from_id) or RunGraph.is_rift_game(to_id):
+			continue
+		var a: int = layout.index_of(from_id)
+		var b: int = layout.index_of(to_id)
 		if a < 0 or b < 0:
 			continue
 		_trail.append([a, b])

@@ -118,6 +118,29 @@ func amulet_wins(id) -> int:
 	var row: Variant = stats.get(String(id))
 	return int((row as Dictionary).get("amulets", 0)) if row is Dictionary else 0
 
+# How many runs have put this game in a rift (docs/rifts-design.md §3.3). The
+# rotation hands out the least-seen first.
+func rift_count(id) -> int:
+	var row: Variant = stats.get(String(id))
+	return int((row as Dictionary).get("rifts", 0)) if row is Dictionary else 0
+
+# The rift games of the most recent run, which the next run's rotation saves for
+# last so two runs in a row never share them.
+var last_rifts: Array = []
+
+func last_rift_games() -> Array:
+	return last_rifts
+
+# Records a run's rift games: one more appearance each, and the list the next run
+# avoids. Called once, when the run is dealt its rifts.
+func record_rifts(ids: Array) -> void:
+	last_rifts = []
+	for id in ids:
+		var e := _entry(String(id))
+		e["rifts"] = int(e.get("rifts", 0)) + 1
+		last_rifts.append(String(id))
+	save_data()
+
 # Deck ids (DeckCatalog) this character has won at least one run with.
 func deck_wins_for(character_id) -> Array:
 	return deck_wins.get(String(character_id), [])
@@ -426,7 +449,7 @@ func save_data() -> bool:
 		 "enemy_log": enemy_log, "levelup_log": levelup_log,
 		 "status_goal_log": status_goal_log,
 		 "character_enemy_log": character_enemy_log,
-		 "donation_bank": donation_bank_total}, "  "))
+		 "donation_bank": donation_bank_total, "last_rifts": last_rifts}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -466,6 +489,7 @@ func load_data() -> void:
 	status_goal_log = {}
 	character_enemy_log = {}
 	donation_bank_total = 0
+	last_rifts = []
 	if not FileAccess.file_exists(save_path()):
 		return
 	var f := FileAccess.open(save_path(), FileAccess.READ)
@@ -489,6 +513,9 @@ func load_data() -> void:
 	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
 		character_enemy_log = json.data["character_enemy_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
+	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
+		for id in json.data["last_rifts"]:
+			last_rifts.append(String(id))
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]
@@ -505,4 +532,5 @@ func load_data() -> void:
 		stats[String(k)] = {
 			"beaten": int(r.get("beaten", 0)),
 			"amulets": int(r.get("amulets", 0)),
+			"rifts": int(r.get("rifts", 0)),
 		}

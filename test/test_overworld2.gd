@@ -4075,14 +4075,20 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 		return
 	_tick(checks[0])                                 # "I didn't use a rest site"
 	_report_beat(_ui)
-	assert_eq(GameLoop2.stack_size(), 0,
+	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): Amulet
+	# pressure stands bodies up near the goal whatever was ticked, and this is a
+	# claim about the curse's bill, not about the road.
+	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack_size() - walked, 0,
 		"the goal was met and the curse was followed, so nothing is following")
 
 func test_a_curse_left_unticked_is_what_bites() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_pick_solo(0)
 	_report_beat(_ui)                       # the row left exactly as it opened
-	assert_eq(GameLoop2.stack_size(), 1,
+	# Less the road's own spawns as the game ended (§19.5), as above.
+	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
+	assert_eq(GameLoop2.stack_size() - walked, 1,
 		"the goal was met, so the body on the board is Poor Sleep's")
 	assert_eq(GameState.curse_goals.size(), 1, "and a curse that bites STAYS")
 
@@ -5997,11 +6003,16 @@ func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
 	var dag: Dictionary = RunGraph.shortest_path_dag(slot, GameState.amulet_game_id)
 	var expected: int = 0
 	for edge in dag.get("edges", []):
+		# A step through a rift is not an influence, so the chart leaves it out
+		# (docs/rifts-design.md §9) while the ladder walks it.
+		if RunGraph.is_rift_game(StringName(edge["from"])) \
+				or RunGraph.is_rift_game(StringName(edge["to"])):
+			continue
 		if atlas.layout.index_of(StringName(edge["from"])) >= 0 \
 				and atlas.layout.index_of(StringName(edge["to"])) >= 0:
 			expected += 1
 	assert_eq(atlas.trail_segment_count(), expected,
-		"the chart's route and the ladder are the same graph")
+		"the chart's route and the ladder's influence edges are the same graph")
 	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
 
 func test_the_start_pickers_map_is_the_ladder_alone() -> void:

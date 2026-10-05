@@ -11,6 +11,30 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rifts, step 1: every run pulls a few connectionless games into the map**
+  (`docs/rifts-design.md`). A rift is an off-map game joined to two map games
+  that were already exactly two hops apart, so it **never shortens a path**: the
+  start band, Amulet pressure and teleports read the same distances as before,
+  measured as zero moved distances over 80 seeded runs. What a rift does is widen
+  a route by one game.
+  - **Path rifts** (1–2 a run, at most one per start card's route) let the start
+    panel hold a **higher route floor of 6**, falling back to 5 only for Amulets
+    that need a rift to be usable at all. That rescues **12 of the 14 owned
+    Amulets refused before** (the deckbuilder cluster around Slay the Spire) and
+    Slay the Spire itself on the full catalogue; owned Slay the Spire and
+    Serpentcoil Island stay refused by decision. **World rifts** (10 a run) pair
+    up dead ends hanging off the same hub, at most two per hub.
+  - Rift games favour games never rifted before and skip last run's
+    (`GameStats.rift_count` / `last_rifts`), are always Enemies, are never the
+    Amulet or a start, and leave the off-map pool while laid. Rifts always leave
+    each genre **two off-map games for Transmute**, which swaps within a genre and
+    has as little as one Traditional game to draw on.
+  - `RunGraph` lays the run's rifts over the adjacency; generation always measures
+    the bare map. `GameState.rifts` is saved with the run and cleared on reset. A
+    **Rifts** toggle sits under Amulet generation in Settings (on by default). The
+    atlas still draws only real influences, so a route step through a rift is left
+    out of its trail until step 2 gives rifts their own look.
+
 - **A stream-clarity pass: bigger board numbers, one checklist row per KIND of
   body, a tidy toast column, and pixel art that stays pixel art.**
   - **Identical bodies share one checklist row** (`ReportChecklist.group_bodies`).

@@ -1,7 +1,8 @@
 # Rifts — design
 
-**Status: designed, not built.** Agreed with the owner in October 2026. Nothing
-here exists in code yet; the build order is at the end. Section numbers (§19.3,
+**Status: step 1 of 5 built** (generation: path rifts, world rifts, the split
+floor, saving, the toggle, rift games as Enemies). The rest is designed, not
+built; the build order is at the end. Agreed with the owner in October 2026. Section numbers (§19.3,
 §7.4, …) refer to `docs/games-first-redesign.md`.
 
 ## 1. What a rift is
@@ -56,7 +57,10 @@ Placement, in order:
    rift goes on that path. This is what makes formerly refused Amulets usable (§5).
 2. **Upgrade.** Otherwise place the rift where it lies on the most start paths at
    once, preferring the thinnest path.
-3. Stop when every start path has its rift, or at 2 rifts.
+3. Stop when every start path has its rift. That takes 1–2 rifts almost always,
+   and 3 when no single spot lies on two of the routes (measured: 1 run in 40).
+   The cap is `PATH_RIFTS_MAX = 3`, one per card, so the floor's promise always
+   holds.
 
 ### 3.2 World rifts — about 10 per run
 
@@ -116,8 +120,16 @@ floor), owned catalogue: 504 games on the map, 47 off it, 229 dead ends.
 - Today 54% of in-band start→Amulet routes (owned) are below the floor, so path
   rifts have plenty to improve.
 
-These figures come from a Python replica of the start rules. The build re-measures
-them with the game's own `RunGraph` before shipping (§10, step 1).
+**Confirmed in the game (step 1).** Measured with `RunGraph`'s own generation
+over 40 seeded runs per catalogue:
+
+| | Refused, rifts off | Refused, rifts on | Runs at floor 6 | Path rifts per run | World rifts per run |
+|---|---|---|---|---|---|
+| Owned | 14 | **2** (Serpentcoil, Slay the Spire) | 39 of 40 | 1: 23, 2: 16, 3: 1 | 10 every run |
+| Full | 1 | **0** | 40 of 40 | 1: 20, 2: 19, 3: 1 | 10 every run |
+
+Across all 80 runs, laying the rifts changed **no distance** between map games,
+and **every offered card cleared its floor** with its rifts laid.
 
 ## 6. Rift games when you get there
 
@@ -193,17 +205,37 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - **Running out of rift games.** Under a tight filter the off-map pool can be small.
   World rifts shrink first. If a rescued Amulet can't get its path rift, it is
   refused for that run, never offered under relaxed rules.
-- **Transmute's pool.** Transmute already draws from the off-map pool. About 12
-  rifts per run leaves 35 of 47 owned off-map games for it.
+- **Transmute's pool.** Transmute draws from the off-map pool *within the game's
+  genre*, and that pool is lopsided (one Traditional and seven Deckbuilders on the
+  full catalogue). So rifts never take a genre's last
+  **`RIFT_TRANSMUTE_RESERVE = 2`** off-map games; a genre with two or fewer keeps
+  all of them. About 12 rifts a run still leaves most of the pool.
+- **The atlas** draws only real influences, so until step 2 a route step through a
+  rift is left out of the atlas trail (`AtlasView._build_trail`). The walked path
+  already marks a step that is not a connection, as it does for teleports.
 - **Tests.** Existing tests assume the map is exactly the influence graph
   (`test/test_amulet_pool.gd` asserts every map game can be the goal). Those need
   rifts off, or updated expectations. Rift tests must seed the RNG, not hope for
   the case (see CLAUDE.md on random-state flakes).
 
+### Where step 1 lives
+
+- `scripts/runtime/RunGraph.gd`: the rift layer laid over the adjacency
+  (`set_rifts`, `_apply_rifts`), `rift_spots`, path and world placement
+  (`_path_rift_spots`, `_world_rift_spots`, `_deal_rifts`), the split floor in
+  `_strict_starts_for`, and `_on_bare_map` (generation always measures the map
+  without the last run's rifts). Rift games are never a start or the Amulet, and
+  leave the off-map pool while laid.
+- `GameState.rifts` is the run's copy, saved by `SaveSystem` and cleared by
+  `reset_run`; `Overworld2._build_start_options` lays them before node kinds.
+- `GameStats` keeps each game's rift count and last run's rift games.
+- `Settings.rifts_enabled`, with a toggle in the Settings panel under Amulet generation.
+- `test/test_rifts.gd`.
+
 ### Build order
 
-1. **Generation:** path rifts, world rifts and the split floor in `RunGraph`,
-   saved with the run. Verify §5 with the real Amulet measurement before going on.
+1. **Generation** (built): path rifts, world rifts and the split floor in
+   `RunGraph`, saved with the run, verified against the real measurement (§5).
 2. **Visuals:** the swirl background on rift cards, map line, badge, proof slot,
    overlay flag.
 3. **Rift enemies:** Enemies-only nodes, ×2 damage, ×2 loot and chest value; Bash

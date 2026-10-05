@@ -28,6 +28,9 @@ var game_filter: int = GameFilter.ALL
 # as intermediate stops on the path; they just won't be picked as the goal.
 # Falls back to the full pool if the player has beaten every eligible amulet.
 var exclude_beaten_amulets: bool = false
+# Whether runs lay rifts (docs/rifts-design.md): off-map games pulled into the map
+# per run, never shortening a path. On by default; off is a pure-influence map.
+var rifts_enabled: bool = true
 
 # What a transmute turns a **Traditional** game into.
 #   SAME_TYPE — another Traditional, the ordinary same-type rule (default).
@@ -376,6 +379,14 @@ func set_traditional_transmute(value: int) -> void:
 	# the graph is built.
 	save_settings()
 
+func set_rifts_enabled(value: bool) -> void:
+	if value == rifts_enabled:
+		return
+	rifts_enabled = value
+	# Nothing to invalidate: rifts are decided when a run is generated, and a run
+	# already under way keeps the ones it was dealt.
+	save_settings()
+
 func set_exclude_beaten_amulets(value: bool) -> void:
 	if value == exclude_beaten_amulets:
 		return
@@ -397,6 +408,7 @@ func load_settings() -> void:
 	game_filter = clampi(int(prefs.get_value("path", "game_filter", GameFilter.ALL)),
 		0, GameFilter.DOWNLOADED)
 	exclude_beaten_amulets = bool(prefs.get_value("path", "exclude_beaten_amulets", false))
+	rifts_enabled = bool(prefs.get_value("path", "rifts_enabled", true))
 	traditional_transmute = clampi(int(prefs.get_value("rules", "traditional_transmute",
 		TraditionalTransmute.SAME_TYPE)), 0, TraditionalTransmute.ANY_OTHER)
 
@@ -417,6 +429,7 @@ func save_settings() -> void:
 	var prefs := ConfigFile.new()
 	prefs.set_value("path", "game_filter", game_filter)
 	prefs.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
+	prefs.set_value("path", "rifts_enabled", rifts_enabled)
 	prefs.set_value("rules", "traditional_transmute", traditional_transmute)
 	prefs.save(prefs_path())
 

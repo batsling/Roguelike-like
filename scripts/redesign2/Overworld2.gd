@@ -804,6 +804,17 @@ func _build_start_options(pick: Dictionary) -> Array:
 	var start_ids: Array = []
 	for opt in out:
 		start_ids.append((opt["game"] as GameData).id)
+	# THE RUN'S RIFTS (docs/rifts-design.md), laid before the kinds so the graph
+	# the kinds are dealt over is the one the run will walk, and so every rift game
+	# is stamped Enemies. Recorded once here for the rotation, which saves last
+	# run's rift games for last.
+	var dealt: Array = pick.get("rifts", [])
+	GameState.set_rifts(dealt)
+	if not dealt.is_empty():
+		var rift_ids: Array = []
+		for r in dealt:
+			rift_ids.append(String(r["game"]))
+		GameStats.record_rifts(rift_ids)
 	GameState.node_kinds = RunGraph.assign_node_kinds(
 		_rng, GameState.amulet_game_id, start_ids)
 	return out
