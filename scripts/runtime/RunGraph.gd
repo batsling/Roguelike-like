@@ -404,10 +404,10 @@ static func is_off_map(game_id: StringName) -> bool:
 
 # --- rifts: laying them, and the questions about them ------------------------
 
-# How many of each (docs/rifts-design.md §3). One path rift per start card at
-# most, so three; in practice the cards' routes converge on the Amulet and one
-# rift usually lies on two or three of them.
-const PATH_RIFTS_MAX := 3
+# How many of each (docs/rifts-design.md §3). One path rift on the cards'
+# optimal routes, a second only when a card needs one to reach its floor: the
+# routes converge on the Amulet, so one rift usually lies on two or three of them.
+const PATH_RIFTS_MAX := 2
 const WORLD_RIFTS := 10
 const WORLD_RIFTS_PER_HUB := 2
 # The raised route floor of the split rule (§4): an Amulet that can field its
@@ -579,12 +579,18 @@ static func usable_rift_count() -> int:
 		n += mini(int(per_type[t]), int(room.get(t, 0)))
 	return n
 
-# PATH RIFTS (§3.1): at most one rift on each start card's route, chosen so that
-# every card whose route needs one to reach `floor` gets one, and otherwise so
-# that each rift lies on as many routes as it can. `options` are the drawn cards,
-# each carrying its route's "slack". Returns [[u, v], ...].
+# PATH RIFTS (§3.1): ONE rift on the cards' optimal routes, and a second only
+# when a card still needs one (docs/rifts-design.md §3.1). A card "needs" a rift
+# when its route is a game short of `floor`; the first rift goes where it rescues
+# the most of those and lies on the most routes, and the second is taken only to
+# rescue a card the first did not reach. Never more than PATH_RIFTS_MAX.
+#
+# `options` are the drawn cards, each carrying its route's "slack". Returns
+# {"spots": [[u, v], ...], "ok": bool} — "ok" false when some card that needed a
+# rift could not get one within the cap, which the caller treats as "this panel
+# cannot be offered at this floor".
 static func _path_rift_spots(amulet_id: StringName, options: Array, floor: int,
-		rng: RandomNumberGenerator) -> Array:
+		rng: RandomNumberGenerator) -> Dictionary:
 	var routes: Array = []        # per card: {keys: {key: true}, need: bool}
 	var spot_of: Dictionary = {}  # key -> [u, v]
 	for opt in options:
@@ -604,25 +610,28 @@ static func _path_rift_spots(amulet_id: StringName, options: Array, floor: int,
 	var covered: Array = []
 	for _r in routes:
 		covered.append(false)
+	var still_needed := func() -> bool:
+		for i in range(routes.size()):
+			if routes[i]["need"] and not covered[i]:
+				return true
+		return false
 	var chosen: Array = []
 	while chosen.size() < PATH_RIFTS_MAX:
+		# After the first, a rift is placed only to rescue a card that needs one.
+		if not chosen.is_empty() and not still_needed.call():
+			break
 		var best_key: String = ""
 		var best_score := 0
 		for key in all_keys:
 			var fresh := 0
 			var rescues := 0
-			var doubles := false
 			for i in range(routes.size()):
-				if not (routes[i]["keys"] as Dictionary).has(key):
+				if covered[i] or not (routes[i]["keys"] as Dictionary).has(key):
 					continue
-				if covered[i]:
-					doubles = true
-				else:
-					fresh += 1
-					if routes[i]["need"]:
-						rescues += 1
-			# A second rift on a route is taken only to rescue another one.
-			if fresh == 0 or (doubles and rescues == 0):
+				fresh += 1
+				if routes[i]["need"]:
+					rescues += 1
+			if fresh == 0 or (not chosen.is_empty() and rescues == 0):
 				continue
 			var score := rescues * 100 + fresh
 			if score > best_score:
@@ -635,7 +644,7 @@ static func _path_rift_spots(amulet_id: StringName, options: Array, floor: int,
 			if (routes[i]["keys"] as Dictionary).has(best_key):
 				covered[i] = true
 		all_keys.erase(best_key)
-	return chosen
+	return {"spots": chosen, "ok": not still_needed.call()}
 
 # WORLD RIFTS (§3.2): up to `count` rifts on weak spots away from the cards'
 # routes — pairs of thin games (one or two connections) hanging off the same
@@ -1872,13 +1881,13 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 	# the first — and with 788 of 790 amulets qualifying, a second attempt is
 	# already rare.
 	var amulet: GameData = null
-	var best_per_type: Dictionary = {}     # GameType -> {start, score, path_len}
-	var d_to_amulet: Dictionary = {}
 	# The split rule (docs/rifts-design.md §4): with rifts, hold the panel to
 	# RIFT_FLOOR when the Amulet can field its genres there, else to the ordinary
 	# floor — which a card one game short of it reaches through its path rift.
 	var rifts_on: bool = rifts_available()
 	var floor: int = ROUTE_SLACK_FLOOR
+	var options: Array = []
+	var path_spots: Array = []
 	var untried: Array[GameData] = amulet_finalists.duplicate()
 	for _attempt in range(AMULET_ATTEMPTS):
 		if untried.is_empty():
@@ -1887,22 +1896,32 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 		var candidate: GameData = untried[idx]
 		untried.remove_at(idx)
 		var d_to_cand := bfs_distances(candidate.id)
-		var cand_floor: int = ROUTE_SLACK_FLOOR
-		var per_type: Dictionary = {}
-		if rifts_on:
-			cand_floor = RIFT_FLOOR
-			per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand, RIFT_FLOOR, true)
+		# The floors this Amulet is tried at, best first: with rifts, the raised one
+		# and then the ordinary one; without, the ordinary one alone.
+		var floors: Array = [RIFT_FLOOR, ROUTE_SLACK_FLOOR] if rifts_on else [ROUTE_SLACK_FLOOR]
+		for cand_floor in floors:
+			var per_type: Dictionary = _strict_starts_for(candidate, eligible_starts,
+				d_to_cand, cand_floor, rifts_on)
 			if per_type.size() < NUM_START_OPTIONS:
-				cand_floor = ROUTE_SLACK_FLOOR
-				per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand,
-					ROUTE_SLACK_FLOOR, true)
-		else:
-			per_type = _strict_starts_for(candidate, eligible_starts, d_to_cand)
-		if per_type.size() >= NUM_START_OPTIONS:
+				continue
+			var drawn: Array = _draw_panel(candidate, per_type, rng)
+			if drawn.is_empty():
+				continue
+			var spots: Array = []
+			if rifts_on:
+				# The drawn cards' routes must get the rifts they were offered on, in
+				# one rift or two (docs/rifts-design.md §3.1). A panel that would need
+				# more is not offered at this floor.
+				var placed: Dictionary = _path_rift_spots(candidate.id, drawn, cand_floor, rng)
+				if not bool(placed["ok"]):
+					continue
+				spots = placed["spots"]
 			amulet = candidate
-			best_per_type = per_type
-			d_to_amulet = d_to_cand
 			floor = cand_floor
+			options = drawn
+			path_spots = spots
+			break
+		if amulet != null:
 			break
 	if amulet == null:
 		# Every attempt came up a genre short. There is no panel to offer under the
@@ -1910,10 +1929,36 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 		# caller gets nothing and falls through to an ordinary offering.
 		return {}
 
-	# Choose the cards: one genre each, spread across the band where it can be.
-	# _spread_across_band already prefers in-window records over relaxed ones and
-	# distinct lengths over repeated ones, so what comes back is the panel.
-	var chosen: Array = _spread_across_band(best_per_type, NUM_START_OPTIONS)
+	# A SPARSE-GRAPH FALLBACK STOOD HERE and is gone with the others. It ignored
+	# the window outright and offered any reachable game that was not the amulet,
+	# one per genre — the widest of the three relaxations, reached exactly when the
+	# map was least able to absorb it. A caller that gets {} back falls through to
+	# an ordinary offering, which is a run without a start panel rather than a run
+	# with a dishonest one.
+	if options.is_empty():
+		return {}
+	var result: Dictionary = {"amulet_id": amulet.id, "options": options, "floor": floor}
+	if rifts_on:
+		result["rifts"] = _deal_rifts(amulet.id, options, path_spots, rng)
+	return result
+
+# Choose the cards: one genre each, spread across the band where it can be.
+# _spread_across_band already prefers in-window records over relaxed ones and
+# distinct lengths over repeated ones, so what comes back is the panel.
+#
+# The LONGER route first, then branching. Distance leads the display order
+# because it is the choice the spread exists to offer — the first card is the
+# long way round, the last the short one, every time, so the panel reads the
+# same way twice rather than reshuffling on score.
+#
+# `in_window` used to lead this sort, because a relaxed card had to rank below
+# every real one. Every card is in window now (§19.3.2), so the key is constant
+# and the sort no longer reads it. The key itself stays in the record: it is
+# what says out loud that the band held, and a reader who stops finding it will
+# assume nobody checked rather than that nobody had to.
+static func _draw_panel(amulet: GameData, per_type: Dictionary,
+		rng: RandomNumberGenerator) -> Array:
+	var chosen: Array = _spread_across_band(per_type, NUM_START_OPTIONS)
 	var options: Array = []
 	for rec in chosen:
 		var drawn: Dictionary = _draw_start(rec, rng)
@@ -1926,44 +1971,22 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 			"in_window": bool(rec.get("in_window", false)),
 			"slack": int(drawn.get("slack", route_slack(start_game.id, amulet.id))),
 		})
-	# The LONGER route first, then branching. Distance leads the display order
-	# because it is the choice the spread exists to offer — the first card is the
-	# long way round, the last the short one, every time, so the panel reads the
-	# same way twice rather than reshuffling on score.
-	#
-	# `in_window` used to lead this sort, because a relaxed card had to rank below
-	# every real one. Every card is in window now (§19.3.2), so the key is constant
-	# and the sort no longer reads it. The key itself stays in the record: it is
-	# what says out loud that the band held, and a reader who stops finding it will
-	# assume nobody checked rather than that nobody had to.
 	options.sort_custom(func(a, b):
 		if int(a["path_len"]) != int(b["path_len"]):
 			return int(a["path_len"]) > int(b["path_len"])
 		return int(a["score"]) > int(b["score"]))
-	# A SPARSE-GRAPH FALLBACK STOOD HERE and is gone with the others. It ignored
-	# the window outright and offered any reachable game that was not the amulet,
-	# one per genre — the widest of the three relaxations, reached exactly when the
-	# map was least able to absorb it. A caller that gets {} back falls through to
-	# an ordinary offering, which is a run without a start panel rather than a run
-	# with a dishonest one.
-	if options.is_empty():
-		return {}
-	var result: Dictionary = {"amulet_id": amulet.id, "options": options, "floor": floor}
-	if rifts_on:
-		result["rifts"] = _deal_rifts(amulet.id, options, floor, rng)
-	return result
+	return options
 
 # The run's rifts for a drawn panel: the path rifts its cards' routes carry, then
 # the world rifts, each filled with a game from the rotation (docs/rifts-design.md
 # §3). Never the Amulet or a start as a rift's game; those are on the map anyway.
-static func _deal_rifts(amulet_id: StringName, options: Array, floor: int,
+static func _deal_rifts(amulet_id: StringName, options: Array, path_spots: Array,
 		rng: RandomNumberGenerator) -> Array:
 	var start_ids: Array = []
 	for opt in options:
 		start_ids.append(StringName(opt["start_id"]))
 	var games: Array = _rift_pool_order(rng, {})
 	var out: Array = []
-	var path_spots: Array = _path_rift_spots(amulet_id, options, floor, rng)
 	var avoid: Dictionary = _route_nodes(amulet_id, start_ids)
 	for pr in path_spots:
 		if games.is_empty():

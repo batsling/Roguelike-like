@@ -4755,16 +4755,25 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	# and drawing from the mainland instead would hand back a game the run could
 	# simply have walked to.
 	var pool: Array = []
-	for off_id in RunGraph.off_map_ids():
-		var g: GameData = Data.get_game(off_id)
-		if g == null:
-			continue
-		if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
-			continue
-		var same_type: bool = game_type_key(g) == key
-		if same_type == away_from_traditional:
-			continue
-		pool.append(g)
+	# A RIFT GAME transmutes into another rift game: a random connectionless game
+	# of ANY genre, the pool rifts are filled from (docs/rifts-design.md §7). The
+	# slot keeps its two rift links; only the game inside the rift changes.
+	if RunGraph.is_rift_game(game_id):
+		for rift_id in RunGraph.rift_pool():
+			var rg: GameData = Data.get_game(rift_id)
+			if rg != null and rg.id != game_id and not on_map.has(rg.id) and not is_bashed(rg.id):
+				pool.append(rg)
+	else:
+		for off_id in RunGraph.off_map_ids():
+			var g: GameData = Data.get_game(off_id)
+			if g == null:
+				continue
+			if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
+				continue
+			var same_type: bool = game_type_key(g) == key
+			if same_type == away_from_traditional:
+				continue
+			pool.append(g)
 	# Deterministic order regardless of how the set enumerated, so a seeded run
 	# transmutes the same way twice.
 	pool.sort_custom(func(a, b): return a.id < b.id)

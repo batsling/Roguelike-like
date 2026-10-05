@@ -284,3 +284,47 @@ func test_rifts_only_run_when_the_pool_can_pay_for_every_path_rift() -> void:
 		"rifts are on only when every card's path rift can be filled")
 	assert_lte(RunGraph.usable_rift_count(), RunGraph.rift_pool().size(),
 		"the reserve only ever takes games away")
+
+
+# --- verbs on a rift game (§7) ---------------------------------------------
+
+# Transmute on a rift game gives another rift game: a connectionless game of any
+# genre, drawn from the rift pool rather than from Transmute's own genre pool.
+func test_transmuting_a_rift_game_gives_a_random_rift_game() -> void:
+	var pick: Dictionary = _dealt(48484)
+	if pick.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	GameState.set_rifts(pick["rifts"])
+	var slot := StringName(pick["rifts"][0]["game"])
+	var pool: Dictionary = {}
+	for id in RunGraph.rift_pool():
+		pool[id] = true
+	GameState.transmute = 1
+	var repl: GameData = GameLoop2.transmute_game(slot, [])
+	assert_not_null(repl, "a rift game can always be transmuted while the pool has games")
+	if repl == null:
+		return
+	assert_true(pool.has(repl.id), "%s comes from the rift pool" % repl.id)
+	assert_ne(repl.id, slot, "and is a different game")
+	assert_eq(GameState.transmute, 0, "the charge was spent")
+	assert_true(RunGraph.is_rift_game(slot), "the slot is still a rift")
+	GameLoop2.transmuted.erase(slot)
+
+
+# The path rifts on the cards' optimal routes: one, and a second only when a card
+# needs one to reach its floor — never more (§3.1).
+func test_path_rifts_are_one_and_two_only_when_needed() -> void:
+	var counts := {}
+	for seed_value in range(500, 512):
+		var pick: Dictionary = _dealt(seed_value)
+		if pick.is_empty():
+			continue
+		var n := 0
+		for r in pick["rifts"]:
+			if r["kind"] == "path":
+				n += 1
+		counts[n] = int(counts.get(n, 0)) + 1
+		assert_between(n, 1, 2, "a run lays one path rift, two at most")
+	if counts.is_empty():
+		pending("no rifts were dealt across the sampled seeds")

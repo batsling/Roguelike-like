@@ -44,28 +44,32 @@ between two dead ends hanging off the same hub.
 
 ## 3. Two kinds of rift per run
 
-### 3.1 Path rifts — 1 to 2 per run
+### 3.1 Path rifts — one per run, a second only if needed
 
-Placed on the **optimal paths of the three start cards**, at most **one rift per
-start path**. The three paths all end at the Amulet and usually overlap near it,
-so one rift often lies on two or three paths at once, which is why a run needs
-only 1–2.
+Placed on the **optimal paths of the three start cards**. The three paths all end
+at the Amulet and usually overlap near it, so **one rift** almost always lies on
+the paths that need it. On average a player meets one or two rifts a run this way,
+not counting the ones Rift Keys open.
 
-Placement, in order:
+Placement:
 
-1. **Rescue.** If a genre's best start misses the route floor by one game, its
-   rift goes on that path. This is what makes formerly refused Amulets usable (§5).
-2. **Upgrade.** Otherwise place the rift where it lies on the most start paths at
-   once, preferring the thinnest path.
-3. Stop when every start path has its rift. That takes 1–2 rifts almost always,
-   and 3 when no single spot lies on two of the routes (measured: 1 run in 40).
-   The cap is `PATH_RIFTS_MAX = 3`, one per card, so the floor's promise always
-   holds.
+1. **The first rift** goes where it rescues the most cards that need one (a card
+   whose route is one game short of the floor), and otherwise where it lies on the
+   most start paths.
+2. **A second rift** is placed only if a card still needs one. Never more than
+   **`PATH_RIFTS_MAX = 2`**.
+3. If a drawn panel would need more than two, it is not offered at that floor: the
+   Amulet falls back from floor 6 to 5, and if even that doesn't fit, the generator
+   tries another Amulet.
+
+Measured in the game (40 seeded runs per catalogue): **one path rift in every run**;
+the second was never needed.
 
 ### 3.2 World rifts — about 10 per run
 
-Placed on **weak spots around the board, away from the start paths** (so "one per
-start path" holds). Their job is to thin out dead ends and give detours more room.
+Placed on **weak spots around the board, away from the start paths**, so the
+start paths carry only their path rifts. Their job is to thin out dead ends and
+give detours more room.
 
 - Prefer pairs of dead ends hanging off the same hub (each such rift removes two
   dead ends and adds none).
@@ -84,16 +88,17 @@ start path" holds). Their job is to thin out dead ends and give detours more roo
 
 ## 4. The quality floor: the split rule
 
-With one rift per start path, a start qualifies when its route's slack is at
-least *floor − 1*. The floor is set per Amulet:
+A start qualifies when its route's slack reaches the floor, or is one short of it
+and its route gets the run's path rift (one rift, two at most; §3.1). The floor is
+set per Amulet:
 
 - **Floor 6** for every Amulet that can field three genres at slack 6 with its
   path rifts in place. **This raises the route standard for most runs.**
 - **Floor 5**, falling back only for Amulets that can't reach 6. These are the
   formerly refused ones that the rescue rift makes usable.
 
-Either way, every offered path also carries its rift, so the road a player
-actually walks is one game wider than its guarantee.
+Either way, the path rift usually lies on more than one card's route, so most
+offered roads are a game wider than their guarantee.
 
 ## 5. What this does to the Amulet pool (measured)
 
@@ -125,8 +130,8 @@ over 40 seeded runs per catalogue:
 
 | | Refused, rifts off | Refused, rifts on | Runs at floor 6 | Path rifts per run | World rifts per run |
 |---|---|---|---|---|---|
-| Owned | 14 | **2** (Serpentcoil, Slay the Spire) | 39 of 40 | 1: 23, 2: 16, 3: 1 | 10 every run |
-| Full | 1 | **0** | 40 of 40 | 1: 20, 2: 19, 3: 1 | 10 every run |
+| Owned | 14 | **2** (Serpentcoil, Slay the Spire) | 39 of 40 | 1 in every run | 10 every run |
+| Full | 1 | **0** | 40 of 40 | 1 in every run | 10 every run |
 
 Across all 80 runs, laying the rifts changed **no distance** between map games,
 and **every offered card cleared its floor** with its rifts laid.
@@ -146,7 +151,7 @@ and **every offered card cleared its floor** with its rifts laid.
 | Verb | On a rift game |
 |---|---|
 | **Bash** | The rift stays; the game inside it is replaced by another rift game from the pool. The route keeps the width its card promised. If the pool is empty, the rift closes like an ordinary bash. |
-| **Transmute** | Same as Bash: another random rift game. |
+| **Transmute** | Another random rift game, of **any** genre, from the rift pool (built). |
 | **Dash** | Rift games are not listed. |
 | **Teleport** | Never lands on a rift game. |
 

@@ -17,7 +17,8 @@ For how the project is laid out and how its systems fit together, see
   start band, Amulet pressure and teleports read the same distances as before,
   measured as zero moved distances over 80 seeded runs. What a rift does is widen
   a route by one game.
-  - **Path rifts** (1–2 a run, at most one per start card's route) let the start
+  - **Path rifts** (one a run on the start cards' optimal routes, a second only
+    if a card still needs one; measured: one in every run) let the start
     panel hold a **higher route floor of 6**, falling back to 5 only for Amulets
     that need a rift to be usable at all. That rescues **12 of the 14 owned
     Amulets refused before** (the deckbuilder cluster around Slay the Spire) and
@@ -29,6 +30,8 @@ For how the project is laid out and how its systems fit together, see
     Amulet or a start, and leave the off-map pool while laid. Rifts always leave
     each genre **two off-map games for Transmute**, which swaps within a genre and
     has as little as one Traditional game to draw on.
+  - **Transmute on a rift game** gives another random rift game of any genre; the
+    slot keeps its two rift links.
   - `RunGraph` lays the run's rifts over the adjacency; generation always measures
     the bare map. `GameState.rifts` is saved with the run and cleared on reset. A
     **Rifts** toggle sits under Amulet generation in Settings (on by default). The
