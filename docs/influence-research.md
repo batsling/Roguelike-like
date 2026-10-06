@@ -102,6 +102,14 @@ Arctic Shift `comments/tree` endpoint nests replies under
 `data.replies.data.children`, and a walk that only reads the top level sees
 none of a developer's answers in an AMA. Walk the whole tree.
 
+**The five-connection pass (October 2026)** covered all 29 such games and gave
+the best yield of the degree passes: eight lines, four of them on one game.
+Dungeons of Dredmor's only recorded influence was RogueBasin's NetHack, yet
+its lead developer had named four chart games in a single 2011 interview
+answer. Old, well-known games whose rows lean on RogueBasin are worth a direct
+search for the developers' own words; the wiki infobox often isn't where they
+said it.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
