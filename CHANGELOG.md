@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Ten new connections and 57 proofs from the owner.** The sheet's new rows
+  (Diablo, Hades and Noita → Sephiria; Diablo and Darkest Dungeon → Runeborn; FTL
+  and Hades → Beyond the Long Night; Desktop Dungeons → I Am Overburdened; Inkbound
+  → Monster Train 2; Isaac → Tape to Tape) are imported, plus three sequel rows
+  marked Dev/Series and new sources for the Roboquest and Slay the Spire →
+  UnderMine rows. The proofs had been uploaded to `images2.0/proof/proof temp/`,
+  where neither the game nor the proof tools look, so they were moved up a
+  folder. Seven had ids the game would never match (`sepheria`,
+  `…_dungeon_master`) and were renamed. Slay the Spire → UnderMine's clip is
+  converted, Dungreed → Sephiria gets the same screenshot as Diablo's (it names
+  Dungreed too), and 21 candidate lines now on the sheet are ticked.
+
 - **Proofs can be clips.** The owner's new proofs include ten videos (Tiny Rogues'
   podcast, Hungry Horrors' dev stream). Godot only plays Ogg Theora, so
   `tools/convert_proof_videos.py` turns each `<pair>.mp4` into a 720p `<pair>.ogv`

@@ -442,6 +442,23 @@ blank where there is none, so filtering it for blanks is
 the same list as `docs/proof-missing.md`. It is written FROM the folder by
 `python3 tools/proof_column.py` (`--check` says whether it is stale) and nothing
 reads it back, so re-run that after adding proofs rather than typing into it.
+A name typed there by hand is not checked against anything: the October 2026
+upload typed `…---sepheria` for Sephiria and `…_dungeon_master` for Legend of
+Keepers (the game is "Dungeon *Manager*"), and the files carried the same typos,
+so nothing in the game would have shown them. Upload under any name and let
+`proof_owner_match.py` and `proof_column.py` write the ids.
+
+**Upload into `images2.0/proof/` itself, not a subfolder.** The game looks in
+that folder only, and so do `proof_owner_match.py`, `proof_column.py` and the
+test above, so a file in a subfolder (`proof temp/`, say) is invisible to all of
+them: no proof in the game, and no warning either. `not-on-sheet/` below is the
+one subfolder on purpose.
+
+**`docs/proof-missing.md` is regenerated from a local file.** `capture_proof.js
+--missing` reads `.influence_work/proof/report.json`, which a capture run writes
+and git doesn't keep, so in a fresh checkout it fails until `--untried` or a full
+run has rebuilt it. Between runs, removing the lines for connections that have a
+proof now (and fixing the section counts) gives the same document.
 
 **Your screenshots win.** `tools/proof_captured.json` lists the files
 `capture_proof.js --export` copied in, each with a sha1 of its bytes, and an
