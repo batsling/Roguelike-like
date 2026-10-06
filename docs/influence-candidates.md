@@ -301,6 +301,7 @@ From the four-connection batch (October 2026):
 - **Dota Auto Chess → Teamfight Tactics** (sheet: Wikipedia): Riot's own announcement: "We've always loved strategy games and recently we've gotten into the new auto-battler genre—folks around the office have been playing an insane amount of Dota Auto Chess in particular. We love it, and it actually got us inspired to create something new as a mode in League." — [Riot dev post, via devtrackers.gg](https://devtrackers.gg/leagueoflegends/p/38d9d816-teamfight-tactics)
 - **Halls of Torment**'s two rows. **Vampire Survivors** ("look at it"): Chasing Carrots, by email to Pieuvre: "Obviously, Vampire Survivors was the biggest influence on Halls of Torment", so use that. **Diablo**: its only source is the W4 Games interview that `docs/proof-missing.md` lists as gone, and the same Pieuvre piece says outright that "the developers don't specifically mention it" (they name Arcanum, Nox, the original Fallout and Planescape: Torment, all off the chart). The row needs a new first-hand source or a second look. — [Pieuvre](https://www.pieuvre.ca/?p=62650)
 - **Kingdom: New Lands → Dome Keeper** ("check folder"): René Habermann, asked by Game*Spark what influenced it: 「直接的に影響を受けたものはありません。……本作のゲームデザインに一番大きな影響を与えたものと言えば、『Kingdom』と『Into the Breach』ですね。」 ("Nothing influenced it directly. … If I had to name the biggest influences on the design, it's Kingdom and Into the Breach.") He names the series, not New Lands. — [Game*Spark](https://www.gamespark.jp/article/2022/10/28/123900.html)
+- **Enter the Gungeon → Gunfire Reborn** (sheet: Wikipedia): Duoyi Games, answering Game Wisdom's questions themselves: "Inspired by many previous excellent roguelike games such as Borderlands and Enter the Gungeon, we considered that roguelike would be the most suitable design for Gunfire, so it was eventually adopted." — [Game Wisdom guest interview](https://game-wisdom.com/guest/gunfire-reborn-interview)
 - **The Binding of Isaac → Our Darker Purpose** (sheet: Polygon): Avidly Wild Games' own Steam page says it: "The gameplay is steeped in a variety of influences ranging from A Link to the Past to The Binding of Isaac to Diablo." — [Steam store page](https://store.steampowered.com/app/262790/)
 ## 5. Leads that aren't sources yet
 
@@ -449,6 +450,10 @@ All 15 six-connection games, the same way as the five-connection pass. Two new s
 ### Seven connections (October 2026)
 
 All 11 seven-connection games, the same way. No new lines: the five with no influence or one (Don't Starve, Dota Auto Chess, SNKRX, Hack, Teamfight Tactics) name games off the chart or their one row (Klei name Minecraft and Lost in Blue; SNKRX credits Snake and the auto-battler genre). What it did find is sources: first-hand ones for Rogue → Hack, Dota Auto Chess → Teamfight Tactics, Vampire Survivors → Halls of Torment and Kingdom: New Lands → Dome Keeper, and a reason to doubt **Diablo → Halls of Torment** (section 4). Dome Keeper's developer also says he hadn't played most of the games it gets compared to, Risk of Rain among them (section 3). Nothing beyond their rows for: Cult of the Lamb, PengPong, Rift Wizard and Scourgebringer.
+
+### Eight connections (October 2026)
+
+All six eight-connection games, the same way. No new lines. Two of them have no recorded influence at all and still don't: **Risk of Rain** (Hopoo's interviews, then and around Returns, say they combined "their favourite games" without naming one) and **DoomRL** (Kornel Kisielewicz's interviews are about Doom and, later, Jupiter Hell; DoomWiki refuses the browser, so check it yourself). Gunfire Reborn's one row gets a first-hand source (section 4). Nothing beyond their rows for: Cardinal Quest, Death Must Die and Wildfrost.
 
 ### Your wanted list
 
@@ -616,4 +621,5 @@ Lines that are rows in the sheet now, kept for their sources. `status --tick` mo
 - **Five connections (October 2026)**: all 29. Four strong lines on Dungeons of Dredmor, two on GoNNER, one on Order Automatica, and Hoplite in Fights in Tight Spaces' pitch (weaker).
 - **Six connections (October 2026)**: all 15. Nova Drift → 20 Minutes Till Dawn and Diablo → Soulstone Survivors (both strong).
 - **Seven connections (October 2026)**: all 11. No new lines; first-hand sources for four rows and a doubt on Diablo → Halls of Torment.
+- **Eight connections (October 2026)**: all six. No new lines; a first-hand source for Enter the Gungeon → Gunfire Reborn.
 - **Early classics, variants and console games (October 2026)**: 12 Angband/NetHack variants and Japanese console roguelikes, the Japanese ones in Japanese too. No new edges; first-hand sources for NetHack → Slash'EM and NetHack → Pathos.
