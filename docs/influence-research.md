@@ -95,6 +95,12 @@ the colon too) and two weaker ones. As at three connections, the bigger yield
 was in the rows themselves: a store page that sources three Ouroboros King rows
 better than the Reddit post they cite, and a same-studio row (StarVaders →
 Dicevaders) with no Source and no Dev/Series mark.
+The second batch (the other 30) added two strong lines, both from developers'
+replies deep in Reddit threads the sheet already cited (Into the Breach → Lost
+For Swords, Diablo → Tangledeep). It also found a bug worth knowing about: the
+Arctic Shift `comments/tree` endpoint nests replies under
+`data.replies.data.children`, and a walk that only reads the top level sees
+none of a developer's answers in an AMA. Walk the whole tree.
 
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
