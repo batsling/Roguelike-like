@@ -448,7 +448,7 @@ All 15 six-connection games, the same way as the five-connection pass. Two new s
 
 ### Seven connections (October 2026)
 
-All 11 seven-connection games, the same way. No new lines: the four with no influence or one (Don't Starve, Dota Auto Chess, SNKRX, Hack, Teamfight Tactics) name games off the chart or their one row (Klei name Minecraft and Lost in Blue; SNKRX credits Snake and the auto-battler genre). What it did find is sources: first-hand ones for Rogue → Hack, Dota Auto Chess → Teamfight Tactics, Vampire Survivors → Halls of Torment and Kingdom: New Lands → Dome Keeper, and a reason to doubt **Diablo → Halls of Torment** (section 4). Dome Keeper's developer also says he hadn't played most of the games it gets compared to, Risk of Rain among them (section 3). Nothing beyond their rows for: Cult of the Lamb, PengPong, Rift Wizard and Scourgebringer.
+All 11 seven-connection games, the same way. No new lines: the five with no influence or one (Don't Starve, Dota Auto Chess, SNKRX, Hack, Teamfight Tactics) name games off the chart or their one row (Klei name Minecraft and Lost in Blue; SNKRX credits Snake and the auto-battler genre). What it did find is sources: first-hand ones for Rogue → Hack, Dota Auto Chess → Teamfight Tactics, Vampire Survivors → Halls of Torment and Kingdom: New Lands → Dome Keeper, and a reason to doubt **Diablo → Halls of Torment** (section 4). Dome Keeper's developer also says he hadn't played most of the games it gets compared to, Risk of Rain among them (section 3). Nothing beyond their rows for: Cult of the Lamb, PengPong, Rift Wizard and Scourgebringer.
 
 ### Your wanted list
 
