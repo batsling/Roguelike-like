@@ -86,6 +86,16 @@ I Am Overburdened's two RogueBasin rows aren't what its developer names.
 Small games behave like the degree-1 survivors-likes did: the developer names
 the one or two games the sheet already has, and nothing else.
 
+**The four-connection pass (October 2026)** began with the 33 of 63 games
+never named in the candidates doc. Rereading cited sources and scanning every
+developer post on each Steam page turned up one strong line (Skul → Dunjungle,
+which the Steam scan missed at first because it matched full titles only:
+developers write "Skul", not "Skul: The Hero Slayer", so match the part before
+the colon too) and two weaker ones. As at three connections, the bigger yield
+was in the rows themselves: a store page that sources three Ouroboros King rows
+better than the Reddit post they cite, and a same-studio row (StarVaders →
+Dicevaders) with no Source and no Dev/Series mark.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
