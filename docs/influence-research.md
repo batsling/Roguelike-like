@@ -197,16 +197,19 @@ section 2 is games held on by one connection or none. When a video confirms
 an influence, the video is the Source, with a timestamp if possible
 (`&t=754`). A podcast host's guess is not; the developer has to say it.
 
-**Resuming it.** The first run was stopped at 158 of 512 games (fewest
-connections first: all 61 games with none, and the one-connection games
-alphabetically up to Elin).
-Its results are saved, trimmed, in `tools/influence_research_media.jsonl`,
-because `.influence_work/` doesn't survive a container restart. To continue:
+**It has searched everything it qualifies for.** The first run stopped at 158
+of 512 games; the second (October 2026) finished the other 350, with `devs`
+run first so studio names sharpened the filter: 508 games searched, 275 with
+something to listen to (111 suspected connections to confirm, 164 games with
+few connections). The results are saved in `tools/influence_research_media.jsonl`
+(13 MB, each result's text cut to 400 characters), because `.influence_work/`
+doesn't survive a container restart. To rewrite the doc after a filter change,
+or to search games added to the sheet since:
 
 ```bash
 mkdir -p .influence_work && cp tools/influence_research_media.jsonl .influence_work/media.jsonl
-python3 tools/influence_research.py devs     # optional, ~6 min: studio names sharpen the filter
-python3 tools/influence_research.py media    # skips the 158, ~30 min for the rest
+python3 tools/influence_research.py media --write-only   # just rewrite the doc
+python3 tools/influence_research.py media                # search only games not in the cache
 ```
 
 Then copy `.influence_work/media.jsonl` back over the file in `tools/`
@@ -460,12 +463,18 @@ converts what is new or replaced; CI runs `--check`, and
 was pushed without it. Name the file with the game's id, not its name: an
 apostrophe or an accent becomes `_` (`don_t_starve_together`, `pok_rogue`).
 
-**Seeing it on the sheet.** The `connections` sheet's `Proof` column (F) holds
-each row's proof file name without the `.png` (`slay_the_spire---tic_tactic`),
-blank where there is none, so filtering it for blanks is
-the same list as `docs/proof-missing.md`. It is written FROM the folder by
-`python3 tools/proof_column.py` (`--check` says whether it is stale) and nothing
-reads it back, so re-run that after adding proofs rather than typing into it.
+**Seeing it on the sheet.** Two columns on the `connections` sheet. `Proof`
+(F) holds every row's proof file name without the extension
+(`slay_the_spire---tic_tactic`), whether or not the file exists yet, so a new
+screenshot can be saved under a name copied straight out of the cell.
+`Needs Proof` (G) says `Yes` when the row has no proof in the folder and isn't
+a Dev/Series row, `No` otherwise; filtering it for `Yes` is the to-do list
+(`docs/proof-missing.md` is the same list plus the Dev/Series rows, grouped by
+why each is missing). Dev/Series rows never need a proof, though one can be
+added anyway. Both are written FROM the folder by
+`python3 tools/proof_column.py` (`--check` says whether they are stale) and
+nothing reads them back, so re-run that after adding proofs rather than typing
+into them.
 A name typed there by hand is not checked against anything: the October 2026
 upload typed `…---sepheria` for Sephiria and `…_dungeon_master` for Legend of
 Keepers (the game is "Dungeon *Manager*"), and the files carried the same typos,

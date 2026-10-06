@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The `connections` sheet says what still needs a proof.** `Proof` (F) now
+  holds every row's file name, existing or not, so a new screenshot is saved
+  under a name copied from the cell; a new `Needs Proof` column (G) is `Yes`
+  where a non-Dev/Series row has no proof (295 rows today). Both come from
+  `tools/proof_column.py`. Imported with it: Super Auto Pets → Winnie's Hole,
+  and seven new proofs, six of them clips (converted). The interviews and
+  podcasts scan finished all 508 games it qualifies for
+  (`docs/influence-media.md`).
+
 - **Ten new connections and 57 proofs from the owner.** The sheet's new rows
   (Diablo, Hades and Noita → Sephiria; Diablo and Darkest Dungeon → Runeborn; FTL
   and Hades → Beyond the Long Night; Desktop Dungeons → I Am Overburdened; Inkbound

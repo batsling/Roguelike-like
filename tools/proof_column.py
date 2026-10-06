@@ -1,27 +1,34 @@
 #!/usr/bin/env python3
-"""Fill the `Proof` column on the `connections` sheet from images2.0/proof/.
+"""Fill the `Proof` and `Needs Proof` columns on the `connections` sheet.
 
 The game reads a connection's proof off disk, as
 `images2.0/proof/<influencer id>---<influenced id>.png` (or `.mp4`/`.ogv` for a
-clip, see tools/convert_proof_videos.py), so the sheet on its own
-never said which rows had one. This writes that file's name, without the
-`.png` (`slay_the_spire---tic_tactic`), into column F of each row that has one
-and leaves the cell blank on each row that doesn't — so
-filtering `Proof` for blanks gives the same list as `docs/proof-missing.md`.
+clip, see tools/convert_proof_videos.py), so the sheet on its own never said
+which rows had one. This writes two columns:
 
-The column is a VIEW of the folder, not an input: nothing reads it back
-(`import-games-godot.py` stops at Source, column E), so typing into it does
-nothing and the next run overwrites it. Re-run after adding proofs:
+  F  Proof        the file name that row's proof has or would have, without the
+                  extension (`slay_the_spire---tic_tactic`), on EVERY row whose
+                  two games resolve, so a new screenshot can be saved under a
+                  name copied straight out of the cell.
+  G  Needs Proof  `Yes` when the row has no proof in the folder and isn't a
+                  Dev/Series Relation row; `No` otherwise. Dev/Series rows never
+                  need one (the relation is the source), though one can be added
+                  anyway. Filtering G for `Yes` gives the influence rows of
+                  `docs/proof-missing.md` (which lists Dev/Series rows too).
 
-    python3 tools/proof_column.py           # rewrite the column
-    python3 tools/proof_column.py --check   # exit 1 if it is out of date
+Both columns are a VIEW of the folder, not an input: nothing reads them back
+(`import-games-godot.py` stops at Source, column E), so typing into them does
+nothing and the next run overwrites them. Re-run after adding proofs:
 
-A row whose name doesn't resolve to a game in data/games/ is left blank and
-reported (the same names `import-games-godot.py` skips).
+    python3 tools/proof_column.py           # rewrite the columns
+    python3 tools/proof_column.py --check   # exit 1 if they are out of date
+
+A row whose name doesn't resolve to a game in data/games/ is left blank in both
+and reported (the same names `import-games-godot.py` skips).
 
 Through `_xlsx_surgery.set_cells` rather than openpyxl, which drops the
 workbook's charts, and rather than `write_grid`, which regenerates every cell:
-only column F is touched.
+only columns F and G are touched.
 """
 
 import glob
@@ -40,9 +47,9 @@ PROOF = os.path.join(ROOT, "images2.0", "proof")
 
 SHEET = "connections"
 HEADERS = ["Influencer", "Influencee", "Influencer Time", "Dev/Series Relation",
-           "Source", "Proof"]
-COL = "F"
-WIDTH = 60
+           "Source", "Proof", "Needs Proof"]
+COL, NEED_COL = "F", "G"
+WIDTH, NEED_WIDTH = 60, 13
 
 
 def _game_ids():
@@ -79,27 +86,32 @@ def main():
             raise SystemExit("connections headers are %r, expected %r — the sheet's "
                              "shape moved; update this script" % (header, HEADERS[:5]))
 
-        edits, unresolved, have = {}, set(), 0
-        if (header[5] if len(header) > 5 else "") != "Proof":
-            edits["%s1" % COL] = "Proof"
+        edits, unresolved, have, need = {}, set(), 0, 0
+        for col, title, i in ((COL, "Proof", 5), (NEED_COL, "Needs Proof", 6)):
+            if (header[i] if len(header) > i else "") != title:
+                edits["%s1" % col] = title
         for r, row in enumerate(grid[1:], start=2):
-            row = list(row) + [""] * (6 - len(row))
+            row = list(row) + [""] * (7 - len(row))
             a, b = str(row[0] or "").strip(), str(row[1] or "").strip()
-            want = ""
+            name = needs = ""
             if a and b:
                 a_id, b_id = resolve(a), resolve(b)
                 if a_id is None or b_id is None:
                     unresolved.add(a if a_id is None else b)
                 else:
                     name = "%s---%s" % (a_id, b_id)
+                    dev = bool(str(row[3] or "").strip())
                     if name in proofs:
-                        want, have = name, have + 1
-            if str(row[5] or "").strip() != want:
-                edits["%s%d" % (COL, r)] = want
+                        have += 1
+                    needs = "No" if dev or name in proofs else "Yes"
+                    need += needs == "Yes"
+            for col, i, want in ((COL, 5, name), (NEED_COL, 6, needs)):
+                if str(row[i] or "").strip() != want:
+                    edits["%s%d" % (col, r)] = want
 
         total = sum(1 for row in grid[1:] if str(row[0] or "").strip())
-        print("connections: %d of %d rows have a proof; %d cell(s) %s"
-              % (have, total, len(edits), "out of date" if check else "written"))
+        print("connections: %d of %d rows have a proof, %d need one; %d cell(s) %s"
+              % (have, total, need, len(edits), "out of date" if check else "written"))
         for name in sorted(unresolved):
             print("  not a game in data/games/: %r" % name)
 
@@ -111,17 +123,17 @@ def main():
 
         wb.set_cells(SHEET, edits)
         last = len(grid)
-        wb.grow_table(SHEET, HEADERS, "%s%d" % (COL, last))
-        # Give the new column a readable width; E is 189 wide and F would
+        wb.grow_table(SHEET, HEADERS, "%s%d" % (NEED_COL, last))
+        # Give the columns a readable width; E is 189 wide and F and G would
         # otherwise open at the sheet default of ~9.
         part, _ = wb.sheet_parts(SHEET)
         xml = wb._dirty[part].decode("utf-8")
-        if '<col min="6"' not in xml:
-            xml = xml.replace("</cols>", '<col min="6" max="6" width="%d" customWidth="1"/></cols>'
-                              % WIDTH, 1)
-        xml = re.sub(r'spans="1:5"', 'spans="1:6"', xml)
+        for n, width in ((6, WIDTH), (7, NEED_WIDTH)):
+            if '<col min="%d"' % n not in xml:
+                xml = xml.replace("</cols>", '<col min="%d" max="%d" width="%d" customWidth="1"/></cols>'
+                                  % (n, n, width), 1)
+        xml = re.sub(r'spans="1:[56]"', 'spans="1:7"', xml)
         wb._dirty[part] = xml.encode("utf-8")
-
 
 if __name__ == "__main__":
     main()

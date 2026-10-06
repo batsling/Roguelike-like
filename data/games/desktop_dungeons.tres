@@ -8,8 +8,8 @@ id = &"desktop_dungeons"
 display_name = "Desktop Dungeons"
 year = 2010
 type = 3
-games_influenced = Array[StringName]([&"cardinal_quest", &"lost_for_swords", &"the_binding_of_isaac", &"i_am_overburdened"])
-influence_sources = PackedStringArray("https://www.indiegamemag.com/ido-yehieli-interview-nephews-and-niches/", "https://www.reddit.com/r/iosgaming/comments/1hjehh9/lost_for_swords_a_dungeon_crawler_focusing_on/", "https://www.youtube.com/watch?v=-X_QYumQQGk", "https://www.gamedeveloper.com/business/i-am-overburdened-recap-and-numbers")
+games_influenced = Array[StringName]([&"cardinal_quest", &"i_am_overburdened", &"lost_for_swords", &"the_binding_of_isaac"])
+influence_sources = PackedStringArray("https://www.indiegamemag.com/ido-yehieli-interview-nephews-and-niches/", "https://www.gamedeveloper.com/business/i-am-overburdened-recap-and-numbers", "https://www.reddit.com/r/iosgaming/comments/1hjehh9/lost_for_swords_a_dungeon_crawler_focusing_on/", "https://www.youtube.com/watch?v=-X_QYumQQGk")
 influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
