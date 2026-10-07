@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Eighteen new games and fourteen new connections from the owner.** New on
+  the sheet, with their covers: Blade Assault, Blood Dungeon, Change: A Homeless
+  Survival Experience, Conquest Dark, Crab God, Devil Spire, Full Metal
+  Schoolgirl, Kaz, Kingsway, Lumencraft, Orbital Bullet, Pinball Storm: Lokanta,
+  Prime Monster, Pro Jank Footy, Ratatan, Scarlet Skips, Source of Madness and
+  Stray Path (eleven of them owned). Blood Dungeon comes in on six rows from
+  Messhof's Campaign Mode interview (20 Minutes Till Dawn, Downwell, Megabonk,
+  Risk of Rain, Spelunky Classic, Vampire Survivors); the others on one or two
+  rows each, every one but Vampire Survivors → Pinball Storm: Lokanta with a proof
+  already in the folder. Ten of the eighteen have no connection yet. ADOM →
+  Ultimate ADOM is now a Dev/Series row. The owner re-sorted `connections`, so
+  most touched `.tres` files only change the order of their arrays. The Crab God
+  clip is converted, and `proof-missing.md` is hand-patched with the one new
+  line: its generator needs the capture report, which lived in the last
+  session's container. 917 games, 1505 connections; the Atlas skies are re-baked.
+
 - **Four new games, 24 new connections, five newly owned games and 45 proof uploads
   from the owner.** New on the sheet: Lost Eidolons: Veil of the Witch, Rogue
   Blight, Fushigi no Pixel Dungeon and Slayblade, with their covers. Newly owned:
