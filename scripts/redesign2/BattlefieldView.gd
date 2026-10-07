@@ -709,6 +709,32 @@ func _refresh_pressure() -> void:
 	var tier: int = RunDifficulty.current_tier()
 	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
 	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hold_small_print_on_one_row()
+
+# THE SMALL PRINT KEEPS TO ONE ROW WHILE A PANEL SHARES THE COLUMN. The row flows
+# so a narrow board takes a second line rather than a wider minimum, and on its
+# own column that is right. But a shop or the machines under the board drop it to
+# FIELD_HEIGHT_BUDGET_SHARED, and at that cell size the board's width is the
+# hero's shield row plus a 4x4 of small cells: 406px with five shields, 369px
+# with three. At 369 "Amulet 5 hops away — Distant · boss in 2 spawns · Low
+# difficulty" no longer fits, takes a second line, and the 20px it adds is 17px
+# more than the page has with a shop on it, so whether the page fitted a 720p
+# window came down to which character the run had dealt. The panel underneath
+# already holds the column wider than any board this reserves (the shop is 538),
+# so the reserve costs the page no width; it is capped at the field's own width
+# budget all the same, so a line that long still wraps rather than widening the
+# column.
+func _hold_small_print_on_one_row() -> void:
+	var want: float = 0.0
+	if _height_budget == FIELD_HEIGHT_BUDGET_SHARED:
+		var shown: int = 0
+		for c in _pressure_small.get_children():
+			if c is Control and (c as Control).visible:
+				want += (c as Control).get_combined_minimum_size().x
+				shown += 1
+		want += _pressure_small.get_theme_constant("h_separation") * maxi(0, shown - 1)
+		want = minf(ceilf(want), float(FIELD_WIDTH_BUDGET))
+	_pressure_small.custom_minimum_size.x = want
 
 # The warning above the grid while a lost run could bring the next boss on, or ""
 # (§3.2): the next spawn is a difficulty up and a game is in play. Names the

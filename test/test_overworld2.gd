@@ -8217,6 +8217,36 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 		_assert_fits("the page with %s's shop on it" % (
 			game.display_name if game != null else String(node)))
 
+# What the test above USED to vary on, pinned down. With a shop under it the
+# board drops to small cells and its width became the hero's shield row: five
+# shields left the strip's small print room for one row, three didn't, and the
+# second row it took was 17px more than the page has with a shop on it, so the
+# test above failed on roughly one seed in three. The board now holds that row
+# open while it shares the column (BattlefieldView._hold_small_print_on_one_row);
+# this stands the same shop page up at three shield counts and checks the row.
+func test_the_strip_small_print_stays_on_one_row_with_a_shop_whatever_the_shields() -> void:
+	_at_720p()
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
+		return
+	_pick_enemies(0)
+	_ui._mount_shop(node)
+	await get_tree().process_frame
+	for n in [1, 3, 5]:
+		GameState.shields = n
+		GameState.bonus_shields = 0
+		_ui._refresh()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var small: Control = _ui._board._pressure_small
+		var row: float = (_ui._board._pressure_why as Control).size.y
+		assert_true(small.visible, "the small print is up (no boss warning in its place)")
+		assert_lt(small.size.y, row * 2.0,
+			"with %d shield(s) and a shop below, the small print is one row (%.0fpx, a row is %.0f)"
+			% [n, small.size.y, row])
+	_assert_fits("the page with a shop and a one-shield hero")
+
 func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
 	var shop_node: StringName = _a_shop()
 	_ui._mount_shop(shop_node)

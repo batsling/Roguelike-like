@@ -86,6 +86,30 @@ I Am Overburdened's two RogueBasin rows aren't what its developer names.
 Small games behave like the degree-1 survivors-likes did: the developer names
 the one or two games the sheet already has, and nothing else.
 
+**The four-connection pass (October 2026)** began with the 33 of 63 games
+never named in the candidates doc. Rereading cited sources and scanning every
+developer post on each Steam page turned up one strong line (Skul → Dunjungle,
+which the Steam scan missed at first because it matched full titles only:
+developers write "Skul", not "Skul: The Hero Slayer", so match the part before
+the colon too) and two weaker ones. As at three connections, the bigger yield
+was in the rows themselves: a store page that sources three Ouroboros King rows
+better than the Reddit post they cite, and a same-studio row (StarVaders →
+Dicevaders) with no Source and no Dev/Series mark.
+The second batch (the other 30) added two strong lines, both from developers'
+replies deep in Reddit threads the sheet already cited (Into the Breach → Lost
+For Swords, Diablo → Tangledeep). It also found a bug worth knowing about: the
+Arctic Shift `comments/tree` endpoint nests replies under
+`data.replies.data.children`, and a walk that only reads the top level sees
+none of a developer's answers in an AMA. Walk the whole tree.
+
+**The five-connection pass (October 2026)** covered all 29 such games and gave
+the best yield of the degree passes: eight lines, four of them on one game.
+Dungeons of Dredmor's only recorded influence was RogueBasin's NetHack, yet
+its lead developer had named four chart games in a single 2011 interview
+answer. Old, well-known games whose rows lean on RogueBasin are worth a direct
+search for the developers' own words; the wiki infobox often isn't where they
+said it.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
@@ -173,16 +197,19 @@ section 2 is games held on by one connection or none. When a video confirms
 an influence, the video is the Source, with a timestamp if possible
 (`&t=754`). A podcast host's guess is not; the developer has to say it.
 
-**Resuming it.** The first run was stopped at 158 of 512 games (fewest
-connections first: all 61 games with none, and the one-connection games
-alphabetically up to Elin).
-Its results are saved, trimmed, in `tools/influence_research_media.jsonl`,
-because `.influence_work/` doesn't survive a container restart. To continue:
+**It has searched everything it qualifies for.** The first run stopped at 158
+of 512 games; the second (October 2026) finished the other 350, with `devs`
+run first so studio names sharpened the filter: 508 games searched, 275 with
+something to listen to (111 suspected connections to confirm, 164 games with
+few connections). The results are saved in `tools/influence_research_media.jsonl`
+(13 MB, each result's text cut to 400 characters), because `.influence_work/`
+doesn't survive a container restart. To rewrite the doc after a filter change,
+or to search games added to the sheet since:
 
 ```bash
 mkdir -p .influence_work && cp tools/influence_research_media.jsonl .influence_work/media.jsonl
-python3 tools/influence_research.py devs     # optional, ~6 min: studio names sharpen the filter
-python3 tools/influence_research.py media    # skips the 158, ~30 min for the rest
+python3 tools/influence_research.py media --write-only   # just rewrite the doc
+python3 tools/influence_research.py media                # search only games not in the cache
 ```
 
 Then copy `.influence_work/media.jsonl` back over the file in `tools/`
@@ -436,12 +463,35 @@ converts what is new or replaced; CI runs `--check`, and
 was pushed without it. Name the file with the game's id, not its name: an
 apostrophe or an accent becomes `_` (`don_t_starve_together`, `pok_rogue`).
 
-**Seeing it on the sheet.** The `connections` sheet's `Proof` column (F) holds
-each row's proof file name without the `.png` (`slay_the_spire---tic_tactic`),
-blank where there is none, so filtering it for blanks is
-the same list as `docs/proof-missing.md`. It is written FROM the folder by
-`python3 tools/proof_column.py` (`--check` says whether it is stale) and nothing
-reads it back, so re-run that after adding proofs rather than typing into it.
+**Seeing it on the sheet.** Two columns on the `connections` sheet. `Proof`
+(F) holds every row's proof file name without the extension
+(`slay_the_spire---tic_tactic`), whether or not the file exists yet, so a new
+screenshot can be saved under a name copied straight out of the cell.
+`Needs Proof` (G) says `Yes` when the row has no proof in the folder and isn't
+a Dev/Series row, `No` otherwise; filtering it for `Yes` is the to-do list
+(`docs/proof-missing.md` is the same list plus the Dev/Series rows, grouped by
+why each is missing). Dev/Series rows never need a proof, though one can be
+added anyway. Both are written FROM the folder by
+`python3 tools/proof_column.py` (`--check` says whether they are stale) and
+nothing reads them back, so re-run that after adding proofs rather than typing
+into them.
+A name typed there by hand is not checked against anything: the October 2026
+upload typed `…---sepheria` for Sephiria and `…_dungeon_master` for Legend of
+Keepers (the game is "Dungeon *Manager*"), and the files carried the same typos,
+so nothing in the game would have shown them. Upload under any name and let
+`proof_owner_match.py` and `proof_column.py` write the ids.
+
+**Upload into `images2.0/proof/` itself, not a subfolder.** The game looks in
+that folder only, and so do `proof_owner_match.py`, `proof_column.py` and the
+test above, so a file in a subfolder (`proof temp/`, say) is invisible to all of
+them: no proof in the game, and no warning either. `not-on-sheet/` below is the
+one subfolder on purpose.
+
+**`docs/proof-missing.md` is regenerated from a local file.** `capture_proof.js
+--missing` reads `.influence_work/proof/report.json`, which a capture run writes
+and git doesn't keep, so in a fresh checkout it fails until `--untried` or a full
+run has rebuilt it. Between runs, removing the lines for connections that have a
+proof now (and fixing the section counts) gives the same document.
 
 **Your screenshots win.** `tools/proof_captured.json` lists the files
 `capture_proof.js --export` copied in, each with a sha1 of its bytes, and an

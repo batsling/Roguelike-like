@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A shop no longer pushes the page past 720p for some characters.** With a shop
+  (or the machines) under it, the board drops to small cells and its width is
+  set by the hero's shield row: five shields left the pressure strip's small
+  print ("Amulet 5 hops away — Distant · boss in 2 spawns · Low difficulty") room
+  for one row, three didn't, and the second row it took was 17px more than the
+  page has. `test_the_page_still_fits_the_window_with_a_shop_on_it` failed on
+  about one seed in three for that reason. While a panel shares its column, the
+  board now holds that row open (capped at the field's width budget; the shop
+  panel already holds the column wider). A new test stands the shop page up at
+  one, three and five shields.
+
+- **The `connections` sheet says what still needs a proof.** `Proof` (F) now
+  holds every row's file name, existing or not, so a new screenshot is saved
+  under a name copied from the cell; a new `Needs Proof` column (G) is `Yes`
+  where a non-Dev/Series row has no proof (295 rows today). Both come from
+  `tools/proof_column.py`. Imported with it: Super Auto Pets → Winnie's Hole,
+  and seven new proofs, six of them clips (converted). The interviews and
+  podcasts scan finished all 508 games it qualifies for
+  (`docs/influence-media.md`).
+
+- **Ten new connections and 57 proofs from the owner.** The sheet's new rows
+  (Diablo, Hades and Noita → Sephiria; Diablo and Darkest Dungeon → Runeborn; FTL
+  and Hades → Beyond the Long Night; Desktop Dungeons → I Am Overburdened; Inkbound
+  → Monster Train 2; Isaac → Tape to Tape) are imported, plus three sequel rows
+  marked Dev/Series and new sources for the Roboquest and Slay the Spire →
+  UnderMine rows. The proofs had been uploaded to `images2.0/proof/proof temp/`,
+  where neither the game nor the proof tools look, so they were moved up a
+  folder. Seven had ids the game would never match (`sepheria`,
+  `…_dungeon_master`) and were renamed. Slay the Spire → UnderMine's clip is
+  converted, Dungreed → Sephiria gets the same screenshot as Diablo's (it names
+  Dungreed too), and 21 candidate lines now on the sheet are ticked.
+
 - **Proofs can be clips.** The owner's new proofs include ten videos (Tiny Rogues'
   podcast, Hungry Horrors' dev stream). Godot only plays Ogg Theora, so
   `tools/convert_proof_videos.py` turns each `<pair>.mp4` into a 720p `<pair>.ogv`

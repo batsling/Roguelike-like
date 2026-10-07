@@ -196,6 +196,14 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 t
     game in the catalog" is sometimes standing on a Shop, which pays no event.
     **Never run two GUT processes at once**: they share `user://`, race on
     `slot_0.json`, and produce a spray of failures that are not flakes at all.
+  - `test_overworld2.gd::test_the_page_still_fits_the_window_with_a_shop_on_it`
+    failed about one run in three at "needs 642 of 625", and **the random part
+    was the CHARACTER**, not the map. With a shop under it the board's width is
+    the hero's shield row; three shields made it narrow enough that the pressure
+    strip's small print wrapped to a second row (+20px). Found by dumping the
+    page's Control tree with sizes on a passing and a failing run and diffing the
+    two: same text, same grid, board 406 vs 369px. A layout test that varies is
+    usually a WIDTH that varies upstream of a wrap; look for the wrap first.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill
