@@ -4,7 +4,7 @@ extends Control
 # (legacy-web/js/map-render.js: showMapModal / generateMapView / drawMapArrows).
 #
 # The games-first overworld (Overworld2) only ever shows the games reachable from
-# where you stand. This restores the old bird's-eye map: a top-to-bottom LAYERED
+# where you stand. This restores the old bird's-eye map: a left-to-right LAYERED
 # GRAPH of the shortest-path DAG from the current game down to the Amulet, with
 # green arrows along the routes, so the player can see the whole road ahead and
 # how their immediate choices fit into it.
@@ -28,25 +28,9 @@ extends Control
 
 signal finished
 
-# --- role colours (kept close to the old web palette) ----------------------
-#
-# The ladder itself — the boxes, the arrows and the layout constants under them —
-# lives in RouteLadder, because GameChoiceModal draws the same graph for the game
-# a card is offering. These are aliases so the legend below still reads as the
-# window's own palette.
-const COL_CURRENT := RouteLadder.COL_CURRENT       # #2196F3 you-are-here blue
-const COL_AMULET := RouteLadder.COL_AMULET         # ember/gold amulet fill
-const COL_CHOICE_BG := RouteLadder.COL_CHOICE_BG   # reachable-now choice
-const COL_PATH_BG := RouteLadder.COL_PATH_BG       # on the road to the amulet
-const COL_VISITED_BG := RouteLadder.COL_VISITED_BG # already behind you
-const COL_ARROW := RouteLadder.COL_ARROW           # shortest-path arrow green
-
-# Layout constants (pre-zoom), re-exported from RouteLadder so the window's
-# fitting maths reads in the same units the ladder is drawn in.
-const BOX := RouteLadder.BOX
-const H_GAP := RouteLadder.H_GAP
-const V_GAP := RouteLadder.V_GAP
-const PAD := RouteLadder.PAD
+# The map itself — the boxes, the arrows, the colours and the layout under them —
+# lives in RouteLadder, because GameChoiceModal draws the same map for the game a
+# card is offering.
 
 var _current: StringName = &""
 var _amulet: StringName = &""
@@ -95,7 +79,9 @@ var _dragging: bool = false
 # The window stays sized for the LONGEST route in the band, not the average, so a
 # 4-hop start and a 7-hop start open the same panel at the same zoom. It is also
 # still sized for the band's old ceiling of 8, since a custom run may set one.
-const PANEL_SIZE := Vector2(940, 680)
+# 1200 wide since the map runs left to right: a column per step of the road is
+# what spends the width, and 940 left a route's boxes too narrow for their names.
+const PANEL_SIZE := Vector2(1200, 680)
 const PANEL_MARGIN := Vector2(44, 96)
 # How much of the screen the window is NOT allowed to take, per axis: enough to
 # see the sky is still there behind it, and no more.
@@ -224,7 +210,6 @@ func _build() -> void:
 	_canvas_holder = _build_graph()
 	scroller.add_child(_canvas_holder)
 
-	root.add_child(_legend())
 	_refresh_distance_label()
 	# Deferred, and it has to be. A PanelContainer takes whatever its children
 	# claim as they go in — sizing the window before Godot has run its layout
@@ -481,12 +466,18 @@ func _ladder_cfg() -> Dictionary:
 		"zoom": _zoom,
 		"preview": _preview,
 		"on_node": func(id: StringName, depth: int): open_node_card(id, depth),
-		# The widest the window may grow, less its ladder padding: a long route
-		# fitted to the window's HEIGHT leaves this spare, and its rungs widen into
-		# it rather than cutting their names (RouteLadder `room_w`). The window is
-		# sized to the ladder, so it widens with them, never past the ceiling.
-		"room_w": maxf(0.0, view_ceiling().x - LADDER_PAD_X) if is_inside_tree() else 0.0,
+		"room": spread_room(),
 	}
+
+# The room the map is SIZED TO (RouteLadder `room`): everything the window may
+# give it, when the window is on its own. Over the star chart it is none — every
+# pixel the window takes there is sky the route is framed in, so the map is drawn
+# at its natural size and the window shrinks to it.
+func spread_room() -> Vector2:
+	if not is_inside_tree() or _panel == null or (_atlas != null and is_instance_valid(_atlas)):
+		return Vector2.ZERO
+	var c: Vector2 = view_ceiling()
+	return Vector2(c.x - LADDER_PAD_X, c.y - _chrome().y)
 
 # Fly the chart behind to one game on the ladder. Public so a test can ask for
 # the same thing a click asks for.
@@ -504,17 +495,18 @@ func node_name(id: StringName) -> String:
 # ---------------------------------------------------------------------------
 # The node card
 #
-# A rung is 150x68 with a clipped name in it, which is all a ladder should be and
-# nowhere near enough to decide anything on. Clicking one opens this: the game's
-# cover, where it sits on this route, what you have already done there, and the
-# one thing only a map can do about it — find it on the chart. It floats beside the window and follows it when the window is dragged.
+# A box is a cover and a clipped name, which is all a map should be and nowhere
+# near enough to decide anything on. Clicking one opens this: the game's cover,
+# where it sits on this route, what you have already done there, and the one
+# thing only a map can do about it — find it on the chart. It floats beside the
+# window and follows it when the window is dragged.
 # ---------------------------------------------------------------------------
 
 const CARD_W := 300.0
 const CARD_GAP := 12.0
 
-# Open the card on one rung. `depth` is which rung — a forced route can hold the
-# same game twice, and "step 2 of 9" and "step 7 of 9" are different answers.
+# Open the card on one box. `depth` is which column it is in, which is what
+# "step 2 of 9" on the card is read from.
 # Public so a test can ask for exactly what a click asks for.
 func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
@@ -617,51 +609,6 @@ func _place_node_card() -> void:
 # The card's own furniture — facts, headings, buttons — lives on RouteLadder
 # beside the card builder that uses it (RouteLadder.card_fact and friends).
 
-func _legend() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
-	row.add_child(_legend_chip("▶ If you go here" if _preview else "📍 You are here", COL_CURRENT))
-	if not _preview:
-		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
-	row.add_child(_legend_chip("On the path", COL_PATH_BG))
-	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
-	# On its own line under the chips rather than beside them. The window's width
-	# is set by the LADDER, and a hint sharing the chips' row was simply clipped
-	# out of existence on every route narrower than the sentence.
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	stack.add_child(row)
-	# ALL FOUR KIND MARKS, in their colours, on ONE flowing line with the hint.
-	# Only `$` used to be named, because every rung's hover says its own — but a
-	# stream's viewers cannot hover, and "! ? !!" was four symbols they had never
-	# been told. A flow rather than a wrapping sentence: on a wide route it is one
-	# line, which is all the ladder above can spare.
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
-	for l in RouteLadder.kind_legend(UITheme.FONT_SMALL):
-		flow.add_child(l)
-	var hint := Label.new()
-	hint.text = "•  ⚔ = beaten here  •  click any game for details"
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	flow.add_child(hint)
-	stack.add_child(flow)
-	return stack
-
-func _legend_chip(text: String, swatch: Color) -> Control:
-	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	var sw := PanelContainer.new()
-	sw.custom_minimum_size = Vector2(16, 16)
-	sw.add_theme_stylebox_override("panel", UITheme.flat(swatch, 3, 0, 1, UITheme.BORDER))
-	box.add_child(sw)
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	box.add_child(l)
-	return box
-
 func _zoom_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -700,6 +647,12 @@ func _settle() -> void:
 	# of their route. Only on the way in — after that the zoom is theirs.
 	if not _auto_zoomed:
 		_auto_zoomed = true
+		# Alone, the map is sized to the window's room, which is only known now:
+		# build it once more at the zoom it has. Over the chart it is drawn at its
+		# natural size, so shrink it until the whole route fits.
+		if spread_room() != Vector2.ZERO:
+			_set_zoom(_zoom)
+			return
 		var fit: float = _fit_zoom()
 		if fit < 0.995:
 			_set_zoom(fit)          # rebuilds, and settles again behind it

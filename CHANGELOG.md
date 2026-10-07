@@ -11,6 +11,47 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The map redesign: the optimal path is a left-to-right map of covers, and
+  the game popup gives it the room.**
+  - **The map runs left to right** (`RouteLadder`): one column per step, each
+    column's games spread over the whole height and nudged off the grid by a
+    hash of the game, so the same route always looks the same; columns are
+    ordered to cross as few arrows as possible. The old top-to-bottom ladder of
+    name boxes could not fit a route's widest layer (a median of 7 games, 14 at
+    the 90th percentile) across a 16:9 window, so most names were ellipses.
+  - **Every box is the game's cover**, cropped from just below the top where
+    titles sit, with the name along the bottom on a fade in the box's role
+    colour (blue for you, ember for the Amulet, gold for an offer, near-black
+    otherwise). Every name on a map shares one size. The node's **kind marker
+    rides the path** where the arrows arrive, not the box. Wide boxes keep the
+    ⚔/⛓ badge, and every box has those counts in its hover.
+  - **Sized to its room**: the map window (now up to 1200 wide) and the popup
+    both hand the map their space, and it fills it on both axes. Over the star
+    chart the window still draws the map at its natural size, so the sky keeps
+    its room. The map window and the popup lost their legends.
+  - **The game popup**: the map takes the whole right-hand side, with the ✕ on
+    its corner; the "★ OPTIMAL" heading and its sentence are gone. On the left,
+    under the title: the node's kind for every kind (`$ Shop` replaces the shop
+    banner, whose text is now that line's hover), connections with
+    "nearby shops / champions" under them, "Gain +5 Temporary Shields" with the
+    shield's art, and one record line, `⚔ Beaten N times · M enemies ›`, which
+    opens every enemy beaten at that game, marking the ones approaching now. It
+    replaces the card's "Beatable:" pips (`OfferingCards.beatable_row` is gone).
+    **Enemies approaching** are rows in the checklist's format with ❤/⚔, plus a
+    `?` row per body rolled on arrival; the two hint lines about bodies walking
+    on are gone. **Rate this game** moved to the buttons. The proof thumbnail
+    is smaller and the left column narrower, to give the map the width.
+- **Two tests that failed now and then, fixed.**
+  `test_the_starts_are_different_distances_when_the_graph_allows_it` measured
+  the best possible spread at the ordinary route floor whatever floor the panel
+  was built at; with rifts on the generator tries the raised `RIFT_FLOOR` first,
+  and a panel built there has fewer starts to choose from. The overworld now
+  keeps the panel's floor (`_start_floor`) and the test measures at it.
+  `test_a_scramble_redeals_the_rift_cards` depended on lifetime rift tallies in
+  `user://`: the rotation deals the least-used rift game first, so when earlier
+  runs left one game below the rest, every table led with it. The test now runs
+  on emptied tallies and restores them after.
+
 - **Pinning a game to route through is gone.** The map window and the Atlas
   card no longer offer "⚑ Route through here", the Atlas loses its "⚑ Pinned"
   button, legend chip and marker, and every map

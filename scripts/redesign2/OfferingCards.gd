@@ -131,15 +131,14 @@ func _fit_row(choices: Array) -> void:
 # fills the line instead of setting its height: same page, one more thing on it.
 #
 # That makes it small, which is the right size anyway. This is an IDENTIFIER for
-# a body the player already knows — the same job, and the same scale, as the
-# portraits on a card's Beatable row. The exhibit is in the popup the card opens,
-# where the enemy is drawn at full size.
+# a body the player already knows. The exhibit is in the popup the card opens,
+# where the enemy has the checklist's own row.
 const HOVER_ART := 30.0
 
 # The badge rows on a card: the name, plus two fixed-height flag lines above the
 # cover — the Amulet / event flag, and the repeat game's +1 Dash. Everything else
-# a card used to carry (the route, the pace, the Temporary Shields, the map, the Beatable row,
-# the Bash/Transmute verbs) lives in the popup the card opens.
+# a card used to carry (the route, the pace, the Temporary Shields, the map, your record
+# there, the Bash/Transmute verbs) lives in the popup the card opens.
 const BADGE_FONT := 11
 const BADGE_LINE := 15               # one line of BADGE_FONT, in px
 # The distance line is a point smaller than the badges above it, and for a
@@ -411,12 +410,6 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(name_lbl)
 	return card
 
-# "Beatable:" — the enemies on the board right now that you have ALREADY beaten
-# at this game before. Not a prediction: it's your own record saying this pair
-# has worked, which is exactly what you want to know while choosing where to go
-# with a follower stuck to you.
-#
-# Returns null when there's nothing to say, so an unproven card stays clean.
 # The kind mark, as a label. Blank on a stay-or-return card, which MOVES the run
 # rather than committing it to a node — there is no arrival for a kind to
 # describe, and a mark there would be answering a question nobody asked.
@@ -459,74 +452,6 @@ func slot_of(choice: Dictionary) -> StringName:
 		var game: GameData = choice.get("game")
 		slot = game.id if game != null else &""
 	return slot
-
-func beatable_row(choice: Dictionary) -> Control:
-	var game: GameData = choice.get("game")
-	if game == null:
-		return null
-	# The enemy standing at this card, plus everything currently following you.
-	# Under the Runic Dome the card's own enemy is left out: a "Beatable" pip is a
-	# portrait with a name on it, so keeping it would hand back the exact thing
-	# the relic is meant to be hiding. The FOLLOWERS stay — they are already on
-	# the board and the Dome only ever hid what has yet to spawn.
-	var on_board: Array = []
-	var here: GoalEnemyData = choice.get("enemy")
-	if here != null and not enemy_hidden(choice):
-		on_board.append(here)
-	for entry in GameLoop2.stack:
-		var follower: GoalEnemyData = entry.get("enemy")
-		if follower != null:
-			on_board.append(follower)
-
-	var proven: Array = []
-	var seen: Dictionary = {}
-	for enemy in on_board:
-		if seen.has(enemy.id):
-			continue
-		if GameStats.enemy_beaten_count(game.id, enemy.id) > 0:
-			seen[enemy.id] = true
-			proven.append(enemy)
-	if proven.is_empty():
-		return null
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var label := Label.new()
-	label.text = "Beatable:"
-	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-	label.add_theme_color_override("font_color", UITheme.SUCCESS)
-	row.add_child(label)
-	for enemy in proven:
-		row.add_child(_beatable_pip(game, enemy))
-	return row
-
-# One enemy on the Beatable row: its portrait, with the record and whatever note
-# was written on the hover — the note is the reason you know it's beatable.
-func _beatable_pip(game: GameData, enemy: GoalEnemyData) -> Control:
-	var times: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	var note: String = GameStats.enemy_note(game.id, enemy.id).strip_edges()
-	var tip: String = "%s — beaten here ×%d" % [enemy.display_name, times]
-	if enemy.goal != "":
-		tip += "\n%s" % enemy.goal
-	if note != "":
-		tip += "\n\n🗒 %s" % note
-	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
-		art.custom_minimum_size = Vector2(20, 20)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		UITheme.apply_crisp(art, enemy.image)
-		art.tooltip_text = tip
-		return art
-	# No portrait authored — fall back to the name rather than an empty gap.
-	var chip := Label.new()
-	chip.text = enemy.display_name
-	chip.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
-	chip.add_theme_color_override("font_color", UITheme.SUCCESS)
-	chip.tooltip_text = tip
-	return chip
 
 func show_preview(index: int) -> void:
 	if index < 0 or index >= _page._choices.size():

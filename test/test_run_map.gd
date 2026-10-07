@@ -409,15 +409,27 @@ func _text_in(node: Node) -> String:
 		out += _text_in(c)
 	return out
 
-func test_a_rung_wears_how_many_ways_there_are_on_from_it() -> void:
+func test_a_box_wears_how_many_ways_there_are_on_from_it() -> void:
 	# The pool the next offering is drawn from is the number the route is being
-	# read FOR, and it was the one thing the ladder did not say.
+	# read FOR, and it was the one thing the old ladder did not say. Every box
+	# says it on hover; a box wide enough for it wears it as a ⛓ badge too.
 	var modal = _open_map()
 	var here: StringName = GameState.current_game_id
 	var links: int = RunGraph.open_degree(here)
 	assert_gt(links, 0, "the game you are standing on connects to something")
-	assert_true(_text_in(modal._canvas_holder).contains("⛓%d" % links),
-		"the rung carries its connection count")
+	var box: Panel = null
+	for child in modal._canvas_holder.get_children():
+		if child is Panel and String((child as Panel).tooltip_text).begins_with(
+				RouteLadder.node_name(here)):
+			box = child
+			break
+	assert_not_null(box, "the game you stand on has a box")
+	if box == null:
+		return
+	assert_string_contains(box.tooltip_text, "%d connection" % links,
+		"its hover carries its connection count")
+	if box.size.x >= RouteLadder.WIDE_W:
+		assert_true(_text_in(box).contains("⛓%d" % links), "and so does its badge")
 
 func test_the_ladder_and_the_card_agree_about_the_connections() -> void:
 	var modal = _open_map()

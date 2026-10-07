@@ -300,11 +300,12 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 				events += 1
 		assert_eq(int(counts["events"]), events, "events counted off the same rule")
 		assert_eq(int(counts["shops"]), shops, "shops counted off the same node kinds")
-		var line: String = GameChoiceModal.connection_text(counts)
-		if events > 0:
-			assert_true(line.contains("%d event" % events), "the line names them: %s" % line)
+		var line: String = GameChoiceModal.nearby_text(counts)
 		if shops > 0:
-			assert_true(line.contains("%d shop" % shops), "and the shops: %s" % line)
+			assert_true(line.contains("%d nearby shop" % shops),
+				"the line under the count names the nearby shops: %s" % line)
+		else:
+			assert_false(line.contains("shop"), "and says nothing of shops with none: %s" % line)
 
 func test_a_bashed_neighbour_stops_counting_as_a_connection() -> void:
 	var slot: StringName = StringName(_ui._choices[0]["slot"])

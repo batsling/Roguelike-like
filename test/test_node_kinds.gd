@@ -90,10 +90,11 @@ func test_every_kind_has_a_label() -> void:
 	assert_eq(RunGraph.kind_label(99), "Enemies")
 
 
-# §19.8: the 🗺 map and the popup's route ladder both draw through
-# RouteLadder.node_box, so one rung carries the mark for both. Read off the RUNG's
-# id (the node), and every kind gets its own mark and hover.
-func test_a_rung_wears_its_nodes_kind() -> void:
+# §19.8: the 🗺 map and the popup's route map both draw through RouteLadder, so
+# one marker carries the kind for both — on the PATH into the box
+# (RouteLadder.kind_marker), not in it. Read off the BOX's id (the node), and
+# every kind gets its own mark and hover, on the marker and on the box.
+func test_a_box_wears_its_nodes_kind() -> void:
 	var game: GameData = null
 	for g in Data.all_games():
 		game = g
@@ -104,14 +105,19 @@ func test_a_rung_wears_its_nodes_kind() -> void:
 	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
 			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
 		GameState.node_kinds[game.id] = int(kind)
-		var rung: Control = RouteLadder.node_box({}, game.id, Rect2(0, 0, 150, 48), 1)
-		var mark: Label = rung.get_node_or_null("KindMark")
-		assert_not_null(mark, "%s: the rung carries a kind mark" % RunGraph.kind_label(int(kind)))
+		var rect := Rect2(0, 0, 150, 48)
+		var marker: Control = RouteLadder.kind_marker(game.id, rect)
+		var mark: Label = marker.get_node_or_null("KindMark")
+		assert_not_null(mark, "%s: the path into the box carries a kind mark" % RunGraph.kind_label(int(kind)))
 		if mark != null:
 			assert_eq(mark.text, RunGraph.kind_mark(int(kind)), "the kind's own mark")
-		assert_string_contains(rung.tooltip_text, RunGraph.kind_tip(int(kind)),
+		assert_eq(marker.tooltip_text, RunGraph.kind_tip(int(kind)),
 			"and its hover says what the mark means")
-		rung.free()
+		var box: Control = RouteLadder.node_box({}, game.id, rect, 1)
+		assert_string_contains(box.tooltip_text, RunGraph.kind_tip(int(kind)),
+			"as does the box's own")
+		marker.free()
+		box.free()
 
 
 func test_a_rungs_card_spells_the_kind_out() -> void:
