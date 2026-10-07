@@ -201,7 +201,13 @@ an influence, the video is the Source, with a timestamp if possible
 of 512 games; the second (October 2026) finished the other 350, with `devs`
 run first so studio names sharpened the filter: 508 games searched, 275 with
 something to listen to (111 suspected connections to confirm, 164 games with
-few connections). The results are saved in `tools/influence_research_media.jsonl`
+few connections). Rewritten against the sheet after the owner's October 2026
+upload: 506 games qualify, all searched, 272 with something to listen to (108
+to confirm, 164 with few connections). Elewar, Keeper's Toll and Rogue Lords
+dropped out of section 1 because their rows have real links now, and Rogue
+Blight came in with two interviews with its developer. **Rewrite it with
+`devs` run first**: `devs.json` lives in `.influence_work/` and isn't saved,
+and without studio names the same cache drops to about 240 games. The results are saved in `tools/influence_research_media.jsonl`
 (13 MB, each result's text cut to 400 characters), because `.influence_work/`
 doesn't survive a container restart. To rewrite the doc after a filter change,
 or to search games added to the sheet since:
@@ -553,6 +559,11 @@ naming the game was found.
   sheet's `Dungeon Crawl Stone Soup`. A name found only inside a longer chart
   name doesn't count either ("Crawl" in "Dungeon Crawl", "Omega" in "Omega
   Labyrinth"). Both rules apply to every scan.
+- **Apple Podcasts from the cloud container.** In October 2026 the iTunes
+  Search API answered 403 to every request from the container, and `media` sat
+  waiting on it. YouTube still answered. The two new games were searched on
+  YouTube alone and cached with an `err`, so a `media` run from your own
+  computer redoes them with podcasts included.
 - **Sites that block fetches.** Several interview sites return 403 to the web
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.
