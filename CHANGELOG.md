@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A shop no longer pushes the page past 720p for some characters.** With a shop
+  (or the machines) under it, the board drops to small cells and its width is
+  set by the hero's shield row: five shields left the pressure strip's small
+  print ("Amulet 5 hops away — Distant · boss in 2 spawns · Low difficulty") room
+  for one row, three didn't, and the second row it took was 17px more than the
+  page has. `test_the_page_still_fits_the_window_with_a_shop_on_it` failed on
+  about one seed in three for that reason. While a panel shares its column, the
+  board now holds that row open (capped at the field's width budget; the shop
+  panel already holds the column wider). A new test stands the shop page up at
+  one, three and five shields.
+
 - **The `connections` sheet says what still needs a proof.** `Proof` (F) now
   holds every row's file name, existing or not, so a new screenshot is saved
   under a name copied from the cell; a new `Needs Proof` column (G) is `Yes`
