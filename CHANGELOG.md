@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The stream overlay's map (`map.html`) matches the in-game map.** Each box
+  is the game's cover filling the box (cropped from near the top), with the name
+  on a dark band along the bottom. The node kind is a badge straddling the
+  top-right corner in its own colour. `Here` / `Amulet` / `Beaten` / `Rift` is a
+  tag in the top-left corner. Columns spread over the height instead of clumping
+  in the middle. They are ordered by `RouteLadder.order_layers`, and each inner
+  box is nudged by the same `RouteLadder.jitter` the game uses, so a route looks
+  the same on stream as on screen. `ObsCompanion` sends each box's `kind`,
+  `kind_name`, `kind_color` and `nudge` along with it. `check_overlay.js` has
+  two new checks: one for the corner badge and one for the spread.
+
 - **The map redesign: the optimal path is a left-to-right map of covers, and
   the game popup gives it the room.**
   - **The map runs left to right** (`RouteLadder`): one column per step, each

@@ -453,6 +453,14 @@ function fixture(dir) {
   ].map((layer, d) => layer.map((n, i) => Object.assign({
     here: false, amulet: false, rift: false, beaten: false,
     cover: games[(d * 3 + i) % games.length] || '',
+    /* The node's kind as ObsCompanion._rung sends it — a different one per
+     * layer so the badge's colour is not a constant the check could pass by
+     * accident — and a nudge off the slot in -1..1, as RouteLadder.jitter
+     * deals them, including the extremes. */
+    kind: ['!', '?', '$', '!!'][d % 4],
+    kind_name: ['Enemies', 'Event', 'Shop', 'Champion'][d % 4],
+    kind_color: ['#b9b2a6', '#f0a050', '#6fdc8d', '#ff5a5a'][d % 4],
+    nudge: [[1, -1], [-1, 1], [0.4, 0.6]][i % 3],
   }, n)));
   const routeEdges = [];
   for (let d = 0; d < routeLayers.length - 1; d++) {
@@ -1311,6 +1319,48 @@ async function main() {
   const joined = await page.evaluate(WIRES_JOIN_RUNGS);
   check('…and every wire actually joins the two rungs it runs between',
     joinsAll(joined), describeJoin(joined));
+
+  /* EVERY BOX WEARS ITS KIND ON ITS TOP-RIGHT CORNER, as the in-game map does
+   * (RouteLadder.kind_marker): the badge straddles the box's top edge, sits in
+   * its right half, carries the kind's mark, and is ringed in the kind's colour.
+   * A badge that drifted into the middle of a cover, or off the box entirely,
+   * would pass every count above. */
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.rung')].map((n) => {
+    const b = n.querySelector('.rung-kind');
+    const r = n.getBoundingClientRect();
+    if (!b) return { ok: false, why: 'no badge on ' + n.dataset.key };
+    const k = b.getBoundingClientRect();
+    const midY = (k.top + k.bottom) / 2;
+    return {
+      ok: Math.abs(midY - r.top) <= k.height * 0.6 && k.left >= r.left + r.width / 2
+        && k.right <= r.right + 1 && b.textContent.trim().length > 0
+        && getComputedStyle(b).borderTopColor === getComputedStyle(b).color,
+      why: n.dataset.key + ' badge at ' + Math.round(k.left - r.left) + ','
+        + Math.round(midY - r.top) + ' of a ' + Math.round(r.width) + 'px box',
+    };
+  }));
+  check('every box wears its kind as a badge on its top-right corner',
+    kinds.length === map.rungs && kinds.every((k) => k.ok),
+    (kinds.find((k) => !k.ok) || { why: kinds.length + ' badges' }).why);
+
+  /* …AND THE LAYERS ARE SPREAD, as the in-game map's are: a layer's games take
+   * the whole column rather than a clump in its middle. Measured on the
+   * fixture's two-game layer against the three-game one — spread, the two-game
+   * layer covers most of the height the three-game one does. */
+  const spread = await page.evaluate(() => {
+    const extent = (row) => {
+      const rs = [...row.querySelectorAll('.rung')].map((n) => n.getBoundingClientRect());
+      return Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top));
+    };
+    const rows = [...document.querySelectorAll('.map-row')];
+    const three = rows.find((r) => r.children.length === 3);
+    const two = rows.find((r) => r.children.length === 2);
+    return three && two ? { three: extent(three), two: extent(two),
+      body: document.getElementById('map-body').getBoundingClientRect().height } : null;
+  });
+  check('each layer is spread down the column, not clumped in its middle',
+    spread && spread.two > spread.three * 0.5 && spread.three > spread.body * 0.5,
+    JSON.stringify(spread));
 
   /* THE THREE RUNGS THAT ARE NOT JUST A GAME ON THE WAY, and their ORDER: the
    * game under your feet is the root and the Amulet is the last thing on the

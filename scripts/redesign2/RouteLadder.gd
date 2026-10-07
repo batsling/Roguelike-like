@@ -161,9 +161,9 @@ static func build(cfg: Dictionary) -> Control:
 			var key: String = node_key(i, id)
 			var nudge := Vector2.ZERO
 			if i != 0 and i != cols - 1:
-				nudge.x = _jitter(key, 1) * minf(JITTER_X_MAX * zoom,
+				nudge.x = jitter(key, 1) * minf(JITTER_X_MAX * zoom,
 					maxf(0.0, step_x - box.x) * JITTER_X)
-				nudge.y = _jitter(key, 2) * maxf(0.0, slot - box.y - ROW_GAP * zoom) * JITTER_Y
+				nudge.y = jitter(key, 2) * maxf(0.0, slot - box.y - ROW_GAP * zoom) * JITTER_Y
 			var x: float = (stage.x - box.x) * 0.5 if cols == 1 else i * step_x
 			var y: float = (j + 0.5) * slot - box.y * 0.5
 			rects[key] = Rect2(Vector2(x, y) + nudge + Vector2(pad, pad), box)
@@ -255,8 +255,10 @@ static func order_layers(layers: Array, edges: Array) -> Array:
 	return out
 
 # A box's nudge off its slot, in -1..1: a hash of the box, so the same route is
-# drawn the same way every time the map opens, rather than reshuffling.
-static func _jitter(key: String, salt: int) -> float:
+# drawn the same way every time the map opens, rather than reshuffling. Public
+# because the stream overlay's map (ObsCompanion._route) nudges by the same
+# numbers, so the map on stream and the map in the game are the same picture.
+static func jitter(key: String, salt: int) -> float:
 	return float(absi(hash("%s#%d" % [key, salt])) % 10000) / 10000.0 * 2.0 - 1.0
 
 # ---------------------------------------------------------------------------

@@ -982,7 +982,9 @@ func _route() -> Dictionary:
 	if here == amulet:
 		return empty
 	var dag: Dictionary = RunGraph.shortest_path_dag(here, amulet)
-	var layers: Array = dag.get("layers", [])
+	# In the in-game map's own column order (RouteLadder.order_layers), so the
+	# page draws the same arrangement — and the same few crossed arrows.
+	var layers: Array = RouteLadder.order_layers(dag.get("layers", []), dag.get("edges", []))
 	if layers.is_empty():
 		return empty
 
@@ -1045,6 +1047,16 @@ func _rung(id: StringName, depth: int, last: int) -> Dictionary:
 		# Amulet and is never dimmed for it.
 		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
 		"rift": RunGraph.is_rift_game(id),
+		# THE NODE'S KIND (§19.8), as the in-game map's corner badge draws it: the
+		# mark, its word for the hover, and its colour. Read off the NODE, never the
+		# game played there (§19.2).
+		"kind": RunGraph.kind_mark(GameState.node_kind(id)),
+		"kind_name": RunGraph.kind_label(GameState.node_kind(id)),
+		"kind_color": "#" + UITheme.kind_color(GameState.node_kind(id)).to_html(false),
+		# How far this box strays from its slot, in -1..1 on each axis — the same
+		# hash the in-game map nudges by (RouteLadder.jitter), so the two agree.
+		"nudge": [RouteLadder.jitter(RouteLadder.node_key(depth, id), 1),
+			RouteLadder.jitter(RouteLadder.node_key(depth, id), 2)],
 	}
 
 func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:

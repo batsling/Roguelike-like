@@ -1170,7 +1170,7 @@ on a between-games scene.
 | Bigger, or zoomed in OBS | the pixels are already there, which is the point of the stage |
 | Changing the stage | `#overlay.only-map > .map { --stage-w: …; --stage-h: …; }` in your `custom.css` |
 | Depth it holds | 14 layers, then it says `+N more layers … not drawn` |
-| Deeper than fits | rungs shrink to a legibility floor, then the ladder scales |
+| Deeper than fits | boxes shrink to a legibility floor, then the ladder scales |
 
 **The map is drawn at a fixed stage and scaled into the source, and it is the only
 piece here that is.** The ladder used to be solved into the *source's* own pixels,
@@ -1197,11 +1197,24 @@ perfectly. `check_overlay.js` now asserts the rung, the cover and the name are a
 materially bigger at 1920 than at 640, and that the ladder fills at least 70% of
 one axis.
 
-**Every rung is a cover and a name.** The cover is what a viewer recognises — box
-art is how anyone reads a shelf — and the name is what they can actually search
-for, which is most of the point of putting a map on a stream. A game you have
-**already beaten** is drained to greyscale and tagged, because revisiting is legal
-and its goal is rolled fresh, but you know the game.
+**Every rung is a cover and a name, the way the in-game boxes are.** The cover
+fills the whole box — cropped from near the top, where the title art lives, never
+letterboxed — and the name sits on a dark band across its foot, up to two lines.
+The cover is what a viewer recognises — box art is how anyone reads a shelf — and
+the name is what they can actually search for, which is most of the point of
+putting a map on a stream. The game's **node kind** (combat, event, shop…) is a
+badge straddling the top-right corner in the kind's own colour, exactly where
+`RouteLadder.kind_marker` puts it; `Here` / `Amulet` / `Beaten` / `Rift` is a
+small tag top-left. A game you have **already beaten** is drained to greyscale and
+tagged, because revisiting is legal and its goal is rolled fresh, but you know the
+game.
+
+**The layers are scattered, not stacked in a block**, the same as in-game: each
+column spreads down the height it is given, its order comes from
+`RouteLadder.order_layers` (so arrows cross as little as they can), and every
+inner box is nudged by `RouteLadder.jitter` — the same per-game nudge the in-game
+map uses, sent in the payload as `nudge`, so a game sits off-grid the same way on
+stream as on screen. The start and the Amulet stay put.
 
 **It shows the shortest road**, the same `RunGraph.shortest_path_dag` the in-game
 maps draw. (A game could once be *pinned* to bend the route through it; that was
