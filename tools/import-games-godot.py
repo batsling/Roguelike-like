@@ -13,6 +13,7 @@ Mirrors legacy-web/scripts/import-games.py (which targets the old web
 build) but writes Godot .tres files instead of a JS object.
 """
 
+import json
 import openpyxl
 import os
 import re
@@ -259,7 +260,30 @@ def main() -> int:
     if rc != 0:
         print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
         return rc
+    _research_reminder(games)
     return 0
+
+
+# A game is not finished arriving until somebody has looked for what influenced
+# it. `influence_research.py new` does the searching for every game missing from
+# this ledger; it is checked in so the next session knows which games those are.
+RESEARCH_LEDGER = os.path.join(SCRIPT_DIR, "influence_researched.json")
+
+
+def _research_reminder(games: list[dict]) -> None:
+    try:
+        with open(RESEARCH_LEDGER, encoding="utf8") as f:
+            done = json.load(f)
+    except (OSError, ValueError):
+        done = {}
+    waiting = [g["display_name"] for g in games if g["display_name"] not in done]
+    if not waiting:
+        return
+    print(f"[import-games-godot] {len(waiting)} game(s) not researched yet: {', '.join(waiting)}")
+    print("[import-games-godot]   1. python3 tools/influence_research.py new   (then read .influence_work/new_games.md")
+    print("[import-games-godot]      and search each game by hand; findings go in docs/influence-candidates.md)")
+    print("[import-games-godot]   2. python3 tools/influence_research.py new --mark")
+    print("[import-games-godot]   3. python3 tools/tag_research.py   (tag suggestions -> tools/Research.xlsx)")
 
 
 if __name__ == "__main__":

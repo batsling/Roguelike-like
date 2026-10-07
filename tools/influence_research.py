@@ -33,6 +33,15 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py reddit    # developer AMAs/launch posts + r/roguelikedev -> reddit.md
     python3 tools/influence_research.py kickstarter  # campaign pages -> kickstarter.md (run on your own machine)
     python3 tools/influence_research.py radio     # Roguelike Radio episodes -> docs/influence-media.md section 3
+    python3 tools/influence_research.py new       # every pass above that works from here, over the games
+                                                  # added since the last research -> new_games.md; --mark after
+
+NEW GAMES. `tools/influence_researched.json` (checked in) is the ledger of games
+that have been researched. A game on the sheet and not in it is NEW: `new` runs
+the cloud-friendly passes over just those games and writes one report per game.
+Importing games is not finished until their findings are in
+`docs/influence-candidates.md` and `new --mark` has recorded them;
+`import-games-godot.py` prints the games still waiting.
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -77,7 +86,7 @@ AMBIGUOUS = {
 
 # A sentence must say something like this to count as an influence claim.
 CLAIM = re.compile(
-    r"inspir|influenc|homage|love letter|tribute|spiritual successor|big fans? of|"
+    r"inspir|influenc|homage|love letter|\btribute|spiritual successor|big fans? of|"
     r"heavily based|took (?:a lot )?from|borrow|in the vein|cues from|blend of|"
     r"mix of|\bmeets\b|cross between|"
     # Developers outside the English-speaking world often post in their own
@@ -559,6 +568,9 @@ class Community:
 
 
 def game_order(args, games, conns=None):
+    if args.games == "new":
+        # The games `new` is researching: the ledger's gaps, or its --game list.
+        return getattr(args, "only", None) or unresearched(games)
     if args.games == "few":
         # `--max-degree` connections or fewer (default 1), fewest first: the
         # games an edge matters most for, and the set `media` searches.
@@ -1149,6 +1161,10 @@ def cmd_media(args):
             try:
                 if apple_refused:
                     raise RuntimeError(apple_refused)
+                if getattr(args, "no_podcasts", False):
+                    # Recorded as an error on purpose: the row is redone by the
+                    # next run that can reach Apple, videos and all.
+                    raise RuntimeError("podcasts not searched (--no-podcasts)")
                 pods = _podcasts(paced, name)
             except Exception as e:
                 pods, err = [], err or str(e)
@@ -1595,13 +1611,21 @@ def collect(args, source, fetch, threads=1):
             return {"docs": [], "err": str(e)[:200]}
 
     with cf.ThreadPoolExecutor(threads) as ex, open(out, "a") as f:
-        for name, rec in zip(todo, ex.map(safe, todo)):
-            rec["game"] = name
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            f.flush()
-            print("%-45s %d page(s)%s" % (name[:45], len(rec.get("docs", [])),
-                                          "  " + (rec.get("note") or rec.get("err", ""))[:80]
-                                          if rec.get("note") or rec.get("err") else ""), flush=True)
+        try:
+            for name, rec in zip(todo, ex.map(safe, todo)):
+                rec["game"] = name
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                f.flush()
+                print("%-45s %d page(s)%s" % (name[:45], len(rec.get("docs", [])),
+                                              "  " + (rec.get("note") or rec.get("err", ""))[:80]
+                                              if rec.get("note") or rec.get("err") else ""), flush=True)
+        except BaseException:
+            # A source that gives up (reddit's sys.exit after five minutes of
+            # "slow down") must not leave the rest of the queue to run: the
+            # executor's exit would wait for every queued game, each of which
+            # sits out the same five minutes. Ninety minutes for 18 games, once.
+            ex.shutdown(wait=False, cancel_futures=True)
+            raise
 
 
 def write_triage(args, source, title, intro):
@@ -2052,6 +2076,234 @@ def cmd_site(args):
                  "Written by the studio. A studio site covers several games: check which one each sentence is about.")
 
 
+# ── new: research the games added since the last pass ─────────────────────
+
+# Which games have been researched, and when. Checked in, unlike .influence_work/,
+# because it has to outlive the container: it is how the next session knows
+# which games on the sheet nobody has looked into yet. The games that were on
+# the chart before it existed are recorded as "before 2026-10-07": the October
+# degree passes (docs/influence-research.md) had covered them.
+LEDGER = os.path.join(ROOT, "tools", "influence_researched.json")
+MEDIA_CACHE = os.path.join(ROOT, "tools", "influence_research_media.jsonl")
+NEW_PASSES = ("steam", "itch", "site", "reddit", "bluesky", "media")
+# A claim word in a sentence about the players or the patch, not the game's
+# origins: "changes inspired by community feedback" heads every patch note some
+# studios write, and buried the one line in Crab God's thirty that mattered.
+NOT_ORIGINS = re.compile(r"feedback|patch notes?|influencers?|\bbugs?\b|\bfix(?:ed|es)?\b|expectations?|"
+                         r"inspired? (?:by )?(?:you|our players|the community|players|people)|"
+                         r"\w-inspired (?:design|lighting|sprites|theme)", re.I)
+
+
+def load_ledger():
+    return json.load(open(LEDGER, encoding="utf8")) if os.path.exists(LEDGER) else {}
+
+
+def unresearched(games):
+    """Games on the sheet the ledger has no date for, in sheet order."""
+    led = load_ledger()
+    return [r[0] for r in games if r[0] not in led]
+
+
+def _sub_args(args, **kw):
+    """The Namespace one of the other passes expects, pointed at the new games."""
+    base = dict(work=args.work, games="new", only=args.only, limit=0, write_only=False,
+                max_degree=1, max_posts=40, max_pages=10, per_game=4)
+    base.update(kw)
+    return argparse.Namespace(**base)
+
+
+def _apple_answers():
+    """One podcast search, no retries: from the cloud container Apple answers 403."""
+    try:
+        get("https://itunes.apple.com/search?media=podcast&entity=podcastEpisode&limit=1&term=roguelike", timeout=20)
+        return True
+    except Exception:
+        return False
+
+
+def _jsonl(args, source):
+    recs = {}
+    path = wpath(args, f"{source}.jsonl")
+    if os.path.exists(path):
+        for line in open(path, encoding="utf8"):
+            r = json.loads(line)
+            recs[r["game"]] = r  # a rerun's line replaces the old one
+    return recs
+
+
+def cmd_new(args):
+    """Research the games that are on the sheet but not in the ledger.
+
+    Runs, over just those games: their Steam store text and developer
+    announcements (`steam`), `itch`, `site`, `reddit`, `bluesky`, and the
+    YouTube half of `media` (Apple Podcasts too when it answers), then writes
+    --work/new_games.md: per game, every first-hand sentence that names a chart
+    game the sheet doesn't connect it to, the influence claims that name NO
+    chart game (where a roguelike missing from the chart turns up), same-studio
+    games on the chart, other chart games' cached Steam text naming it, and the
+    videos worth a listen. `media` also folds the new games into
+    docs/influence-media.md and its cache into tools/, as a full `media` run does.
+
+    What it can't do is the half that needs a person or a search engine: an
+    interview search per game, and reading every line. Do that, put what holds
+    up in docs/influence-candidates.md (never in the sheet), then
+    `new --mark` to record the games as researched.
+    """
+    games, conns = load_sheet()
+    names = {r[0] for r in games}
+    if args.game:
+        missing = [g for g in args.game if g not in names]
+        if missing:
+            sys.exit("not on the games sheet: " + ", ".join(missing))
+    args.only = args.game or unresearched(games)
+    if args.mark:
+        led = load_ledger()
+        today = time.strftime("%Y-%m-%d")
+        for g in args.only:
+            led[g] = today
+        json.dump(dict(sorted(led.items(), key=lambda kv: kv[0].lower())), open(LEDGER, "w", encoding="utf8"),
+                  indent=0, ensure_ascii=False)
+        open(LEDGER, "a").write("\n")
+        print(f"marked {len(args.only)} game(s) researched on {today}: " + ", ".join(args.only))
+        return
+    if not args.only:
+        print("every game on the sheet is in the research ledger; nothing new to research")
+        return
+    print(f"{len(args.only)} game(s) to research: " + ", ".join(args.only), flush=True)
+    skip = {x.strip() for x in args.skip.split(",") if x.strip()}
+    failed = {}
+    if not args.write_only:
+        # Every game's developer: the same-studio check and the media filter
+        # both read the whole catalog's, not just the new games'. Cached.
+        print("\n== devs (every game, cached after the first run)", flush=True)
+        cmd_devs(args)
+        devs = load_devs(args)
+        if "steam" not in skip:
+            print("\n== steam store pages and announcements", flush=True)
+            cache = wpath(args, "pages")
+            os.makedirs(cache, exist_ok=True)
+            for g in args.only:
+                aid = (devs.get(g) or {}).get("aid")
+                print("%-45s %s" % (g[:45], f"{len(steam_pages(aid, cache))} page(s)" if aid else "no Steam page"),
+                      flush=True)
+        passes = {"itch": (cmd_itch, {}), "site": (cmd_site, {}), "reddit": (cmd_reddit, {"delay": 2.0}),
+                  "bluesky": (cmd_bluesky, {"delay": 0.3})}
+        for name, (fn, kw) in passes.items():
+            if name in skip:
+                continue
+            print(f"\n== {name}", flush=True)
+            try:
+                fn(_sub_args(args, **kw))
+            except (Exception, SystemExit) as e:  # one source refusing must not stop the rest
+                failed[name] = str(e)[:200]
+                print(f"{name} stopped: {failed[name]}", flush=True)
+        if "media" not in skip:
+            print("\n== media (YouTube%s)" % ("" if _apple_answers() else "; Apple Podcasts refuses this machine"),
+                  flush=True)
+            # The cache is checked in (the doc is rewritten from all of it), so
+            # seed the work copy from it and hand the result back.
+            work = wpath(args, "media.jsonl")
+            if not os.path.exists(work) and os.path.exists(MEDIA_CACHE):
+                open(work, "w", encoding="utf8").write(open(MEDIA_CACHE, encoding="utf8").read())
+            try:
+                cmd_media(_sub_args(args, delay=3.5, no_podcasts=not _apple_answers()))
+                open(MEDIA_CACHE, "w", encoding="utf8").write(open(work, encoding="utf8").read())
+            except (Exception, SystemExit) as e:
+                failed["media"] = str(e)[:200]
+                print(f"media stopped: {failed['media']}", flush=True)
+    write_new_report(args, games, conns, failed)
+
+
+def write_new_report(args, games, conns, failed):
+    have = connected(conns)
+    year = {r[0]: r[1] for r in games}
+    pats = name_patterns([r[0] for r in games], load_titles(args))
+    dpath = wpath(args, "devs.json")
+    devs = json.load(open(dpath)) if os.path.exists(dpath) else {}
+    cache = wpath(args, "pages")
+    sources = {s: _jsonl(args, s) for s in ("itch", "site", "reddit", "bluesky")}
+    media = _jsonl(args, "media")
+    norm = lambda s: re.sub(r"\b(inc|llc|ltd|games|studios?|co|gmbh|entertainment|interactive)\b",
+                            "", re.sub(r"[^a-z0-9 ]", "", s.lower())).strip()
+    # Other chart games' Steam text, where `steam` has cached it: an older game's
+    # developer announcing a sequel or a friend's game names the new one there.
+    others = []
+    if os.path.isdir(cache):
+        by_aid = {str(v.get("aid")): n for n, v in devs.items() if v.get("aid")}
+        for fn in os.listdir(cache):
+            n = by_aid.get(fn[:-5])
+            if n and n not in args.only:
+                others.append((n, json.load(open(os.path.join(cache, fn)))))
+    lines = ["# New games — research report", "",
+             f"Written by `influence_research.py new` on {time.strftime('%Y-%m-%d')} for {len(args.only)} game(s). "
+             "Nothing here is a source until a person has read it: check who wrote each page, then put what holds "
+             "up in docs/influence-candidates.md and run `new --mark`.", ""]
+    if failed:
+        lines += ["**Passes that stopped:** " + "; ".join(f"{k}: {v}" for k, v in failed.items()), ""]
+    for g in args.only:
+        v = devs.get(g) or {}
+        rows = [f"{a} → {b}" for a, b, *_ in conns if g in (a, b)]
+        lines += [f"## {g} ({year.get(g) or '?'})", "",
+                  "- Steam: " + (f"https://store.steampowered.com/app/{v['aid']}/ — developer "
+                                 f"{', '.join(v.get('devs') or []) or 'unknown'}" if v.get("aid") else "no page found"),
+                  "- On the sheet: " + ("; ".join(rows) if rows else "**no connections**")]
+        docs = []
+        if v.get("aid") and os.path.exists(os.path.join(cache, f"{v['aid']}.json")):
+            docs += [(k, u, t) for k, u, t in json.load(open(os.path.join(cache, f"{v['aid']}.json")))]
+        for s, recs in sources.items():
+            r = recs.get(g) or {}
+            if r.get("who"):
+                lines.append(f"- {s}: {r['who']}")
+            docs += [tuple(d) for d in r.get("docs", [])]
+        hits, seen = [], set()
+        for other, kind, url, sent in scan_docs(docs, pats, g, have):
+            if (other, sent[:80]) not in seen:
+                seen.add((other, sent[:80]))
+                hits.append(f"- **{other}** ({year.get(other)}) [{kind}] {url}\n  {sent}")
+        lines += ["", f"**Names a chart game it isn't connected to ({len(hits)}):**", ""] + (hits or ["- none"])
+        # First-hand claims naming nothing on the chart: a roguelike the chart
+        # lacks (rule 3), or an influence from outside the genre.
+        bare, seen = [], set()
+        for kind, url, text in docs:
+            if not (kind.startswith(("store", "news", "itch", "press", "studio"))):
+                continue  # Reddit and Bluesky lines may be anyone's
+            for sent in sentences(text):
+                if len(sent) < 700 and CLAIM.search(sent) and not NOISE.search(sent) \
+                        and not NOT_ORIGINS.search(sent) and not named_in(sent, pats, g) and sent[:80] not in seen:
+                    seen.add(sent[:80])
+                    bare.append(f"- [{kind}] {url}\n  {sent.strip()[:400]}")
+        lines += ["", f"**Influence claims naming no chart game — look for roguelikes the chart lacks ({len(bare)}):**",
+                  ""] + (bare[:15] or ["- none"])
+        mine = {norm(d) for d in v.get("devs") or [] if norm(d)}
+        same = sorted(n for n, w in devs.items() if n != g and mine & {norm(d) for d in w.get("devs") or []})
+        lines += ["", "**Same studio on the chart:** " + (", ".join(
+            f"{n} ({year.get(n)})" + (" — connected" if (n, g) in have or (g, n) in have else "")
+            for n in same) or "none")]
+        own_pat = [(g, p) for n, p in pats if n == g]
+        back = []
+        for n, odocs in others:
+            for kind, url, text in odocs:
+                for sent in sentences(text):
+                    if len(sent) < 600 and any(p.search(sent) for _, p in own_pat) and not NOISE.search(sent) \
+                            and (n, g) not in have and (g, n) not in have:
+                        back.append(f"- **{n}** [{kind}] {url}\n  {sent.strip()[:400]}")
+        if others:
+            lines += ["", f"**Other chart games' Steam text naming it ({len(back)}):**", ""] + (back[:10] or ["- none"])
+        r = media.get(g)
+        if r:
+            vids, pods = _filtered(r, g, _studio(devs, g), 4)
+            lines += ["", "**Videos and podcasts to listen to:**", ""] + (
+                [_media_line("video", h) for h in vids] + [_media_line("podcast", h) for h in pods] or ["- none found"])
+        q = urllib.parse.quote
+        lines += ["", "**By hand:** search the web for "
+                  + ", ".join(f"[{t}](https://duckduckgo.com/?q={q(t)})" for t in
+                              (f'"{g}" inspired by', f'"{g}" developer interview', f'"{g}" devlog'))
+                  + "; read the Steam page's \"About\" and the developer's replies in its forum.", ""]
+    path = wpath(args, "new_games.md")
+    open(path, "w", encoding="utf8").write("\n".join(lines))
+    print(f"\nwrote {path}")
+
+
 # ── Roguelike Radio ─────────────────────────────────────────────────────────
 
 RADIO_FEED = "https://www.roguelikeradio.com/feeds/posts/default?alt=json&max-results=150&start-index={}"
@@ -2257,6 +2509,16 @@ def main():
     mp.add_argument("--delay", type=float, default=3.5, help="seconds between Apple Podcasts searches")
     mp.add_argument("--write-only", action="store_true", help="rewrite the doc from the cache, no searching")
     mp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
+    mp.add_argument("--no-podcasts", action="store_true",
+                    help="YouTube only (Apple Podcasts refuses the cloud container); the rows are redone later")
+    np_ = sub.add_parser("new")
+    np_.add_argument("--game", action="append", help="research this game whatever the ledger says (repeat for more)")
+    np_.add_argument("--mark", action="store_true",
+                     help="record the games as researched in tools/influence_researched.json, after their "
+                          "findings are in docs/influence-candidates.md")
+    np_.add_argument("--skip", default="", help="comma-separated passes to leave out: "
+                                                "steam,itch,site,reddit,bluesky,media")
+    np_.add_argument("--write-only", action="store_true", help="rewrite new_games.md from the caches, no fetching")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
     sub.add_parser("titles")
@@ -2275,8 +2537,9 @@ def main():
     for name, delay in (("itch", 0.0), ("kickstarter", 3.0), ("reddit", 2.0), ("site", 0.0),
                         ("bluesky", 0.3), ("substack", 1.0), ("patreon", 1.0)):
         sp = sub.add_parser(name)
-        sp.add_argument("--games", choices=["few", "targets", "all"], default="few",
-                        help="few = one connection or none (the default); targets = no influences")
+        sp.add_argument("--games", choices=["few", "targets", "all", "new"], default="few",
+                        help="few = one connection or none (the default); targets = no influences; "
+                             "new = not in the research ledger yet")
         sp.add_argument("--max-degree", type=int, default=1,
                         help="with --games few: games with this many connections or fewer")
         sp.add_argument("--delay", type=float, default=delay, help="seconds between requests")
@@ -2298,7 +2561,7 @@ def main():
      "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media, "titles": cmd_titles,
      "itch": cmd_itch, "kickstarter": cmd_kickstarter, "reddit": cmd_reddit, "site": cmd_site,
      "radio": cmd_radio, "bluesky": cmd_bluesky, "substack": cmd_substack, "patreon": cmd_patreon,
-     "transcripts": cmd_transcripts}[args.cmd](args)
+     "transcripts": cmd_transcripts, "new": cmd_new}[args.cmd](args)
 
 
 if __name__ == "__main__":

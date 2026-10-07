@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **New games get researched every time, and tags get suggested.** Two tools
+  the owner asked for. **`influence_research.py new`** researches only the games
+  added since the last pass: `tools/influence_researched.json` (checked in)
+  dates every researched game, `import-games-godot.py` lists the ones missing
+  from it after every import, and `new` runs the scans that work from the cloud
+  (Steam store text and announcements, itch.io, studio sites, Reddit, Bluesky,
+  YouTube) over just those, into one report per game. Its list of "influence
+  claims naming no chart game" is where a roguelike the chart lacks turns up.
+  `new --mark` records them once the findings are written up. CLAUDE.md now says
+  porting games means doing this unasked. Its first run, on the eighteen games
+  above: two weaker lines on Conquest Dark, text sources for Kingdom: New Lands →
+  Crab God and Noita → Lumencraft, and Teleglitch as a roguelike the chart lacks
+  (all in `docs/influence-candidates.md`, none in the sheet). Two bugs fixed on the
+  way, both in the shared scan code: the claim pattern's `tribute` matched
+  "attribute", so every patch note about an attribute read as an influence
+  claim; and a source that gave up (Reddit, after five minutes of Arctic
+  Shift's "slow down") left every queued game to sit out the same five minutes,
+  about ninety minutes for eighteen games. **`tag_research.py`** writes
+  `tools/Research.xlsx`, its own workbook: for each game, which of the sheet's
+  31 tags its Steam tags, store text or title point to, with the evidence and a
+  strength, plus Steam themes several games share that no tag covers yet. Each
+  rule is scored by how many of the already-tagged games it finds. It never
+  touches `Roguelikes.xlsx`; the owner's yes/no in its `Owner` column survives
+  reruns. First run: 399 suggestions over 295 games, 167 of them strong.
+
 - **Eighteen new games and fourteen new connections from the owner.** New on
   the sheet, with their covers: Blade Assault, Blood Dungeon, Change: A Homeless
   Survival Experience, Conquest Dark, Crab God, Devil Spire, Full Metal

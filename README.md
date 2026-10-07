@@ -1585,7 +1585,9 @@ still exists under an old name silently generates the wrong content.
 | `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
 | `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
 | `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesold2` sheet |
-| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas |
+| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas, and lists the games `tools/influence_researched.json` has no date for |
+| `influence_research.py new` | **not data**: researches the games added since the last pass (every scan that works from the cloud, over just those games) into `.influence_work/new_games.md`; `--mark` records them in `tools/influence_researched.json`. See `docs/influence-research.md` |
+| `tag_research.py` | **not data**: `tools/Research.xlsx`, tag suggestions for the owner from each game's Steam tags, store text and title. It never writes `Roguelikes.xlsx`; the owner types the tags they agree with into `games` |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
 | `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
