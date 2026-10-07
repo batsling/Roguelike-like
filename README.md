@@ -639,7 +639,8 @@ node and its script.
     green arrows between them. Each game is a **box filled with its cover**, its
     name along the bottom on a fade in the box's role colour (blue for you, ember
     for the Amulet, gold for an offer, near-black otherwise), and the node's
-    **kind marker on the path** where the arrows arrive. Every name on a map shares
+    **kind marker as a badge on its top-right corner**; the arrows run from the
+    middle of one box's right edge to the middle of the next one's left. Every name on a map shares
     one size. Given a `room`, the map is sized to it on both axes. Shared: the 🗺
     map window (`RunMapModal`) and `GameChoiceModal` draw the same map from it; the
     window spreads to its room when it is on its own, and draws at the map's

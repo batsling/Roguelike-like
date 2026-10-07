@@ -22,9 +22,10 @@ For how the project is laid out and how its systems fit together, see
   - **Every box is the game's cover**, cropped from just below the top where
     titles sit, with the name along the bottom on a fade in the box's role
     colour (blue for you, ember for the Amulet, gold for an offer, near-black
-    otherwise). Every name on a map shares one size. The node's **kind marker
-    rides the path** where the arrows arrive, not the box. Wide boxes keep the
-    ⚔/⛓ badge, and every box has those counts in its hover.
+    otherwise). Every name on a map shares one size. The node's **kind marker is
+    a badge straddling the box's top-right corner**, and the arrows point at the
+    middle of each box. Wide boxes keep the ⚔/⛓ badge (top-left), and every box
+    has those counts in its hover.
   - **Sized to its room**: the map window (now up to 1200 wide) and the popup
     both hand the map their space, and it fills it on both axes. Over the star
     chart the window still draws the map at its natural size, so the sky keeps

@@ -168,8 +168,8 @@ static func build(cfg: Dictionary) -> Control:
 			var y: float = (j + 0.5) * slot - box.y * 0.5
 			rects[key] = Rect2(Vector2(x, y) + nudge + Vector2(pad, pad), box)
 
-	# The arrows: out of a box's right edge, into the next one's left — where its
-	# kind marker sits (kind_marker), so the head lands on the marker's edge.
+	# The arrows: out of the middle of a box's right edge, into the middle of the
+	# next one's left — so the head points at the game itself.
 	var segments: Array = []
 	for e in edges:
 		var to_id := StringName(e.get("to", ""))
@@ -181,9 +181,8 @@ static func build(cfg: Dictionary) -> Control:
 			# The third entry flags a step THROUGH A RIFT (either end a rift game),
 			# drawn in the rift's own dashed line rather than as an influence.
 			segments.append([
-				Vector2(ra.end.x, ra.position.y + port_y(ra.size)),
-				Vector2(rb.position.x - marker_w(GameState.node_kind(to_id)) * 0.5,
-					rb.position.y + port_y(rb.size)),
+				Vector2(ra.end.x, ra.get_center().y),
+				Vector2(rb.position.x, rb.get_center().y),
 				RunGraph.is_rift_game(StringName(e.get("from", ""))) or RunGraph.is_rift_game(to_id),
 			])
 	canvas.segments = segments
@@ -202,8 +201,11 @@ static func build(cfg: Dictionary) -> Control:
 	var box_cfg: Dictionary = cfg.duplicate()
 	box_cfg["name_font"] = maxi(uniform, UNIFORM_FLOOR)
 
-	# The boxes, and the marker on the path into each, on top of the arrows.
+	# The boxes on top of the arrows — and the kind markers on top of the boxes,
+	# all of them last: a marker straddles its box's top edge, and drawn with its
+	# own box it would sit under the next box down a crowded column.
 	var seen: Dictionary = {}      # id -> the depth it was FIRST met at
+	var markers: Array = []
 	for i in range(cols):
 		for id in layers[i]:
 			var sid := StringName(id)
@@ -212,7 +214,9 @@ static func build(cfg: Dictionary) -> Control:
 				seen[sid] = i
 			var rect: Rect2 = rects[node_key(i, sid)]
 			canvas.add_child(node_box(box_cfg, sid, rect, i, revisit))
-			canvas.add_child(kind_marker(sid, rect))
+			markers.append(kind_marker(sid, rect))
+	for m in markers:
+		canvas.add_child(m)
 	return canvas
 
 # THE ORDER WITHIN EACH COLUMN, chosen to cross as few arrows as the DAG allows:
@@ -256,22 +260,20 @@ static func _jitter(key: String, salt: int) -> float:
 	return float(absi(hash("%s#%d" % [key, salt])) % 10000) / 10000.0 * 2.0 - 1.0
 
 # ---------------------------------------------------------------------------
-# The kind marker — on the path, not in the box
+# The kind marker — a badge on the box's top-right corner
 #
-# THE NODE'S KIND (§19.8) as a small pill where the arrows arrive, half over the
-# box's left edge: the step INTO a game is what the kind describes (a fight, an
-# event, a shop), so it rides the step, and the box keeps its whole face for the
-# cover and the name. Read off the BOX's id, never the game played there, for the
-# reason §19.2 gives: the kind rides the node, so a transmuted spot keeps its
-# kind while it plays a different game.
+# THE NODE'S KIND (§19.8) as a small pill STRADDLING the cover's top-right
+# corner, half over the edge, the way a count sits on an app icon: it reads as
+# belonging to the game, and only half of it costs the box any room — the name,
+# along the bottom, keeps the rest. Read off the BOX's id, never the game played
+# there, for the reason §19.2 gives: the kind rides the node, so a transmuted
+# spot keeps its kind while it plays a different game. (It rode the path into
+# the box for a while, where the arrows had to aim above the box's middle to
+# meet it.)
 # ---------------------------------------------------------------------------
 
 const MARKER_H := 16.0
-
-# Where the path meets a box: near its TOP, over the cover, so the marker riding
-# it never lands on the name (which sits along the bottom).
-static func port_y(size: Vector2) -> float:
-	return minf(size.y * 0.5, MARKER_H * 0.5 + 3.0)
+const MARKER_INSET := 3.0      # in from the box's right edge
 
 static func marker_w(kind: int) -> float:
 	return maxf(MARKER_H, 8.0 + 6.0 * RunGraph.kind_mark(kind).length())
@@ -284,8 +286,7 @@ static func kind_marker(id: StringName, rect: Rect2) -> Control:
 	pill.add_theme_stylebox_override("panel", UITheme.flat(Color(0.06, 0.06, 0.07, 0.95),
 		int(MARKER_H * 0.5), 0, 1, UITheme.kind_color(kind)))
 	pill.size = Vector2(w, MARKER_H)
-	pill.position = Vector2(rect.position.x - w * 0.5,
-		rect.position.y + port_y(rect.size) - MARKER_H * 0.5)
+	pill.position = Vector2(rect.end.x - w - MARKER_INSET, rect.position.y - MARKER_H * 0.5)
 	pill.tooltip_text = RunGraph.kind_tip(kind)
 	pill.mouse_filter = Control.MOUSE_FILTER_PASS
 	var mark := Label.new()
@@ -428,8 +429,8 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(fade)
 
-	# The top-right corner of a WIDE box: what you have DONE here, and how many
-	# ways there are on from here.
+	# The top-LEFT corner of a WIDE box (the right is the kind marker's): what you
+	# have DONE here, and how many ways there are on from here.
 	#
 	# The connection count is the one that changes the decision. A box is a place
 	# the offering will be drawn from when you are standing on it, and the offering
@@ -458,9 +459,8 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		backing.content_margin_right = 3
 		badge.add_theme_stylebox_override("normal", backing)
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		badge.offset_right = -4
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.offset_left = 4
 		badge.offset_top = 2
 		panel.add_child(badge)
 
@@ -527,10 +527,10 @@ const NAME_INSET := 4.0
 # A Label's default `line_spacing`, which a wrapped name pays between lines.
 const LINE_SPACING := 3.0
 
-# Where a box's name may start: just under the top edge, or under the badge strip
-# on a box wide enough to have one.
+# Where a box's name may start: below the half of the kind marker that hangs
+# inside the box, or under the badge strip on a box wide enough to have one.
 static func name_top(size: Vector2) -> float:
-	return 13.0 if size.x >= WIDE_W else 2.0
+	return 13.0 if size.x >= WIDE_W else MARKER_H * 0.5 + 2.0
 
 # The room a box's name gets, by the box's size alone — so build can pick one
 # size for every name on the map before any box exists.
