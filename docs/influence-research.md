@@ -114,6 +114,22 @@ answer. Old, well-known games whose rows lean on RogueBasin are worth a direct
 search for the developers' own words; the wiki infobox often isn't where they
 said it.
 
+**The wiki-sourced rows (October 2026).** 88 rows cite only RogueBasin or
+Wikipedia; the 63 not already discussed were searched for the developer's own
+words, in three batches. About two thirds now have one, most often in a place
+nobody had looked: the game's own README, changelog or manual (Angband's
+version history, Sil's changelog, Linley Henzell's 1997 manual, Larn's 1986
+README, IVAN's design notes in its CVS source), and four turned out to be code
+forks that want `Yes` under Dev/Series Relation. Two things are worth reusing.
+**RogueBasin's page history says who typed an infobox line** (the MediaWiki API,
+`api.php?action=query&prop=revisions&rvprop=user|timestamp|content&rvdir=newer`;
+WebFetch gets 403, curl works), and for ten rows it was the developer's own
+account, which makes the wiki line first-hand. **Wikipedia's citation doesn't
+always say what Wikipedia says**: Rogue Legacy's Spelunky and Isaac, Luck be a
+Landlord's Slay the Spire and Backpack Hero's two rows rest on articles that
+never quote the developer on it. Several 2014–16 developers said "Spelunky",
+which by then meant HD (the chart's `Spelunky`), not `Spelunky Classic`.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
