@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Pinning a game to route through is gone.** The map window and the Atlas
+  card no longer offer "⚑ Route through here", the Atlas loses its "⚑ Pinned"
+  button, legend chip and marker, and every map
+  (the map window, the game popup, the Atlas sky and the stream overlay's
+  `map.html`) draws the shortest road and nothing else. Removed with it:
+  `GameState.route_waypoint` (an older save that still carries the key loads
+  fine and ignores it), `RunGraph.route_dag_via` / `route_length_via` (callers
+  use `shortest_path_dag`, and the plain distance is the new
+  `RunGraph.route_length`), the map window's pin bar, detour cost and
+  `set_waypoint` / `clear_waypoint`, the Atlas's `route_changed` signal and pin
+  marker, and the overlay payload's `waypoint_depth` and per-rung `pinned`. The
+  overlay checker's awkward-route fixture marks a rift rung where it used to mark
+  a pinned one. Ladders still key rungs by (depth, id): it costs nothing.
+
 - **A UI pass from the owner's notes.**
   - The opening screen is shorter: the banner reads "Amulet Game" over the
     game's art, name, genre and year (the "reach it and clear the goal" line is

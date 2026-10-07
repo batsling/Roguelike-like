@@ -1216,19 +1216,18 @@ func _build_route_column() -> Control:
 # clipped name in a 150px box. "Which of these is worth walking to" is exactly
 # the question being asked here, and it cannot be answered off a name. So a rung
 # opens the same card the map window opens, over the left column rather than over
-# the answer, minus the two things a preview cannot do: there is no chart on this
-# screen to fly, and no route to pin from a game you have not taken.
+# the answer, minus the one thing a preview cannot do: there is no chart on this
+# screen to fly.
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
-	var data: Dictionary = RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {}
+	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet) if slot != &"" and amulet != &"" else {}
 	if _key_dest() != &"" and amulet != &"":
 		data = _key_route(slot, _key_dest(), amulet)
 	return {
 		"data": data,
 		"current": slot,
 		"amulet": amulet,
-		"waypoint": &"",
 		"choice_ids": {},
 		"zoom": _zoom,
 		"preview": true,
@@ -1244,7 +1243,7 @@ func _ladder_cfg() -> Dictionary:
 # shortest route on. The rift is not laid yet, so the graph cannot answer it; the
 # rung on top is stitched onto the destination's ladder, one step down.
 static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName) -> Dictionary:
-	var on: Dictionary = RunGraph.route_dag_via(dest, &"", amulet)
+	var on: Dictionary = RunGraph.shortest_path_dag(dest, amulet)
 	var layers: Array = [[rift_id]]
 	for layer in on.get("layers", []):
 		layers.append(layer)
@@ -1254,7 +1253,7 @@ static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName
 		moved["from_depth"] = int(e.get("from_depth", 0)) + 1
 		moved["to_depth"] = int(e.get("to_depth", 0)) + 1
 		edges.append(moved)
-	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
+	return {"layers": layers, "edges": edges}
 
 # --- the rung's card -------------------------------------------------------
 
@@ -1270,7 +1269,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	var amulet: StringName = GameState.amulet_game_id
 
 	var facts: Array = [["On this route", "step %d of %d" % [depth, route_steps()]]]
-	var left: int = RunGraph.route_length_via(id, &"", amulet)
+	var left: int = RunGraph.route_length(id, amulet)
 	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
 

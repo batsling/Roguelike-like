@@ -498,34 +498,23 @@ func test_standing_on_the_amulet_is_an_empty_route_that_says_why() -> void:
 	assert_true(bool(route.get("arrived", false)),
 		"and the page must be told WHY it is empty")
 
-func test_a_pinned_detour_is_the_road_the_map_draws() -> void:
-	# THE MAP SHOWS THE ROAD YOU ARE ACTUALLY WALKING. If the run has insisted on
-	# routing through a game, the shortest path to the Amulet is not that road —
-	# and drawing it would show the streamer a route they have already decided
-	# against. RunMapModal and GameChoiceModal both ask via route_dag_via for the
-	# same reason.
-	var plain: Array = ObsCompanion.payload()["route"].get("layers", [])
-	if plain.size() < 3:
-		pending("this run's opening game is too close to the Amulet to detour from")
-		return
-	# A game one layer off the direct road: reaching it and coming back cannot be
-	# shorter than the direct road, so the ladder must get deeper or hold it.
-	var detour: StringName = StringName(plain[1][plain[1].size() - 1].get("id", ""))
-	GameState.route_waypoint = detour
+func test_the_map_draws_the_shortest_road() -> void:
+	# The road on the stream is the road in the game: the shortest path to the
+	# Amulet (RunGraph.shortest_path_dag), as RunMapModal and GameChoiceModal draw
+	# it. (It once followed a pinned detour instead; pinning is gone.)
 	var route: Dictionary = ObsCompanion.payload()["route"]
 	var layers: Array = route.get("layers", [])
 	if layers.is_empty():
-		pending("the pinned game cannot reach the Amulet on this graph")
+		pending("this run has no road to the Amulet to draw")
 		return
-	var pinned: int = 0
+	var dag: Dictionary = RunGraph.shortest_path_dag(
+		GameState.current_game_id, GameState.amulet_game_id)
+	var expect: int = mini((dag.get("layers", []) as Array).size(), ObsCompanion.MAX_ROUTE_LAYERS)
+	assert_eq(layers.size(), expect, "one layer per step of the shortest road")
+	assert_false(route.has("waypoint_depth"), "and nothing about a pin is sent")
 	for layer in layers:
 		for rung in layer:
-			if bool(rung.get("pinned", false)):
-				pinned += 1
-				assert_eq(String(rung.get("id", "")), String(detour))
-	assert_gt(pinned, 0, "the game the run insisted on is marked on the map it forced")
-	assert_gte(int(route.get("waypoint_depth", -1)), 0,
-		"and the page is told which layer the detour joins at")
+			assert_false((rung as Dictionary).has("pinned"), "no rung carries a pin flag")
 
 func test_a_rung_names_the_game_you_would_actually_sit_down_to_play() -> void:
 	# `GameLoop2.game_at`, not `Data.get_game`: a transmuted spot plays a DIFFERENT

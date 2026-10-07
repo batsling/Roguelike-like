@@ -1131,7 +1131,7 @@ entirely inside the gap between two layers where no box can be, so the curves th
 started with were dodging a collision that cannot happen and read as wobble. The
 head is what says the graph has a direction. Same colours as in-game
 (`RouteLadder`'s blue for where you are,
-ember for the Amulet, purple for a pin).
+ember for the Amulet, cyan for a rift).
 
 **It runs left to right, and it is a full-screen source.** You on the left, the
 Amulet on the right, each layer's choices stacked above one another. The in-game
@@ -1185,10 +1185,9 @@ for, which is most of the point of putting a map on a stream. A game you have
 **already beaten** is drained to greyscale and tagged, because revisiting is legal
 and its goal is rolled fresh, but you know the game.
 
-**It shows the road you are actually walking.** If the run has pinned a game to
-route through (`GameState.route_waypoint`), the map is the *forced* route, not the
-shortest one — the same `route_dag_via` the in-game map asks for. Drawing the
-shortest path would show a road you have already decided against.
+**It shows the shortest road**, the same `RunGraph.shortest_path_dag` the in-game
+maps draw. (A game could once be *pinned* to bend the route through it; that was
+removed, so there is only ever one road to show.)
 
 **Two empty states, two different sentences.** Standing on the Amulet says so
 ("The Amulet is under your feet"); no road at all says *that* instead. Neither is

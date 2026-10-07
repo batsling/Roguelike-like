@@ -557,12 +557,10 @@ function drawRoad(road) {
  * on, all the same distance — and picking between them is the run's core
  * decision. A single line would draw a forced march.
  *
- * NODES ARE KEYED (depth, id), NEVER id. A route forced through a pinned game
- * walks there and then walks on, and the way on may come straight back over the
- * games that led in: the same game legitimately holds two rungs at two depths.
- * `RouteLadder.node_key` says the same thing in GDScript, and for the same
- * reason — keying by id merges the two and draws arrows into a step of the route
- * that does not exist.
+ * NODES ARE KEYED (depth, id), the way `RouteLadder.node_key` keys them in
+ * GDScript. A shortest-path route holds each game once, so today depth and id
+ * agree; the depth key was for pinned routes (which could double back), and is
+ * kept because it costs nothing.
  *
  * THE ARROWS ARE DRAWN FROM MEASURED BOXES, in an SVG behind the rows, because
  * an edge joins two PARTICULAR games across a layer and not every box to every
@@ -587,8 +585,8 @@ function drawMap(route, run) {
     : hops < 0 ? amulet + ' — no road from here'
     : hops + (hops === 1 ? ' game to ' : ' games to ') + amulet;
 
-  const sig = [route.arrived, route.dropped, route.waypoint_depth,
-    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten, n.rift]
+  const sig = [route.arrived, route.dropped,
+    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.beaten, n.rift]
       .join('~')).join(',')).join('|'),
     (route.edges || []).map(e => [e.from_depth, e.from, e.to_depth, e.to]
       .join('~')).join(',')].join('\x01');
@@ -618,7 +616,6 @@ function drawMap(route, run) {
       box.className = 'rung'
         + (n.here ? ' here' : '')
         + (n.amulet ? ' amulet' : '')
-        + (n.pinned ? ' pinned' : '')
         + (n.beaten ? ' beaten' : '')
         + (n.rift ? ' rift' : '');
       box.dataset.key = depth + '|' + n.id;
@@ -641,7 +638,7 @@ function drawMap(route, run) {
        * checklist learned that lesson (six row kinds told apart by text colour
        * with nothing saying what a colour meant), and a map read across a room
        * through a lossy encode is the worst case for it. */
-      const tag = n.here ? 'Here' : n.amulet ? 'Amulet' : n.pinned ? 'Pinned'
+      const tag = n.here ? 'Here' : n.amulet ? 'Amulet'
         : n.beaten ? 'Beaten' : n.rift ? 'Rift' : '';
       if (tag) {
         const flag = document.createElement('span');

@@ -1072,8 +1072,8 @@ html, body {
   color: var(--faint);
 }
 
-/* THE THREE RUNGS THAT ARE NOT JUST "A GAME ON THE WAY". The colours are
- * RouteLadder's own (COL_CURRENT blue, COL_AMULET ember, COL_WAYPOINT purple),
+/* THE RUNGS THAT ARE NOT JUST "A GAME ON THE WAY". The colours are
+ * RouteLadder's own (COL_CURRENT blue, COL_AMULET ember, the rift's cyan),
  * so the map on the stream and the map on the streamer's screen agree. */
 .rung.here {
   border-color: #2196f3;
@@ -1090,9 +1090,6 @@ html, body {
 
 .rung.rift { border-color: var(--rift); border-style: dashed; }
 .rung.rift .rung-tag { color: var(--rift); }
-
-.rung.pinned { border-color: var(--curse); }
-.rung.pinned .rung-tag { color: var(--curse); }
 
 /* A GAME YOU HAVE ALREADY BEATEN, which is a real thing to know about a road
  * ahead: revisiting is legal and its goal is rolled fresh, but you know the

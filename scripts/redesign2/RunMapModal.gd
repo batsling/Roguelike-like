@@ -40,7 +40,6 @@ const COL_CHOICE_BG := RouteLadder.COL_CHOICE_BG   # reachable-now choice
 const COL_PATH_BG := RouteLadder.COL_PATH_BG       # on the road to the amulet
 const COL_VISITED_BG := RouteLadder.COL_VISITED_BG # already behind you
 const COL_ARROW := RouteLadder.COL_ARROW           # shortest-path arrow green
-const COL_WAYPOINT := RouteLadder.COL_WAYPOINT     # the game you insisted on
 
 # Layout constants (pre-zoom), re-exported from RouteLadder so the window's
 # fitting maths reads in the same units the ladder is drawn in.
@@ -71,8 +70,6 @@ var _canvas_holder: Control = null      # the GraphCanvas (rebuilt on zoom)
 var _scroller: ScrollContainer = null   # what the ladder scrolls inside
 var _rows: VBoxContainer = null         # the window's contents, ladder included
 var _dist_label: Label = null
-var _pin_bar: PanelContainer = null     # the "routing through X" bar (hidden when unpinned)
-var _pin_label: Label = null
 var _node_card: PanelContainer = null   # the open rung's card, if any
 var _node_card_id: StringName = &""
 var _node_card_body: VBoxContainer = null   # what the card is sized against
@@ -136,10 +133,6 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_preview = bool(options.get("preview", false))
 	_title = String(options.get("title", ""))
 	_atlas = options.get("atlas")
-	# The chart can re-plan the route too (its card carries the same pin button),
-	# and when it does this ladder is drawing a road that no longer exists.
-	if _atlas != null and is_instance_valid(_atlas):
-		_atlas.route_changed.connect(_reroute)
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -162,49 +155,22 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 # edges: [{from, to, from_depth, to_depth}]}. Empty layers mean no route (amulet
 # unreachable / not set).
 #
-# Normally the shortest-path DAG from the current game to the Amulet. When the
-# player has PINNED a game to go through (GameState.route_waypoint), it's the
-# forced route instead — the shortest way to the pin, then the shortest way on —
-# which is a longer road and, unlike the plain DAG, can pass through the same
-# game twice. See RouteLadder.node_key for what that costs the layout.
+# The shortest-path DAG from the current game to the Amulet.
 func map_data() -> Dictionary:
 	if _current == &"" or _amulet == &"":
-		return {"layers": [], "edges": [], "waypoint_depth": -1}
-	return RunGraph.route_dag_via(_current, waypoint(), _amulet)
-
-# The pinned game, or &"" — never in the start picker, where the run has no
-# position yet and there is nothing to detour from.
-func waypoint() -> StringName:
-	if not _run_has_position():
-		return &""
-	var pin: StringName = GameState.route_waypoint
-	# A pin you have arrived at, or that turns out to be the Amulet, is not a
-	# detour any more — the road from here is just the road.
-	return &"" if (pin == _amulet or pin == _current) else pin
+		return {"layers": [], "edges": []}
+	return RunGraph.shortest_path_dag(_current, _amulet)
 
 # Whether the run is standing somewhere yet. False on the choose-your-start
 # panel, which is the one place a map is drawn before the player has a position:
-# pinning, detours and "you have already been here" all need a road behind you to
-# mean anything, and there isn't one.
+# "you have already been here" needs a road behind you to mean anything, and
+# there isn't one.
 func _run_has_position() -> bool:
 	return GameState.current_game_id != &""
 
 func shortest_distance() -> int:
 	var layers: Array = map_data().get("layers", [])
 	return maxi(0, layers.size() - 1)
-
-# What the detour actually costs: the forced route's length minus the straight
-# one. 0 when nothing is pinned, when the pin was already on the optimal road, or
-# when there is no route at all to compare against.
-func detour_cost() -> int:
-	var pin: StringName = waypoint()
-	if pin == &"" or _current == &"" or _amulet == &"":
-		return 0
-	var direct: int = RunGraph.route_length_via(_current, &"", _amulet)
-	var forced: int = RunGraph.route_length_via(_current, pin, _amulet)
-	if direct < 0 or forced < 0:
-		return 0
-	return maxi(0, forced - direct)
 
 # --- UI construction ------------------------------------------------------
 
@@ -226,8 +192,6 @@ func _build() -> void:
 
 	# Header: the drag handle, the title, the distance, zoom, close.
 	root.add_child(_build_header())
-	root.add_child(_build_pin_bar())
-	_refresh_pin_bar()
 
 	# What this map IS, when it isn't the run's own: the optimal road from a game
 	# you're only thinking about.
@@ -386,8 +350,8 @@ func _build_header() -> Control:
 
 # Roll the window up to its title bar, or unroll it. The panel keeps its position
 # and its WIDTH — a title bar that also changed width would move under the cursor
-# that just clicked it — and everything below the bar (the tools row, the pin bar,
-# the ladder, the legend) is hidden, so the panel shrinks to the bar's own height.
+# that just clicked it — and everything below the bar (the tools row, the ladder,
+# the legend) is hidden, so the panel shrinks to the bar's own height.
 #
 # Public so a test, and the Esc key, can do it without a click.
 func toggle_minimized() -> void:
@@ -493,9 +457,6 @@ func _refresh_distance_label() -> void:
 	var d: int = shortest_distance()
 	if map_data().get("layers", []).is_empty():
 		_dist_label.text = "No route — the Amulet isn't connected from here."
-	elif waypoint() != &"":
-		_dist_label.text = "Route via %s: %d step%s" % [node_name(waypoint()), d,
-			"" if d == 1 else "s"]
 	else:
 		# SHORT, because this row shares a 380px floor with the zoom buttons and the
 		# ✦ Star chart button and it is the only thing on it that can give ground.
@@ -516,7 +477,6 @@ func _ladder_cfg() -> Dictionary:
 		"data": map_data(),
 		"current": _current,
 		"amulet": _amulet,
-		"waypoint": waypoint(),
 		"choice_ids": _choice_ids,
 		"zoom": _zoom,
 		"preview": _preview,
@@ -547,8 +507,7 @@ func node_name(id: StringName) -> String:
 # A rung is 150x68 with a clipped name in it, which is all a ladder should be and
 # nowhere near enough to decide anything on. Clicking one opens this: the game's
 # cover, where it sits on this route, what you have already done there, and the
-# two things you can do about it — find it on the chart, or pin the route through
-# it. It floats beside the window and follows it when the window is dragged.
+# one thing only a map can do about it — find it on the chart. It floats beside the window and follows it when the window is dragged.
 # ---------------------------------------------------------------------------
 
 const CARD_W := 300.0
@@ -584,7 +543,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	# write their own copy of it. What belongs to THIS window is the route it is a
 	# window on (which rung, how far to go) and the two things only a map can do.
 	var facts: Array = [["On this route", "step %d of %d" % [depth, shortest_distance()]]]
-	var left: int = RunGraph.route_length_via(id, &"", _amulet)
+	var left: int = RunGraph.route_length(id, _amulet)
 	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
 
@@ -592,15 +551,6 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	if _atlas != null and is_instance_valid(_atlas):
 		actions.append({"text": "✦  Find it on the star chart",
 			"action": func(): show_on_chart(id)})
-	# Pinning is a live run's business: a preview is asking "what if I went here",
-	# and the start picker has no route to detour from yet.
-	if not _preview and _run_has_position() and id != _current and id != _amulet:
-		if waypoint() == id:
-			actions.append({"text": "✖  Stop routing through here",
-				"action": Callable(self, "clear_waypoint")})
-		else:
-			actions.append({"text": "⚑  Route through here",
-				"action": func(): set_waypoint(id)})
 
 	var box := RouteLadder.node_card_body({
 		"id": id,
@@ -635,12 +585,6 @@ func _node_role_text(id: StringName, depth: int) -> String:
 		return "Where you'd be standing." if _preview else "You are here."
 	if id == _amulet:
 		return "The Amulet — the end of the run."
-	if id == waypoint():
-		var cost: int = detour_cost()
-		if cost <= 0:
-			return "Pinned — and it costs you nothing: it was already on the optimal road."
-		return "Pinned. The route bends through here, %d step%s longer than the direct road." % [
-			cost, "" if cost == 1 else "s"]
 	if _choice_ids.has(id):
 		return "Offered right now — you can take this one next."
 	if not _preview and GameState.visited_games.has(id):
@@ -673,93 +617,6 @@ func _place_node_card() -> void:
 # The card's own furniture — facts, headings, buttons — lives on RouteLadder
 # beside the card builder that uses it (RouteLadder.card_fact and friends).
 
-# ---------------------------------------------------------------------------
-# The waypoint — a game the player insists on visiting
-# ---------------------------------------------------------------------------
-
-# Pin the route through `id`. The ladder redraws around the detour and the star
-# chart behind redraws the same road, because they are one route seen twice.
-func set_waypoint(id: StringName) -> bool:
-	if _preview or not _run_has_position() or id == &"" or id == _current or id == _amulet:
-		return false
-	if RunGraph.route_length_via(_current, id, _amulet) < 0:
-		return false
-	GameState.route_waypoint = id
-	_reroute()
-	return true
-
-func clear_waypoint() -> void:
-	GameState.route_waypoint = &""
-	_reroute()
-
-# Redraw everything that reads the route: the ladder, the distance line, the pin
-# bar, the card that was open, and the chart underneath.
-func _reroute() -> void:
-	# The card that was open is usually the one that CAUSED this — its own "route
-	# through here" button — so it comes back on the same game, at whatever rung
-	# the new route puts it on, rather than vanishing at the moment it has
-	# something new to say.
-	var was: StringName = _node_card_id
-	close_node_card()
-	if _canvas_holder != null and is_instance_valid(_canvas_holder):
-		var scroller: Node = _canvas_holder.get_parent()
-		_canvas_holder.queue_free()
-		_canvas_holder = _build_graph()
-		scroller.add_child(_canvas_holder)
-	_refresh_distance_label()
-	_refresh_pin_bar()
-	if _atlas != null and is_instance_valid(_atlas):
-		_atlas.refresh_route()
-	if was != &"":
-		var depth: int = depth_of(was)
-		if depth >= 0:
-			open_node_card(was, depth)
-	_settle.call_deferred()
-
-# The first rung this game holds on the current route, or -1 if the route doesn't
-# pass through it at all.
-func depth_of(id: StringName) -> int:
-	var layers: Array = map_data().get("layers", [])
-	for i in range(layers.size()):
-		if (layers[i] as Array).has(id):
-			return i
-	return -1
-
-# The bar under the header, shown only while a pin is set: what the detour is and
-# how to drop it.
-func _build_pin_bar() -> Control:
-	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel",
-		UITheme.flat(COL_WAYPOINT.lerp(UITheme.BG, 0.4), 6, 8, 1, UITheme.GOLD))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP)
-	bar.add_child(row)
-	_pin_label = Label.new()
-	_pin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_pin_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_pin_label.add_theme_color_override("font_color", UITheme.TEXT)
-	_pin_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	row.add_child(_pin_label)
-	var drop := Button.new()
-	drop.text = "Drop pin"
-	drop.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	drop.pressed.connect(clear_waypoint)
-	row.add_child(drop)
-	_pin_bar = bar
-	return bar
-
-func _refresh_pin_bar() -> void:
-	if _pin_bar == null or not is_instance_valid(_pin_bar):
-		return
-	var pin: StringName = waypoint()
-	_pin_bar.visible = pin != &""
-	if pin == &"":
-		return
-	var cost: int = detour_cost()
-	_pin_label.text = "⚑ Routing through %s — %s" % [node_name(pin),
-		"free, it was already on the optimal road." if cost <= 0
-			else "%d step%s longer than going straight." % [cost, "" if cost == 1 else "s"]]
-
 func _legend() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
@@ -767,8 +624,6 @@ func _legend() -> Control:
 	if not _preview:
 		row.add_child(_legend_chip("◆ Reachable now", COL_CHOICE_BG))
 	row.add_child(_legend_chip("On the path", COL_PATH_BG))
-	if not _preview and _run_has_position():
-		row.add_child(_legend_chip("⚑ Pinned", COL_WAYPOINT))
 	row.add_child(_legend_chip("🏆 Amulet", COL_AMULET))
 	# On its own line under the chips rather than beside them. The window's width
 	# is set by the LADDER, and a hint sharing the chips' row was simply clipped

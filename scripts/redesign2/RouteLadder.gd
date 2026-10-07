@@ -11,7 +11,7 @@ extends RefCounted
 # does taking this do to my route" is the whole question that popup exists to
 # answer. Two callers, so the drawing moves here and both ask for it the same way.
 #
-# The caller owns the MODEL (which route, at what zoom, with what pinned) and
+# The caller owns the MODEL (which route, at what zoom, what is on offer) and
 # passes it in; this only knows how to lay a DAG out and paint it. RunMapModal
 # keeps everything else it had — the window, the drag, the zoom buttons, the node
 # card — and hands the rungs' clicks back to itself through `on_node`.
@@ -23,7 +23,6 @@ const COL_CHOICE_BG := Color(0.24, 0.18, 0.0)     # reachable-now choice
 const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
 const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
 const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
-const COL_WAYPOINT := Color(0.45, 0.24, 0.42)     # the game you insisted on
 
 # Layout constants (pre-zoom). Mirrors the box/gap sizing in the old web build's
 # generateMapView, with the vertical gap pulled in: at 6-8 steps the ladder is
@@ -42,10 +41,11 @@ const WIDEN_MAX := 2.0
 
 # A node's identity ON A LADDER is (depth, game) — not the game.
 #
-# A forced route walks to the pinned game and then walks on, and the way on is
-# free to come straight back over the games that led in: the same game can hold
-# two rungs, at two depths. Keying rects by id alone silently merged them into
-# one rung and drew arrows into a step of the route that isn't there.
+# Every edge carries its endpoints' DEPTHS, and the ladder places by them. A
+# shortest-path DAG holds each game once, but keying by (depth, id) costs nothing
+# and keeps a route spliced together by hand (a Rift Key's, GameChoiceModal
+# _key_route) from merging two rungs into one if it ever visits a game twice.
+# (This was written for pinned routes, which doubled back; pinning is gone.)
 static func node_key(depth: int, id: StringName) -> String:
 	return "%d|%s" % [depth, id]
 
@@ -82,10 +82,9 @@ static func kind_legend(font_size: int) -> Array:
 
 # Build the ladder for one route. `cfg` is the model:
 #
-#   data         Dictionary  {layers, edges} from RunGraph.route_dag_via
+#   data         Dictionary  {layers, edges} from RunGraph.shortest_path_dag
 #   current      StringName  the top rung — where you stand, or would stand
 #   amulet       StringName  the bottom rung
-#   waypoint     StringName  the pinned game, or &""
 #   choice_ids   Dictionary  offered-right-now slots -> true (flagged on the ladder)
 #   zoom         float       1.0 = natural size
 #   preview      bool        the route from a game only being considered
@@ -184,12 +183,11 @@ static func build(cfg: Dictionary) -> Control:
 # One node = a bordered box with the game's name, coloured by its role.
 #
 # `depth` is the rung's layer and `revisit` says this game already had a rung
-# further up — a forced route that doubles back through it on the way out.
+# further up (see node_key).
 static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		revisit: bool = false) -> Control:
 	var current: StringName = cfg.get("current", &"")
 	var amulet: StringName = cfg.get("amulet", &"")
-	var pin: StringName = cfg.get("waypoint", &"")
 	var choice_ids: Dictionary = cfg.get("choice_ids", {})
 	var zoom: float = float(cfg.get("zoom", 1.0))
 	var preview: bool = bool(cfg.get("preview", false))
@@ -197,8 +195,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 
 	var is_current: bool = id == current and depth == 0
 	var is_amulet: bool = id == amulet
-	var is_waypoint: bool = id == pin and pin != &"" and not is_current and not is_amulet
-	var is_choice: bool = choice_ids.has(id) and not is_current and not is_amulet and not is_waypoint
+	var is_choice: bool = choice_ids.has(id) and not is_current and not is_amulet
 	var is_visited: bool = not preview and GameState.visited_games.has(id) and not is_current
 
 	var bg: Color = COL_PATH_BG
@@ -215,11 +212,6 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		border = UITheme.GOLD
 		border_w = 2
 		prefix = "🏆 "
-	elif is_waypoint:
-		bg = COL_WAYPOINT
-		border = UITheme.GOLD
-		border_w = 2
-		prefix = "⚑ "
 	elif is_choice:
 		bg = COL_CHOICE_BG
 		border = UITheme.ACCENT
@@ -294,7 +286,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	# red `!!` on the Amulet's ember fill, or a grey `!` on you-are-here blue, is
 	# a mark that is there and cannot be seen.
 	mark.add_theme_color_override("font_color", Color.WHITE
-		if (is_current or is_amulet or is_waypoint) else UITheme.kind_color(kind))
+		if (is_current or is_amulet) else UITheme.kind_color(kind))
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mark.offset_left = 4.0
@@ -385,7 +377,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	label.add_theme_font_size_override("font_size",
 		fit_name_size(label.text, avail, natural, NAME_MIN_FONT))
 	label.add_theme_color_override("font_color",
-		Color.WHITE if (is_current or is_amulet or is_waypoint) else UITheme.TEXT)
+		Color.WHITE if (is_current or is_amulet) else UITheme.TEXT)
 	panel.add_child(label)
 	return panel
 
@@ -468,8 +460,7 @@ static func _badge_tip(fought: int, links: int) -> String:
 # It lives HERE, with the ladder, because every ladder wants it and they must not
 # each write their own. The map window opens one beside its window; the popup a
 # card opens draws one over its route column — same facts, same order, same
-# wording, and only the ACTIONS differ (a preview has no route to pin and no sky
-# to fly). The caller owns the frame and where it sits; this owns what is in it.
+# wording, and only the ACTIONS differ (a preview has no sky to fly). The caller owns the frame and where it sits; this owns what is in it.
 #
 # `cfg`:
 #   id       StringName  the game

@@ -2862,19 +2862,19 @@ stream — so the overlay dims only when the beat actually stops.
   that gap, so the cubic curves this shipped with were avoiding a collision that
   cannot occur and read as wobble rather than as a road; the head is what says
   the graph runs one way — in `RouteLadder`'s own colours —
-  blue for where you are, ember for the Amulet, purple for a pin — so the map on
+  blue for where you are, ember for the Amulet, cyan for a rift — so the map on
   the stream and the map on the streamer's screen are visibly one object.
 
-  **IT HONOURS THE PIN.** With a `route_waypoint` set, the road being walked is
-  the FORCED one, so that is what is drawn — `route_dag_via`, exactly as the two
-  in-game maps ask for it. Drawing the shortest path instead would show a route
-  the player has already decided against.
+  **IT IS THE SHORTEST ROAD**, `RunGraph.shortest_path_dag`, exactly as the two
+  in-game maps draw it. It used to honour a PIN — a game the player had insisted
+  on routing through (`route_waypoint`, `route_dag_via`) — and draw that forced
+  road instead. Pinning was removed: it was rarely worth its weight on the map
+  and in the Atlas, and the map is now only ever one answer.
 
-  **NODES ARE KEYED (depth, id), NEVER id**, in the payload and on the page, for
-  the reason `RouteLadder.node_key` gives: a forced route walks to the waypoint
-  and then walks on, and the way on is free to come straight back over the games
-  that led in, so one game legitimately holds two rungs at two depths. Keying by
-  id merges them and draws arrows into a step of the route that does not exist.
+  **NODES ARE KEYED (depth, id)**, in the payload and on the page, as
+  `RouteLadder.node_key` keys them. A shortest-path DAG holds each game once, so
+  depth and id agree; the depth key was for pinned routes, which could double
+  back through a game, and is kept because it costs nothing.
 
   **FULL SCREEN, LEFT TO RIGHT, AND OFF THE DEFAULT PAGE.** A ladder needs width
   per layer and height per step, which the 352 column has none of. It runs left
