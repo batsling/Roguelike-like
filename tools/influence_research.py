@@ -1837,7 +1837,15 @@ def cmd_bluesky(args):
     paced = _Paced(args.delay)
 
     def call(method, **params):
-        return json.loads(paced.get(BSKY + method + "?" + urllib.parse.urlencode(params)))
+        # The API resets the connection now and then under steady use; a short
+        # wait and a retry is enough, and a game that still fails is redone next run.
+        for attempt in range(4):
+            try:
+                return json.loads(paced.get(BSKY + method + "?" + urllib.parse.urlencode(params)))
+            except (urllib.error.URLError, ConnectionError) as e:
+                if attempt == 3 or isinstance(e, urllib.error.HTTPError):
+                    raise
+                time.sleep(5 * (attempt + 1))
 
     def link(post):
         return "https://bsky.app/profile/%s/post/%s" % (post["author"]["handle"], post["uri"].rsplit("/", 1)[-1])
