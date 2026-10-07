@@ -40,6 +40,7 @@ the cached announcements). The three forum steps are rate-limited and resumable;
 """
 
 import argparse
+import bisect
 import concurrent.futures as cf
 import html
 import json
@@ -1138,6 +1139,7 @@ def cmd_media(args):
             return hits, str(e)
         return hits, None
 
+    apple_refused = None
     with cf.ThreadPoolExecutor(3) as ex, open(out, "a") as f:
         futures = {n: ex.submit(videos, n) for n in todo}
         for name in todo:
@@ -1145,9 +1147,17 @@ def cmd_media(args):
             rec = {"game": name, "videos": [], "podcasts": []}
             vids, err = futures[name].result()
             try:
+                if apple_refused:
+                    raise RuntimeError(apple_refused)
                 pods = _podcasts(paced, name)
             except Exception as e:
                 pods, err = [], err or str(e)
+                # A refusal that outlasts _Paced's retries (~10 minutes) is Apple
+                # blocking this machine, not one busy minute: from the cloud
+                # container it answers 403 to everything. Stop asking for the
+                # rest of the run; the error rows get redone by the next one.
+                if "rate limited" in str(e):
+                    apple_refused = "Apple Podcasts refused this machine; rerun `media` later or from your own computer"
             if err:
                 rec["err"] = err
             # Raw results are cached and filtered when the doc is written, so
@@ -1250,6 +1260,240 @@ def write_media_doc(targets, jsonl, devs, per_game):
     text = "\n".join(lines).rstrip() + "\n"
     open(MEDIA, "w", encoding="utf8").write(text + ("\n" + radio if radio else ""))
     print("wrote %s: %d games with something to listen to" % (os.path.relpath(MEDIA, ROOT), len(found)))
+
+
+# ── transcripts (run on your own computer) ─────────────────────────────────
+
+# How games are said out loud, beside their chart names. Auto-captions are
+# often lower case and drop "The", so these are matched without case.
+SPOKEN = {
+    "The Binding of Isaac": ["Binding of Isaac", "Isaac"], "Enter the Gungeon": ["Gungeon"],
+    "Spelunky Classic": ["Spelunky"], "FTL": ["Faster Than Light"], "Vampire Survivors": ["Vampire Survivor"],
+    "Risk of Rain 2": ["Risk of Rain two"], "Slay the Spire": ["Slay the Spire", "StS"],
+    "Dungeon Crawl Stone Soup": ["Stone Soup"], "Ancient Domains of Mystery": ["ADOM"],
+    "Tales of Maj'Eyal": ["ToME", "Maj Eyal"],
+}
+# Chart names too common as words to match in lower-case speech at all.
+UNSPOKEN = {"Rogue", "Hack", "Roll", "Crawl", "Rounds", "Haste", "Powder", "Convoy", "Overworld",
+            "From The Top", "Heading Out", "Talented", "Ringer", "Morsels", "Underdogs", "Neophyte",
+            "Gnomes", "Omega", "Sil", "Cataclysm", "Eldritch", "Ragnarok", "StS", "ToME"}
+SAID = re.compile(r"inspir|influenc|\blove[ds]?\b|favou?rite|big fans?|fans? of|played (?:a lot|so much|tons|a ton)|"
+                  r"based on|took (?:a lot )?from|borrow|homage|tribute|reference|ripped off|stole|"
+                  r"grew up|obsessed|addicted|\bthe idea\b|started (?:with|from)", re.I)
+
+
+def _spoken_patterns(names):
+    out, chart = [], set(names)
+    for g in names:
+        # A short name that is a word or another chart game ("Rogue" for
+        # Rogue: Genesia) would credit every mention of that one to this one.
+        short = _short_name(g)
+        short = [short] if short and short not in UNSPOKEN and short not in chart else []
+        for n in [g] + SPOKEN.get(g, []) + short:
+            if len(n) > 2 and n not in UNSPOKEN and g not in UNSPOKEN:
+                out.append((g, re.compile(r"(?<![\w])" + r"[\s:\-–—]+".join(
+                    map(re.escape, re.split(r"[\s:\-–—]+", n))) + r"(?![\w])", re.I)))
+            elif n in UNSPOKEN and n[0].isupper():
+                out.append((g, re.compile(r"(?<![\w])" + re.escape(n) + r"(?![\w])")))  # case-sensitive
+    return out
+
+
+def _media_items(sections, include_heard):
+    """(game, kind, title, url) for each line of docs/influence-media.md."""
+    items, game, sec = [], None, None
+    for line in open(MEDIA, encoding="utf8"):
+        if line.startswith("## "):
+            sec = line[3]
+        elif line.startswith("### "):
+            game = re.sub(r"\s+(?:\(\d{4}|\(\?|—).*", "", line[4:].strip())
+        else:
+            m = re.match(r"- \[( |x)\] (video|podcast) \[(.*?)\]\((\S+?)\)", line)
+            if m and game and sec in sections and (include_heard or m.group(1) == " "):
+                items.append((game, m.group(2), m.group(3), m.group(4)))
+    return items
+
+
+def _yt_captions(url, cookies):
+    """[(ms, text)] from a video's captions: manual English first, then the
+    auto-captions in the video's own language (a German interview's names
+    survive in German), then auto English."""
+    import yt_dlp
+    opts = {"skip_download": True, "quiet": True, "no_warnings": True}
+    if cookies:
+        opts["cookiesfrombrowser"] = (cookies,)
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        manual, auto = info.get("subtitles") or {}, info.get("automatic_captions") or {}
+        pick = ([k for k in manual if k.startswith("en")] and ("manual", manual, [k for k in manual if k.startswith("en")][0])) \
+            or ([k for k in auto if k.endswith("-orig")] and ("auto", auto, [k for k in auto if k.endswith("-orig")][0])) \
+            or ("en" in auto and ("auto", auto, "en")) \
+            or (manual and ("manual", manual, next(iter(manual))))
+        if not pick:
+            return None, info.get("title")
+        kind, tracks, lang = pick
+        fmt = next((f for f in tracks[lang] if f.get("ext") == "json3"), None)
+        if not fmt:
+            return None, info.get("title")
+        data = json.loads(ydl.urlopen(fmt["url"]).read().decode("utf8"))
+    segs = []
+    for ev in data.get("events", []):
+        text = "".join(s.get("utf8", "") for s in ev.get("segs") or []).replace("\n", " ").strip()
+        if text:
+            segs.append((int(ev.get("tStartMs", 0)), text))
+    return {"source": f"{kind} captions ({lang})", "segments": segs}, info.get("title")
+
+
+def _podcast_audio(url):
+    """The audio file behind an Apple Podcasts episode link or a Roguelike Radio post."""
+    if "roguelikeradio.com" in url:
+        m = re.search(r'https?://[^"\'<>\s]+\.mp3', get(url))
+        return m.group(0) if m else None
+    m = re.search(r"/id(\d+)\?i=(\d+)", url)
+    if not m:
+        return None
+    found = json.loads(get(f"https://itunes.apple.com/lookup?id={m.group(1)}&entity=podcastEpisode&limit=300"))
+    for r in found.get("results", []):
+        if str(r.get("trackId")) == m.group(2):
+            return r.get("episodeUrl")
+    return None
+
+
+def _whisper(audio_url, work, model_name):
+    """[(ms, text)] from a speech-to-text pass over a podcast episode."""
+    from faster_whisper import WhisperModel
+    path = os.path.join(work, "episode.audio")
+    req = urllib.request.Request(audio_url, headers=UA)
+    with urllib.request.urlopen(req, timeout=120) as r, open(path, "wb") as f:
+        while chunk := r.read(1 << 20):
+            f.write(chunk)
+    try:
+        model = _whisper.model = getattr(_whisper, "model", None) or WhisperModel(model_name, compute_type="int8")
+        segments, info = model.transcribe(path, vad_filter=True)
+        return {"source": f"whisper {model_name} ({info.language})",
+                "segments": [(int(s.start * 1000), s.text.strip()) for s in segments]}
+    finally:
+        os.remove(path)
+
+
+def _hits(segments, pats, own, span=200):
+    """Each chart game named in a transcript, with the words around it and the
+    moment it is said. A name said several times within a minute is one hit."""
+    text, starts, pos = "", [], []
+    for ms, t in segments:
+        pos.append(len(text))
+        starts.append(ms)
+        text += t + " "
+    found = [(g, m) for g, p in pats if g != own and g not in own for m in p.finditer(text)]
+    # "Hades" inside "Hades II", "Isaac" inside "The Binding of Isaac": only the longer name counts.
+    inside = lambda g, m: any(h != g and n.start() <= m.start() and m.end() <= n.end()
+                              and n.span() != m.span() for h, n in found)
+    out, last = [], {}
+    for g, m in sorted(found, key=lambda x: x[1].start()):
+        if not inside(g, m):
+            i = max(0, bisect.bisect_right(pos, m.start()) - 1)
+            ms = starts[i]
+            if ms - last.get(g, -10 ** 9) < 60000:
+                continue
+            last[g] = ms
+            window = text[max(0, m.start() - span):m.end() + span]
+            out.append({"game": g, "ms": ms, "said": sorted({x.lower() for x in SAID.findall(window)}),
+                        "text": re.sub(r"\s+", " ", window).strip()})
+    return sorted(out, key=lambda h: h["ms"])
+
+
+def cmd_transcripts(args):
+    """Read the videos (and, with --podcasts, the episodes) in
+    docs/influence-media.md for every chart game they name, so nobody has to
+    listen to two hours to find the thirty seconds that matter.
+
+    RUN THIS ON YOUR OWN COMPUTER. YouTube asks the cloud container to sign in
+    and every caption mirror is refused too. `pip install yt-dlp`, and pass
+    `--cookies-from-browser firefox` (or chrome, edge…) if YouTube asks you to
+    sign in as well. For podcasts, `pip install faster-whisper`; it transcribes
+    on your CPU, roughly an hour of audio in ten to twenty minutes with the
+    `small` model, so pick games with --game or cap it with --limit.
+
+    Each transcript is cached in --work/transcripts.jsonl and a rerun resumes.
+    The output, --work/transcripts.md, lists each game a video names, with the
+    moment (a link that starts the video there) and the words around it,
+    influence words first ("inspired", "loved", "based on"). A hit is a place
+    to listen, not a source: auto-captions mishear names, and a developer
+    naming a game is not saying it shaped theirs. A pair already on the sheet
+    is marked, since a clip of that moment would prove it.
+    """
+    games, conns = load_sheet()
+    have = connected(conns)
+    pats = _spoken_patterns([r[0] for r in games])
+    items = _media_items(args.sections, args.include_heard)
+    kinds = {"video"} | ({"podcast"} if args.podcasts else set())
+    items = [it for it in items if it[1] in kinds and (not args.game or it[0] in args.game)]
+    out = wpath(args, "transcripts.jsonl")
+    done = set()
+    if os.path.exists(out):
+        for line in open(out):
+            r = json.loads(line)
+            if not r.get("err") or "Private video" in r["err"] or "unavailable" in r["err"]:
+                done.add(r["url"])
+    todo = [it for it in items if it[3] not in done]
+    print(f"{len(items)} items, {len(items) - len(todo)} cached, {len(todo)} to read"
+          + (f" (this run: {args.limit})" if args.limit and args.limit < len(todo) else ""), flush=True)
+    if args.limit:
+        todo = todo[:args.limit]
+    if todo and not args.write_only:
+        with open(out, "a") as f:
+            for game, kind, title, url in todo:
+                rec = {"game": game, "kind": kind, "title": title, "url": url}
+                try:
+                    if kind == "video":
+                        got, real = _yt_captions(url, args.cookies_from_browser)
+                        rec["title"] = real or title
+                    else:
+                        audio = _podcast_audio(url)
+                        got = _whisper(audio, args.work, args.model) if audio else None
+                    if got:
+                        rec.update(got)
+                    else:
+                        rec["err"] = "no captions" if kind == "video" else "no audio found"
+                except Exception as e:
+                    rec["err"] = str(e)[:300]
+                    if "Sign in to confirm" in rec["err"] and not args.cookies_from_browser:
+                        sys.exit("YouTube wants a signed-in browser: rerun with --cookies-from-browser firefox "
+                                 "(or chrome, edge, safari). Transcripts read so far are saved.")
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                f.flush()
+                print("%-35s %-7s %s" % (game[:35], kind, rec.get("err") or "%d lines" % len(rec["segments"])),
+                      flush=True)
+                time.sleep(args.delay)
+    recs = {}
+    for line in open(out) if os.path.exists(out) else []:
+        r = json.loads(line)
+        recs[r["url"]] = r
+    by_game, n = {}, 0
+    for r in recs.values():
+        if r.get("segments"):
+            hits = _hits(r["segments"], pats, r["game"])
+            if hits:
+                by_game.setdefault(r["game"], []).append((r, hits))
+    path = wpath(args, "transcripts.md")
+    with open(path, "w", encoding="utf8") as f:
+        f.write("# Chart games named in the interviews\n\nFrom `influence_research.py transcripts`. Each line is "
+                "a moment to listen to, not a source: check what is said, and that it is the developer saying it. "
+                "Lines with influence words nearby come first.\n\n")
+        for game in sorted(by_game, key=str.lower):
+            f.write(f"## {game}\n\n")
+            for r, hits in by_game[game]:
+                f.write(f"### [{r['title']}]({r['url']}) — {r['source']}\n\n")
+                for h in sorted(hits, key=lambda h: (not h["said"], h["ms"])):
+                    s = h["ms"] // 1000
+                    at = (f"{r['url']}{'&' if '?' in r['url'] else '?'}t={s}" if r["kind"] == "video" else r["url"])
+                    on = " *(on the sheet already: a clip of this would prove it)*" \
+                        if (h["game"], game) in have else ""
+                    said = f" — near: {', '.join(h['said'])}" if h["said"] else ""
+                    f.write(f"- **{h['game']} → {game}?** at [{s // 3600}:{s // 60 % 60:02d}:{s % 60:02d}]({at})"
+                            f"{said}{on}\n  …{h['text']}…\n")
+                    n += 1
+                f.write("\n")
+    print(f"{sum(1 for r in recs.values() if r.get('segments'))} transcripts read, {n} moments -> {path}")
 
 
 # ── titles (native-script names) ────────────────────────────────────────────
@@ -1561,6 +1805,193 @@ def cmd_reddit(args):
                  "Each label names the account. Neither search proves it is the developer: check before quoting.")
 
 
+# ── bluesky, substack, patreon ─────────────────────────────────────────────
+
+BSKY = "https://api.bsky.app/xrpc/"  # public.api.bsky.app answers 403 from the cloud container
+# A post that reads like the person who made the game: "our game", "I made".
+OWN_WORDS = re.compile(r"\b(?:our|my) (?:new |next |first |upcoming |indie )?(?:game|roguelike|roguelite|"
+                       r"deckbuilder|project)\b|\bI(?:'m| am)? (?:made|making|developing|working on)\b|"
+                       r"\bwe(?:'re| are)? (?:made|making|developing|working on)\b|\bdevlog\b|"
+                       r"\bwishlist\b", re.I)
+
+
+def _matches_studio(text, names):
+    t = _norm(text)
+    return any(n and len(n) >= 4 and n in t for n in names)
+
+
+def cmd_bluesky(args):
+    """Developers on Bluesky: their own accounts, read back through.
+
+    For each game: find the studio's account (an actor search for the Steam
+    developer's name and for the game, kept when the account's name, handle or
+    bio carries one of them), read its posts and replies, and add a post
+    search for the game's name. Posts from the matched accounts are read
+    whole; a post from anyone else is kept only when it reads like whoever
+    made the game ("our game", "I'm making", "devlog") and says which account
+    it is, so check that account before quoting it. Bluesky is where many
+    studios moved from X in 2024-25, and a developer's own feed answers "what
+    inspired it?" in replies that no search for the game's name ever finds.
+    """
+    devs = json.load(open(wpath(args, "devs.json"))) if os.path.exists(wpath(args, "devs.json")) else {}
+    paced = _Paced(args.delay)
+
+    def call(method, **params):
+        return json.loads(paced.get(BSKY + method + "?" + urllib.parse.urlencode(params)))
+
+    def link(post):
+        return "https://bsky.app/profile/%s/post/%s" % (post["author"]["handle"], post["uri"].rsplit("/", 1)[-1])
+
+    def fetch(name):
+        studio = (devs.get(name) or {}).get("devs") or []
+        keys = [_norm(s) for s in studio] + [_norm(name), _norm(_short_name(name) or "")]
+        accounts = {}
+        for q in dict.fromkeys(studio + [name]):
+            for a in call("app.bsky.actor.searchActors", q=q, limit=10).get("actors", []):
+                who = " ".join((a.get("displayName") or "", a["handle"].split(".")[0], a.get("description") or ""))
+                if _matches_studio(who, keys):
+                    accounts[a["did"]] = a
+        accounts = dict(list(accounts.items())[:3])
+        docs, seen = [], set()
+        for did, a in accounts.items():
+            cursor, label = None, f"bluesky post by @{a['handle']} ({a.get('displayName') or ''})"
+            for _ in range(args.max_pages):
+                params = dict(actor=did, limit=100, filter="posts_with_replies")
+                if cursor:
+                    params["cursor"] = cursor
+                page = call("app.bsky.feed.getAuthorFeed", **params)
+                for item in page.get("feed", []):
+                    p = item["post"]
+                    if item.get("reason") or p["author"]["did"] != did or p["uri"] in seen:
+                        continue  # a repost is someone else's words
+                    seen.add(p["uri"])
+                    docs.append((label, link(p), clean(p["record"].get("text", ""))))
+                cursor = page.get("cursor")
+                if not cursor:
+                    break
+        for p in call("app.bsky.feed.searchPosts", q=f'"{_short_name(name) or name}"', limit=100).get("posts", []):
+            text = clean(p["record"].get("text", ""))
+            if p["uri"] in seen or not _mentions(text, name):
+                continue
+            if p["author"]["did"] in accounts or OWN_WORDS.search(text):
+                seen.add(p["uri"])
+                docs.append((f"bluesky post by @{p['author']['handle']} (found by search; check it is the developer)",
+                             link(p), text))
+        who = ", ".join("@" + a["handle"] for a in accounts.values()) or "no account found"
+        return {"docs": docs, "who": who}
+
+    if not args.write_only:
+        collect(args, "bluesky", fetch, threads=2)
+    write_triage(args, "bluesky", "Bluesky posts by developers — read every line",
+                 "Each game's heading names the accounts read. Lines found by search say so: "
+                 "check that account is the developer before quoting it.")
+
+
+def cmd_substack(args):
+    """Developers' newsletters on Substack.
+
+    Substack's own search (`top/search`, the one its site uses) for the game's
+    name; a post is read in full when its title or blurb names the game and the
+    post is public. Most hits are someone writing ABOUT the game, so each line
+    names the newsletter and its author, and a quote counts only when the
+    newsletter is the developer's. "Brogue" is also a shoe: the name match on
+    the post itself keeps most of that out, not all.
+    """
+    paced = _Paced(args.delay)
+
+    def fetch(name):
+        q = _short_name(name) or name
+        found = json.loads(paced.get("https://substack.com/api/v1/top/search?" +
+                                     urllib.parse.urlencode({"query": f"{q} game", "page": 0})))
+        docs = []
+        for item in found.get("items", []):
+            p = item.get("post") or {}
+            url = p.get("canonical_url") or ""
+            if item.get("type") != "post" or not url or p.get("audience") not in (None, "everyone"):
+                continue
+            if not _mentions(" ".join((p.get("title") or "", p.get("subtitle") or "",
+                                       p.get("truncated_body_text") or "", p.get("description") or "")), name):
+                continue
+            m = re.match(r"(https://[^/]+)/p/([^/?#]+)", url)
+            if not m:
+                continue
+            try:
+                body = json.loads(paced.get(f"{m.group(1)}/api/v1/posts/{m.group(2)}")).get("body_html") or ""
+            except Exception:
+                continue  # a custom domain that doesn't answer the API
+            users = (item.get("context") or {}).get("users") or []
+            by = ", ".join(u.get("name") or "" for u in users) or "unknown"
+            docs.append((f"substack {urllib.parse.urlparse(url).netloc} by {by}", url, page_text(body)))
+        return {"docs": docs}
+
+    if not args.write_only:
+        collect(args, "substack", fetch)
+    write_triage(args, "substack", "Substack posts naming the game — read every line",
+                 "Most are written about the game, not by its developer. Check the newsletter is theirs.")
+
+
+def cmd_patreon(args):
+    """Which studios have a Patreon. The posts themselves can't be read here.
+
+    Patreon's API lists a campaign's posts but returns their text empty without
+    a login, and its post pages answer 403 to the cloud container. So this only
+    finds the campaign (searched by the Steam developer's name and the game's,
+    kept when the campaign's name or "creating …" line carries one of them)
+    and lists its public post titles that name a chart game, for reading in a
+    browser where you are logged in.
+    """
+    devs = json.load(open(wpath(args, "devs.json"))) if os.path.exists(wpath(args, "devs.json")) else {}
+    paced = _Paced(args.delay)
+    games, conns = load_sheet()
+    pats = name_patterns([r[0] for r in games])
+
+    def fetch(name):
+        studio = (devs.get(name) or {}).get("devs") or []
+        keys = [_norm(s) for s in studio] + [_norm(name), _norm(_short_name(name) or "")]
+        camps = {}
+        for q in dict.fromkeys(studio + [name]):
+            for c in json.loads(paced.get("https://www.patreon.com/api/search?" +
+                                          urllib.parse.urlencode({"q": q}))).get("data", []):
+                a = c.get("attributes") or {}
+                if c.get("type") == "campaign-document" and _matches_studio(
+                        (a.get("name") or "") + " " + (a.get("creation_name") or ""), keys):
+                    camps[c["id"].split("_")[-1]] = a
+        out = []
+        for cid, a in list(camps.items())[:2]:
+            titles, url = [], ("https://www.patreon.com/api/posts?" + urllib.parse.urlencode({
+                "filter[campaign_id]": cid, "filter[is_by_creator]": "true", "sort": "-published_at",
+                "page[size]": 50, "fields[post]": "title,url,current_user_can_view"}))
+            for _ in range(args.max_pages):
+                page = json.loads(paced.get(url))
+                for p in page.get("data", []):
+                    t = (p.get("attributes") or {}).get("title") or ""
+                    if named_in(t, pats, name):
+                        titles.append({"title": t, "url": p["attributes"].get("url"),
+                                       "public": p["attributes"].get("current_user_can_view")})
+                url = (page.get("links") or {}).get("next")
+                if not url:
+                    break
+            out.append({"url": a.get("url"), "name": a.get("name"), "creating": a.get("creation_name"),
+                        "titles": titles})
+        return {"docs": [], "campaigns": out}
+
+    if not args.write_only:
+        collect(args, "patreon", fetch)
+    recs = {}
+    for line in open(wpath(args, "patreon.jsonl")):
+        r = json.loads(line)
+        recs[r["game"]] = r
+    path = wpath(args, "patreon.md")
+    with open(path, "w") as f:
+        f.write("# Studios with a Patreon\n\nRead these logged in: the text isn't visible from here.\n\n")
+        for name in sorted(recs, key=str.lower):
+            for c in recs[name].get("campaigns") or []:
+                f.write(f"- **{name}**: [{c['name']}]({c['url']}) — creating {c['creating']}\n")
+                for t in c["titles"]:
+                    f.write(f"  - [{t['title']}]({t['url']}){'' if t['public'] else ' (patrons only)'}\n")
+    print(f"{sum(bool(r.get('campaigns')) for r in recs.values())} of {len(recs)} games have a campaign -> {path}")
+
+
 # A Steam page's "website" is often not a website.
 NOT_A_SITE = re.compile(r"(?:^|\.)(?:twitter|x|facebook|discord|youtube|youtu|instagram|steampowered|"
                         r"steamcommunity|reddit|tiktok|twitch|linktr|bsky|patreon|itch)\.", re.I)
@@ -1822,7 +2253,19 @@ def main():
                                           help="tick the candidate lines that are in the sheet now")
     sub.add_parser("titles")
     sub.add_parser("radio")
-    for name, delay in (("itch", 0.0), ("kickstarter", 3.0), ("reddit", 2.0), ("site", 0.0)):
+    tp = sub.add_parser("transcripts")
+    tp.add_argument("--cookies-from-browser", default=None,
+                    help="firefox, chrome, edge, safari…: the browser you are signed in to YouTube with")
+    tp.add_argument("--podcasts", action="store_true", help="also transcribe podcast episodes (needs faster-whisper)")
+    tp.add_argument("--model", default="small", help="faster-whisper model for podcasts (tiny, base, small, medium)")
+    tp.add_argument("--sections", default="123", help="which sections of docs/influence-media.md to read")
+    tp.add_argument("--game", action="append", help="only this game's lines (repeat for more)")
+    tp.add_argument("--include-heard", action="store_true", help="read ticked lines too")
+    tp.add_argument("--delay", type=float, default=2.0, help="seconds between videos")
+    tp.add_argument("--limit", type=int, default=0, help="stop after this many (0 = all)")
+    tp.add_argument("--write-only", action="store_true", help="rewrite transcripts.md from the cache")
+    for name, delay in (("itch", 0.0), ("kickstarter", 3.0), ("reddit", 2.0), ("site", 0.0),
+                        ("bluesky", 0.3), ("substack", 1.0), ("patreon", 1.0)):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["few", "targets", "all"], default="few",
                         help="few = one connection or none (the default); targets = no influences")
@@ -1832,6 +2275,9 @@ def main():
         sp.add_argument("--limit", type=int, default=0, help="stop after this many games (0 = all)")
         sp.add_argument("--write-only", action="store_true", help="rewrite the triage from the cache, no fetching")
     sub.choices["itch"].add_argument("--max-posts", type=int, default=40, help="devlog posts read per game")
+    for name in ("bluesky", "patreon"):
+        sub.choices[name].add_argument("--max-pages", type=int, default=10,
+                                       help="pages of an account's posts read (100 a page on Bluesky, 50 on Patreon)")
     for name in ("lang", "forums", "devcheck"):
         sp = sub.add_parser(name)
         sp.add_argument("--games", choices=["targets", "all"], default="targets")
@@ -1843,7 +2289,8 @@ def main():
      "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
      "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media, "titles": cmd_titles,
      "itch": cmd_itch, "kickstarter": cmd_kickstarter, "reddit": cmd_reddit, "site": cmd_site,
-     "radio": cmd_radio}[args.cmd](args)
+     "radio": cmd_radio, "bluesky": cmd_bluesky, "substack": cmd_substack, "patreon": cmd_patreon,
+     "transcripts": cmd_transcripts}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -134,6 +134,10 @@ python3 tools/influence_research.py site      # studio websites + press kits -> 
 python3 tools/influence_research.py reddit    # developer posts on Reddit + r/roguelikedev -> .influence_work/reddit.md
 python3 tools/influence_research.py kickstarter  # campaign pages -> .influence_work/kickstarter.md; your machine only
 python3 tools/influence_research.py radio     # Roguelike Radio episodes -> section 3 of docs/influence-media.md
+python3 tools/influence_research.py bluesky   # studios' own Bluesky accounts + a post search -> .influence_work/bluesky.md
+python3 tools/influence_research.py substack  # Substack posts naming the game -> .influence_work/substack.md
+python3 tools/influence_research.py patreon   # which studios have a Patreon (text needs a login) -> .influence_work/patreon.md
+python3 tools/influence_research.py transcripts  # captions of the media doc's videos -> transcripts.md; your machine only
 ```
 
 **The four page scans** (`itch`, `site`, `reddit`, `kickstarter`) work alike.
@@ -232,6 +236,43 @@ What it misses: interviews titled only with the developer's name ("Episode
 in English or not on YouTube or Apple Podcasts. The cues include
 Japanese/Korean/Chinese/Spanish/Polish/Russian words for "interview", but the
 searches are English.
+
+### Reading the interviews instead of listening: `transcripts` (your computer)
+
+`media` finds the interviews; `transcripts` reads them. For every unticked
+video in `docs/influence-media.md` it fetches the captions (manual English if
+there are any, else YouTube's auto-captions in the video's own language, so a
+German interview's game names survive), finds every chart game said in them,
+and writes `.influence_work/transcripts.md`: each game a video names, a link
+that starts the video at that moment (`&t=754`), and the words around it, with
+the moments near influence words ("inspired", "loved", "based on", "fans of")
+listed first. A pair already on the sheet is marked, because a clip of that
+moment is the proof it is missing. **It finds places to listen, not sources**:
+auto-captions mishear names, and naming a game isn't saying it shaped yours.
+The clip you cut from the moment is the proof, as before.
+
+**It only runs on your own computer.** From the cloud container YouTube answers
+"Sign in to confirm you're not a bot", and the caption mirrors (Invidious,
+Piped, youtubetranscript.com) are refused the same way.
+
+```bash
+pip install yt-dlp
+python3 tools/influence_research.py transcripts --limit 20        # try a few first
+python3 tools/influence_research.py transcripts --cookies-from-browser firefox  # if YouTube asks you to sign in
+python3 tools/influence_research.py transcripts --game "Rogue Blight"           # one game's videos
+```
+
+Transcripts are cached in `.influence_work/transcripts.jsonl` and a rerun
+resumes; `--write-only` rewrites the `.md` from it. `--include-heard` reads the
+ticked lines too.
+
+**Podcasts** need speech-to-text: `pip install faster-whisper`, then add
+`--podcasts`. It downloads each episode (Apple Podcasts via the iTunes lookup,
+Roguelike Radio from the post's mp3 link), transcribes it on your CPU and
+deletes the audio. The `small` model takes very roughly ten to twenty minutes
+per hour of audio, and section 1 alone is about 300 episodes, so point it at
+games with `--game` or cap it with `--limit`. `--model base` is faster and
+mishears more names.
 
 ### Developers who don't work in English: search in their language
 
