@@ -153,6 +153,7 @@ var _hidden_parts: Array = []
 # instance -> portrait, as of the last capture_positions — what a body that left
 # the board during a resolve is drawn with while it fades out.
 var _captured_art: Dictionary = {}
+var _slide_ghosts: Dictionary = {}   # instance -> the one ghost standing in for it mid-playback
 var _punch_tweens: Array = []
 # Whether the game being played right now shows in the off-field lane. Kept from
 # the last refresh so a click can repaint without the host passing it again.
@@ -1718,6 +1719,8 @@ func ground_hover(cell: Vector2i) -> Dictionary:
 # step apart, and a third hue on a board that already carries four threat colours
 # is one more thing to learn.
 const ARMED_TINT := Color(1.0, 0.72, 0.30)
+# The outline a lit body wears over its picture (see `_add_enemy_node`).
+const LIT_RING := Color(1.0, 1.0, 1.0, 0.95)
 
 # Paint an enemy's footprint tiles for its current state. Hovering brightens the
 # outline and lifts the fill (the "you can click this" cue); the selected enemy —
@@ -2239,9 +2242,17 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	# board is no longer the only thing that lights an enemy up: the checklist
 	# beside it highlights the bodies whose goals a row belongs to (see
 	# `highlight`), and both routes have to end at the same paint.
+	# THE LIT RING, drawn OVER the art (on the badge layer) rather than under it:
+	# a sprite that fills its square covers the frame's own border, and a body lit
+	# from the checklist — "this is the one that box will take down" — has to read
+	# whatever its picture looks like. Filled in once the badge slot exists below.
+	var rings: Array = []
 	var repaint := func() -> void:
 		_style_enemy_cell(frames, accent, inst == push_target, _is_lit(inst),
 			_armed.has(inst))
+		for r in rings:
+			if is_instance_valid(r):
+				r.visible = _is_lit(inst)
 	_repaint_fns[inst] = repaint
 	repaint.call()
 
@@ -2321,6 +2332,21 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_badge_layer.add_child(badges)
 	node.set_meta("badges", badges)
+	var ring_box := StyleBoxFlat.new()
+	ring_box.draw_center = false
+	ring_box.border_color = LIT_RING
+	ring_box.set_border_width_all(3)
+	ring_box.set_corner_radius_all(6)
+	for off in cells:
+		var ring := Panel.new()
+		ring.name = "LitRing"
+		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ring.position = Vector2(off.x, off.y) * float(_cell_step)
+		ring.size = Vector2(_cell, _cell)
+		ring.add_theme_stylebox_override("panel", ring_box)
+		ring.visible = _is_lit(inst)
+		badges.add_child(ring)
+		rings.append(ring)
 	_add_enemy_badges(badges, entry, e, accent, selected)
 	return node
 
@@ -2385,15 +2411,24 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# ceiling was never written down.
 	var hp: int = int(entry.get("health", e.health))
 	var ceiling: int = GameLoop2.entry_max_health(entry)
-	var stat_font: int = stat_badge_font(_cell)
-	var hp_lbl := _stat_badge("❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling],
-		HP_BADGE, stat_font)
+	var hp_text: String = "❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling]
+	var dmg_text: String = _damage_badge_text(entry, strikes)
+	var shield: int = GameLoop2.enemy_shield(entry)
+	var row_texts: Array = [hp_text, dmg_text]
+	if shield > 0:
+		row_texts.append("◆%d" % shield)
+	# KEPT INSIDE THE BODY'S OWN WIDTH. The row used to be as wide as its badges at
+	# the cell's font, and on a narrow body (a one-cell body on a crowded board, a
+	# chipped "❤2/3" beside a "⚔3×2") it hung out past both side edges and over the
+	# neighbours' numbers. The font steps down until the row fits the footprint.
+	var stat_font: int = fit_stat_font(row_texts, holder.size.x, stat_badge_font(_cell))
+	var hp_lbl := _stat_badge(hp_text, HP_BADGE, stat_font)
 
 	# Damage per swing, and — on the rare body that gets more than one swing out of
 	# a single turn — how many that is: "⚔3 ×2". The two numbers are one fact ("it
 	# hits you twice for 3"), so they read as one badge instead of the count
 	# sitting over the art.
-	var dmg_lbl := _stat_badge(_damage_badge_text(entry, strikes),
+	var dmg_lbl := _stat_badge(dmg_text,
 		UITheme.DANGER.lerp(Color.WHITE, 0.45) if strikes > 1 else DMG_BADGE, stat_font)
 
 	# The two go in ONE ROW, not one in each bottom corner, and that is a bug fix.
@@ -2422,7 +2457,6 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# whether meeting this body's goal kills it, so it belongs beside the ❤ rather
 	# than under the status pips — the pip says the body HAS Dexterity, this says
 	# how much of it is left.
-	var shield: int = GameLoop2.enemy_shield(entry)
 	if shield > 0:
 		stat_row.add_child(_stat_badge("◆%d" % shield, SHIELD_BLUE, stat_font))
 	var gap := Control.new()
@@ -2434,6 +2468,11 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# "right corner" are still where the two numbers land on anything roomy.
 	stat_row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE,
 		Control.PRESET_MODE_MINSIZE, -stat_badge_drop(stat_font))
+	# The preset's margin is applied to EVERY side, so the drop meant for the
+	# bottom edge also pushed the row out past both side edges by the same amount
+	# — over the neighbours' numbers. The sides go back to the body's own edges.
+	stat_row.offset_left = 0
+	stat_row.offset_right = 0
 	holder.add_child(stat_row)
 
 	# Statuses BELOW the box, under the health/damage row (§13) — the one piece of
@@ -2777,6 +2816,29 @@ static func stat_badge_font(cell: int) -> int:
 	if cell >= 52:
 		return UITheme.FONT_LABEL
 	return UITheme.FONT_BODY
+
+# The largest font, from `start` down to FONT_TINY, at which a row of stat
+# badges reading `texts` fits across `width` px (each pill's 4px side margins and
+# the row's hairline gaps included). FONT_TINY when nothing fits — the floor is
+# what keeps the numbers readable at all.
+const STAT_PILL_PAD := 10    # 4px content margin each side, plus the 1px rim each side
+static func stat_row_width(texts: Array, font_size: int) -> float:
+	var font: Font = UITheme.glyph_font()
+	if font == null:
+		font = ThemeDB.fallback_font
+	var total: float = float(UITheme.GAP_HAIR) * maxf(0.0, texts.size() - 1)
+	for t in texts:
+		total += font.get_string_size(String(t), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			font_size).x + STAT_PILL_PAD
+	return total
+
+static func fit_stat_font(texts: Array, width: float, start: int) -> int:
+	if width <= 0.0:
+		return start
+	var size: int = start
+	while size > UITheme.FONT_TINY and stat_row_width(texts, size) > width:
+		size -= 1
+	return size
 
 # How far the stat row hangs below the box: about half the pill, so it straddles
 # the border at every size the way the 10px badge did at 7px.
@@ -3195,6 +3257,7 @@ func clear_fx() -> void:
 # Show every body a ghost was standing in for. Idempotent, and safe against the
 # nodes having been rebuilt by a repaint mid-playback.
 func _reveal_hidden() -> void:
+	_free_slide_ghosts()
 	for part in _hidden_parts:
 		if is_instance_valid(part):
 			part.modulate.a = 1.0
@@ -3286,9 +3349,11 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	# the playback's and goes back to the run's at the same moment.
 	var gen: int = _fx_gen
 	if elapsed > 0.0:
+		# Only for THIS playback: a newer one has already revealed this one's bodies
+		# (clear_fx) and hidden its own, and must not have them shown under it.
 		_after(elapsed, func():
-			_reveal_hidden()
 			if gen == _fx_gen:
+				_reveal_hidden()
 				_end_hp_playback())
 	else:
 		_reveal_hidden()
@@ -3673,41 +3738,60 @@ func _spawn_arrival_flash(rect: Rect2) -> void:
 
 # Slide a copy of an enemy from where it stood to where it now stands, hiding the
 # real one until the whole playback is over (_reveal_hidden). `delay` is how far
-# into the playback this slide begins — the body stays hidden across every turn
-# in between, so the next turn's ghost picks up from an empty square instead of
-# sliding past a copy of itself.
+# into the playback this slide begins.
+#
+# ONE GHOST PER BODY FOR THE WHOLE PLAYBACK, visible from the first frame. It used
+# to be one ghost per turn, invisible until its own slide began and freed the
+# moment it landed — while the real body was hidden from the very start. So a body
+# that moved VANISHED for the whole strike beat before its slide, again between
+# turns, and for every later turn it stood still in: enemies blinked out exactly
+# when the player was watching them move. Now the ghost stands in the body's old
+# square from frame one, each turn's slide is queued onto that same ghost, and it
+# holds wherever it landed until the playback hands the board back.
 func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2,
 		delay: float = 0.0) -> void:
-	var entry: Dictionary = _stack_entry(instance)
-	var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
-	var ghost := TextureRect.new()
-	ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var portrait: Texture2D = GameLoop2.entry_image(entry) if not entry.is_empty() else null
-	if e != null and portrait != null:
-		ghost.texture = portrait
-		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	ghost.size = from_rect.size
-	_fx_layer.add_child(ghost)
-	ghost.position = from_rect.position
+	var ghost: TextureRect = _slide_ghosts.get(instance)
+	if ghost == null or not is_instance_valid(ghost):
+		var entry: Dictionary = _stack_entry(instance)
+		var e: GoalEnemyData = entry.get("enemy") if not entry.is_empty() else null
+		ghost = TextureRect.new()
+		ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var portrait: Texture2D = GameLoop2.entry_image(entry) if not entry.is_empty() else null
+		if e != null and portrait != null:
+			ghost.texture = portrait
+			ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ghost.size = from_rect.size
+		_fx_layer.add_child(ghost)
+		ghost.position = from_rect.position
+		_slide_ghosts[instance] = ghost
 
-	# Hide the settled body AND its badges while the ghosts travel, so the enemy
-	# isn't drawn in two places at once. They come back when the playback ends.
-	for part in [_holder_for_instance(instance), _badges_for_instance(instance)]:
-		if part != null:
-			part.modulate.a = 0.0
-			if not _hidden_parts.has(part):
-				_hidden_parts.append(part)
-
-	# Invisible until its own turn comes up, so the ghosts of earlier turns aren't
-	# all sitting on the board at once.
-	ghost.modulate.a = 0.0 if delay > 0.0 else 1.0
+		# Hide the settled body AND its badges while the ghost stands in for it, so
+		# the enemy isn't drawn in two places at once. They come back, and the ghost
+		# goes, when the playback ends (see animate_resolve). The WHOLE node on the
+		# board, frames included — hiding only the art left its tinted squares
+		# sitting at the destination before the ghost had set off.
+		var whole: Variant = _enemy_nodes.get(instance)
+		var body_part: Control = whole if whole != null and is_instance_valid(whole) \
+			else _holder_for_instance(instance)
+		for part in [body_part, _badges_for_instance(instance)]:
+			if part != null:
+				part.modulate.a = 0.0
+				if not _hidden_parts.has(part):
+					_hidden_parts.append(part)
 
 	var t := ghost.create_tween()
-	t.tween_interval(delay)
-	t.tween_callback(func(): ghost.modulate.a = 1.0)
+	t.tween_interval(maxf(delay, 0.0))
 	t.set_parallel(true)
 	t.tween_property(ghost, "position", to_rect.position, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	t.tween_property(ghost, "size", to_rect.size, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	t.chain().tween_callback(ghost.queue_free)
+
+# Free every slide ghost — on the same frame the real bodies are revealed, so
+# there is no frame with neither on screen.
+func _free_slide_ghosts() -> void:
+	for inst in _slide_ghosts:
+		var g: Variant = _slide_ghosts[inst]
+		if g != null and is_instance_valid(g):
+			g.queue_free()
+	_slide_ghosts.clear()

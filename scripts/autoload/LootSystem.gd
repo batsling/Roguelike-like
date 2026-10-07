@@ -857,7 +857,7 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		# HOW FAR ALONG an enemy-defeat trigger is, and what food is speeding it (§11).
 		var at: int = _carried_slot(entry)
 		var progress: Dictionary = LootPassives.kill_progress(GameState.loot_index_at_slot(at)) \
-			if at >= 0 else {}
+			if at >= 0 else LootPassives.entry_progress(entry)
 		if not progress.is_empty():
 			# CHARGES, not a kill count (docs/loot-passives.md §11): a defeated enemy
 			# is one charge and anything that charges loot is another.

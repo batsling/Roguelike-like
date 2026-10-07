@@ -474,36 +474,81 @@ func _bind_group(row: Control, paint: Callable, group: Array) -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_bind_hover(row, func(): light_bodies(all), func(): light_bodies([]))
 
-# ONE ROW FOR A GROUP ON THE REPORT STEP. Its box is wired to ONE body — the
-# group's target — exactly as that body's own row would have been, and a rebuild
-# after it resolves hands the row the next body.
+# ONE ROW FOR A GROUP ON THE REPORT STEP, WITH ONE BOX PER BODY. The row used to
+# carry a single box aimed at a "target" body plus a ×N chip, and nothing on screen
+# said WHICH of the identical bodies that box would hit. Now there are as many boxes
+# as bodies, in board order (front line first), and hovering a box lights exactly
+# its body on the board — so the player can see which one a tick takes down. The
+# rest of the row still lights the whole group.
 func _add_group_row(group: Array) -> void:
 	var first: Dictionary = group[0]
 	var e: GoalEnemyData = first["enemy"]
 	var at_the_end: bool = _settles_at_the_end(first)
-	var target: int = group_target(group)
-	var answered: int = 0
-	for entry in group:
-		if body_done(int(entry["instance"])):
-			answered += 1
-	var inst: int = target if target > 0 else int(first["instance"])
 	var tint: Color = UITheme.GOLD if at_the_end else UITheme.TEXT
-	var row := verify_row(_goal_row_text(GameLoop2.entry_for(inst)), tint, false, e, null,
-		inst, _finish_mark() if at_the_end else null)
+	# Instance 0: the row is the GROUP's, so it binds no single body. The portrait
+	# falls back to the sheet's art, which is the same picture — a groupable body
+	# carries no status and is never a boss (see `groupable`).
+	var row := verify_row(_goal_row_text(first), tint, false, e, null, 0,
+		_finish_mark() if at_the_end else null)
 	var line: HBoxContainer = (row["row"] as Control).get_child(0)
-	var cb: CheckBox = row["check"]
-	line.add_child(_count_chip(group.size(), answered, tint))
-	line.move_child(line.get_child(line.get_child_count() - 1), cb.get_index())
-	_bind_group(row["row"], row["paint"], group)
-	_add_row(row["row"])
-	fulfil_checks.append({"check": cb, "instance": inst, "group": group.map(
-		func(x): return int(x["instance"]))})
-	if target <= 0:
-		_lock_row(cb)
-	elif at_the_end:
-		_arm_goal_at_the_end(cb, target, e)
-	else:
-		_arm_goal_row(cb, target, e, true)
+	var main_cb: CheckBox = row["check"]
+	# The row's own box stands down; its words move to a Label, the way a counted
+	# row's do, and the per-body boxes go where the box was.
+	main_cb.visible = false
+	var words := Label.new()
+	words.text = main_cb.text
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	words.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	words.add_theme_color_override("font_color", tint)
+	line.add_child(words)
+	var boxes := HFlowContainer.new()
+	boxes.name = "GroupBoxes"
+	boxes.add_theme_constant_override("h_separation", UITheme.GAP_HAIR)
+	boxes.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
+	boxes.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	boxes.custom_minimum_size = Vector2(mini(group.size(), 4) * 28, 0)
+	line.add_child(boxes)
+	line.move_child(boxes, main_cb.get_index())
+	var ordered: Array = group.duplicate()
+	ordered.sort_custom(func(a, b):
+		var ca: int = int(a.get("col", 0))
+		var cb_: int = int(b.get("col", 0))
+		return ca < cb_ if ca != cb_ else int(a.get("row", 0)) < int(b.get("row", 0)))
+	var all: Array = group.map(func(x): return int(x["instance"]))
+	var frame: Control = row["row"]
+	var per_box: Array = []
+	for i in range(ordered.size()):
+		var entry: Dictionary = ordered[i]
+		var inst: int = int(entry["instance"])
+		var cb := CheckBox.new()
+		cb.name = "Body%d" % inst
+		cb.set_meta(&"instance", inst)
+		cb.tooltip_text = "%s #%d — hover to see which one on the board." % [
+			e.display_name if e != null else "Enemy", i + 1]
+		boxes.add_child(cb)
+		fulfil_checks.append({"check": cb, "instance": inst})
+		per_box.append([cb, inst])
+		if at_the_end:
+			_arm_goal_at_the_end(cb, inst, e)
+		else:
+			_arm_goal_row(cb, inst, e, true)
+	_bind_group(frame, row["paint"], group)
+	_add_row(frame)
+	# Each box's own hover, connected AFTER the row's so it wins on enter: the row
+	# lights the whole group, the box narrows that to its body. Leaving a box for
+	# the rest of the row hands the highlight back to the group.
+	for pair in per_box:
+		var cb: CheckBox = pair[0]
+		var inst: int = pair[1]
+		cb.mouse_entered.connect(func(): light_bodies([inst]))
+		cb.mouse_exited.connect(func():
+			if is_instance_valid(frame) and frame.get_global_rect().has_point(
+					frame.get_global_mouse_position()):
+				light_bodies(all)
+			else:
+				light_bodies([]))
 
 # ONE BODY'S ROWS: its goal, then the add-ons hanging off it. Called from both
 # sections, because which section it lands in is the only thing that differs.

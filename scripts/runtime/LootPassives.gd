@@ -407,6 +407,25 @@ static func kill_progress(index: int) -> Dictionary:
 	return {}
 
 
+# THE SAME NUMBER FOR A PIECE THAT IS NOT IN THE PACK — an offer on a drop modal,
+# a piece in a chest. There is no slot, so no neighbour can have lowered the
+# target: {have, need, ready: false, foods: []} off the piece's own trigger and its
+# own saved count, or {} when it has no charged trigger.
+static func entry_progress(entry: Dictionary) -> Dictionary:
+	var def = def_for(entry)
+	if def == null or not ("triggers" in def):
+		return {}
+	var triggers: Array = def.triggers
+	for i in range(triggers.size()):
+		var trig: Dictionary = triggers[i]
+		if String(trig.get("on", "")) != "enemy_killed" or int(trig.get("every", 0)) <= 1:
+			continue
+		var counts: Dictionary = entry.get("every_count", {})
+		var need: int = int(trig["every"])
+		var have: int = int(counts.get("enemy_killed#%d" % i, 0))
+		return {"have": mini(have, need), "need": need, "ready": false, "foods": []}
+	return {}
+
 # --- who is working on whom (the hover glow) -------------------------------------
 #
 # WHEN A PIECE IS HOVERED, THE PIECES IT WORKS ON LIGHT UP, and so do the pieces
