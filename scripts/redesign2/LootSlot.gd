@@ -107,7 +107,7 @@ const NAME_LINE := 15
 const USE_H := 18
 # The Use / Zap / Swing pill laid over a pack cell's art: its least width, and how
 # far it sits up off the cell's bottom edge (LootGrid._overlaid).
-const USE_W := 52
+const USE_W := 38
 const USE_INSET := 3
 const GAP := 3
 

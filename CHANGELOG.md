@@ -32,6 +32,12 @@ For how the project is laid out and how its systems fit together, see
     are laid over it (`LootGrid._overlaid`).
   - The chests on the haul screen show only the relics' pictures. Hover a picture
     for the details; the Take button names the one you've selected.
+  - A trinket offered on its own on the table no longer reads "Unidentified" with
+    a "Read Scroll now" button. It had no Preference, which the layout read as
+    unknown, and `use_verb` falls back to "Read Scroll" for any kind it doesn't
+    name. A known passive piece now shows a "Passive" chip, and only pieces that
+    can be spent get a "… now" button (`LootDropModal._spent_from_the_table`).
+    The pack's Use/Zap/Swing pills are smaller again (micro font, 38px).
   - Charged loot (Garlic and the other foods) shows `⚡have/need` in a readable
     size. It now does so anywhere the piece is drawn, not only in the pack
     (`LootPassives.entry_progress`).

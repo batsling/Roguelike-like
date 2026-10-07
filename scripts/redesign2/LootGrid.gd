@@ -1445,19 +1445,20 @@ static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Con
 	return stack
 
 # Cut a button's padding to a pill: every state's plate keeps its colours and
-# rule, with 2px above and below and 8 either side.
+# rule, no padding above and below, 5px either side, and the micro font.
 static func _tighten(btn: Button) -> void:
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		if not btn.has_theme_stylebox_override(state):
 			continue
 		var box: StyleBox = btn.get_theme_stylebox(state).duplicate()
-		box.content_margin_top = 1
-		box.content_margin_bottom = 1
-		box.content_margin_left = 8
-		box.content_margin_right = 8
+		box.content_margin_top = 0
+		box.content_margin_bottom = 0
+		box.content_margin_left = 5
+		box.content_margin_right = 5
 		if box is StyleBoxFlat:
-			(box as StyleBoxFlat).set_corner_radius_all(6)
+			(box as StyleBoxFlat).set_corner_radius_all(5)
 		btn.add_theme_stylebox_override(state, box)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 
 # "Passive" / "Copies >" where a spent piece's Use button would be — on a dark
 # plate, since it is laid over the art.
