@@ -43,6 +43,10 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Studio websites and press kits | `site` | Not measured yet. A press kit's History section is written by the studio for journalists. 6 of 8 tested had a site, and 3 a press page |
 | Reddit | `reddit` | Not measured yet. Developer AMAs and "I made…" launch posts, plus r/roguelikedev (mostly Sharing Saturday). Read through the Arctic Shift archive, which rate-limits hard (see Traps) |
 | Kickstarter campaigns | `kickstarter` | Not measured yet. A pitch says what it is like, often under an "Inspirations" heading. **Run it from your own computer**: Kickstarter refuses the cloud container |
+| Bluesky | `bluesky`: the studio's own account (matched by the Steam developer's name), read back through posts and replies, plus a post search | **Measured once, thin but real.** Over the 386 games with one connection or none: 63 lines, one strong find (Mumpitz Games naming four chart games for Sir, We Have an Orc Problem). Most lines are publishers plugging other games, and fan accounts that share a studio's name. Uses `api.bsky.app`: `public.api.bsky.app` answers 403 from the cloud container |
+| Substack | `substack`: Substack's own search, public posts read in full | **Nothing first-hand** over the same 386 games: every hit was a journalist or newsletter writing about the game |
+| Patreon | `patreon`: finds the campaign only | **Can't be read from here**: the API returns post text empty without a login and post pages answer 403. About 13 real developer pages among 124 name matches, listed in section 5 of the candidates doc |
+| Video captions | `transcripts`, **your computer only** | Not measured yet. Reads the media doc's videos for every chart game said, with a timestamped link |
 | Roguelike Radio | `radio` | A listening list, not a source: 180 episodes since 2011, many with one game's developer as the guest. 43 chart games are named in an episode's title or notes |
 
 **The degree-1 pass (October 2026)** went after the 335 games the map holds by a
@@ -110,6 +114,22 @@ answer. Old, well-known games whose rows lean on RogueBasin are worth a direct
 search for the developers' own words; the wiki infobox often isn't where they
 said it.
 
+**The wiki-sourced rows (October 2026).** 88 rows cite only RogueBasin or
+Wikipedia; the 63 not already discussed were searched for the developer's own
+words, in three batches. About two thirds now have one, most often in a place
+nobody had looked: the game's own README, changelog or manual (Angband's
+version history, Sil's changelog, Linley Henzell's 1997 manual, Larn's 1986
+README, IVAN's design notes in its CVS source), and four turned out to be code
+forks that want `Yes` under Dev/Series Relation. Two things are worth reusing.
+**RogueBasin's page history says who typed an infobox line** (the MediaWiki API,
+`api.php?action=query&prop=revisions&rvprop=user|timestamp|content&rvdir=newer`;
+WebFetch gets 403, curl works), and for ten rows it was the developer's own
+account, which makes the wiki line first-hand. **Wikipedia's citation doesn't
+always say what Wikipedia says**: Rogue Legacy's Spelunky and Isaac, Luck be a
+Landlord's Slay the Spire and Backpack Hero's two rows rest on articles that
+never quote the developer on it. Several 2014–16 developers said "Spelunky",
+which by then meant HD (the chart's `Spelunky`), not `Spelunky Classic`.
+
 Most of the 80 games with no connections at all are small 2025–26 releases whose
 developers never named an influence anywhere. Expect that, and don't lower the
 bar to fill the gap.
@@ -134,6 +154,10 @@ python3 tools/influence_research.py site      # studio websites + press kits -> 
 python3 tools/influence_research.py reddit    # developer posts on Reddit + r/roguelikedev -> .influence_work/reddit.md
 python3 tools/influence_research.py kickstarter  # campaign pages -> .influence_work/kickstarter.md; your machine only
 python3 tools/influence_research.py radio     # Roguelike Radio episodes -> section 3 of docs/influence-media.md
+python3 tools/influence_research.py bluesky   # studios' own Bluesky accounts + a post search -> .influence_work/bluesky.md
+python3 tools/influence_research.py substack  # Substack posts naming the game -> .influence_work/substack.md
+python3 tools/influence_research.py patreon   # which studios have a Patreon (text needs a login) -> .influence_work/patreon.md
+python3 tools/influence_research.py transcripts  # captions of the media doc's videos -> transcripts.md; your machine only
 ```
 
 **The four page scans** (`itch`, `site`, `reddit`, `kickstarter`) work alike.
@@ -201,7 +225,13 @@ an influence, the video is the Source, with a timestamp if possible
 of 512 games; the second (October 2026) finished the other 350, with `devs`
 run first so studio names sharpened the filter: 508 games searched, 275 with
 something to listen to (111 suspected connections to confirm, 164 games with
-few connections). The results are saved in `tools/influence_research_media.jsonl`
+few connections). Rewritten against the sheet after the owner's October 2026
+upload: 506 games qualify, all searched, 272 with something to listen to (108
+to confirm, 164 with few connections). Elewar, Keeper's Toll and Rogue Lords
+dropped out of section 1 because their rows have real links now, and Rogue
+Blight came in with two interviews with its developer. **Rewrite it with
+`devs` run first**: `devs.json` lives in `.influence_work/` and isn't saved,
+and without studio names the same cache drops to about 240 games. The results are saved in `tools/influence_research_media.jsonl`
 (13 MB, each result's text cut to 400 characters), because `.influence_work/`
 doesn't survive a container restart. To rewrite the doc after a filter change,
 or to search games added to the sheet since:
@@ -226,6 +256,43 @@ What it misses: interviews titled only with the developer's name ("Episode
 in English or not on YouTube or Apple Podcasts. The cues include
 Japanese/Korean/Chinese/Spanish/Polish/Russian words for "interview", but the
 searches are English.
+
+### Reading the interviews instead of listening: `transcripts` (your computer)
+
+`media` finds the interviews; `transcripts` reads them. For every unticked
+video in `docs/influence-media.md` it fetches the captions (manual English if
+there are any, else YouTube's auto-captions in the video's own language, so a
+German interview's game names survive), finds every chart game said in them,
+and writes `.influence_work/transcripts.md`: each game a video names, a link
+that starts the video at that moment (`&t=754`), and the words around it, with
+the moments near influence words ("inspired", "loved", "based on", "fans of")
+listed first. A pair already on the sheet is marked, because a clip of that
+moment is the proof it is missing. **It finds places to listen, not sources**:
+auto-captions mishear names, and naming a game isn't saying it shaped yours.
+The clip you cut from the moment is the proof, as before.
+
+**It only runs on your own computer.** From the cloud container YouTube answers
+"Sign in to confirm you're not a bot", and the caption mirrors (Invidious,
+Piped, youtubetranscript.com) are refused the same way.
+
+```bash
+pip install yt-dlp
+python3 tools/influence_research.py transcripts --limit 20        # try a few first
+python3 tools/influence_research.py transcripts --cookies-from-browser firefox  # if YouTube asks you to sign in
+python3 tools/influence_research.py transcripts --game "Rogue Blight"           # one game's videos
+```
+
+Transcripts are cached in `.influence_work/transcripts.jsonl` and a rerun
+resumes; `--write-only` rewrites the `.md` from it. `--include-heard` reads the
+ticked lines too.
+
+**Podcasts** need speech-to-text: `pip install faster-whisper`, then add
+`--podcasts`. It downloads each episode (Apple Podcasts via the iTunes lookup,
+Roguelike Radio from the post's mp3 link), transcribes it on your CPU and
+deletes the audio. The `small` model takes very roughly ten to twenty minutes
+per hour of audio, and section 1 alone is about 300 episodes, so point it at
+games with `--game` or cap it with `--limit`. `--model base` is faster and
+mishears more names.
 
 ### Developers who don't work in English: search in their language
 
@@ -553,6 +620,11 @@ naming the game was found.
   sheet's `Dungeon Crawl Stone Soup`. A name found only inside a longer chart
   name doesn't count either ("Crawl" in "Dungeon Crawl", "Omega" in "Omega
   Labyrinth"). Both rules apply to every scan.
+- **Apple Podcasts from the cloud container.** In October 2026 the iTunes
+  Search API answered 403 to every request from the container, and `media` sat
+  waiting on it. YouTube still answered. The two new games were searched on
+  YouTube alone and cached with an `err`, so a `media` run from your own
+  computer redoes them with podcasts included.
 - **Sites that block fetches.** Several interview sites return 403 to the web
   fetcher, and web.archive.org was unreachable from the cloud container. If the
   quote can't be read, it isn't a source yet. Leave it out and say why.

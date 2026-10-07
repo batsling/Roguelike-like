@@ -8,9 +8,9 @@ id = &"skul_the_hero_slayer"
 display_name = "Skul: The Hero Slayer"
 year = 2020
 type = 0
-games_influenced = Array[StringName]([&"realm_of_ink"])
-influence_sources = PackedStringArray("https://rogueliker.com/realm-of-ink-interview/")
-influence_relations = PackedStringArray("")
+games_influenced = Array[StringName]([&"realm_of_ink", &"dunjungle", &"elewar_fused_survivors"])
+influence_sources = PackedStringArray("https://rogueliker.com/realm-of-ink-interview/", "https://brubomb.itch.io/dunjungle/devlog/579365/dunjungle-demo-is-available", "https://www.youtube.com/watch?v=QZU3KnG_XTU")
+influence_relations = PackedStringArray("", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
