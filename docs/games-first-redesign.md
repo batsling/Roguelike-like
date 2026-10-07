@@ -643,16 +643,26 @@ the goal is the half that gets truncated.
 The popup is where the decision is actually made. It carries:
 
 - the **optimal path from that game to the Amulet**, drawn as the same arrowed
-  shortest-path ladder the 🗺 map window shows (§6), routed from the game being
-  considered rather than from where the player stands — plus the route badge in
-  words (`★ OPTIMAL — 4 steps left` / `↩ Detour +1` / `🏆 THE AMULET`);
-- the **game**: cover at full size, type and year, the **shields** it grants (§3.2),
-  what taking it does to the board's **pace** (§7.4), whether going back to it
-  pays a Dash (see below), and the player's own record in it;
-- the **enemy waiting there**: portrait, name, and the goal as it would actually
-  be played — the player's own status clauses included (§13) — plus which enemies
-  on the board have already been beaten *at this game*;
-- and the one thing that can be done about the card: **Travel**.
+  shortest-path map the 🗺 map window shows (§6), routed from the game being
+  considered rather than from where the player stands. It takes the popup's
+  whole right-hand side, top to buttons, with the popup's ✕ over its corner.
+  The route badge in words (`★ OPTIMAL — 4 steps left` / `↩ Detour +1`) and the
+  map's legend were removed to give it that height: the card on the offering
+  already says how far the game is from the Amulet, and every kind marker on the
+  map explains itself on hover;
+- the **game**: cover, type and year, the node's **kind** (`$ Shop` and so on — a
+  Shop node's "a shop stands here instead of an event", and its shelf once
+  visited, are that line's hover), its **connections** with the shops and
+  champions among them, the **shields** it grants (§3.2), what taking it does to
+  the board's **pace** (§7.4), whether going back to it pays a Dash (see below),
+  and the player's own **record** there — one line that opens the list of every
+  enemy beaten at this game, marking the ones approaching now;
+- **enemies approaching**: each as a row in the checklist's own format —
+  portrait, the goal as it would actually be played (the player's own status
+  clauses included, §13) and the name, with the board's ❤/⚔ — and a `?` row for
+  each body that is rolled only on arrival (§19.4);
+- and the one thing that can be done about the card: **Travel**, with **Rate this
+  game** beside it.
 
 **Bash and Transmute are not on this screen.** They were, on the same action row,
 and it was the wrong place for them twice over: this card is opened dozens of
@@ -2862,27 +2872,29 @@ stream — so the overlay dims only when the beat actually stops.
   that gap, so the cubic curves this shipped with were avoiding a collision that
   cannot occur and read as wobble rather than as a road; the head is what says
   the graph runs one way — in `RouteLadder`'s own colours —
-  blue for where you are, ember for the Amulet, purple for a pin — so the map on
+  blue for where you are, ember for the Amulet, cyan for a rift — so the map on
   the stream and the map on the streamer's screen are visibly one object.
 
-  **IT HONOURS THE PIN.** With a `route_waypoint` set, the road being walked is
-  the FORCED one, so that is what is drawn — `route_dag_via`, exactly as the two
-  in-game maps ask for it. Drawing the shortest path instead would show a route
-  the player has already decided against.
+  **IT IS THE SHORTEST ROAD**, `RunGraph.shortest_path_dag`, exactly as the two
+  in-game maps draw it. It used to honour a PIN — a game the player had insisted
+  on routing through (`route_waypoint`, `route_dag_via`) — and draw that forced
+  road instead. Pinning was removed: it was rarely worth its weight on the map
+  and in the Atlas, and the map is now only ever one answer.
 
-  **NODES ARE KEYED (depth, id), NEVER id**, in the payload and on the page, for
-  the reason `RouteLadder.node_key` gives: a forced route walks to the waypoint
-  and then walks on, and the way on is free to come straight back over the games
-  that led in, so one game legitimately holds two rungs at two depths. Keying by
-  id merges them and draws arrows into a step of the route that does not exist.
+  **NODES ARE KEYED (depth, id)**, in the payload and on the page, as
+  `RouteLadder.node_key` keys them. A shortest-path DAG holds each game once, so
+  depth and id agree; the depth key was for pinned routes, which could double
+  back through a game, and is kept because it costs nothing.
 
   **FULL SCREEN, LEFT TO RIGHT, AND OFF THE DEFAULT PAGE.** A ladder needs width
   per layer and height per step, which the 352 column has none of. It runs left
   to right — you on the left, the Amulet on the right, each layer's choices
   stacked — because DISTANCE BELONGS ON THE LONG AXIS: a 14-layer route gets
-  137px per layer across 1920 and 77px down 1080. The in-game `RunMapModal` runs
-  the other way and should, being a tall modal in a 16:9 window; this is a 16:9
-  source and reads as the road strip does. Past 14 layers the payload trims the
+  137px per layer across 1920 and 77px down 1080. The in-game maps used to run
+  the other way, on the grounds that a modal is tall; they run this way too since
+  the map redesign (`RouteLadder.gd`), because their widest LAYER — a median of 7 games, 14 at
+  the 90th percentile — is what a row of name boxes could not fit across a 16:9
+  window, and a column of short boxes stacks it down the height instead. Past 14 layers the payload trims the
   far end and the page says how much it dropped.
 
   **EVERY DIMENSION IS A FRACTION OF ONE SOLVED NUMBER**, the rung's width, which

@@ -292,7 +292,11 @@ func test_beating_one_enemy_moves_only_that_games_number() -> void:
 		"a repeat clear doesn't count as another enemy")
 
 # ---------------------------------------------------------------------------
-# "Beatable:" on the offering — proof you've cleared this pair before
+# Your record at a game, on the card it opens
+#
+# The popup's "⚔ Beaten N times · M enemies" line opens the list of every enemy
+# you have beaten there, and marks the ones approaching now. (It replaced a row
+# of "Beatable:" pips on the card, which said the same thing at 20px.)
 # ---------------------------------------------------------------------------
 
 func _offering() -> Node:
@@ -301,15 +305,34 @@ func _offering() -> Node:
 	ui.choose_start(0)
 	return ui
 
-func test_no_beatable_row_without_a_record() -> void:
+# The popup an offered card opens, on that choice. Opened directly rather than
+# through `open_choice`, which only answers while the offering is up — and this
+# run stands on its opening game.
+func _card(ui: Node, choice: Dictionary) -> GameChoiceModal:
+	var modal := GameChoiceModal.open(ui, 0, choice, {})
+	autofree(modal._layer)
+	return modal
+
+func _text_of(node: Node) -> String:
+	var out: String = ""
+	if node is Label:
+		out += (node as Label).text + "\n"
+	elif node is Button:
+		out += (node as Button).text + "\n"
+	for c in node.get_children():
+		out += _text_of(c)
+	return out
+
+func test_no_record_button_without_a_record() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
 		pending("the offering came up empty on this run")
 		return
-	assert_null(ui._beatable_row(ui._choices[0]),
-		"a card you've never cleared anything at stays clean")
+	var modal = _card(ui, ui._choices[0])
+	assert_null(modal.find_child("BeatenHere", true, false),
+		"a game you've never beaten anything at has no list to open")
 
-func test_the_card_enemy_shows_when_beaten_here_before() -> void:
+func test_the_card_enemy_is_marked_approaching_when_beaten_here_before() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
 		pending("the offering came up empty on this run")
@@ -321,8 +344,17 @@ func test_the_card_enemy_shows_when_beaten_here_before() -> void:
 		pending("the run did not reach a game to ask about")
 		return
 	GameStats.record_enemy_beaten(game.id, enemy.id)
-	assert_not_null(ui._beatable_row(choice),
-		"having beaten this enemy here before is worth saying")
+	var modal = _card(ui, ui._choices[0])
+	var btn: Button = modal.find_child("BeatenHere", true, false)
+	assert_not_null(btn, "having beaten an enemy here is a list worth opening")
+	if btn == null:
+		return
+	assert_true(btn.text.contains("1 enemy"), "the line counts it: %s" % btn.text)
+	var view: Control = modal.open_beaten(game)
+	var text: String = _text_of(view)
+	assert_true(text.contains(enemy.display_name), "the list names it")
+	assert_true(text.contains("Approaching"),
+		"and marks it as the one walking on with this game: %s" % text)
 
 # The record is per pair, so beating an enemy somewhere else proves nothing here.
 func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
@@ -336,12 +368,9 @@ func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
 		pending("the roll put no body on the board to ask about")
 		return
 	GameStats.record_enemy_beaten(&"some_other_game", enemy.id)
-	assert_null(ui._beatable_row(choice),
+	var modal = _card(ui, ui._choices[0])
+	assert_null(modal.find_child("BeatenHere", true, false),
 		"a clear at a different game says nothing about this one")
-
-func test_a_card_with_no_game_has_no_row() -> void:
-	var ui = _offering()
-	assert_null(ui._beatable_row({}), "an empty choice has nothing to show")
 
 # Report the game as completed AND tick the row for the body that walked on with
 # it. This is what a bare `report(true)` used to do in one flag, back when that

@@ -190,13 +190,12 @@ static func kind_tip(kind: int) -> String:
 static var _adj_cache: Dictionary = {}      # StringName -> Array[StringName]
 static var _adj_cache_built: bool = false
 static var _bfs_cache: Dictionary = {}       # StringName -> Dictionary (dist map)
-# The assembled route DAGs, keyed "start>amulet" and "start>waypoint>amulet".
+# The assembled route DAGs, keyed "start>amulet".
 # See shortest_path_dag for why these exist and what a caller may do with what
 # comes out of them.
 static var _dag_cache: Dictionary = {}       # String -> Dictionary (the DAG)
-static var _route_dag_cache: Dictionary = {} # String -> Dictionary (the DAG)
-# Bound on each of the two above. A run asks for a few dozen distinct routes
-# (the offering re-previews every slot on every hop, and the pin moves), and a
+# Bound on the cache above. A run asks for a few dozen distinct routes
+# (the offering re-previews every slot on every hop), and a
 # DAG on the full catalog is layers plus a few hundred edge Dictionaries — so
 # left unbounded these would grow all session. Over the cap they are simply
 # emptied rather than evicted one at a time: the next few calls rebuild, which
@@ -267,7 +266,6 @@ static func invalidate_cache() -> void:
 	_adj_cache_built = false
 	_bfs_cache.clear()
 	_dag_cache.clear()
-	_route_dag_cache.clear()
 	_off_map.clear()
 	_isolated.clear()
 	_rift_games.clear()
@@ -1090,11 +1088,9 @@ static func layer_widths(start_id: StringName, amulet_id: StringName) -> Array:
 # single edge — so a route from A to B is the same route all session, and both
 # caches are wiped together by invalidate_cache() when the filter changes.
 #
-# Read-only matters because five callers a click share one Dictionary now. The
-# one place that used to write into the result is route_dag_via, which set
-# `waypoint_depth` on it; it builds a wrapper instead (see below). Everything
-# else — AtlasView's trail, RouteLadder's layout, the modal's label and legend —
-# only reads.
+# Read-only matters because five callers a click share one Dictionary now:
+# AtlasView's trail, RouteLadder's layout, the modal's label and legend all only
+# read it.
 static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var key: String = "%s>%s" % [start_id, amulet_id]
 	if _dag_cache.has(key):
@@ -1317,7 +1313,7 @@ static func _kind_bag(total: int, placed: Dictionary, remaining: int,
 static func _build_shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var d_from_start := bfs_distances(start_id)
 	if not d_from_start.has(amulet_id):
-		return {"layers": [], "edges": [], "waypoint_depth": -1}
+		return {"layers": [], "edges": []}
 	var amulet_dist: int = d_from_start[amulet_id]
 	var d_to_amulet := bfs_distances(amulet_id)
 	var layers: Array = []
@@ -1352,106 +1348,17 @@ static func _build_shortest_path_dag(start_id: StringName, amulet_id: StringName
 			for b in neighbors(a):
 				if next.has(b):
 					# The depths travel with the edge. Within one DAG they're
-					# redundant (a game sits at exactly one depth), but a route
-					# forced through a waypoint is two of these glued together and
-					# can hold the same game at two depths — see route_dag_via.
+					# redundant (a game sits at exactly one depth), but the
+					# ladder places by them (RouteLadder.node_key), so a route
+					# spliced together by hand keeps working.
 					edges.append({"from": a, "to": b, "from_depth": d, "to_depth": d + 1})
-	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
+	return {"layers": layers, "edges": edges}
 
-# ---------------------------------------------------------------------------
-# Routing through a game you INSIST on visiting
-# ---------------------------------------------------------------------------
-
-# The optimal route from `start_id` to `amulet_id` that is forced through
-# `waypoint_id`: the shortest way to the waypoint, then the shortest way on to
-# the Amulet, glued at the waypoint. Same shape as shortest_path_dag, plus
-# `waypoint_depth` — which layer the join sits on.
-#
-# THE RETURNING PATH is the whole difficulty here. The road out of a waypoint is
-# free to walk straight back over the games that led into it, so a forced route
-# is not a DAG over game ids at all: the same game can legitimately appear twice,
-# at two different depths, once on the way there and once on the way back. That's
-# why the layers are kept as they fall and every edge carries its endpoints'
-# DEPTHS — a consumer that keys nodes by id alone will collapse the two visits
-# into one and draw a road that doesn't exist (see RouteLadder.node_key).
-#
-# An empty `waypoint_id`, or one you're already standing on, is not a detour at
-# all and gives the ordinary shortest-path DAG. A waypoint that can't be reached,
-# or that can't reach the Amulet, gives an empty route.
-#
-# MEMOIZED and SHARED, on the same terms as shortest_path_dag above — the result
-# is read-only. It gets its own cache rather than riding that one because the
-# pinned case is two DAGs glued with every layer and edge copied, which is the
-# expensive half and the half a pin re-asks for on every repaint.
-static func route_dag_via(start_id: StringName, waypoint_id: StringName,
-		amulet_id: StringName) -> Dictionary:
-	var key: String = "%s>%s>%s" % [start_id, waypoint_id, amulet_id]
-	if _route_dag_cache.has(key):
-		return _route_dag_cache[key]
-	var built: Dictionary = _build_route_dag_via(start_id, waypoint_id, amulet_id)
-	if _route_dag_cache.size() >= DAG_CACHE_MAX:
-		_route_dag_cache.clear()
-	_route_dag_cache[key] = built
-	return built
-
-
-static func _build_route_dag_via(start_id: StringName, waypoint_id: StringName,
-		amulet_id: StringName) -> Dictionary:
-	if waypoint_id == &"" or waypoint_id == start_id:
-		var plain: Dictionary = shortest_path_dag(start_id, amulet_id)
-		# A WRAPPER, not the thing itself. This used to write waypoint_depth
-		# straight into `plain` and hand it back, which was harmless while every
-		# call rebuilt the DAG from scratch and is poison now that shortest_path_dag
-		# hands out one shared Dictionary: the write would stick to the cached copy
-		# and the next unpinned caller would read a waypoint_depth of 0. The arrays
-		# are still shared — they are the expensive part and nobody mutates them.
-		return {
-			"layers": plain.get("layers", []),
-			"edges": plain.get("edges", []),
-			"waypoint_depth": 0 if waypoint_id == start_id else -1,
-		}
-	var leg_in: Dictionary = shortest_path_dag(start_id, waypoint_id)
-	var leg_out: Dictionary = shortest_path_dag(waypoint_id, amulet_id)
-	var in_layers: Array = leg_in.get("layers", [])
-	var out_layers: Array = leg_out.get("layers", [])
-	if in_layers.is_empty() or out_layers.is_empty():
-		return {"layers": [], "edges": [], "waypoint_depth": -1}
-
-	var layers: Array = []
-	for l in in_layers:
-		layers.append((l as Array).duplicate())
-	# The join layer belongs to both legs and is only added once — it holds the
-	# waypoint alone, since it is the last layer of one shortest-path DAG and the
-	# first of the other.
-	var offset: int = in_layers.size() - 1
-	for i in range(1, out_layers.size()):
-		layers.append((out_layers[i] as Array).duplicate())
-
-	var edges: Array = []
-	for e in leg_in.get("edges", []):
-		edges.append(e.duplicate())
-	for e in leg_out.get("edges", []):
-		edges.append({
-			"from": e["from"], "to": e["to"],
-			"from_depth": int(e["from_depth"]) + offset,
-			"to_depth": int(e["to_depth"]) + offset,
-		})
-	return {"layers": layers, "edges": edges, "waypoint_depth": offset}
-
-# How many hops the forced route costs: to the waypoint, then on to the Amulet.
-# -1 when either leg has no route.
-static func route_length_via(start_id: StringName, waypoint_id: StringName,
-		amulet_id: StringName) -> int:
-	if waypoint_id == &"" or waypoint_id == start_id:
-		var direct: Dictionary = bfs_distances(start_id)
-		return int(direct[amulet_id]) if direct.has(amulet_id) else -1
-	var to_wp: Dictionary = bfs_distances(start_id)
-	if not to_wp.has(waypoint_id):
-		return -1
-	var from_wp: Dictionary = bfs_distances(waypoint_id)
-	if not from_wp.has(amulet_id):
-		return -1
-	return int(to_wp[waypoint_id]) + int(from_wp[amulet_id])
+# The number of hops from `start_id` to the Amulet on the shortest road, or -1
+# when there is no road.
+static func route_length(start_id: StringName, amulet_id: StringName) -> int:
+	var direct: Dictionary = bfs_distances(start_id)
+	return int(direct[amulet_id]) if direct.has(amulet_id) else -1
 
 # ---------------------------------------------------------------------------
 # Run setup — pick an amulet, then the top-3 starts (one per game type

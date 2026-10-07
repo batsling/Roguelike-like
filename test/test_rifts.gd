@@ -661,9 +661,23 @@ func test_a_key_fills_the_empty_slots_with_rift_cards() -> void:
 		assert_false(RunGraph.is_rift_game(StringName(c["slot"])), "not laid until it is opened")
 
 # A Scramble deals the rift cards again, game and destination both.
+# ON CLEAN RIFT TALLIES. The rotation hands out the least-seen rift game first
+# (GameStats.rift_count, RunGraph._rift_pool_order), and those tallies are LIFETIME
+# stats in user:// that every earlier test's run adds to. Whenever they left ONE
+# game below all the others, every table dealt that game first and this failed —
+# correctly, by the rule, and for a reason that had nothing to do with scrambling.
+# So the tallies are emptied for the test and put back after it.
 func test_a_scramble_redeals_the_rift_cards() -> void:
+	var saved_stats: Dictionary = GameStats.stats.duplicate(true)
+	var saved_last: Array = GameStats.last_rifts.duplicate()
+	for id in GameStats.stats:
+		if GameStats.stats[id] is Dictionary:
+			(GameStats.stats[id] as Dictionary).erase("rifts")
+	GameStats.last_rifts = []
 	var got: Dictionary = _at_a_quiet_game(1)
 	if got.is_empty():
+		GameStats.stats = saved_stats
+		GameStats.last_rifts = saved_last
 		pending("no game on this map has an empty slot")
 		return
 	var ui = got["ui"]
@@ -673,6 +687,8 @@ func test_a_scramble_redeals_the_rift_cards() -> void:
 			seen[String(c["slot"])] = true
 		GameState.scramble = 1
 		ui.scramble()
+	GameStats.stats = saved_stats
+	GameStats.last_rifts = saved_last
 	assert_gt(seen.size(), 1, "six tables did not all deal the same rift game")
 
 # Picking a rift card spends the key and opens a ONE-WAY rift: the rift game hangs

@@ -14,12 +14,16 @@ extends Control
 # — the box art and the name, with the Amulet flagged — and everything that was
 # crowded around it moves in here, with room to say it properly:
 #
-#   • the OPTIMAL PATH, drawn as the real route ladder (RouteLadder) — the same
+#   • the OPTIMAL PATH, drawn as the real route map (RouteLadder) — the same
 #     arrowed graph the 🗺 map window shows, for the road as it would stand if
-#     you took this game;
-#   • the GAME — its cover, its type and year, the Temporary Shields it grants,
-#     the pace it puts the board on, whether you've beaten it before;
-#   • the ENEMY waiting there — portrait, name and the goal you'd be playing for;
+#     you took this game. It takes the whole right-hand side, top to buttons,
+#     with the popup's ✕ over its corner;
+#   • the GAME — its cover, type and year, the node's kind, its connections and
+#     the shops and champions among them, the Temporary Shields it grants, the
+#     pace it puts the board on, and your record there (which opens the list of
+#     every enemy you have beaten at it);
+#   • the ENEMIES APPROACHING — as the checklist will list them once you commit:
+#     portrait, goal and name, ❤/⚔, and a "?" row per body rolled on arrival;
 #   • the SOURCE behind the connection you'd be walking (_build_source_block) —
 #     who inspired whom, and the evidence the sheet records for it;
 #   • and the one thing you can DO about it: travel.
@@ -65,8 +69,8 @@ const COVER := Vector2(112, 150)
 # whatever the row has — but the floor the game column is sized to hold, so the
 # pair never has to wrap at the modal's narrowest.
 const SOURCE_MIN_W := 158.0
-# The ladder's own column. Wide enough for a rung (RouteLadder.BOX.x = 150) plus
-# its padding, so a single-file route never has to shrink to fit.
+# The map's own column, and its floor: room for a short route's boxes and their
+# names before the map has to scroll.
 const LADDER_MIN_W := 360.0
 const LADDER_MIN_H := 300.0
 
@@ -77,17 +81,18 @@ const TELEPORT := Color(0.61, 0.35, 0.71)
 
 var _index: int = -1
 var _choice: Dictionary = {}
-var _notes: Dictionary = {}          # {route, pace, shields, beatable} from the overworld
+var _notes: Dictionary = {}          # {route, pace, shields, kind, …} from the overworld
 var _layer: CanvasLayer = null
 var _answered: bool = false
 var _ladder_holder: Control = null
 var _ladder_room: ScrollContainer = null
 var _zoom: float = 1.0
-var _auto_zoomed: bool = false
 # The rung's card, when one is open. One at a time — it is a detour from the
 # decision, not a second decision.
 var _node_card: PanelContainer = null
 var _node_card_body: VBoxContainer = null
+# The NODE this card stands on when it is a Shop node, read by the kind line.
+var _shop_node: StringName = &""
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -134,7 +139,6 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	margin.add_child(root)
 
-	root.add_child(_build_header(game, accent))
 
 	# HOW YOU GOT HERE, on an arrival only.
 	#
@@ -152,27 +156,16 @@ func _build() -> void:
 	if bool(_notes.get("arrival", false)):
 		root.add_child(_build_arrival_banner(String(_notes.get("arrival_note", ""))))
 
-	# There WAS an event row here — "✦ An event fires here once the game is
-	# played." It was the last survivor of the era when placement was hashed onto
-	# particular nodes and routing towards an event was a decision. Every game
-	# pays one now, so the line was on all but two kinds of card and said nothing
-	# on any of them: a fact that is always true is not information.
-	#
-	# The shop, if this is a Shop node (§14, §19.1), is the row that earned its
-	# place — and it is also the row that says an event is NOT coming, because a
-	# Shop node's event is the shop (§14.4). One step further than a badge, too: a
-	# shop the player has ALREADY been to lists what is still on its shelf,
-	# because the decision "is it worth walking back there" is unanswerable
-	# without knowing what is left and what it costs. This is the only place in
-	# the run that question gets asked.
+	# A SHOP NODE (§14, §19.1) is said in the game's facts as its kind — "$ Shop",
+	# like every other kind — with what the banner that used to sit here said (a
+	# shop stands here INSTEAD of an event, §14.4, and what is left on a visited
+	# shelf) in that line's hover. The banner cost the map two rows on every shop.
 	#
 	# Asked of the NODE (the slot), not the game on it (§19.2).
 	var shop_node: StringName = StringName(_choice.get("slot", &""))
 	if shop_node == &"" and game != null:
 		shop_node = game.id
-	var shop_row: Control = _build_shop_row(shop_node)
-	if shop_row != null:
-		root.add_child(shop_row)
+	_shop_node = shop_node
 
 	# The body, in two columns: the GAME on the left (what you'd be playing and
 	# what it costs), the ROUTE on the right (where it leaves you). They are the
@@ -181,52 +174,24 @@ func _build() -> void:
 	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(body)
-	body.add_child(_build_game_column(game, accent))
+	# The LEFT side is the title over the game column; the map on the right runs
+	# the popup's full height, with the ✕ in its corner.
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_child(_build_header(game, accent))
+	var game_col: Control = _build_game_column(game, accent)
+	left.add_child(game_col)
+	left.size_flags_stretch_ratio = game_col.size_flags_stretch_ratio
+	left.custom_minimum_size.x = game_col.custom_minimum_size.x
+	body.add_child(left)
 	body.add_child(_build_route_column())
 
 	root.add_child(_build_actions(game, accent))
-	# The ladder is built at zoom 1 and only measured once Godot has laid the
-	# panel out; until then the scroll area reports nothing to fit it against.
+	# The map is sized to its box, which has no size until Godot has laid the
+	# panel out (_settle).
 	_settle.call_deferred()
-
-# Null off a Shop node, so an ordinary card stays clean. On one: the headline, then the
-# remaining shelf as one priced line per item — but only once the player has
-# stood in the shop. An unvisited shop says a shop is here and stops, because
-# opening a card must not spoil a roll the player hasn't earned the sight of.
-#
-# Both the wording and the stock come from ShopSystem, which is also what the
-# card's flag tooltip reads, so the two cannot disagree.
-func _build_shop_row(node_id: StringName) -> Control:
-	if not ShopSystem.is_shop(node_id):
-		return null
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-
-	var head := Label.new()
-	head.text = "🛒  %s" % ShopSystem.headline(node_id)
-	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	head.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
-	col.add_child(head)
-
-	# The trade, said once where the routing decision is made: a shop stands here
-	# INSTEAD of an event (§14.4).
-	var instead := Label.new()
-	instead.text = "      No event fires here — the shop is what happens instead."
-	instead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	instead.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	instead.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	col.add_child(instead)
-
-	for line in ShopSystem.stock_lines(node_id):
-		var row := Label.new()
-		row.text = "      • %s" % line
-		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		row.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		col.add_child(row)
-	return col
-
 
 # --- what this game OPENS ONTO ---------------------------------------------
 
@@ -240,9 +205,9 @@ func _build_shop_row(node_id: StringName) -> Control:
 # places you can actually go next. Destroyed games are dropped for the same
 # reason — a bashed neighbour is a door that no longer opens.
 #
-# Returns {"total": int, "events": int, "shops": int}.
+# Returns {"total": int, "events": int, "shops": int, "champions": int}.
 static func connection_counts(game_id: StringName) -> Dictionary:
-	var out := {"total": 0, "events": 0, "shops": 0}
+	var out := {"total": 0, "events": 0, "shops": 0, "champions": 0}
 	if game_id == &"":
 		return out
 	for n in RunGraph.neighbors(game_id):
@@ -257,6 +222,8 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 		# A Shop node is not one of them. A shop is what happens there, INSTEAD of
 		# an event (§14.4), so counting it under both headings would promise the
 		# same neighbour twice and overstate the events on offer.
+		if GameState.node_kind(n) == RunGraph.NodeKind.CHAMPION:
+			out["champions"] += 1
 		if ShopSystem.is_shop(n):
 			out["shops"] += 1
 		elif not GameState.event_nodes_fired.has(n):
@@ -264,18 +231,28 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 	return out
 
 # The counts as one line, or "" when the game is a dead end with nothing to say.
+#
+# TWO LINES, because one was misread: "2 connections · 1 event · 🛒 1 shop" was
+# taken for THIS node's own shop. Now the count stands alone, and under it, in
+# smaller print, the neighbours worth routing for — "$ 1 nearby shop · !! 1 nearby
+# champion", in the marks the map's markers wear — or nothing when there are none.
 static func connection_text(counts: Dictionary) -> String:
 	var total: int = int(counts.get("total", 0))
 	if total <= 0:
 		return "⛓  No connections — a dead end"
-	var parts: Array = ["⛓  %d connection%s" % [total, "" if total == 1 else "s"]]
-	var events: int = int(counts.get("events", 0))
+	return "⛓  %d connection%s" % [total, "" if total == 1 else "s"]
+
+static func nearby_text(counts: Dictionary) -> String:
+	var parts: Array = []
 	var shops: int = int(counts.get("shops", 0))
-	if events > 0:
-		parts.append("✦ %d event%s" % [events, "" if events == 1 else "s"])
+	var champs: int = int(counts.get("champions", 0))
 	if shops > 0:
-		parts.append("🛒 %d shop%s" % [shops, "" if shops == 1 else "s"])
-	return "  ·  ".join(parts)
+		parts.append("%s %d nearby shop%s" % [RunGraph.kind_mark(RunGraph.NodeKind.SHOP),
+			shops, "" if shops == 1 else "s"])
+	if champs > 0:
+		parts.append("%s %d nearby champion%s" % [RunGraph.kind_mark(RunGraph.NodeKind.CHAMPION),
+			champs, "" if champs == 1 else "s"])
+	return "  ·  ".join(PackedStringArray(parts))
 
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var name_text: String = game.display_name if game != null else "this game"
@@ -364,16 +341,19 @@ func _build_header(game: GameData, accent: Color) -> Control:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", accent)
 	row.add_child(title)
+	return row
 
+# The popup's ✕. Not in the title row any more: the title sits over the left
+# column only, and the ✕ rides the map's corner (_build_route_column).
+func _close_button() -> Button:
 	var close := HoverButton.new()
+	close.name = "Close"
 	close.text = "✕"
 	close.tooltip_text = ("Onto the board — you are already here." if bool(_notes.get("arrival", false))
 		else "Back to the offering — nothing is chosen.")
-	close.custom_minimum_size = Vector2(38, 0)
-	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	close.custom_minimum_size = Vector2(38, 38)
 	close.pressed.connect(_close)
-	row.add_child(close)
-	return row
+	return close
 
 # --- the game column -------------------------------------------------------
 
@@ -386,7 +366,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# ladder needs about a third of the panel and the goal text is the thing that
 	# suffers when it doesn't get the rest.
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_stretch_ratio = 0.62
+	scroll.size_flags_stretch_ratio = 0.5
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(COVER.x + SOURCE_MIN_W + 12.0, 0)
@@ -415,21 +395,47 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 	facts.add_child(chip)
 
+	# THE NODE'S KIND (§19.8), every kind, in the mark and colour the map's marker
+	# on the path wears — so "$ Shop" here and "$" on the road are one fact. On a
+	# Shop node the hover says what the banner over the popup used to: a shop
+	# stands here INSTEAD of an event (§14.4), and what is left on a visited shelf.
+	var kind: int = int(_notes.get("kind", -1))
+	if kind >= 0:
+		var tip: String = RunGraph.kind_tip(kind)
+		if _shop_node != &"" and ShopSystem.is_shop(_shop_node):
+			var lines: Array = [ShopSystem.headline(_shop_node),
+				"No event fires here — the shop is what happens instead."]
+			for line in ShopSystem.stock_lines(_shop_node):
+				lines.append("• %s" % line)
+			tip = "\n".join(PackedStringArray(lines))
+		facts.add_child(_fact_line("%s  %s" % [RunGraph.kind_mark(kind), RunGraph.kind_label(kind)],
+			UITheme.kind_color(kind), tip))
+
 	# "How many doors does this open" is a routing fact, and routing is what the
 	# popup is opened to decide — so it heads the list.
 	var counts: Dictionary = connection_counts(StringName(_choice.get("slot", &"")))
 	# A RIFT KEY card's game is not on the map until the key is spent, so the graph
 	# has no doors to count for it; it will have exactly one, its destination.
 	if _key_dest() != &"":
-		counts = {"total": 1, "events": 0, "shops": 0}
+		counts = {"total": 1, "events": 0, "shops": 0, "champions": 0}
 	var conn := Label.new()
 	conn.text = connection_text(counts)
 	conn.tooltip_text = connection_tip(game, counts)
+	conn.mouse_filter = Control.MOUSE_FILTER_STOP
 	conn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	conn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	conn.add_theme_color_override("font_color",
 		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
 	facts.add_child(conn)
+	var near: String = nearby_text(counts)
+	if near != "":
+		var nearby := Label.new()
+		nearby.name = "Nearby"
+		nearby.text = "    " + near
+		nearby.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nearby.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		nearby.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		facts.add_child(nearby)
 
 	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
 	# else on the card already speaks for the REPLACEMENT — its cover, its type,
@@ -450,8 +456,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# the run grants none of them: nothing is being committed to yet.
 	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
 	if shields > 0:
-		facts.add_child(_fact_line("%s  %s" % ["◆".repeat(shields),
-			GameState.temp_shields_text(shields)],
+		facts.add_child(_icon_fact(UITheme.SHIELD_ART, "Gain +%s" % GameState.temp_shields_text(shields),
 			Overworld2.SHIELD_BLUE,
 			("Selecting %s grants %s. Each one stops a single hit outright, however "
 				+ "big, and whatever is left expires when you report the game.") % [
@@ -483,15 +488,13 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 			Overworld2.DASH_BLUE,
 			"You have played %s already this run — go back and beat it for a Dash charge." % game.display_name))
 
-	var beaten: int = GameStats.beaten_count(game.id)
-	if beaten > 0:
-		facts.add_child(_fact_line("⚔ Beaten %d time%s" % [beaten, "" if beaten == 1 else "s"],
-			UITheme.GOLD, "Your lifetime record in %s." % game.display_name))
+	var record: Control = _record_line(game)
+	if record != null:
+		facts.add_child(record)
 
 	# ★ RATE, on the game you are looking at. It used to be a button on the
 	# offering for the game you had just LEFT, which put a score for one game
 	# above a row of three others; here it scores the game whose cover is beside it.
-	facts.add_child(_rate_button(game))
 
 	if game.cover_image != null:
 		var art := TextureRect.new()
@@ -693,11 +696,11 @@ const PROOF_JOIN := "---"
 # further (never up: blowing a line of text past its own size only blurs it), so
 # text stays readable; a tall one shows its top this far and is read in full by
 # clicking.
-const PROOF_THUMB_H := 260.0
+const PROOF_THUMB_H := 130.0
 # How much more of the popup's width the left column takes when it carries a
 # proof. Screenshots run 550 (a tweet) to 1600 (a Discord window) wide, and at
 # the 0.62 the column has without one, a tweet's text came out too small to read.
-const PROOF_COLUMN_RATIO := 0.85
+const PROOF_COLUMN_RATIO := 0.5
 
 static func proof_path(from_id: StringName, to_id: StringName) -> String:
 	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_EXT]
@@ -932,10 +935,11 @@ func _build_enemy_block(game: GameData) -> Control:
 	var enemy: GoalEnemyData = _choice.get("enemy")
 
 	var head := Label.new()
-	head.text = "☠  THE BOSS HERE" if bool(_choice.get("boss", false)) else "WHAT'S WAITING THERE"
+	head.text = "☠  THE BOSS HERE" if bool(_choice.get("boss", false)) else "ENEMIES APPROACHING"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
+	head.visible = head.text != ""
 
 	# A card opened to MOVE the run rather than to play a game (the stay-or-return
 	# question, §10) has no enemy behind it — none is rolled until a game is
@@ -943,6 +947,7 @@ func _build_enemy_block(game: GameData) -> Control:
 	# happened.
 	if _notes.has("move_note"):
 		head.text = "WHAT THIS DOES"
+		head.visible = true
 		var note := Label.new()
 		note.text = String(_notes["move_note"])
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -978,84 +983,33 @@ func _build_enemy_block(game: GameData) -> Control:
 		_add_bodies_line(box)
 		return box
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-	box.add_child(row)
-	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
-		# The half of the popup the cover just gave its height back to: the enemy is
-		# the thing you cannot see from the offering, so it gets the bigger portrait.
-		art.custom_minimum_size = Vector2(96, 96)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		UITheme.apply_crisp(art, enemy.image)
-		row.add_child(art)
-
-	var name_lbl := Label.new()
-	name_lbl.text = enemy.display_name
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-	name_lbl.add_theme_color_override("font_color",
-		UITheme.DANGER if bool(_choice.get("boss", false)) else UITheme.TEXT)
-	row.add_child(name_lbl)
-
-	# THE GOAL'S OWN SENTENCE, and nothing bolted onto it. What a status adds is
-	# drawn under it as its own row (§13, UITheme.addon_row): the goal line used to
-	# run "Defeat 10+ bugs and you must beat 2 bosses without getting hit or instead
-	# skip or trash 3 items/upgrades" in one colour, which is three different things
-	# joined by two conjunctions, and says nothing about which of them makes the
-	# goal harder.
+	# THE CHECKLIST'S OWN ROW (ReportChecklist.verify_row): the portrait chip and
+	# "goal — enemy" on one bordered line, so the enemy reads here exactly as it
+	# will on the list beside the board once you commit, with the board's ❤/⚔
+	# badges at its end. The rest of what the old block spelled out — type and
+	# difficulty — is the row's hover, and the abilities the portrait's hover card,
+	# which is the board's own.
+	var boss: bool = bool(_choice.get("boss", false))
 	var entry: Dictionary = {"enemy": enemy, "statuses": {}}
 	var hp: int = GameLoop2.effective_health(enemy)
-	var goal := RichTextLabel.new()
-	goal.bbcode_enabled = true
-	goal.fit_content = true
-	goal.scroll_active = false
-	goal.custom_minimum_size = Vector2(0, 40)
-	goal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	goal.text = "[b]GOAL (%s):[/b] %s\n[i]%s / %s / %d goal%s to beat / dmg %d[/i]" % [
-		String(enemy.goal_type).capitalize(),
-		GameLoop2.entry_goal(entry),
+	# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
+	var dmg: int = int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1)
+	var meta: String = "%s / %s / %d goal%s to beat / dmg %d" % [
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
-		hp, "" if hp == 1 else "s",
-		# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
-		int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1),
-	]
-	box.add_child(goal)
-
-	# …and the add-ons under it, indented, red for a condition ADDED to the goal
-	# and green for one OFFERED. On this card the clauses are almost always the
-	# player's own — no body has been rolled onto the board yet — which is exactly
-	# what makes them worth colouring here: they are the tax this card will charge,
-	# and reading them is part of deciding whether to take it.
+		hp, "" if hp == 1 else "s", dmg]
+	box.add_child(_goal_row(_enemy_chip(enemy, boss),
+		"%s — %s" % [GameLoop2.entry_goal(entry), enemy.display_name],
+		UITheme.DANGER if boss else UITheme.TEXT,
+		"%s\n%s" % [enemy.display_name, meta], _stat_pair(hp, dmg)))
+	# The clauses hanging off the goal, as the checklist hangs them.
 	for addon in GameLoop2.goal_addons_for(entry):
 		box.add_child(UITheme.addon_row(addon))
-
-	# WHAT KIND OF NODE THIS IS (§19.8), and then what it puts on the board.
-	#
-	# The card wears a one-character mark and this is where the mark is spelled
-	# out: the popup is what a player opens to find out what a card MEANS, so it
-	# is the one surface that can afford the sentence. Above the body count
-	# because the kind is what decides the count — reading them the other way
-	# round makes the number look like a property of the enemy.
-	_add_kind_line(box)
-
-	# What ELSE this card puts on the board (§19.4). Under the goal rather than
-	# beside the name, because it is not another fact about this enemy — it is a
-	# second body, and the count is the part the player is being warned about.
-	_add_bodies_line(box)
-
-	# Your own record against what's on the board right now: the enemies you have
-	# ALREADY beaten at this game, this one and every follower. Built by the
-	# overworld (Overworld2._beatable_row) and handed over, so the offering and
-	# this popup can't disagree about what counts as proven.
-	var proven = _notes.get("beatable")
-	if proven is Control:
-		box.add_child(proven)
+	# One row per body still to be rolled (§19.4): you know the first, not the rest.
+	# Its hover is the overworld's own sentence for it, so the two cannot disagree.
+	var extra: int = int(_notes.get("extra_bodies", 0))
+	for i in extra:
+		box.add_child(_goal_row(_unknown_chip(), "Another enemy — rolled when you arrive",
+			UITheme.DANGER.lerp(UITheme.TEXT, 0.25), String(_notes.get("bodies", ""))))
 	return box
 
 # What the node stands up, when the overworld handed a line over (§19.4). It owns the wording
@@ -1063,20 +1017,6 @@ func _build_enemy_block(game: GameData) -> Control:
 # there — so the popup and the hover line under the offering cannot disagree
 # about what is coming. Nothing is drawn when the note is empty (a boss round, a
 # free game), which is what keeps a card that brings one body quiet about it.
-# The kind, as the mark the card wears plus the sentence behind it. Silent when
-# the overworld handed over -1, which is the stay-or-return card: it moves the
-# run rather than committing it, so there is no arrival to describe.
-func _add_kind_line(box: VBoxContainer) -> void:
-	var kind: int = int(_notes.get("kind", -1))
-	if kind < 0:
-		return
-	var l := Label.new()
-	l.text = "%s  %s" % [RunGraph.kind_mark(kind), RunGraph.kind_tip(kind)]
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	l.add_theme_color_override("font_color", UITheme.kind_color(kind))
-	box.add_child(l)
-
 func _add_bodies_line(box: VBoxContainer) -> void:
 	var text: String = String(_notes.get("bodies", ""))
 	if text == "":
@@ -1087,6 +1027,224 @@ func _add_bodies_line(box: VBoxContainer) -> void:
 	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	l.add_theme_color_override("font_color", UITheme.DANGER)
 	box.add_child(l)
+
+# YOUR RECORD HERE as ONE line: how often you have beaten the game and how many
+# enemies, and — when there are any — a button that opens the list of them.
+func _record_line(game: GameData) -> Control:
+	var wins: int = GameStats.beaten_count(game.id)
+	var enemies: int = GameStats.enemies_for(game.id).filter(func(r): return int(r["beaten"]) > 0).size()
+	if wins <= 0 and enemies <= 0:
+		return null
+	var parts: Array = []
+	if wins > 0:
+		parts.append("Beaten %d time%s" % [wins, "" if wins == 1 else "s"])
+	if enemies > 0:
+		parts.append("%d enem%s" % [enemies, "y" if enemies == 1 else "ies"])
+	var text: String = "⚔  " + "  ·  ".join(PackedStringArray(parts))
+	if enemies <= 0:
+		return _fact_line(text, UITheme.GOLD, "Your lifetime record in %s." % game.display_name)
+	var btn := HoverButton.new()
+	btn.name = "BeatenHere"
+	btn.text = text + "  ›"
+	btn.flat = true
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	btn.add_theme_color_override("font_color", UITheme.GOLD)
+	btn.add_theme_color_override("font_hover_color", UITheme.GOLD.lerp(Color.WHITE, 0.4))
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0) if st == "normal" else Color(UITheme.GOLD, 0.12)
+		sb.set_corner_radius_all(4)
+		sb.content_margin_left = 0
+		sb.content_margin_right = 4
+		btn.add_theme_stylebox_override(st, sb)
+	btn.tooltip_text = "Your record in %s — click for every enemy you have beaten here." % game.display_name
+	btn.pressed.connect(func(): open_beaten(game))
+	return btn
+
+# The record, over the popup in the shade a proof opens in (and put away the same
+# way, close_proof): one row per enemy beaten here, most-beaten first, with your
+# note — and "✓ Approaching" on the ones walking on with this game or already
+# following you, which is the question the old row of "Beatable" pips answered.
+func open_beaten(game: GameData) -> Control:
+	close_proof()
+	var approaching: Dictionary = {}
+	var here: GoalEnemyData = _choice.get("enemy")
+	if here != null and not bool(_notes.get("enemy_hidden", false)):
+		approaching[String(here.id)] = true
+	for entry in GameLoop2.stack:
+		var f: GoalEnemyData = entry.get("enemy")
+		if f != null:
+			approaching[String(f.id)] = true
+	var shade := ColorRect.new()
+	shade.name = "BeatenView"
+	shade.color = Color(UITheme.BG_DEEP, 0.88)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			accept_event()
+			close_proof())
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.add_child(centre)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 14, 1, UITheme.BORDER))
+	panel.custom_minimum_size = Vector2(460, 0)
+	# PASS, so a click on the list closes it too — "anywhere" means anywhere.
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	centre.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	panel.add_child(col)
+	var title := Label.new()
+	title.text = "Enemies beaten at %s" % game.display_name
+	title.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	title.add_theme_color_override("font_color", UITheme.TEXT)
+	col.add_child(title)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var rows: int = 0
+	for r in GameStats.enemies_for(game.id):
+		if int(r["beaten"]) <= 0:
+			continue
+		var e: GoalEnemyData = Data.get_goal_enemy_any(StringName(r["id"]))
+		if e == null:
+			continue
+		rows += 1
+		var text: String = "%s  ×%d" % [e.display_name, int(r["beaten"])]
+		var note: String = String(r["note"]).strip_edges()
+		if note != "":
+			text += "\n🗒 %s" % note
+		var is_near: bool = approaching.has(String(r["id"]))
+		var row: Control = _goal_row(_enemy_chip(e, e.is_boss()),
+			("✓ Approaching — " if is_near else "") + text,
+			UITheme.SUCCESS if is_near else UITheme.TEXT,
+			e.goal)
+		list.add_child(row)
+	scroll.custom_minimum_size.y = minf(rows * 46.0, 420.0)
+	var hint := Label.new()
+	hint.text = "Click anywhere to close"
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	hint.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	col.add_child(hint)
+	add_child(shade)
+	_proof_view = shade
+	return shade
+
+# The board's ❤ / ⚔ badges (BattlefieldView._stat_badge), as a pair for a row's end.
+func _stat_pair(hp: int, dmg: int) -> Control:
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	pair.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for b in [["❤%d" % hp, BattlefieldView.HP_BADGE], ["⚔%d" % dmg, BattlefieldView.DMG_BADGE]]:
+		var l := Label.new()
+		l.text = b[0]
+		l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		l.add_theme_color_override("font_color", (b[1] as Color).lerp(Color.WHITE, 0.3))
+		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		l.add_theme_constant_override("outline_size", 2)
+		var pill := UITheme.flat(Color(0.06, 0.05, 0.06, 0.9), 4, 0, 1, (b[1] as Color).lerp(UITheme.BG, 0.25))
+		pill.content_margin_left = 4
+		pill.content_margin_right = 4
+		l.add_theme_stylebox_override("normal", pill)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pair.add_child(l)
+	return pair
+
+# One checklist-style row: a lead chip, a line of text and, optionally, something
+# at its end, in the bordered strip ReportChecklist.verify_row draws — without the
+# tick box, since nothing on this card is answered.
+func _goal_row(chip: Control, text: String, color: Color, tip: String, trailing: Control = null) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
+	wrap.tooltip_text = tip
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", UITheme.GAP)
+	wrap.add_child(line)
+	if chip != null:
+		line.add_child(chip)
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	l.add_theme_color_override("font_color", color)
+	l.mouse_filter = Control.MOUSE_FILTER_PASS
+	line.add_child(l)
+	if trailing != null:
+		line.add_child(trailing)
+	return wrap
+
+# The portrait chip a goal row leads with — the checklist's own size and frame.
+const GOAL_CHIP := 30
+
+func _enemy_chip(enemy: GoalEnemyData, boss: bool) -> Control:
+	var frame := HoverPanel.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, (UITheme.DANGER if boss else UITheme.TEXT).lerp(UITheme.BORDER, 0.45)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	if enemy.image != null:
+		frame.add_child(UITheme.crisp_tex(enemy.image, GOAL_CHIP))
+	else:
+		var initial := Label.new()
+		initial.text = String(enemy.display_name).substr(0, 1).to_upper()
+		initial.custom_minimum_size = Vector2(GOAL_CHIP, GOAL_CHIP)
+		initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		frame.add_child(initial)
+	HoverCard.attach(frame, BattlefieldView.offered_enemy_hover(enemy,
+		"It walks on with the game and follows you until its goal is cleared."))
+	return frame
+
+# The "?" a not-yet-rolled body leads with.
+func _unknown_chip() -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 4, 2, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.45)))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var q := Label.new()
+	q.text = "?"
+	q.custom_minimum_size = Vector2(GOAL_CHIP, GOAL_CHIP)
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	q.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	q.add_theme_color_override("font_color", UITheme.DANGER)
+	frame.add_child(q)
+	return frame
+
+# A fact with a picture in front of it (the shield, for now) rather than a glyph.
+func _icon_fact(tex: Texture2D, text: String, color: Color, tip: String = "") -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	row.tooltip_text = tip
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	var icon := TextureRect.new()
+	icon.texture = tex
+	icon.custom_minimum_size = Vector2(20, 20)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_crisp(icon, tex)
+	row.add_child(icon)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	l.add_theme_color_override("font_color", color)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	return row
 
 func _fact_line(text: String, color: Color, tip: String = "") -> Control:
 	var l := Label.new()
@@ -1149,23 +1307,10 @@ func _build_route_column() -> Control:
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.custom_minimum_size = Vector2(LADDER_MIN_W, LADDER_MIN_H)
 
-	# The route badge the card used to wear, at the head of the map that backs it up.
-	var note: Dictionary = _notes.get("route", {})
-	var badge := Label.new()
-	badge.text = String(note.get("text", ""))
-	badge.tooltip_text = String(note.get("tip", ""))
-	badge.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	badge.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-	badge.add_theme_color_override("font_color", note.get("color", UITheme.TEXT))
-	col.add_child(badge)
-
-	var sub := Label.new()
-	sub.text = "The optimal path to the Amulet if you take this game."
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	col.add_child(sub)
-
+	# NO HEADING AND NO LEGEND: the map takes the column's whole height, from the
+	# top of the popup to its buttons, with the popup's ✕ over its corner. The
+	# "★ OPTIMAL — N steps left" line and the sentence under it cost the map two
+	# rows; the kind marks are explained on every marker's hover.
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG, UITheme.BORDER, 8, 6, 1))
@@ -1178,7 +1323,22 @@ func _build_route_column() -> Control:
 	# the scroll area has no size to fit anything against. This is what brings us
 	# back when it does.
 	_ladder_room.resized.connect(_settle)
-	frame.add_child(_ladder_room)
+	var stack := Control.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	frame.add_child(stack)
+	_ladder_room.set_anchors_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(_ladder_room)
+	# The popup's ✕, over the map's top-right corner — the corner a route leaves
+	# emptiest, since its last columns narrow to the Amulet.
+	var close: Button = _close_button()
+	close.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	close.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	close.offset_left = -38
+	close.offset_right = 0
+	close.offset_top = 0
+	close.offset_bottom = 38
+	stack.add_child(close)
 	# A CenterContainer between the two, so a route that is narrower than the box —
 	# a single-file road down one column, which most of them are — sits in the
 	# middle of it rather than hard against the left edge. It takes the viewport's
@@ -1190,21 +1350,6 @@ func _build_route_column() -> Control:
 	_ladder_room.add_child(centre)
 	_ladder_holder = RouteLadder.build(_ladder_cfg())
 	centre.add_child(_ladder_holder)
-
-	# Kept to one flowing line for the reason RunMapModal's is: the ladder above it
-	# is fitted to whatever height is left over. The kind marks are spelled out in
-	# their colours (RouteLadder.kind_legend) — `$` already says "shop", so the 🛒
-	# entry it replaces would have been the same thing twice.
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
-	var legend := Label.new()
-	legend.text = "▶ where you'd be  •  🏆 the Amulet  •  ⚔ beaten there  •"
-	legend.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	legend.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	flow.add_child(legend)
-	for l in RouteLadder.kind_legend(UITheme.FONT_SMALL):
-		flow.add_child(l)
-	col.add_child(flow)
 	return col
 
 # The route from THIS game, as RouteLadder reads it. `preview` because the top
@@ -1216,27 +1361,25 @@ func _build_route_column() -> Control:
 # clipped name in a 150px box. "Which of these is worth walking to" is exactly
 # the question being asked here, and it cannot be answered off a name. So a rung
 # opens the same card the map window opens, over the left column rather than over
-# the answer, minus the two things a preview cannot do: there is no chart on this
-# screen to fly, and no route to pin from a game you have not taken.
+# the answer, minus the one thing a preview cannot do: there is no chart on this
+# screen to fly.
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
-	var data: Dictionary = RunGraph.route_dag_via(slot, &"", amulet) if slot != &"" and amulet != &"" else {}
+	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet) if slot != &"" and amulet != &"" else {}
 	if _key_dest() != &"" and amulet != &"":
 		data = _key_route(slot, _key_dest(), amulet)
 	return {
 		"data": data,
 		"current": slot,
 		"amulet": amulet,
-		"waypoint": &"",
 		"choice_ids": {},
 		"zoom": _zoom,
 		"preview": true,
 		"on_node": func(node_id: StringName, depth: int): open_node_card(node_id, depth),
-		# The box's width, less a scrollbar's lane, so a long narrow route's rungs
-		# widen into the empty space beside it (RouteLadder `room_w`).
-		"room_w": maxf(0.0, _ladder_room.size.x - 16.0)
-			if _ladder_room != null and is_instance_valid(_ladder_room) else 0.0,
+		# The map is SIZED TO the box (RouteLadder `room`), less a scrollbar's lane.
+		"room": (_ladder_room.size - Vector2(16, 16))
+			if _ladder_room != null and is_instance_valid(_ladder_room) else Vector2.ZERO,
 	}
 
 
@@ -1244,7 +1387,7 @@ func _ladder_cfg() -> Dictionary:
 # shortest route on. The rift is not laid yet, so the graph cannot answer it; the
 # rung on top is stitched onto the destination's ladder, one step down.
 static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName) -> Dictionary:
-	var on: Dictionary = RunGraph.route_dag_via(dest, &"", amulet)
+	var on: Dictionary = RunGraph.shortest_path_dag(dest, amulet)
 	var layers: Array = [[rift_id]]
 	for layer in on.get("layers", []):
 		layers.append(layer)
@@ -1254,7 +1397,7 @@ static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName
 		moved["from_depth"] = int(e.get("from_depth", 0)) + 1
 		moved["to_depth"] = int(e.get("to_depth", 0)) + 1
 		edges.append(moved)
-	return {"layers": layers, "edges": edges, "waypoint_depth": -1}
+	return {"layers": layers, "edges": edges}
 
 # --- the rung's card -------------------------------------------------------
 
@@ -1270,7 +1413,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	var amulet: StringName = GameState.amulet_game_id
 
 	var facts: Array = [["On this route", "step %d of %d" % [depth, route_steps()]]]
-	var left: int = RunGraph.route_length_via(id, &"", amulet)
+	var left: int = RunGraph.route_length(id, amulet)
 	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
 
@@ -1355,21 +1498,19 @@ func route_steps() -> int:
 	var layers: Array = _ladder_cfg().get("data", {}).get("layers", [])
 	return maxi(0, layers.size() - 1)
 
-# Shrink a long route until the whole of it is in the box, rather than handing
-# the player a scrollbar and a quarter of their road. Only on the way in — and
-# only once the box has a real size, which is why this runs off `resized` as well
-# as off the build: a fit measured against a zero-width scroll area is no fit at
-# all, and `_auto_zoomed` would then have spent the one chance to get it right.
+# The map is sized to its box, so it is rebuilt whenever the box really changes
+# size — which is why this runs off `resized`. Not only once: the first resize
+# can land before the popup's layout has settled, and a map sized to THAT box
+# came out a third too short with the room under it empty.
+var _fitted_room := Vector2.ZERO
 func _settle() -> void:
-	if _auto_zoomed or _ladder_room == null or not is_inside_tree():
+	if _ladder_room == null or not is_inside_tree():
 		return
 	var room: Vector2 = _ladder_room.size
-	if room.x <= 1.0 or room.y <= 1.0:
+	if room.x <= 1.0 or room.y <= 1.0 or (room - _fitted_room).length() < 2.0:
 		return
-	_auto_zoomed = true
-	var fit: float = RouteLadder.fit_zoom(_ladder_holder.custom_minimum_size, room, _zoom)
-	if fit < 0.995:
-		_set_zoom(fit)
+	_fitted_room = room
+	_set_zoom(_zoom)
 
 func _set_zoom(z: float) -> void:
 	_zoom = clampf(z, 0.4, 2.5)
@@ -1415,6 +1556,9 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	# exist, and the one thing worse than being dropped into a game unannounced is
 	# being announced into one and shown a door that goes nowhere.
 	var arrival: bool = bool(_notes.get("arrival", false))
+	var rate: Button = _rate_button(game)
+	rate.custom_minimum_size.y = 44
+	row.add_child(rate)
 	if not arrival:
 		var back := HoverButton.new()
 		back.text = "Back"

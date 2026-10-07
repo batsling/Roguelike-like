@@ -11,6 +11,73 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The stream overlay's map (`map.html`) matches the in-game map.** Each box
+  is the game's cover filling the box (cropped from near the top), with the name
+  on a dark band along the bottom. The node kind is a badge straddling the
+  top-right corner in its own colour. `Here` / `Amulet` / `Beaten` / `Rift` is a
+  tag in the top-left corner. Columns spread over the height instead of clumping
+  in the middle. They are ordered by `RouteLadder.order_layers`, and each inner
+  box is nudged by the same `RouteLadder.jitter` the game uses, so a route looks
+  the same on stream as on screen. `ObsCompanion` sends each box's `kind`,
+  `kind_name`, `kind_color` and `nudge` along with it. `check_overlay.js` has
+  two new checks: one for the corner badge and one for the spread.
+
+- **The map redesign: the optimal path is a left-to-right map of covers, and
+  the game popup gives it the room.**
+  - **The map runs left to right** (`RouteLadder`): one column per step, each
+    column's games spread over the whole height and nudged off the grid by a
+    hash of the game, so the same route always looks the same; columns are
+    ordered to cross as few arrows as possible. The old top-to-bottom ladder of
+    name boxes could not fit a route's widest layer (a median of 7 games, 14 at
+    the 90th percentile) across a 16:9 window, so most names were ellipses.
+  - **Every box is the game's cover**, cropped from just below the top where
+    titles sit, with the name along the bottom on a fade in the box's role
+    colour (blue for you, ember for the Amulet, gold for an offer, near-black
+    otherwise). Every name on a map shares one size. The node's **kind marker is
+    a badge straddling the box's top-right corner**, and the arrows point at the
+    middle of each box. Wide boxes keep the ⚔/⛓ badge (top-left), and every box
+    has those counts in its hover.
+  - **Sized to its room**: the map window (now up to 1200 wide) and the popup
+    both hand the map their space, and it fills it on both axes. Over the star
+    chart the window still draws the map at its natural size, so the sky keeps
+    its room. The map window and the popup lost their legends.
+  - **The game popup**: the map takes the whole right-hand side, with the ✕ on
+    its corner; the "★ OPTIMAL" heading and its sentence are gone. On the left,
+    under the title: the node's kind for every kind (`$ Shop` replaces the shop
+    banner, whose text is now that line's hover), connections with
+    "nearby shops / champions" under them, "Gain +5 Temporary Shields" with the
+    shield's art, and one record line, `⚔ Beaten N times · M enemies ›`, which
+    opens every enemy beaten at that game, marking the ones approaching now. It
+    replaces the card's "Beatable:" pips (`OfferingCards.beatable_row` is gone).
+    **Enemies approaching** are rows in the checklist's format with ❤/⚔, plus a
+    `?` row per body rolled on arrival; the two hint lines about bodies walking
+    on are gone. **Rate this game** moved to the buttons. The proof thumbnail
+    is smaller and the left column narrower, to give the map the width.
+- **Two tests that failed now and then, fixed.**
+  `test_the_starts_are_different_distances_when_the_graph_allows_it` measured
+  the best possible spread at the ordinary route floor whatever floor the panel
+  was built at; with rifts on the generator tries the raised `RIFT_FLOOR` first,
+  and a panel built there has fewer starts to choose from. The overworld now
+  keeps the panel's floor (`_start_floor`) and the test measures at it.
+  `test_a_scramble_redeals_the_rift_cards` depended on lifetime rift tallies in
+  `user://`: the rotation deals the least-used rift game first, so when earlier
+  runs left one game below the rest, every table led with it. The test now runs
+  on emptied tallies and restores them after.
+
+- **Pinning a game to route through is gone.** The map window and the Atlas
+  card no longer offer "⚑ Route through here", the Atlas loses its "⚑ Pinned"
+  button, legend chip and marker, and every map
+  (the map window, the game popup, the Atlas sky and the stream overlay's
+  `map.html`) draws the shortest road and nothing else. Removed with it:
+  `GameState.route_waypoint` (an older save that still carries the key loads
+  fine and ignores it), `RunGraph.route_dag_via` / `route_length_via` (callers
+  use `shortest_path_dag`, and the plain distance is the new
+  `RunGraph.route_length`), the map window's pin bar, detour cost and
+  `set_waypoint` / `clear_waypoint`, the Atlas's `route_changed` signal and pin
+  marker, and the overlay payload's `waypoint_depth` and per-rung `pinned`. The
+  overlay checker's awkward-route fixture marks a rift rung where it used to mark
+  a pinned one. Ladders still key rungs by (depth, id): it costs nothing.
+
 - **A UI pass from the owner's notes.**
   - The opening screen is shorter: the banner reads "Amulet Game" over the
     game's art, name, genre and year (the "reach it and clear the goal" line is

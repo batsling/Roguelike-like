@@ -186,7 +186,6 @@ func _build_payload() -> Dictionary:
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"amulet_game_id": String(GameState.amulet_game_id),
-		"route_waypoint": String(GameState.route_waypoint),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"path_taken": _stringnames_to_strings(GameState.path_taken),
 		"path_beaten": GameState.path_beaten.duplicate(),
@@ -406,7 +405,8 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
-	GameState.route_waypoint = StringName(data.get("route_waypoint", ""))
+	# A save from before pinning was removed may still carry `route_waypoint`;
+	# it is simply not read.
 	GameState.visited_games = _strings_to_stringnames(data.get("visited_games", []))
 	# The walk with its repeats. A save written before it existed has no record of
 	# the doubling-back, so it is left empty and GameState.walked_path falls back to

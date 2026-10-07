@@ -300,11 +300,12 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 				events += 1
 		assert_eq(int(counts["events"]), events, "events counted off the same rule")
 		assert_eq(int(counts["shops"]), shops, "shops counted off the same node kinds")
-		var line: String = GameChoiceModal.connection_text(counts)
-		if events > 0:
-			assert_true(line.contains("%d event" % events), "the line names them: %s" % line)
+		var line: String = GameChoiceModal.nearby_text(counts)
 		if shops > 0:
-			assert_true(line.contains("%d shop" % shops), "and the shops: %s" % line)
+			assert_true(line.contains("%d nearby shop" % shops),
+				"the line under the count names the nearby shops: %s" % line)
+		else:
+			assert_false(line.contains("shop"), "and says nothing of shops with none: %s" % line)
 
 func test_a_bashed_neighbour_stops_counting_as_a_connection() -> void:
 	var slot: StringName = StringName(_ui._choices[0]["slot"])
@@ -600,9 +601,8 @@ func _text_of(node: Node) -> String:
 #
 # The ladder is half of what this popup is for, and a rung is a clipped name in a
 # 150px box. "Which of these is worth walking to" cannot be answered off a name,
-# so a rung opens the same card the map window opens — minus the two things a
-# preview cannot do: there is no chart on this screen to fly to, and no route to
-# pin from a game you have not taken.
+# so a rung opens the same card the map window opens — minus the one thing a
+# preview cannot do: there is no chart on this screen to fly to.
 
 func test_a_rung_opens_the_game_it_names() -> void:
 	var modal = _ui.open_choice(0)
@@ -622,8 +622,6 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 	var text: String = _text_of(modal._node_card)
 	assert_false(text.contains("star chart"),
 		"there is no chart on this screen to find it on")
-	assert_false(text.contains("Route through here"),
-		"and no route to pin from a card you have not taken")
 	assert_true(text.contains("Close"), "the card can be put away")
 	modal.close_node_card()
 	assert_null(modal._node_card, "and closing it closes only it")

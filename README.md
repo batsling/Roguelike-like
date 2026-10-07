@@ -65,7 +65,7 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     ObjectPanel2    — the machines standing here, same place
 │   │                      #     ObjectCard      — one machine, in the panel or in an event
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
-│   │                      #     RouteLadder     — the arrowed shortest-path graph
+│   │                      #     RouteLadder     — the arrowed shortest-path map
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
 │   │                      #     LootDropModal   — "the game paid out, keep it?"
 │   │                      #     RunMapModal / LootUseModal
@@ -614,19 +614,37 @@ node and its script.
     `test_screens_fit.gd` measures it now, over six re-rolls.
   - **`GameChoiceModal.gd`** — what clicking an offered card opens. A card is the
     cover, the name and the Amulet's flag; everything else about the decision
-    lives here — the **optimal path from that game drawn as the real route
-    ladder**, the enemy waiting there and its goal, the shields the game grants, the
-    pace it puts the board on, your record in it — over the one button that
-    answers it: **Travel**. (Bash and Transmute used to stand beside it and are
+    lives here. The **optimal path from that game, drawn as the real route map**,
+    takes the whole right-hand side from the top of the popup to its buttons, with
+    the popup's ✕ over its corner. On the left, under the title: the node's kind
+    (`! Enemies`, `? Event`, `!! Champion`, `$ Shop` — a Shop node's shelf is in that
+    line's hover), its connections with the shops and champions among them, the
+    Temporary Shields it grants (with the shield's own art), the pace it puts the
+    board on, and **your record there** — one line, `⚔ Beaten N times · M
+    enemies ›`, which opens the list of every enemy you have beaten at that game,
+    the ones approaching now marked. Under **Enemies approaching**, each body is a
+    row in the checklist's own format (portrait, goal — name, ❤/⚔), plus a `?` row
+    for each body rolled on arrival. **Rate this game** sits with the buttons that
+    answer it: **Travel**. (Bash and Transmute used to stand beside it and are
     armed from the offering's chips instead — this screen is about whether to go
     somewhere, not the place to bury two destructive verbs.) The cover is drawn
     small on purpose: it is the one thing you have already seen (it is what you
     clicked), and the room it gives back goes to the enemy and its goal. It decides
     nothing itself; every answer calls the overworld's `pick` / `bash_choice` /
     `transmute_choice`.
-  - **`RouteLadder.gd`** — the shortest-path DAG as a top-to-bottom ladder of
-    boxes with green arrows between them, colour-coded by role. Shared: the 🗺 map
-    window (`RunMapModal`) and `GameChoiceModal` draw the same graph from it.
+  - **`RouteLadder.gd`** — the shortest-path DAG as a **left-to-right map**: one
+    column per step of the road, each column's games spread over the height it is
+    given and nudged a little off the grid (by a hash of the game, so the same
+    route always looks the same), ordered to cross as few arrows as possible, with
+    green arrows between them. Each game is a **box filled with its cover**, its
+    name along the bottom on a fade in the box's role colour (blue for you, ember
+    for the Amulet, gold for an offer, near-black otherwise), and the node's
+    **kind marker as a badge on its top-right corner**; the arrows run from the
+    middle of one box's right edge to the middle of the next one's left. Every name on a map shares
+    one size. Given a `room`, the map is sized to it on both axes. Shared: the 🗺
+    map window (`RunMapModal`) and `GameChoiceModal` draw the same map from it; the
+    window spreads to its room when it is on its own, and draws at the map's
+    natural size over the star chart, where the sky needs the space.
     Over the star chart the map window has **no Close of its own** — the chart
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
@@ -637,7 +655,7 @@ node and its script.
     "which of these roads", the ladder is the answer to it, and 852 stars with
     nothing on them to orient by (the run has no position yet) is not; the chart
     is one `✦ Star chart` button away on the window itself.
-    **Every rung is named, the Amulet included**: the ladder used to draw the
+    **Every box is named, the Amulet included**: the map used to draw the
     destination as `The Amulet — ???` on a start-picker map, and no longer does
     (see "The Amulet is named from the first screen" below).
   - **`HoverCard.gd` / `HoverPanel.gd` / `HoverBox.gd` / `HoverButton.gd`** — the small themed card
@@ -1131,12 +1149,12 @@ entirely inside the gap between two layers where no box can be, so the curves th
 started with were dodging a collision that cannot happen and read as wobble. The
 head is what says the graph has a direction. Same colours as in-game
 (`RouteLadder`'s blue for where you are,
-ember for the Amulet, purple for a pin).
+ember for the Amulet, cyan for a rift).
 
 **It runs left to right, and it is a full-screen source.** You on the left, the
-Amulet on the right, each layer's choices stacked above one another. The in-game
-`RunMapModal` runs top-to-bottom and this deliberately does not: distance belongs
-on the **long** axis. A 14-layer route gets 137px per layer across 1920 and only
+Amulet on the right, each layer's choices stacked above one another — the way
+the in-game maps run too, since the map redesign. Distance belongs on the
+**long** axis. A 14-layer route gets 137px per layer across 1920 and only
 77px down 1080, and the choices within a layer — never more than a handful — are
 what the short axis is for. It also matches the road strip, which has always run
 the same way.
@@ -1152,7 +1170,7 @@ on a between-games scene.
 | Bigger, or zoomed in OBS | the pixels are already there, which is the point of the stage |
 | Changing the stage | `#overlay.only-map > .map { --stage-w: …; --stage-h: …; }` in your `custom.css` |
 | Depth it holds | 14 layers, then it says `+N more layers … not drawn` |
-| Deeper than fits | rungs shrink to a legibility floor, then the ladder scales |
+| Deeper than fits | boxes shrink to a legibility floor, then the ladder scales |
 
 **The map is drawn at a fixed stage and scaled into the source, and it is the only
 piece here that is.** The ladder used to be solved into the *source's* own pixels,
@@ -1179,16 +1197,28 @@ perfectly. `check_overlay.js` now asserts the rung, the cover and the name are a
 materially bigger at 1920 than at 640, and that the ladder fills at least 70% of
 one axis.
 
-**Every rung is a cover and a name.** The cover is what a viewer recognises — box
-art is how anyone reads a shelf — and the name is what they can actually search
-for, which is most of the point of putting a map on a stream. A game you have
-**already beaten** is drained to greyscale and tagged, because revisiting is legal
-and its goal is rolled fresh, but you know the game.
+**Every rung is a cover and a name, the way the in-game boxes are.** The cover
+fills the whole box — cropped from near the top, where the title art lives, never
+letterboxed — and the name sits on a dark band across its foot, up to two lines.
+The cover is what a viewer recognises — box art is how anyone reads a shelf — and
+the name is what they can actually search for, which is most of the point of
+putting a map on a stream. The game's **node kind** (combat, event, shop…) is a
+badge straddling the top-right corner in the kind's own colour, exactly where
+`RouteLadder.kind_marker` puts it; `Here` / `Amulet` / `Beaten` / `Rift` is a
+small tag top-left. A game you have **already beaten** is drained to greyscale and
+tagged, because revisiting is legal and its goal is rolled fresh, but you know the
+game.
 
-**It shows the road you are actually walking.** If the run has pinned a game to
-route through (`GameState.route_waypoint`), the map is the *forced* route, not the
-shortest one — the same `route_dag_via` the in-game map asks for. Drawing the
-shortest path would show a road you have already decided against.
+**The layers are scattered, not stacked in a block**, the same as in-game: each
+column spreads down the height it is given, its order comes from
+`RouteLadder.order_layers` (so arrows cross as little as they can), and every
+inner box is nudged by `RouteLadder.jitter` — the same per-game nudge the in-game
+map uses, sent in the payload as `nudge`, so a game sits off-grid the same way on
+stream as on screen. The start and the Amulet stay put.
+
+**It shows the shortest road**, the same `RunGraph.shortest_path_dag` the in-game
+maps draw. (A game could once be *pinned* to bend the route through it; that was
+removed, so there is only ever one road to show.)
 
 **Two empty states, two different sentences.** Standing on the Amulet says so
 ("The Amulet is under your feet"); no road at all says *that* instead. Neither is

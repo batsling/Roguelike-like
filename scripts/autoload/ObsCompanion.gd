@@ -966,30 +966,25 @@ func _road() -> Array:
 # core decision (§6). Collapsing it to one strip would draw a forced march and
 # hide the only interesting thing on the map.
 #
-# IT HONOURS THE PIN. If the run has insisted on routing through a game
-# (`GameState.route_waypoint`), that is the road the player is actually walking,
-# so it is the road drawn — `route_dag_via`, exactly as RunMapModal and
-# GameChoiceModal ask for it. Anything else would show the streamer a route they
-# have already decided against.
-#
-# NODES ARE KEYED (depth, id) AND NOT id. A pinned route walks to the waypoint
-# and then walks on, and the way on may come straight back over the games that
-# led in — the same game legitimately holds two rungs at two depths. RouteLadder
-# says the same thing in `node_key` and for the same reason: a consumer keying by
-# id alone merges the two visits and draws a road that does not exist.
+# NODES ARE KEYED (depth, id) AND NOT id, the way RouteLadder keys them
+# (`node_key`). A shortest-path DAG holds each game once, so today the two agree;
+# the depth key was for pinned routes, which could double back, and is kept
+# because it costs nothing and the page already reads it.
 func _route() -> Dictionary:
 	var here: StringName = GameState.current_game_id
 	var amulet: StringName = GameState.amulet_game_id
 	var empty: Dictionary = {"layers": [], "edges": [], "dropped": 0,
-		"waypoint_depth": -1, "arrived": here != &"" and here == amulet}
+		"arrived": here != &"" and here == amulet}
 	if here == &"" or amulet == &"":
 		return empty
 	# Standing on it: there is no road left to draw, and `arrived` lets the page
 	# say so rather than render an empty panel that reads as a broken source.
 	if here == amulet:
 		return empty
-	var dag: Dictionary = RunGraph.route_dag_via(here, GameState.route_waypoint, amulet)
-	var layers: Array = dag.get("layers", [])
+	var dag: Dictionary = RunGraph.shortest_path_dag(here, amulet)
+	# In the in-game map's own column order (RouteLadder.order_layers), so the
+	# page draws the same arrangement — and the same few crossed arrows.
+	var layers: Array = RouteLadder.order_layers(dag.get("layers", []), dag.get("edges", []))
 	if layers.is_empty():
 		return empty
 
@@ -1024,8 +1019,6 @@ func _route() -> Dictionary:
 		# How many layers of the far end are not drawn, so the page can say "+3
 		# more" rather than quietly ending the road short of the Amulet.
 		"dropped": dropped,
-		# Which layer the pin sits on, or -1 with no pin. The page rings it.
-		"waypoint_depth": int(dag.get("waypoint_depth", -1)),
 		"arrived": false,
 	}
 
@@ -1048,15 +1041,22 @@ func _rung(id: StringName, depth: int, last: int) -> Dictionary:
 		# you-are-here rather than as a step you might take.
 		"here": depth == 0,
 		"amulet": id == GameState.amulet_game_id,
-		# The pin, if there is one. Not `depth == waypoint_depth`: a layer can
-		# hold other games at the waypoint's depth in a route that rejoins.
-		"pinned": id == GameState.route_waypoint,
 		# ALREADY BEATEN, which is a real thing to know about a road ahead: a
 		# revisit is legal, its goal is rolled fresh, and a viewer reading the map
 		# should see which of these you have history with. The last layer is the
 		# Amulet and is never dimmed for it.
 		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
 		"rift": RunGraph.is_rift_game(id),
+		# THE NODE'S KIND (§19.8), as the in-game map's corner badge draws it: the
+		# mark, its word for the hover, and its colour. Read off the NODE, never the
+		# game played there (§19.2).
+		"kind": RunGraph.kind_mark(GameState.node_kind(id)),
+		"kind_name": RunGraph.kind_label(GameState.node_kind(id)),
+		"kind_color": "#" + UITheme.kind_color(GameState.node_kind(id)).to_html(false),
+		# How far this box strays from its slot, in -1..1 on each axis — the same
+		# hash the in-game map nudges by (RouteLadder.jitter), so the two agree.
+		"nudge": [RouteLadder.jitter(RouteLadder.node_key(depth, id), 1),
+			RouteLadder.jitter(RouteLadder.node_key(depth, id), 2)],
 	}
 
 func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Dictionary:

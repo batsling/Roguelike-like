@@ -97,6 +97,11 @@ var _choices: Array = []
 # MIN_PATH_LENGTH..MAX_PATH_LENGTH games from the (hidden) amulet. Cleared the
 # moment a start is chosen.
 var _start_options: Array = []
+# The route floor (§19.3) that panel was held to — RunGraph's "floor": the raised
+# RIFT_FLOOR when rifts are on and the Amulet can field its genres there, else
+# ROUTE_SLACK_FLOOR. Which floor a panel was built at decides which starts it
+# could have offered, so it is kept with the panel it describes.
+var _start_floor: int = RunGraph.ROUTE_SLACK_FLOOR
 # The goal-enemy standing behind each offered SLOT, so bashing or transmuting one
 # card doesn't silently re-roll the enemies behind the others. Keyed
 # "<slot id>><game id>" (a transmuted slot plays a different game, so it earns a
@@ -701,6 +706,7 @@ func start_run(character_id: StringName = &"") -> void:
 	GameLoop2.start_run(ch)
 	_rng.seed = GameState.run_seed
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
+	_start_floor = int(pick.get("floor", RunGraph.ROUTE_SLACK_FLOOR))
 	# Belt and braces: whatever a run reset touches, this screen is still the
 	# mounted overworld, and scrolls / overworld actives / saving all look it up.
 	GameState.set_overworld_context(self)
@@ -873,9 +879,9 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		# until the first offering is.
 		"pace": _start_pace_note(int(opt["path_len"])),
 		"shields": GameLoop2.shields_for_game(choice["game"]),
-		"beatable": _beatable_row(choice),
 		"bodies": _bodies_note(choice),
 		"kind": _kind_of(choice),
+		"extra_bodies": maxi(_offering.bodies_expected(choice) - 1, 0) if _offering != null else 0,
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
 		"action_tip": "Begin the run here — you go and play this game for real, right now.",
@@ -1314,11 +1320,11 @@ func open_choice(index: int) -> GameChoiceModal:
 		"route": route_note(choice),
 		"pace": turn_note(choice),
 		"shields": GameLoop2.shields_for_game(choice["game"]),
-		"beatable": _beatable_row(choice),
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
 		"bodies": _bodies_note(choice),
 		"kind": _kind_of(choice),
+		"extra_bodies": maxi(_offering.bodies_expected(choice) - 1, 0) if _offering != null else 0,
 	}
 	# The stay-or-return question opens the same card for a different verb: it
 	# MOVES the run rather than committing it to a game, so the card drops the two
@@ -3932,7 +3938,6 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 		"route": route_note(_chosen),
 		"pace": turn_note(_chosen),
 		"shields": GameLoop2.shields_for_game(game),
-		"beatable": _beatable_row(_chosen),
 		"enemy_hidden": _enemy_hidden(_chosen),
 		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
 		"bodies": _bodies_note(_chosen),
@@ -5182,12 +5187,6 @@ func _show_preview(index: int) -> void:
 func _clear_hover_grant() -> void:
 	if _offering != null:
 		_offering.clear_hover_grant()
-
-# The "you can beat this" row a card and its popup both wear, and the line that
-# says what the node stands up — read by the offered-game popup (GameChoiceModal)
-# as well as by the cards themselves.
-func _beatable_row(choice: Dictionary) -> Control:
-	return _offering.beatable_row(choice)
 
 func _enemy_hidden(choice: Dictionary) -> bool:
 	return _offering.enemy_hidden(choice) if _offering != null else false

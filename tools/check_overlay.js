@@ -436,23 +436,31 @@ function fixture(dir) {
   /* THE ROUTE MAP'S FIXTURE — a deliberately AWKWARD route, because a straight
    * line proves nothing about a ladder. Four layers: you-are-here alone, then
    * two layers three and two wide (so edges cross the gap diagonally and the
-   * fit has real width to place), then the Amulet. One rung is pinned and one
+   * fit has real width to place), then the Amulet. One rung is a rift and one
    * has been beaten before, which are the two states easiest to lose in a
    * cascade. Every layer is fully connected to the next, which is the worst
    * case for the wires: 3 × 2 + 2 × 1 + 1 × 3 crossings to lay out. */
   const routeLayers = [
     [{ id: 'r0', name: 'Vampire Survivors: Legacy of the Moonspell', depth: 0,
-       here: true, amulet: false, pinned: false, beaten: false }],
+       here: true, amulet: false, rift: false, beaten: false }],
     [{ id: 'r1a', name: 'Hollow Knight', depth: 1 },
      { id: 'r1b', name: 'Slay the Spire', depth: 1, beaten: true },
      { id: 'r1c', name: 'Dead Cells', depth: 1 }],
-    [{ id: 'r2a', name: 'The Binding of Isaac: Rebirth', depth: 2, pinned: true },
+    [{ id: 'r2a', name: 'The Binding of Isaac: Rebirth', depth: 2, rift: true },
      { id: 'r2b', name: 'Enter the Gungeon', depth: 2 }],
     [{ id: 'r3', name: 'The Legend of Zelda: Tears of the Kingdom', depth: 3,
        amulet: true }],
   ].map((layer, d) => layer.map((n, i) => Object.assign({
-    here: false, amulet: false, pinned: false, beaten: false,
+    here: false, amulet: false, rift: false, beaten: false,
     cover: games[(d * 3 + i) % games.length] || '',
+    /* The node's kind as ObsCompanion._rung sends it — a different one per
+     * layer so the badge's colour is not a constant the check could pass by
+     * accident — and a nudge off the slot in -1..1, as RouteLadder.jitter
+     * deals them, including the extremes. */
+    kind: ['!', '?', '$', '!!'][d % 4],
+    kind_name: ['Enemies', 'Event', 'Shop', 'Champion'][d % 4],
+    kind_color: ['#b9b2a6', '#f0a050', '#6fdc8d', '#ff5a5a'][d % 4],
+    nudge: [[1, -1], [-1, 1], [0.4, 0.6]][i % 3],
   }, n)));
   const routeEdges = [];
   for (let d = 0; d < routeLayers.length - 1; d++) {
@@ -492,7 +500,7 @@ function fixture(dir) {
     })),
     road,
     route: { layers: routeLayers, edges: routeEdges, dropped: 0,
-      waypoint_depth: 2, arrived: false },
+      arrived: false },
     /* THE SPEEDRUN CLOCK, mid-run: a game being timed on its fifth try, with
      * four games already banked in all three outcomes. The seconds are ugly on
      * purpose — an hour and change on the run, a game past ten minutes, a split
@@ -1222,7 +1230,7 @@ async function main() {
       }).length,
       here: rungs.filter((n) => n.classList.contains('here')).length,
       amulet: rungs.filter((n) => n.classList.contains('amulet')).length,
-      pinned: rungs.filter((n) => n.classList.contains('pinned')).length,
+      rift: rungs.filter((n) => n.classList.contains('rift')).length,
       hereFirst: rungs.length ? rungs[0].classList.contains('here') : false,
       amuletLast: rungs.length
         ? rungs[rungs.length - 1].classList.contains('amulet') : false,
@@ -1312,12 +1320,54 @@ async function main() {
   check('…and every wire actually joins the two rungs it runs between',
     joinsAll(joined), describeJoin(joined));
 
+  /* EVERY BOX WEARS ITS KIND ON ITS TOP-RIGHT CORNER, as the in-game map does
+   * (RouteLadder.kind_marker): the badge straddles the box's top edge, sits in
+   * its right half, carries the kind's mark, and is ringed in the kind's colour.
+   * A badge that drifted into the middle of a cover, or off the box entirely,
+   * would pass every count above. */
+  const kinds = await page.evaluate(() => [...document.querySelectorAll('.rung')].map((n) => {
+    const b = n.querySelector('.rung-kind');
+    const r = n.getBoundingClientRect();
+    if (!b) return { ok: false, why: 'no badge on ' + n.dataset.key };
+    const k = b.getBoundingClientRect();
+    const midY = (k.top + k.bottom) / 2;
+    return {
+      ok: Math.abs(midY - r.top) <= k.height * 0.6 && k.left >= r.left + r.width / 2
+        && k.right <= r.right + 1 && b.textContent.trim().length > 0
+        && getComputedStyle(b).borderTopColor === getComputedStyle(b).color,
+      why: n.dataset.key + ' badge at ' + Math.round(k.left - r.left) + ','
+        + Math.round(midY - r.top) + ' of a ' + Math.round(r.width) + 'px box',
+    };
+  }));
+  check('every box wears its kind as a badge on its top-right corner',
+    kinds.length === map.rungs && kinds.every((k) => k.ok),
+    (kinds.find((k) => !k.ok) || { why: kinds.length + ' badges' }).why);
+
+  /* …AND THE LAYERS ARE SPREAD, as the in-game map's are: a layer's games take
+   * the whole column rather than a clump in its middle. Measured on the
+   * fixture's two-game layer against the three-game one — spread, the two-game
+   * layer covers most of the height the three-game one does. */
+  const spread = await page.evaluate(() => {
+    const extent = (row) => {
+      const rs = [...row.querySelectorAll('.rung')].map((n) => n.getBoundingClientRect());
+      return Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top));
+    };
+    const rows = [...document.querySelectorAll('.map-row')];
+    const three = rows.find((r) => r.children.length === 3);
+    const two = rows.find((r) => r.children.length === 2);
+    return three && two ? { three: extent(three), two: extent(two),
+      body: document.getElementById('map-body').getBoundingClientRect().height } : null;
+  });
+  check('each layer is spread down the column, not clumped in its middle',
+    spread && spread.two > spread.three * 0.5 && spread.three > spread.body * 0.5,
+    JSON.stringify(spread));
+
   /* THE THREE RUNGS THAT ARE NOT JUST A GAME ON THE WAY, and their ORDER: the
    * game under your feet is the root and the Amulet is the last thing on the
    * road. A ladder drawn upside down would satisfy every count above. */
-  check('here, the Amulet and the pin are each marked once',
-    map.here === 1 && map.amulet === 1 && map.pinned === 1,
-    JSON.stringify({ here: map.here, amulet: map.amulet, pinned: map.pinned }));
+  check('here, the Amulet and the rift are each marked once',
+    map.here === 1 && map.amulet === 1 && map.rift === 1,
+    JSON.stringify({ here: map.here, amulet: map.amulet, rift: map.rift }));
   check('…with you at the top and the Amulet at the foot',
     map.hereFirst && map.amuletLast,
     JSON.stringify({ hereFirst: map.hereFirst, amuletLast: map.amuletLast }));
@@ -1461,7 +1511,7 @@ async function main() {
   /* THE EMPTY STATES ARE TWO DIFFERENT SENTENCES, and neither is a blank panel
    * — which is what a viewer reads as a broken source. */
   write((s) => { s.at++; s.route = { layers: [], edges: [], dropped: 0,
-    waypoint_depth: -1, arrived: true }; });
+    arrived: true }; });
   await sleep(900);
   const arrived = await page.evaluate(() => ({
     note: document.getElementById('map-note').textContent,
@@ -1472,7 +1522,7 @@ async function main() {
     arrived.shown && /under your feet/.test(arrived.note) && arrived.rungs === 0,
     JSON.stringify(arrived));
   write((s) => { s.at++; s.route = { layers: [], edges: [], dropped: 0,
-    waypoint_depth: -1, arrived: false }; });
+    arrived: false }; });
   await sleep(900);
   check('…and a dead end says THAT instead, which is a different fact',
     /No road/.test(await page.evaluate(() =>

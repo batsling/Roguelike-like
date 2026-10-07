@@ -557,12 +557,10 @@ function drawRoad(road) {
  * on, all the same distance — and picking between them is the run's core
  * decision. A single line would draw a forced march.
  *
- * NODES ARE KEYED (depth, id), NEVER id. A route forced through a pinned game
- * walks there and then walks on, and the way on may come straight back over the
- * games that led in: the same game legitimately holds two rungs at two depths.
- * `RouteLadder.node_key` says the same thing in GDScript, and for the same
- * reason — keying by id merges the two and draws arrows into a step of the route
- * that does not exist.
+ * NODES ARE KEYED (depth, id), the way `RouteLadder.node_key` keys them in
+ * GDScript. A shortest-path route holds each game once, so today depth and id
+ * agree; the depth key was for pinned routes (which could double back), and is
+ * kept because it costs nothing.
  *
  * THE ARROWS ARE DRAWN FROM MEASURED BOXES, in an SVG behind the rows, because
  * an edge joins two PARTICULAR games across a layer and not every box to every
@@ -587,8 +585,8 @@ function drawMap(route, run) {
     : hops < 0 ? amulet + ' — no road from here'
     : hops + (hops === 1 ? ' game to ' : ' games to ') + amulet;
 
-  const sig = [route.arrived, route.dropped, route.waypoint_depth,
-    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.pinned, n.beaten, n.rift]
+  const sig = [route.arrived, route.dropped,
+    layers.map(l => l.map(n => [n.id, n.here, n.amulet, n.beaten, n.rift, n.kind]
       .join('~')).join(',')).join('|'),
     (route.edges || []).map(e => [e.from_depth, e.from, e.to_depth, e.to]
       .join('~')).join(',')].join('\x01');
@@ -618,7 +616,6 @@ function drawMap(route, run) {
       box.className = 'rung'
         + (n.here ? ' here' : '')
         + (n.amulet ? ' amulet' : '')
-        + (n.pinned ? ' pinned' : '')
         + (n.beaten ? ' beaten' : '')
         + (n.rift ? ' rift' : '');
       box.dataset.key = depth + '|' + n.id;
@@ -627,21 +624,37 @@ function drawMap(route, run) {
       img.alt = n.name;
       setImg(img, n.cover);
       box.appendChild(img);
+      /* The nudge off this box's slot, in -1..1 per axis: the game's own
+       * (RouteLadder.jitter), so the stream draws the arrangement the streamer
+       * sees. Applied once the box's size is known (layoutWires). */
+      const nudge = Array.isArray(n.nudge) ? n.nudge : [0, 0];
+      box.dataset.nx = String(num(nudge[0]));
+      box.dataset.ny = String(num(nudge[1]));
       const text = document.createElement('span');
       text.className = 'rung-name';
-      /* An inner span so the clamp and the centring can be two different boxes —
+      /* An inner span so the clamp and the band can be two different boxes —
        * `-webkit-line-clamp` requires `display: -webkit-box` on the element it
-       * clamps, which cannot also be the flex box centring it. */
+       * clamps. */
       const label = document.createElement('span');
       label.textContent = n.name;
       text.appendChild(label);
       box.appendChild(text);
+      /* THE NODE'S KIND, as a badge on the cover's top-right corner — the in-game
+       * map's own (RouteLadder.kind_marker): its mark, in its colour. */
+      if (n.kind) {
+        const kind = document.createElement('span');
+        kind.className = 'rung-kind';
+        kind.textContent = n.kind;
+        kind.title = n.kind_name || '';
+        if (n.kind_color) kind.style.setProperty('--kind', n.kind_color);
+        box.appendChild(kind);
+      }
       /* WHAT THIS RUNG IS, in one word, for the three that are not just "a game
        * on the way". Drawn rather than left to colour alone: this page's own
        * checklist learned that lesson (six row kinds told apart by text colour
        * with nothing saying what a colour meant), and a map read across a room
        * through a lossy encode is the worst case for it. */
-      const tag = n.here ? 'Here' : n.amulet ? 'Amulet' : n.pinned ? 'Pinned'
+      const tag = n.here ? 'Here' : n.amulet ? 'Amulet'
         : n.beaten ? 'Beaten' : n.rift ? 'Rift' : '';
       if (tag) {
         const flag = document.createElement('span');
@@ -694,11 +707,11 @@ function drawMap(route, run) {
  * below does not fit — the whole route is always drawn, so something has to
  * give, and giving it up in pixels is better than dropping layers. */
 
-/* The rung's height as a multiple of its width, which the CSS above fixes: the
- * padding, a 3:4 cover, the gaps, two lines of name and the tag. Kept here as
- * one number because the fit has to know it BEFORE anything is laid out. If the
- * rung's CSS proportions change, this changes with them. */
-const RUNG_ASPECT = 1.50;
+/* The rung's height as a multiple of its width, which the CSS fixes (`.rung`):
+ * the in-game map's box, a strip of cover with the name along its bottom. Kept
+ * here as one number because the fit has to know it BEFORE anything is laid
+ * out. If the rung's CSS proportions change, this changes with them. */
+const RUNG_ASPECT = 0.60;
 /* THE GAP BETWEEN LAYERS IS THE ARROWS' ROOM.
  *
  * IT IS IN RUNGS, WHICH IS WHY WIDENING IT BARELY HELPS. A straight edge to a
@@ -711,6 +724,18 @@ const RUNG_ASPECT = 1.50;
  * of saying which way the road runs. */
 const LAYER_GAP = 0.32;
 const CHOICE_GAP = 0.08;  /* between the choices within one layer */
+/* SPREAD, AS THE IN-GAME MAP SPREADS (RouteLadder.build). Once the rung is
+ * solved, the layers spread across the room — the gap growing to at most
+ * LAYER_GAP_MAX rungs — and each layer's games spread down its whole height
+ * (at most COL_SPREAD times what they need), then stray from their slots by the
+ * nudge the game sent: up to JITTER_Y of a slot's spare room, and JITTER_X of
+ * the gap, never past JITTER_X_MAX rungs. Not the first layer or the last: they
+ * hold you and the Amulet, and the road reads from a fixed start to a fixed end. */
+const LAYER_GAP_MAX = 1.2;
+const COL_SPREAD = 2.2;
+const JITTER_Y = 0.4;
+const JITTER_X = 0.3;
+const JITTER_X_MAX = 0.12;
 /* The floor is a legibility floor: below about 90px of a 1080-tall stage a cover
  * is a smudge and the name is unreadable, so there is no point shrinking further
  * — past this the transform takes over and the honest answer is that the route is
@@ -807,6 +832,32 @@ function layoutWires(edges) {
    * panel by exactly that ratio. */
   const scale = ideal < rungMin ? Math.max(0.35, ideal / rungMin) : 1;
   fit.style.transform = 'scale(' + scale + ')';
+
+  /* THE SPREAD, in layout pixels, and only when the map fits without the squeeze
+   * (a squeezed map has no room to spread into). */
+  const boxH = RUNG_ASPECT * rung;
+  const needH = width * boxH + (width - 1) * CHOICE_GAP * rung;
+  const spread = scale === 1;
+  const colH = spread ? Math.max(needH, Math.min(room.h * 0.94, needH * COL_SPREAD + 0.4 * rung))
+    : needH;
+  const gap = spread && depth > 1
+    ? Math.max(LAYER_GAP * rung, Math.min(LAYER_GAP_MAX * rung,
+      (room.w * 0.94 - depth * rung) / (depth - 1)))
+    : LAYER_GAP * rung;
+  fit.style.setProperty('--col-h', colH + 'px');
+  fit.style.setProperty('--layer-gap', gap + 'px');
+  layers.forEach((layer, d) => {
+    const boxes = [...layer.children];
+    const slot = colH / boxes.length;
+    const slackY = Math.max(0, slot - boxH - CHOICE_GAP * rung);
+    const inner = d > 0 && d < depth - 1;
+    boxes.forEach((b) => {
+      const tx = inner ? (parseFloat(b.dataset.nx) || 0)
+        * Math.min(JITTER_X_MAX * rung, gap * JITTER_X) : 0;
+      const ty = inner ? (parseFloat(b.dataset.ny) || 0) * slackY * JITTER_Y : 0;
+      b.style.transform = 'translate(' + tx + 'px, ' + ty + 'px)';
+    });
+  });
 
   /* MEASURED IN SCREEN PIXELS, DRAWN IN LAYOUT ONES — so every measurement has
    * to have BOTH transforms divided back out of it, not just the squeeze.

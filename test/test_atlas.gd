@@ -829,13 +829,14 @@ func test_the_partition_follows_the_route_when_it_moves() -> void:
 	if not view.has_layout() or not view.showing_route():
 		pending("no baked layout, or this sky is not showing a route")
 		return
-	var before: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE).duplicate()
-	# Pin a game on the route: a forced route is a different set of stars.
-	var pin: StringName = _off_route_game(view)
-	if pin == &"":
-		pending("this run's route had no game worth pinning")
+	# Move the run to a game the route does NOT pass through: the road from there
+	# is a different set of stars, and that game is one of them.
+	var away: StringName = _off_route_game(view)
+	if away == &"":
+		pending("every game that can reach the Amulet is already on this route")
 		return
-	GameState.route_waypoint = pin
+	var here: StringName = GameState.current_game_id
+	GameState.current_game_id = away
 	view.refresh_route()
 	var after: PackedInt32Array = view.star_indices(AtlasView.LAYER_STARS_ON_ROUTE)
 	assert_eq(after.size() + view.star_indices(AtlasView.LAYER_STARS_OFF_ROUTE).size(),
@@ -847,8 +848,9 @@ func test_the_partition_follows_the_route_when_it_moves() -> void:
 		if route.has(i):
 			expect_on.append(i)
 	assert_eq(Array(after), expect_on, "the route pass matches the route as it now stands")
-	assert_ne(Array(after), Array(before), "and the pin did move it")
-	GameState.route_waypoint = &""
+	assert_true(Array(after).has(view.layout.index_of(away)),
+		"and the game the run moved to is on it")
+	GameState.current_game_id = here
 
 func test_with_no_route_one_pass_covers_the_sky() -> void:
 	var view := _open()
@@ -861,16 +863,15 @@ func test_with_no_route_one_pass_covers_the_sky() -> void:
 	assert_eq(view.draw_layers(), [AtlasView.LAYER_ROADS, AtlasView.LAYER_STARS_ALL],
 		"and there is only one star pass to make")
 
-# A game the route does NOT already pass through, so pinning it actually changes
-# the road. &"" when every candidate is already on it.
+# A game the route does NOT already pass through, but that can still reach the
+# Amulet, so moving the run there changes the road. &"" when there is none.
 func _off_route_game(view: AtlasView) -> StringName:
 	var route: Dictionary = view.route_stars()
 	for g in Data.all_games():
 		var i: int = view.layout.index_of(g.id)
 		if i < 0 or route.has(i):
 			continue
-		if RunGraph.route_length_via(GameState.current_game_id, g.id,
-				GameState.amulet_game_id) > 0:
+		if RunGraph.route_length(g.id, GameState.amulet_game_id) > 0:
 			return g.id
 	return &""
 

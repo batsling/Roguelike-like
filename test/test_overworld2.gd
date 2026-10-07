@@ -4867,8 +4867,19 @@ func test_the_starts_are_different_distances_when_the_graph_allows_it() -> void:
 # So this is a maximum matching of genres to distances, brute-forced over at most
 # 4 genres — the same thing _spread_across_band maximises, stated independently
 # rather than by calling it.
+#
+# AT THE FLOOR THE PANEL WAS HELD TO (Overworld2._start_floor). With rifts on, the
+# generator tries the raised RIFT_FLOOR first, and a panel built there is drawn
+# from fewer starts than one at ROUTE_SLACK_FLOOR — and with rifts on, a start one
+# game short of the floor still qualifies when its route has room for the path
+# rift that makes it up (docs/rifts-design.md §4). This oracle used to measure at
+# the ordinary floor whatever the panel was built at, and failed intermittently
+# with rifts on: "expected 2 to equal 3" was a raised-floor panel being held to
+# the ordinary floor's spread.
 func _best_spread(amulet: StringName, want: int) -> int:
 	var band: Vector2i = RunConfig.path_band()
+	var floor: int = _ui._start_floor
+	var rifts_on: bool = RunGraph.rifts_available()
 	var d_to: Dictionary = RunGraph.bfs_distances(amulet)
 	var all: Array[GameData] = []
 	for g in Data.all_games():
@@ -4881,7 +4892,9 @@ func _best_spread(amulet: StringName, want: int) -> int:
 		var hops: int = int(d_to.get(g.id, -1))
 		if hops < band.x or hops > band.y:
 			continue
-		if not RunGraph.route_clears_floor(g.id, amulet):
+		var slack: int = RunGraph.route_slack(g.id, amulet)
+		if slack < floor and not (rifts_on and slack == floor - 1
+				and not RunGraph.rift_spots(g.id, amulet).is_empty()):
 			continue
 		if not by_genre.has(int(g.type)):
 			by_genre[int(g.type)] = {}
@@ -5352,15 +5365,21 @@ func test_the_popup_opens_clear_of_the_header_bar() -> void:
 		"and the panel starts below it, title and all")
 	_ui._choice_modal._close()
 
-func test_the_popup_states_where_the_game_puts_you() -> void:
-	# The route badge used to ride above every cover. It heads the popup now, over
-	# the map that backs the claim up.
+func test_the_popups_map_runs_the_full_column_with_the_close_on_it() -> void:
+	# The route badge ("★ OPTIMAL — N steps left") and the sentence under it used to
+	# head the map, and the title row ran across the whole popup over both. Both
+	# went to give the map the column's whole height: the map's frame is the
+	# column's only child, and the popup's ✕ rides its corner.
 	_ui._render_choices()
 	for i in range(_ui._choices.size()):
-		var note: Dictionary = _ui.route_note(_ui._choices[i])
-		var text: String = _text_of(_ui.open_choice(i))
-		assert_true(text.contains(String(note["text"])),
-			"choice %d states where it puts you: %s" % [i, text])
+		var modal = _ui.open_choice(i)
+		var frame: Node = modal._ladder_room.get_parent().get_parent()
+		var column: Node = frame.get_parent()
+		assert_eq(column.get_child_count(), 1, "choice %d: nothing heads the map" % i)
+		var close: Node = modal.find_child("Close", true, false)
+		assert_not_null(close, "the popup has its ✕")
+		if close != null:
+			assert_true(frame.is_ancestor_of(close), "on the map, not in a title row")
 		_ui._choice_modal._close()
 
 # ---------------------------------------------------------------------------
