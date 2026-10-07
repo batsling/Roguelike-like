@@ -1110,8 +1110,15 @@ func cover_count() -> int:
 # above and StarCanvas._draw, so the two agree about what is showing.
 const COVER_CULL_MARGIN := 400.0
 
+#
+# The box is _canvas_size(), the same one the camera frames against. It used to
+# read `_canvas.size` raw, which is 0x0 until the canvas is laid out (always, in
+# a headless test): the camera framed the sky in 1280x720 while the cull box
+# was an 800px square at the origin, and the count saw a star only if the bake
+# happened to put it there. Re-baking for eighteen new games moved Slay the
+# Spire to x=539 and test_the_cover_count_memo_follows_the_camera read 0.
 func _visible_rect() -> Rect2:
-	var box: Vector2 = _canvas.size if _canvas != null else _canvas_size()
+	var box: Vector2 = _canvas_size()
 	return Rect2(Vector2(-COVER_CULL_MARGIN, -COVER_CULL_MARGIN),
 		box + Vector2(COVER_CULL_MARGIN, COVER_CULL_MARGIN) * 2.0)
 
