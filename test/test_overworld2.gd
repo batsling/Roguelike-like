@@ -5490,9 +5490,12 @@ func test_the_start_screen_counts_the_roads_it_is_offering() -> void:
 	if _ui._start_picker == null:
 		pending("no start options rolled for this run")
 		return
+	# The heading is one line now ("Choose an Entrance"), so the count is the
+	# CARDS: one per road on the table, whatever the number is.
 	var text: String = _all_label_text(_ui._start_picker)
-	assert_true(text.contains("%d genre" % _ui._start_options.size()),
-		"the heading counts what is on the table: %s" % text.substr(0, 240))
+	assert_true(text.contains("Choose an Entrance"), "the heading: %s" % text.substr(0, 240))
+	assert_eq(_ui._start_picker._cards.size(), _ui._start_options.size(),
+		"one card per road offered")
 
 # Anything a road opens has to come up ABOVE the screen that opened it — both used
 # to mount below it and open perfectly out of sight.
@@ -11104,10 +11107,29 @@ func test_identical_bodies_share_one_checklist_row() -> void:
 	if bodies.size() < 3:
 		pending("the board did not take three bodies")
 		return
-	assert_eq(_ui._fulfil_checks.size(), 1,
+	assert_eq(_ui._fulfil_checks.size(), 3, "one box per body")
+	var rows: Dictionary = {}
+	var listed: Array = []
+	for f in _ui._fulfil_checks:
+		rows[(f["check"] as Control).get_parent().get_parent()] = true
+		listed.append(int(f["instance"]))
+	assert_eq(rows.size(), 1,
 		"three of the same body with the same goal are ONE row, not three")
-	assert_eq((_ui._fulfil_checks[0].get("group", []) as Array).size(), 3,
-		"…and the row knows all three it stands for")
+	for inst in bodies:
+		assert_true(listed.has(int(inst)), "…and each body has its own box on it")
+
+# HOVERING ONE BOX LIGHTS ITS OWN BODY, so the player can see which of the
+# identical bodies a tick takes down.
+func test_hovering_a_group_box_lights_only_its_body() -> void:
+	var bodies: Array = _stand_identical(3)
+	if bodies.size() < 3:
+		pending("the board did not take three bodies")
+		return
+	var f: Dictionary = _ui._fulfil_checks[1]
+	(f["check"] as Control).mouse_entered.emit()
+	assert_eq(_ui._board._highlighted.keys(), [int(f["instance"])],
+		"exactly that box's body is lit on the board")
+	_ui._checklist.light_bodies([])
 
 func test_one_tick_on_a_group_answers_exactly_one_body() -> void:
 	var bodies: Array = _stand_identical(3)
@@ -11123,22 +11145,18 @@ func test_one_tick_on_a_group_answers_exactly_one_body() -> void:
 			answered += 1
 	assert_eq(answered, 1, "one deed, one body — the tick answers for ONE of the three")
 	assert_eq(GameLoop2.stack.size(), standing - 1, "and a one-hit body comes off the board")
-	assert_eq(_ui._fulfil_checks.size(), 1, "the other two are still one row")
-	assert_false(_ui._fulfil_checks[0]["check"].disabled,
-		"and that row is open again, aimed at the next body")
+	assert_eq(_ui._fulfil_checks.size(), 2, "the other two keep a box each")
+	for f in _ui._fulfil_checks:
+		assert_false(f["check"].disabled, "and both are still open")
 
 func test_a_standing_group_shows_its_count() -> void:
 	var bodies: Array = _stand_identical(2)
 	if bodies.size() < 2:
 		pending("the board did not take two bodies")
 		return
-	var chips: int = 0
-	for row in _ui._fulfil_checks:
-		for c in (row["check"] as Control).get_parent().get_children():
-			if c is PanelContainer and c.get_child_count() > 0 and c.get_child(0) is Label \
-					and String((c.get_child(0) as Label).text) == "×2":
-				chips += 1
-	assert_eq(chips, 1, "the grouped row wears ×2 beside its box")
+	var boxes: Control = (_ui._fulfil_checks[0]["check"] as Control).get_parent()
+	assert_eq(String(boxes.name), "GroupBoxes", "the grouped row carries a strip of boxes")
+	assert_eq(boxes.get_child_count(), 2, "…one per body: the count IS the boxes")
 
 func test_a_potion_offered_alone_is_quaffed_not_read() -> void:
 	var modal := LootDropModal.open(_ui, {"type": "potion", "id": &"block_potion"})

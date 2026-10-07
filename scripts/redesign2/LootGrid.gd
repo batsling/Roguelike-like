@@ -1211,6 +1211,13 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 # `usable` (a Blueprint copying a piece you use) and `progress` (kill_progress).
 static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		with_name: bool = true, face_up: bool = true, extras: Dictionary = {}) -> Control:
+	# A piece with a charged trigger shows its count wherever it is drawn — on an
+	# offer or in a chest as well as in the pack (LootPassives.entry_progress).
+	if not extras.has("progress"):
+		var loose_progress: Dictionary = LootPassives.entry_progress(entry)
+		if not loose_progress.is_empty():
+			extras = extras.duplicate()
+			extras["progress"] = loose_progress
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", LootSlot.GAP)
 	# A BIG PIECE's picture fills the whole of its footprint's art area rather than a
@@ -1231,22 +1238,13 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		if LootSystem.is_weapon(entry):
 			span.add_child(_weapon_chip(entry))
 			if with_name:
-				col.add_child(_name_label(entry, face_up))
-				if use_cb.is_valid():
-					col.add_child(_weapon_button(entry, use_cb, locked_now))
+				return _overlaid(col, span, _name_label(entry, face_up),
+					_weapon_button(entry, use_cb, locked_now) if use_cb.is_valid() else null)
 			return col
 		if with_name:
-			col.add_child(_name_label(entry, face_up))
-			var plate := Label.new()
-			plate.text = "Passive"
-			plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
-			plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-			plate.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-			plate.tooltip_text = "Works while it is in your pack — never spent."
-			if use_cb.is_valid():
-				col.add_child(plate)
+			var plate: Control = _passive_plate("Passive",
+				"Works while it is in your pack — never spent.") if use_cb.is_valid() else null
+			return _overlaid(col, span, _name_label(entry, face_up), plate)
 		return col
 
 	# A FIXED BAND, with the art centred in it at ITS OWN SIZE. This is what lets a
@@ -1255,10 +1253,14 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	band.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var centre := CenterContainer.new()
+	centre.name = "Centre"
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.add_child(centre)
-	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART, face_up)
+	# BIGGER IN THE PACK, where the name and the button are laid OVER the picture
+	# rather than stacked under it, so the art gets the whole square.
+	var art: TextureRect = LootSystem.art_tex(entry,
+		LootSlot.ART_BIG if with_name else LootSlot.ART, face_up)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# THE PICTURE TURNS WITH THE PIECE (`rot`, docs/loot-passives.md §2). A
 	# container resets its children's rotation, so the art sits in a plain Control
@@ -1338,46 +1340,146 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	if not with_name:
 		return col
 
-	col.add_child(_name_label(entry, face_up))
-
 	# A PASSIVE PIECE HAS NOTHING TO SPEND (docs/loot-passives.md §1), so where the
 	# Use button would be it says what it is instead — at the button's own height,
 	# so a row holding a trinket is exactly as tall as a row holding a scroll.
+	var bottom: Control = null
 	if bag:
 		pass
 	elif use_cb.is_valid() and passive:
-		var plate := Label.new()
 		var dir: String = LootPassives.facing(entry, LootPassives.def_for(entry))
 		var copier: bool = dir != ""
-		plate.text = "Copies %s" % ARROWS.get(dir, ">") if copier else "Passive"
-		plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
-		plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-		plate.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-		plate.tooltip_text = "Works while it is in your pack. Copies the piece %s. Turn it to aim it." \
+		bottom = _passive_plate("Copies %s" % ARROWS.get(dir, ">") if copier else "Passive",
+			"Works while it is in your pack. Copies the piece %s. Turn it to aim it." \
 			% WHERE.get(dir, "to its right") \
-			if copier else "Works while it is in your pack — never spent."
-		col.add_child(plate)
+			if copier else "Works while it is in your pack — never spent.")
 	elif use_cb.is_valid():
 		# "Zap" ON A WAND AND "Use" ON EVERYTHING ELSE. The word is the one place a
 		# 40px tile can say that pressing this does not empty the slot — every other
 		# kind's button is a goodbye and a wand's usually is not.
 		var wand: bool = LootSystem.is_wand(entry)
 		if weapon:
-			col.add_child(_weapon_button(entry, use_cb, locked_now))
-			return col
-		var use := UITheme.confirm_button("Zap" if wand else "Use",
-			Vector2(0, LootSlot.USE_H), 10)
-		use.disabled = locked_now
-		# NOT "this is how an unknown one gets identified" any more: a use only
-		# identifies a piece when it actually DID something (LootSystem's spend
-		# paths), so a tooltip promising the lesson would be promising a lesson a
-		# zap into an empty square does not buy.
-		use.tooltip_text = "Spend a charge." if wand else "Spend it."
-		use.pressed.connect(use_cb)
-		col.add_child(use)
-	return col
+			bottom = _weapon_button(entry, use_cb, locked_now)
+		else:
+			var use := UITheme.confirm_button("Zap" if wand else "Use",
+				Vector2(0, LootSlot.USE_H), 10)
+			use.disabled = locked_now
+			# NOT "this is how an unknown one gets identified" any more: a use only
+			# identifies a piece when it actually DID something (LootSystem's spend
+			# paths), so a tooltip promising the lesson would be promising a lesson a
+			# zap into an empty square does not buy.
+			use.tooltip_text = "Spend a charge." if wand else "Spend it."
+			use.pressed.connect(use_cb)
+			bottom = use
+	return _overlaid(col, band, _name_label(entry, face_up), bottom)
+
+# THE NAME AND THE BUTTON LAID OVER THE PICTURE, not stacked under it. A pack
+# cell used to spend 40 of its 96 inner pixels on a name line and a Use button
+# below a 40px picture; laid over it, the picture gets the whole square and the
+# cell stays the same square. `art` (the band or a big piece's SpanArt) fills the
+# cell; the name rides the top edge on a dark scrim, `bottom` (Use / Zap / Swing /
+# Passive, or null) the bottom edge. The art's corner chips stay clear of both:
+# its band is inset by the name line above and the button below.
+static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Control) -> Control:
+	col.remove_child(art)
+	col.queue_free()
+	var stack := Control.new()
+	stack.name = "CellBody"
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.custom_minimum_size = Vector2(0, LootSlot.cell_height())
+	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# The picture itself spans the whole cell; the corner chips ride in the band
+	# between the name and the button.
+	var centre: Node = art.get_node_or_null("Centre")
+	if centre != null:
+		art.remove_child(centre)
+		(centre as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stack.add_child(centre)
+	stack.add_child(art)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# A SMALL PILL, CENTRED, not a bar across the cell: laid over the picture, a
+	# full-width 26px button covered the bottom quarter of it. The plate keeps the
+	# button's colours with its padding cut down, and it sits a hair above the
+	# cell's bottom edge.
+	if bottom is Button:
+		_tighten(bottom as Button)
+	if bottom != null:
+		bottom.custom_minimum_size = Vector2(LootSlot.USE_W, 0)
+	# The button's REAL height, plus the inset it sits at, so the corner chips
+	# above it stay clear.
+	var below: int = 0
+	if bottom != null:
+		below = maxi(LootSlot.USE_H, int(ceil(bottom.get_combined_minimum_size().y))) \
+			+ LootSlot.USE_INSET
+	if centre != null:
+		art.offset_top = LootSlot.NAME_LINE
+		art.offset_bottom = -below
+	else:
+		# A big piece's picture IS the art node, so it keeps the whole cell and its
+		# corner chips are moved in off the name and the button instead.
+		for chip in art.get_children():
+			if not (chip is Control):
+				continue
+			var c: Control = chip
+			if c.anchor_top == 0.0:
+				c.offset_top += LootSlot.NAME_LINE + 1
+				c.offset_bottom += LootSlot.NAME_LINE + 1
+			else:
+				c.offset_top -= below
+				c.offset_bottom -= below
+	var scrim := PanelContainer.new()
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dark := StyleBoxFlat.new()
+	dark.bg_color = Color(0.05, 0.04, 0.06, 0.62)
+	dark.set_corner_radius_all(3)
+	scrim.add_theme_stylebox_override("panel", dark)
+	name.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	name.add_theme_constant_override("outline_size", 3)
+	scrim.add_child(name)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
+	stack.add_child(scrim)
+	if bottom != null:
+		stack.add_child(bottom)
+		bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
+			Control.PRESET_MODE_MINSIZE, LootSlot.USE_INSET)
+	return stack
+
+# Cut a button's padding to a pill: every state's plate keeps its colours and
+# rule, no padding above and below, 5px either side, and the micro font.
+static func _tighten(btn: Button) -> void:
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		if not btn.has_theme_stylebox_override(state):
+			continue
+		var box: StyleBox = btn.get_theme_stylebox(state).duplicate()
+		box.content_margin_top = 0
+		box.content_margin_bottom = 0
+		box.content_margin_left = 5
+		box.content_margin_right = 5
+		if box is StyleBoxFlat:
+			(box as StyleBoxFlat).set_corner_radius_all(5)
+		btn.add_theme_stylebox_override(state, box)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+
+# "Passive" / "Copies >" where a spent piece's Use button would be — on a dark
+# plate, since it is laid over the art.
+static func _passive_plate(text: String, tip: String) -> Control:
+	var plate := Label.new()
+	plate.name = "PassivePlate"
+	plate.text = text
+	plate.custom_minimum_size = Vector2(0, LootSlot.USE_H)
+	plate.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	plate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	plate.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	var dark := StyleBoxFlat.new()
+	dark.bg_color = Color(0.05, 0.04, 0.06, 0.62)
+	dark.set_corner_radius_all(6)
+	dark.content_margin_left = 6
+	dark.content_margin_right = 6
+	plate.add_theme_stylebox_override("normal", dark)
+	plate.mouse_filter = Control.MOUSE_FILTER_PASS
+	plate.tooltip_text = tip
+	return plate
 
 # A WEAPON'S CHARGE, "1/3", in the bottom-left corner — green once it can swing.
 static func _weapon_chip(entry: Dictionary) -> Control:
@@ -1447,8 +1549,11 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 	# READY: a move beside more food brought the target down to what it already
 	# holds, so it pays on its NEXT charge (docs/loot-passives.md §11) — said on the
 	# piece rather than left as a "3/3" that looks like it should have gone off.
-	var chip := UITheme.chip("+1" if ready else "%d/%d" % [int(progress["have"]), int(progress["need"])],
-		UITheme.ACCENT if ready else UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD, 9)
+	# ⚡ AND A READABLE SIZE: this is the piece's charge, the number a food is
+	# all about, and at 9px with no symbol it read as a stray tag.
+	var chip := UITheme.chip("⚡+1" if ready else "⚡%d/%d" % [int(progress["have"]), int(progress["need"])],
+		UITheme.ACCENT if ready else UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD,
+		UITheme.FONT_SMALL)
 	chip.name = "Progress"
 	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -1524,10 +1629,18 @@ static func _empty_body(with_use: bool) -> Control:
 # panel, which is the same "you have not learned this yet" the name says.
 static func _filled_box(entry: Dictionary, loose: bool) -> StyleBoxFlat:
 	var known: bool = LootSystem.is_identified(entry)
-	return UITheme.flat(
-		ACCENT.lerp(UITheme.BG, 0.78 if loose else 0.86), 6, 4,
+	# SEE-THROUGH IN THE PACK, so the bag a piece sits in still shows under it — the
+	# bag is what gives the pack its shape (docs/loot-passives.md §6), and an opaque
+	# purple tile over every filled cell hid exactly the leather that says which bag
+	# owns it. A loose offer has no bag under it and keeps its solid plate.
+	var fill: Color = ACCENT.lerp(UITheme.BG, 0.78 if loose else 0.86)
+	if not loose:
+		fill.a = PACK_FILL_ALPHA
+	return UITheme.flat(fill, 6, 4,
 		2 if loose else 1,
 		ACCENT if loose else ACCENT.lerp(UITheme.BG, 0.3 if known else 0.65))
+
+const PACK_FILL_ALPHA := 0.55
 
 static func _empty_box() -> StyleBoxFlat:
 	return UITheme.flat(Color(0, 0, 0, 0.20), 6, 4, 1, ACCENT.lerp(UITheme.BG, 0.85))

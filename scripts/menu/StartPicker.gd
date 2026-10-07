@@ -167,7 +167,7 @@ func _amulet_banner() -> Control:
 	row.add_child(facts)
 
 	var eyebrow := Label.new()
-	eyebrow.text = "🏆  THE AMULET — WHERE THIS RUN ENDS"
+	eyebrow.text = "🏆  Amulet Game"
 	eyebrow.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	eyebrow.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.4))
 	facts.add_child(eyebrow)
@@ -189,37 +189,16 @@ func _amulet_banner() -> Control:
 		meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		facts.add_child(meta)
 
-	var blurb := Label.new()
-	blurb.text = "Reach it and clear the goal standing on it, and the run is won."
-	blurb.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	blurb.add_theme_color_override("font_color", UITheme.TEXT)
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	facts.add_child(blurb)
 	return wrap
 
+# One line. The screen used to explain itself here in two (how many genres, that
+# the start is a real game rather than a free move); the cards already say it.
 func _roads_heading() -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	var head := Label.new()
-	# COUNTED, not asserted. This line said "three genres" for as long as
-	# `RunGraph.NUM_START_OPTIONS` has been 2, because it was a hardcoded sentence
-	# describing a number that had moved underneath it.
-	head.text = "Choose the road you open on — %d %s, all ending on %s:" % [
-		_options.size(),
-		"genre" if _options.size() == 1 else "genres",
-		_page.amulet_name()]
+	head.text = "Choose an Entrance"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
-	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(head)
-	var sub := Label.new()
-	sub.text = ("The game you take is the run's first game, enemy and all — "
-		+ "not a free move onto the board.")
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(sub)
-	return box
+	return head
 
 func _roads_row() -> Control:
 	var row := HBoxContainer.new()

@@ -457,8 +457,14 @@ func _build_single(col: VBoxContainer) -> void:
 	var pref: String = LootSystem.preference(entry)
 	if LootSystem.is_identified(entry) and pref != "":
 		chips.add_child(UITheme.chip(pref, UITheme.preference_color(pref)))
-	else:
+	elif not LootSystem.is_identified(entry):
 		chips.add_child(UITheme.chip("Unidentified", UITheme.TEXT_DIM))
+	elif LootPassives.is_passive(entry):
+		# A KNOWN PIECE WITH NO PREFERENCE IS NOT UNKNOWN. A trinket or a passive
+		# card has nothing to gamble on, so it has no Preference to show — and this
+		# used to read that absence as "Unidentified", on a Whetstone whose line was
+		# printed right underneath.
+		chips.add_child(UITheme.chip("Passive", UITheme.TEXT_DIM))
 	col.add_child(chips)
 
 	var desc := _line(LootSystem.description(entry), UITheme.TEXT, 13)
@@ -469,7 +475,7 @@ func _build_single(col: VBoxContainer) -> void:
 	# Offered whether the pack is full or not — spending a piece you were not going
 	# to carry is a real choice even with eight slots free, and an unidentified one
 	# is still the gamble it always was.
-	if _spendable and not GameState.is_bag_entry(entry):
+	if _spendable and _spent_from_the_table(entry):
 		# The piece's own verb (LootSystem.use_verb) rather than a pill/scroll pair:
 		# "Read it now" on a potion is how this button used to read for every kind
 		# that was neither.
@@ -480,6 +486,15 @@ func _build_single(col: VBoxContainer) -> void:
 			+ "It never enters your pack, so it costs you no room."
 		use_now.pressed.connect(func(): _use_offer(0))
 		col.add_child(use_now)
+
+# WHETHER THE ONE OFFER ON THE TABLE GETS A "… now" BUTTON. Only the pieces that
+# are spent at all: a bag is not, a passive piece (a trinket, a passive card) works
+# from the pack and has nothing to spend, and a weapon off the table has no charge
+# to swing with. Each of those used to be offered one anyway — a Whetstone came
+# with "Read Scroll now", the fallback verb for a kind `use_verb` does not name.
+static func _spent_from_the_table(entry: Dictionary) -> bool:
+	return not GameState.is_bag_entry(entry) and not LootPassives.is_passive(entry) \
+		and not LootSystem.is_weapon(entry)
 
 # ---------------------------------------------------------------------------
 # The pack side

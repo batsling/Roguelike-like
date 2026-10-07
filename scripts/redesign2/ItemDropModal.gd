@@ -73,6 +73,9 @@ const MULTI_MAX_W := 900
 # wrap in rather than a column under a picture.
 const COMPACT_CARD_W := 260
 const COMPACT_ART := 40
+# …and the tile it became: the picture alone, the words on hover (_offer_card).
+const COMPACT_TILE := 72
+const COMPACT_TILE_ART := 56
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -180,8 +183,6 @@ func _build() -> void:
 			host = shelf
 		for item in _items:
 			var card: Control = _offer_card(item)
-			if sideways:
-				card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			host.add_child(card)
 			_cards.append({"item": item, "node": card})
 	else:
@@ -364,6 +365,26 @@ func _offer_card(item: ItemData) -> Control:
 		"art": item.image,
 		"lines": [item.description if String(item.description) != "" else "A dropped relic."],
 	})
+	# ON THE REWARD SCREEN, ONLY THE PICTURE. Every relic in every chest used to
+	# carry its name, kind and description on the card, and a report that dropped
+	# two or three chests turned the haul into a column of small print. The card
+	# is a tile now: the art, and the hover card above (name, kind, the whole
+	# description) for the one you want to read. The Take button names the one
+	# selected, so which relic you are about to take is never only a picture.
+	if compact:
+		card.custom_minimum_size = Vector2(COMPACT_TILE, COMPACT_TILE)
+		var centre := CenterContainer.new()
+		centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(centre)
+		var tile_art: Control = _item_art(item, COMPACT_TILE_ART)
+		tile_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		centre.add_child(tile_art)
+		var picked: ItemData = item
+		card.gui_input.connect(func(ev: InputEvent):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				select(picked))
+		return card
+
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_%s" % side, 6 if compact else 10)

@@ -70,6 +70,10 @@ var entry: Dictionary = {}
 # start below the top of the board (test_overworld2 asserts exactly that). 40 is
 # what the height budget buys once the horse dose's extra third is paid for.
 const ART := 40
+# …and in the PACK, where the name and the Use button are laid over the picture
+# instead of under it (LootGrid._overlaid), the picture takes the cell: 64, which
+# leaves a horse dose's extra third (~84) inside the 96px body.
+const ART_BIG := 64
 # EVERY CELL IS A SQUARE, this many pixels a side, full or empty, with or without
 # a Use button. It used to be 88 wide and 116 tall — a column of art, two lines of
 # name and a button — and a grid of tall cards read as a list of tiles rather than
@@ -101,6 +105,10 @@ const NAME_H := 30
 # the whole of it.
 const NAME_LINE := 15
 const USE_H := 18
+# The Use / Zap / Swing pill laid over a pack cell's art: its least width, and how
+# far it sits up off the cell's bottom edge (LootGrid._overlaid).
+const USE_W := 38
+const USE_INSET := 3
 const GAP := 3
 
 # How tall a cell's BODY stands, inside the panel's margin: the square, whatever

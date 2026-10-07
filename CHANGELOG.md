@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A UI pass from the owner's notes.**
+  - The opening screen is shorter: the banner reads "Amulet Game" over the
+    game's art, name, genre and year (the "reach it and clear the goal" line is
+    gone, since it was wrong), and the roads sit under one heading, "Choose an
+    Entrance".
+  - Bodies no longer blink out while the board moves. A body that moved was
+    hidden from the first frame of the playback, but its slide ghost only showed
+    once its own slide began and was freed between turns, so it vanished for the
+    strike beat, between turns, and for any later turn it stood still in. There
+    is now one ghost per body, visible for the whole playback.
+  - Identical bodies still share one checklist row, but the row now has one box
+    per body, in board order. Hovering a box lights that body on the board, and a
+    lit body now gets an outline drawn over its picture as well as under it.
+  - The ❤/⚔ badges stay inside the body's side edges. The preset's drop margin
+    was also pushing the row out sideways, and on a narrow body the font now
+    steps down until the row fits (`BattlefieldView.fit_stat_font`).
+  - In the pack, the purple tile behind a piece is see-through, so the bag under
+    it shows. The art is bigger (`LootSlot.ART_BIG`), and the name and Use button
+    are laid over it (`LootGrid._overlaid`).
+  - The chests on the haul screen show only the relics' pictures. Hover a picture
+    for the details; the Take button names the one you've selected.
+  - A trinket offered on its own on the table no longer reads "Unidentified" with
+    a "Read Scroll now" button. It had no Preference, which the layout read as
+    unknown, and `use_verb` falls back to "Read Scroll" for any kind it doesn't
+    name. A known passive piece now shows a "Passive" chip, and only pieces that
+    can be spent get a "… now" button (`LootDropModal._spent_from_the_table`).
+    The pack's Use/Zap/Swing pills are smaller again (micro font, 38px).
+  - Charged loot (Garlic and the other foods) shows `⚡have/need` in a readable
+    size. It now does so anywhere the piece is drawn, not only in the pack
+    (`LootPassives.entry_progress`).
+
 - **A shop no longer pushes the page past 720p for some characters.** With a shop
   (or the machines) under it, the board drops to small cells and its width is
   set by the hero's shield row: five shields left the pressure strip's small
