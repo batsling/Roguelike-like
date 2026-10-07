@@ -16,7 +16,7 @@ How the research is done, and how to do more: `docs/influence-research.md`.
 
 | | lines |
 |---|---|
-| 1. To review: games on the sheet | 15 strong, 56 weaker |
+| 1. To review: games on the sheet | 16 strong, 56 weaker |
 | 2. To review: games you want to add | 4 strong, 5 weaker |
 | 7. Done: on the chart | 147 |
 
@@ -37,6 +37,7 @@ Sorted by the game that would get the new connection.
 - [ ] **Hades → Nowhere Prophet** — on its dialogue-driven writing: "Actually Hades was a big influence on that." — [Steam dev post](https://steamcommunity.com/games/NowhereProphet/announcements/detail/498341245287925959)
 - [ ] **Into the Breach → Order Automatica** — Mickanio, its developer, on how it came together: "It was always an auto battler, but it started leaning more towards tactics (probably because of my great love of Into the Breach). I tried to make the placement more strategic, and I tried to make the game as systemic as possible, inspired by the games of Michael Brough, such as 868-hack and Cinco Paus." *(868-Hack is already a row.)* — [Steam dev post, "The Ritual Is Ready!"](https://store.steampowered.com/news/app/2105840/view/1842212951314141)
 - [ ] **Risk of Rain 2 → Risk of Rain Returns** *(Dev/Series Relation)* — Hopoo: "Dive into the iconic roguelike full of unique loot combinations, enhanced with new Survivors, overhauled multiplayer, fan favorite content from Risk of Rain 2, and more!" — [Steam store page](https://store.steampowered.com/app/1337520/)
+- [ ] **Super Auto Pets → Sir, We Have an Orc Problem**, **Backpack Battles → Sir, We Have an Orc Problem**, **9 Kings → Sir, We Have an Orc Problem**, **Teamfight Tactics → Sir, We Have an Orc Problem** — Mumpitz Games, its developer (also Tiny Auto Knights, already a Dev/Series row), on Bluesky in May 2025 while it was in development: "My game is obviously inspired by: - Super Auto Pets - Backpack Battles - 9 Kings - Teamfight Tactics" — [Bluesky](https://bsky.app/profile/mumpitzgames.com/post/3lprgdhsv622b)
 - [ ] **Diablo → Skull Horde** *(said of Diablo II; the chart has the first Diablo, so this is the series)* — Alex (8BitSkull), in Defold's developer interview: "At its core, we are trying to recreate the feeling of playing a Diablo 2 summoner necromancer, just modernised and with our own twist." *(Its three rows today are Despot's Game and Slime 3K, both `check folder`, and the studio's own Void Scrappers; the interview names neither of the first two.)* — [Defold](https://defold.com/2026/05/15/8BitSkull-Skull-Horde-Interview/)
 - [ ] **Despotism 3k → Slime 3K: Rise Against Despot** *(Dev/Series Relation)* — Konfa Games, on Slime 3K's store page: "this action-packed roguelite from the creators of Despot's Game and Despotism 3K." — [Steam store page](https://store.steampowered.com/app/2348610/)
 - [ ] **Diablo → Soulstone Survivors** — Game Smithing Limited, its developer, in the Reddit post the sheet already cites for its Hades and Vampire Survivors rows: "Tomorrow we have a huge announcement for Soulstone Survivors, our Action Roguelite inspired by Hades, Diablo and Vampire Survivors". — [Reddit](https://www.reddit.com/r/roguelites/comments/xtr9td/tomorrow_we_have_a_huge_announcement_for/)
@@ -347,6 +348,8 @@ Games a developer names that aren't on the chart but are roguelikes themselves, 
 
 ### Other leads
 
+- **Yet Another Zombie Survivors**: Awesome Games Studio on Bluesky: "You will like our indie game if you enjoyed: - Deep Rock Galactic: Survivor - Vampire Survivors - Halls of Torment - Left 4 Dead". A "you will like it if" list is marketing, not influence, and Deep Rock Galactic: Survivor came out after it; at most it is a better link than `look at it` for the Vampire Survivors row. — [Bluesky](https://bsky.app/profile/awesomegamesstudio.com/post/3lse45iumkc25)
+- **Patreon pages run by the developer** (from `patreon`; the posts need a login to read, so they are unread): 868-Back ([Michael Brough](https://www.patreon.com/smestorp)), Atomic Owl ([Monster Theater Games](https://www.patreon.com/MonsterTheater)), Baldi's Basics Plus ([Basically Games](https://www.patreon.com/BasicallyGames)), DemonCrawl ([Therefore Games](https://www.patreon.com/thereforegames)), Dungeon Deathball ([Matt Glanville](https://www.patreon.com/mattglanville)), Dungeons of Blood and Dream ([its own page](https://www.patreon.com/necrotic_spider)), Emberward ([Lands of Nedûn](https://www.patreon.com/LoN_Emberward)), Eternal Quest ([Gaiadon](https://www.patreon.com/gaiadon_eternalquest)), Legend of Dungeon ([Robot Loves Kitty](https://www.patreon.com/rlk)), My Card Is Better Than Your Card! ([Utu Studios](https://www.patreon.com/UtuStudios)), The King is Watching ([Hypnohead](https://www.patreon.com/Hypnohead)), The Magus Circle ([By Witchlight](https://www.patreon.com/TheMagusCircle)) and Warsim ([Huw Millward](https://www.patreon.com/Warsim)). Worth a look while logged in, for a devlog that says where the game came from.
 - **OneBit Adventure**: its store page says "if you enjoy roguelike adventures like Shattered Pixel Dungeon or survival RPGs like Vampire Survivors, you'll feel right at home". Marketing, not influence.
 - **WazHack**: its developer Waz wrote GEM NetHack, the first graphical NetHack (not on the chart).
 - **Fushigi no Gensoukyou**: the Japanese wikis (Niconico, Pixiv) say its play is modelled on the Shiren the Wanderer series; the sheet has Torneko: The Last Hope instead, from DualShockers. Nothing from AQUASTYLE itself was found (their published interview is about a later rhythm game).
@@ -484,6 +487,10 @@ All six eight-connection games, the same way. No new lines. Two of them have no 
 ### Games added to the sheet (October 2026)
 
 **Slayblade** (Henry's House, 2026, no connections): its store page and all six developer posts name only the studio's own earlier games, Nanomon Virtual Pet, Kardboard Kings and Desert Child, none of them on the chart. "Remember Beyblades?" is a review's line, and Beyblade is a toy and anime, not a game on the chart. The other three games added with it (Fushigi no Pixel Dungeon, Lost Eidolons: Veil of the Witch, Rogue Blight) came in with the rows section 2 had found for them.
+
+### Bluesky, Substack and Patreon (October 2026)
+
+The 386 games with one connection or none, through three new scans (`bluesky`, `substack`, `patreon`). **Bluesky** read 386 games' posts, finding a studio account for most, and gave one strong find, the four lines on Sir, We Have an Orc Problem in section 1; the rest of its 63 lines were publishers plugging other games, fans, the developers' own earlier games already on the sheet (Fights in Tight Spaces → Knights in Tight Spaces, Rocketcat's Wayward Souls) and name collisions (Warhammer 40,000: Rogue Trader for Rogue, Ragnarok Online for Ragnarok). **Substack** found nothing first-hand: every hit is a journalist or a newsletter writing about the game (a French review says Absolum's studio "s'est énormément inspiré du jeu Hades", which is the writer's claim). **Patreon** can't be read from here; the developer pages it found are listed in section 5.
 
 ### Your wanted list
 
@@ -671,3 +678,4 @@ Lines that are rows in the sheet now, kept for their sources. `status --tick` mo
 - **The rows with no link (October 2026)**: 167, of which 139 are Dev/Series. Of the 28 others, first-hand sources for nine (Hadean Tactics, Rogue Lords, Caves of Qud, Castle of the Winds, Hack, two on Elona, GnollHack, Ultimate ADOM), and the Discord-sourced ones need screenshots.
 - **Early classics, variants and console games (October 2026)**: 12 Angband/NetHack variants and Japanese console roguelikes, the Japanese ones in Japanese too. No new edges; first-hand sources for NetHack → Slash'EM and NetHack → Pathos.
 - **New games on the sheet (October 2026)**: Slayblade, added with no connection, through its store page and developer posts. Nothing first-hand; it is in section 6. The owner's upload also put 24 rows on the sheet, 13 of them lines from this doc, and replaced RogueBasin's NetHack → Dungeons of Dredmor with Gaslamp's four.
+- **Bluesky, Substack and Patreon (October 2026)**: the 386 games with one connection or none. Four strong lines on Sir, We Have an Orc Problem (Bluesky); nothing first-hand on Substack; Patreon's developer pages listed for reading logged in.

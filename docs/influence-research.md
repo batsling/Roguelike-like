@@ -43,6 +43,10 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Studio websites and press kits | `site` | Not measured yet. A press kit's History section is written by the studio for journalists. 6 of 8 tested had a site, and 3 a press page |
 | Reddit | `reddit` | Not measured yet. Developer AMAs and "I made…" launch posts, plus r/roguelikedev (mostly Sharing Saturday). Read through the Arctic Shift archive, which rate-limits hard (see Traps) |
 | Kickstarter campaigns | `kickstarter` | Not measured yet. A pitch says what it is like, often under an "Inspirations" heading. **Run it from your own computer**: Kickstarter refuses the cloud container |
+| Bluesky | `bluesky`: the studio's own account (matched by the Steam developer's name), read back through posts and replies, plus a post search | **Measured once, thin but real.** Over the 386 games with one connection or none: 63 lines, one strong find (Mumpitz Games naming four chart games for Sir, We Have an Orc Problem). Most lines are publishers plugging other games, and fan accounts that share a studio's name. Uses `api.bsky.app`: `public.api.bsky.app` answers 403 from the cloud container |
+| Substack | `substack`: Substack's own search, public posts read in full | **Nothing first-hand** over the same 386 games: every hit was a journalist or newsletter writing about the game |
+| Patreon | `patreon`: finds the campaign only | **Can't be read from here**: the API returns post text empty without a login and post pages answer 403. About 13 real developer pages among 124 name matches, listed in section 5 of the candidates doc |
+| Video captions | `transcripts`, **your computer only** | Not measured yet. Reads the media doc's videos for every chart game said, with a timestamped link |
 | Roguelike Radio | `radio` | A listening list, not a source: 180 episodes since 2011, many with one game's developer as the guest. 43 chart games are named in an episode's title or notes |
 
 **The degree-1 pass (October 2026)** went after the 335 games the map holds by a
