@@ -8,9 +8,9 @@ id = &"hades_ii"
 display_name = "Hades II"
 year = 2024
 type = 0
-games_influenced = Array[StringName]([])
-influence_sources = PackedStringArray()
-influence_relations = PackedStringArray()
+games_influenced = Array[StringName]([&"tabletop_tavern"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=fCUbwNqQzWg")
+influence_relations = PackedStringArray("")
 tags = PackedStringArray("hell")
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

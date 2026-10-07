@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_fushigi_no_pixel_dungeon"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"fushigi_no_pixel_dungeon"
+display_name = "Fushigi no Pixel Dungeon"
+year = 2018
+type = 3
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/fushigi-no-pixel-dungeon.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\FushiginoPD INDEV.lnk"
+steam_page = ""

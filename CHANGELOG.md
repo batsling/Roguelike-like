@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four new games, 24 new connections, five newly owned games and 45 proof uploads
+  from the owner.** New on the sheet: Lost Eidolons: Veil of the Witch, Rogue
+  Blight, Fushigi no Pixel Dungeon and Slayblade, with their covers. Newly owned:
+  Deep Rock Galactic: Survivor, Lootplot, Time Survivors, Word Play and
+  Slayblade. NetHack → Dungeons of Dredmor (RogueBasin's) is gone, replaced by
+  four first-hand rows from Gaslamp's interview (Linley's Dungeon Crawl,
+  Torneko, Lost Labyrinth, Dwarf Fortress), and its capture was removed with
+  it. Popup Dungeon → Aces & Adventures is now a Dev/Series row. Three of the
+  proof clips had been uploaded to the repo root and were moved into
+  `images2.0/proof/`. `linley's_crawl---…` was renamed to the game's id, and
+  an unnamed Steam screenshot (Dice a Million's dev naming Balatro, Isaac and
+  Inscryption) now proves Balatro's and Inscryption's rows. All 20 new clips
+  are converted. 13 candidate lines are ticked, and `proof-missing.md` is down
+  to 412. 899 games, 1491 connections; the Atlas skies are re-baked.
+
 - **The stream overlay's map (`map.html`) matches the in-game map.** Each box
   is the game's cover filling the box (cropped from near the top), with the name
   on a dark band along the bottom. The node kind is a badge straddling the
