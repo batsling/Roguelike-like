@@ -136,7 +136,7 @@ func test_edits_the_sheet_has_caught_up_with_drop_off_on_load() -> void:
 
 # --- export ------------------------------------------------------------------
 
-func test_the_export_carries_names_ids_additions_and_removals() -> void:
+func test_the_export_covers_every_game_with_its_tags_and_its_edits() -> void:
 	var g: GameData = _untagged()
 	var t: GameData = _tagged()
 	GameTags.add_tag(g, "Lighthouse")
@@ -149,11 +149,37 @@ func test_the_export_carries_names_ids_additions_and_removals() -> void:
 	var by_id: Dictionary = {}
 	for row in data["games"]:
 		by_id[row["id"]] = row
-	assert_eq(by_id.size(), 2)
+	assert_eq(by_id.size(), Data.all_games().size(), "every game in the catalog, edited or not")
+	assert_eq(int(data["edited"]), 2)
 	assert_eq(by_id[String(g.id)]["name"], g.display_name, "the sheet is keyed by name")
 	assert_eq(by_id[String(g.id)]["add"], ["lighthouse"])
+	assert_eq(by_id[String(g.id)]["tags"], Array(GameTags.tags_of(g)), "with the tags the game has")
 	assert_eq(by_id[String(t.id)]["remove"], [GameTags.normalize(t.tags[0])])
+	var other: GameData = null
+	for x in Data.all_games():
+		if x is GameData and x.id != g.id and x.id != t.id and (x as GameData).tags.size() > 0:
+			other = x
+			break
+	assert_eq(by_id[String(other.id)]["tags"], Array(GameTags.tags_of(other)),
+		"an unedited game carries its sheet tags")
+	assert_eq(by_id[String(other.id)]["add"], [], "and no edit for the script to write")
 	assert_eq(GameTags.pending_count(), 2, "exporting leaves the edits live until the sheet has them")
+
+func test_settings_exports_every_games_tags() -> void:
+	GameTags.add_tag(_untagged(), "lighthouse")
+	var modal := SettingsModal.new()
+	add_child_autofree(modal)
+	var btn := modal.find_child("ExportTagsBtn", true, false) as Button
+	assert_not_null(btn, "Settings has the one Export")
+	var hint := modal.find_child("TagsHint", true, false) as Label
+	assert_string_contains(hint.text, "1 game has tag edits")
+	btn.pressed.emit()
+	var path: String = GameTags.export_path()
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	assert_true(data is Dictionary, "the button wrote the file")
+	assert_eq((data["games"] as Array).size(), Data.all_games().size())
+	assert_string_contains(hint.text, "Exported all %d games" % Data.all_games().size())
 
 func test_from_the_project_folder_the_export_lands_beside_the_workbook() -> void:
 	# Tests run from the project, never from an exported pack.
@@ -178,7 +204,9 @@ func test_the_editor_shows_the_games_tags_and_takes_one_off_with_a_click() -> vo
 	chip.pressed.emit()
 	assert_false(GameTags.has_tag(g, t))
 	assert_not_null(_button(ed, "Removed_" + t), "the removed tag stays on view to put back")
-	assert_not_null(ed.find_child("Export", true, false), "and the footer offers the export")
+	var note := ed.find_child("Pending", true, false) as Label
+	assert_not_null(note, "and the footer counts the pending edits")
+	assert_string_contains(note.text, "Settings", "pointing at the one Export, in Settings")
 
 func test_the_editor_adds_from_the_vocabulary_and_from_the_box() -> void:
 	var g: GameData = _untagged()

@@ -195,18 +195,39 @@ func export_path() -> String:
 		return PROJECT_EXPORT
 	return USER_EXPORT
 
-# The payload `tools/apply_tag_edits.py` reads. Names go with the ids because
-# the sheet is keyed by name; the script matches either.
+# The payload `tools/apply_tag_edits.py` reads: EVERY game in the catalog, with
+# the tags it has in game (`tags`) and how that differs from the sheet (`add`,
+# `remove`). Names go with the ids because the sheet is keyed by name.
+#
+# The script applies only `add` and `remove`, never `tags` wholesale. The sheet
+# may have moved since this build was imported (a tag typed into Excel), and a
+# full list from the game would quietly undo that; the difference cannot. The
+# full list is there so the file is a complete record of every game's tags as
+# the game sees them, and so the script can report what each row will become.
 func export_payload() -> Dictionary:
+	var edits: Dictionary = {}
+	for row in pending():
+		edits[row["id"]] = row
+	var games: Array = []
+	for g in Data.all_games():
+		if not (g is GameData):
+			continue
+		var e: Dictionary = edits.get(String(g.id), {})
+		games.append({"id": String(g.id), "name": g.display_name,
+			"tags": Array(tags_of(g)), "add": e.get("add", []), "remove": e.get("remove", [])})
+	games.sort_custom(func(a, b): return String(a["name"]).naturalnocasecmp_to(String(b["name"])) < 0)
 	return {
-		"about": "Tag edits made in game. Apply with: python3 tools/apply_tag_edits.py",
+		"about": "Every game's tags as the game has them. Apply with: python3 tools/apply_tag_edits.py "
+			+ "(it writes only each game's add/remove into the sheet).",
 		"exported": Time.get_datetime_string_from_system(false, true),
 		"profile": Profiles.active_name(),
-		"games": pending(),
+		"edited": edits.size(),
+		"games": games,
 	}
 
-# Write the pending edits out; returns the file's absolute path, or "" if it
+# Write every game's tags out; returns the file's absolute path, or "" if it
 # could not be written. The edits stay live and pending until the sheet has them.
+# Called from Settings → Game tags.
 func export_edits(path: String = "") -> String:
 	if path == "":
 		path = export_path()

@@ -263,6 +263,9 @@ func _build_ui() -> void:
 	_build_ownership_section(vbox, refresh_owned_count)
 
 	vbox.add_child(HSeparator.new())
+	_build_tags_section(vbox)
+
+	vbox.add_child(HSeparator.new())
 
 	var amulet_heading := Label.new()
 	amulet_heading.text = "Amulet generation"
@@ -496,6 +499,61 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 				if Profiles.wipe(Profiles.active_id):
 					hint.text = "\"%s\" is empty again." % who
 					hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))))
+
+# THE TAG EXPORT (GameTags). Tags are edited per game, on the Collection's game
+# page and the run map's card; getting them into the sheet is one act for the
+# whole catalog, so it lives here rather than under any one game. The file lists
+# every game's tags; tools/apply_tag_edits.py writes the differences into the
+# `games` sheet. The path is a selectable LineEdit for the same reason the
+# overlay's is: it is there to be found and copied.
+func _build_tags_section(vbox: VBoxContainer) -> void:
+	var heading := Label.new()
+	heading.text = "Game tags"
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	vbox.add_child(heading)
+
+	var hint := Label.new()
+	hint.name = "TagsHint"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 58)
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
+	vbox.add_child(hint)
+
+	var export_btn := Button.new()
+	export_btn.name = "ExportTagsBtn"
+	export_btn.text = "Export tags for all games"
+	export_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	vbox.add_child(export_btn)
+
+	var path := LineEdit.new()
+	path.name = "TagsPath"
+	path.text = ProjectSettings.globalize_path(GameTags.export_path())
+	path.editable = false
+	path.select_all_on_focus = true
+	path.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	vbox.add_child(path)
+
+	var refresh := func() -> void:
+		var n: int = GameTags.pending_count()
+		hint.text = ("Add or remove a game's tags on its page in the compendium (Tab) or on its card on the run map. "
+			+ ("%d game%s %s tag edits the sheet doesn't have yet. " % [n, "" if n == 1 else "s", "has" if n == 1 else "have"]
+				if n > 0 else "Every tag edit is already in the sheet. ")
+			+ "Export writes every game's tags to the file below, for tools/apply_tag_edits.py to put in the sheet.")
+	refresh.call()
+
+	export_btn.pressed.connect(func() -> void:
+		var written: String = GameTags.export_edits()
+		refresh.call()
+		if written == "":
+			hint.text = "Couldn't write %s." % GameTags.export_path()
+			hint.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
+			return
+		var n: int = GameTags.pending_count()
+		hint.text = "Exported all %d games (%d with edits) to the file below. Upload it with your other changes; the edits stay live here until the sheet has them." % [
+			Data.all_games().size(), n]
+		hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7)))
 
 # Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
 # this player builds by ticking games off their covers in the compendium.

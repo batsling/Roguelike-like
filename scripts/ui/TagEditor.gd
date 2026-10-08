@@ -13,8 +13,8 @@ extends VBoxContainer
 # opens the vocabulary — every tag any game carries, as one-click chips, so a
 # theme is spelled one way — and a box for a tag nobody has used yet.
 #
-# When any game has edits the sheet doesn't, a footer counts them and offers the
-# Export (GameTags.export_edits), which `tools/apply_tag_edits.py` reads.
+# When any game has edits the sheet doesn't, a footer counts them and points at
+# Settings, where the one Export for every game lives (GameTags.export_edits).
 #
 # It rebuilds itself on GameTags.tags_changed, so the screen around it never has
 # to know an edit happened.
@@ -158,16 +158,7 @@ func _build_footer() -> HBoxContainer:
 	note.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	note.text = _status if _status != "" else \
-		"%d game%s with tag edits not in the sheet yet." % [n, "" if n == 1 else "s"]
+		"%d game%s with tag edits not in the sheet yet. Export them from Settings." % [n, "" if n == 1 else "s"]
+	note.tooltip_text = "Settings → Game tags → Export tags writes every game's tags for tools/apply_tag_edits.py."
 	row.add_child(note)
-	if n > 0:
-		var export_btn := UITheme.quiet_button("Export", Vector2.ZERO, UITheme.FONT_SMALL)
-		export_btn.name = "Export"
-		export_btn.tooltip_text = "Write every pending tag edit to %s, for tools/apply_tag_edits.py to put in the sheet. The edits stay live here until the sheet has them." % GameTags.export_path()
-		export_btn.pressed.connect(func() -> void:
-			var path: String = GameTags.export_edits()
-			_status = ("Exported %d game%s to %s" % [n, "" if n == 1 else "s", path]) if path != "" \
-				else "Couldn't write %s." % GameTags.export_path()
-			_rebuild())
-		row.add_child(export_btn)
 	return row

@@ -2,18 +2,22 @@
 """Write the tags edited IN GAME into the `games` sheet's Tags column.
 
 The game lets the player add tags to a game and take them off (the Collection's
-game page and the run map's game card; `scripts/autoload/GameTags.gd`), and its
-Export button writes what the sheet doesn't have yet to `tools/tag_edits.json`
-(or the user folder, from an exported build). This applies that file:
+game page and the run map's game card; `scripts/autoload/GameTags.gd`), and
+Settings → Game tags → "Export tags for all games" writes every game's tags to
+`tools/tag_edits.json` (or the user folder, from an exported build): for each
+game its tags as the game has them, and what was added or removed in game.
+This applies that file:
 
     python3 tools/apply_tag_edits.py                  # tools/tag_edits.json -> sheet, then re-import
     python3 tools/apply_tag_edits.py path/to/file.json
     python3 tools/apply_tag_edits.py --dry-run        # say what would change, write nothing
     python3 tools/apply_tag_edits.py --no-import      # write the sheet, skip import-games-godot.py
 
-For each game in the file: the sheet's tags, minus what it says to remove, plus
-what it says to add (appended, in the order added), written back as one
-comma-separated cell. It is IDEMPOTENT: an addition the cell already has and a
+For each game with an edit: the sheet's tags, minus what it says to remove,
+plus what it says to add (appended, in the order added), written back as one
+comma-separated cell. Only the DIFFERENCE is applied, never the game's full
+list: the sheet may have moved since the game's data was imported (a tag typed
+into Excel), and writing the full list back would undo that. It is IDEMPOTENT: an addition the cell already has and a
 removal it already lacks change nothing, so applying a file twice, or applying
 an old one, is harmless. Games are matched by name (the sheet's key), falling
 back to the id slug the importer derives, so a renamed game is reported rather
@@ -97,6 +101,8 @@ def plan(edits: dict, rows: list):
     by_slug = {slug(name): (r, cell, name) for r, name, cell in rows}
     cells, report, missing = {}, [], []
     for g in edits.get("games", []):
+        if not g.get("add") and not g.get("remove"):
+            continue  # the export lists every game; only the edited ones write anything
         name = str(g.get("name") or "").strip()
         hit = by_name.get(name)
         sheet_name = name
@@ -130,8 +136,9 @@ def main():
                  "under any game's tags)" % os.path.relpath(path, ROOT))
     edits = json.load(open(path, encoding="utf8"))
     cells, report, missing = plan(edits, sheet_rows())
-    print("%s: %d game(s) in the file, %d cell(s) to change" % (
-        os.path.relpath(path, ROOT), len(edits.get("games", [])), len(cells)))
+    edited = sum(1 for g in edits.get("games", []) if g.get("add") or g.get("remove"))
+    print("%s: %d game(s) in the file, %d with edits, %d cell(s) to change" % (
+        os.path.relpath(path, ROOT), len(edits.get("games", [])), edited, len(cells)))
     for line in report:
         print(line)
     for name in missing:

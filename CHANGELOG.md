@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The tag export moved to Settings, and covers every game.** Settings →
+  Game tags → *Export tags for all games* writes all 917 games to
+  `tools/tag_edits.json`, each with the tags it has in game and what was added
+  or removed there; the path is shown beside the button to copy. The editor's
+  footer now only counts the pending edits and points at Settings.
+  `apply_tag_edits.py` still writes only the differences, never a game's full
+  list, so a tag typed into the sheet in Excel since the last import is never
+  undone by an older export.
+
 - **Tag games in game, and send the tags to the sheet.** A game's tags are
   editable on the Collection's game page and on the run map's game card: its
   tags are chips with a × to take one off, "+ Tag" opens every tag in use as
