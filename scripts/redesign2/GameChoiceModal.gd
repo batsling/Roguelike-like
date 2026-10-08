@@ -256,11 +256,15 @@ static func nearby_text(counts: Dictionary) -> String:
 
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var name_text: String = game.display_name if game != null else "this game"
-	return ("%d games connect to %s — the pool the next offering is drawn from. "
-		+ "%d of them still owe an event; %d are Shop nodes, where the shop is "
+	var total: int = int(counts.get("total", 0))
+	var events: int = int(counts.get("events", 0))
+	var shops: int = int(counts.get("shops", 0))
+	return ("%s %s to %s — the pool the next offering is drawn from. "
+		+ "%d of them still %s an event; %d %s, where the shop is "
 		+ "what happens instead of one.") % [
-		int(counts.get("total", 0)), name_text,
-		int(counts.get("events", 0)), int(counts.get("shops", 0))]
+		Plural.count(total, "game"), "connects" if total == 1 else "connect", name_text,
+		events, "owes" if events == 1 else "owe",
+		shops, "is a Shop node" if shops == 1 else "are Shop nodes"]
 
 # The room the popup has: the screen minus the run's pinned header bar, which is
 # drawn OVER this modal and would otherwise take the popup's title row with it

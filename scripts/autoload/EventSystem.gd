@@ -181,6 +181,20 @@ const GATE_STAT_NAMES := {
 	"potions": "Potions",
 }
 
+# The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
+# the countable ones; Health, Gold and the verbs read the same either way.
+const GATE_STAT_ONE := {
+	"games": "Game played", "keys": "Key", "bombs": "Bomb",
+	"shields": "Temporary Shield", "bonus_shields": "Shield",
+	"relics": "Tradeable Relic", "potions": "Potion",
+}
+
+# A gated resource's name for `n` of it.
+static func gate_stat_name(stat: String, n: int) -> String:
+	if n == 1 and GATE_STAT_ONE.has(stat):
+		return String(GATE_STAT_ONE[stat])
+	return String(GATE_STAT_NAMES.get(stat, stat.capitalize()))
+
 # A Requirement dictionary in words: "Health <= 70%". One implementation, read by
 # the Collection's event page and by the dev panel.
 #
@@ -768,9 +782,8 @@ func gate_refusal(gate: Dictionary, picks: Dictionary) -> String:
 	if gate.has("flag"):
 		return ObjectSystem.flag_refusal(String(gate["flag"]))
 	if gate.has("resource"):
-		var stat: String = String(gate["resource"])
-		return "Needs %d %s" % [int(gate.get("value", 0)),
-			String(GATE_STAT_NAMES.get(stat, stat.capitalize()))]
+		var n: int = int(gate.get("value", 0))
+		return "Needs %d %s" % [n, gate_stat_name(String(gate["resource"]), n)]
 	return ""
 
 

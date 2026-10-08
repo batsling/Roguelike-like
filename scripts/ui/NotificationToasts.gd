@@ -92,6 +92,15 @@ func set_bottom_inset(px: float) -> void:
 	_bottom_inset = want
 	_apply_bottom_inset()
 
+# Take every standing toast down at once — for a new run, whose page should not
+# open under notices about the run it replaced.
+func clear() -> void:
+	_by_key.clear()
+	if _stack == null or not is_instance_valid(_stack):
+		return
+	for t in _stack.get_children():
+		t.queue_free()
+
 func _apply_bottom_inset() -> void:
 	if _stack == null or not is_instance_valid(_stack):
 		return
@@ -212,7 +221,9 @@ func _restack(rec: Dictionary, text: String) -> void:
 	rec["tween"] = _play(rec["toast"], false)
 
 func _play(toast: Control, fade_in: bool) -> Tween:
-	var tw := create_tween()
+	# Bound to the toast, so a toast taken down early (`clear`) takes its tween
+	# with it rather than leaving one to call queue_free on a freed node.
+	var tw := create_tween().bind_node(toast)
 	if fade_in:
 		tw.tween_property(toast, "modulate:a", 1.0, FADE_IN)
 	else:

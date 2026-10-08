@@ -266,7 +266,7 @@ static func describe(data: Dictionary) -> String:
 		PATH_FLOOR, PATH_CEILING)
 	var hi: int = clampi(int(data.get("max_path", RunGraph.MAX_PATH_LENGTH)),
 		PATH_FLOOR, PATH_CEILING)
-	parts.append("%d games" % lo if lo == hi
+	parts.append(Plural.count(lo, "game") if lo == hi
 		else "%d–%d games" % [mini(lo, hi), maxi(lo, hi)])
 	# The seed, when the player NAMED one. A rolled seed is deliberately not shown
 	# here: every run has one, so printing it on every row would say nothing about

@@ -662,6 +662,10 @@ func start_run(character_id: StringName = &"") -> void:
 	# longer exists (GameLog is cleared with the run).
 	_dismiss_history()
 	_dismiss_splits()
+	# …and the old run's toasts ("Switch your Twitch category to …" a game this
+	# run is not on).
+	if _toasts != null and is_instance_valid(_toasts):
+		_toasts.clear()
 	_resolving = false
 	_attempt_resolve = false
 	_board.clear_fx()
@@ -934,8 +938,9 @@ func choose_start(index: int) -> void:
 	_close_start_picker()
 	GameState.start_game_id = game.id
 	GameState.set_current_game(game.id)
-	GameLog.add("Starting the run at %s (%s) — %d games from the Amulet." % [
-		game.display_name, RunGraph.type_label(int(opt["type"])), int(opt["path_len"])],
+	GameLog.add("Starting the run at %s (%s) — %s from the Amulet." % [
+		game.display_name, RunGraph.type_label(int(opt["type"])),
+		Plural.count(int(opt["path_len"]), "game")],
 		UITheme.GOLD)
 	_chosen = _start_choice(index)
 	_dashed_here = false
@@ -1371,7 +1376,9 @@ func pick(index: int) -> void:
 	# commit stands on a laid rift game (docs/rifts-design.md §8).
 	if _chosen.has("rift_key"):
 		_open_rift_key(_chosen)
+	GameLog.arriving_at = _chosen["slot"]
 	_begin_game(_chosen["game"], _chosen["enemy"], _current_tier())
+	GameLog.arriving_at = &""
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
@@ -1880,7 +1887,8 @@ func scramble() -> bool:
 	# A transmute is pasted onto the NODE, not onto an offering, so re-drawing the
 	# cards leaves it in place — the spot still plays the game you pasted there.
 	_build_choices()
-	GameLog.add("Scrambled the offering — %d new game(s) to choose from." % _choices.size(),
+	GameLog.add("Scrambled the offering — %s to choose from." % Plural.count(
+		_choices.size(), "new game"),
 		Color(0.6, 0.75, 1.0))
 	_refresh()
 	return true
@@ -4039,7 +4047,9 @@ func _start_play_game(request: Dictionary) -> void:
 	}
 	# `log_shields` false: this path has always granted the armour silently. See
 	# _begin_game — kept as it was rather than quietly fixed.
+	GameLog.arriving_at = dest
 	_begin_game(game, enemy, tier, false)
+	GameLog.arriving_at = &""
 	GameState.set_current_game(dest)
 	_dash_mode = false
 	# A detour is posted by an event, not paid for with a charge, so there is
@@ -6156,13 +6166,13 @@ func _note_loot_taken(taken: Array) -> void:
 func _result_text(res: Dictionary) -> String:
 	var parts: Array = []
 	if int(res.get("drops", 0)) > 0:
-		parts.append("%d drop(s)" % int(res["drops"]))
+		parts.append(Plural.count(int(res["drops"]), "drop"))
 	if int(res.get("damage_taken", 0)) > 0:
 		parts.append("took %d damage" % int(res["damage_taken"]))
 	if int(res.get("blocked", 0)) > 0:
 		parts.append("shields absorbed %d" % int(res["blocked"]))
 	if int(res.get("attempts", 0)) > 0:
-		parts.append("%d attempt(s)" % int(res["attempts"]))
+		parts.append(Plural.count(int(res["attempts"]), "attempt"))
 	# Shields belong to the game that granted them; say so when some went unused.
 	if int(res.get("shields_expired", 0)) > 0:
 		parts.append("%s expired with the game" % GameState.temp_shields_text(
@@ -7228,6 +7238,9 @@ func prompt_quit() -> ConfirmationDialog:
 	dlg.dialog_text = ("Leave the game?\n\nThis run is autosaved up to your last move, "
 		+ "so Continue will pick it back up. Save it under a name to keep it in the "
 		+ "save list as well.")
+	# Wrapped to the size it is popped at below. Unwrapped, the second paragraph
+	# is one line, and the dialog stretched to nearly the width of the screen.
+	dlg.dialog_autowrap = true
 	dlg.ok_button_text = "Exit"
 	dlg.get_cancel_button().text = "Cancel"
 	dlg.add_button("Save & exit", true, "save_and_exit")

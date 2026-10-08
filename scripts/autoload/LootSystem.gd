@@ -801,7 +801,8 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 	# is hidden for the same reason the Preference beside it is.
 	if charges_known(entry):
 		var bar: Array = charges(entry)
-		sub += "  ·  %d / %d charges" % [int(bar[0]), int(bar[1])]
+		sub += "  ·  %d / %d %s" % [int(bar[0]), int(bar[1]),
+			Plural.word(int(bar[1]), "charge")]
 	# A FACE-DOWN CARD'S HOVER SAYS ITS DECK AND STOPS (docs/cards-design.md §3).
 	# The token on the square already draws the deck's icon, so the hover naming it
 	# is the picture in words — and the note is the one thing the player can act on:
@@ -865,8 +866,9 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 				lines.append("READY — it pays on its next charge (%d / %d)." % [
 					int(progress["need"]), int(progress["need"])])
 			else:
-				lines.append("%d / %d charges toward the next one." % [
-					int(progress["have"]), int(progress["need"])])
+				lines.append("%d / %d %s toward the next one." % [
+					int(progress["have"]), int(progress["need"]),
+					Plural.word(int(progress["need"]), "charge")])
 			var foods: Array = progress.get("foods", [])
 			if not foods.is_empty():
 				var names: Array = foods.map(func(f): return Data.get_trinket(f).display_name)

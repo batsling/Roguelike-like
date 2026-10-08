@@ -286,6 +286,89 @@ func test_the_events_tab_opens_on_its_grid_and_a_click_fills_the_popup() -> void
 	assert_true(col._detail_panel.visible, "a click opens it")
 	assert_gt(col._detail_box.get_child_count(), 0, "filled in")
 
+# The Objects tab follows the same rule. It used to open the first object's popup
+# on every build — opening the tab, typing in the search, changing the sort — a
+# leftover from when the detail was a pane beside the grid.
+func test_the_objects_tab_opens_on_its_grid_too() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.OBJECTS)
+	assert_not_null(col._detail_box, "the objects tab has a detail popup")
+	assert_false(col._detail_panel.visible, "which is not up until something is picked")
+	if col._nav.is_empty():
+		pending("no objects to click")
+		return
+	col._select(0)
+	assert_true(col._detail_panel.visible, "a click opens it")
+
+# An object's "If a roll lands" prose carries an {ITEM} hole the run fills with
+# the relic it rolled. The reference has no roll, so the hole must not show raw.
+func test_an_objects_roll_prose_never_shows_its_item_hole() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.OBJECTS)
+	var checked: int = 0
+	for i in col._nav.size():
+		col._select(i)
+		for c in col._detail_box.get_children():
+			if c is Label:
+				assert_false((c as Label).text.contains(EventSystem.ITEM_HOLE),
+					"no raw hole: %s" % (c as Label).text)
+				checked += 1
+	if checked == 0:
+		pending("no object detail had any labels to read")
+
+# The Loot tab's own count is every piece its sub-tabs list, not only the first
+# two (it said 18 — scrolls and pills — over 65 pieces).
+func test_the_loot_tab_counts_every_kind_it_lists() -> void:
+	var col := _new_collection()
+	var want: int = Data.all_scrolls().size() + Data.all_pills().size() \
+		+ Data.all_potions().size() + Data.all_cards().size() + Data.all_wands().size() \
+		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size()
+	var btn: Button = col._tab_buttons[Collection.Tab.LOOT]
+	assert_eq(btn.text, "Loot (%d)" % want)
+
+# Trinkets, bags, weapons and evolutions were in the game and nowhere in the
+# compendium. Each is a sub-tab of Loot now, with a cell for every one.
+func test_the_pack_pieces_each_have_a_loot_sub_tab() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	for pair in [[Collection.LOOT_TRINKETS, Data.all_trinkets().size()],
+			[Collection.LOOT_BAGS, Data.all_bags().size()],
+			[Collection.LOOT_WEAPONS, Data.all_weapons().size()],
+			[Collection.LOOT_EVOLUTIONS, Data.all_evolutions().size()]]:
+		col._loot_sub = pair[0]
+		col._refresh()
+		assert_gt(int(pair[1]), 0, "%s has content to show" % pair[0])
+		assert_eq(col._grid.get_child_count(), int(pair[1]), "a cell for every one: %s" % pair[0])
+
+func test_a_loot_sub_tab_search_narrows_it() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	col._loot_sub = Collection.LOOT_WEAPONS
+	col._search["weapons"] = "zzzznotathing"
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), 0, "nothing matches nonsense")
+	col._search["weapons"] = ""
+	col._refresh()
+	assert_eq(col._grid.get_child_count(), Data.all_weapons().size())
+
+# Reading a weapon's page must not touch the run's dice: the Collection opens
+# mid-run, and WeaponSystem.new_entry would roll a uid off the global stream.
+func test_the_weapons_page_does_not_move_the_random_stream() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	seed(1234)
+	var expected: int = randi()
+	seed(1234)
+	col._loot_sub = Collection.LOOT_WEAPONS
+	col._refresh()
+	assert_eq(randi(), expected, "the stream is where it was")
+
+func test_a_gate_on_one_of_something_is_singular() -> void:
+	var col := _new_collection()
+	assert_eq(col._event_gate_text({"resource": "bombs", "value": 1}), "needs 1 bomb")
+	assert_eq(col._event_gate_text({"resource": "bombs", "value": 2}), "needs 2 bombs")
+	assert_eq(col._event_gate_text({"resource": "gold", "value": 1}), "needs 1 gold")
+
 # ◀ ▶ WALK THE GRID, and the lit cell follows. The popup covers the middle of the
 # screen, so the cell it is about has to say so on its own.
 func test_the_arrows_step_through_the_grid_and_light_the_cell_they_land_on() -> void:

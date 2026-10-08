@@ -474,15 +474,17 @@ func op_text(effect: Dictionary) -> String:
 			# sentinel: "Forget -1 random scrolls" is the shape this line would take
 			# on the day somebody authors a wide forget without a Description.
 			var count: int = int(effect.get("count", 1))
-			var what: String = "piece(s) of loot" \
-				if String(effect.get("kind", "loot")) == "loot" else "scroll(s)"
+			var loot: bool = String(effect.get("kind", "loot")) == "loot"
+			var one: String = "piece of loot" if loot else "scroll"
+			var many: String = "pieces of loot" if loot else "scrolls"
 			if count < 0:
-				return "Forget every identified %s." % what
-			return "Forget %d random identified %s." % [count, what]
+				return "Forget every identified %s." % one
+			return "Forget %d random identified %s." % [count, Plural.word(count, one, many)]
 		"spawn_enemy":
 			return "Spawn a random enemy at the current difficulty that follows you."
 		"identify_loot", "identify_scrolls":
-			return "Choose %d carried piece(s) of loot to identify." % int(effect.get("count", 1))
+			return "Choose %s to identify." % Plural.count(int(effect.get("count", 1)),
+				"carried piece of loot", "carried pieces of loot")
 		"remove_curse":
 			var curses: int = int(effect.get("count", 1))
 			if curses < 0:

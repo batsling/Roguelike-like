@@ -1380,8 +1380,8 @@ func _refresh_filter_count() -> void:
 	# the whole catalog they are — which the base layout still knows.
 	var shown: int = layout.star_count()
 	var total: int = _base_layout.star_count() if _base_layout != null else shown
-	_filter_count.text = ("%d games" % shown) if shown == total \
-		else ("%d of %d games" % [shown, total])
+	_filter_count.text = Plural.count(shown, "game") if shown == total \
+		else ("%d of %s" % [shown, Plural.count(total, "game")])
 
 func _build_header() -> Control:
 	var bar := PanelContainer.new()
@@ -2097,13 +2097,14 @@ func _refresh_hud() -> void:
 		scope = " · downloaded only"
 	# A tree has no constellations to count; what it has instead is a root and a
 	# depth, which is the thing worth saying about it.
-	var shape: String = "%d constellations" % layout.capitals.size()
+	var shape: String = Plural.count(layout.capitals.size(), "constellation")
 	if layout.is_tree():
 		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
 		shape = "rooted at %s, %d deep" % [
 			root_game.display_name if root_game != null else "?", _tree_depth()]
-	_hud.text = "%d games · %d links · %s%s · %s" % [
-		layout.star_count(), layout.edge_count(), shape, scope, detail]
+	_hud.text = "%s · %s · %s%s · %s" % [
+		Plural.count(layout.star_count(), "game"), Plural.count(layout.edge_count(), "link"),
+		shape, scope, detail]
 	var run_line: String = run_summary()
 	if run_line != "":
 		_hud.text = "%s\n%s" % [run_line, _hud.text]
